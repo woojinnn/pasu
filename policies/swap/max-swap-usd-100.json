@@ -1,0 +1,113 @@
+{
+  "effect": "forbid",
+  "principal": {
+    "op": "All"
+  },
+  "action": {
+    "op": "==",
+    "entity": {
+      "type": "Action",
+      "id": "swap"
+    }
+  },
+  "resource": {
+    "op": "All"
+  },
+  "conditions": [
+    {
+      "kind": "when",
+      "body": {
+        "&&": {
+          "left": {
+            "&&": {
+              "left": {
+                "&&": {
+                  "left": {
+                    "has": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "inputAmount"
+                    }
+                  },
+                  "right": {
+                    "has": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "inputAmount"
+                        }
+                      },
+                      "attr": "usd"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "<=": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "inputAmount"
+                            }
+                          },
+                          "attr": "usd"
+                        }
+                      },
+                      "attr": "staleSec"
+                    }
+                  },
+                  "right": {
+                    "Value": 60
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "greaterThan": [
+              {
+                ".": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "inputAmount"
+                        }
+                      },
+                      "attr": "usd"
+                    }
+                  },
+                  "attr": "value"
+                }
+              },
+              {
+                "decimal": [
+                  {
+                    "Value": "100.00"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "annotations": {
+    "id": "user/max-swap-usd-100",
+    "reason": "USD value of swap input exceeds 100",
+    "severity": "deny"
+  }
+}

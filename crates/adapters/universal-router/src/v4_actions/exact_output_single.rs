@@ -1,0 +1,33 @@
+//! V4 action `SWAP_EXACT_OUT_SINGLE`.
+
+use crate::commands::{swap_action, ActionMeta, RoutedAction};
+use crate::common::TokenLookup;
+use crate::v4_actions::{has_hook, pool_key_tokens, v4_fee_bips, V4ExactOutputSingleParams};
+use alloy_primitives::U256;
+use alloy_sol_types::SolValue;
+use policy_engine::prelude::*;
+
+pub(crate) fn decode(
+    tx: &TransactionRequest,
+    tokens: &TokenLookup,
+    input: &[u8],
+    mut meta: ActionMeta,
+) -> Result<RoutedAction, AdapterError> {
+    let p = <V4ExactOutputSingleParams as SolValue>::abi_decode_sequence(input, true)
+        .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+    let (token_in, token_out) = pool_key_tokens(tx.chain_id, tokens, &p.poolKey, p.zeroForOne);
+    meta.hook_data_present = has_hook(&p.poolKey) || !p.hookData.is_empty();
+    Ok(RoutedAction {
+        action: swap_action(
+            tx,
+            "uniswap-v4",
+            token_in,
+            token_out,
+            U256::from(p.amountInMaximum),
+            U256::from(p.amountOut),
+            tx.from.clone(),
+            v4_fee_bips(p.poolKey.fee),
+        ),
+        meta,
+    })
+}

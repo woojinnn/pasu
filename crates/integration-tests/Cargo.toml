@@ -1,0 +1,19 @@
+[package]
+name = "policy-engine-integration-tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Workspace-level integration tests for policy-engine. No public API."
+publish = false
+
+[dependencies]
+policy-engine.workspace = true
+policy-engine-adapter-uniswap-v2.workspace = true
+policy-engine-adapter-uniswap-v3.workspace = true
+policy-engine-adapters-bundle.workspace = true
+
+[dev-dependencies]
+alloy-primitives.workspace = true
+alloy-sol-types.workspace = true
+serde_json.workspace = true
+hex.workspace = true

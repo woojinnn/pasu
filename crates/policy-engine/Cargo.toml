@@ -1,0 +1,17 @@
+[package]
+name = "policy-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Web3 wallet transaction policy engine — runtime crate (core types, oracle, Cedar wrapper, adapter trait, pipeline)"
+
+[dependencies]
+alloy-primitives.workspace = true
+cedar-policy.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+hex.workspace = true

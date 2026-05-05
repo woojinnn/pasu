@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/policy-engine",
+    "crates/adapters/uniswap-v2",
+    "crates/adapters/uniswap-v3",
+    "crates/adapters/universal-router",
+    "crates/adapters-bundle",
+    "crates/integration-tests",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# Pinned versions every crate in this workspace agrees on.
+[workspace.dependencies]
+alloy-primitives = { version = "0.8", features = ["serde"] }
+alloy-sol-types = "0.8"
+alloy-dyn-abi = "0.8"
+cedar-policy = "4"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+
+# Internal crates referenced by path.
+policy-engine = { path = "crates/policy-engine" }
+policy-engine-adapter-uniswap-v2 = { path = "crates/adapters/uniswap-v2" }
+policy-engine-adapter-uniswap-v3 = { path = "crates/adapters/uniswap-v3" }
+policy-engine-adapter-universal-router = { path = "crates/adapters/universal-router" }
+policy-engine-adapters-bundle = { path = "crates/adapters-bundle" }
