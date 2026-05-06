@@ -1,9 +1,12 @@
-# policy-engine — v0.1 MVP
+# policy-engine — v0.x reference implementation
 
-A web3 wallet transaction policy engine. v0.1 wires up the smallest possible
+A web3 wallet transaction policy engine. v0.1 wired up the smallest possible
 end-to-end pipeline so the design choices in
-`docs/specs/2026-05-05-policy-engine-design.md` can be validated against real
-calldata.
+`docs/specs/2026-05-05-policy-engine-design.md` could be validated against
+real calldata. v0.x follow-on work has now landed the per-tx evaluation pass
+(spec §4.5), the host-capability seam (`Oracle` + `Portfolio` + `Approvals` +
+`StatWindows`), the reservation lifecycle (`reserve → settle | release`,
+spec §4.6), and per-match request-origin attribution.
 
 The codebase is a **Cargo workspace** split along the boundaries the design
 document calls out: pipeline runtime, adapter SDK, individual adapter crates,
@@ -16,26 +19,43 @@ policy-engine/                        # workspace root (virtual)
 ├── Cargo.toml                        # [workspace] members + shared dep versions
 ├── docs/                             # design spec
 ├── policies/                         # *.cedar / *.json policy artifacts, organized by action kind
-│   └── swap/                         #   policies that target Op::"swap"
-│       ├── max-swap-usd-100.cedar / .json   (deny: input USD > 100, oracle-aware)
-│       ├── max-swap-fee-bps-100.cedar       (deny: feeBips > 100)
-│       ├── uniswap-only-allowlist.cedar     (deny: protocol not in allowlist)
-│       ├── no-zero-min-output.cedar         (warn: minOutputAmount.raw == "0")
-│       └── min-output-usd-floor.cedar       (deny: minOutput USD < 10, oracle-aware)
+│   ├── swap/                         #   policies that target Action::"swap" (per-leaf)
+│   │   ├── max-swap-usd-100.cedar / .json     (deny: input USD > 100, oracle-aware)
+│   │   ├── max-swap-fee-bps-100.cedar         (deny: feeBips > 100)
+│   │   ├── uniswap-only-allowlist.cedar       (deny: protocol not in allowlist)
+│   │   ├── no-zero-min-output.cedar           (warn: minOutputAmount.raw == "0")
+│   │   ├── min-output-usd-floor.cedar         (deny: minOutput USD < 10, oracle-aware)
+│   │   ├── max-fraction-of-balance-2000-bps.cedar (deny: input > 20% of actor balance — Portfolio)
+│   │   └── allowance-must-cover-input.cedar   (warn: allowance < input — Approvals)
+│   └── tx/                           #   policies that target Action::"send_tx" (per-transaction)
+│       ├── tx-blocklist.cedar                 (deny: target ∈ blocklist)
+│       ├── tx-total-input-usd-cap-500.cedar   (deny: aggregated input USD > $500)
+│       └── tx-window-swap-volume-usd-24h-cap-5000.cedar
+│                                              (deny: 24h cumulative swap USD > $5000 — StatWindows)
 │
 └── crates/
     ├── policy-engine/                # ① runtime — split into focused modules
-    │     core.rs        Address, Token, TransactionRequest, Action, AmountSpec, UsdValuation
-    │     oracle.rs      Oracle trait + MockOracle (HTTP-backed impls slot in here later)
-    │     policy.rs      PolicyEngine, PolicyEngineBuilder, PolicyRequest, Verdict
-    │     adapter.rs     Adapter trait + AdapterId + AdapterError + MatchKey  (~85 lines)
-    │     registry.rs    AdapterRegistry trait + ResolverOutcome
-    │                    + AdapterIndex + MockAdapterRegistry + tests          (~240 lines)
-    │     lowering.rs    enrich_with_usd + request_from_action
-    │                    + decimal arithmetic helpers + tests                  (~210 lines)
-    │     pipeline.rs    Pipeline orchestrator (generic over `R: AdapterRegistry`)
-    │     prelude.rs     curated import surface for adapter authors
-    │                    (`use policy_engine::prelude::*;`)
+    │     core.rs            Address, Token, TransactionRequest, Action, AmountSpec, UsdValuation
+    │     oracle.rs          Oracle trait + MockOracle
+    │     portfolio.rs       Portfolio trait + MockPortfolio (current actor balances)
+    │     approvals.rs       Approvals trait + MockApprovals (current ERC-20 allowances)
+    │     stat_windows.rs    StatWindows trait + MockStatWindows
+    │                        + reserve / settle / release lifecycle
+    │     host.rs            HostCapabilities (oracle + optional portfolio/approvals/stats)
+    │                        + builder
+    │     policy.rs          PolicyEngine, PolicyEngineBuilder, PolicyRequest, Verdict,
+    │                        MatchedPolicy, RequestKind { Leaf{index}, Tx }
+    │     adapter.rs         Adapter trait + AdapterId + AdapterError + MatchKey
+    │                        (signatures take &HostCapabilities)
+    │     registry.rs        AdapterRegistry trait + ResolverOutcome
+    │                        + AdapterIndex + MockAdapterRegistry
+    │     lowering.rs        enrich_with_usd + request_from_action + request_for_tx
+    │                        + enrich_request_with_capabilities + enrich_tx_request_with_window_stats
+    │                        + compute_swap_window_deltas + decimal arithmetic helpers
+    │     pipeline.rs        Pipeline orchestrator + evaluate / evaluate_with_reservation
+    │                        + EvaluationOutcome
+    │     prelude.rs         curated import surface for adapter authors
+    │                        (`use policy_engine::prelude::*;`)
     │
     ├── adapters/                     # ② directory of internal adapter crates (one crate per protocol)
     │   ├── uniswap-v3/               # Uniswap V3 SwapRouter (4 swap functions + multicall)
@@ -66,9 +86,14 @@ policy-engine/                        # workspace root (virtual)
     │     examples/e2e_swap.rs        runnable demo
     │
     └── integration-tests/            # workspace-level e2e tests
-          tests/e2e_swap.rs           11 end-to-end scenarios
-          tests/policy_json.rs        10 CedarJSON ↔ text parity tests
-          tests/adapter_into_request.rs   7 Adapter::into_request flavor tests
+          tests/e2e_swap.rs                    11 end-to-end scenarios
+          tests/policy_json.rs                 10 CedarJSON ↔ text parity tests
+          tests/adapter_into_request.rs         9 Adapter::into_request flavor tests
+          tests/extra_swap_policies.rs         14 extra leaf policies × happy/sad
+          tests/composite_routers.rs            3 V3 multicall + UR composition
+          tests/tx_pass.rs                      6 send_tx pass + RequestKind origin
+          tests/capability_swap_policies.rs     7 Portfolio + Approvals enrichment
+          tests/window_stats.rs                 7 StatWindows reserve/settle/release
 ```
 
 ## Dependency DAG (no cycles)
@@ -96,7 +121,7 @@ Adding a new internal adapter is a three-step:
 3. Add fixtures and integration tests under `crates/integration-tests/tests/`
    if needed.
 
-## What works in v0.1
+## What works in v0.x
 
 - **13 swap/composite adapters** spanning three crates:
   - **Uniswap V3 SwapRouter** (`0xE592427A0AEce92De3Edee1F18E0157C05861564`):
@@ -112,25 +137,61 @@ Adding a new internal adapter is a three-step:
     policies apply unchanged. v4 hooks / sub-plans / Permit2 surfaces are
     flagged in context for policy-side defense.
   All wired up by `policy-engine-adapters-bundle::default_registry()`.
-- **5 swap policies** under `policies/swap/`:
-  - `max-swap-usd-100` (deny / authored both as Cedar text + CedarJSON)
-  - `max-swap-fee-bps-100` (deny when feeBips > 100)
-  - `uniswap-only-allowlist` (deny non-allowlisted protocols)
-  - `no-zero-min-output` (warn on `minOutputAmount.raw == "0"`)
-  - `min-output-usd-floor` (deny when minOutput USD < 10, oracle-aware)
+- **Per-action + per-tx evaluation passes** (spec §4.5). Every transaction
+  emits one or more leaf `PolicyRequest`s (`action == Action::"<kind>"`,
+  resource = `Protocol::"…"`) **plus exactly one** transaction-level
+  request (`action == Action::"send_tx"`, resource = `Address_::"<to>"`)
+  whose context carries `childCount`, `kinds`, `protocolsUsed`,
+  `totalInputUsd`, `distinctRecipients`, `hasApprove`, `hasUnknown`,
+  `allowRevertCount`, and host snapshots (see capabilities below). Both
+  passes are aggregated under deny-overrides + warn-union; each
+  `MatchedPolicy` carries an `origin: RequestKind { Leaf{index} | Tx }`
+  so the host UI can attribute fired policies precisely.
+- **`HostCapabilities`** — value-object seam between host and engine:
+  ```rust
+  HostCapabilities::new(&oracle)                              // oracle-only
+  HostCapabilities::builder(&oracle)
+      .with_portfolio(&pf).with_approvals(&ap).with_stats(&w).build()
+  ```
+  - **`Oracle`** — token → USD valuation. `MockOracle` for tests/playground;
+    HTTP-backed impls slot into `oracle.rs` next to it.
+  - **`Portfolio`** — `(owner, token) → AmountSpec`. Lowering stamps
+    `actorBalanceInputToken` and a precomputed `inputFractionOfBalanceBps`
+    so policies can express "swap input ≤ 20 % of balance" without Cedar
+    decimal multiplication.
+  - **`Approvals`** — `(owner, token, spender) → AmountSpec`. Lowering
+    stamps `currentAllowance` (skipped for native ETH inputs) and a
+    boolean `allowanceCoversInput` so policies can warn "approve required".
+  - **`StatWindows`** — `(owner, keys) → snapshot { Decimal | Count }`,
+    plus `reserve / settle / release` lifecycle. Lowering stamps
+    `tx_request.context.windowStats` from a frozen snapshot;
+    `Pipeline::evaluate_with_reservation` returns
+    `EvaluationOutcome { verdict, reservation }` so the host can promote
+    or roll back based on whether the user signs and the tx confirms.
+  - **Fail-open everywhere**: a missing capability (or a missing per-key
+    record) omits the field; policies guard with `context has "field"`.
+- **9 shipped policies** across two leaf-vs-tx directories:
+  - `policies/swap/`: `max-swap-usd-100` (deny, also CedarJSON),
+    `max-swap-fee-bps-100`, `uniswap-only-allowlist`, `no-zero-min-output`,
+    `min-output-usd-floor`, `max-fraction-of-balance-2000-bps`,
+    `allowance-must-cover-input`.
+  - `policies/tx/`: `tx-blocklist`, `tx-total-input-usd-cap-500`,
+    `tx-window-swap-volume-usd-24h-cap-5000`.
 - **Mock adapter registry**: in-memory; strict `(chain, to, selector)`
   exact-match; surfaces `NoMatch` / `Resolved` / `Ambiguous`.
-- **Mock oracle**: in-memory price table for USDT, USDC, WETH.
 - **Cedar evaluator**: `cedar-policy` 4.x; `@severity` annotation drives the
   tri-state verdict; default-allow is enforced via a baseline permit.
-- **`Adapter::into_request`**: one-shot `calldata → PolicyRequest` method on
-  the `Adapter` trait, default-implemented as `build → enrich_with_usd →
-  request_from_action`. Override it to bypass the `Action` intermediate.
+- **`Adapter::into_request[s]`**: one-shot `calldata → PolicyRequest` on the
+  `Adapter` trait, default-implemented as `build → enrich_with_usd →
+  request_from_action → enrich_request_with_capabilities`. Adapters take
+  `&HostCapabilities` (not `&dyn Oracle`) so future capabilities are
+  additive; internal lowering helpers retain `&dyn Oracle` /
+  `&HostCapabilities` boundaries as appropriate.
 
 ## Running
 
 ```bash
-# Run the full test suite (143 tests across the workspace).
+# Run the full test suite (177 tests + 1 ignored doctest across the workspace).
 cargo test --workspace
 
 # Run the demo.
@@ -182,48 +243,60 @@ pub enum Verdict {
 pub struct MatchedPolicy {
     pub policy_id: String,
     pub reason:    Option<String>,
-    pub severity:  Severity,   // Deny or Warn — preserved per-element
+    pub severity:  Severity,    // Deny or Warn — preserved per-element
+    pub origin:    RequestKind, // Leaf { index } | Tx — which request fired this match
+}
+
+pub enum RequestKind {
+    Leaf { index: usize },  // 0-based index into the leaf request list
+    Tx,                     // the per-transaction send_tx pass
 }
 ```
 
 The variant tells the host **what to do** (deny-overrides is enforced by the
 engine, not the host). `MatchedPolicy.severity` lets the host generically
 iterate `verdict.matched()` and render warnings vs errors distinctly even
-when both kinds fired. Convenience methods on `Verdict`: `is_failure`,
+when both kinds fired. `MatchedPolicy.origin` lets the UI attribute the
+match to a specific leaf (e.g. "leaf #2 in this multicall") or to the
+transaction-level pass. Convenience methods on `Verdict`: `is_failure`,
 `has_warnings`, `matched() -> &[MatchedPolicy]`.
 
-## Test coverage (143 total)
+## Test coverage (177 total + 1 ignored doctest)
 
 | Crate / file | Tests | What |
 |---|---:|---|
-| `policy-engine/src/core.rs` (unit) | 7 | Address normalization, token keys, selector slicing, optional `gas`/`nonce` |
-| `policy-engine/src/oracle.rs` (unit) | 4 | Mock price lookup, error on miss, chain-id keying |
-| `policy-engine/src/policy.rs` (unit) | 6 | Cedar wrapper: pass/warn/fail variants, fail-overrides-warn, bad-severity rejection |
-| `policy-engine/src/registry.rs` (unit) | 6 | Registry resolution edges (single match, no-match by chain/selector/target, ambiguous, empty) |
-| `policy-engine/src/lowering.rs` (unit) | 5 | Decimal arithmetic helpers used by USD valuation |
-| `policy-engine-adapter-uniswap-v3/src/common.rs` (unit) | 8 | `shift_decimals` cases, `TokenLookup`, V3 packed-path decoding |
-| `policy-engine-adapter-uniswap-v3/src/exact_input_single.rs` (unit) | 12 | encode/decode round-trip; selector pin; bad-data; `match_keys`; `build` paths |
-| `policy-engine-adapter-uniswap-v3/src/exact_input.rs` (unit) | 4 | round-trip, selector pin, build path, multi-hop fee average |
-| `policy-engine-adapter-uniswap-v3/src/exact_output_single.rs` (unit) | 3 | round-trip, selector pin, exact-out semantics use `amountInMax` for input |
-| `policy-engine-adapter-uniswap-v3/src/exact_output.rs` (unit) | 3 | round-trip, selector pin, reversed-path semantics |
-| `policy-engine-adapter-uniswap-v3/src/multicall.rs` (unit) | 3 | selector pins, ABI round-trip, supported child expansion |
-| `policy-engine-adapter-uniswap-v3/tests/abi_cross_check.rs` | 8 | Hand-rolled bytes vs `sol!` macro: selector, fee tiers, U256 edges, symmetric decoding |
-| `policy-engine-adapter-universal-router/src/lib.rs` (unit) | 4 | execute selector pins, ABI round-trip, V3/V4 command expansion |
-| `policy-engine-adapter-uniswap-v2/src/common.rs` (unit) | 4 | `shift_decimals`, `TokenLookup`, native ETH sentinel |
-| `policy-engine-adapter-uniswap-v2/src/swap_*` (unit, 6 modules) | 19 | Per-function: round-trip / selector / build with native-ETH or amount-cap semantics |
-| `integration-tests/tests/e2e_swap.rs` | 11 | End-to-end: USDT/USDC/WETH inputs at boundaries, stale/missing oracle, unknown target, corrupt calldata |
-| `integration-tests/tests/composite_routers.rs` | 3 | Existing max-swap policy denies leaf swaps inside V3 multicall and Universal Router V3/V4 commands |
-| `integration-tests/tests/policy_json.rs` | 10 | CedarJSON ↔ text parity: load via builder, mixed sources, invalid JSON, warn variant |
+| `policy-engine/src/*` (unit) | ~42 | core types, oracle/policy/registry/lowering invariants, RequestKind plumbing, Portfolio + Approvals + StatWindows mocks (snapshot / reserve / settle / release) |
+| `policy-engine-adapter-uniswap-v3/src/*` (unit) | 33 | Per-function encode/decode, selector pins, multicall expansion, V3 packed-path decoding |
+| `policy-engine-adapter-uniswap-v3/tests/abi_cross_check.rs` | 8 | Hand-rolled bytes vs `sol!` macro byte-equivalence |
+| `policy-engine-adapter-uniswap-v2/src/*` (unit, 7 modules) | 23 | Per-function: round-trip / selector / build (native-ETH + amount-cap) |
+| `policy-engine-adapter-universal-router/src/*` (unit) | 4 | execute selector pins, ABI round-trip, V3/V4 command expansion |
+| `integration-tests/tests/e2e_swap.rs` | 11 | USDT/USDC/WETH inputs at boundaries, stale/missing oracle, unknown target, corrupt calldata |
+| `integration-tests/tests/composite_routers.rs` | 3 | Max-swap policy denies leaf swaps inside V3 multicall and Universal Router V3/V4 commands |
+| `integration-tests/tests/policy_json.rs` | 10 | CedarJSON ↔ text parity: builder, mixed sources, invalid JSON, warn variant |
 | `integration-tests/tests/adapter_into_request.rs` | 9 | Default `into_request`; custom `Adapter` override; hand-built `PolicyRequest`; dyn-`Adapter` collections; `Pipeline` over `&dyn AdapterRegistry`; custom `AdapterRegistry` impl |
-| `integration-tests/tests/extra_swap_policies.rs` | 14 | 4 new policies (fee cap, allowlist, no-zero-min-output, USD floor): per-policy V2/V3 happy + sad paths, oracle-missing skip, and a composition test verifying deny-overrides preserves co-fired warns |
-| **Total** | **143** | |
+| `integration-tests/tests/extra_swap_policies.rs` | 14 | 4 new leaf policies × happy/sad, oracle-missing skip, deny-overrides-preserves-warn composition |
+| `integration-tests/tests/tx_pass.rs` | 6 | `send_tx` per-tx pass: single-swap shape, multicall aggregation cap, leaf-deny + tx-warn distinct origins, NoMatch, pure-ETH transfer with blocklist, Universal Router `allowRevertCount` propagation |
+| `integration-tests/tests/capability_swap_policies.rs` | 7 | Portfolio + Approvals enrichment: balance-fraction cap fires/passes, fail-open without capability, allowance warn fires/passes, native-ETH skip, multicall propagation per-leaf |
+| `integration-tests/tests/window_stats.rs` | 7 | StatWindows reservation lifecycle: snapshot reflects confirmed history, reservation visible to next snapshot, settle promotes, release rolls back, no-reserve on Fail, fail-open without capability, plain `evaluate` does not reserve |
+| **Total** | **177** | |
 
 ## What's deliberately not here yet
 
+- **ERC-20 `approve` / `transfer` adapters** — the highest-value remaining
+  v0.x gap. The `Approvals` capability is in place, so once the adapter
+  lands, "unlimited approve" / spender-allowlist policies (spec §6.3)
+  apply immediately.
 - 1inch, CowSwap, Curve, Balancer, Pendle adapters
-- ERC-20 `approve` / `transfer` adapters
-- Real-API oracle implementations (HTTP-backed `Oracle` impls slot into
-  `crates/policy-engine/src/oracle.rs` next to `MockOracle`)
+- Real-API capability implementations — HTTP/RPC-backed `Oracle`,
+  `Portfolio`, `Approvals`, and `StatWindows` impls slot in next to the
+  `Mock*` types
+- Time-decay for `StatWindows` — the in-memory `MockStatWindows` keeps
+  every settled delta forever; production impls would timestamp settled
+  entries and prune outside their window
+- "This-tx-would-push-past-cap" semantics for window-stat policies
+  (today's snapshot is state-before-this-tx; combining `windowStats` with
+  `totalInputUsd` requires a precomputed "with-this-tx" field that's
+  not yet stamped)
 - WASM compute step for adapters that can't decode declaratively
 - Manifest-driven adapters (still hardcoded in Rust)
 - Marketplace, packaging, signing
