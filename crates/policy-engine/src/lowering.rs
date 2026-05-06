@@ -10,6 +10,7 @@
 //!   without f64 drift.
 
 use crate::core::{Action, AmountSpec, SwapAction, UsdValuation};
+use crate::host::HostCapabilities;
 use crate::oracle::Oracle;
 use crate::policy::PolicyRequest;
 use std::collections::HashSet;
@@ -252,6 +253,55 @@ pub fn request_for_tx(
     PolicyRequest::new(principal, action, resource, entities, Value::Object(context))
 }
 
+pub fn enrich_request_with_capabilities(
+    request: &mut PolicyRequest,
+    action: &Action,
+    host: &HostCapabilities,
+) {
+    let Some(context) = request.context.as_object_mut() else {
+        return;
+    };
+
+    match action {
+        Action::Swap(s) => {
+            if let Some(portfolio) = host.portfolio() {
+                if let Ok(balance) = portfolio.balance(&s.actor, &s.input_token) {
+                    let balance_forced_usd = inject_amount_usd(balance.clone(), host.oracle());
+                    if let Value::Object(balance_obj) = balance_forced_usd {
+                        context.insert("actorBalanceInputToken".into(), Value::Object(balance_obj));
+                    }
+
+                    if let Some(fraction_bps) = input_fraction_bps(&s.input_amount, &balance) {
+                        context.insert(
+                            "inputFractionOfBalanceBps".into(),
+                            Value::from(fraction_bps),
+                        );
+                    }
+                }
+            }
+
+            if !s.input_token.is_native {
+                if let Some(approvals) = host.approvals() {
+                    if let Ok(allowance) = approvals.allowance(&s.actor, &s.input_token, &s.target) {
+                        let allowance_forced_usd = inject_amount_usd(allowance.clone(), host.oracle());
+                        if let Value::Object(allowance_obj) = allowance_forced_usd {
+                            context.insert("currentAllowance".into(), Value::Object(allowance_obj));
+                        }
+                        let allowance_covers_input = amount_raw_u256(&allowance.raw)
+                            >= amount_raw_u256(&s.input_amount.raw);
+                        context.insert(
+                            "allowanceCoversInput".into(),
+                            Value::from(allowance_covers_input),
+                        );
+                    }
+                }
+            }
+        }
+        Action::Multi(_) => {}
+        Action::Other { .. } => {}
+    }
+}
+
 /// Build one or more leaf `PolicyRequest`s from an action tree. `Multi`
 /// actions are structural: their children are evaluated individually so
 /// existing leaf policies such as `action == Action::"swap"` keep working
@@ -329,6 +379,39 @@ fn amount_json(a: &AmountSpec) -> Value {
         );
     }
     Value::Object(m)
+}
+
+fn input_fraction_bps(input: &AmountSpec, balance: &AmountSpec) -> Option<i64> {
+    let input_raw = amount_raw_u256(&input.raw);
+    let balance_raw = amount_raw_u256(&balance.raw);
+
+    if balance_raw.is_zero() {
+        return None;
+    }
+
+    let ratio = input_raw.saturating_mul(U256::from(10_000u64)) / balance_raw;
+    let max = U256::from(i64::MAX as u64);
+    if ratio > max {
+        Some(i64::MAX)
+    } else {
+        ratio.to_string().parse::<i64>().ok()
+    }
+}
+
+fn amount_raw_u256(raw: &str) -> U256 {
+    U256::from_str_radix(raw, 10).unwrap_or(U256::ZERO)
+}
+
+fn inject_amount_usd(mut amount: AmountSpec, oracle: &dyn Oracle) -> Value {
+    let token = amount.token.clone();
+    if let Ok(v) = oracle.price(&token) {
+        amount.usd = Some(scaled_usd(
+            &amount.raw,
+            amount.token.decimals,
+            &v,
+        ));
+    }
+    amount_json(&amount)
 }
 
 #[cfg(test)]

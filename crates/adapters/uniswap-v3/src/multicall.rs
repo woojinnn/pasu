@@ -8,6 +8,7 @@ use crate::{
     common::{DecodeError, SWAP_ROUTER_MAINNET},
     exact_input, exact_input_single, exact_output, exact_output_single,
 };
+use policy_engine::enrich_request_with_capabilities;
 use alloy_sol_types::{sol, SolCall};
 use policy_engine::prelude::*;
 
@@ -201,7 +202,11 @@ impl Adapter for Adapter_ {
     ) -> Result<Vec<PolicyRequest>, AdapterError> {
         let mut actions = self.build_actions(tx)?;
         enrich_actions_with_usd(&mut actions, host.oracle());
-        Ok(requests_from_actions(&actions))
+        let mut requests = requests_from_actions(&actions);
+        for (action, request) in actions.iter().zip(requests.iter_mut()) {
+            enrich_request_with_capabilities(request, action, host);
+        }
+        Ok(requests)
     }
 }
 

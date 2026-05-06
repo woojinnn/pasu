@@ -23,6 +23,8 @@
 pub mod adapter;
 pub mod core;
 pub mod lowering;
+pub mod approvals;
+pub mod portfolio;
 pub mod oracle;
 pub mod pipeline;
 pub mod policy;
@@ -40,10 +42,12 @@ pub use core::{
     UsdValuation,
 };
 pub use lowering::{
-    enrich_actions_with_usd, enrich_with_usd, request_from_action, requests_from_action,
-    requests_from_actions,
+    enrich_actions_with_usd, enrich_request_with_capabilities, enrich_with_usd,
+    request_from_action, requests_from_action, requests_from_actions,
 };
-pub use host::HostCapabilities;
+pub use approvals::{Approvals, ApprovalsError, MockApprovals};
+pub use host::{HostCapabilities, HostCapabilitiesBuilder};
+pub use portfolio::{MockPortfolio, Portfolio, PortfolioError};
 pub use oracle::{MockOracle, Oracle, OracleError};
 pub use pipeline::{Pipeline, PipelineError};
 pub use policy::{

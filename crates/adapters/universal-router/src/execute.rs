@@ -5,7 +5,7 @@ use crate::common::{TokenLookup, UNIVERSAL_ROUTER_MAINNET};
 use alloy_primitives::U256;
 use alloy_sol_types::{sol, SolCall};
 use policy_engine::prelude::*;
-use policy_engine::{enrich_with_usd, request_from_action};
+use policy_engine::{enrich_request_with_capabilities, enrich_with_usd, request_from_action};
 
 sol! {
     function execute(bytes commands, bytes[] inputs) external payable;
@@ -149,6 +149,7 @@ impl TypedAdapter for Adapter_ {
         for routed_action in &mut routed {
             enrich_with_usd(&mut routed_action.action, host.oracle());
             let mut req = request_from_action(&routed_action.action);
+            enrich_request_with_capabilities(&mut req, &routed_action.action, host);
             add_meta(&mut req, &routed_action.meta);
             requests.push(req);
         }

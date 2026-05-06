@@ -11,7 +11,7 @@
 //!   custom request shape (e.g., to skip the `Action` intermediate entirely).
 
 use crate::core::{Action, Address, ChainId, TransactionRequest};
-use crate::lowering::{enrich_with_usd, request_from_action};
+use crate::lowering::{enrich_request_with_capabilities, enrich_with_usd, request_from_action};
 use crate::host::HostCapabilities;
 use crate::policy::PolicyRequest;
 use std::sync::Arc;
@@ -221,10 +221,14 @@ pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
         host: &HostCapabilities,
     ) -> Result<Vec<PolicyRequest>, AdapterError> {
         let mut actions = self.build_leaf_actions(tx)?;
+        let mut requests = Vec::with_capacity(actions.len());
         for action in &mut actions {
             enrich_with_usd(action, host.oracle());
+            let mut req = request_from_action(action);
+            enrich_request_with_capabilities(&mut req, action, host);
+            requests.push(req);
         }
-        Ok(actions.iter().map(request_from_action).collect())
+        Ok(requests)
     }
 
     fn adapter_id() -> AdapterId {
@@ -348,7 +352,9 @@ pub trait Adapter: Send + Sync {
     ) -> Result<PolicyRequest, AdapterError> {
         let mut action = self.build(tx)?;
         enrich_with_usd(&mut action, host.oracle());
-        Ok(request_from_action(&action))
+        let mut req = request_from_action(&action);
+        enrich_request_with_capabilities(&mut req, &action, host);
+        Ok(req)
     }
 
     /// Multi-request lowering used by the pipeline. The default delegates to
