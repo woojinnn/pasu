@@ -3,7 +3,7 @@
 //! ```text
 //!   TransactionRequest
 //!     → Stage 1 (Adapter Resolver)
-//!     → Stage 2+3+4-prep (Adapter::into_requests)
+//!     → Stage 2+3+4-prep (build/metadata lowering)
 //!     → Stage 4 (Cedar evaluator)
 //!     → Verdict
 //! ```
@@ -15,13 +15,14 @@
 use crate::core::{Action, TransactionRequest};
 use crate::host::HostCapabilities;
 use crate::lowering::{
-    compute_swap_window_deltas, enrich_tx_request_with_window_stats, request_for_tx,
-    request_from_action,
+    compute_swap_window_deltas, enrich_actions_with_usd, enrich_request_with_capabilities,
+    enrich_tx_request_with_window_stats, request_for_tx, request_from_action,
 };
 use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, RequestKind, Verdict};
 use crate::registry::{AdapterRegistry, ResolverOutcome};
 use crate::stat_windows::ReservationId;
 use crate::stat_windows::StatKey;
+use serde_json::{Map, Value};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -73,7 +74,7 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     > {
         let (outcome, adapter) = self.registry.resolve_with_adapter(tx);
 
-        let (leaves, leaf_requests) = match (outcome, adapter) {
+        let (leaves, metas) = match (outcome, adapter) {
             (ResolverOutcome::Ambiguous(ids), _) => {
                 return Err(PipelineError::Ambiguous(ids));
             }
@@ -87,23 +88,42 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
                     value_wei: tx.value_wei.clone(),
                     raw_calldata: format!("0x{}", hex::encode(&tx.data)),
                 };
-                let leaves = vec![action];
-                let leaf_requests = vec![request_from_action(&leaves[0])];
-                (leaves, leaf_requests)
+                (vec![action], vec![Map::new()])
             }
             (ResolverOutcome::Resolved(_), Some(adapter)) => {
-                let leaves = adapter
+                let mut leaves = adapter
                     .build_actions(tx)
                     .map_err(|e| PipelineError::AdapterBuild(e.to_string()))?;
-                let leaf_requests = adapter
-                    .into_requests(tx, &self.host)
-                    .map_err(|e| PipelineError::AdapterBuild(e.to_string()))?;
-                (leaves, leaf_requests)
+                enrich_actions_with_usd(&mut leaves, self.host.oracle());
+                let metas = adapter.leaf_metadata(tx, &leaves);
+                debug_assert_eq!(
+                    metas.len(),
+                    leaves.len(),
+                    "leaf_metadata count must match build_actions count"
+                );
+                (leaves, metas)
             }
             (ResolverOutcome::Resolved(_), None) => {
                 unreachable!("Resolved outcome always carries an adapter")
             }
         };
+
+        debug_assert_eq!(
+            metas.len(),
+            leaves.len(),
+            "leaf_metadata count must match build_actions count"
+        );
+
+        let leaf_requests: Vec<PolicyRequest> = leaves
+            .iter()
+            .zip(metas.into_iter())
+            .map(|(action, meta)| {
+                let mut req = request_from_action(action);
+                enrich_request_with_capabilities(&mut req, action, &self.host);
+                merge_meta_into_context(&mut req, meta);
+                req
+            })
+            .collect();
         let tx_request = request_for_tx(tx, &leaves, &leaf_requests);
         let mut requests_with_origin = Vec::new();
         for (idx, req) in leaf_requests.iter().enumerate() {
@@ -180,4 +200,13 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
                 .map(|(request, origin)| (request, origin.clone())),
         )?)
     }
+}
+
+fn merge_meta_into_context(request: &mut PolicyRequest, meta: Map<String, Value>) {
+    // `PolicyRequest.context` is constructed as a JSON object at this boundary,
+    // and should remain object-shaped for all lowering paths.
+    let Some(context) = request.context.as_object_mut() else {
+        return;
+    };
+    context.extend(meta);
 }

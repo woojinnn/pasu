@@ -8,7 +8,7 @@
 //! adapter implementation typically needs: the `Adapter` trait, `AdapterId`,
 //! `AdapterError`, `MatchKey`, the domain types (`Action`, `Token`,
 //! `TransactionRequest`, `AmountSpec`, `UsdValuation`, `SwapAction`), and
-//! the `Oracle` trait + `PolicyRequest` (used in `Adapter::into_request`).
+//! the `Oracle` trait + `PolicyRequest` (used by the policy evaluator surface).
 //!
 //! `alloy_primitives` and `alloy_sol_types` are *not* re-exported. The
 //! `sol!` macro hard-codes its expanded code's paths to `::alloy_sol_types`,

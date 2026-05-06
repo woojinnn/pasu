@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use super::decimal::add_decimal_strings;
 
 /// Build a `PolicyRequest` from a fully-enriched `Action`. This is the public
-/// "Action → Cedar request" conversion; `Adapter::into_request` calls it.
+/// "Action → Cedar request" conversion used by `Pipeline` lowering.
 pub fn request_from_action(action: &Action) -> PolicyRequest {
     let principal = format!(r#"Wallet::"{}""#, action.actor().as_str());
     let action_uid = format!(r#"Action::"{}""#, action.kind());

@@ -113,7 +113,7 @@ pub struct MatchedPolicy {
     pub origin: RequestKind,
 }
 
-/// Self-contained Cedar evaluation input. `Adapter::into_request` produces
+/// Self-contained Cedar evaluation input. `Adapter`-driven lowering produces
 /// this from a transaction; `PolicyEngine::evaluate_request` consumes it.
 /// Designed so it can be serialized, logged, replayed, and built by hand in
 /// tests.

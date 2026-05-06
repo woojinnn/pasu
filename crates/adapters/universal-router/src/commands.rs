@@ -149,10 +149,8 @@ pub(crate) fn expand_commands(
     Ok(out)
 }
 
-pub(crate) fn add_meta(req: &mut PolicyRequest, meta: &ActionMeta) {
-    let Some(obj) = req.context.as_object_mut() else {
-        return;
-    };
+pub(crate) fn meta_to_map(meta: &ActionMeta) -> serde_json::Map<String, Value> {
+    let mut obj = serde_json::Map::new();
     obj.insert("router".into(), Value::from("universal-router"));
     obj.insert(
         "routerCommandIndex".into(),
@@ -175,6 +173,7 @@ pub(crate) fn add_meta(req: &mut PolicyRequest, meta: &ActionMeta) {
     if let Some(action) = meta.v4_action {
         obj.insert("v4Action".into(), Value::from(format!("0x{action:02x}")));
     }
+    obj
 }
 
 pub(crate) fn token(tokens: &TokenLookup, chain_id: ChainId, address: AlloyAddress) -> Token {

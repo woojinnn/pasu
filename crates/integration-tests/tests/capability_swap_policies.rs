@@ -1,7 +1,8 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
     Address, HostCapabilities, MockAdapterRegistry, MockApprovals, MockOracle, MockPortfolio,
-    Pipeline, PolicyEngine, RequestKind, Token, TransactionRequest, Verdict,
+    Pipeline, PolicyEngine, RequestKind, Token, TransactionRequest, Verdict, request_from_action,
+    enrich_actions_with_usd, enrich_request_with_capabilities, PolicyRequest,
     Adapter,
 };
 use policy_engine_adapter_uniswap_v2::{
@@ -124,6 +125,28 @@ fn v3_multicall_tx(first_input: U256, second_input: U256) -> TransactionRequest 
     }
 }
 
+fn leaf_requests_from_adapter(
+    adapter: &dyn Adapter,
+    tx: &TransactionRequest,
+    host: &HostCapabilities,
+) -> Vec<PolicyRequest> {
+    let mut actions = adapter
+        .build_actions(tx)
+        .expect("adapter should build leaf actions");
+    enrich_actions_with_usd(&mut actions, host.oracle());
+    let metas = adapter.leaf_metadata(tx, &actions);
+    let mut out = Vec::with_capacity(actions.len());
+    for (action, meta) in actions.into_iter().zip(metas.into_iter()) {
+        let mut req = request_from_action(&action);
+        enrich_request_with_capabilities(&mut req, &action, host);
+        if let Some(context) = req.context.as_object_mut() {
+            context.extend(meta);
+        }
+        out.push(req);
+    }
+    out
+}
+
 #[test]
 fn balance_fraction_deny_when_fraction_exceeds_20_percent() {
     let policies = PolicyEngine::from_sources([POLICY_MAX_FRACTION]).unwrap();
@@ -228,7 +251,7 @@ fn allowance_policy_skips_native_input_token_for_v2_eth_swap() {
 
     let adapter = UniswapV2SwapExactETHForTokensAdapter::new();
     let tx = v2_eth_swap_tx(U256::from(1_000_000_000_000_000_000u64));
-    let request = adapter.into_request(&tx, &host).unwrap();
+    let request = leaf_requests_from_adapter(&adapter, &tx, &host)[0].clone();
     assert!(request.context.get("currentAllowance").is_none());
     assert!(request.context.get("allowanceCoversInput").is_none());
 
@@ -256,7 +279,7 @@ fn multicall_leaves_receive_capability_enrichment() {
     let adapter = UniswapV3MulticallAdapter::new();
     let tx = v3_multicall_tx(U256::from(250_000_000u64), U256::from(100_000_000u64));
 
-    let requests = adapter.into_requests(&tx, &host).unwrap();
+    let requests = leaf_requests_from_adapter(&adapter, &tx, &host);
     assert_eq!(requests.len(), 2);
     assert!(requests.iter().all(|req| {
         req.context.get("actorBalanceInputToken").is_some()

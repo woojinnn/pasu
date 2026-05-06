@@ -1,28 +1,34 @@
-//! Demonstrate `Adapter::into_request` (the calldata → `PolicyRequest`
-//! one-shot) in three flavors:
+//! Demonstrate adapter lowering through `Pipeline` in three flavors:
 //!
-//! 1. Default `into_request` on the existing UniswapV3 adapter — no override
-//!    needed; the blanket-style default does Action build → USD enrich →
-//!    Cedar request build.
-//! 2. Custom adapter that *overrides* `into_request` and bypasses the `Action`
-//!    intermediate, emitting a Cedar context straight from raw calldata.
+//! 1. Default path on an existing UniswapV3 adapter — no custom metadata.
+//! 2. Custom adapter that overrides only `leaf_metadata`.
 //! 3. Hand-built `PolicyRequest` for unit-testing the policy layer alone.
 
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
-    Action, Adapter, AdapterError, AdapterId, Address, HostCapabilities, MatchKey, MockOracle,
-    PolicyEngine,
-    PolicyRequest, SwapAction, Token, TransactionRequest, Verdict,
+    Action, Adapter, AdapterError, AdapterId, Address, HostCapabilities, MatchKey, MockAdapterRegistry,
+    MockOracle, Pipeline, PipelineError, PolicyEngine, PolicyRequest, SwapAction, Token,
+    TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v3::{
     decode_exact_input_single, encode_exact_input_single, ExactInputSingleParams,
     UniswapV3ExactInputSingleAdapter, SELECTOR_EXACT_INPUT_SINGLE, SWAP_ROUTER_MAINNET,
 };
-use serde_json::{json, Value as JsonValue};
+use serde_json::{json, Map, Value as JsonValue};
 use std::str::FromStr;
 use std::sync::Arc;
 
 const POLICY_TEXT: &str = include_str!("../../../policies/swap/max-swap-usd-100.cedar");
+const POLICY_MATCHING_REQUEST: &str = r#"
+@id("user/e2e-principal-action-resource")
+@severity("deny")
+@reason("swap request metadata should be stable in default path")
+forbid (
+    principal == Wallet::"0x0000000000000000000000000000000000000001",
+    action == Action::"swap",
+    resource == Protocol::"uniswap-v3",
+) when { context has "inputAmount" };
+"#;
 
 const USDT: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 const WETH: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
@@ -76,71 +82,61 @@ fn full_oracle() -> MockOracle {
         .with_simple_price(&weth_token(), "3000.0000", 8)
 }
 
+fn uniswap_v3_registry() -> MockAdapterRegistry {
+    MockAdapterRegistry::new().with_adapter(Arc::new(UniswapV3ExactInputSingleAdapter::new()))
+}
+
 // ---------------------------------------------------------------------------
-// (1) Default `into_request` on existing adapters — no override needed.
+// (1) Default pipeline lowering path.
 // ---------------------------------------------------------------------------
 
 #[test]
 fn default_into_request_produces_evaluable_policy_request() {
-    let adapter = UniswapV3ExactInputSingleAdapter::new();
     let oracle = full_oracle();
+    let policies = PolicyEngine::from_sources([POLICY_MATCHING_REQUEST]).unwrap();
+    let registry = uniswap_v3_registry();
+    let pipeline = Pipeline::new(&registry, HostCapabilities::new(&oracle), &policies);
+
     let tx = build_swap_tx(U256::from(200_000_000u64));
-
-    let request: PolicyRequest = adapter.into_request(&tx, &HostCapabilities::new(&oracle)).unwrap();
-
-    // Principal is derived from `tx.from` (action.actor()), not hardcoded.
-    assert_eq!(
-        request.principal,
-        r#"Wallet::"0x0000000000000000000000000000000000000001""#
-    );
-    assert_eq!(request.action, r#"Action::"swap""#);
-    assert_eq!(request.resource, r#"Protocol::"uniswap-v3""#);
-
-    let usd_value = request
-        .context
-        .get("inputAmount")
-        .and_then(|v| v.get("usd"))
-        .and_then(|v| v.get("value"));
-    assert!(usd_value.is_some(), "context.inputAmount.usd.value missing");
+    match pipeline.evaluate(&tx).unwrap() {
+        Verdict::Fail(matched) => {
+            assert_eq!(matched.len(), 1);
+            assert_eq!(matched[0].policy_id, "user/e2e-principal-action-resource");
+        }
+        other => panic!("expected Verdict::Fail, got {other:?}"),
+    }
 }
 
 #[test]
 fn default_into_request_path_evaluates_to_deny_at_200_usdt() {
-    let adapter = UniswapV3ExactInputSingleAdapter::new();
     let oracle = full_oracle();
     let policies = PolicyEngine::from_sources([POLICY_TEXT]).unwrap();
+    let registry = uniswap_v3_registry();
+    let pipeline = Pipeline::new(&registry, HostCapabilities::new(&oracle), &policies);
 
     let tx = build_swap_tx(U256::from(200_000_000u64));
-    let request = adapter.into_request(&tx, &HostCapabilities::new(&oracle)).unwrap();
-    let verdict = policies.evaluate_request(&request).unwrap();
-
-    match verdict {
+    match pipeline.evaluate(&tx).unwrap() {
         Verdict::Fail(matched) => {
             assert_eq!(matched.len(), 1);
             assert_eq!(matched[0].policy_id, "user/max-swap-usd-100");
         }
-        _ => panic!("expected Verdict::Fail, got {verdict:?}"),
+        other => panic!("expected Verdict::Fail, got {other:?}"),
     }
 }
 
 #[test]
 fn default_into_request_path_evaluates_to_allow_under_cap() {
-    let adapter = UniswapV3ExactInputSingleAdapter::new();
     let oracle = full_oracle();
     let policies = PolicyEngine::from_sources([POLICY_TEXT]).unwrap();
+    let registry = uniswap_v3_registry();
+    let pipeline = Pipeline::new(&registry, HostCapabilities::new(&oracle), &policies);
 
     let tx = build_swap_tx(U256::from(50_000_000u64));
-    let request = adapter.into_request(&tx, &HostCapabilities::new(&oracle)).unwrap();
-    let verdict = policies.evaluate_request(&request).unwrap();
-    assert_eq!(verdict, Verdict::Pass);
+    assert_eq!(pipeline.evaluate(&tx).unwrap(), Verdict::Pass);
 }
 
 // ---------------------------------------------------------------------------
-// (2) Custom adapter that overrides `into_request` to bypass Action.
-//
-// `build` is required by the trait, so we emit a placeholder Swap action that
-// would let the default path also work. The override produces a custom Cedar
-// context directly from calldata without consulting the oracle.
+// (2) Custom adapter that overrides `leaf_metadata`.
 // ---------------------------------------------------------------------------
 
 struct DirectAdapter;
@@ -159,8 +155,6 @@ impl Adapter for DirectAdapter {
     }
 
     fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
-        // Stub: produce a minimally valid Swap action. The override below
-        // means this is rarely reached in practice.
         let p = decode_exact_input_single(&tx.data)
             .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
         let token = usdt_token();
@@ -184,75 +178,67 @@ impl Adapter for DirectAdapter {
         }))
     }
 
-    fn into_request(
+    fn leaf_metadata(
         &self,
         tx: &TransactionRequest,
-        _host: &HostCapabilities,
-    ) -> Result<PolicyRequest, AdapterError> {
-        // Skip the Action intermediate entirely: produce a Cedar context
-        // directly from the decoded calldata, with USDT pegged at $1 by fiat.
+        _leaves: &[Action],
+    ) -> Vec<Map<String, JsonValue>> {
         let p = decode_exact_input_single(&tx.data)
-            .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+            .map_err(|e| AdapterError::BadCalldata(e.to_string()));
+        let Ok(p) = p else {
+            return vec![Default::default()];
+        };
         let usd_int = p.amount_in / U256::from(1_000_000u64);
-        let usd_str = format!("{usd_int}.0000");
-
-        let entities: JsonValue = json!([
-            { "uid": { "type": "Wallet",   "id": "0xUser" },     "attrs": {}, "parents": [] },
-            { "uid": { "type": "Protocol", "id": "uniswap-v3" }, "attrs": {}, "parents": [] },
-        ]);
-        let context: JsonValue = json!({
+        let context = json!({
             "inputAmount": {
                 "tokenSymbol": "USDT",
                 "raw": p.amount_in.to_string(),
                 "usd": {
-                    "value": { "__extn": { "fn": "decimal", "arg": usd_str } },
+                    "value": { "__extn": { "fn": "decimal", "arg": format!("{usd_int}.0000") } },
                     "staleSec": 0,
                 }
             }
         });
-
-        Ok(PolicyRequest::new(
-            r#"Wallet::"0xUser""#,
-            r#"Action::"swap""#,
-            r#"Protocol::"uniswap-v3""#,
-            entities,
-            context,
-        ))
+        match context {
+            JsonValue::Object(map) => vec![map],
+            _ => vec![Default::default()],
+        }
     }
 }
 
 #[test]
 fn custom_adapter_can_override_into_request_to_skip_action() {
-    let adapter = DirectAdapter;
-    let oracle = MockOracle::new(); // ignored by DirectAdapter
+    let registry = MockAdapterRegistry::new().with_adapter(Arc::new(DirectAdapter));
+    let oracle = MockOracle::new();
     let policies = PolicyEngine::from_sources([POLICY_TEXT]).unwrap();
+    let pipeline = Pipeline::new(&registry, HostCapabilities::new(&oracle), &policies);
 
     // 200 USDT → $200 → fail
     let tx = build_swap_tx(U256::from(200_000_000u64));
-    let request = adapter.into_request(&tx, &HostCapabilities::new(&oracle)).unwrap();
-    assert!(policies.evaluate_request(&request).unwrap().is_failure());
+    assert!(pipeline.evaluate(&tx).unwrap().is_failure());
 
     // 50 USDT → $50 → pass
     let tx = build_swap_tx(U256::from(50_000_000u64));
-    let request = adapter.into_request(&tx, &HostCapabilities::new(&oracle)).unwrap();
-    assert_eq!(policies.evaluate_request(&request).unwrap(), Verdict::Pass);
+    assert_eq!(pipeline.evaluate(&tx).unwrap(), Verdict::Pass);
 }
 
 #[test]
 fn custom_adapter_propagates_decode_failure() {
-    let adapter = DirectAdapter;
+    let registry = MockAdapterRegistry::new().with_adapter(Arc::new(DirectAdapter));
     let oracle = MockOracle::new();
+    let policies = PolicyEngine::from_sources([POLICY_TEXT]).unwrap();
+    let pipeline = Pipeline::new(&registry, HostCapabilities::new(&oracle), &policies);
     let tx = TransactionRequest {
         chain_id: 1,
         from: Address::new("0x0000000000000000000000000000000000000001").unwrap(),
         to: Address::new(SWAP_ROUTER_MAINNET).unwrap(),
         value_wei: "0".into(),
-        data: vec![0xde, 0xad, 0xbe, 0xef, 0x00, 0x00, 0x00, 0x00],
+        data: SELECTOR_EXACT_INPUT_SINGLE.to_vec(),
         gas: None,
         nonce: None,
     };
-    let err = adapter.into_request(&tx, &HostCapabilities::new(&oracle)).unwrap_err();
-    assert!(matches!(err, AdapterError::BadCalldata(_)));
+    let err = pipeline.evaluate(&tx).unwrap_err();
+    assert!(matches!(err, PipelineError::AdapterBuild(_)));
 }
 
 // ---------------------------------------------------------------------------
@@ -307,10 +293,9 @@ fn adapter_is_object_safe() {
 
 #[test]
 fn pipeline_accepts_dyn_adapter_registry() {
-    use policy_engine::{AdapterRegistry, MockAdapterRegistry, Pipeline, Verdict};
+    use policy_engine::{AdapterRegistry, Verdict};
 
-    let concrete =
-        MockAdapterRegistry::new().with_adapter(Arc::new(UniswapV3ExactInputSingleAdapter::new()));
+    let concrete = uniswap_v3_registry();
     let dyn_registry: &dyn AdapterRegistry = &concrete;
 
     let oracle = full_oracle();

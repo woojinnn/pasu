@@ -33,7 +33,7 @@ pub enum ResolverOutcome {
 
 /// Trait implemented by registry types. Implementors expose
 /// `resolve_with_adapter` (the primary method); `lookup` has a default impl
-/// for callers that don't need the matched adapter handle.
+/// for callers that only need the lookup outcome.
 ///
 /// The trait is object-safe (`&dyn AdapterRegistry` works), so hosts can swap
 /// in remote-cache-backed registries, hot-reload registries, etc., without
@@ -41,8 +41,8 @@ pub enum ResolverOutcome {
 pub trait AdapterRegistry: Send + Sync {
     /// Resolve a transaction to an adapter. When the outcome is `Resolved`,
     /// the second tuple element carries the adapter `Arc` so the caller can
-    /// invoke `build` / `into_request` without a second lookup. For
-    /// `NoMatch` / `Ambiguous`, the second element is `None`.
+    /// invoke `build_actions` and keep sequencing in the pipeline without a
+    /// second lookup. For `NoMatch` / `Ambiguous`, the second element is `None`.
     fn resolve_with_adapter(
         &self,
         tx: &TransactionRequest,

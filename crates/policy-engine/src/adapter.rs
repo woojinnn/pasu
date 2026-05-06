@@ -5,17 +5,13 @@
 //! Two responsibilities:
 //! - [`Adapter::build`] — protocol-specific decoding: parsed calldata →
 //!   semantic [`Action`].
-//! - [`Adapter::into_request`] — full "calldata → Cedar `PolicyRequest`"
-//!   lowering. Default impl chains `build` → [`crate::lowering::enrich_with_usd`]
-//!   → [`crate::lowering::request_from_action`]. Override only if you need a
-//!   custom request shape (e.g., to skip the `Action` intermediate entirely).
+//! - [`Adapter::build_actions`] — optional multi-leaf expansion.
+//! - [`Adapter::leaf_metadata`] — optional per-leaf metadata injection.
 
 use crate::core::{Action, Address, ChainId, TransactionRequest};
-use crate::host::HostCapabilities;
-use crate::lowering::{enrich_request_with_capabilities, enrich_with_usd, request_from_action};
-use crate::policy::PolicyRequest;
 use std::sync::Arc;
 use thiserror::Error;
+use serde_json::Map;
 
 /// Stable identifier for an adapter (e.g., `uniswap-v3/exactInputSingle@0.1.0`).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -214,21 +210,13 @@ pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
         Ok(vec![self.build_action(tx)?])
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    fn lower_requests(
+    fn typed_leaf_metadata(
         &self,
         tx: &TransactionRequest,
-        host: &HostCapabilities,
-    ) -> Result<Vec<PolicyRequest>, AdapterError> {
-        let mut actions = self.build_leaf_actions(tx)?;
-        let mut requests = Vec::with_capacity(actions.len());
-        for action in &mut actions {
-            enrich_with_usd(action, host.oracle());
-            let mut req = request_from_action(action);
-            enrich_request_with_capabilities(&mut req, action, host);
-            requests.push(req);
-        }
-        Ok(requests)
+        leaves: &[Action],
+    ) -> Vec<Map<String, serde_json::Value>> {
+        let _ = (tx, leaves);
+        leaves.iter().map(|_| Default::default()).collect()
     }
 
     fn adapter_id() -> AdapterId {
@@ -293,13 +281,14 @@ where
         self.build_leaf_actions(tx)
     }
 
-    fn into_requests(
+    fn leaf_metadata(
         &self,
         tx: &TransactionRequest,
-        host: &HostCapabilities,
-    ) -> Result<Vec<PolicyRequest>, AdapterError> {
-        self.lower_requests(tx, host)
+        leaves: &[Action],
+    ) -> Vec<Map<String, serde_json::Value>> {
+        self.typed_leaf_metadata(tx, leaves)
     }
+
 }
 
 /// One adapter handles one (or a small set of) `(chain_id, to, selector)` keys
@@ -337,36 +326,20 @@ pub trait Adapter: Send + Sync {
     fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError>;
 
     /// Construct zero or more semantic leaf actions. Simple adapters keep the
-    /// default one-action behavior; composite routers override this or
-    /// `into_requests` directly.
+    /// default one-action behavior; composite routers override this.
     fn build_actions(&self, tx: &TransactionRequest) -> Result<Vec<Action>, AdapterError> {
         Ok(vec![self.build(tx)?])
     }
 
-    /// Default lowering: `build` → `enrich_with_usd` → `request_from_action`.
-    #[allow(clippy::wrong_self_convention)]
-    fn into_request(
+    /// Optional protocol-specific metadata to stamp into each leaf request context.
+    /// Defaults to one empty map per leaf.
+    fn leaf_metadata(
         &self,
         tx: &TransactionRequest,
-        host: &HostCapabilities,
-    ) -> Result<PolicyRequest, AdapterError> {
-        let mut action = self.build(tx)?;
-        enrich_with_usd(&mut action, host.oracle());
-        let mut req = request_from_action(&action);
-        enrich_request_with_capabilities(&mut req, &action, host);
-        Ok(req)
-    }
-
-    /// Multi-request lowering used by the pipeline. The default delegates to
-    /// `into_request` so adapters that override the single-request path remain
-    /// backward compatible. Composite adapters should override this method.
-    #[allow(clippy::wrong_self_convention)]
-    fn into_requests(
-        &self,
-        tx: &TransactionRequest,
-        host: &HostCapabilities,
-    ) -> Result<Vec<PolicyRequest>, AdapterError> {
-        Ok(vec![self.into_request(tx, host)?])
+        leaves: &[Action],
+    ) -> Vec<Map<String, serde_json::Value>> {
+        let _ = tx;
+        leaves.iter().map(|_| Default::default()).collect()
     }
 }
 

@@ -1,11 +1,10 @@
 //! Universal Router `execute(bytes,bytes[])`.
 
-use crate::commands::{add_meta, expand_commands, RoutedAction};
+use crate::commands::{expand_commands, meta_to_map, RoutedAction};
 use crate::common::{TokenLookup, UNIVERSAL_ROUTER_MAINNET};
 use alloy_primitives::U256;
 use alloy_sol_types::{sol, SolCall};
 use policy_engine::prelude::*;
-use policy_engine::{enrich_request_with_capabilities, enrich_with_usd, request_from_action};
 
 sol! {
     function execute(bytes commands, bytes[] inputs) external payable;
@@ -139,21 +138,18 @@ impl TypedAdapter for Adapter_ {
             .collect())
     }
 
-    fn lower_requests(
+    fn typed_leaf_metadata(
         &self,
         tx: &TransactionRequest,
-        host: &HostCapabilities,
-    ) -> Result<Vec<PolicyRequest>, AdapterError> {
-        let mut routed = self.decode_routed_actions(tx)?;
-        let mut requests = Vec::with_capacity(routed.len());
-        for routed_action in &mut routed {
-            enrich_with_usd(&mut routed_action.action, host.oracle());
-            let mut req = request_from_action(&routed_action.action);
-            enrich_request_with_capabilities(&mut req, &routed_action.action, host);
-            add_meta(&mut req, &routed_action.meta);
-            requests.push(req);
+        leaves: &[Action],
+    ) -> Vec<serde_json::Map<String, serde_json::Value>> {
+        let mut metas = vec![Default::default(); leaves.len()];
+        if let Ok(routed) = self.decode_routed_actions(tx) {
+            for (meta, routed_action) in metas.iter_mut().zip(routed.iter()) {
+                *meta = meta_to_map(&routed_action.meta);
+            }
         }
-        Ok(requests)
+        metas
     }
 }
 
