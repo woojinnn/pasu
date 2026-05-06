@@ -28,5 +28,6 @@ pub use crate::core::{
 pub use crate::lowering::{enrich_actions_with_usd, requests_from_actions};
 pub use crate::portfolio::{MockPortfolio, Portfolio, PortfolioError};
 pub use crate::host::HostCapabilities;
+pub use crate::stat_windows::StatWindows;
 pub use crate::oracle::Oracle;
 pub use crate::policy::PolicyRequest;

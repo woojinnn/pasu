@@ -14,8 +14,12 @@
 
 use crate::core::{Action, TransactionRequest};
 use crate::host::HostCapabilities;
-use crate::lowering::{request_for_tx, request_from_action};
+use crate::lowering::{
+    compute_swap_window_deltas, enrich_tx_request_with_window_stats, request_for_tx, request_from_action,
+};
 use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, RequestKind, Verdict};
+use crate::stat_windows::StatKey;
+use crate::stat_windows::ReservationId;
 use crate::registry::{AdapterRegistry, ResolverOutcome};
 use thiserror::Error;
 
@@ -40,6 +44,11 @@ pub struct Pipeline<'a, R: AdapterRegistry + ?Sized> {
     pub policies: &'a PolicyEngine,
 }
 
+pub struct EvaluationOutcome {
+    pub verdict: Verdict,
+    pub reservation: Option<ReservationId>,
+}
+
 impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     pub fn new(
         registry: &'a R,
@@ -53,10 +62,15 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
         }
     }
 
-    pub fn evaluate(&self, tx: &TransactionRequest) -> Result<Verdict, PipelineError> {
+    fn build_requests(
+        &self,
+        tx: &TransactionRequest,
+    ) -> Result<
+        (Vec<Action>, Vec<PolicyRequest>, PolicyRequest, Vec<(PolicyRequest, RequestKind)>),
+        PipelineError,
+    > {
         let (outcome, adapter) = self.registry.resolve_with_adapter(tx);
-
-        let mut requests: Vec<(&PolicyRequest, RequestKind)> = Vec::new();
+        
         let (leaves, leaf_requests) = match (outcome, adapter) {
             (ResolverOutcome::Ambiguous(ids), _) => {
                 return Err(PipelineError::Ambiguous(ids));
@@ -88,12 +102,80 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
                 unreachable!("Resolved outcome always carries an adapter")
             }
         };
-        for (idx, req) in leaf_requests.iter().enumerate() {
-            requests.push((req, RequestKind::Leaf { index: idx }));
-        }
         let tx_request = request_for_tx(tx, &leaves, &leaf_requests);
-        requests.push((&tx_request, RequestKind::Tx));
+        let mut requests_with_origin = Vec::new();
+        for (idx, req) in leaf_requests.iter().enumerate() {
+            requests_with_origin.push((req.clone(), RequestKind::Leaf { index: idx }));
+        }
+        requests_with_origin.push((tx_request.clone(), RequestKind::Tx));
 
-        Ok(self.policies.evaluate_requests(requests)?)
+        Ok((leaves, leaf_requests, tx_request, requests_with_origin))
+    }
+
+    pub fn evaluate_with_reservation(
+        &self,
+        tx: &TransactionRequest,
+    ) -> Result<EvaluationOutcome, PipelineError> {
+        let (leaves, leaf_requests, mut tx_request, mut requests_with_origin) =
+            self.build_requests(tx)?;
+        enrich_tx_request_with_window_stats(
+            &mut tx_request,
+            &tx.from,
+            &[
+                StatKey::new("swap_volume_usd_24h"),
+                StatKey::new("swap_count_24h"),
+            ],
+            &self.host,
+        );
+        if let Some(last_request) = requests_with_origin.last_mut() {
+            *last_request = (tx_request, RequestKind::Tx);
+        }
+
+        let verdict = self.policies.evaluate_requests(
+            requests_with_origin
+                .iter()
+                .map(|(request, origin)| (request, origin.clone())),
+        )?;
+
+        let reservation = if !matches!(verdict, Verdict::Fail(_)) {
+            self.host.stats().map(|stats| {
+                let deltas = compute_swap_window_deltas(&leaves, &leaf_requests);
+                if deltas.is_empty() {
+                    None
+                } else {
+                    Some(stats.reserve(&tx.from, deltas))
+                }
+            })
+        } else {
+            None
+        };
+
+        Ok(EvaluationOutcome {
+            verdict,
+            reservation: reservation.flatten(),
+        })
+    }
+
+    pub fn evaluate(&self, tx: &TransactionRequest) -> Result<Verdict, PipelineError> {
+        let (_leaves, _leaf_requests, mut tx_request, mut requests_with_origin) =
+            self.build_requests(tx)?;
+        enrich_tx_request_with_window_stats(
+            &mut tx_request,
+            &tx.from,
+            &[
+                StatKey::new("swap_volume_usd_24h"),
+                StatKey::new("swap_count_24h"),
+            ],
+            &self.host,
+        );
+        if let Some(last_request) = requests_with_origin.last_mut() {
+            *last_request = (tx_request, RequestKind::Tx);
+        }
+
+        Ok(self.policies.evaluate_requests(
+            requests_with_origin
+                .iter()
+                .map(|(request, origin)| (request, origin.clone())),
+        )?)
     }
 }

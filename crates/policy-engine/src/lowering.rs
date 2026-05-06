@@ -9,10 +9,11 @@
 //! - decimal-string arithmetic helpers used to compute USD valuations
 //!   without f64 drift.
 
-use crate::core::{Action, AmountSpec, SwapAction, UsdValuation};
+use crate::core::{Action, Address, AmountSpec, SwapAction, UsdValuation};
 use crate::host::HostCapabilities;
 use crate::oracle::Oracle;
 use crate::policy::PolicyRequest;
+use crate::stat_windows::{StatDelta, StatKey, StatValue};
 use std::collections::HashSet;
 use alloy_primitives::U256;
 use serde_json::{json, Value};
@@ -251,6 +252,91 @@ pub fn request_for_tx(
         { "uid": { "type": "Address_", "id": tx.to.as_str() }, "attrs": {}, "parents": [] },
     ]);
     PolicyRequest::new(principal, action, resource, entities, Value::Object(context))
+}
+
+pub fn enrich_tx_request_with_window_stats(
+    tx_request: &mut PolicyRequest,
+    actor: &Address,
+    keys: &[StatKey],
+    host: &HostCapabilities,
+) {
+    let Some(context) = tx_request.context.as_object_mut() else {
+        return;
+    };
+
+    let Some(stats) = host.stats() else {
+        return;
+    };
+
+    let snapshot = stats.snapshot(actor, keys);
+    let mut window_stats = serde_json::Map::new();
+
+    for key in keys {
+        if let Some(value) = snapshot.get(key) {
+            match value {
+                StatValue::Decimal(value) => {
+                    window_stats.insert(
+                        key.as_str().into(),
+                        json!({ "__extn": { "fn": "decimal", "arg": value } }),
+                    );
+                }
+                StatValue::Count(value) => {
+                    window_stats.insert(key.as_str().into(), Value::from(*value));
+                }
+            }
+        }
+    }
+
+    if !window_stats.is_empty() {
+        context.insert("windowStats".into(), Value::Object(window_stats));
+    }
+}
+
+pub fn compute_swap_window_deltas(
+    leaves: &[Action],
+    leaf_requests: &[PolicyRequest],
+) -> Vec<StatDelta> {
+    let mut swap_volume_24h: Option<String> = None;
+    let mut swap_count_24h: i64 = 0;
+
+    let mut zip = leaves.iter().zip(leaf_requests.iter());
+    for (action, leaf_request) in zip.by_ref() {
+        if !matches!(action, Action::Swap(_)) {
+            continue;
+        }
+        swap_count_24h = swap_count_24h.saturating_add(1);
+
+        let maybe_value = leaf_request
+            .context
+            .get("inputAmount")
+            .and_then(|input_amount| input_amount.get("usd"))
+            .and_then(|usd| usd.get("value"))
+            .and_then(|value| value.get("__extn"))
+            .and_then(|extn| extn.get("arg"))
+            .and_then(Value::as_str);
+
+        if let Some(value) = maybe_value {
+            swap_volume_24h = Some(match swap_volume_24h {
+                Some(previous) => add_decimal_strings(&previous, value),
+                None => value.to_string(),
+            });
+        }
+    }
+
+    let mut deltas = Vec::new();
+    if let Some(value) = swap_volume_24h {
+        deltas.push(StatDelta {
+            key: StatKey::new("swap_volume_usd_24h"),
+            value: StatValue::Decimal(value),
+        });
+    }
+    if swap_count_24h > 0 {
+        deltas.push(StatDelta {
+            key: StatKey::new("swap_count_24h"),
+            value: StatValue::Count(swap_count_24h),
+        });
+    }
+    deltas
 }
 
 pub fn enrich_request_with_capabilities(

@@ -31,6 +31,7 @@ pub mod policy;
 pub mod prelude;
 pub mod host;
 pub mod registry;
+pub mod stat_windows;
 
 pub use adapter::{
     ActionKind, Adapter, AdapterDescriptor, AdapterError, AdapterFactory, AdapterId, AdapterKind,
@@ -49,9 +50,10 @@ pub use approvals::{Approvals, ApprovalsError, MockApprovals};
 pub use host::{HostCapabilities, HostCapabilitiesBuilder};
 pub use portfolio::{MockPortfolio, Portfolio, PortfolioError};
 pub use oracle::{MockOracle, Oracle, OracleError};
-pub use pipeline::{Pipeline, PipelineError};
+pub use pipeline::{EvaluationOutcome, Pipeline, PipelineError};
 pub use policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest, RequestKind, Severity,
     Verdict,
 };
+pub use stat_windows::{MockStatWindows, ReservationId, StatDelta, StatKey, StatValue, StatWindows};
 pub use registry::{AdapterIndex, AdapterRegistry, MockAdapterRegistry, ResolverOutcome};

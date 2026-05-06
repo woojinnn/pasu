@@ -9,6 +9,7 @@
 use crate::approvals::Approvals;
 use crate::oracle::Oracle;
 use crate::portfolio::Portfolio;
+use crate::stat_windows::StatWindows;
 
 /// Bag of host-provided capabilities the engine consults during
 /// evaluation. Construct once per evaluation pass, freeze, pass by
@@ -18,6 +19,7 @@ pub struct HostCapabilities<'a> {
     oracle: &'a dyn Oracle,
     portfolio: Option<&'a dyn Portfolio>,
     approvals: Option<&'a dyn Approvals>,
+    stats: Option<&'a dyn StatWindows>,
 }
 
 impl<'a> HostCapabilities<'a> {
@@ -26,6 +28,7 @@ impl<'a> HostCapabilities<'a> {
             oracle,
             portfolio: None,
             approvals: None,
+            stats: None,
         }
     }
 
@@ -34,6 +37,7 @@ impl<'a> HostCapabilities<'a> {
             oracle,
             portfolio: None,
             approvals: None,
+            stats: None,
         }
     }
 
@@ -48,6 +52,10 @@ impl<'a> HostCapabilities<'a> {
     pub fn approvals(&self) -> Option<&dyn Approvals> {
         self.approvals
     }
+
+    pub fn stats(&self) -> Option<&dyn StatWindows> {
+        self.stats
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -55,6 +63,7 @@ pub struct HostCapabilitiesBuilder<'a> {
     oracle: &'a dyn Oracle,
     portfolio: Option<&'a dyn Portfolio>,
     approvals: Option<&'a dyn Approvals>,
+    stats: Option<&'a dyn StatWindows>,
 }
 
 impl<'a> HostCapabilitiesBuilder<'a> {
@@ -68,11 +77,17 @@ impl<'a> HostCapabilitiesBuilder<'a> {
         self
     }
 
+    pub fn with_stats(mut self, stats: &'a dyn StatWindows) -> Self {
+        self.stats = Some(stats);
+        self
+    }
+
     pub fn build(self) -> HostCapabilities<'a> {
         HostCapabilities {
             oracle: self.oracle,
             portfolio: self.portfolio,
             approvals: self.approvals,
+            stats: self.stats,
         }
     }
 }
