@@ -175,8 +175,8 @@ pub struct PolicyEngine {
 }
 
 impl PolicyEngine {
-    /// Start a builder. Callers chain `.add_text(...)` and/or `.add_json(...)`
-    /// and finish with `.build()`. The baseline permit is added automatically.
+    /// Start a builder. Callers chain `.add_text(...)` and then `.build()`.
+    /// The baseline permit is added automatically.
     pub fn builder() -> PolicyEngineBuilder {
         PolicyEngineBuilder::default()
     }
@@ -196,12 +196,9 @@ impl PolicyEngine {
     }
 
     /// Internal: build a `PolicyEngine` from already-collected policies.
-    /// `text_combined` is one big Cedar source string (with baseline prepended);
-    /// `json_policies` are each one full CedarJSON policy object.
-    fn build_from(
-        text_combined: String,
-        json_policies: Vec<JsonValue>,
-    ) -> Result<Self, PolicyError> {
+    /// `text_combined` is one big Cedar source string (with baseline
+    /// prepended).
+    fn build_from(text_combined: String) -> Result<Self, PolicyError> {
         let mut policy_set = PolicySet::new();
         let mut severities: HashMap<String, Severity> = HashMap::new();
         let mut reasons: HashMap<String, String> = HashMap::new();
@@ -212,16 +209,6 @@ impl PolicyEngine {
 
         for p in initial_set.policies() {
             ingest_policy(p, &mut policy_set, &mut severities, &mut reasons)?;
-        }
-
-        // ---- JSON policies ------------------------------------------------
-        for (i, json) in json_policies.into_iter().enumerate() {
-            let placeholder_id: PolicyId = format!("__json_policy_{i}")
-                .parse()
-                .expect("PolicyId parse is infallible");
-            let p = Policy::from_json(Some(placeholder_id), json)
-                .map_err(|e| PolicyError::Parse(e.to_string()))?;
-            ingest_policy(&p, &mut policy_set, &mut severities, &mut reasons)?;
         }
 
         Ok(PolicyEngine {
@@ -408,30 +395,17 @@ fn ingest_policy(
 #[derive(Debug, Default)]
 pub struct PolicyEngineBuilder {
     text_sources: Vec<String>,
-    json_policies: Vec<JsonValue>,
 }
 
 impl PolicyEngineBuilder {
     /// Append one or more text Cedar policies. Multiple `forbid`/`permit`
     /// clauses in the string are fine — they'll all be parsed.
+    ///
+    /// In v0.x, Cedar text is the supported authoring surface; CedarJSON support
+    /// is deferred to marketplace/signing in v1.
     pub fn add_text<S: Into<String>>(mut self, src: S) -> Self {
         self.text_sources.push(src.into());
         self
-    }
-
-    /// Append one CedarJSON policy object (the format produced by
-    /// `Policy::to_json`). Each call adds exactly one policy.
-    pub fn add_json(mut self, json: JsonValue) -> Self {
-        self.json_policies.push(json);
-        self
-    }
-
-    /// Convenience: parse a JSON string and append. Returns the builder back
-    /// in the `Ok` arm so it can chain.
-    pub fn add_json_str(self, src: &str) -> Result<Self, PolicyError> {
-        let v: JsonValue = serde_json::from_str(src)
-            .map_err(|e| PolicyError::Parse(format!("invalid JSON: {e}")))?;
-        Ok(self.add_json(v))
     }
 
     /// Finish the builder, producing a ready-to-evaluate `PolicyEngine`.
@@ -443,7 +417,7 @@ impl PolicyEngineBuilder {
             combined.push_str(src);
             combined.push('\n');
         }
-        PolicyEngine::build_from(combined, self.json_policies)
+        PolicyEngine::build_from(combined)
     }
 }
 

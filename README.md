@@ -22,7 +22,7 @@ policy-engine/                        # workspace root (virtual)
 ├── docs/                             # design spec
 ├── policies/                         # *.cedar / *.json policy artifacts, organized by action kind
 │   ├── swap/                         #   policies that target Action::"swap" (per-leaf)
-│   │   ├── max-swap-usd-100.cedar / .json     (deny: input USD > 100, oracle-aware)
+│   │   ├── max-swap-usd-100.cedar            (deny: input USD > 100, oracle-aware)
 │   │   ├── max-swap-fee-bps-100.cedar         (deny: feeBips > 100)
 │   │   ├── uniswap-only-allowlist.cedar       (deny: protocol not in allowlist)
 │   │   ├── no-zero-min-output.cedar           (warn: minOutputAmount.raw == "0")
@@ -96,7 +96,6 @@ policy-engine/                        # workspace root (virtual)
     │
     └── integration-tests/            # workspace-level e2e tests
           tests/e2e_swap.rs                    11 end-to-end scenarios
-          tests/policy_json.rs                 10 CedarJSON ↔ text parity tests
           tests/adapter_into_request.rs        11 default + custom-override paths
           tests/extra_swap_policies.rs         14 extra leaf policies × happy/sad
           tests/composite_routers.rs            3 V3 multicall + UR composition
@@ -189,7 +188,7 @@ Adding a new internal adapter is a three-step:
   - **Fail-open everywhere**: a missing capability (or a missing per-key
     record) omits the field; policies guard with `context has "field"`.
 - **9 shipped policies** across two leaf-vs-tx directories:
-  - `policies/swap/`: `max-swap-usd-100` (deny, also CedarJSON),
+  - `policies/swap/`: `max-swap-usd-100` (deny),
     `max-swap-fee-bps-100`, `uniswap-only-allowlist`, `no-zero-min-output`,
     `min-output-usd-floor`, `max-fraction-of-balance-2000-bps`,
     `allowance-must-cover-input`.
@@ -220,7 +219,7 @@ Adding a new internal adapter is a three-step:
 ## Running
 
 ```bash
-# Run the full test suite (184 tests + 1 ignored doctest across the workspace).
+# Run the full test suite (174 tests + 1 ignored doctest across the workspace).
 cargo test --workspace
 cargo test --workspace --release   # release-mode tests catch metadata-mismatch bypass
 
@@ -292,7 +291,7 @@ match to a specific leaf (e.g. "leaf #2 in this multicall") or to the
 transaction-level pass. Convenience methods on `Verdict`: `is_failure`,
 `has_warnings`, `matched() -> &[MatchedPolicy]`.
 
-## Test coverage (184 total + 1 ignored doctest, debug + release)
+## Test coverage (174 total + 1 ignored doctest, debug + release)
 
 | Crate / file | Tests | What |
 |---|---:|---|
@@ -303,13 +302,12 @@ transaction-level pass. Convenience methods on `Verdict`: `is_failure`,
 | `policy-engine-adapter-universal-router/src/*` (unit) | 4 | execute selector pins, ABI round-trip, V3/V4 command expansion |
 | `integration-tests/tests/e2e_swap.rs` | 11 | USDT/USDC/WETH inputs at boundaries, stale/missing oracle, unknown target, corrupt calldata |
 | `integration-tests/tests/composite_routers.rs` | 3 | Max-swap policy denies leaf swaps inside V3 multicall and Universal Router V3/V4 commands |
-| `integration-tests/tests/policy_json.rs` | 10 | CedarJSON ↔ text parity: builder, mixed sources, invalid JSON, warn variant |
 | `integration-tests/tests/adapter_into_request.rs` | 11 | Default lowering chain; custom-override behavior via `leaf_metadata`; `Pipeline` over `&dyn AdapterRegistry`; custom `AdapterRegistry`; **`leaf_metadata` length mismatch (short and long) hard-fails** in both debug and release |
 | `integration-tests/tests/extra_swap_policies.rs` | 14 | 4 new leaf policies × happy/sad, oracle-missing skip, deny-overrides-preserves-warn composition |
 | `integration-tests/tests/tx_pass.rs` | 6 | `send_tx` per-tx pass: single-swap shape, multicall aggregation cap, leaf-deny + tx-warn distinct origins, NoMatch, pure-ETH transfer with blocklist, Universal Router `allowRevertCount` propagation |
 | `integration-tests/tests/capability_swap_policies.rs` | 7 | Portfolio + Approvals enrichment: balance-fraction cap fires/passes, fail-open without capability, allowance warn fires/passes, native-ETH skip, multicall propagation per-leaf |
 | `integration-tests/tests/window_stats.rs` | 12 | StatWindows reservation lifecycle (snapshot reflects confirmed + reservations, settle promotes, release rolls back) **and reserve-first cap correctness**: 4900+200 boundary fires, two sequential 3000 reserved evals (second sees first's reservation), `evaluate` and `evaluate_with_reservation` agree on projected state, fail-open without capability, `Fail` releases speculative reservation |
-| **Total** | **184** | |
+| **Total** | **174** | |
 
 ## What's deliberately not here yet
 
