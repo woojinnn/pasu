@@ -5,8 +5,10 @@ end-to-end pipeline so the design choices in
 `docs/specs/2026-05-05-policy-engine-design.md` could be validated against
 real calldata. v0.x follow-on work has now landed the per-tx evaluation pass
 (spec §4.5), the host-capability seam (`Oracle` + `Portfolio` + `Approvals` +
-`StatWindows`), the reservation lifecycle (`reserve → settle | release`,
-spec §4.6), and per-match request-origin attribution.
+`StatWindows`), the **reserve-first reservation lifecycle** with post-this-tx
+`windowStats` projection (spec §4.6), per-match request-origin attribution,
+and a simplified `Adapter` trait that only produces actions + metadata —
+sequencing now lives entirely in the `Pipeline`.
 
 The codebase is a **Cargo workspace** split along the boundaries the design
 document calls out: pipeline runtime, adapter SDK, individual adapter crates,
@@ -45,15 +47,22 @@ policy-engine/                        # workspace root (virtual)
     │                        + builder
     │     policy.rs          PolicyEngine, PolicyEngineBuilder, PolicyRequest, Verdict,
     │                        MatchedPolicy, RequestKind { Leaf{index}, Tx }
-    │     adapter.rs         Adapter trait + AdapterId + AdapterError + MatchKey
-    │                        (signatures take &HostCapabilities)
+    │     adapter.rs         Adapter trait (build_actions + leaf_metadata) + AdapterId
+    │                        + AdapterError + MatchKey
     │     registry.rs        AdapterRegistry trait + ResolverOutcome
     │                        + AdapterIndex + MockAdapterRegistry
-    │     lowering.rs        enrich_with_usd + request_from_action + request_for_tx
-    │                        + enrich_request_with_capabilities + enrich_tx_request_with_window_stats
-    │                        + compute_swap_window_deltas + decimal arithmetic helpers
-    │     pipeline.rs        Pipeline orchestrator + evaluate / evaluate_with_reservation
-    │                        + EvaluationOutcome
+    │     context_keys.rs    Cedar context-field name constants (used by lowering)
+    │     lowering/          ←── directory module
+    │       mod.rs           module-level docs + curated re-exports
+    │       decimal.rs       fixed-width decimal arithmetic helpers
+    │       request.rs       request_from_action, request_for_tx,
+    │                        requests_from_action[s], action_entities/context, amount_json
+    │       enrich.rs        enrich_with_usd, enrich_actions_with_usd,
+    │                        enrich_request_with_capabilities (+ stamp_portfolio_fields,
+    │                        stamp_approval_fields), enrich_tx_request_with_window_stats,
+    │                        compute_swap_window_deltas
+    │     pipeline.rs        Pipeline orchestrator + LoweredRequests + evaluate /
+    │                        evaluate_with_reservation + EvaluationOutcome
     │     prelude.rs         curated import surface for adapter authors
     │                        (`use policy_engine::prelude::*;`)
     │
@@ -88,12 +97,13 @@ policy-engine/                        # workspace root (virtual)
     └── integration-tests/            # workspace-level e2e tests
           tests/e2e_swap.rs                    11 end-to-end scenarios
           tests/policy_json.rs                 10 CedarJSON ↔ text parity tests
-          tests/adapter_into_request.rs         9 Adapter::into_request flavor tests
+          tests/adapter_into_request.rs        11 default + custom-override paths
           tests/extra_swap_policies.rs         14 extra leaf policies × happy/sad
           tests/composite_routers.rs            3 V3 multicall + UR composition
           tests/tx_pass.rs                      6 send_tx pass + RequestKind origin
           tests/capability_swap_policies.rs     7 Portfolio + Approvals enrichment
-          tests/window_stats.rs                 7 StatWindows reserve/settle/release
+          tests/window_stats.rs                12 StatWindows reserve/settle/release +
+                                                  reserve-first cap correctness
 ```
 
 ## Dependency DAG (no cycles)
@@ -163,11 +173,19 @@ Adding a new internal adapter is a three-step:
     stamps `currentAllowance` (skipped for native ETH inputs) and a
     boolean `allowanceCoversInput` so policies can warn "approve required".
   - **`StatWindows`** — `(owner, keys) → snapshot { Decimal | Count }`,
-    plus `reserve / settle / release` lifecycle. Lowering stamps
-    `tx_request.context.windowStats` from a frozen snapshot;
-    `Pipeline::evaluate_with_reservation` returns
-    `EvaluationOutcome { verdict, reservation }` so the host can promote
-    or roll back based on whether the user signs and the tx confirms.
+    plus `reserve / settle / release` lifecycle. Snapshots include any
+    active reservations. **Reserve-first model** in
+    `Pipeline::evaluate_with_reservation`: deltas are reserved BEFORE
+    the snapshot is taken, so `windowStats` is the **post-this-tx
+    projection** — a 4900 + 200 swap fires a 5000 cap, two concurrent
+    3000 swaps see each other's reservation, and `Verdict::Fail` rolls
+    back the speculative reserve before returning. Plain
+    `Pipeline::evaluate` (no side-effects) achieves the same projection
+    by passing computed deltas through to the enricher without
+    touching the stats backing store. Returns
+    `EvaluationOutcome { verdict, reservation }` so the host can
+    settle or release based on whether the user signs and the tx
+    confirms.
   - **Fail-open everywhere**: a missing capability (or a missing per-key
     record) omits the field; policies guard with `context has "field"`.
 - **9 shipped policies** across two leaf-vs-tx directories:
@@ -181,18 +199,30 @@ Adding a new internal adapter is a three-step:
   exact-match; surfaces `NoMatch` / `Resolved` / `Ambiguous`.
 - **Cedar evaluator**: `cedar-policy` 4.x; `@severity` annotation drives the
   tri-state verdict; default-allow is enforced via a baseline permit.
-- **`Adapter::into_request[s]`**: one-shot `calldata → PolicyRequest` on the
-  `Adapter` trait, default-implemented as `build → enrich_with_usd →
-  request_from_action → enrich_request_with_capabilities`. Adapters take
-  `&HostCapabilities` (not `&dyn Oracle`) so future capabilities are
-  additive; internal lowering helpers retain `&dyn Oracle` /
-  `&HostCapabilities` boundaries as appropriate.
+- **Simplified `Adapter` trait**: adapters produce
+  `build_actions(tx) -> Vec<Action>` plus optional
+  `leaf_metadata(tx, leaves) -> Vec<Map<String, Value>>` (default empty
+  per leaf). Sequencing — USD enrichment → request building → capability
+  enrichment → metadata merge → tx-level summary → window stats — runs
+  entirely in `Pipeline`. The previous `into_request[s]` /
+  `lower_requests` overrides are gone; protocol-specific data (e.g.
+  Universal Router `allowRevert`, V4 hook flags) reaches the request
+  context through `leaf_metadata`. Pipeline hard-fails with
+  `PipelineError::AdapterBuild` if `metas.len() != leaves.len()` (closes
+  a release-mode policy bypass surface — `debug_assert` alone was
+  insufficient).
+- **Cedar context-field constants** (`policy_engine::context_keys`):
+  every field name produced by lowering is a `pub const`, so a typo on
+  the engine side surfaces at compile time. Cedar policy files keep
+  their string literals — the contract is "the policy literal matches
+  the constant value here".
 
 ## Running
 
 ```bash
-# Run the full test suite (177 tests + 1 ignored doctest across the workspace).
+# Run the full test suite (184 tests + 1 ignored doctest across the workspace).
 cargo test --workspace
+cargo test --workspace --release   # release-mode tests catch metadata-mismatch bypass
 
 # Run the demo.
 cargo run -p policy-engine-adapters-bundle --example e2e_swap
@@ -222,8 +252,9 @@ mechanically.
 | Concept | Where | What |
 |---|---|---|
 | **Decode** (parse bytes → typed values) | `adapters/uniswap-v3/src/exact_input_single.rs` (one file per Uniswap function) | `decode` / `encode` via `sol!` |
-| **Adapter** (typed values → policy-evaluable form) | `policy-engine/src/adapter.rs` (trait) + `adapters/*/` (impls) | `Adapter::build` → semantic `Action`; `Adapter::into_requests` → one or more Cedar `PolicyRequest`s |
-| **PolicyEngine** (Cedar evaluation) | `policy-engine/src/policy.rs` | consumes one or more `PolicyRequest`s, returns aggregated `Verdict` |
+| **Adapter** (typed values → semantic actions) | `policy-engine/src/adapter.rs` (trait) + `adapters/*/` (impls) | `Adapter::build_actions` → one or more semantic `Action`s; `Adapter::leaf_metadata` → optional protocol-specific data per leaf (e.g. UR `allowRevert`) |
+| **Pipeline** (sequencing + enrichment) | `policy-engine/src/pipeline.rs` | resolves the adapter, walks the lowering chain, runs reserve-first window-stats projection, calls Cedar |
+| **PolicyEngine** (Cedar evaluation) | `policy-engine/src/policy.rs` | consumes origin-tagged `PolicyRequest`s, returns aggregated `Verdict` |
 
 ## Verdict shape
 
@@ -261,7 +292,7 @@ match to a specific leaf (e.g. "leaf #2 in this multicall") or to the
 transaction-level pass. Convenience methods on `Verdict`: `is_failure`,
 `has_warnings`, `matched() -> &[MatchedPolicy]`.
 
-## Test coverage (177 total + 1 ignored doctest)
+## Test coverage (184 total + 1 ignored doctest, debug + release)
 
 | Crate / file | Tests | What |
 |---|---:|---|
@@ -273,12 +304,12 @@ transaction-level pass. Convenience methods on `Verdict`: `is_failure`,
 | `integration-tests/tests/e2e_swap.rs` | 11 | USDT/USDC/WETH inputs at boundaries, stale/missing oracle, unknown target, corrupt calldata |
 | `integration-tests/tests/composite_routers.rs` | 3 | Max-swap policy denies leaf swaps inside V3 multicall and Universal Router V3/V4 commands |
 | `integration-tests/tests/policy_json.rs` | 10 | CedarJSON ↔ text parity: builder, mixed sources, invalid JSON, warn variant |
-| `integration-tests/tests/adapter_into_request.rs` | 9 | Default `into_request`; custom `Adapter` override; hand-built `PolicyRequest`; dyn-`Adapter` collections; `Pipeline` over `&dyn AdapterRegistry`; custom `AdapterRegistry` impl |
+| `integration-tests/tests/adapter_into_request.rs` | 11 | Default lowering chain; custom-override behavior via `leaf_metadata`; `Pipeline` over `&dyn AdapterRegistry`; custom `AdapterRegistry`; **`leaf_metadata` length mismatch (short and long) hard-fails** in both debug and release |
 | `integration-tests/tests/extra_swap_policies.rs` | 14 | 4 new leaf policies × happy/sad, oracle-missing skip, deny-overrides-preserves-warn composition |
 | `integration-tests/tests/tx_pass.rs` | 6 | `send_tx` per-tx pass: single-swap shape, multicall aggregation cap, leaf-deny + tx-warn distinct origins, NoMatch, pure-ETH transfer with blocklist, Universal Router `allowRevertCount` propagation |
 | `integration-tests/tests/capability_swap_policies.rs` | 7 | Portfolio + Approvals enrichment: balance-fraction cap fires/passes, fail-open without capability, allowance warn fires/passes, native-ETH skip, multicall propagation per-leaf |
-| `integration-tests/tests/window_stats.rs` | 7 | StatWindows reservation lifecycle: snapshot reflects confirmed history, reservation visible to next snapshot, settle promotes, release rolls back, no-reserve on Fail, fail-open without capability, plain `evaluate` does not reserve |
-| **Total** | **177** | |
+| `integration-tests/tests/window_stats.rs` | 12 | StatWindows reservation lifecycle (snapshot reflects confirmed + reservations, settle promotes, release rolls back) **and reserve-first cap correctness**: 4900+200 boundary fires, two sequential 3000 reserved evals (second sees first's reservation), `evaluate` and `evaluate_with_reservation` agree on projected state, fail-open without capability, `Fail` releases speculative reservation |
+| **Total** | **184** | |
 
 ## What's deliberately not here yet
 
@@ -293,10 +324,13 @@ transaction-level pass. Convenience methods on `Verdict`: `is_failure`,
 - Time-decay for `StatWindows` — the in-memory `MockStatWindows` keeps
   every settled delta forever; production impls would timestamp settled
   entries and prune outside their window
-- "This-tx-would-push-past-cap" semantics for window-stat policies
-  (today's snapshot is state-before-this-tx; combining `windowStats` with
-  `totalInputUsd` requires a precomputed "with-this-tx" field that's
-  not yet stamped)
+- Real concurrent-stress validation of the reserve-first model — the
+  shipped tests cover sequential ordering and post-this-tx projection,
+  not multi-thread races. A `loom`-style stress test is a future add
+- Capability-file de-duplication via macro / generic — three Mock impls
+  share a common `Trait + Mock<HashMap> + with_X + Error` shape;
+  intentionally deferred until a 4th capability arrives so the
+  cost/benefit is data-driven
 - WASM compute step for adapters that can't decode declaratively
 - Manifest-driven adapters (still hardcoded in Rust)
 - Marketplace, packaging, signing
