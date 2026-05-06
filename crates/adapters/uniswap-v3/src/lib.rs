@@ -1,8 +1,8 @@
-//! Uniswap V3 SwapRouter adapters for `policy-engine`.
+//! Uniswap V3 `SwapRouter` adapters for `policy-engine`.
 //!
 //! ## Module layout
 //!
-//! Each Uniswap V3 SwapRouter function lives in its own module under this
+//! Each Uniswap V3 `SwapRouter` function lives in its own module under this
 //! crate, with `sol!` declaration, encode/decode helpers, the `Adapter` impl,
 //! and unit tests all co-located. Adding a new function (e.g., `exactInput`,
 //! `exactOutputSingle`, `multicall`) means: drop a new file next to
@@ -22,6 +22,24 @@
 //!
 //! The `policy-engine-adapters-bundle` crate stitches each function's
 //! `Adapter_` into a single `MockAdapterRegistry` via `default_registry()`.
+
+#![deny(unsafe_code)]
+#![deny(unused_must_use)]
+#![deny(rustdoc::bare_urls)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![warn(missing_docs)]
+#![warn(unreachable_pub)]
+#![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
+#![warn(missing_debug_implementations)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::dbg_macro)]
+#![warn(clippy::todo)]
+#![cfg_attr(not(test), warn(clippy::expect_used))]
+#![cfg_attr(not(test), warn(clippy::panic))]
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 pub mod common;
 pub mod exact_input;

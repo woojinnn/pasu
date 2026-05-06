@@ -1,9 +1,12 @@
-//! Uniswap V3 SwapRouter `exactInput` — multi-hop, exact-in. The token route
+//! Uniswap V3 `SwapRouter` `exactInput` — multi-hop, exact-in. The token route
 //! arrives as a packed `bytes path = [tokenA][fee0][tokenB][fee1]...[tokenN]`,
 //! decoded by `common::decode_v3_path`.
 
+#[cfg(test)]
+use crate::common::SWAP_ROUTER_MAINNET;
 use crate::common::{
-    decode_v3_path, dex_swap_action, DecodeError, TokenLookup, SWAP_ROUTER_MAINNET,
+    decode_v3_path, dex_swap_action, path_endpoints, static_adapter_id, swap_router_address,
+    DecodeError, TokenLookup,
 };
 use alloy_primitives::{Address as AlloyAddress, U256};
 use alloy_sol_types::{sol, SolCall};
@@ -22,17 +25,26 @@ sol! {
     function exactInput(SolExactInputParams params) external payable returns (uint256 amountOut);
 }
 
+/// Selector for `exactInput`.
 pub const SELECTOR: [u8; 4] = exactInputCall::SELECTOR;
 
-#[derive(Debug, Clone, PartialEq)]
+/// Decoded `exactInput` parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Params {
+    /// Packed V3 path from input token to output token.
     pub path: Vec<u8>,
+    /// Recipient address.
     pub recipient: AlloyAddress,
+    /// Swap deadline.
     pub deadline: U256,
+    /// Exact input amount.
     pub amount_in: U256,
+    /// Minimum acceptable output amount.
     pub amount_out_minimum: U256,
 }
 
+/// ABI-encode `exactInput` calldata.
+#[must_use]
 pub fn encode(p: &Params) -> Vec<u8> {
     exactInputCall {
         params: SolExactInputParams {
@@ -46,6 +58,12 @@ pub fn encode(p: &Params) -> Vec<u8> {
     .abi_encode()
 }
 
+/// Decode `exactInput` calldata.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has the wrong selector, or
+/// fails ABI decoding.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     if calldata.len() < 4 {
         return Err(DecodeError::TooShort {
@@ -72,19 +90,25 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
+/// Adapter for `exactInput`.
+#[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
     tokens: TokenLookup,
 }
 
 impl Adapter_ {
+    /// Construct an adapter with mainnet `SwapRouter` and default token metadata.
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, Address::new(SWAP_ROUTER_MAINNET).unwrap())],
+            chain_targets: vec![(1, swap_router_address())],
             tokens: TokenLookup::with_mainnet_defaults(),
         }
     }
 
+    /// Returns this adapter after adding `token` to its lookup.
+    #[must_use]
     pub fn with_token(mut self, token: Token) -> Self {
         self.tokens.add(token);
         self
@@ -99,7 +123,7 @@ impl Default for Adapter_ {
 
 impl Adapter for Adapter_ {
     fn id(&self) -> AdapterId {
-        AdapterId::new("uniswap-v3/exactInput@0.1.0").expect("static AdapterId is well-formed")
+        static_adapter_id("uniswap-v3/exactInput@0.1.0")
     }
 
     fn match_keys(&self) -> Vec<MatchKey> {
@@ -114,8 +138,9 @@ impl Adapter for Adapter_ {
         let (alloy_tokens, fees) =
             decode_v3_path(&p.path).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
 
-        let token_in_addr = Address::from_alloy(*alloy_tokens.first().unwrap());
-        let token_out_addr = Address::from_alloy(*alloy_tokens.last().unwrap());
+        let (token_in, token_out) = path_endpoints(&alloy_tokens)?;
+        let token_in_addr = Address::from_alloy(token_in);
+        let token_out_addr = Address::from_alloy(token_out);
         let recipient_addr = Address::from_alloy(p.recipient);
 
         let input_token = self.tokens.get(tx.chain_id, &token_in_addr);
@@ -130,7 +155,7 @@ impl Adapter for Adapter_ {
             output_token,
             p.amount_in.to_string(),
             Some(p.amount_out_minimum.to_string()),
-            recipient_addr,
+            &recipient_addr,
             max_fee_bps,
             "exactInput",
         ))
@@ -199,7 +224,7 @@ mod tests {
                 assert_eq!(d.oracle_requirements[1].raw_amount, "0");
                 assert_eq!(d.trace.steps, vec!["exactInput"]);
             }
-            _ => panic!("expected dex"),
+            Action::Other(_) => panic!("expected dex"),
         }
     }
 
@@ -249,7 +274,7 @@ mod tests {
                 assert_eq!(d.facts.output_tokens[0].symbol, "WETH");
                 assert_eq!(d.facts.max_fee_bps, Some(30));
             }
-            _ => panic!("expected dex"),
+            Action::Other(_) => panic!("expected dex"),
         }
     }
 }

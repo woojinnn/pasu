@@ -28,20 +28,25 @@ use thiserror::Error;
 /// - any matched `forbid` with `@severity("deny")` → `Fail(...)`
 /// - otherwise, any matched `forbid` with `@severity("warn")` → `Warn(...)`
 /// - otherwise → `Pass`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Verdict {
+    /// No matching deny or warning policies fired.
     Pass,
+    /// One or more warning policies fired and no deny policy fired.
     Warn(Vec<MatchedPolicy>),
+    /// One or more deny policies fired.
     Fail(Vec<MatchedPolicy>),
 }
 
 impl Verdict {
     /// True iff the host wallet must refuse to sign.
-    pub fn is_failure(&self) -> bool {
-        matches!(self, Verdict::Fail(_))
+    #[must_use]
+    pub const fn is_failure(&self) -> bool {
+        matches!(self, Self::Fail(_))
     }
 
     /// True iff there's at least one warning the host should display.
+    #[must_use]
     pub fn has_warnings(&self) -> bool {
         self.matched().iter().any(|m| m.severity == Severity::Warn)
     }
@@ -49,16 +54,19 @@ impl Verdict {
     /// Returns the matched policies for the warn / fail variants; empty for
     /// `Pass`. Useful when the caller wants to render diagnostics regardless
     /// of variant.
+    #[must_use]
     pub fn matched(&self) -> &[MatchedPolicy] {
         match self {
-            Verdict::Pass => &[],
-            Verdict::Warn(v) | Verdict::Fail(v) => v,
+            Self::Pass => &[],
+            Self::Warn(v) | Self::Fail(v) => v,
         }
     }
 
+    /// Combine per-request verdicts with deny-overrides semantics.
+    #[must_use]
     pub fn aggregate<I>(verdicts: I) -> Self
     where
-        I: IntoIterator<Item = Verdict>,
+        I: IntoIterator<Item = Self>,
     {
         let mut matched = Vec::new();
         let mut any_deny = false;
@@ -66,12 +74,12 @@ impl Verdict {
 
         for verdict in verdicts {
             match verdict {
-                Verdict::Pass => {}
-                Verdict::Warn(mut v) => {
+                Self::Pass => {}
+                Self::Warn(mut v) => {
                     any_warn = true;
                     matched.append(&mut v);
                 }
-                Verdict::Fail(mut v) => {
+                Self::Fail(mut v) => {
                     any_deny = true;
                     any_warn |= v.iter().any(|m| m.severity == Severity::Warn);
                     matched.append(&mut v);
@@ -80,11 +88,11 @@ impl Verdict {
         }
 
         if any_deny {
-            Verdict::Fail(matched)
+            Self::Fail(matched)
         } else if any_warn {
-            Verdict::Warn(matched)
+            Self::Warn(matched)
         } else {
-            Verdict::Pass
+            Self::Pass
         }
     }
 }
@@ -92,32 +100,43 @@ impl Verdict {
 /// `@severity("deny" | "warn")` annotation parsed from a policy's source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Severity {
+    /// Blocking severity.
     Deny,
+    /// Non-blocking warning severity.
     Warn,
 }
 
-/// One `forbid` clause that fired during evaluation. Severity is preserved
-/// per-element so that, when a `Verdict::Fail` is produced because a deny
-/// fired, any *also*-fired warns are still reported (no info loss).
+/// One `forbid` clause that fired during evaluation.
+///
+/// Severity is preserved per-element so that, when a `Verdict::Fail` is
+/// produced because a deny fired, any also-fired warns are still reported.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RequestKind {
+    /// Request originated from an action-level policy request.
     Action,
+    /// Request originated from a transaction-level policy request.
     Tx,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// Policy metadata returned with `Warn` and `Fail` verdicts.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchedPolicy {
+    /// Cedar policy id.
     pub policy_id: String,
+    /// Optional `@reason(...)` annotation.
     pub reason: Option<String>,
+    /// Parsed severity annotation.
     pub severity: Severity,
+    /// Originating policy request kind.
     pub origin: RequestKind,
 }
 
-/// Self-contained Cedar evaluation input. `Adapter`-driven lowering produces
-/// this from a transaction; `PolicyEngine::evaluate_request` consumes it.
-/// Designed so it can be serialized, logged, replayed, and built by hand in
-/// tests.
-#[derive(Debug, Clone, PartialEq)]
+/// Self-contained Cedar evaluation input.
+///
+/// Adapter-driven lowering produces this from a transaction; the policy engine
+/// consumes it. The request can be serialized, logged, replayed, and built by
+/// hand in tests.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PolicyRequest {
     /// Cedar `EntityUid` for the principal — e.g., `Wallet::"0xUser"`.
     pub principal: String,
@@ -132,6 +151,8 @@ pub struct PolicyRequest {
 }
 
 impl PolicyRequest {
+    /// Construct a policy request from Cedar request components.
+    #[must_use]
     pub fn new(
         principal: impl Into<String>,
         action: impl Into<String>,
@@ -149,20 +170,28 @@ impl PolicyRequest {
     }
 }
 
+/// Error produced while parsing, validating, or evaluating policies.
 #[derive(Debug, Error)]
 pub enum PolicyError {
+    /// Cedar policy parse failure.
     #[error("failed to parse Cedar policy: {0}")]
     Parse(String),
+    /// Cedar schema parse failure.
     #[error("failed to parse Cedar schema: {0}")]
     Schema(String),
+    /// Cedar schema validation failure.
     #[error("failed to validate Cedar policy set against schema: {0}")]
     Validation(String),
+    /// Cedar request construction failure.
     #[error("failed to build Cedar request: {0}")]
     Request(String),
+    /// Cedar context construction failure.
     #[error("failed to build Cedar context: {0}")]
     Context(String),
+    /// Cedar entities construction failure.
     #[error("failed to build Cedar entities: {0}")]
     Entities(String),
+    /// Cedar entity uid construction failure.
     #[error("invalid entity uid: {0}")]
     EntityUid(String),
 }
@@ -182,18 +211,23 @@ pub struct PolicyEngine {
 impl PolicyEngine {
     /// Start a builder. Callers chain `.add_text(...)` and then `.build()`.
     /// The baseline permit is added automatically.
+    #[must_use]
     pub fn builder() -> PolicyEngineBuilder {
         PolicyEngineBuilder::default()
     }
 
     /// Convenience: build an engine from one or more text Cedar sources only.
     /// Equivalent to `PolicyEngine::builder().add_text(...).build()`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when Cedar parsing or schema validation fails.
     pub fn from_sources<I, S>(sources: I) -> Result<Self, PolicyError>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let mut b = PolicyEngine::builder();
+        let mut b = Self::builder();
         for s in sources {
             b = b.add_text(s.as_ref());
         }
@@ -203,14 +237,14 @@ impl PolicyEngine {
     /// Internal: build a `PolicyEngine` from already-collected policies.
     /// `text_combined` is one big Cedar source string (with baseline
     /// prepended).
-    fn build_from(text_combined: String, schema: Option<Schema>) -> Result<Self, PolicyError> {
+    fn build_from(text_combined: &str, schema: Option<Schema>) -> Result<Self, PolicyError> {
         let mut policy_set = PolicySet::new();
         let mut severities: HashMap<String, Severity> = HashMap::new();
         let mut reasons: HashMap<String, String> = HashMap::new();
 
         // ---- Text policies ------------------------------------------------
         let initial_set =
-            PolicySet::from_str(&text_combined).map_err(|e| PolicyError::Parse(e.to_string()))?;
+            PolicySet::from_str(text_combined).map_err(|e| PolicyError::Parse(e.to_string()))?;
 
         for p in initial_set.policies() {
             ingest_policy(p, &mut policy_set, &mut severities, &mut reasons)?;
@@ -220,7 +254,7 @@ impl PolicyEngine {
             validate_policy_set(&policy_set, schema)?;
         }
 
-        Ok(PolicyEngine {
+        Ok(Self {
             policy_set,
             schema,
             severities,
@@ -229,12 +263,20 @@ impl PolicyEngine {
     }
 
     /// Evaluate a `PolicyRequest`. This is the preferred entry point.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when Cedar request construction or evaluation fails.
     pub fn evaluate_request(&self, req: &PolicyRequest) -> Result<Verdict, PolicyError> {
         self.evaluate_request_with_origin(req, RequestKind::Action)
     }
 
     /// Evaluate a `PolicyRequest` and annotate matches with the originating
     /// request kind.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when Cedar request construction or evaluation fails.
     pub fn evaluate_request_with_origin(
         &self,
         req: &PolicyRequest,
@@ -261,6 +303,10 @@ impl PolicyEngine {
 
     /// Evaluate requests from one transaction while preserving request kind.
     /// A request list with empty input is treated as pass.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when any request fails to build or evaluate.
     pub fn evaluate_requests<'a, I>(&self, reqs: I) -> Result<Verdict, PolicyError>
     where
         I: IntoIterator<Item = (&'a PolicyRequest, RequestKind)>,
@@ -273,6 +319,11 @@ impl PolicyEngine {
     }
 
     /// Evaluate a single Cedar request against the policy set.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when entity ids, context, entities, or request
+    /// construction fail.
     pub fn evaluate(
         &self,
         principal: &str,
@@ -382,7 +433,7 @@ fn validation_errors_message(result: &ValidationResult) -> String {
 }
 
 fn annotation(p: &Policy, key: &str) -> Option<String> {
-    p.annotation(key).map(|s| s.to_string())
+    p.annotation(key).map(std::string::ToString::to_string)
 }
 
 /// Pull `@id`, `@severity`, `@reason` out of a policy and add it to the set
@@ -394,7 +445,10 @@ fn ingest_policy(
     reasons: &mut HashMap<String, String>,
 ) -> Result<(), PolicyError> {
     let user_id_raw = annotation(p, "id").unwrap_or_else(|| p.id().to_string());
-    let user_id: PolicyId = user_id_raw.parse().expect("PolicyId parse is infallible");
+    let user_id: PolicyId = match user_id_raw.parse() {
+        Ok(user_id) => user_id,
+        Err(never) => match never {},
+    };
     let user_id_str = user_id.to_string();
     let new_policy = p.clone().new_id(user_id);
 
@@ -420,10 +474,11 @@ fn ingest_policy(
     Ok(())
 }
 
-/// Builder for `PolicyEngine`. Accepts text Cedar sources and/or JSON-encoded
-/// CedarJSON policy objects, mixed in any order. Always injects the baseline
-/// `permit(principal, action, resource);` so that absence of any matched
-/// `forbid` evaluates to allow.
+/// Builder for `PolicyEngine`.
+///
+/// Accepts text Cedar sources and JSON-encoded `CedarJSON` policy objects,
+/// mixed in any order. Always injects the baseline permit policy so that
+/// absence of any matched `forbid` evaluates to allow.
 #[derive(Debug, Default)]
 pub struct PolicyEngineBuilder {
     text_sources: Vec<String>,
@@ -434,8 +489,9 @@ impl PolicyEngineBuilder {
     /// Append one or more text Cedar policies. Multiple `forbid`/`permit`
     /// clauses in the string are fine — they'll all be parsed.
     ///
-    /// In v0.x, Cedar text is the supported authoring surface; CedarJSON support
+    /// In v0.x, Cedar text is the supported authoring surface; `CedarJSON` support
     /// is deferred to marketplace/signing in v1.
+    #[must_use]
     pub fn add_text<S: Into<String>>(mut self, src: S) -> Self {
         self.text_sources.push(src.into());
         self
@@ -443,12 +499,18 @@ impl PolicyEngineBuilder {
 
     /// Append Cedar schema text used to strict-validate policies at build time
     /// and requests at evaluation time.
+    #[must_use]
     pub fn add_schema_text<S: Into<String>>(mut self, src: S) -> Self {
         self.schema_sources.push(src.into());
         self
     }
 
     /// Finish the builder, producing a ready-to-evaluate `PolicyEngine`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when schema parsing, policy parsing, or policy
+    /// validation fails.
     pub fn build(self) -> Result<PolicyEngine, PolicyError> {
         let schema = if self.schema_sources.is_empty() {
             None
@@ -470,7 +532,7 @@ impl PolicyEngineBuilder {
             combined.push_str(src);
             combined.push('\n');
         }
-        PolicyEngine::build_from(combined, schema)
+        PolicyEngine::build_from(&combined, schema)
     }
 }
 

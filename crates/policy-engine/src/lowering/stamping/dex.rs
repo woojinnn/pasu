@@ -9,13 +9,15 @@ use crate::lowering::decimal::{try_add_decimal_strings, try_multiply_decimal_str
 use alloy_primitives::U256;
 use std::collections::HashMap;
 
-pub fn enrich_dex_action(action: &mut DexAction, host: &HostCapabilities) {
+/// Enrich a DEX action with host facts and projected window stats.
+pub fn enrich_dex_action(action: &mut DexAction, host: &HostCapabilities<'_>) {
     enrich_dex_action_base(action, host);
     let deltas = compute_dex_window_deltas(action);
     enrich_dex_window_stats(action, host, &deltas);
 }
 
-pub fn enrich_dex_action_base(action: &mut DexAction, host: &HostCapabilities) {
+/// Enrich a DEX action with oracle, portfolio, and allowance facts.
+pub fn enrich_dex_action_base(action: &mut DexAction, host: &HostCapabilities<'_>) {
     action.facts.total_input_usd =
         total_usd_for_kind(action, OracleRequirementKind::Input, host.oracle());
     action.facts.total_min_output_usd =
@@ -25,14 +27,17 @@ pub fn enrich_dex_action_base(action: &mut DexAction, host: &HostCapabilities) {
     action.facts.allowances_cover_inputs = allowances_cover_inputs(action, host);
 }
 
+/// Stamp projected stat-window facts onto a DEX action.
 pub fn enrich_dex_window_stats(
     action: &mut DexAction,
-    host: &HostCapabilities,
+    host: &HostCapabilities<'_>,
     pending_deltas: &[StatDelta],
 ) {
     action.facts.window_stats = projected_window_stats(&action.actor, host, pending_deltas);
 }
 
+/// Compute stat-window deltas represented by this DEX action.
+#[must_use]
 pub fn compute_dex_window_deltas(action: &DexAction) -> Vec<StatDelta> {
     let mut deltas = Vec::new();
     if let Some(usd) = &action.facts.total_input_usd {
@@ -104,7 +109,7 @@ fn sum_valuations(mut left: UsdValuation, right: UsdValuation) -> UsdValuation {
 
 fn total_input_fraction_of_portfolio_bps(
     action: &DexAction,
-    host: &HostCapabilities,
+    host: &HostCapabilities<'_>,
 ) -> Option<u64> {
     let portfolio = host.portfolio()?;
     let inputs = grouped_input_requirements(action)?;
@@ -123,7 +128,7 @@ fn total_input_fraction_of_portfolio_bps(
     Some(total_bps)
 }
 
-fn allowances_cover_inputs(action: &DexAction, host: &HostCapabilities) -> Option<bool> {
+fn allowances_cover_inputs(action: &DexAction, host: &HostCapabilities<'_>) -> Option<bool> {
     let approvals = host.approvals();
     let Some(inputs) = grouped_input_requirements(action) else {
         return approvals.map(|_| false);
@@ -193,7 +198,7 @@ fn amount_raw_u256(raw: &str) -> Option<U256> {
 
 fn projected_window_stats(
     actor: &Address,
-    host: &HostCapabilities,
+    host: &HostCapabilities<'_>,
     pending_deltas: &[StatDelta],
 ) -> Option<WindowStatsContext> {
     let stats = host.stats()?;
@@ -229,7 +234,7 @@ fn window_stats_from_snapshot(
         _ => None,
     };
     let swap_count_24h = match snapshot.get(&StatKey::SWAP_COUNT_24H) {
-        Some(StatValue::Count(value)) if *value >= 0 => Some(*value as u64),
+        Some(StatValue::Count(value)) => u64::try_from(*value).ok(),
         _ => None,
     };
 

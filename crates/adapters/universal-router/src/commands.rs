@@ -1,7 +1,8 @@
 //! Universal Router command dispatch and shared command helpers.
 
 use crate::command_decode::{
-    v2_swap_exact_in, v2_swap_exact_out, v3_swap_exact_in, v3_swap_exact_out, v4_swap,
+    decode_v2_swap_exact_in, decode_v2_swap_exact_out, decode_v3_swap_exact_in,
+    decode_v3_swap_exact_out, decode_v4_swap,
 };
 use crate::common::{currency_to_policy_address, TokenLookup};
 use alloy_primitives::{Address as AlloyAddress, U256};
@@ -41,7 +42,7 @@ const MAX_COMMANDS: usize = 64;
 const ACTION_MSG_SENDER: &str = "0x0000000000000000000000000000000000000001";
 const ACTION_ADDRESS_THIS: &str = "0x0000000000000000000000000000000000000002";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct ActionMeta {
     pub(crate) allow_revert: bool,
     command_label: &'static str,
@@ -49,7 +50,7 @@ pub(crate) struct ActionMeta {
 }
 
 impl ActionMeta {
-    fn new(command: u8, allow_revert: bool) -> Self {
+    const fn new(command: u8, allow_revert: bool) -> Self {
         Self {
             allow_revert,
             command_label: command_label(command),
@@ -57,7 +58,7 @@ impl ActionMeta {
         }
     }
 
-    pub(crate) fn with_action_label(mut self, action_label: &'static str) -> Self {
+    pub(crate) const fn with_action_label(mut self, action_label: &'static str) -> Self {
         self.action_label = Some(action_label);
         self
     }
@@ -67,19 +68,24 @@ impl ActionMeta {
     }
 
     pub(crate) fn trace_label(&self) -> String {
-        match self.action_label {
-            Some(action_label) => format!(
-                "command={} action={} allowRevert={}",
-                self.command_label, action_label, self.allow_revert
-            ),
-            None => format!(
-                "command={} allowRevert={}",
-                self.command_label, self.allow_revert
-            ),
-        }
+        self.action_label.map_or_else(
+            || {
+                format!(
+                    "command={} allowRevert={}",
+                    self.command_label, self.allow_revert
+                )
+            },
+            |action_label| {
+                format!(
+                    "command={} action={} allowRevert={}",
+                    self.command_label, action_label, self.allow_revert
+                )
+            },
+        )
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct RoutedAction {
     pub(crate) action: Action,
     pub(crate) meta: ActionMeta,
@@ -119,11 +125,11 @@ pub(crate) fn expand_commands(
         let input = &inputs[idx];
 
         match command {
-            V3_SWAP_EXACT_IN => out.push(v3_swap_exact_in::decode(tx, tokens, input, meta)?),
-            V3_SWAP_EXACT_OUT => out.push(v3_swap_exact_out::decode(tx, tokens, input, meta)?),
-            V2_SWAP_EXACT_IN => out.push(v2_swap_exact_in::decode(tx, tokens, input, meta)?),
-            V2_SWAP_EXACT_OUT => out.push(v2_swap_exact_out::decode(tx, tokens, input, meta)?),
-            V4_SWAP => out.extend(v4_swap::decode(tx, tokens, input, meta)?),
+            V3_SWAP_EXACT_IN => out.push(decode_v3_swap_exact_in(tx, tokens, input, meta)?),
+            V3_SWAP_EXACT_OUT => out.push(decode_v3_swap_exact_out(tx, tokens, input, meta)?),
+            V2_SWAP_EXACT_IN => out.push(decode_v2_swap_exact_in(tx, tokens, input, meta)?),
+            V2_SWAP_EXACT_OUT => out.push(decode_v2_swap_exact_out(tx, tokens, input, meta)?),
+            V4_SWAP => out.extend(decode_v4_swap(tx, tokens, input, &meta)?),
             EXECUTE_SUB_PLAN => {
                 let (sub_commands, sub_inputs) = SubPlanInput::abi_decode_sequence(input, true)
                     .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
@@ -173,7 +179,19 @@ pub(crate) fn token(tokens: &TokenLookup, chain_id: ChainId, address: AlloyAddre
     tokens.get(chain_id, &addr)
 }
 
-fn command_label(command: u8) -> &'static str {
+pub(crate) fn path_endpoints(
+    path: &[AlloyAddress],
+    label: &str,
+) -> Result<(AlloyAddress, AlloyAddress), AdapterError> {
+    if path.len() < 2 {
+        return Err(AdapterError::BadCalldata(format!(
+            "{label} path must contain at least 2 tokens"
+        )));
+    }
+    Ok((path[0], path[path.len() - 1]))
+}
+
+const fn command_label(command: u8) -> &'static str {
     match command {
         V3_SWAP_EXACT_IN => "V3_SWAP_EXACT_IN",
         V3_SWAP_EXACT_OUT => "V3_SWAP_EXACT_OUT",
@@ -193,7 +211,7 @@ pub(crate) fn swap_action(
     output_token: Token,
     input_amount: U256,
     min_output_amount: U256,
-    recipient: Address,
+    recipient: &Address,
     fee_bips: Option<u32>,
     meta: &ActionMeta,
 ) -> Action {
@@ -207,7 +225,7 @@ pub(crate) fn swap_action(
             output_tokens: vec![output_token.clone()],
             max_fee_bps: fee_bips,
             has_zero_min_output: min_output_amount == U256::ZERO,
-            has_external_recipient: recipient != tx.from,
+            has_external_recipient: recipient != &tx.from,
             ..DexFacts::default()
         },
         oracle_requirements: vec![
@@ -245,7 +263,7 @@ pub(crate) fn merge_dex_actions(
         let RoutedAction { action, meta } = routed;
         let dex = match action {
             Action::Dex(dex) => dex,
-            other => {
+            other @ Action::Other(_) => {
                 return Err(AdapterError::BadCalldata(format!(
                     "Universal Router routed non-Dex action: {}",
                     other.kind()
@@ -319,9 +337,9 @@ pub(crate) fn decode_v3_path(path: &[u8]) -> Result<(Vec<AlloyAddress>, Vec<u32>
     for _ in 0..hops {
         tokens.push(AlloyAddress::from_slice(&path[cursor..cursor + 20]));
         cursor += 20;
-        let fee = ((path[cursor] as u32) << 16)
-            | ((path[cursor + 1] as u32) << 8)
-            | (path[cursor + 2] as u32);
+        let fee = (u32::from(path[cursor]) << 16)
+            | (u32::from(path[cursor + 1]) << 8)
+            | u32::from(path[cursor + 2]);
         fees.push(fee);
         cursor += 3;
     }
@@ -333,7 +351,8 @@ pub(crate) fn fee_bips_avg(fees: &[u32]) -> Option<u32> {
     if fees.is_empty() {
         None
     } else {
-        Some(fees.iter().sum::<u32>() / (fees.len() as u32) / 100)
+        let len = u32::try_from(fees.len()).ok()?;
+        Some(fees.iter().sum::<u32>() / len / 100)
     }
 }
 

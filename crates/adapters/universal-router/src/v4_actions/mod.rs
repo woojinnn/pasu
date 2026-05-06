@@ -1,5 +1,6 @@
 //! Per-action decoders for the `V4_SWAP` command payload.
 
+use crate::commands::{ActionMeta, RoutedAction};
 use crate::common::{currency_to_policy_address, TokenLookup};
 use alloy_primitives::aliases::U24;
 use alloy_sol_types::sol;
@@ -81,6 +82,42 @@ pub(crate) const V4_UNWRAP: u8 = 0x16;
 
 pub(crate) const MAX_V4_ACTIONS: usize = 64;
 
+pub(crate) fn decode_exact_input(
+    tx: &TransactionRequest,
+    tokens: &TokenLookup,
+    input: &[u8],
+    meta: ActionMeta,
+) -> Result<RoutedAction, AdapterError> {
+    exact_input::decode(tx, tokens, input, meta)
+}
+
+pub(crate) fn decode_exact_input_single(
+    tx: &TransactionRequest,
+    tokens: &TokenLookup,
+    input: &[u8],
+    meta: ActionMeta,
+) -> Result<RoutedAction, AdapterError> {
+    exact_input_single::decode(tx, tokens, input, meta)
+}
+
+pub(crate) fn decode_exact_output(
+    tx: &TransactionRequest,
+    tokens: &TokenLookup,
+    input: &[u8],
+    meta: ActionMeta,
+) -> Result<RoutedAction, AdapterError> {
+    exact_output::decode(tx, tokens, input, meta)
+}
+
+pub(crate) fn decode_exact_output_single(
+    tx: &TransactionRequest,
+    tokens: &TokenLookup,
+    input: &[u8],
+    meta: ActionMeta,
+) -> Result<RoutedAction, AdapterError> {
+    exact_output_single::decode(tx, tokens, input, meta)
+}
+
 pub(crate) fn pool_key_tokens(
     chain_id: ChainId,
     tokens: &TokenLookup,
@@ -104,7 +141,7 @@ pub(crate) fn pool_key_tokens(
 
 pub(crate) fn v4_fee_bips(fee: U24) -> Option<u32> {
     let fee = u32_from_u24(fee);
-    if fee & 0x800000 != 0 {
+    if fee & 0x0080_0000 != 0 {
         None
     } else {
         Some(fee / 100)
@@ -112,13 +149,14 @@ pub(crate) fn v4_fee_bips(fee: U24) -> Option<u32> {
 }
 
 pub(crate) fn v4_fee_bips_avg(fees: &[u32]) -> Option<u32> {
-    if fees.is_empty() || fees.iter().any(|fee| fee & 0x800000 != 0) {
+    if fees.is_empty() || fees.iter().any(|fee| fee & 0x0080_0000 != 0) {
         None
     } else {
-        Some(fees.iter().sum::<u32>() / (fees.len() as u32) / 100)
+        let len = u32::try_from(fees.len()).ok()?;
+        Some(fees.iter().sum::<u32>() / len / 100)
     }
 }
 
 pub(crate) fn u32_from_u24(value: U24) -> u32 {
-    u32::try_from(value).expect("uint24 always fits u32")
+    value.to::<u32>()
 }

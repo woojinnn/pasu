@@ -1,13 +1,13 @@
-//! Portfolio capability — current on-chain balance of `(owner, token)`.
-//!  
+//! Portfolio capability: current on-chain balance of `(owner, token)`.
+//!
 //! Lowering resolves balances via this trait at the request-construction stage
 //! and snapshots the returned `AmountSpec` into context under actor balance
 //! fields for deterministic policy evaluation.
-//!  
+//!
 //! The lookup key is a strict `(owner, token)` pair (including chain-aware
 //! token identity). A missing record is an explicit error and does not block
 //! evaluation; the context field is simply skipped.
-//!  
+//!
 //! When present, lowering also stamps `totalInputFractionOfPortfolioBps`,
 //! exposing normalized input sizing as a policy-usable ratio.
 
@@ -16,22 +16,38 @@ use alloy_primitives::U256;
 use std::collections::HashMap;
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+/// Portfolio balance lookup failures.
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum PortfolioError {
+    /// No balance record is available for this owner and token pair.
     #[error("no balance record for owner {owner} on token {token}")]
-    NoRecord { owner: String, token: String },
+    NoRecord {
+        /// Owner address.
+        owner: String,
+        /// Chain-qualified token key.
+        token: String,
+    },
 }
 
+/// Host portfolio capability.
 pub trait Portfolio: Send + Sync {
+    /// Return the current balance for `owner` and `token`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when no balance record is available.
     fn balance(&self, owner: &Address, token: &Token) -> Result<AmountSpec, PortfolioError>;
 }
 
+/// In-memory portfolio implementation for tests and demos.
 #[derive(Debug, Clone, Default)]
 pub struct MockPortfolio {
     balances: HashMap<String, AmountSpec>,
 }
 
 impl MockPortfolio {
+    /// Construct an empty mock portfolio.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -40,6 +56,8 @@ impl MockPortfolio {
         format!("{}/{}", owner.as_str(), token.key())
     }
 
+    /// Insert a balance and return the updated mock.
+    #[must_use]
     pub fn with_balance(mut self, owner: &Address, token: &Token, raw: U256) -> Self {
         let amount = AmountSpec::from_raw(token.clone(), raw);
         self.balances

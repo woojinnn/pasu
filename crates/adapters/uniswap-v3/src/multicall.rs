@@ -3,8 +3,10 @@
 //! This adapter treats multicall as structural: each supported child calldata
 //! is decoded into a leaf DEX action and merged into one aggregate DEX action.
 
+#[cfg(test)]
+use crate::common::SWAP_ROUTER_MAINNET;
 use crate::{
-    common::{merge_dex_actions, DecodeError, SWAP_ROUTER_MAINNET},
+    common::{merge_dex_actions, static_adapter_id, swap_router_address, DecodeError},
     exact_input, exact_input_single, exact_output, exact_output_single,
 };
 use alloy_sol_types::{sol, SolCall};
@@ -15,18 +17,24 @@ sol! {
     function multicall(uint256 deadline, bytes[] data) external payable returns (bytes[] results);
 }
 
+/// Selector for `multicall(bytes[])`.
 pub const SELECTOR_NO_DEADLINE: [u8; 4] = multicall_0Call::SELECTOR;
+/// Selector for `multicall(uint256,bytes[])`.
 pub const SELECTOR_DEADLINE: [u8; 4] = multicall_1Call::SELECTOR;
 
 const MAX_DEPTH: usize = 4;
 const MAX_CHILDREN: usize = 32;
 
-#[derive(Debug, Clone, PartialEq)]
+/// Decoded multicall parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Params {
+    /// Optional multicall deadline.
     pub deadline: Option<alloy_primitives::U256>,
+    /// Child calldata payloads.
     pub data: Vec<Vec<u8>>,
 }
 
+/// ABI-encode `multicall(bytes[])` calldata.
 pub fn encode_no_deadline(data: Vec<Vec<u8>>) -> Vec<u8> {
     multicall_0Call {
         data: data.into_iter().map(Into::into).collect(),
@@ -34,6 +42,7 @@ pub fn encode_no_deadline(data: Vec<Vec<u8>>) -> Vec<u8> {
     .abi_encode()
 }
 
+/// ABI-encode `multicall(uint256,bytes[])` calldata.
 pub fn encode_deadline(deadline: alloy_primitives::U256, data: Vec<Vec<u8>>) -> Vec<u8> {
     multicall_1Call {
         deadline,
@@ -42,6 +51,12 @@ pub fn encode_deadline(deadline: alloy_primitives::U256, data: Vec<Vec<u8>>) -> 
     .abi_encode()
 }
 
+/// Decode either supported multicall overload.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has an unsupported selector, or
+/// fails ABI decoding.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     if calldata.len() < 4 {
         return Err(DecodeError::TooShort {
@@ -78,6 +93,8 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
+/// Adapter for `SwapRouter` multicall expansion.
+#[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
     exact_input_single: exact_input_single::Adapter_,
@@ -87,9 +104,11 @@ pub struct Adapter_ {
 }
 
 impl Adapter_ {
+    /// Construct an adapter with mainnet `SwapRouter` and child adapters.
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, Address::new(SWAP_ROUTER_MAINNET).unwrap())],
+            chain_targets: vec![(1, swap_router_address())],
             exact_input_single: exact_input_single::Adapter_::new(),
             exact_input: exact_input::Adapter_::new(),
             exact_output_single: exact_output_single::Adapter_::new(),
@@ -173,7 +192,7 @@ impl Default for Adapter_ {
 
 impl Adapter for Adapter_ {
     fn id(&self) -> AdapterId {
-        AdapterId::new("uniswap-v3/multicall@0.1.0").expect("static AdapterId is well-formed")
+        static_adapter_id("uniswap-v3/multicall@0.1.0")
     }
 
     fn match_keys(&self) -> Vec<MatchKey> {
@@ -277,7 +296,7 @@ mod tests {
                     vec!["multicall", "exactInputSingle", "exactInputSingle"]
                 );
             }
-            other => panic!("expected dex, got {other:?}"),
+            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
         }
     }
 }

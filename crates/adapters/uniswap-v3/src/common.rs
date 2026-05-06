@@ -1,11 +1,12 @@
-//! Items shared across all Uniswap V3 SwapRouter function modules:
+//! Items shared across all Uniswap V3 `SwapRouter` function modules:
 //! known router addresses, the token registry the function adapters consult
 //! when they emit `Action`, and decimal helpers.
 
+use alloy_primitives::{address, Address as AlloyAddress};
 use policy_engine::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-/// SwapRouter (the original Uniswap V3 router) on mainnet.
+/// `SwapRouter` (the original Uniswap V3 router) on mainnet.
 pub const SWAP_ROUTER_MAINNET: &str = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
 
 /// Token registry baked into the adapter for v0.1. Production replaces this
@@ -13,33 +14,35 @@ pub const SWAP_ROUTER_MAINNET: &str = "0xE592427A0AEce92De3Edee1F18E0157C0586156
 ///
 /// Each per-function adapter (e.g., `exact_input_single`) holds one of these
 /// to look up `Token` metadata for the addresses it decodes from calldata.
+#[derive(Debug)]
 pub struct TokenLookup {
     tokens: HashMap<(ChainId, String), Token>,
 }
 
 impl TokenLookup {
     /// Builds a lookup pre-populated with USDT, USDC, and WETH on mainnet.
+    #[must_use]
     pub fn with_mainnet_defaults() -> Self {
-        let mut me = TokenLookup {
+        let mut me = Self {
             tokens: HashMap::new(),
         };
         me.add(Token {
             chain_id: 1,
-            address: Address::new("0xdAC17F958D2ee523a2206206994597C13D831ec7").unwrap(),
+            address: Address::from_alloy(address!("0xdac17f958d2ee523a2206206994597c13d831ec7")),
             symbol: "USDT".into(),
             decimals: 6,
             is_native: false,
         });
         me.add(Token {
             chain_id: 1,
-            address: Address::new("0xA0b86991C6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+            address: Address::from_alloy(address!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
             symbol: "USDC".into(),
             decimals: 6,
             is_native: false,
         });
         me.add(Token {
             chain_id: 1,
-            address: Address::new("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
+            address: Address::from_alloy(address!("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
             symbol: "WETH".into(),
             decimals: 18,
             is_native: false,
@@ -47,6 +50,7 @@ impl TokenLookup {
         me
     }
 
+    /// Adds or replaces one token by chain and address.
     pub fn add(&mut self, token: Token) {
         self.tokens.insert(
             (token.chain_id, token.address.as_str().to_lowercase()),
@@ -54,6 +58,8 @@ impl TokenLookup {
         );
     }
 
+    /// Returns this lookup after adding `token`.
+    #[must_use]
     pub fn with(mut self, token: Token) -> Self {
         self.add(token);
         self
@@ -61,6 +67,7 @@ impl TokenLookup {
 
     /// Look up a token; returns a synthetic `UNKNOWN` placeholder when missing
     /// so adapters can still emit a structurally valid `Action`.
+    #[must_use]
     pub fn get(&self, chain_id: ChainId, addr: &Address) -> Token {
         self.tokens
             .get(&(chain_id, addr.as_str().to_lowercase()))
@@ -81,6 +88,30 @@ impl Default for TokenLookup {
     }
 }
 
+pub(crate) fn swap_router_address() -> Address {
+    Address::from_alloy(address!("0xe592427a0aece92de3edee1f18e0157c05861564"))
+}
+
+#[allow(clippy::panic)]
+pub(crate) fn static_adapter_id(raw: &str) -> AdapterId {
+    match AdapterId::new(raw) {
+        Ok(id) => id,
+        Err(err) => panic!("invalid static adapter id {raw}: {err}"),
+    }
+}
+
+pub(crate) fn path_endpoints(
+    path: &[AlloyAddress],
+) -> Result<(AlloyAddress, AlloyAddress), AdapterError> {
+    if path.len() < 2 {
+        return Err(AdapterError::BadCalldata(format!(
+            "v3 path must contain at least 2 tokens, got {}",
+            path.len()
+        )));
+    }
+    Ok((path[0], path[path.len() - 1]))
+}
+
 /// Build the aggregate DEX action emitted by a single decoded swap call.
 #[allow(clippy::too_many_arguments)]
 pub fn dex_swap_action(
@@ -90,7 +121,7 @@ pub fn dex_swap_action(
     output_token: Token,
     input_raw: String,
     min_output_raw: Option<String>,
-    recipient: Address,
+    recipient: &Address,
     max_fee_bps: Option<u32>,
     trace_step: impl Into<String>,
 ) -> Action {
@@ -100,7 +131,8 @@ pub fn dex_swap_action(
         raw_amount: input_raw,
     }];
 
-    if let Some(raw_amount) = min_output_raw.clone() {
+    let has_zero_min_output = min_output_raw.as_deref() == Some("0");
+    if let Some(raw_amount) = min_output_raw {
         oracle_requirements.push(OracleRequirement {
             kind: OracleRequirementKind::MinOutput,
             token: output_token.clone(),
@@ -117,8 +149,8 @@ pub fn dex_swap_action(
             input_tokens: vec![input_token],
             output_tokens: vec![output_token],
             max_fee_bps,
-            has_zero_min_output: min_output_raw.as_deref() == Some("0"),
-            has_external_recipient: recipient != tx.from,
+            has_zero_min_output,
+            has_external_recipient: recipient != &tx.from,
             ..DexFacts::default()
         },
         oracle_requirements,
@@ -129,6 +161,10 @@ pub fn dex_swap_action(
 }
 
 /// Merge child DEX actions from a structural router call into one aggregate.
+///
+/// # Errors
+///
+/// Returns an error if any child action is not a DEX action.
 pub fn merge_dex_actions(
     tx: &TransactionRequest,
     actions: Vec<Action>,
@@ -200,9 +236,10 @@ pub fn merge_dex_actions(
 /// produce a human-readable decimal string.
 ///
 /// Examples:
-///   shift_decimals("200000000", 6)  == "200.000000"
-///   shift_decimals("0", 6)          == "0.000000"
-///   shift_decimals("1", 18)         == "0.000000000000000001"
+///   `shift_decimals("200000000`", 6)  == "200.000000"
+///   `shift_decimals("0`", 6)          == "0.000000"
+///   `shift_decimals("1`", 18)         == "0.000000000000000001"
+#[must_use]
 pub fn shift_decimals(value: &str, decimals: u32) -> String {
     if decimals == 0 {
         return value.to_string();
@@ -224,9 +261,11 @@ pub fn shift_decimals(value: &str, decimals: u32) -> String {
 /// so `path.len() == 20 + 23 * hops`.
 ///
 /// Returns `(tokens, fees)`: `tokens.len() == hops + 1`, `fees.len() == hops`.
-pub fn decode_v3_path(
-    path: &[u8],
-) -> Result<(Vec<alloy_primitives::Address>, Vec<u32>), DecodeError> {
+///
+/// # Errors
+///
+/// Returns an error if the path length is not a valid V3 packed path length.
+pub fn decode_v3_path(path: &[u8]) -> Result<(Vec<AlloyAddress>, Vec<u32>), DecodeError> {
     if path.len() < 20 + 23 || !(path.len() - 20).is_multiple_of(23) {
         return Err(DecodeError::AbiDecode(format!(
             "invalid Uniswap V3 path length: {} (must be 20 + 23*N)",
@@ -239,31 +278,42 @@ pub fn decode_v3_path(
 
     let mut cursor = 0;
     for _ in 0..hops {
-        tokens.push(alloy_primitives::Address::from_slice(
-            &path[cursor..cursor + 20],
-        ));
+        tokens.push(AlloyAddress::from_slice(&path[cursor..cursor + 20]));
         cursor += 20;
         let fee_bytes = &path[cursor..cursor + 3];
-        let fee =
-            ((fee_bytes[0] as u32) << 16) | ((fee_bytes[1] as u32) << 8) | (fee_bytes[2] as u32);
+        let fee = (u32::from(fee_bytes[0]) << 16)
+            | (u32::from(fee_bytes[1]) << 8)
+            | u32::from(fee_bytes[2]);
         fees.push(fee);
         cursor += 3;
     }
-    tokens.push(alloy_primitives::Address::from_slice(
-        &path[cursor..cursor + 20],
-    ));
+    tokens.push(AlloyAddress::from_slice(&path[cursor..cursor + 20]));
     Ok((tokens, fees))
 }
 
 /// Common decode error kinds used by the per-function modules.
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DecodeError {
+    /// Calldata is shorter than the minimum required length.
     #[error("calldata too short: need at least {need} bytes, got {got}")]
-    TooShort { need: usize, got: usize },
+    TooShort {
+        /// Required byte length.
+        need: usize,
+        /// Actual byte length.
+        got: usize,
+    },
+    /// The four-byte selector does not match the expected function.
     #[error("unexpected selector: got 0x{got}, expected 0x{want}")]
-    BadSelector { got: String, want: String },
+    BadSelector {
+        /// Observed selector hex.
+        got: String,
+        /// Expected selector hex.
+        want: String,
+    },
+    /// ABI decoding failed.
     #[error("ABI decode failed: {0}")]
     AbiDecode(String),
+    /// A decoded uint24 fee could not be widened.
     #[error("uint24 fee value {0} doesn't fit u32 (should never happen for valid V3 calldata)")]
     FeeOutOfRange(String),
 }

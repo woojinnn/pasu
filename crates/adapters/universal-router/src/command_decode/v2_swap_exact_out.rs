@@ -1,13 +1,15 @@
 //! Universal Router command `V2_SWAP_EXACT_OUT`.
 
-use crate::commands::{map_recipient, swap_action, token, ActionMeta, RoutedAction};
+use crate::commands::{
+    map_recipient, path_endpoints, swap_action, token, ActionMeta, RoutedAction,
+};
 use crate::common::TokenLookup;
 use alloy_sol_types::{sol, SolType};
 use policy_engine::prelude::*;
 
 type Input = sol! { (address, uint256, uint256, address[], bool, uint256[]) };
 
-pub(crate) fn decode(
+pub(super) fn decode(
     tx: &TransactionRequest,
     tokens: &TokenLookup,
     input: &[u8],
@@ -16,13 +18,10 @@ pub(crate) fn decode(
     let (recipient, amount_out, amount_in_max, path, _payer_is_user, _min_hop) =
         Input::abi_decode_sequence(input, true)
             .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
-    if path.len() < 2 {
-        return Err(AdapterError::BadCalldata(
-            "v2 path must contain at least 2 tokens".into(),
-        ));
-    }
-    let token_in = token(tokens, tx.chain_id, *path.first().unwrap());
-    let token_out = token(tokens, tx.chain_id, *path.last().unwrap());
+    let (token_in_addr, token_out_addr) = path_endpoints(&path, "v2")?;
+    let token_in = token(tokens, tx.chain_id, token_in_addr);
+    let token_out = token(tokens, tx.chain_id, token_out_addr);
+    let recipient = map_recipient(tx, recipient);
     let action = swap_action(
         tx,
         "uniswap-v2",
@@ -30,7 +29,7 @@ pub(crate) fn decode(
         token_out,
         amount_in_max,
         amount_out,
-        map_recipient(tx, recipient),
+        &recipient,
         Some(30),
         &meta,
     );

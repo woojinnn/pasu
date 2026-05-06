@@ -7,7 +7,7 @@ use alloy_primitives::U256;
 use alloy_sol_types::SolValue;
 use policy_engine::prelude::*;
 
-pub(crate) fn decode(
+pub(super) fn decode(
     tx: &TransactionRequest,
     tokens: &TokenLookup,
     input: &[u8],
@@ -23,7 +23,7 @@ pub(crate) fn decode(
         token_out,
         U256::from(p.amountInMaximum),
         U256::from(p.amountOut),
-        tx.from.clone(),
+        &tx.from,
         v4_fee_bips(p.poolKey.fee),
         &meta,
     );

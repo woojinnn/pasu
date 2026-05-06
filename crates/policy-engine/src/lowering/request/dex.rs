@@ -77,6 +77,7 @@ fn context(action: &DexAction) -> Value {
     Value::Object(context)
 }
 
+#[derive(Clone, Copy)]
 enum TokenSide {
     Input,
     Output,

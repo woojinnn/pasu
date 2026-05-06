@@ -1,9 +1,12 @@
-//! Uniswap V3 SwapRouter `exactOutput` — multi-hop, exact-out. The path is
+//! Uniswap V3 `SwapRouter` `exactOutput` — multi-hop, exact-out. The path is
 //! reversed in V3 semantics for exact-out (last token is `tokenIn`, first is
-//! `tokenOut`); see Uniswap V3 docs §SwapRouter.
+//! `tokenOut`); see Uniswap V3 docs §`SwapRouter`.
 
+#[cfg(test)]
+use crate::common::SWAP_ROUTER_MAINNET;
 use crate::common::{
-    decode_v3_path, dex_swap_action, DecodeError, TokenLookup, SWAP_ROUTER_MAINNET,
+    decode_v3_path, dex_swap_action, path_endpoints, static_adapter_id, swap_router_address,
+    DecodeError, TokenLookup,
 };
 use alloy_primitives::{Address as AlloyAddress, U256};
 use alloy_sol_types::{sol, SolCall};
@@ -22,17 +25,26 @@ sol! {
     function exactOutput(SolExactOutputParams params) external payable returns (uint256 amountIn);
 }
 
+/// Selector for `exactOutput`.
 pub const SELECTOR: [u8; 4] = exactOutputCall::SELECTOR;
 
-#[derive(Debug, Clone, PartialEq)]
+/// Decoded `exactOutput` parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Params {
+    /// Packed V3 path from output token to input token.
     pub path: Vec<u8>,
+    /// Recipient address.
     pub recipient: AlloyAddress,
+    /// Swap deadline.
     pub deadline: U256,
+    /// Exact output amount.
     pub amount_out: U256,
+    /// Maximum input amount.
     pub amount_in_maximum: U256,
 }
 
+/// ABI-encode `exactOutput` calldata.
+#[must_use]
 pub fn encode(p: &Params) -> Vec<u8> {
     exactOutputCall {
         params: SolExactOutputParams {
@@ -46,6 +58,12 @@ pub fn encode(p: &Params) -> Vec<u8> {
     .abi_encode()
 }
 
+/// Decode `exactOutput` calldata.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has the wrong selector, or
+/// fails ABI decoding.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     if calldata.len() < 4 {
         return Err(DecodeError::TooShort {
@@ -71,15 +89,19 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
+/// Adapter for `exactOutput`.
+#[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
     tokens: TokenLookup,
 }
 
 impl Adapter_ {
+    /// Construct an adapter with mainnet `SwapRouter` and default token metadata.
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, Address::new(SWAP_ROUTER_MAINNET).unwrap())],
+            chain_targets: vec![(1, swap_router_address())],
             tokens: TokenLookup::with_mainnet_defaults(),
         }
     }
@@ -93,7 +115,7 @@ impl Default for Adapter_ {
 
 impl Adapter for Adapter_ {
     fn id(&self) -> AdapterId {
-        AdapterId::new("uniswap-v3/exactOutput@0.1.0").expect("static AdapterId is well-formed")
+        static_adapter_id("uniswap-v3/exactOutput@0.1.0")
     }
 
     fn match_keys(&self) -> Vec<MatchKey> {
@@ -109,8 +131,9 @@ impl Adapter for Adapter_ {
             decode_v3_path(&p.path).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
 
         // exactOutput's path is reversed: first element is tokenOut, last is tokenIn.
-        let token_out_addr = Address::from_alloy(*alloy_tokens.first().unwrap());
-        let token_in_addr = Address::from_alloy(*alloy_tokens.last().unwrap());
+        let (token_out, token_in) = path_endpoints(&alloy_tokens)?;
+        let token_out_addr = Address::from_alloy(token_out);
+        let token_in_addr = Address::from_alloy(token_in);
         let recipient_addr = Address::from_alloy(p.recipient);
 
         let input_token = self.tokens.get(tx.chain_id, &token_in_addr);
@@ -125,7 +148,7 @@ impl Adapter for Adapter_ {
             output_token,
             p.amount_in_maximum.to_string(),
             Some(p.amount_out.to_string()),
-            recipient_addr,
+            &recipient_addr,
             max_fee_bps,
             "exactOutput",
         ))
@@ -197,7 +220,7 @@ mod tests {
                 assert_eq!(d.oracle_requirements[1].raw_amount, "1000000000000000000");
                 assert_eq!(d.trace.steps, vec!["exactOutput"]);
             }
-            _ => panic!("expected dex"),
+            Action::Other(_) => panic!("expected dex"),
         }
     }
 }

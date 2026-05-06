@@ -1,11 +1,14 @@
-//! Uniswap V3 SwapRouter `exactInputSingle` — everything for this one function:
-//! the `sol!` declaration, the encode/decode pair, and the `Adapter` impl that
-//! turns a matching `TransactionRequest` into a DEX action.
+//! Uniswap V3 `SwapRouter` `exactInputSingle`.
 //!
-//! Mainnet SwapRouter (the original V3 router with `deadline` in the params
+//! This module contains the `sol!` declaration, encode/decode pair, and adapter
+//! implementation for a matching `TransactionRequest`.
+//!
+//! Mainnet `SwapRouter` (the original V3 router with `deadline` in the params
 //! struct) lives at `0xE592427A0AEce92De3Edee1F18E0157C05861564`.
 
-use crate::common::{dex_swap_action, DecodeError, TokenLookup, SWAP_ROUTER_MAINNET};
+#[cfg(test)]
+use crate::common::SWAP_ROUTER_MAINNET;
+use crate::common::{dex_swap_action, swap_router_address, DecodeError, TokenLookup};
 use alloy_primitives::{
     aliases::{U160, U24},
     Address as AlloyAddress, U256,
@@ -35,22 +38,32 @@ sol! {
 /// Computed by the `sol!` macro from the Solidity signature above (= `0x414bf389`).
 pub const SELECTOR: [u8; 4] = exactInputSingleCall::SELECTOR;
 
-/// Public-facing decoded parameters. Idiomatic Rust types — callers don't see
-/// alloy's typed `Uint<24>` / `Uint<160>`. We widen `sqrt_price_limit_x96` to
-/// U256 to keep the surface uniform; encoding narrows it back to U160.
-#[derive(Debug, Clone, PartialEq)]
+/// Public-facing decoded parameters.
+///
+/// Callers do not see alloy's typed `Uint<24>` / `Uint<160>`. The
+/// `sqrt_price_limit_x96` value is widened to `U256` and narrowed on encode.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Params {
+    /// Input token address.
     pub token_in: AlloyAddress,
+    /// Output token address.
     pub token_out: AlloyAddress,
+    /// Pool fee tier in hundredths of a bip.
     pub fee: u32,
+    /// Recipient address.
     pub recipient: AlloyAddress,
+    /// Swap deadline.
     pub deadline: U256,
+    /// Exact input amount.
     pub amount_in: U256,
+    /// Minimum acceptable output amount.
     pub amount_out_minimum: U256,
+    /// Optional sqrt price limit.
     pub sqrt_price_limit_x96: U256,
 }
 
 /// ABI-encode the call (selector + ABI-encoded tuple).
+#[must_use]
 pub fn encode(p: &Params) -> Vec<u8> {
     // U160::saturating semantics: input is U256 wide for API ergonomics, but
     // the on-chain field is uint160. A larger value is a programming mistake;
@@ -77,6 +90,11 @@ pub fn encode(p: &Params) -> Vec<u8> {
 }
 
 /// ABI-decode calldata that begins with the `exactInputSingle` selector.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has the wrong selector, fails
+/// ABI decoding, or contains an out-of-range fee.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     const NEED: usize = 4 + 8 * 32;
 
@@ -119,19 +137,24 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
 }
 
 /// Adapter for `exactInputSingle`. Holds chain-target list + token lookup.
+#[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
     tokens: TokenLookup,
 }
 
 impl Adapter_ {
+    /// Construct an adapter with mainnet `SwapRouter` and default token metadata.
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, Address::new(SWAP_ROUTER_MAINNET).unwrap())],
+            chain_targets: vec![(1, swap_router_address())],
             tokens: TokenLookup::with_mainnet_defaults(),
         }
     }
 
+    /// Returns this adapter after adding `token` to its lookup.
+    #[must_use]
     pub fn with_token(mut self, token: Token) -> Self {
         self.tokens.add(token);
         self
@@ -179,7 +202,7 @@ impl TypedAdapter for Adapter_ {
             output_token,
             p.amount_in.to_string(),
             Some(p.amount_out_minimum.to_string()),
-            recipient_addr,
+            &recipient_addr,
             Some(p.fee / 100),
             "exactInputSingle",
         ))
@@ -319,7 +342,7 @@ mod tests {
                 assert_eq!(d.oracle_requirements[1].raw_amount, "0");
                 assert_eq!(d.trace.steps, vec!["exactInputSingle"]);
             }
-            _ => panic!("expected dex action"),
+            Action::Other(_) => panic!("expected dex action"),
         }
     }
 
@@ -339,7 +362,7 @@ mod tests {
         };
         match adapter.build(&tx).unwrap() {
             Action::Dex(d) => assert_eq!(d.facts.input_tokens[0].symbol, "UNKNOWN"),
-            _ => panic!("expected dex"),
+            Action::Other(_) => panic!("expected dex"),
         }
     }
 

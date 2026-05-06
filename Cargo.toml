@@ -23,11 +23,11 @@ cedar-policy = "4"
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-thiserror = "1"
+thiserror = "2"
 
 # Internal crates referenced by path.
-policy-engine = { path = "crates/policy-engine" }
-policy-engine-adapter-uniswap-v2 = { path = "crates/adapters/uniswap-v2" }
-policy-engine-adapter-uniswap-v3 = { path = "crates/adapters/uniswap-v3" }
-policy-engine-adapter-universal-router = { path = "crates/adapters/universal-router" }
-policy-engine-adapters-bundle = { path = "crates/adapters-bundle" }
+policy-engine = { path = "crates/policy-engine", version = "0.1.0" }
+policy-engine-adapter-uniswap-v2 = { path = "crates/adapters/uniswap-v2", version = "0.1.0" }
+policy-engine-adapter-uniswap-v3 = { path = "crates/adapters/uniswap-v3", version = "0.1.0" }
+policy-engine-adapter-universal-router = { path = "crates/adapters/universal-router", version = "0.1.0" }
+policy-engine-adapters-bundle = { path = "crates/adapters-bundle", version = "0.1.0" }

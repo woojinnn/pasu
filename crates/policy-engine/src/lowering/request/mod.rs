@@ -1,4 +1,4 @@
-//! PolicyRequest builders.
+//! `PolicyRequest` builders.
 //!
 //! Each semantic action lowers to exactly one policy request.
 

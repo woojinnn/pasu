@@ -2,8 +2,11 @@
 //! address[] path, address to, uint256 deadline)`. Payable — `amountIn` is
 //! `msg.value`, and the input token is native ETH.
 
+#[cfg(test)]
+use crate::common::UNISWAP_V2_ROUTER_MAINNET;
 use crate::common::{
-    dex_swap_action, native_eth, DecodeError, TokenLookup, UNISWAP_V2_ROUTER_MAINNET,
+    dex_swap_action, native_eth, path_endpoints, router_address, static_adapter_id, DecodeError,
+    TokenLookup,
 };
 use alloy_primitives::{Address as AlloyAddress, U256};
 use alloy_sol_types::{sol, SolCall};
@@ -18,16 +21,24 @@ sol! {
     ) external payable returns (uint256[] amounts);
 }
 
+/// Selector for `swapExactETHForTokens`.
 pub const SELECTOR: [u8; 4] = swapExactETHForTokensCall::SELECTOR;
 
-#[derive(Debug, Clone, PartialEq)]
+/// Decoded `swapExactETHForTokens` parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Params {
+    /// Minimum acceptable output token amount.
     pub amount_out_min: U256,
+    /// Ordered token path, starting with WETH and ending with output token.
     pub path: Vec<AlloyAddress>,
+    /// Recipient address.
     pub to: AlloyAddress,
+    /// Swap deadline.
     pub deadline: U256,
 }
 
+/// ABI-encode `swapExactETHForTokens` calldata.
+#[must_use]
 pub fn encode(p: &Params) -> Vec<u8> {
     swapExactETHForTokensCall {
         amountOutMin: p.amount_out_min,
@@ -38,6 +49,12 @@ pub fn encode(p: &Params) -> Vec<u8> {
     .abi_encode()
 }
 
+/// Decode `swapExactETHForTokens` calldata.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has the wrong selector, fails
+/// ABI decoding, or contains a path with fewer than two tokens.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     if calldata.len() < 4 {
         return Err(DecodeError::TooShort {
@@ -65,15 +82,19 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
+/// Adapter for `swapExactETHForTokens`.
+#[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
     tokens: TokenLookup,
 }
 
 impl Adapter_ {
+    /// Construct an adapter with mainnet Router02 and default token metadata.
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, Address::new(UNISWAP_V2_ROUTER_MAINNET).unwrap())],
+            chain_targets: vec![(1, router_address())],
             tokens: TokenLookup::with_mainnet_defaults(),
         }
     }
@@ -87,8 +108,7 @@ impl Default for Adapter_ {
 
 impl Adapter for Adapter_ {
     fn id(&self) -> AdapterId {
-        AdapterId::new("uniswap-v2/swapExactETHForTokens@0.1.0")
-            .expect("static AdapterId is well-formed")
+        static_adapter_id("uniswap-v2/swapExactETHForTokens@0.1.0")
     }
 
     fn match_keys(&self) -> Vec<MatchKey> {
@@ -100,7 +120,8 @@ impl Adapter for Adapter_ {
 
     fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
         let p = decode(&tx.data).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
-        let token_out_addr = Address::from_alloy(*p.path.last().unwrap());
+        let (_, token_out) = path_endpoints(&p.path)?;
+        let token_out_addr = Address::from_alloy(token_out);
         let recipient_addr = Address::from_alloy(p.to);
 
         let input_token = native_eth(tx.chain_id);
@@ -113,7 +134,7 @@ impl Adapter for Adapter_ {
             output_token,
             tx.value_wei.clone(),
             Some(p.amount_out_min.to_string()),
-            recipient_addr,
+            &recipient_addr,
             Some(30),
             "uniswap-v2/swapExactETHForTokens",
         ))
@@ -176,7 +197,7 @@ mod tests {
                 );
                 assert_eq!(d.oracle_requirements[1].raw_amount, "0");
             }
-            _ => panic!("expected dex"),
+            Action::Other(_) => panic!("expected dex"),
         }
     }
 }

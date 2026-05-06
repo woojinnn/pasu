@@ -7,7 +7,7 @@ use alloy_primitives::U256;
 use alloy_sol_types::SolValue;
 use policy_engine::prelude::*;
 
-pub(crate) fn decode(
+pub(super) fn decode(
     tx: &TransactionRequest,
     tokens: &TokenLookup,
     input: &[u8],
@@ -20,7 +20,7 @@ pub(crate) fn decode(
             "v4 exact-out path is empty".into(),
         ));
     }
-    let token_in_addr = currency_to_policy_address(p.path.last().unwrap().intermediateCurrency);
+    let token_in_addr = currency_to_policy_address(p.path[p.path.len() - 1].intermediateCurrency);
     let token_out_addr = currency_to_policy_address(p.currencyOut);
     let fees = p
         .path
@@ -34,7 +34,7 @@ pub(crate) fn decode(
         tokens.get(tx.chain_id, &token_out_addr),
         U256::from(p.amountInMaximum),
         U256::from(p.amountOut),
-        tx.from.clone(),
+        &tx.from,
         v4_fee_bips_avg(&fees),
         &meta,
     );

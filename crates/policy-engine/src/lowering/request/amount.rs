@@ -1,71 +1,93 @@
 //! Shared Cedar JSON serialization for amount-shaped context fields.
 
+use crate::context_keys::{
+    ADDRESS, AS_OF_TS, CHAIN_ID, DECIMALS, EXTN_ARG, EXTN_DECIMAL, EXTN_FN, EXTN_KEY, IS_NATIVE,
+    SOURCES, STALE_SEC, SYMBOL, VALUE,
+};
 use crate::core::{Token, UsdValuation};
-use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
-#[derive(Serialize)]
-struct DecimalValue<'a> {
-    #[serde(rename = "__extn")]
-    extn: DecimalExtn<'a>,
+pub(super) fn decimal_json(value: &str) -> Value {
+    let mut extension = Map::new();
+    extension.insert(EXTN_FN.into(), Value::from(EXTN_DECIMAL));
+    extension.insert(EXTN_ARG.into(), Value::from(value));
+
+    let mut out = Map::new();
+    out.insert(EXTN_KEY.into(), Value::Object(extension));
+    Value::Object(out)
 }
 
-#[derive(Serialize)]
-struct DecimalExtn<'a> {
-    #[serde(rename = "fn")]
-    function: &'static str,
-    arg: &'a str,
+pub(super) fn token_json(token: &Token) -> Value {
+    let mut out = Map::new();
+    out.insert(CHAIN_ID.into(), Value::from(cedar_long_u64(token.chain_id)));
+    out.insert(ADDRESS.into(), Value::from(token.address.as_str()));
+    out.insert(SYMBOL.into(), Value::from(token.symbol.as_str()));
+    out.insert(DECIMALS.into(), Value::from(i64::from(token.decimals)));
+    out.insert(IS_NATIVE.into(), Value::from(token.is_native));
+    Value::Object(out)
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct TokenContext<'a> {
-    chain_id: i64,
-    address: &'a str,
-    symbol: &'a str,
-    decimals: i64,
-    is_native: bool,
+pub(super) fn usd_valuation_json(valuation: &UsdValuation) -> Value {
+    let mut out = Map::new();
+    out.insert(VALUE.into(), decimal_json(&valuation.value));
+    out.insert(
+        AS_OF_TS.into(),
+        Value::from(cedar_long_u64(valuation.as_of_ts)),
+    );
+    out.insert(
+        STALE_SEC.into(),
+        Value::from(cedar_long_u64(valuation.stale_sec)),
+    );
+    out.insert(
+        SOURCES.into(),
+        Value::Array(
+            valuation
+                .sources
+                .iter()
+                .map(|source| Value::from(source.as_str()))
+                .collect(),
+        ),
+    );
+    Value::Object(out)
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct UsdValuationContext<'a> {
-    value: DecimalValue<'a>,
-    as_of_ts: i64,
-    stale_sec: i64,
-    sources: &'a [String],
+fn cedar_long_u64(value: u64) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
 }
 
-pub(crate) fn decimal_json(value: &str) -> Value {
-    serde_json::to_value(decimal_value(value)).expect("decimal context serializes")
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::Address;
+    use serde_json::json;
 
-pub(crate) fn token_json(token: &Token) -> Value {
-    serde_json::to_value(TokenContext {
-        chain_id: token.chain_id as i64,
-        address: token.address.as_str(),
-        symbol: &token.symbol,
-        decimals: token.decimals as i64,
-        is_native: token.is_native,
-    })
-    .expect("token context serializes")
-}
+    #[test]
+    fn decimal_json_uses_cedar_extension_keys() {
+        assert_eq!(
+            decimal_json("12.34"),
+            json!({ "__extn": { "fn": "decimal", "arg": "12.34" } })
+        );
+    }
 
-pub(crate) fn usd_valuation_json(valuation: &UsdValuation) -> Value {
-    serde_json::to_value(UsdValuationContext {
-        value: decimal_value(&valuation.value),
-        as_of_ts: valuation.as_of_ts as i64,
-        stale_sec: valuation.stale_sec as i64,
-        sources: &valuation.sources,
-    })
-    .expect("usd valuation context serializes")
-}
+    #[test]
+    fn token_json_uses_schema_field_names() {
+        let token = Token {
+            chain_id: 1,
+            address: Address::new("0xdAC17F958D2ee523a2206206994597C13D831ec7").unwrap(),
+            symbol: "USDT".into(),
+            decimals: 6,
+            is_native: false,
+        };
 
-fn decimal_value(value: &str) -> DecimalValue<'_> {
-    DecimalValue {
-        extn: DecimalExtn {
-            function: "decimal",
-            arg: value,
-        },
+        assert_eq!(
+            token_json(&token),
+            json!({
+                "chainId": 1,
+                "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+                "symbol": "USDT",
+                "decimals": 6,
+                "isNative": false,
+            })
+        );
     }
 }

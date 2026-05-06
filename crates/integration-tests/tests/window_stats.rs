@@ -114,7 +114,7 @@ fn window_stats_reservation_is_visible_to_next_evaluation() {
     let volume_key = stats_key();
     assert_eq!(
         stats
-            .snapshot(&from_address(), &[volume_key.clone()])
+            .snapshot(&from_address(), &[volume_key])
             .get(&volume_key),
         Some(&StatValue::Decimal("3000.0000".into()))
     );
@@ -124,7 +124,7 @@ fn window_stats_reservation_is_visible_to_next_evaluation() {
 
     assert_eq!(
         stats
-            .snapshot(&from_address(), &[volume_key.clone()])
+            .snapshot(&from_address(), &[volume_key])
             .get(&volume_key),
         Some(&StatValue::Decimal("3000.0000".into()))
     );

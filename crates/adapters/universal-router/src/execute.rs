@@ -1,7 +1,9 @@
 //! Universal Router `execute(bytes,bytes[])`.
 
 use crate::commands::{expand_commands, merge_dex_actions, RoutedAction};
-use crate::common::{TokenLookup, UNIVERSAL_ROUTER_MAINNET};
+#[cfg(test)]
+use crate::common::UNIVERSAL_ROUTER_MAINNET;
+use crate::common::{router_address, TokenLookup};
 use alloy_primitives::U256;
 use alloy_sol_types::{sol, SolCall};
 use policy_engine::prelude::*;
@@ -10,27 +12,49 @@ sol! {
     function execute(bytes commands, bytes[] inputs) external payable;
 }
 
+/// Selector for `execute(bytes,bytes[])`.
 pub const SELECTOR_EXECUTE: [u8; 4] = executeCall::SELECTOR;
 
-#[derive(Debug, Clone, PartialEq)]
+/// Decoded Universal Router execute parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Params {
+    /// Command bytes.
     pub commands: Vec<u8>,
+    /// ABI-encoded input payloads, one per command.
     pub inputs: Vec<Vec<u8>>,
+    /// Optional deadline from the overloaded execute form.
     pub deadline: Option<U256>,
 }
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+/// Errors returned by Universal Router execute decoders.
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DecodeError {
+    /// Calldata is shorter than the minimum required length.
     #[error("calldata too short: need at least {need} bytes, got {got}")]
-    TooShort { need: usize, got: usize },
+    TooShort {
+        /// Required byte length.
+        need: usize,
+        /// Actual byte length.
+        got: usize,
+    },
+    /// The four-byte selector does not match a supported execute overload.
     #[error("unexpected selector: got 0x{got}, expected 0x{want}")]
-    BadSelector { got: String, want: String },
+    BadSelector {
+        /// Observed selector hex.
+        got: String,
+        /// Expected selector hex.
+        want: String,
+    },
+    /// ABI decoding failed.
     #[error("ABI decode failed: {0}")]
     AbiDecode(String),
+    /// Decoded command or action is not supported.
     #[error("{0}")]
     Unsupported(String),
 }
 
+/// ABI-encode `execute(bytes,bytes[])` calldata.
+#[must_use]
 pub fn encode_execute(commands: Vec<u8>, inputs: Vec<Vec<u8>>) -> Vec<u8> {
     executeCall {
         commands: commands.into(),
@@ -39,6 +63,12 @@ pub fn encode_execute(commands: Vec<u8>, inputs: Vec<Vec<u8>>) -> Vec<u8> {
     .abi_encode()
 }
 
+/// Decode either supported Universal Router execute overload.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has an unsupported selector, or
+/// fails ABI decoding.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     if calldata.len() < 4 {
         return Err(DecodeError::TooShort {
@@ -71,15 +101,19 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
+/// Adapter for Universal Router execute calls.
+#[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
     tokens: TokenLookup,
 }
 
 impl Adapter_ {
+    /// Construct an adapter with mainnet Universal Router and default tokens.
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, Address::new(UNIVERSAL_ROUTER_MAINNET).unwrap())],
+            chain_targets: vec![(1, router_address())],
             tokens: TokenLookup::with_mainnet_defaults(),
         }
     }
@@ -220,7 +254,7 @@ mod tests {
                     .iter()
                     .any(|step| step.contains("V3_SWAP_EXACT_IN")));
             }
-            other => panic!("expected dex, got {other:?}"),
+            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
         }
     }
 
@@ -276,7 +310,7 @@ mod tests {
                     .iter()
                     .any(|step| step.contains("V4_SWAP_EXACT_IN_SINGLE")));
             }
-            other => panic!("expected dex, got {other:?}"),
+            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
         }
     }
 
@@ -331,7 +365,7 @@ mod tests {
                     .iter()
                     .any(|step| step.contains("V2_SWAP_EXACT_IN")));
             }
-            other => panic!("expected dex, got {other:?}"),
+            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
         }
     }
 

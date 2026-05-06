@@ -1,16 +1,16 @@
-//! Stateful stat-windows capability — time/session-bounded counters
-//! the host maintains (cumulative swap USD, swap counts, distinct
-//! recipients, …). The engine reads a snapshot at evaluation time and can
-//! also fold a reservation-driven delta that represents the current
-//! tx's intent, so policy checks reason over projected post-this-tx values.
-//!  
+//! Stateful stat-windows capability.
+//!
+//! The host maintains time/session-bounded counters such as cumulative swap
+//! USD and swap counts. The engine reads a snapshot at evaluation time and can
+//! fold a reservation-driven delta representing the current transaction intent.
+//!
 //! Snapshots include active reservations so concurrent callers can observe in-
 //! flight intent before commit, which is the reserve-first contract used by
 //! `Pipeline::evaluate_with_reservation`.
-//!  
+//!
 //! A confirmed reservation becomes durable history on `settle`, while `release`
 //! rolls back that reserved delta and reverts the projected view.
-//!  
+//!
 //! v0.1: in-memory `MockStatWindows` only, no time-decay (every
 //! settled delta sticks forever). Production impls would timestamp
 //! settled entries and prune outside their window.
@@ -21,33 +21,46 @@ use crate::lowering::add_decimal_strings;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+/// Stat-window key understood by the policy engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StatKey(&'static str);
 
 impl StatKey {
+    /// Rolling 24-hour swap volume key.
     pub const SWAP_VOLUME_USD_24H: Self = Self(SWAP_VOLUME_USD_24H);
+    /// Rolling 24-hour swap count key.
     pub const SWAP_COUNT_24H: Self = Self(SWAP_COUNT_24H);
 
-    pub fn as_str(&self) -> &'static str {
+    /// String key used in Cedar context.
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         self.0
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// Value stored in a stat window.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatValue {
+    /// Decimal string value.
     Decimal(String),
+    /// Integer count value.
     Count(i64),
 }
 
+/// Reservation id returned by a stat-window provider.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ReservationId(pub u64);
 
-#[derive(Debug, Clone, PartialEq)]
+/// Tentative stat-window delta for one key.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatDelta {
+    /// Stat key to update.
     pub key: StatKey,
+    /// Delta value to add.
     pub value: StatValue,
 }
 
+/// Host stat-window capability.
 pub trait StatWindows: Send + Sync {
     /// Frozen snapshot of the requested keys. MUST include effects of
     /// any active reservations so concurrent evaluations don't read
@@ -66,12 +79,13 @@ pub trait StatWindows: Send + Sync {
     fn release(&self, id: ReservationId);
 }
 
-#[derive(Default)]
+/// In-memory stat-window provider for tests and demos.
+#[derive(Debug, Default)]
 pub struct MockStatWindows {
     inner: Mutex<MockStatWindowsInner>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct MockStatWindowsInner {
     next_id: u64,
     confirmed: HashMap<Address, HashMap<StatKey, StatValue>>,
@@ -79,6 +93,8 @@ struct MockStatWindowsInner {
 }
 
 impl MockStatWindows {
+    /// Construct an empty mock stat-window provider.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -87,7 +103,7 @@ impl MockStatWindows {
     pub fn confirmed(&self, owner: &Address, key: &StatKey) -> Option<StatValue> {
         self.inner
             .lock()
-            .unwrap_or_else(|error| error.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .confirmed
             .get(owner)
             .and_then(|stats| stats.get(key))
@@ -98,7 +114,7 @@ impl MockStatWindows {
     fn reservation_count(&self) -> usize {
         self.inner
             .lock()
-            .unwrap_or_else(|error| error.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .reservations
             .len()
     }
@@ -106,7 +122,10 @@ impl MockStatWindows {
 
 impl StatWindows for MockStatWindows {
     fn snapshot(&self, owner: &Address, keys: &[StatKey]) -> HashMap<StatKey, StatValue> {
-        let inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        let inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut out = HashMap::new();
 
         let confirmed = inner.confirmed.get(owner);
@@ -120,9 +139,9 @@ impl StatWindows for MockStatWindows {
                     if &delta.key != key {
                         continue;
                     }
-                    snapshot = Some(match snapshot {
-                        None => delta.value.clone(),
-                        Some(mut snapshot_value) => match (&mut snapshot_value, &delta.value) {
+                    snapshot = Some(snapshot.map_or_else(
+                        || delta.value.clone(),
+                        |mut snapshot_value| match (&mut snapshot_value, &delta.value) {
                             (StatValue::Decimal(left), StatValue::Decimal(right)) => {
                                 *left = add_decimal_strings(left, right);
                                 snapshot_value
@@ -133,7 +152,7 @@ impl StatWindows for MockStatWindows {
                             }
                             (other, _) => other.clone(),
                         },
-                    });
+                    ));
                 }
             }
             if let Some(value) = snapshot {
@@ -141,11 +160,15 @@ impl StatWindows for MockStatWindows {
             }
         }
 
+        drop(inner);
         out
     }
 
     fn reserve(&self, owner: &Address, deltas: Vec<StatDelta>) -> ReservationId {
-        let mut inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let reservation_id = ReservationId(inner.next_id);
         inner.next_id = inner.next_id.saturating_add(1);
         inner
@@ -155,7 +178,10 @@ impl StatWindows for MockStatWindows {
     }
 
     fn settle(&self, id: ReservationId) {
-        let mut inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let Some((owner, deltas)) = inner.reservations.remove(&id) else {
             return;
         };
@@ -181,12 +207,13 @@ impl StatWindows for MockStatWindows {
                 }
             }
         }
+        drop(inner);
     }
 
     fn release(&self, id: ReservationId) {
         self.inner
             .lock()
-            .unwrap_or_else(|error| error.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .reservations
             .remove(&id);
     }
@@ -273,7 +300,7 @@ mod tests {
         );
         ws.settle(reservation);
 
-        let snapshot = ws.snapshot(&owner, &[key.clone()]);
+        let snapshot = ws.snapshot(&owner, &[key]);
         assert_eq!(
             snapshot.get(&key),
             Some(&StatValue::Decimal("2500.0000".into()))

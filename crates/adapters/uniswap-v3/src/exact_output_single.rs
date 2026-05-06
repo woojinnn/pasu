@@ -1,8 +1,12 @@
-//! Uniswap V3 SwapRouter `exactOutputSingle` — single-hop, exact-out. Caller
+//! Uniswap V3 `SwapRouter` `exactOutputSingle` — single-hop, exact-out. Caller
 //! specifies the exact `amountOut` they want, plus a max acceptable
 //! `amountInMaximum`.
 
-use crate::common::{dex_swap_action, DecodeError, TokenLookup, SWAP_ROUTER_MAINNET};
+#[cfg(test)]
+use crate::common::SWAP_ROUTER_MAINNET;
+use crate::common::{
+    dex_swap_action, static_adapter_id, swap_router_address, DecodeError, TokenLookup,
+};
 use alloy_primitives::{
     aliases::{U160, U24},
     Address as AlloyAddress, U256,
@@ -26,20 +30,32 @@ sol! {
     function exactOutputSingle(SolExactOutputSingleParams params) external payable returns (uint256 amountIn);
 }
 
+/// Selector for `exactOutputSingle`.
 pub const SELECTOR: [u8; 4] = exactOutputSingleCall::SELECTOR;
 
-#[derive(Debug, Clone, PartialEq)]
+/// Decoded `exactOutputSingle` parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Params {
+    /// Input token address.
     pub token_in: AlloyAddress,
+    /// Output token address.
     pub token_out: AlloyAddress,
+    /// Pool fee tier in hundredths of a bip.
     pub fee: u32,
+    /// Recipient address.
     pub recipient: AlloyAddress,
+    /// Swap deadline.
     pub deadline: U256,
+    /// Exact output amount.
     pub amount_out: U256,
+    /// Maximum input amount.
     pub amount_in_maximum: U256,
+    /// Optional sqrt price limit.
     pub sqrt_price_limit_x96: U256,
 }
 
+/// ABI-encode `exactOutputSingle` calldata.
+#[must_use]
 pub fn encode(p: &Params) -> Vec<u8> {
     let sqrt_limit_u160 = if p.sqrt_price_limit_x96 > U256::from(U160::MAX) {
         U160::MAX
@@ -61,6 +77,12 @@ pub fn encode(p: &Params) -> Vec<u8> {
     .abi_encode()
 }
 
+/// Decode `exactOutputSingle` calldata.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has the wrong selector, fails
+/// ABI decoding, or contains an out-of-range fee.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     const NEED: usize = 4 + 8 * 32;
     if calldata.len() < 4 {
@@ -98,15 +120,19 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
+/// Adapter for `exactOutputSingle`.
+#[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
     tokens: TokenLookup,
 }
 
 impl Adapter_ {
+    /// Construct an adapter with mainnet `SwapRouter` and default token metadata.
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, Address::new(SWAP_ROUTER_MAINNET).unwrap())],
+            chain_targets: vec![(1, swap_router_address())],
             tokens: TokenLookup::with_mainnet_defaults(),
         }
     }
@@ -120,8 +146,7 @@ impl Default for Adapter_ {
 
 impl Adapter for Adapter_ {
     fn id(&self) -> AdapterId {
-        AdapterId::new("uniswap-v3/exactOutputSingle@0.1.0")
-            .expect("static AdapterId is well-formed")
+        static_adapter_id("uniswap-v3/exactOutputSingle@0.1.0")
     }
 
     fn match_keys(&self) -> Vec<MatchKey> {
@@ -147,7 +172,7 @@ impl Adapter for Adapter_ {
             output_token,
             p.amount_in_maximum.to_string(),
             Some(p.amount_out.to_string()),
-            recipient_addr,
+            &recipient_addr,
             Some(p.fee / 100),
             "exactOutputSingle",
         ))
@@ -213,7 +238,7 @@ mod tests {
                 assert_eq!(d.oracle_requirements[1].raw_amount, "1000000000000000000");
                 assert_eq!(d.trace.steps, vec!["exactOutputSingle"]);
             }
-            _ => panic!("expected dex"),
+            Action::Other(_) => panic!("expected dex"),
         }
     }
 }

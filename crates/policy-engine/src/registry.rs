@@ -20,9 +20,10 @@ type ExactKey = (ChainId, Address, [u8; 4]);
 type WildcardTargetKey = (ChainId, [u8; 4]);
 type AdapterList = Vec<Arc<dyn Adapter>>;
 
-#[derive(Debug, Clone, PartialEq)]
+/// Result of resolving a transaction against installed adapters.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResolverOutcome {
-    /// Exactly one adapter matched the (chain_id, to, selector) key.
+    /// Exactly one adapter matched the (`chain_id`, to, selector) key.
     Resolved(AdapterId),
     /// No adapter matched. The pipeline should emit `Action::Other`.
     NoMatch,
@@ -62,7 +63,18 @@ pub struct AdapterIndex {
     wildcard_target: HashMap<WildcardTargetKey, AdapterList>,
 }
 
+impl std::fmt::Debug for AdapterIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AdapterIndex")
+            .field("exact_len", &self.exact.len())
+            .field("wildcard_target_len", &self.wildcard_target.len())
+            .finish()
+    }
+}
+
 impl AdapterIndex {
+    /// Insert all match keys exposed by `adapter`.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn insert(&mut self, adapter: Arc<dyn Adapter>) {
         for key in adapter.match_keys() {
             match key.to {
@@ -80,6 +92,8 @@ impl AdapterIndex {
         }
     }
 
+    /// Return every adapter matching the transaction selector and target.
+    #[must_use]
     pub fn matches_for(&self, tx: &TransactionRequest) -> Vec<Arc<dyn Adapter>> {
         let Some(selector) = tx.selector() else {
             return Vec::new();
@@ -99,23 +113,29 @@ impl AdapterIndex {
 /// In-memory adapter registry. The full design (spec §5.3) maintains a
 /// host-side cache populated from a remote registry; v0.1 just keeps adapters
 /// in memory and resolves by `(chain_id, to, selector)`.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct MockAdapterRegistry {
     index: AdapterIndex,
 }
 
 impl MockAdapterRegistry {
+    /// Construct an empty in-memory registry.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Install an adapter. Returns `self` for builder-style chaining.
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn with_adapter(mut self, adapter: Arc<dyn Adapter>) -> Self {
         self.index.insert(adapter);
         self
     }
 
     /// Instantiate and install an adapter from a registry/catalog factory.
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn with_factory<F>(self, factory: F) -> Self
     where
         F: AdapterFactory,
@@ -134,7 +154,7 @@ impl AdapterRegistry for MockAdapterRegistry {
             0 => (ResolverOutcome::NoMatch, None),
             1 => (
                 ResolverOutcome::Resolved(matches[0].id()),
-                Some(matches.into_iter().next().unwrap()),
+                Some(Arc::clone(&matches[0])),
             ),
             _ => {
                 let ids = matches.iter().map(|a| a.id()).collect();

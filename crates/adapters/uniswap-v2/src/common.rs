@@ -1,5 +1,6 @@
 //! Shared resources for V2 Router02 swap-function adapters.
 
+use alloy_primitives::{address, Address as AlloyAddress};
 use policy_engine::prelude::*;
 use std::collections::HashMap;
 
@@ -11,16 +12,42 @@ pub const UNISWAP_V2_ROUTER_MAINNET: &str = "0x7a250d5630B4cF539739dF2C5dAcb4c65
 pub const NATIVE_ETH_SENTINEL: &str = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 /// Construct a `Token` representing native ETH on the given chain.
+#[must_use]
 pub fn native_eth(chain_id: ChainId) -> Token {
     Token {
         chain_id,
-        address: Address::new(NATIVE_ETH_SENTINEL).unwrap(),
+        address: Address::from_alloy(address!("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")),
         symbol: "ETH".into(),
         decimals: 18,
         is_native: true,
     }
 }
 
+pub(crate) fn router_address() -> Address {
+    Address::from_alloy(address!("0x7a250d5630b4cf539739df2c5dacb4c659f2488d"))
+}
+
+#[allow(clippy::panic)]
+pub(crate) fn static_adapter_id(raw: &str) -> AdapterId {
+    match AdapterId::new(raw) {
+        Ok(id) => id,
+        Err(err) => panic!("invalid static adapter id {raw}: {err}"),
+    }
+}
+
+pub(crate) fn path_endpoints(
+    path: &[AlloyAddress],
+) -> Result<(AlloyAddress, AlloyAddress), AdapterError> {
+    if path.len() < 2 {
+        return Err(AdapterError::BadCalldata(format!(
+            "v2 path must contain at least 2 tokens, got {}",
+            path.len()
+        )));
+    }
+    Ok((path[0], path[path.len() - 1]))
+}
+
+/// Build a DEX swap action from decoded V2 router parameters.
 #[allow(clippy::too_many_arguments)]
 pub fn dex_swap_action(
     tx: &TransactionRequest,
@@ -29,7 +56,7 @@ pub fn dex_swap_action(
     output_token: Token,
     input_raw: String,
     min_output_raw: Option<String>,
-    recipient: Address,
+    recipient: &Address,
     max_fee_bps: Option<u32>,
     trace_step: impl Into<String>,
 ) -> Action {
@@ -38,7 +65,8 @@ pub fn dex_swap_action(
         token: input_token.clone(),
         raw_amount: input_raw,
     }];
-    if let Some(raw_amount) = min_output_raw.clone() {
+    let has_zero_min_output = min_output_raw.as_deref() == Some("0");
+    if let Some(raw_amount) = min_output_raw {
         oracle_requirements.push(OracleRequirement {
             kind: OracleRequirementKind::MinOutput,
             token: output_token.clone(),
@@ -57,8 +85,8 @@ pub fn dex_swap_action(
             total_input_usd: None,
             total_min_output_usd: None,
             max_fee_bps,
-            has_zero_min_output: min_output_raw.as_deref() == Some("0"),
-            has_external_recipient: recipient != tx.from,
+            has_zero_min_output,
+            has_external_recipient: recipient != &tx.from,
             total_input_fraction_of_portfolio_bps: None,
             allowances_cover_inputs: None,
             window_stats: None,
@@ -70,32 +98,36 @@ pub fn dex_swap_action(
     })
 }
 
+/// Token metadata lookup used by V2 swap adapters.
+#[derive(Debug)]
 pub struct TokenLookup {
     tokens: HashMap<(ChainId, String), Token>,
 }
 
 impl TokenLookup {
+    /// Builds a lookup containing mainnet USDT, USDC, and WETH.
+    #[must_use]
     pub fn with_mainnet_defaults() -> Self {
-        let mut me = TokenLookup {
+        let mut me = Self {
             tokens: HashMap::new(),
         };
         me.add(Token {
             chain_id: 1,
-            address: Address::new("0xdAC17F958D2ee523a2206206994597C13D831ec7").unwrap(),
+            address: Address::from_alloy(address!("0xdac17f958d2ee523a2206206994597c13d831ec7")),
             symbol: "USDT".into(),
             decimals: 6,
             is_native: false,
         });
         me.add(Token {
             chain_id: 1,
-            address: Address::new("0xA0b86991C6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap(),
+            address: Address::from_alloy(address!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
             symbol: "USDC".into(),
             decimals: 6,
             is_native: false,
         });
         me.add(Token {
             chain_id: 1,
-            address: Address::new("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap(),
+            address: Address::from_alloy(address!("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
             symbol: "WETH".into(),
             decimals: 18,
             is_native: false,
@@ -103,6 +135,7 @@ impl TokenLookup {
         me
     }
 
+    /// Adds or replaces one token by chain and address.
     pub fn add(&mut self, token: Token) {
         self.tokens.insert(
             (token.chain_id, token.address.as_str().to_lowercase()),
@@ -110,11 +143,15 @@ impl TokenLookup {
         );
     }
 
+    /// Returns this lookup after adding `token`.
+    #[must_use]
     pub fn with(mut self, token: Token) -> Self {
         self.add(token);
         self
     }
 
+    /// Returns known metadata or an `UNKNOWN` token placeholder.
+    #[must_use]
     pub fn get(&self, chain_id: ChainId, addr: &Address) -> Token {
         self.tokens
             .get(&(chain_id, addr.as_str().to_lowercase()))
@@ -135,6 +172,8 @@ impl Default for TokenLookup {
     }
 }
 
+/// Shift an integer decimal string right by `decimals` places.
+#[must_use]
 pub fn shift_decimals(value: &str, decimals: u32) -> String {
     if decimals == 0 {
         return value.to_string();
@@ -150,14 +189,29 @@ pub fn shift_decimals(value: &str, decimals: u32) -> String {
     format!("{whole}.{frac}")
 }
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+/// Errors returned by V2 calldata decoders.
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DecodeError {
+    /// Calldata is shorter than the minimum required length.
     #[error("calldata too short: need at least {need} bytes, got {got}")]
-    TooShort { need: usize, got: usize },
+    TooShort {
+        /// Required byte length.
+        need: usize,
+        /// Actual byte length.
+        got: usize,
+    },
+    /// The four-byte selector does not match the expected function.
     #[error("unexpected selector: got 0x{got}, expected 0x{want}")]
-    BadSelector { got: String, want: String },
+    BadSelector {
+        /// Observed selector hex.
+        got: String,
+        /// Expected selector hex.
+        want: String,
+    },
+    /// ABI decoding failed.
     #[error("ABI decode failed: {0}")]
     AbiDecode(String),
+    /// Swap path did not contain both input and output tokens.
     #[error("path must contain at least 2 tokens, got {0}")]
     EmptyPath(usize),
 }
@@ -226,7 +280,7 @@ mod tests {
             output_token,
             "100".into(),
             Some("0".into()),
-            Address::new("0x0000000000000000000000000000000000000002").unwrap(),
+            &Address::new("0x0000000000000000000000000000000000000002").unwrap(),
             Some(30),
             "uniswap-v2/test",
         ) {
@@ -250,7 +304,7 @@ mod tests {
                 assert_eq!(d.oracle_requirements[1].raw_amount, "0");
                 assert_eq!(d.trace.steps, vec!["uniswap-v2/test".to_string()]);
             }
-            _ => panic!("expected dex"),
+            Action::Other(_) => panic!("expected dex"),
         }
     }
 }

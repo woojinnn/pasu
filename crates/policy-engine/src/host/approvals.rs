@@ -16,17 +16,28 @@ use alloy_primitives::U256;
 use std::collections::HashMap;
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+/// Approval lookup failures.
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum ApprovalsError {
+    /// No allowance was recorded for the owner/token/spender tuple.
     #[error("no allowance record for owner {owner} on token {token} to {spender}")]
     NoRecord {
+        /// Owner address.
         owner: String,
+        /// Chain-qualified token key.
         token: String,
+        /// Spender address.
         spender: String,
     },
 }
 
+/// Host approvals capability.
 pub trait Approvals: Send + Sync {
+    /// Return the current allowance for the owner/token/spender tuple.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when no allowance record is available.
     fn allowance(
         &self,
         owner: &Address,
@@ -35,12 +46,15 @@ pub trait Approvals: Send + Sync {
     ) -> Result<AmountSpec, ApprovalsError>;
 }
 
+/// In-memory approvals implementation for tests and demos.
 #[derive(Debug, Clone, Default)]
 pub struct MockApprovals {
     allowances: HashMap<String, AmountSpec>,
 }
 
 impl MockApprovals {
+    /// Construct an empty mock approvals provider.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -49,6 +63,8 @@ impl MockApprovals {
         format!("{}/{}/{}", owner.as_str(), token.key(), spender.as_str())
     }
 
+    /// Insert an allowance and return the updated mock.
+    #[must_use]
     pub fn with_allowance(
         mut self,
         owner: &Address,
@@ -142,8 +158,8 @@ mod tests {
     fn mock_keys_are_chain_and_spender_qualified() {
         let usdt_other_chain = Token {
             chain_id: 137,
-            address: usdt().address.clone(),
-            symbol: usdt().symbol.clone(),
+            address: usdt().address,
+            symbol: usdt().symbol,
             decimals: usdt().decimals,
             is_native: false,
         };

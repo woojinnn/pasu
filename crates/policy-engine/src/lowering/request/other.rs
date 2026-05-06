@@ -2,17 +2,7 @@
 
 use crate::core::OtherAction;
 use crate::policy::PolicyRequest;
-use serde::Serialize;
 use serde_json::{json, Value};
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct OtherContext<'a> {
-    selector: &'a str,
-    target: &'a str,
-    value_wei: &'a str,
-    raw_calldata: &'a str,
-}
 
 pub(super) fn request(action: &OtherAction) -> PolicyRequest {
     let principal = format!(r#"Wallet::"{}""#, action.actor.as_str());
@@ -26,11 +16,10 @@ pub(super) fn request(action: &OtherAction) -> PolicyRequest {
 }
 
 fn context(action: &OtherAction) -> Value {
-    let context = OtherContext {
-        selector: &action.selector,
-        target: action.target.as_str(),
-        value_wei: &action.value_wei,
-        raw_calldata: &action.raw_calldata,
-    };
-    serde_json::to_value(context).expect("other context serializes")
+    json!({
+        "selector": &action.selector,
+        "target": action.target.as_str(),
+        "valueWei": &action.value_wei,
+        "rawCalldata": &action.raw_calldata,
+    })
 }

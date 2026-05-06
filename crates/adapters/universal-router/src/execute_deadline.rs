@@ -8,8 +8,11 @@ sol! {
     function execute(bytes commands, bytes[] inputs, uint256 deadline) external payable;
 }
 
+/// Selector for `execute(bytes,bytes[],uint256)`.
 pub const SELECTOR_EXECUTE_DEADLINE: [u8; 4] = executeCall::SELECTOR;
 
+/// ABI-encode `execute(bytes,bytes[],uint256)` calldata.
+#[must_use]
 pub fn encode_execute_deadline(commands: Vec<u8>, inputs: Vec<Vec<u8>>, deadline: U256) -> Vec<u8> {
     executeCall {
         commands: commands.into(),
@@ -19,6 +22,12 @@ pub fn encode_execute_deadline(commands: Vec<u8>, inputs: Vec<Vec<u8>>, deadline
     .abi_encode()
 }
 
+/// Decode `execute(bytes,bytes[],uint256)` calldata.
+///
+/// # Errors
+///
+/// Returns an error when calldata is too short, has the wrong selector, or
+/// fails ABI decoding.
 pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     if calldata.len() < 4 {
         return Err(DecodeError::TooShort {

@@ -8,6 +8,24 @@
 //! 2. Add a `policy-engine-adapter-<name>` dependency here and one
 //!    `.with_adapter(...)` line in [`default_registry`].
 
+#![deny(unsafe_code)]
+#![deny(unused_must_use)]
+#![deny(rustdoc::bare_urls)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![warn(missing_docs)]
+#![warn(unreachable_pub)]
+#![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
+#![warn(missing_debug_implementations)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::dbg_macro)]
+#![warn(clippy::todo)]
+#![cfg_attr(not(test), warn(clippy::expect_used))]
+#![cfg_attr(not(test), warn(clippy::panic))]
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
+
 use policy_engine::{MockAdapterRegistry, TypedAdapter};
 use std::sync::Arc;
 
@@ -18,9 +36,11 @@ pub use policy_engine_adapter_uniswap_v3 as uniswap_v3;
 pub use policy_engine_adapter_universal_router as universal_router;
 
 /// Build a `MockAdapterRegistry` populated with every first-party swap
-/// adapter shipped in this workspace. Tests/examples that want "all known
-/// adapters installed" should call this; tests that want a narrower setup
-/// should build the registry by hand.
+/// adapter shipped in this workspace.
+///
+/// Tests or examples that want all known adapters installed should call this.
+/// Tests that want a narrower setup should build the registry by hand.
+#[must_use]
 pub fn default_registry() -> MockAdapterRegistry {
     MockAdapterRegistry::new()
         // Uniswap Universal Router

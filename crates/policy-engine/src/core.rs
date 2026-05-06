@@ -1,4 +1,4 @@
-//! Core domain types: Address, Token, AmountSpec, Action.
+//! Core domain types: Address, Token, `AmountSpec`, Action.
 
 use alloy_primitives::{Address as AlloyAddress, U256};
 use serde::{Deserialize, Serialize};
@@ -9,15 +9,24 @@ use std::str::FromStr;
 pub struct Address(String);
 
 impl Address {
+    /// Parse and normalize an EVM address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when `s` is not a valid 20-byte hex address.
     pub fn new(s: &str) -> Result<Self, String> {
         let parsed = AlloyAddress::from_str(s).map_err(|e| format!("invalid address: {e}"))?;
-        Ok(Address(format!("{parsed:#x}")))
+        Ok(Self(format!("{parsed:#x}")))
     }
 
+    /// Convert an Alloy address into the engine address wrapper.
+    #[must_use]
     pub fn from_alloy(a: AlloyAddress) -> Self {
-        Address(format!("{a:#x}"))
+        Self(format!("{a:#x}"))
     }
 
+    /// Borrow the normalized lowercase hex string.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -29,34 +38,45 @@ pub type ChainId = u64;
 /// Token metadata as the engine sees it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Token {
+    /// EVM chain id this token belongs to.
     pub chain_id: ChainId,
+    /// Token contract address or native sentinel address.
     pub address: Address,
+    /// Human-readable token symbol.
     pub symbol: String,
+    /// Token decimal precision.
     pub decimals: u32,
+    /// Whether this token represents the native asset.
     pub is_native: bool,
 }
 
 impl Token {
+    /// Return the chain-qualified token key used by host capability maps.
+    #[must_use]
     pub fn key(&self) -> String {
         format!("{}:{}", self.chain_id, self.address.as_str().to_lowercase())
     }
 }
 
 /// Provenance + value information about an oracle-derived USD valuation.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UsdValuation {
     /// USD value as a stringified decimal (e.g., "1234.56").
     /// We use a string here because Cedar's `Decimal` extension is the place
     /// that actually does the comparison and we want to avoid f64 drift.
     pub value: String,
+    /// Source timestamp for the valuation.
     pub as_of_ts: u64,
+    /// Data sources that contributed to the valuation.
     pub sources: Vec<String>,
+    /// Age of the valuation in seconds.
     pub stale_sec: u64,
 }
 
 /// Amount paired with its token, with optional human-readable and USD views.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AmountSpec {
+    /// Token this amount is denominated in.
     pub token: Token,
     /// Wei-scale raw amount as decimal string (so we can carry full U256 range).
     pub raw: String,
@@ -67,8 +87,10 @@ pub struct AmountSpec {
 }
 
 impl AmountSpec {
+    /// Construct an amount from a raw integer value.
+    #[must_use]
     pub fn from_raw(token: Token, raw: U256) -> Self {
-        AmountSpec {
+        Self {
             token,
             raw: raw.to_string(),
             human: None,
@@ -77,111 +99,155 @@ impl AmountSpec {
     }
 }
 
+/// Which amount side should be valued by the oracle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OracleRequirementKind {
+    /// Input amount valuation.
     #[serde(rename = "input")]
     Input,
+    /// Minimum output amount valuation.
     #[serde(rename = "minOutput")]
     MinOutput,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Oracle lookup needed to enrich an action before policy evaluation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OracleRequirement {
+    /// Which side of the action this valuation belongs to.
     pub kind: OracleRequirementKind,
+    /// Token to value.
     pub token: Token,
+    /// Raw token amount to value.
     pub raw_amount: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+/// Projected rolling-window stats stamped into DEX context.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct WindowStatsContext {
+    /// Rolling 24-hour swap volume in USD.
     pub swap_volume_usd_24h: Option<String>,
+    /// Rolling 24-hour swap count.
     pub swap_count_24h: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+/// Aggregate facts extracted and enriched for a DEX action.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct DexFacts {
+    /// Protocol ids observed in the route.
     pub protocol_ids: Vec<String>,
+    /// Tokens spent by the route.
     pub input_tokens: Vec<Token>,
+    /// Tokens expected from the route.
     pub output_tokens: Vec<Token>,
+    /// Total USD input value, when oracle data is available.
     pub total_input_usd: Option<UsdValuation>,
+    /// Total USD minimum output value, when oracle data is available.
     pub total_min_output_usd: Option<UsdValuation>,
+    /// Maximum fee across known route legs.
     pub max_fee_bps: Option<u32>,
+    /// Whether any route leg has zero minimum output.
     pub has_zero_min_output: bool,
+    /// Whether any recipient is external to the actor.
     pub has_external_recipient: bool,
+    /// Total input size relative to portfolio, in basis points.
     pub total_input_fraction_of_portfolio_bps: Option<u64>,
+    /// Whether allowances cover all non-native inputs.
     pub allowances_cover_inputs: Option<bool>,
+    /// Projected stat-window values.
     pub window_stats: Option<WindowStatsContext>,
 }
 
+/// Human-readable trace of how an adapter built the DEX action.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct DexTrace {
+    /// Ordered trace steps.
     pub steps: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Aggregate DEX action emitted by adapters.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DexAction {
+    /// Wallet actor that initiated the transaction.
     pub actor: Address,
+    /// Contract target that received the transaction.
     pub target: Address,
+    /// Native value attached to the transaction, in wei.
     pub value_wei: String,
+    /// Extracted and enriched route facts.
     pub facts: DexFacts,
+    /// Oracle lookups needed for enrichment.
     pub oracle_requirements: Vec<OracleRequirement>,
+    /// Adapter trace.
     pub trace: DexTrace,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Fallback action for unrecognized calldata.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OtherAction {
+    /// Wallet actor that initiated the transaction.
     pub actor: Address,
+    /// Contract target that received the transaction.
     pub target: Address,
+    /// Function selector as hex.
     pub selector: String,
+    /// Native value attached to the transaction, in wei.
     pub value_wei: String,
+    /// Full calldata as hex.
     pub raw_calldata: String,
 }
 
 /// Semantic action emitted by adapters.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Action {
+    /// Aggregate DEX action.
     #[serde(rename = "dex")]
     Dex(DexAction),
+    /// Fallback action for unrecognized calls.
     #[serde(rename = "other")]
     Other(OtherAction),
 }
 
 impl Action {
-    pub fn kind(&self) -> &'static str {
+    /// Return the stable action kind string used in Cedar action ids.
+    #[must_use]
+    pub const fn kind(&self) -> &'static str {
         match self {
-            Action::Dex(_) => "dex",
-            Action::Other(_) => "other",
+            Self::Dex(_) => "dex",
+            Self::Other(_) => "other",
         }
     }
 
-    pub fn target(&self) -> &Address {
+    /// Return the action target address.
+    #[must_use]
+    pub const fn target(&self) -> &Address {
         match self {
-            Action::Dex(d) => &d.target,
-            Action::Other(o) => &o.target,
+            Self::Dex(d) => &d.target,
+            Self::Other(o) => &o.target,
         }
     }
 
-    pub fn actor(&self) -> &Address {
+    /// Return the wallet actor address.
+    #[must_use]
+    pub const fn actor(&self) -> &Address {
         match self {
-            Action::Dex(d) => &d.actor,
-            Action::Other(o) => &o.actor,
+            Self::Dex(d) => &d.actor,
+            Self::Other(o) => &o.actor,
         }
     }
 }
 
-/// What a wallet receives from a dapp/RPC layer when the user is asked to
-/// sign a transaction. This is the unsigned-tx shape (the wallet has not yet
-/// produced a signature). Fields that v0.1 policies don't reference yet
-/// (`gas`, `nonce`, EIP-1559 fee fields) are kept as `Option` so future
-/// policies (e.g., "reject txs with gas above X") can read them without
-/// breaking existing call sites.
+/// Unsigned transaction request presented to the policy engine.
 ///
-/// Naming aligns with `alloy::TransactionRequest` and `ethers::TransactionRequest`.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Naming aligns with `alloy::TransactionRequest` and
+/// `ethers::TransactionRequest`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TransactionRequest {
+    /// EVM chain id.
     pub chain_id: ChainId,
+    /// Sender wallet address.
     pub from: Address,
+    /// Target contract address.
     pub to: Address,
     /// `msg.value` in wei, decimal-encoded so we can carry a full U256.
     pub value_wei: String,
@@ -194,7 +260,8 @@ pub struct TransactionRequest {
 }
 
 impl TransactionRequest {
-    /// First four bytes of `data`, if present — the ABI function selector.
+    /// First four bytes of `data`, if present, as the ABI function selector.
+    #[must_use]
     pub fn selector(&self) -> Option<[u8; 4]> {
         if self.data.len() < 4 {
             return None;
@@ -202,6 +269,8 @@ impl TransactionRequest {
         Some([self.data[0], self.data[1], self.data[2], self.data[3]])
     }
 
+    /// First four bytes of `data`, if present, as `0x`-prefixed hex.
+    #[must_use]
     pub fn selector_hex(&self) -> Option<String> {
         self.selector().map(|s| format!("0x{}", hex::encode(s)))
     }

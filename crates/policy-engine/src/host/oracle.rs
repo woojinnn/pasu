@@ -18,21 +18,32 @@ use crate::core::{Token, UsdValuation};
 use std::collections::HashMap;
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+/// Oracle lookup failures.
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum OracleError {
+    /// No valuation was available for the token.
     #[error("no price data for token {0}")]
     NoPrice(String),
+    /// Valuation existed but exceeded the configured freshness bound.
     #[error("price for {token} is stale ({stale_sec}s old, max {max_sec})")]
     Stale {
+        /// Token key that was stale.
         token: String,
+        /// Observed staleness in seconds.
         stale_sec: u64,
+        /// Maximum accepted staleness in seconds.
         max_sec: u64,
     },
 }
 
+/// Host oracle capability.
 pub trait Oracle: Send + Sync {
     /// Returns USD valuation for one unit (1 whole token, decimals applied) of
     /// the given token, or an error if not available.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when valuation data is unavailable or stale.
     fn price(&self, token: &Token) -> Result<UsdValuation, OracleError>;
 }
 
@@ -44,6 +55,8 @@ pub struct MockOracle {
 }
 
 impl MockOracle {
+    /// Construct an empty mock oracle.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -53,12 +66,14 @@ impl MockOracle {
     }
 
     /// Insert a price for a token. The key is the token's chain-qualified key.
+    #[must_use]
     pub fn with_price(mut self, token: &Token, valuation: UsdValuation) -> Self {
         self.prices.insert(Self::key_for_oracle(token), valuation);
         self
     }
 
     /// Convenience: insert a fixed-source `chainlink` price with given staleness.
+    #[must_use]
     pub fn with_simple_price(self, token: &Token, usd: &str, stale_sec: u64) -> Self {
         let v = UsdValuation {
             value: usd.into(),

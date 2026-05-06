@@ -3,8 +3,8 @@
 use crate::commands::{ActionMeta, RoutedAction};
 use crate::common::TokenLookup;
 use crate::v4_actions::{
-    exact_input, exact_input_single, exact_output, exact_output_single, MAX_V4_ACTIONS,
-    V4_CLEAR_OR_TAKE, V4_CLOSE_CURRENCY, V4_SETTLE, V4_SETTLE_ALL, V4_SETTLE_PAIR,
+    decode_exact_input, decode_exact_input_single, decode_exact_output, decode_exact_output_single,
+    MAX_V4_ACTIONS, V4_CLEAR_OR_TAKE, V4_CLOSE_CURRENCY, V4_SETTLE, V4_SETTLE_ALL, V4_SETTLE_PAIR,
     V4_SWAP_EXACT_IN, V4_SWAP_EXACT_IN_SINGLE, V4_SWAP_EXACT_OUT, V4_SWAP_EXACT_OUT_SINGLE,
     V4_SWEEP, V4_TAKE, V4_TAKE_ALL, V4_TAKE_PAIR, V4_TAKE_PORTION, V4_UNWRAP, V4_WRAP,
 };
@@ -13,11 +13,11 @@ use policy_engine::prelude::*;
 
 type Input = sol! { (bytes, bytes[]) };
 
-pub(crate) fn decode(
+pub(super) fn decode(
     tx: &TransactionRequest,
     tokens: &TokenLookup,
     input: &[u8],
-    base_meta: ActionMeta,
+    base_meta: &ActionMeta,
 ) -> Result<Vec<RoutedAction>, AdapterError> {
     let (actions, params) = Input::abi_decode_sequence(input, true)
         .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
@@ -38,17 +38,17 @@ pub(crate) fn decode(
 
     let mut out = Vec::new();
     for (idx, action) in actions.iter().copied().enumerate() {
-        let meta = base_meta.clone().with_action_label(v4_action_label(action));
+        let meta = base_meta.with_action_label(v4_action_label(action));
         let input = params[idx].to_vec();
         match action {
             V4_SWAP_EXACT_IN_SINGLE => {
-                out.push(exact_input_single::decode(tx, tokens, &input, meta)?)
+                out.push(decode_exact_input_single(tx, tokens, &input, meta)?);
             }
-            V4_SWAP_EXACT_IN => out.push(exact_input::decode(tx, tokens, &input, meta)?),
+            V4_SWAP_EXACT_IN => out.push(decode_exact_input(tx, tokens, &input, meta)?),
             V4_SWAP_EXACT_OUT_SINGLE => {
-                out.push(exact_output_single::decode(tx, tokens, &input, meta)?)
+                out.push(decode_exact_output_single(tx, tokens, &input, meta)?);
             }
-            V4_SWAP_EXACT_OUT => out.push(exact_output::decode(tx, tokens, &input, meta)?),
+            V4_SWAP_EXACT_OUT => out.push(decode_exact_output(tx, tokens, &input, meta)?),
             V4_SETTLE | V4_SETTLE_ALL | V4_SETTLE_PAIR | V4_TAKE | V4_TAKE_ALL
             | V4_TAKE_PORTION | V4_TAKE_PAIR | V4_CLOSE_CURRENCY | V4_CLEAR_OR_TAKE | V4_SWEEP
             | V4_WRAP | V4_UNWRAP => {}
@@ -62,7 +62,7 @@ pub(crate) fn decode(
     Ok(out)
 }
 
-fn v4_action_label(action: u8) -> &'static str {
+const fn v4_action_label(action: u8) -> &'static str {
     match action {
         V4_SWAP_EXACT_IN_SINGLE => "V4_SWAP_EXACT_IN_SINGLE",
         V4_SWAP_EXACT_IN => "V4_SWAP_EXACT_IN",

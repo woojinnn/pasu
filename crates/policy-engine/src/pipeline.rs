@@ -21,35 +21,59 @@ use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, RequestKind, Verdi
 use crate::registry::{AdapterRegistry, ResolverOutcome};
 use thiserror::Error;
 
+/// Pipeline execution failures.
 #[derive(Debug, Error)]
 pub enum PipelineError {
+    /// Multiple adapters matched the transaction.
     #[error("adapter ambiguity: {0:?}")]
     Ambiguous(Vec<crate::AdapterId>),
+    /// The selected adapter failed to build an action.
     #[error("adapter build failed: {0}")]
     AdapterBuild(String),
+    /// Policy evaluation failed.
     #[error("policy evaluation failed: {0}")]
     Policy(#[from] PolicyError),
 }
 
-/// Pipeline is generic over the registry type — `R: ?Sized` lets callers
-/// pass either a concrete `&MockAdapterRegistry` (monomorphized, fast) or a
-/// `&dyn AdapterRegistry` trait object (dynamic dispatch, swappable at
-/// runtime). Host capabilities are passed as a small borrowed bundle to avoid
-/// `Pipeline::new` signature churn as capabilities expand.
+/// Coordinates adapter resolution, lowering, and policy evaluation.
+///
+/// The `R: ?Sized` bound lets callers pass either a concrete registry or a
+/// `dyn AdapterRegistry` trait object. Host capabilities are passed as a small
+/// borrowed bundle to avoid `Pipeline::new` signature churn as capabilities
+/// expand.
 pub struct Pipeline<'a, R: AdapterRegistry + ?Sized> {
+    /// Adapter registry used to resolve calldata.
     pub registry: &'a R,
+    /// Host capabilities used for enrichment.
     pub host: HostCapabilities<'a>,
+    /// Policy engine used for evaluation.
     pub policies: &'a PolicyEngine,
 }
 
+impl<R: AdapterRegistry + ?Sized> std::fmt::Debug for Pipeline<'_, R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Pipeline").finish_non_exhaustive()
+    }
+}
+
+/// Evaluation result plus an optional stat-window reservation.
+#[derive(Debug)]
 pub struct EvaluationOutcome {
+    /// Final policy verdict.
     pub verdict: Verdict,
+    /// Reservation to settle or release after signing outcome is known.
     pub reservation: Option<ReservationId>,
 }
 
 impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
-    pub fn new(registry: &'a R, host: HostCapabilities<'a>, policies: &'a PolicyEngine) -> Self {
-        Pipeline {
+    /// Construct a pipeline from registry, host capabilities, and policies.
+    #[must_use]
+    pub const fn new(
+        registry: &'a R,
+        host: HostCapabilities<'a>,
+        policies: &'a PolicyEngine,
+    ) -> Self {
+        Self {
             registry,
             host,
             policies,
@@ -81,6 +105,12 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
         }
     }
 
+    /// Evaluate a transaction and reserve projected stat-window deltas.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when adapter resolution/building or policy evaluation
+    /// fails.
     pub fn evaluate_with_reservation(
         &self,
         tx: &TransactionRequest,
@@ -121,6 +151,12 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
         })
     }
 
+    /// Evaluate a transaction without creating a reservation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when adapter resolution/building or policy evaluation
+    /// fails.
     pub fn evaluate(&self, tx: &TransactionRequest) -> Result<Verdict, PipelineError> {
         let mut action = self.build_action(tx)?;
 

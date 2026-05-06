@@ -19,14 +19,24 @@ pub struct AdapterId {
     version_start: Option<usize>,
 }
 
+/// Borrowed parts of an adapter id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AdapterIdParts<'a> {
+    /// Protocol namespace, for example `uniswap-v3`.
     pub protocol: &'a str,
+    /// Adapter or function name.
     pub name: &'a str,
+    /// Optional adapter version component.
     pub version: Option<&'a str>,
 }
 
 impl AdapterId {
+    /// Parse and store an adapter id.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the id does not match
+    /// `<protocol>/<name>[@<version>]`.
     pub fn new(s: &str) -> Result<Self, AdapterIdError> {
         let parsed = parse_adapter_id(s)?;
         Ok(Self {
@@ -37,6 +47,12 @@ impl AdapterId {
         })
     }
 
+    /// Parse an adapter id without allocating and return borrowed parts.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the id does not match
+    /// `<protocol>/<name>[@<version>]`.
     pub fn parts(s: &str) -> Result<AdapterIdParts<'_>, AdapterIdError> {
         let parsed = parse_adapter_id(s)?;
         Ok(AdapterIdParts {
@@ -46,37 +62,55 @@ impl AdapterId {
         })
     }
 
+    /// Adapter protocol namespace.
+    #[must_use]
     pub fn protocol(&self) -> &str {
         &self.raw[..self.protocol_end]
     }
 
+    /// Adapter name.
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.raw[(self.protocol_end + 1)..self.name_end]
     }
 
+    /// Optional version string.
+    #[must_use]
     pub fn version(&self) -> Option<&str> {
         self.version_start.map(|start| &self.raw[start..])
     }
 
+    /// Original adapter id string.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.raw
     }
 }
 
-#[derive(Debug, Error, PartialEq)]
+/// Error returned when parsing an adapter id fails.
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum AdapterIdError {
+    /// The id was empty.
     #[error("adapter id is empty")]
     Empty,
+    /// The id did not contain the protocol/name separator.
     #[error("adapter id has missing protocol separator: expected <protocol>/<name>[@<version>]")]
     MissingSeparator,
+    /// The protocol component was empty.
     #[error("adapter id must include a protocol")]
     MissingProtocol,
+    /// The name component was empty.
     #[error("adapter id must include a name")]
     MissingName,
+    /// The version marker was present but empty.
     #[error("adapter id has an empty version component")]
     EmptyVersion,
+    /// The version component contained unsupported characters.
     #[error("adapter id has an invalid version '{version}'")]
-    InvalidVersion { version: String },
+    InvalidVersion {
+        /// Invalid version text.
+        version: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -142,8 +176,10 @@ fn is_valid_version(version: &str) -> bool {
     })
 }
 
-#[derive(Debug, Error, PartialEq)]
+/// Error returned by an adapter while decoding or lowering a transaction.
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum AdapterError {
+    /// Calldata did not match the adapter's expected ABI shape.
     #[error("adapter cannot decode this calldata: {0}")]
     BadCalldata(String),
 }
@@ -160,27 +196,37 @@ pub enum AdapterKind {
 /// Semantic action families an adapter may emit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionKind {
+    /// DEX action family.
     Dex,
+    /// Fallback unknown action family.
     Other,
 }
 
 /// Solidity function surface covered by an adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SolidityFunction {
+    /// Solidity function name.
     pub name: String,
+    /// Canonical Solidity function signature.
     pub signature: String,
+    /// Four-byte ABI selector.
     pub selector: [u8; 4],
 }
 
 /// Compile-time-friendly Solidity function descriptor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SolidityFunctionSpec {
+    /// Solidity function name.
     pub name: &'static str,
+    /// Canonical Solidity function signature.
     pub signature: &'static str,
+    /// Four-byte ABI selector.
     pub selector: [u8; 4],
 }
 
 impl SolidityFunctionSpec {
+    /// Construct a compile-time function descriptor.
+    #[must_use]
     pub const fn new(name: &'static str, signature: &'static str, selector: [u8; 4]) -> Self {
         Self {
             name,
@@ -189,12 +235,16 @@ impl SolidityFunctionSpec {
         }
     }
 
+    /// Convert into an owned descriptor for registry metadata.
+    #[must_use]
     pub fn into_owned_function(self) -> SolidityFunction {
         SolidityFunction::new(self.name, self.signature, self.selector)
     }
 }
 
 impl SolidityFunction {
+    /// Construct an owned Solidity function descriptor.
+    #[must_use]
     pub fn new(name: &str, signature: &str, selector: [u8; 4]) -> Self {
         Self {
             name: name.into(),
@@ -207,15 +257,21 @@ impl SolidityFunction {
 /// A chain-specific contract address an adapter targets.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContractTarget {
+    /// EVM chain id.
     pub chain_id: ChainId,
+    /// Contract address.
     pub address: Address,
 }
 
 impl ContractTarget {
-    pub fn new(chain_id: ChainId, address: Address) -> Self {
+    /// Construct a contract target.
+    #[must_use]
+    pub const fn new(chain_id: ChainId, address: Address) -> Self {
         Self { chain_id, address }
     }
 
+    /// Build a match key for `selector` at this target.
+    #[must_use]
     pub fn match_key(&self, selector: [u8; 4]) -> MatchKey {
         MatchKey::exact(self.chain_id, self.address.clone(), selector)
     }
@@ -224,15 +280,23 @@ impl ContractTarget {
 /// Static-ish metadata a registry can index before invoking an adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterDescriptor {
+    /// Stable adapter id.
     pub id: AdapterId,
+    /// Protocol id used in policy context.
     pub protocol_id: String,
+    /// Adapter shape.
     pub kind: AdapterKind,
+    /// Solidity functions covered by the adapter.
     pub functions: Vec<SolidityFunction>,
+    /// Registry match keys covered by the adapter.
     pub match_keys: Vec<MatchKey>,
+    /// Action kinds emitted by the adapter.
     pub emitted_actions: Vec<ActionKind>,
 }
 
 impl AdapterDescriptor {
+    /// Construct adapter metadata.
+    #[must_use]
     pub fn new(
         id: AdapterId,
         protocol_id: &str,
@@ -251,6 +315,7 @@ impl AdapterDescriptor {
         }
     }
 
+    /// Build a minimal descriptor from a runtime adapter instance.
     pub fn from_adapter(adapter: &dyn Adapter) -> Self {
         let id = adapter.id();
         let protocol_id = id.protocol().to_string();
@@ -272,19 +337,24 @@ fn construct_typed_adapter<T: TypedAdapter>() -> Arc<dyn Adapter> {
 /// Factory surface a remote/local adapter registry can use to instantiate an
 /// adapter after it has matched the descriptor.
 pub trait AdapterFactory: Send + Sync {
+    /// Registry-visible metadata for this factory.
     fn descriptor(&self) -> AdapterDescriptor;
+    /// Instantiate the adapter.
     fn create(&self) -> Arc<dyn Adapter>;
 }
 
+/// Function pointer used by static adapter factories.
 pub type AdapterConstructor = fn() -> Arc<dyn Adapter>;
 
-#[derive(Clone)]
+/// Static factory for adapters that can be constructed with `Default`.
+#[derive(Debug, Clone)]
 pub struct StaticAdapterFactory {
     descriptor: AdapterDescriptor,
     constructor: AdapterConstructor,
 }
 
 impl StaticAdapterFactory {
+    /// Construct a factory from metadata and a constructor function.
     pub fn new(descriptor: AdapterDescriptor, constructor: AdapterConstructor) -> Self {
         Self {
             descriptor,
@@ -309,20 +379,35 @@ impl AdapterFactory for StaticAdapterFactory {
 /// associated constants describe the registry-visible surface; `build_action`
 /// is the only protocol-specific runtime function simple adapters must provide.
 pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
+    /// Stable adapter id.
     const ADAPTER_ID: &'static str;
+    /// Protocol id emitted into DEX context.
     const PROTOCOL_ID: &'static str;
+    /// Adapter shape.
     const KIND: AdapterKind;
+    /// Solidity functions covered by this adapter.
     const FUNCTIONS: &'static [SolidityFunctionSpec];
+    /// Semantic action families this adapter may emit.
     const EMITTED_ACTIONS: &'static [ActionKind];
 
+    /// Chain-specific contracts this adapter targets.
     fn contract_targets(&self) -> Vec<ContractTarget>;
 
+    /// Build a semantic action from a transaction.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when calldata cannot be decoded or mapped.
     fn build_action(&self, tx: &TransactionRequest) -> Result<Action, AdapterError>;
 
+    /// Parsed static adapter id.
+    #[allow(clippy::expect_used)]
+    #[must_use]
     fn adapter_id() -> AdapterId {
         AdapterId::new(Self::ADAPTER_ID).expect("static AdapterId is well-formed")
     }
 
+    /// Match keys generated from contract targets and functions.
     fn typed_match_keys(&self) -> Vec<MatchKey> {
         let targets = self.contract_targets();
         targets
@@ -335,6 +420,7 @@ pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
             .collect()
     }
 
+    /// Registry descriptor generated from typed adapter constants.
     fn typed_descriptor(&self) -> AdapterDescriptor {
         let id = Self::adapter_id();
         let protocol_id = id.protocol().to_string();
@@ -351,6 +437,7 @@ pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
         )
     }
 
+    /// Static factory for this typed adapter.
     fn factory() -> StaticAdapterFactory {
         StaticAdapterFactory::new(
             Self::default().typed_descriptor(),
@@ -383,6 +470,7 @@ where
 /// One adapter handles one (or a small set of) `(chain_id, to, selector)` keys
 /// and emits an `Action` from a decoded `TransactionRequest`.
 pub trait Adapter: Send + Sync {
+    /// Stable adapter id.
     fn id(&self) -> AdapterId;
 
     /// The set of `(chain_id, to, selector)` keys this adapter wants to match.
@@ -407,29 +495,38 @@ pub trait Adapter: Send + Sync {
     /// Try to construct an `Action` from this transaction. Called only after
     /// the resolver has selected this adapter, so the implementation may
     /// assume the calldata starts with the matching selector.
+    /// # Errors
+    ///
+    /// Returns an error when calldata cannot be decoded or mapped.
     fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError>;
 }
 
 /// A single `(chain_id, to, selector)` pattern an adapter matches.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchKey {
+    /// EVM chain id.
     pub chain_id: ChainId,
     /// `None` represents the wildcard (`"*"` in the manifest spec).
     pub to: Option<Address>,
+    /// Four-byte function selector.
     pub selector: [u8; 4],
 }
 
 impl MatchKey {
-    pub fn exact(chain_id: ChainId, to: Address, selector: [u8; 4]) -> Self {
-        MatchKey {
+    /// Exact target-address matcher.
+    #[must_use]
+    pub const fn exact(chain_id: ChainId, to: Address, selector: [u8; 4]) -> Self {
+        Self {
             chain_id,
             to: Some(to),
             selector,
         }
     }
 
-    pub fn wildcard_target(chain_id: ChainId, selector: [u8; 4]) -> Self {
-        MatchKey {
+    /// Wildcard target-address matcher.
+    #[must_use]
+    pub const fn wildcard_target(chain_id: ChainId, selector: [u8; 4]) -> Self {
+        Self {
             chain_id,
             to: None,
             selector,
@@ -486,7 +583,7 @@ mod tests {
         );
         assert_eq!(
             as_adapter.match_keys(),
-            vec![MatchKey::exact(1, target.clone(), [0xaa, 0xbb, 0xcc, 0xdd])]
+            vec![MatchKey::exact(1, target, [0xaa, 0xbb, 0xcc, 0xdd])]
         );
 
         let descriptor = as_adapter.descriptor();
