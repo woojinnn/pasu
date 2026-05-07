@@ -20,6 +20,8 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use thiserror::Error;
 
+use crate::schema::PolicySchemaComposer;
+
 /// Final, host-facing verdict. Tri-state: `Pass` carries no data, `Warn` and
 /// `Fail` carry the list of matched policies that drove the verdict.
 ///
@@ -210,9 +212,11 @@ pub struct PolicyEngine {
 
 impl PolicyEngine {
     /// Start a builder. Callers chain `.add_text(...)` and then `.build()`.
-    /// The baseline permit is added automatically.
+    /// The baseline permit and the bundled Cedar schema are added automatically.
     #[must_use]
     pub fn builder() -> PolicyEngineBuilder {
+        // Default delegates to PolicyEngineBuilder::new(), which pre-loads
+        // the bundled schema so every built engine is schema-validated.
         PolicyEngineBuilder::default()
     }
 
@@ -479,13 +483,33 @@ fn ingest_policy(
 /// Accepts text Cedar sources and JSON-encoded `CedarJSON` policy objects,
 /// mixed in any order. Always injects the baseline permit policy so that
 /// absence of any matched `forbid` evaluates to allow.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct PolicyEngineBuilder {
     text_sources: Vec<String>,
     schema_sources: Vec<String>,
 }
 
+impl Default for PolicyEngineBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PolicyEngineBuilder {
+    /// Construct a builder pre-loaded with the bundled Cedar schema
+    /// (`core + dex + other`). The bundled schema is mandatory: every
+    /// engine produced by this builder is strict-validated.
+    ///
+    /// To extend the schema with adapter-contributed fragments, chain
+    /// `add_schema_text(...)` after `new()`.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            text_sources: Vec::new(),
+            schema_sources: vec![PolicySchemaComposer::new().compose()],
+        }
+    }
+
     /// Append one or more text Cedar policies. Multiple `forbid`/`permit`
     /// clauses in the string are fine — they'll all be parsed.
     ///
@@ -574,55 +598,6 @@ mod tests {
         })
     }
 
-    fn dex_schema() -> &'static str {
-        r#"
-            entity Wallet;
-            entity Protocol;
-
-            type Token = {
-                chainId: Long,
-                address: String,
-                symbol: String,
-                decimals: Long,
-                isNative: Bool,
-            };
-
-            type UsdValuation = {
-                value: decimal,
-                asOfTs: Long,
-                staleSec: Long,
-                sources: Set<String>,
-            };
-
-            type WindowStats = {
-                swapVolumeUsd24h?: decimal,
-                swapCount24h?: Long,
-            };
-
-            type DexContext = {
-                target: String,
-                valueWei: String,
-                protocolIds: Set<String>,
-                inputTokens: Set<Token>,
-                outputTokens: Set<Token>,
-                totalInputUsd?: UsdValuation,
-                totalMinOutputUsd?: UsdValuation,
-                maxFeeBps?: Long,
-                hasZeroMinOutput: Bool,
-                hasExternalRecipient: Bool,
-                totalInputFractionOfPortfolioBps?: Long,
-                allowancesCoverInputs?: Bool,
-                windowStats?: WindowStats,
-            };
-
-            action "dex" appliesTo {
-                principal: Wallet,
-                resource: Protocol,
-                context: DexContext,
-            };
-        "#
-    }
-
     #[test]
     fn empty_policy_set_allows_everything() {
         let engine = PolicyEngine::from_sources(Vec::<&str>::new()).unwrap();
@@ -646,6 +621,7 @@ mod tests {
             @reason("USD value of swap exceeds 100")
             forbid (principal, action == Action::"dex", resource)
             when {
+              context has totalInputUsd &&
               context.totalInputUsd.value.greaterThan(decimal("100.00"))
             };
         "#;
@@ -680,6 +656,7 @@ mod tests {
             @severity("deny")
             forbid (principal, action == Action::"dex", resource)
             when {
+              context has totalInputUsd &&
               context.totalInputUsd.value.greaterThan(decimal("100.00"))
             };
         "#;
@@ -704,6 +681,7 @@ mod tests {
             @reason("Large swap — please review")
             forbid (principal, action == Action::"dex", resource)
             when {
+              context has totalInputUsd &&
               context.totalInputUsd.value.greaterThan(decimal("100.00"))
             };
         "#;
@@ -736,12 +714,18 @@ mod tests {
             @id("user/large-swap-warning")
             @severity("warn")
             forbid (principal, action == Action::"dex", resource)
-            when { context.totalInputUsd.value.greaterThan(decimal("100.00")) };
+            when {
+              context has totalInputUsd &&
+              context.totalInputUsd.value.greaterThan(decimal("100.00"))
+            };
 
             @id("user/huge-swap-deny")
             @severity("deny")
             forbid (principal, action == Action::"dex", resource)
-            when { context.totalInputUsd.value.greaterThan(decimal("150.00")) };
+            when {
+              context has totalInputUsd &&
+              context.totalInputUsd.value.greaterThan(decimal("150.00"))
+            };
         "#;
         let engine = PolicyEngine::from_sources([policy]).unwrap();
         let v = engine
@@ -783,6 +767,25 @@ mod tests {
     }
 
     #[test]
+    fn from_sources_validates_policy_against_bundled_schema() {
+        // The unbundled `from_sources` constructor must apply the bundled
+        // Cedar schema (core + dex + other) so a policy with a typo in a
+        // DexContext field is rejected at build time, not silently accepted.
+        let policy = r#"
+            @id("bad/from-sources-context-typo")
+            @severity("deny")
+            forbid (principal, action == Action::"dex", resource)
+            when { context.totalInputUSd.value.greaterThan(decimal("100.00")) };
+        "#;
+
+        let err = PolicyEngine::from_sources([policy]).unwrap_err();
+        assert!(
+            matches!(err, PolicyError::Validation(_)),
+            "expected PolicyError::Validation, got {err:?}"
+        );
+    }
+
+    #[test]
     fn schema_validation_rejects_policy_with_unknown_context_field() {
         let policy = r#"
             @id("bad/context-typo")
@@ -791,8 +794,9 @@ mod tests {
             when { context.totalInputUSd.value.greaterThan(decimal("100.00")) };
         "#;
 
+        // builder() pre-loads the bundled schema; no explicit add_schema_text
+        // is needed.
         let err = PolicyEngine::builder()
-            .add_schema_text(dex_schema())
             .add_text(policy)
             .build()
             .unwrap_err();
@@ -812,7 +816,6 @@ mod tests {
             };
         "#;
         let engine = PolicyEngine::builder()
-            .add_schema_text(dex_schema())
             .add_text(policy)
             .build()
             .unwrap();
