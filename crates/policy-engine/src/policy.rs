@@ -215,9 +215,7 @@ impl PolicyEngine {
     /// The baseline permit and the bundled Cedar schema are added automatically.
     #[must_use]
     pub fn builder() -> PolicyEngineBuilder {
-        // Default delegates to PolicyEngineBuilder::new(), which pre-loads
-        // the bundled schema so every built engine is schema-validated.
-        PolicyEngineBuilder::default()
+        PolicyEngineBuilder::new()
     }
 
     /// Convenience: build an engine from one or more text Cedar sources only.
@@ -521,8 +519,13 @@ impl PolicyEngineBuilder {
         self
     }
 
-    /// Append Cedar schema text used to strict-validate policies at build time
-    /// and requests at evaluation time.
+    /// Extend the schema with an additional Cedar fragment. The bundled
+    /// schema (`core + dex + other`) is already pre-loaded by `new()`, so
+    /// this method is for adapter- or host-contributed fragments only.
+    /// Re-declaring an entity, type, or action that the bundled schema
+    /// already provides is a parse error (`Wallet declared twice`); pass
+    /// only fragments that introduce new declarations, ideally inside their
+    /// own `namespace` block.
     #[must_use]
     pub fn add_schema_text<S: Into<String>>(mut self, src: S) -> Self {
         self.schema_sources.push(src.into());

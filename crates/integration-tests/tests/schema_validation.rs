@@ -1,9 +1,8 @@
-use policy_engine::{PolicyEngine, PolicySchemaComposer};
+use policy_engine::PolicyEngine;
 use std::{fs, path::Path};
 
 #[test]
 fn dex_policy_schema_accepts_aggregate_context() {
-    let schema = PolicySchemaComposer::new().compose();
     let policy = r#"
         permit(
           principal is Wallet,
@@ -21,8 +20,8 @@ fn dex_policy_schema_accepts_aggregate_context() {
         };
     "#;
 
+    // builder() pre-loads the bundled schema; no explicit add_schema_text needed.
     PolicyEngine::builder()
-        .add_schema_text(schema)
         .add_text(policy)
         .build()
         .unwrap();
@@ -30,7 +29,6 @@ fn dex_policy_schema_accepts_aggregate_context() {
 
 #[test]
 fn shipped_dex_policies_validate_against_composed_schema() {
-    let schema = PolicySchemaComposer::new().compose();
     let policy_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../policies/dex");
     let entries = fs::read_dir(&policy_dir).unwrap_or_else(|err| {
         panic!(
@@ -62,7 +60,6 @@ fn shipped_dex_policies_validate_against_composed_schema() {
             )
         });
         PolicyEngine::builder()
-            .add_schema_text(schema.clone())
             .add_text(policy)
             .build()
             .unwrap_or_else(|err| {
