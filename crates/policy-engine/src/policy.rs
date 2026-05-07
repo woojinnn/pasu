@@ -344,11 +344,8 @@ impl PolicyEngine {
 
         let entities = Entities::from_json_value(entities_json.clone(), Some(&self.schema))
             .map_err(|e| PolicyError::Entities(e.to_string()))?;
-        let context = Context::from_json_value(
-            context_json.clone(),
-            Some((&self.schema, &action)),
-        )
-        .map_err(|e| PolicyError::Context(e.to_string()))?;
+        let context = Context::from_json_value(context_json.clone(), Some((&self.schema, &action)))
+            .map_err(|e| PolicyError::Context(e.to_string()))?;
 
         let request = Request::new(principal, action, resource, context, Some(&self.schema))
             .map_err(|e| PolicyError::Request(e.to_string()))?;
@@ -815,10 +812,7 @@ mod tests {
               context.totalInputUsd.value.greaterThan(decimal("100.00"))
             };
         "#;
-        let engine = PolicyEngine::builder()
-            .add_text(policy)
-            .build()
-            .unwrap();
+        let engine = PolicyEngine::builder().add_text(policy).build().unwrap();
 
         let err = engine
             .evaluate(

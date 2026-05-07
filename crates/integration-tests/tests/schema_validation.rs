@@ -21,10 +21,7 @@ fn dex_policy_schema_accepts_aggregate_context() {
     "#;
 
     // builder() pre-loads the bundled schema; no explicit add_schema_text needed.
-    PolicyEngine::builder()
-        .add_text(policy)
-        .build()
-        .unwrap();
+    PolicyEngine::builder().add_text(policy).build().unwrap();
 }
 
 #[test]
