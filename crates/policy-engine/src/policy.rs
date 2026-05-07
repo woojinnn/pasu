@@ -764,6 +764,29 @@ mod tests {
     }
 
     #[test]
+    fn default_builder_matches_new_builder_schema() {
+        // Regression guard against accidentally re-adding `#[derive(Default)]`
+        // to PolicyEngineBuilder. Both the explicit `new()` constructor and
+        // the `Default::default()` path must produce engines that strict-
+        // validate against the bundled schema.
+        let typo_policy = r#"
+            @id("smoke/typo")
+            @severity("deny")
+            forbid (principal, action == Action::"dex", resource)
+            when {
+              context has totalInputUsd &&
+              context.totalInputUSd.value.greaterThan(decimal("0"))
+            };
+        "#;
+
+        let via_default = PolicyEngineBuilder::default().add_text(typo_policy).build();
+        let via_new = PolicyEngineBuilder::new().add_text(typo_policy).build();
+
+        assert!(matches!(via_default, Err(PolicyError::Validation(_))));
+        assert!(matches!(via_new, Err(PolicyError::Validation(_))));
+    }
+
+    #[test]
     fn from_sources_validates_policy_against_bundled_schema() {
         // The unbundled `from_sources` constructor must apply the bundled
         // Cedar schema (core + dex + other) so a policy with a typo in a
