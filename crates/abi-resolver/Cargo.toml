@@ -1,0 +1,21 @@
+[package]
+name = "abi-resolver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Resolve function signatures (Sourcify / openchain) and decode standard-ABI calldata for arbitrary EVM transactions"
+
+[dependencies]
+alloy-primitives.workspace = true
+alloy-dyn-abi.workspace = true
+alloy-json-abi = "0.8"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[dev-dependencies]
+alloy-json-abi = "0.8"
+serde_json.workspace = true
+tempfile = "3"

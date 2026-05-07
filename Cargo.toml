@@ -7,6 +7,8 @@ members = [
     "crates/adapters/universal-router",
     "crates/adapters-bundle",
     "crates/integration-tests",
+    "crates/abi-resolver",
+    "crates/web-server",
 ]
 
 [workspace.package]
@@ -31,3 +33,4 @@ policy-engine-adapter-uniswap-v2 = { path = "crates/adapters/uniswap-v2", versio
 policy-engine-adapter-uniswap-v3 = { path = "crates/adapters/uniswap-v3", version = "0.1.0" }
 policy-engine-adapter-universal-router = { path = "crates/adapters/universal-router", version = "0.1.0" }
 policy-engine-adapters-bundle = { path = "crates/adapters-bundle", version = "0.1.0" }
+abi-resolver = { path = "crates/abi-resolver", version = "0.1.0" }

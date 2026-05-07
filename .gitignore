@@ -2,3 +2,8 @@
 **/*.rs.bk
 .DS_Store
 docs/superpowers/
+
+# abi-resolver: full SQLite Sourcify dump is built locally (~3 GB) and never committed.
+sourcify.sqlite
+sourcify.sqlite-shm
+sourcify.sqlite-wal
