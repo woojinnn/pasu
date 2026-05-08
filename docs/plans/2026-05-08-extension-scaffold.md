@@ -78,7 +78,6 @@ Create `extension/package.json`:
     "@metamask/post-message-stream": "^8.1.0",
     "eth-rpc-errors": "^4.0.3",
     "object-hash": "^3.0.0",
-    "readable-stream": "^4.5.2",
     "viem": "^2.13.7",
     "webextension-polyfill": "^0.12.0"
   },
@@ -195,12 +194,14 @@ corepack enable && corepack prepare yarn@4.6.0 --activate
 - [ ] **Step 5: Commit**
 
 ```bash
-git add extension/package.json extension/tsconfig.json extension/.gitignore extension/.example.env .gitignore extension/yarn.lock
+git add extension/package.json extension/tsconfig.json extension/.gitignore extension/.example.env extension/.yarnrc.yml .gitignore extension/yarn.lock
 git commit -m "$(cat <<'EOF'
 feat(extension): yarn project bootstrap
 
 TS5 + webpack5 + viem2 + post-message-stream + eth-rpc-errors. Cross-
-browser scripts via wext-manifest-loader. yarn@4.6.0 packageManager.
+browser scripts via wext-manifest-loader. yarn@4.6.0 packageManager
+with nodeLinker=node-modules pinned (avoids PnP breaking
+wext-manifest-loader and similar legacy plugins).
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -570,8 +571,12 @@ export const isUntypedSignature = (m: Message): m is Message & { data: UntypedSi
 
 ```typescript
 import objectHash from 'object-hash';
-import type { Duplex } from 'readable-stream';
+// `WindowPostMessageStream` is a Duplex; we use the structural type from
+// @metamask/post-message-stream rather than pulling in `readable-stream`.
+import type { WindowPostMessageStream } from '@metamask/post-message-stream';
 import Browser from 'webextension-polyfill';
+
+type Duplex = WindowPostMessageStream;
 import { RequestType } from './types';
 import type { MessageData, MessageResponse } from './types';
 
@@ -588,24 +593,42 @@ export function generateRequestId(data: MessageData): string {
   }
 }
 
-/// Hard end-to-end timeout per design §3.2 (3s). Fail-closed: timeout
-/// returns `false` so the original RPC is rejected, never silently passed.
-const HARD_TIMEOUT_MS = 3_000;
+/// Two-phase timeout per design §3.2:
+/// - Phase 1 (3s): hard fail-closed for the *evaluation* leg. If the SW
+///   doesn't even start a Warn modal in 3s, the engine is stuck → reject.
+/// - Phase 2 (5min): user-decision deadline once Warn surfaces. The SW
+///   sends a `kind:"awaiting-user"` heartbeat to the inpage stream the
+///   moment a Warn modal opens, which extends the inpage timer to 5min.
+///   Without this, every Warn would auto-reject before the user could
+///   click "Trust and proceed".
+const PHASE1_MS = 3_000;
+const PHASE2_MS = 5 * 60_000;
 
 /// Send a message over a `WindowPostMessageStream` and resolve with the
 /// matching `MessageResponse.data` (boolean).
 export function sendToStreamAndAwaitResponse(stream: Duplex, data: MessageData): Promise<boolean> {
   const requestId = generateRequestId(data);
   return new Promise<boolean>((resolve) => {
-    const timer = setTimeout(() => {
+    let timer = setTimeout(() => {
       stream.off('data', cb);
       resolve(false);
-    }, HARD_TIMEOUT_MS);
-    const cb = (response: MessageResponse) => {
+    }, PHASE1_MS);
+    const cb = (response: MessageResponse | { requestId: string; kind: 'awaiting-user' }) => {
       if (response.requestId !== requestId) return;
+      // Phase-2 transition: SW signaled "Warn modal open, awaiting user".
+      // Extend the deadline so the user has time to click. Cleanup of the
+      // listener happens only on the final boolean response.
+      if ((response as any).kind === 'awaiting-user') {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          stream.off('data', cb);
+          resolve(false);
+        }, PHASE2_MS);
+        return;
+      }
       clearTimeout(timer);
       stream.off('data', cb);
-      resolve(response.data);
+      resolve((response as MessageResponse).data);
     };
     stream.on('data', cb);
     stream.write({ requestId, data });
@@ -613,21 +636,31 @@ export function sendToStreamAndAwaitResponse(stream: Duplex, data: MessageData):
 }
 
 /// Send via `chrome.runtime.Port` and await the matching response.
+/// Two-phase timeout matches sendToStreamAndAwaitResponse so the
+/// content-script→SW leg also extends on `awaiting-user`.
 export function sendToPortAndAwaitResponse(
   port: Browser.Runtime.Port,
   data: MessageData,
 ): Promise<boolean> {
   const requestId = generateRequestId(data);
   return new Promise<boolean>((resolve) => {
-    const timer = setTimeout(() => {
+    let timer = setTimeout(() => {
       port.onMessage.removeListener(cb);
       resolve(false);
-    }, HARD_TIMEOUT_MS);
-    const cb = (response: MessageResponse) => {
+    }, PHASE1_MS);
+    const cb = (response: MessageResponse | { requestId: string; kind: 'awaiting-user' }) => {
       if (response.requestId !== requestId) return;
+      if ((response as any).kind === 'awaiting-user') {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          port.onMessage.removeListener(cb);
+          resolve(false);
+        }, PHASE2_MS);
+        return;
+      }
       clearTimeout(timer);
       port.onMessage.removeListener(cb);
-      resolve(response.data);
+      resolve((response as MessageResponse).data);
     };
     port.onMessage.addListener(cb);
     port.postMessage({ requestId, data });
@@ -668,7 +701,7 @@ git commit -m "feat(extension): shared identifiers, message types, request-id ha
 import { WindowPostMessageStream } from '@metamask/post-message-stream';
 import { ethErrors } from 'eth-rpc-errors';
 import { Identifier, PROVIDER_MARKER } from '@lib/identifier';
-import { sendToStreamAndAwaitResponse } from '@lib/messages';
+import { generateRequestId, sendToStreamAndAwaitResponse } from '@lib/messages';
 import { RequestType } from '@lib/types';
 
 declare global {
@@ -691,12 +724,16 @@ const REJECT_SIG = ethErrors.provider.userRejectedRequest(
   'Scopeball: signature blocked by policy',
 );
 
-/// Read chainId without pulling in viem (~250 KB). Falls back to
-/// provider.chainId synchronously if the request method isn't available.
+/// Read chainId without pulling in viem (~250 KB). 1.5s timeout so a
+/// hanging provider doesn't burn the entire 3s phase-1 budget before
+/// we even start a gating round-trip; falls back to provider.chainId.
 async function readChainId(provider: any): Promise<number> {
   try {
-    const cid = await provider.request({ method: 'eth_chainId' });
-    return Number.parseInt(String(cid), 16);
+    const result = await Promise.race<unknown>([
+      provider.request({ method: 'eth_chainId' }),
+      new Promise<unknown>((_, reject) => setTimeout(() => reject(new Error('chainId timeout')), 1_500)),
+    ]);
+    return Number.parseInt(String(result), 16);
   } catch {
     return Number(provider.chainId ?? 1);
   }
@@ -706,12 +743,18 @@ async function checkTransaction(provider: any, params: any[]): Promise<boolean> 
   const [transaction] = params ?? [];
   if (!transaction) return true;
   const chainId = await readChainId(provider);
-  return sendToStreamAndAwaitResponse(stream, {
+  const data = {
     type: RequestType.TRANSACTION,
     chainId,
     hostname: location.hostname,
     transaction,
-  });
+  } as const;
+  // Pin the requestId on the tx object identity so a later tx-hash report
+  // can attach to the same gating decision (Plan 5 setTxHash chain).
+  if (typeof transaction === 'object' && transaction) {
+    txRequestIds.set(transaction, generateRequestId(data as any));
+  }
+  return sendToStreamAndAwaitResponse(stream, data);
 }
 
 async function checkTypedSignature(provider: any, params: any[]): Promise<boolean> {
@@ -742,6 +785,15 @@ async function checkUntypedSignature(params: any[]): Promise<boolean> {
     hostname: location.hostname,
     message,
   });
+}
+
+/// Track requestId by transaction object identity so the post-call hash
+/// report can find the originating request. Cheap WeakMap so GC reclaims
+/// when the dApp drops the tx object.
+const txRequestIds = new WeakMap<object, string>();
+function lastRequestIdForTransaction(params: any[]): string | undefined {
+  const tx = params?.[0];
+  return tx && typeof tx === 'object' ? txRequestIds.get(tx) : undefined;
 }
 
 /// `eth_sendRawTransaction`: the calldata is already signed bytes; we cannot
@@ -793,7 +845,20 @@ function proxyEthereumProvider(provider: any): void {
       // Note: wallet_sendCalls (EIP-5792) is intentionally NOT gated in v1;
       // the design defers it to v1.1. Removing it from the inpage gate avoids
       // shipping untested batch-evaluate semantics.
-      return Reflect.apply(target, thisArg, args);
+      const result = await Reflect.apply(target, thisArg, args);
+      // Wire tx-hash reporting for receipt-poller commit (Plan 5 §6/§7):
+      // when eth_sendTransaction returned a hash, forward it to the SW so
+      // commitByTxHash can advance committed window counters.
+      if (method === 'eth_sendTransaction' && typeof result === 'string' && /^0x[0-9a-fA-F]{64}$/.test(result)) {
+        const requestId = lastRequestIdForTransaction(params);
+        if (requestId) {
+          stream.write({
+            requestId: 'tx-hash-' + requestId,
+            data: { type: 'tx-hash-report' as any, requestId, txHash: result, hostname: location.hostname },
+          });
+        }
+      }
+      return result;
     },
   };
 
@@ -846,18 +911,26 @@ function proxyEthereumProvider(provider: any): void {
   };
 
   try {
+    // request is required by EIP-1193; send/sendAsync are legacy + optional.
+    if (typeof provider.request !== 'function') {
+      throw new Error('provider.request is required');
+    }
     Object.defineProperty(provider, 'request', {
       value: new Proxy(provider.request, requestHandler),
       writable: true,
     });
-    Object.defineProperty(provider, 'sendAsync', {
-      value: new Proxy(provider.sendAsync, sendAsyncHandler),
-      writable: true,
-    });
-    Object.defineProperty(provider, 'send', {
-      value: new Proxy(provider.send, sendHandler),
-      writable: true,
-    });
+    if (typeof provider.sendAsync === 'function') {
+      Object.defineProperty(provider, 'sendAsync', {
+        value: new Proxy(provider.sendAsync, sendAsyncHandler),
+        writable: true,
+      });
+    }
+    if (typeof provider.send === 'function') {
+      Object.defineProperty(provider, 'send', {
+        value: new Proxy(provider.send, sendHandler),
+        writable: true,
+      });
+    }
     Object.defineProperty(provider, PROVIDER_MARKER, { value: true, writable: false });
   } catch (e) {
     // Frozen / non-configurable provider. Surface this as a hard signal so
@@ -1025,6 +1098,13 @@ const stream = new WindowPostMessageStream({
 stream.on('data', async (message: Message) => {
   const port = Browser.runtime.connect({ name: Identifier.CONTENT_SCRIPT });
   const data: Message['data'] = { ...message.data, hostname: location.hostname };
+  // Forward any phase-2 `awaiting-user` heartbeats to the inpage stream
+  // so the inpage timer can extend before its phase-1 deadline fires.
+  port.onMessage.addListener((msg: any) => {
+    if (msg?.kind === 'awaiting-user' && msg.requestId === message.requestId) {
+      stream.write({ requestId: message.requestId, kind: 'awaiting-user' });
+    }
+  });
   const ok = await sendToPortAndAwaitResponse(port, data);
   stream.write({ requestId: message.requestId, data: ok });
   port.disconnect();

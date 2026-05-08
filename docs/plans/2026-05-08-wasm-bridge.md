@@ -477,13 +477,27 @@ pub struct PolicyEntryDto {
     pub text: String,
 }
 
+/// Unified envelope. EVERY wasm export returns this shape (or its Err
+/// variant). TS-side `unwrap()` reads `ok` once and either yields `data`
+/// or throws. Replaces the per-export ad-hoc shapes that earlier drafts had.
 #[derive(Debug, Serialize)]
 #[serde(tag = "ok")]
-pub enum InstallResultDto {
+pub enum Envelope<T: Serialize> {
     #[serde(rename = "true")]
-    Ok,
+    Ok { data: T },
     #[serde(rename = "false")]
-    Err { error: String },
+    Err { error: EngineErrorDto },
+}
+
+impl<T: Serialize> Envelope<T> {
+    pub fn ok(data: T) -> Self { Self::Ok { data } }
+    pub fn err(kind: &str, message: &str) -> Self {
+        Self::Err { error: EngineErrorDto { kind: kind.into(), message: message.into() } }
+    }
+    /// Render to JSON. Infallible because all internal types derive Serialize.
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).expect("Envelope serializes")
+    }
 }
 ```
 
@@ -492,9 +506,7 @@ pub enum InstallResultDto {
 Replace the `install_policies_json` body in `exports.rs`:
 
 ```rust
-use crate::dto::{
-    InstallPoliciesInputDto, InstallResultDto,
-};
+use crate::dto::{Envelope, InstallPoliciesInputDto};
 use crate::state::{EngineState, STATE};
 use policy_engine::policy::PolicyEngineBuilder;
 
@@ -513,9 +525,11 @@ pub fn install_policies_json(policies_json: String) -> String {
         let mut builder = PolicyEngineBuilder::new().add_schema_text(input.schema_text);
         for p in input.policy_set {
             // Allow callers to omit @id annotations by inserting one if
-            // missing. Cheap defensive insertion: prepend "@id(\"<id>\")\n"
-            // when the text doesn't already start with @id.
-            let text = if p.text.trim_start().starts_with("@id(") {
+            // missing. Robust check: scan past leading whitespace AND past
+            // line/block comments AND past any non-id annotations to find
+            // whether `@id(` appears anywhere in the policy's annotation
+            // prefix (before `permit`/`forbid`).
+            let text = if has_id_annotation(&p.text) {
                 p.text.clone()
             } else {
                 format!("@id(\"{}\")\n{}", p.id, p.text)
@@ -530,15 +544,55 @@ pub fn install_policies_json(policies_json: String) -> String {
         Ok(())
     })();
 
-    let dto = match result {
-        Ok(()) => InstallResultDto::Ok,
-        Err(e) => InstallResultDto::Err { error: e },
-    };
-    serde_json::to_string(&dto).expect("InstallResultDto serializes")
+    match result {
+        Ok(()) => Envelope::<()>::ok(()).to_json(),
+        Err(message) => Envelope::<()>::err("install_failed", &message).to_json(),
+    }
+}
+
+/// Robust @id-annotation detector: returns true when the policy text already
+/// contains an `@id(...)` annotation in its annotation prefix (before the
+/// first `permit` or `forbid` keyword). Skips // line comments and /* block */
+/// comments and other annotations like `@severity(...)`.
+fn has_id_annotation(text: &str) -> bool {
+    // Strip comments and look for `@id(` before the first `permit`/`forbid`.
+    let stripped = strip_cedar_comments(text);
+    if let Some(head_end) = stripped.find("permit").or_else(|| stripped.find("forbid")) {
+        stripped[..head_end].contains("@id(")
+    } else {
+        // No head keyword — defensively assume @id present so we don't double-inject.
+        stripped.contains("@id(")
+    }
+}
+
+fn strip_cedar_comments(s: &str) -> String {
+    // Cheap one-pass strip. Cedar comments are //-line and /* block */.
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'/' {
+            while i < bytes.len() && bytes[i] != b'\n' { i += 1; }
+        } else if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'*' {
+            i += 2;
+            while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') { i += 1; }
+            i = (i + 2).min(bytes.len());
+        } else {
+            out.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+    out
 }
 ```
 
-> `PolicyEngineBuilder` and its `add_schema_text`/`add_policy`/`build` API: confirm exact names with `grep -n "PolicyEngineBuilder\|add_schema_text\|add_policy" crates/policy-engine/src/policy.rs | head -10`. Adjust if different (the engine recently changed this surface; the names above match the current branch as of this plan).
+> Confirmed against `crates/policy-engine/src/policy.rs`:
+> - `PolicyEngineBuilder::new()` (`policy.rs:496`)
+> - `PolicyEngineBuilder::add_text(src: impl Into<String>) -> Self` (`policy.rs:514`)
+> - `PolicyEngineBuilder::add_schema_text(src) -> Self` (`policy.rs:527`)
+> - `PolicyEngineBuilder::build() -> Result<PolicyEngine, PolicyError>` (`policy.rs:538`)
+>
+> There is **no** `add_policy(id, text)` method — IDs come from `@id("...")` annotations in the policy text itself. The defensive injection above prepends one when missing.
 
 - [ ] **Step 3: Native unit test**
 
@@ -637,7 +691,7 @@ pub enum BuildActionResultDto {
 Replace `build_action_json` body in `exports.rs`:
 
 ```rust
-use crate::dto::{BuildActionResultDto, EngineErrorDto};
+use crate::dto::{EngineErrorDto, Envelope};
 use crate::state::{registry, signature_registry, STATE};
 use policy_engine::core::Request;
 use policy_engine::host::{oracle::SnapshotOracle, HostCapabilities};
@@ -690,9 +744,8 @@ pub fn build_action_json(request_json: String) -> String {
     })();
 
     match result {
-        Ok(action_json) => serde_json::to_string(&BuildActionResultDto::Action(action_json))
-            .expect("serialize"),
-        Err(e) => serde_json::to_string(&BuildActionResultDto::Err(e)).expect("serialize"),
+        Ok(action_json) => Envelope::ok(action_json).to_json(),
+        Err(e) => Envelope::<serde_json::Value>::Err { error: e }.to_json(),
     }
 }
 
@@ -752,7 +805,9 @@ mod build_action_tests {
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
         // BuildActionResultDto is untagged: either {"other": {...}} (the
         // serialized Action enum) or {"kind":..., "message":...} on err.
-        assert!(parsed.get("other").is_some(), "expected Action::Other, got {parsed}");
+        // Envelope wrapping (fix-pass): {"ok":"true","data":<action>}.
+        assert_eq!(parsed["ok"], "true");
+        assert!(parsed["data"].get("other").is_some(), "expected Action::Other inside data, got {parsed}");
     }
 }
 ```
@@ -867,17 +922,11 @@ use policy_engine::lowering::required_host_facts;
 pub fn tier1_fact_plan_json(action_json: String) -> String {
     let action: Action = match serde_json::from_str(&action_json) {
         Ok(a) => a,
-        Err(e) => {
-            return serde_json::to_string(&EngineErrorDto {
-                kind: "invalid_action_json".into(),
-                message: e.to_string(),
-            })
-            .expect("serialize");
-        }
+        Err(e) => return Envelope::<HostFactPlanDto>::err("invalid_action_json", &e.to_string()).to_json(),
     };
     let plan = required_host_facts(&action);
     let dto: HostFactPlanDto = plan.into();
-    serde_json::to_string(&dto).expect("HostFactPlanDto serializes")
+    Envelope::ok(dto).to_json()
 }
 ```
 
@@ -921,10 +970,13 @@ mod tier1_tests {
         });
         let out = tier1_fact_plan_json(action_json.to_string());
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
-        assert_eq!(parsed["tokens_for_oracle"].as_array().unwrap().len(), 2);
-        assert_eq!(parsed["balances"].as_array().unwrap().len(), 1);
-        assert_eq!(parsed["allowances"].as_array().unwrap().len(), 1);
-        assert_eq!(parsed["clock_required"], false);
+        // Envelope wrapping: {"ok":"true","data":<HostFactPlanDto>}.
+        assert_eq!(parsed["ok"], "true");
+        let data = &parsed["data"];
+        assert_eq!(data["tokens_for_oracle"].as_array().unwrap().len(), 2);
+        assert_eq!(data["balances"].as_array().unwrap().len(), 1);
+        assert_eq!(data["allowances"].as_array().unwrap().len(), 1);
+        assert_eq!(data["clock_required"], false);
     }
 }
 ```
@@ -1008,12 +1060,12 @@ use policy_engine::lowering::required_window_keys;
 pub fn tier2_window_keys_json(action_json: String, oracle_snapshot_json: String) -> String {
     let action: Action = match serde_json::from_str(&action_json) {
         Ok(a) => a,
-        Err(e) => return error_envelope("invalid_action_json", &e.to_string()),
+        Err(e) => return Envelope::<WindowKeyPlanDto>::err("invalid_action_json", &e.to_string()).to_json(),
     };
     let entries: Vec<OracleEntryDto> =
         match serde_json::from_str::<Vec<OracleEntryDto>>(&oracle_snapshot_json) {
             Ok(v) => v,
-            Err(e) => return error_envelope("invalid_oracle_snapshot_json", &e.to_string()),
+            Err(e) => return Envelope::<WindowKeyPlanDto>::err("invalid_oracle_snapshot_json", &e.to_string()).to_json(),
         };
     let oracle = snapshot_oracle_from_entries(&entries);
     let plan = required_window_keys(&action, &oracle);
@@ -1023,19 +1075,14 @@ pub fn tier2_window_keys_json(action_json: String, oracle_snapshot_json: String)
             .into_iter()
             .map(|k| crate::dto::WindowKeyDto {
                 actor: k.actor.as_str().to_string(),
-                name: k.name,
+                // Canonical wire string: StatKey::as_str() → "swapVolumeUsd24h" / "swapCount24h".
+                // Field is named `name` for forward compat with future window types
+                // that may not be StatKey-typed (e.g. composite keys).
+                name: k.key.as_str().to_string(),
             })
             .collect(),
     };
-    serde_json::to_string(&dto).expect("WindowKeyPlanDto serializes")
-}
-
-fn error_envelope(kind: &str, message: &str) -> String {
-    serde_json::to_string(&EngineErrorDto {
-        kind: kind.into(),
-        message: message.into(),
-    })
-    .expect("serialize")
+    Envelope::ok(dto).to_json()
 }
 ```
 
@@ -1060,7 +1107,9 @@ mod tier2_tests {
         });
         let out = tier2_window_keys_json(action_json.to_string(), "[]".into());
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
-        let names: Vec<&str> = parsed["keys"]
+        // Envelope wrapping: {"ok":"true","data":{"keys":[...]}}.
+        assert_eq!(parsed["ok"], "true");
+        let names: Vec<&str> = parsed["data"]["keys"]
             .as_array()
             .unwrap()
             .iter()
@@ -1293,7 +1342,10 @@ pub fn evaluate_json(request_json: String, host_snapshot_json: String) -> String
             }],
         },
     };
-    serde_json::to_string(&dto).expect("VerdictDto serializes")
+    // evaluate_json wraps engine errors into Verdict::Fail internally; the
+    // outer envelope is therefore always Ok(verdict). Keeps the contract
+    // uniform — `unwrap()` in the TS bridge always returns a VerdictDto here.
+    Envelope::ok(dto).to_json()
 }
 
 fn verdict_to_dto(v: Verdict) -> VerdictDto {
@@ -1348,7 +1400,9 @@ mod evaluate_tests {
         });
         let out = evaluate_json(req.to_string(), snap.to_string());
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
-        assert_eq!(parsed["kind"], "pass", "unexpected verdict: {parsed}");
+        // Envelope wrapping: {"ok":"true","data":<VerdictDto>}.
+        assert_eq!(parsed["ok"], "true");
+        assert_eq!(parsed["data"]["kind"], "pass", "unexpected verdict: {parsed}");
     }
 }
 ```
@@ -1406,10 +1460,13 @@ fn install_then_build_then_evaluate_round_trip() {
 
     let action_out = build_action_json(req.to_string());
     let action_parsed: serde_json::Value = serde_json::from_str(&action_out).unwrap();
-    assert!(action_parsed.get("other").is_some(), "{action_out}");
+    assert_eq!(action_parsed["ok"], "true");
+    assert!(action_parsed["data"].get("other").is_some(), "{action_out}");
 
-    let plan_out = tier1_fact_plan_json(action_parsed["other"].to_string());
-    assert!(plan_out.contains("tokens_for_oracle"));
+    let plan_out = tier1_fact_plan_json(action_parsed["data"]["other"].to_string());
+    let plan_parsed: serde_json::Value = serde_json::from_str(&plan_out).unwrap();
+    assert_eq!(plan_parsed["ok"], "true");
+    assert!(plan_parsed["data"].get("tokens_for_oracle").is_some());
 
     let snap = serde_json::json!({
         "oracle": [], "balances": [], "allowances": [],
@@ -1417,9 +1474,10 @@ fn install_then_build_then_evaluate_round_trip() {
     });
     let verdict_out = evaluate_json(req.to_string(), snap.to_string());
     let verdict_parsed: serde_json::Value = serde_json::from_str(&verdict_out).unwrap();
-    assert_eq!(verdict_parsed["kind"], "pass");
+    assert_eq!(verdict_parsed["ok"], "true");
+    assert_eq!(verdict_parsed["data"]["kind"], "pass");
 
-    let _ = tier2_window_keys_json(action_parsed["other"].to_string(), "[]".into());
+    let _ = tier2_window_keys_json(action_parsed["data"]["other"].to_string(), "[]".into());
 }
 ```
 

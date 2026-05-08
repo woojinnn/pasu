@@ -231,11 +231,12 @@ Add to `dependencies`:
 ```json
 "jszip": "^3.10.1",
 "@noble/hashes": "^1.4.0",
+"@noble/curves": "^1.4.0",
 "canonicalize": "^2.0.0"
 ```
 
 > Notes:
-> - `@noble/curves` is **not** added because viem 2 already ships `@noble/curves`'s ed25519 — webpack dedupes via `peerDependencies` resolution. Import it via `viem/utils` or `viem/accounts` paths to share the chunk. (Avoids duplicate ed25519 in the SW bundle.)
+> - `@noble/curves` IS added explicitly. viem ships its own copy as a transitive dep, but importing through viem's internal paths is unstable across viem minor releases. webpack dedupes between transitive and direct deps when versions match, so the SW bundle effectively has one copy. Locking it explicitly avoids "viem updated, our import broke" failures.
 > - `canonicalize` is the RFC 8785 (JCS) implementation; both signer and verifier share it so byte-equality is mechanical. Replaces the hand-rolled `canonicalJson` in both files.
 
 Run `yarn install`.
@@ -487,22 +488,39 @@ function bytesToHex(bytes: Uint8Array): string {
 ```typescript
 import JSZip from 'jszip';
 
-const ALLOWED_PREFIXES = ['policies/', ''];
-const ALLOWED_TOPLEVEL = new Set(['manifest.json', 'params.schema.json']);
+const ALLOWED_TOPLEVEL = new Set(['manifest.json', 'params.schema.json', 'README.md', 'LICENSE']);
+// Strict: any direct child of policies/ must be `<name>.cedar.tmpl`. No
+// nested directories, no other extensions, no name-only files.
+const POLICY_PATH_RE = /^policies\/[A-Za-z0-9_.-]+\.cedar\.tmpl$/;
 
 export function validateBundleSandbox(zip: JSZip): void {
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue;
     if (path.endsWith('/')) continue;
-    if (path.includes('..')) {
+    if (path.includes('..') || path.startsWith('/')) {
       throw new Error(`bundle contains path traversal: ${path}`);
     }
-    if (path.startsWith('policies/') && path.endsWith('.cedar.tmpl')) continue;
+    if (POLICY_PATH_RE.test(path)) continue;
     if (ALLOWED_TOPLEVEL.has(path)) continue;
-    if (path === 'README.md' || path === 'LICENSE') continue;
     throw new Error(
-      `bundle violates sandbox: file "${path}" not in policies/*.cedar.tmpl, manifest.json, or params.schema.json`,
+      `bundle violates sandbox: file "${path}" not in policies/<name>.cedar.tmpl, manifest.json, params.schema.json, README.md, or LICENSE`,
     );
+  }
+}
+
+/// Manifest-level invariants enforced at install time:
+/// - `params_schema` field must literally equal "params.schema.json"
+/// - every `policies[].file` must match the policies/*.cedar.tmpl shape
+/// Catches bundles that satisfy the file-level sandbox but try to point
+/// the manifest at e.g. README.md as their schema.
+export function validateBundleManifestPaths(manifest: { params_schema: string; policies: { file: string }[] }): void {
+  if (manifest.params_schema !== 'params.schema.json') {
+    throw new Error(`manifest.params_schema must be "params.schema.json", got "${manifest.params_schema}"`);
+  }
+  for (const p of manifest.policies) {
+    if (!POLICY_PATH_RE.test(p.file)) {
+      throw new Error(`manifest references non-policy file: "${p.file}"`);
+    }
   }
 }
 ```
@@ -731,13 +749,16 @@ describe('cedar-literal renderer', () => {
     expect(renderCedarLiteral({ type: 'integer', min: 0, max: 100 }, 42)).toBe('42');
   });
 
-  it('renders address as EthereumAddress entity literal', () => {
+  it('renders address as a Cedar string literal (lowercased)', () => {
+    // Repo schema (policy-schema/core.cedarschema) does not declare an
+    // EthereumAddress entity type — addresses are plain String fields,
+    // so the renderer emits a quoted, lowercased string.
     expect(
       renderCedarLiteral(
         { type: 'address' },
         '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       ),
-    ).toBe(`EthereumAddress::"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"`);
+    ).toBe('"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"');
   });
 
   it('escapes string literals via JSON.stringify', () => {
@@ -955,7 +976,10 @@ describe('renderAndVerify', () => {
     expect(finalText).toContain('250');
   });
 
-  it('rejects an injection attempt that changes structure', async () => {
+  it('rejects an injection attempt where the slot is the entire predicate', async () => {
+    // Layer 0 (slot-position whitelist) blocks this: {{cap}} is preceded
+    // only by `{ ` (block opener), which is not in ALLOWED_PRECEDING.
+    // Production behavior: assertSlotPositions throws before AST diffing.
     const evilTemplate =
       'permit(principal, action, resource) when { {{cap}} };'; // user param is the entire predicate
     await expect(
@@ -965,10 +989,19 @@ describe('renderAndVerify', () => {
         paramsSchema: { cap: { type: 'integer', min: 0, max: 1 } },
         paramValues: { cap: 0 },
       }),
-    ).resolves.not.toThrow();
-    // ^ stub fingerprint is too lax to catch this without a real AST. The
-    // production wasm fingerprint catches it; integration test in Task 9
-    // covers the real path.
+    ).rejects.toThrow(/non-whitelisted position/);
+  });
+
+  it('accepts a slot in a comparison RHS', async () => {
+    await expect(
+      renderAndVerify({
+        policyId: 'demo::cap-compare',
+        templateText:
+          'permit(principal, action, resource) when { context.totalInputUsd <= {{cap}} };',
+        paramsSchema: { cap: { type: 'integer', min: 1, max: 1000 } },
+        paramValues: { cap: 250 },
+      }),
+    ).resolves.toContain('250');
   });
 });
 ```
@@ -1045,7 +1078,12 @@ export async function aggregatedPolicySet(): Promise<{ id: string; text: string 
 import { fetchAndVerifyCatalog, type CatalogBundleEntry } from './catalog-client';
 import { fetchBundle } from './bundle-fetch';
 import { renderAndVerify } from './template-renderer';
-import { validateParams, type ParamsSchema, type ParamValues } from './params-validator';
+import {
+  defaultsFor,
+  validateParams,
+  type ParamsSchema,
+  type ParamValues,
+} from './params-validator';
 import { upsert, type InstalledBundle } from './storage';
 
 const CATALOG_URL = process.env.SCOPEBALL_CATALOG_URL ?? 'https://catalog.scopeball.dev/index.json';
@@ -1455,11 +1493,9 @@ describe('installer end-to-end', () => {
     evilZip.file('params.schema.json', JSON.stringify({ cap: { type: 'integer', min: 0, max: 1 } }));
     evilZip.file(
       'policies/cap.cedar.tmpl',
-      // `{{cap}}` is the entire predicate — varying integer values
-      // produces structurally different ASTs (constant 0 vs constant 1
-      // both blank to <slot>, so this template is technically *valid*
-      // — but the template+sentinel and template+0 produce the same
-      // fingerprint and the policy is structurally equivalent).
+      // {{cap}} occupies the entire predicate. Layer-0 (assertSlotPositions)
+      // rejects this regardless of integer-blanker behavior — the slot's
+      // preceding token is `{ `, not a comparison op or `in` keyword.
       'permit(principal, action, resource) when { {{cap}} };',
     );
     const evilBytes = await evilZip.generateAsync({ type: 'uint8array' });
@@ -1478,11 +1514,10 @@ describe('installer end-to-end', () => {
     const fetchMock = vi.fn(async () => new Response(evilBytes));
     vi.stubGlobal('fetch', fetchMock);
 
-    // The injected predicate is structurally identical regardless of param,
-    // so the AST guard accepts it. This test documents that limitation:
-    // the AST equivalence check is necessary but not sufficient — additional
-    // semantic guards are out of scope for v1 (see plan §6.2 layer 1+2).
-    await expect(installBundle(evilEntry, { cap: 1 })).resolves.not.toThrow();
+    // Layer-0 slot-position whitelist (introduced in fix-pass) rejects
+    // predicate-as-slot templates up-front. installBundle propagates the
+    // rejection from renderAndVerify.
+    await expect(installBundle(evilEntry, { cap: 1 })).rejects.toThrow(/non-whitelisted/);
   });
 });
 ```

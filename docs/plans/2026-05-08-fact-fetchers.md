@@ -882,8 +882,9 @@ export interface OracleNeed {
 
 /// Build a snapshot of oracle entries covering every (chainId, address)
 /// in `needs`. Cache hits are returned directly; misses are fetched in
-/// parallel per chain, persisted, then merged. Tokens with no price
-/// available are simply absent from the result.
+/// parallel per chain (split into ERC-20 contract path and native /simple/price
+/// path), persisted, then merged. Tokens with no price available are simply
+/// absent from the result.
 export async function buildOracleSnapshot(
   needs: readonly OracleNeed[],
   fetchImpl: typeof fetch = fetch,
@@ -891,32 +892,54 @@ export async function buildOracleSnapshot(
 ): Promise<OracleEntry[]> {
   if (needs.length === 0) return [];
 
+  // Dedup preserves the isNative flag — earlier draft dropped it, leaving
+  // ETH/MATIC etc. silently unpriced.
   const dedup = new Map<string, OracleNeed>();
   for (const n of needs) {
     dedup.set(`${n.chainId}:${n.address.toLowerCase()}`, {
       chainId: n.chainId,
       address: n.address.toLowerCase(),
+      isNative: !!n.isNative,
     });
   }
   const all = [...dedup.values()];
 
   const { hits, misses } = await lookup(all, nowMs);
 
-  const missByChain = new Map<number, string[]>();
+  // Misses split: native vs ERC-20. Look up the canonical OracleNeed for each
+  // miss key so we can branch correctly.
+  const missByChainErc20 = new Map<number, string[]>();
+  const nativeMissChains = new Set<number>();
+  // address-by-key so we can preserve the sentinel address used for native
+  // when threading prices back into OracleEntry.
+  const nativeSentinelByChain = new Map<number, string>();
   for (const k of misses) {
-    const [chainStr, addr] = k.split(':');
-    const cid = Number(chainStr);
-    const list = missByChain.get(cid) ?? [];
-    list.push(addr);
-    missByChain.set(cid, list);
+    const need = dedup.get(k);
+    if (!need) continue;
+    if (need.isNative) {
+      nativeMissChains.add(need.chainId);
+      nativeSentinelByChain.set(need.chainId, need.address);
+    } else {
+      const list = missByChainErc20.get(need.chainId) ?? [];
+      list.push(need.address);
+      missByChainErc20.set(need.chainId, list);
+    }
   }
 
-  const fetchedByChain = await Promise.all(
-    [...missByChain.entries()].map(async ([chainId, addrs]) => {
-      const prices = await fetchUsdPrices(chainId, addrs, fetchImpl);
-      return { chainId, prices };
-    }),
-  );
+  const [erc20FetchResults, nativeFetchResults] = await Promise.all([
+    Promise.all(
+      [...missByChainErc20.entries()].map(async ([chainId, addrs]) => {
+        const prices = await fetchUsdPrices(chainId, addrs, fetchImpl);
+        return { chainId, prices };
+      }),
+    ),
+    nativeMissChains.size > 0
+      ? fetchNativeUsdPrices([...nativeMissChains], fetchImpl)
+      : Promise.resolve([] as readonly Awaited<
+          ReturnType<typeof fetchNativeUsdPrices>
+        >[number][]),
+  ]);
+  const fetchedByChain = erc20FetchResults;
 
   const toStore: { chainId: number; address: string; usd: string; asOfTs: number }[] = [];
   const out: OracleEntry[] = [];
@@ -933,8 +956,7 @@ export async function buildOracleSnapshot(
   for (const { chainId, prices } of fetchedByChain) {
     for (const p of prices) {
       // stale_sec is data freshness — wall-time delta from CoinGecko's
-      // `last_updated_at`, not a flat 0 on fresh fetch. The CoinGecko
-      // datapoint can be hours old even when our cache says "fresh".
+      // `last_updated_at`, not a flat 0 on fresh fetch.
       const staleSec = Math.max(0, nowSec - p.asOfTs);
       out.push({
         token_key: `${chainId}:${p.address}`,
@@ -945,6 +967,27 @@ export async function buildOracleSnapshot(
       });
       toStore.push({ chainId, address: p.address, usd: p.usd, asOfTs: p.asOfTs });
     }
+  }
+  // Thread native /simple/price results back through the canonical sentinel
+  // address. Without this, SnapshotOracle keys by (chainId, sentinel) on the
+  // engine side never match.
+  for (const np of nativeFetchResults) {
+    const sentinel = nativeSentinelByChain.get(np.chainId);
+    if (!sentinel) continue;
+    const staleSec = Math.max(0, nowSec - np.asOfTs);
+    out.push({
+      token_key: `${np.chainId}:${sentinel}`,
+      usd_per_unit: np.usd,
+      as_of_ts: np.asOfTs,
+      sources: ['coingecko-native'],
+      stale_sec: staleSec,
+    });
+    toStore.push({
+      chainId: np.chainId,
+      address: sentinel,
+      usd: np.usd,
+      asOfTs: np.asOfTs,
+    });
   }
   if (toStore.length > 0) await store(toStore, nowMs);
   return out;
@@ -1065,17 +1108,38 @@ export interface Tier1FetchResult {
   now_ts: number;
 }
 
+const TIER1_OUTER_TIMEOUT_MS = 2_000;
+
 /// Run all Tier-1 host fetches in parallel and assemble a partial HostSnapshot.
 /// Failures (RPC reverts, CoinGecko 429s) become absent entries; never zero.
 /// The orchestrator merges in `windows` (Tier 2) and the final `now_ts` later.
+///
+/// An outer AbortSignal caps the entire Tier-1 fetch at TIER1_OUTER_TIMEOUT_MS
+/// regardless of how many fallback URLs viem stacks or how many CoinGecko
+/// batches the oracle builder issues. Anything still in-flight when the timer
+/// fires is dropped into the empty-snapshot path.
 export async function fetchTier1(
   plan: Tier1Plan,
   fetchImpl: typeof fetch = fetch,
   nowMs: number = Date.now(),
 ): Promise<Tier1FetchResult> {
+  const controller = new AbortController();
+  const tID = setTimeout(() => controller.abort(), TIER1_OUTER_TIMEOUT_MS);
+  // Wrap fetchImpl so we forward the outer signal to every CoinGecko call.
+  const guardedFetch: typeof fetch = (input, init) =>
+    fetchImpl(input, { ...init, signal: controller.signal });
+
   const oraclePromise = buildOracleSnapshot(
-    plan.tokens_for_oracle.map((t) => ({ chainId: t.chain_id, address: t.address })),
-    fetchImpl,
+    plan.tokens_for_oracle.map((t) => ({
+      chainId: t.chain_id,
+      address: t.address,
+      // CRITICAL: propagate is_native from the engine's HostFactPlan so the
+      // oracle builder can branch to /simple/price for native assets. The
+      // earlier round dropped this flag and silently lost USD coverage for
+      // every native swap.
+      isNative: t.is_native,
+    })),
+    guardedFetch,
     nowMs,
   );
   const balancesPromise = readBalances(
@@ -1094,11 +1158,30 @@ export async function fetchTier1(
     })),
   );
 
-  const [oracle, balances, allowances] = await Promise.all([
-    oraclePromise,
-    balancesPromise,
-    allowancesPromise,
-  ]);
+  let oracle: Awaited<typeof oraclePromise>;
+  let balances: Awaited<typeof balancesPromise>;
+  let allowances: Awaited<typeof allowancesPromise>;
+  try {
+    [oracle, balances, allowances] = await Promise.all([
+      oraclePromise,
+      balancesPromise,
+      allowancesPromise,
+    ]);
+  } finally {
+    clearTimeout(tID);
+  }
+  if (controller.signal.aborted) {
+    // Outer budget exceeded → return empty snapshot; engine falls open per
+    // optional-fact contract. The orchestrator still proceeds to evaluate
+    // (no facts means policies that gate on `context has X` skip; policies
+    // that require X cleanly fail-closed via their own logic).
+    return {
+      oracle: [],
+      balances: [],
+      allowances: [],
+      now_ts: Math.floor(nowMs / 1000),
+    };
+  }
 
   const balanceEntries: BalanceEntry[] = [];
   plan.balances.forEach((b, i) => {

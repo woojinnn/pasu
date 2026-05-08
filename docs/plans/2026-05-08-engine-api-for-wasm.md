@@ -210,6 +210,7 @@ Create `crates/policy-engine/src/lowering/host_fact_plan.rs` with:
 
 use crate::core::{Action, Address, OracleRequirement, Token};
 use crate::host::oracle::SnapshotOracle;
+use crate::host::stat_windows::StatKey;
 
 /// Tier-1 host facts the engine needs from a precomputed snapshot.
 ///
@@ -242,12 +243,17 @@ pub struct WindowKeyPlan {
 }
 
 /// One key into the host's stat-window store.
+///
+/// Uses the engine's canonical `StatKey` newtype rather than a raw string
+/// so that wire emission goes through `StatKey::as_str()` exactly once
+/// (in the WASM bridge), and Rust code can match against `StatKey::*`
+/// constants without typo risk.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WindowKey {
     /// Wallet actor.
     pub actor: Address,
-    /// Window name (matches engine-side window definitions).
-    pub name: String,
+    /// Canonical stat key — see `crates/policy-engine/src/host/stat_windows.rs`.
+    pub key: StatKey,
 }
 
 /// Tier-1 plan extraction. Pure function over a built Action.
@@ -793,22 +799,7 @@ Expected: `dex_window_keys_extract_swap_volume_and_count ... FAILED`.
 
 - [ ] **Step 3: Implement window-key extraction**
 
-Update `WindowKey` in the same module so it carries a typed `StatKey` instead of a raw string:
-
-```rust
-use crate::host::stat_windows::StatKey;
-
-/// One key into the host's stat-window store.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct WindowKey {
-    /// Wallet actor.
-    pub actor_index: usize, // unused — see note below
-    /// Canonical stat key (e.g. `StatKey::SWAP_VOLUME_USD_24H`).
-    pub key: StatKey,
-}
-```
-
-Then keep `WindowKey { actor: Address, key: StatKey }` (a struct field; the indirection is for cheap `Copy`). Replace the body of `required_window_keys`:
+`WindowKey` was already redefined in Task 2 stub as `{actor: Address, key: StatKey}`. Replace the body of `required_window_keys`:
 
 ```rust
 #[must_use]
@@ -825,16 +816,6 @@ pub fn required_window_keys(action: &Action, _oracle: &SnapshotOracle) -> Window
         });
     }
     plan
-}
-```
-
-…and update the `WindowKey` definition in Task 2 to:
-
-```rust
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WindowKey {
-    pub actor: Address,
-    pub key: StatKey,
 }
 ```
 
@@ -1093,8 +1074,6 @@ fn weth_swap_calldata_v3_exact_input_single() -> Vec<u8> {
 
 #[test]
 fn extract_plan_then_evaluate_matches_direct_path() {
-    use policy_engine::host::oracle::Oracle;
-
     let registry = default_registry();
     let policies = PolicyEngine::builder()
         .build()

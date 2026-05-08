@@ -192,19 +192,32 @@ git commit -m "build(extension): copy default policies + schema into bundle"
 
 - [ ] **Step 1: Make WASM artifact accessible to the extension build**
 
-Add to `extension/scripts/copy-default-policies.js` (or create a sibling script):
+Add to `extension/scripts/copy-default-policies.js` (or create a sibling script). Two destinations are required:
+
+- `extension/src/wasm/` — wasm-pack glue JS imported statically by webpack at build time. Webpack inlines the glue into the SW chunk.
+- `extension/public/wasm/` — the `.wasm` binary fetched at runtime by the glue's `init()`. Must be in web_accessible_resources.
 
 ```javascript
 const wasmSrc = path.join(REPO_ROOT, 'crates', 'policy_engine_wasm', 'pkg');
-const wasmDest = path.join(__dirname, '..', 'public', 'wasm');
-if (!fs.existsSync(wasmDest)) fs.mkdirSync(wasmDest, { recursive: true });
-for (const f of fs.readdirSync(wasmSrc)) {
-  fs.copyFileSync(path.join(wasmSrc, f), path.join(wasmDest, f));
+const wasmSrcDest = path.join(__dirname, '..', 'src', 'wasm');
+const wasmPublicDest = path.join(__dirname, '..', 'public', 'wasm');
+for (const dest of [wasmSrcDest, wasmPublicDest]) {
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
 }
-console.log(`Copied wasm bundle → ${wasmDest}`);
+for (const f of fs.readdirSync(wasmSrc)) {
+  // Glue + types into src/ so static `import init from '../wasm/...'` resolves.
+  fs.copyFileSync(path.join(wasmSrc, f), path.join(wasmSrcDest, f));
+  // .wasm binary into public/ so Browser.runtime.getURL('wasm/...') works.
+  if (f.endsWith('.wasm')) {
+    fs.copyFileSync(path.join(wasmSrc, f), path.join(wasmPublicDest, f));
+  }
+}
+console.log(`Copied wasm bundle → src/wasm/ and public/wasm/`);
 ```
 
-> Adjust to fit the script structure already in place from Task 2; one script per concern is fine.
+Add `extension/src/wasm/` to `extension/.gitignore` (build-time generated, no need to commit).
+
+Add `extension/src/wasm/*.d.ts` to `extension/tsconfig.json`'s `include` so the static import types resolve.
 
 - [ ] **Step 2: Write the loader**
 
@@ -235,7 +248,10 @@ interface WasmExports {
   tier1_fact_plan_json(input: string): string;
   tier2_window_keys_json(action: string, oracle: string): string;
   evaluate_json(req: string, snap: string): string;
-  parse_policy_ast_json(policy_id: string, text: string): string; // Plan 6
+  // parse_policy_ast_json is added by Plan 6's wasm crate fix-pass; this
+  // interface declares it optional so Plan 5 type-checks before Plan 6
+  // lands. The bridge wrapper checks `typeof` before calling.
+  parse_policy_ast_json?(policy_id: string, text: string): string;
 }
 
 let cachedExports: WasmExports | null = null;
@@ -287,7 +303,11 @@ export async function installPolicies(input: string): Promise<void> {
   unwrap((await load()).install_policies_json(input));
 }
 export async function parsePolicyAst(policyId: string, text: string): Promise<unknown> {
-  return unwrap((await load()).parse_policy_ast_json(policyId, text));
+  const exports = await load();
+  if (!exports.parse_policy_ast_json) {
+    throw new EngineError('not_implemented', 'parse_policy_ast_json requires Plan 6 wasm fix-pass');
+  }
+  return unwrap(exports.parse_policy_ast_json(policyId, text));
 }
 export { EngineError };
 ```
@@ -635,7 +655,12 @@ This is the integration heart of the extension. Every intercepted request flows 
 import Browser from 'webextension-polyfill';
 import { ensureDefaultPoliciesInstalled } from './policies-loader';
 import { fetchTier1, intoHostSnapshot, type Tier1Plan } from './facts/tier1-fetcher';
-import { pendingForActor, reservePending } from './pending-deltas';
+import {
+  committedForActor,
+  pendingForActor,
+  reservePending,
+  setTxHash,
+} from './pending-deltas';
 import { auditAppend, pendingDelete, pendingPut, type PendingRequest } from './storage';
 import { buildAction, evaluate, tier1FactPlan, tier2WindowKeys } from './wasm-bridge';
 import type { HostSnapshot } from './types/host-snapshot';
@@ -784,6 +809,14 @@ async function runLifecycle(message: Message): Promise<VerdictDto> {
   return verdict;
 }
 
+/// Receive tx-hash reports from the inpage proxy and stamp them onto pending
+/// deltas so the receipt poller can confirm them. The inpage proxy invokes
+/// this via a separate runtime message after the wallet returns the hash.
+export async function recordTxHash(requestId: string, txHash: string): Promise<void> {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) return;
+  await setTxHash(requestId, txHash);
+}
+
 function inferActor(message: Message): string | undefined {
   if (isTransaction(message)) return message.data.transaction.from;
   if (isTypedSignature(message)) return message.data.address;
@@ -928,16 +961,26 @@ async function openVerdictWindowAndAwait(
     focused: true,
   });
 
+  // Signal phase-2 timeout to upstream (content-script port + inpage stream)
+  // by posting an `awaiting-user` heartbeat against the same requestId.
+  // Without this, the inpage 3s timeout would auto-reject every Warn modal
+  // before the user could click "Trust and proceed".
+  try {
+    Browser.runtime.sendMessage({ kind: 'awaiting-user', requestId });
+  } catch {
+    /* nothing to do — the request port is per-call and may have closed */
+  }
+
   return new Promise<boolean>((resolve) => {
     let settled = false;
-    const cleanup = (): void => {
-      Browser.runtime.onMessage.removeListener(messageListener);
-      Browser.windows.onRemoved.removeListener(closeListener);
-    };
+    let pollHandle: ReturnType<typeof setInterval> | undefined;
+
     const settle = (ok: boolean): void => {
       if (settled) return;
       settled = true;
-      cleanup();
+      Browser.runtime.onMessage.removeListener(messageListener);
+      Browser.windows.onRemoved.removeListener(closeListener);
+      if (pollHandle !== undefined) clearInterval(pollHandle);
       Browser.windows.remove(win.id!).catch(() => {});
       resolve(ok);
     };
@@ -953,27 +996,25 @@ async function openVerdictWindowAndAwait(
     Browser.runtime.onMessage.addListener(messageListener);
     Browser.windows.onRemoved.addListener(closeListener);
 
-    // If the SW dies and is later resurrected, the resurrection path
-    // re-reads `requests:pending-decisions` and resolves any "decided"
-    // entries. Belt-and-suspenders: also poll the storage every 250ms.
-    const pollHandle = setInterval(async () => {
+    // SW resurrection backstop: if the SW dies and a resurrected handler
+    // never sees the runtime.sendMessage, the persisted decision in
+    // storage.session is the source of truth. Poll every 250ms with a
+    // hard 5-minute deadline to avoid runaway intervals when storage was
+    // wiped (browser restart) or the user walked away with the modal open.
+    const POLL_DEADLINE_MS = 5 * 60_000;
+    const pollDeadline = Date.now() + POLL_DEADLINE_MS;
+    pollHandle = setInterval(async () => {
+      if (Date.now() > pollDeadline) {
+        // No decision arrived within reasonable user time → fail-closed.
+        settle(false);
+        return;
+      }
       const fresh = (await Browser.storage.session.get(PENDING_DECISION_KEY))[
         PENDING_DECISION_KEY
-      ] as
-        | Record<string, { status: string; ok?: boolean }>
-        | undefined;
+      ] as Record<string, { status: string; ok?: boolean }> | undefined;
       const rec = fresh?.[requestId];
-      if (rec?.status === 'decided') {
-        clearInterval(pollHandle);
-        settle(!!rec.ok);
-      }
+      if (rec?.status === 'decided') settle(!!rec.ok);
     }, 250);
-    // Settle's cleanup also clears this interval.
-    const origCleanup = cleanup;
-    (cleanup as any) = (): void => {
-      clearInterval(pollHandle);
-      origCleanup();
-    };
   });
 }
 ```
@@ -985,7 +1026,7 @@ Replace `extension/src/background/index.ts`:
 ```typescript
 import Browser from 'webextension-polyfill';
 import { Identifier } from '@lib/identifier';
-import { decideMessage } from './orchestrator';
+import { decideMessage, recordTxHash } from './orchestrator';
 import { installReceiptPoller } from './receipt-poller';
 import type { Message, MessageResponse } from '@lib/types';
 
@@ -1005,6 +1046,15 @@ Browser.runtime.onConnect.addListener((port) => {
       }
     }
   });
+});
+
+// Tx-hash reports from the inpage proxy (after wallet returns the hash).
+// Plumbing: requestId is the same id used for the original gating request,
+// so the orchestrator can match the hash back to its pending delta.
+Browser.runtime.onMessage.addListener((msg: any) => {
+  if (msg?.type !== 'scopeball:tx-hash') return;
+  if (typeof msg.requestId !== 'string' || typeof msg.txHash !== 'string') return;
+  void recordTxHash(msg.requestId, msg.txHash);
 });
 ```
 
