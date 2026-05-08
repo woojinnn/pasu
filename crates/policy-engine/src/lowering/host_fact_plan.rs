@@ -124,8 +124,19 @@ pub fn required_host_facts(action: &Action) -> HostFactPlan {
 /// Tier-2 plan extraction. Pure function over a built Action plus the
 /// already-fetched oracle snapshot.
 #[must_use]
-pub fn required_window_keys(_action: &Action, _oracle: &SnapshotOracle) -> WindowKeyPlan {
-    WindowKeyPlan::default()
+pub fn required_window_keys(action: &Action, _oracle: &SnapshotOracle) -> WindowKeyPlan {
+    let mut plan = WindowKeyPlan::default();
+    if let Action::Dex(dex) = action {
+        plan.keys.push(WindowKey {
+            actor: dex.actor.clone(),
+            key: StatKey::SWAP_VOLUME_USD_24H,
+        });
+        plan.keys.push(WindowKey {
+            actor: dex.actor.clone(),
+            key: StatKey::SWAP_COUNT_24H,
+        });
+    }
+    plan
 }
 
 #[cfg(test)]
@@ -356,6 +367,43 @@ mod tests {
     #[allow(dead_code)]
     fn _silence_eip712_imports() -> (Eip712TypedData, Eip712Domain) {
         unimplemented!()
+    }
+
+    #[test]
+    fn dex_window_keys_extract_swap_volume_and_count() {
+        use crate::host::stat_windows::StatKey;
+        let actor = addr("0x1111111111111111111111111111111111111111");
+        let target = addr("0xE592427A0AEce92De3Edee1F18E0157C05861564");
+        let action = dex_swap_weth_to_usdc(actor.clone(), target);
+
+        // Snapshot oracle is accepted as a parameter to preserve the two-tier
+        // API contract even though DEX storage-read planning derives the key
+        // set statically.
+        let oracle = SnapshotOracle::new();
+        let plan = required_window_keys(&action, &oracle);
+
+        let stat_keys: Vec<_> = plan.keys.iter().map(|k| k.key).collect();
+        assert!(stat_keys.contains(&StatKey::SWAP_VOLUME_USD_24H));
+        assert!(stat_keys.contains(&StatKey::SWAP_COUNT_24H));
+        assert!(plan.keys.iter().all(|k| k.actor == actor));
+    }
+
+    #[test]
+    fn non_dex_window_keys_empty() {
+        let action = Action::Eip712Other(Eip712OtherAction {
+            signer: addr("0x6666666666666666666666666666666666666666"),
+            chain_id: 1 as CId,
+            domain_chain_id: 1 as CId,
+            verifying_contract: addr("0x7777777777777777777777777777777777777777"),
+            primary_type: "Mail".into(),
+            domain_name: None,
+            domain_version: None,
+            domain_salt: None,
+            types_json: "{}".into(),
+            message_json: "{}".into(),
+        });
+        let oracle = SnapshotOracle::new();
+        assert!(required_window_keys(&action, &oracle).keys.is_empty());
     }
 
     #[test]
