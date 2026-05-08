@@ -235,6 +235,201 @@ table.args td.value code {
   border: 1px solid #2a3340;
 }
 
+.rpc-events {
+  background: var(--panel);
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid #2a3340;
+}
+.rpc-events.empty {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.rpc-events.empty p {
+  margin: 4px 0;
+}
+.rpc-events-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.rpc-events-header .muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+.rpc-events-header .clear-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid #2a3340;
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rpc-events-header .clear-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.rpc-event {
+  margin-top: 6px;
+}
+.rpc-event > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rpc-event > summary::-webkit-details-marker {
+  display: none;
+}
+.rpc-event > summary::before {
+  content: '▸';
+  color: var(--muted);
+  display: inline-block;
+  width: 10px;
+}
+.rpc-event[open] > summary::before {
+  content: '▾';
+}
+.rpc-event > summary .ts {
+  color: var(--muted);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.rpc-event > summary .method {
+  color: var(--accent);
+  font-size: 13px;
+}
+.rpc-event > summary .badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.badge-write {
+  background: rgba(255, 122, 122, 0.12);
+  color: var(--error);
+  border-color: rgba(255, 122, 122, 0.4);
+}
+.badge-sign {
+  background: rgba(255, 195, 108, 0.12);
+  color: var(--warn);
+  border-color: rgba(255, 195, 108, 0.4);
+}
+.badge-connect {
+  background: rgba(102, 221, 153, 0.12);
+  color: var(--ok);
+  border-color: rgba(102, 221, 153, 0.4);
+}
+.badge-wallet {
+  background: rgba(108, 182, 255, 0.12);
+  color: var(--accent);
+  border-color: rgba(108, 182, 255, 0.4);
+}
+.badge-read {
+  background: var(--panel-2);
+  color: var(--muted);
+  border-color: #2a3340;
+}
+.rpc-event.cat-write > summary {
+  border-left: 3px solid var(--error);
+}
+.rpc-event.cat-sign > summary {
+  border-left: 3px solid var(--warn);
+}
+.rpc-event.cat-connect > summary {
+  border-left: 3px solid var(--ok);
+}
+.rpc-event.cat-wallet > summary {
+  border-left: 3px solid var(--accent);
+}
+.rpc-event.cat-read > summary {
+  border-left: 3px solid #2a3340;
+}
+.rpc-event > summary .muted {
+  color: var(--muted);
+  font-size: 12px;
+  word-break: break-all;
+}
+.rpc-event pre.json {
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+  margin: 8px 0 0 0;
+  border: 1px solid #2a3340;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.rpc-events-section {
+  margin-bottom: 12px;
+}
+.rpc-events-section-title {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rpc-events-hint {
+  margin: 4px 0 12px 0;
+  font-size: 13px;
+}
+
+.use-btn {
+  margin-left: auto;
+  background: var(--accent-strong);
+  color: #0c1218;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.use-btn:hover {
+  background: var(--accent);
+}
+
+.rpc-event-history {
+  margin-top: 12px;
+  border-top: 1px dashed #2a3340;
+  padding-top: 10px;
+}
+.rpc-event-history > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  list-style: none;
+  padding: 4px 0;
+}
+.rpc-event-history > summary::-webkit-details-marker {
+  display: none;
+}
+.rpc-event-history > summary::before {
+  content: '▸ ';
+}
+.rpc-event-history[open] > summary::before {
+  content: '▾ ';
+}
+
 footer {
   margin-top: 40px;
   padding-top: 16px;

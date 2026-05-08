@@ -1,57 +1,45 @@
-"""Build the SQLite functions DB — fast variant.
+"""Build SQLite functions DB from compiled_contracts parquet files.
 
-Tweaks vs first attempt:
-- synchronous = OFF, wal_autocheckpoint = 200 (truncate frequently)
-- temp_store = MEMORY, large cache
-- commit + WAL checkpoint every ~50k rows (instead of every file)
-- progress log every batch when batch contained inserts
+Strategy:
+- In-memory SQLite while inserting (no WAL pressure), backup to disk at end.
+- Skip ABI artifacts > 5 MB (rare; usually generated/proxy-rewritten and
+  blocking the previous attempts around the 8.8M-row mark).
+- Progress logged every 1% of files.
+
+Schema must match abi-resolver's `sqlite_index.rs`:
+
+    CREATE TABLE functions (
+        chain_id  INTEGER NOT NULL,
+        address   BLOB    NOT NULL,
+        selector  BLOB    NOT NULL,
+        name      TEXT    NOT NULL,
+        signature TEXT    NOT NULL,
+        abi_json  TEXT    NOT NULL,
+        PRIMARY KEY (chain_id, address, selector)
+    ) WITHOUT ROWID;
+
+Run from /tmp/sourcify_dump (where the Parquet dump + mainnet_mapping live):
+
+    python3 -u build_db.py
 """
-import os, glob, time, json, sqlite3, sys
+import os, glob, time, json, sqlite3
 from collections import defaultdict
 import pyarrow.parquet as pq
 import pandas as pd
 from eth_utils import keccak
 
 START = time.time()
-os.chdir('/tmp/sourcify_dump')
+DUMP_DIR = '/tmp/sourcify_dump'
+DISK_PATH = f'{DUMP_DIR}/sourcify.sqlite'
 
-DB_PATH = 'sourcify.sqlite'
 COMMIT_EVERY = 50_000
-LOG_EVERY = 200_000
+ABI_BYTES_LIMIT = 5_000_000   # skip artifacts > 5 MB (auto-generated, slow)
+MAX_FANOUT = 5_000            # cap addresses per compilation_id (factory clones)
 
-print(f"[{time.time()-START:6.1f}s] loading mainnet mapping", flush=True)
-mapping = pd.read_parquet('mainnet_mapping.parquet')
-print(f"[{time.time()-START:6.1f}s]   addresses: {len(mapping):,}", flush=True)
-compid_to_addrs = defaultdict(list)
-for row in mapping.itertuples(index=False):
-    compid_to_addrs[row.compilation_id].append(row.address_hex)
-target_compids = set(compid_to_addrs.keys())
-print(f"[{time.time()-START:6.1f}s]   unique compilation_ids: {len(target_compids):,}", flush=True)
 
-print(f"[{time.time()-START:6.1f}s] preparing SQLite at {DB_PATH}", flush=True)
-if os.path.exists(DB_PATH):
-    os.remove(DB_PATH)
-for ext in ('-wal', '-shm'):
-    p = DB_PATH + ext
-    if os.path.exists(p):
-        os.remove(p)
-conn = sqlite3.connect(DB_PATH)
-conn.executescript("""
-PRAGMA journal_mode = WAL;
-PRAGMA synchronous = OFF;
-PRAGMA wal_autocheckpoint = 200;
-PRAGMA cache_size = -200000;
-PRAGMA temp_store = MEMORY;
-CREATE TABLE functions (
-    chain_id  INTEGER NOT NULL,
-    address   BLOB    NOT NULL,
-    selector  BLOB    NOT NULL,
-    name      TEXT    NOT NULL,
-    signature TEXT    NOT NULL,
-    abi_json  TEXT    NOT NULL,
-    PRIMARY KEY (chain_id, address, selector)
-) WITHOUT ROWID;
-""")
+def fmt_t():
+    return f"[{time.time() - START:7.1f}s]"
+
 
 def canonical_signature(fn):
     def fmt(p):
@@ -60,89 +48,169 @@ def canonical_signature(fn):
             base = f"({inner})"
             t = p.get('type', 'tuple')
             if t.startswith('tuple'):
-                suffix = t[len('tuple'):]
-                return base + suffix
+                return base + t[len('tuple'):]
             return base
         return p['type']
     return f"{fn['name']}({','.join(fmt(p) for p in fn.get('inputs', []))})"
 
-def selector_for(sig: str) -> bytes:
+
+def selector_for(sig):
     return keccak(text=sig)[:4]
 
-print(f"[{time.time()-START:6.1f}s] processing compiled_contracts files", flush=True)
-files = sorted(glob.glob('compiled/compiled_contracts_*.parquet'))
-print(f"[{time.time()-START:6.1f}s]   files to process: {len(files)}", flush=True)
 
-total_inserted = 0
-last_log_at = 0
-buffer = []
+def main():
+    os.chdir(DUMP_DIR)
 
-for idx, f in enumerate(files, 1):
-    pf = pq.ParquetFile(f)
-    schema_names = [s.name for s in pf.schema_arrow]
-    if 'id' not in schema_names or 'compilation_artifacts' not in schema_names:
-        continue
+    print(f"{fmt_t()} loading mainnet mapping", flush=True)
+    mapping = pd.read_parquet('mainnet_mapping.parquet')
+    print(f"{fmt_t()}   addresses: {len(mapping):,}", flush=True)
 
-    for batch in pf.iter_batches(batch_size=20000, columns=['id', 'compilation_artifacts']):
-        df = batch.to_pandas()
-        m = df[df['id'].isin(target_compids)]
-        if len(m) == 0:
+    compid_to_addrs = defaultdict(list)
+    for row in mapping.itertuples(index=False):
+        compid_to_addrs[row.compilation_id].append(row.address_hex)
+    target_compids = set(compid_to_addrs.keys())
+    print(f"{fmt_t()}   unique compilation_ids: {len(target_compids):,}", flush=True)
+
+    for ext in ('', '-wal', '-shm'):
+        p = DISK_PATH + ext
+        if os.path.exists(p):
+            os.remove(p)
+
+    # disk-backed (in-memory ate 24 GB RAM + 30 GB swap on the previous attempt
+    # and the backup phase ground to a halt). All durability options off — this
+    # is a one-shot build, not a server.
+    conn = sqlite3.connect(DISK_PATH)
+    conn.executescript("""
+    PRAGMA journal_mode = OFF;
+    PRAGMA synchronous = OFF;
+    PRAGMA temp_store = MEMORY;
+    PRAGMA cache_size = -200000;
+    PRAGMA locking_mode = EXCLUSIVE;
+    CREATE TABLE functions (
+        chain_id  INTEGER NOT NULL,
+        address   BLOB    NOT NULL,
+        selector  BLOB    NOT NULL,
+        name      TEXT    NOT NULL,
+        signature TEXT    NOT NULL,
+        abi_json  TEXT    NOT NULL,
+        PRIMARY KEY (chain_id, address, selector)
+    ) WITHOUT ROWID;
+    """)
+    # One big transaction: commit after each batch is wrapped in BEGIN/COMMIT
+    # via conn.commit(). With journal_mode=OFF rollback isn't available, but
+    # a crash just means re-run.
+    conn.execute("BEGIN")
+    INSERT_SQL = ("INSERT OR REPLACE INTO functions "
+                  "(chain_id, address, selector, name, signature, abi_json) "
+                  "VALUES (?, ?, ?, ?, ?, ?)")
+
+    print(f"{fmt_t()} processing compiled_contracts files (ABI cap {ABI_BYTES_LIMIT // 1_000_000} MB)", flush=True)
+    files = sorted(glob.glob('compiled_contracts/compiled_contracts_*.parquet'))
+    total_files = len(files)
+    print(f"{fmt_t()}   files: {total_files}", flush=True)
+
+    total_inserted = 0
+    total_huge = 0
+    last_pct = -1
+    buffer = []
+
+    for idx, f in enumerate(files, 1):
+        pf = pq.ParquetFile(f)
+        schema_names = [s.name for s in pf.schema_arrow]
+        if 'id' not in schema_names or 'compilation_artifacts' not in schema_names:
             continue
-        for row in m.itertuples(index=False):
-            comp_id = row.id
-            artifacts_str = row.compilation_artifacts
-            if not artifacts_str:
+
+        file_huge = 0
+        for batch in pf.iter_batches(batch_size=20_000, columns=['id', 'compilation_artifacts']):
+            df = batch.to_pandas()
+            m = df[df['id'].isin(target_compids)]
+            if len(m) == 0:
                 continue
-            try:
-                artifacts = json.loads(artifacts_str) if isinstance(artifacts_str, str) else artifacts_str
-            except json.JSONDecodeError:
-                continue
-            abi = artifacts.get('abi') if isinstance(artifacts, dict) else None
-            if not abi:
-                continue
-            for fn in abi:
-                if fn.get('type') != 'function':
+            for row in m.itertuples(index=False):
+                comp_id = row.id
+                artifacts_str = row.compilation_artifacts
+                if not artifacts_str:
+                    continue
+                if isinstance(artifacts_str, str) and len(artifacts_str) > ABI_BYTES_LIMIT:
+                    file_huge += 1
                     continue
                 try:
-                    sig = canonical_signature(fn)
-                    sel = selector_for(sig)
-                except Exception:
+                    artifacts = (json.loads(artifacts_str)
+                                 if isinstance(artifacts_str, str)
+                                 else artifacts_str)
+                except json.JSONDecodeError:
                     continue
-                fn_json = json.dumps(fn, separators=(',', ':'))
-                fn_name = fn.get('name', '')
-                for addr_hex in compid_to_addrs[comp_id]:
-                    addr_bytes = bytes.fromhex(addr_hex[2:])
-                    buffer.append((1, addr_bytes, sel, fn_name, sig, fn_json))
+                abi = artifacts.get('abi') if isinstance(artifacts, dict) else None
+                if not abi:
+                    continue
+                # Cap fanout: a few compilation_ids map to 1M+ addresses
+                # (Uniswap V2 Pair clone, ERC-1167 factories, etc.) Inserting
+                # all of them would queue 100M+ rows in one go. We take only
+                # the first MAX_FANOUT — clones share ABI by definition, so
+                # the truncated set still surfaces the same functions.
+                addrs = compid_to_addrs[comp_id]
+                if len(addrs) > MAX_FANOUT:
+                    addrs = addrs[:MAX_FANOUT]
 
-        if len(buffer) >= COMMIT_EVERY:
-            conn.executemany(
-                "INSERT OR REPLACE INTO functions (chain_id, address, selector, name, signature, abi_json) VALUES (?, ?, ?, ?, ?, ?)",
-                buffer,
+                for fn in abi:
+                    if fn.get('type') != 'function':
+                        continue
+                    try:
+                        sig = canonical_signature(fn)
+                        sel = selector_for(sig)
+                    except Exception:
+                        continue
+                    fn_json = json.dumps(fn, separators=(',', ':'))
+                    fn_name = fn.get('name', '')
+                    for addr_hex in addrs:
+                        addr_bytes = bytes.fromhex(addr_hex[2:])
+                        buffer.append((1, addr_bytes, sel, fn_name, sig, fn_json))
+                        # Inner commit so a single (compilation × ABI) doesn't
+                        # balloon the buffer unboundedly even with the fanout cap.
+                        if len(buffer) >= COMMIT_EVERY:
+                            conn.executemany(INSERT_SQL, buffer)
+                            total_inserted += len(buffer)
+                            buffer.clear()
+                            # Wrap up tx and start a new one so memory is released
+                            # back to the OS rather than accumulating in the
+                            # journal cache.
+                            if total_inserted % 1_000_000 < COMMIT_EVERY:
+                                conn.execute("COMMIT")
+                                conn.execute("BEGIN")
+
+            if len(buffer) >= COMMIT_EVERY:
+                conn.executemany(INSERT_SQL, buffer)
+                total_inserted += len(buffer)
+                buffer.clear()
+
+        total_huge += file_huge
+        pct = int(idx * 100 / total_files)
+        if pct != last_pct:
+            last_pct = pct
+            extra = f", huge_skipped={file_huge}" if file_huge else ""
+            print(
+                f"{fmt_t()} [{pct:3d}%]  file {idx}/{total_files}, "
+                f"{total_inserted:,} rows in memory{extra}",
+                flush=True,
             )
-            conn.commit()
-            total_inserted += len(buffer)
-            buffer.clear()
-            if total_inserted - last_log_at >= LOG_EVERY:
-                last_log_at = total_inserted
-                print(
-                    f"[{time.time()-START:6.1f}s]   file {idx}/{len(files)}, "
-                    f"{total_inserted:,} rows committed",
-                    flush=True,
-                )
-                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
-# flush remainder
-if buffer:
-    conn.executemany(
-        "INSERT OR REPLACE INTO functions (chain_id, address, selector, name, signature, abi_json) VALUES (?, ?, ?, ?, ?, ?)",
-        buffer,
-    )
-    conn.commit()
-    total_inserted += len(buffer)
-    buffer.clear()
+    if buffer:
+        conn.executemany(INSERT_SQL, buffer)
+        total_inserted += len(buffer)
+        buffer.clear()
 
-conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-n = conn.execute("SELECT COUNT(*) FROM functions").fetchone()[0]
-size_mb = os.path.getsize(DB_PATH) / 1024 / 1024
-print(f"[{time.time()-START:6.1f}s] DONE — {n:,} function rows, DB {size_mb:.1f} MB", flush=True)
-conn.close()
+    conn.execute("COMMIT")
+    print(f"{fmt_t()} insert phase done — {total_inserted:,} rows, "
+          f"{total_huge} huge ABIs skipped", flush=True)
+
+    # Verify count + close (no backup needed, we wrote directly to disk).
+    n = conn.execute("SELECT COUNT(*) FROM functions").fetchone()[0]
+    print(f"{fmt_t()} verified row count: {n:,}", flush=True)
+    conn.close()
+
+    size_mb = os.path.getsize(DISK_PATH) / 1024 / 1024
+    print(f"{fmt_t()} DONE — {size_mb:.0f} MB at {DISK_PATH}", flush=True)
+
+
+if __name__ == '__main__':
+    main()

@@ -9,7 +9,7 @@ os.chdir('/tmp/sourcify_dump')
 
 print(f"[{time.time()-START:6.1f}s] Step 1: extract mainnet from contract_deployments")
 mainnet_deployments = []
-for f in sorted(glob.glob('deployments/*.parquet')):
+for f in sorted(glob.glob('contract_deployments/*.parquet')):
     pf = pq.ParquetFile(f)
     for batch in pf.iter_batches(batch_size=200000, columns=['id', 'chain_id', 'address']):
         df = batch.to_pandas()
@@ -23,7 +23,7 @@ mainnet_dep_id_set = set(mainnet_dep['id'])
 
 print(f"[{time.time()-START:6.1f}s] Step 2: filter verified_contracts by mainnet deployment_id")
 verified_rows = []
-for f in sorted(glob.glob('verified/*.parquet')):
+for f in sorted(glob.glob('verified_contracts/*.parquet')):
     pf = pq.ParquetFile(f)
     for batch in pf.iter_batches(batch_size=200000, columns=['deployment_id', 'compilation_id']):
         df = batch.to_pandas()

@@ -9,18 +9,23 @@
 //! the first-party adapters in `crates/adapters/*` handle them precisely.
 
 use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
-use alloy_json_abi::Function;
+use alloy_json_abi::{Function, Param};
 
 /// One decoded argument paired with the name we surface to callers.
 ///
 /// `name` is the metadata's parameter name when available, otherwise a
 /// synthetic `arg{index}` so output remains stable when only openchain has the
 /// signature (no parameter names there).
+///
+/// `components` mirrors `Param.components` for the source parameter. It's how
+/// `format_value_named` recovers tuple field names — alloy's `DynSolValue`
+/// stores only positional values, so a sibling descriptor is required.
 #[derive(Debug, Clone)]
 pub struct DecodedArg {
     pub name: String,
     pub sol_type: String,
     pub value: DynSolValue,
+    pub components: Vec<Param>,
 }
 
 /// Result of a successful decode.
@@ -96,6 +101,7 @@ pub fn decode_with_function(
                 name,
                 sol_type: param.ty.clone(),
                 value,
+                components: param.components.clone(),
             }
         })
         .collect();
@@ -123,11 +129,27 @@ pub fn decode_with_signature(signature: &str, calldata: &[u8]) -> Result<Decoded
 }
 
 /// Render a decoded value as a human-readable string. Best-effort: addresses
-/// keep their checksum, integers go decimal, bytes stay hex. Used by the CLI
-/// example and tests; library callers can also render the raw `DynSolValue`
-/// however they like.
+/// keep their checksum, integers go decimal, bytes stay hex.
+///
+/// This variant has no access to ABI parameter names, so tuples render as
+/// `(v0, v1, v2)`. Use `format_value_named` to pick up tuple field names
+/// when you have the matching `Param.components`.
 #[must_use]
 pub fn format_value(value: &DynSolValue) -> String {
+    format_value_named(value, &[])
+}
+
+/// Render a decoded value with tuple field names attached, recursively.
+///
+/// `components` is the `Param.components` slice for the value being formatted
+/// (empty for primitives, populated for tuples / arrays of tuples). When a
+/// tuple field has a non-empty `name`, the rendering becomes
+/// `(field: value, …)`; otherwise it falls back to the unnamed form.
+///
+/// Arrays propagate the element descriptor: an `Order[]` and an `Order` share
+/// the same component layout.
+#[must_use]
+pub fn format_value_named(value: &DynSolValue, components: &[Param]) -> String {
     match value {
         DynSolValue::Address(a) => format!("0x{}", hex::encode(a.0)),
         DynSolValue::Bool(b) => b.to_string(),
@@ -139,11 +161,29 @@ pub fn format_value(value: &DynSolValue) -> String {
         DynSolValue::Uint(u, _) => u.to_string(),
         DynSolValue::String(s) => format!("\"{s}\""),
         DynSolValue::Array(items) | DynSolValue::FixedArray(items) => {
-            let inner = items.iter().map(format_value).collect::<Vec<_>>().join(", ");
+            let inner = items
+                .iter()
+                .map(|v| format_value_named(v, components))
+                .collect::<Vec<_>>()
+                .join(", ");
             format!("[{inner}]")
         }
         DynSolValue::Tuple(items) => {
-            let inner = items.iter().map(format_value).collect::<Vec<_>>().join(", ");
+            let inner = items
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    let child = components.get(i);
+                    let child_components =
+                        child.map(|c| c.components.as_slice()).unwrap_or(&[]);
+                    let formatted = format_value_named(v, child_components);
+                    match child {
+                        Some(c) if !c.name.is_empty() => format!("{}: {}", c.name, formatted),
+                        _ => formatted,
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
             format!("({inner})")
         }
         DynSolValue::Function(_) => "<function>".into(),

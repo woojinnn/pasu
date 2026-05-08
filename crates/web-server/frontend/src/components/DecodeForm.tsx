@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { DecodeRequest } from '../api'
 
 interface Sample {
@@ -37,19 +36,30 @@ const SAMPLES: Sample[] = [
 ]
 
 interface Props {
+  chainId: string
+  address: string
+  calldata: string
+  onChainIdChange: (v: string) => void
+  onAddressChange: (v: string) => void
+  onCalldataChange: (v: string) => void
   onSubmit: (req: DecodeRequest) => void
   loading: boolean
 }
 
-export function DecodeForm({ onSubmit, loading }: Props) {
-  const [chainId, setChainId] = useState<string>('1')
-  const [address, setAddress] = useState<string>('')
-  const [calldata, setCalldata] = useState<string>('')
-
+export function DecodeForm({
+  chainId,
+  address,
+  calldata,
+  onChainIdChange,
+  onAddressChange,
+  onCalldataChange,
+  onSubmit,
+  loading,
+}: Props) {
   function loadSample(s: Sample) {
-    setChainId(String(s.request.chain_id))
-    setAddress(s.request.address)
-    setCalldata(s.request.calldata)
+    onChainIdChange(String(s.request.chain_id))
+    onAddressChange(s.request.address)
+    onCalldataChange(s.request.calldata)
   }
 
   function submit(e: React.FormEvent) {
@@ -71,7 +81,7 @@ export function DecodeForm({ onSubmit, loading }: Props) {
             type="number"
             min={1}
             value={chainId}
-            onChange={(e) => setChainId(e.target.value)}
+            onChange={(e) => onChainIdChange(e.target.value)}
             disabled={loading}
           />
         </label>
@@ -83,7 +93,7 @@ export function DecodeForm({ onSubmit, loading }: Props) {
             type="text"
             placeholder="0x…"
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={(e) => onAddressChange(e.target.value)}
             disabled={loading}
             spellCheck={false}
           />
@@ -96,7 +106,7 @@ export function DecodeForm({ onSubmit, loading }: Props) {
             rows={6}
             placeholder="0x095ea7b3…"
             value={calldata}
-            onChange={(e) => setCalldata(e.target.value)}
+            onChange={(e) => onCalldataChange(e.target.value)}
             disabled={loading}
             spellCheck={false}
           />

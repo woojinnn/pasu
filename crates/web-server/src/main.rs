@@ -2,6 +2,9 @@
 //!
 //! Endpoints:
 //! - `POST /api/decode` — decode arbitrary calldata
+//! - `POST /api/event`  — receive an extracted RPC event (from the
+//!   ScopeBall userscript / extension) and broadcast it to SSE subscribers
+//! - `GET  /api/event/stream` — SSE feed of broadcast events
 //! - `GET  /api/health` — liveness probe
 //! - `GET  /` (and other paths) — serve the React build from `frontend/dist/`
 //!   when present; otherwise return a hint message.
@@ -11,7 +14,7 @@
 //!
 //! Defaults to `0.0.0.0:3000`. Override with `WEB_SERVER_ADDR=127.0.0.1:8080`.
 
-use abi_resolver::decode::{format_value, DecodedArg};
+use abi_resolver::decode::{format_value_named, DecodedArg};
 use abi_resolver::openchain::{OpenchainIndex, SignatureCandidate};
 use abi_resolver::resolver::{ResolveOutcome, Resolver, Source};
 use abi_resolver::sourcify::SourcifyIndex;
@@ -20,15 +23,20 @@ use alloy_primitives::Address;
 use axum::{
     extract::State,
     http::StatusCode,
+    response::sse::{Event, KeepAlive, Sse},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::sync::broadcast;
+use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::{Stream, StreamExt};
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
@@ -98,6 +106,7 @@ fn seed_signatures() -> &'static [([u8; 4], &'static str)] {
 #[derive(Clone)]
 struct AppState {
     resolver: Arc<Resolver>,
+    event_tx: broadcast::Sender<String>,
 }
 
 fn build_resolver() -> Resolver {
@@ -239,9 +248,11 @@ fn source_label(s: Source) -> &'static str {
 
 fn arg_to_api(a: DecodedArg) -> ApiArg {
     ApiArg {
+        // Render with the parameter's component descriptors so tuple fields
+        // surface as `(fieldName: value, …)` instead of `(value, value, …)`.
+        value: format_value_named(&a.value, &a.components),
         name: a.name,
         sol_type: a.sol_type,
-        value: format_value(&a.value),
     }
 }
 
@@ -252,6 +263,32 @@ struct Health {
 
 async fn health() -> Json<Health> {
     Json(Health { ok: true })
+}
+
+/// Receive an extracted RPC event from the userscript and broadcast it to
+/// any SSE subscribers (the React frontend).
+///
+/// The body is forwarded through as-is; we only validate that it parses as
+/// JSON so SSE consumers don't see garbage.
+async fn post_event(State(state): State<AppState>, body: String) -> Response {
+    if let Err(e) = serde_json::from_str::<serde_json::Value>(&body) {
+        return err(StatusCode::BAD_REQUEST, format!("invalid JSON: {e}"));
+    }
+    let _ = state.event_tx.send(body); // err only when no subscribers
+    StatusCode::NO_CONTENT.into_response()
+}
+
+/// Server-Sent Events stream of broadcast RPC events.
+async fn event_stream(
+    State(state): State<AppState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let rx = state.event_tx.subscribe();
+    let stream = BroadcastStream::new(rx).filter_map(|res| match res {
+        Ok(payload) => Some(Ok::<_, Infallible>(Event::default().data(payload))),
+        // Lagged: subscriber fell behind — drop the missed event silently.
+        Err(_) => None,
+    });
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 fn frontend_dir() -> Option<PathBuf> {
@@ -278,12 +315,16 @@ async fn main() {
         )
         .init();
 
+    let (event_tx, _) = broadcast::channel::<String>(64);
     let state = AppState {
         resolver: Arc::new(build_resolver()),
+        event_tx,
     };
 
     let mut app = Router::new()
         .route("/api/decode", post(decode))
+        .route("/api/event", post(post_event))
+        .route("/api/event/stream", get(event_stream))
         .route("/api/health", get(health))
         .with_state(state)
         .layer(CorsLayer::permissive())

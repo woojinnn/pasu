@@ -37,14 +37,19 @@ policy-engine/
 |       |-- total-input-usd-cap-500.cedar
 |       |-- uniswap-only-allowlist.cedar
 |       `-- window-swap-volume-usd-24h-cap-5000.cedar
-`-- crates/
-    |-- policy-engine/
-    |-- adapters/
-    |   |-- uniswap-v2/
-    |   |-- uniswap-v3/
-    |   `-- universal-router/
-    |-- adapters-bundle/
-    `-- integration-tests/
+|-- crates/
+|   |-- policy-engine/
+|   |-- adapters/
+|   |   |-- uniswap-v2/
+|   |   |-- uniswap-v3/
+|   |   `-- universal-router/
+|   |-- adapters-bundle/
+|   |-- integration-tests/
+|   |-- abi-resolver/         (Sourcify-backed calldata decoder + SQLite dump builder)
+|   `-- web-server/           (HTTP API + React frontend over abi-resolver)
+`-- request-module/           (browser-side RPC hook — userscript today, extension later)
+    |-- core/extractRpcFields.ts
+    `-- userscript/scopeball.user.js
 ```
 
 ## Runtime Crate
