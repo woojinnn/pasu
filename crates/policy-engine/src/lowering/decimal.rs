@@ -3,11 +3,30 @@
 //! serialized to 4 fractional places.
 
 use alloy_primitives::U256;
+use std::cmp::Ordering;
+use thiserror::Error;
 
-const DECIMAL_SCALE: u32 = 4;
+/// Cedar decimal fractional precision used by this engine.
+pub const DECIMAL_SCALE: u32 = 4;
+/// Fixed denominator for four-digit human decimal formatting.
+pub const HUMAN_DECIMAL_SCALE: u64 = 10_000;
+/// Largest Cedar decimal value emitted by signature human-amount lowering.
+pub const CEDAR_DECIMAL_CEILING: &str = "922337203685477.5807";
 /// Largest Cedar decimal integer part accepted by the policy schema.
-pub(crate) const HUMAN_INT_CEILING: u128 = 922_337_203_685_477;
-const CEDAR_DECIMAL_CEILING_FRACTION: u128 = 5_807;
+pub const HUMAN_INT_CEILING: u128 = 922_337_203_685_477;
+/// Fractional component of [`CEDAR_DECIMAL_CEILING`] at [`DECIMAL_SCALE`].
+pub const CEDAR_DECIMAL_CEILING_FRACTION: u64 = 5_807;
+
+/// Error returned by decimal helpers that must not fail open.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum DecimalError {
+    /// A decimal integer string was not a valid unsigned 256-bit integer.
+    #[error("malformed uint256 decimal string {value:?}")]
+    MalformedU256 {
+        /// Malformed input value.
+        value: String,
+    },
+}
 
 #[cfg(test)]
 pub(crate) fn multiply_decimal_strings(raw: &str, decimals: u32, price: &str) -> String {
@@ -62,6 +81,50 @@ pub(crate) fn try_add_decimal_strings(left: &str, right: &str) -> Option<String>
     Some(fixed_to_decimal(total, DECIMAL_SCALE))
 }
 
+/// Format a raw token amount as a four-decimal human amount for Cedar.
+///
+/// The boolean is true when the returned decimal was clamped at
+/// [`CEDAR_DECIMAL_CEILING`].
+///
+/// # Errors
+///
+/// Returns [`DecimalError::MalformedU256`] when `raw` is not a decimal U256.
+pub fn token_amount_human_decimal(
+    raw: &str,
+    decimals: u32,
+) -> Result<(String, bool), DecimalError> {
+    let raw = parse_u256_decimal(raw)?;
+    let token_scale = U256::from(10u64).pow(U256::from(decimals));
+    let integer_part = raw / token_scale;
+
+    if integer_part > U256::from(HUMAN_INT_CEILING) {
+        return Ok((CEDAR_DECIMAL_CEILING.into(), true));
+    }
+
+    let fractional_raw = raw % token_scale;
+    let fractional_part =
+        fractional_raw.saturating_mul(U256::from(HUMAN_DECIMAL_SCALE)) / token_scale;
+
+    if exceeds_token_human_ceiling(integer_part, fractional_part) {
+        return Ok((CEDAR_DECIMAL_CEILING.into(), true));
+    }
+
+    Ok((
+        format!("{integer_part}.{}", four_digit_fraction(fractional_part)),
+        false,
+    ))
+}
+
+/// Compare two decimal U256 strings.
+///
+/// # Errors
+///
+/// Returns [`DecimalError::MalformedU256`] when either input is not a decimal
+/// U256.
+pub fn cmp_u256_strings(left: &str, right: &str) -> Result<Ordering, DecimalError> {
+    Ok(parse_u256_decimal(left)?.cmp(&parse_u256_decimal(right)?))
+}
+
 fn exceeds_cedar_decimal_ceiling(value: U256, scale: u32) -> bool {
     value > cedar_decimal_ceiling_fixed(scale)
 }
@@ -71,6 +134,32 @@ fn cedar_decimal_ceiling_fixed(scale: u32) -> U256 {
     U256::from(HUMAN_INT_CEILING)
         .saturating_mul(scale_factor)
         .saturating_add(U256::from(CEDAR_DECIMAL_CEILING_FRACTION))
+}
+
+fn exceeds_token_human_ceiling(integer_part: U256, fractional_part: U256) -> bool {
+    let ceiling_integer = U256::from(HUMAN_INT_CEILING);
+    integer_part > ceiling_integer
+        || (integer_part == ceiling_integer
+            && fractional_part > U256::from(CEDAR_DECIMAL_CEILING_FRACTION))
+}
+
+fn four_digit_fraction(value: U256) -> String {
+    let value = value.to_string();
+    if value.len() >= DECIMAL_SCALE as usize {
+        value
+    } else {
+        format!(
+            "{}{}",
+            "0".repeat(DECIMAL_SCALE as usize - value.len()),
+            value
+        )
+    }
+}
+
+fn parse_u256_decimal(value: &str) -> Result<U256, DecimalError> {
+    U256::from_str_radix(value, 10).map_err(|_err| DecimalError::MalformedU256 {
+        value: value.into(),
+    })
 }
 
 pub(super) fn decimal_to_fixed(s: &str, scale: u32) -> Option<u128> {
@@ -191,5 +280,73 @@ mod tests {
         assert_eq!(add_decimal_strings("1.00", "bad"), "1.0000");
         assert_eq!(add_decimal_strings("bad", "2.00"), "2.0000");
         assert_eq!(add_decimal_strings("bad", "also-bad"), "0.0000");
+    }
+
+    const UINT160_MAX: &str = "1461501637330902918203684832716283019655932542975";
+    const UINT256_MAX: &str =
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+
+    #[test]
+    fn token_amount_human_decimal_formats_regular_amount() {
+        assert_eq!(
+            token_amount_human_decimal("10000000", 6).unwrap(),
+            ("10.0000".into(), false)
+        );
+    }
+
+    #[test]
+    fn token_amount_human_decimal_allows_ceiling_integer_part() {
+        let raw = U256::from(HUMAN_INT_CEILING) * U256::from(1_000_000u64);
+
+        assert_eq!(
+            token_amount_human_decimal(&raw.to_string(), 6).unwrap(),
+            ("922337203685477.0000".into(), false)
+        );
+    }
+
+    #[test]
+    fn token_amount_human_decimal_clamps_above_ceiling_integer_part() {
+        let raw = U256::from(HUMAN_INT_CEILING + 1) * U256::from(1_000_000u64);
+
+        assert_eq!(
+            token_amount_human_decimal(&raw.to_string(), 6).unwrap(),
+            ("922337203685477.5807".into(), true)
+        );
+    }
+
+    #[test]
+    fn token_amount_human_decimal_clamps_uint160_max_without_panic() {
+        assert_eq!(
+            token_amount_human_decimal(UINT160_MAX, 6).unwrap(),
+            ("922337203685477.5807".into(), true)
+        );
+    }
+
+    #[test]
+    fn token_amount_human_decimal_clamps_uint256_max_without_panic() {
+        assert_eq!(
+            token_amount_human_decimal(UINT256_MAX, 18).unwrap(),
+            ("922337203685477.5807".into(), true)
+        );
+    }
+
+    #[test]
+    fn token_amount_human_decimal_rejects_malformed_input() {
+        assert_eq!(
+            token_amount_human_decimal("not-a-u256", 6),
+            Err(DecimalError::MalformedU256 {
+                value: "not-a-u256".into()
+            })
+        );
+    }
+
+    #[test]
+    fn cmp_u256_strings_rejects_malformed_input() {
+        assert_eq!(
+            cmp_u256_strings("1", "bad"),
+            Err(DecimalError::MalformedU256 {
+                value: "bad".into()
+            })
+        );
     }
 }

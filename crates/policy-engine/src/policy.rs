@@ -196,6 +196,9 @@ pub enum PolicyError {
     /// Cedar entity uid construction failure.
     #[error("invalid entity uid: {0}")]
     EntityUid(String),
+    /// Semantic action lowering failure before Cedar request construction.
+    #[error("lowering failed: {0}")]
+    Lowering(String),
 }
 
 /// Compiled policy set + the auto-injected baseline permit.

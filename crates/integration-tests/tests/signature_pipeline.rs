@@ -1,41 +1,43 @@
 use policy_engine::{
-    Address, HostCapabilities, MockAdapterRegistry, MockClock, MockOracle, Pipeline, PolicyEngine,
-    Request, SignatureRequest, Token, TransactionRequest, Verdict,
+    Action, AdapterError, AdapterId, Address, HostCapabilities, MockAdapterRegistry, MockClock,
+    MockOracle, MockSignatureRegistry, Permit2Action, Permit2Approval, Permit2PermitKind, Pipeline,
+    PipelineError, PolicyEngine, Request, SignatureAdapter, SignatureMatchKey, SignatureRequest,
+    Token, TransactionRequest, Verdict,
 };
 use policy_engine_adapters_bundle::default_signature_registry;
 use serde_json::{json, Value};
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc};
 
 const PERMIT2_SPENDER_ALLOWLIST: &str =
-    include_str!("../../../policies/signature/permit2/spender-allowlist.cedar");
+    include_str!("../../../policies/signature/_shared/spender-allowlist.cedar");
 const PERMIT2_NO_UNLIMITED: &str =
-    include_str!("../../../policies/signature/permit2/no-unlimited-amount.cedar");
-const PERMIT2_MAX_USD: &str = include_str!("../../../policies/signature/permit2/max-usd-100.cedar");
+    include_str!("../../../policies/signature/_shared/no-unlimited-amount.cedar");
+const PERMIT2_MAX_USD: &str = include_str!("../../../policies/signature/_shared/max-usd-100.cedar");
 const PERMIT2_DEADLINE: &str =
     include_str!("../../../policies/signature/permit2/sig-deadline-le-1h.cedar");
 const PERMIT2_CHAIN: &str =
-    include_str!("../../../policies/signature/permit2/chain-must-match.cedar");
-const PERMIT2_NONCE: &str = include_str!("../../../policies/signature/permit2/nonce-sanity.cedar");
+    include_str!("../../../policies/signature/_shared/chain-must-match.cedar");
+const PERMIT2_NONCE: &str = include_str!("../../../policies/signature/_shared/nonce-sanity.cedar");
 const PERMIT2_HUMAN_MAX: &str =
     include_str!("../../../policies/signature/permit2/max-human-amount-50.cedar");
 
 const EIP2612_SPENDER_ALLOWLIST: &str =
-    include_str!("../../../policies/signature/eip2612/spender-allowlist.cedar");
+    include_str!("../../../policies/signature/_shared/spender-allowlist.cedar");
 const EIP2612_NO_UNLIMITED: &str =
-    include_str!("../../../policies/signature/eip2612/no-unlimited-amount.cedar");
-const EIP2612_MAX_USD: &str = include_str!("../../../policies/signature/eip2612/max-usd-100.cedar");
+    include_str!("../../../policies/signature/_shared/no-unlimited-amount.cedar");
+const EIP2612_MAX_USD: &str = include_str!("../../../policies/signature/_shared/max-usd-100.cedar");
 const EIP2612_DEADLINE: &str =
     include_str!("../../../policies/signature/eip2612/deadline-le-1h.cedar");
 const EIP2612_CHAIN: &str =
-    include_str!("../../../policies/signature/eip2612/chain-must-match.cedar");
-const EIP2612_NONCE: &str = include_str!("../../../policies/signature/eip2612/nonce-sanity.cedar");
+    include_str!("../../../policies/signature/_shared/chain-must-match.cedar");
+const EIP2612_NONCE: &str = include_str!("../../../policies/signature/_shared/nonce-sanity.cedar");
 const EIP2612_HUMAN_MAX: &str =
     include_str!("../../../policies/signature/eip2612/max-human-value-50.cedar");
 
 const OTHER_VERIFYING_ALLOWLIST: &str =
     include_str!("../../../policies/signature/eip712-other/verifying-contract-allowlist.cedar");
 const OTHER_CHAIN: &str =
-    include_str!("../../../policies/signature/eip712-other/chain-must-match.cedar");
+    include_str!("../../../policies/signature/_shared/chain-must-match.cedar");
 
 const UINT160_MAX: &str = "1461501637330902918203684832716283019655932542975";
 const UINT256_MAX: &str =
@@ -99,9 +101,23 @@ fn evaluate(sig: SignatureRequest, policy: &str) -> Verdict {
     evaluate_with_clock(sig, policy, &clock)
 }
 
+fn evaluate_result(sig: SignatureRequest, policy: &str) -> Result<Verdict, PipelineError> {
+    let clock = MockClock::with_fixed(1000);
+    evaluate_result_with_registry(sig, policy, &clock, &default_signature_registry())
+}
+
 fn evaluate_with_clock(sig: SignatureRequest, policy: &str, clock: &MockClock) -> Verdict {
+    evaluate_result_with_registry(sig, policy, clock, &default_signature_registry())
+        .expect("pipeline ok")
+}
+
+fn evaluate_result_with_registry(
+    sig: SignatureRequest,
+    policy: &str,
+    clock: &MockClock,
+    sig_registry: &dyn policy_engine::SignatureRegistry,
+) -> Result<Verdict, PipelineError> {
     let tx_registry = MockAdapterRegistry::new();
-    let sig_registry = default_signature_registry();
     let oracle = oracle();
     let policies = PolicyEngine::from_sources([policy]).expect("policy source parses");
     let pipe = Pipeline::new(
@@ -109,9 +125,9 @@ fn evaluate_with_clock(sig: SignatureRequest, policy: &str, clock: &MockClock) -
         HostCapabilities::new(&oracle).with_clock(clock),
         &policies,
     )
-    .with_signature_registry(&sig_registry);
+    .with_signature_registry(sig_registry);
 
-    pipe.evaluate(&Request::Sig(sig)).expect("pipeline ok")
+    pipe.evaluate(&Request::Sig(sig))
 }
 
 fn assert_fail_id(verdict: Verdict, policy_id: &str) {
@@ -147,6 +163,16 @@ fn eip2612_set_message(field: &str, value: Value) -> SignatureRequest {
     let mut sig = eip2612_permit();
     sig.typed_data.message[field] = value;
     sig
+}
+
+fn assert_lowering_error(error: PipelineError, expected: &str) {
+    match error {
+        PipelineError::Lowering(message) => assert!(
+            message.contains(expected),
+            "expected {expected:?} in lowering error {message:?}"
+        ),
+        other => panic!("expected PipelineError::Lowering, got {other:?}"),
+    }
 }
 
 #[test]
@@ -230,6 +256,96 @@ fn permit2_human_amount_cap_passes_and_fails() {
         evaluate(denied, PERMIT2_HUMAN_MAX),
         "user/signature/permit2/max-human-amount-50",
     );
+}
+
+#[test]
+fn typed_data_validation_rejects_missing_primary_type() {
+    let mut sig = permit2_single();
+    sig.typed_data.primary_type = "MissingPrimaryType".into();
+
+    let error = evaluate_result(sig, "")
+        .expect_err("missing primaryType definition must fail at pipeline boundary");
+
+    assert_lowering_error(error, "types missing primaryType MissingPrimaryType");
+}
+
+#[test]
+fn typed_data_validation_rejects_missing_message_field() {
+    let mut sig = permit2_single();
+    sig.typed_data
+        .message
+        .as_object_mut()
+        .expect("fixture message is object")
+        .remove("spender");
+
+    let error =
+        evaluate_result(sig, "").expect_err("missing declared message field must fail early");
+
+    assert_lowering_error(error, "message missing primaryType field spender");
+}
+
+#[test]
+fn typed_data_validation_allows_well_formed_signature_to_dispatch() {
+    assert_eq!(
+        evaluate_result(permit2_single(), "").unwrap(),
+        Verdict::Pass
+    );
+}
+
+#[derive(Debug)]
+struct MalformedAmountAdapter;
+
+impl SignatureAdapter for MalformedAmountAdapter {
+    fn id(&self) -> AdapterId {
+        AdapterId::new("test/malformed-signature-amount@1").unwrap()
+    }
+
+    fn match_keys(&self) -> Vec<SignatureMatchKey> {
+        vec![SignatureMatchKey::exact(
+            1,
+            Address::new("0x000000000022d473030f116ddee9f6b43ac78ba3").unwrap(),
+            "PermitSingle",
+        )]
+    }
+
+    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError> {
+        let token = usdc();
+        let approval = Permit2Approval {
+            token: token.clone(),
+            amount: "not-a-u256".into(),
+            expiration: 4600,
+            nonce: "1".into(),
+        };
+        Ok(Action::Permit2(Permit2Action {
+            signer: sig.signer.clone(),
+            chain_id: sig.chain_id,
+            domain_chain_id: sig.typed_data.domain.chain_id,
+            verifying_contract: sig.typed_data.domain.verifying_contract.clone(),
+            primary_type: sig.typed_data.primary_type.clone(),
+            permit_kind: Permit2PermitKind::PermitSingle,
+            spender: Address::new("0x1111111111111111111111111111111111111111").unwrap(),
+            token,
+            amount: approval.amount.clone(),
+            expiration: approval.expiration,
+            sig_deadline: 1600,
+            nonce: approval.nonce.clone(),
+            approvals: vec![approval],
+            is_unlimited: false,
+            nonce_valid: true,
+            total_approved_usd: None,
+        }))
+    }
+}
+
+#[test]
+fn malformed_signature_amount_returns_pipeline_error() {
+    let clock = MockClock::with_fixed(1000);
+    let sig_registry = MockSignatureRegistry::new().with_adapter(Arc::new(MalformedAmountAdapter));
+
+    let error =
+        evaluate_result_with_registry(permit2_single(), "", &clock, &sig_registry).unwrap_err();
+
+    assert_lowering_error(error, "not-a-u256");
 }
 
 #[test]

@@ -103,7 +103,12 @@ fn window_stats_json(stats: &WindowStatsContext) -> Value {
 }
 
 fn cedar_long_u64(value: u64) -> Value {
-    Value::from(i64::try_from(value).unwrap_or(i64::MAX))
+    let narrowed = i64::try_from(value).unwrap_or(i64::MAX);
+    debug_assert!(
+        i64::try_from(value).is_ok() || cfg!(test),
+        "cedar Long narrowing clamped u64 value {value} to i64::MAX"
+    );
+    Value::from(narrowed)
 }
 
 #[cfg(test)]

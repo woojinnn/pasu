@@ -202,6 +202,11 @@ pub struct SignatureMatchKey {
     /// EIP-712 verifying contract.
     pub verifying_contract: Address,
     /// EIP-712 primary type.
+    ///
+    /// Signature registry matching is case-insensitive because EIP-712 does
+    /// not strictly mandate primary-type casing. The original casing remains
+    /// preserved in `context.base.primaryType` for observability and for hosts
+    /// that want to enforce exact casing with Cedar policy.
     pub primary_type: String,
 }
 
@@ -236,6 +241,215 @@ pub trait SignatureAdapter: Send + Sync {
     ///
     /// Returns an error when typed-data decoding or mapping fails.
     fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError>;
+}
+
+/// Internal helper surface shared by first-party signature adapter crates.
+#[doc(hidden)]
+pub mod signature_helpers {
+    use super::{AdapterError, AdapterId};
+    use crate::core::{Address, ChainId, Token};
+    use alloy_primitives::U256;
+    use serde_json::{Map, Value};
+    use std::collections::HashMap;
+
+    /// Token metadata lookup keyed by `(chain_id, address)`.
+    #[derive(Debug, Clone, Default)]
+    pub struct TokenLookup {
+        tokens: HashMap<(ChainId, String), Token>,
+    }
+
+    impl TokenLookup {
+        /// Construct an empty token lookup.
+        #[must_use]
+        pub fn new() -> Self {
+            Self::default()
+        }
+
+        /// Construct a lookup pre-populated with `tokens`.
+        #[must_use]
+        pub fn with_tokens<I>(tokens: I) -> Self
+        where
+            I: IntoIterator<Item = Token>,
+        {
+            let mut lookup = Self::new();
+            for token in tokens {
+                lookup.add(token);
+            }
+            lookup
+        }
+
+        /// Add or replace token metadata.
+        pub fn add(&mut self, token: Token) {
+            self.tokens.insert(
+                (token.chain_id, token.address.as_str().to_lowercase()),
+                token,
+            );
+        }
+
+        /// Return metadata for `address`, defaulting to an UNKNOWN 18-decimal
+        /// ERC-20 shape when no metadata is installed.
+        #[must_use]
+        pub fn get(&self, chain_id: ChainId, address: &Address) -> Token {
+            self.tokens
+                .get(&(chain_id, address.as_str().to_lowercase()))
+                .cloned()
+                .unwrap_or_else(|| Token {
+                    chain_id,
+                    address: address.clone(),
+                    symbol: "UNKNOWN".into(),
+                    decimals: 18,
+                    is_native: false,
+                })
+        }
+
+        /// Return `(chain_id, verifying_contract)` match targets.
+        #[must_use]
+        pub fn targets(&self) -> Vec<(ChainId, Address)> {
+            self.tokens
+                .values()
+                .map(|token| (token.chain_id, token.address.clone()))
+                .collect()
+        }
+    }
+
+    /// Build a static token and panic if the checked-in address is invalid.
+    #[must_use]
+    pub fn static_token(chain_id: ChainId, address: &str, symbol: &str, decimals: u32) -> Token {
+        Token {
+            chain_id,
+            address: Address::new(address).unwrap_or_else(|err| {
+                panic_static(&format!("invalid static token address {address}: {err}"))
+            }),
+            symbol: symbol.into(),
+            decimals,
+            is_native: false,
+        }
+    }
+
+    /// Borrow a JSON object.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AdapterError::BadCalldata`] when `value` is not an object.
+    pub fn object<'a>(
+        value: &'a Value,
+        label: &str,
+    ) -> Result<&'a Map<String, Value>, AdapterError> {
+        value
+            .as_object()
+            .ok_or_else(|| AdapterError::BadCalldata(format!("{label} must be an object")))
+    }
+
+    /// Borrow a JSON object field.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AdapterError::BadCalldata`] when `field` is missing or not an
+    /// object.
+    pub fn object_field<'a>(
+        object: &'a Map<String, Value>,
+        field: &str,
+    ) -> Result<&'a Map<String, Value>, AdapterError> {
+        object
+            .get(field)
+            .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))
+            .and_then(|value| self::object(value, field))
+    }
+
+    /// Borrow a JSON array field.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AdapterError::BadCalldata`] when `field` is missing or not an
+    /// array.
+    pub fn array_field<'a>(
+        object: &'a Map<String, Value>,
+        field: &str,
+    ) -> Result<&'a [Value], AdapterError> {
+        object
+            .get(field)
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
+            .ok_or_else(|| AdapterError::BadCalldata(format!("{field} must be an array")))
+    }
+
+    /// Parse an address field.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AdapterError::BadCalldata`] when the field is missing,
+    /// non-stringish, or not an EVM address.
+    pub fn address_field(
+        object: &Map<String, Value>,
+        field: &str,
+    ) -> Result<Address, AdapterError> {
+        let value = stringish_field(object, field)?;
+        Address::new(&value).map_err(AdapterError::BadCalldata)
+    }
+
+    /// Parse a u64 field encoded as a JSON string or number.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AdapterError::BadCalldata`] when the field is missing, not a
+    /// uint256 decimal, or does not fit in u64.
+    pub fn u64_field(object: &Map<String, Value>, field: &str) -> Result<u64, AdapterError> {
+        let value = u256_string_field(object, field)?;
+        value
+            .parse::<u64>()
+            .map_err(|err| AdapterError::BadCalldata(format!("{field} does not fit u64: {err}")))
+    }
+
+    /// Parse and normalize a uint256 decimal field.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AdapterError::BadCalldata`] when the field is missing,
+    /// non-stringish, or not a uint256 decimal.
+    pub fn u256_string_field(
+        object: &Map<String, Value>,
+        field: &str,
+    ) -> Result<String, AdapterError> {
+        let value = stringish_field(object, field)?;
+        U256::from_str_radix(&value, 10)
+            .map(|parsed| parsed.to_string())
+            .map_err(|err| AdapterError::BadCalldata(format!("{field} must be uint256: {err}")))
+    }
+
+    /// Return a string value from a JSON string or number field.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AdapterError::BadCalldata`] when the field is missing or not
+    /// a string/number.
+    pub fn stringish_field(
+        object: &Map<String, Value>,
+        field: &str,
+    ) -> Result<String, AdapterError> {
+        let value = object
+            .get(field)
+            .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))?;
+        match value {
+            Value::String(s) => Ok(s.clone()),
+            Value::Number(n) => Ok(n.to_string()),
+            _ => Err(AdapterError::BadCalldata(format!(
+                "{field} must be a string or number"
+            ))),
+        }
+    }
+
+    /// Parse a static adapter id and panic if it is malformed.
+    #[must_use]
+    #[allow(clippy::panic)]
+    pub fn static_adapter_id(raw: &str) -> AdapterId {
+        AdapterId::new(raw).unwrap_or_else(|err| panic!("invalid static adapter id {raw}: {err}"))
+    }
+
+    /// Panic for malformed checked-in constants.
+    #[allow(clippy::panic)]
+    pub fn panic_static(message: &str) -> ! {
+        panic!("{message}");
+    }
 }
 
 /// Semantic action families an adapter may emit.

@@ -1,11 +1,7 @@
 type Eip2612Context = {
-  signer: String,
+  base: SignatureBaseContext,
+
   owner: String,
-  requestChainId: Long,
-  domainChainId: Long,
-  verifyingContract: String,
-  primaryType: String,
-  nowTs: Long,
 
   spender: String,
   token: Token,

@@ -1,0 +1,13 @@
+// Shared signature context.
+//
+// v1.1 uses nested-record composition instead of textual schema includes:
+// Cedar schemas and policy syntax support `context.base.<field>` cleanly, and
+// this keeps the shared fields required without relying on a custom preprocessor.
+type SignatureBaseContext = {
+  signer: String,
+  requestChainId: Long,
+  domainChainId: Long,
+  verifyingContract: String,
+  primaryType: String,
+  nowTs: Long,
+};

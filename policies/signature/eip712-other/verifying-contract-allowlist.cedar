@@ -9,5 +9,5 @@ forbid (
   resource is Protocol
 )
 unless {
-  ["0x9999999999999999999999999999999999999999"].contains(context.verifyingContract)
+  ["0x9999999999999999999999999999999999999999"].contains(context.base.verifyingContract)
 };

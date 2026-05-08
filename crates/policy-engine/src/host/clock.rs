@@ -32,14 +32,6 @@ impl MockClock {
     pub const fn with_fixed(now_ts: u64) -> Self {
         Self { now_ts }
     }
-
-    /// Construct a mock clock fixed at the current system time.
-    #[must_use]
-    pub fn with_now() -> Self {
-        Self {
-            now_ts: SystemClock.now(),
-        }
-    }
 }
 
 impl Clock for MockClock {

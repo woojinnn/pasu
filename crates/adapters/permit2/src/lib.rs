@@ -18,11 +18,17 @@
 #![cfg_attr(not(test), warn(clippy::panic))]
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
-use alloy_primitives::{U256, U512};
+use alloy_primitives::U512;
+use policy_engine::adapter::signature_helpers::{
+    address_field, array_field, object, object_field, panic_static, static_adapter_id,
+    static_token, u256_string_field, u64_field, TokenLookup,
+};
+use policy_engine::lowering::decimal::{
+    CEDAR_DECIMAL_CEILING_FRACTION, HUMAN_DECIMAL_SCALE, HUMAN_INT_CEILING,
+};
 use policy_engine::prelude::*;
 use serde_json::{Map, Value};
 use std::cmp::Ordering;
-use std::collections::HashMap;
 
 /// Permit2 canonical deployment address.
 pub const PERMIT2_ADDRESS: &str = "0x000000000022d473030f116ddee9f6b43ac78ba3";
@@ -30,9 +36,6 @@ pub const PERMIT2_ADDRESS: &str = "0x000000000022d473030f116ddee9f6b43ac78ba3";
 const UINT160_MAX_DEC: &str = "1461501637330902918203684832716283019655932542975";
 const UINT256_MAX_DEC: &str =
     "115792089237316195423570985008687907853269984665640564039457584007913129639935";
-const HUMAN_DECIMAL_SCALE: u64 = 10_000;
-const HUMAN_INT_CEILING: u128 = 922_337_203_685_477;
-const CEDAR_DECIMAL_CEILING_FRACTION: u64 = 5_807;
 
 /// Permit2 EIP-712 adapter.
 #[derive(Debug, Clone)]
@@ -47,7 +50,7 @@ impl Permit2Adapter {
     pub fn new() -> Self {
         Self {
             chain_ids: vec![1, 137],
-            tokens: TokenLookup::with_default_tokens(),
+            tokens: default_token_lookup(),
         }
     }
 
@@ -75,32 +78,37 @@ impl SignatureAdapter for Permit2Adapter {
         self.chain_ids
             .iter()
             .flat_map(|chain_id| {
-                ["PermitSingle", "PermitBatch", "PermitTransferFrom"]
-                    .into_iter()
-                    .map({
-                        let verifying_contract = verifying_contract.clone();
-                        move |primary_type| {
-                            SignatureMatchKey::exact(
-                                *chain_id,
-                                verifying_contract.clone(),
-                                primary_type,
-                            )
-                        }
-                    })
+                [
+                    Permit2PermitKind::PermitSingle,
+                    Permit2PermitKind::PermitBatch,
+                    Permit2PermitKind::PermitTransferFrom,
+                ]
+                .into_iter()
+                .map({
+                    let verifying_contract = verifying_contract.clone();
+                    move |permit_kind| {
+                        SignatureMatchKey::exact(
+                            *chain_id,
+                            verifying_contract.clone(),
+                            permit_kind.as_str(),
+                        )
+                    }
+                })
             })
             .collect()
     }
 
     fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError> {
-        let decoded = match sig.primary_type() {
-            "PermitSingle" => self.decode_single(sig)?,
-            "PermitBatch" => self.decode_batch(sig)?,
-            "PermitTransferFrom" => self.decode_transfer(sig)?,
-            other => {
-                return Err(AdapterError::BadCalldata(format!(
-                    "unsupported Permit2 primaryType {other}"
-                )));
-            }
+        let Some(permit_kind) = Permit2PermitKind::from_primary_type(sig.primary_type()) else {
+            return Err(AdapterError::BadCalldata(format!(
+                "unsupported Permit2 primaryType {}",
+                sig.primary_type()
+            )));
+        };
+        let decoded = match permit_kind {
+            Permit2PermitKind::PermitSingle => self.decode_single(sig)?,
+            Permit2PermitKind::PermitBatch => self.decode_batch(sig)?,
+            Permit2PermitKind::PermitTransferFrom => self.decode_transfer(sig)?,
         };
         Ok(Action::Permit2(decoded))
     }
@@ -219,86 +227,20 @@ impl Permit2Adapter {
     }
 }
 
-#[derive(Debug, Clone)]
-struct TokenLookup {
-    tokens: HashMap<(ChainId, String), Token>,
-}
-
-impl TokenLookup {
-    fn with_default_tokens() -> Self {
-        let mut lookup = Self {
-            tokens: HashMap::new(),
-        };
-        lookup.add(token(
-            1,
-            "0xdac17f958d2ee523a2206206994597c13d831ec7",
-            "USDT",
-            6,
-        ));
-        lookup.add(token(
-            1,
-            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-            "USDC",
-            6,
-        ));
-        lookup.add(token(
-            1,
-            "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-            "WETH",
-            18,
-        ));
-        lookup.add(token(
-            137,
-            "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-            "USDC",
-            6,
-        ));
-        lookup.add(token(
-            137,
-            "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-            "USDT",
-            6,
-        ));
-        lookup.add(token(
+fn default_token_lookup() -> TokenLookup {
+    TokenLookup::with_tokens([
+        static_token(1, "0xdac17f958d2ee523a2206206994597c13d831ec7", "USDT", 6),
+        static_token(1, "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6),
+        static_token(1, "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18),
+        static_token(137, "0x2791bca1f2de4661ed88a30c99a7a9449aa84174", "USDC", 6),
+        static_token(137, "0xc2132d05d31c914a87c6611c10748aeb04b58e8f", "USDT", 6),
+        static_token(
             137,
             "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619",
             "WETH",
             18,
-        ));
-        lookup
-    }
-
-    fn add(&mut self, token: Token) {
-        self.tokens.insert(
-            (token.chain_id, token.address.as_str().to_lowercase()),
-            token,
-        );
-    }
-
-    fn get(&self, chain_id: ChainId, address: &Address) -> Token {
-        self.tokens
-            .get(&(chain_id, address.as_str().to_lowercase()))
-            .cloned()
-            .unwrap_or_else(|| Token {
-                chain_id,
-                address: address.clone(),
-                symbol: "UNKNOWN".into(),
-                decimals: 18,
-                is_native: false,
-            })
-    }
-}
-
-fn token(chain_id: ChainId, address: &str, symbol: &str, decimals: u32) -> Token {
-    Token {
-        chain_id,
-        address: Address::new(address).unwrap_or_else(|err| {
-            panic_static(&format!("invalid static token address {address}: {err}"))
-        }),
-        symbol: symbol.into(),
-        decimals,
-        is_native: false,
-    }
+        ),
+    ])
 }
 
 fn permit2_address() -> Address {
@@ -370,75 +312,6 @@ fn decimal_scale(decimals: u32) -> U512 {
     scale
 }
 
-fn object<'a>(value: &'a Value, label: &str) -> Result<&'a Map<String, Value>, AdapterError> {
-    value
-        .as_object()
-        .ok_or_else(|| AdapterError::BadCalldata(format!("{label} must be an object")))
-}
-
-fn object_field<'a>(
-    object: &'a Map<String, Value>,
-    field: &str,
-) -> Result<&'a Map<String, Value>, AdapterError> {
-    object
-        .get(field)
-        .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))
-        .and_then(|value| self::object(value, field))
-}
-
-fn array_field<'a>(
-    object: &'a Map<String, Value>,
-    field: &str,
-) -> Result<&'a [Value], AdapterError> {
-    object
-        .get(field)
-        .and_then(Value::as_array)
-        .map(Vec::as_slice)
-        .ok_or_else(|| AdapterError::BadCalldata(format!("{field} must be an array")))
-}
-
-fn address_field(object: &Map<String, Value>, field: &str) -> Result<Address, AdapterError> {
-    let value = stringish_field(object, field)?;
-    Address::new(&value).map_err(AdapterError::BadCalldata)
-}
-
-fn u64_field(object: &Map<String, Value>, field: &str) -> Result<u64, AdapterError> {
-    let value = u256_string_field(object, field)?;
-    value
-        .parse::<u64>()
-        .map_err(|err| AdapterError::BadCalldata(format!("{field} does not fit u64: {err}")))
-}
-
-fn u256_string_field(object: &Map<String, Value>, field: &str) -> Result<String, AdapterError> {
-    let value = stringish_field(object, field)?;
-    U256::from_str_radix(&value, 10)
-        .map(|parsed| parsed.to_string())
-        .map_err(|err| AdapterError::BadCalldata(format!("{field} must be uint256: {err}")))
-}
-
-fn stringish_field(object: &Map<String, Value>, field: &str) -> Result<String, AdapterError> {
-    let value = object
-        .get(field)
-        .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))?;
-    match value {
-        Value::String(s) => Ok(s.clone()),
-        Value::Number(n) => Ok(n.to_string()),
-        _ => Err(AdapterError::BadCalldata(format!(
-            "{field} must be a string or number"
-        ))),
-    }
-}
-
-#[allow(clippy::panic)]
-fn static_adapter_id(raw: &str) -> AdapterId {
-    AdapterId::new(raw).unwrap_or_else(|err| panic!("invalid static adapter id {raw}: {err}"))
-}
-
-#[allow(clippy::panic)]
-fn panic_static(message: &str) -> ! {
-    panic!("{message}");
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,7 +337,7 @@ mod tests {
 
     #[test]
     fn default_tokens_resolve_polygon_usdc() {
-        let lookup = TokenLookup::with_default_tokens();
+        let lookup = default_token_lookup();
         let token = lookup.get(
             137,
             &Address::new("0x2791bca1f2de4661ed88a30c99a7a9449aa84174").unwrap(),

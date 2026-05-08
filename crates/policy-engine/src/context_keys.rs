@@ -53,6 +53,8 @@ pub const ALLOWANCES_COVER_INPUTS: &str = "allowancesCoverInputs";
 pub const WINDOW_STATS: &str = "windowStats";
 
 // Signature action context fields stamped by signature lowering.
+/// Shared signature base context record.
+pub const BASE: &str = "base";
 /// Signature signer address.
 pub const SIGNER: &str = "signer";
 /// Chain id supplied by the wallet request.

@@ -53,10 +53,10 @@ pub use adapter::{
     SolidityFunctionSpec, StaticAdapterFactory, TypedAdapter,
 };
 pub use core::{
-    Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace, Eip2612Action,
-    Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement, OracleRequirementKind,
-    OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request, SignatureRequest,
-    Token, TransactionRequest, UsdValuation, WindowStatsContext,
+    validate_typed_data, Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
+    Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement,
+    OracleRequirementKind, OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request,
+    SignatureRequest, Token, TransactionRequest, TypedDataError, UsdValuation, WindowStatsContext,
 };
 pub use host::{
     Approvals, ApprovalsError, Clock, HostCapabilities, MockApprovals, MockClock, MockOracle,
@@ -75,6 +75,6 @@ pub use policy::{
 };
 pub use registry::{
     AdapterIndex, AdapterRegistry, MockAdapterRegistry, MockSignatureRegistry, ResolverOutcome,
-    SignatureRegistry,
+    SignatureRegistry, SignatureResolverOutcome,
 };
 pub use schema::PolicySchemaComposer;

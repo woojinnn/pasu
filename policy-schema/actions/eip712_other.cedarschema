@@ -1,14 +1,9 @@
 type Eip712OtherContext = {
-  signer: String,
-  requestChainId: Long,
-  domainChainId: Long,
-  verifyingContract: String,
-  primaryType: String,
-  nowTs: Long,
+  base: SignatureBaseContext,
 
-  domainName: String,
-  domainVersion: String,
-  domainSalt: String,
+  domainName?: String,
+  domainVersion?: String,
+  domainSalt?: String,
   typesJson: String,
   messageJson: String,
 };

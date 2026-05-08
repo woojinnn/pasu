@@ -34,12 +34,9 @@ pub fn request_from_action_with_host(
     match action {
         Action::Dex(d) => Ok(super::dex::request(d)),
         Action::Other(o) => Ok(super::other::request(o)),
-        Action::Permit2(p) => Ok(super::signature::permit2_request(p, host.clock().now())),
-        Action::Eip2612(p) => Ok(super::signature::eip2612_request(p, host.clock().now())),
-        Action::Eip712Other(o) => Ok(super::signature::eip712_other_request(
-            o,
-            host.clock().now(),
-        )),
+        Action::Permit2(p) => super::signature::permit2_request(p, host.clock().now()),
+        Action::Eip2612(p) => super::signature::eip2612_request(p, host.clock().now()),
+        Action::Eip712Other(o) => super::signature::eip712_other_request(o, host.clock().now()),
     }
 }
 

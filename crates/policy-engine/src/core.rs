@@ -2,7 +2,9 @@
 
 use alloy_primitives::{Address as AlloyAddress, U256};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::str::FromStr;
+use thiserror::Error;
 
 /// EVM address as a lowercase hex string with 0x prefix.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -32,7 +34,13 @@ impl Address {
     }
 }
 
-/// Chain id (EIP-155).
+/// Engine chain id.
+///
+/// EIP-712 permits `chainId` to be encoded as a `uint256`, but v1.1 narrows
+/// it to `u64`, which covers practical EVM chain ids as of this release. At
+/// the Cedar request boundary this value narrows again to Cedar `Long` (`i64`);
+/// callers that need to reject oversized ids should do so before building an
+/// engine request.
 pub type ChainId = u64;
 
 /// Token metadata as the engine sees it.
@@ -237,10 +245,13 @@ pub struct Permit2Action {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Permit2PermitKind {
     /// Permit2 `PermitSingle`.
+    #[serde(rename = "PermitSingle")]
     PermitSingle,
     /// Permit2 `PermitBatch`.
+    #[serde(rename = "PermitBatch")]
     PermitBatch,
     /// Permit2 `PermitTransferFrom`.
+    #[serde(rename = "PermitTransferFrom")]
     PermitTransferFrom,
 }
 
@@ -252,6 +263,20 @@ impl Permit2PermitKind {
             Self::PermitSingle => "PermitSingle",
             Self::PermitBatch => "PermitBatch",
             Self::PermitTransferFrom => "PermitTransferFrom",
+        }
+    }
+
+    /// Parse a Permit2 primary type label, case-insensitively.
+    #[must_use]
+    pub fn from_primary_type(s: &str) -> Option<Self> {
+        if s.eq_ignore_ascii_case(Self::PermitSingle.as_str()) {
+            Some(Self::PermitSingle)
+        } else if s.eq_ignore_ascii_case(Self::PermitBatch.as_str()) {
+            Some(Self::PermitBatch)
+        } else if s.eq_ignore_ascii_case(Self::PermitTransferFrom.as_str()) {
+            Some(Self::PermitTransferFrom)
+        } else {
+            None
         }
     }
 }
@@ -315,12 +340,12 @@ pub struct Eip712OtherAction {
     pub verifying_contract: Address,
     /// EIP-712 primary type.
     pub primary_type: String,
-    /// Domain name, or an empty string if absent.
-    pub domain_name: String,
-    /// Domain version, or an empty string if absent.
-    pub domain_version: String,
-    /// Domain salt, or an empty string if absent.
-    pub domain_salt: String,
+    /// Optional domain name.
+    pub domain_name: Option<String>,
+    /// Optional domain version.
+    pub domain_version: Option<String>,
+    /// Optional domain salt.
+    pub domain_salt: Option<String>,
     /// Raw EIP-712 types JSON serialized as compact JSON text.
     pub types_json: String,
     /// Raw EIP-712 message JSON serialized as compact JSON text.
@@ -337,9 +362,9 @@ impl Eip712OtherAction {
             domain_chain_id: sig.typed_data.domain.chain_id,
             verifying_contract: sig.typed_data.domain.verifying_contract.clone(),
             primary_type: sig.typed_data.primary_type.clone(),
-            domain_name: sig.typed_data.domain.name.clone().unwrap_or_default(),
-            domain_version: sig.typed_data.domain.version.clone().unwrap_or_default(),
-            domain_salt: sig.typed_data.domain.salt.clone().unwrap_or_default(),
+            domain_name: sig.typed_data.domain.name.clone(),
+            domain_version: sig.typed_data.domain.version.clone(),
+            domain_salt: sig.typed_data.domain.salt.clone(),
             types_json: json_to_compact_string(&sig.typed_data.types),
             message_json: json_to_compact_string(&sig.typed_data.message),
         }
@@ -468,6 +493,112 @@ pub struct Eip712TypedData {
     pub types: serde_json::Value,
     /// EIP-712 message object.
     pub message: serde_json::Value,
+}
+
+/// Error returned when an EIP-712 typed-data payload is structurally invalid.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum TypedDataError {
+    /// The `types` field was not a JSON object.
+    #[error("typedData.types must be a JSON object")]
+    TypesNotObject,
+    /// The primary type was not present in `types`.
+    #[error("typedData.types missing primaryType {primary_type}")]
+    MissingPrimaryType {
+        /// Missing primary type name.
+        primary_type: String,
+    },
+    /// The primary type entry was not an array.
+    #[error("typedData.types[{primary_type}] must be an array")]
+    PrimaryTypeNotArray {
+        /// Primary type name.
+        primary_type: String,
+    },
+    /// One primary type field entry was not an object.
+    #[error("typedData.types[{primary_type}][{index}] must be an object")]
+    FieldNotObject {
+        /// Primary type name.
+        primary_type: String,
+        /// Field entry index.
+        index: usize,
+    },
+    /// One primary type field entry had no string `name`.
+    #[error("typedData.types[{primary_type}][{index}].name must be a string")]
+    FieldNameNotString {
+        /// Primary type name.
+        primary_type: String,
+        /// Field entry index.
+        index: usize,
+    },
+    /// One primary type field entry had no string `type`.
+    #[error("typedData.types[{primary_type}][{index}].type must be a string")]
+    FieldTypeNotString {
+        /// Primary type name.
+        primary_type: String,
+        /// Field entry index.
+        index: usize,
+    },
+    /// The `message` field was not a JSON object.
+    #[error("typedData.message must be a JSON object")]
+    MessageNotObject,
+    /// The message object did not contain a field declared by the primary type.
+    #[error("typedData.message missing primaryType field {field}")]
+    MissingMessageField {
+        /// Missing message field.
+        field: String,
+    },
+}
+
+/// Validate the EIP-712 typed-data shape needed before adapter dispatch.
+///
+/// This checks only the top-level primary type contract: `types` must define
+/// the declared `primaryType`, every primary-type entry must carry `name` and
+/// `type` strings, and `message` must contain each declared primary-type field.
+///
+/// # Errors
+///
+/// Returns [`TypedDataError`] when the payload is structurally invalid.
+pub fn validate_typed_data(td: &Eip712TypedData) -> Result<(), TypedDataError> {
+    let primary_type = td.primary_type.as_str();
+    let types = td.types.as_object().ok_or(TypedDataError::TypesNotObject)?;
+    let entries = types
+        .get(primary_type)
+        .ok_or_else(|| TypedDataError::MissingPrimaryType {
+            primary_type: primary_type.into(),
+        })?
+        .as_array()
+        .ok_or_else(|| TypedDataError::PrimaryTypeNotArray {
+            primary_type: primary_type.into(),
+        })?;
+    let message = td
+        .message
+        .as_object()
+        .ok_or(TypedDataError::MessageNotObject)?;
+
+    for (index, entry) in entries.iter().enumerate() {
+        let entry = entry
+            .as_object()
+            .ok_or_else(|| TypedDataError::FieldNotObject {
+                primary_type: primary_type.into(),
+                index,
+            })?;
+        let name = entry.get("name").and_then(Value::as_str).ok_or_else(|| {
+            TypedDataError::FieldNameNotString {
+                primary_type: primary_type.into(),
+                index,
+            }
+        })?;
+        entry.get("type").and_then(Value::as_str).ok_or_else(|| {
+            TypedDataError::FieldTypeNotString {
+                primary_type: primary_type.into(),
+                index,
+            }
+        })?;
+        if !message.contains_key(name) {
+            return Err(TypedDataError::MissingMessageField { field: name.into() });
+        }
+    }
+
+    Ok(())
 }
 
 /// EIP-712 domain fields used by v1 signature policies.

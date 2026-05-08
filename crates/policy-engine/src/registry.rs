@@ -33,6 +33,28 @@ pub enum ResolverOutcome {
     Ambiguous(Vec<AdapterId>),
 }
 
+/// Result of resolving an EIP-712 signature against installed adapters.
+pub enum SignatureResolverOutcome<'a> {
+    /// Exactly one signature adapter matched the
+    /// (`chain_id`, `verifyingContract`, `primaryType`) key.
+    Resolved(&'a dyn SignatureAdapter),
+    /// No signature adapter matched. The pipeline should emit
+    /// `Action::Eip712Other`.
+    NoMatch,
+    /// Two or more signature adapters matched.
+    Ambiguous(Vec<AdapterId>),
+}
+
+impl std::fmt::Debug for SignatureResolverOutcome<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Resolved(adapter) => f.debug_tuple("Resolved").field(&adapter.id()).finish(),
+            Self::NoMatch => f.write_str("NoMatch"),
+            Self::Ambiguous(ids) => f.debug_tuple("Ambiguous").field(ids).finish(),
+        }
+    }
+}
+
 /// Trait implemented by registry types. Implementors expose
 /// `resolve_with_adapter` (the primary method); `lookup` has a default impl
 /// for callers that only need the lookup outcome.
@@ -59,7 +81,7 @@ pub trait AdapterRegistry: Send + Sync {
 /// Registry for off-chain signature adapters.
 pub trait SignatureRegistry: Send + Sync {
     /// Resolve a signature request to a specific adapter.
-    fn resolve(&self, sig: &SignatureRequest) -> Option<&dyn SignatureAdapter>;
+    fn resolve<'a>(&'a self, sig: &SignatureRequest) -> SignatureResolverOutcome<'a>;
 }
 
 /// Index over installed adapters, keyed by `(chain_id, to, selector)` plus a
@@ -177,7 +199,7 @@ impl AdapterRegistry for MockAdapterRegistry {
 #[derive(Default)]
 pub struct MockSignatureRegistry {
     adapters: Vec<Arc<dyn SignatureAdapter>>,
-    index: HashMap<SignatureKey, usize>,
+    index: HashMap<SignatureKey, Vec<usize>>,
 }
 
 impl std::fmt::Debug for MockSignatureRegistry {
@@ -202,14 +224,14 @@ impl MockSignatureRegistry {
     pub fn with_adapter(mut self, adapter: Arc<dyn SignatureAdapter>) -> Self {
         let adapter_index = self.adapters.len();
         for key in adapter.match_keys() {
-            self.index.insert(
-                (
+            self.index
+                .entry((
                     key.chain_id,
                     key.verifying_contract,
-                    key.primary_type.to_lowercase(),
-                ),
-                adapter_index,
-            );
+                    normalize_primary_type(&key.primary_type),
+                ))
+                .or_default()
+                .push(adapter_index);
         }
         self.adapters.push(adapter);
         self
@@ -217,24 +239,48 @@ impl MockSignatureRegistry {
 }
 
 impl SignatureRegistry for MockSignatureRegistry {
-    fn resolve(&self, sig: &SignatureRequest) -> Option<&dyn SignatureAdapter> {
+    fn resolve<'a>(&'a self, sig: &SignatureRequest) -> SignatureResolverOutcome<'a> {
         let key = (
             sig.chain_id,
             sig.typed_data.domain.verifying_contract.clone(),
-            sig.typed_data.primary_type.to_lowercase(),
+            normalize_primary_type(&sig.typed_data.primary_type),
         );
-        self.index
-            .get(&key)
-            .and_then(|adapter_index| self.adapters.get(*adapter_index))
-            .map(Arc::as_ref)
+        let Some(adapter_indices) = self.index.get(&key) else {
+            return SignatureResolverOutcome::NoMatch;
+        };
+
+        match adapter_indices.as_slice() {
+            [] => SignatureResolverOutcome::NoMatch,
+            [adapter_index] => self
+                .adapters
+                .get(*adapter_index)
+                .map_or(SignatureResolverOutcome::NoMatch, |adapter| {
+                    SignatureResolverOutcome::Resolved(Arc::as_ref(adapter))
+                }),
+            _ => {
+                let ids = adapter_indices
+                    .iter()
+                    .filter_map(|adapter_index| self.adapters.get(*adapter_index))
+                    .map(|adapter| adapter.id())
+                    .collect();
+                SignatureResolverOutcome::Ambiguous(ids)
+            }
+        }
     }
+}
+
+fn normalize_primary_type(primary_type: &str) -> String {
+    primary_type.to_lowercase()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{Adapter, AdapterError};
-    use crate::core::{Action, OtherAction, TransactionRequest};
+    use crate::adapter::{Adapter, AdapterError, SignatureMatchKey};
+    use crate::core::{
+        Action, Eip712Domain, Eip712TypedData, OtherAction, SignatureRequest, TransactionRequest,
+    };
+    use serde_json::json;
 
     /// Minimal in-crate adapter used only to exercise the registry. Doesn't
     /// touch ABI decoding or oracle data — it just claims a fixed set of
@@ -242,6 +288,11 @@ mod tests {
     struct TestAdapter {
         id: AdapterId,
         keys: Vec<MatchKey>,
+    }
+
+    struct TestSignatureAdapter {
+        id: AdapterId,
+        keys: Vec<SignatureMatchKey>,
     }
 
     impl Adapter for TestAdapter {
@@ -258,6 +309,26 @@ mod tests {
                 selector: tx.selector_hex().unwrap_or_else(|| "0x".into()),
                 value_wei: tx.value_wei.clone(),
                 raw_calldata: format!("0x{}", hex::encode(&tx.data)),
+            }))
+        }
+    }
+
+    impl SignatureAdapter for TestSignatureAdapter {
+        fn id(&self) -> AdapterId {
+            self.id.clone()
+        }
+
+        fn match_keys(&self) -> Vec<SignatureMatchKey> {
+            self.keys.clone()
+        }
+
+        fn build(&self, _sig: &SignatureRequest) -> Result<Action, AdapterError> {
+            Ok(Action::Other(OtherAction {
+                actor: Address::new("0x0000000000000000000000000000000000000001").unwrap(),
+                target: fixed_target(),
+                selector: "0x".into(),
+                value_wei: "0".into(),
+                raw_calldata: "0x".into(),
             }))
         }
     }
@@ -284,6 +355,36 @@ mod tests {
         Arc::new(TestAdapter {
             id: AdapterId::new(id).expect("static AdapterId is well-formed"),
             keys: vec![MatchKey::exact(1, fixed_target(), [0xaa, 0xbb, 0xcc, 0xdd])],
+        })
+    }
+
+    fn sample_sig(primary_type: &str) -> SignatureRequest {
+        SignatureRequest {
+            chain_id: 1,
+            signer: Address::new("0x0000000000000000000000000000000000000001").unwrap(),
+            typed_data: Eip712TypedData {
+                domain: Eip712Domain {
+                    name: Some("Example".into()),
+                    version: Some("1".into()),
+                    chain_id: 1,
+                    verifying_contract: fixed_target(),
+                    salt: None,
+                },
+                primary_type: primary_type.into(),
+                types: json!({
+                    primary_type: [
+                        { "name": "value", "type": "uint256" }
+                    ]
+                }),
+                message: json!({ "value": "1" }),
+            },
+        }
+    }
+
+    fn test_signature_adapter(id: &str) -> Arc<dyn SignatureAdapter> {
+        Arc::new(TestSignatureAdapter {
+            id: AdapterId::new(id).expect("static AdapterId is well-formed"),
+            keys: vec![SignatureMatchKey::exact(1, fixed_target(), "Permit")],
         })
     }
 
@@ -336,5 +437,16 @@ mod tests {
     fn empty_registry_returns_no_match() {
         let reg = MockAdapterRegistry::new();
         assert_eq!(reg.lookup(&sample_tx()), ResolverOutcome::NoMatch);
+    }
+
+    #[test]
+    fn signature_registry_ambiguous_when_two_adapters_claim_same_key() {
+        let reg = MockSignatureRegistry::new()
+            .with_adapter(test_signature_adapter("test/sig-a@1"))
+            .with_adapter(test_signature_adapter("test/sig-b@1"));
+
+        let outcome = reg.resolve(&sample_sig("Permit"));
+
+        assert!(matches!(outcome, SignatureResolverOutcome::Ambiguous(ids) if ids.len() == 2));
     }
 }

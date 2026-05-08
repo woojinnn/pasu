@@ -12,7 +12,8 @@
 //! projects the same window stats on demand in a single call.
 
 use crate::core::{
-    Action, Eip712OtherAction, OtherAction, Request, SignatureRequest, TransactionRequest,
+    validate_typed_data, Action, Eip712OtherAction, OtherAction, Request, SignatureRequest,
+    TransactionRequest,
 };
 use crate::host::stat_windows::ReservationId;
 use crate::host::HostCapabilities;
@@ -21,7 +22,9 @@ use crate::lowering::{
     enrich_signature_action, request_from_action, request_from_action_with_host,
 };
 use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, RequestKind, Verdict};
-use crate::registry::{AdapterRegistry, ResolverOutcome, SignatureRegistry};
+use crate::registry::{
+    AdapterRegistry, ResolverOutcome, SignatureRegistry, SignatureResolverOutcome,
+};
 use thiserror::Error;
 
 /// Pipeline execution failures.
@@ -33,6 +36,9 @@ pub enum PipelineError {
     /// The selected adapter failed to build an action.
     #[error("adapter build failed: {0}")]
     AdapterBuild(String),
+    /// Request validation or lowering failed before Cedar evaluation.
+    #[error("lowering failed: {0}")]
+    Lowering(String),
     /// Policy evaluation failed.
     #[error("policy evaluation failed: {0}")]
     Policy(#[from] PolicyError),
@@ -197,21 +203,31 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     }
 
     fn evaluate_sig(&self, sig: &SignatureRequest) -> Result<Verdict, PipelineError> {
+        validate_typed_data(&sig.typed_data).map_err(|e| PipelineError::Lowering(e.to_string()))?;
+        #[cfg(test)]
+        self.host.assert_signature_clock_not_default();
+
         let mut action = self.build_signature_action(sig)?;
         enrich_signature_action(&mut action, &self.host);
 
-        let request = request_from_action_with_host(&action, &self.host)?;
+        let request = request_from_action_with_host(&action, &self.host)
+            .map_err(|e| PipelineError::Lowering(e.to_string()))?;
         Ok(self.evaluate_one_request(&request)?)
     }
 
     fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, PipelineError> {
-        if let Some(adapter) = self
-            .signature_registry
-            .and_then(|registry| registry.resolve(sig))
-        {
-            return adapter
-                .build(sig)
-                .map_err(|e| PipelineError::AdapterBuild(e.to_string()));
+        if let Some(registry) = self.signature_registry {
+            match registry.resolve(sig) {
+                SignatureResolverOutcome::Resolved(adapter) => {
+                    return adapter
+                        .build(sig)
+                        .map_err(|e| PipelineError::AdapterBuild(e.to_string()));
+                }
+                SignatureResolverOutcome::NoMatch => {}
+                SignatureResolverOutcome::Ambiguous(ids) => {
+                    return Err(PipelineError::Ambiguous(ids));
+                }
+            }
         }
 
         Ok(Action::Eip712Other(Eip712OtherAction::from_request(sig)))

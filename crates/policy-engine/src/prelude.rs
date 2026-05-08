@@ -21,10 +21,10 @@ pub use crate::adapter::{
     SolidityFunctionSpec, StaticAdapterFactory, TypedAdapter,
 };
 pub use crate::core::{
-    Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace, Eip2612Action,
-    Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement, OracleRequirementKind,
-    OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request, SignatureRequest,
-    Token, TransactionRequest, UsdValuation, WindowStatsContext,
+    validate_typed_data, Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
+    Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement,
+    OracleRequirementKind, OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request,
+    SignatureRequest, Token, TransactionRequest, TypedDataError, UsdValuation, WindowStatsContext,
 };
 pub use crate::host::{Approvals, ApprovalsError, MockApprovals};
 pub use crate::host::{Clock, HostCapabilities, MockClock, Oracle, SystemClock};
@@ -37,4 +37,4 @@ pub use crate::lowering::{
     requests_from_actions,
 };
 pub use crate::policy::PolicyRequest;
-pub use crate::registry::{MockSignatureRegistry, SignatureRegistry};
+pub use crate::registry::{MockSignatureRegistry, SignatureRegistry, SignatureResolverOutcome};

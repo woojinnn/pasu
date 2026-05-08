@@ -1,10 +1,5 @@
 type Permit2Context = {
-  signer: String,
-  requestChainId: Long,
-  domainChainId: Long,
-  verifyingContract: String,
-  primaryType: String,
-  nowTs: Long,
+  base: SignatureBaseContext,
 
   permitKind: String,
   spender: String,

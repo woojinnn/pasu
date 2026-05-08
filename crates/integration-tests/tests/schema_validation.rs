@@ -77,8 +77,8 @@ fn signature_policy_schemas_accept_v1_contexts() {
           resource is Protocol
         )
         when {
-          context.signer == "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" &&
-          context.requestChainId == context.domainChainId &&
+          context.base.signer == "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" &&
+          context.base.requestChainId == context.base.domainChainId &&
           context.permitKind == "PermitSingle" &&
           context.token.symbol == "USDC" &&
           context.amountHuman.lessThanOrEqual(decimal("50.0000")) &&
@@ -96,7 +96,7 @@ fn signature_policy_schemas_accept_v1_contexts() {
           resource is Protocol
         )
         when {
-          context.owner == context.signer &&
+          context.owner == context.base.signer &&
           context.spender == "0x1111111111111111111111111111111111111111" &&
           context.token.symbol == "USDC" &&
           context.valueHuman.lessThanOrEqual(decimal("50.0000")) &&
@@ -112,10 +112,12 @@ fn signature_policy_schemas_accept_v1_contexts() {
           resource is Protocol
         )
         when {
+          context has domainName &&
           context.domainName == "Example Mail" &&
+          context has domainVersion &&
           context.domainVersion == "1" &&
-          context.domainSalt == "" &&
-          context.primaryType == "Mail" &&
+          !(context has domainSalt) &&
+          context.base.primaryType == "Mail" &&
           context.typesJson != "" &&
           context.messageJson != ""
         };

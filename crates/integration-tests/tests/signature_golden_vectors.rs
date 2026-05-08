@@ -1,5 +1,6 @@
 use policy_engine::{
-    Action, Eip712OtherAction, Permit2PermitKind, SignatureRegistry, SignatureRequest,
+    Action, Eip712OtherAction, Permit2PermitKind, SignatureAdapter, SignatureRegistry,
+    SignatureRequest, SignatureResolverOutcome,
 };
 use policy_engine_adapters_bundle::default_signature_registry;
 use std::{fs, path::Path};
@@ -14,11 +15,21 @@ fn load_signature(name: &str) -> SignatureRequest {
         .unwrap_or_else(|err| panic!("failed to parse fixture {}: {err}", path.display()))
 }
 
+fn resolved_adapter<'a>(
+    registry: &'a impl SignatureRegistry,
+    sig: &SignatureRequest,
+) -> &'a dyn SignatureAdapter {
+    match registry.resolve(sig) {
+        SignatureResolverOutcome::Resolved(adapter) => adapter,
+        other => panic!("expected resolved adapter, got {other:?}"),
+    }
+}
+
 #[test]
 fn permit2_permit_single_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("permit2_permit_single.json");
-    let adapter = registry.resolve(&sig).expect("Permit2 adapter resolves");
+    let adapter = resolved_adapter(&registry, &sig);
     let action = adapter.build(&sig).expect("Permit2 fixture decodes");
 
     let Action::Permit2(action) = action else {
@@ -38,7 +49,7 @@ fn permit2_permit_single_decodes_to_action() {
 fn permit2_permit_batch_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("permit2_permit_batch.json");
-    let adapter = registry.resolve(&sig).expect("Permit2 adapter resolves");
+    let adapter = resolved_adapter(&registry, &sig);
     let action = adapter.build(&sig).expect("Permit2 batch decodes");
 
     let Action::Permit2(action) = action else {
@@ -55,7 +66,7 @@ fn permit2_permit_batch_decodes_to_action() {
 fn permit2_permit_transfer_from_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("permit2_permit_transfer_from.json");
-    let adapter = registry.resolve(&sig).expect("Permit2 adapter resolves");
+    let adapter = resolved_adapter(&registry, &sig);
     let action = adapter.build(&sig).expect("Permit2 transfer decodes");
 
     let Action::Permit2(action) = action else {
@@ -70,7 +81,7 @@ fn permit2_permit_transfer_from_decodes_to_action() {
 fn eip2612_permit_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("eip2612_permit.json");
-    let adapter = registry.resolve(&sig).expect("EIP-2612 adapter resolves");
+    let adapter = resolved_adapter(&registry, &sig);
     let action = adapter.build(&sig).expect("EIP-2612 fixture decodes");
 
     let Action::Eip2612(action) = action else {
@@ -96,7 +107,7 @@ fn eip2612_permit_decodes_owner_from_message_when_signer_differs() {
     let mut sig = load_signature("eip2612_permit.json");
     sig.typed_data.message["owner"] =
         serde_json::json!("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
-    let adapter = registry.resolve(&sig).expect("EIP-2612 adapter resolves");
+    let adapter = resolved_adapter(&registry, &sig);
     let action = adapter.build(&sig).expect("EIP-2612 fixture decodes");
 
     let Action::Eip2612(action) = action else {
@@ -116,7 +127,10 @@ fn eip2612_permit_decodes_owner_from_message_when_signer_differs() {
 fn unmatched_eip712_builds_catch_all_action() {
     let registry = default_signature_registry();
     let sig = load_signature("eip712_other_mail.json");
-    assert!(registry.resolve(&sig).is_none());
+    assert!(matches!(
+        registry.resolve(&sig),
+        SignatureResolverOutcome::NoMatch
+    ));
 
     let action = Action::Eip712Other(Eip712OtherAction::from_request(&sig));
     let Action::Eip712Other(action) = action else {
@@ -127,4 +141,24 @@ fn unmatched_eip712_builds_catch_all_action() {
         action.verifying_contract.as_str(),
         "0x9999999999999999999999999999999999999999"
     );
+}
+
+#[test]
+fn permit2_primary_type_matches_case_insensitively() {
+    let registry = default_signature_registry();
+    let mut sig = load_signature("permit2_permit_single.json");
+    let permit_single = sig.typed_data.types["PermitSingle"].clone();
+    sig.typed_data.primary_type = "permitSingle".into();
+    sig.typed_data.types["permitSingle"] = permit_single;
+
+    let adapter = resolved_adapter(&registry, &sig);
+    let action = adapter
+        .build(&sig)
+        .expect("lowercase Permit2 fixture decodes");
+
+    let Action::Permit2(action) = action else {
+        panic!("expected Action::Permit2");
+    };
+    assert_eq!(action.permit_kind, Permit2PermitKind::PermitSingle);
+    assert_eq!(action.primary_type, "permitSingle");
 }

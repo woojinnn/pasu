@@ -30,6 +30,9 @@ use std::fmt;
 pub struct HostCapabilities<'a> {
     oracle: &'a dyn oracle::Oracle,
     clock: &'a dyn clock::Clock,
+    uses_default_clock: bool,
+    #[cfg(test)]
+    panic_on_default_signature_clock: bool,
     portfolio: Option<&'a dyn portfolio::Portfolio>,
     approvals: Option<&'a dyn approvals::Approvals>,
     stats: Option<&'a dyn stat_windows::StatWindows>,
@@ -37,11 +40,19 @@ pub struct HostCapabilities<'a> {
 
 impl<'a> HostCapabilities<'a> {
     /// Construct host capabilities with the required oracle.
+    ///
+    /// The default clock is [`SystemClock`], which reads process wall-clock
+    /// time. Tests that evaluate signatures should override it with
+    /// `with_clock(&MockClock::with_fixed(t))` so deadline policies are
+    /// reproducible.
     #[must_use]
     pub fn new(oracle: &'a dyn oracle::Oracle) -> Self {
         Self {
             oracle,
             clock: clock::system_clock(),
+            uses_default_clock: true,
+            #[cfg(test)]
+            panic_on_default_signature_clock: false,
             portfolio: None,
             approvals: None,
             stats: None,
@@ -52,6 +63,16 @@ impl<'a> HostCapabilities<'a> {
     #[must_use]
     pub fn with_clock(mut self, clock: &'a dyn clock::Clock) -> Self {
         self.clock = clock;
+        self.uses_default_clock = false;
+        self
+    }
+
+    /// In tests, panic if a signature request is evaluated with the default
+    /// wall-clock provider.
+    #[cfg(test)]
+    #[must_use]
+    pub fn panic_on_default_signature_clock(mut self) -> Self {
+        self.panic_on_default_signature_clock = true;
         self
     }
 
@@ -105,6 +126,15 @@ impl<'a> HostCapabilities<'a> {
     pub fn stats(&self) -> Option<&dyn stat_windows::StatWindows> {
         self.stats
     }
+
+    #[cfg(test)]
+    pub(crate) fn assert_signature_clock_not_default(&self) {
+        if self.panic_on_default_signature_clock && self.uses_default_clock {
+            panic!(
+                "signature pipeline test evaluated with default SystemClock; use MockClock::with_fixed(t)"
+            );
+        }
+    }
 }
 
 impl fmt::Debug for HostCapabilities<'_> {
@@ -112,6 +142,7 @@ impl fmt::Debug for HostCapabilities<'_> {
         f.debug_struct("HostCapabilities")
             .field("oracle", &"<oracle>")
             .field("clock", &"<clock>")
+            .field("uses_default_clock", &self.uses_default_clock)
             .field("portfolio", &self.portfolio.is_some())
             .field("approvals", &self.approvals.is_some())
             .field("stats", &self.stats.is_some())

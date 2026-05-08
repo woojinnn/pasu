@@ -52,7 +52,12 @@ pub(super) fn usd_valuation_json(valuation: &UsdValuation) -> Value {
 }
 
 fn cedar_long_u64(value: u64) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
+    let narrowed = i64::try_from(value).unwrap_or(i64::MAX);
+    debug_assert!(
+        i64::try_from(value).is_ok() || cfg!(test),
+        "cedar Long narrowing clamped u64 value {value} to i64::MAX"
+    );
+    narrowed
 }
 
 #[cfg(test)]

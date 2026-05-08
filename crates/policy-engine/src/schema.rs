@@ -7,6 +7,8 @@ const EIP712_OTHER_SCHEMA: &str =
     include_str!("../../../policy-schema/actions/eip712_other.cedarschema");
 const OTHER_SCHEMA: &str = include_str!("../../../policy-schema/actions/other.cedarschema");
 const PERMIT2_SCHEMA: &str = include_str!("../../../policy-schema/actions/permit2.cedarschema");
+const SIGNATURE_BASE_SCHEMA: &str =
+    include_str!("../../../policy-schema/actions/signature_base.cedarschema");
 
 /// Composes the shipped core and action Cedar schemas.
 #[derive(Debug, Default, Clone)]
@@ -26,6 +28,7 @@ impl PolicySchemaComposer {
             CORE_SCHEMA,
             DEX_SCHEMA,
             OTHER_SCHEMA,
+            SIGNATURE_BASE_SCHEMA,
             PERMIT2_SCHEMA,
             EIP2612_SCHEMA,
             EIP712_OTHER_SCHEMA,
