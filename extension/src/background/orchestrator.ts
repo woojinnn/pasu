@@ -38,9 +38,38 @@ interface DecisionResult {
   verdict: VerdictDto;
 }
 
+/**
+ * Per-actor mutex chain. The read-evaluate-reserve sequence (read pending
+ * + committed → evaluate → reserve a delta on Pass) is non-atomic at the
+ * storage layer; without serialization two concurrent decisions for the
+ * same wallet could each see the same baseline and both pass an over-the-
+ * cap swap. We serialize lifecycles per `actor` (lowercased) by chaining
+ * promises so the second decision strictly waits for the first to commit
+ * its reservation.
+ */
+const actorChain = new Map<string, Promise<unknown>>();
+
+function withActorLock<T>(actor: string | undefined, fn: () => Promise<T>): Promise<T> {
+  if (!actor) return fn();
+  const key = actor.toLowerCase();
+  const prev = actorChain.get(key) ?? Promise.resolve();
+  const next = prev.then(() => fn(), () => fn());
+  actorChain.set(
+    key,
+    next.finally(() => {
+      // Release the slot only when this is still the most recent waiter.
+      if (actorChain.get(key) === next) actorChain.delete(key);
+    }),
+  );
+  return next;
+}
+
 export async function decideMessage(message: Message): Promise<DecisionResult> {
   await ensureDefaultPoliciesInstalled();
+  return withActorLock(inferActor(message), () => decideInner(message));
+}
 
+async function decideInner(message: Message): Promise<DecisionResult> {
   const pending: PendingRequest = {
     requestId: message.requestId,
     hostname: message.data.hostname,
