@@ -50,7 +50,7 @@ pub fn install_policies_json(policies_json: String) -> String {
 
     match result {
         Ok(()) => Envelope::ok(()).to_json(),
-        Err(error) => Envelope::<()>::from_error(error).to_json(),
+        Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
     }
 }
 
@@ -78,7 +78,7 @@ pub fn build_action_json(request_json: String) -> String {
 
     match result {
         Ok(action) => Envelope::ok(action).to_json(),
-        Err(error) => Envelope::<serde_json::Value>::from_error(error).to_json(),
+        Err(error) => Envelope::<serde_json::Value>::err(error.kind, error.message).to_json(),
     }
 }
 
@@ -91,7 +91,7 @@ pub fn tier1_fact_plan_json(action_json: String) -> String {
 
     match result {
         Ok(plan) => Envelope::ok(plan).to_json(),
-        Err(error) => Envelope::<HostFactPlanDto>::from_error(error).to_json(),
+        Err(error) => Envelope::<HostFactPlanDto>::err(error.kind, error.message).to_json(),
     }
 }
 
@@ -109,7 +109,7 @@ pub fn tier2_window_keys_json(action_json: String, oracle_snapshot_json: String)
 
     match result {
         Ok(plan) => Envelope::ok(plan).to_json(),
-        Err(error) => Envelope::<WindowKeyPlanDto>::from_error(error).to_json(),
+        Err(error) => Envelope::<WindowKeyPlanDto>::err(error.kind, error.message).to_json(),
     }
 }
 
@@ -357,7 +357,7 @@ mod tests {
             .to_string(),
         );
         let parsed: Value = serde_json::from_str(&output).unwrap();
-        assert_eq!(parsed["ok"], "true", "{parsed}");
+        assert_eq!(parsed["ok"], true, "{parsed}");
     }
 
     fn dex_action_json() -> Value {
@@ -415,7 +415,7 @@ mod tests {
             .to_string(),
         );
         let install: Value = serde_json::from_str(&install_output).unwrap();
-        assert_eq!(install["ok"], "true", "{install}");
+        assert_eq!(install["ok"], true, "{install}");
 
         let output = evaluate_json(
             tx_request_json().to_string(),
@@ -423,7 +423,7 @@ mod tests {
         );
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
-        assert_eq!(parsed["ok"], "true", "{parsed}");
+        assert_eq!(parsed["ok"], true, "{parsed}");
         assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
         assert_eq!(
             parsed["data"]["matched"][0]["policy_id"], "bundle::block-other",
@@ -450,7 +450,7 @@ mod tests {
         let output = build_action_json(tx_request_json().to_string());
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
-        assert_eq!(parsed["ok"], "true", "{parsed}");
+        assert_eq!(parsed["ok"], true, "{parsed}");
         assert!(parsed["data"].get("other").is_some(), "{parsed}");
         assert_eq!(parsed["data"]["other"]["selector"], "0xdeadbeef");
     }
@@ -460,7 +460,7 @@ mod tests {
         let output = tier1_fact_plan_json(dex_action_json().to_string());
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
-        assert_eq!(parsed["ok"], "true", "{parsed}");
+        assert_eq!(parsed["ok"], true, "{parsed}");
         assert_eq!(
             parsed["data"]["tokens_for_oracle"]
                 .as_array()
@@ -478,7 +478,7 @@ mod tests {
         let output = tier2_window_keys_json(dex_action_json().to_string(), "[]".to_string());
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
-        assert_eq!(parsed["ok"], "true", "{parsed}");
+        assert_eq!(parsed["ok"], true, "{parsed}");
         let names: Vec<&str> = parsed["data"]["keys"]
             .as_array()
             .unwrap()
@@ -499,7 +499,7 @@ mod tests {
         );
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
-        assert_eq!(parsed["ok"], "true", "{parsed}");
+        assert_eq!(parsed["ok"], true, "{parsed}");
         assert_eq!(parsed["data"]["kind"], "pass", "{parsed}");
     }
 }

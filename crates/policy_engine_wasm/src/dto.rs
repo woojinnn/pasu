@@ -5,21 +5,27 @@ use policy_engine::lowering::{HostFactPlan, WindowKey, WindowKeyPlan};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "ok")]
-pub enum Envelope<T: Serialize> {
-    #[serde(rename = "true")]
-    Ok { data: T },
-    #[serde(rename = "false")]
-    Err { error: EngineErrorDto },
+pub struct Envelope<T: Serialize> {
+    pub ok: bool,
+    pub data: Option<T>,
+    pub error: Option<EngineErrorDto>,
 }
 
 impl<T: Serialize> Envelope<T> {
-    pub const fn ok(data: T) -> Self {
-        Self::Ok { data }
+    pub fn ok(data: T) -> Self {
+        Self {
+            ok: true,
+            data: Some(data),
+            error: None,
+        }
     }
 
-    pub fn from_error(error: EngineErrorDto) -> Self {
-        Self::Err { error }
+    pub fn err(kind: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            ok: false,
+            data: None,
+            error: Some(EngineErrorDto::new(kind, message)),
+        }
     }
 
     pub fn to_json(&self) -> String {
@@ -237,5 +243,21 @@ impl From<&WindowKey> for WindowKeyDto {
             actor: key.actor.as_str().to_string(),
             name: key.key.as_str().to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+
+    #[test]
+    fn envelope_ok_uses_boolean_wire_shape() {
+        let output = Envelope::ok(json!({"answer": 42})).to_json();
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["answer"], 42, "{parsed}");
+        assert!(parsed["error"].is_null(), "{parsed}");
     }
 }
