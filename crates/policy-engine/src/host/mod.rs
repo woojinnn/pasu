@@ -16,6 +16,7 @@
 //! reservation-aware policy checks.
 
 pub mod approvals;
+pub mod clock;
 pub mod oracle;
 pub mod portfolio;
 pub mod stat_windows;
@@ -28,6 +29,7 @@ use std::fmt;
 #[derive(Clone, Copy)]
 pub struct HostCapabilities<'a> {
     oracle: &'a dyn oracle::Oracle,
+    clock: &'a dyn clock::Clock,
     portfolio: Option<&'a dyn portfolio::Portfolio>,
     approvals: Option<&'a dyn approvals::Approvals>,
     stats: Option<&'a dyn stat_windows::StatWindows>,
@@ -39,10 +41,18 @@ impl<'a> HostCapabilities<'a> {
     pub fn new(oracle: &'a dyn oracle::Oracle) -> Self {
         Self {
             oracle,
+            clock: clock::system_clock(),
             portfolio: None,
             approvals: None,
             stats: None,
         }
+    }
+
+    /// Attach a clock provider.
+    #[must_use]
+    pub fn with_clock(mut self, clock: &'a dyn clock::Clock) -> Self {
+        self.clock = clock;
+        self
     }
 
     /// Attach a portfolio provider.
@@ -72,6 +82,12 @@ impl<'a> HostCapabilities<'a> {
         self.oracle
     }
 
+    /// Required clock provider.
+    #[must_use]
+    pub fn clock(&self) -> &dyn clock::Clock {
+        self.clock
+    }
+
     /// Optional portfolio provider.
     #[must_use]
     pub fn portfolio(&self) -> Option<&dyn portfolio::Portfolio> {
@@ -95,6 +111,7 @@ impl fmt::Debug for HostCapabilities<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HostCapabilities")
             .field("oracle", &"<oracle>")
+            .field("clock", &"<clock>")
             .field("portfolio", &self.portfolio.is_some())
             .field("approvals", &self.approvals.is_some())
             .field("stats", &self.stats.is_some())
@@ -104,6 +121,7 @@ impl fmt::Debug for HostCapabilities<'_> {
 
 pub use self::{
     approvals::{Approvals, ApprovalsError, MockApprovals},
+    clock::{Clock, MockClock, SystemClock},
     oracle::{MockOracle, Oracle, OracleError},
     portfolio::{MockPortfolio, Portfolio, PortfolioError},
     stat_windows::{MockStatWindows, ReservationId, StatDelta, StatKey, StatValue, StatWindows},

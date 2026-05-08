@@ -342,7 +342,7 @@ mod tests {
                 assert_eq!(d.oracle_requirements[1].raw_amount, "0");
                 assert_eq!(d.trace.steps, vec!["exactInputSingle"]);
             }
-            Action::Other(_) => panic!("expected dex action"),
+            other => panic!("expected dex action, got {other:?}"),
         }
     }
 
@@ -362,7 +362,7 @@ mod tests {
         };
         match adapter.build(&tx).unwrap() {
             Action::Dex(d) => assert_eq!(d.facts.input_tokens[0].symbol, "UNKNOWN"),
-            Action::Other(_) => panic!("expected dex"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 

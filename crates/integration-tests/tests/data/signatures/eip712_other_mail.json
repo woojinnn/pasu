@@ -1,0 +1,21 @@
+{
+  "chainId": 1,
+  "signer": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "typedData": {
+    "domain": {
+      "name": "Example Mail",
+      "version": "1",
+      "chainId": 1,
+      "verifyingContract": "0x9999999999999999999999999999999999999999"
+    },
+    "types": {
+      "Mail": [
+        { "name": "contents", "type": "string" }
+      ]
+    },
+    "primaryType": "Mail",
+    "message": {
+      "contents": "hello"
+    }
+  }
+}

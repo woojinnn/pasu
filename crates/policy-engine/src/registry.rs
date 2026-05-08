@@ -11,14 +11,15 @@
 
 #[cfg(test)]
 use crate::adapter::MatchKey;
-use crate::adapter::{Adapter, AdapterFactory, AdapterId};
-use crate::core::{Address, ChainId, TransactionRequest};
+use crate::adapter::{Adapter, AdapterFactory, AdapterId, SignatureAdapter};
+use crate::core::{Address, ChainId, SignatureRequest, TransactionRequest};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 type ExactKey = (ChainId, Address, [u8; 4]);
 type WildcardTargetKey = (ChainId, [u8; 4]);
 type AdapterList = Vec<Arc<dyn Adapter>>;
+type SignatureKey = (ChainId, Address, String);
 
 /// Result of resolving a transaction against installed adapters.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,6 +54,12 @@ pub trait AdapterRegistry: Send + Sync {
     fn lookup(&self, tx: &TransactionRequest) -> ResolverOutcome {
         self.resolve_with_adapter(tx).0
     }
+}
+
+/// Registry for off-chain signature adapters.
+pub trait SignatureRegistry: Send + Sync {
+    /// Resolve a signature request to a specific adapter.
+    fn resolve(&self, sig: &SignatureRequest) -> Option<&dyn SignatureAdapter>;
 }
 
 /// Index over installed adapters, keyed by `(chain_id, to, selector)` plus a
@@ -164,6 +171,63 @@ impl AdapterRegistry for MockAdapterRegistry {
     }
 
     // `lookup` uses the trait's default impl (calls `resolve_with_adapter`).
+}
+
+/// In-memory signature adapter registry keyed by EIP-712 match fields.
+#[derive(Default)]
+pub struct MockSignatureRegistry {
+    adapters: Vec<Arc<dyn SignatureAdapter>>,
+    index: HashMap<SignatureKey, usize>,
+}
+
+impl std::fmt::Debug for MockSignatureRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MockSignatureRegistry")
+            .field("adapter_len", &self.adapters.len())
+            .field("index_len", &self.index.len())
+            .finish()
+    }
+}
+
+impl MockSignatureRegistry {
+    /// Construct an empty in-memory signature registry.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Install a signature adapter. Returns `self` for builder-style chaining.
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn with_adapter(mut self, adapter: Arc<dyn SignatureAdapter>) -> Self {
+        let adapter_index = self.adapters.len();
+        for key in adapter.match_keys() {
+            self.index.insert(
+                (
+                    key.chain_id,
+                    key.verifying_contract,
+                    key.primary_type.to_lowercase(),
+                ),
+                adapter_index,
+            );
+        }
+        self.adapters.push(adapter);
+        self
+    }
+}
+
+impl SignatureRegistry for MockSignatureRegistry {
+    fn resolve(&self, sig: &SignatureRequest) -> Option<&dyn SignatureAdapter> {
+        let key = (
+            sig.chain_id,
+            sig.typed_data.domain.verifying_contract.clone(),
+            sig.typed_data.primary_type.to_lowercase(),
+        );
+        self.index
+            .get(&key)
+            .and_then(|adapter_index| self.adapters.get(*adapter_index))
+            .map(Arc::as_ref)
+    }
 }
 
 #[cfg(test)]

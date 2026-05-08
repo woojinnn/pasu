@@ -26,11 +26,13 @@
 #![cfg_attr(not(test), warn(clippy::panic))]
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
-use policy_engine::{MockAdapterRegistry, TypedAdapter};
+use policy_engine::{MockAdapterRegistry, MockSignatureRegistry, TypedAdapter};
 use std::sync::Arc;
 
 // All first-party adapter crates are re-exported under their module name so
 // downstream code (tests, examples) doesn't need to depend on each one.
+pub use policy_engine_adapter_eip2612 as eip2612;
+pub use policy_engine_adapter_permit2 as permit2;
 pub use policy_engine_adapter_uniswap_v2 as uniswap_v2;
 pub use policy_engine_adapter_uniswap_v3 as uniswap_v3;
 pub use policy_engine_adapter_universal_router as universal_router;
@@ -72,4 +74,13 @@ pub fn default_registry() -> MockAdapterRegistry {
         .with_adapter(Arc::new(
             uniswap_v2::UniswapV2SwapTokensForExactETHAdapter::new(),
         ))
+}
+
+/// Build a `MockSignatureRegistry` populated with first-party signature
+/// adapters.
+#[must_use]
+pub fn default_signature_registry() -> MockSignatureRegistry {
+    MockSignatureRegistry::new()
+        .with_adapter(Arc::new(permit2::Permit2Adapter::new()))
+        .with_adapter(Arc::new(eip2612::Eip2612Adapter::new()))
 }

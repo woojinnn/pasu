@@ -49,27 +49,32 @@ pub mod schema;
 
 pub use adapter::{
     ActionKind, Adapter, AdapterDescriptor, AdapterError, AdapterFactory, AdapterId, AdapterKind,
-    ContractTarget, MatchKey, SolidityFunction, SolidityFunctionSpec, StaticAdapterFactory,
-    TypedAdapter,
+    ContractTarget, MatchKey, SignatureAdapter, SignatureMatchKey, SolidityFunction,
+    SolidityFunctionSpec, StaticAdapterFactory, TypedAdapter,
 };
 pub use core::{
-    Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace, OracleRequirement,
-    OracleRequirementKind, OtherAction, Token, TransactionRequest, UsdValuation,
-    WindowStatsContext,
+    Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace, Eip2612Action,
+    Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement, OracleRequirementKind,
+    OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request, SignatureRequest,
+    Token, TransactionRequest, UsdValuation, WindowStatsContext,
 };
 pub use host::{
-    Approvals, ApprovalsError, HostCapabilities, MockApprovals, MockOracle, MockPortfolio,
-    MockStatWindows, Oracle, OracleError, Portfolio, PortfolioError, ReservationId, StatDelta,
-    StatKey, StatValue, StatWindows,
+    Approvals, ApprovalsError, Clock, HostCapabilities, MockApprovals, MockClock, MockOracle,
+    MockPortfolio, MockStatWindows, Oracle, OracleError, Portfolio, PortfolioError, ReservationId,
+    StatDelta, StatKey, StatValue, StatWindows, SystemClock,
 };
 pub use lowering::{
     compute_dex_window_deltas, enrich_dex_action, enrich_dex_action_base, enrich_dex_window_stats,
-    request_from_action, requests_from_action, requests_from_actions,
+    enrich_signature_action, request_from_action, request_from_action_with_host,
+    requests_from_action, requests_from_actions,
 };
-pub use pipeline::{EvaluationOutcome, Pipeline, PipelineError};
+pub use pipeline::{EvaluationOutcome, Pipeline, PipelineError, PipelineRequest};
 pub use policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest, RequestKind,
     Severity, Verdict,
 };
-pub use registry::{AdapterIndex, AdapterRegistry, MockAdapterRegistry, ResolverOutcome};
+pub use registry::{
+    AdapterIndex, AdapterRegistry, MockAdapterRegistry, MockSignatureRegistry, ResolverOutcome,
+    SignatureRegistry,
+};
 pub use schema::PolicySchemaComposer;

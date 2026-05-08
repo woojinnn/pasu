@@ -1,7 +1,9 @@
 # policy-engine
 
-A Rust/Cedar reference implementation for wallet-side transaction policy
-evaluation. The current v0.x demo focuses on EVM DEX transactions:
+A Rust/Cedar reference implementation for wallet-side transaction and
+signature policy evaluation. The current v0.x demo covers EVM DEX
+transactions plus v1 EIP-712 signature evaluation for Permit2, EIP-2612, and
+unmatched typed data:
 
 1. A registry resolves a calldata adapter.
 2. The adapter emits one semantic `Action`.
@@ -11,7 +13,9 @@ evaluation. The current v0.x demo focuses on EVM DEX transactions:
 
 The public policy surface is intentionally coarse. DEX routers, multicalls, and
 Universal Router command streams are aggregated into `Action::Dex`; unknown or
-unsupported calls become `Action::Other`.
+unsupported calls become `Action::Other`. Signature requests use separate Cedar
+action ids: `signature.permit2`, `signature.eip2612`, and
+`signature.eip712_other`.
 
 ## Workspace Layout
 
@@ -25,21 +29,21 @@ policy-engine/
 |   |-- core.cedarschema
 |   `-- actions/
 |       |-- dex.cedarschema
-|       `-- other.cedarschema
+|       |-- eip2612.cedarschema
+|       |-- eip712_other.cedarschema
+|       |-- other.cedarschema
+|       `-- permit2.cedarschema
 |-- policies/
-|   `-- dex/
-|       |-- allowance-must-cover-input.cedar
-|       |-- max-fee-bps-100.cedar
-|       |-- max-input-fraction-of-portfolio-2000-bps.cedar
-|       |-- max-input-usd-100.cedar
-|       |-- min-output-usd-floor.cedar
-|       |-- no-zero-min-output.cedar
-|       |-- total-input-usd-cap-500.cedar
-|       |-- uniswap-only-allowlist.cedar
-|       `-- window-swap-volume-usd-24h-cap-5000.cedar
+|   |-- dex/
+|   `-- signature/
+|       |-- eip2612/
+|       |-- eip712-other/
+|       `-- permit2/
 `-- crates/
     |-- policy-engine/
     |-- adapters/
+    |   |-- eip2612/
+    |   |-- permit2/
     |   |-- uniswap-v2/
     |   |-- uniswap-v3/
     |   `-- universal-router/
@@ -51,14 +55,18 @@ policy-engine/
 
 `crates/policy-engine` contains the core runtime:
 
-- `core.rs`: `Address`, `Token`, `TransactionRequest`, `Action`,
-  `DexAction`, `DexFacts`, `OracleRequirement`, `OtherAction`.
-- `adapter.rs`: adapter SDK surface. Adapters implement `build(tx) -> Action`
-  through `Adapter` / `TypedAdapter`.
-- `registry.rs`: adapter lookup by `(chain_id, to, selector)`.
+- `core.rs`: `Address`, `Token`, `TransactionRequest`, `SignatureRequest`,
+  `Request`, `Action`, `DexAction`, `DexFacts`, `OracleRequirement`,
+  `OtherAction`, and signature action types.
+- `adapter.rs`: adapter SDK surface. Transaction adapters implement
+  `build(tx) -> Action` through `Adapter` / `TypedAdapter`; signature adapters
+  implement `SignatureAdapter`.
+- `registry.rs`: transaction lookup by `(chain_id, to, selector)` and
+  signature lookup by `(chain_id, verifying_contract, primary_type)`.
 - `host/`: host capability traits and mocks:
-  `Oracle`, `Portfolio`, `Approvals`, `StatWindows`.
-- `lowering/`: DEX enrichment and `Action -> PolicyRequest` conversion.
+  `Oracle`, `Clock`, `Portfolio`, `Approvals`, `StatWindows`.
+- `lowering/`: DEX/signature enrichment and `Action -> PolicyRequest`
+  conversion.
 - `policy.rs`: Cedar wrapper, schema validation, `Verdict`, `MatchedPolicy`.
 - `pipeline.rs`: resolver -> adapter -> enrichment -> lowering -> Cedar.
 - `schema.rs`: `PolicySchemaComposer`, which loads `policy-schema/*`.
@@ -75,6 +83,9 @@ fields to Cedar context keys.
 pub enum Action {
     Dex(DexAction),
     Other(OtherAction),
+    Permit2(Permit2Action),
+    Eip2612(Eip2612Action),
+    Eip712Other(Eip712OtherAction),
 }
 ```
 
@@ -92,6 +103,11 @@ list of policy-evaluated leaf actions.
 `Action::Other` is emitted when no adapter matches. It gives policies a stable
 surface for unknown calls without pretending they are DEX activity.
 
+Signature adapters emit `Action::Permit2` and `Action::Eip2612`. The
+EIP-712 catch-all is a pipeline fallback only: when no signature adapter
+matches, `Pipeline::evaluate(&Request::Sig(...))` builds `Action::Eip712Other`
+directly.
+
 ## Cedar Request Shape
 
 The composed schema is:
@@ -100,6 +116,9 @@ The composed schema is:
 policy-schema/core.cedarschema
 policy-schema/actions/dex.cedarschema
 policy-schema/actions/other.cedarschema
+policy-schema/actions/permit2.cedarschema
+policy-schema/actions/eip2612.cedarschema
+policy-schema/actions/eip712_other.cedarschema
 ```
 
 DEX requests evaluate:
@@ -126,6 +145,20 @@ context is DexContext
 The shipped policies under `policies/dex/` validate against the composed schema
 in `crates/integration-tests/tests/schema_validation.rs`.
 
+Signature requests evaluate:
+
+```cedar
+action == Action::"signature.permit2"
+action == Action::"signature.eip2612"
+action == Action::"signature.eip712_other"
+resource is Protocol
+```
+
+Signature context includes the signer, request/domain chain ids, verifying
+contract, primary type, host-clock `nowTs`, deadline deltas, nonce sanity,
+spender/verifying-contract allowlist fields, token amount fields, and optional
+`totalApprovedUsd` where an oracle price was available.
+
 ## Adapter Model
 
 Adapters decode protocol calldata and emit semantic actions. They do not emit
@@ -133,13 +166,16 @@ Cedar `PolicyRequest`s directly and they do not attach policy-schema fragments.
 
 Currently shipped adapters:
 
+- Permit2 EIP-712 PermitSingle, PermitBatch, and PermitTransferFrom
+- EIP-2612 Permit typed data
 - Uniswap V2 Router02 swap functions
 - Uniswap V3 SwapRouter exact-input/exact-output functions
 - Uniswap V3 multicall
 - Uniswap Universal Router V2/V3/V4 swap command extraction
 
-`crates/adapters-bundle` exposes `default_registry()` so downstream callers can
-install the built-in adapters without depending on each adapter crate directly.
+`crates/adapters-bundle` exposes `default_registry()` for transaction adapters
+and `default_signature_registry()` for Permit2/EIP-2612 signature adapters.
+The catch-all EIP-712 branch is intentionally not registered there.
 
 Adding an internal adapter:
 
@@ -157,7 +193,10 @@ engine. The demo uses mock providers, but production implementations can slot
 behind the same traits.
 
 - `Oracle`: token -> USD unit price. Used to stamp `totalInputUsd` and
-  `totalMinOutputUsd`.
+  `totalMinOutputUsd`, and signature `totalApprovedUsd`.
+- `Clock`: current Unix timestamp. Used to stamp signature deadline deltas.
+  `HostCapabilities::new(&oracle)` defaults this to `SystemClock`; tests can
+  use `with_clock(&MockClock::with_fixed(...))`.
 - `Portfolio`: `(owner, token) -> balance`. Used to stamp
   `totalInputFractionOfPortfolioBps`.
 - `Approvals`: `(owner, token, spender) -> allowance`. Used to stamp
@@ -171,12 +210,24 @@ omitted, and policies are expected to guard with `context has <field>`.
 ## Evaluation Flow
 
 ```text
-TransactionRequest
-  -> AdapterRegistry::resolve_with_adapter
-  -> Adapter::build
-  -> Action::Dex or Action::Other
-  -> DEX host enrichment, if applicable
-  -> lowering::request_from_action
+Pipeline::evaluate(&Request)
+|-- Request::Tx(TransactionRequest)
+|   |-- AdapterRegistry::resolve_with_adapter
+|   |-- Adapter::build or Action::Other
+|   |-- DEX host enrichment, if Action::Dex
+|   |-- lowering::request_from_action
+|   `-- Cedar action ids: dex, other
+|
+`-- Request::Sig(SignatureRequest)
+    |-- SignatureRegistry::resolve
+    |-- SignatureAdapter::build, if Permit2/EIP-2612 matched
+    |-- Action::Eip712Other fallback, if unmatched
+    |-- signature host enrichment with Oracle + Clock
+    |-- lowering::request_from_action_with_host
+    `-- Cedar action ids: signature.permit2, signature.eip2612,
+        signature.eip712_other
+
+Both branches:
   -> PolicyEngine::evaluate_requests(... RequestKind::Action ...)
   -> Verdict
 ```
@@ -207,9 +258,9 @@ pub enum RequestKind {
 }
 ```
 
-The current pipeline evaluates one action request per transaction and uses
-`RequestKind::Action` for matches. `RequestKind::Tx` remains available for
-future transaction-level policies.
+The current pipeline evaluates one action request per transaction or signature
+and uses `RequestKind::Action` for matches. `RequestKind::Tx` remains available
+for future transaction-level policies.
 
 ## Running
 
@@ -234,7 +285,7 @@ Example output:
 
 ## Test Coverage
 
-The workspace currently has 184 passing tests plus 1 ignored doctest:
+The workspace currently has 229 passing tests plus 1 ignored doctest:
 
 | Area | Tests | Coverage |
 |---|---:|---|

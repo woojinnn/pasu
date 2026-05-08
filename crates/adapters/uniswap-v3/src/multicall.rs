@@ -296,7 +296,7 @@ mod tests {
                     vec!["multicall", "exactInputSingle", "exactInputSingle"]
                 );
             }
-            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 }

@@ -1,0 +1,12 @@
+[package]
+name = "policy-engine-adapter-permit2"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Permit2 EIP-712 signature adapter for policy-engine"
+
+[dependencies]
+policy-engine.workspace = true
+alloy-primitives.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

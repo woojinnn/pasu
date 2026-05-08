@@ -1,0 +1,30 @@
+type Permit2Context = {
+  signer: String,
+  requestChainId: Long,
+  domainChainId: Long,
+  verifyingContract: String,
+  primaryType: String,
+  nowTs: Long,
+
+  permitKind: String,
+  spender: String,
+  token: Token,
+  amountHuman: decimal,
+  expiration: Long,
+  sigDeadline: Long,
+  sigDeadlineDeltaSec: Long,
+  nonce: String,
+  approvalCount: Long,
+
+  nonceValid: Bool,
+  isUnlimited: Bool,
+  amountHumanClampedAtCeiling: Bool,
+
+  totalApprovedUsd?: UsdValuation,
+};
+
+action "signature.permit2" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: Permit2Context,
+};

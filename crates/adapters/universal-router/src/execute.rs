@@ -254,7 +254,7 @@ mod tests {
                     .iter()
                     .any(|step| step.contains("V3_SWAP_EXACT_IN")));
             }
-            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 
@@ -310,7 +310,7 @@ mod tests {
                     .iter()
                     .any(|step| step.contains("V4_SWAP_EXACT_IN_SINGLE")));
             }
-            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 
@@ -365,7 +365,7 @@ mod tests {
                     .iter()
                     .any(|step| step.contains("V2_SWAP_EXACT_IN")));
             }
-            other @ Action::Other(_) => panic!("expected dex, got {other:?}"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 

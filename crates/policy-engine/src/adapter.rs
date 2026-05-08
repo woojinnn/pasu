@@ -6,7 +6,7 @@
 //! - [`Adapter::build`] — protocol-specific decoding: parsed calldata →
 //!   semantic [`Action`].
 
-use crate::core::{Action, Address, ChainId, TransactionRequest};
+use crate::core::{Action, Address, ChainId, SignatureRequest, TransactionRequest};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -191,6 +191,51 @@ pub enum AdapterKind {
     Function,
     /// One router function contains nested semantic calls.
     CompositeRouter,
+}
+
+/// A single `(chain_id, verifying_contract, primary_type)` signature pattern
+/// matched by a signature adapter.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SignatureMatchKey {
+    /// EVM chain id supplied by the wallet request.
+    pub chain_id: ChainId,
+    /// EIP-712 verifying contract.
+    pub verifying_contract: Address,
+    /// EIP-712 primary type.
+    pub primary_type: String,
+}
+
+impl SignatureMatchKey {
+    /// Exact signature matcher.
+    #[must_use]
+    pub fn exact(
+        chain_id: ChainId,
+        verifying_contract: Address,
+        primary_type: impl Into<String>,
+    ) -> Self {
+        Self {
+            chain_id,
+            verifying_contract,
+            primary_type: primary_type.into(),
+        }
+    }
+}
+
+/// Adapter surface for off-chain EIP-712 signature requests.
+pub trait SignatureAdapter: Send + Sync {
+    /// Stable adapter id.
+    fn id(&self) -> AdapterId;
+
+    /// The set of `(chain_id, verifying_contract, primary_type)` keys this
+    /// adapter wants to match.
+    fn match_keys(&self) -> Vec<SignatureMatchKey>;
+
+    /// Try to construct an `Action` from this signature request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when typed-data decoding or mapping fails.
+    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError>;
 }
 
 /// Semantic action families an adapter may emit.

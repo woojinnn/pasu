@@ -1,0 +1,481 @@
+use policy_engine::{
+    Address, HostCapabilities, MockAdapterRegistry, MockClock, MockOracle, Pipeline, PolicyEngine,
+    Request, SignatureRequest, Token, TransactionRequest, Verdict,
+};
+use policy_engine_adapters_bundle::default_signature_registry;
+use serde_json::{json, Value};
+use std::{fs, path::Path};
+
+const PERMIT2_SPENDER_ALLOWLIST: &str =
+    include_str!("../../../policies/signature/permit2/spender-allowlist.cedar");
+const PERMIT2_NO_UNLIMITED: &str =
+    include_str!("../../../policies/signature/permit2/no-unlimited-amount.cedar");
+const PERMIT2_MAX_USD: &str = include_str!("../../../policies/signature/permit2/max-usd-100.cedar");
+const PERMIT2_DEADLINE: &str =
+    include_str!("../../../policies/signature/permit2/sig-deadline-le-1h.cedar");
+const PERMIT2_CHAIN: &str =
+    include_str!("../../../policies/signature/permit2/chain-must-match.cedar");
+const PERMIT2_NONCE: &str = include_str!("../../../policies/signature/permit2/nonce-sanity.cedar");
+const PERMIT2_HUMAN_MAX: &str =
+    include_str!("../../../policies/signature/permit2/max-human-amount-50.cedar");
+
+const EIP2612_SPENDER_ALLOWLIST: &str =
+    include_str!("../../../policies/signature/eip2612/spender-allowlist.cedar");
+const EIP2612_NO_UNLIMITED: &str =
+    include_str!("../../../policies/signature/eip2612/no-unlimited-amount.cedar");
+const EIP2612_MAX_USD: &str = include_str!("../../../policies/signature/eip2612/max-usd-100.cedar");
+const EIP2612_DEADLINE: &str =
+    include_str!("../../../policies/signature/eip2612/deadline-le-1h.cedar");
+const EIP2612_CHAIN: &str =
+    include_str!("../../../policies/signature/eip2612/chain-must-match.cedar");
+const EIP2612_NONCE: &str = include_str!("../../../policies/signature/eip2612/nonce-sanity.cedar");
+const EIP2612_HUMAN_MAX: &str =
+    include_str!("../../../policies/signature/eip2612/max-human-value-50.cedar");
+
+const OTHER_VERIFYING_ALLOWLIST: &str =
+    include_str!("../../../policies/signature/eip712-other/verifying-contract-allowlist.cedar");
+const OTHER_CHAIN: &str =
+    include_str!("../../../policies/signature/eip712-other/chain-must-match.cedar");
+
+const UINT160_MAX: &str = "1461501637330902918203684832716283019655932542975";
+const UINT256_MAX: &str =
+    "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+const USDC_ADDRESS: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+
+fn load_signature(name: &str) -> SignatureRequest {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/data/signatures")
+        .join(name);
+    let raw = fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("failed to read fixture {}: {err}", path.display()));
+    serde_json::from_str(&raw)
+        .unwrap_or_else(|err| panic!("failed to parse fixture {}: {err}", path.display()))
+}
+
+fn permit2_single() -> SignatureRequest {
+    load_signature("permit2_permit_single.json")
+}
+
+fn permit2_batch() -> SignatureRequest {
+    load_signature("permit2_permit_batch.json")
+}
+
+fn eip2612_permit() -> SignatureRequest {
+    load_signature("eip2612_permit.json")
+}
+
+fn eip712_other() -> SignatureRequest {
+    load_signature("eip712_other_mail.json")
+}
+
+fn weth() -> Token {
+    Token {
+        chain_id: 1,
+        address: Address::new("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+        symbol: "WETH".into(),
+        decimals: 18,
+        is_native: false,
+    }
+}
+
+fn usdc() -> Token {
+    Token {
+        chain_id: 1,
+        address: Address::new("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+        symbol: "USDC".into(),
+        decimals: 6,
+        is_native: false,
+    }
+}
+
+fn oracle() -> MockOracle {
+    MockOracle::new()
+        .with_simple_price(&weth(), "3000.0000", 5)
+        .with_simple_price(&usdc(), "1.0000", 5)
+}
+
+fn evaluate(sig: SignatureRequest, policy: &str) -> Verdict {
+    let clock = MockClock::with_fixed(1000);
+    evaluate_with_clock(sig, policy, &clock)
+}
+
+fn evaluate_with_clock(sig: SignatureRequest, policy: &str, clock: &MockClock) -> Verdict {
+    let tx_registry = MockAdapterRegistry::new();
+    let sig_registry = default_signature_registry();
+    let oracle = oracle();
+    let policies = PolicyEngine::from_sources([policy]).expect("policy source parses");
+    let pipe = Pipeline::new(
+        &tx_registry,
+        HostCapabilities::new(&oracle).with_clock(clock),
+        &policies,
+    )
+    .with_signature_registry(&sig_registry);
+
+    pipe.evaluate(&Request::Sig(sig)).expect("pipeline ok")
+}
+
+fn assert_fail_id(verdict: Verdict, policy_id: &str) {
+    match verdict {
+        Verdict::Fail(matched) => assert!(
+            matched.iter().any(|policy| policy.policy_id == policy_id),
+            "expected {policy_id} in {matched:?}"
+        ),
+        other => panic!("expected Verdict::Fail, got {other:?}"),
+    }
+}
+
+fn permit2_set_details(field: &str, value: Value) -> SignatureRequest {
+    let mut sig = permit2_single();
+    sig.typed_data.message["details"][field] = value;
+    sig
+}
+
+fn permit2_set_message(field: &str, value: Value) -> SignatureRequest {
+    let mut sig = permit2_single();
+    sig.typed_data.message[field] = value;
+    sig
+}
+
+fn permit2_single_usdc_amount(raw_amount: &str) -> SignatureRequest {
+    let mut sig = permit2_single();
+    sig.typed_data.message["details"]["token"] = json!(USDC_ADDRESS);
+    sig.typed_data.message["details"]["amount"] = json!(raw_amount);
+    sig
+}
+
+fn eip2612_set_message(field: &str, value: Value) -> SignatureRequest {
+    let mut sig = eip2612_permit();
+    sig.typed_data.message[field] = value;
+    sig
+}
+
+#[test]
+fn permit2_spender_allowlist_passes_and_fails() {
+    assert_eq!(
+        evaluate(permit2_single(), PERMIT2_SPENDER_ALLOWLIST),
+        Verdict::Pass
+    );
+    let denied = permit2_set_message(
+        "spender",
+        json!("0x2222222222222222222222222222222222222222"),
+    );
+    assert_fail_id(
+        evaluate(denied, PERMIT2_SPENDER_ALLOWLIST),
+        "user/signature/permit2/spender-allowlist",
+    );
+}
+
+#[test]
+fn permit2_no_unlimited_amount_passes_and_fails() {
+    assert_eq!(
+        evaluate(permit2_single(), PERMIT2_NO_UNLIMITED),
+        Verdict::Pass
+    );
+    let denied = permit2_set_details("amount", json!(UINT160_MAX));
+    assert_fail_id(
+        evaluate(denied, PERMIT2_NO_UNLIMITED),
+        "user/signature/permit2/no-unlimited-amount",
+    );
+}
+
+#[test]
+fn permit2_usd_cap_passes_and_fails() {
+    assert_eq!(evaluate(permit2_single(), PERMIT2_MAX_USD), Verdict::Pass);
+    let denied = permit2_set_details("amount", json!("100000000000000000"));
+    assert_fail_id(
+        evaluate(denied, PERMIT2_MAX_USD),
+        "user/signature/permit2/max-usd-100",
+    );
+}
+
+#[test]
+fn permit2_deadline_window_passes_and_fails() {
+    assert_eq!(evaluate(permit2_single(), PERMIT2_DEADLINE), Verdict::Pass);
+    let denied = permit2_set_message("sigDeadline", json!(5000));
+    assert_fail_id(
+        evaluate(denied, PERMIT2_DEADLINE),
+        "user/signature/permit2/sig-deadline-le-1h",
+    );
+}
+
+#[test]
+fn permit2_chain_match_passes_and_fails() {
+    assert_eq!(evaluate(permit2_single(), PERMIT2_CHAIN), Verdict::Pass);
+    let mut denied = permit2_single();
+    denied.chain_id = 137;
+    assert_fail_id(
+        evaluate(denied, PERMIT2_CHAIN),
+        "user/signature/permit2/chain-must-match",
+    );
+}
+
+#[test]
+fn permit2_nonce_sanity_passes_and_fails() {
+    assert_eq!(evaluate(permit2_single(), PERMIT2_NONCE), Verdict::Pass);
+    let denied = permit2_set_details("nonce", json!(UINT256_MAX));
+    assert_fail_id(
+        evaluate(denied, PERMIT2_NONCE),
+        "user/signature/permit2/nonce-sanity",
+    );
+}
+
+#[test]
+fn permit2_human_amount_cap_passes_and_fails() {
+    assert_eq!(
+        evaluate(permit2_single_usdc_amount("10000000"), PERMIT2_HUMAN_MAX),
+        Verdict::Pass
+    );
+    let denied = permit2_single_usdc_amount("100000000");
+    assert_fail_id(
+        evaluate(denied, PERMIT2_HUMAN_MAX),
+        "user/signature/permit2/max-human-amount-50",
+    );
+}
+
+#[test]
+fn permit2_human_amount_cap_fires_for_clamped_human_amount() {
+    let denied = permit2_set_details("amount", json!(UINT160_MAX));
+    assert_fail_id(
+        evaluate(denied.clone(), PERMIT2_HUMAN_MAX),
+        "user/signature/permit2/max-human-amount-50",
+    );
+
+    const CLAMP_ONLY: &str = r#"
+@id("test/signature/permit2/clamped-human-amount")
+@severity("deny")
+forbid (
+  principal is Wallet,
+  action == Action::"signature.permit2",
+  resource is Protocol
+)
+when {
+  context.amountHumanClampedAtCeiling
+};
+"#;
+    assert_fail_id(
+        evaluate(denied, CLAMP_ONLY),
+        "test/signature/permit2/clamped-human-amount",
+    );
+}
+
+#[test]
+fn permit2_batch_representative_uses_largest_human_amount() {
+    const REPRESENTATIVE_USDC: &str = r#"
+@id("test/signature/permit2/representative-usdc")
+@severity("deny")
+forbid (
+  principal is Wallet,
+  action == Action::"signature.permit2",
+  resource is Protocol
+)
+when {
+  context.token.symbol == "USDC"
+  && context.amountHuman == decimal("50.0000")
+};
+"#;
+
+    assert_fail_id(
+        evaluate(permit2_batch(), REPRESENTATIVE_USDC),
+        "test/signature/permit2/representative-usdc",
+    );
+}
+
+#[test]
+fn eip2612_spender_allowlist_passes_and_fails() {
+    assert_eq!(
+        evaluate(eip2612_permit(), EIP2612_SPENDER_ALLOWLIST),
+        Verdict::Pass
+    );
+    let denied = eip2612_set_message(
+        "spender",
+        json!("0x2222222222222222222222222222222222222222"),
+    );
+    assert_fail_id(
+        evaluate(denied, EIP2612_SPENDER_ALLOWLIST),
+        "user/signature/eip2612/spender-allowlist",
+    );
+}
+
+#[test]
+fn eip2612_spender_allowlist_classifies_when_owner_differs_from_signer() {
+    let mut allowed = eip2612_permit();
+    allowed.typed_data.message["owner"] = json!("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    assert_eq!(evaluate(allowed, EIP2612_SPENDER_ALLOWLIST), Verdict::Pass);
+
+    let mut denied = eip2612_permit();
+    denied.typed_data.message["owner"] = json!("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    denied.typed_data.message["spender"] = json!("0x2222222222222222222222222222222222222222");
+    assert_fail_id(
+        evaluate(denied, EIP2612_SPENDER_ALLOWLIST),
+        "user/signature/eip2612/spender-allowlist",
+    );
+}
+
+#[test]
+fn eip2612_no_unlimited_amount_passes_and_fails() {
+    assert_eq!(
+        evaluate(eip2612_permit(), EIP2612_NO_UNLIMITED),
+        Verdict::Pass
+    );
+    let denied = eip2612_set_message("value", json!(UINT256_MAX));
+    assert_fail_id(
+        evaluate(denied, EIP2612_NO_UNLIMITED),
+        "user/signature/eip2612/no-unlimited-amount",
+    );
+}
+
+#[test]
+fn eip2612_usd_cap_passes_and_fails() {
+    assert_eq!(evaluate(eip2612_permit(), EIP2612_MAX_USD), Verdict::Pass);
+    let denied = eip2612_set_message("value", json!("200000000"));
+    assert_fail_id(
+        evaluate(denied, EIP2612_MAX_USD),
+        "user/signature/eip2612/max-usd-100",
+    );
+}
+
+#[test]
+fn eip2612_deadline_window_passes_and_fails() {
+    assert_eq!(evaluate(eip2612_permit(), EIP2612_DEADLINE), Verdict::Pass);
+    let denied = eip2612_set_message("deadline", json!(5000));
+    assert_fail_id(
+        evaluate(denied, EIP2612_DEADLINE),
+        "user/signature/eip2612/deadline-le-1h",
+    );
+}
+
+#[test]
+fn eip2612_chain_match_passes_and_fails() {
+    assert_eq!(evaluate(eip2612_permit(), EIP2612_CHAIN), Verdict::Pass);
+    let mut denied = eip2612_permit();
+    denied.chain_id = 137;
+    assert_fail_id(
+        evaluate(denied, EIP2612_CHAIN),
+        "user/signature/eip2612/chain-must-match",
+    );
+}
+
+#[test]
+fn eip2612_nonce_sanity_passes_and_fails() {
+    assert_eq!(evaluate(eip2612_permit(), EIP2612_NONCE), Verdict::Pass);
+    let denied = eip2612_set_message("nonce", json!(UINT256_MAX));
+    assert_fail_id(
+        evaluate(denied, EIP2612_NONCE),
+        "user/signature/eip2612/nonce-sanity",
+    );
+}
+
+#[test]
+fn eip2612_human_value_cap_passes_and_fails() {
+    assert_eq!(
+        evaluate(
+            eip2612_set_message("value", json!("10000000")),
+            EIP2612_HUMAN_MAX
+        ),
+        Verdict::Pass
+    );
+    let denied = eip2612_set_message("value", json!("100000000"));
+    assert_fail_id(
+        evaluate(denied, EIP2612_HUMAN_MAX),
+        "user/signature/eip2612/max-human-value-50",
+    );
+}
+
+#[test]
+fn eip712_other_verifying_contract_allowlist_passes_and_fails() {
+    assert_eq!(
+        evaluate(eip712_other(), OTHER_VERIFYING_ALLOWLIST),
+        Verdict::Pass
+    );
+    let mut denied = eip712_other();
+    denied.typed_data.domain.verifying_contract =
+        Address::new("0x8888888888888888888888888888888888888888").unwrap();
+    assert_fail_id(
+        evaluate(denied, OTHER_VERIFYING_ALLOWLIST),
+        "user/signature/eip712-other/verifying-contract-allowlist",
+    );
+}
+
+#[test]
+fn eip712_other_chain_match_passes_and_fails() {
+    assert_eq!(evaluate(eip712_other(), OTHER_CHAIN), Verdict::Pass);
+    let mut denied = eip712_other();
+    denied.chain_id = 137;
+    assert_fail_id(
+        evaluate(denied, OTHER_CHAIN),
+        "user/signature/eip712-other/chain-must-match",
+    );
+}
+
+#[test]
+fn signature_verdict_is_reproducible_with_fixed_clock() {
+    let tx_registry = MockAdapterRegistry::new();
+    let sig_registry = default_signature_registry();
+    let oracle = oracle();
+    let clock = MockClock::with_fixed(1000);
+    let policies = PolicyEngine::from_sources([PERMIT2_DEADLINE]).expect("policy source parses");
+    let pipe = Pipeline::new(
+        &tx_registry,
+        HostCapabilities::new(&oracle).with_clock(&clock),
+        &policies,
+    )
+    .with_signature_registry(&sig_registry);
+    let sig = permit2_single();
+
+    let first = pipe
+        .evaluate(&Request::Sig(sig.clone()))
+        .expect("pipeline ok");
+    let second = pipe.evaluate(&Request::Sig(sig)).expect("pipeline ok");
+    assert_eq!(first, second);
+}
+
+#[test]
+fn signature_verdict_changes_with_clock() {
+    const EXPIRED_PERMIT: &str = r#"
+@id("test/signature/eip2612/expired")
+@severity("deny")
+forbid (
+  principal is Wallet,
+  action == Action::"signature.eip2612",
+  resource is Protocol
+)
+when {
+  context.deadlineDeltaSec == 0
+};
+"#;
+    let before_deadline = MockClock::with_fixed(1599);
+    let after_deadline = MockClock::with_fixed(1601);
+
+    let before = evaluate_with_clock(eip2612_permit(), EXPIRED_PERMIT, &before_deadline);
+    let after = evaluate_with_clock(eip2612_permit(), EXPIRED_PERMIT, &after_deadline);
+
+    assert_eq!(before, Verdict::Pass);
+    assert_fail_id(after.clone(), "test/signature/eip2612/expired");
+    assert_ne!(before, after);
+}
+
+#[test]
+fn tx_no_match_stays_transaction_other_not_signature_other() {
+    let tx_registry = MockAdapterRegistry::new();
+    let sig_registry = default_signature_registry();
+    let oracle = oracle();
+    let clock = MockClock::with_fixed(1000);
+    let policies = PolicyEngine::from_sources([OTHER_VERIFYING_ALLOWLIST]).unwrap();
+    let pipe = Pipeline::new(
+        &tx_registry,
+        HostCapabilities::new(&oracle).with_clock(&clock),
+        &policies,
+    )
+    .with_signature_registry(&sig_registry);
+
+    let tx = TransactionRequest {
+        chain_id: 1,
+        from: Address::new("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap(),
+        to: Address::new("0x3333333333333333333333333333333333333333").unwrap(),
+        value_wei: "0".into(),
+        data: vec![0xde, 0xad, 0xbe, 0xef],
+        gas: None,
+        nonce: None,
+    };
+    assert_eq!(pipe.evaluate(&Request::Tx(tx)).unwrap(), Verdict::Pass);
+}

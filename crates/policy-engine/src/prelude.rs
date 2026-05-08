@@ -17,22 +17,24 @@
 
 pub use crate::adapter::{
     ActionKind, Adapter, AdapterDescriptor, AdapterError, AdapterFactory, AdapterId, AdapterKind,
-    ContractTarget, MatchKey, SolidityFunction, SolidityFunctionSpec, StaticAdapterFactory,
-    TypedAdapter,
+    ContractTarget, MatchKey, SignatureAdapter, SignatureMatchKey, SolidityFunction,
+    SolidityFunctionSpec, StaticAdapterFactory, TypedAdapter,
 };
 pub use crate::core::{
-    Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace, OracleRequirement,
-    OracleRequirementKind, OtherAction, Token, TransactionRequest, UsdValuation,
-    WindowStatsContext,
+    Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace, Eip2612Action,
+    Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement, OracleRequirementKind,
+    OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request, SignatureRequest,
+    Token, TransactionRequest, UsdValuation, WindowStatsContext,
 };
-pub use crate::host::HostCapabilities;
-pub use crate::host::Oracle;
 pub use crate::host::{Approvals, ApprovalsError, MockApprovals};
+pub use crate::host::{Clock, HostCapabilities, MockClock, Oracle, SystemClock};
 pub use crate::host::{
     MockPortfolio, Portfolio, PortfolioError, StatDelta, StatKey, StatValue, StatWindows,
 };
 pub use crate::lowering::{
     compute_dex_window_deltas, enrich_dex_action, enrich_dex_action_base, enrich_dex_window_stats,
+    enrich_signature_action, request_from_action_with_host, requests_from_action,
     requests_from_actions,
 };
 pub use crate::policy::PolicyRequest;
+pub use crate::registry::{MockSignatureRegistry, SignatureRegistry};

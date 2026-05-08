@@ -52,6 +52,66 @@ pub const ALLOWANCES_COVER_INPUTS: &str = "allowancesCoverInputs";
 /// Aggregate stat-window context object.
 pub const WINDOW_STATS: &str = "windowStats";
 
+// Signature action context fields stamped by signature lowering.
+/// Signature signer address.
+pub const SIGNER: &str = "signer";
+/// Chain id supplied by the wallet request.
+pub const REQUEST_CHAIN_ID: &str = "requestChainId";
+/// Chain id embedded in the EIP-712 domain.
+pub const DOMAIN_CHAIN_ID: &str = "domainChainId";
+/// EIP-712 verifying contract.
+pub const VERIFYING_CONTRACT: &str = "verifyingContract";
+/// EIP-712 primary type.
+pub const PRIMARY_TYPE: &str = "primaryType";
+/// Host clock timestamp used for deadline deltas.
+pub const NOW_TS: &str = "nowTs";
+/// Permit2 permit kind.
+pub const PERMIT_KIND: &str = "permitKind";
+/// Approval spender address.
+pub const SPENDER: &str = "spender";
+/// Signature token field.
+pub const TOKEN: &str = "token";
+/// Human Permit2 amount.
+pub const AMOUNT_HUMAN: &str = "amountHuman";
+/// Permit2 approval expiration.
+pub const EXPIRATION: &str = "expiration";
+/// Permit2 signature deadline.
+pub const SIG_DEADLINE: &str = "sigDeadline";
+/// Permit2 signature-deadline delta in seconds.
+pub const SIG_DEADLINE_DELTA_SEC: &str = "sigDeadlineDeltaSec";
+/// Signature nonce.
+pub const NONCE: &str = "nonce";
+/// Permit2 approval count.
+pub const APPROVAL_COUNT: &str = "approvalCount";
+/// Structural nonce sanity flag.
+pub const NONCE_VALID: &str = "nonceValid";
+/// Unlimited approval marker.
+pub const IS_UNLIMITED: &str = "isUnlimited";
+/// Whether Permit2 human amount was clamped at Cedar's decimal ceiling.
+pub const AMOUNT_HUMAN_CLAMPED_AT_CEILING: &str = "amountHumanClampedAtCeiling";
+/// Total approved USD valuation.
+pub const TOTAL_APPROVED_USD: &str = "totalApprovedUsd";
+/// EIP-2612 owner address.
+pub const OWNER: &str = "owner";
+/// Human EIP-2612 value.
+pub const VALUE_HUMAN: &str = "valueHuman";
+/// EIP-2612 deadline.
+pub const DEADLINE: &str = "deadline";
+/// EIP-2612 deadline delta in seconds.
+pub const DEADLINE_DELTA_SEC: &str = "deadlineDeltaSec";
+/// Whether EIP-2612 human value was clamped at Cedar's decimal ceiling.
+pub const VALUE_HUMAN_CLAMPED_AT_CEILING: &str = "valueHumanClampedAtCeiling";
+/// EIP-712 domain name.
+pub const DOMAIN_NAME: &str = "domainName";
+/// EIP-712 domain version.
+pub const DOMAIN_VERSION: &str = "domainVersion";
+/// EIP-712 domain salt.
+pub const DOMAIN_SALT: &str = "domainSalt";
+/// EIP-712 type map JSON.
+pub const TYPES_JSON: &str = "typesJson";
+/// EIP-712 message JSON.
+pub const MESSAGE_JSON: &str = "messageJson";
+
 // AmountSpec sub-record fields.
 /// Token address field.
 pub const ADDRESS: &str = "address";

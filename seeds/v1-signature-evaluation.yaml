@@ -1,0 +1,202 @@
+goal: >-
+  Extend the existing Rust/Cedar policy-engine v0.x to evaluate off-chain
+  EIP-712 signature requests (Permit2 PermitSingle/Batch/TransferFrom +
+  EIP-2612 Permit + EIP-712 catch-all) for phishing prevention (unknown
+  spender / unbounded amount / wrong-chain) and limit enforcement
+  (per-signature USD cap, raw token max, unlimited-approval block,
+  sigDeadline window, structural nonce sanity), preserving zero behavioral
+  regression in the existing TransactionRequest pipeline.
+
+constraints:
+  - Brownfield — existing TransactionRequest pipeline must keep working with zero behavioral regression
+  - Existing Adapter::build(&TransactionRequest) trait signature MUST NOT change (multicall recursion safety)
+  - Cedar action ids split per scheme from day 1 (signature.permit2 / signature.eip2612 / signature.eip712.other) — no later migration
+  - Time stamping must go through host Clock trait — no SystemTime in lowering and no caller-supplied nowTs
+  - v1 does NOT provide replay protection (structural nonce only) — must be documented in threat-model
+  - Catch-all is Pipeline-level fallback, not an adapter (no AdapterDescriptor priority/specificity changes)
+  - v1 host capability additions limited to Clock — Approvals/Portfolio/StatWindows untouched
+  - Rust 2021 edition, alloy-primitives 0.8 / alloy-sol-types 0.8 / alloy-dyn-abi 0.8 / cedar-policy 4 / serde 1 stack only
+
+acceptance_criteria:
+  - All existing DEX integration tests pass unchanged after refactor
+  - Cedar schema_validation passes for new permit2 / eip2612 / eip712_other schemas with strict required fields
+  - Permit2 (PermitSingle/Batch/TransferFrom) and EIP-2612 (Permit) golden vector decoding regression tests pass from real EIP-712 typed-data fixtures under tests/data/signatures/
+  - Each v1 policy dimension has matched pass/fail unit + integration tests — spender allowlist, verifyingContract allowlist, single-sig USD cap, raw token max, unlimited-approval block (uint160.max / uint256.max), domain.chainId == request.chainId enforcement, sigDeadline/deadline window upper bound, structural nonce sanity
+  - Pipeline::evaluate(&Request) dispatches Tx and Sig variants with no cross-classification; Tx-NoMatch yields Action::Other and Sig-NoMatch yields Action::Eip712Other
+  - adapters-bundle::default_signature_registry() registers Permit2 and EIP-2612 adapters only; catch-all is invoked exclusively via Pipeline fallback
+  - README updated with new flow diagram for Pipeline::evaluate(&Request) and policies/signature/ example layout
+  - docs/specs/threat-model.md created and explicitly states v1 does NOT detect already-used nonces, does NOT provide replay protection, and does NOT detect latent EIP-2612 future-nonce permits
+  - Verdict reproducibility verified — same input + MockClock fixed time produces identical Verdict across runs
+
+ontology_schema:
+  name: SignaturePolicyEngineV1
+  description: >-
+    Domain model for evaluating off-chain EIP-712 signature requests
+    (Permit2, EIP-2612, EIP-712 catch-all) inside the existing Rust/Cedar
+    policy-engine workspace, with public API surface unified at the
+    Pipeline level and adapter/registry/Cedar-action surfaces split per
+    scheme.
+  fields:
+    - name: request
+      type: object
+      description: Top-level Request enum exposed by Pipeline — { Tx(TransactionRequest), Sig(SignatureRequest) }
+    - name: signatureRequest
+      type: object
+      description: Off-chain typed-data request — { chainId, signer, typedData(domain, types, primaryType, message) }; nowTs is NOT a caller-supplied field
+    - name: signatureAdapter
+      type: object
+      description: New trait — fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError>; runs in parallel to existing Adapter trait
+    - name: signatureRegistry
+      type: object
+      description: New resolver keyed on (chainId, verifyingContract, primaryType) returning Option<&dyn SignatureAdapter> — registers specific adapters only
+    - name: pipelineFallback
+      type: object
+      description: Catch-all branch in Pipeline::evaluate_sig when SignatureRegistry returns None — emits Action::Eip712Other with raw EIP-712 fields
+    - name: clockTrait
+      type: object
+      description: Host capability — pub trait Clock { fn now(&self) -> u64 } with MockClock for tests; HostCapabilities gains clock field
+    - name: actionVariants
+      type: array
+      description: Action enum gains Permit2(Permit2Action) / Eip2612(Eip2612Action) / Eip712Other(Eip712OtherAction) alongside existing Dex / Other
+    - name: cedarSchemas
+      type: array
+      description: Three new files under policy-schema/actions — permit2.cedarschema (Permit2Context), eip2612.cedarschema (Eip2612Context), eip712_other.cedarschema (Eip712OtherContext); each strict and required-field-heavy
+    - name: policyDimensions
+      type: array
+      description: Counterparty allowlist (spender, verifyingContract); Amount controls (single-sig USD cap, raw token max, unlimited-approval block); Time/meta controls (chainId match, sigDeadline window, structural nonce sanity)
+    - name: examplePolicies
+      type: array
+      description: policies/signature/{permit2,eip2612,eip712-other}/*.cedar — at least one per policy dimension
+    - name: threatModelDoc
+      type: string
+      description: docs/specs/threat-model.md — v1 boundaries, explicit replay/latent permit non-coverage
+
+evaluation_principles:
+  - name: behavior_regression_zero
+    description: Existing DEX adapter, lowering, and Cedar tests pass unchanged after refactor
+    weight: 0.95
+  - name: tx_adapter_api_compat
+    description: Adapter trait, AdapterRegistry, and TransactionRequest signatures are byte-for-byte unchanged for Tx adapters and multicall recursion
+    weight: 0.9
+  - name: cedar_strict_schema
+    description: Each scheme has its own action id and required-field schema; minimize optional fields and avoid context.has() proliferation
+    weight: 0.9
+  - name: security_honesty
+    description: README and threat-model accurately state v1 cannot detect replay or latent permits and document specific gaps
+    weight: 0.85
+  - name: reproducibility
+    description: Verdict reproducible via MockClock fixed time; no SystemTime reads in lowering; no caller-supplied nowTs accepted
+    weight: 0.85
+  - name: adapter_specificity_safety
+    description: Specific signature adapters never collide with catch-all at registry resolution time — catch-all is Pipeline-level only
+    weight: 0.8
+  - name: minimal_host_additions
+    description: Only Clock host trait is added in v1; Approvals/Portfolio/StatWindows are untouched
+    weight: 0.7
+  - name: documentation
+    description: README flow diagram + policies/signature example layout + threat-model spec all updated and consistent
+    weight: 0.7
+  - name: scope_discipline
+    description: 24h aggregate cap, on-chain nonce lookup, SIWE, and AdapterDescriptor priority changes are deferred to v2 — none ship in v1
+    weight: 0.7
+
+exit_conditions:
+  - name: v1_complete
+    description: All acceptance criteria green and integration tests stable
+    criteria: All listed acceptance criteria pass on `cargo test --workspace` with mock host capabilities including MockClock
+  - name: regression_detected
+    description: Behavior regression in existing DEX flows
+    criteria: Any pre-existing integration test in crates/integration-tests fails after changes
+  - name: scope_creep
+    description: Implementation crosses into v2 items
+    criteria: 24h aggregate cap, Nonces host trait, SIWE adapter, or AdapterDescriptor priority/specificity field introduced in v1
+  - name: security_claim_drift
+    description: Security documentation overclaims v1 guarantees
+    criteria: threat-model.md drops or weakens the explicit non-coverage statements for replay/latent permits
+  - name: api_surface_creep
+    description: Existing tx adapter trait surface changes
+    criteria: Adapter::build signature, AdapterRegistry trait shape, or TransactionRequest fields modified beyond additive Cargo workspace deps
+
+brownfield:
+  project_type: brownfield
+  context_references:
+    - path: /Users/woojin/Desktop/upside_academy/project/policy-engine
+      role: primary
+      summary: Rust/Cedar policy-engine workspace root
+    - path: crates/policy-engine/src/core.rs
+      role: primary
+      summary: Action enum and TransactionRequest types — extend Action with Permit2/Eip2612/Eip712Other and add Request enum
+    - path: crates/policy-engine/src/adapter.rs
+      role: primary
+      summary: Existing Adapter/TypedAdapter traits — DO NOT modify; add parallel SignatureAdapter trait
+    - path: crates/policy-engine/src/registry.rs
+      role: primary
+      summary: Existing AdapterRegistry — DO NOT modify; add parallel SignatureRegistry
+    - path: crates/policy-engine/src/pipeline.rs
+      role: primary
+      summary: Pipeline orchestrator — gain evaluate(&Request) dispatching to evaluate_tx/evaluate_sig with split NoMatch fallbacks
+    - path: crates/policy-engine/src/lowering
+      role: primary
+      summary: Action -> Cedar PolicyRequest mapping — extend with signature variants; nowTs sourced from host.clock
+    - path: crates/policy-engine/src/host
+      role: primary
+      summary: Host capability traits — add Clock trait + MockClock alongside existing Oracle/Portfolio/Approvals/StatWindows
+    - path: crates/policy-engine/src/schema.rs
+      role: primary
+      summary: PolicySchemaComposer — extend to load new permit2/eip2612/eip712_other schema files
+    - path: policy-schema/actions/dex.cedarschema
+      role: reference
+      summary: Existing strict schema pattern to mirror for signature contexts
+    - path: crates/adapters/universal-router/src/multicall.rs
+      role: reference
+      summary: V3 multicall recursion that must remain TransactionRequest-only — guard against generalization
+    - path: crates/adapters-bundle
+      role: primary
+      summary: Default registry bootstrap — gain default_signature_registry() with Permit2 and EIP-2612 adapters
+    - path: crates/integration-tests/tests/schema_validation.rs
+      role: primary
+      summary: Schema validation harness — extend coverage to new signature schemas
+    - path: tests/data/signatures
+      role: reference
+      summary: New directory for golden vector EIP-712 typed-data fixtures
+    - path: README.md
+      role: primary
+      summary: Project README — flow section update
+    - path: docs/specs
+      role: primary
+      summary: Specs directory — add threat-model.md and signature flow doc
+  existing_patterns:
+    - Strict Cedar schema with required fields (mirror DexContext pattern)
+    - Adapter trait builds an Action variant; lowering converts Action to Cedar PolicyRequest; Cedar evaluates against composed schema
+    - HostCapabilities is a small borrowed bundle of trait objects
+    - Mock implementations colocated with traits (MockOracle, MockPortfolio pattern)
+    - AmountSpec uses raw decimal string for U256 range and optional UsdValuation
+    - Action enum '#[serde(rename = "<kind>")]' for stable on-disk discriminants
+    - Adapter registration via adapters-bundle::default_registry() builder
+    - NoMatch produces fallback Action variant rather than erroring (Tx side Action::Other; Sig side Action::Eip712Other)
+    - Address normalized to lowercase 0x-prefixed hex on entry
+    - Token chain-qualified key '<chainId>:<lowercase address>' for host capability maps
+  existing_dependencies:
+    - alloy-primitives 0.8 with serde feature for address/U256 handling
+    - alloy-sol-types 0.8 + alloy-dyn-abi 0.8 for typed-data + ABI decoding
+    - cedar-policy 4 for schema and evaluation
+    - serde 1 + serde_json 1 for serialization
+    - thiserror 2 for error types
+    - hex 0.4 for calldata/bytes hex encoding
+    - Existing Oracle host trait re-used for USD cap on signature requests
+
+metadata:
+  ambiguity_score: 0.12
+  generation_path: plugin_fallback_path_b
+  interview_id: null
+  reviewer: codex (gpt-5.x via codex-companion)
+  source_summary: >-
+    Path B Socratic interview (Q1–Q8) followed by Codex critical review.
+    Two interview answers reversed during reconciliation: (Q4) adapter
+    trait NOT generalized — only Pipeline entry point unified; (Q8) Clock
+    host trait added in v1 to make sigDeadline policy meaningful.
+  scope_explicit_v2:
+    - 24h aggregate approved-USD window cap (StatWindows reuse)
+    - Nonces host trait + on-chain nonce/bitmap lookup for replay/latent defense
+    - SIWE login signatures
+    - AdapterDescriptor priority/specificity system

@@ -140,9 +140,10 @@ fn requests_from_adapter(
         .expect("adapter should build an aggregate action");
     match &mut action {
         Action::Dex(dex) => enrich_dex_action(dex, host),
-        Action::Other(_) => panic!("expected adapter to emit Dex action"),
+        other => panic!("expected adapter to emit Dex action, got {other:?}"),
     }
     policy_engine::lowering::requests_from_action(&action)
+        .expect("Dex action should lower without host")
 }
 
 #[test]

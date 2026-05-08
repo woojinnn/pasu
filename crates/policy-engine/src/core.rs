@@ -196,6 +196,156 @@ pub struct OtherAction {
     pub raw_calldata: String,
 }
 
+/// Semantic Permit2 signature action emitted by the Permit2 EIP-712 adapter.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Permit2Action {
+    /// Wallet that is being asked to sign.
+    pub signer: Address,
+    /// Chain id supplied by the wallet request.
+    pub chain_id: ChainId,
+    /// Chain id embedded in the EIP-712 domain.
+    pub domain_chain_id: ChainId,
+    /// EIP-712 verifying contract.
+    pub verifying_contract: Address,
+    /// EIP-712 primary type.
+    pub primary_type: String,
+    /// Permit2 permit shape.
+    pub permit_kind: Permit2PermitKind,
+    /// Spender authorized by the permit.
+    pub spender: Address,
+    /// Representative token selected for single-token policy checks.
+    pub token: Token,
+    /// Representative raw approval amount as a decimal integer string.
+    pub amount: String,
+    /// Representative approval expiration timestamp.
+    pub expiration: u64,
+    /// Signature deadline timestamp.
+    pub sig_deadline: u64,
+    /// Representative nonce as a decimal integer string.
+    pub nonce: String,
+    /// All approvals decoded from the signature.
+    pub approvals: Vec<Permit2Approval>,
+    /// Whether any approval carries the Permit2 unlimited uint160 amount.
+    pub is_unlimited: bool,
+    /// Structural nonce sanity flag.
+    pub nonce_valid: bool,
+    /// Oracle-derived total approved USD value, when available.
+    pub total_approved_usd: Option<UsdValuation>,
+}
+
+/// Permit2 permit shape.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Permit2PermitKind {
+    /// Permit2 `PermitSingle`.
+    PermitSingle,
+    /// Permit2 `PermitBatch`.
+    PermitBatch,
+    /// Permit2 `PermitTransferFrom`.
+    PermitTransferFrom,
+}
+
+impl Permit2PermitKind {
+    /// Return the EIP-712 primary-type label for this Permit2 shape.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::PermitSingle => "PermitSingle",
+            Self::PermitBatch => "PermitBatch",
+            Self::PermitTransferFrom => "PermitTransferFrom",
+        }
+    }
+}
+
+/// One Permit2 approval item decoded from typed data.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Permit2Approval {
+    /// Token being approved.
+    pub token: Token,
+    /// Raw approval amount as a decimal integer string.
+    pub amount: String,
+    /// Approval expiration timestamp.
+    pub expiration: u64,
+    /// Permit nonce as a decimal integer string.
+    pub nonce: String,
+}
+
+/// Semantic EIP-2612 permit signature action.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip2612Action {
+    /// Wallet that is being asked to sign.
+    pub signer: Address,
+    /// Owner carried inside the permit message.
+    pub owner: Address,
+    /// Chain id supplied by the wallet request.
+    pub chain_id: ChainId,
+    /// Chain id embedded in the EIP-712 domain.
+    pub domain_chain_id: ChainId,
+    /// EIP-712 verifying contract.
+    pub verifying_contract: Address,
+    /// EIP-712 primary type.
+    pub primary_type: String,
+    /// Spender authorized by the permit.
+    pub spender: Address,
+    /// Token contract being approved.
+    pub token: Token,
+    /// Whether the value is uint256 max.
+    pub is_unlimited: bool,
+    /// Structural nonce sanity flag.
+    pub nonce_valid: bool,
+    /// Raw approval value as a decimal integer string.
+    pub value: String,
+    /// Permit deadline timestamp.
+    pub deadline: u64,
+    /// Permit nonce as a decimal integer string.
+    pub nonce: String,
+    /// Oracle-derived total approved USD value, when available.
+    pub total_approved_usd: Option<UsdValuation>,
+}
+
+/// Catch-all action for unmatched EIP-712 signatures.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712OtherAction {
+    /// Wallet that is being asked to sign.
+    pub signer: Address,
+    /// Chain id supplied by the wallet request.
+    pub chain_id: ChainId,
+    /// Chain id embedded in the EIP-712 domain.
+    pub domain_chain_id: ChainId,
+    /// EIP-712 verifying contract.
+    pub verifying_contract: Address,
+    /// EIP-712 primary type.
+    pub primary_type: String,
+    /// Domain name, or an empty string if absent.
+    pub domain_name: String,
+    /// Domain version, or an empty string if absent.
+    pub domain_version: String,
+    /// Domain salt, or an empty string if absent.
+    pub domain_salt: String,
+    /// Raw EIP-712 types JSON serialized as compact JSON text.
+    pub types_json: String,
+    /// Raw EIP-712 message JSON serialized as compact JSON text.
+    pub message_json: String,
+}
+
+impl Eip712OtherAction {
+    /// Construct the catch-all action from an unmatched signature request.
+    #[must_use]
+    pub fn from_request(sig: &SignatureRequest) -> Self {
+        Self {
+            signer: sig.signer.clone(),
+            chain_id: sig.chain_id,
+            domain_chain_id: sig.typed_data.domain.chain_id,
+            verifying_contract: sig.typed_data.domain.verifying_contract.clone(),
+            primary_type: sig.typed_data.primary_type.clone(),
+            domain_name: sig.typed_data.domain.name.clone().unwrap_or_default(),
+            domain_version: sig.typed_data.domain.version.clone().unwrap_or_default(),
+            domain_salt: sig.typed_data.domain.salt.clone().unwrap_or_default(),
+            types_json: json_to_compact_string(&sig.typed_data.types),
+            message_json: json_to_compact_string(&sig.typed_data.message),
+        }
+    }
+}
+
 /// Semantic action emitted by adapters.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -206,6 +356,15 @@ pub enum Action {
     /// Fallback action for unrecognized calls.
     #[serde(rename = "other")]
     Other(OtherAction),
+    /// Permit2 EIP-712 signature action.
+    #[serde(rename = "permit2")]
+    Permit2(Permit2Action),
+    /// EIP-2612 Permit EIP-712 signature action.
+    #[serde(rename = "eip2612")]
+    Eip2612(Eip2612Action),
+    /// Catch-all unmatched EIP-712 signature action.
+    #[serde(rename = "eip712Other")]
+    Eip712Other(Eip712OtherAction),
 }
 
 impl Action {
@@ -215,6 +374,9 @@ impl Action {
         match self {
             Self::Dex(_) => "dex",
             Self::Other(_) => "other",
+            Self::Permit2(_) => "signature.permit2",
+            Self::Eip2612(_) => "signature.eip2612",
+            Self::Eip712Other(_) => "signature.eip712_other",
         }
     }
 
@@ -224,6 +386,9 @@ impl Action {
         match self {
             Self::Dex(d) => &d.target,
             Self::Other(o) => &o.target,
+            Self::Permit2(p) => &p.verifying_contract,
+            Self::Eip2612(p) => &p.verifying_contract,
+            Self::Eip712Other(o) => &o.verifying_contract,
         }
     }
 
@@ -233,8 +398,20 @@ impl Action {
         match self {
             Self::Dex(d) => &d.actor,
             Self::Other(o) => &o.actor,
+            Self::Permit2(p) => &p.signer,
+            Self::Eip2612(p) => &p.signer,
+            Self::Eip712Other(o) => &o.signer,
         }
     }
+}
+
+/// Top-level policy-engine request.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Request {
+    /// EVM transaction request.
+    Tx(TransactionRequest),
+    /// EIP-712 signature request.
+    Sig(SignatureRequest),
 }
 
 /// Unsigned transaction request presented to the policy engine.
@@ -257,6 +434,63 @@ pub struct TransactionRequest {
     pub gas: Option<u64>,
     /// Account nonce, when known.
     pub nonce: Option<u64>,
+}
+
+/// Off-chain EIP-712 signature request presented to the policy engine.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignatureRequest {
+    /// EVM chain id selected by the wallet request.
+    pub chain_id: ChainId,
+    /// Wallet that is being asked to sign.
+    pub signer: Address,
+    /// Typed data payload.
+    pub typed_data: Eip712TypedData,
+}
+
+impl SignatureRequest {
+    /// Borrow the EIP-712 primary type.
+    #[must_use]
+    pub fn primary_type(&self) -> &str {
+        &self.typed_data.primary_type
+    }
+}
+
+/// EIP-712 typed-data payload.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Eip712TypedData {
+    /// EIP-712 domain.
+    pub domain: Eip712Domain,
+    /// EIP-712 primary type.
+    pub primary_type: String,
+    /// EIP-712 type map.
+    pub types: serde_json::Value,
+    /// EIP-712 message object.
+    pub message: serde_json::Value,
+}
+
+/// EIP-712 domain fields used by v1 signature policies.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Eip712Domain {
+    /// Optional domain name.
+    pub name: Option<String>,
+    /// Optional domain version.
+    pub version: Option<String>,
+    /// EIP-712 domain chain id.
+    pub chain_id: ChainId,
+    /// EIP-712 verifying contract.
+    pub verifying_contract: Address,
+    /// Optional domain salt.
+    pub salt: Option<String>,
+}
+
+fn json_to_compact_string(value: &serde_json::Value) -> String {
+    match serde_json::to_string(value) {
+        Ok(raw) => raw,
+        Err(_) => "null".into(),
+    }
 }
 
 impl TransactionRequest {

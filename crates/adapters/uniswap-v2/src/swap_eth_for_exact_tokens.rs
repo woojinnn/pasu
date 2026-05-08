@@ -199,7 +199,7 @@ mod tests {
                 );
                 assert_eq!(d.oracle_requirements[1].raw_amount, "200000000");
             }
-            Action::Other(_) => panic!("expected dex"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 }

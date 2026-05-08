@@ -7,6 +7,8 @@ description = "Aggregator: builds a default `MockAdapterRegistry` from every int
 
 [dependencies]
 policy-engine.workspace = true
+policy-engine-adapter-eip2612.workspace = true
+policy-engine-adapter-permit2.workspace = true
 policy-engine-adapter-universal-router.workspace = true
 policy-engine-adapter-uniswap-v2.workspace = true
 policy-engine-adapter-uniswap-v3.workspace = true

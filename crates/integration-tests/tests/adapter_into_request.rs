@@ -22,7 +22,8 @@ fn dex_action_lowers_to_one_dex_policy_request() {
         trace: DexTrace::default(),
     });
 
-    let requests = policy_engine::lowering::requests_from_action(&action);
+    let requests = policy_engine::lowering::requests_from_action(&action)
+        .expect("Dex action should lower without host");
 
     assert_eq!(requests.len(), 1);
     let request = &requests[0];
@@ -50,7 +51,7 @@ fn other_action_lowers_to_one_other_policy_request() {
         raw_calldata: "0xaabbccdd00".into(),
     });
 
-    let request = request_from_action(&action);
+    let request = request_from_action(&action).expect("Other action should lower without host");
 
     assert_eq!(request.action, r#"Action::"other""#);
     assert_eq!(

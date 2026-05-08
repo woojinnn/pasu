@@ -5,6 +5,9 @@
 use alloy_primitives::U256;
 
 const DECIMAL_SCALE: u32 = 4;
+/// Largest Cedar decimal integer part accepted by the policy schema.
+pub(crate) const HUMAN_INT_CEILING: u128 = 922_337_203_685_477;
+const CEDAR_DECIMAL_CEILING_FRACTION: u128 = 5_807;
 
 #[cfg(test)]
 pub(crate) fn multiply_decimal_strings(raw: &str, decimals: u32, price: &str) -> String {
@@ -27,6 +30,9 @@ pub(crate) fn try_multiply_decimal_strings(
     } else {
         product / scale
     };
+    if exceeds_cedar_decimal_ceiling(scaled, DECIMAL_SCALE) {
+        return None;
+    }
 
     Some(fixed_to_decimal(scaled, DECIMAL_SCALE))
 }
@@ -49,10 +55,22 @@ pub(crate) fn add_decimal_strings(left: &str, right: &str) -> String {
 pub(crate) fn try_add_decimal_strings(left: &str, right: &str) -> Option<String> {
     let left_fixed = decimal_to_fixed(left, DECIMAL_SCALE)?;
     let right_fixed = decimal_to_fixed(right, DECIMAL_SCALE)?;
-    Some(fixed_to_decimal(
-        U256::from(left_fixed.saturating_add(right_fixed)),
-        DECIMAL_SCALE,
-    ))
+    let total = U256::from(left_fixed.saturating_add(right_fixed));
+    if exceeds_cedar_decimal_ceiling(total, DECIMAL_SCALE) {
+        return None;
+    }
+    Some(fixed_to_decimal(total, DECIMAL_SCALE))
+}
+
+fn exceeds_cedar_decimal_ceiling(value: U256, scale: u32) -> bool {
+    value > cedar_decimal_ceiling_fixed(scale)
+}
+
+fn cedar_decimal_ceiling_fixed(scale: u32) -> U256 {
+    let scale_factor = U256::from(10u64).pow(U256::from(scale));
+    U256::from(HUMAN_INT_CEILING)
+        .saturating_mul(scale_factor)
+        .saturating_add(U256::from(CEDAR_DECIMAL_CEILING_FRACTION))
 }
 
 pub(super) fn decimal_to_fixed(s: &str, scale: u32) -> Option<u128> {
@@ -146,6 +164,26 @@ mod tests {
     fn multiply_decimal_strings_returns_zero_for_malformed_input() {
         assert_eq!(multiply_decimal_strings("not-a-u256", 6, "1.00"), "0.0000");
         assert_eq!(multiply_decimal_strings("1000000", 6, "bad"), "0.0000");
+    }
+
+    #[test]
+    fn try_multiply_decimal_strings_returns_none_above_cedar_decimal_ceiling() {
+        assert_eq!(
+            try_multiply_decimal_strings(
+                "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                18,
+                "1.0000"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn try_add_decimal_strings_returns_none_above_cedar_decimal_ceiling() {
+        assert_eq!(
+            try_add_decimal_strings("922337203685477.5807", "0.0001"),
+            None
+        );
     }
 
     #[test]

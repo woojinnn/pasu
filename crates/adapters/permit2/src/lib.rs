@@ -1,0 +1,505 @@
+//! Permit2 EIP-712 signature adapter.
+
+#![deny(unsafe_code)]
+#![deny(unused_must_use)]
+#![deny(rustdoc::bare_urls)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![warn(missing_docs)]
+#![warn(unreachable_pub)]
+#![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
+#![warn(missing_debug_implementations)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::dbg_macro)]
+#![warn(clippy::todo)]
+#![cfg_attr(not(test), warn(clippy::expect_used))]
+#![cfg_attr(not(test), warn(clippy::panic))]
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
+
+use alloy_primitives::{U256, U512};
+use policy_engine::prelude::*;
+use serde_json::{Map, Value};
+use std::cmp::Ordering;
+use std::collections::HashMap;
+
+/// Permit2 canonical deployment address.
+pub const PERMIT2_ADDRESS: &str = "0x000000000022d473030f116ddee9f6b43ac78ba3";
+
+const UINT160_MAX_DEC: &str = "1461501637330902918203684832716283019655932542975";
+const UINT256_MAX_DEC: &str =
+    "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+const HUMAN_DECIMAL_SCALE: u64 = 10_000;
+const HUMAN_INT_CEILING: u128 = 922_337_203_685_477;
+const CEDAR_DECIMAL_CEILING_FRACTION: u64 = 5_807;
+
+/// Permit2 EIP-712 adapter.
+#[derive(Debug, Clone)]
+pub struct Permit2Adapter {
+    chain_ids: Vec<ChainId>,
+    tokens: TokenLookup,
+}
+
+impl Permit2Adapter {
+    /// Construct an adapter for mainnet and common L2 Permit2 deployments.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            chain_ids: vec![1, 137],
+            tokens: TokenLookup::with_default_tokens(),
+        }
+    }
+
+    /// Returns this adapter after adding `token` to its lookup.
+    #[must_use]
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.tokens.add(token);
+        self
+    }
+}
+
+impl Default for Permit2Adapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SignatureAdapter for Permit2Adapter {
+    fn id(&self) -> AdapterId {
+        static_adapter_id("permit2/eip712@0.1.0")
+    }
+
+    fn match_keys(&self) -> Vec<SignatureMatchKey> {
+        let verifying_contract = permit2_address();
+        self.chain_ids
+            .iter()
+            .flat_map(|chain_id| {
+                ["PermitSingle", "PermitBatch", "PermitTransferFrom"]
+                    .into_iter()
+                    .map({
+                        let verifying_contract = verifying_contract.clone();
+                        move |primary_type| {
+                            SignatureMatchKey::exact(
+                                *chain_id,
+                                verifying_contract.clone(),
+                                primary_type,
+                            )
+                        }
+                    })
+            })
+            .collect()
+    }
+
+    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError> {
+        let decoded = match sig.primary_type() {
+            "PermitSingle" => self.decode_single(sig)?,
+            "PermitBatch" => self.decode_batch(sig)?,
+            "PermitTransferFrom" => self.decode_transfer(sig)?,
+            other => {
+                return Err(AdapterError::BadCalldata(format!(
+                    "unsupported Permit2 primaryType {other}"
+                )));
+            }
+        };
+        Ok(Action::Permit2(decoded))
+    }
+}
+
+impl Permit2Adapter {
+    fn decode_single(&self, sig: &SignatureRequest) -> Result<Permit2Action, AdapterError> {
+        let message = object(&sig.typed_data.message, "message")?;
+        let details = object_field(message, "details")?;
+        let approval = self.approval_from_details(sig.chain_id, details)?;
+        let spender = address_field(message, "spender")?;
+        let sig_deadline = u64_field(message, "sigDeadline")?;
+        self.action_from_parts(
+            sig,
+            Permit2PermitKind::PermitSingle,
+            spender,
+            sig_deadline,
+            vec![approval],
+        )
+    }
+
+    fn decode_batch(&self, sig: &SignatureRequest) -> Result<Permit2Action, AdapterError> {
+        let message = object(&sig.typed_data.message, "message")?;
+        let details = array_field(message, "details")?;
+        let approvals = details
+            .iter()
+            .map(|value| {
+                object(value, "details[]")
+                    .and_then(|item| self.approval_from_details(sig.chain_id, item))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let spender = address_field(message, "spender")?;
+        let sig_deadline = u64_field(message, "sigDeadline")?;
+        self.action_from_parts(
+            sig,
+            Permit2PermitKind::PermitBatch,
+            spender,
+            sig_deadline,
+            approvals,
+        )
+    }
+
+    fn decode_transfer(&self, sig: &SignatureRequest) -> Result<Permit2Action, AdapterError> {
+        let message = object(&sig.typed_data.message, "message")?;
+        let permitted = object_field(message, "permitted")?;
+        let token = self
+            .tokens
+            .get(sig.chain_id, &address_field(permitted, "token")?);
+        let amount = u256_string_field(permitted, "amount")?;
+        let nonce = u256_string_field(message, "nonce")?;
+        let deadline = u64_field(message, "deadline")?;
+        let spender = address_field(message, "spender")?;
+        let approval = Permit2Approval {
+            token,
+            amount,
+            expiration: deadline,
+            nonce,
+        };
+        self.action_from_parts(
+            sig,
+            Permit2PermitKind::PermitTransferFrom,
+            spender,
+            deadline,
+            vec![approval],
+        )
+    }
+
+    fn approval_from_details(
+        &self,
+        chain_id: ChainId,
+        details: &Map<String, Value>,
+    ) -> Result<Permit2Approval, AdapterError> {
+        let token = self.tokens.get(chain_id, &address_field(details, "token")?);
+        Ok(Permit2Approval {
+            token,
+            amount: u256_string_field(details, "amount")?,
+            expiration: u64_field(details, "expiration")?,
+            nonce: u256_string_field(details, "nonce")?,
+        })
+    }
+
+    fn action_from_parts(
+        &self,
+        sig: &SignatureRequest,
+        permit_kind: Permit2PermitKind,
+        spender: Address,
+        sig_deadline: u64,
+        approvals: Vec<Permit2Approval>,
+    ) -> Result<Permit2Action, AdapterError> {
+        let representative = representative_approval(&approvals)?;
+        let is_unlimited = approvals
+            .iter()
+            .any(|approval| approval.amount == UINT160_MAX_DEC);
+        let nonce_valid = approvals
+            .iter()
+            .all(|approval| approval.nonce != UINT256_MAX_DEC);
+
+        Ok(Permit2Action {
+            signer: sig.signer.clone(),
+            chain_id: sig.chain_id,
+            domain_chain_id: sig.typed_data.domain.chain_id,
+            verifying_contract: sig.typed_data.domain.verifying_contract.clone(),
+            primary_type: sig.typed_data.primary_type.clone(),
+            permit_kind,
+            spender,
+            token: representative.token.clone(),
+            amount: representative.amount.clone(),
+            expiration: representative.expiration,
+            sig_deadline,
+            nonce: representative.nonce.clone(),
+            approvals,
+            is_unlimited,
+            nonce_valid,
+            total_approved_usd: None,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TokenLookup {
+    tokens: HashMap<(ChainId, String), Token>,
+}
+
+impl TokenLookup {
+    fn with_default_tokens() -> Self {
+        let mut lookup = Self {
+            tokens: HashMap::new(),
+        };
+        lookup.add(token(
+            1,
+            "0xdac17f958d2ee523a2206206994597c13d831ec7",
+            "USDT",
+            6,
+        ));
+        lookup.add(token(
+            1,
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "USDC",
+            6,
+        ));
+        lookup.add(token(
+            1,
+            "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "WETH",
+            18,
+        ));
+        lookup.add(token(
+            137,
+            "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+            "USDC",
+            6,
+        ));
+        lookup.add(token(
+            137,
+            "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+            "USDT",
+            6,
+        ));
+        lookup.add(token(
+            137,
+            "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619",
+            "WETH",
+            18,
+        ));
+        lookup
+    }
+
+    fn add(&mut self, token: Token) {
+        self.tokens.insert(
+            (token.chain_id, token.address.as_str().to_lowercase()),
+            token,
+        );
+    }
+
+    fn get(&self, chain_id: ChainId, address: &Address) -> Token {
+        self.tokens
+            .get(&(chain_id, address.as_str().to_lowercase()))
+            .cloned()
+            .unwrap_or_else(|| Token {
+                chain_id,
+                address: address.clone(),
+                symbol: "UNKNOWN".into(),
+                decimals: 18,
+                is_native: false,
+            })
+    }
+}
+
+fn token(chain_id: ChainId, address: &str, symbol: &str, decimals: u32) -> Token {
+    Token {
+        chain_id,
+        address: Address::new(address).unwrap_or_else(|err| {
+            panic_static(&format!("invalid static token address {address}: {err}"))
+        }),
+        symbol: symbol.into(),
+        decimals,
+        is_native: false,
+    }
+}
+
+fn permit2_address() -> Address {
+    Address::new(PERMIT2_ADDRESS)
+        .unwrap_or_else(|err| panic_static(&format!("invalid Permit2 address: {err}")))
+}
+
+fn representative_approval(
+    approvals: &[Permit2Approval],
+) -> Result<&Permit2Approval, AdapterError> {
+    approvals
+        .iter()
+        .max_by(|left, right| cmp_approval_human_amount(left, right))
+        .ok_or_else(|| AdapterError::BadCalldata("Permit2 approval list is empty".into()))
+}
+
+#[derive(Debug, Clone, Copy)]
+struct HumanAmountKey {
+    raw: U512,
+    scale: U512,
+    clamped: bool,
+}
+
+fn cmp_approval_human_amount(left: &Permit2Approval, right: &Permit2Approval) -> Ordering {
+    let left = human_amount_key(left);
+    let right = human_amount_key(right);
+
+    match (left.clamped, right.clamped) {
+        (true, false) => return Ordering::Greater,
+        (false, true) => return Ordering::Less,
+        _ => {}
+    }
+
+    let left_human = left.raw.saturating_mul(right.scale);
+    let right_human = right.raw.saturating_mul(left.scale);
+    left_human
+        .cmp(&right_human)
+        .then_with(|| left.raw.cmp(&right.raw))
+}
+
+fn human_amount_key(approval: &Permit2Approval) -> HumanAmountKey {
+    let raw = U512::from_str_radix(&approval.amount, 10).unwrap_or(U512::ZERO);
+    let scale = decimal_scale(approval.token.decimals);
+    HumanAmountKey {
+        raw,
+        scale,
+        clamped: human_decimal_clamps(raw, scale),
+    }
+}
+
+fn human_decimal_clamps(raw: U512, scale: U512) -> bool {
+    let integer_part = raw / scale;
+    let ceiling_integer = U512::from(HUMAN_INT_CEILING);
+    if integer_part > ceiling_integer {
+        return true;
+    }
+
+    let fractional_raw = raw % scale;
+    let fractional_part = fractional_raw.saturating_mul(U512::from(HUMAN_DECIMAL_SCALE)) / scale;
+
+    integer_part == ceiling_integer && fractional_part > U512::from(CEDAR_DECIMAL_CEILING_FRACTION)
+}
+
+fn decimal_scale(decimals: u32) -> U512 {
+    let mut scale = U512::from(1u64);
+    for _ in 0..decimals {
+        scale = scale.saturating_mul(U512::from(10u64));
+    }
+    scale
+}
+
+fn object<'a>(value: &'a Value, label: &str) -> Result<&'a Map<String, Value>, AdapterError> {
+    value
+        .as_object()
+        .ok_or_else(|| AdapterError::BadCalldata(format!("{label} must be an object")))
+}
+
+fn object_field<'a>(
+    object: &'a Map<String, Value>,
+    field: &str,
+) -> Result<&'a Map<String, Value>, AdapterError> {
+    object
+        .get(field)
+        .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))
+        .and_then(|value| self::object(value, field))
+}
+
+fn array_field<'a>(
+    object: &'a Map<String, Value>,
+    field: &str,
+) -> Result<&'a [Value], AdapterError> {
+    object
+        .get(field)
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .ok_or_else(|| AdapterError::BadCalldata(format!("{field} must be an array")))
+}
+
+fn address_field(object: &Map<String, Value>, field: &str) -> Result<Address, AdapterError> {
+    let value = stringish_field(object, field)?;
+    Address::new(&value).map_err(AdapterError::BadCalldata)
+}
+
+fn u64_field(object: &Map<String, Value>, field: &str) -> Result<u64, AdapterError> {
+    let value = u256_string_field(object, field)?;
+    value
+        .parse::<u64>()
+        .map_err(|err| AdapterError::BadCalldata(format!("{field} does not fit u64: {err}")))
+}
+
+fn u256_string_field(object: &Map<String, Value>, field: &str) -> Result<String, AdapterError> {
+    let value = stringish_field(object, field)?;
+    U256::from_str_radix(&value, 10)
+        .map(|parsed| parsed.to_string())
+        .map_err(|err| AdapterError::BadCalldata(format!("{field} must be uint256: {err}")))
+}
+
+fn stringish_field(object: &Map<String, Value>, field: &str) -> Result<String, AdapterError> {
+    let value = object
+        .get(field)
+        .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))?;
+    match value {
+        Value::String(s) => Ok(s.clone()),
+        Value::Number(n) => Ok(n.to_string()),
+        _ => Err(AdapterError::BadCalldata(format!(
+            "{field} must be a string or number"
+        ))),
+    }
+}
+
+#[allow(clippy::panic)]
+fn static_adapter_id(raw: &str) -> AdapterId {
+    AdapterId::new(raw).unwrap_or_else(|err| panic!("invalid static adapter id {raw}: {err}"))
+}
+
+#[allow(clippy::panic)]
+fn panic_static(message: &str) -> ! {
+    panic!("{message}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn token_fixture(chain_id: ChainId, address: &str, symbol: &str, decimals: u32) -> Token {
+        Token {
+            chain_id,
+            address: Address::new(address).unwrap(),
+            symbol: symbol.into(),
+            decimals,
+            is_native: false,
+        }
+    }
+
+    fn approval(token: Token, amount: &str) -> Permit2Approval {
+        Permit2Approval {
+            token,
+            amount: amount.into(),
+            expiration: 4600,
+            nonce: "1".into(),
+        }
+    }
+
+    #[test]
+    fn default_tokens_resolve_polygon_usdc() {
+        let lookup = TokenLookup::with_default_tokens();
+        let token = lookup.get(
+            137,
+            &Address::new("0x2791bca1f2de4661ed88a30c99a7a9449aa84174").unwrap(),
+        );
+
+        assert_eq!(token.decimals, 6);
+        assert_ne!(token.symbol, "UNKNOWN");
+    }
+
+    #[test]
+    fn representative_approval_uses_largest_human_amount() {
+        let weth = token_fixture(1, "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18);
+        let usdc = token_fixture(1, "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6);
+        let approvals = vec![
+            approval(weth, "10000000000000000"),
+            approval(usdc, "50000000"),
+        ];
+
+        let representative = representative_approval(&approvals).unwrap();
+
+        assert_eq!(representative.token.symbol, "USDC");
+        assert_eq!(representative.amount, "50000000");
+    }
+
+    #[test]
+    fn representative_approval_prefers_human_decimal_clamp() {
+        let weth = token_fixture(1, "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18);
+        let usdc = token_fixture(1, "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6);
+        let approvals = vec![
+            approval(weth, "1000000000000000000000000000000"),
+            approval(usdc, "1000000000000000000000000"),
+        ];
+
+        let representative = representative_approval(&approvals).unwrap();
+
+        assert_eq!(representative.token.symbol, "USDC");
+    }
+}

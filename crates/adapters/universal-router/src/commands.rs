@@ -263,7 +263,7 @@ pub(crate) fn merge_dex_actions(
         let RoutedAction { action, meta } = routed;
         let dex = match action {
             Action::Dex(dex) => dex,
-            other @ Action::Other(_) => {
+            other => {
                 return Err(AdapterError::BadCalldata(format!(
                     "Universal Router routed non-Dex action: {}",
                     other.kind()

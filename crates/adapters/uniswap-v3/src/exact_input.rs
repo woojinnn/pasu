@@ -224,7 +224,7 @@ mod tests {
                 assert_eq!(d.oracle_requirements[1].raw_amount, "0");
                 assert_eq!(d.trace.steps, vec!["exactInput"]);
             }
-            Action::Other(_) => panic!("expected dex"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 
@@ -274,7 +274,7 @@ mod tests {
                 assert_eq!(d.facts.output_tokens[0].symbol, "WETH");
                 assert_eq!(d.facts.max_fee_bps, Some(30));
             }
-            Action::Other(_) => panic!("expected dex"),
+            other => panic!("expected dex, got {other:?}"),
         }
     }
 }

@@ -11,14 +11,17 @@
 //! from a snapshot where that reservation is visible. `evaluate` instead
 //! projects the same window stats on demand in a single call.
 
-use crate::core::{Action, OtherAction, TransactionRequest};
+use crate::core::{
+    Action, Eip712OtherAction, OtherAction, Request, SignatureRequest, TransactionRequest,
+};
 use crate::host::stat_windows::ReservationId;
 use crate::host::HostCapabilities;
 use crate::lowering::{
-    compute_dex_window_deltas, enrich_dex_action_base, enrich_dex_window_stats, request_from_action,
+    compute_dex_window_deltas, enrich_dex_action_base, enrich_dex_window_stats,
+    enrich_signature_action, request_from_action, request_from_action_with_host,
 };
 use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, RequestKind, Verdict};
-use crate::registry::{AdapterRegistry, ResolverOutcome};
+use crate::registry::{AdapterRegistry, ResolverOutcome, SignatureRegistry};
 use thiserror::Error;
 
 /// Pipeline execution failures.
@@ -44,6 +47,8 @@ pub enum PipelineError {
 pub struct Pipeline<'a, R: AdapterRegistry + ?Sized> {
     /// Adapter registry used to resolve calldata.
     pub registry: &'a R,
+    /// Optional signature registry used to resolve EIP-712 typed data.
+    pub signature_registry: Option<&'a dyn SignatureRegistry>,
     /// Host capabilities used for enrichment.
     pub host: HostCapabilities<'a>,
     /// Policy engine used for evaluation.
@@ -75,9 +80,20 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     ) -> Self {
         Self {
             registry,
+            signature_registry: None,
             host,
             policies,
         }
+    }
+
+    /// Attach a signature registry for EIP-712 evaluation.
+    #[must_use]
+    pub const fn with_signature_registry(
+        mut self,
+        sig_registry: &'a dyn SignatureRegistry,
+    ) -> Self {
+        self.signature_registry = Some(sig_registry);
+        self
     }
 
     fn build_action(&self, tx: &TransactionRequest) -> Result<Action, PipelineError> {
@@ -129,7 +145,7 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
             enrich_dex_window_stats(dex, &self.host, &[]);
         }
 
-        let request = request_from_action(&action);
+        let request = request_from_action(&action)?;
         let verdict = match self.evaluate_one_request(&request) {
             Ok(verdict) => verdict,
             Err(error) => {
@@ -151,13 +167,23 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
         })
     }
 
-    /// Evaluate a transaction without creating a reservation.
+    /// Evaluate a request without creating a reservation.
     ///
     /// # Errors
     ///
     /// Returns an error when adapter resolution/building or policy evaluation
     /// fails.
-    pub fn evaluate(&self, tx: &TransactionRequest) -> Result<Verdict, PipelineError> {
+    pub fn evaluate<'r, I>(&self, request: I) -> Result<Verdict, PipelineError>
+    where
+        I: Into<PipelineRequest<'r>>,
+    {
+        match request.into() {
+            PipelineRequest::Tx(tx) => self.evaluate_tx(tx),
+            PipelineRequest::Sig(sig) => self.evaluate_sig(sig),
+        }
+    }
+
+    fn evaluate_tx(&self, tx: &TransactionRequest) -> Result<Verdict, PipelineError> {
         let mut action = self.build_action(tx)?;
 
         if let Action::Dex(dex) = &mut action {
@@ -166,8 +192,29 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
             enrich_dex_window_stats(dex, &self.host, &deltas);
         }
 
-        let request = request_from_action(&action);
+        let request = request_from_action(&action)?;
         Ok(self.evaluate_one_request(&request)?)
+    }
+
+    fn evaluate_sig(&self, sig: &SignatureRequest) -> Result<Verdict, PipelineError> {
+        let mut action = self.build_signature_action(sig)?;
+        enrich_signature_action(&mut action, &self.host);
+
+        let request = request_from_action_with_host(&action, &self.host)?;
+        Ok(self.evaluate_one_request(&request)?)
+    }
+
+    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, PipelineError> {
+        if let Some(adapter) = self
+            .signature_registry
+            .and_then(|registry| registry.resolve(sig))
+        {
+            return adapter
+                .build(sig)
+                .map_err(|e| PipelineError::AdapterBuild(e.to_string()));
+        }
+
+        Ok(Action::Eip712Other(Eip712OtherAction::from_request(sig)))
     }
 
     fn evaluate_one_request(&self, request: &PolicyRequest) -> Result<Verdict, PolicyError> {
@@ -178,6 +225,36 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     fn release_reservation(&self, reservation: Option<ReservationId>) {
         if let (Some(id), Some(stats)) = (reservation, self.host.stats()) {
             stats.release(id);
+        }
+    }
+}
+
+/// Borrowed request accepted by [`Pipeline::evaluate`].
+#[derive(Debug, Clone, Copy)]
+pub enum PipelineRequest<'a> {
+    /// Transaction evaluation request.
+    Tx(&'a TransactionRequest),
+    /// Signature evaluation request.
+    Sig(&'a SignatureRequest),
+}
+
+impl<'a> From<&'a TransactionRequest> for PipelineRequest<'a> {
+    fn from(value: &'a TransactionRequest) -> Self {
+        Self::Tx(value)
+    }
+}
+
+impl<'a> From<&'a SignatureRequest> for PipelineRequest<'a> {
+    fn from(value: &'a SignatureRequest) -> Self {
+        Self::Sig(value)
+    }
+}
+
+impl<'a> From<&'a Request> for PipelineRequest<'a> {
+    fn from(value: &'a Request) -> Self {
+        match value {
+            Request::Tx(tx) => Self::Tx(tx),
+            Request::Sig(sig) => Self::Sig(sig),
         }
     }
 }
