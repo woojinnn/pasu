@@ -71,7 +71,7 @@ impl<'a> HostCapabilities<'a> {
     /// wall-clock provider.
     #[cfg(test)]
     #[must_use]
-    pub fn panic_on_default_signature_clock(mut self) -> Self {
+    pub const fn panic_on_default_signature_clock(mut self) -> Self {
         self.panic_on_default_signature_clock = true;
         self
     }
@@ -129,11 +129,10 @@ impl<'a> HostCapabilities<'a> {
 
     #[cfg(test)]
     pub(crate) fn assert_signature_clock_not_default(&self) {
-        if self.panic_on_default_signature_clock && self.uses_default_clock {
-            panic!(
-                "signature pipeline test evaluated with default SystemClock; use MockClock::with_fixed(t)"
-            );
-        }
+        assert!(
+            !(self.panic_on_default_signature_clock && self.uses_default_clock),
+            "signature pipeline test evaluated with default SystemClock; use MockClock::with_fixed(t)"
+        );
     }
 }
 

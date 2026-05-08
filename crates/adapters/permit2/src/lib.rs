@@ -262,6 +262,7 @@ impl Permit2Adapter {
         )
     }
 
+    #[allow(clippy::unused_self)]
     fn witness_present(
         &self,
         message: &Map<String, Value>,
@@ -288,6 +289,7 @@ impl Permit2Adapter {
         })
     }
 
+    #[allow(clippy::unused_self)]
     fn action_from_parts(
         &self,
         sig: &SignatureRequest,

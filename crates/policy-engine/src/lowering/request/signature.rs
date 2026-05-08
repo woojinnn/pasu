@@ -41,17 +41,14 @@ pub(super) fn eip2612_request(
     ))
 }
 
-pub(super) fn eip712_other_request(
-    action: &Eip712OtherAction,
-    now_ts: u64,
-) -> Result<PolicyRequest, PolicyError> {
-    Ok(PolicyRequest::new(
+pub(super) fn eip712_other_request(action: &Eip712OtherAction, now_ts: u64) -> PolicyRequest {
+    PolicyRequest::new(
         principal(action.signer.as_str()),
         r#"Action::"signature.eip712_other""#,
         r#"Protocol::"signature.eip712_other""#,
         entities(action.signer.as_str(), "signature.eip712_other"),
         eip712_other_context(action, now_ts),
-    ))
+    )
 }
 
 fn principal(signer: &str) -> String {

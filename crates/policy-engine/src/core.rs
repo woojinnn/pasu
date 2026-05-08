@@ -281,6 +281,9 @@ impl Permit2PermitKind {
     }
 
     /// Parse a Permit2 primary type label, case-insensitively.
+    // `str::eq_ignore_ascii_case` is not const-callable, so this fn cannot be
+    // const despite the clippy suggestion.
+    #[allow(clippy::missing_const_for_fn)]
     #[must_use]
     pub fn from_primary_type(s: &str) -> Option<Self> {
         if s.eq_ignore_ascii_case(Self::PermitSingle.as_str()) {
@@ -507,6 +510,9 @@ impl SignatureRequest {
 }
 
 /// EIP-712 typed-data payload.
+// `serde_json::Value` carries an f64 number variant, so `Eq` is intentionally
+// not derived — the clippy suggestion to add `Eq` is a false positive here.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Eip712TypedData {
@@ -842,7 +848,7 @@ fn fixed_bytes_width(base: &str) -> Option<u16> {
 }
 
 fn valid_integer_width(width: u16) -> bool {
-    (8..=256).contains(&width) && width % 8 == 0
+    (8..=256).contains(&width) && width.is_multiple_of(8)
 }
 
 fn is_custom_type_name(base: &str) -> bool {
@@ -871,10 +877,7 @@ pub struct Eip712Domain {
 }
 
 fn json_to_compact_string(value: &serde_json::Value) -> String {
-    match serde_json::to_string(value) {
-        Ok(raw) => raw,
-        Err(_) => "null".into(),
-    }
+    serde_json::to_string(value).unwrap_or_else(|_| "null".into())
 }
 
 impl TransactionRequest {
