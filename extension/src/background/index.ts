@@ -30,7 +30,10 @@ Browser.runtime.onConnect.addListener((port) => {
   });
 });
 
-async function handleMessage(message: Message, port: Browser.Runtime.Port): Promise<void> {
+async function handleMessage(
+  message: Message,
+  port: Browser.Runtime.Port,
+): Promise<void> {
   // Tx-hash reports come in over the same port from the inpage proxy.
   if (message.data.type === 'tx-hash-report') {
     recordTxHash(message.data.requestId, message.data.txHash).catch((err) => {
@@ -49,9 +52,23 @@ async function handleMessage(message: Message, port: Browser.Runtime.Port): Prom
     return;
   }
 
-  const { ok } = await decideMessage(message);
+  const { ok } = await decideMessage(message, {
+    onAwaitingUser: () => {
+      try {
+        port.postMessage({
+          requestId: message.requestId,
+          kind: 'awaiting-user',
+        });
+      } catch {
+        /* dApp tab gone */
+      }
+    },
+  });
   if (!message.data.bypassed) {
-    const response: MessageResponse = { requestId: message.requestId, data: ok };
+    const response: MessageResponse = {
+      requestId: message.requestId,
+      data: ok,
+    };
     try {
       port.postMessage(response);
     } catch {

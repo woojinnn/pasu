@@ -28,14 +28,30 @@ import {
 import {
   isTransaction,
   isTypedSignature,
+  isUntypedSignature,
   type Message,
 } from '@lib/types';
+import type { OracleEntry } from './types/host-snapshot';
 
 const HARD_TIMEOUT_MS = 3_000;
 
 interface DecisionResult {
   ok: boolean;
   verdict: VerdictDto;
+}
+
+interface DecisionOptions {
+  onAwaitingUser?: () => void;
+}
+
+interface LifecycleResult {
+  verdict: VerdictDto;
+  dexWindowEntries?: WindowEntryDelta[];
+}
+
+interface WindowEntryDelta {
+  name: string;
+  value: string;
 }
 
 /**
@@ -49,11 +65,17 @@ interface DecisionResult {
  */
 const actorChain = new Map<string, Promise<unknown>>();
 
-function withActorLock<T>(actor: string | undefined, fn: () => Promise<T>): Promise<T> {
+function withActorLock<T>(
+  actor: string | undefined,
+  fn: () => Promise<T>,
+): Promise<T> {
   if (!actor) return fn();
   const key = actor.toLowerCase();
   const prev = actorChain.get(key) ?? Promise.resolve();
-  const next = prev.then(() => fn(), () => fn());
+  const next = prev.then(
+    () => fn(),
+    () => fn(),
+  );
   actorChain.set(
     key,
     next.finally(() => {
@@ -64,12 +86,20 @@ function withActorLock<T>(actor: string | undefined, fn: () => Promise<T>): Prom
   return next;
 }
 
-export async function decideMessage(message: Message): Promise<DecisionResult> {
+export async function decideMessage(
+  message: Message,
+  options: DecisionOptions = {},
+): Promise<DecisionResult> {
   await ensureDefaultPoliciesInstalled();
-  return withActorLock(inferActor(message), () => decideInner(message));
+  return withActorLock(inferActor(message), () =>
+    decideInner(message, options),
+  );
 }
 
-async function decideInner(message: Message): Promise<DecisionResult> {
+async function decideInner(
+  message: Message,
+  options: DecisionOptions,
+): Promise<DecisionResult> {
   const pending: PendingRequest = {
     requestId: message.requestId,
     hostname: message.data.hostname,
@@ -81,68 +111,98 @@ async function decideInner(message: Message): Promise<DecisionResult> {
   await pendingPut(pending);
 
   try {
-    const { result: verdict, timedOut } = await withTimeout(
+    const { result: lifecycle } = await withTimeout(
       runLifecycle(message),
       HARD_TIMEOUT_MS,
-      buildTimeoutVerdict(),
+      { verdict: buildTimeoutVerdict() },
     );
-    if (timedOut) {
-      await Browser.storage.session.set({
-        [`requests:rejected:${message.requestId}`]: true,
-      });
-    }
+    const { verdict } = lifecycle;
 
-    await auditAppend({
-      requestId: message.requestId,
-      hostname: message.data.hostname,
-      type: pending.type,
-      verdict: verdict.kind,
-      matchedPolicies:
-        verdict.matched?.map((m) => ({ id: m.policy_id, severity: m.severity })) ?? [],
-      decidedAtMs: Date.now(),
-    });
-
-    if (verdict.kind === 'pass') return { ok: true, verdict };
-    if (verdict.kind === 'fail') {
+    let ok = false;
+    if (verdict.kind === 'pass') {
+      await reserveDexDeltaIfNeeded(message, lifecycle.dexWindowEntries);
+      ok = true;
+    } else if (verdict.kind === 'fail') {
       // Surface the matched policies in a popup so the user understands
       // why the dApp's transaction returned 4001. The popup is
       // informational — Fail decisions don't take user input.
       void openVerdictWindow(message.requestId, message.data.hostname, verdict);
-      return { ok: false, verdict };
+    } else {
+      // Warn: open the modal and await the user's Trust-and-proceed / Cancel.
+      ok = await openVerdictWindowAndAwait(
+        message.requestId,
+        message.data.hostname,
+        verdict,
+        options.onAwaitingUser,
+      );
+      if (ok) {
+        await reserveDexDeltaIfNeeded(message, lifecycle.dexWindowEntries);
+      }
     }
-    // Warn: open the modal and await the user's Trust-and-proceed / Cancel.
-    const userOk = await openVerdictWindowAndAwait(
-      message.requestId,
-      message.data.hostname,
-      verdict,
-    );
-    return { ok: userOk, verdict };
+
+    await appendAudit(message, pending.type, verdict);
+    return { ok, verdict };
   } catch (err) {
     const verdict = engineErrorVerdict(err);
-    await auditAppend({
-      requestId: message.requestId,
-      hostname: message.data.hostname,
-      type: pending.type,
-      verdict: 'fail',
-      matchedPolicies: [{ id: '__engine::error', severity: 'deny' }],
-      decidedAtMs: Date.now(),
-    });
+    await appendAudit(message, pending.type, verdict);
     return { ok: false, verdict };
   } finally {
     await pendingDelete(message.requestId);
   }
 }
 
-async function runLifecycle(message: Message): Promise<VerdictDto> {
+async function appendAudit(
+  message: Message,
+  type: PendingRequest['type'],
+  verdict: VerdictDto,
+): Promise<void> {
+  await auditAppend({
+    requestId: message.requestId,
+    hostname: message.data.hostname,
+    type,
+    verdict: verdict.kind,
+    matchedPolicies:
+      verdict.matched?.map((m) => ({
+        id: m.policy_id,
+        severity: m.severity,
+      })) ?? [],
+    decidedAtMs: Date.now(),
+  });
+}
+
+async function reserveDexDeltaIfNeeded(
+  message: Message,
+  windowEntries: WindowEntryDelta[] | undefined,
+): Promise<void> {
+  const actor = inferActor(message);
+  if (!windowEntries || !actor || !isTransaction(message)) return;
+  await reservePending({
+    requestId: message.requestId,
+    chainId: message.data.chainId,
+    actor,
+    windowEntries,
+    enqueuedAtMs: Date.now(),
+  });
+}
+
+async function runLifecycle(message: Message): Promise<LifecycleResult> {
   const requestJson = encodeRequestForEngine(message);
   if (!requestJson) {
-    return engineErrorVerdict(
-      new EngineError('unsupported', 'untyped signatures are not yet evaluable'),
-    );
+    if (isUntypedSignature(message)) {
+      return { verdict: unsupportedUntypedSignatureVerdict() };
+    }
+    return {
+      verdict: engineErrorVerdict(
+        new EngineError('unsupported', 'request type is not yet evaluable'),
+      ),
+    };
   }
 
   // Phase A: build action (no host needed).
-  const actionParsed = (await buildAction(JSON.parse(requestJson))) as Record<string, unknown>;
+  const actionParsed = (await buildAction(JSON.parse(requestJson))) as Record<
+    string,
+    unknown
+  >;
 
   // Phase B: derive Tier-1 plan and fetch facts.
   const plan = (await tier1FactPlan(actionParsed)) as Tier1Plan;
@@ -154,23 +214,30 @@ async function runLifecycle(message: Message): Promise<VerdictDto> {
   // Merge committed + pending window state for the actor.
   const actor = inferActor(message);
   const actorLower = actor ? actor.toLowerCase() : null;
-  const windowsMap = new Map<string, bigint>();
+  const windowsMap = new Map<string, string>();
   if (actorLower) {
     for (const e of await committedForActor(actorLower)) {
-      windowsMap.set(e.name, BigInt(e.value));
+      windowsMap.set(e.name, e.value);
     }
     for (const e of await pendingForActor(actorLower)) {
-      windowsMap.set(e.name, (windowsMap.get(e.name) ?? 0n) + BigInt(e.value));
+      const previous = windowsMap.get(e.name);
+      windowsMap.set(
+        e.name,
+        previous === undefined
+          ? e.value
+          : addWindowValues(e.name, previous, e.value),
+      );
     }
   }
   for (const k of tier2.keys) {
-    if (!windowsMap.has(k.name)) windowsMap.set(k.name, 0n);
+    if (!windowsMap.has(k.name))
+      windowsMap.set(k.name, zeroWindowValue(k.name));
   }
   const windows = actorLower
     ? [...windowsMap.entries()].map(([name, value]) => ({
         actor: actorLower,
         name,
-        value: value.toString(),
+        value,
       }))
     : [];
 
@@ -178,29 +245,8 @@ async function runLifecycle(message: Message): Promise<VerdictDto> {
 
   // Phase D: evaluate.
   const verdict = await evaluate(JSON.parse(requestJson), snapshot);
-
-  // Pass / Warn → reserve pending DEX deltas.
-  const rejectedKey = `requests:rejected:${message.requestId}`;
-  const rejected = ((await Browser.storage.session.get(rejectedKey)) as Record<string, unknown>)[
-    rejectedKey
-  ];
-  if (verdict.kind !== 'fail' && actor && !rejected && isTransaction(message)) {
-    const dexUsd = extractDexInputUsd(actionParsed);
-    if (dexUsd) {
-      await reservePending({
-        requestId: message.requestId,
-        chainId: message.data.chainId,
-        actor,
-        windowEntries: [
-          { name: 'swapVolumeUsd24h', value: dexUsd },
-          { name: 'swapCount24h', value: '1' },
-        ],
-        enqueuedAtMs: Date.now(),
-      });
-    }
-  }
-
-  return verdict;
+  const dexWindowEntries = computeDexWindowEntries(actionParsed, tier1.oracle);
+  return dexWindowEntries ? { verdict, dexWindowEntries } : { verdict };
 }
 
 function inferActor(message: Message): string | undefined {
@@ -209,13 +255,129 @@ function inferActor(message: Message): string | undefined {
   return undefined;
 }
 
-function extractDexInputUsd(actionParsed: Record<string, unknown>): string | undefined {
-  const dex = actionParsed.dex as Record<string, unknown> | undefined;
+function computeDexWindowEntries(
+  actionParsed: Record<string, unknown>,
+  oracleEntries: OracleEntry[],
+): WindowEntryDelta[] | undefined {
+  const dex = asRecord(actionParsed.dex);
   if (!dex) return undefined;
-  const facts = dex.facts as Record<string, unknown> | undefined;
-  const total = facts?.totalInputUsd as Record<string, unknown> | undefined;
-  if (total && typeof total.value === 'string') return total.value;
-  return undefined;
+  const dexInputUsd = computeDexInputUsd(dex, oracleEntries);
+  const entries: WindowEntryDelta[] = [];
+  if (dexInputUsd) {
+    entries.push({ name: 'swapVolumeUsd24h', value: dexInputUsd });
+  }
+  entries.push({ name: 'swapCount24h', value: '1' });
+  return entries;
+}
+
+function computeDexInputUsd(
+  dex: Record<string, unknown>,
+  oracleEntries: OracleEntry[],
+): string | undefined {
+  const requirements = asArray(dex.oracle_requirements);
+  const prices = new Map(
+    oracleEntries.map((entry) => [
+      entry.token_key.toLowerCase(),
+      entry.usd_per_unit,
+    ]),
+  );
+
+  let total = 0n;
+  let found = false;
+  for (const requirementValue of requirements) {
+    const requirement = asRecord(requirementValue);
+    if (!requirement || requirement.kind !== 'input') continue;
+    const token = asRecord(requirement.token);
+    const tokenKey = token ? tokenKeyFromRecord(token) : undefined;
+    const raw = parseUnsignedDecimal(requirement.raw_amount);
+    const decimals =
+      typeof token?.decimals === 'number' ? token.decimals : undefined;
+    const price = tokenKey ? prices.get(tokenKey) : undefined;
+    if (raw === undefined || decimals === undefined || !price) continue;
+
+    const fixedUsd = multiplyRawByUsd(raw, decimals, price);
+    if (fixedUsd === undefined) continue;
+    total += fixedUsd;
+    found = true;
+  }
+
+  return found ? fixedToDecimal(total) : undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function tokenKeyFromRecord(
+  token: Record<string, unknown>,
+): string | undefined {
+  if (typeof token.chain_id !== 'number' || typeof token.address !== 'string')
+    return undefined;
+  return `${token.chain_id}:${token.address.toLowerCase()}`;
+}
+
+function parseUnsignedDecimal(value: unknown): bigint | undefined {
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) return undefined;
+  try {
+    return BigInt(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function multiplyRawByUsd(
+  raw: bigint,
+  decimals: number,
+  price: string,
+): bigint | undefined {
+  if (!Number.isSafeInteger(decimals) || decimals < 0 || decimals > 255)
+    return undefined;
+  const priceFixed = decimalToFixed(price);
+  if (priceFixed === undefined) return undefined;
+  const scaled = (raw * priceFixed) / 10n ** BigInt(decimals);
+  return scaled <= 9223372036854775807n ? scaled : undefined;
+}
+
+function decimalToFixed(value: string): bigint | undefined {
+  const parts = value.split('.');
+  if (parts.length > 2) return undefined;
+  const [whole, fraction = ''] = parts;
+  if (whole === '' && fraction === '') return undefined;
+  if (!/^\d*$/.test(whole) || !/^\d*$/.test(fraction)) return undefined;
+  const padded = `${fraction}0000`.slice(0, 4);
+  try {
+    return BigInt(`${whole || '0'}${padded}`);
+  } catch {
+    return undefined;
+  }
+}
+
+function fixedToDecimal(value: bigint): string {
+  const raw = value.toString().padStart(5, '0');
+  const whole = raw.slice(0, -4);
+  const fraction = raw.slice(-4);
+  return `${whole}.${fraction}`;
+}
+
+function addWindowValues(name: string, left: string, right: string): string {
+  if (name === 'swapVolumeUsd24h') {
+    const leftFixed = decimalToFixed(left);
+    const rightFixed = decimalToFixed(right);
+    if (leftFixed === undefined) return right;
+    if (rightFixed === undefined) return left;
+    return fixedToDecimal(leftFixed + rightFixed);
+  }
+  return (BigInt(left) + BigInt(right)).toString();
+}
+
+function zeroWindowValue(name: string): string {
+  return name === 'swapVolumeUsd24h' ? '0.0000' : '0';
 }
 
 function hexToBytes(hex: string | undefined): number[] {
@@ -223,7 +385,8 @@ function hexToBytes(hex: string | undefined): number[] {
   const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
   if (clean.length % 2 !== 0) return [];
   const out: number[] = new Array(clean.length / 2);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  for (let i = 0; i < out.length; i++)
+    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
   return out;
 }
 
@@ -234,7 +397,7 @@ function encodeRequestForEngine(message: Message): string | null {
         chain_id: message.data.chainId,
         from: message.data.transaction.from,
         to: message.data.transaction.to,
-        value_wei: message.data.transaction.value ?? '0',
+        value_wei: quantityToDecimal(message.data.transaction.value),
         data: hexToBytes(message.data.transaction.data),
         gas: null,
         nonce: null,
@@ -261,6 +424,16 @@ function encodeRequestForEngine(message: Message): string | null {
   return null;
 }
 
+function quantityToDecimal(value: string | undefined): string {
+  if (!value) return '0';
+  if (!value.toLowerCase().startsWith('0x')) return value;
+  try {
+    return BigInt(value).toString();
+  } catch {
+    return value;
+  }
+}
+
 function redactEnvelope(message: Message): unknown {
   if (isTransaction(message)) {
     return {
@@ -271,9 +444,11 @@ function redactEnvelope(message: Message): unknown {
   }
   if (isTypedSignature(message)) {
     return {
-      primaryType: (message.data.typedData as { primaryType?: string })?.primaryType,
-      verifyingContract: (message.data.typedData as { domain?: { verifyingContract?: string } })
-        ?.domain?.verifyingContract,
+      primaryType: (message.data.typedData as { primaryType?: string })
+        ?.primaryType,
+      verifyingContract: (
+        message.data.typedData as { domain?: { verifyingContract?: string } }
+      )?.domain?.verifyingContract,
     };
   }
   return {};
@@ -281,12 +456,26 @@ function redactEnvelope(message: Message): unknown {
 
 function buildTimeoutVerdict(): VerdictDto {
   return {
-    kind: 'fail',
+    kind: 'warn',
     matched: [
       {
         policy_id: '__engine::timeout',
         reason: `Engine took longer than ${HARD_TIMEOUT_MS}ms`,
-        severity: 'deny',
+        severity: 'warn',
+        origin: 'engine_error',
+      },
+    ],
+  };
+}
+
+function unsupportedUntypedSignatureVerdict(): VerdictDto {
+  return {
+    kind: 'warn',
+    matched: [
+      {
+        policy_id: '__engine::unsupported_untyped_signature',
+        reason: 'Untyped signatures cannot be fully evaluated yet',
+        severity: 'warn',
         origin: 'engine_error',
       },
     ],
@@ -326,7 +515,10 @@ async function withTimeout<T>(
 }
 
 /** Receive tx-hash reports from the inpage proxy and stamp them onto pending deltas. */
-export async function recordTxHash(requestId: string, txHash: string): Promise<void> {
+export async function recordTxHash(
+  requestId: string,
+  txHash: string,
+): Promise<void> {
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) return;
   await setTxHash(requestId, txHash);
 }
@@ -365,12 +557,17 @@ async function openVerdictWindowAndAwait(
   requestId: string,
   hostname: string,
   verdict: VerdictDto,
+  onAwaitingUser?: () => void,
 ): Promise<boolean> {
   const all =
-    (((await Browser.storage.session.get(PENDING_DECISION_KEY)) as Record<string, unknown>)[
-      PENDING_DECISION_KEY
-    ] as Record<string, { verdict: VerdictDto; status: string; ok?: boolean }> | undefined) ??
-    {};
+    ((
+      (await Browser.storage.session.get(PENDING_DECISION_KEY)) as Record<
+        string,
+        unknown
+      >
+    )[PENDING_DECISION_KEY] as
+      | Record<string, { verdict: VerdictDto; status: string; ok?: boolean }>
+      | undefined) ?? {};
   all[requestId] = { verdict, status: 'awaiting' };
   await Browser.storage.session.set({ [PENDING_DECISION_KEY]: all });
 
@@ -406,7 +603,11 @@ async function openVerdictWindowAndAwait(
     };
 
     const messageListener = (msg: unknown): void => {
-      const m = msg as { type?: string; requestId?: string; ok?: boolean } | null;
+      const m = msg as {
+        type?: string;
+        requestId?: string;
+        ok?: boolean;
+      } | null;
       if (!m || m.type !== 'scopeball:verdict-decision') return;
       if (m.requestId !== requestId) return;
       settle(!!m.ok);
@@ -428,20 +629,29 @@ async function openVerdictWindowAndAwait(
         return;
       }
       const fresh =
-        (((await Browser.storage.session.get(PENDING_DECISION_KEY)) as Record<string, unknown>)[
-          PENDING_DECISION_KEY
-        ] as Record<string, { status: string; ok?: boolean }> | undefined) ?? {};
+        ((
+          (await Browser.storage.session.get(PENDING_DECISION_KEY)) as Record<
+            string,
+            unknown
+          >
+        )[PENDING_DECISION_KEY] as
+          | Record<string, { status: string; ok?: boolean }>
+          | undefined) ?? {};
       const rec = fresh[requestId];
       if (rec?.status === 'decided') settle(!!rec.ok);
     }, 250);
 
     // Phase-2 timeout heartbeat: extend the inpage stream's 3s phase-1
     // timer so the user has time to read and decide.
-    Browser.runtime.sendMessage({ kind: 'awaiting-user', requestId }).catch(() => {});
+    onAwaitingUser?.();
   });
 }
 
-function buildConfirmUrl(requestId: string, hostname: string, verdict: VerdictDto): string {
+function buildConfirmUrl(
+  requestId: string,
+  hostname: string,
+  verdict: VerdictDto,
+): string {
   const params = new URLSearchParams({
     requestId,
     hostname,

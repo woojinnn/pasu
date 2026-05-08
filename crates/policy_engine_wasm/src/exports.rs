@@ -30,12 +30,7 @@ pub fn install_policies_json(policies_json: String) -> String {
             builder = builder.add_schema_text(input.schema_text);
         }
         for policy in input.policy_set {
-            let text = if has_id_annotation(&policy.text) {
-                policy.text
-            } else {
-                format!("@id(\"{}\")\n{}", policy.id, policy.text)
-            };
-            builder = builder.add_text(text);
+            builder = builder.add_text(namespace_policy_text(&policy.id, &policy.text));
         }
 
         let policies = builder
@@ -231,12 +226,142 @@ fn origin_to_string(origin: RequestKind) -> String {
     .to_string()
 }
 
+#[cfg(test)]
 fn has_id_annotation(text: &str) -> bool {
     let stripped = strip_cedar_comments(text);
     let prefix_end = first_policy_head_index(&stripped).unwrap_or(stripped.len());
     stripped[..prefix_end].contains("@id(")
 }
 
+fn namespace_policy_text(entry_id: &str, text: &str) -> String {
+    let annotations = id_annotations(text);
+    if annotations.is_empty() {
+        return format!("@id({})\n{}", json_string(entry_id), text);
+    }
+
+    let mut output = String::with_capacity(text.len() + entry_id.len());
+    let mut cursor = 0;
+    let single_annotation = annotations.len() == 1;
+    for annotation in annotations {
+        output.push_str(&text[cursor..annotation.value_start]);
+        let replacement = if single_annotation {
+            entry_id.to_string()
+        } else {
+            format!("{entry_id}::{}", annotation.value)
+        };
+        output.push_str(&json_string(&replacement));
+        cursor = annotation.value_end;
+    }
+    output.push_str(&text[cursor..]);
+    output
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct IdAnnotation {
+    value_start: usize,
+    value_end: usize,
+    value: String,
+}
+
+fn id_annotations(text: &str) -> Vec<IdAnnotation> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::new();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'"' => {
+                index = skip_string(bytes, index);
+            }
+            b'/' if bytes.get(index + 1) == Some(&b'/') => {
+                index += 2;
+                while index < bytes.len() && bytes[index] != b'\n' {
+                    index += 1;
+                }
+            }
+            b'/' if bytes.get(index + 1) == Some(&b'*') => {
+                index += 2;
+                while index + 1 < bytes.len() && !(bytes[index] == b'*' && bytes[index + 1] == b'/')
+                {
+                    index += 1;
+                }
+                index = (index + 2).min(bytes.len());
+            }
+            b'@' if bytes[index..].starts_with(b"@id") => {
+                if let Some((annotation, next_index)) = parse_id_annotation(text, index) {
+                    out.push(annotation);
+                    index = next_index;
+                } else {
+                    index += 1;
+                }
+            }
+            _ => index += 1,
+        }
+    }
+
+    out
+}
+
+fn parse_id_annotation(text: &str, start: usize) -> Option<(IdAnnotation, usize)> {
+    let bytes = text.as_bytes();
+    let mut index = start + 3;
+    index = skip_ascii_ws(bytes, index);
+    if bytes.get(index) != Some(&b'(') {
+        return None;
+    }
+    index = skip_ascii_ws(bytes, index + 1);
+    if bytes.get(index) != Some(&b'"') {
+        return None;
+    }
+
+    let value_start = index;
+    let value_end = skip_string(bytes, value_start);
+    let literal = text.get(value_start..value_end)?;
+    let value = serde_json::from_str::<String>(literal).unwrap_or_default();
+    index = skip_ascii_ws(bytes, value_end);
+    if bytes.get(index) != Some(&b')') {
+        return None;
+    }
+
+    Some((
+        IdAnnotation {
+            value_start,
+            value_end,
+            value,
+        },
+        index + 1,
+    ))
+}
+
+fn skip_ascii_ws(bytes: &[u8], mut index: usize) -> usize {
+    while matches!(bytes.get(index), Some(b' ' | b'\n' | b'\r' | b'\t')) {
+        index += 1;
+    }
+    index
+}
+
+fn skip_string(bytes: &[u8], start: usize) -> usize {
+    let mut index = start + 1;
+    let mut escaped = false;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if escaped {
+            escaped = false;
+        } else if byte == b'\\' {
+            escaped = true;
+        } else if byte == b'"' {
+            return index + 1;
+        }
+        index += 1;
+    }
+    bytes.len()
+}
+
+fn json_string(value: &str) -> String {
+    serde_json::to_string(value).expect("serializing a string cannot fail")
+}
+
+#[cfg(test)]
 fn strip_cedar_comments(text: &str) -> String {
     let mut output = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
@@ -274,6 +399,7 @@ fn strip_cedar_comments(text: &str) -> String {
     output
 }
 
+#[cfg(test)]
 fn first_policy_head_index(text: &str) -> Option<usize> {
     let mut in_string = false;
     let mut escaped = false;
@@ -303,6 +429,7 @@ fn first_policy_head_index(text: &str) -> Option<usize> {
     None
 }
 
+#[cfg(test)]
 fn keyword_at(text: &str, index: usize, keyword: &str) -> bool {
     text[index..].starts_with(keyword)
         && text[..index]
@@ -315,6 +442,7 @@ fn keyword_at(text: &str, index: usize, keyword: &str) -> bool {
             .is_none_or(|ch| !is_ident_char(ch))
 }
 
+#[cfg(test)]
 fn is_ident_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || ch == '_'
 }

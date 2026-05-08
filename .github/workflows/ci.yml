@@ -110,6 +110,18 @@ jobs:
         run: yarn install --immutable
 
       - if: steps.probe.outputs.exists == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - if: steps.probe.outputs.exists == 'true'
+        uses: Swatinem/rust-cache@v2
+
+      - if: steps.probe.outputs.exists == 'true'
+        name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - if: steps.probe.outputs.exists == 'true'
         working-directory: extension
         run: yarn typecheck
 
