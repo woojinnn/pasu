@@ -4,10 +4,14 @@
 //! 3. the action is lowered to one Cedar `PolicyRequest`.
 
 pub mod decimal;
+pub mod host_fact_plan;
 pub mod request;
 pub mod stamping;
 
 pub(crate) use decimal::add_decimal_strings;
+pub use host_fact_plan::{
+    required_host_facts, required_window_keys, HostFactPlan, WindowKey, WindowKeyPlan,
+};
 pub use request::{
     request_from_action, request_from_action_with_host, requests_from_action, requests_from_actions,
 };
