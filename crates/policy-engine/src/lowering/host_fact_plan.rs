@@ -237,7 +237,7 @@ mod tests {
     }
 
     use crate::core::{
-        ChainId as CId, Eip2612Action, Eip712OtherAction, Eip712Domain, Eip712TypedData,
+        ChainId as CId, Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData,
         Permit2Action, Permit2Approval, Permit2PermitKind,
     };
 
@@ -246,13 +246,13 @@ mod tests {
         let spender = addr("0x3333333333333333333333333333333333333333");
         let permit2 = addr("0x000000000022D473030F116dDEE9F6B43aC78BA3");
         Action::Permit2(Permit2Action {
-            signer: signer.clone(),
+            signer,
             chain_id: 1 as CId,
             domain_chain_id: 1 as CId,
             verifying_contract: permit2,
             primary_type: "PermitBatch".into(),
             permit_kind: Permit2PermitKind::PermitBatch,
-            spender: spender.clone(),
+            spender,
             token: weth(),
             amount: "1000000000000000000".into(),
             expiration: 1_700_000_000,
@@ -312,10 +312,10 @@ mod tests {
         let signer = addr("0x4444444444444444444444444444444444444444");
         let action = Action::Eip2612(Eip2612Action {
             signer: signer.clone(),
-            owner: signer.clone(),
+            owner: signer,
             chain_id: 1 as CId,
             domain_chain_id: 1 as CId,
-            verifying_contract: usdc().address.clone(),
+            verifying_contract: usdc().address,
             primary_type: "Permit".into(),
             spender: addr("0x5555555555555555555555555555555555555555"),
             token: usdc(),
@@ -411,8 +411,8 @@ mod tests {
         let actor = addr("0x1111111111111111111111111111111111111111");
         let target = addr("0xE592427A0AEce92De3Edee1F18E0157C05861564");
         let action = Action::Dex(DexAction {
-            actor: actor.clone(),
-            target: target.clone(),
+            actor,
+            target,
             value_wei: "1000000000000000000".into(),
             facts: DexFacts {
                 protocol_ids: vec!["uniswap_v3".into()],

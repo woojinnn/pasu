@@ -123,7 +123,10 @@ fn extract_plan_then_evaluate_matches_direct_path() {
         (Verdict::Warn(a), Verdict::Warn(b)) | (Verdict::Fail(a), Verdict::Fail(b)) => {
             let ids_a: Vec<_> = a.iter().map(|m| &m.policy_id).collect();
             let ids_b: Vec<_> = b.iter().map(|m| &m.policy_id).collect();
-            assert_eq!(ids_a, ids_b, "matched policies differ between snapshot and mock paths");
+            assert_eq!(
+                ids_a, ids_b,
+                "matched policies differ between snapshot and mock paths"
+            );
         }
         _ => panic!(
             "verdict variants differ: snapshot={:?} mock={:?}",

@@ -513,6 +513,11 @@ impl SignatureRequest {
 impl SignatureRequest {
     /// Minimal EIP-712 signature request that no adapter will match. Used by
     /// pipeline tests that exercise the catch-all `Action::Eip712Other` path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the hardcoded address literals fail to parse, which would
+    /// indicate an upstream `Address::new` regression.
     #[must_use]
     pub fn test_minimal_eip712_other() -> Self {
         use serde_json::json;
@@ -522,10 +527,8 @@ impl SignatureRequest {
             typed_data: Eip712TypedData {
                 domain: Eip712Domain {
                     chain_id: 1,
-                    verifying_contract: Address::new(
-                        "0x7777777777777777777777777777777777777777",
-                    )
-                    .unwrap(),
+                    verifying_contract: Address::new("0x7777777777777777777777777777777777777777")
+                        .unwrap(),
                     name: None,
                     version: None,
                     salt: None,
