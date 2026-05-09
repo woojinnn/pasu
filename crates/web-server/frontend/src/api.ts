@@ -17,11 +17,18 @@ export type DecodeResponse =
       signature: string
       selector: string
       args: DecodedArg[]
+      /**
+       * Recursively decoded sub-calls. Populated when the outer call is one of
+       * the recognised self-call multicall wrappers (Cat A: `multicall(bytes[])`
+       * and variants). Server omits the field when empty.
+       */
+      children?: DecodeResponse[]
     }
   | {
       outcome: 'not_found'
       selector: string
       message: string
+      children?: DecodeResponse[]
     }
 
 export interface DecodeRequest {

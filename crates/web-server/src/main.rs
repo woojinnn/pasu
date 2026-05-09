@@ -19,6 +19,7 @@ use abi_resolver::openchain::{OpenchainIndex, SignatureCandidate};
 use abi_resolver::resolver::{ResolveOutcome, Resolver, Source};
 use abi_resolver::sourcify::SourcifyIndex;
 use abi_resolver::sqlite_index::SqliteSourcifyIndex;
+use abi_resolver::subdecode::recurse::{extract_subcalls, is_self_multicall};
 use alloy_primitives::Address;
 use axum::{
     extract::State,
@@ -179,10 +180,20 @@ enum DecodeResponse {
         signature: String,
         selector: String,
         args: Vec<ApiArg>,
+        /// Recursively decoded sub-calls. Populated when the outer call is one
+        /// of the recognised self-call multicall wrappers (Cat A); otherwise
+        /// empty and omitted from JSON.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        children: Vec<DecodeResponse>,
     },
     NotFound {
         selector: String,
         message: &'static str,
+        /// Same shape as on `Resolved` — a `NotFound` outer call cannot be
+        /// inspected for sub-calls so this is always empty here, but the
+        /// field exists so consumers can treat the variants uniformly.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        children: Vec<DecodeResponse>,
     },
 }
 
@@ -194,6 +205,13 @@ struct ApiError {
 fn err(status: StatusCode, msg: impl Into<String>) -> Response {
     (status, Json(ApiError { error: msg.into() })).into_response()
 }
+
+/// Cap the depth of Cat A recursion. Real multicall trees are 1–2 deep; this
+/// guards against pathological input.
+const MAX_SUBDECODE_DEPTH: u32 = 4;
+/// Cap the number of sub-calls per node so a malicious payload can't fan out
+/// the response.
+const MAX_SUBDECODE_CHILDREN: usize = 64;
 
 async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -> Response {
     let address = match Address::from_str(req.address.trim()) {
@@ -223,23 +241,70 @@ async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -
             ),
         );
     }
-    let selector = format!("0x{}", hex::encode(&calldata[..4]));
 
-    let outcome = state.resolver.resolve(req.chain_id, &address, &calldata);
-    let response = match outcome {
-        ResolveOutcome::Resolved(r) => DecodeResponse::Resolved {
-            source: source_label(r.source),
-            function_name: r.decoded.function_name,
-            signature: r.decoded.signature,
-            selector,
-            args: r.decoded.args.into_iter().map(arg_to_api).collect(),
-        },
-        ResolveOutcome::NotFound => DecodeResponse::NotFound {
-            selector,
-            message: "no signature matched in any tier",
-        },
-    };
+    let response = decode_recursive(
+        state.resolver.as_ref(),
+        req.chain_id,
+        &address,
+        &calldata,
+        0,
+    );
     Json(response).into_response()
+}
+
+/// Resolve `calldata` against the parent target, then if the function is a
+/// recognised self-call multicall wrapper, recurse on each `bytes[]` entry up
+/// to [`MAX_SUBDECODE_DEPTH`].
+fn decode_recursive(
+    resolver: &Resolver,
+    chain_id: u64,
+    target: &Address,
+    calldata: &[u8],
+    depth: u32,
+) -> DecodeResponse {
+    let selector_hex = format!("0x{}", hex::encode(&calldata[..4.min(calldata.len())]));
+    if calldata.len() < 4 {
+        return DecodeResponse::NotFound {
+            selector: selector_hex,
+            message: "calldata shorter than 4-byte selector",
+            children: Vec::new(),
+        };
+    }
+
+    let outcome = resolver.resolve(chain_id, target, calldata);
+    match outcome {
+        ResolveOutcome::Resolved(r) => {
+            let mut selector_bytes = [0u8; 4];
+            selector_bytes.copy_from_slice(&calldata[..4]);
+            let children = if depth < MAX_SUBDECODE_DEPTH && is_self_multicall(&selector_bytes) {
+                extract_subcalls(&r.decoded)
+                    .map(|subs| {
+                        subs.into_iter()
+                            .take(MAX_SUBDECODE_CHILDREN)
+                            .map(|sub| {
+                                decode_recursive(resolver, chain_id, target, &sub, depth + 1)
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+            DecodeResponse::Resolved {
+                source: source_label(r.source),
+                function_name: r.decoded.function_name,
+                signature: r.decoded.signature,
+                selector: selector_hex,
+                args: r.decoded.args.into_iter().map(arg_to_api).collect(),
+                children,
+            }
+        }
+        ResolveOutcome::NotFound => DecodeResponse::NotFound {
+            selector: selector_hex,
+            message: "no signature matched in any tier",
+            children: Vec::new(),
+        },
+    }
 }
 
 fn source_label(s: Source) -> &'static str {

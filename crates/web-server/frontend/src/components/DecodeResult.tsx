@@ -27,29 +27,54 @@ export function DecodeResult({ result, error }: Props) {
       </section>
     )
   }
-  if (result.outcome === 'not_found') {
+
+  return (
+    <section className="result">
+      <DecodeNode node={result} depth={0} />
+      <details className="raw">
+        <summary>Raw JSON</summary>
+        <pre>{JSON.stringify(result, null, 2)}</pre>
+      </details>
+    </section>
+  )
+}
+
+interface NodeProps {
+  node: DecodeResponse
+  depth: number
+}
+
+/**
+ * Render one decode node. When the response includes `children` (Cat A
+ * recursive multicall) the component recurses for each child with `depth+1`
+ * so nested multicalls indent visually.
+ */
+function DecodeNode({ node, depth }: NodeProps) {
+  const indent = depth > 0 ? { marginLeft: `${depth * 1.25}rem` } : undefined
+
+  if (node.outcome === 'not_found') {
     return (
-      <section className="result not-found">
-        <h2>Not found</h2>
-        <p>{result.message}</p>
+      <div className="resolved not-found" style={indent}>
+        <h3>Not found</h3>
+        <p>{node.message}</p>
         <p>
-          <strong>Selector:</strong> <code>{result.selector}</code>
+          <strong>Selector:</strong> <code>{node.selector}</code>
         </p>
-      </section>
+      </div>
     )
   }
 
   return (
-    <section className="result resolved">
+    <div className="resolved" style={indent}>
       <header>
-        <h2>{result.function_name}</h2>
-        <span className="source">{SOURCE_LABEL[result.source] ?? result.source}</span>
+        <h3>{node.function_name}</h3>
+        <span className="source">{SOURCE_LABEL[node.source] ?? node.source}</span>
       </header>
       <p className="signature">
-        <code>{result.signature}</code>
+        <code>{node.signature}</code>
       </p>
       <p className="selector">
-        <strong>Selector:</strong> <code>{result.selector}</code>
+        <strong>Selector:</strong> <code>{node.selector}</code>
       </p>
       <table className="args">
         <thead>
@@ -60,7 +85,7 @@ export function DecodeResult({ result, error }: Props) {
           </tr>
         </thead>
         <tbody>
-          {result.args.map((a, i) => (
+          {node.args.map((a, i) => (
             <tr key={i}>
               <td>
                 <code>{a.name}</code>
@@ -75,10 +100,16 @@ export function DecodeResult({ result, error }: Props) {
           ))}
         </tbody>
       </table>
-      <details className="raw">
-        <summary>Raw JSON</summary>
-        <pre>{JSON.stringify(result, null, 2)}</pre>
-      </details>
-    </section>
+      {node.children && node.children.length > 0 && (
+        <div className="children">
+          <h4>
+            Sub-calls <span className="count">({node.children.length})</span>
+          </h4>
+          {node.children.map((child, i) => (
+            <DecodeNode key={i} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

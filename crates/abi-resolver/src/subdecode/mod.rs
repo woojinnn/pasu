@@ -10,9 +10,13 @@
 //! Layout:
 //!
 //! - [`protocols`] — per-protocol parsers (e.g. Uniswap V3 packed path).
+//! - [`recurse`] — Cat A: recognise multicall-style wrappers and extract the
+//!   inner sub-calldata so the orchestrator can recurse with the same
+//!   resolver.
 //!
-//! Generic engine pieces (recursion controllers, opcode-stream dispatchers,
-//! enum-tagged discriminators) will live alongside as the corresponding
-//! categories are filled in.
+//! Generic engine pieces for the remaining categories (opcode-stream
+//! dispatchers, enum-tagged discriminators, hook-data fallbacks) will live
+//! alongside as they're filled in.
 
 pub mod protocols;
+pub mod recurse;
