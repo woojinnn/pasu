@@ -85,6 +85,12 @@ function paramsArray(params: unknown): unknown[] {
   return params === undefined ? [] : [params];
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
 function looksLikeAddress(value: unknown): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(String(value));
 }
@@ -119,19 +125,51 @@ async function readChainId(provider: Eip1193Provider): Promise<number> {
 async function checkTransaction(
   provider: Eip1193Provider,
   params: unknown[],
+  chainIdOverride?: number,
 ): Promise<boolean> {
   const [transaction] = params;
   if (!transaction || typeof transaction !== "object") return true;
 
   const data = {
     type: RequestType.TRANSACTION,
-    chainId: await readChainId(provider),
+    chainId: chainIdOverride ?? (await readChainId(provider)),
     hostname: location.hostname,
     transaction,
   } as MessageData;
 
   txRequestIds.set(transaction, generateRequestId(data));
   return sendToStreamAndAwaitResponse(stream, data);
+}
+
+async function checkWalletSendCalls(
+  provider: Eip1193Provider,
+  params: unknown[],
+): Promise<boolean> {
+  const envelope = asRecord(params[0]);
+  const calls = Array.isArray(envelope?.calls) ? envelope.calls : [];
+  if (calls.length === 0) return true;
+
+  const chainId =
+    parseChainId(envelope?.chainId) ?? (await readChainId(provider));
+  let isAllowed = true;
+
+  for (const callValue of calls) {
+    const call = asRecord(callValue);
+    if (!call) continue;
+
+    const transaction = {
+      ...call,
+      from: call.from ?? envelope?.from,
+    };
+    const isCallAllowed = await checkTransaction(
+      provider,
+      [transaction],
+      chainId,
+    );
+    if (!isCallAllowed) isAllowed = false;
+  }
+
+  return isAllowed;
 }
 
 async function checkTypedSignature(
@@ -170,6 +208,12 @@ async function ensureAllowed(
 ): Promise<void> {
   if (method === "eth_sendTransaction") {
     const isOk = await checkTransaction(provider, params);
+    if (!isOk) throw REJECT_TX;
+    return;
+  }
+
+  if (method === "wallet_sendCalls") {
+    const isOk = await checkWalletSendCalls(provider, params);
     if (!isOk) throw REJECT_TX;
     return;
   }
