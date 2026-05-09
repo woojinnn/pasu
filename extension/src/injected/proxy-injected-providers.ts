@@ -1,9 +1,9 @@
-import { WindowPostMessageStream } from '@metamask/post-message-stream';
-import { ethErrors } from 'eth-rpc-errors';
-import { Identifier, PROVIDER_MARKER } from '@lib/identifier';
-import { generateRequestId, sendToStreamAndAwaitResponse } from '@lib/messages';
-import { RequestType } from '@lib/types';
-import type { MessageData } from '@lib/types';
+import { WindowPostMessageStream } from "@metamask/post-message-stream";
+import { ethErrors } from "eth-rpc-errors";
+import { Identifier, PROVIDER_MARKER } from "@lib/identifier";
+import { generateRequestId, sendToStreamAndAwaitResponse } from "@lib/messages";
+import { RequestType } from "@lib/types";
+import type { MessageData } from "@lib/types";
 
 declare global {
   interface Window {
@@ -42,18 +42,18 @@ const stream = new WindowPostMessageStream({
 }) as WritableStream;
 
 const REJECT_TX = ethErrors.provider.userRejectedRequest(
-  'Scopeball: transaction blocked by policy',
+  "Scopeball: transaction blocked by policy",
 );
 const REJECT_SIG = ethErrors.provider.userRejectedRequest(
-  'Scopeball: signature blocked by policy',
+  "Scopeball: signature blocked by policy",
 );
 
 const TYPED_SIGNATURE_METHODS = new Set([
-  'eth_signTypedData',
-  'eth_signTypedData_v3',
-  'eth_signTypedData_v4',
+  "eth_signTypedData",
+  "eth_signTypedData_v3",
+  "eth_signTypedData_v4",
 ]);
-const UNTYPED_SIGNATURE_METHODS = new Set(['eth_sign', 'personal_sign']);
+const UNTYPED_SIGNATURE_METHODS = new Set(["eth_sign", "personal_sign"]);
 const TX_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
 const txRequestIds = new WeakMap<object, string>();
@@ -62,7 +62,9 @@ const unwrappableProviders = new WeakSet<object>();
 const reannouncedProviders = new WeakSet<object>();
 
 function asProvider(value: unknown): Eip1193Provider | undefined {
-  return value && typeof value === 'object' ? (value as Eip1193Provider) : undefined;
+  return value && typeof value === "object"
+    ? (value as Eip1193Provider)
+    : undefined;
 }
 
 function paramsArray(params: unknown): unknown[] {
@@ -76,7 +78,7 @@ function looksLikeAddress(value: unknown): boolean {
 
 function parseChainId(value: unknown): number | undefined {
   const parsed =
-    typeof value === 'string' && value.startsWith('0x')
+    typeof value === "string" && value.startsWith("0x")
       ? Number.parseInt(value, 16)
       : Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
@@ -84,11 +86,15 @@ function parseChainId(value: unknown): number | undefined {
 
 async function readChainId(provider: Eip1193Provider): Promise<number> {
   try {
-    if (typeof provider.request !== 'function') return parseChainId(provider.chainId) ?? 1;
+    if (typeof provider.request !== "function")
+      return parseChainId(provider.chainId) ?? 1;
     const result = await Promise.race([
-      provider.request({ method: 'eth_chainId' }),
+      provider.request({ method: "eth_chainId" }),
       new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error('Scopeball: chainId timeout')), 1_500);
+        window.setTimeout(
+          () => reject(new Error("Scopeball: chainId timeout")),
+          1_500,
+        );
       }),
     ]);
     return parseChainId(result) ?? parseChainId(provider.chainId) ?? 1;
@@ -97,9 +103,12 @@ async function readChainId(provider: Eip1193Provider): Promise<number> {
   }
 }
 
-async function checkTransaction(provider: Eip1193Provider, params: unknown[]): Promise<boolean> {
+async function checkTransaction(
+  provider: Eip1193Provider,
+  params: unknown[],
+): Promise<boolean> {
   const [transaction] = params;
-  if (!transaction || typeof transaction !== 'object') return true;
+  if (!transaction || typeof transaction !== "object") return true;
 
   const data = {
     type: RequestType.TRANSACTION,
@@ -112,7 +121,10 @@ async function checkTransaction(provider: Eip1193Provider, params: unknown[]): P
   return sendToStreamAndAwaitResponse(stream, data);
 }
 
-async function checkTypedSignature(provider: Eip1193Provider, params: unknown[]): Promise<boolean> {
+async function checkTypedSignature(
+  provider: Eip1193Provider,
+  params: unknown[],
+): Promise<boolean> {
   const [first, second] = params;
   const address = looksLikeAddress(first) ? first : second;
   const typedData = looksLikeAddress(first) ? second : first;
@@ -143,7 +155,7 @@ async function ensureAllowed(
   method: string | undefined,
   params: unknown[],
 ): Promise<void> {
-  if (method === 'eth_sendTransaction') {
+  if (method === "eth_sendTransaction") {
     const isOk = await checkTransaction(provider, params);
     if (!isOk) throw REJECT_TX;
     return;
@@ -161,26 +173,26 @@ async function ensureAllowed(
     return;
   }
 
-  if (method === 'eth_sendRawTransaction') {
+  if (method === "eth_sendRawTransaction") {
     logRawTransaction(params);
   }
 }
 
 function requestIdForTransaction(params: unknown[]): string | undefined {
   const tx = params[0];
-  return tx && typeof tx === 'object' ? txRequestIds.get(tx) : undefined;
+  return tx && typeof tx === "object" ? txRequestIds.get(tx) : undefined;
 }
 
 function logRawTransaction(params: unknown[]): void {
-  const raw = String(params[0] ?? '');
-  console.warn('Scopeball: eth_sendRawTransaction pass-through advisory', {
+  const raw = String(params[0] ?? "");
+  console.warn("Scopeball: eth_sendRawTransaction pass-through advisory", {
     hostname: location.hostname,
     rawPreview: raw.slice(0, 18),
   });
   stream.write({
     requestId: `raw-tx-${raw.slice(0, 18)}`,
     data: {
-      type: 'raw-transaction-advisory',
+      type: "raw-transaction-advisory",
       hostname: location.hostname,
       rawPreview: raw.slice(0, 18),
     },
@@ -188,14 +200,14 @@ function logRawTransaction(params: unknown[]): void {
 }
 
 function reportTransactionHash(params: unknown[], result: unknown): void {
-  if (typeof result !== 'string' || !TX_HASH_RE.test(result)) return;
+  if (typeof result !== "string" || !TX_HASH_RE.test(result)) return;
   const requestId = requestIdForTransaction(params);
   if (!requestId) return;
 
   stream.write({
     requestId: `tx-hash-${requestId}`,
     data: {
-      type: 'tx-hash-report',
+      type: "tx-hash-report",
       requestId,
       txHash: result,
       hostname: location.hostname,
@@ -203,10 +215,14 @@ function reportTransactionHash(params: unknown[], result: unknown): void {
   });
 }
 
-function rejectJsonRpc(callback: JsonRpcCallback, request: JsonRpcRequest, error: unknown): void {
+function rejectJsonRpc(
+  callback: JsonRpcCallback,
+  request: JsonRpcRequest,
+  error: unknown,
+): void {
   callback(error, {
     id: request.id,
-    jsonrpc: request.jsonrpc ?? '2.0',
+    jsonrpc: request.jsonrpc ?? "2.0",
     error,
   });
 }
@@ -217,9 +233,9 @@ function wrapCallbackForTxHash(
   params: unknown[],
 ): JsonRpcCallback {
   return (error, response) => {
-    if (!error && method === 'eth_sendTransaction') {
+    if (!error && method === "eth_sendTransaction") {
       const result =
-        response && typeof response === 'object' && 'result' in response
+        response && typeof response === "object" && "result" in response
           ? (response as { result?: unknown }).result
           : response;
       reportTransactionHash(params, result);
@@ -229,27 +245,55 @@ function wrapCallbackForTxHash(
 }
 
 function reportFrozenProvider(provider: Eip1193Provider, error: unknown): void {
-  console.error('Scopeball: provider is frozen and cannot be wrapped', error);
+  console.error("Scopeball: provider is frozen and cannot be wrapped", error);
   stream.write({
     requestId: `frozen-provider-${Date.now().toString(16)}`,
     data: {
-      type: 'provider-frozen-warning',
+      type: "provider-frozen-warning",
       hostname: location.hostname,
-      providerName: provider.constructor?.name ?? 'unknown',
+      providerName: provider.constructor?.name ?? "unknown",
     },
   });
 }
 
-function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
-  if (!provider || provider[PROVIDER_MARKER]) return;
-  if (wrappedProviders.has(provider) || unwrappableProviders.has(provider)) return;
+// Marker on the wrapped function itself. Lets the polling loop detect
+// when MetaMask (or another late-injecting provider) re-defined
+// `provider.request` back to native after we'd already wrapped it —
+// in which case we re-wrap. Tracking only on the provider object via
+// PROVIDER_MARKER is not enough: the marker survives even when the
+// wrapped methods were stomped, leaving us with a "wrapped" object
+// whose request is the unwrapped native one.
+const WRAP_MARKER = Symbol.for("__scopeball_wrapper__");
+type WithMarker<T> = T & { [WRAP_MARKER]?: true };
 
-  if (typeof provider.request !== 'function') {
-    reportFrozenProvider(provider, new Error('provider.request is required'));
+function isAlreadyWrapped(fn: unknown): boolean {
+  return typeof fn === "function" && (fn as WithMarker<Function>)[WRAP_MARKER] === true;
+}
+
+function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
+  if (!provider) return;
+  if (unwrappableProviders.has(provider)) return;
+  // Already wrapped AND our wrap is still in place → nothing to do.
+  if (
+    wrappedProviders.has(provider) &&
+    isAlreadyWrapped(provider.request) &&
+    (typeof provider.sendAsync !== "function" || isAlreadyWrapped(provider.sendAsync)) &&
+    (typeof provider.send !== "function" || isAlreadyWrapped(provider.send))
+  ) {
+    return;
+  }
+
+  if (typeof provider.request !== "function") {
+    reportFrozenProvider(provider, new Error("provider.request is required"));
     unwrappableProviders.add(provider);
     return;
   }
 
+  // If a previous wrap was stomped, peel back to the underlying native
+  // methods so we don't double-wrap our own wrapper. (Our wrapper holds
+  // the original via its closure, so we can't recover it from the
+  // stomped state — but the live `provider.request` is the native one
+  // again, which is exactly what we want.)
   const originalRequest = provider.request;
   const originalSendAsync = provider.sendAsync;
   const originalSend = provider.send;
@@ -262,7 +306,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
 
       await ensureAllowed(provider, method, params);
       const result = await Reflect.apply(target, thisArg, args);
-      if (method === 'eth_sendTransaction') {
+      if (method === "eth_sendTransaction") {
         reportTransactionHash(params, result);
       }
       return result;
@@ -270,7 +314,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
   });
 
   const proxiedSendAsync =
-    typeof originalSendAsync === 'function'
+    typeof originalSendAsync === "function"
       ? new Proxy(originalSendAsync, {
           apply: (target, thisArg, args) => {
             const request = (args[0] ?? {}) as JsonRpcRequest;
@@ -278,7 +322,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
             const method = request.method;
             const params = paramsArray(request.params);
 
-            if (typeof callback !== 'function') {
+            if (typeof callback !== "function") {
               return Reflect.apply(target, thisArg, args);
             }
 
@@ -300,31 +344,34 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
       : undefined;
 
   const proxiedSend =
-    typeof originalSend === 'function'
+    typeof originalSend === "function"
       ? new Proxy(originalSend, {
           apply: (target, thisArg, args) => {
             const [payloadOrMethod, callbackOrParams] = args;
-            if (typeof payloadOrMethod === 'string') {
-              return provider.request?.({ method: payloadOrMethod, params: callbackOrParams });
+            if (typeof payloadOrMethod === "string") {
+              return provider.request?.({
+                method: payloadOrMethod,
+                params: callbackOrParams,
+              });
             }
 
             const request = (payloadOrMethod ?? {}) as JsonRpcRequest;
             const method = request.method;
             const params = paramsArray(request.params);
 
-            if (typeof callbackOrParams !== 'function') {
+            if (typeof callbackOrParams !== "function") {
               if (!method) return Reflect.apply(target, thisArg, args);
               return (async () => {
                 await ensureAllowed(provider, method, params);
                 const result = Reflect.apply(target, thisArg, args);
-                if (method === 'eth_sendTransaction') {
+                if (method === "eth_sendTransaction") {
                   reportTransactionHash(params, result);
                 }
                 return result;
               })();
             }
 
-            if (typeof provider.sendAsync === 'function') {
+            if (typeof provider.sendAsync === "function") {
               return provider.sendAsync(request, callbackOrParams);
             }
 
@@ -333,11 +380,19 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
                 await ensureAllowed(provider, method, params);
                 Reflect.apply(target, thisArg, [
                   request,
-                  wrapCallbackForTxHash(callbackOrParams as JsonRpcCallback, method, params),
+                  wrapCallbackForTxHash(
+                    callbackOrParams as JsonRpcCallback,
+                    method,
+                    params,
+                  ),
                   ...args.slice(2),
                 ]);
               } catch (error) {
-                rejectJsonRpc(callbackOrParams as JsonRpcCallback, request, error);
+                rejectJsonRpc(
+                  callbackOrParams as JsonRpcCallback,
+                  request,
+                  error,
+                );
               }
             })();
             return undefined;
@@ -345,15 +400,22 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
         })
       : undefined;
 
+  // Tag wrapped functions so subsequent poll passes can detect mutation.
+  (proxiedRequest as WithMarker<typeof proxiedRequest>)[WRAP_MARKER] = true;
+  if (proxiedSendAsync)
+    (proxiedSendAsync as WithMarker<typeof proxiedSendAsync>)[WRAP_MARKER] = true;
+  if (proxiedSend)
+    (proxiedSend as WithMarker<typeof proxiedSend>)[WRAP_MARKER] = true;
+
   try {
-    Object.defineProperty(provider, 'request', {
+    Object.defineProperty(provider, "request", {
       configurable: true,
       value: proxiedRequest,
       writable: true,
     });
 
     if (proxiedSendAsync) {
-      Object.defineProperty(provider, 'sendAsync', {
+      Object.defineProperty(provider, "sendAsync", {
         configurable: true,
         value: proxiedSendAsync,
         writable: true,
@@ -361,7 +423,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
     }
 
     if (proxiedSend) {
-      Object.defineProperty(provider, 'send', {
+      Object.defineProperty(provider, "send", {
         configurable: true,
         value: proxiedSend,
         writable: true,
@@ -386,16 +448,16 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
 }
 
 const KNOWN_SOURCES = [
-  'ethereum',
-  'coinbaseWalletExtension',
-  'eth',
-  'rsk',
-  'bsc',
-  'polygon',
-  'arbitrum',
-  'fuse',
-  'avalanche',
-  'optimism',
+  "ethereum",
+  "coinbaseWalletExtension",
+  "eth",
+  "rsk",
+  "bsc",
+  "polygon",
+  "arbitrum",
+  "fuse",
+  "avalanche",
+  "optimism",
 ] as const;
 
 function discoverAndProxyAll(): void {
@@ -404,7 +466,7 @@ function discoverAndProxyAll(): void {
     if (!provider) continue;
 
     proxyEthereumProvider(provider);
-    if (key === 'ethereum' && Array.isArray(provider.providers)) {
+    if (key === "ethereum" && Array.isArray(provider.providers)) {
       for (const subProvider of provider.providers) {
         proxyEthereumProvider(subProvider);
       }
@@ -412,9 +474,9 @@ function discoverAndProxyAll(): void {
   }
 }
 
-const SCOPEBALL_RDNS = 'dev.scopeball.wrapper';
+const SCOPEBALL_RDNS = "dev.scopeball.wrapper";
 const FALLBACK_ICON =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQI12P4//8/AwAI/AL+T1pNCgAAAABJRU5ErkJggg==';
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQI12P4//8/AwAI/AL+T1pNCgAAAABJRU5ErkJggg==";
 
 function reannounceWrapped(detail: unknown): void {
   const providerDetail = detail as {
@@ -429,25 +491,25 @@ function reannounceWrapped(detail: unknown): void {
 
   const info = Object.freeze({
     uuid: `scopeball-${providerDetail.info?.uuid ?? Math.random().toString(36).slice(2)}`,
-    name: `Scopeball (wraps ${providerDetail.info?.name ?? 'provider'})`,
+    name: `Scopeball (wraps ${providerDetail.info?.name ?? "provider"})`,
     icon: providerDetail.info?.icon ?? FALLBACK_ICON,
     rdns: SCOPEBALL_RDNS,
   });
 
   window.dispatchEvent(
-    new CustomEvent('eip6963:announceProvider', {
+    new CustomEvent("eip6963:announceProvider", {
       detail: Object.freeze({ info, provider }),
     }),
   );
 }
 
-window.addEventListener('eip6963:announceProvider', (event: Event) => {
+window.addEventListener("eip6963:announceProvider", (event: Event) => {
   const detail = (event as CustomEvent).detail;
   if (detail?.info?.rdns === SCOPEBALL_RDNS) return;
   reannounceWrapped(detail);
 });
 
-window.dispatchEvent(new Event('eip6963:requestProvider'));
+window.dispatchEvent(new Event("eip6963:requestProvider"));
 
 discoverAndProxyAll();
 const pollDeadline = Date.now() + 30_000;
