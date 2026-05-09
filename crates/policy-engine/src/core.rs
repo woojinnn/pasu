@@ -1,14 +1,33 @@
 //! Core domain types: Address, Token, `AmountSpec`, Action.
 
 use alloy_primitives::{Address as AlloyAddress, U256};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, str::FromStr};
 use thiserror::Error;
 
 /// EVM address as a lowercase hex string with 0x prefix.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+///
+/// `Deserialize` is implemented manually to route through `Address::new`,
+/// which normalizes the input to the same lowercase form that `from_alloy`
+/// produces. Without this, registered match keys (always lowercase via
+/// `Address::new` / `from_alloy`) wouldn't match incoming requests whose
+/// `to` arrives EIP-55 checksummed (mixed case) — every adapter lookup
+/// would `NoMatch` on otherwise valid contract addresses, and the
+/// orchestrator would fall back to `Action::Other`, silently bypassing
+/// every dex/permit/etc. policy.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Address(String);
+
+impl<'de> Deserialize<'de> for Address {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = String::deserialize(deserializer)?;
+        Address::new(&raw).map_err(serde::de::Error::custom)
+    }
+}
 
 impl Address {
     /// Parse and normalize an EVM address.
