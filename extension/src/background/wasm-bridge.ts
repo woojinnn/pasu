@@ -1,11 +1,27 @@
-import Browser from 'webextension-polyfill';
-import init, * as wasmExports from '../wasm/policy_engine_wasm';
+import Browser from "webextension-polyfill";
+import init, * as wasmExports from "../wasm/policy_engine_wasm";
+import {
+  parseAction,
+  parseTier1Plan,
+  parseVerdict,
+  parseWindowKeys,
+  type ParsedAction,
+  type Tier1Plan,
+  type VerdictDto,
+  type WindowKeys,
+} from "./wasm-bridge.types";
+
+export { WasmDecodeError } from "./wasm-bridge.types";
+export type { ParsedAction, Tier1Plan, VerdictDto, WindowKeys } from "./wasm-bridge.types";
 
 interface WasmExports {
   install_policies_json(input: string): string;
   build_action_json(request_json: string): string;
   tier1_fact_plan_json(action_json: string): string;
-  tier2_window_keys_json(action_json: string, oracle_snapshot_json: string): string;
+  tier2_window_keys_json(
+    action_json: string,
+    oracle_snapshot_json: string,
+  ): string;
   evaluate_json(request_json: string, host_snapshot_json: string): string;
 }
 
@@ -25,14 +41,14 @@ export class EngineError extends Error {
     message: string,
   ) {
     super(`${kind}: ${message}`);
-    this.name = 'EngineError';
+    this.name = "EngineError";
   }
 }
 
 let cachedExports: WasmExports | null = null;
 let inflightLoad: Promise<WasmExports> | null = null;
 
-const WASM_BG_URL = Browser.runtime.getURL('wasm/policy_engine_wasm_bg.wasm');
+const WASM_BG_URL = Browser.runtime.getURL("wasm/policy_engine_wasm_bg.wasm");
 
 async function load(): Promise<WasmExports> {
   if (cachedExports) return cachedExports;
@@ -51,39 +67,47 @@ function unwrap<T>(json: string): T {
   throw new EngineError(parsed.error.kind, parsed.error.message);
 }
 
-export async function installPolicies(input: { schema_text: string; policy_set: { id: string; text: string }[] }): Promise<void> {
+export async function installPolicies(input: {
+  schema_text: string;
+  policy_set: { id: string; text: string }[];
+}): Promise<void> {
   const exports = await load();
   unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
 }
 
-export async function buildAction(request: unknown): Promise<unknown> {
+export async function buildAction(request: unknown): Promise<ParsedAction> {
   const exports = await load();
-  return unwrap<unknown>(exports.build_action_json(JSON.stringify(request)));
+  const raw = unwrap<unknown>(exports.build_action_json(JSON.stringify(request)));
+  return parseAction(raw);
 }
 
-export async function tier1FactPlan(action: unknown): Promise<unknown> {
+export async function tier1FactPlan(action: unknown): Promise<Tier1Plan> {
   const exports = await load();
-  return unwrap<unknown>(exports.tier1_fact_plan_json(JSON.stringify(action)));
+  const raw = unwrap<unknown>(exports.tier1_fact_plan_json(JSON.stringify(action)));
+  return parseTier1Plan(raw);
 }
 
 export async function tier2WindowKeys(
   action: unknown,
   oracleEntries: unknown,
-): Promise<{ keys: { actor: string; name: string }[] }> {
+): Promise<WindowKeys> {
   const exports = await load();
-  return unwrap<{ keys: { actor: string; name: string }[] }>(
-    exports.tier2_window_keys_json(JSON.stringify(action), JSON.stringify(oracleEntries)),
+  const raw = unwrap<unknown>(
+    exports.tier2_window_keys_json(
+      JSON.stringify(action),
+      JSON.stringify(oracleEntries),
+    ),
   );
+  return parseWindowKeys(raw);
 }
 
-export interface VerdictDto {
-  kind: 'pass' | 'warn' | 'fail';
-  matched?: { policy_id: string; reason?: string; severity: string; origin: string }[];
-}
-
-export async function evaluate(request: unknown, snapshot: unknown): Promise<VerdictDto> {
+export async function evaluate(
+  request: unknown,
+  snapshot: unknown,
+): Promise<VerdictDto> {
   const exports = await load();
-  return unwrap<VerdictDto>(
+  const raw = unwrap<unknown>(
     exports.evaluate_json(JSON.stringify(request), JSON.stringify(snapshot)),
   );
+  return parseVerdict(raw);
 }

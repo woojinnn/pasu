@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestType, type Message } from "@lib/types";
+import type { VerdictDto } from "../wasm-bridge.types";
 
 const OWNER = "0x1111111111111111111111111111111111111111";
 const ROUTER = "0x2222222222222222222222222222222222222222";
@@ -221,9 +222,7 @@ function tokenLite(address: string, symbol: string, decimals = 18) {
 }
 
 function setupDexPass(
-  verdict: { kind: "pass" | "warn" | "fail"; matched?: unknown[] } = {
-    kind: "pass",
-  },
+  verdict: VerdictDto = { kind: "pass" },
 ) {
   mocks.buildAction.mockResolvedValue(dexAction());
   mocks.tier1FactPlan.mockResolvedValue({
@@ -410,7 +409,14 @@ describe("orchestrator", () => {
   it("opens a warning decision window and reserves only after user approval", async () => {
     setupDexPass({
       kind: "warn",
-      matched: [{ policy_id: "policy::warn", severity: "warn", origin: "tx" }],
+      matched: [
+        {
+          policy_id: "policy::warn",
+          reason: null,
+          severity: "warn",
+          origin: "tx",
+        },
+      ],
     });
     const awaitingUser = vi.fn();
 
