@@ -15,7 +15,7 @@
 //! an error message so the caller can render a partial view.
 
 use alloy_dyn_abi::JsonAbiExt;
-use alloy_json_abi::Function;
+use alloy_json_abi::{Function, Param};
 
 use crate::decode::DecodedArg;
 
@@ -35,9 +35,17 @@ pub struct OpcodeEntry {
     /// tries each signature in order and accepts the first one that decodes
     /// cleanly.
     ///
-    /// Empty slice means no schema is registered yet; the input stays as raw
-    /// hex with a [`StepDecodeError::NoSchema`] marker.
+    /// Empty slice means no schema is registered yet (or [`Self::input_json_abi`]
+    /// supplies a richer schema); the input stays as raw hex with a
+    /// [`StepDecodeError::NoSchema`] marker if both forms are absent.
     pub input_signatures: &'static [&'static str],
+    /// Optional JSON ABI describing the inputs as a `Vec<Param>`. Preferred
+    /// over [`Self::input_signatures`] when present because alloy's Solidity
+    /// signature parser drops field names inside tuple types — supplying a
+    /// JSON ABI lets us preserve names at every level (e.g.
+    /// `params.path[].intermediateCurrency` instead of an unnamed positional
+    /// tuple). Format: a JSON array literal of standard ABI Param objects.
+    pub input_json_abi: Option<&'static str>,
 }
 
 /// One protocol's opcode dispatch table.
@@ -151,12 +159,33 @@ fn decode_step_input(
     entry: &OpcodeEntry,
     input: &[u8],
 ) -> (Option<Vec<DecodedArg>>, Option<StepDecodeError>) {
-    if entry.input_signatures.is_empty() {
+    if entry.input_signatures.is_empty() && entry.input_json_abi.is_none() {
         return (None, Some(StepDecodeError::NoSchema));
     }
-    // Try each candidate signature; remember the last decode error so the
-    // caller can surface a useful message when none of them match.
     let mut last_error = None;
+
+    // Prefer JSON ABI when present — it preserves named fields inside tuple
+    // types (alloy's Solidity signature parser drops them).
+    if let Some(json) = entry.input_json_abi {
+        match function_from_json_inputs(json, entry.name) {
+            Ok(function) => match function.abi_decode_input(input, true) {
+                Ok(values) => return (Some(build_decoded_args(&function, values)), None),
+                Err(e) => {
+                    last_error = Some(StepDecodeError::AbiDecode(format!(
+                        "JSON ABI decode failed: {e}",
+                    )));
+                }
+            },
+            Err(e) => {
+                last_error = Some(StepDecodeError::BadSignature(format!(
+                    "could not parse JSON ABI for `{}`: {e}",
+                    entry.name
+                )));
+            }
+        }
+    }
+
+    // Fall back to Solidity signature strings; first that ABI-decodes wins.
     for sig in entry.input_signatures {
         // Wrap the tuple signature into a synthetic function so we can reuse
         // `Function::parse` + `abi_decode_input`. The leading "step" name is
@@ -175,28 +204,50 @@ fn decode_step_input(
             )));
             continue;
         };
-        let args = function
-            .inputs
-            .iter()
-            .enumerate()
-            .zip(values)
-            .map(|((idx, param), value)| {
-                let name = if param.name.is_empty() {
-                    format!("arg{idx}")
-                } else {
-                    param.name.clone()
-                };
-                DecodedArg {
-                    name,
-                    sol_type: param.ty.clone(),
-                    value,
-                    components: param.components.clone(),
-                }
-            })
-            .collect();
-        return (Some(args), None);
+        return (Some(build_decoded_args(&function, values)), None);
     }
     (None, last_error)
+}
+
+/// Parse a JSON-ABI `Vec<Param>` literal into a synthetic [`Function`].
+///
+/// `entry_name` is only used for the generated function's `name` field; it
+/// doesn't affect ABI decoding (we always use `abi_decode_input` which
+/// ignores the function name and selector).
+fn function_from_json_inputs(json: &str, entry_name: &str) -> Result<Function, String> {
+    let inputs: Vec<Param> =
+        serde_json::from_str(json).map_err(|e| format!("invalid Param JSON: {e}"))?;
+    Ok(Function {
+        name: entry_name.to_string(),
+        inputs,
+        outputs: Vec::new(),
+        state_mutability: alloy_json_abi::StateMutability::NonPayable,
+    })
+}
+
+fn build_decoded_args(
+    function: &Function,
+    values: Vec<alloy_dyn_abi::DynSolValue>,
+) -> Vec<DecodedArg> {
+    function
+        .inputs
+        .iter()
+        .enumerate()
+        .zip(values)
+        .map(|((idx, param), value)| {
+            let name = if param.name.is_empty() {
+                format!("arg{idx}")
+            } else {
+                param.name.clone()
+            };
+            DecodedArg {
+                name,
+                sol_type: param.ty.clone(),
+                value,
+                components: param.components.clone(),
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -213,21 +264,25 @@ mod tests {
                 opcode: 0x0b,
                 name: "WRAP_ETH",
                 input_signatures: &["(address,uint256)"],
+                input_json_abi: None,
             },
             OpcodeEntry {
                 opcode: 0x0c,
                 name: "UNWRAP_WETH",
                 input_signatures: &["(address,uint256)"],
+                input_json_abi: None,
             },
             OpcodeEntry {
                 opcode: 0x40,
                 name: "OPCODE_WITHOUT_SCHEMA",
                 input_signatures: &[],
+                input_json_abi: None,
             },
             OpcodeEntry {
                 opcode: 0x50,
                 name: "OPCODE_WITH_FALLBACK",
                 input_signatures: &["(address,uint256,uint256)", "(address,uint256)"],
+                input_json_abi: None,
             },
         ],
     };

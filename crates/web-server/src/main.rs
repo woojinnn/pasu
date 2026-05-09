@@ -25,6 +25,9 @@ use abi_resolver::subdecode::opcode_stream::{
 use abi_resolver::subdecode::protocols::universal_router::{
     extract_commands_and_inputs, is_universal_router_execute, UNISWAP_UR_TABLE,
 };
+use abi_resolver::subdecode::protocols::v4_router::{
+    extract_actions_and_params as extract_v4_actions_and_params, V4_ROUTER_TABLE,
+};
 use abi_resolver::subdecode::recurse::{extract_subcalls, is_self_multicall};
 use alloy_primitives::Address;
 use axum::{
@@ -322,7 +325,7 @@ fn decode_recursive(
                         steps
                             .into_iter()
                             .take(MAX_SUBDECODE_CHILDREN)
-                            .map(step_to_response)
+                            .map(|step| step_to_response(step, depth + 1))
                             .collect()
                     })
                     .unwrap_or_default()
@@ -371,13 +374,35 @@ fn arg_to_api(a: DecodedArg) -> ApiArg {
 /// signature-DB hit. When the step's input couldn't be ABI-decoded (unknown
 /// opcode, no schema yet, decode failure), we surface the raw input as a
 /// single fake arg so users still see the bytes.
-fn step_to_response(step: DecodedStep) -> DecodeResponse {
+///
+/// When the step is `V4_SWAP` (UR opcode `0x10`) and was decoded against the
+/// `(bytes actions, bytes[] params)` schema, we recurse one more level using
+/// the V4Router action table so the inner SWAP_EXACT_IN / SETTLE / TAKE
+/// sequence shows up as nested children in the tree.
+fn step_to_response(step: DecodedStep, depth: u32) -> DecodeResponse {
     let selector = format!("0x{:02x}", step.opcode);
     let function_name = if step.allow_revert {
         format!("{} (allowRevert)", step.name)
     } else {
         step.name.to_string()
     };
+
+    // Compute V4_SWAP nested children before consuming `step.args` below.
+    let nested_children = if step.opcode == 0x10 && depth < MAX_SUBDECODE_DEPTH {
+        extract_v4_actions_and_params(&step)
+            .map(|(actions, params)| {
+                let v4_steps = dispatch_opcode_stream(&actions, &params, &V4_ROUTER_TABLE);
+                v4_steps
+                    .into_iter()
+                    .take(MAX_SUBDECODE_CHILDREN)
+                    .map(|s| step_to_response(s, depth + 1))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
     let (signature, args) = match (step.args, step.error) {
         (Some(decoded_args), _) => (
             format!("{}(...)", step.name),
@@ -410,7 +435,7 @@ fn step_to_response(step: DecodedStep) -> DecodeResponse {
         signature,
         selector,
         args,
-        children: Vec::new(),
+        children: nested_children,
     }
 }
 

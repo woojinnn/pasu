@@ -30,6 +30,87 @@ pub const UNISWAP_UR_MASK: u8 = 0x7f;
 /// dispatcher.
 pub const UNISWAP_UR_ALLOW_REVERT: u8 = 0x80;
 
+// ---------------------------------------------------------------------------
+// JSON-ABI literals for the UR opcodes whose `inputs[i]` carries a named
+// struct. Using JSON instead of a Solidity signature string preserves field
+// names at every level (`params.permitSingle.details.token`,
+// `params.poolKey.currency0`, …) — alloy's signature parser only accepts
+// names at the outer function-arg level.
+// ---------------------------------------------------------------------------
+
+/// `IAllowanceTransfer.PermitSingle` plus the trailing `bytes signature`.
+const PERMIT2_PERMIT_JSON: &str = r#"[
+    { "name": "permitSingle", "type": "tuple", "components": [
+        { "name": "details", "type": "tuple", "components": [
+            { "name": "token",      "type": "address" },
+            { "name": "amount",     "type": "uint160" },
+            { "name": "expiration", "type": "uint48" },
+            { "name": "nonce",      "type": "uint48" }
+        ]},
+        { "name": "spender",     "type": "address" },
+        { "name": "sigDeadline", "type": "uint256" }
+    ]},
+    { "name": "signature", "type": "bytes" }
+]"#;
+
+/// `IAllowanceTransfer.PermitBatch` plus the trailing `bytes signature`.
+const PERMIT2_PERMIT_BATCH_JSON: &str = r#"[
+    { "name": "permitBatch", "type": "tuple", "components": [
+        { "name": "details", "type": "tuple[]", "components": [
+            { "name": "token",      "type": "address" },
+            { "name": "amount",     "type": "uint160" },
+            { "name": "expiration", "type": "uint48" },
+            { "name": "nonce",      "type": "uint48" }
+        ]},
+        { "name": "spender",     "type": "address" },
+        { "name": "sigDeadline", "type": "uint256" }
+    ]},
+    { "name": "signature", "type": "bytes" }
+]"#;
+
+/// `IAllowanceTransfer.AllowanceTransferDetails[]` (single arg).
+const PERMIT2_TRANSFER_FROM_BATCH_JSON: &str = r#"[
+    { "name": "transferDetails", "type": "tuple[]", "components": [
+        { "name": "from",   "type": "address" },
+        { "name": "to",     "type": "address" },
+        { "name": "amount", "type": "uint160" },
+        { "name": "token",  "type": "address" }
+    ]}
+]"#;
+
+/// `(PoolKey poolKey, uint160 sqrtPriceX96)` for `V4_INITIALIZE_POOL`.
+const V4_INITIALIZE_POOL_JSON: &str = r#"[
+    { "name": "poolKey", "type": "tuple", "components": [
+        { "name": "currency0",   "type": "address" },
+        { "name": "currency1",   "type": "address" },
+        { "name": "fee",         "type": "uint24" },
+        { "name": "tickSpacing", "type": "int24" },
+        { "name": "hooks",       "type": "address" }
+    ]},
+    { "name": "sqrtPriceX96", "type": "uint160" }
+]"#;
+
+/// `AcrossV4DepositV3Params` — Across V3 bridge deposit struct.
+const ACROSS_V4_DEPOSIT_V3_JSON: &str = r#"[{
+    "name": "params",
+    "type": "tuple",
+    "components": [
+        { "name": "depositor",            "type": "address" },
+        { "name": "recipient",            "type": "address" },
+        { "name": "inputToken",           "type": "address" },
+        { "name": "outputToken",          "type": "address" },
+        { "name": "inputAmount",          "type": "uint256" },
+        { "name": "outputAmount",         "type": "uint256" },
+        { "name": "destinationChainId",   "type": "uint256" },
+        { "name": "exclusiveRelayer",     "type": "address" },
+        { "name": "quoteTimestamp",       "type": "uint32" },
+        { "name": "fillDeadline",         "type": "uint32" },
+        { "name": "exclusivityDeadline",  "type": "uint32" },
+        { "name": "message",              "type": "bytes" },
+        { "name": "useNative",            "type": "bool" }
+    ]
+}]"#;
+
 /// Uniswap UR opcode dispatch table.
 ///
 /// See `crates/abi-resolver/docs` (or the inventory in CLAUDE.md §3.2) for
@@ -50,6 +131,7 @@ const ENTRIES: &[OpcodeEntry] = &[
             "(address recipient, uint256 amountIn, uint256 amountOutMin, bytes path, bool payerIsUser, uint256[] minHopPriceX36)",
             "(address recipient, uint256 amountIn, uint256 amountOutMin, bytes path, bool payerIsUser)",
         ],
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x01,
@@ -58,40 +140,47 @@ const ENTRIES: &[OpcodeEntry] = &[
             "(address recipient, uint256 amountOut, uint256 amountInMax, bytes path, bool payerIsUser, uint256[] minHopPriceX36)",
             "(address recipient, uint256 amountOut, uint256 amountInMax, bytes path, bool payerIsUser)",
         ],
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x02,
         name: "PERMIT2_TRANSFER_FROM",
         input_signatures: &["(address token, address recipient, uint160 amount)"],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x03,
         name: "PERMIT2_PERMIT_BATCH",
         input_signatures: &[
-            "(((address token, uint160 amount, uint48 expiration, uint48 nonce)[] details, address spender, uint256 sigDeadline) permitBatch, bytes signature)",
+            "(((address,uint160,uint48,uint48)[],address,uint256) permitBatch, bytes signature)",
         ],
+        input_json_abi: Some(PERMIT2_PERMIT_BATCH_JSON),
     },
     OpcodeEntry {
         opcode: 0x04,
         name: "SWEEP",
         input_signatures: &["(address token, address recipient, uint256 amountMin)"],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x05,
         name: "TRANSFER",
         input_signatures: &["(address token, address recipient, uint256 value)"],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x06,
         name: "PAY_PORTION",
         input_signatures: &["(address token, address recipient, uint256 bips)"],
-    },
+            input_json_abi: None,
+},
     // 0x07 — Uniswap-only opcode (Pancake UR has placeholder here).
     OpcodeEntry {
         opcode: 0x07,
         name: "PAY_PORTION_FULL_PRECISION",
         input_signatures: &["(address token, address recipient, uint256 portion)"],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x08,
         name: "V2_SWAP_EXACT_IN",
@@ -99,6 +188,7 @@ const ENTRIES: &[OpcodeEntry] = &[
             "(address recipient, uint256 amountIn, uint256 amountOutMin, address[] path, bool payerIsUser, uint256[] minHopPriceX36)",
             "(address recipient, uint256 amountIn, uint256 amountOutMin, address[] path, bool payerIsUser)",
         ],
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x09,
@@ -107,36 +197,40 @@ const ENTRIES: &[OpcodeEntry] = &[
             "(address recipient, uint256 amountOut, uint256 amountInMax, address[] path, bool payerIsUser, uint256[] minHopPriceX36)",
             "(address recipient, uint256 amountOut, uint256 amountInMax, address[] path, bool payerIsUser)",
         ],
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x0a,
         name: "PERMIT2_PERMIT",
         input_signatures: &[
-            "(((address token, uint160 amount, uint48 expiration, uint48 nonce) details, address spender, uint256 sigDeadline) permitSingle, bytes signature)",
+            "(((address,uint160,uint48,uint48),address,uint256) permitSingle, bytes signature)",
         ],
+        input_json_abi: Some(PERMIT2_PERMIT_JSON),
     },
     OpcodeEntry {
         opcode: 0x0b,
         name: "WRAP_ETH",
         input_signatures: &["(address recipient, uint256 amountMin)"],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x0c,
         name: "UNWRAP_WETH",
         input_signatures: &["(address recipient, uint256 amountMin)"],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x0d,
         name: "PERMIT2_TRANSFER_FROM_BATCH",
-        input_signatures: &[
-            "((address from, address to, uint160 amount, address token)[] transferDetails)",
-        ],
+        input_signatures: &["((address,address,uint160,address)[] transferDetails)"],
+        input_json_abi: Some(PERMIT2_TRANSFER_FROM_BATCH_JSON),
     },
     OpcodeEntry {
         opcode: 0x0e,
         name: "BALANCE_CHECK_ERC20",
         input_signatures: &["(address owner, address token, uint256 minBalance)"],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x10,
         name: "V4_SWAP",
@@ -146,6 +240,7 @@ const ENTRIES: &[OpcodeEntry] = &[
         // not yet wired up here. Decoding the outer pair still gives the
         // user a peek at the action byte string and parameter sub-blobs.
         input_signatures: &["(bytes actions, bytes[] params)"],
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x11,
@@ -155,20 +250,23 @@ const ENTRIES: &[OpcodeEntry] = &[
         // upstream. Decoding it cleanly needs Cat A nested recursion through
         // the resolver against the NPM ABI — out of PR3 scope.
         input_signatures: &[],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x12,
         name: "V3_POSITION_MANAGER_CALL",
         // Same as 0x11: input IS NPM calldata, not a tuple. Recurse via
         // resolver in a follow-up PR.
         input_signatures: &[],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x13,
         name: "V4_INITIALIZE_POOL",
         input_signatures: &[
-            "((address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) poolKey, uint160 sqrtPriceX96)",
+            "((address,address,uint24,int24,address) poolKey, uint160 sqrtPriceX96)",
         ],
+        input_json_abi: Some(V4_INITIALIZE_POOL_JSON),
     },
     OpcodeEntry {
         opcode: 0x14,
@@ -178,7 +276,8 @@ const ENTRIES: &[OpcodeEntry] = &[
         // requires Cat A nested recursion through the resolver — same reason
         // as 0x11 / 0x12.
         input_signatures: &[],
-    },
+            input_json_abi: None,
+},
     OpcodeEntry {
         opcode: 0x21,
         name: "EXECUTE_SUB_PLAN",
@@ -188,16 +287,21 @@ const ENTRIES: &[OpcodeEntry] = &[
         // (self-recursive Cat B); for now we surface the inner pair so the
         // user can at least see the nested commands byte stream.
         input_signatures: &["(bytes commands, bytes[] inputs)"],
+        input_json_abi: None,
     },
-    // 0x40 — third-party integration: Across V3 bridge deposit. The struct
-    // matches `AcrossV4DepositV3Params` in
-    // `contracts/interfaces/IUniversalRouter.sol`.
+    // 0x40 — third-party integration: Across V3 bridge deposit. Upstream
+    // does `abi.decode(input, (AcrossV4DepositV3Params))` — single-arg
+    // encoding of a dynamic struct (the `bytes message` field makes it
+    // dynamic). We mirror that here as a single-tuple-arg schema; field
+    // names are dropped because alloy doesn't accept identifiers inside a
+    // tuple type literal.
     OpcodeEntry {
         opcode: 0x40,
         name: "ACROSS_V4_DEPOSIT_V3",
         input_signatures: &[
-            "((address depositor, address recipient, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 destinationChainId, address exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message, bool useNative) params)",
+            "((address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes,bool) params)",
         ],
+        input_json_abi: Some(ACROSS_V4_DEPOSIT_V3_JSON),
     },
 ];
 
