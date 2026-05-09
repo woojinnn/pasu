@@ -1,7 +1,11 @@
 import Browser from 'webextension-polyfill';
 import { Identifier } from '@lib/identifier';
 import { decideMessage, recordTxHash } from './orchestrator';
-import { ensureDefaultPoliciesInstalled } from './policies-loader';
+import {
+  ensureDefaultPoliciesInstalled,
+  reinstallAllPolicies,
+} from './policies-loader';
+import { applyEnabledIds, getCatalog } from './policy-selection';
 import { installReceiptPoller } from './receipt-poller';
 import type { Message, MessageResponse } from '@lib/types';
 
@@ -76,3 +80,46 @@ async function handleMessage(
     }
   }
 }
+
+interface PolicyCatalogRequest {
+  type: 'policy-catalog';
+}
+interface SetEnabledIdsRequest {
+  type: 'set-enabled-ids';
+  ids: string[];
+}
+type PopupRequest = PolicyCatalogRequest | SetEnabledIdsRequest;
+
+Browser.runtime.onMessage.addListener(
+  (message: unknown, _sender, sendResponse: (r: unknown) => void) => {
+    const req = message as Partial<PopupRequest> | null;
+    if (!req || typeof req !== 'object') return;
+
+    if (req.type === 'policy-catalog') {
+      void getCatalog()
+        .then((cat) => sendResponse({ ok: true, data: cat }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: 'catalog_failed', message: String(err) },
+          }),
+        );
+      return true; // keep the channel open for the async response
+    }
+
+    if (req.type === 'set-enabled-ids' && Array.isArray(req.ids)) {
+      const ids = req.ids.filter((id): id is string => typeof id === 'string');
+      void applyEnabledIds(ids, reinstallAllPolicies)
+        .then((result) => sendResponse(result))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: 'apply_failed', message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    return;
+  },
+);
