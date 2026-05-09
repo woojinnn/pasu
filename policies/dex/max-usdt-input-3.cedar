@@ -1,29 +1,21 @@
-// Policy: deny Dex swaps that spend more than 3 USDT (mainnet).
+// Test policy: deny ANY Dex action whose total input value exceeds 3 USD.
 //
-// USDT on Ethereum mainnet is `0xdac17f958d2ee523a2206206994597c13d831ec7`
-// with 6 decimals. Since 1 USDT ≈ 1 USD, comparing `totalInputUsd > 3.00`
-// is equivalent to "input USDT > ~3 USDT" for a single-token USDT swap.
-//
-// `staleSec <= 60` guards against an extremely stale oracle reading.
+// Looser than the original "USDT-only" version on purpose — for the manual
+// test we want to know whether `totalInputUsd` is being populated at all.
+// If even a 6 USDT swap doesn't trip this rule, the failure is upstream
+// (oracle call missing, or the request is being classified as `other`
+// instead of `dex`). If it DOES trip, we can re-tighten with the
+// inputTokens.contains check.
 
 @id("user/max-usdt-input-3")
 @severity("deny")
-@reason("Cannot swap more than 3 USDT")
+@reason("Cannot swap more than 3 USD of input value")
 forbid (
   principal is Wallet,
   action == Action::"dex",
   resource is Protocol
 )
 when {
-  context has inputTokens
-  && context.inputTokens.contains({
-       chainId: 1,
-       address: "0xdac17f958d2ee523a2206206994597c13d831ec7",
-       symbol: "USDT",
-       decimals: 6,
-       isNative: false
-     })
-  && context has totalInputUsd
-  && context.totalInputUsd.staleSec <= 60
+  context has totalInputUsd
   && context.totalInputUsd.value.greaterThan(decimal("3.00"))
 };
