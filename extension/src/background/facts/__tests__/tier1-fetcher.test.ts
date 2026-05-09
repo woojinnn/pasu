@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NATIVE_TOKEN_ADDRESS } from "../../oracle/oracle-snapshot";
 
 const rpcMocks = vi.hoisted(() => ({
@@ -18,6 +18,7 @@ const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const OWNER = "0x1111111111111111111111111111111111111111";
 const SPENDER = "0x2222222222222222222222222222222222222222";
 const storage = new Map<string, unknown>();
+let warnSpy: ReturnType<typeof vi.spyOn> | undefined;
 
 function token(address: string, decimals = 18, is_native = false) {
   return {
@@ -70,10 +71,16 @@ describe("fetchTier1", () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    warnSpy = undefined;
     storage.clear();
     installChromeStorageMock();
     rpcMocks.readBalances.mockResolvedValue([100n]);
     rpcMocks.readAllowances.mockResolvedValue([50n]);
+  });
+
+  afterEach(() => {
+    warnSpy?.mockRestore();
+    vi.useRealTimers();
   });
 
   it("combines oracle prices, balances, and allowances", async () => {
@@ -136,6 +143,7 @@ describe("fetchTier1", () => {
 
   it("preserves oracle entries when balances and allowances time out", async () => {
     vi.useFakeTimers();
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     rpcMocks.readBalances.mockReturnValue(new Promise(() => undefined));
     rpcMocks.readAllowances.mockReturnValue(new Promise(() => undefined));
 
@@ -163,7 +171,7 @@ describe("fetchTier1", () => {
       fetchMock as any,
       10_000,
     );
-    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(1_500);
 
     const result = await resultPromise;
     expect(result.oracle).toEqual([
@@ -174,26 +182,105 @@ describe("fetchTier1", () => {
     ]);
     expect(result.balances).toEqual([]);
     expect(result.allowances).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("tier1 dimension fell back"),
+      expect.objectContaining({ dimension: "balances", reason: "timeout" }),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("tier1 dimension fell back"),
+      expect.objectContaining({ dimension: "allowances", reason: "timeout" }),
+    );
   });
 
-  it("returns an empty fail-open snapshot after the outer timeout", async () => {
+  it("preserves oracle and allowances when balances time out", async () => {
     vi.useFakeTimers();
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     rpcMocks.readBalances.mockReturnValue(new Promise(() => undefined));
-    rpcMocks.readAllowances.mockResolvedValue([]);
+    rpcMocks.readAllowances.mockResolvedValue([50n]);
+
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            [WETH]: { usd: 3500, last_updated_at: 8 },
+          }),
+        ),
+    );
 
     const resultPromise = fetchTier1(
-      plan({ balances: [{ owner: OWNER, token: token(WETH) }] }),
-      vi.fn() as any,
+      plan({
+        tokens_for_oracle: [token(WETH)],
+        balances: [{ owner: OWNER, token: token(WETH) }],
+        allowances: [{ owner: OWNER, token: token(WETH), spender: SPENDER }],
+      }),
+      fetchMock as any,
       10_000,
     );
-    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(1_500);
+
+    await expect(resultPromise).resolves.toEqual({
+      oracle: [
+        expect.objectContaining({
+          token_key: `1:${WETH}`,
+          usd_price: 3500,
+        }),
+      ],
+      balances: [],
+      allowances: [
+        {
+          owner: OWNER,
+          token_key: `1:${WETH}`,
+          spender: SPENDER,
+          allowance: "50",
+        },
+      ],
+      now_ts: 10,
+    });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("tier1 dimension fell back"),
+      expect.objectContaining({ dimension: "balances", reason: "timeout" }),
+    );
+  });
+
+  it("preserves balances and allowances when oracle times out", async () => {
+    vi.useFakeTimers();
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const fetchMock = vi.fn(() => new Promise<Response>(() => undefined));
+
+    const resultPromise = fetchTier1(
+      plan({
+        tokens_for_oracle: [token(WETH)],
+        balances: [{ owner: OWNER, token: token(WETH) }],
+        allowances: [{ owner: OWNER, token: token(WETH), spender: SPENDER }],
+      }),
+      fetchMock as any,
+      10_000,
+    );
+    await vi.advanceTimersByTimeAsync(1_500);
 
     await expect(resultPromise).resolves.toEqual({
       oracle: [],
-      balances: [],
-      allowances: [],
+      balances: [
+        { owner: OWNER, token_key: `1:${WETH}`, balance: "100" },
+      ],
+      allowances: [
+        {
+          owner: OWNER,
+          token_key: `1:${WETH}`,
+          spender: SPENDER,
+          allowance: "50",
+        },
+      ],
       now_ts: 10,
     });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("tier1 dimension fell back"),
+      expect.objectContaining({ dimension: "oracle", reason: "timeout" }),
+    );
   });
 
   it("merges tier-1 results into a full HostSnapshot", () => {
