@@ -36,7 +36,16 @@ type WritableStream = WindowPostMessageStream & {
   write(data: unknown): void;
 };
 
-console.log('[Scopeball-proxy] init on', location.href, 'world:', typeof (globalThis as { chrome?: unknown }).chrome === 'undefined' ? 'MAIN' : 'ISOLATED');
+// Detect MAIN vs ISOLATED world via chrome.runtime (only present in
+// extension contexts, i.e. ISOLATED world content scripts). Plain `chrome`
+// existence is unreliable — Chrome exposes chrome.csi / chrome.loadTimes
+// to page world too.
+const __scopeballWorld =
+  typeof (globalThis as { chrome?: { runtime?: { id?: string } } }).chrome
+    ?.runtime?.id === 'string'
+    ? 'ISOLATED'
+    : 'MAIN';
+console.log('[Scopeball-proxy] init on', location.href, 'world:', __scopeballWorld);
 
 const stream = new WindowPostMessageStream({
   name: Identifier.INPAGE,
