@@ -27,7 +27,19 @@ const state: {
 } = { catalog: null, searchTerm: '', status: 'idle', errorText: '' };
 
 async function fetchCatalog(): Promise<Catalog> {
-  const res = (await Browser.runtime.sendMessage({ type: 'policy-catalog' })) as CatalogResponse;
+  // Guard against a wedged service worker — if no response arrives in
+  // 5 s, surface a visible error instead of staying on "Loading…".
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(
+      () => reject(new Error('no response from service worker (timeout 5s)')),
+      5000,
+    ),
+  );
+  const res = (await Promise.race([
+    Browser.runtime.sendMessage({ type: 'policy-catalog' }),
+    timeout,
+  ])) as CatalogResponse | undefined;
+  if (!res) throw new Error('empty response from service worker');
   if (!res.ok) throw new Error(`${res.error.kind}: ${res.error.message}`);
   return res.data;
 }
