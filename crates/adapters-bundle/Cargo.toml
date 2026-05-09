@@ -12,11 +12,6 @@ policy-engine-adapter-permit2.workspace = true
 policy-engine-adapter-universal-router.workspace = true
 policy-engine-adapter-uniswap-v2.workspace = true
 policy-engine-adapter-uniswap-v3.workspace = true
-policy-engine-adapter-pancakeswap-amm.workspace = true
-policy-engine-adapter-pancakeswap-v3.workspace = true
-policy-engine-adapter-pancakeswap-stableswap.workspace = true
-policy-engine-adapter-aerodrome-v1.workspace = true
-policy-engine-adapter-aerodrome-slipstream.workspace = true
 
 [dev-dependencies]
 alloy-primitives.workspace = true

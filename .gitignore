@@ -2,4 +2,3 @@
 **/*.rs.bk
 .DS_Store
 docs/superpowers/
-node_modules/

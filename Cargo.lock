@@ -1607,67 +1607,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "policy-engine-adapter-aerodrome-slipstream"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "alloy-sol-types",
- "hex",
- "policy-engine",
- "thiserror",
-]
-
-[[package]]
-name = "policy-engine-adapter-aerodrome-v1"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "alloy-sol-types",
- "hex",
- "policy-engine",
- "thiserror",
-]
-
-[[package]]
 name = "policy-engine-adapter-eip2612"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "policy-engine",
  "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "policy-engine-adapter-pancakeswap-amm"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "alloy-sol-types",
- "hex",
- "policy-engine",
- "thiserror",
-]
-
-[[package]]
-name = "policy-engine-adapter-pancakeswap-stableswap"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "alloy-sol-types",
- "hex",
- "policy-engine",
- "thiserror",
-]
-
-[[package]]
-name = "policy-engine-adapter-pancakeswap-v3"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "alloy-sol-types",
- "hex",
- "policy-engine",
  "thiserror",
 ]
 
@@ -1722,12 +1667,7 @@ dependencies = [
  "alloy-primitives",
  "hex",
  "policy-engine",
- "policy-engine-adapter-aerodrome-slipstream",
- "policy-engine-adapter-aerodrome-v1",
  "policy-engine-adapter-eip2612",
- "policy-engine-adapter-pancakeswap-amm",
- "policy-engine-adapter-pancakeswap-stableswap",
- "policy-engine-adapter-pancakeswap-v3",
  "policy-engine-adapter-permit2",
  "policy-engine-adapter-uniswap-v2",
  "policy-engine-adapter-uniswap-v3",
@@ -1742,11 +1682,6 @@ dependencies = [
  "alloy-sol-types",
  "hex",
  "policy-engine",
- "policy-engine-adapter-aerodrome-slipstream",
- "policy-engine-adapter-aerodrome-v1",
- "policy-engine-adapter-pancakeswap-amm",
- "policy-engine-adapter-pancakeswap-stableswap",
- "policy-engine-adapter-pancakeswap-v3",
  "policy-engine-adapter-uniswap-v2",
  "policy-engine-adapter-uniswap-v3",
  "policy-engine-adapters-bundle",

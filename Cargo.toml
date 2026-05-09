@@ -7,11 +7,6 @@ members = [
     "crates/adapters/uniswap-v2",
     "crates/adapters/uniswap-v3",
     "crates/adapters/universal-router",
-    "crates/adapters/pancakeswap-amm",
-    "crates/adapters/pancakeswap-v3",
-    "crates/adapters/aerodrome-v1",
-    "crates/adapters/aerodrome-slipstream",
-    "crates/adapters/pancakeswap-stableswap",
     "crates/adapters-bundle",
     "crates/integration-tests",
 ]
@@ -39,9 +34,4 @@ policy-engine-adapter-permit2 = { path = "crates/adapters/permit2", version = "0
 policy-engine-adapter-uniswap-v2 = { path = "crates/adapters/uniswap-v2", version = "0.1.0" }
 policy-engine-adapter-uniswap-v3 = { path = "crates/adapters/uniswap-v3", version = "0.1.0" }
 policy-engine-adapter-universal-router = { path = "crates/adapters/universal-router", version = "0.1.0" }
-policy-engine-adapter-pancakeswap-amm = { path = "crates/adapters/pancakeswap-amm", version = "0.1.0" }
-policy-engine-adapter-pancakeswap-v3 = { path = "crates/adapters/pancakeswap-v3", version = "0.1.0" }
-policy-engine-adapter-aerodrome-v1 = { path = "crates/adapters/aerodrome-v1", version = "0.1.0" }
-policy-engine-adapter-aerodrome-slipstream = { path = "crates/adapters/aerodrome-slipstream", version = "0.1.0" }
-policy-engine-adapter-pancakeswap-stableswap = { path = "crates/adapters/pancakeswap-stableswap", version = "0.1.0" }
 policy-engine-adapters-bundle = { path = "crates/adapters-bundle", version = "0.1.0" }

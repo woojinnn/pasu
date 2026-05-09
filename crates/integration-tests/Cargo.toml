@@ -10,11 +10,6 @@ publish = false
 policy-engine.workspace = true
 policy-engine-adapter-uniswap-v2.workspace = true
 policy-engine-adapter-uniswap-v3.workspace = true
-policy-engine-adapter-pancakeswap-amm.workspace = true
-policy-engine-adapter-pancakeswap-v3.workspace = true
-policy-engine-adapter-pancakeswap-stableswap.workspace = true
-policy-engine-adapter-aerodrome-v1.workspace = true
-policy-engine-adapter-aerodrome-slipstream.workspace = true
 policy-engine-adapters-bundle.workspace = true
 
 [dev-dependencies]

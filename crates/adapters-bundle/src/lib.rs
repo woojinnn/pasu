@@ -31,12 +31,7 @@ use std::sync::Arc;
 
 // All first-party adapter crates are re-exported under their module name so
 // downstream code (tests, examples) doesn't need to depend on each one.
-pub use policy_engine_adapter_aerodrome_slipstream as aerodrome_slipstream;
-pub use policy_engine_adapter_aerodrome_v1 as aerodrome_v1;
 pub use policy_engine_adapter_eip2612 as eip2612;
-pub use policy_engine_adapter_pancakeswap_amm as pancakeswap_amm;
-pub use policy_engine_adapter_pancakeswap_stableswap as pancakeswap_stableswap;
-pub use policy_engine_adapter_pancakeswap_v3 as pancakeswap_v3;
 pub use policy_engine_adapter_permit2 as permit2;
 pub use policy_engine_adapter_uniswap_v2 as uniswap_v2;
 pub use policy_engine_adapter_uniswap_v3 as uniswap_v3;
@@ -78,60 +73,6 @@ pub fn default_registry() -> MockAdapterRegistry {
         ))
         .with_adapter(Arc::new(
             uniswap_v2::UniswapV2SwapTokensForExactETHAdapter::new(),
-        ))
-        // PancakeSwap V2 (AMM) Router on BSC
-        .with_adapter(Arc::new(
-            pancakeswap_amm::PancakeSwapAMMSwapExactTokensForTokensAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            pancakeswap_amm::PancakeSwapAMMSwapTokensForExactTokensAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            pancakeswap_amm::PancakeSwapAMMSwapExactETHForTokensAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            pancakeswap_amm::PancakeSwapAMMSwapETHForExactTokensAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            pancakeswap_amm::PancakeSwapAMMSwapExactTokensForETHAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            pancakeswap_amm::PancakeSwapAMMSwapTokensForExactETHAdapter::new(),
-        ))
-        // PancakeSwap V3 SwapRouter on BSC
-        .with_factory(pancakeswap_v3::PancakeSwapV3ExactInputSingleAdapter::factory())
-        .with_adapter(Arc::new(pancakeswap_v3::PancakeSwapV3ExactInputAdapter::new()))
-        .with_adapter(Arc::new(
-            pancakeswap_v3::PancakeSwapV3ExactOutputSingleAdapter::new(),
-        ))
-        .with_adapter(Arc::new(pancakeswap_v3::PancakeSwapV3ExactOutputAdapter::new()))
-        .with_adapter(Arc::new(pancakeswap_v3::PancakeSwapV3MulticallAdapter::new()))
-        // PancakeSwap StableSwap (per-pool exchange) on BSC
-        .with_adapter(Arc::new(
-            pancakeswap_stableswap::PancakeSwapStableSwapExchangeAdapter::new(),
-        ))
-        // Aerodrome V1 (Solidly fork) Router on Base
-        .with_adapter(Arc::new(
-            aerodrome_v1::AerodromeV1SwapExactTokensForTokensAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            aerodrome_v1::AerodromeV1SwapExactETHForTokensAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            aerodrome_v1::AerodromeV1SwapExactTokensForETHAdapter::new(),
-        ))
-        // Aerodrome Slipstream SwapRouter on Base
-        .with_factory(
-            aerodrome_slipstream::AerodromeSlipstreamExactInputSingleAdapter::factory(),
-        )
-        .with_adapter(Arc::new(
-            aerodrome_slipstream::AerodromeSlipstreamExactInputAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            aerodrome_slipstream::AerodromeSlipstreamExactOutputSingleAdapter::new(),
-        ))
-        .with_adapter(Arc::new(
-            aerodrome_slipstream::AerodromeSlipstreamExactOutputAdapter::new(),
         ))
 }
 
