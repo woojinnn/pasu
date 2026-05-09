@@ -7,7 +7,13 @@ import {
 } from './policies-loader';
 import { applyEnabledIds, getCatalog } from './policy-selection';
 import { installReceiptPoller } from './receipt-poller';
-import type { Message, MessageResponse } from '@lib/types';
+import { RequestType, type Message, type MessageResponse } from '@lib/types';
+
+const WALLET_ACTION_TYPES = new Set<string>([
+  RequestType.TRANSACTION,
+  RequestType.TYPED_SIGNATURE,
+  RequestType.UNTYPED_SIGNATURE,
+]);
 
 console.log('Scopeball SW alive at', new Date().toISOString());
 installReceiptPoller();
@@ -53,6 +59,17 @@ async function handleMessage(
   }
   if (message.data.type === 'provider-frozen-warning') {
     console.error('[Scopeball] provider frozen', message.data);
+    return;
+  }
+
+  // Skip messages that aren't wallet actions (transaction / typed sig /
+  // untyped sig). The proxy is injected into every iframe (manifest
+  // <all_urls> + all_frames), so probes from third-party widgets like
+  // Cloudflare's bot challenge can deliver shapes the engine doesn't
+  // know how to evaluate. Treating them as policy verdicts would pop a
+  // "Blocked: __engine::unsupported" modal on every page that embeds
+  // such a widget.
+  if (!WALLET_ACTION_TYPES.has(message.data.type)) {
     return;
   }
 
