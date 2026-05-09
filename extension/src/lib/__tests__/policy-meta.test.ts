@@ -16,7 +16,6 @@ when {
 };
 `;
     const meta = parsePolicyMeta(text);
-    expect(meta.shortId).toBe('user/no-zero-min-output');
     expect(meta.rules).toEqual([
       { severity: 'deny', reason: 'Min output of 0 disables slippage protection' },
     ]);
@@ -44,7 +43,6 @@ forbid (principal, action, resource) when { 1 == 2 };
   it('falls back to unknown severity and a default reason when annotations are missing', () => {
     const text = `forbid (principal, action, resource);`;
     const meta = parsePolicyMeta(text);
-    expect(meta.shortId).toBe('');
     expect(meta.rules).toEqual([
       { severity: 'unknown', reason: '(no reason annotation)' },
     ]);
@@ -55,5 +53,41 @@ forbid (principal, action, resource) when { 1 == 2 };
     const text = `@severity("warn") @reason("w") forbid (principal, action, resource);
 @severity("unknown") @reason("u") forbid (principal, action, resource);`;
     expect(parsePolicyMeta(text).dominantSeverity).toBe('warn');
+  });
+
+  it('preserves clauses when @reason contains a literal "(" inside a string', () => {
+    const text = `@severity("warn")
+@reason("careful with (parens)")
+forbid (principal, action, resource);
+@severity("deny")
+@reason("second")
+forbid (principal, action, resource);`;
+    const meta = parsePolicyMeta(text);
+    expect(meta.rules).toEqual([
+      { severity: 'warn', reason: 'careful with (parens)' },
+      { severity: 'deny', reason: 'second' },
+    ]);
+  });
+
+  it('preserves clauses when @reason contains a literal ";" inside a string', () => {
+    const text = `@severity("warn")
+@reason("a;b")
+forbid (principal, action, resource);
+@severity("deny")
+@reason("c")
+forbid (principal, action, resource);`;
+    const meta = parsePolicyMeta(text);
+    expect(meta.rules).toEqual([
+      { severity: 'warn', reason: 'a;b' },
+      { severity: 'deny', reason: 'c' },
+    ]);
+  });
+
+  it('decodes JSON-style escapes in @reason and passes unknown escapes through', () => {
+    const text = `@severity("warn") @reason("a\\nb\\\\c\\"d\\u0041") forbid (principal, action, resource);
+@severity("warn") @reason("\\q passthrough") forbid (principal, action, resource);`;
+    const meta = parsePolicyMeta(text);
+    expect(meta.rules[0].reason).toBe('a\nb\\c"dA');
+    expect(meta.rules[1].reason).toBe('\\q passthrough');
   });
 });

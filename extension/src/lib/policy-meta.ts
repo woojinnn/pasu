@@ -6,12 +6,10 @@ export interface Rule {
 }
 
 export interface PolicyMeta {
-  shortId: string;
   rules: Rule[];
   dominantSeverity: Severity;
 }
 
-const ID_RE = /@id\(\s*"([^"]+)"\s*\)/;
 const SEVERITY_RE = /@severity\(\s*"([^"]+)"\s*\)/;
 const REASON_RE = /@reason\(\s*"((?:[^"\\]|\\.)*)"\s*\)/;
 
@@ -21,8 +19,15 @@ function splitClauses(text: string): string[] {
   const segments: string[] = [];
   let depth = 0;
   let start = 0;
+  let inString = false;
   for (let i = 0; i < text.length; i += 1) {
     const c = text[i];
+    if (inString) {
+      if (c === '\\') { i += 1; continue; }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') { inString = true; continue; }
     if (c === '(') depth += 1;
     else if (c === ')') depth -= 1;
     else if (c === ';' && depth === 0) {
@@ -41,13 +46,25 @@ function pickSeverity(value: string | undefined): Severity {
 }
 
 function unescape(value: string): string {
-  return value.replace(/\\(.)/g, '$1');
+  return value.replace(/\\(["\\nrt]|u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4})/g, (match, body: string) => {
+    if (body === '"') return '"';
+    if (body === '\\') return '\\';
+    if (body === 'n') return '\n';
+    if (body === 'r') return '\r';
+    if (body === 't') return '\t';
+    if (body.startsWith('u{')) {
+      const hex = body.slice(2, -1);
+      return String.fromCodePoint(parseInt(hex, 16));
+    }
+    if (body.startsWith('u')) {
+      return String.fromCharCode(parseInt(body.slice(1), 16));
+    }
+    return match;
+  });
 }
 
 export function parsePolicyMeta(text: string): PolicyMeta {
   const clauses = splitClauses(text);
-  const idMatch = text.match(ID_RE);
-  const shortId = idMatch ? idMatch[1] : '';
 
   const rules: Rule[] =
     clauses.length === 0
@@ -66,5 +83,5 @@ export function parsePolicyMeta(text: string): PolicyMeta {
     if (SEVERITY_RANK[r.severity] > SEVERITY_RANK[dominant]) dominant = r.severity;
   }
 
-  return { shortId, rules, dominantSeverity: dominant };
+  return { rules, dominantSeverity: dominant };
 }
