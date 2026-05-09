@@ -78,8 +78,28 @@ impl Default for TokenLookup {
     }
 }
 
-pub(crate) fn router_address() -> Address {
-    Address::from_alloy(address!("0x66a9893cc07d91d95644aedd05d03f95e1dba8af"))
+/// All mainnet Universal Router contract addresses we recognize as a
+/// "DEX swap" target. Uniswap has redeployed Universal Router several
+/// times; if a user's wallet client hits a redeployment we don't list
+/// here, the call gets classified as `other` instead of `dex` and
+/// dex-targeted policies (e.g. max-input-usd caps) silently let it
+/// through.
+///
+/// References:
+/// - <https://docs.uniswap.org/contracts/v3/reference/deployments/ethereum-deployments>
+/// - <https://github.com/Uniswap/universal-router/tree/main/deploy-addresses>
+pub(crate) fn router_addresses_mainnet() -> Vec<Address> {
+    vec![
+        // Universal Router v1.2 (current canonical, hits most wallets)
+        Address::from_alloy(address!("0x66a9893cc07d91d95644aedd05d03f95e1dba8af")),
+        // Universal Router v2 (latest deployment Uniswap UI is routing
+        // 1-of-N calls through as of 2026-05; observed in wild during
+        // wallet_sendCalls swaps)
+        Address::from_alloy(address!("0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca")),
+        // Earlier deployments still active for some integrations
+        Address::from_alloy(address!("0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad")),
+        Address::from_alloy(address!("0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b")),
+    ]
 }
 
 pub(crate) fn native_eth_address() -> Address {

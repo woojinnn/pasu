@@ -3,7 +3,7 @@
 use crate::commands::{expand_commands, merge_dex_actions, RoutedAction};
 #[cfg(test)]
 use crate::common::UNIVERSAL_ROUTER_MAINNET;
-use crate::common::{router_address, TokenLookup};
+use crate::common::{router_addresses_mainnet, TokenLookup};
 use alloy_primitives::U256;
 use alloy_sol_types::{sol, SolCall};
 use policy_engine::prelude::*;
@@ -113,7 +113,10 @@ impl Adapter_ {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            chain_targets: vec![(1, router_address())],
+            chain_targets: router_addresses_mainnet()
+                .into_iter()
+                .map(|addr| (1, addr))
+                .collect(),
             tokens: TokenLookup::with_mainnet_defaults(),
         }
     }
