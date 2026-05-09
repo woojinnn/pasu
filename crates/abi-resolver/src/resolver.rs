@@ -9,9 +9,7 @@
 //!
 //! Decoding is delegated to `crate::decode` once a signature is found.
 
-use crate::decode::{
-    decode_with_function, decode_with_signature, DecodeError, DecodedCall,
-};
+use crate::decode::{decode_with_function, decode_with_signature, DecodeError, DecodedCall};
 use crate::openchain::OpenchainIndex;
 use crate::sourcify::SourcifyIndex;
 use crate::sqlite_index::SqliteSourcifyIndex;
@@ -108,12 +106,7 @@ impl Resolver {
     ///
     /// `calldata` must include the 4-byte selector prefix.
     #[must_use]
-    pub fn resolve(
-        &self,
-        chain_id: u64,
-        address: &Address,
-        calldata: &[u8],
-    ) -> ResolveOutcome {
+    pub fn resolve(&self, chain_id: u64, address: &Address, calldata: &[u8]) -> ResolveOutcome {
         let Some(selector) = selector_from_calldata(calldata) else {
             return ResolveOutcome::NotFound;
         };

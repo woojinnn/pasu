@@ -185,7 +185,9 @@ mod tests {
         let address = Address::from([0x11u8; 20]);
         index.insert_contract(1, address, &[approve_function()]);
 
-        assert!(index.lookup(1, &address, [0xde, 0xad, 0xbe, 0xef]).is_none());
+        assert!(index
+            .lookup(1, &address, [0xde, 0xad, 0xbe, 0xef])
+            .is_none());
     }
 
     #[test]

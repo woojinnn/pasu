@@ -62,10 +62,7 @@ fn main() -> ExitCode {
     println!("  to       : 0x{}", hex::encode(address.0));
     println!("  calldata : {} bytes", calldata.len());
     if calldata.len() >= 4 {
-        println!(
-            "  selector : 0x{}",
-            hex::encode(&calldata[..4])
-        );
+        println!("  selector : 0x{}", hex::encode(&calldata[..4]));
     }
     println!();
 

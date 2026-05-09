@@ -90,7 +90,7 @@ pub fn decode_with_function(
         .inputs
         .iter()
         .enumerate()
-        .zip(values.into_iter())
+        .zip(values)
         .map(|((idx, param), value)| {
             let name = if param.name.is_empty() {
                 format!("arg{idx}")
@@ -174,8 +174,7 @@ pub fn format_value_named(value: &DynSolValue, components: &[Param]) -> String {
                 .enumerate()
                 .map(|(i, v)| {
                     let child = components.get(i);
-                    let child_components =
-                        child.map(|c| c.components.as_slice()).unwrap_or(&[]);
+                    let child_components = child.map(|c| c.components.as_slice()).unwrap_or(&[]);
                     let formatted = format_value_named(v, child_components);
                     match child {
                         Some(c) if !c.name.is_empty() => format!("{}: {}", c.name, formatted),
@@ -253,10 +252,7 @@ mod tests {
         let mut calldata = encode_approve_call([0x11; 20], 1);
         calldata[0] = 0xff;
         let result = decode_with_signature("approve(address,uint256)", &calldata);
-        assert!(matches!(
-            result,
-            Err(DecodeError::SelectorMismatch { .. })
-        ));
+        assert!(matches!(result, Err(DecodeError::SelectorMismatch { .. })));
     }
 
     #[test]

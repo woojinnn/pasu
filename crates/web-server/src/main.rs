@@ -195,23 +195,32 @@ fn err(status: StatusCode, msg: impl Into<String>) -> Response {
     (status, Json(ApiError { error: msg.into() })).into_response()
 }
 
-async fn decode(
-    State(state): State<AppState>,
-    Json(req): Json<DecodeRequest>,
-) -> Response {
+async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -> Response {
     let address = match Address::from_str(req.address.trim()) {
         Ok(a) => a,
         Err(e) => return err(StatusCode::BAD_REQUEST, format!("invalid address: {e}")),
     };
-    let stripped = req.calldata.trim().strip_prefix("0x").unwrap_or(&req.calldata);
+    let stripped = req
+        .calldata
+        .trim()
+        .strip_prefix("0x")
+        .unwrap_or(&req.calldata);
     let calldata = match hex::decode(stripped) {
         Ok(b) => b,
-        Err(e) => return err(StatusCode::BAD_REQUEST, format!("invalid calldata hex: {e}")),
+        Err(e) => {
+            return err(
+                StatusCode::BAD_REQUEST,
+                format!("invalid calldata hex: {e}"),
+            )
+        }
     };
     if calldata.len() < 4 {
         return err(
             StatusCode::BAD_REQUEST,
-            format!("calldata too short ({} bytes); need at least 4", calldata.len()),
+            format!(
+                "calldata too short ({} bytes); need at least 4",
+                calldata.len()
+            ),
         );
     }
     let selector = format!("0x{}", hex::encode(&calldata[..4]));
@@ -223,12 +232,7 @@ async fn decode(
             function_name: r.decoded.function_name,
             signature: r.decoded.signature,
             selector,
-            args: r
-                .decoded
-                .args
-                .into_iter()
-                .map(arg_to_api)
-                .collect(),
+            args: r.decoded.args.into_iter().map(arg_to_api).collect(),
         },
         ResolveOutcome::NotFound => DecodeResponse::NotFound {
             selector,
@@ -340,7 +344,9 @@ async fn main() {
     }
 
     let addr_str = std::env::var("WEB_SERVER_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());
-    let addr: SocketAddr = addr_str.parse().expect("WEB_SERVER_ADDR must be a host:port");
+    let addr: SocketAddr = addr_str
+        .parse()
+        .expect("WEB_SERVER_ADDR must be a host:port");
     tracing::info!("listening on {addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.expect("bind");
     axum::serve(listener, app).await.expect("serve");
