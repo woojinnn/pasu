@@ -36,23 +36,10 @@ type WritableStream = WindowPostMessageStream & {
   write(data: unknown): void;
 };
 
-// Detect MAIN vs ISOLATED world via chrome.runtime (only present in
-// extension contexts, i.e. ISOLATED world content scripts). Plain `chrome`
-// existence is unreliable — Chrome exposes chrome.csi / chrome.loadTimes
-// to page world too.
-const __scopeballWorld =
-  typeof (globalThis as { chrome?: { runtime?: { id?: string } } }).chrome
-    ?.runtime?.id === 'string'
-    ? 'ISOLATED'
-    : 'MAIN';
-console.log('[Scopeball-proxy] init on', location.href, 'world:', __scopeballWorld);
-
 const stream = new WindowPostMessageStream({
   name: Identifier.INPAGE,
   target: Identifier.CONTENT_SCRIPT,
 }) as WritableStream;
-
-console.log('[Scopeball-proxy] stream ready');
 
 const REJECT_TX = ethErrors.provider.userRejectedRequest(
   "Scopeball: transaction blocked by policy",
@@ -147,17 +134,6 @@ async function checkWalletSendCalls(
 ): Promise<boolean> {
   const envelope = asRecord(params[0]);
   const calls = Array.isArray(envelope?.calls) ? envelope.calls : [];
-  console.log("[Scopeball-proxy] wallet_sendCalls envelope:", {
-    chainId: envelope?.chainId,
-    from: envelope?.from,
-    callCount: calls.length,
-    calls: calls.map((c: unknown) => {
-      const r = asRecord(c);
-      return r
-        ? { to: r.to, hasData: typeof r.data === "string", value: r.value }
-        : c;
-    }),
-  });
   if (calls.length === 0) return true;
 
   const chainId =
@@ -167,7 +143,6 @@ async function checkWalletSendCalls(
   for (let i = 0; i < calls.length; i++) {
     const call = asRecord(calls[i]);
     if (!call) {
-      console.log("[Scopeball-proxy] call", i, "skipped (not record)");
       continue;
     }
 
@@ -175,21 +150,14 @@ async function checkWalletSendCalls(
       ...call,
       from: call.from ?? envelope?.from,
     };
-    console.log("[Scopeball-proxy] call", i, "→ checkTransaction", {
-      to: transaction.to,
-      from: transaction.from,
-      chainId,
-    });
     const isCallAllowed = await checkTransaction(
       provider,
       [transaction],
       chainId,
     );
-    console.log("[Scopeball-proxy] call", i, "verdict:", isCallAllowed);
     if (!isCallAllowed) isAllowed = false;
   }
 
-  console.log("[Scopeball-proxy] wallet_sendCalls final isAllowed:", isAllowed);
   return isAllowed;
 }
 
@@ -382,7 +350,6 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
       const method = request.method;
       const params = paramsArray(request.params);
 
-      console.log('[Scopeball-proxy] request intercepted:', method);
       await ensureAllowed(provider, method, params);
       // Always forward with the original `provider` as the receiver, not the
       // dApp-supplied `thisArg`. EIP-6963 / wagmi-style callers can hand us

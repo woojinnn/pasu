@@ -38,16 +38,6 @@ async function installFiltered(enabledIds: readonly string[]): Promise<void> {
   const enabledSet = new Set(enabledIds);
   const union = [...defaults, ...marketplacePolicies];
   const filtered = union.filter((p) => enabledSet.has(p.id));
-  console.log(
-    "[Scopeball SW] installFiltered enabledIds:",
-    Array.from(enabledIds),
-    "available defaults:",
-    defaults.map((p) => p.id),
-    "marketplace:",
-    marketplacePolicies.map((p) => p.id),
-    "→ installing:",
-    filtered.map((p) => p.id),
-  );
   await installPolicies({ schema_text: '', policy_set: filtered });
 }
 

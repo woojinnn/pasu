@@ -117,7 +117,6 @@ async function decideInner(
       { verdict: buildTimeoutVerdict() },
     );
     const { verdict } = lifecycle;
-    console.log("[Scopeball SW] verdict for", message.requestId, message.data.type, "=", verdict.kind, verdict.matched?.map((m) => m.policy_id));
 
     let ok = false;
     if (verdict.kind === "pass") {
@@ -145,7 +144,6 @@ async function decideInner(
     return { ok, verdict };
   } catch (err) {
     const verdict = engineErrorVerdict(err);
-    console.warn("[Scopeball SW] decide error for", message.requestId, message.data.type, err);
     await appendAudit(message, pending.type, verdict);
     return { ok: false, verdict };
   } finally {
@@ -205,14 +203,6 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
     string,
     unknown
   >;
-  console.log(
-    "[Scopeball SW] action for",
-    message.requestId,
-    "to:",
-    isTransaction(message) ? message.data.transaction.to : undefined,
-    "→",
-    actionParsed,
-  );
 
   // Phase B: derive Tier-1 plan and fetch facts.
   const plan = (await tier1FactPlan(actionParsed)) as Tier1Plan;
