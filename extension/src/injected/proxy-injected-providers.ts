@@ -317,6 +317,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
       const method = request.method;
       const params = paramsArray(request.params);
 
+      console.log('[Scopeball-proxy] request intercepted:', method);
       await ensureAllowed(provider, method, params);
       const result = await Reflect.apply(target, thisArg, args);
       if (method === "eth_sendTransaction") {
