@@ -36,6 +36,7 @@ use abi_resolver::subdecode::protocols::v4_router::{
 };
 use abi_resolver::subdecode::recurse::{extract_children, lookup_recurse_rule};
 use alloy_dyn_abi::DynSolValue;
+use alloy_json_abi::Param;
 use alloy_primitives::Address;
 use axum::{
     extract::State,
@@ -407,11 +408,68 @@ fn source_label(s: Source) -> &'static str {
 
 fn arg_to_api(a: DecodedArg) -> ApiArg {
     ApiArg {
-        // Render with the parameter's component descriptors so tuple fields
-        // surface as `(fieldName: value, …)` instead of `(value, value, …)`.
-        value: format_value_named(&a.value, &a.components),
+        value: format_value_with_packed(&a.value, &a.components, &a.name),
         name: a.name,
         sol_type: a.sol_type,
+    }
+}
+
+/// Render a decoded value, with packed-format enrichment for known
+/// non-standard sub-formats. Currently:
+///
+/// - A `bytes` arg (or tuple field) named `path` is parsed as a V3 packed
+///   `[token20][fee3][token20]…` path and rendered as a friendly
+///   `0x… --[fee=N]--> 0x…` chain when it parses.
+///   [`format_packed_path`] returns `None` for bytes that don't satisfy the
+///   strict V3 path length constraint, so non-V3 bytes named `path` fall
+///   back to raw hex.
+///
+/// Recurses into tuples and arrays so the enrichment fires regardless of
+/// nesting depth (e.g. V3 SwapRouter's `exactInput.params.path`).
+fn format_value_with_packed(
+    value: &DynSolValue,
+    components: &[Param],
+    parent_name: &str,
+) -> String {
+    // V3 packed path detection.
+    if parent_name == "path" {
+        if let DynSolValue::Bytes(bytes) = value {
+            if let Some(friendly) = format_packed_path(bytes) {
+                return friendly;
+            }
+        }
+    }
+
+    match value {
+        DynSolValue::Tuple(items) => {
+            let inner: Vec<String> = items
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    let child = components.get(i);
+                    let child_components = child.map(|c| c.components.as_slice()).unwrap_or(&[]);
+                    let child_name = child.map(|c| c.name.as_str()).unwrap_or("");
+                    let formatted = format_value_with_packed(v, child_components, child_name);
+                    match child {
+                        Some(c) if !c.name.is_empty() => format!("{}: {}", c.name, formatted),
+                        _ => formatted,
+                    }
+                })
+                .collect();
+            format!("({})", inner.join(", "))
+        }
+        DynSolValue::Array(items) | DynSolValue::FixedArray(items) => {
+            // Element type metadata is on the parent param itself; pass an
+            // empty parent name so we don't accidentally treat the array's
+            // own name as if it applied to each element.
+            let inner: Vec<String> = items
+                .iter()
+                .map(|v| format_value_with_packed(v, components, ""))
+                .collect();
+            format!("[{}]", inner.join(", "))
+        }
+        // For everything else, the alloy-aware formatter is fine.
+        _ => format_value_named(value, components),
     }
 }
 

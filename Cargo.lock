@@ -3374,6 +3374,7 @@ version = "0.1.0"
 dependencies = [
  "abi-resolver",
  "alloy-dyn-abi",
+ "alloy-json-abi",
  "alloy-primitives",
  "axum",
  "hex",
