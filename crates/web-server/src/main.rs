@@ -34,7 +34,7 @@ use abi_resolver::subdecode::protocols::universal_router::{
 use abi_resolver::subdecode::protocols::v4_router::{
     extract_actions_and_params as extract_v4_actions_and_params, V4_ROUTER_TABLE,
 };
-use abi_resolver::subdecode::recurse::{extract_subcalls, is_self_multicall};
+use abi_resolver::subdecode::recurse::{extract_children, lookup_recurse_rule};
 use alloy_dyn_abi::DynSolValue;
 use alloy_primitives::Address;
 use axum::{
@@ -341,14 +341,22 @@ fn decode_recursive(
             selector_bytes.copy_from_slice(&calldata[..4]);
             let children = if depth >= MAX_SUBDECODE_DEPTH {
                 Vec::new()
-            } else if is_self_multicall(&selector_bytes) {
-                // Cat A — recurse on each entry of bytes[].
-                extract_subcalls(&r.decoded)
-                    .map(|subs| {
-                        subs.into_iter()
+            } else if let Some(rule) = lookup_recurse_rule(&selector_bytes) {
+                // Cat A — generalized recursion (self-multicall, named-target,
+                // address-bytes tuples).
+                extract_children(&r.decoded, rule, *target)
+                    .map(|children| {
+                        children
+                            .into_iter()
                             .take(MAX_SUBDECODE_CHILDREN)
-                            .map(|sub| {
-                                decode_recursive(resolver, chain_id, target, &sub, depth + 1)
+                            .map(|c| {
+                                decode_recursive(
+                                    resolver,
+                                    chain_id,
+                                    &c.target,
+                                    &c.calldata,
+                                    depth + 1,
+                                )
                             })
                             .collect()
                     })
