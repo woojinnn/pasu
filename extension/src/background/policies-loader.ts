@@ -11,14 +11,10 @@ interface PolicyEntry {
   text: string;
 }
 
-async function loadDefaultPolicySet(): Promise<{ schemaText: string; policies: PolicyEntry[] }> {
-  const schemaUrl = Browser.runtime.getURL('default-policies/schema.cedarschema');
+async function loadDefaultPolicySet(): Promise<PolicyEntry[]> {
   const setUrl = Browser.runtime.getURL('default-policies/policy-set.json');
-  const [schemaText, policySetRaw] = await Promise.all([
-    (await fetch(schemaUrl)).text(),
-    (await fetch(setUrl)).text(),
-  ]);
-  return { schemaText, policies: JSON.parse(policySetRaw) as PolicyEntry[] };
+  const policySetRaw = await (await fetch(setUrl)).text();
+  return JSON.parse(policySetRaw) as PolicyEntry[];
 }
 
 /**
@@ -26,16 +22,23 @@ async function loadDefaultPolicySet(): Promise<{ schemaText: string; policies: P
  * with the subset whose ids appear in `enabledIds`. Empty `enabledIds`
  * ⇒ install with no policies (the engine's `engine/baseline-allow` rule
  * is auto-injected).
+ *
+ * NOTE on schema_text: we pass an empty string. The WASM builder
+ * (`PolicyEngineBuilder::new`) already preloads the bundled schema
+ * (`core + dex + other`), which declares `Wallet`/`Protocol`/etc. The
+ * on-disk `default-policies/schema.cedarschema` redeclares the same
+ * entities, so handing it back to `add_schema_text` would error with
+ * "`Wallet` is declared twice" and kill SW boot.
  */
 async function installFiltered(enabledIds: readonly string[]): Promise<void> {
-  const [{ schemaText, policies: defaults }, marketplacePolicies] = await Promise.all([
+  const [defaults, marketplacePolicies] = await Promise.all([
     loadDefaultPolicySet(),
     aggregatedPolicySet(),
   ]);
   const enabledSet = new Set(enabledIds);
   const union = [...defaults, ...marketplacePolicies];
   const filtered = union.filter((p) => enabledSet.has(p.id));
-  await installPolicies({ schema_text: schemaText, policy_set: filtered });
+  await installPolicies({ schema_text: '', policy_set: filtered });
 }
 
 /**
