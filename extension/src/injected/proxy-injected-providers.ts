@@ -377,14 +377,22 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
   const originalSend = provider.send;
 
   const proxiedRequest = new Proxy(originalRequest, {
-    apply: async (target, thisArg, args) => {
+    apply: async (target, _thisArg, args) => {
       const request = (args[0] ?? {}) as JsonRpcRequest;
       const method = request.method;
       const params = paramsArray(request.params);
 
       console.log('[Scopeball-proxy] request intercepted:', method);
       await ensureAllowed(provider, method, params);
-      const result = await Reflect.apply(target, thisArg, args);
+      // Always forward with the original `provider` as the receiver, not the
+      // dApp-supplied `thisArg`. EIP-6963 / wagmi-style callers can hand us
+      // a `thisArg` that isn't the provider object MetaMask's stateful
+      // `request` implementation expects (it reads `this._rpcRequest`,
+      // `this._metamask`, …). When MetaMask gets the wrong `this` it
+      // silently no-ops — no error, no popup. This was tolerable for
+      // `eth_sendTransaction` (the dApp's call shape happened to align)
+      // but breaks `wallet_sendCalls`, which arrives via a different stack.
+      const result = await Reflect.apply(target, provider, args);
       if (method === "eth_sendTransaction") {
         reportTransactionHash(params, result);
       }
@@ -392,23 +400,28 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
     },
   });
 
+  // For all three legacy entry points (request / sendAsync / send), forward
+  // with the original `provider` as the receiver, not the dApp-supplied
+  // `thisArg`. See the comment on `proxiedRequest` above for the rationale —
+  // MetaMask's native methods are stateful and silently no-op when called
+  // with the wrong `this`.
   const proxiedSendAsync =
     typeof originalSendAsync === "function"
       ? new Proxy(originalSendAsync, {
-          apply: (target, thisArg, args) => {
+          apply: (target, _thisArg, args) => {
             const request = (args[0] ?? {}) as JsonRpcRequest;
             const callback = args[1] as JsonRpcCallback | undefined;
             const method = request.method;
             const params = paramsArray(request.params);
 
             if (typeof callback !== "function") {
-              return Reflect.apply(target, thisArg, args);
+              return Reflect.apply(target, provider, args);
             }
 
             void (async () => {
               try {
                 await ensureAllowed(provider, method, params);
-                Reflect.apply(target, thisArg, [
+                Reflect.apply(target, provider, [
                   request,
                   wrapCallbackForTxHash(callback, method, params),
                   ...args.slice(2),
@@ -425,7 +438,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
   const proxiedSend =
     typeof originalSend === "function"
       ? new Proxy(originalSend, {
-          apply: (target, thisArg, args) => {
+          apply: (target, _thisArg, args) => {
             const [payloadOrMethod, callbackOrParams] = args;
             if (typeof payloadOrMethod === "string") {
               return provider.request?.({
@@ -439,10 +452,10 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
             const params = paramsArray(request.params);
 
             if (typeof callbackOrParams !== "function") {
-              if (!method) return Reflect.apply(target, thisArg, args);
+              if (!method) return Reflect.apply(target, provider, args);
               return (async () => {
                 await ensureAllowed(provider, method, params);
-                const result = Reflect.apply(target, thisArg, args);
+                const result = Reflect.apply(target, provider, args);
                 if (method === "eth_sendTransaction") {
                   reportTransactionHash(params, result);
                 }
@@ -457,7 +470,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): void {
             void (async () => {
               try {
                 await ensureAllowed(provider, method, params);
-                Reflect.apply(target, thisArg, [
+                Reflect.apply(target, provider, [
                   request,
                   wrapCallbackForTxHash(
                     callbackOrParams as JsonRpcCallback,
