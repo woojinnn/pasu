@@ -22,7 +22,7 @@ export type ApplyResult =
   | { ok: true }
   | { ok: false; error: { kind: string; message: string } };
 
-export type ReinstallFn = () => Promise<void>;
+export type ReinstallFn = (ids: string[]) => Promise<void>;
 
 async function readStringArray(key: string): Promise<string[]> {
   const raw = (await Browser.storage.local.get(key)) as Record<string, unknown>;
@@ -55,47 +55,63 @@ function classifyError(err: unknown): { kind: string; message: string } {
   return { kind: 'reinstall_failed', message: String(err) };
 }
 
+function normalizeIds(ids: string[]): string[] {
+  return [...new Set(ids)].sort();
+}
+
 async function runApply(ids: string[], reinstall: ReinstallFn): Promise<ApplyResult> {
-  await writeStringArray(ENABLED_KEY, [...ids].sort());
+  const sorted = normalizeIds(ids);
   try {
-    await reinstall();
-    await writeStringArray(APPLIED_KEY, [...ids].sort());
+    await writeStringArray(ENABLED_KEY, sorted);
+    await reinstall(sorted);
+    await writeStringArray(APPLIED_KEY, sorted);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: classifyError(err) };
   }
 }
 
+/**
+ * Apply a desired enabled-ids set to the engine.
+ *
+ * Serialization: at most one in-flight reinstall + a single tail slot.
+ * Rapid toggles collapse — newer calls overwrite the queued tail; ALL
+ * queued resolvers settle with the tail's result.
+ *
+ * Storage semantics: ENABLED_KEY is written by `runApply` with the same
+ * ids it passes to `reinstall()`, so the loader receives ids verbatim
+ * via the callback parameter (it MUST NOT re-read storage to decide
+ * what to install). APPLIED_KEY is updated only after a successful
+ * reinstall, leaving the previous applied set intact on failure.
+ */
 export async function applyEnabledIds(
   ids: string[],
   reinstall: ReinstallFn,
 ): Promise<ApplyResult> {
-  await writeStringArray(ENABLED_KEY, [...ids].sort());
-
   if (inflight) {
     return new Promise<ApplyResult>((resolve) => {
-      queuedDesired = ids;
+      queuedDesired = [...ids];
       queuedResolvers.push(resolve);
     });
   }
 
   inflight = (async () => {
-    let lastResult = await runApply(ids, reinstall);
-    while (queuedDesired !== null) {
-      const next = queuedDesired;
-      queuedDesired = null;
-      const resolvers = queuedResolvers.splice(0);
-      lastResult = await runApply(next, reinstall);
-      for (const r of resolvers) r(lastResult);
+    try {
+      let lastResult = await runApply(ids, reinstall);
+      while (queuedDesired !== null) {
+        const next = queuedDesired;
+        queuedDesired = null;
+        const resolvers = queuedResolvers.splice(0);
+        lastResult = await runApply(next, reinstall);
+        for (const r of resolvers) r(lastResult);
+      }
+      return lastResult;
+    } finally {
+      inflight = null;
     }
-    return lastResult;
   })();
 
-  try {
-    return await inflight;
-  } finally {
-    inflight = null;
-  }
+  return inflight;
 }
 
 interface DefaultPolicyEntry {

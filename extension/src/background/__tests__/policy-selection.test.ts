@@ -77,17 +77,18 @@ describe('policy-selection', () => {
   });
 
   it('persists desired ids and runs the reinstall callback', async () => {
-    const reinstall = vi.fn(async () => {});
+    const reinstall = vi.fn(async (_ids: string[]) => {});
     const result = await applyEnabledIds(['default::dex/a'], reinstall);
     expect(result).toEqual({ ok: true });
     expect(reinstall).toHaveBeenCalledOnce();
+    expect(reinstall).toHaveBeenCalledWith(['default::dex/a']);
     expect(await getEnabledIds()).toEqual(['default::dex/a']);
     expect(await getAppliedIds()).toEqual(['default::dex/a']);
   });
 
   it('collapses three rapid applyEnabledIds calls into one in-flight + one tail', async () => {
     const reinstall = vi.fn(
-      () => new Promise<void>((resolve) => setTimeout(resolve, 5)),
+      (_ids: string[]) => new Promise<void>((resolve) => setTimeout(resolve, 5)),
     );
     const p1 = applyEnabledIds(['default::dex/a'], reinstall);
     const p2 = applyEnabledIds(['default::dex/b'], reinstall);
@@ -101,7 +102,7 @@ describe('policy-selection', () => {
   });
 
   it('leaves applied-ids unchanged when reinstall rejects, and recovers next call', async () => {
-    const failing = vi.fn(async () => {
+    const failing = vi.fn(async (_ids: string[]) => {
       throw new Error('install_failed: boom');
     });
     const r1 = await applyEnabledIds(['default::dex/a'], failing);
@@ -112,7 +113,7 @@ describe('policy-selection', () => {
     }
     expect(await getAppliedIds()).toEqual([]);
 
-    const ok = vi.fn(async () => {});
+    const ok = vi.fn(async (_ids: string[]) => {});
     const r2 = await applyEnabledIds(['default::dex/b'], ok);
     expect(r2).toEqual({ ok: true });
     expect(await getAppliedIds()).toEqual(['default::dex/b']);
@@ -133,7 +134,7 @@ describe('policy-selection', () => {
     ]);
     await applyEnabledIds(
       ['default::dex/a', 'stale::id/gone'],
-      vi.fn(async () => {}),
+      vi.fn(async (_ids: string[]) => {}),
     );
     const cat = await getCatalog();
     expect(cat.policies.map((p) => p.id)).toEqual([
@@ -145,5 +146,31 @@ describe('policy-selection', () => {
     expect(cat.policies[2].sourceLabel).toBe('acme/v1@0.1.0');
     expect(cat.enabled).toEqual(['default::dex/a']);
     expect(cat.applied).toEqual(['default::dex/a']);
+  });
+
+  it('settles queued resolvers even when a queued runApply fails', async () => {
+    // The IIFE closes over the first call's reinstall; queued calls' reinstall
+    // args are discarded by design. To genuinely exercise Bug 3 (resolver hang
+    // when the *queued* runApply throws), use one reinstall whose 2nd
+    // invocation (the tail) fails.
+    let n = 0;
+    const reinstall = vi.fn(async (_ids: string[]) => {
+      n++;
+      if (n === 1) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 5));
+        return;
+      }
+      throw new Error('install_failed: tail-broke');
+    });
+    const p1 = applyEnabledIds(['default::dex/a'], reinstall);
+    // queue a second call before p1 finishes
+    const p2 = applyEnabledIds(['default::dex/b'], reinstall);
+    // The fact that Promise.all resolves at all is the regression check
+    // (Bug 3: queued resolvers must settle, not hang). Both head and queued
+    // resolvers receive the tail's result by design (see runApply loop).
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1.ok).toBe(false);
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.error.kind).toBe('install_failed');
   });
 });
