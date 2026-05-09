@@ -67,7 +67,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
 
     let selector: [u8; 4] = [calldata[0], calldata[1], calldata[2], calldata[3]];
     if selector == SELECTOR_NO_DEADLINE {
-        let call = multicall_0Call::abi_decode(calldata, true)
+        let call = multicall_0Call::abi_decode(calldata, false)
             .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
         return Ok(Params {
             deadline: None,
@@ -75,7 +75,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
         });
     }
     if selector == SELECTOR_DEADLINE {
-        let call = multicall_1Call::abi_decode(calldata, true)
+        let call = multicall_1Call::abi_decode(calldata, false)
             .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
         return Ok(Params {
             deadline: Some(call.deadline),

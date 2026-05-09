@@ -118,7 +118,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
         });
     }
 
-    let call = exactInputSingleCall::abi_decode(calldata, true)
+    let call = exactInputSingleCall::abi_decode(calldata, false)
         .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
 
     let fee_u32 = u32::try_from(call.params.fee)

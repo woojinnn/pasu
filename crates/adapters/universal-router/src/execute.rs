@@ -79,7 +79,12 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
 
     let selector = [calldata[0], calldata[1], calldata[2], calldata[3]];
     if selector == SELECTOR_EXECUTE {
-        let call = executeCall::abi_decode(calldata, true)
+        // Non-strict (validate=false): real wallet calldata sometimes
+        // carries non-canonical padding/offset encoding that strict mode
+        // would reject as "reserialization did not match original" even
+        // though the decoded values are correct. We only need the
+        // decoded fields, not byte-perfect round-trip.
+        let call = executeCall::abi_decode(calldata, false)
             .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
         return Ok(Params {
             commands: call.commands.to_vec(),

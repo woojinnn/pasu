@@ -44,7 +44,10 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
         });
     }
 
-    let call = executeCall::abi_decode(calldata, true)
+    // Non-strict (validate=false) — see comment in execute.rs::decode.
+    // Wallet-produced calldata isn't always byte-canonical, but the
+    // decoded fields are what we use for policy evaluation.
+    let call = executeCall::abi_decode(calldata, false)
         .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
     Ok(Params {
         commands: call.commands.to_vec(),
