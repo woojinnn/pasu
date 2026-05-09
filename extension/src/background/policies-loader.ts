@@ -39,55 +39,75 @@ async function installFiltered(enabledIds: readonly string[]): Promise<void> {
 }
 
 /**
- * One-shot install at SW boot. Reads enabled-ids from storage. Boot
- * may overlap with popup-driven `reinstallAllPolicies` calls if the
- * popup opens before prewarm finishes — we identity-check `inflight`
- * before clearing so an older IIFE never wipes a newer one's pointer.
+ * Run `work()` after the previous `inflight` settles, so consecutive
+ * loader calls hit `installPolicies()` in arrival order. Both call
+ * sites (boot + reinstall) use this — closes the race where an older
+ * IIFE's WASM call lands AFTER a newer one and silently overwrites it.
  *
- * On reject, clears `installed`/`inflight` so the next call retries
- * instead of re-throwing the cached rejection.
+ * The previous `inflight`'s rejection is intentionally swallowed here:
+ * the prior call already surfaced its error to its own caller, and we
+ * don't want to fail the new request because of unrelated old work.
  */
-export async function ensureDefaultPoliciesInstalled(): Promise<void> {
-  if (installed) return;
-  if (inflight) return inflight;
+async function withSerialization(work: () => Promise<void>): Promise<void> {
+  const previous = inflight;
   const promise = (async () => {
-    const enabledIds = await getEnabledIds();
-    await installFiltered(enabledIds);
-    installed = true;
+    if (previous) {
+      try {
+        await previous;
+      } catch {
+        /* prior caller already received this error */
+      }
+    }
+    await work();
   })();
   inflight = promise;
   try {
     await promise;
-  } catch (err) {
-    installed = false;
+  } finally {
     if (inflight === promise) inflight = null;
-    throw err;
   }
-  if (inflight === promise) inflight = null;
+}
+
+/**
+ * One-shot install at SW boot. Reads enabled-ids from storage. The boot
+ * call can overlap with popup-driven `reinstallAllPolicies` calls if
+ * the popup opens before prewarm finishes; both go through
+ * `withSerialization` so WASM sees them in arrival order.
+ *
+ * On reject, clears the `installed` flag so the next call retries.
+ */
+export async function ensureDefaultPoliciesInstalled(): Promise<void> {
+  if (installed) return;
+  await withSerialization(async () => {
+    if (installed) return; // already done by an interleaved reinstall
+    try {
+      const enabledIds = await getEnabledIds();
+      await installFiltered(enabledIds);
+      installed = true;
+    } catch (err) {
+      installed = false;
+      throw err;
+    }
+  });
 }
 
 /**
  * Reinstall the engine with exactly the passed `ids` enabled. Used by
  * the popup's apply queue (`policy-selection.ts`) — the queue passes
- * the desired ids verbatim to avoid storage races.
+ * the desired ids verbatim to avoid storage races. Serialized via
+ * `withSerialization` so it can never race ahead of (or behind) a
+ * still-resolving boot install.
  *
- * On reject, clears `installed`/`inflight`. Identity-checks `inflight`
- * before clearing so this call's promise can never be stomped by a
- * concurrently-resolving `ensureDefaultPoliciesInstalled` IIFE.
+ * On reject, clears the `installed` flag so the next call retries.
  */
 export async function reinstallAllPolicies(ids: readonly string[]): Promise<void> {
-  installed = false;
-  const promise = (async () => {
-    await installFiltered(ids);
-    installed = true;
-  })();
-  inflight = promise;
-  try {
-    await promise;
-  } catch (err) {
-    installed = false;
-    if (inflight === promise) inflight = null;
-    throw err;
-  }
-  if (inflight === promise) inflight = null;
+  await withSerialization(async () => {
+    try {
+      await installFiltered(ids);
+      installed = true;
+    } catch (err) {
+      installed = false;
+      throw err;
+    }
+  });
 }
