@@ -281,7 +281,7 @@ A reproducible toolchain (Rust 1.83 + wasm-pack + Node 20 + Yarn 4 + headless Ch
 
 Persistent volumes keep cargo, yarn, and `extension/node_modules` caches alive across `docker compose down`. Wipe with `docker compose down -v`. See `docker/README.md` for the full layout.
 
-### CI and release
+### CI
 
 `.github/workflows/ci.yml` runs the same test/lint/build sweep on every PR:
 
@@ -290,8 +290,6 @@ Persistent volumes keep cargo, yarn, and `extension/node_modules` caches alive a
 - Extension typecheck, vitest, Chrome MV3 build, Firefox MV2 build
 - Both browser zips uploaded as PR artifacts so reviewers can sideload without recompiling
 - `cargo audit` and `cargo deny` for supply-chain checks
-
-`.github/workflows/release.yml` triggers on `v*.*.*` tags. It builds both browser zips, packages the wasm artifact + bundled policy-set, and creates a GitHub Release with auto-generated notes from the inter-tag commit log.
 
 Example output:
 
