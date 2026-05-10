@@ -1,0 +1,93 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+    "value": "0",
+    "data": "0x5023b4df00"
+  },
+  "targets": [
+    {
+      "id": "t#router",
+      "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+      "chainId": 1,
+      "role": "router",
+      "protocol": {
+        "name": "uniswap",
+        "version": "v3",
+        "component": "swapRouter02"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#router",
+      "relatedTargetIds": [
+        "t#weth",
+        "t#usdc"
+      ],
+      "callType": "external_call",
+      "selector": "0x5023b4df",
+      "functionName": "exactOutputSingle",
+      "args": {
+        "tokenIn": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        "tokenOut": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "fee": 500,
+        "recipient": "0x1111111111111111111111111111111111111111",
+        "deadline": "1762500000",
+        "amountOut": "1000000000",
+        "amountInMaximum": "400000000000000000",
+        "sqrtPriceLimitX96": "0"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+      "value": "0",
+      "data": "0x5023b4df00"
+    },
+    "calldata": "0x5023b4df00"
+  }
+}

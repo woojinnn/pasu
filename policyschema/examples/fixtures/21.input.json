@@ -1,0 +1,119 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+    "value": "0",
+    "data": "0x3593564c0a00"
+  },
+  "targets": [
+    {
+      "id": "t#ur",
+      "address": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+      "chainId": 1,
+      "role": "router",
+      "protocol": {
+        "name": "uniswap",
+        "component": "universalRouter"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#permit2",
+      "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "chainId": 1,
+      "role": "permit",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#ur",
+      "callType": "external_call",
+      "selector": "0x3593564c",
+      "functionName": "execute",
+      "args": {
+        "commands": "0x0a00",
+        "inputs": [
+          "0x",
+          "0x"
+        ],
+        "deadline": "1762500000"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    },
+    {
+      "id": "c#1",
+      "targetId": "t#permit2",
+      "callType": "router_command",
+      "urOpcode": 10,
+      "urFamily": "uniswap",
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    },
+    {
+      "id": "c#2",
+      "targetId": "t#ur",
+      "callType": "router_command",
+      "urOpcode": 0,
+      "urFamily": "uniswap",
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+      "value": "0",
+      "data": "0x3593564c0a00"
+    },
+    "calldata": "0x3593564c0a00"
+  }
+}

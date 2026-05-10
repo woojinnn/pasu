@@ -1,0 +1,74 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x0000000000000068F116a894984e2DB1123eB395",
+    "value": "1000000000000000000",
+    "data": "0xfb0f3ee1"
+  },
+  "targets": [
+    {
+      "id": "t#seaport",
+      "address": "0x0000000000000068F116a894984e2DB1123eB395",
+      "chainId": 1,
+      "role": "router",
+      "protocol": {
+        "name": "seaport",
+        "version": "1.6"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#nft",
+      "address": "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#seaport",
+      "callType": "external_call",
+      "selector": "0xfb0f3ee1",
+      "functionName": "fulfillBasicOrder",
+      "args": {
+        "parameters": {
+          "offerer": "0x2222222222222222222222222222222222222222",
+          "considerationToken": "0x0000000000000000000000000000000000000000",
+          "considerationAmount": "1000000000000000000",
+          "offerToken": "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
+          "offerIdentifier": "1234"
+        }
+      },
+      "value": "1000000000000000000",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x0000000000000068F116a894984e2DB1123eB395",
+      "value": "1000000000000000000",
+      "data": "0xfb0f3ee1"
+    },
+    "calldata": "0xfb0f3ee1"
+  }
+}

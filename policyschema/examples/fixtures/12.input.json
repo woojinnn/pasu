@@ -1,0 +1,81 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+    "value": "0",
+    "data": "0x238d657900"
+  },
+  "targets": [
+    {
+      "id": "t#morpho",
+      "address": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+      "chainId": 1,
+      "role": "manager",
+      "protocol": {
+        "name": "morpho",
+        "component": "blue"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#morpho",
+      "relatedTargetIds": [
+        "t#usdc"
+      ],
+      "callType": "external_call",
+      "selector": "0x238d6579",
+      "functionName": "supply",
+      "args": {
+        "marketParams": {
+          "loanToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "collateralToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "oracle": "0x1111111111111111111111111111111111111112",
+          "irm": "0x1111111111111111111111111111111111111113",
+          "lltv": "860000000000000000"
+        },
+        "assets": "1000000000",
+        "shares": "0",
+        "onBehalf": "0x1111111111111111111111111111111111111111",
+        "data": "0x"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+      "value": "0",
+      "data": "0x238d657900"
+    },
+    "calldata": "0x238d657900"
+  }
+}

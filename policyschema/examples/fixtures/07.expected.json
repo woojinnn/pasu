@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 56, "from": "0x1111111111111111111111111111111111111111", "to": "0x1A0A18AC4BECDDbd6389559687d1A73d8927E416", "value": "0", "data": "0x3593564c10" },
+  "targets": [
+    { "id": "t#ur", "address": "0x1A0A18AC4BECDDbd6389559687d1A73d8927E416", "chainId": 56, "role": "router", "protocol": { "name": "pancakeswap", "component": "universalRouter" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#busd", "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "chainId": 56, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#cake", "address": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", "chainId": 56, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#ur", "callType": "external_call", "selector": "0x3593564c", "functionName": "execute", "args": { "commands": "0x10", "inputs": ["0x"] }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "aggregation", "type": "router_plan", "primaryTargetId": "t#ur", "derivedFromCallIds": ["c#0"], "fields": { "kind": "aggregation", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["pancakeswap"], "family": "pancakeswap", "commandsHex": "0x10", "mask": 63, "childCount": 1, "deadlines": {} }, "extensionIds": ["e#ur"], "confidence": "high" },
+    { "id": "a#1", "category": "swap", "type": "swap", "primaryTargetId": "t#ur", "relatedTargetIds": ["t#busd", "t#cake"], "parentActionId": "a#0", "fields": { "kind": "swap", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["pancakeswap"], "inputTokens": [{ "chainId": 56, "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "symbol": "BUSD", "decimals": 18, "isNative": false }], "outputTokens": [{ "chainId": 56, "address": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", "symbol": "CAKE", "decimals": 18, "isNative": false }], "mode": "exact_in", "amountIn": { "raw": "100000000000000000000", "kind": "Exact" }, "amountOut": { "raw": "30000000000000000000", "kind": "Min" }, "route": { "kind": "single_hop", "hop": { "id": "h#0", "protocol": "pancakeswap.infinity", "tokenIn": { "chainId": 56, "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "symbol": "BUSD", "decimals": 18, "isNative": false }, "tokenOut": { "chainId": 56, "address": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", "symbol": "CAKE", "decimals": 18, "isNative": false }, "confidence": "medium" } }, "slippage": { "source": "calldata" }, "settlement": "callback", "recipients": { "recipient": { "kind": "actor" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": {}, "hasZeroMinOutput": false }, "extensionIds": ["e#infi"], "confidence": "medium" }
+  ],
+  "extensions": [
+    { "id": "e#ur", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "pancakeswap", "version": "1", "data": { "component": "universalRouter", "commandsHex": "0x10", "mask": 63 }, "confidence": "high" },
+    { "id": "e#infi", "scope": { "kind": "action", "actionId": "a#1" }, "namespace": "pancakeswap", "version": "1", "data": { "component": "infinity", "poolKey": { "currency0": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", "currency1": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "hooks": "0x0000000000000000000000000000000000000000", "poolManager": "0x0000000000000000000000000000000000000001", "fee": 500, "parameters": "0x0000000000000000000000000000000000000000000000000000000000000064" } }, "confidence": "medium" }
+  ],
+  "confidence": { "overall": "medium", "stages": {}, "notes": ["INFI_SWAP decoder: parameters bytes32 not fully parsed in v0.1"] },
+  "raw": { "tx": { "chainId": 56, "from": "0x1111111111111111111111111111111111111111", "to": "0x1A0A18AC4BECDDbd6389559687d1A73d8927E416", "value": "0", "data": "0x3593564c10" }, "calldata": "0x3593564c10" }
+}

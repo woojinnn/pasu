@@ -1,0 +1,112 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+    "value": "1000000000000000000",
+    "data": "0x3593564c",
+    "origin": "https://app.uniswap.org"
+  },
+  "targets": [
+    {
+      "id": "t#ur",
+      "address": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+      "chainId": 1,
+      "role": "router",
+      "protocol": {
+        "name": "uniswap",
+        "component": "universalRouter"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#pm",
+      "address": "0x000000000004444c5dc75cB358380D2e3dE08A90",
+      "chainId": 1,
+      "role": "manager",
+      "protocol": {
+        "name": "uniswap",
+        "version": "v4",
+        "component": "poolManager"
+      },
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#ur",
+      "relatedTargetIds": [
+        "t#pm",
+        "t#weth"
+      ],
+      "callType": "external_call",
+      "selector": "0x3593564c",
+      "functionName": "execute",
+      "signature": "execute(bytes,bytes[],uint256)",
+      "args": {
+        "commands": "0x10",
+        "inputs": [
+          "0x"
+        ],
+        "deadline": "1762500000"
+      },
+      "value": "1000000000000000000",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    },
+    {
+      "id": "c#1",
+      "targetId": "t#pm",
+      "callType": "router_command",
+      "urOpcode": 16,
+      "urFamily": "uniswap",
+      "args": {
+        "actions": "0x06",
+        "params": [
+          "0x"
+        ]
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+      "value": "1000000000000000000",
+      "data": "0x3593564c"
+    },
+    "calldata": "0x3593564c"
+  }
+}

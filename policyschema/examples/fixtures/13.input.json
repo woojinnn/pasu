@@ -1,0 +1,55 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+    "value": "1000000000000000000",
+    "data": "0xa1903eab0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "targets": [
+    {
+      "id": "t#stEth",
+      "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+      "chainId": 1,
+      "role": "token",
+      "protocol": {
+        "name": "lido",
+        "component": "stETH"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#stEth",
+      "callType": "external_call",
+      "selector": "0xa1903eab",
+      "functionName": "submit",
+      "args": {
+        "_referral": "0x0000000000000000000000000000000000000000"
+      },
+      "value": "1000000000000000000",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+      "value": "1000000000000000000",
+      "data": "0xa1903eab0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "calldata": "0xa1903eab0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

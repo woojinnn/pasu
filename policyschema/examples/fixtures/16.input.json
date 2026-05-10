@@ -1,0 +1,78 @@
+{
+  "request": {
+    "kind": "typed_data",
+    "method": "eth_signTypedData_v4",
+    "signer": "0x1111111111111111111111111111111111111111",
+    "chainId": 1,
+    "domain": {
+      "name": "Permit2",
+      "chainId": 1,
+      "verifyingContract": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
+    "primaryType": "PermitSingle",
+    "message": {
+      "details": {
+        "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "amount": "1461501637330902918203684832716283019655932542975",
+        "expiration": 1764000000,
+        "nonce": 42
+      },
+      "spender": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+      "sigDeadline": 1762500000
+    },
+    "types": {
+      "PermitSingle": [],
+      "PermitDetails": []
+    }
+  },
+  "targets": [
+    {
+      "id": "t#permit2",
+      "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "chainId": 1,
+      "role": "permit",
+      "protocol": {
+        "name": "permit2"
+      },
+      "discoveredBy": "manual_registry",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#ur",
+      "address": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+      "chainId": 1,
+      "role": "router",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [],
+  "raw": {
+    "typedData": {
+      "providerJson": "{}"
+    }
+  }
+}

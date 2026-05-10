@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1", "value": "0", "data": "0x55ed4ad900" },
+  "targets": [
+    { "id": "t#queue", "address": "0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1", "chainId": 1, "role": "manager", "protocol": { "name": "lido", "component": "withdrawalQueue" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#stEth", "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "chainId": 1, "role": "token", "discoveredBy": "manual_registry", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#queue", "callType": "external_call", "selector": "0x55ed4ad9", "functionName": "requestWithdrawals", "args": { "_amounts": ["1000000000000000000"], "_owner": "0x1111111111111111111111111111111111111111" }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "liquid_staking", "type": "request_withdrawal", "primaryTargetId": "t#queue", "relatedTargetIds": ["t#stEth"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "staking", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["lido"], "assetIn": { "chainId": 1, "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "symbol": "stETH", "decimals": 18, "isNative": false }, "amount": { "raw": "1000000000000000000", "kind": "Exact" }, "recipients": { "recipient": { "kind": "address", "address": "0x1111111111111111111111111111111111111111" }, "recipientEqualsActor": true, "hasExternalRecipient": false } }, "extensionIds": ["e#queue"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#queue", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "lido", "version": "1", "data": { "component": "withdrawalQueue", "amounts": ["1000000000000000000"], "requestIds": [] }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": ["NFT(unstETH) is minted; tokenId is event-derived, not in calldata."] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1", "value": "0", "data": "0x55ed4ad900" }, "calldata": "0x55ed4ad900" }
+}

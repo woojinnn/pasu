@@ -1,0 +1,85 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 56,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4",
+    "value": "0",
+    "data": "0x5ae401dc00"
+  },
+  "targets": [
+    {
+      "id": "t#router",
+      "address": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4",
+      "chainId": 56,
+      "role": "router",
+      "protocol": {
+        "name": "pancakeswap",
+        "component": "smartRouter"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#busd",
+      "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+      "chainId": 56,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#wbnb",
+      "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+      "chainId": 56,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#router",
+      "callType": "external_call",
+      "selector": "0x5ae401dc",
+      "functionName": "multicall",
+      "args": {
+        "deadline": "1762500000",
+        "data": [
+          "0x04e45aaf...",
+          "0x38ed1739..."
+        ]
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 56,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4",
+      "value": "0",
+      "data": "0x5ae401dc00"
+    },
+    "calldata": "0x5ae401dc00"
+  }
+}

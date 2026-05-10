@@ -1,0 +1,77 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+    "value": "0",
+    "data": "0xa415bcad00"
+  },
+  "targets": [
+    {
+      "id": "t#pool",
+      "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+      "chainId": 1,
+      "role": "manager",
+      "protocol": {
+        "name": "aave",
+        "version": "v3",
+        "component": "pool"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true,
+        "proxyResolved": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#pool",
+      "relatedTargetIds": [
+        "t#usdc"
+      ],
+      "callType": "external_call",
+      "selector": "0xa415bcad",
+      "functionName": "borrow",
+      "args": {
+        "asset": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "amount": "500000000",
+        "interestRateMode": 2,
+        "referralCode": 0,
+        "onBehalfOf": "0x1111111111111111111111111111111111111111"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+      "value": "0",
+      "data": "0xa415bcad00"
+    },
+    "calldata": "0xa415bcad00"
+  }
+}

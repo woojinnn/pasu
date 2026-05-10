@@ -1,0 +1,56 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x408ED6354d4973f66138C91495F2f2FCbd8724C3",
+    "value": "0",
+    "data": "0x56781388"
+  },
+  "targets": [
+    {
+      "id": "t#governor",
+      "address": "0x408ED6354d4973f66138C91495F2f2FCbd8724C3",
+      "chainId": 1,
+      "role": "manager",
+      "protocol": {
+        "name": "uniswap",
+        "component": "governor"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#governor",
+      "callType": "external_call",
+      "selector": "0x56781388",
+      "functionName": "castVote",
+      "args": {
+        "proposalId": "42",
+        "support": 1
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x408ED6354d4973f66138C91495F2f2FCbd8724C3",
+      "value": "0",
+      "data": "0x56781388"
+    },
+    "calldata": "0x56781388"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "request": {
+    "kind": "typed_data",
+    "method": "eth_signTypedData_v4",
+    "signer": "0x1111111111111111111111111111111111111111",
+    "chainId": 1,
+    "domain": {
+      "name": "ExampleDApp",
+      "version": "1",
+      "chainId": 1,
+      "verifyingContract": "0xdEAD000000000000000042069420694206942069"
+    },
+    "primaryType": "Order",
+    "message": {
+      "id": "0xabc",
+      "side": "buy",
+      "amount": "1000"
+    },
+    "types": {
+      "Order": [
+        {
+          "name": "id",
+          "type": "bytes32"
+        }
+      ]
+    }
+  },
+  "targets": [
+    {
+      "id": "t#dapp",
+      "address": "0xdEAD000000000000000042069420694206942069",
+      "chainId": 1,
+      "role": "unknown",
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "unknown",
+        "abiAvailable": false,
+        "contractVerified": false
+      },
+      "confidence": "low"
+    }
+  ],
+  "decodedCalls": [],
+  "raw": {
+    "typedData": {
+      "providerJson": "{}"
+    }
+  }
+}

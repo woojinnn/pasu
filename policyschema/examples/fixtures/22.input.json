@@ -1,0 +1,94 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    "value": "0",
+    "data": "0x88316456"
+  },
+  "targets": [
+    {
+      "id": "t#npm",
+      "address": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+      "chainId": 1,
+      "role": "manager",
+      "protocol": {
+        "name": "uniswap",
+        "version": "v3",
+        "component": "nonfungiblePositionManager"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#npm",
+      "callType": "external_call",
+      "selector": "0x88316456",
+      "functionName": "mint",
+      "args": {
+        "params": {
+          "token0": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "token1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "fee": 500,
+          "tickLower": -887220,
+          "tickUpper": 887220,
+          "amount0Desired": "1000000000",
+          "amount1Desired": "300000000000000000",
+          "amount0Min": "950000000",
+          "amount1Min": "285000000000000000",
+          "recipient": "0x1111111111111111111111111111111111111111",
+          "deadline": "1762500000"
+        }
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+      "value": "0",
+      "data": "0x88316456"
+    },
+    "calldata": "0x88316456"
+  }
+}

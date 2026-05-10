@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+    "value": "1000000000000000000",
+    "data": "0x3593564c",
+    "origin": "https://app.uniswap.org"
+  },
+  "targets": [
+    { "id": "t#ur", "address": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af", "chainId": 1, "role": "router", "protocol": { "name": "uniswap", "component": "universalRouter" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#pm", "address": "0x000000000004444c5dc75cB358380D2e3dE08A90", "chainId": 1, "role": "manager", "protocol": { "name": "uniswap", "version": "v4", "component": "poolManager" }, "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#weth", "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "chainId": 1, "role": "token", "discoveredBy": "path_decode", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#ur", "relatedTargetIds": ["t#pm", "t#weth"], "callType": "external_call", "selector": "0x3593564c", "functionName": "execute", "signature": "execute(bytes,bytes[],uint256)", "args": { "commands": "0x10", "inputs": ["0x"], "deadline": "1762500000" }, "value": "1000000000000000000", "decodeSource": "verified_abi", "confidence": "high" },
+    { "id": "c#1", "targetId": "t#pm", "callType": "router_command", "urOpcode": 16, "urFamily": "uniswap", "args": { "actions": "0x06", "params": ["0x"] }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "aggregation", "type": "router_plan", "primaryTargetId": "t#ur", "relatedTargetIds": ["t#pm"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "aggregation", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["uniswap.universalRouter", "uniswap.v4"], "family": "uniswap", "commandsHex": "0x10", "mask": 127, "childCount": 1, "deadlines": { "deadline": 1762500000 } }, "extensionIds": ["e#ur"], "confidence": "high" },
+    { "id": "a#1", "category": "swap", "type": "swap", "primaryTargetId": "t#pm", "relatedTargetIds": ["t#weth"], "derivedFromCallIds": ["c#1"], "parentActionId": "a#0", "fields": { "kind": "swap", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["uniswap.v4"], "inputTokens": [{ "chainId": 1, "address": "0x0000000000000000000000000000000000000000", "symbol": "ETH", "decimals": 18, "isNative": true }], "outputTokens": [{ "chainId": 1, "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "symbol": "WETH", "decimals": 18, "isNative": false }], "mode": "exact_in", "amountIn": { "raw": "1000000000000000000", "kind": "Exact" }, "amountOut": { "raw": "990000000000000000", "kind": "Min" }, "route": { "kind": "single_hop", "hop": { "id": "h#0", "protocol": "uniswap.v4", "tokenIn": { "chainId": 1, "address": "0x0000000000000000000000000000000000000000", "symbol": "ETH", "decimals": 18, "isNative": true }, "tokenOut": { "chainId": 1, "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "symbol": "WETH", "decimals": 18, "isNative": false }, "feeBps": 1, "confidence": "high" } }, "slippage": { "source": "calldata" }, "settlement": "callback", "recipients": { "recipient": { "kind": "actor" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": { "deadline": 1762500000 }, "maxFeeBps": 1, "hasZeroMinOutput": false }, "extensionIds": ["e#v4"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#ur", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "uniswap.universalRouter", "version": "1", "data": { "commandsHex": "0x10", "mask": 127, "deadline": "1762500000", "commands": [{ "opcode": 16, "name": "V4_SWAP", "promote": true }] }, "confidence": "high" },
+    { "id": "e#v4", "scope": { "kind": "action", "actionId": "a#1" }, "namespace": "uniswap.v4", "version": "1", "data": { "poolKey": { "currency0": "0x0000000000000000000000000000000000000000", "currency1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "fee": 100, "tickSpacing": 1, "hooks": "0x0000000000000000000000000000000000000000" }, "hookData": "0x", "hookFlags": [], "deltas": [] }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af", "value": "1000000000000000000", "data": "0x3593564c" }, "calldata": "0x3593564c" }
+}

@@ -1,0 +1,84 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 56,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x1A0A18AC4BECDDbd6389559687d1A73d8927E416",
+    "value": "0",
+    "data": "0x3593564c10"
+  },
+  "targets": [
+    {
+      "id": "t#ur",
+      "address": "0x1A0A18AC4BECDDbd6389559687d1A73d8927E416",
+      "chainId": 56,
+      "role": "router",
+      "protocol": {
+        "name": "pancakeswap",
+        "component": "universalRouter"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#busd",
+      "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+      "chainId": 56,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#cake",
+      "address": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+      "chainId": 56,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#ur",
+      "callType": "external_call",
+      "selector": "0x3593564c",
+      "functionName": "execute",
+      "args": {
+        "commands": "0x10",
+        "inputs": [
+          "0x"
+        ]
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 56,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x1A0A18AC4BECDDbd6389559687d1A73d8927E416",
+      "value": "0",
+      "data": "0x3593564c10"
+    },
+    "calldata": "0x3593564c10"
+  }
+}

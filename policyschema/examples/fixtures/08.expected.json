@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 8453, "from": "0x1111111111111111111111111111111111111111", "to": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43", "value": "0", "data": "0xcac88ea900" },
+  "targets": [
+    { "id": "t#router", "address": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43", "chainId": 8453, "role": "router", "protocol": { "name": "aerodrome", "version": "v1" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#usdc", "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "chainId": 8453, "role": "token", "discoveredBy": "path_decode", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#weth", "address": "0x4200000000000000000000000000000000000006", "chainId": 8453, "role": "token", "discoveredBy": "path_decode", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#router", "relatedTargetIds": ["t#usdc", "t#weth"], "callType": "external_call", "selector": "0xcac88ea9", "functionName": "swapExactTokensForTokens", "args": { "amountIn": "1000000000", "amountOutMin": "300000000000000000", "routes": [{ "from": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "to": "0x4200000000000000000000000000000000000006", "stable": false, "factory": "0x420DD381b31aEf6683db6B902084cB0FFECe40Da" }], "to": "0x1111111111111111111111111111111111111111", "deadline": "1762500000" }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "swap", "type": "swap", "primaryTargetId": "t#router", "relatedTargetIds": ["t#usdc", "t#weth"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "swap", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["aerodrome.v1"], "inputTokens": [{ "chainId": 8453, "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "symbol": "USDC", "decimals": 6, "isNative": false }], "outputTokens": [{ "chainId": 8453, "address": "0x4200000000000000000000000000000000000006", "symbol": "WETH", "decimals": 18, "isNative": false }], "mode": "exact_in", "amountIn": { "raw": "1000000000", "kind": "Exact" }, "amountOut": { "raw": "300000000000000000", "kind": "Min" }, "route": { "kind": "multi_hop", "hops": [{ "id": "h#0", "protocol": "aerodrome.v1", "tokenIn": { "chainId": 8453, "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "symbol": "USDC", "decimals": 6, "isNative": false }, "tokenOut": { "chainId": 8453, "address": "0x4200000000000000000000000000000000000006", "symbol": "WETH", "decimals": 18, "isNative": false }, "feeBps": 30, "confidence": "high" }] }, "slippage": { "source": "calldata" }, "settlement": "router", "recipients": { "recipient": { "kind": "address", "address": "0x1111111111111111111111111111111111111111" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": { "deadline": 1762500000 }, "maxFeeBps": 30, "hasZeroMinOutput": false }, "extensionIds": ["e#aero"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#aero", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "aerodrome.v1", "version": "1", "data": { "stable": [false], "factories": ["0x420DD381b31aEf6683db6B902084cB0FFECe40Da"], "supportingFeeOnTransfer": false }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "tx": { "chainId": 8453, "from": "0x1111111111111111111111111111111111111111", "to": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43", "value": "0", "data": "0xcac88ea900" }, "calldata": "0xcac88ea900" }
+}

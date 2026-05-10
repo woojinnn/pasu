@@ -1,0 +1,93 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "value": "0",
+    "data": "0x5c11d79500"
+  },
+  "targets": [
+    {
+      "id": "t#router",
+      "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      "chainId": 1,
+      "role": "router",
+      "protocol": {
+        "name": "uniswap",
+        "version": "v2",
+        "component": "router02"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#fot",
+      "address": "0x45804880De22913dAFE09f4980848ECE6EcbAf78",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "medium"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#router",
+      "relatedTargetIds": [
+        "t#fot",
+        "t#weth"
+      ],
+      "callType": "external_call",
+      "selector": "0x5c11d795",
+      "functionName": "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+      "args": {
+        "amountIn": "1000000000000000000000",
+        "amountOutMin": "50000000000000000",
+        "path": [
+          "0x45804880De22913dAFE09f4980848ECE6EcbAf78",
+          "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        ],
+        "to": "0x1111111111111111111111111111111111111111",
+        "deadline": "1762500000"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "medium"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      "value": "0",
+      "data": "0x5c11d79500"
+    },
+    "calldata": "0x5c11d79500"
+  }
+}

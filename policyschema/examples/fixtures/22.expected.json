@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88", "value": "0", "data": "0x88316456" },
+  "targets": [
+    { "id": "t#npm", "address": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88", "chainId": 1, "role": "manager", "protocol": { "name": "uniswap", "version": "v3", "component": "nonfungiblePositionManager" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#usdc", "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "chainId": 1, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#weth", "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "chainId": 1, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#npm", "callType": "external_call", "selector": "0x88316456", "functionName": "mint", "args": { "params": { "token0": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "token1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "fee": 500, "tickLower": -887220, "tickUpper": 887220, "amount0Desired": "1000000000", "amount1Desired": "300000000000000000", "amount0Min": "950000000", "amount1Min": "285000000000000000", "recipient": "0x1111111111111111111111111111111111111111", "deadline": "1762500000" } }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "liquidity", "type": "mint_position", "primaryTargetId": "t#npm", "relatedTargetIds": ["t#usdc", "t#weth"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "liquidity", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["uniswap.v3"], "tokens": [{ "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6, "isNative": false }, { "chainId": 1, "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "symbol": "WETH", "decimals": 18, "isNative": false }], "amounts": [{ "raw": "1000000000", "kind": "Max" }, { "raw": "300000000000000000", "kind": "Max" }], "feeTier": 500, "tickLower": -887220, "tickUpper": 887220, "recipients": { "recipient": { "kind": "address", "address": "0x1111111111111111111111111111111111111111" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": { "deadline": 1762500000 } }, "extensionIds": ["e#v3"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#v3", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "uniswap.v3", "version": "1", "data": { "feeTier": 500, "tickLower": -887220, "tickUpper": 887220 }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88", "value": "0", "data": "0x88316456" }, "calldata": "0x88316456" }
+}

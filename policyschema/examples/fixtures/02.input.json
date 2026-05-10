@@ -1,0 +1,92 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "value": "0",
+    "data": "0xb858183f00",
+    "origin": "https://app.uniswap.org"
+  },
+  "targets": [
+    {
+      "id": "t#router",
+      "address": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+      "chainId": 1,
+      "role": "router",
+      "protocol": {
+        "name": "uniswap",
+        "version": "v3",
+        "component": "swapRouter"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#router",
+      "relatedTargetIds": [
+        "t#usdc",
+        "t#weth"
+      ],
+      "callType": "external_call",
+      "selector": "0xb858183f",
+      "functionName": "exactInput",
+      "signature": "exactInput((bytes,address,uint256,uint256,uint256))",
+      "args": {
+        "path": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB480001f4C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        "recipient": "0x1111111111111111111111111111111111111111",
+        "deadline": "1762500000",
+        "amountIn": "1000000000",
+        "amountOutMinimum": "300000000000000000"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+      "value": "0",
+      "data": "0xb858183f00"
+    },
+    "calldata": "0xb858183f00"
+  }
+}

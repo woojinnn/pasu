@@ -1,0 +1,69 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x83F20F44975D03b1b09e64809B757c47f942BEeA",
+    "value": "0",
+    "data": "0x6e553f65"
+  },
+  "targets": [
+    {
+      "id": "t#vault",
+      "address": "0x83F20F44975D03b1b09e64809B757c47f942BEeA",
+      "chainId": 1,
+      "role": "vault",
+      "protocol": {
+        "name": "sdai",
+        "component": "erc4626"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#dai",
+      "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "manual_registry",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#vault",
+      "callType": "external_call",
+      "selector": "0x6e553f65",
+      "functionName": "deposit",
+      "args": {
+        "assets": "1000000000000000000000",
+        "receiver": "0x1111111111111111111111111111111111111111"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x83F20F44975D03b1b09e64809B757c47f942BEeA",
+      "value": "0",
+      "data": "0x6e553f65"
+    },
+    "calldata": "0x6e553f65"
+  }
+}

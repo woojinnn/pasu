@@ -1,0 +1,88 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 8453,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5",
+    "value": "0",
+    "data": "0x04e45aaf00"
+  },
+  "targets": [
+    {
+      "id": "t#router",
+      "address": "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5",
+      "chainId": 8453,
+      "role": "router",
+      "protocol": {
+        "name": "aerodrome",
+        "component": "slipstream"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "chainId": 8453,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0x4200000000000000000000000000000000000006",
+      "chainId": 8453,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#router",
+      "callType": "external_call",
+      "selector": "0x04e45aaf",
+      "functionName": "exactInputSingle",
+      "args": {
+        "tokenIn": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "tokenOut": "0x4200000000000000000000000000000000000006",
+        "tickSpacing": 100,
+        "recipient": "0x1111111111111111111111111111111111111111",
+        "deadline": "1762500000",
+        "amountIn": "1000000000",
+        "amountOutMinimum": "300000000000000000",
+        "sqrtPriceLimitX96": "0"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 8453,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5",
+      "value": "0",
+      "data": "0x04e45aaf00"
+    },
+    "calldata": "0x04e45aaf00"
+  }
+}

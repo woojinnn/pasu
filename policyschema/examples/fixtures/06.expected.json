@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 56, "from": "0x1111111111111111111111111111111111111111", "to": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4", "value": "0", "data": "0x5ae401dc00" },
+  "targets": [
+    { "id": "t#router", "address": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4", "chainId": 56, "role": "router", "protocol": { "name": "pancakeswap", "component": "smartRouter" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#busd", "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "chainId": 56, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#wbnb", "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", "chainId": 56, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#router", "callType": "external_call", "selector": "0x5ae401dc", "functionName": "multicall", "args": { "deadline": "1762500000", "data": ["0x04e45aaf...", "0x38ed1739..."] }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "swap", "type": "swap", "primaryTargetId": "t#router", "relatedTargetIds": ["t#busd", "t#wbnb"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "swap", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["pancakeswap"], "inputTokens": [{ "chainId": 56, "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "symbol": "BUSD", "decimals": 18, "isNative": false }], "outputTokens": [{ "chainId": 56, "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", "symbol": "WBNB", "decimals": 18, "isNative": false }], "mode": "exact_in", "amountIn": { "raw": "100000000000000000000", "kind": "Exact" }, "amountOut": { "raw": "150000000000000000", "kind": "Min" }, "route": { "kind": "split", "branches": [{ "id": "h#0", "protocol": "pancakeswap.v3", "tokenIn": { "chainId": 56, "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "symbol": "BUSD", "decimals": 18, "isNative": false }, "tokenOut": { "chainId": 56, "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", "symbol": "WBNB", "decimals": 18, "isNative": false }, "feeBps": 25, "confidence": "high" }, { "id": "h#1", "protocol": "pancakeswap.v2", "tokenIn": { "chainId": 56, "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "symbol": "BUSD", "decimals": 18, "isNative": false }, "tokenOut": { "chainId": 56, "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", "symbol": "WBNB", "decimals": 18, "isNative": false }, "feeBps": 25, "confidence": "high" }] }, "slippage": { "source": "calldata" }, "settlement": "router", "recipients": { "recipient": { "kind": "actor" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": { "deadline": 1762500000 }, "maxFeeBps": 25, "hasZeroMinOutput": false }, "extensionIds": ["e#smart"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#smart", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "pancakeswap", "version": "1", "data": { "component": "smartRouter", "branches": [{ "kind": "v3", "feeTier": 2500 }, { "kind": "v2" }] }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "tx": { "chainId": 56, "from": "0x1111111111111111111111111111111111111111", "to": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4", "value": "0", "data": "0x5ae401dc00" }, "calldata": "0x5ae401dc00" }
+}

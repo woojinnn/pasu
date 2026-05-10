@@ -1,0 +1,7 @@
+# Cargo 빌드 산출물
+/target
+
+# 에디터·OS 임시 파일
+.DS_Store
+*.swp
+*~

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", "value": "0", "data": "0xea598cb000" },
+  "targets": [
+    { "id": "t#wstEth", "address": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", "chainId": 1, "role": "token", "protocol": { "name": "lido", "component": "wstETH" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#stEth", "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "chainId": 1, "role": "token", "discoveredBy": "manual_registry", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#wstEth", "relatedTargetIds": ["t#stEth"], "callType": "external_call", "selector": "0xea598cb0", "functionName": "wrap", "args": { "_stETHAmount": "1000000000000000000" }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "swap", "type": "wrap", "primaryTargetId": "t#wstEth", "relatedTargetIds": ["t#stEth"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "swap", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["lido"], "inputTokens": [{ "chainId": 1, "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "symbol": "stETH", "decimals": 18, "isNative": false }], "outputTokens": [{ "chainId": 1, "address": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", "symbol": "wstETH", "decimals": 18, "isNative": false }], "mode": "exact_in", "amountIn": { "raw": "1000000000000000000", "kind": "Exact" }, "amountOut": { "raw": "1000000000000000000", "kind": "Exact" }, "route": { "kind": "single_hop", "hop": { "id": "h#0", "protocol": "lido", "tokenIn": { "chainId": 1, "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "symbol": "stETH", "decimals": 18, "isNative": false }, "tokenOut": { "chainId": 1, "address": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", "symbol": "wstETH", "decimals": 18, "isNative": false }, "feeBps": 0, "confidence": "high" } }, "slippage": { "source": "unspecified" }, "settlement": "router", "recipients": { "recipient": { "kind": "actor" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": {}, "maxFeeBps": 0, "hasZeroMinOutput": false }, "extensionIds": ["e#wstEth"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#wstEth", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "lido", "version": "1", "data": { "component": "wstETH" }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", "value": "0", "data": "0xea598cb000" }, "calldata": "0xea598cb000" }
+}

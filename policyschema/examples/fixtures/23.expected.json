@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x858646372CC42E1A627fcE94aa7A7033e7CF075A", "value": "0", "data": "0xe7a050aa" },
+  "targets": [
+    { "id": "t#sm", "address": "0x858646372CC42E1A627fcE94aa7A7033e7CF075A", "chainId": 1, "role": "manager", "protocol": { "name": "eigenlayer", "component": "strategyManager" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#strategy", "address": "0x93c4b944D05dfe6df7645A86cd2206016c51564D", "chainId": 1, "role": "manager", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#stEth", "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "chainId": 1, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#sm", "callType": "external_call", "selector": "0xe7a050aa", "functionName": "depositIntoStrategy", "args": { "strategy": "0x93c4b944D05dfe6df7645A86cd2206016c51564D", "token": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "amount": "1000000000000000000" }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "restaking", "type": "restake", "primaryTargetId": "t#sm", "relatedTargetIds": ["t#strategy", "t#stEth"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "restaking", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["eigenlayer.core"], "assetIn": { "chainId": 1, "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "symbol": "stETH", "decimals": 18, "isNative": false }, "amount": { "raw": "1000000000000000000", "kind": "Exact" }, "strategy": "0x93c4b944D05dfe6df7645A86cd2206016c51564D", "recipients": { "recipient": { "kind": "actor" }, "recipientEqualsActor": true, "hasExternalRecipient": false } }, "extensionIds": ["e#eigen"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#eigen", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "eigenlayer.core", "version": "1", "data": { "strategy": "0x93c4b944D05dfe6df7645A86cd2206016c51564D" }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x858646372CC42E1A627fcE94aa7A7033e7CF075A", "value": "0", "data": "0xe7a050aa" }, "calldata": "0xe7a050aa" }
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x090D4613473dEE047c3f2706764f49E0821D256e", "value": "0", "data": "0x2e7ba6ef" },
+  "targets": [
+    { "id": "t#distributor", "address": "0x090D4613473dEE047c3f2706764f49E0821D256e", "chainId": 1, "role": "manager", "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#uni", "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", "chainId": 1, "role": "token", "discoveredBy": "manual_registry", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#distributor", "callType": "external_call", "selector": "0x2e7ba6ef", "functionName": "claim", "args": { "index": 12345, "account": "0x1111111111111111111111111111111111111111", "amount": "400000000000000000000", "merkleProof": ["0xaaa", "0xbbb"] }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "utility", "type": "airdrop_claim", "primaryTargetId": "t#distributor", "relatedTargetIds": ["t#uni"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "utility", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["erc20"], "amount": { "raw": "400000000000000000000", "kind": "Exact" }, "rewardTokens": [{ "chainId": 1, "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", "symbol": "UNI", "decimals": 18, "isNative": false }], "merkleRoot": "0x", "proofLength": 2, "deadlines": {} }, "extensionIds": ["e#airdrop"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#airdrop", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "erc20", "version": "1", "data": { "kind": "merkle_airdrop", "index": 12345 }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x090D4613473dEE047c3f2706764f49E0821D256e", "value": "0", "data": "0x2e7ba6ef" }, "calldata": "0x2e7ba6ef" }
+}

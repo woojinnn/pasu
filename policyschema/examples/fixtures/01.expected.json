@@ -1,0 +1,145 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "value": "0",
+    "data": "0x38ed17390000000000000000000000000000000000000000000000000000000000000000",
+    "origin": "https://app.uniswap.org"
+  },
+  "targets": [
+    {
+      "id": "t#router",
+      "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      "chainId": 1,
+      "role": "router",
+      "protocol": { "name": "uniswap", "version": "v2", "component": "router02" },
+      "discoveredBy": "tx_to",
+      "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true, "proxyResolved": false },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "path_decode",
+      "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#router",
+      "relatedTargetIds": ["t#usdc", "t#weth"],
+      "callType": "external_call",
+      "selector": "0x38ed1739",
+      "functionName": "swapExactTokensForTokens",
+      "signature": "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+      "args": {
+        "amountIn": "1000000000",
+        "amountOutMin": "300000000000000000",
+        "path": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"],
+        "to": "0x1111111111111111111111111111111111111111",
+        "deadline": "1762500000"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "actions": [
+    {
+      "id": "a#0",
+      "category": "swap",
+      "type": "swap",
+      "primaryTargetId": "t#router",
+      "relatedTargetIds": ["t#usdc", "t#weth"],
+      "derivedFromCallIds": ["c#0"],
+      "fields": {
+        "kind": "swap",
+        "actor": "0x1111111111111111111111111111111111111111",
+        "protocolIds": ["uniswap.v2"],
+        "inputTokens": [{ "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6, "isNative": false }],
+        "outputTokens": [{ "chainId": 1, "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "symbol": "WETH", "decimals": 18, "isNative": false }],
+        "mode": "exact_in",
+        "amountIn": { "raw": "1000000000", "kind": "Exact" },
+        "amountOut": { "raw": "300000000000000000", "kind": "Min" },
+        "route": {
+          "kind": "single_hop",
+          "hop": {
+            "id": "h#0",
+            "protocol": "uniswap.v2",
+            "tokenIn": { "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6, "isNative": false },
+            "tokenOut": { "chainId": 1, "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "symbol": "WETH", "decimals": 18, "isNative": false },
+            "feeBps": 30,
+            "confidence": "high"
+          }
+        },
+        "slippage": { "source": "calldata", "amountOutMin": { "raw": "300000000000000000", "kind": "Min" } },
+        "settlement": "router",
+        "recipients": {
+          "recipient": { "kind": "address", "address": "0x1111111111111111111111111111111111111111" },
+          "recipientEqualsActor": true,
+          "hasExternalRecipient": false
+        },
+        "deadlines": { "deadline": 1762500000 },
+        "maxFeeBps": 30,
+        "hasZeroMinOutput": false
+      },
+      "extensionIds": ["e#uniswap-v2"],
+      "confidence": "high"
+    }
+  ],
+  "extensions": [
+    {
+      "id": "e#uniswap-v2",
+      "scope": { "kind": "action", "actionId": "a#0" },
+      "namespace": "uniswap.v2",
+      "version": "1",
+      "data": {
+        "path": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"],
+        "supportingFeeOnTransfer": false
+      },
+      "confidence": "high"
+    }
+  ],
+  "confidence": {
+    "overall": "high",
+    "stages": {
+      "request": "high",
+      "target_identification": "high",
+      "abi_decode": "high",
+      "protocol_decode": "high",
+      "semantic_action": "high",
+      "route_decode": "high",
+      "amount_interpretation": "high"
+    },
+    "notes": [
+      "V2 pair address is not in calldata; pairFor(factory, USDC, WETH) can be derived but is not registered in v0.1."
+    ]
+  },
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      "value": "0",
+      "data": "0x38ed17390000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "calldata": "0x38ed17390000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

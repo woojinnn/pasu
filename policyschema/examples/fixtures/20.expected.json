@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45", "value": "0", "data": "0x5023b4df00" },
+  "targets": [
+    { "id": "t#router", "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45", "chainId": 1, "role": "router", "protocol": { "name": "uniswap", "version": "v3", "component": "swapRouter02" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#weth", "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "chainId": 1, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#usdc", "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "chainId": 1, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#router", "relatedTargetIds": ["t#weth", "t#usdc"], "callType": "external_call", "selector": "0x5023b4df", "functionName": "exactOutputSingle", "args": { "tokenIn": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "tokenOut": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "fee": 500, "recipient": "0x1111111111111111111111111111111111111111", "deadline": "1762500000", "amountOut": "1000000000", "amountInMaximum": "400000000000000000", "sqrtPriceLimitX96": "0" }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "swap", "type": "swap", "primaryTargetId": "t#router", "relatedTargetIds": ["t#weth", "t#usdc"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "swap", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["uniswap.v3"], "inputTokens": [{ "chainId": 1, "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "symbol": "WETH", "decimals": 18, "isNative": false }], "outputTokens": [{ "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6, "isNative": false }], "mode": "exact_out", "amountIn": { "raw": "400000000000000000", "kind": "Max" }, "amountOut": { "raw": "1000000000", "kind": "Exact" }, "route": { "kind": "single_hop", "hop": { "id": "h#0", "protocol": "uniswap.v3", "tokenIn": { "chainId": 1, "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "symbol": "WETH", "decimals": 18, "isNative": false }, "tokenOut": { "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6, "isNative": false }, "feeBps": 5, "confidence": "high" } }, "slippage": { "source": "calldata" }, "settlement": "callback", "recipients": { "recipient": { "kind": "address", "address": "0x1111111111111111111111111111111111111111" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": { "deadline": 1762500000 }, "maxFeeBps": 5, "hasZeroMinOutput": false }, "extensionIds": ["e#v3"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#v3", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "uniswap.v3", "version": "1", "data": { "feeTier": 500, "feeTiers": [500], "sqrtPriceLimitX96": "0", "entryPoint": "SwapRouter02" }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": ["Exact-out: amountIn.kind = Max (caps), amountOut.kind = Exact."] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45", "value": "0", "data": "0x5023b4df00" }, "calldata": "0x5023b4df00" }
+}

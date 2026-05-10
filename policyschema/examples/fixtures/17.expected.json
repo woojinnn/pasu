@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "typed_data", "method": "eth_signTypedData_v4", "signer": "0x1111111111111111111111111111111111111111", "chainId": 1, "domain": { "name": "USD Coin", "version": "2", "chainId": 1, "verifyingContract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" }, "primaryType": "Permit", "message": { "owner": "0x1111111111111111111111111111111111111111", "spender": "0x2222222222222222222222222222222222222222", "value": "1000000000", "nonce": "0", "deadline": "1762500000" }, "types": { "Permit": [] } },
+  "targets": [
+    { "id": "t#usdc", "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "chainId": 1, "role": "token", "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#spender", "address": "0x2222222222222222222222222222222222222222", "chainId": 1, "role": "unknown", "discoveredBy": "calldata_arg", "verification": { "labelSource": "unknown", "abiAvailable": false, "contractVerified": false }, "confidence": "medium" }
+  ],
+  "decodedCalls": [],
+  "actions": [
+    { "id": "a#0", "category": "sign", "type": "sign_eip2612_permit", "primaryTargetId": "t#usdc", "relatedTargetIds": ["t#spender"], "fields": { "kind": "sign", "signer": "0x1111111111111111111111111111111111111111", "chainId": 1, "domain": { "name": "USD Coin", "version": "2", "chainId": 1, "verifyingContract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" }, "primaryType": "Permit", "semantic": { "type": "eip2612_permit", "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "owner": "0x1111111111111111111111111111111111111111", "spender": "0x2222222222222222222222222222222222222222", "value": { "raw": "1000000000", "kind": "Exact" }, "nonce": "0" }, "deadlines": { "deadline": 1762500000 } }, "extensionIds": ["e#eip2612"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#eip2612", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "eip2612", "version": "1", "data": {}, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": [] },
+  "raw": { "typedData": { "providerJson": "{}" } }
+}

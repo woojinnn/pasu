@@ -1,0 +1,69 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x96F6eF951840721AdBF46Ac996b59E0235CB985C",
+    "value": "0",
+    "data": "0x"
+  },
+  "targets": [
+    {
+      "id": "t#usdy",
+      "address": "0x96F6eF951840721AdBF46Ac996b59E0235CB985C",
+      "chainId": 1,
+      "role": "token",
+      "protocol": {
+        "name": "ondo",
+        "component": "usdy"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "medium"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#usdy",
+      "callType": "external_call",
+      "selector": "0x12345678",
+      "functionName": "subscribe",
+      "args": {
+        "amount": "10000000000",
+        "controller": "0x1111111111111111111111111111111111111111"
+      },
+      "value": "0",
+      "decodeSource": "inferred_abi",
+      "confidence": "medium"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x96F6eF951840721AdBF46Ac996b59E0235CB985C",
+      "value": "0",
+      "data": "0x"
+    },
+    "calldata": "0x"
+  }
+}
