@@ -1,7 +1,11 @@
 node_modules/
 dist/
 .env
+.env.*
+!.example.env
 *.log
+*.tsbuildinfo
+coverage/
 .yarn/cache/
 .yarn/install-state.gz
 pkg/
