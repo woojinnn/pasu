@@ -34,7 +34,16 @@ import {
 } from "@lib/types";
 import type { OracleEntry } from "./types/host-snapshot";
 
-const HARD_TIMEOUT_MS = 3_000;
+// Caps `runLifecycle` (action build + tier-1 fact fetch + tier-2 window
+// keys + Cedar evaluate). Three independent 1.5 s tier-1 dimension
+// races (oracle/balances/allowances) plus a Cedar evaluation can take
+// ~2-3 s on a cold service-worker boot. Set the cap higher so the
+// timeout-warn fallback only fires on genuinely stuck engine work,
+// not on routine cold-cache lifecycles. Aligned to be a few seconds
+// shorter than the proxy's PHASE1_MS so the SW always has time to
+// post back a real verdict (or an `awaiting-user` extension request)
+// before the proxy gives up.
+const HARD_TIMEOUT_MS = 8_000;
 
 interface DecisionResult {
   ok: boolean;

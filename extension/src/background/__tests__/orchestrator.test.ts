@@ -441,7 +441,11 @@ describe("orchestrator", () => {
     const result = decideMessage(txMessage("timeout-1"), {
       onAwaitingUser: awaitingUser,
     });
-    await vi.advanceTimersByTimeAsync(3_000);
+    // HARD_TIMEOUT_MS is 8 s — see orchestrator.ts. Bumped from 3 s so
+    // legitimate cold-cache lifecycle work (per-dimension oracle fetch +
+    // storage round-trips) doesn't trip a timeout-warn for routine
+    // wallet_sendCalls passes.
+    await vi.advanceTimersByTimeAsync(8_000);
     await vi.waitFor(() =>
       expect(mocks.browser.windows.create).toHaveBeenCalledTimes(1),
     );
