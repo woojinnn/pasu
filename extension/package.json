@@ -13,7 +13,7 @@
     "build": "run-s build:chrome build:firefox",
     "zip:chrome": "web-ext build -s dist/chrome -a dist -n chrome.zip -o",
     "zip:firefox": "web-ext build -s dist/firefox -a dist -n firefox.zip -o",
-    "zip": "run-p zip:*",
+    "zip": "run-p zip:chrome zip:firefox",
     "clean": "rimraf dist",
     "typecheck": "yarn prepare:wasm && tsc --noEmit",
     "test": "vitest run",
