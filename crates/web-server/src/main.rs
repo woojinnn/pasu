@@ -28,6 +28,9 @@ use abi_resolver::subdecode::protocols::balancer_v2::{
     BALANCER_V2_EXIT_KIND_STABLE, BALANCER_V2_EXIT_KIND_WEIGHTED, BALANCER_V2_JOIN_KIND,
     EXIT_POOL_SELECTOR, JOIN_POOL_SELECTOR,
 };
+use abi_resolver::subdecode::protocols::pancake_infinity::{
+    extract_actions_and_params as extract_infi_actions_and_params, PANCAKE_INFI_TABLE,
+};
 use abi_resolver::subdecode::protocols::pancake_ur::{
     is_pancake_universal_router, PANCAKE_UR_TABLE,
 };
@@ -255,10 +258,21 @@ const MAX_SUBDECODE_DEPTH: u32 = 4;
 /// the response.
 const MAX_SUBDECODE_CHILDREN: usize = 64;
 
+/// Identifies which UR family produced the current opcode-stream step,
+/// so [`step_to_response`] knows which nested action table to apply when
+/// it sees opcode `0x10` — Uniswap UR's `V4_SWAP` (→ V4_ROUTER_TABLE) and
+/// Pancake UR's `INFI_SWAP` (→ PANCAKE_INFI_TABLE) collide on the same
+/// byte.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum UrKind {
+    Uniswap,
+    Pancake,
+}
+
 /// Pick the right Universal Router opcode table for `(chain, target)` after
 /// confirming the selector is one of the public `execute(...)` overloads.
 ///
-/// Returns `Some(table)` only when both:
+/// Returns `Some((kind, table))` only when both:
 /// - the selector matches a UR `execute` selector, AND
 /// - the target address is on a router-specific allowlist (Uniswap or
 ///   Pancake).
@@ -271,15 +285,15 @@ fn pick_ur_opcode_table(
     chain_id: u64,
     target: &Address,
     selector: &[u8; 4],
-) -> Option<&'static OpcodeTable> {
+) -> Option<(UrKind, &'static OpcodeTable)> {
     if !is_universal_router_execute(selector) {
         return None;
     }
     if is_uniswap_universal_router(chain_id, target) {
-        return Some(&UNISWAP_UR_TABLE);
+        return Some((UrKind::Uniswap, &UNISWAP_UR_TABLE));
     }
     if is_pancake_universal_router(chain_id, target) {
-        return Some(&PANCAKE_UR_TABLE);
+        return Some((UrKind::Pancake, &PANCAKE_UR_TABLE));
     }
     None
 }
@@ -369,7 +383,9 @@ fn decode_recursive(
                             .collect()
                     })
                     .unwrap_or_default()
-            } else if let Some(table) = pick_ur_opcode_table(chain_id, target, &selector_bytes) {
+            } else if let Some((ur_kind, table)) =
+                pick_ur_opcode_table(chain_id, target, &selector_bytes)
+            {
                 // Opcode dispatch —  each opcode against the matching UR table.
                 // Role-gated: Uniswap UR vs Pancake UR vs (unknown UR fork
                 // → no dispatch). Avoids silent misdecode where two routers
@@ -381,7 +397,9 @@ fn decode_recursive(
                         steps
                             .into_iter()
                             .take(MAX_SUBDECODE_CHILDREN)
-                            .map(|step| step_to_response(step, depth + 1, resolver, chain_id))
+                            .map(|step| {
+                                step_to_response(step, depth + 1, resolver, chain_id, ur_kind)
+                            })
                             .collect()
                     })
                     .unwrap_or_default()
@@ -399,7 +417,15 @@ fn decode_recursive(
                         steps
                             .into_iter()
                             .take(MAX_SUBDECODE_CHILDREN)
-                            .map(|step| step_to_response(step, depth + 1, resolver, chain_id))
+                            .map(|step| {
+                                step_to_response(
+                                    step,
+                                    depth + 1,
+                                    resolver,
+                                    chain_id,
+                                    UrKind::Uniswap,
+                                )
+                            })
                             .collect()
                     })
                     .unwrap_or_default()
@@ -575,6 +601,7 @@ fn step_to_response(
     depth: u32,
     resolver: &Resolver,
     chain_id: u64,
+    ur_kind: UrKind,
 ) -> DecodeResponse {
     let selector = format!("0x{:02x}", step.opcode);
     let function_name = if step.allow_revert {
@@ -587,29 +614,38 @@ fn step_to_response(
     let nested_children = if depth >= MAX_SUBDECODE_DEPTH {
         Vec::new()
     } else if step.opcode == 0x10 {
-        // V4_SWAP — re-dispatch the inner (actions, params) against the V4Router
-        // action table.
-        extract_v4_actions_and_params(&step)
+        // Both UR families dispatch on opcode 0x10 but to different action
+        // tables: Uniswap UR's V4_SWAP → V4_ROUTER_TABLE; Pancake UR's
+        // INFI_SWAP → PANCAKE_INFI_TABLE.
+        let (extracted, table) = match ur_kind {
+            UrKind::Uniswap => (extract_v4_actions_and_params(&step), &V4_ROUTER_TABLE),
+            UrKind::Pancake => (extract_infi_actions_and_params(&step), &PANCAKE_INFI_TABLE),
+        };
+        extracted
             .map(|(actions, params)| {
-                let v4_steps = dispatch_opcode_stream(&actions, &params, &V4_ROUTER_TABLE);
-                v4_steps
+                let sub_steps = dispatch_opcode_stream(&actions, &params, table);
+                sub_steps
                     .into_iter()
                     .take(MAX_SUBDECODE_CHILDREN)
-                    .map(|s| step_to_response(s, depth + 1, resolver, chain_id))
+                    .map(|s| step_to_response(s, depth + 1, resolver, chain_id, ur_kind))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default()
     } else if step.opcode == 0x21 {
         // EXECUTE_SUB_PLAN — same `(bytes commands, bytes[] inputs)` shape as
         // the outer execute(...) entrypoint, dispatched recursively against
-        // the same Uniswap UR table (self-recursive opcode dispatch).
+        // the *same* UR table family the parent step came from.
+        let table = match ur_kind {
+            UrKind::Uniswap => &UNISWAP_UR_TABLE,
+            UrKind::Pancake => &PANCAKE_UR_TABLE,
+        };
         extract_v4_actions_and_params(&step)
             .map(|(commands, inputs)| {
-                let sub_steps = dispatch_opcode_stream(&commands, &inputs, &UNISWAP_UR_TABLE);
+                let sub_steps = dispatch_opcode_stream(&commands, &inputs, table);
                 sub_steps
                     .into_iter()
                     .take(MAX_SUBDECODE_CHILDREN)
-                    .map(|s| step_to_response(s, depth + 1, resolver, chain_id))
+                    .map(|s| step_to_response(s, depth + 1, resolver, chain_id, ur_kind))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default()

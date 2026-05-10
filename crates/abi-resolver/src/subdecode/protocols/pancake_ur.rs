@@ -145,13 +145,14 @@ const ENTRIES: &[OpcodeEntry] = &[
     },
 
     // ---- 0x10..=0x16 — PancakeSwap Infinity vault / position-manager ----
-    // Schemas live in pancakeswap/infinity-core and are kept label-only here.
     OpcodeEntry {
         opcode: 0x10,
         name: "INFI_SWAP",
-        // input is an InfinityRouter `_executeActions` payload — bespoke
-        // decoder needed.
-        input_signatures: &[],
+        // Top-level shape `(bytes actions, bytes[] params)` matches Uniswap
+        // UR's V4_SWAP. Inner action-stream dispatch is handled by the
+        // orchestrator against `PANCAKE_INFI_TABLE` (see
+        // `crate::subdecode::protocols::pancake_infinity`).
+        input_signatures: &["(bytes actions, bytes[] params)"],
         input_json_abi: None,
     },
     OpcodeEntry {
@@ -166,17 +167,19 @@ const ENTRIES: &[OpcodeEntry] = &[
         input_signatures: &[],
         input_json_abi: None,
     },
+    // INFI_CL_INITIALIZE_POOL — `(PoolKey, uint160 sqrtPriceX96)` where
+    // PoolKey is the 6-field Pancake Infinity variant.
     OpcodeEntry {
         opcode: 0x13,
         name: "INFI_CL_INITIALIZE_POOL",
         input_signatures: &[],
-        input_json_abi: None,
+        input_json_abi: Some(INFI_CL_INITIALIZE_POOL_JSON),
     },
     OpcodeEntry {
         opcode: 0x14,
         name: "INFI_BIN_INITIALIZE_POOL",
         input_signatures: &[],
-        input_json_abi: None,
+        input_json_abi: Some(INFI_BIN_INITIALIZE_POOL_JSON),
     },
     OpcodeEntry {
         opcode: 0x15,
@@ -200,24 +203,54 @@ const ENTRIES: &[OpcodeEntry] = &[
     },
 
     // ---- 0x22..=0x23 — Pancake stable-swap (Uniswap leaves these placeholders) ----
+    // Verified against `pancakeswap/infinity-universal-router @ main`
+    // Dispatcher.sol: input is `(address recipient, uint256 amountIn/Out,
+    // uint256 amountOutMin/InMax, bytes path, bytes flag, bool payerIsUser)`.
+    // `path` and `flag` are both bytes (path encodes the StableSwap path,
+    // flag encodes 2pool/3pool route metadata).
     OpcodeEntry {
         opcode: 0x22,
         name: "STABLE_SWAP_EXACT_IN",
-        // Pancake stable-swap input shape lives in the SmartRouter / stable-
-        // swap library. Kept label-only until we mirror the precise schema
-        // (the SmartRouter exposes `(address[] path, uint256[] flag, uint256
-        // amountIn, uint256 amountOutMin, address recipient)` for the same
-        // semantic, but the UR opcode wrapper is slightly different).
-        input_signatures: &[],
+        input_signatures: &[
+            "(address recipient, uint256 amountIn, uint256 amountOutMin, bytes path, bytes flag, bool payerIsUser)",
+        ],
         input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x23,
         name: "STABLE_SWAP_EXACT_OUT",
-        input_signatures: &[],
+        input_signatures: &[
+            "(address recipient, uint256 amountOut, uint256 amountInMax, bytes path, bytes flag, bool payerIsUser)",
+        ],
         input_json_abi: None,
     },
 ];
+
+// Pancake Infinity PoolKey: 6 fields (currency0, currency1, hooks,
+// poolManager, fee, parameters). Different from Uniswap V4 PoolKey.
+const INFI_CL_INITIALIZE_POOL_JSON: &str = r#"[
+    { "name": "poolKey", "type": "tuple", "components": [
+        { "name": "currency0",   "type": "address" },
+        { "name": "currency1",   "type": "address" },
+        { "name": "hooks",       "type": "address" },
+        { "name": "poolManager", "type": "address" },
+        { "name": "fee",         "type": "uint24" },
+        { "name": "parameters",  "type": "bytes32" }
+    ]},
+    { "name": "sqrtPriceX96", "type": "uint160" }
+]"#;
+
+const INFI_BIN_INITIALIZE_POOL_JSON: &str = r#"[
+    { "name": "poolKey", "type": "tuple", "components": [
+        { "name": "currency0",   "type": "address" },
+        { "name": "currency1",   "type": "address" },
+        { "name": "hooks",       "type": "address" },
+        { "name": "poolManager", "type": "address" },
+        { "name": "fee",         "type": "uint24" },
+        { "name": "parameters",  "type": "bytes32" }
+    ]},
+    { "name": "activeId", "type": "uint24" }
+]"#;
 
 // JSON-ABI literals (mirror Uniswap's — Permit2 structs are vendor-neutral).
 const PERMIT2_PERMIT_JSON: &str = r#"[

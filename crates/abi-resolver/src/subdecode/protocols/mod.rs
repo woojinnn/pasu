@@ -5,6 +5,7 @@
 //! callers with richer error types should map errors at their boundary.
 
 pub mod balancer_v2;
+pub mod pancake_infinity;
 pub mod pancake_ur;
 pub mod uniswap_v3;
 pub mod universal_router;
