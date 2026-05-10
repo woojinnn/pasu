@@ -12,7 +12,12 @@ export interface DecodedArg {
 export type DecodeResponse =
   | {
       outcome: 'resolved'
-      source: 'sourcify_curated' | 'sourcify_db' | 'openchain' | 'ur_command'
+      source:
+        | 'sourcify_curated'
+        | 'sourcify_db'
+        | 'openchain'
+        | 'ur_command'
+        | 'etherscan'
       function_name: string
       signature: string
       selector: string
@@ -35,6 +40,13 @@ export interface DecodeRequest {
   chain_id: number
   address: string
   calldata: string
+  /**
+   * Originating wallet RPC method name (e.g. `eth_sendTransaction`).
+   * The backend uses this to gate the Etherscan API fallback so it
+   * only fires for write/sign operations — read calls and wallet RPCs
+   * skip the fallback to keep the 5 req/s free-tier budget intact.
+   */
+  rpc_method?: string
 }
 
 export interface ApiError {

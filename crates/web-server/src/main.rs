@@ -213,6 +213,30 @@ struct DecodeRequest {
     address: String,
     /// Hex string with or without `0x` prefix.
     calldata: String,
+    /// Originating wallet RPC method (e.g. `eth_sendTransaction`). When
+    /// supplied, gates the Etherscan-API fallback so it only fires for
+    /// write/sign methods — read calls and wallet RPCs don't burn the
+    /// 5 req/s free-tier budget. When omitted, the fallback is also
+    /// skipped (strict default).
+    #[serde(default)]
+    rpc_method: Option<String>,
+}
+
+/// Whether `rpc_method` represents a wallet write or sign operation —
+/// the cases where decoding accuracy actually matters because the user
+/// is about to authorise a state-changing or signing action. Anything
+/// else (read, wallet, connect, unknown) stays inside the local tiers.
+fn rpc_method_warrants_etherscan(method: Option<&str>) -> bool {
+    let Some(m) = method else { return false };
+    match m {
+        // Writes — calldata is about to be broadcast as a tx.
+        "eth_sendTransaction" | "eth_sendRawTransaction" | "eth_signTransaction" => true,
+        // Sign — typed-data / personal_sign / eth_sign all gate authorisations
+        // (Permit2, EIP-2612, custom EIP-712).
+        "personal_sign" | "eth_sign" => true,
+        other if other.starts_with("eth_signTypedData") => true,
+        _ => false,
+    }
 }
 
 #[derive(Serialize)]
@@ -334,9 +358,19 @@ async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -
         );
     }
 
+    // Etherscan v2 free tier is 5 req/s. Gate the fallback to write/sign
+    // RPCs only — read/wallet/connect calls never burn the budget. When
+    // `rpc_method` is missing we treat it as "not a write/sign" and skip
+    // the fallback (strict default; manual API consumers can opt in by
+    // setting `rpc_method` in the request body).
+    let etherscan = if rpc_method_warrants_etherscan(req.rpc_method.as_deref()) {
+        state.etherscan.as_deref()
+    } else {
+        None
+    };
     let response = decode_recursive(
         state.resolver.as_ref(),
-        state.etherscan.as_deref(),
+        etherscan,
         req.chain_id,
         &address,
         &calldata,

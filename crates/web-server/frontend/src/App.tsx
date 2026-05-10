@@ -110,6 +110,11 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [transactions, setTransactions] = useState<EventEntry[]>([])
   const [others, setOthers] = useState<EventEntry[]>([])
+  // RPC method that produced the currently loaded form data. Forwarded to
+  // the backend so it can gate the Etherscan API fallback to write/sign
+  // calls only (read/wallet RPCs don't burn the rate-limit budget).
+  // Cleared whenever the user edits the form manually.
+  const [pendingRpcMethod, setPendingRpcMethod] = useState<string | undefined>(undefined)
 
   // Subscribe to RPC events broadcast by the backend (the userscript posts
   // here). We DON'T auto-prefill any more — the user explicitly clicks a
@@ -162,6 +167,7 @@ function App() {
     setChainId(f.chainId)
     setAddress(f.address)
     setCalldata(f.calldata)
+    setPendingRpcMethod(entry.payload.method)
     // Scroll the form into view so the user immediately sees what got loaded.
     requestAnimationFrame(() => {
       document.querySelector('.form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -173,13 +179,29 @@ function App() {
     setError(null)
     setResult(null)
     try {
-      const r = await decode(req)
+      const r = await decode({ ...req, rpc_method: pendingRpcMethod })
       setResult(r)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
+  }
+
+  // Manual edits invalidate the captured RPC method — once the user types
+  // their own calldata we no longer know which RPC it would have come from,
+  // so the Etherscan fallback should remain off (strict default).
+  function trackedSetChainId(v: string) {
+    setChainId(v)
+    setPendingRpcMethod(undefined)
+  }
+  function trackedSetAddress(v: string) {
+    setAddress(v)
+    setPendingRpcMethod(undefined)
+  }
+  function trackedSetCalldata(v: string) {
+    setCalldata(v)
+    setPendingRpcMethod(undefined)
   }
 
   return (
@@ -202,9 +224,9 @@ function App() {
           chainId={chainId}
           address={address}
           calldata={calldata}
-          onChainIdChange={setChainId}
-          onAddressChange={setAddress}
-          onCalldataChange={setCalldata}
+          onChainIdChange={trackedSetChainId}
+          onAddressChange={trackedSetAddress}
+          onCalldataChange={trackedSetCalldata}
           onSubmit={handleSubmit}
           loading={loading}
         />
