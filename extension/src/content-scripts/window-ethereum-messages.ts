@@ -4,9 +4,19 @@ import { Identifier } from "@lib/identifier";
 import { sendToPortAndAwaitResponse } from "@lib/messages";
 import type { Message, StreamResponse } from "@lib/types";
 
+// `targetOrigin: "*"` because the proxy and bridge live in the *same*
+// window — there's no cross-origin security need for a strict origin
+// match. Default `location.origin` breaks in sandboxed iframes (e.g.
+// third-party ad frames on Amazon) where Chrome's actual security origin
+// is `null` even though `location.origin` returns the iframe URL,
+// triggering noisy "target origin … does not match the recipient
+// window's origin ('null')" errors during the SYN handshake. Same-window
+// post is filtered downstream by `name`/`target`/`source`, so the wide
+// targetOrigin doesn't relax any real boundary.
 const stream = new WindowPostMessageStream({
   name: Identifier.CONTENT_SCRIPT,
   target: Identifier.INPAGE,
+  targetOrigin: "*",
 }) as WindowPostMessageStream & {
   on(event: "data", callback: (message: Message) => void): void;
   write(data: StreamResponse): boolean;

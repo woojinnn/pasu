@@ -36,9 +36,14 @@ type WritableStream = WindowPostMessageStream & {
   write(data: unknown): void;
 };
 
+// `targetOrigin: "*"` — see the matching comment in
+// `extension/src/content-scripts/window-ethereum-messages.ts`. Same
+// reason: same-window post, sandboxed-iframe `null` origin breaks the
+// default strict targetOrigin during SYN handshake.
 const stream = new WindowPostMessageStream({
   name: Identifier.INPAGE,
   target: Identifier.CONTENT_SCRIPT,
+  targetOrigin: "*",
 }) as WritableStream;
 
 const REJECT_TX = ethErrors.provider.userRejectedRequest(
