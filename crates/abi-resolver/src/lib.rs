@@ -22,5 +22,6 @@ pub mod decode;
 pub mod openchain;
 pub mod resolver;
 pub mod sourcify;
+#[cfg(feature = "sqlite")]
 pub mod sqlite_index;
 pub mod subdecode;

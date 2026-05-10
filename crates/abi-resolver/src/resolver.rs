@@ -12,6 +12,7 @@
 use crate::decode::{decode_with_function, decode_with_signature, DecodeError, DecodedCall};
 use crate::openchain::OpenchainIndex;
 use crate::sourcify::SourcifyIndex;
+#[cfg(feature = "sqlite")]
 use crate::sqlite_index::SqliteSourcifyIndex;
 use alloy_primitives::Address;
 
@@ -21,6 +22,8 @@ pub enum Source {
     /// In-memory Sourcify hit — curated, argument names available.
     Sourcify,
     /// SQLite Sourcify dump hit — broad coverage, argument names available.
+    /// Only emitted when the `sqlite` Cargo feature is enabled.
+    #[cfg(feature = "sqlite")]
     SourcifyDb,
     /// openchain fallback — argument names are synthesised (`arg0`, `arg1`).
     Openchain,
@@ -49,6 +52,7 @@ pub enum ResolveOutcome {
 /// then attach a SQLite dump with [`Resolver::with_sqlite`] when available.
 pub struct Resolver {
     sourcify: SourcifyIndex,
+    #[cfg(feature = "sqlite")]
     sqlite: Option<SqliteSourcifyIndex>,
     openchain: OpenchainIndex,
 }
@@ -58,13 +62,16 @@ impl Resolver {
     pub fn new(sourcify: SourcifyIndex, openchain: OpenchainIndex) -> Self {
         Self {
             sourcify,
+            #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain,
         }
     }
 
     /// Attach a SQLite-backed Sourcify dump as a secondary tier (after the
-    /// in-memory curated bundle, before openchain).
+    /// in-memory curated bundle, before openchain). Only available when the
+    /// `sqlite` Cargo feature is enabled.
+    #[cfg(feature = "sqlite")]
     #[must_use]
     pub fn with_sqlite(mut self, db: SqliteSourcifyIndex) -> Self {
         self.sqlite = Some(db);
@@ -76,6 +83,7 @@ impl Resolver {
     pub fn from_sourcify(sourcify: SourcifyIndex) -> Self {
         Self {
             sourcify,
+            #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain: OpenchainIndex::empty(),
         }
@@ -86,6 +94,7 @@ impl Resolver {
     pub fn from_openchain(openchain: OpenchainIndex) -> Self {
         Self {
             sourcify: SourcifyIndex::empty(),
+            #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain,
         }
@@ -96,6 +105,7 @@ impl Resolver {
     pub fn empty() -> Self {
         Self {
             sourcify: SourcifyIndex::empty(),
+            #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain: OpenchainIndex::empty(),
         }
@@ -121,7 +131,8 @@ impl Resolver {
             }
         }
 
-        // Tier 2 — SQLite Sourcify dump.
+        // Tier 2 — SQLite Sourcify dump (only when the `sqlite` feature is on).
+        #[cfg(feature = "sqlite")]
         if let Some(db) = &self.sqlite {
             if let Ok(Some(info)) = db.lookup(chain_id, address, selector) {
                 if let Ok(decoded) = decode_with_function(&info.function, calldata) {

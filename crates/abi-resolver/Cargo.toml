@@ -13,7 +13,16 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 hex.workspace = true
 thiserror.workspace = true
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.32", features = ["bundled"], optional = true }
+
+[features]
+# `sqlite` enables the SQLite-backed Sourcify dump tier (`SqliteSourcifyIndex`)
+# and pulls in `rusqlite` (which compiles `libsqlite3-sys` from C). It is
+# off by default so wasm consumers (`policy-engine-wasm`, the browser
+# extension bundle) don't end up trying to compile sqlite to wasm32.
+# The native binary (`web-server`) opts in via `features = ["sqlite"]`.
+default = []
+sqlite = ["dep:rusqlite"]
 
 [dev-dependencies]
 alloy-json-abi = "0.8"
