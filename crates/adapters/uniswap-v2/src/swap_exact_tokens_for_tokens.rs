@@ -71,7 +71,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
             want: hex::encode(SELECTOR),
         });
     }
-    let call = swapExactTokensForTokensCall::abi_decode(calldata, false)
+    let call = swapExactTokensForTokensCall::abi_decode(calldata, true)
         .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
     if call.path.len() < 2 {
         return Err(DecodeError::EmptyPath(call.path.len()));

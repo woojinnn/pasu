@@ -78,7 +78,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
             want: hex::encode(SELECTOR),
         });
     }
-    let call = exactInputCall::abi_decode(calldata, false)
+    let call = exactInputCall::abi_decode(calldata, true)
         .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
 
     Ok(Params {
