@@ -324,27 +324,8 @@ fn push_unique_token(tokens: &mut Vec<Token>, token: Token) {
 }
 
 pub(crate) fn decode_v3_path(path: &[u8]) -> Result<(Vec<AlloyAddress>, Vec<u32>), AdapterError> {
-    if path.len() < 43 || !(path.len() - 20).is_multiple_of(23) {
-        return Err(AdapterError::BadCalldata(format!(
-            "invalid v3 path length: {}",
-            path.len()
-        )));
-    }
-    let hops = (path.len() - 20) / 23;
-    let mut tokens = Vec::with_capacity(hops + 1);
-    let mut fees = Vec::with_capacity(hops);
-    let mut cursor = 0;
-    for _ in 0..hops {
-        tokens.push(AlloyAddress::from_slice(&path[cursor..cursor + 20]));
-        cursor += 20;
-        let fee = (u32::from(path[cursor]) << 16)
-            | (u32::from(path[cursor + 1]) << 8)
-            | u32::from(path[cursor + 2]);
-        fees.push(fee);
-        cursor += 3;
-    }
-    tokens.push(AlloyAddress::from_slice(&path[cursor..cursor + 20]));
-    Ok((tokens, fees))
+    abi_resolver::subdecode::protocols::uniswap_v3::decode_v3_path(path)
+        .map_err(|e| AdapterError::BadCalldata(e.to_string()))
 }
 
 pub(crate) fn fee_bips_avg(fees: &[u32]) -> Option<u32> {

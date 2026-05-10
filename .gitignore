@@ -2,4 +2,19 @@
 **/*.rs.bk
 .DS_Store
 docs/superpowers/
+# abi-resolver build artifacts (built locally by build_all.sh, never committed):
+#   - sourcify.sqlite is ~9 GB
+#   - parquet dumps are ~24 GB
+#   - mainnet_mapping.parquet is ~340 MB
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.parquet
+
+# Local Python venv used by the build scripts.
+parquet_venv/
+
+# Anything dumped under the canonical build dir (in case it lands in-tree).
+sourcify_dump/
+
 .serena/

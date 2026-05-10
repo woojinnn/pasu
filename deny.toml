@@ -14,7 +14,13 @@ confidence-threshold = 0.8
 allow = [
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
     "CC0-1.0",
+    # CDLA-Permissive-2.0 is a permissive, OSI-style license (no copyleft).
+    # Pulled in by `webpki-roots` via `reqwest` → `rustls` for the Etherscan
+    # HTTP fallback in `web-server`.
+    "CDLA-Permissive-2.0",
+    "ISC",
     "MIT",
     "MIT-0",
     "Unicode-3.0",

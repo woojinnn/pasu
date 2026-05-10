@@ -257,38 +257,18 @@ pub fn shift_decimals(value: &str, decimals: u32) -> String {
 
 /// Decode a Uniswap V3 packed `bytes path`.
 ///
-/// Layout: `[tokenA (20)][fee0 (3)][tokenB (20)][fee1 (3)]...[tokenN (20)]`,
-/// so `path.len() == 20 + 23 * hops`.
+/// Decode a Uniswap V3 packed path.
 ///
-/// Returns `(tokens, fees)`: `tokens.len() == hops + 1`, `fees.len() == hops`.
+/// Thin wrapper that delegates to
+/// [`abi_resolver::subdecode::protocols::uniswap_v3::decode_v3_path`] and
+/// remaps its error into this adapter's local [`DecodeError`].
 ///
 /// # Errors
 ///
 /// Returns an error if the path length is not a valid V3 packed path length.
 pub fn decode_v3_path(path: &[u8]) -> Result<(Vec<AlloyAddress>, Vec<u32>), DecodeError> {
-    if path.len() < 20 + 23 || !(path.len() - 20).is_multiple_of(23) {
-        return Err(DecodeError::AbiDecode(format!(
-            "invalid Uniswap V3 path length: {} (must be 20 + 23*N)",
-            path.len()
-        )));
-    }
-    let hops = (path.len() - 20) / 23;
-    let mut tokens = Vec::with_capacity(hops + 1);
-    let mut fees = Vec::with_capacity(hops);
-
-    let mut cursor = 0;
-    for _ in 0..hops {
-        tokens.push(AlloyAddress::from_slice(&path[cursor..cursor + 20]));
-        cursor += 20;
-        let fee_bytes = &path[cursor..cursor + 3];
-        let fee = (u32::from(fee_bytes[0]) << 16)
-            | (u32::from(fee_bytes[1]) << 8)
-            | u32::from(fee_bytes[2]);
-        fees.push(fee);
-        cursor += 3;
-    }
-    tokens.push(AlloyAddress::from_slice(&path[cursor..cursor + 20]));
-    Ok((tokens, fees))
+    abi_resolver::subdecode::protocols::uniswap_v3::decode_v3_path(path)
+        .map_err(|e| DecodeError::AbiDecode(e.to_string()))
 }
 
 /// Common decode error kinds used by the per-function modules.
