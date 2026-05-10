@@ -269,6 +269,28 @@ cargo test
 cargo run -p policy-engine-adapters-bundle --example e2e_swap
 ```
 
+### Docker dev environment
+
+A reproducible toolchain (Rust 1.83 + wasm-pack + Node 20 + Yarn 4 + headless Chromium) is available via Docker Compose so contributors don't need to manage the polyglot setup locally.
+
+```bash
+./scripts/dev-up.sh      # build the image, start the container, drop into a shell
+./scripts/test-all.sh    # run the full test/lint/build sweep inside the container
+./scripts/wasm-build.sh  # rebuild the wasm artifact and copy it into extension/
+```
+
+Persistent volumes keep cargo, yarn, and `extension/node_modules` caches alive across `docker compose down`. Wipe with `docker compose down -v`. See `docker/README.md` for the full layout.
+
+### CI
+
+`.github/workflows/ci.yml` runs the same test/lint/build sweep on every PR:
+
+- `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`, `cargo doc -D warnings`
+- `wasm-pack build` plus headless wasm-bindgen tests
+- Extension typecheck, vitest, Chrome MV3 build, Firefox MV2 build
+- Both browser zips uploaded as PR artifacts so reviewers can sideload without recompiling
+- `cargo audit` and `cargo deny` for supply-chain checks
+
 Example output:
 
 ```text

@@ -1,0 +1,31 @@
+# Dev compose: a single long-running container with the workspace mounted.
+# Persistent caches keep cargo and yarn fast across rebuilds.
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    container_name: scopeball-dev
+    working_dir: /workspace
+    volumes:
+      - .:/workspace:cached
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - cargo-target:/workspace/target
+      - yarn-cache:/usr/local/share/.cache/yarn
+      - extension-node-modules:/workspace/extension/node_modules
+    environment:
+      - CARGO_HOME=/usr/local/cargo
+      - RUSTUP_HOME=/usr/local/rustup
+    # Keep the container alive for `docker compose exec` shells.
+    stdin_open: true
+    tty: true
+    command: ["sleep", "infinity"]
+
+volumes:
+  cargo-registry:
+  cargo-git:
+  cargo-target:
+  yarn-cache:
+  extension-node-modules:

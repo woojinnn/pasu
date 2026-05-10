@@ -1,14 +1,33 @@
 //! Core domain types: Address, Token, `AmountSpec`, Action.
 
 use alloy_primitives::{Address as AlloyAddress, U256};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, str::FromStr};
 use thiserror::Error;
 
 /// EVM address as a lowercase hex string with 0x prefix.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+///
+/// `Deserialize` is implemented manually to route through `Address::new`,
+/// which normalizes the input to the same lowercase form that `from_alloy`
+/// produces. Without this, registered match keys (always lowercase via
+/// `Address::new` / `from_alloy`) wouldn't match incoming requests whose
+/// `to` arrives EIP-55 checksummed (mixed case) — every adapter lookup
+/// would `NoMatch` on otherwise valid contract addresses, and the
+/// orchestrator would fall back to `Action::Other`, silently bypassing
+/// every dex/permit/etc. policy.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Address(String);
+
+impl<'de> Deserialize<'de> for Address {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = String::deserialize(deserializer)?;
+        Self::new(&raw).map_err(serde::de::Error::custom)
+    }
+}
 
 impl Address {
     /// Parse and normalize an EVM address.
@@ -506,6 +525,50 @@ impl SignatureRequest {
     #[must_use]
     pub fn primary_type(&self) -> &str {
         &self.typed_data.primary_type
+    }
+}
+
+#[cfg(test)]
+impl SignatureRequest {
+    /// Minimal EIP-712 signature request that no adapter will match. Used by
+    /// pipeline tests that exercise the catch-all `Action::Eip712Other` path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the hardcoded address literals fail to parse, which would
+    /// indicate an upstream `Address::new` regression.
+    #[must_use]
+    pub fn test_minimal_eip712_other() -> Self {
+        use serde_json::json;
+        Self {
+            chain_id: 1,
+            signer: Address::new("0x6666666666666666666666666666666666666666").unwrap(),
+            typed_data: Eip712TypedData {
+                domain: Eip712Domain {
+                    chain_id: 1,
+                    verifying_contract: Address::new("0x7777777777777777777777777777777777777777")
+                        .unwrap(),
+                    name: None,
+                    version: None,
+                    salt: None,
+                },
+                primary_type: "Mail".into(),
+                types: json!({
+                    "EIP712Domain": [
+                        {"name": "chainId", "type": "uint256"},
+                        {"name": "verifyingContract", "type": "address"}
+                    ],
+                    "Mail": [
+                        {"name": "from", "type": "address"},
+                        {"name": "to", "type": "address"}
+                    ]
+                }),
+                message: json!({
+                    "from": "0x6666666666666666666666666666666666666666",
+                    "to":   "0x8888888888888888888888888888888888888888"
+                }),
+            },
+        }
     }
 }
 

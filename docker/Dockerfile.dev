@@ -1,0 +1,48 @@
+# Dev container for the policy-engine + extension monorepo.
+# Single image carries Rust (workspace + wasm32 target + wasm-pack) and
+# Node 20 with corepack-enabled Yarn 4 for the extension.
+#
+# Build:    docker compose -f docker-compose.yml build
+# Run:      docker compose -f docker-compose.yml up -d
+# Shell:    docker compose -f docker-compose.yml exec dev bash
+# Test all: docker compose -f docker-compose.yml exec dev /workspace/scripts/test-all.sh
+
+FROM rust:1.83-bookworm
+
+# System packages for headless test runs + native deps.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        pkg-config \
+        libssl-dev \
+        build-essential \
+        chromium \
+        chromium-driver \
+        unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Rust extras: wasm target + wasm-pack + wasm-bindgen-cli.
+RUN rustup target add wasm32-unknown-unknown \
+    && cargo install --locked wasm-pack@0.13.1 wasm-bindgen-cli@0.2.95
+
+# Node 20 + corepack-enabled Yarn 4.
+ENV NODE_VERSION=20.18.0
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && corepack enable \
+    && corepack prepare yarn@4.6.0 --activate \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cache bind targets that Compose will mount over.
+WORKDIR /workspace
+
+# Pre-create cargo target / yarn cache dirs so Compose volumes can adopt them.
+RUN mkdir -p /workspace/target /workspace/extension/node_modules
+
+# CHROME_BIN consumed by wasm-pack test --headless --chrome and Playwright.
+ENV CHROME_BIN=/usr/bin/chromium
+ENV WASM_PACK_HEADLESS_BROWSER=chromium
+
+# Default to a login shell so devs land in a working REPL when execing in.
+CMD ["bash"]

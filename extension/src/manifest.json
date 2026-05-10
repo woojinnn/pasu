@@ -1,0 +1,81 @@
+{
+  "manifest_version": 3,
+  "__firefox__manifest_version": 2,
+  "name": "Scopeball",
+  "description": "Wallet policy engine — verdicts before you sign",
+  "version": "0.1.0",
+  "icons": {
+    "48": "images/icon-48.png",
+    "128": "images/icon-128.png"
+  },
+  "__chrome__action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "images/icon-48.png",
+      "128": "images/icon-128.png"
+    }
+  },
+  "__firefox__browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "images/icon-48.png",
+      "128": "images/icon-128.png"
+    }
+  },
+  "__firefox__browser_specific_settings": {
+    "gecko": {
+      "id": "extension@scopeball.dev",
+      "strict_min_version": "115.0"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["js/injected/proxy-injected-providers.js"],
+      "__chrome__world": "MAIN",
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "js/content-scripts/inject-scripts.js",
+        "js/content-scripts/window-ethereum-messages.js",
+        "js/content-scripts/bypass-check.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": ["<all_urls>"],
+      "resources": [
+        "js/injected/proxy-injected-providers.js",
+        "js/confirm/index.js",
+        "confirm.html",
+        "wasm/policy_engine_wasm_bg.wasm",
+        "default-policies/schema.cedarschema",
+        "default-policies/policy-set.json"
+      ]
+    }
+  ],
+  "__firefox__web_accessible_resources": [
+    "js/injected/proxy-injected-providers.js",
+    "js/confirm/index.js",
+    "confirm.html",
+    "wasm/policy_engine_wasm_bg.wasm",
+    "default-policies/schema.cedarschema",
+    "default-policies/policy-set.json"
+  ],
+  "background": {
+    "__chrome__service_worker": "js/background.js",
+    "__firefox__scripts": ["js/background.js"]
+  },
+  "__chrome__permissions": ["storage", "alarms"],
+  "__firefox__permissions": ["<all_urls>", "storage", "alarms"],
+  "__chrome__host_permissions": ["<all_urls>"],
+  "__chrome__content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}

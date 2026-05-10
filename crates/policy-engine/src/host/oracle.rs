@@ -94,6 +94,61 @@ impl Oracle for MockOracle {
     }
 }
 
+/// Snapshot-backed oracle for one evaluation pass.
+///
+/// Constructed by an external host (e.g., the WASM bridge) from precomputed
+/// USD valuations. Unlike [`MockOracle`], this is a production type intended
+/// for browser/extension/server callers that pre-fetch prices asynchronously
+/// and then evaluate synchronously.
+///
+/// Semantically equivalent to `MockOracle` — both are HashMap-backed lookups
+/// keyed on [`Token::key`] — but kept distinct so callers signal intent.
+#[derive(Debug, Clone, Default)]
+pub struct SnapshotOracle {
+    prices: HashMap<String, UsdValuation>,
+}
+
+impl SnapshotOracle {
+    /// Construct an empty snapshot oracle.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Insert a price for a token. Builder-style.
+    #[must_use]
+    pub fn with_price(mut self, token: &Token, valuation: UsdValuation) -> Self {
+        self.prices.insert(token.key(), valuation);
+        self
+    }
+
+    /// Insert a price for a token in place.
+    pub fn insert(&mut self, token: &Token, valuation: UsdValuation) {
+        self.prices.insert(token.key(), valuation);
+    }
+
+    /// Number of tokens in the snapshot.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.prices.len()
+    }
+
+    /// Whether the snapshot has any prices.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.prices.is_empty()
+    }
+}
+
+impl Oracle for SnapshotOracle {
+    fn price(&self, token: &Token) -> Result<UsdValuation, OracleError> {
+        self.prices
+            .get(&token.key())
+            .cloned()
+            .ok_or_else(|| OracleError::NoPrice(token.key()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,5 +208,54 @@ mod tests {
         // mainnet USDT has price; polygon-keyed USDT does not
         assert!(oracle.price(&usdt()).is_ok());
         assert!(oracle.price(&other_chain).is_err());
+    }
+
+    #[test]
+    fn snapshot_returns_recorded_price() {
+        let oracle = SnapshotOracle::new().with_price(
+            &usdt(),
+            UsdValuation {
+                value: "1.00".into(),
+                as_of_ts: 1_700_000_000,
+                sources: vec!["coingecko".into()],
+                stale_sec: 30,
+            },
+        );
+        let v = oracle.price(&usdt()).unwrap();
+        assert_eq!(v.value, "1.00");
+        assert_eq!(v.sources, vec!["coingecko".to_string()]);
+        assert_eq!(v.stale_sec, 30);
+    }
+
+    #[test]
+    fn snapshot_errors_on_unknown_token() {
+        let oracle = SnapshotOracle::new();
+        let err = oracle.price(&usdt()).unwrap_err();
+        assert!(matches!(err, OracleError::NoPrice(_)));
+    }
+
+    #[test]
+    fn snapshot_independent_per_token() {
+        let oracle = SnapshotOracle::new()
+            .with_price(
+                &usdt(),
+                UsdValuation {
+                    value: "1.00".into(),
+                    as_of_ts: 0,
+                    sources: vec![],
+                    stale_sec: 0,
+                },
+            )
+            .with_price(
+                &weth(),
+                UsdValuation {
+                    value: "3500.00".into(),
+                    as_of_ts: 0,
+                    sources: vec![],
+                    stale_sec: 0,
+                },
+            );
+        assert_eq!(oracle.price(&usdt()).unwrap().value, "1.00");
+        assert_eq!(oracle.price(&weth()).unwrap().value, "3500.00");
     }
 }
