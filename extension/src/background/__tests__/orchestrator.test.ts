@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestType, type Message } from "@lib/types";
+import { WasmDecodeError } from "../wasm-bridge.types";
 import type { VerdictDto } from "../wasm-bridge.types";
 
 const OWNER = "0x1111111111111111111111111111111111111111";
@@ -458,6 +459,30 @@ describe("orchestrator", () => {
       verdict: { kind: "warn" },
     });
     expect(mocks.reservePending).not.toHaveBeenCalled();
+  });
+
+  it("surfaces malformed tier1 plans as engine-error failures", async () => {
+    setupDexPass();
+    mocks.tier1FactPlan.mockRejectedValue(
+      new WasmDecodeError(
+        "$: expected tier1 plan",
+        "tier1FactPlan",
+        { wrong: "shape" },
+      ),
+    );
+
+    await expect(decideMessage(txMessage("decode-error-1"))).resolves.toEqual({
+      ok: false,
+      verdict: {
+        kind: "fail",
+        matched: [
+          expect.objectContaining({
+            policy_id: expect.stringMatching(/^__engine::/),
+            origin: "engine_error",
+          }),
+        ],
+      },
+    });
   });
 
   it("lets the user explicitly approve unsupported untyped signatures", async () => {

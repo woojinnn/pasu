@@ -1,10 +1,6 @@
 import Browser from "webextension-polyfill";
 import { ensureDefaultPoliciesInstalled } from "./policies-loader";
-import {
-  fetchTier1,
-  intoHostSnapshot,
-  type Tier1Plan,
-} from "./facts/tier1-fetcher";
+import { fetchTier1, intoHostSnapshot } from "./facts/tier1-fetcher";
 import { tokenKey } from "./oracle/token-key";
 import {
   committedForActor,
@@ -24,8 +20,13 @@ import {
   EngineError,
   tier1FactPlan,
   tier2WindowKeys,
-  type VerdictDto,
 } from "./wasm-bridge";
+import type {
+  DexAction,
+  ParsedAction,
+  Tier1Plan,
+  VerdictDto,
+} from "./wasm-bridge.types";
 import {
   isTransaction,
   isTypedSignature,
@@ -209,13 +210,10 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   }
 
   // Phase A: build action (no host needed).
-  const actionParsed = (await buildAction(JSON.parse(requestJson))) as Record<
-    string,
-    unknown
-  >;
+  const actionParsed: ParsedAction = await buildAction(JSON.parse(requestJson));
 
   // Phase B: derive Tier-1 plan and fetch facts.
-  const plan = (await tier1FactPlan(actionParsed)) as Tier1Plan;
+  const plan: Tier1Plan = await tier1FactPlan(actionParsed);
   const tier1 = await fetchTier1(plan);
   warnMissingOracleEntries(message, plan, tier1.oracle);
 
@@ -319,12 +317,11 @@ function inferActor(message: Message): string | undefined {
 }
 
 function computeDexWindowEntries(
-  actionParsed: Record<string, unknown>,
+  actionParsed: ParsedAction,
   oracleEntries: OracleEntry[],
 ): WindowEntryDelta[] | undefined {
-  const dex = asRecord(actionParsed.dex);
-  if (!dex) return undefined;
-  const dexInputUsd = computeDexInputUsd(dex, oracleEntries);
+  if (!isParsedDexAction(actionParsed)) return undefined;
+  const dexInputUsd = computeDexInputUsd(actionParsed.dex, oracleEntries);
   const entries: WindowEntryDelta[] = [];
   if (dexInputUsd) {
     entries.push({ name: "swapVolumeUsd24h", value: dexInputUsd });
@@ -333,11 +330,16 @@ function computeDexWindowEntries(
   return entries;
 }
 
+function isParsedDexAction(
+  actionParsed: ParsedAction,
+): actionParsed is ParsedAction & { readonly dex: DexAction } {
+  return "dex" in actionParsed && actionParsed.dex !== undefined;
+}
+
 function computeDexInputUsd(
-  dex: Record<string, unknown>,
+  dex: DexAction,
   oracleEntries: OracleEntry[],
 ): string | undefined {
-  const requirements = asArray(dex.oracle_requirements);
   const prices = new Map(
     oracleEntries.map((entry) => [
       entry.token_key.toLowerCase(),
@@ -347,42 +349,23 @@ function computeDexInputUsd(
 
   let total = 0n;
   let found = false;
-  for (const requirementValue of requirements) {
-    const requirement = asRecord(requirementValue);
-    if (!requirement || requirement.kind !== "input") continue;
-    const token = asRecord(requirement.token);
-    const tokenKey = token ? tokenKeyFromRecord(token) : undefined;
+  for (const requirement of dex.oracle_requirements) {
+    if (requirement.kind !== "input") continue;
+    const requirementTokenKey = tokenKey({
+      chainId: requirement.token.chain_id,
+      address: requirement.token.address,
+    });
     const raw = parseUnsignedDecimal(requirement.raw_amount);
-    const decimals =
-      typeof token?.decimals === "number" ? token.decimals : undefined;
-    const price = tokenKey ? prices.get(tokenKey) : undefined;
-    if (raw === undefined || decimals === undefined || !price) continue;
+    const price = prices.get(requirementTokenKey);
+    if (raw === undefined || !price) continue;
 
-    const fixedUsd = multiplyRawByUsd(raw, decimals, price);
+    const fixedUsd = multiplyRawByUsd(raw, requirement.token.decimals, price);
     if (fixedUsd === undefined) continue;
     total += fixedUsd;
     found = true;
   }
 
   return found ? fixedToDecimal(total) : undefined;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
-}
-
-function asArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
-function tokenKeyFromRecord(
-  token: Record<string, unknown>,
-): string | undefined {
-  if (typeof token.chain_id !== "number" || typeof token.address !== "string")
-    return undefined;
-  return tokenKey({ chainId: token.chain_id, address: token.address });
 }
 
 function parseUnsignedDecimal(value: unknown): bigint | undefined {

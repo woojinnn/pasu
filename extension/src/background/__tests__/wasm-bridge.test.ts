@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   parseAction,
   parseTier1Plan,
@@ -6,6 +6,33 @@ import {
   parseWindowKeys,
   WasmDecodeError,
 } from "../wasm-bridge.types";
+import { tier1FactPlan } from "../wasm-bridge";
+
+const wasmMocks = vi.hoisted(() => ({
+  init: vi.fn(async () => undefined),
+  installPoliciesJson: vi.fn(),
+  buildActionJson: vi.fn(),
+  tier1FactPlanJson: vi.fn(),
+  tier2WindowKeysJson: vi.fn(),
+  evaluateJson: vi.fn(),
+}));
+
+vi.mock("webextension-polyfill", () => ({
+  default: {
+    runtime: {
+      getURL: vi.fn((path: string) => `chrome-extension://scopeball/${path}`),
+    },
+  },
+}));
+
+vi.mock("../../wasm/policy_engine_wasm", () => ({
+  default: wasmMocks.init,
+  install_policies_json: wasmMocks.installPoliciesJson,
+  build_action_json: wasmMocks.buildActionJson,
+  tier1_fact_plan_json: wasmMocks.tier1FactPlanJson,
+  tier2_window_keys_json: wasmMocks.tier2WindowKeysJson,
+  evaluate_json: wasmMocks.evaluateJson,
+}));
 
 const token = {
   chain_id: 1,
@@ -45,6 +72,10 @@ const dexAction = {
 };
 
 describe("wasm bridge parsers", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("parses and rejects action shapes", () => {
     expect(parseAction(dexAction)).toEqual(dexAction);
     expect(() => parseAction({ kind: "dex" })).toThrow(WasmDecodeError);
@@ -99,5 +130,16 @@ describe("wasm bridge parsers", () => {
     expect(() =>
       parseVerdict({ ...verdict, matched: [{ ...verdict.matched[0], severity: "info" }] }),
     ).toThrow(WasmDecodeError);
+  });
+
+  it("rejects malformed tier1 plans returned by the WASM export", async () => {
+    wasmMocks.tier1FactPlanJson.mockReturnValue(
+      JSON.stringify({ ok: true, data: { wrong: "shape" } }),
+    );
+
+    await expect(tier1FactPlan(dexAction)).rejects.toThrow(WasmDecodeError);
+    expect(wasmMocks.tier1FactPlanJson).toHaveBeenCalledWith(
+      JSON.stringify(dexAction),
+    );
   });
 });

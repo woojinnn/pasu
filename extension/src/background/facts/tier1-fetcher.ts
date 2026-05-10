@@ -8,6 +8,7 @@ import {
   type OracleNeed,
 } from "../oracle/oracle-snapshot";
 import { tokenKey } from "../oracle/token-key";
+import type { OracleRequirement, Tier1Plan, Token } from "../wasm-bridge.types";
 import type {
   AllowanceEntry,
   BalanceEntry,
@@ -16,29 +17,10 @@ import type {
   WindowEntry,
 } from "../types/host-snapshot";
 
-export interface TokenLite {
-  chain_id: number;
-  address: string;
-  symbol: string;
-  decimals: number;
-  is_native: boolean;
-}
-
-export interface OracleRequirementLite {
-  kind: string;
-  token: TokenLite;
-  raw_amount: string;
-}
-
-export type SigOracleRequirement = OracleNeed | OracleRequirementLite;
-
-export interface Tier1Plan {
-  tokens_for_oracle: TokenLite[];
-  balances: { owner: string; token: TokenLite }[];
-  allowances: { owner: string; token: TokenLite; spender: string }[];
-  clock_required: boolean;
-  sig_oracle_requirements: SigOracleRequirement[];
-}
+export type TokenLite = Token;
+export type OracleRequirementLite = OracleRequirement;
+export type SigOracleRequirement = OracleRequirement;
+export type { Tier1Plan } from "../wasm-bridge.types";
 
 export interface Tier1FetchResult {
   oracle: OracleEntry[];
@@ -163,7 +145,7 @@ async function fetchOracleSnapshotPartial(
   return collected.slice();
 }
 
-function oracleNeedFromToken(token: TokenLite): OracleNeed {
+function oracleNeedFromToken(token: Token): OracleNeed {
   return {
     chainId: token.chain_id,
     address: token.address,
@@ -172,10 +154,9 @@ function oracleNeedFromToken(token: TokenLite): OracleNeed {
 }
 
 function oracleNeedFromRequirement(
-  requirement: SigOracleRequirement,
+  requirement: OracleRequirement,
 ): OracleNeed {
-  if ("token" in requirement) return oracleNeedFromToken(requirement.token);
-  return requirement;
+  return oracleNeedFromToken(requirement.token);
 }
 
 async function fetchBalances(plan: Tier1Plan): Promise<(bigint | undefined)[]> {
