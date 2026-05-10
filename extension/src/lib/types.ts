@@ -1,9 +1,9 @@
-import type { Address, Hex } from 'viem';
+import type { Address, Hex } from "viem";
 
 export enum RequestType {
-  TRANSACTION = 'transaction',
-  TYPED_SIGNATURE = 'typed-signature',
-  UNTYPED_SIGNATURE = 'untyped-signature',
+  TRANSACTION = "transaction",
+  TYPED_SIGNATURE = "typed-signature",
+  UNTYPED_SIGNATURE = "untyped-signature",
 }
 
 export interface TransactionPayload {
@@ -36,19 +36,19 @@ export interface UntypedSignaturePayload {
 }
 
 export interface RawTransactionAdvisoryPayload {
-  type: 'raw-transaction-advisory';
+  type: "raw-transaction-advisory";
   hostname: string;
   rawPreview: string;
 }
 
 export interface FrozenProviderWarningPayload {
-  type: 'provider-frozen-warning';
+  type: "provider-frozen-warning";
   hostname: string;
   providerName: string;
 }
 
 export interface TransactionHashReportPayload {
-  type: 'tx-hash-report';
+  type: "tx-hash-report";
   requestId: string;
   txHash: Hex;
   hostname: string;
@@ -74,12 +74,14 @@ export interface MessageResponse {
 
 export interface AwaitingUserMessage {
   requestId: string;
-  kind: 'awaiting-user';
+  kind: "awaiting-user";
 }
 
 export type StreamResponse = MessageResponse | AwaitingUserMessage;
 
-export const isTransaction = (message: Message): message is Message & { data: TransactionPayload } =>
+export const isTransaction = (
+  message: Message,
+): message is Message & { data: TransactionPayload } =>
   message.data.type === RequestType.TRANSACTION;
 
 export const isTypedSignature = (

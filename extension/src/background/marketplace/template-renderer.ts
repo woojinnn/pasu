@@ -1,5 +1,9 @@
-import { renderCedarLiteral } from './cedar-literal';
-import type { ParamSchema, ParamsSchema, ParamValues } from './params-validator';
+import { renderCedarLiteral } from "./cedar-literal";
+import type {
+  ParamSchema,
+  ParamsSchema,
+  ParamValues,
+} from "./params-validator";
 
 const PLACEHOLDER_RE = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
 
@@ -35,16 +39,20 @@ export interface RenderInput {
 /** Strip `//` and `/* * /` comments so they don't false-match the slot scan. */
 function stripCedarComments(text: string): string {
   const bytes = text;
-  let out = '';
+  let out = "";
   let i = 0;
   while (i < bytes.length) {
     const c = bytes[i];
     const next = bytes[i + 1];
-    if (c === '/' && next === '/') {
-      while (i < bytes.length && bytes[i] !== '\n') i++;
-    } else if (c === '/' && next === '*') {
+    if (c === "/" && next === "/") {
+      while (i < bytes.length && bytes[i] !== "\n") i++;
+    } else if (c === "/" && next === "*") {
       i += 2;
-      while (i + 1 < bytes.length && !(bytes[i] === '*' && bytes[i + 1] === '/')) i++;
+      while (
+        i + 1 < bytes.length &&
+        !(bytes[i] === "*" && bytes[i + 1] === "/")
+      )
+        i++;
       i = Math.min(i + 2, bytes.length);
     } else {
       out += c;
@@ -82,7 +90,8 @@ function substituteFinal(
   return template.replace(PLACEHOLDER_RE, (_match, name: string) => {
     const decl: ParamSchema | undefined = schema[name];
     if (!decl) throw new Error(`template references undeclared param ${name}`);
-    if (!(name in values)) throw new Error(`param missing at render time: ${name}`);
+    if (!(name in values))
+      throw new Error(`param missing at render time: ${name}`);
     return renderCedarLiteral(decl, values[name]);
   });
 }
@@ -98,5 +107,9 @@ function substituteFinal(
  */
 export function renderAndVerify(input: RenderInput): string {
   assertSlotPositions(input.templateText);
-  return substituteFinal(input.templateText, input.paramsSchema, input.paramValues);
+  return substituteFinal(
+    input.templateText,
+    input.paramsSchema,
+    input.paramValues,
+  );
 }

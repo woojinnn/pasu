@@ -1,10 +1,10 @@
-import type { Chain } from 'viem';
-import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains';
+import type { Chain } from "viem";
+import { arbitrum, base, mainnet, optimism, polygon } from "viem/chains";
 
 const runtime = globalThis as typeof globalThis & {
   process?: { env?: Record<string, string | undefined> };
 };
-const ALCHEMY_KEY = runtime.process?.env?.ALCHEMY_API_KEY ?? '';
+const ALCHEMY_KEY = runtime.process?.env?.ALCHEMY_API_KEY ?? "";
 
 export interface ChainConfig {
   id: number;
@@ -19,10 +19,10 @@ export interface ChainConfig {
   coingeckoNativeId: string;
 }
 
-const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
+const MULTICALL3 = "0xcA11bde05977b3631167028862bE2a173976CA11" as const;
 
 function withAlchemyOrFallback(alchemyTpl: string, free: string): string[] {
-  const main = ALCHEMY_KEY ? alchemyTpl.replace('${KEY}', ALCHEMY_KEY) : '';
+  const main = ALCHEMY_KEY ? alchemyTpl.replace("${KEY}", ALCHEMY_KEY) : "";
   return main ? [main, free] : [free];
 }
 
@@ -31,56 +31,56 @@ export const CHAINS: Record<number, ChainConfig> = {
     id: 1,
     viem: mainnet,
     rpcUrls: withAlchemyOrFallback(
-      'https://eth-mainnet.g.alchemy.com/v2/${KEY}',
-      'https://eth.llamarpc.com',
+      "https://eth-mainnet.g.alchemy.com/v2/${KEY}",
+      "https://eth.llamarpc.com",
     ),
     multicall3: MULTICALL3,
-    coingeckoPlatform: 'ethereum',
-    coingeckoNativeId: 'ethereum',
+    coingeckoPlatform: "ethereum",
+    coingeckoNativeId: "ethereum",
   },
   10: {
     id: 10,
     viem: optimism,
     rpcUrls: withAlchemyOrFallback(
-      'https://opt-mainnet.g.alchemy.com/v2/${KEY}',
-      'https://mainnet.optimism.io',
+      "https://opt-mainnet.g.alchemy.com/v2/${KEY}",
+      "https://mainnet.optimism.io",
     ),
     multicall3: MULTICALL3,
-    coingeckoPlatform: 'optimistic-ethereum',
-    coingeckoNativeId: 'ethereum',
+    coingeckoPlatform: "optimistic-ethereum",
+    coingeckoNativeId: "ethereum",
   },
   137: {
     id: 137,
     viem: polygon,
     rpcUrls: withAlchemyOrFallback(
-      'https://polygon-mainnet.g.alchemy.com/v2/${KEY}',
-      'https://polygon-rpc.com',
+      "https://polygon-mainnet.g.alchemy.com/v2/${KEY}",
+      "https://polygon-rpc.com",
     ),
     multicall3: MULTICALL3,
-    coingeckoPlatform: 'polygon-pos',
-    coingeckoNativeId: 'matic-network',
+    coingeckoPlatform: "polygon-pos",
+    coingeckoNativeId: "matic-network",
   },
   8453: {
     id: 8453,
     viem: base,
     rpcUrls: withAlchemyOrFallback(
-      'https://base-mainnet.g.alchemy.com/v2/${KEY}',
-      'https://mainnet.base.org',
+      "https://base-mainnet.g.alchemy.com/v2/${KEY}",
+      "https://mainnet.base.org",
     ),
     multicall3: MULTICALL3,
-    coingeckoPlatform: 'base',
-    coingeckoNativeId: 'ethereum',
+    coingeckoPlatform: "base",
+    coingeckoNativeId: "ethereum",
   },
   42161: {
     id: 42161,
     viem: arbitrum,
     rpcUrls: withAlchemyOrFallback(
-      'https://arb-mainnet.g.alchemy.com/v2/${KEY}',
-      'https://arb1.arbitrum.io/rpc',
+      "https://arb-mainnet.g.alchemy.com/v2/${KEY}",
+      "https://arb1.arbitrum.io/rpc",
     ),
     multicall3: MULTICALL3,
-    coingeckoPlatform: 'arbitrum-one',
-    coingeckoNativeId: 'ethereum',
+    coingeckoPlatform: "arbitrum-one",
+    coingeckoNativeId: "ethereum",
   },
 };
 

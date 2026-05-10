@@ -1,7 +1,7 @@
-import Browser from 'webextension-polyfill';
-import { Identifier } from '@lib/identifier';
-import { sendToPortAndDisregard } from '@lib/messages';
-import { RequestType } from '@lib/types';
+import Browser from "webextension-polyfill";
+import { Identifier } from "@lib/identifier";
+import { sendToPortAndDisregard } from "@lib/messages";
+import { RequestType } from "@lib/types";
 
 let metamaskChainId = 1;
 
@@ -19,7 +19,7 @@ function checkMetaMaskBypass(messageData: any): void {
   const hostname = location.hostname;
   for (const item of items) {
     if (!item) continue;
-    if (checkMethod(item, 'eth_sendTransaction')) {
+    if (checkMethod(item, "eth_sendTransaction")) {
       const [transaction] = item.params ?? [];
       forwardBypassed({
         type: RequestType.TRANSACTION,
@@ -28,11 +28,13 @@ function checkMetaMaskBypass(messageData: any): void {
         chainId: metamaskChainId,
         transaction,
       });
-    } else if (checkMethod(item, 'eth_signTypedData')) {
+    } else if (checkMethod(item, "eth_signTypedData")) {
       const [address, typedDataStr] = item.params ?? [];
       try {
         const typedData =
-          typeof typedDataStr === 'string' ? JSON.parse(typedDataStr) : typedDataStr;
+          typeof typedDataStr === "string"
+            ? JSON.parse(typedDataStr)
+            : typedDataStr;
         forwardBypassed({
           type: RequestType.TYPED_SIGNATURE,
           bypassed: true,
@@ -44,14 +46,18 @@ function checkMetaMaskBypass(messageData: any): void {
       } catch {
         /* ignore malformed typed data */
       }
-    } else if (checkMethod(item, 'eth_sign') || checkMethod(item, 'personal_sign')) {
+    } else if (
+      checkMethod(item, "eth_sign") ||
+      checkMethod(item, "personal_sign")
+    ) {
       const [first, second] = item.params ?? [];
-      const message = String(first).replace(/^0x/, '').length === 40 ? second : first;
+      const message =
+        String(first).replace(/^0x/, "").length === 40 ? second : first;
       forwardBypassed({
         type: RequestType.UNTYPED_SIGNATURE,
         bypassed: true,
         hostname,
-        message: String(message ?? ''),
+        message: String(message ?? ""),
       });
     }
     // wallet_sendCalls (EIP-5792) is intentionally NOT observed in v1.
@@ -61,23 +67,27 @@ function checkMetaMaskBypass(messageData: any): void {
   }
 }
 
-window.addEventListener('message', (event) => {
+window.addEventListener("message", (event) => {
   const target = event?.data?.target;
   const inner = event?.data?.data;
   if (!inner) return;
   if (inner.name === Identifier.METAMASK_PROVIDER) {
-    if (target === Identifier.METAMASK_CONTENT_SCRIPT) checkMetaMaskBypass(inner.data);
-    if (target === Identifier.METAMASK_INPAGE && inner.data?.method?.includes('chainChanged')) {
+    if (target === Identifier.METAMASK_CONTENT_SCRIPT)
+      checkMetaMaskBypass(inner.data);
+    if (
+      target === Identifier.METAMASK_INPAGE &&
+      inner.data?.method?.includes("chainChanged")
+    ) {
       metamaskChainId = Number(inner.data?.params?.chainId ?? metamaskChainId);
     }
   }
 });
 
-window.addEventListener('message', (event) => {
+window.addEventListener("message", (event) => {
   const { type, data } = event?.data ?? {};
   if (type !== Identifier.COINBASE_WALLET_REQUEST || !data) return;
   const hostname = location.hostname;
-  if (data.request?.method === 'signEthereumTransaction') {
+  if (data.request?.method === "signEthereumTransaction") {
     forwardBypassed({
       type: RequestType.TRANSACTION,
       bypassed: true,
@@ -87,10 +97,12 @@ window.addEventListener('message', (event) => {
         from: data.request.params.fromAddress,
         to: data.request.params.toAddress,
         data: data.request.params.data,
-        value: Number.parseInt(data.request.params.weiValue ?? '0').toString(16),
+        value: Number.parseInt(data.request.params.weiValue ?? "0").toString(
+          16,
+        ),
       },
     });
-  } else if (data.request?.method === 'signEthereumMessage') {
+  } else if (data.request?.method === "signEthereumMessage") {
     const typedDataStr = data.request.params.typedDataJson;
     if (typedDataStr) {
       try {
@@ -111,7 +123,7 @@ window.addEventListener('message', (event) => {
         type: RequestType.UNTYPED_SIGNATURE,
         bypassed: true,
         hostname,
-        message: String(data.request.params.message ?? ''),
+        message: String(data.request.params.message ?? ""),
       });
     }
   }

@@ -1,7 +1,7 @@
-import Browser from 'webextension-polyfill';
+import Browser from "webextension-polyfill";
 
-const KEY = 'windows:pending-deltas';
-const COMMITTED_KEY = 'windows:committed';
+const KEY = "windows:pending-deltas";
+const COMMITTED_KEY = "windows:committed";
 const TTL_MS = 5 * 60_000;
 
 export interface PendingDelta {
@@ -119,7 +119,7 @@ export async function listPending(): Promise<PendingDelta[]> {
 }
 
 function addWindowValue(name: string, left: string, right: string): string {
-  if (name === 'swapVolumeUsd24h') {
+  if (name === "swapVolumeUsd24h") {
     const leftFixed = decimalToFixed(left);
     const rightFixed = decimalToFixed(right);
     if (leftFixed === undefined) return right;
@@ -130,25 +130,25 @@ function addWindowValue(name: string, left: string, right: string): string {
 }
 
 function zeroWindowValue(name: string): string {
-  return name === 'swapVolumeUsd24h' ? '0.0000' : '0';
+  return name === "swapVolumeUsd24h" ? "0.0000" : "0";
 }
 
 function decimalToFixed(value: string): bigint | undefined {
-  const parts = value.split('.');
+  const parts = value.split(".");
   if (parts.length > 2) return undefined;
-  const [whole, fraction = ''] = parts;
-  if (whole === '' && fraction === '') return undefined;
+  const [whole, fraction = ""] = parts;
+  if (whole === "" && fraction === "") return undefined;
   if (!/^\d*$/.test(whole) || !/^\d*$/.test(fraction)) return undefined;
   const padded = `${fraction}0000`.slice(0, 4);
   try {
-    return BigInt(`${whole || '0'}${padded}`);
+    return BigInt(`${whole || "0"}${padded}`);
   } catch {
     return undefined;
   }
 }
 
 function fixedToDecimal(value: bigint): string {
-  const raw = value.toString().padStart(5, '0');
+  const raw = value.toString().padStart(5, "0");
   const whole = raw.slice(0, -4);
   const fraction = raw.slice(-4);
   return `${whole}.${fraction}`;

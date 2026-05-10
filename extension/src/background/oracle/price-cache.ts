@@ -1,7 +1,10 @@
-import { priceLastUpdatedAt } from './coingecko-client';
+import { priceLastUpdatedAt } from "./coingecko-client";
 
 const TTL_MS = 60_000;
-const hitUpdatedAt = new WeakMap<ReadonlyMap<string, number>, Map<string, number>>();
+const hitUpdatedAt = new WeakMap<
+  ReadonlyMap<string, number>,
+  Map<string, number>
+>();
 
 interface CachedPrice {
   usd_price: number;
@@ -22,7 +25,9 @@ function storageArea(): chrome.storage.LocalStorageArea | undefined {
   return globalThis.chrome?.storage?.local;
 }
 
-async function storageGet(keys: string[]): Promise<Record<string, CachedPrice | undefined>> {
+async function storageGet(
+  keys: string[],
+): Promise<Record<string, CachedPrice | undefined>> {
   const area = storageArea();
   if (!area || keys.length === 0) return {};
   try {
@@ -64,8 +69,12 @@ export async function lookup(
   addresses: readonly string[],
   nowMs: number = Date.now(),
 ): Promise<CacheLookup> {
-  const normalized = [...new Set(addresses.map((address) => address.toLowerCase()))];
-  const stored = await storageGet(normalized.map((address) => storageKey(chainId, address)));
+  const normalized = [
+    ...new Set(addresses.map((address) => address.toLowerCase())),
+  ];
+  const stored = await storageGet(
+    normalized.map((address) => storageKey(chainId, address)),
+  );
   const hits = new Map<string, number>();
   const updated = new Map<string, number>();
   const misses: string[] = [];
@@ -96,7 +105,9 @@ export async function store(
     entries[storageKey(chainId, lower)] = {
       usd_price: usdPrice,
       last_updated_at:
-        lastUpdatedAtByAddress?.get(lower) ?? priceLastUpdatedAt(priceMap, lower) ?? nowMs,
+        lastUpdatedAtByAddress?.get(lower) ??
+        priceLastUpdatedAt(priceMap, lower) ??
+        nowMs,
       cached_at: nowMs,
     };
   }

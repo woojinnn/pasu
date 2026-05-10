@@ -1,14 +1,14 @@
-import type JSZip from 'jszip';
+import type JSZip from "jszip";
 
 const ALLOWED_TOPLEVEL = new Set([
-  'manifest.json',
-  'params.schema.json',
-  'README.md',
-  'README.txt',
-  'LICENSE',
-  'LICENSE.md',
-  'LICENSE.txt',
-  'CHANGELOG.md',
+  "manifest.json",
+  "params.schema.json",
+  "README.md",
+  "README.txt",
+  "LICENSE",
+  "LICENSE.md",
+  "LICENSE.txt",
+  "CHANGELOG.md",
 ]);
 const POLICY_PATH_RE = /^policies\/[A-Za-z0-9_.-]+\.cedar\.tmpl$/;
 
@@ -25,8 +25,8 @@ export interface BundleManifestPaths {
 export function validateBundleSandbox(zip: JSZip): void {
   for (const [filePath, file] of Object.entries(zip.files)) {
     if (file.dir) continue;
-    if (filePath.endsWith('/')) continue;
-    if (filePath.includes('..') || filePath.startsWith('/')) {
+    if (filePath.endsWith("/")) continue;
+    if (filePath.includes("..") || filePath.startsWith("/")) {
       throw new Error(`bundle contains path traversal: ${filePath}`);
     }
     if (POLICY_PATH_RE.test(filePath)) continue;
@@ -46,8 +46,10 @@ export function validateBundleSandbox(zip: JSZip): void {
  * Catches bundles that satisfy the file-level sandbox but try to point the
  * manifest at e.g. README.md as their schema.
  */
-export function validateBundleManifestPaths(manifest: BundleManifestPaths): void {
-  if (manifest.params_schema !== 'params.schema.json') {
+export function validateBundleManifestPaths(
+  manifest: BundleManifestPaths,
+): void {
+  if (manifest.params_schema !== "params.schema.json") {
     throw new Error(
       `manifest.params_schema must be "params.schema.json", got "${manifest.params_schema}"`,
     );

@@ -5,17 +5,17 @@ import {
   parseAbi,
   type Address as ViemAddress,
   type PublicClient,
-} from 'viem';
-import { chainConfig } from './chain-config';
+} from "viem";
+import { chainConfig } from "./chain-config";
 
 // Re-export Address so consumers don't need a parallel viem import.
 export type Address = ViemAddress;
 
 const ERC20_ABI = parseAbi([
-  'function balanceOf(address) view returns (uint256)',
-  'function allowance(address owner, address spender) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-  'function symbol() view returns (string)',
+  "function balanceOf(address) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
 ] as const);
 
 const clientCache = new Map<number, PublicClient>();
@@ -26,7 +26,9 @@ export function rpcClient(chainId: number): PublicClient {
   const cfg = chainConfig(chainId);
   const client = createPublicClient({
     chain: cfg.viem,
-    transport: fallback(cfg.rpcUrls.map((url) => http(url, { timeout: 8_000 }))),
+    transport: fallback(
+      cfg.rpcUrls.map((url) => http(url, { timeout: 8_000 })),
+    ),
     batch: { multicall: true },
   });
   clientCache.set(chainId, client);
@@ -50,13 +52,13 @@ export async function readBalances(
       client.readContract({
         address: token,
         abi: ERC20_ABI,
-        functionName: 'balanceOf',
+        functionName: "balanceOf",
         args: [walletAddress],
       }),
     ),
   );
   return results.map((result) =>
-    result.status === 'fulfilled' ? (result.value as bigint) : undefined,
+    result.status === "fulfilled" ? (result.value as bigint) : undefined,
   );
 }
 
@@ -76,17 +78,17 @@ export async function readAllowances(
   const results = await Promise.allSettled(
     tokenAddresses.map((token, index) => {
       const spender = spenders[index];
-      if (!spender) return Promise.reject(new Error('missing spender'));
+      if (!spender) return Promise.reject(new Error("missing spender"));
       return client.readContract({
         address: token,
         abi: ERC20_ABI,
-        functionName: 'allowance',
+        functionName: "allowance",
         args: [walletAddress, spender],
       });
     }),
   );
   return results.map((result) =>
-    result.status === 'fulfilled' ? (result.value as bigint) : undefined,
+    result.status === "fulfilled" ? (result.value as bigint) : undefined,
   );
 }
 
@@ -98,7 +100,7 @@ export async function readDecimals(
     const v = await rpcClient(chainId).readContract({
       address: token,
       abi: ERC20_ABI,
-      functionName: 'decimals',
+      functionName: "decimals",
     });
     return Number(v);
   } catch {

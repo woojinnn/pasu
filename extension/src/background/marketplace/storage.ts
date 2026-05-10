@@ -1,7 +1,7 @@
-import Browser from 'webextension-polyfill';
-import type { ParamValues } from './params-validator';
+import Browser from "webextension-polyfill";
+import type { ParamValues } from "./params-validator";
 
-const KEY = 'marketplace:bundles';
+const KEY = "marketplace:bundles";
 
 export interface InstalledBundle {
   bundle_id: string;
@@ -13,9 +13,9 @@ export interface InstalledBundle {
 }
 
 export async function listInstalled(): Promise<InstalledBundle[]> {
-  const v = ((await Browser.storage.local.get(KEY)) as Record<string, unknown>)[KEY] as
-    | InstalledBundle[]
-    | undefined;
+  const v = ((await Browser.storage.local.get(KEY)) as Record<string, unknown>)[
+    KEY
+  ] as InstalledBundle[] | undefined;
   return v ?? [];
 }
 
@@ -57,7 +57,9 @@ export async function uninstall(bundleId: string): Promise<void> {
 
 /** Aggregate the renderedPolicySet from every installed bundle, suitable
  *  for handing to the WASM bridge's installPolicies. */
-export async function aggregatedPolicySet(): Promise<{ id: string; text: string }[]> {
+export async function aggregatedPolicySet(): Promise<
+  { id: string; text: string }[]
+> {
   const list = await listInstalled();
   return list.flatMap((b) => b.renderedPolicySet);
 }
