@@ -163,7 +163,7 @@
       "x-source": "adapter:metadata"
     },
 
-    "hookFlags": {
+    "hookFlags": { // extension으로 빼도 될 듯 
       "type": "array",
       "items": {
         "type": "string",
