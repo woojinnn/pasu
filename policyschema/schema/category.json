@@ -1,0 +1,91 @@
+{
+  "module": "action::category",
+  "source": "src/action/category.rs",
+  "description": "ActionCategory — cross-cutting 분류. 정책이 '모든 swap에 대해 …' 같은 룰을 ActionType별로 일일이 나열하지 않고 작성할 수 있게 해 준다. v0.1 보강에서 6종 → 13종으로 확장. Bridge·Perp는 의도적 제외 (v0.2 후보).",
+  "enums": {
+    "ActionCategory": {
+      "doc": "cross-cutting 분류 (13종).",
+      "derives": ["Debug", "Clone", "Copy", "PartialEq", "Eq", "Hash", "Serialize", "Deserialize"],
+      "serde_rename_all": "snake_case",
+      "variants": [
+        {
+          "name": "Swap",
+          "serde_rename": "swap",
+          "doc": "Swap, Wrap, Unwrap 등 토큰 교환·1:1 변환."
+        },
+        {
+          "name": "Liquidity",
+          "serde_rename": "liquidity",
+          "doc": "풀 LP 지분 작업 — AddLiquidity, RemoveLiquidity, JoinPool, ExitPool 및 V3/V4 NPM (MintPosition, BurnPosition, IncreaseLiquidity, DecreaseLiquidity, CollectFees)."
+        },
+        {
+          "name": "Lending",
+          "serde_rename": "lending",
+          "doc": "대출 시장 — Supply, Borrow, Repay, WithdrawCollateral, SetCollateral, LiquidationRepay, FlashLoan, RepayWithATokens, SwapBorrowRateMode, SetEMode, MintUnbacked."
+        },
+        {
+          "name": "LiquidStaking",
+          "serde_rename": "liquid_staking",
+          "doc": "액화 스테이킹 — Stake, UnstakeRequest, ClaimUnstake, WrapReceipt, UnwrapReceipt (Lido 등)."
+        },
+        {
+          "name": "Restaking",
+          "serde_rename": "restaking",
+          "doc": "재스테이킹 — Restake, DelegateOperator, Undelegate, QueueWithdrawal, ClaimWithdrawal, MintLrt, RequestLrtRedemption, ClaimLrtRedemption (EigenLayer/Renzo/etherfi 등)."
+        },
+        {
+          "name": "Rwa",
+          "serde_rename": "rwa",
+          "doc": "실세계 자산 — Subscribe, RequestRedemption, ClaimSubscription, ClaimRedemption, CancelRequest, ClaimCancel, TransferRestricted, ClaimYield (Centrifuge/Ondo/Securitize/BlackRock 등)."
+        },
+        {
+          "name": "Governance",
+          "serde_rename": "governance",
+          "doc": "거버넌스 — GovernanceVote, GovernancePropose, GovernanceExecute, GovernanceDelegate (Compound/Aave Governor, Snapshot 등)."
+        },
+        {
+          "name": "Nft",
+          "serde_rename": "nft",
+          "doc": "NFT — NftMint, NftTransfer, NftBuy, NftSell (Seaport/Blur 등)."
+        },
+        {
+          "name": "Vault",
+          "serde_rename": "vault",
+          "doc": "ERC-4626 등 일반 vault — VaultDeposit, VaultWithdraw (Yearn/ERC-4626 vaults)."
+        },
+        {
+          "name": "Utility",
+          "serde_rename": "utility",
+          "doc": "가로지르는 보조 — Wrap, Unwrap(WETH), Approval, Permit, Transfer, ClaimRewards, Multicall, SignMessage, AirdropClaim, MerkleClaim."
+        },
+        {
+          "name": "Aggregation",
+          "serde_rename": "aggregation",
+          "doc": "의미적 컨테이너 — Universal Router execute(...)의 RouterPlan."
+        },
+        {
+          "name": "Sign",
+          "serde_rename": "sign",
+          "doc": "EIP-712 typed-data 서명 — SignPermit2*, SignEip2612Permit, SignEip712Other, SignSafeTx, SignSessionKey."
+        },
+        {
+          "name": "Unknown",
+          "serde_rename": "unknown",
+          "doc": "분류 실패 catch-all."
+        }
+      ]
+    }
+  },
+  "tests": {
+    "category_serializes_snake_case": {
+      "examples": [
+        { "input": "ActionCategory::LiquidStaking", "json": "\"liquid_staking\"" },
+        { "input": "ActionCategory::Governance", "json": "\"governance\"" },
+        { "input": "ActionCategory::Nft", "json": "\"nft\"" }
+      ]
+    },
+    "all_13_variants_round_trip": {
+      "doc": "13 variant 모두 round-trip 직렬화·역직렬화 일치."
+    }
+  }
+}

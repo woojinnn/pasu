@@ -1,0 +1,136 @@
+{
+  "module": "action::kind",
+  "source": "src/action/kind.rs",
+  "description": "ActionType — 구체적인 atomic 종류. 1:1로 타입화된 ActionFields에 매핑. v0.1 보강에서 16종 → 72종으로 확장. Bridge·Perp는 의도적 제외 (v0.2 후보).",
+  "imports": ["category::ActionCategory"],
+  "enums": {
+    "ActionType": {
+      "doc": "구체적인 atomic 종류 (72종). 1:1로 타입화된 ActionFields에 매핑.",
+      "derives": ["Debug", "Clone", "Copy", "PartialEq", "Eq", "Hash", "Serialize", "Deserialize"],
+      "serde_rename_all": "snake_case",
+      "variants": [
+        { "name": "RouterPlan",              "serde_rename": "router_plan",              "category": "Aggregation",    "section": "v1 보존",         "doc": "Universal Router execute(...)의 의미적 컨테이너 (promote = false)." },
+        { "name": "Swap",                    "serde_rename": "swap",                     "category": "Swap",           "section": "v1 보존",         "doc": "일반 swap (V2/V3 single 또는 multi-hop, single-protocol)." },
+        { "name": "Wrap",                    "serde_rename": "wrap",                     "category": "Swap",           "section": "v1 보존",         "doc": "1:1 토큰 변환 (예: ETH → WETH, stETH → wstETH). SwapFields 재사용." },
+        { "name": "Unwrap",                  "serde_rename": "unwrap",                   "category": "Swap",           "section": "v1 보존",         "doc": "1:1 역변환 (WETH → ETH, wstETH → stETH)." },
+        { "name": "Approval",                "serde_rename": "approval",                 "category": "Utility",        "section": "v1 보존",         "doc": "ERC20 approve(spender, amount) 호출." },
+        { "name": "Permit",                  "serde_rename": "permit",                   "category": "Utility",        "section": "v1 보존",         "doc": "EIP-2612 permit(...) 인라인 호출 (calldata 안의 self-permit)." },
+        { "name": "Transfer",                "serde_rename": "transfer",                 "category": "Utility",        "section": "v1 보존",         "doc": "ERC20 / ERC721 / ERC1155 transfer / safeTransferFrom." },
+        { "name": "AddLiquidity",            "serde_rename": "add_liquidity",            "category": "Liquidity",      "section": "v1 보존",         "doc": "V2 / Aerodrome V1 add_liquidity." },
+        { "name": "RemoveLiquidity",         "serde_rename": "remove_liquidity",         "category": "Liquidity",      "section": "v1 보존",         "doc": "V2 / Aerodrome V1 remove_liquidity." },
+        { "name": "JoinPool",                "serde_rename": "join_pool",                "category": "Liquidity",      "section": "v1 보존",         "doc": "Balancer V2 joinPool." },
+        { "name": "ExitPool",                "serde_rename": "exit_pool",                "category": "Liquidity",      "section": "v1 보존",         "doc": "Balancer V2 exitPool." },
+        { "name": "BatchSwap",               "serde_rename": "batch_swap",               "category": "Swap",           "section": "v1 보존",         "doc": "Balancer V2 batchSwap 또는 멀티-protocol split (PancakeSwap SmartRouter)." },
+        { "name": "HookedOperation",         "serde_rename": "hooked_operation",         "category": "Swap",           "section": "v1 보존",         "doc": "V4 hook을 거치는 swap (PoolKey.hooks ≠ 0). hook 의미가 외부 의존." },
+        { "name": "Unknown",                 "serde_rename": "unknown",                  "category": "Unknown",        "section": "v1 보존",         "doc": "분류 실패 catch-all." },
+
+        { "name": "Supply",                  "serde_rename": "supply",                   "category": "Lending",        "section": "Lending",         "doc": "Aave/Morpho supply(asset, amount, onBehalfOf, ...)." },
+        { "name": "Borrow",                  "serde_rename": "borrow",                   "category": "Lending",        "section": "Lending",         "doc": "Aave/Morpho borrow(asset, amount, ..., onBehalfOf)." },
+        { "name": "Repay",                   "serde_rename": "repay",                    "category": "Lending",        "section": "Lending",         "doc": "Aave/Morpho repay(asset, amount, ...)." },
+        { "name": "WithdrawCollateral",      "serde_rename": "withdraw_collateral",      "category": "Lending",        "section": "Lending",         "doc": "담보 인출 (Aave V3 withdraw는 supply 반대)." },
+        { "name": "SetCollateral",           "serde_rename": "set_collateral",           "category": "Lending",        "section": "Lending",         "doc": "Aave V3 setUserUseReserveAsCollateral(asset, useAsCollateral)." },
+        { "name": "LiquidationRepay",        "serde_rename": "liquidation_repay",        "category": "Lending",        "section": "Lending",         "doc": "Aave V3 liquidationCall(...)." },
+        { "name": "FlashLoan",               "serde_rename": "flash_loan",               "category": "Lending",        "section": "Lending",         "doc": "Aave/Balancer/Morpho flashLoan(...)." },
+        { "name": "RepayWithATokens",        "serde_rename": "repay_with_atokens",       "category": "Lending",        "section": "Lending",         "doc": "Aave V3 repayWithATokens(asset, amount, rateMode) — aToken으로 직접 상환." },
+        { "name": "SwapBorrowRateMode",      "serde_rename": "swap_borrow_rate_mode",    "category": "Lending",        "section": "Lending",         "doc": "Aave V3 swapBorrowRateMode(asset, rateMode) — variable ↔ stable." },
+        { "name": "SetEMode",                "serde_rename": "set_e_mode",               "category": "Lending",        "section": "Lending",         "doc": "Aave V3 setUserEMode(categoryId) — eMode 진입/종료." },
+        { "name": "MintUnbacked",            "serde_rename": "mint_unbacked",            "category": "Lending",        "section": "Lending",         "doc": "Aave V3 mintUnbacked(asset, amount, onBehalfOf, referralCode) — bridge mode." },
+
+        { "name": "Stake",                   "serde_rename": "stake",                    "category": "LiquidStaking",  "section": "LiquidStaking",   "doc": "Lido submit(referral) payable 등." },
+        { "name": "UnstakeRequest",          "serde_rename": "unstake_request",          "category": "LiquidStaking",  "section": "LiquidStaking",   "doc": "Lido requestWithdrawals(amounts[], owner). request_withdrawal alias는 v0.1 fixture 호환용.", "serde_alias": ["request_withdrawal"] },
+        { "name": "ClaimUnstake",            "serde_rename": "claim_unstake",            "category": "LiquidStaking",  "section": "LiquidStaking",   "doc": "Lido claimWithdrawal(requestId)." },
+        { "name": "WrapReceipt",             "serde_rename": "wrap_receipt",             "category": "LiquidStaking",  "section": "LiquidStaking",   "doc": "Lido wstETH wrap(stETHAmount) — Wrap과 별도 분류 (LST receipt 한정)." },
+        { "name": "UnwrapReceipt",           "serde_rename": "unwrap_receipt",           "category": "LiquidStaking",  "section": "LiquidStaking",   "doc": "Lido wstETH unwrap(wstETHAmount)." },
+
+        { "name": "Restake",                 "serde_rename": "restake",                  "category": "Restaking",      "section": "Restaking",       "doc": "EigenLayer depositIntoStrategy(...) 등." },
+        { "name": "DelegateOperator",        "serde_rename": "delegate_operator",        "category": "Restaking",      "section": "Restaking",       "doc": "EigenLayer delegateTo(operator, ...)." },
+        { "name": "Undelegate",              "serde_rename": "undelegate",               "category": "Restaking",      "section": "Restaking",       "doc": "EigenLayer undelegate(staker)." },
+        { "name": "QueueWithdrawal",         "serde_rename": "queue_withdrawal",         "category": "Restaking",      "section": "Restaking",       "doc": "EigenLayer queueWithdrawals(...)." },
+        { "name": "ClaimWithdrawal",         "serde_rename": "claim_withdrawal",         "category": "Restaking",      "section": "Restaking",       "doc": "EigenLayer completeQueuedWithdrawals(...)." },
+        { "name": "MintLrt",                 "serde_rename": "mint_lrt",                 "category": "Restaking",      "section": "Restaking",       "doc": "LRT mint (Renzo deposit, etherfi deposit 등)." },
+        { "name": "RequestLrtRedemption",    "serde_rename": "request_lrt_redemption",   "category": "Restaking",      "section": "Restaking",       "doc": "LRT redemption 요청." },
+        { "name": "ClaimLrtRedemption",      "serde_rename": "claim_lrt_redemption",     "category": "Restaking",      "section": "Restaking",       "doc": "LRT redemption 청구." },
+
+        { "name": "Subscribe",               "serde_rename": "subscribe",                "category": "Rwa",            "section": "RWA",             "doc": "Centrifuge requestDeposit(...) 등." },
+        { "name": "RequestRedemption",       "serde_rename": "request_redemption",       "category": "Rwa",            "section": "RWA",             "doc": "Centrifuge requestRedeem(...) 등." },
+        { "name": "ClaimSubscription",       "serde_rename": "claim_subscription",       "category": "Rwa",            "section": "RWA",             "doc": "비동기 vault subscription claim." },
+        { "name": "ClaimRedemption",         "serde_rename": "claim_redemption",         "category": "Rwa",            "section": "RWA",             "doc": "비동기 vault redemption claim." },
+        { "name": "CancelRequest",           "serde_rename": "cancel_request",           "category": "Rwa",            "section": "RWA",             "doc": "진행 중 request 취소." },
+        { "name": "ClaimCancel",             "serde_rename": "claim_cancel",             "category": "Rwa",            "section": "RWA",             "doc": "취소 후 잔여 자산 청구." },
+        { "name": "TransferRestricted",      "serde_rename": "transfer_restricted",      "category": "Rwa",            "section": "RWA",             "doc": "KYC-restricted token transfer (Securitize 등)." },
+        { "name": "ClaimYield",              "serde_rename": "claim_yield",              "category": "Rwa",            "section": "RWA",             "doc": "RWA yield 청구 (예: Ondo USDY rebase distribution)." },
+
+        { "name": "MintPosition",            "serde_rename": "mint_position",            "category": "Liquidity",      "section": "Liquidity 신규",  "doc": "Uniswap V3/V4 NPM mint(params) — 새 NFT 포지션 생성." },
+        { "name": "BurnPosition",            "serde_rename": "burn_position",            "category": "Liquidity",      "section": "Liquidity 신규",  "doc": "Uniswap V3/V4 NPM burn(tokenId) — 빈 포지션 NFT 삭제." },
+        { "name": "IncreaseLiquidity",       "serde_rename": "increase_liquidity",       "category": "Liquidity",      "section": "Liquidity 신규",  "doc": "Uniswap V3/V4 NPM increaseLiquidity(params)." },
+        { "name": "DecreaseLiquidity",       "serde_rename": "decrease_liquidity",       "category": "Liquidity",      "section": "Liquidity 신규",  "doc": "Uniswap V3/V4 NPM decreaseLiquidity(params)." },
+        { "name": "CollectFees",             "serde_rename": "collect_fees",             "category": "Liquidity",      "section": "Liquidity 신규",  "doc": "Uniswap V3/V4 NPM collect(params) — 누적 수수료 인출." },
+
+        { "name": "ClaimRewards",            "serde_rename": "claim_rewards",            "category": "Utility",        "section": "Utility",         "doc": "어떤 카테고리든 보상 청구 (lending/restaking/liquid_staking/rwa의 횡단). source: 'lending' | 'restaking' | 'liquid_staking' | 'rwa' | 'other' 분기." },
+        { "name": "Multicall",               "serde_rename": "multicall",                "category": "Utility",        "section": "Utility",         "doc": "단순 multicall 컨테이너 — RouterPlan과 달리 의미적 분해 안 함." },
+        { "name": "SignMessage",             "serde_rename": "sign_message",             "category": "Utility",        "section": "Utility",         "doc": "EIP-191 personal_sign 또는 단순 메시지 서명." },
+        { "name": "AirdropClaim",            "serde_rename": "airdrop_claim",            "category": "Utility",        "section": "Utility",         "doc": "Merkle proof 기반 airdrop 청구 (Uniswap UNI airdrop, OP airdrop 등)." },
+        { "name": "MerkleClaim",             "serde_rename": "merkle_claim",             "category": "Utility",        "section": "Utility",         "doc": "일반 Merkle distributor (airdrop 외 — 예: lockdrop 보상 청구)." },
+
+        { "name": "GovernancePropose",       "serde_rename": "governance_propose",       "category": "Governance",     "section": "Governance",      "doc": "Governor propose(targets, values, calldatas, description)." },
+        { "name": "GovernanceVote",          "serde_rename": "governance_vote",          "category": "Governance",     "section": "Governance",      "doc": "Governor castVote(proposalId, support) 또는 castVoteWithReason." },
+        { "name": "GovernanceExecute",       "serde_rename": "governance_execute",       "category": "Governance",     "section": "Governance",      "doc": "Governor execute(proposalId, ...) — timelock 후." },
+        { "name": "GovernanceDelegate",      "serde_rename": "governance_delegate",      "category": "Governance",     "section": "Governance",      "doc": "ERC20Votes delegate(delegatee) — voting power 위임." },
+
+        { "name": "NftMint",                 "serde_rename": "nft_mint",                 "category": "Nft",            "section": "NFT",             "doc": "NFT mint (collection 직접 호출 또는 minter contract)." },
+        { "name": "NftTransfer",             "serde_rename": "nft_transfer",             "category": "Nft",            "section": "NFT",             "doc": "transferFrom(from, to, tokenId) 또는 safeTransferFrom." },
+        { "name": "NftBuy",                  "serde_rename": "nft_buy",                  "category": "Nft",            "section": "NFT",             "doc": "마켓플레이스를 통한 NFT 매수 (Seaport fulfillOrder, Blur execute 등)." },
+        { "name": "NftSell",                 "serde_rename": "nft_sell",                 "category": "Nft",            "section": "NFT",             "doc": "마켓플레이스를 통한 NFT 매도 (offer accept)." },
+
+        { "name": "VaultDeposit",            "serde_rename": "vault_deposit",            "category": "Vault",          "section": "Vault",           "doc": "ERC-4626 deposit(assets, receiver) 또는 mint(shares, receiver)." },
+        { "name": "VaultWithdraw",           "serde_rename": "vault_withdraw",           "category": "Vault",          "section": "Vault",           "doc": "ERC-4626 withdraw(assets, receiver, owner) 또는 redeem(shares, ...)." },
+
+        { "name": "SignPermit2Approve",      "serde_rename": "sign_permit2_approve",     "category": "Sign",           "section": "Sign",            "doc": "Permit2 PermitSingle / PermitBatch 서명 — 토큰 권한 부여." },
+        { "name": "SignPermit2TransferFrom", "serde_rename": "sign_permit2_transfer_from","category": "Sign",          "section": "Sign",            "doc": "Permit2 PermitTransferFrom / *WitnessTransferFrom." },
+        { "name": "SignEip2612Permit",       "serde_rename": "sign_eip2612_permit",      "category": "Sign",           "section": "Sign",            "doc": "EIP-2612 Permit typed-data 서명 (token contract 자체)." },
+        { "name": "SignEip712Other",         "serde_rename": "sign_eip712_other",        "category": "Sign",           "section": "Sign",            "doc": "인식되지 않는 EIP-712 — 도메인·타입·메시지 원본 보존." },
+        { "name": "SignSafeTx",              "serde_rename": "sign_safe_tx",             "category": "Sign",           "section": "Sign",            "doc": "Gnosis Safe 트랜잭션 서명 (SafeTx typed-data)." },
+        { "name": "SignSessionKey",          "serde_rename": "sign_session_key",         "category": "Sign",           "section": "Sign",            "doc": "Account Abstraction 세션 키 서명 / approval." }
+      ]
+    }
+  },
+  "impls": {
+    "ActionType::category": {
+      "doc": "이 ActionType이 속하는 카테고리. 정책 작성 시 카테고리 단위로 룰을 작성할 때 유용.",
+      "signature": "pub fn category(self) -> ActionCategory",
+      "behavior": "match 표현식으로 72 variant를 13 ActionCategory에 매핑."
+    }
+  },
+  "tests": {
+    "action_type_snake_case": {
+      "examples": [
+        { "input": "ActionType::Swap", "json": "\"swap\"" },
+        { "input": "ActionType::MintPosition", "json": "\"mint_position\"" },
+        { "input": "ActionType::SignPermit2Approve", "json": "\"sign_permit2_approve\"" },
+        { "input": "ActionType::GovernancePropose", "json": "\"governance_propose\"" }
+      ]
+    },
+    "category_mapping_complete": {
+      "doc": "72 variant 모두 카테고리 매핑이 panic 없이 동작."
+    },
+    "specific_mappings": {
+      "examples": [
+        { "from": "ActionType::Swap", "to": "ActionCategory::Swap" },
+        { "from": "ActionType::Wrap", "to": "ActionCategory::Swap" },
+        { "from": "ActionType::MintPosition", "to": "ActionCategory::Liquidity" },
+        { "from": "ActionType::Supply", "to": "ActionCategory::Lending" },
+        { "from": "ActionType::Stake", "to": "ActionCategory::LiquidStaking" },
+        { "from": "ActionType::Restake", "to": "ActionCategory::Restaking" },
+        { "from": "ActionType::Subscribe", "to": "ActionCategory::Rwa" },
+        { "from": "ActionType::GovernanceVote", "to": "ActionCategory::Governance" },
+        { "from": "ActionType::NftMint", "to": "ActionCategory::Nft" },
+        { "from": "ActionType::VaultDeposit", "to": "ActionCategory::Vault" },
+        { "from": "ActionType::Approval", "to": "ActionCategory::Utility" },
+        { "from": "ActionType::ClaimRewards", "to": "ActionCategory::Utility" },
+        { "from": "ActionType::RouterPlan", "to": "ActionCategory::Aggregation" },
+        { "from": "ActionType::SignSafeTx", "to": "ActionCategory::Sign" },
+        { "from": "ActionType::Unknown", "to": "ActionCategory::Unknown" }
+      ]
+    }
+  }
+}

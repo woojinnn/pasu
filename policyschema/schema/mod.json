@@ -1,0 +1,88 @@
+{
+  "module": "action",
+  "source": "src/action/mod.rs",
+  "description": "Action 레이어 — Action이 정책의 기본 단위. cross-cutting category + 구체 type + 타입화된 fields + extension 참조.",
+  "imports": [
+    "category::ActionCategory",
+    "fields::{ActionFields, AggregationFields, GovernanceFields, HopRef, InterestRateMode, LendingFields, LiquidStakingFields, LiquidityFields, NftFields, RestakingFields, RwaFields, SettlementKind, SignFields, SignSemantic, SlippageInfo, SlippageSource, SwapFields, SwapMode, SwapRoute, TokenAmount, TokenAmountWithExpiry, UnknownFields, UtilityFields, VaultFields}",
+    "kind::ActionType",
+    "crate::confidence::Confidence"
+  ],
+  "structs": {
+    "Action": {
+      "doc": "정책 평가의 기본 단위. cross-cutting category + 구체 type + 타입화된 fields.",
+      "derives": ["Debug", "Clone", "PartialEq", "Serialize", "Deserialize"],
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "serde_rename": null,
+          "doc": "안정 id (예: 'a#0'). cross-reference·parent_action_id 참조용."
+        },
+        {
+          "name": "category",
+          "type": "ActionCategory",
+          "serde_rename": null,
+          "doc": "cross-cutting 분류 (13종)."
+        },
+        {
+          "name": "action_type",
+          "type": "ActionType",
+          "serde_rename": "type",
+          "doc": "구체적인 atomic 종류 (72종). ActionFields shape 결정."
+        },
+        {
+          "name": "primary_target_id",
+          "type": "String",
+          "serde_rename": "primaryTargetId",
+          "doc": "주 ContractTarget.id 참조."
+        },
+        {
+          "name": "related_target_ids",
+          "type": "Vec<String>",
+          "serde_rename": "relatedTargetIds",
+          "serde_default": true,
+          "doc": "이 action이 건드리는 부가 target들 (token, pool, hook 등)."
+        },
+        {
+          "name": "derived_from_call_ids",
+          "type": "Vec<String>",
+          "serde_rename": "derivedFromCallIds",
+          "serde_default": true,
+          "doc": "이 action이 도출된 DecodedCall.id 목록. N:M Call↔Action 관계 보존."
+        },
+        {
+          "name": "parent_action_id",
+          "type": "Option<String>",
+          "serde_rename": "parentActionId",
+          "serde_skip_if_none": true,
+          "doc": "부모 Action의 id (Universal Router 자식 swap 등이 RouterPlan 참조)."
+        },
+        {
+          "name": "fields",
+          "type": "ActionFields",
+          "serde_rename": null,
+          "doc": "ActionCategory에 맞는 타입화된 페이로드 (13 variant discriminated union)."
+        },
+        {
+          "name": "extension_ids",
+          "type": "Vec<String>",
+          "serde_rename": "extensionIds",
+          "serde_default": true,
+          "doc": "프로토콜 특수 데이터 Extension.id 참조 (예: 'e#uniswap-v3')."
+        },
+        {
+          "name": "confidence",
+          "type": "Confidence",
+          "serde_rename": null,
+          "doc": "정적 분석에서 얻은 신뢰도 (이 action 단위)."
+        }
+      ]
+    }
+  },
+  "re_exports": [
+    "category::ActionCategory",
+    "fields::{ActionFields, AggregationFields, GovernanceFields, HopRef, InterestRateMode, LendingFields, LiquidStakingFields, LiquidityFields, NftFields, RestakingFields, RwaFields, SettlementKind, SignFields, SignSemantic, SlippageInfo, SlippageSource, SwapFields, SwapMode, SwapRoute, TokenAmount, TokenAmountWithExpiry, UnknownFields, UtilityFields, VaultFields}",
+    "kind::ActionType"
+  ]
+}

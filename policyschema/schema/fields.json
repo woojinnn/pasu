@@ -1,0 +1,413 @@
+{
+  "module": "action::fields",
+  "source": "src/action/fields.rs",
+  "description": "ActionFields — ActionCategory별 타입화된 페이로드. v0.1 보강에서 5 variant → 13 variant (ActionCategory와 1:1). 모든 variant가 actor, protocol_ids를 embed; 해당하는 곳에 RecipientFields/DeadlineFields fragment.",
+  "imports": [
+    "crate::confidence::Confidence",
+    "crate::types::{Address, AmountSpec, ChainId, DeadlineFields, RecipientFields, Token}",
+    "crate::request::Eip712Domain"
+  ],
+  "enums": {
+    "ActionFields": {
+      "doc": "타입화된 action 페이로드의 discriminated union (13 variant). kind 태그는 ActionCategory의 직렬화 명칭과 일치 (단 LiquidStaking은 v0.1 fixture 호환 'staking' alias도 받음).",
+      "derives": ["Debug", "Clone", "PartialEq", "Serialize", "Deserialize"],
+      "serde_tag": "kind",
+      "serde_rename_all": "snake_case",
+      "variants": [
+        { "name": "Swap",          "tag": "swap",           "inner": "SwapFields" },
+        { "name": "Liquidity",     "tag": "liquidity",      "inner": "LiquidityFields" },
+        { "name": "Lending",       "tag": "lending",        "inner": "LendingFields" },
+        { "name": "LiquidStaking", "tag": "liquid_staking", "inner": "LiquidStakingFields", "serde_alias": ["staking"] },
+        { "name": "Restaking",     "tag": "restaking",      "inner": "RestakingFields" },
+        { "name": "Rwa",           "tag": "rwa",            "inner": "RwaFields" },
+        { "name": "Governance",    "tag": "governance",     "inner": "GovernanceFields" },
+        { "name": "Nft",           "tag": "nft",            "inner": "NftFields" },
+        { "name": "Vault",         "tag": "vault",          "inner": "VaultFields" },
+        { "name": "Utility",       "tag": "utility",        "inner": "UtilityFields" },
+        { "name": "Aggregation",   "tag": "aggregation",    "inner": "AggregationFields" },
+        { "name": "Sign",          "tag": "sign",           "inner": "SignFields" },
+        { "name": "Unknown",       "tag": "unknown",        "inner": "UnknownFields", "doc": "분류 실패 catch-all — 원본 args를 그대로 보존." }
+      ]
+    },
+
+    "SwapMode": {
+      "doc": "Swap 모드.",
+      "derives": ["Debug", "Clone", "Copy", "PartialEq", "Eq", "Serialize", "Deserialize"],
+      "serde_rename_all": "snake_case",
+      "variants": [
+        { "name": "ExactIn",  "tag": "exact_in",  "doc": "exact-input swap: 호출자가 지출량을 정하고 최소 amountOutMin 보장." },
+        { "name": "ExactOut", "tag": "exact_out", "doc": "exact-output swap: 호출자가 받을 양을 정하고 최대 amountInMax까지 지출." },
+        { "name": "Market",   "tag": "market",    "doc": "V4 등의 시장가 swap (slippage 없음 또는 다른 모델)." },
+        { "name": "Unknown",  "tag": "unknown",   "doc": "모드 미확정." }
+      ]
+    },
+
+    "SwapRoute": {
+      "doc": "Swap route 형태.",
+      "derives": ["Debug", "Clone", "PartialEq", "Serialize", "Deserialize"],
+      "serde_tag": "kind",
+      "serde_rename_all": "snake_case",
+      "variants": [
+        { "name": "SingleHop", "tag": "single_hop", "fields": [{ "name": "hop", "type": "HopRef" }] },
+        { "name": "MultiHop",  "tag": "multi_hop",  "fields": [{ "name": "hops", "type": "Vec<HopRef>" }], "doc": "직선 멀티홉 (V2 path[], V3 encoded path)." },
+        { "name": "Split",     "tag": "split",      "fields": [{ "name": "branches", "type": "Vec<HopRef>" }], "doc": "병렬 분기 (PancakeSwap SmartRouter, UR multi-command)." },
+        { "name": "Batch",     "tag": "batch",      "fields": [{ "name": "steps", "type": "Vec<HopRef>" }], "doc": "자산 공유 시퀀스 batch (Balancer batchSwap 모양)." }
+      ]
+    },
+
+    "SlippageSource": {
+      "doc": "Slippage 정보의 출처.",
+      "derives": ["Debug", "Clone", "Copy", "PartialEq", "Eq", "Serialize", "Deserialize"],
+      "serde_rename_all": "snake_case",
+      "variants": [
+        { "name": "Calldata",    "tag": "calldata",    "doc": "calldata에서 amountOutMin / amountInMax로 직접 발견." },
+        { "name": "Derived",     "tag": "derived",     "doc": "다른 필드에서 도출 (예: exact-output 역계산)." },
+        { "name": "Unspecified", "tag": "unspecified", "doc": "결정 불가." }
+      ]
+    },
+
+    "SettlementKind": {
+      "doc": "정산 패턴.",
+      "derives": ["Debug", "Clone", "Copy", "PartialEq", "Eq", "Serialize", "Deserialize"],
+      "serde_rename_all": "snake_case",
+      "variants": [
+        { "name": "Router",   "tag": "router",   "doc": "router가 transferFrom으로 입력을 끌어와 풀로 forward (V2/V3 routers)." },
+        { "name": "Direct",   "tag": "direct",   "doc": "caller가 풀로 직접 송금, 콜백이 나머지를 처리." },
+        { "name": "Callback", "tag": "callback", "doc": "콜백 주도 (V3 swap callback, Balancer flash loan)." },
+        { "name": "Unknown",  "tag": "unknown",  "doc": "정산 모델 미확정." }
+      ]
+    },
+
+    "InterestRateMode": {
+      "doc": "Aave 이자율 모드.",
+      "derives": ["Debug", "Clone", "Copy", "PartialEq", "Eq", "Serialize", "Deserialize"],
+      "serde_rename_all": "snake_case",
+      "variants": [
+        { "name": "Variable", "tag": "variable" },
+        { "name": "Stable",   "tag": "stable" },
+        { "name": "None",     "tag": "none" }
+      ]
+    },
+
+    "SignSemantic": {
+      "doc": "EIP-712 메시지의 의미 디코드 — variant가 ActionType::SignPermit2*, SignEip2612Permit, SignSafeTx, SignSessionKey, SignEip712Other에 대응.",
+      "derives": ["Debug", "Clone", "PartialEq", "Serialize", "Deserialize"],
+      "serde_tag": "type",
+      "serde_rename_all": "snake_case",
+      "variants": [
+        {
+          "name": "Permit2Approve", "tag": "permit2_approve",
+          "fields": [
+            { "name": "spender", "type": "Address" },
+            { "name": "tokens",  "type": "Vec<TokenAmountWithExpiry>" },
+            { "name": "nonce",   "type": "String" }
+          ],
+          "doc": "Permit2 PermitSingle / PermitBatch — 스펜더에 토큰 권한 부여."
+        },
+        {
+          "name": "Permit2TransferFrom", "tag": "permit2_transfer_from",
+          "fields": [
+            { "name": "spender",              "type": "Address" },
+            { "name": "transfers",            "type": "Vec<TokenAmount>" },
+            { "name": "nonce",                "type": "String" },
+            { "name": "witness",              "type": "Option<String>", "serde_skip_if_none": true },
+            { "name": "witness_type_string",  "type": "Option<String>", "serde_rename": "witnessTypeString", "serde_skip_if_none": true }
+          ],
+          "doc": "Permit2 PermitTransferFrom / *WitnessTransferFrom (batch 포함)."
+        },
+        {
+          "name": "Eip2612Permit", "tag": "eip2612_permit",
+          "fields": [
+            { "name": "token",   "type": "Address" },
+            { "name": "owner",   "type": "Address" },
+            { "name": "spender", "type": "Address" },
+            { "name": "value",   "type": "AmountSpec" },
+            { "name": "nonce",   "type": "String" }
+          ],
+          "doc": "EIP-2612 Permit — 토큰 컨트랙트 자체에 self-permit."
+        },
+        {
+          "name": "SafeTx", "tag": "safe_tx",
+          "fields": [
+            { "name": "safe",      "type": "Address" },
+            { "name": "to",        "type": "Address" },
+            { "name": "value",     "type": "String" },
+            { "name": "data",      "type": "String" },
+            { "name": "operation", "type": "u8" },
+            { "name": "nonce",     "type": "String" }
+          ],
+          "doc": "Gnosis Safe SafeTx — to/value/data/operation/safeTxGas 등."
+        },
+        {
+          "name": "SessionKey", "tag": "session_key",
+          "fields": [
+            { "name": "account",          "type": "Address" },
+            { "name": "session_key",      "type": "Address",       "serde_rename": "sessionKey" },
+            { "name": "valid_until",      "type": "u64",           "serde_rename": "validUntil" },
+            { "name": "permissions_hash", "type": "Option<String>","serde_rename": "permissionsHash", "serde_skip_if_none": true }
+          ],
+          "doc": "Account Abstraction 세션 키 (4337 / 7702)."
+        },
+        {
+          "name": "Other", "tag": "other",
+          "fields": [
+            { "name": "types_json",   "type": "serde_json::Value", "serde_rename": "typesJson" },
+            { "name": "message_json", "type": "serde_json::Value", "serde_rename": "messageJson" }
+          ],
+          "doc": "catch-all — 원본 typed-data JSON을 그대로 보관."
+        }
+      ]
+    }
+  },
+
+  "structs": {
+    "SwapFields": {
+      "doc": "모든 swap-class action(Swap, BatchSwap, HookedOperation, Wrap, Unwrap)의 공통 표면.",
+      "category": "Swap",
+      "fields": [
+        { "name": "actor",                "type": "Address",         "serde_rename": null },
+        { "name": "protocol_ids",         "type": "Vec<String>",     "serde_rename": "protocolIds" },
+        { "name": "input_tokens",         "type": "Vec<Token>",      "serde_rename": "inputTokens" },
+        { "name": "output_tokens",        "type": "Vec<Token>",      "serde_rename": "outputTokens" },
+        { "name": "mode",                 "type": "SwapMode",        "serde_rename": null },
+        { "name": "amount_in",            "type": "AmountSpec",      "serde_rename": "amountIn",       "doc": "kind ∈ {Exact, Max, Unspecified}." },
+        { "name": "amount_out",           "type": "AmountSpec",      "serde_rename": "amountOut",      "doc": "kind ∈ {Min, Exact, Unspecified}." },
+        { "name": "route",                "type": "SwapRoute",       "serde_rename": null },
+        { "name": "slippage",             "type": "SlippageInfo",    "serde_rename": null },
+        { "name": "settlement",           "type": "SettlementKind",  "serde_rename": null },
+        { "name": "recipients",           "type": "RecipientFields", "serde_rename": null },
+        { "name": "deadlines",            "type": "DeadlineFields",  "serde_rename": null },
+        { "name": "max_fee_bps",          "type": "Option<u32>",     "serde_rename": "maxFeeBps",      "serde_skip_if_none": true, "doc": "알려진 route leg들의 최대 fee (basis points). 도출 불가하면 None." },
+        { "name": "has_zero_min_output",  "type": "bool",            "serde_rename": "hasZeroMinOutput", "doc": "derived — 어떤 route leg라도 amountOutMin == 0이면 true." }
+      ]
+    },
+
+    "HopRef": {
+      "doc": "Swap route의 단일 hop.",
+      "fields": [
+        { "name": "id",         "type": "String" },
+        { "name": "protocol",   "type": "String",       "doc": "이 hop이 사용하는 프로토콜 namespace (예: 'uniswap.v3')." },
+        { "name": "token_in",   "type": "Token",        "serde_rename": "tokenIn" },
+        { "name": "token_out",  "type": "Token",        "serde_rename": "tokenOut" },
+        { "name": "pool",       "type": "Option<String>", "serde_skip_if_none": true, "doc": "풀 target id (t#…); 도출해야 하면 None (예: V2 pairFor, V4 PoolKey)." },
+        { "name": "fee_bps",    "type": "Option<u32>",  "serde_rename": "feeBps", "serde_skip_if_none": true },
+        { "name": "confidence", "type": "Confidence" }
+      ]
+    },
+
+    "SlippageInfo": {
+      "fields": [
+        { "name": "source",          "type": "SlippageSource" },
+        { "name": "amount_out_min",  "type": "Option<AmountSpec>", "serde_rename": "amountOutMin", "serde_skip_if_none": true }
+      ]
+    },
+
+    "LiquidityFields": {
+      "doc": "모든 liquidity-class action 공통 표면 (add/remove_liquidity, join/exit_pool, V3/V4 NPM).",
+      "category": "Liquidity",
+      "fields": [
+        { "name": "actor",              "type": "Address" },
+        { "name": "protocol_ids",       "type": "Vec<String>",  "serde_rename": "protocolIds" },
+        { "name": "tokens",             "type": "Vec<Token>",   "doc": "풀에 들어가거나 나오는 토큰들." },
+        { "name": "amounts",            "type": "Vec<AmountSpec>", "doc": "토큰별 amount." },
+        { "name": "position_token_id",  "type": "Option<String>", "serde_rename": "positionTokenId", "serde_skip_if_none": true, "doc": "V3/V4 NPM 작업 한정 — 포지션 NFT tokenId." },
+        { "name": "fee_tier",           "type": "Option<u32>", "serde_rename": "feeTier",  "serde_skip_if_none": true, "doc": "V3/V4 한정 — fee tier (basis points × 100)." },
+        { "name": "tick_lower",         "type": "Option<i32>", "serde_rename": "tickLower","serde_skip_if_none": true },
+        { "name": "tick_upper",         "type": "Option<i32>", "serde_rename": "tickUpper","serde_skip_if_none": true },
+        { "name": "collect_max",        "type": "Option<Vec<AmountSpec>>", "serde_rename": "collectMax", "serde_skip_if_none": true, "doc": "V3/V4 NPM collect의 누적 fee 인출 한도." },
+        { "name": "recipients",         "type": "RecipientFields" },
+        { "name": "deadlines",          "type": "DeadlineFields" }
+      ]
+    },
+
+    "LendingFields": {
+      "doc": "모든 lending-class action 공통 (supply/borrow/repay/withdraw_collateral/set_collateral/liquidation_repay/flash_loan/repay_with_atokens/swap_borrow_rate_mode/set_e_mode/mint_unbacked).",
+      "category": "Lending",
+      "fields": [
+        { "name": "actor",                  "type": "Address" },
+        { "name": "protocol_ids",           "type": "Vec<String>",          "serde_rename": "protocolIds" },
+        { "name": "asset",                  "type": "Token" },
+        { "name": "amount",                 "type": "AmountSpec",           "doc": "kind 보통 Exact; repay-max 패턴은 Unlimited." },
+        { "name": "on_behalf_of",           "type": "Address",              "serde_rename": "onBehalfOf" },
+        { "name": "interest_rate_mode",     "type": "Option<InterestRateMode>", "serde_rename": "interestRateMode", "serde_skip_if_none": true, "doc": "Borrow / Repay / SwapBorrowRateMode 한정." },
+        { "name": "use_as_collateral",      "type": "Option<bool>",         "serde_rename": "useAsCollateral", "serde_skip_if_none": true, "doc": "SetCollateral 한정." },
+        { "name": "e_mode_category_id",     "type": "Option<u8>",           "serde_rename": "eModeCategoryId", "serde_skip_if_none": true, "doc": "SetEMode 한정 — Aave V3 categoryId (0 = exit)." },
+        { "name": "liquidation_target",     "type": "Option<Address>",      "serde_rename": "liquidationTarget", "serde_skip_if_none": true, "doc": "LiquidationRepay 한정 — 청산 대상 사용자." },
+        { "name": "collateral_asset",       "type": "Option<Token>",        "serde_rename": "collateralAsset", "serde_skip_if_none": true, "doc": "LiquidationRepay 한정 — 담보로 받을 자산." },
+        { "name": "flash_assets",           "type": "Option<Vec<Token>>",   "serde_rename": "flashAssets", "serde_skip_if_none": true, "doc": "FlashLoan 한정 — 빌리는 자산들." },
+        { "name": "flash_amounts",          "type": "Option<Vec<AmountSpec>>", "serde_rename": "flashAmounts", "serde_skip_if_none": true },
+        { "name": "flash_modes",            "type": "Option<Vec<u8>>",      "serde_rename": "flashModes", "serde_skip_if_none": true, "doc": "Aave 한정 mode 0=none / 2=variable." },
+        { "name": "recipients",             "type": "RecipientFields",      "doc": "withdraw/borrow의 to/receiver." }
+      ]
+    },
+
+    "LiquidStakingFields": {
+      "doc": "Lido / Rocket Pool 등 LST 작업 공통 (stake/unstake_request/claim_unstake/wrap_receipt/unwrap_receipt).",
+      "category": "LiquidStaking",
+      "fields": [
+        { "name": "actor",                  "type": "Address" },
+        { "name": "protocol_ids",           "type": "Vec<String>",     "serde_rename": "protocolIds" },
+        { "name": "asset_in",               "type": "Token",           "serde_rename": "assetIn" },
+        { "name": "asset_out",              "type": "Option<Token>",   "serde_rename": "assetOut", "serde_skip_if_none": true },
+        { "name": "amount",                 "type": "AmountSpec" },
+        { "name": "referral",               "type": "Option<Address>", "serde_skip_if_none": true },
+        { "name": "withdrawal_request_id",  "type": "Option<String>",  "serde_rename": "withdrawalRequestId", "serde_skip_if_none": true },
+        { "name": "recipients",             "type": "RecipientFields" }
+      ]
+    },
+
+    "RestakingFields": {
+      "doc": "EigenLayer / Renzo / etherfi / Kelp 등 재스테이킹 공통 (8 ActionType 통합).",
+      "category": "Restaking",
+      "fields": [
+        { "name": "actor",            "type": "Address" },
+        { "name": "protocol_ids",     "type": "Vec<String>",     "serde_rename": "protocolIds" },
+        { "name": "asset_in",         "type": "Option<Token>",   "serde_rename": "assetIn",  "serde_skip_if_none": true },
+        { "name": "asset_out",        "type": "Option<Token>",   "serde_rename": "assetOut", "serde_skip_if_none": true, "doc": "LRT mint의 경우 receipt 토큰." },
+        { "name": "amount",           "type": "Option<AmountSpec>", "serde_skip_if_none": true },
+        { "name": "operator",         "type": "Option<Address>", "serde_skip_if_none": true, "doc": "EigenLayer delegateTo의 대상 operator." },
+        { "name": "strategy",         "type": "Option<Address>", "serde_skip_if_none": true, "doc": "EigenLayer Strategy 컨트랙트 주소." },
+        { "name": "withdrawal_root",  "type": "Option<String>",  "serde_rename": "withdrawalRoot", "serde_skip_if_none": true },
+        { "name": "recipients",       "type": "RecipientFields" }
+      ]
+    },
+
+    "RwaFields": {
+      "doc": "Centrifuge / Ondo / Securitize / BlackRock BUIDL 등 RWA 공통.",
+      "category": "Rwa",
+      "fields": [
+        { "name": "actor",               "type": "Address" },
+        { "name": "protocol_ids",        "type": "Vec<String>",     "serde_rename": "protocolIds" },
+        { "name": "asset",               "type": "Token",           "doc": "RWA receipt 토큰 (예: USDY, BUIDL, ERC-7540 share)." },
+        { "name": "settlement_asset",    "type": "Option<Token>",   "serde_rename": "settlementAsset", "serde_skip_if_none": true },
+        { "name": "amount",              "type": "AmountSpec" },
+        { "name": "request_id",          "type": "Option<String>",  "serde_rename": "requestId",     "serde_skip_if_none": true, "doc": "비동기 vault — 진행 중 request의 requestId (ERC-7540)." },
+        { "name": "controller_address",  "type": "Option<Address>", "serde_rename": "controllerAddress", "serde_skip_if_none": true, "doc": "KYC controller 또는 RestrictionManager 주소." },
+        { "name": "recipients",          "type": "RecipientFields" }
+      ]
+    },
+
+    "GovernanceFields": {
+      "doc": "Compound/Aave Governor, Uniswap UNI 거버넌스 등.",
+      "category": "Governance",
+      "fields": [
+        { "name": "actor",                "type": "Address" },
+        { "name": "protocol_ids",         "type": "Vec<String>",     "serde_rename": "protocolIds" },
+        { "name": "governor",             "type": "Address",         "doc": "Governor 컨트랙트." },
+        { "name": "proposal_id",          "type": "Option<String>",  "serde_rename": "proposalId",       "serde_skip_if_none": true },
+        { "name": "support",              "type": "Option<u8>",      "serde_skip_if_none": true,         "doc": "castVote의 support: 0=against, 1=for, 2=abstain." },
+        { "name": "reason",               "type": "Option<String>",  "serde_skip_if_none": true,         "doc": "castVoteWithReason 한정." },
+        { "name": "delegatee",            "type": "Option<Address>", "serde_skip_if_none": true,         "doc": "delegate(delegatee) 한정." },
+        { "name": "description_preview",  "type": "Option<String>",  "serde_rename": "descriptionPreview", "serde_skip_if_none": true }
+      ]
+    },
+
+    "NftFields": {
+      "doc": "NFT 작업 공통 (mint/transfer/buy/sell).",
+      "category": "Nft",
+      "fields": [
+        { "name": "actor",         "type": "Address" },
+        { "name": "protocol_ids",  "type": "Vec<String>",       "serde_rename": "protocolIds" },
+        { "name": "collection",    "type": "Address",           "doc": "NFT 컬렉션 주소." },
+        { "name": "token_id",      "type": "Option<String>",    "serde_rename": "tokenId",     "serde_skip_if_none": true, "doc": "ERC-721/ERC-1155 식별자. None이면 batch mint." },
+        { "name": "quantity",      "type": "Option<AmountSpec>","serde_skip_if_none": true,    "doc": "ERC-1155 한정 — quantity." },
+        { "name": "price_asset",   "type": "Option<Token>",     "serde_rename": "priceAsset",  "serde_skip_if_none": true },
+        { "name": "price_amount",  "type": "Option<AmountSpec>","serde_rename": "priceAmount", "serde_skip_if_none": true },
+        { "name": "marketplace",   "type": "Option<String>",    "serde_skip_if_none": true,    "doc": "Seaport, Blur, X2Y2 등." },
+        { "name": "recipients",    "type": "RecipientFields" }
+      ]
+    },
+
+    "VaultFields": {
+      "doc": "ERC-4626 등 일반 vault deposit/withdraw.",
+      "category": "Vault",
+      "fields": [
+        { "name": "actor",                  "type": "Address" },
+        { "name": "protocol_ids",           "type": "Vec<String>",    "serde_rename": "protocolIds" },
+        { "name": "vault",                  "type": "Address",        "doc": "vault 컨트랙트 (ERC-4626 share token이기도 함)." },
+        { "name": "asset",                  "type": "Token",          "doc": "underlying 자산." },
+        { "name": "amount",                 "type": "AmountSpec",     "doc": "assets 또는 shares 단위 amount." },
+        { "name": "is_share_denominated",   "type": "Option<bool>",   "serde_rename": "isShareDenominated", "serde_skip_if_none": true, "doc": "mint(shares) / redeem(shares) 변형이면 true." },
+        { "name": "recipients",             "type": "RecipientFields" }
+      ]
+    },
+
+    "UtilityFields": {
+      "doc": "가로지르는 유틸리티 (approval, permit(inline), transfer, claim_rewards, multicall, sign_message, airdrop_claim, merkle_claim, wrap, unwrap). 매우 다양한 ActionType이 들어가므로 필드 모두 optional.",
+      "category": "Utility",
+      "fields": [
+        { "name": "actor",            "type": "Address" },
+        { "name": "protocol_ids",     "type": "Vec<String>",         "serde_rename": "protocolIds" },
+        { "name": "token",            "type": "Option<Token>",       "serde_skip_if_none": true,   "doc": "approval / permit / transfer 한정 — 대상 토큰." },
+        { "name": "spender",          "type": "Option<Address>",     "serde_skip_if_none": true,   "doc": "approval / permit 한정." },
+        { "name": "amount",           "type": "Option<AmountSpec>",  "serde_skip_if_none": true },
+        { "name": "rewards_source",   "type": "Option<String>",      "serde_rename": "rewardsSource", "serde_skip_if_none": true, "doc": "claim_rewards 한정 — 'lending'|'restaking'|'liquid_staking'|'rwa'|'other'." },
+        { "name": "reward_tokens",    "type": "Option<Vec<Token>>",  "serde_rename": "rewardTokens",  "serde_skip_if_none": true },
+        { "name": "merkle_root",      "type": "Option<String>",      "serde_rename": "merkleRoot",    "serde_skip_if_none": true },
+        { "name": "proof_length",     "type": "Option<usize>",       "serde_rename": "proofLength",   "serde_skip_if_none": true },
+        { "name": "message_hex",      "type": "Option<String>",      "serde_rename": "messageHex",    "serde_skip_if_none": true, "doc": "sign_message 한정." },
+        { "name": "sub_call_count",   "type": "Option<usize>",       "serde_rename": "subCallCount",  "serde_skip_if_none": true, "doc": "multicall 한정." },
+        { "name": "recipients",       "type": "Option<RecipientFields>", "serde_skip_if_none": true,  "doc": "transfer 한정." },
+        { "name": "deadlines",        "type": "DeadlineFields" }
+      ]
+    },
+
+    "AggregationFields": {
+      "doc": "Universal Router execute(...)의 Aggregation 컨테이너. 자식(각 opcode)은 parent_action_id로 연결된 별도 Action.",
+      "category": "Aggregation",
+      "fields": [
+        { "name": "actor",         "type": "Address" },
+        { "name": "protocol_ids",  "type": "Vec<String>", "serde_rename": "protocolIds" },
+        { "name": "family",        "type": "String",      "doc": "'uniswap' 또는 'pancakeswap'." },
+        { "name": "commands_hex",  "type": "String",      "serde_rename": "commandsHex" },
+        { "name": "mask",          "type": "u8",          "doc": "Uniswap UR 0x7f, PancakeSwap UR 0x3f." },
+        { "name": "child_count",   "type": "usize",       "serde_rename": "childCount" },
+        { "name": "deadlines",     "type": "DeadlineFields" }
+      ]
+    },
+
+    "SignFields": {
+      "doc": "모든 EIP-712 typed-data 서명 흐름의 공통 표면.",
+      "category": "Sign",
+      "fields": [
+        { "name": "signer",       "type": "Address",       "doc": "서명을 만드는 EOA (actor의 별칭)." },
+        { "name": "chain_id",     "type": "ChainId",       "serde_rename": "chainId" },
+        { "name": "domain",       "type": "crate::request::Eip712Domain" },
+        { "name": "primary_type", "type": "String",        "serde_rename": "primaryType" },
+        { "name": "semantic",     "type": "SignSemantic" },
+        { "name": "deadlines",    "type": "DeadlineFields" }
+      ]
+    },
+
+    "TokenAmount": {
+      "fields": [
+        { "name": "token",  "type": "Address" },
+        { "name": "amount", "type": "AmountSpec" }
+      ]
+    },
+
+    "TokenAmountWithExpiry": {
+      "fields": [
+        { "name": "token",      "type": "Address" },
+        { "name": "amount",     "type": "AmountSpec" },
+        { "name": "expiration", "type": "Option<u64>", "serde_skip_if_none": true, "doc": "Permit2 토큰별 expiration (uint48 unix timestamp)." }
+      ]
+    },
+
+    "UnknownFields": {
+      "doc": "분류 실패 catch-all. 원본 args를 그대로 보존하여 디버깅 가능.",
+      "category": "Unknown",
+      "fields": [
+        { "name": "actor",          "type": "Address" },
+        { "name": "attempted_key",  "type": "Option<String>",     "serde_rename": "attemptedKey", "serde_skip_if_none": true, "doc": "원본 selector / opcode / primary_type 등 분류 시도된 키." },
+        { "name": "reason",         "type": "Option<String>",     "serde_skip_if_none": true,     "doc": "디코드 시도가 실패한 사유." },
+        { "name": "raw_args",       "type": "serde_json::Value",  "serde_rename": "rawArgs",      "serde_default": true,      "doc": "원본 calldata args (디버깅용)." }
+      ]
+    }
+  },
+
+  "wrap_unwrap_note": {
+    "doc": "Wrap·Unwrap ActionType은 ActionCategory::Swap에 매핑되므로 SwapFields 재사용 (별도 WrapFields 만들지 않음). 1:1 토큰 변환은 mode=ExactIn + amount_in/out.kind=Exact + route=SingleHop + max_fee_bps=Some(0) 패턴.",
+    "example": "Lido stETH → wstETH wrap = SwapFields with input_tokens=[stETH], output_tokens=[wstETH], protocolIds=['lido']."
+  }
+}
