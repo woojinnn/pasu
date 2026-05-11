@@ -51,8 +51,17 @@
         }
       },
       "required": ["kind", "chainId"],
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "enum": ["erc20", "erc721", "erc1155"] } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["address"] }
+        }
+      ],
       "x-source": "action-derived",
-      "description": "Asset 1차 식별자. demo_dandiv1 의 Token shape 와 호환 (★ B3 fix: chainId/address/symbol/decimals/isNative 모두 1:1)."
+      "description": "Asset 1차 식별자. demo_dandiv1 의 Token shape 와 호환 (★ B3 fix: chainId/address/symbol/decimals/isNative 모두 1:1). ★ schema_check A4: kind ∈ {erc20, erc721, erc1155} 인 경우 address 필수 — 이전엔 description-only 였으나 if/then 으로 강제."
     },
 
     "AmountConstraint": {

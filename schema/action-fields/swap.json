@@ -192,6 +192,27 @@
 
   "required": ["_kind", "mode", "protocolId"],
 
+  "allOf": [
+    {
+      "if": {
+        "properties": { "_kind": { "not": { "const": "batch_swap" } } },
+        "required": ["_kind"]
+      },
+      "then": {
+        "properties": {
+          "route": {
+            "not": {
+              "anyOf": [
+                { "required": ["assets"] },
+                { "required": ["limits"] }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+
   "$defs": {
     "SwapHop": {
       "type": "object",
