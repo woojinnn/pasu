@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/action-fields/approval.json",
+  "title": "ApprovalActionFields",
+  "description": "ERC20/721/1155/permit2 approval. v260509 1:1 port + x-source.",
+
+  "type": "object",
+  "properties": {
+    "_kind": {
+      "type": "string",
+      "const": "approval"
+    },
+    "token": {
+      "$ref": "../_common.json#/$defs/AssetRef",
+      "x-source": "action-derived"
+    },
+    "spender": {
+      "$ref": "../_common.json#/$defs/Address",
+      "x-source": "action-derived"
+    },
+    "amount": {
+      "$ref": "../_common.json#/$defs/AmountConstraint",
+      "x-source": "action-derived",
+      "description": "AmountConstraint.kind='unlimited' 가 max(uint256) 의미를 cover."
+    },
+    "approvalKind": {
+      "type": "string",
+      "enum": ["erc20", "erc20_increase", "erc20_decrease", "erc721", "erc1155", "permit2", "unknown"],
+      "x-source": "action-derived"
+    }
+  },
+  "required": ["_kind", "token", "spender", "amount", "approvalKind"]
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/extensions/uniswap-v4.json",
+  "title": "UniswapV4Extension",
+  "description": "namespace = 'uniswap.v4'. v260509 1:1 port + IntDecimalString for amountSpecified/liquidityDelta. (★ D4 fix: positionManager / router 분리는 dispatch 수준 — 본 extension 은 raw 보존만.)",
+
+  "type": "object",
+  "properties": {
+    "poolKey": {
+      "$ref": "#/$defs/UniswapV4PoolKey",
+      "x-source": "adapter:metadata"
+    },
+    "swapParams": {
+      "type": "object",
+      "properties": {
+        "zeroForOne": { "type": "boolean" },
+        "amountSpecified": {
+          "$ref": "../_common.json#/$defs/IntDecimalString",
+          "description": "음수 = exact-in, 양수 = exact-out. (★ SKILLS.md 함정 #7)"
+        },
+        "sqrtPriceLimitX96": { "$ref": "../_common.json#/$defs/DecimalString" }
+      },
+      "x-source": "adapter:metadata"
+    },
+    "modifyLiquidityParams": {
+      "type": "object",
+      "properties": {
+        "tickLower": { "type": "integer" },
+        "tickUpper": { "type": "integer" },
+        "liquidityDelta": {
+          "$ref": "../_common.json#/$defs/IntDecimalString",
+          "description": "음수 = remove."
+        },
+        "salt": { "$ref": "../_common.json#/$defs/Hex" }
+      },
+      "x-source": "adapter:metadata"
+    },
+    "actions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/UniswapV4ActionItem" },
+      "x-source": "adapter:metadata",
+      "description": "V4Router actions 또는 PositionManager actions decoded."
+    },
+    "hookData": {
+      "$ref": "../_common.json#/$defs/Hex",
+      "x-source": "adapter:metadata"
+    }
+  },
+
+  "$defs": {
+    "UniswapV4PoolKey": {
+      "type": "object",
+      "properties": {
+        "currency0": { "$ref": "../_common.json#/$defs/Address" },
+        "currency1": { "$ref": "../_common.json#/$defs/Address" },
+        "fee": {
+          "type": "integer",
+          "description": "uint24. 0x800000 bit = dynamic marker."
+        },
+        "tickSpacing": { "type": "integer" },
+        "hooks": { "$ref": "../_common.json#/$defs/Address" }
+      },
+      "required": ["currency0", "currency1", "fee", "tickSpacing", "hooks"]
+    },
+    "UniswapV4ActionItem": {
+      "type": "object",
+      "properties": {
+        "index": { "type": "integer" },
+        "opcode": { "type": "integer" },
+        "name": { "type": "string" },
+        "rawParams": { "$ref": "../_common.json#/$defs/Hex" },
+        "decodedParams": { "description": "free-form decoded." }
+      },
+      "required": ["index", "opcode", "name", "rawParams"]
+    }
+  }
+}

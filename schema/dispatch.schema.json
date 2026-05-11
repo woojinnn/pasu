@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/dispatch.schema.json",
+  "title": "DispatchTableSchema",
+  "description": "dispatch-table.json 의 데이터 형식을 정의하는 schema. dispatch-table.json 자체는 데이터 (version + entries[]). Per docs/06-dispatch-spec.md §2.",
+
+  "type": "object",
+  "properties": {
+    "version": { "type": "string", "const": "1.0.0" },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DispatchRow" }
+    }
+  },
+  "required": ["version", "entries"],
+  "additionalProperties": false,
+
+  "$defs": {
+    "DispatchKey": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": { "type": "string", "const": "selector" },
+            "protocol": {
+              "type": "string",
+              "description": "dot notation. 같은 selector 의 fork (Pancake/Uniswap) 분기."
+            },
+            "selector": { "type": "string", "pattern": "^0x[0-9a-fA-F]{8}$" }
+          },
+          "required": ["kind", "selector"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": { "type": "string", "const": "ur_command" },
+            "protocol": {
+              "type": "string",
+              "enum": [
+                "uniswap.universalRouter",
+                "pancakeswap.universalRouter",
+                "uniswap.v4.positionManager",
+                "uniswap.v4.router"
+              ]
+            },
+            "opcode": { "type": "integer", "minimum": 0, "maximum": 255 }
+          },
+          "required": ["kind", "protocol", "opcode"]
+        }
+      ],
+      "discriminator": { "propertyName": "kind" }
+    },
+
+    "DispatchEntry": {
+      "type": "object",
+      "properties": {
+        "category": { "$ref": "action.json#/$defs/ActionCategory" },
+        "type": { "$ref": "action.json#/$defs/ActionType" },
+        "confidence": { "$ref": "_common.json#/$defs/ConfidenceLevel" },
+        "promote": {
+          "type": "boolean",
+          "description": "true=NormalizedAction 으로 승격. false=router_plan metadata 에만 (부정 규칙). promote=true 면 decodeFields 필수 (★ D3 fix)."
+        },
+        "decodeFields": {
+          "type": "string",
+          "description": "FIELD_DECODERS 키 (★ D6 fix: top-level decoders/index.ts)."
+        },
+        "notes": { "type": "string" }
+      },
+      "required": ["category", "type", "confidence", "promote"]
+    },
+
+    "DispatchRow": {
+      "type": "object",
+      "properties": {
+        "key": { "$ref": "#/$defs/DispatchKey" },
+        "entry": { "$ref": "#/$defs/DispatchEntry" }
+      },
+      "required": ["key", "entry"],
+      "additionalProperties": false
+    }
+  }
+}

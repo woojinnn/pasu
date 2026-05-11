@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/action-fields/router-plan.json",
+  "title": "RouterPlanActionFields",
+  "description": "router_plan / unknown. UR execute 의 commands 보존 + commandCount 등. v260509 의 Record<string, unknown> 위치. free-form, additionalProperties 허용.",
+
+  "type": "object",
+  "properties": {
+    "_kind": {
+      "type": "string",
+      "enum": ["router_plan", "unknown"]
+    },
+    "commandCount": {
+      "type": "integer",
+      "x-source": "action-derived",
+      "description": "UR execute 의 commands.length."
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "x-source": "action-derived",
+      "description": "UR opcode 분해 결과 (opcode hex + decoded args). 자세한 정형은 child action 으로 분해된 후."
+    },
+    "rawCommands": {
+      "$ref": "../_common.json#/$defs/Hex",
+      "x-source": "action-derived",
+      "description": "UR commands bytes 원본 (1 byte per opcode)."
+    }
+  },
+  "required": ["_kind"],
+  "additionalProperties": true
+}

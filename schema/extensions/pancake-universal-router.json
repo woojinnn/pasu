@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/extensions/pancake-universal-router.json",
+  "title": "PancakeUniversalRouterExtension",
+  "description": "namespace = 'pancakeswap.universalRouter'. v260509 1:1 port. shape 는 Uniswap UniversalRouterExtension 와 동일 — protocol 분기는 namespace 로.",
+
+  "type": "object",
+  "properties": {
+    "commands": { "$ref": "../_common.json#/$defs/Hex", "x-source": "adapter:metadata" },
+    "commandSequence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "inputIndex": { "type": "integer" },
+          "rawByte": { "$ref": "../_common.json#/$defs/Hex" },
+          "opcode": { "type": "integer" },
+          "name": { "type": "string" },
+          "allowRevert": { "type": "boolean" },
+          "rawInput": { "$ref": "../_common.json#/$defs/Hex" },
+          "decodedInput": { "description": "free-form" }
+        },
+        "required": ["inputIndex", "rawByte", "opcode", "name", "allowRevert", "rawInput"]
+      },
+      "x-source": "adapter:metadata"
+    },
+    "deadline": { "$ref": "../_common.json#/$defs/DecimalString", "x-source": "adapter:metadata" },
+
+    "payPortions": {
+      "type": "array",
+      "items": { "$ref": "./universal-router.json#/$defs/PayPortion" },
+      "x-source": "adapter:metadata",
+      "description": "Pancake UR PAY_PORTION (Uniswap UR 와 shape 동일, namespace 로 분리). ★ ADR-007 SD-1."
+    },
+    "sweeps": {
+      "type": "array",
+      "items": { "$ref": "./universal-router.json#/$defs/Sweep" },
+      "x-source": "adapter:metadata",
+      "description": "Pancake UR SWEEP. ★ ADR-007 SD-2."
+    },
+    "transfers": {
+      "type": "array",
+      "items": { "$ref": "./universal-router.json#/$defs/Transfer" },
+      "x-source": "adapter:metadata",
+      "description": "Pancake UR TRANSFER. ★ ADR-007 SD-2."
+    },
+    "balanceChecks": {
+      "type": "array",
+      "items": { "$ref": "./universal-router.json#/$defs/BalanceCheck" },
+      "x-source": "adapter:metadata",
+      "description": "Pancake UR BALANCE_CHECK_ERC20. ★ ADR-007 SD-2."
+    }
+  },
+  "required": ["commands", "commandSequence"]
+}

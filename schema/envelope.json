@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/envelope.json",
+  "title": "schema_v260510a — request envelope types",
+  "description": "RequestEnvelope / ContractTarget / DecodedCall / RawRequestData. Per docs/05-schema-spec.md §2.",
+
+  "$defs": {
+    "RequestEnvelope": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["transaction", "signature", "userOperation"]
+        },
+        "method": { "type": "string", "description": "예: 'eth_sendTransaction'." },
+        "chainId": { "type": "integer", "minimum": 1, "x-source": "action-derived" },
+        "from": { "$ref": "_common.json#/$defs/Address", "x-source": "action-derived" },
+        "to": { "$ref": "_common.json#/$defs/Address", "x-source": "action-derived" },
+        "value": { "$ref": "_common.json#/$defs/DecimalString", "x-source": "action-derived" },
+        "data": { "$ref": "_common.json#/$defs/Hex", "x-source": "action-derived" },
+        "origin": { "type": "string", "description": "dApp origin (URL)." }
+      },
+      "required": ["kind", "method", "chainId", "from"]
+    },
+
+    "ContractTarget": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "내부 식별자 (예: 't#0')." },
+        "address": { "$ref": "_common.json#/$defs/Address" },
+        "chainId": { "type": "integer", "minimum": 1 },
+        "role": {
+          "type": "string",
+          "enum": ["entrypoint", "router", "aggregator", "pool", "vault", "manager", "token", "permit", "hook", "account", "unknown"]
+        },
+        "protocol": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": "string" },
+            "component": { "type": "string" }
+          }
+        },
+        "discoveredBy": {
+          "type": "string",
+          "enum": ["tx_to", "calldata_arg", "router_command", "path_decode", "pool_id_decode", "hook_decode", "manual_registry", "token_metadata", "unknown"]
+        },
+        "verification": {
+          "type": "object",
+          "properties": {
+            "labelSource": {
+              "type": "string",
+              "enum": ["curated", "etherscan", "sourcify", "blockscout", "4byte", "unknown"]
+            },
+            "abiAvailable": { "type": "boolean" },
+            "contractVerified": { "type": "boolean" },
+            "proxyResolved": { "type": "boolean" },
+            "implementation": { "$ref": "_common.json#/$defs/Address" }
+          }
+        },
+        "confidence": { "$ref": "_common.json#/$defs/ConfidenceLevel" }
+      },
+      "required": ["id", "address", "chainId", "role", "discoveredBy", "confidence"]
+    },
+
+    "DecodedCall": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "targetId": { "type": "string" },
+        "relatedTargetIds": { "type": "array", "items": { "type": "string" } },
+        "parentCallId": { "type": "string" },
+        "callType": {
+          "type": "string",
+          "enum": ["external_call", "internal_call", "router_command", "multicall_item", "batch_item", "hook_callback_pattern", "log_inferred", "unknown"]
+        },
+        "selector": { "$ref": "_common.json#/$defs/Hex" },
+        "functionName": { "type": "string" },
+        "signature": { "type": "string" },
+        "args": {
+          "description": "선택적 free-form decoded args (viem decodeFunctionData 출력 등). decoder 가 channeling 한 후 본 필드는 reference 용."
+        },
+        "value": { "$ref": "_common.json#/$defs/DecimalString" },
+        "decodeSource": {
+          "type": "string",
+          "enum": ["verified_abi", "curated_abi", "selector_db", "manual_decoder", "protocol_decoder", "unknown"]
+        },
+        "confidence": { "$ref": "_common.json#/$defs/ConfidenceLevel" }
+      },
+      "required": ["id", "targetId", "callType", "decodeSource", "confidence"]
+    },
+
+    "RawRequestData": {
+      "type": "object",
+      "properties": {
+        "providerRequest": { "description": "JSON-RPC 원본 (선택)." },
+        "tx": { "description": "tx 원본 (선택)." },
+        "calldata": { "$ref": "_common.json#/$defs/Hex" },
+        "typedData": { "description": "EIP-712 typed data (선택)." },
+        "userOperation": { "description": "ERC-4337 UserOp (선택)." }
+      }
+    }
+  }
+}

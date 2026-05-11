@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/_common.json",
+  "title": "schema_v260510a — common primitives",
+  "description": "Address / Hex / DecimalString / IntDecimalString / AssetRef / AmountConstraint / UsdValuation / ConfidenceLevel. Per docs/05-schema-spec.md §1.",
+
+  "$defs": {
+    "Address": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$",
+      "description": "EVM address. lowercase 권장 — instance 비교 시 lowercase 통일."
+    },
+
+    "Hex": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]*$",
+      "description": "0x-prefixed lowercase hex string (raw bytes)."
+    },
+
+    "DecimalString": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "uint256 decimal string. 음수 불가. wire 단계 모든 uint256/int128 등은 본 type. (ADR-005)"
+    },
+
+    "IntDecimalString": {
+      "type": "string",
+      "pattern": "^-?[0-9]+$",
+      "description": "int256 decimal string. V4 liquidityDelta / amountSpecified 등 음수 가능."
+    },
+
+    "ConfidenceLevel": {
+      "type": "string",
+      "enum": ["high", "medium", "low", "unknown", "unavailable"]
+    },
+
+    "AssetRef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["native", "erc20", "erc721", "erc1155", "unknown"]
+        },
+        "chainId": { "type": "integer", "minimum": 1 },
+        "address": { "$ref": "#/$defs/Address" },
+        "symbol": { "type": "string" },
+        "decimals": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "isNative": {
+          "type": "boolean",
+          "description": "kind=='native' 와 동등. 둘 다 표기 가능 (liam 호환). native sentinel address: 0xeeee...eeee."
+        }
+      },
+      "required": ["kind", "chainId"],
+      "x-source": "action-derived",
+      "description": "Asset 1차 식별자. demo_dandiv1 의 Token shape 와 호환 (★ B3 fix: chainId/address/symbol/decimals/isNative 모두 1:1)."
+    },
+
+    "AmountConstraint": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["exact", "min", "max", "unlimited", "estimated", "unknown"]
+        },
+        "value": { "$ref": "#/$defs/DecimalString" }
+      },
+      "required": ["kind"],
+      "description": "lowercase 6 종 (★ C5 fix). liam 의 PascalCase 4 종과 다름. operation 별 의미는 docs/05 §5 부록."
+    },
+
+    "UsdValuation": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "description": "Decimal string (예: '1234.56'). f64 drift 회피."
+        },
+        "asOfTs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "valuation 시각 (unix epoch sec)."
+        },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "valuation 출처 (예: 'chainlink', 'uniswap-twap')."
+        },
+        "staleSec": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "valuation stale 정도 (초)."
+        }
+      },
+      "required": ["value"],
+      "x-source": "host:oracle",
+      "description": "demo_dandiv1 의 UsdValuation { value: String, as_of_ts: u64, sources: Vec<String>, stale_sec: u64 } 와 1:1."
+    }
+  }
+}

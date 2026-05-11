@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v260510a/action-fields/swap.json",
+  "title": "SwapActionFields",
+  "description": "swap / batch_swap / hooked_operation 3종 ActionType 의 fields. Per docs/05-schema-spec.md §4. ★ B1 fix: _kind 가 enum (3종).",
+
+  "type": "object",
+  "properties": {
+    "_kind": {
+      "type": "string",
+      "enum": ["swap", "batch_swap", "hooked_operation"],
+      "description": "discriminator. 반드시 action.type 와 동일 (도구 검증 invariant)."
+    },
+
+    "mode": {
+      "type": "string",
+      "enum": ["exact_in", "exact_out", "market", "unknown"],
+      "x-source": "action-derived",
+      "x-version": ["V2", "V3", "V4"]
+    },
+
+    "protocolId": {
+      "type": "string",
+      "enum": [
+        "uniswap.v2", "uniswap.v3", "uniswap.v4",
+        "pancakeswap.v2", "pancakeswap.v3", "pancakeswap.smartRouter", "pancakeswap.stableSwap", "pancakeswap.infinity",
+        "balancer.v2",
+        "unknown"
+      ],
+      "x-source": "action-derived",
+      "description": "★ B3/C1 fix: dot notation 통일. dispatch.key.protocol + Extension.namespace 와 동일. demo_dandiv1 의 protocol_ids 1차 출처."
+    },
+
+    "tokenIn": {
+      "$ref": "../_common.json#/$defs/AssetRef",
+      "x-source": "action-derived",
+      "x-adapter-mapping": {
+        "v2": "path[0]",
+        "v3": "params.tokenIn or path[0]",
+        "v4": "PoolKey.currency_in (zeroForOne 분기)"
+      }
+    },
+    "tokenOut": {
+      "$ref": "../_common.json#/$defs/AssetRef",
+      "x-source": "action-derived",
+      "x-adapter-mapping": {
+        "v2": "path[N-1]",
+        "v3": "params.tokenOut or path bytes 마지막 20B",
+        "v4": "PoolKey.currency_out"
+      }
+    },
+
+    "amountIn": {
+      "$ref": "../_common.json#/$defs/AmountConstraint",
+      "x-source": "action-derived",
+      "x-adapter-mapping": {
+        "v2": "amountIn or amountInMax or msg.value",
+        "v3": "amountIn or amountInMaximum",
+        "v4": "|amountSpecified| (sign convention 으로 in/out 분기)"
+      }
+    },
+    "amountOut": {
+      "$ref": "../_common.json#/$defs/AmountConstraint",
+      "x-source": "action-derived",
+      "x-adapter-mapping": {
+        "v2": "amountOut or amountOutMin",
+        "v3": "amountOut or amountOutMinimum",
+        "v4": "sign convention"
+      }
+    },
+
+    "sender": { "$ref": "../_common.json#/$defs/Address", "x-source": "action-derived" },
+    "recipient": { "$ref": "../_common.json#/$defs/Address", "x-source": "action-derived" },
+
+    "recipientEqualsActor": {
+      "type": "boolean",
+      "x-source": "action-derived",
+      "description": "derived: recipient == request.from. UR sentinel 의 경우 decoder 는 undefined, aggregator 가 sentinel resolve 후 채움 (★ D8 fix)."
+    },
+
+    "deadline": { "$ref": "../_common.json#/$defs/DecimalString", "x-source": "action-derived" },
+    "deadlineHorizonSeconds": {
+      "type": "integer",
+      "x-source": "action-derived",
+      "description": "derived: deadline - block.timestamp."
+    },
+
+    "valueWei": {
+      "$ref": "../_common.json#/$defs/DecimalString",
+      "x-source": "action-derived",
+      "description": "envelope.value 의 copy. native input swap 시 nonzero."
+    },
+
+    "fee": {
+      "type": "object",
+      "properties": {
+        "tier": {
+          "type": "integer",
+          "description": "raw fee value (calldata 그대로). V3=hundredths-of-bip (3000 = 0.30%). V4=PoolKey.fee (uint24, 0x800000 bit = dynamic marker)."
+        },
+        "bps": {
+          "type": "integer",
+          "description": "derived bps. V3: tier/100. V4: dynamic 일 때 undefined (★ B6/G6 fix — dynamic 풀의 static bps 는 의미 없음)."
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "V4 dynamic fee marker: (raw & 0x800000) !== 0."
+        }
+      },
+      "x-source": "action-derived",
+      "x-version": ["V3", "V4"]
+    },
+
+    "route": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["single_hop", "multi_hop", "split_route", "batch", "opaque"]
+        },
+        "hops": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SwapHop" }
+        },
+        "rawRoute": { "$ref": "../_common.json#/$defs/Hex" },
+        "assets": {
+          "type": "array",
+          "items": { "$ref": "../_common.json#/$defs/Address" },
+          "description": "Balancer V2 batchSwap 의 asset list (0x0 = native ETH). batch_swap 에 한정. ★ 세션 10 추가 (#40)."
+        },
+        "limits": {
+          "type": "array",
+          "items": { "$ref": "../_common.json#/$defs/IntDecimalString" },
+          "description": "Balancer V2 batchSwap 의 signed limits — assets[] 와 1:1 매핑. 양수 = 사용자가 지불할 max input, 음수 = 사용자가 받을 min output. batch_swap 에 한정."
+        }
+      },
+      "required": ["kind"],
+      "x-source": "adapter:metadata"
+    },
+
+    "slippage": {
+      "type": "object",
+      "properties": {
+        "amountOutMin": { "$ref": "../_common.json#/$defs/DecimalString" },
+        "amountInMax": { "$ref": "../_common.json#/$defs/DecimalString" },
+        "bps": { "type": "integer" },
+        "source": {
+          "type": "string",
+          "enum": ["calldata", "quote", "derived", "unknown"]
+        }
+      },
+      "x-source": "adapter:metadata"
+    },
+
+    "settlement": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["direct_pool", "router", "aggregator", "vault", "intent", "unknown"]
+        }
+      },
+      "x-source": "adapter:metadata"
+    },
+
+    "hookFlags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["beforeSwap", "afterSwap", "beforeSwapReturnsDelta", "afterSwapReturnsDelta"]
+      },
+      "x-source": "adapter:metadata",
+      "x-version": ["V4"],
+      "description": "V4 hook 주소 마지막 14 bits decode (liam 흡수). decoders/uniswap-v4/hook-flags.ts."
+    },
+
+    "inputUsd": {
+      "$ref": "../_common.json#/$defs/UsdValuation",
+      "x-source": "host:oracle"
+    },
+    "outputUsd": {
+      "$ref": "../_common.json#/$defs/UsdValuation",
+      "x-source": "host:oracle",
+      "description": "min_output_amount × output_token 시가."
+    },
+    "expectedOutputUsd": {
+      "$ref": "../_common.json#/$defs/UsdValuation",
+      "x-source": "host:oracle",
+      "description": "input_amount 의 fair-price 기반 기대 output USD (slippage 계산 base)."
+    }
+  },
+
+  "required": ["_kind", "mode", "protocolId"],
+
+  "$defs": {
+    "SwapHop": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "targetId": { "type": "string" },
+        "protocol": { "type": "string" },
+        "tokenIn": { "$ref": "../_common.json#/$defs/AssetRef" },
+        "tokenOut": { "$ref": "../_common.json#/$defs/AssetRef" },
+        "pool": { "$ref": "../_common.json#/$defs/Address" },
+        "feeTier": { "type": "integer" },
+        "feeBps": { "type": "integer" },
+        "percent": { "type": "integer" },
+        "amount": {
+          "$ref": "../_common.json#/$defs/AmountConstraint",
+          "description": "Balancer batchSwap 의 step amount (★ ADR-009 SD-10). 다른 protocol 에선 미사용."
+        },
+        "userData": {
+          "$ref": "../_common.json#/$defs/Hex",
+          "description": "Balancer batchSwap step.userData — protocol-specific. ★ ADR-009 SD-10."
+        },
+        "extra": { "type": "object" },
+        "confidence": { "$ref": "../_common.json#/$defs/ConfidenceLevel" }
+      },
+      "required": ["id", "confidence"]
+    }
+  }
+}
