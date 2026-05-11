@@ -8,9 +8,11 @@ use serde_json::Value;
 
 use crate::action::{ActionCategory, ActionFields, ActionType};
 use crate::confidence::Confidence;
+use crate::action::fields::SwapMode;
 use crate::semi_adapter::{
-    aave_v3, aerodrome_slipstream, aerodrome_v1, error::SemiAdapterError, lido, morpho_blue,
-    pancakeswap, registry, uniswap_ur, uniswap_v2, uniswap_v3, uniswap_v4, BuildContext,
+    aave_v3, aerodrome_slipstream, aerodrome_v1, balancer_v2, balancer_v3, error::SemiAdapterError,
+    lido, morpho_blue, pancakeswap, registry, uniswap_ur, uniswap_v2, uniswap_v3, uniswap_v4,
+    BuildContext,
 };
 use crate::types::Address;
 
@@ -104,6 +106,110 @@ fn classify_by_selector(
         return Ok(ClassifyOutcome {
             category: ActionCategory::Swap,
             action_type: ActionType::Swap,
+            fields: ActionFields::Swap(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+
+    // ─── Balancer V2 ───
+    if *selector == balancer_v2::SEL_SWAP {
+        let f = balancer_v2::build_balancer_v2_swap_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Swap,
+            action_type: ActionType::Swap,
+            fields: ActionFields::Swap(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v2::SEL_BATCH_SWAP {
+        let f = balancer_v2::build_balancer_v2_batch_swap_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Swap,
+            action_type: ActionType::BatchSwap,
+            fields: ActionFields::Swap(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v2::SEL_JOIN_POOL {
+        let f = balancer_v2::build_balancer_v2_join_pool_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::JoinPool,
+            fields: ActionFields::Liquidity(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v2::SEL_EXIT_POOL {
+        let f = balancer_v2::build_balancer_v2_exit_pool_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::ExitPool,
+            fields: ActionFields::Liquidity(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v2::SEL_FLASH_LOAN {
+        let f = balancer_v2::build_balancer_v2_flash_loan_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Lending,
+            action_type: ActionType::FlashLoan,
+            fields: ActionFields::Lending(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+
+    // ─── Balancer V3 ───
+    if *selector == balancer_v3::SEL_V3_VAULT_SWAP {
+        let f = balancer_v3::build_balancer_v3_swap_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Swap,
+            action_type: ActionType::Swap,
+            fields: ActionFields::Swap(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v3::SEL_V3_VAULT_ADD_LIQUIDITY {
+        let f = balancer_v3::build_balancer_v3_add_liquidity_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::JoinPool,
+            fields: ActionFields::Liquidity(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v3::SEL_V3_VAULT_REMOVE_LIQUIDITY {
+        let f = balancer_v3::build_balancer_v3_remove_liquidity_fields(args, ctx)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::ExitPool,
+            fields: ActionFields::Liquidity(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v3::SEL_V3_BATCH_SWAP_EXACT_IN {
+        let f = balancer_v3::build_balancer_v3_batch_router_swap_fields(args, ctx, SwapMode::ExactIn)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Swap,
+            action_type: ActionType::BatchSwap,
+            fields: ActionFields::Swap(f),
+            confidence: Confidence::High,
+            promote: true,
+        });
+    }
+    if *selector == balancer_v3::SEL_V3_BATCH_SWAP_EXACT_OUT {
+        let f = balancer_v3::build_balancer_v3_batch_router_swap_fields(args, ctx, SwapMode::ExactOut)?;
+        return Ok(ClassifyOutcome {
+            category: ActionCategory::Swap,
+            action_type: ActionType::BatchSwap,
             fields: ActionFields::Swap(f),
             confidence: Confidence::High,
             promote: true,

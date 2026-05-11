@@ -1,0 +1,121 @@
+{
+  "request": {
+    "kind": "transaction",
+    "method": "eth_sendTransaction",
+    "chainId": 1,
+    "from": "0x1111111111111111111111111111111111111111",
+    "to": "0x136f1efcc3f8f88516b9e94110d56fdbfb1778d1",
+    "value": "0",
+    "data": "0x286f580d"
+  },
+  "targets": [
+    {
+      "id": "t#batchRouter",
+      "address": "0x136f1efcc3f8f88516b9e94110d56fdbfb1778d1",
+      "chainId": 1,
+      "role": "router",
+      "protocol": {
+        "name": "balancer",
+        "version": "v3",
+        "component": "batchRouter"
+      },
+      "discoveredBy": "tx_to",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#usdc",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#weth",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    },
+    {
+      "id": "t#wbtc",
+      "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+      "chainId": 1,
+      "role": "token",
+      "discoveredBy": "calldata_arg",
+      "verification": {
+        "labelSource": "curated",
+        "abiAvailable": true,
+        "contractVerified": true
+      },
+      "confidence": "high"
+    }
+  ],
+  "decodedCalls": [
+    {
+      "id": "c#0",
+      "targetId": "t#batchRouter",
+      "relatedTargetIds": [
+        "t#usdc",
+        "t#weth",
+        "t#wbtc"
+      ],
+      "callType": "external_call",
+      "selector": "0x286f580d",
+      "functionName": "swapExactIn",
+      "args": {
+        "paths": [
+          {
+            "tokenIn": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "steps": [
+              {
+                "pool": "0x1111111111111111111111111111111111111111",
+                "tokenOut": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "isBuffer": false
+              },
+              {
+                "pool": "0x2222222222222222222222222222222222222222",
+                "tokenOut": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+                "isBuffer": false
+              }
+            ],
+            "exactAmountIn": "1000000000",
+            "minAmountOut": "3000000"
+          }
+        ],
+        "deadline": "1762500000",
+        "wethIsEth": false,
+        "userData": "0x"
+      },
+      "value": "0",
+      "decodeSource": "verified_abi",
+      "confidence": "high"
+    }
+  ],
+  "raw": {
+    "tx": {
+      "chainId": 1,
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x136f1efcc3f8f88516b9e94110d56fdbfb1778d1",
+      "value": "0",
+      "data": "0x286f580d"
+    },
+    "calldata": "0x286f580d"
+  }
+}

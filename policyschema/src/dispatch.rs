@@ -71,6 +71,16 @@ pub enum SemiAdapterId {
     PancakeswapInfinitySwap,
     AerodromeV1Swap,
     AerodromeSlipstreamSwap,
+    BalancerV2Swap,
+    BalancerV2BatchSwap,
+    BalancerV2JoinPool,
+    BalancerV2ExitPool,
+    BalancerV2FlashLoan,
+    BalancerV3Swap,
+    BalancerV3AddLiquidity,
+    BalancerV3RemoveLiquidity,
+    BalancerV3BatchRouterExactIn,
+    BalancerV3BatchRouterExactOut,
     AaveV3Lending,
     MorphoBlueLending,
     LidoStake,
@@ -331,6 +341,154 @@ pub const AERODROME_V1_TABLE: &[(DispatchKey, DispatchEntry)] = &[
     ),
 ];
 
+/// Balancer V2 Vault (singleton, 5 핵심 함수).
+pub const BALANCER_V2_TABLE: &[(DispatchKey, DispatchEntry)] = &[
+    (
+        DispatchKey::Selector {
+            selector: [0x52, 0xbb, 0xbe, 0x29],
+            protocol_scope: Some("balancer.v2"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Swap,
+            action_type: ActionType::Swap,
+            semi_adapter: SemiAdapterId::BalancerV2Swap,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "Vault.swap(SingleSwap, FundManagement, limit, deadline)",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0x94, 0x5b, 0xce, 0xc9],
+            protocol_scope: Some("balancer.v2"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Swap,
+            action_type: ActionType::BatchSwap,
+            semi_adapter: SemiAdapterId::BalancerV2BatchSwap,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "Vault.batchSwap (멀티홉 그래프)",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0xb9, 0x5c, 0xac, 0x28],
+            protocol_scope: Some("balancer.v2"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::JoinPool,
+            semi_adapter: SemiAdapterId::BalancerV2JoinPool,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "Vault.joinPool(bytes32 poolId, address sender, address recipient, JoinPoolRequest)",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0x8b, 0xdb, 0x39, 0x13],
+            protocol_scope: Some("balancer.v2"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::ExitPool,
+            semi_adapter: SemiAdapterId::BalancerV2ExitPool,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "Vault.exitPool(bytes32 poolId, address sender, address recipient, ExitPoolRequest)",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0x5c, 0x38, 0x44, 0x9e],
+            protocol_scope: Some("balancer.v2"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Lending,
+            action_type: ActionType::FlashLoan,
+            semi_adapter: SemiAdapterId::BalancerV2FlashLoan,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "Vault.flashLoan(receiver, tokens[], amounts[], userData)",
+        },
+    ),
+];
+
+/// Balancer V3 (Vault 3 + BatchRouter 2 = 5 진입점).
+pub const BALANCER_V3_TABLE: &[(DispatchKey, DispatchEntry)] = &[
+    (
+        DispatchKey::Selector {
+            selector: [0x2b, 0xfa, 0xa4, 0x59],
+            protocol_scope: Some("balancer.v3"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Swap,
+            action_type: ActionType::Swap,
+            semi_adapter: SemiAdapterId::BalancerV3Swap,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "V3 Vault.swap (single)",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0x55, 0x49, 0xa3, 0xb0],
+            protocol_scope: Some("balancer.v3"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::JoinPool,
+            semi_adapter: SemiAdapterId::BalancerV3AddLiquidity,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "V3 Vault.addLiquidity",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0xab, 0x55, 0x49, 0xa3],
+            protocol_scope: Some("balancer.v3"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Liquidity,
+            action_type: ActionType::ExitPool,
+            semi_adapter: SemiAdapterId::BalancerV3RemoveLiquidity,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "V3 Vault.removeLiquidity",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0x28, 0x6f, 0x58, 0x0d],
+            protocol_scope: Some("balancer.v3"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Swap,
+            action_type: ActionType::BatchSwap,
+            semi_adapter: SemiAdapterId::BalancerV3BatchRouterExactIn,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "V3 BatchRouter.swapExactIn (멀티홉 SwapPath[])",
+        },
+    ),
+    (
+        DispatchKey::Selector {
+            selector: [0x9a, 0x99, 0xb4, 0xf0],
+            protocol_scope: Some("balancer.v3"),
+        },
+        DispatchEntry {
+            category: ActionCategory::Swap,
+            action_type: ActionType::BatchSwap,
+            semi_adapter: SemiAdapterId::BalancerV3BatchRouterExactOut,
+            confidence: Confidence::High,
+            promote: true,
+            notes: "V3 BatchRouter.swapExactOut (멀티홉)",
+        },
+    ),
+];
+
 /// Aave V3 Pool (이자 핵심 4종).
 pub const AAVE_V3_TABLE: &[(DispatchKey, DispatchEntry)] = &[
     (
@@ -475,6 +633,8 @@ pub const ALL_TABLES: &[&[(DispatchKey, DispatchEntry)]] = &[
     UNISWAP_V3_TABLE,
     UNISWAP_UR_SELECTOR_TABLE,
     AERODROME_V1_TABLE,
+    BALANCER_V2_TABLE,
+    BALANCER_V3_TABLE,
     AAVE_V3_TABLE,
     MORPHO_BLUE_TABLE,
     LIDO_TABLE,
@@ -503,9 +663,9 @@ mod tests {
 
     #[test]
     fn entry_count() {
-        // 9 + 4 + 2 + 1 + 4 + 1 + 4 = 25
+        // 9 + 4 + 2 + 1 + 5 (Balancer V2) + 5 (Balancer V3) + 4 + 1 + 4 = 35
         let total: usize = ALL_TABLES.iter().map(|t| t.len()).sum();
-        assert_eq!(total, 25);
+        assert_eq!(total, 35);
     }
 
     #[test]

@@ -58,8 +58,13 @@ pub enum ExtensionNamespace {
     AerodromeV1,
     #[serde(rename = "aerodrome.slipstream")]
     AerodromeSlipstream,
+    /// Balancer V2 Vault (singleton, `bytes32 poolId`).
     #[serde(rename = "balancer.vault")]
     BalancerVault,
+    /// Balancer V3 — 통합 namespace, `data.component` ∈ {`vault`, `batchRouter`, `compositeRouter`}.
+    /// V3는 Vault 재설계 + BatchRouter / CompositeRouter 별도 진입점.
+    #[serde(rename = "balancer.v3")]
+    BalancerV3,
     #[serde(rename = "curve.stableswap")]
     CurveStableswap,
     #[serde(rename = "1inch.aggregator")]
@@ -163,6 +168,7 @@ mod tests {
             ExtensionNamespace::AerodromeV1,
             ExtensionNamespace::AerodromeSlipstream,
             ExtensionNamespace::BalancerVault,
+            ExtensionNamespace::BalancerV3,
             ExtensionNamespace::CurveStableswap,
             ExtensionNamespace::OneInchAggregator,
             ExtensionNamespace::AaveV3,
@@ -196,7 +202,7 @@ mod tests {
             ExtensionNamespace::Weth,
             ExtensionNamespace::Safe,
         ];
-        assert_eq!(all.len(), 40, "ExtensionNamespace 40종 (DEX 10 + Lending 4 + LST 3 + Restaking 5 + RWA 4 + Governance 3 + NFT 3 + Vault 2 + Sign 3 + 토큰 2 + AA 1)");
+        assert_eq!(all.len(), 41, "ExtensionNamespace 41종 (DEX 11 + Lending 4 + LST 3 + Restaking 5 + RWA 4 + Governance 3 + NFT 3 + Vault 2 + Sign 3 + 토큰 2 + AA 1)");
         for ns in all {
             let s = serde_json::to_string(&ns).unwrap();
             let back: ExtensionNamespace = serde_json::from_str(&s).unwrap();

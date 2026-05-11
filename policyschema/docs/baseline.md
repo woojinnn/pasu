@@ -165,7 +165,7 @@ stETH ↔ wstETH·ETH ↔ WETH 같은 1:1 토큰 변환은 의미상 *교환*입
 
 ## 5. Extension namespace 정책
 
-총 **40종** namespace (v0.1 보강에서 13종 → 40종 확장). 명명 규칙은 `<protocol>.<component>` 또는 단일 `<protocol>` (component가 단일이거나 통합된 경우).
+총 **41종** namespace (v0.1 보강에서 13종 → 41종 확장; Balancer V3 추가). 명명 규칙은 `<protocol>.<component>` 또는 단일 `<protocol>` (component가 단일이거나 통합된 경우).
 
 | namespace | 카테고리 | 역할 |
 |---|---|---|

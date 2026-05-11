@@ -27,6 +27,8 @@ pub mod uniswap_v4;
 pub mod pancakeswap;
 pub mod aerodrome_v1;
 pub mod aerodrome_slipstream;
+pub mod balancer_v2;
+pub mod balancer_v3;
 pub mod aave_v3;
 pub mod morpho_blue;
 pub mod lido;

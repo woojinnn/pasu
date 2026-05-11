@@ -55,7 +55,7 @@ policyschema/
 │   │   ├── category.rs         # ActionCategory (13종)
 │   │   ├── kind.rs             # ActionType (72종)
 │   │   └── fields.rs           # 13 variant ActionFields (Swap/Liquidity/Lending/LiquidStaking/Restaking/Rwa/Governance/Nft/Vault/Utility/Aggregation/Sign/Unknown)
-│   ├── extension.rs            # Extension + ExtensionNamespace (40종)
+│   ├── extension.rs            # Extension + ExtensionNamespace (41종)
 │   ├── confidence.rs
 │   ├── raw.rs
 │   ├── dispatch.rs             # 스키마 영역 — DispatchKey/Entry/SemiAdapterId enum + sub-table const 배열
@@ -119,7 +119,7 @@ cargo doc --no-deps   # API 문서
 
 - **ActionType**: 72종
 - **ActionCategory**: 13종
-- **ExtensionNamespace**: 40종 (DEX 10·Lending 4·LST 3·Restaking 5·RWA 4·Governance 3·NFT 3·Vault 2·Sign 3·토큰 2·AA 1)
+- **ExtensionNamespace**: 41종 (DEX 11·Lending 4·LST 3·Restaking 5·RWA 4·Governance 3·NFT 3·Vault 2·Sign 3·토큰 2·AA 1)
 - **ActionFields variant**: 13 (카테고리 1:1)
 - **세미-어댑터 모듈**: 12 (uniswap_v2/v3/ur/v4·pancakeswap·aerodrome_v1/slipstream·aave_v3·morpho_blue·lido·sign + classify·common·registry·error)
 - **Dispatch table entry**: 25 (v0.1 스코프 — Uniswap V2 9 + V3 4 + UR 2 + Aerodrome V1 1 + Aave V3 4 + Morpho Blue 1 + Lido 4)

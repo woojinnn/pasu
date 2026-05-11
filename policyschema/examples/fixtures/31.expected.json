@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "policyschema-v0.1.0",
+  "request": { "kind": "transaction", "method": "eth_sendTransaction", "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0xbA1333333333a1BA1108E8412f11850A5C319bA9", "value": "0", "data": "0x2bfaa459" },
+  "targets": [
+    { "id": "t#v3vault", "address": "0xbA1333333333a1BA1108E8412f11850A5C319bA9", "chainId": 1, "role": "vault", "protocol": { "name": "balancer", "version": "v3", "component": "vault" }, "discoveredBy": "tx_to", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#pool", "address": "0x1234567890123456789012345678901234567890", "chainId": 1, "role": "pool", "discoveredBy": "calldata_arg", "verification": { "labelSource": "unknown", "abiAvailable": false, "contractVerified": false }, "confidence": "medium" },
+    { "id": "t#dai", "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F", "chainId": 1, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" },
+    { "id": "t#usdc", "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "chainId": 1, "role": "token", "discoveredBy": "calldata_arg", "verification": { "labelSource": "curated", "abiAvailable": true, "contractVerified": true }, "confidence": "high" }
+  ],
+  "decodedCalls": [
+    { "id": "c#0", "targetId": "t#v3vault", "callType": "external_call", "selector": "0x2bfaa459", "functionName": "swap", "args": { "params": { "kind": 0, "pool": "0x1234567890123456789012345678901234567890", "tokenIn": "0x6B175474E89094C44Da98b954EedeAC495271d0F", "tokenOut": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "amountGivenRaw": "1000000000000000000", "limitRaw": "990000", "userData": "0x" } }, "value": "0", "decodeSource": "verified_abi", "confidence": "high" }
+  ],
+  "actions": [
+    { "id": "a#0", "category": "swap", "type": "swap", "primaryTargetId": "t#v3vault", "relatedTargetIds": ["t#pool", "t#dai", "t#usdc"], "derivedFromCallIds": ["c#0"], "fields": { "kind": "swap", "actor": "0x1111111111111111111111111111111111111111", "protocolIds": ["balancer.v3"], "inputTokens": [{ "chainId": 1, "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F", "symbol": "DAI", "decimals": 18, "isNative": false }], "outputTokens": [{ "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6, "isNative": false }], "mode": "exact_in", "amountIn": { "raw": "1000000000000000000", "kind": "Exact" }, "amountOut": { "raw": "990000", "kind": "Min" }, "route": { "kind": "single_hop", "hop": { "id": "h#0", "protocol": "balancer.v3", "tokenIn": { "chainId": 1, "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F", "symbol": "DAI", "decimals": 18, "isNative": false }, "tokenOut": { "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6, "isNative": false }, "pool": "t#pool-0x1234567890123456789012345678901234567890", "confidence": "high" } }, "slippage": { "source": "calldata", "amountOutMin": { "raw": "990000", "kind": "Min" } }, "settlement": "router", "recipients": { "recipient": { "kind": "actor" }, "recipientEqualsActor": true, "hasExternalRecipient": false }, "deadlines": {}, "hasZeroMinOutput": false }, "extensionIds": ["e#v3"], "confidence": "high" }
+  ],
+  "extensions": [
+    { "id": "e#v3", "scope": { "kind": "action", "actionId": "a#0" }, "namespace": "balancer.v3", "version": "1", "data": { "component": "vault", "userData": "0x" }, "confidence": "high" }
+  ],
+  "confidence": { "overall": "high", "stages": {}, "notes": ["Balancer V3 Vault single swap. V2와 달리 bytes32 poolId 대신 address pool 직접 사용."] },
+  "raw": { "tx": { "chainId": 1, "from": "0x1111111111111111111111111111111111111111", "to": "0xbA1333333333a1BA1108E8412f11850A5C319bA9", "value": "0", "data": "0x2bfaa459" }, "calldata": "0x2bfaa459" }
+}
