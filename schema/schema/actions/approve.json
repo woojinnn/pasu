@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema_v101/actions/approve.json",
   "title": "ApproveAction",
-  "description": "ERC-20 / ERC-721 / ERC-1155 approve 및 Permit2 approval 의 통합 표현. 대부분의 DEX/Lending/RWA action 의 prerequisite 이자 정책상 가장 위험한 action 중 하나 (unlimited approval, 알 수 없는 spender 가 phishing 의 핵심 신호).",
+  "description": "amount 기반 token 위임 — ERC-20 approve / increaseAllowance / decreaseAllowance / Permit2 approve. 대부분의 DEX/Lending/RWA action 의 prerequisite 이자 정책상 가장 위험한 action 중 하나 (unlimited approval, 알 수 없는 spender 가 phishing 의 핵심 신호). NFT collection 전체에 대한 boolean 위임 (setApprovalForAll) 은 위험 모델과 calldata shape 가 달라 별도 set_approval_for_all action 으로 분리.",
 
   "type": "object",
   "properties": {
@@ -28,8 +28,8 @@
 
     "approvalKind": {
       "type": "string",
-      "enum": ["erc20", "erc20_increase", "erc20_decrease", "erc721", "erc1155", "permit2"],
-      "description": "approve 메소드의 종류. erc20 = 기본 approve, erc20_increase / erc20_decrease = OpenZeppelin (OZ) 의 안전 변형, erc721 / erc1155 = NFT 표준, permit2 = Uniswap Permit2."
+      "enum": ["erc20", "erc20_increase", "erc20_decrease", "permit2"],
+      "description": "approve 메소드의 종류. erc20 = 기본 ERC-20 approve(spender, amount), erc20_increase / erc20_decrease = OpenZeppelin (OZ) 의 안전 변형 (기존 allowance 와의 delta), permit2 = Uniswap Permit2 컨트랙트의 on-chain approve(token, spender, amount, expiration)."
     },
 
     "currentAllowance": {
