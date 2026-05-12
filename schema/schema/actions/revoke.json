@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/revoke.json",
+  "$id": "schema/actions/revoke.json",
   "title": "RevokeAction",
-  "description": "이전에 부여한 권한을 회수하는 동작. caller 가 자신의 권한 (allowance, credit delegation, position manager role, manager role) 을 0 으로 reset. Aave V3 의 V3.6 신규 IncentivizedERC20.renounceAllowance (`erc20_allowance` kind), DebtTokenBase.renounceDelegation (`credit_delegation` kind), Pool.renouncePositionManagerRole (`position_manager_role` kind), Compound V3 의 allow(false) / approve(spender, 0) (`manager_role` kind, set_authorization 의 isAuthorized=false 와 의미 중복 — adapter 단계 통합), Morpho Blue 의 setAuthorization(false) 흡수. revoke 는 alert / allow 룰 — phishing 1차 신호의 사후 정리.",
+  "description": "이전에 부여받은 권한을 *권한 받은 측* (spender / delegatee / position manager) 이 자발적으로 정리하는 동작. caller = 권한 수령자 → 자기 권한 자기-반납. owner / authorizer 측의 회수 (`approve(spender, 0)`, `set_authorization(isAuthorized=false)`) 와 *actor 가 반대* 이므로 별도 action — approve(0) / set_authorization(false) 로 표현 불가. Aave V3.6 의 `IncentivizedERC20.renounceAllowance` (`erc20_allowance` kind, caller=spender), `DebtTokenBase.renounceDelegation` (`credit_delegation` kind, caller=delegatee), `Pool.renouncePositionManagerRole` (`position_manager_role` kind, caller=position manager), Compound V3 의 `allow(false)` / `approve(spender, 0)` (`manager_role` kind, caller=owner — 본 케이스만 예외적으로 set_authorization(false) 와 actor 동일, adapter 가 통합 매핑 권고) 흡수. revoke 는 alert / allow 룰 — phishing 1차 신호의 사후 정리.",
 
   "type": "object",
   "properties": {
     "target": {
       "type": "object",
-      "description": "권한 회수 대상 contract / token / market 식별자.",
+      "description": "권한 회수 대상 contract / token / market 식별자. label 은 host:registry 보강.",
       "properties": {
         "address": { "$ref": "../common/_common.json#/$defs/Address" },
         "label": { "type": "string" }

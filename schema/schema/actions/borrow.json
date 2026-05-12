@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/borrow.json",
+  "$id": "schema/actions/borrow.json",
   "title": "BorrowAction",
-  "description": "Lending market 에서 자산을 차입하는 동작. Aave V3 Pool.borrow / WrappedTokenGatewayV3.borrowETH (V3.6: interestRateMode = VARIABLE 만 유효, stable rate 완전 제거), Compound V3 Comet.withdraw* (asset=base + amount>userBaseSupply, 별도 borrow 함수 부재 — adapter 가 host:onchain balanceOf 조회로 분기), Morpho Blue Morpho.borrow (단일 IRM plug-in) 흡수. 차입은 HealthFactor (HF) check + onBehalf 의 credit delegation / authorization 사전 의무. Cedar 정책 'unknown delegatee borrow 차단' 핵심.",
+  "description": "Lending market 에서 자산을 차입하는 동작. Aave V3 Pool.borrow / WrappedTokenGatewayV3.borrowETH (V3.6: interestRateMode = VARIABLE 만 유효, stable rate 완전 제거), Compound V3 Comet.withdraw* (asset=base + amount>userBaseSupply, 별도 borrow 함수 부재 — adapter 가 host:onchain balanceOf 조회로 분기), Morpho Blue Morpho.borrow (단일 IRM plug-in) 흡수. 차입은 HealthFactor (HF) check + onBehalf 의 credit delegation / authorization 사전 의무. 정책 'unknown delegatee borrow 차단' 핵심.",
 
   "type": "object",
   "properties": {
     "market": {
       "type": "object",
-      "description": "차입 대상 market 식별자.",
+      "description": "차입 대상 market 식별자. supply.market 과 동일 구조 (address / id / label — label 은 host:registry 보강).",
       "properties": {
         "address": { "$ref": "../common/_common.json#/$defs/Address" },
         "id": { "$ref": "../common/_common.json#/$defs/Hex" },

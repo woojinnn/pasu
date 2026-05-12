@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/repay.json",
+  "$id": "schema/actions/repay.json",
   "title": "RepayAction",
   "description": "Lending market 에서 차입을 상환하는 동작. Aave V3 Pool.repay / repayWithPermit / repayWithATokens / WrappedTokenGatewayV3.repayETH, Compound V3 Comet.supply* (asset=base + dst borrow>0, 별도 repay 함수 부재 — adapter 가 host:onchain borrowBalanceOf 조회로 분기), Morpho Blue Morpho.repay 흡수. partition-한정 kind `repayKind`: debt_asset (universal — underlying asset 직접 상환), atoken_direct (Aave V3 unique — aToken 직접 burn, underlying transfer 없음).",
 
@@ -8,7 +8,7 @@
   "properties": {
     "market": {
       "type": "object",
-      "description": "상환 대상 market 식별자.",
+      "description": "상환 대상 market 식별자. supply.market 과 동일 구조 (address / id / label — label 은 host:registry 보강).",
       "properties": {
         "address": { "$ref": "../common/_common.json#/$defs/Address" },
         "id": { "$ref": "../common/_common.json#/$defs/Hex" },

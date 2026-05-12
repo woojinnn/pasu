@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/flash_loan.json",
+  "$id": "schema/actions/flash_loan.json",
   "title": "FlashLoanAction",
   "description": "Lending pool 의 자산을 1 tx 안에서 빌리고 callback 안에서 임의 operation 후 같은 tx 안 상환하는 동작. Aave V3 Pool.flashLoan (multi-asset, V3.6 부터 interestRateModes[] 모두 0 만 허용 — debt-from-flashLoan 경로 deprecated) / Pool.flashLoanSimple (single-asset), Morpho Blue Morpho.flashLoan (무수수료, single asset) 흡수. Compound V3 부재 (지원 없음). DEX 카테고리 flash_loan 와 universal — Lending 에서 재사용. callback 안 atomic intent 시퀀스는 receiver-specific (adapter 의 receiver registry 로 추가 분해).",
 
@@ -8,7 +8,7 @@
   "properties": {
     "pool": {
       "type": "object",
-      "description": "flash loan 발행 pool / market 식별자. Aave Pool, Morpho singleton.",
+      "description": "flash loan 발행 pool / market 식별자. Aave Pool, Morpho singleton. label 은 host:registry 보강.",
       "properties": {
         "address": { "$ref": "../common/_common.json#/$defs/Address" },
         "id": { "$ref": "../common/_common.json#/$defs/Hex" },
