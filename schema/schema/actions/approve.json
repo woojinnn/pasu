@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/approve.json",
+  "$id": "schema/actions/approve.json",
   "title": "ApproveAction",
   "description": "amount 기반 token 위임 — ERC-20 approve / increaseAllowance / decreaseAllowance / Permit2 approve. 대부분의 DEX/Lending/RWA action 의 prerequisite 이자 정책상 가장 위험한 action 중 하나 (unlimited approval, 알 수 없는 spender 가 phishing 의 핵심 신호). NFT collection 전체에 대한 boolean 위임 (setApprovalForAll) 은 위험 모델과 calldata shape 가 달라 별도 set_approval_for_all action 으로 분리.",
 

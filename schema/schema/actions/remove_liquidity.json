@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/remove_liquidity.json",
+  "$id": "schema/actions/remove_liquidity.json",
   "title": "RemoveLiquidityAction",
   "description": "Pool 의 fungible ERC-20 LP/BPT 를 소각하고 underlying 토큰을 회수하는 동작. Uniswap V2 / PancakeSwap V2 / Aerodrome / SushiSwap V2 의 removeLiquidity, Curve 의 remove_liquidity 변형 (proportional / imbalance / one_coin), Balancer V2 exitPool / V3 removeLiquidity* 를 흡수. V3/V4 NFT 의 internal liquidity 감소는 decrease_liquidity, NFT 소각은 burn_liquidity_nft 로 분리.",
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/increase_liquidity.json",
+  "$id": "schema/actions/increase_liquidity.json",
   "title": "IncreaseLiquidityAction",
   "description": "Uniswap V3 NPM.increaseLiquidity 또는 Uniswap V4 PositionManager 의 INCREASE_LIQUIDITY action 한정 — 기존 ERC-721 position 의 internal liquidity 를 증가시키는 동작. wallet 의 NFT 보유 수는 불변, NFT 의 mutable state 만 변화. 새 NFT 발행은 mint_liquidity_nft 로 분리.",
 

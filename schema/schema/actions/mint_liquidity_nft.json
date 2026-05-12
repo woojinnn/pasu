@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/mint_liquidity_nft.json",
+  "$id": "schema/actions/mint_liquidity_nft.json",
   "title": "MintLiquidityNftAction",
   "description": "Uniswap V3 NonfungiblePositionManager (NPM) 의 mint, Uniswap V4 PositionManager 의 MINT_POSITION action 한정 — 새 ERC-721 liquidity position 을 발행하는 동작. Concentrated liquidity 의 tick range 를 신규 설정한다. 기존 NFT 의 liquidity 추가는 increase_liquidity 로 분리.",
 

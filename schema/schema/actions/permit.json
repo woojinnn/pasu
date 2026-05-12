@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/permit.json",
+  "$id": "schema/actions/permit.json",
   "title": "PermitAction",
   "description": "EIP-712 typed-data 서명 기반의 토큰 권한 부여 또는 단발 이전. EIP-2612 permit 의 서명, Uniswap Permit2 의 PermitSingle (allowance grant) 및 PermitTransferFrom (단발 transfer) 의 서명을 통합 표현. requestKind=signature 시점의 의도 + requestKind=transaction 에서 on-chain 으로 relay 될 때 모두 적용. 보통 category=misc 로 라벨링. signature phishing 의 핵심 표면 — unlimited grant + 미식별 spender + 긴 만료 결합이 가장 위험.",
 

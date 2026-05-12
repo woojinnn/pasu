@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/sign_message.json",
+  "$id": "schema/actions/sign_message.json",
   "title": "SignMessageAction",
   "description": "requestKind=signature 의 EIP-712 typed data 서명 — permit / order / vote / login 등 다양한 의도가 같은 envelope 를 통해 서명된다. 본 action 은 *envelope (domain + primaryType + messageDigest) 만* 표현 — message body 는 dApp 마다 schema 가 달라 universal 화 불가능. 의미 분석이 필요한 경우 (예: Permit2 PermitSingle → permit, OpenSea OrderComponents → 향후 NFT category action) 별도 action 으로 분기. 본 action 은 미식별 / fallback typed data 의 안전판 표면 — 'verifyingContract whitelist' 같은 envelope-level 정책 적용용. 보통 category=misc 로 라벨링.",
 

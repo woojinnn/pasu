@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/common/_common.json",
-  "title": "schema_v101 — common primitives",
+  "$id": "schema/common/_common.json",
+  "title": "common primitives",
   "description": "여러 schema 파일이 공유하는 기본 자료형. Address / Hex / DecimalString / AssetRef / AmountConstraint / Validity 6종. Oracle / User Portfolio 데이터는 schema 인스턴스 생성 이후 별도 enrichment 단계에서 다루므로 본 표면에는 없음.",
 
   "$defs": {

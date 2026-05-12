@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/wrap.json",
+  "$id": "schema/actions/wrap.json",
   "title": "WrapAction",
   "description": "native 자산을 wrapped ERC-20 으로 변환하는 동작. WETH9.deposit, UR WRAP_ETH opcode, V4 Router WRAP action 등 함수는 다양하지만 사용자 의미는 동일.",
 

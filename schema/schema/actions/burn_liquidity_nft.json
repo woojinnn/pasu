@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/burn_liquidity_nft.json",
+  "$id": "schema/actions/burn_liquidity_nft.json",
   "title": "BurnLiquidityNftAction",
   "description": "Uniswap V3 NPM.burn 또는 Uniswap V4 BURN_POSITION action 한정 — ERC-721 position 을 소각하는 동작. V3 와 V4 의 동작 의미가 다르므로 burnKind 로 구분한다 (V3 = 빈 NFT 정리만, V4 = liquidity 감소 + token 회수 + NFT 소각 atomic).",
 

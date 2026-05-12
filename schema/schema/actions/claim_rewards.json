@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/claim_rewards.json",
+  "$id": "schema/actions/claim_rewards.json",
   "title": "ClaimRewardsAction",
   "description": "특정 source 에 누적된 보상 토큰을 recipient 로 회수하는 동작. Uniswap V3/V4 NPM 의 collect (position 의 누적 fee), Aave V3 RewardsController.claimRewards 와 Compound V3 CometRewards.claim (lending 인센티브), Curve gauge.claim_rewards (yield/gauge), Pendle SY.redeemRewards (yield) 등이 모두 본 shape 으로 정규화. category 는 root.actions[].category 에 따라 dex/lending/yield/restaking 등으로 라벨링. protocol-specific 디테일 (Aave 의 aToken assets[], V3 NPM 의 amountMax 분리, Compound 의 shouldAccrue 플래그 등) 은 본 misc action 에 미포함 — 각 category 의 별도 claim action 으로 위임.",
 

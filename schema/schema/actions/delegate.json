@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/delegate.json",
+  "title": "DelegateAction",
+  "description": "ERC20Votes 계열 governance 토큰의 voting power 위임. delegate(delegatee) 또는 delegateBySig / metaDelegate 의 signature 변형. 자산 자체는 이동하지 않지만 *투표 가중치* 가 delegatee 로 위임됨 — phishing 사이트가 'activate voting' 명목으로 attacker 에게 가중치를 모으는 위협 표면. self-delegation (delegatee=root.from) 은 일부 토큰의 정상 활성화 패턴.",
+
+  "type": "object",
+  "properties": {
+    "token": {
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "위임 대상 governance 토큰 (kind=erc20). 정책 'whitelist 된 governance 토큰만 허용' 분기."
+    },
+
+    "delegatee": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "위임 받는 주소 — root.from 의 voting power 가 본 주소로 이관됨. 정책 'delegatee == root.from || delegatee in known_delegates' 의 핵심."
+    },
+
+    "delegateeLabel": {
+      "type": "string",
+      "description": "host:registry 가 채우는 delegatee 라벨 (예: 'Tally:GFXLabs', 'Compound Treasury'). 알려진 delegate forum / curator 식별. null = 미식별, 차단 신호."
+    },
+
+    "currentDelegate": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "host:onchain 이 호출 직전 delegates(root.from) 단일 RPC 로 채우는 직전 위임 대상. 정책 'state 가 실제 변하는 호출만 허용' (redundant delegation 차단) 또는 'currentDelegate ≠ 0 인데 새 delegatee 가 unknown' 같은 분기."
+    },
+
+    "votingPower": {
+      "$ref": "../common/_common.json#/$defs/DecimalString",
+      "description": "host:onchain 이 채우는 root.from 의 현재 잔액 (= 위임될 voting weight). ERC20Votes 표준에선 delegate 시점의 balance 가 그대로 weight 로 위임됨. 정책 '대량 weight 위임 시 strict whitelist' 분기."
+    },
+
+    "powerType": {
+      "type": "string",
+      "enum": ["voting", "proposition"],
+      "description": "Aave 류 split-power 토큰 한정 — VOTING power (proposal 투표) 와 PROPOSITION power (proposal 제안) 가 별도 위임. 일반 ERC20Votes 토큰 (Compound / UNI / ENS / ARB / OP / Frax 등) 은 본 필드 부재 (= 단일 power 위임)."
+    },
+
+    "validity": {
+      "$ref": "../common/_common.json#/$defs/Validity",
+      "description": "delegateBySig / metaDelegate / metaDelegateByType 의 signature expiry. source=signature-deadline. on-chain delegate(address) 호출은 본 필드 부재. 정책 '서명 relay 시한 짧게' 분기."
+    }
+  },
+
+  "required": ["token", "delegatee"]
+}

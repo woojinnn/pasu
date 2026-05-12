@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/unwrap.json",
+  "$id": "schema/actions/unwrap.json",
   "title": "UnwrapAction",
   "description": "wrapped ERC-20 을 native 자산으로 되돌리는 동작. WETH9.withdraw, V3 SwapRouter.unwrapWETH9, UR UNWRAP_WETH opcode, V4 Router UNWRAP action 등이 모두 본 shape 으로 정규화됨.",
 

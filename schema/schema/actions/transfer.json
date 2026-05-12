@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/transfer.json",
+  "$id": "schema/actions/transfer.json",
   "title": "TransferAction",
   "description": "ERC-20 / ERC-721 / ERC-1155 토큰을 다른 주소로 직접 이전하는 동작. ERC-20 transfer, ERC-20/721 transferFrom, ERC-721/1155 safeTransferFrom 등 표준 토큰 이전 함수의 직접 호출 (tx.to = 토큰 컨트랙트) 한정. swap / liquidity / wrap 등 다른 action 의 *결과로 발생하는* 토큰 이동은 본 action 으로 표현하지 않는다 (그쪽 action 의 recipient 필드로 표현). 보통 category=misc 로 라벨링.",
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/set_approval_for_all.json",
+  "$id": "schema/actions/set_approval_for_all.json",
   "title": "SetApprovalForAllAction",
   "description": "ERC-721 / ERC-1155 의 setApprovalForAll(operator, approved) — NFT collection *전체* 에 대한 boolean 권한 위임. approved=true 면 operator 가 해당 collection 의 현재/미래 모든 NFT 를 자유 이동 가능 (위험 표면이 unlimited ERC-20 approve 보다 큼). NFT 단일 approve(to, tokenId) 와는 의미가 다르므로 별도 action 으로 분리.",
 

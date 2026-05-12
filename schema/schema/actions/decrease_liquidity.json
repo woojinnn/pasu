@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/decrease_liquidity.json",
+  "$id": "schema/actions/decrease_liquidity.json",
   "title": "DecreaseLiquidityAction",
   "description": "Uniswap V3 NPM.decreaseLiquidity 또는 Uniswap V4 PositionManager 의 DECREASE_LIQUIDITY action 한정 — 기존 ERC-721 position 의 internal liquidity 를 감소시키는 동작. V3 의 경우 결과 토큰이 NFT 의 tokensOwed 에 적립되며 wallet 자산은 즉시 변하지 않음 (회수는 별도 collect 가 필요). V4 의 경우 같은 action 안에서 TAKE 까지 묶여 atomic 으로 wallet 으로 옴.",
 

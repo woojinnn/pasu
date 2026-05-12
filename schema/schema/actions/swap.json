@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/swap.json",
+  "$id": "schema/actions/swap.json",
   "title": "SwapAction",
   "description": "tokenIn 을 tokenOut 으로 한 번 교환하는 동작. DEX (Uniswap/Curve/Balancer 등) 외에도 Liquid Staking (Lido 의 stETH ↔ wstETH), RWA (LBTC ↔ WBTC 1:1 minting), 일부 Lending 의 collateral swap routing 등에서 등장. 실제 발생 맥락은 root.actions[].category 로 구분.",
 
