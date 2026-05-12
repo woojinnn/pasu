@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/withdraw.json",
+  "$id": "schema/actions/withdraw.json",
   "title": "WithdrawAction",
   "description": "Lending market 에서 supply position 의 자산을 회수하는 동작. Aave V3 Pool.withdraw / WrappedTokenGatewayV3.withdrawETH(+permit), Compound V3 Comet.withdraw / withdrawTo / withdrawFrom (asset=collateral 또는 asset=base + amount≤userBaseSupply), Morpho Blue Morpho.withdraw (loan asset), Bundler ACTION_WITHDRAW_* 흡수. Compound 의 withdraw(base, amount>balance) 케이스는 adapter 가 borrow 로 재분기 — withdraw schema 인스턴스는 amount ≤ balance 케이스만. Morpho 의 withdrawCollateral 는 별도 withdraw_collateral.",
 
@@ -8,7 +8,7 @@
   "properties": {
     "market": {
       "type": "object",
-      "description": "회수 대상 market 식별자. supply.market 과 동일 구조.",
+      "description": "회수 대상 market 식별자. supply.market 과 동일 구조 (address / id / label — label 은 host:registry 보강).",
       "properties": {
         "address": { "$ref": "../common/_common.json#/$defs/Address" },
         "id": { "$ref": "../common/_common.json#/$defs/Hex" },
@@ -30,7 +30,7 @@
       "type": "string",
       "enum": ["assets", "shares"],
       "default": "assets",
-      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0 한정): amount 가 burn 할 supply share 양 — derive 되는 자산 양은 현재 ratio 기반 변동. 정책 'amountMode == shares 차단' 으로 Morpho dialect 의 share-mode withdraw 회피 권장."
+      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0, 또는 Euler V2 ERC-4626 `Vault.withdraw(amount, receiver, owner)`): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0, 또는 Euler V2 ERC-4626 `Vault.redeem(shares, receiver, owner)`): amount 가 burn 할 supply share 양 — derive 되는 자산 양은 현재 ratio 기반 변동. 정책 'amountMode == shares 차단' 으로 share-mode withdraw 회피 권장."
     },
 
     "recipient": {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/sign_authorization.json",
+  "$id": "schema/actions/sign_authorization.json",
   "title": "SignAuthorizationAction",
   "description": "Lending position 권한 위임의 EIP-712 typed data 서명 동작 (off-chain wallet sign event — eth_signTypedData). 후속 tx 에서 sig (v, r, s) 가 calldata 로 전달되어 on-chain 검증. Aave V3 VariableDebtToken.delegationWithSig (DelegationWithSig typed data, debt_only scope), Compound V3 CometExt.allowBySig (Authorization typed data, manager_role scope), Morpho Blue Morpho.setAuthorizationWithSig (Authorization typed data, all scope) 흡수. set_authorization 의 sign-only variant — root.requestKind='signature' 와 결합.",
 
@@ -8,7 +8,7 @@
   "properties": {
     "market": {
       "type": "object",
-      "description": "서명 대상 market / contract 식별자. EIP-712 domain 의 verifyingContract 매핑.",
+      "description": "서명 대상 market / contract 식별자. EIP-712 domain 의 verifyingContract 매핑. label 은 host:registry 보강.",
       "properties": {
         "address": { "$ref": "../common/_common.json#/$defs/Address" },
         "label": { "type": "string" }
@@ -33,7 +33,7 @@
     "authorizationScope": {
       "type": "string",
       "enum": ["all", "debt_only", "manager_role"],
-      "description": "set_authorization 와 동일 분기. EIP-712 typed data 의 typeHash 다름:\n- all (Morpho): keccak256('Authorization(address authorizer,address authorized,bool isAuthorized,uint256 nonce,uint256 deadline)')\n- debt_only (Aave): keccak256('DelegationWithSig(address delegatee,uint256 value,uint256 nonce,uint256 deadline)')\n- manager_role (Compound): keccak256('Authorization(address owner,address manager,bool isAllowed,uint256 nonce,uint256 expiry)')\nhost adapter 가 (chainId, verifyingContract) → typeHash 매핑으로 식별."
+      "description": "EIP-712 typed data 의 typeHash 다름 (3 variant — set_authorization 의 `position_manager_role` 은 Aave V3.6 에서 sig 변형 부재 (`approvePositionManager` on-chain only) 로 본 enum 미포함):\n- all (Morpho): keccak256('Authorization(address authorizer,address authorized,bool isAuthorized,uint256 nonce,uint256 deadline)')\n- debt_only (Aave): keccak256('DelegationWithSig(address delegatee,uint256 value,uint256 nonce,uint256 deadline)')\n- manager_role (Compound): keccak256('Authorization(address owner,address manager,bool isAllowed,uint256 nonce,uint256 expiry)')\nhost adapter 가 (chainId, verifyingContract) → typeHash 매핑으로 식별."
     },
 
     "amount": {

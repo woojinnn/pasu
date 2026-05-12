@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "schema_v101/actions/supply.json",
+  "$id": "schema/actions/supply.json",
   "title": "SupplyAction",
   "description": "Lending market 에 자산을 예치하는 동작. Aave V3 Pool.supply / supplyWithPermit / deposit-alias / WrappedTokenGatewayV3.depositETH, Compound V3 Comet.supply / supplyTo / supplyFrom (asset=collateral 또는 base + dst borrow=0), Morpho Blue Morpho.supply (loan asset, 이자 누적), Bundler ACTION_SUPPLY_* 를 흡수. Morpho 의 supplyCollateral 는 resource model 다르므로 별도 supply_collateral 로 분리.",
 
@@ -39,7 +39,7 @@
       "type": "string",
       "enum": ["assets", "shares"],
       "default": "assets",
-      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0 한정): amount 가 receive 받을 supply share 양 — share-to-asset ratio 변동 가능. inflation / donation 공격 표면. 정책 'amountMode == shares 차단' 으로 retail 사용자 보호 권장 (대부분 retail flow 는 assets mode)."
+      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0, 또는 Euler V2 ERC-4626 `Vault.deposit(amount, receiver)`): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0, 또는 Euler V2 ERC-4626 `Vault.mint(shares, receiver)`): amount 가 receive 받을 supply share 양 — share-to-asset ratio 변동 가능. inflation / donation 공격 표면. 정책 'amountMode == shares 차단' 으로 retail 사용자 보호 권장 (대부분 retail flow 는 assets mode)."
     },
 
     "recipient": {
@@ -47,9 +47,9 @@
       "description": "supply position 소유자 (onBehalf). default = root.from. Aave 의 onBehalfOf, Compound 의 dst, Morpho 의 onBehalf 매핑. root.from 과 다르면 third-party supply — 정책 'recipient == root.from' 권고."
     },
 
-    "fundSource": {
+    "from": {
       "$ref": "../common/_common.json#/$defs/Address",
-      "description": "자산 출처 (default = root.from). Compound V3 `Comet.supplyFrom(from, dst, asset, amount)` 의 `from` 파라미터 매핑 — msg.sender 가 `from.allow(msg.sender, true)` 사전 권한 의무 (3자 model). Aave / Morpho 의 supply 는 항상 msg.sender 가 출처 — 본 field 생략. root.from 과 다르면 third-party fund pull — phishing 1차 신호 (`fundSource == victim && recipient == attacker` 패턴), 정책 'fundSource == root.from' 강력 권장."
+      "description": "자산 출처 (default = root.from). transfer.from / claim_rewards.from 와 동일 패턴 (conventions.md §1.7) — calldata 의 3-party 인자, 사전 권한 (allowance / authorization) 필요. Compound V3 `Comet.supplyFrom(from, dst, asset, amount)` 의 `from` 파라미터 매핑 — msg.sender 가 `from.allow(msg.sender, true)` 사전 권한 의무 (3자 model). Aave / Morpho 의 supply 는 항상 msg.sender 가 출처 — 본 field 생략. root.from 과 다르면 third-party fund pull — phishing 1차 신호 (`from == victim && recipient == attacker` 패턴), 정책 'from == root.from' 강력 권장."
     },
 
     "validity": {
