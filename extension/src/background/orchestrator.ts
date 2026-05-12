@@ -15,7 +15,7 @@ import {
   type PendingRequest,
 } from "./storage";
 import {
-  buildAction,
+  buildActionForRequest,
   evaluate,
   EngineError,
   tier1FactPlan,
@@ -23,6 +23,7 @@ import {
 } from "./wasm-bridge";
 import type {
   DexAction,
+  OtherAction,
   ParsedAction,
   Tier1Plan,
   VerdictDto,
@@ -137,7 +138,11 @@ async function decideInner(
       // Surface the matched policies in a popup so the user understands
       // why the dApp's transaction returned 4001. The popup is
       // informational — Fail decisions don't take user input.
-      void openVerdictWindow(message.requestId, message.data.hostname, verdict);
+      await openVerdictWindow(
+        message.requestId,
+        message.data.hostname,
+        verdict,
+      );
     } else {
       // Warn: open the modal and await the user's Trust-and-proceed / Cancel.
       ok = await openVerdictWindowAndAwait(
@@ -167,10 +172,12 @@ async function appendAudit(
   type: PendingRequest["type"],
   verdict: VerdictDto,
 ): Promise<void> {
+  logDecision(message, verdict);
   await auditAppend({
     requestId: message.requestId,
     hostname: message.data.hostname,
     type,
+    bypassed: "bypassed" in message.data && !!message.data.bypassed,
     verdict: verdict.kind,
     matchedPolicies:
       verdict.matched?.map((m) => ({
@@ -179,6 +186,48 @@ async function appendAudit(
       })) ?? [],
     decidedAtMs: Date.now(),
   });
+}
+
+function logDecision(message: Message, verdict: VerdictDto): void {
+  const matchedPolicies =
+    verdict.matched?.map((m) => ({
+      id: m.policy_id,
+      severity: m.severity,
+    })) ?? [];
+  const common = {
+    requestId: message.requestId,
+    hostname: message.data.hostname,
+    bypassed: "bypassed" in message.data && !!message.data.bypassed,
+    verdict: verdict.kind,
+    matchedPolicies,
+  };
+
+  if (isTransaction(message)) {
+    console.info("[Scopeball] tx", {
+      ...common,
+      chainId: message.data.chainId,
+      to: message.data.transaction.to,
+      data: message.data.transaction.data?.slice(0, 18),
+    });
+    return;
+  }
+
+  if (isTypedSignature(message)) {
+    console.info("[Scopeball] typed-sig", {
+      ...common,
+      chainId: message.data.chainId,
+      primaryType: (message.data.typedData as { primaryType?: string })
+        ?.primaryType,
+    });
+    return;
+  }
+
+  if (isUntypedSignature(message)) {
+    console.info("[Scopeball] personal-sign", {
+      ...common,
+      messageLen: message.data.message.length,
+    });
+  }
 }
 
 async function reserveDexDeltaIfNeeded(
@@ -210,11 +259,14 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   }
 
   // Phase A: build action (no host needed).
-  const actionParsed: ParsedAction = await buildAction(JSON.parse(requestJson));
+  const actionParsed: ParsedAction = await buildActionForRequest(
+    JSON.parse(requestJson),
+  );
 
   // Phase B: derive Tier-1 plan and fetch facts.
   const plan: Tier1Plan = await tier1FactPlan(actionParsed);
   const tier1 = await fetchTier1(plan);
+  logActionContext(message, actionParsed, plan, tier1);
   warnMissingOracleEntries(message, plan, tier1.oracle);
 
   // Phase C: tier-2 window keys derived from oracle snapshot.
@@ -256,6 +308,78 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   const verdict = await evaluate(JSON.parse(requestJson), snapshot);
   const dexWindowEntries = computeDexWindowEntries(actionParsed, tier1.oracle);
   return dexWindowEntries ? { verdict, dexWindowEntries } : { verdict };
+}
+
+function logActionContext(
+  message: Message,
+  actionParsed: ParsedAction,
+  plan: Tier1Plan,
+  tier1: Awaited<ReturnType<typeof fetchTier1>>,
+): void {
+  const base: Record<string, unknown> = {
+    requestId: message.requestId,
+    hostname: message.data.hostname,
+    actionKind: actionKind(actionParsed),
+    txTo: isTransaction(message) ? message.data.transaction.to : undefined,
+    tier1: {
+      tokensForOracle: plan.tokens_for_oracle.map((token) => ({
+        tokenKey: tokenKey({
+          chainId: token.chain_id,
+          address: token.address,
+          isNative: token.is_native,
+        }),
+        symbol: token.symbol,
+      })),
+      oracleEntries: tier1.oracle.map((entry) => ({
+        tokenKey: entry.token_key,
+        usdPerUnit: entry.usd_per_unit,
+        staleSec: entry.stale_sec,
+      })),
+      balances: tier1.balances.length,
+      allowances: tier1.allowances.length,
+    },
+  };
+
+  if (isParsedDexAction(actionParsed)) {
+    base.dex = {
+      target: actionParsed.dex.target,
+      protocolIds: [...actionParsed.dex.facts.protocol_ids],
+      inputTokens: actionParsed.dex.facts.input_tokens.map((token) => ({
+        tokenKey: tokenKey({
+          chainId: token.chain_id,
+          address: token.address,
+          isNative: token.is_native,
+        }),
+        symbol: token.symbol,
+      })),
+      oracleRequirements: actionParsed.dex.oracle_requirements.map((req) => ({
+        kind: req.kind,
+        tokenKey: tokenKey({
+          chainId: req.token.chain_id,
+          address: req.token.address,
+          isNative: req.token.is_native,
+        }),
+        symbol: req.token.symbol,
+        rawAmount: req.raw_amount,
+      })),
+      trace: actionParsed.dex.trace.steps.slice(0, 8),
+    };
+  } else if (isParsedOtherAction(actionParsed)) {
+    base.other = {
+      target: actionParsed.other.target,
+      selector: actionParsed.other.selector,
+    };
+  }
+
+  console.info("[Scopeball] action", base);
+}
+
+function actionKind(actionParsed: ParsedAction): string {
+  if ("dex" in actionParsed) return "dex";
+  if ("other" in actionParsed) return "other";
+  if ("permit2" in actionParsed) return "permit2";
+  if ("eip2612" in actionParsed) return "eip2612";
+  return "eip712Other";
 }
 
 function warnMissingOracleEntries(
@@ -334,6 +458,12 @@ function isParsedDexAction(
   actionParsed: ParsedAction,
 ): actionParsed is ParsedAction & { readonly dex: DexAction } {
   return "dex" in actionParsed && actionParsed.dex !== undefined;
+}
+
+function isParsedOtherAction(
+  actionParsed: ParsedAction,
+): actionParsed is ParsedAction & { readonly other: OtherAction } {
+  return "other" in actionParsed && actionParsed.other !== undefined;
 }
 
 function computeDexInputUsd(

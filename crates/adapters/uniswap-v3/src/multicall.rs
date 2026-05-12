@@ -93,7 +93,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
-/// Adapter for `SwapRouter` multicall expansion.
+/// `TransactionActionAdapter` for `SwapRouter` multicall expansion.
 #[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
@@ -121,14 +121,14 @@ impl Adapter_ {
         tx: &TransactionRequest,
         calls: Vec<Vec<u8>>,
         depth: usize,
-    ) -> Result<Vec<Action>, AdapterError> {
+    ) -> Result<Vec<Action>, ActionAdapterError> {
         if depth > MAX_DEPTH {
-            return Err(AdapterError::BadCalldata(format!(
+            return Err(ActionAdapterError::BadCalldata(format!(
                 "multicall nesting exceeds max depth {MAX_DEPTH}"
             )));
         }
         if calls.len() > MAX_CHILDREN {
-            return Err(AdapterError::BadCalldata(format!(
+            return Err(ActionAdapterError::BadCalldata(format!(
                 "multicall child count {} exceeds max {MAX_CHILDREN}",
                 calls.len()
             )));
@@ -137,7 +137,7 @@ impl Adapter_ {
         let mut out = Vec::new();
         for child_data in calls {
             let Some(selector) = selector(&child_data) else {
-                return Err(AdapterError::BadCalldata(
+                return Err(ActionAdapterError::BadCalldata(
                     "multicall child calldata too short".into(),
                 ));
             };
@@ -152,19 +152,19 @@ impl Adapter_ {
             };
 
             if selector == SELECTOR_NO_DEADLINE || selector == SELECTOR_DEADLINE {
-                let nested =
-                    decode(&child_tx.data).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+                let nested = decode(&child_tx.data)
+                    .map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
                 out.push(self.build_from_calls(&child_tx, nested.data, depth + 1)?);
             } else if selector == exact_input_single::SELECTOR {
-                out.push(self.exact_input_single.build(&child_tx)?);
+                out.push(self.exact_input_single.build_action(&child_tx)?);
             } else if selector == exact_input::SELECTOR {
-                out.push(self.exact_input.build(&child_tx)?);
+                out.push(self.exact_input.build_action(&child_tx)?);
             } else if selector == exact_output_single::SELECTOR {
-                out.push(self.exact_output_single.build(&child_tx)?);
+                out.push(self.exact_output_single.build_action(&child_tx)?);
             } else if selector == exact_output::SELECTOR {
-                out.push(self.exact_output.build(&child_tx)?);
+                out.push(self.exact_output.build_action(&child_tx)?);
             } else {
-                return Err(AdapterError::BadCalldata(format!(
+                return Err(ActionAdapterError::BadCalldata(format!(
                     "unsupported multicall child selector 0x{}",
                     hex::encode(selector)
                 )));
@@ -178,7 +178,7 @@ impl Adapter_ {
         tx: &TransactionRequest,
         calls: Vec<Vec<u8>>,
         depth: usize,
-    ) -> Result<Action, AdapterError> {
+    ) -> Result<Action, ActionAdapterError> {
         let actions = self.expand_calls(tx, calls, depth)?;
         merge_dex_actions(tx, actions, "multicall")
     }
@@ -190,25 +190,25 @@ impl Default for Adapter_ {
     }
 }
 
-impl Adapter for Adapter_ {
-    fn id(&self) -> AdapterId {
+impl TransactionActionAdapter for Adapter_ {
+    fn id(&self) -> ActionAdapterId {
         static_adapter_id("uniswap-v3/multicall@0.1.0")
     }
 
-    fn match_keys(&self) -> Vec<MatchKey> {
+    fn match_keys(&self) -> Vec<TransactionMatchKey> {
         self.chain_targets
             .iter()
             .flat_map(|(chain, target)| {
                 [
-                    MatchKey::exact(*chain, target.clone(), SELECTOR_NO_DEADLINE),
-                    MatchKey::exact(*chain, target.clone(), SELECTOR_DEADLINE),
+                    TransactionMatchKey::exact(*chain, target.clone(), SELECTOR_NO_DEADLINE),
+                    TransactionMatchKey::exact(*chain, target.clone(), SELECTOR_DEADLINE),
                 ]
             })
             .collect()
     }
 
-    fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
-        let p = decode(&tx.data).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+        let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
         self.build_from_calls(tx, p.data, 0)
     }
 }
@@ -275,7 +275,7 @@ mod tests {
     fn build_merges_supported_children_into_dex_action() {
         let adapter = Adapter_::new();
         let action = adapter
-            .build(&tx(encode_deadline(
+            .build_action(&tx(encode_deadline(
                 U256::from(1u64),
                 vec![swap(50_000_000), swap(200_000_000)],
             )))

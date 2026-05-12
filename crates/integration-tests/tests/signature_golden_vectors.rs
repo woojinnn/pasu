@@ -1,6 +1,6 @@
 use policy_engine::{
-    Action, AdapterError, Eip712OtherAction, Permit2PermitKind, SignatureAdapter,
-    SignatureRegistry, SignatureRequest, SignatureResolverOutcome,
+    Action, ActionAdapterError, Eip712OtherAction, Permit2PermitKind, SignatureActionAdapter,
+    SignatureActionAdapterRegistry, SignatureActionResolverOutcome, SignatureRequest,
 };
 use policy_engine_adapters_bundle::default_signature_registry;
 use std::{fs, path::Path};
@@ -16,11 +16,11 @@ fn load_signature(name: &str) -> SignatureRequest {
 }
 
 fn resolved_adapter<'a>(
-    registry: &'a impl SignatureRegistry,
+    registry: &'a impl SignatureActionAdapterRegistry,
     sig: &SignatureRequest,
-) -> &'a dyn SignatureAdapter {
+) -> &'a dyn SignatureActionAdapter {
     match registry.resolve(sig) {
-        SignatureResolverOutcome::Resolved(adapter) => adapter,
+        SignatureActionResolverOutcome::Resolved(adapter) => adapter,
         other => panic!("expected resolved adapter, got {other:?}"),
     }
 }
@@ -30,7 +30,7 @@ fn permit2_permit_single_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("permit2_permit_single.json");
     let adapter = resolved_adapter(&registry, &sig);
-    let action = adapter.build(&sig).expect("Permit2 fixture decodes");
+    let action = adapter.build_action(&sig).expect("Permit2 fixture decodes");
 
     let Action::Permit2(action) = action else {
         panic!("expected Action::Permit2");
@@ -50,7 +50,7 @@ fn permit2_permit_batch_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("permit2_permit_batch.json");
     let adapter = resolved_adapter(&registry, &sig);
-    let action = adapter.build(&sig).expect("Permit2 batch decodes");
+    let action = adapter.build_action(&sig).expect("Permit2 batch decodes");
 
     let Action::Permit2(action) = action else {
         panic!("expected Action::Permit2");
@@ -67,7 +67,9 @@ fn permit2_permit_transfer_from_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("permit2_permit_transfer_from.json");
     let adapter = resolved_adapter(&registry, &sig);
-    let action = adapter.build(&sig).expect("Permit2 transfer decodes");
+    let action = adapter
+        .build_action(&sig)
+        .expect("Permit2 transfer decodes");
 
     let Action::Permit2(action) = action else {
         panic!("expected Action::Permit2");
@@ -84,7 +86,9 @@ fn permit2_permit_batch_transfer_from_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("permit2_permit_batch_transfer_from.json");
     let adapter = resolved_adapter(&registry, &sig);
-    let action = adapter.build(&sig).expect("Permit2 batch transfer decodes");
+    let action = adapter
+        .build_action(&sig)
+        .expect("Permit2 batch transfer decodes");
 
     let Action::Permit2(action) = action else {
         panic!("expected Action::Permit2");
@@ -111,7 +115,7 @@ fn permit2_permit_witness_transfer_from_decodes_to_action() {
     let sig = load_signature("permit2_permit_witness_transfer_from.json");
     let adapter = resolved_adapter(&registry, &sig);
     let action = adapter
-        .build(&sig)
+        .build_action(&sig)
         .expect("Permit2 witness transfer decodes");
 
     let Action::Permit2(action) = action else {
@@ -134,7 +138,7 @@ fn permit2_permit_batch_witness_transfer_from_decodes_to_action() {
     let sig = load_signature("permit2_permit_batch_witness_transfer_from.json");
     let adapter = resolved_adapter(&registry, &sig);
     let action = adapter
-        .build(&sig)
+        .build_action(&sig)
         .expect("Permit2 batch witness transfer decodes");
 
     let Action::Permit2(action) = action else {
@@ -156,7 +160,9 @@ fn eip2612_permit_decodes_to_action() {
     let registry = default_signature_registry();
     let sig = load_signature("eip2612_permit.json");
     let adapter = resolved_adapter(&registry, &sig);
-    let action = adapter.build(&sig).expect("EIP-2612 fixture decodes");
+    let action = adapter
+        .build_action(&sig)
+        .expect("EIP-2612 fixture decodes");
 
     let Action::Eip2612(action) = action else {
         panic!("expected Action::Eip2612");
@@ -184,10 +190,10 @@ fn eip2612_permit_rejects_owner_when_signer_differs() {
     let adapter = resolved_adapter(&registry, &sig);
 
     let err = adapter
-        .build(&sig)
+        .build_action(&sig)
         .expect_err("EIP-2612 owner/signer mismatch must fail");
 
-    let AdapterError::BadCalldata(message) = err;
+    let ActionAdapterError::BadCalldata(message) = err;
     assert!(message.contains("message.owner"));
     assert!(message.contains("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
     assert!(message.contains("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
@@ -199,7 +205,7 @@ fn eip2612_permit_allows_owner_when_signer_matches() {
     let sig = load_signature("eip2612_permit.json");
     let adapter = resolved_adapter(&registry, &sig);
     let action = adapter
-        .build(&sig)
+        .build_action(&sig)
         .expect("EIP-2612 signer/owner match decodes");
 
     let Action::Eip2612(action) = action else {
@@ -221,7 +227,7 @@ fn unmatched_eip712_builds_catch_all_action() {
     let sig = load_signature("eip712_other_mail.json");
     assert!(matches!(
         registry.resolve(&sig),
-        SignatureResolverOutcome::NoMatch
+        SignatureActionResolverOutcome::NoMatch
     ));
 
     let action = Action::Eip712Other(Eip712OtherAction::from_request(&sig));
@@ -245,7 +251,7 @@ fn permit2_primary_type_matches_case_insensitively() {
 
     let adapter = resolved_adapter(&registry, &sig);
     let action = adapter
-        .build(&sig)
+        .build_action(&sig)
         .expect("lowercase Permit2 fixture decodes");
 
     let Action::Permit2(action) = action else {

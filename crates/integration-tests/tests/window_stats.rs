@@ -1,8 +1,8 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
-    Address, HostCapabilities, MockAdapterRegistry, MockOracle, MockStatWindows, Pipeline,
-    PolicyEngine, RequestKind, StatDelta, StatKey, StatValue, StatWindows, TransactionRequest,
-    Verdict,
+    Address, HostCapabilities, MockOracle, MockStatWindows, MockTransactionActionAdapterRegistry,
+    Pipeline, PolicyEngine, RequestKind, StatDelta, StatKey, StatValue, StatWindows,
+    TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v2::{
     encode_swap_exact_tokens_for_tokens, SwapExactTokensForTokensParams,
@@ -36,8 +36,8 @@ fn oracle() -> MockOracle {
     MockOracle::new().with_simple_price(&usdt(), "1.0000", 5)
 }
 
-fn v2_registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new()
+fn v2_registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
         .with_adapter(Arc::new(UniswapV2SwapExactTokensForTokensAdapter::new()))
 }
 

@@ -19,8 +19,7 @@
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 use policy_engine::adapter::signature_helpers::{
-    address_field, object, static_adapter_id, static_token, u256_string_field, u64_field,
-    TokenLookup,
+    address_field, object, static_token, u256_string_field, u64_field, TokenLookup,
 };
 use policy_engine::prelude::*;
 
@@ -63,10 +62,10 @@ impl Default for Eip2612Adapter {
     }
 }
 
-impl SignatureAdapter for Eip2612Adapter {
-    fn id(&self) -> AdapterId {
-        static_adapter_id("eip2612/permit@0.1.0")
-    }
+impl DeclaredSignatureActionAdapter for Eip2612Adapter {
+    const ADAPTER_ID: &'static str = "eip2612/permit@0.1.0";
+    const PROTOCOL_ID: &'static str = "eip2612";
+    const EMITTED_ACTIONS: &'static [ActionKind] = &[ActionKind::Eip2612];
 
     fn match_keys(&self) -> Vec<SignatureMatchKey> {
         self.tokens
@@ -88,12 +87,12 @@ impl SignatureAdapter for Eip2612Adapter {
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when the primary type is not
+    /// Returns [`ActionAdapterError::BadCalldata`] when the primary type is not
     /// `Permit`, the permit message fields are malformed, or `message.owner`
     /// differs from `SignatureRequest::signer`.
-    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError> {
+    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
         if !sig.primary_type().eq_ignore_ascii_case("Permit") {
-            return Err(AdapterError::BadCalldata(format!(
+            return Err(ActionAdapterError::BadCalldata(format!(
                 "unsupported EIP-2612 primaryType {}",
                 sig.primary_type()
             )));
@@ -101,12 +100,12 @@ impl SignatureAdapter for Eip2612Adapter {
 
         let message = object(&sig.typed_data.message, "message")?;
         let owner = address_field(message, "owner").map_err(|err| match err {
-            AdapterError::BadCalldata(reason) => {
-                AdapterError::BadCalldata(format!("invalid message.owner: {reason}"))
+            ActionAdapterError::BadCalldata(reason) => {
+                ActionAdapterError::BadCalldata(format!("invalid message.owner: {reason}"))
             }
         })?;
         if owner != sig.signer {
-            return Err(AdapterError::BadCalldata(format!(
+            return Err(ActionAdapterError::BadCalldata(format!(
                 "message.owner {} does not match SignatureRequest.signer {}",
                 owner.as_str(),
                 sig.signer.as_str()

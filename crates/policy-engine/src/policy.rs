@@ -135,7 +135,7 @@ pub struct MatchedPolicy {
 
 /// Self-contained Cedar evaluation input.
 ///
-/// Adapter-driven lowering produces this from a transaction; the policy engine
+/// Action-adapter-driven lowering produces this from a transaction; the policy engine
 /// consumes it. The request can be serialized, logged, replayed, and built by
 /// hand in tests.
 #[derive(Debug, Clone, PartialEq, Eq)]

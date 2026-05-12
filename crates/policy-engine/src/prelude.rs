@@ -5,8 +5,8 @@
 //! ```
 //!
 //! This module re-exports the trait surface and supporting types an
-//! adapter implementation typically needs: the `Adapter` trait, `AdapterId`,
-//! `AdapterError`, `MatchKey`, the domain types (`Action`, `Token`,
+//! adapter implementation typically needs: the `TransactionActionAdapter` trait, `ActionAdapterId`,
+//! `ActionAdapterError`, `TransactionMatchKey`, the domain types (`Action`, `Token`,
 //! `TransactionRequest`, `AmountSpec`, `UsdValuation`, `DexAction`), and
 //! the `Oracle` trait + `PolicyRequest` (used by the policy evaluator surface).
 //!
@@ -16,9 +16,12 @@
 //! intermediate re-export would only mislead callers.
 
 pub use crate::adapter::{
-    ActionKind, Adapter, AdapterDescriptor, AdapterError, AdapterFactory, AdapterId, AdapterKind,
-    ContractTarget, MatchKey, SignatureAdapter, SignatureMatchKey, SolidityFunction,
-    SolidityFunctionSpec, StaticAdapterFactory, TypedAdapter,
+    ActionAdapterError, ActionAdapterId, ActionKind, ContractTarget,
+    DeclaredSignatureActionAdapter, DeclaredTransactionActionAdapter, SignatureActionAdapter,
+    SignatureActionAdapterDescriptor, SignatureMatchKey, SolidityFunction, SolidityFunctionSpec,
+    StaticTransactionActionAdapterFactory, TransactionActionAdapter,
+    TransactionActionAdapterDescriptor, TransactionActionAdapterFactory,
+    TransactionActionAdapterKind, TransactionMatchKey,
 };
 pub use crate::core::{
     validate_typed_data, Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
@@ -37,4 +40,7 @@ pub use crate::lowering::{
     requests_from_actions,
 };
 pub use crate::policy::PolicyRequest;
-pub use crate::registry::{MockSignatureRegistry, SignatureRegistry, SignatureResolverOutcome};
+pub use crate::registry::{
+    MockSignatureActionAdapterRegistry, SignatureActionAdapterRegistry,
+    SignatureActionResolverOutcome,
+};

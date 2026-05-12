@@ -23,7 +23,8 @@ use crate::lowering::{
 };
 use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, RequestKind, Verdict};
 use crate::registry::{
-    AdapterRegistry, ResolverOutcome, SignatureRegistry, SignatureResolverOutcome,
+    SignatureActionAdapterRegistry, SignatureActionResolverOutcome,
+    TransactionActionAdapterRegistry, TransactionResolverOutcome,
 };
 use thiserror::Error;
 
@@ -32,7 +33,7 @@ use thiserror::Error;
 pub enum PipelineError {
     /// Multiple adapters matched the transaction.
     #[error("adapter ambiguity: {0:?}")]
-    Ambiguous(Vec<crate::AdapterId>),
+    Ambiguous(Vec<crate::ActionAdapterId>),
     /// The selected adapter failed to build an action.
     #[error("adapter build failed: {0}")]
     AdapterBuild(String),
@@ -47,21 +48,21 @@ pub enum PipelineError {
 /// Coordinates adapter resolution, lowering, and policy evaluation.
 ///
 /// The `R: ?Sized` bound lets callers pass either a concrete registry or a
-/// `dyn AdapterRegistry` trait object. Host capabilities are passed as a small
-/// borrowed bundle to avoid `Pipeline::new` signature churn as capabilities
-/// expand.
-pub struct Pipeline<'a, R: AdapterRegistry + ?Sized> {
-    /// Adapter registry used to resolve calldata.
+/// `dyn TransactionActionAdapterRegistry` trait object. Host capabilities are
+/// passed as a small borrowed bundle to avoid `Pipeline::new` signature churn
+/// as capabilities expand.
+pub struct Pipeline<'a, R: TransactionActionAdapterRegistry + ?Sized> {
+    /// `TransactionActionAdapter` registry used to resolve calldata.
     pub registry: &'a R,
     /// Optional signature registry used to resolve EIP-712 typed data.
-    pub signature_registry: Option<&'a dyn SignatureRegistry>,
+    pub signature_registry: Option<&'a dyn SignatureActionAdapterRegistry>,
     /// Host capabilities used for enrichment.
     pub host: HostCapabilities<'a>,
     /// Policy engine used for evaluation.
     pub policies: &'a PolicyEngine,
 }
 
-impl<R: AdapterRegistry + ?Sized> std::fmt::Debug for Pipeline<'_, R> {
+impl<R: TransactionActionAdapterRegistry + ?Sized> std::fmt::Debug for Pipeline<'_, R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Pipeline").finish_non_exhaustive()
     }
@@ -76,7 +77,7 @@ pub struct EvaluationOutcome {
     pub reservation: Option<ReservationId>,
 }
 
-impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
+impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
     /// Construct a pipeline from registry, host capabilities, and policies.
     #[must_use]
     pub const fn new(
@@ -96,7 +97,7 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     #[must_use]
     pub const fn with_signature_registry(
         mut self,
-        sig_registry: &'a dyn SignatureRegistry,
+        sig_registry: &'a dyn SignatureActionAdapterRegistry,
     ) -> Self {
         self.signature_registry = Some(sig_registry);
         self
@@ -118,7 +119,7 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     /// [`HostFactPlan`]: crate::lowering::HostFactPlan
     pub fn build_action_for(&self, request: &Request) -> Result<Action, PipelineError> {
         match request {
-            Request::Tx(tx) => self.build_action(tx),
+            Request::Tx(tx) => self.build_action_for_tx(tx),
             Request::Sig(sig) => {
                 // Mirror `evaluate_sig`: validate typed data before adapter
                 // dispatch so external orchestrators receive the same
@@ -127,17 +128,17 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
                 // signature that evaluation later rejects.
                 validate_typed_data(&sig.typed_data)
                     .map_err(|e| PipelineError::Lowering(e.to_string()))?;
-                self.build_signature_action(sig)
+                self.build_action_for_signature(sig)
             }
         }
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, PipelineError> {
+    fn build_action_for_tx(&self, tx: &TransactionRequest) -> Result<Action, PipelineError> {
         let (outcome, adapter) = self.registry.resolve_with_adapter(tx);
 
         match (outcome, adapter) {
-            (ResolverOutcome::Ambiguous(ids), _) => Err(PipelineError::Ambiguous(ids)),
-            (ResolverOutcome::NoMatch, _) => {
+            (TransactionResolverOutcome::Ambiguous(ids), _) => Err(PipelineError::Ambiguous(ids)),
+            (TransactionResolverOutcome::NoMatch, _) => {
                 // No adapter matched — emit `Action::Other` and let user
                 // policies decide whether to allow unrecognized calls.
                 Ok(Action::Other(OtherAction {
@@ -148,10 +149,10 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
                     raw_calldata: format!("0x{}", hex::encode(&tx.data)),
                 }))
             }
-            (ResolverOutcome::Resolved(_), Some(adapter)) => adapter
-                .build(tx)
+            (TransactionResolverOutcome::Resolved(_), Some(adapter)) => adapter
+                .build_action(tx)
                 .map_err(|e| PipelineError::AdapterBuild(e.to_string())),
-            (ResolverOutcome::Resolved(_), None) => {
+            (TransactionResolverOutcome::Resolved(_), None) => {
                 unreachable!("Resolved outcome always carries an adapter")
             }
         }
@@ -167,7 +168,7 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
         &self,
         tx: &TransactionRequest,
     ) -> Result<EvaluationOutcome, PipelineError> {
-        let mut action = self.build_action(tx)?;
+        let mut action = self.build_action_for_tx(tx)?;
         let mut reservation = None;
 
         if let Action::Dex(dex) = &mut action {
@@ -220,7 +221,7 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
     }
 
     fn evaluate_tx(&self, tx: &TransactionRequest) -> Result<Verdict, PipelineError> {
-        let mut action = self.build_action(tx)?;
+        let mut action = self.build_action_for_tx(tx)?;
 
         if let Action::Dex(dex) = &mut action {
             enrich_dex_action_base(dex, &self.host);
@@ -237,7 +238,7 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
         #[cfg(test)]
         self.host.assert_signature_clock_not_default();
 
-        let mut action = self.build_signature_action(sig)?;
+        let mut action = self.build_action_for_signature(sig)?;
         enrich_signature_action(&mut action, &self.host);
 
         let request = request_from_action_with_host(&action, &self.host)
@@ -245,16 +246,16 @@ impl<'a, R: AdapterRegistry + ?Sized> Pipeline<'a, R> {
         Ok(self.evaluate_one_request(&request)?)
     }
 
-    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, PipelineError> {
+    fn build_action_for_signature(&self, sig: &SignatureRequest) -> Result<Action, PipelineError> {
         if let Some(registry) = self.signature_registry {
             match registry.resolve(sig) {
-                SignatureResolverOutcome::Resolved(adapter) => {
+                SignatureActionResolverOutcome::Resolved(adapter) => {
                     return adapter
-                        .build(sig)
+                        .build_action(sig)
                         .map_err(|e| PipelineError::AdapterBuild(e.to_string()));
                 }
-                SignatureResolverOutcome::NoMatch => {}
-                SignatureResolverOutcome::Ambiguous(ids) => {
+                SignatureActionResolverOutcome::NoMatch => {}
+                SignatureActionResolverOutcome::Ambiguous(ids) => {
                     return Err(PipelineError::Ambiguous(ids));
                 }
             }
@@ -311,10 +312,14 @@ mod build_action_for_tests {
     use crate::core::{Address, Request, SignatureRequest, TransactionRequest};
     use crate::host::{oracle::MockOracle, HostCapabilities};
     use crate::policy::PolicyEngine;
-    use crate::registry::MockAdapterRegistry;
+    use crate::registry::MockTransactionActionAdapterRegistry;
 
-    fn empty_pipeline_fixture() -> (MockAdapterRegistry, MockOracle, PolicyEngine) {
-        let registry = MockAdapterRegistry::default();
+    fn empty_pipeline_fixture() -> (
+        MockTransactionActionAdapterRegistry,
+        MockOracle,
+        PolicyEngine,
+    ) {
+        let registry = MockTransactionActionAdapterRegistry::default();
         let oracle = MockOracle::new();
         let engine = PolicyEngine::builder()
             .build()

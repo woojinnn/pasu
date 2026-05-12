@@ -93,8 +93,8 @@ pub(crate) fn swap_router_address() -> Address {
 }
 
 #[allow(clippy::panic)]
-pub(crate) fn static_adapter_id(raw: &str) -> AdapterId {
-    match AdapterId::new(raw) {
+pub(crate) fn static_adapter_id(raw: &str) -> ActionAdapterId {
+    match ActionAdapterId::new(raw) {
         Ok(id) => id,
         Err(err) => panic!("invalid static adapter id {raw}: {err}"),
     }
@@ -102,9 +102,9 @@ pub(crate) fn static_adapter_id(raw: &str) -> AdapterId {
 
 pub(crate) fn path_endpoints(
     path: &[AlloyAddress],
-) -> Result<(AlloyAddress, AlloyAddress), AdapterError> {
+) -> Result<(AlloyAddress, AlloyAddress), ActionAdapterError> {
     if path.len() < 2 {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "v3 path must contain at least 2 tokens, got {}",
             path.len()
         )));
@@ -169,7 +169,7 @@ pub fn merge_dex_actions(
     tx: &TransactionRequest,
     actions: Vec<Action>,
     trace_step: impl Into<String>,
-) -> Result<Action, AdapterError> {
+) -> Result<Action, ActionAdapterError> {
     let mut protocol_ids = Vec::new();
     let mut seen_protocol_ids = HashSet::new();
     let mut input_tokens = Vec::new();
@@ -184,7 +184,7 @@ pub fn merge_dex_actions(
 
     for action in actions {
         let Action::Dex(dex) = action else {
-            return Err(AdapterError::BadCalldata(format!(
+            return Err(ActionAdapterError::BadCalldata(format!(
                 "multicall child emitted non-dex action: {}",
                 action.kind()
             )));

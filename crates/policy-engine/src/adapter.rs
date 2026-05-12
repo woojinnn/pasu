@@ -1,10 +1,12 @@
-//! `Adapter` trait — the contract every per-protocol calldata mapper
+//! Action adapter traits.
+//!
+//! This is the contract every per-protocol transaction or signature mapper
 //! implements. Concrete adapter crates live under `crates/adapters/<name>/`
 //! and program against [`crate::prelude`].
 //!
 //! Two responsibilities:
-//! - [`Adapter::build`] — protocol-specific decoding: parsed calldata →
-//!   semantic [`Action`].
+//! - [`TransactionActionAdapter::build_action`] — parsed calldata → semantic [`Action`].
+//! - [`SignatureActionAdapter::build_action`] — parsed typed data → semantic [`Action`].
 
 use crate::core::{Action, Address, ChainId, SignatureRequest, TransactionRequest};
 use std::sync::Arc;
@@ -12,7 +14,7 @@ use thiserror::Error;
 
 /// Stable identifier for an adapter (e.g., `dex-v3/exactInputSingle@0.1.0`).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AdapterId {
+pub struct ActionAdapterId {
     raw: String,
     protocol_end: usize,
     name_end: usize,
@@ -21,23 +23,23 @@ pub struct AdapterId {
 
 /// Borrowed parts of an adapter id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AdapterIdParts<'a> {
+pub struct ActionAdapterIdParts<'a> {
     /// Protocol namespace, for example `uniswap-v3`.
     pub protocol: &'a str,
-    /// Adapter or function name.
+    /// Action adapter or function name.
     pub name: &'a str,
     /// Optional adapter version component.
     pub version: Option<&'a str>,
 }
 
-impl AdapterId {
+impl ActionAdapterId {
     /// Parse and store an adapter id.
     ///
     /// # Errors
     ///
     /// Returns an error when the id does not match
     /// `<protocol>/<name>[@<version>]`.
-    pub fn new(s: &str) -> Result<Self, AdapterIdError> {
+    pub fn new(s: &str) -> Result<Self, ActionAdapterIdError> {
         let parsed = parse_adapter_id(s)?;
         Ok(Self {
             raw: s.to_string(),
@@ -53,22 +55,22 @@ impl AdapterId {
     ///
     /// Returns an error when the id does not match
     /// `<protocol>/<name>[@<version>]`.
-    pub fn parts(s: &str) -> Result<AdapterIdParts<'_>, AdapterIdError> {
+    pub fn parts(s: &str) -> Result<ActionAdapterIdParts<'_>, ActionAdapterIdError> {
         let parsed = parse_adapter_id(s)?;
-        Ok(AdapterIdParts {
+        Ok(ActionAdapterIdParts {
             protocol: &s[..parsed.protocol_end],
             name: &s[(parsed.protocol_end + 1)..parsed.name_end],
             version: parsed.version_start.map(|start| &s[start..]),
         })
     }
 
-    /// Adapter protocol namespace.
+    /// Action adapter protocol namespace.
     #[must_use]
     pub fn protocol(&self) -> &str {
         &self.raw[..self.protocol_end]
     }
 
-    /// Adapter name.
+    /// Action adapter name.
     #[must_use]
     pub fn name(&self) -> &str {
         &self.raw[(self.protocol_end + 1)..self.name_end]
@@ -89,7 +91,7 @@ impl AdapterId {
 
 /// Error returned when parsing an adapter id fails.
 #[derive(Debug, Error, PartialEq, Eq)]
-pub enum AdapterIdError {
+pub enum ActionAdapterIdError {
     /// The id was empty.
     #[error("adapter id is empty")]
     Empty,
@@ -114,38 +116,38 @@ pub enum AdapterIdError {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct ParsedAdapterId {
+struct ParsedActionAdapterId {
     protocol_end: usize,
     name_end: usize,
     version_start: Option<usize>,
 }
 
-fn parse_adapter_id(s: &str) -> Result<ParsedAdapterId, AdapterIdError> {
+fn parse_adapter_id(s: &str) -> Result<ParsedActionAdapterId, ActionAdapterIdError> {
     if s.is_empty() {
-        return Err(AdapterIdError::Empty);
+        return Err(ActionAdapterIdError::Empty);
     }
 
     let Some((protocol, tail)) = s.split_once('/') else {
-        return Err(AdapterIdError::MissingSeparator);
+        return Err(ActionAdapterIdError::MissingSeparator);
     };
     if protocol.is_empty() {
-        return Err(AdapterIdError::MissingProtocol);
+        return Err(ActionAdapterIdError::MissingProtocol);
     }
 
     if tail.is_empty() {
-        return Err(AdapterIdError::MissingName);
+        return Err(ActionAdapterIdError::MissingName);
     }
 
     let protocol_len = protocol.len();
     let (name, version_start) = if let Some((name, version)) = tail.split_once('@') {
         if name.is_empty() {
-            return Err(AdapterIdError::MissingName);
+            return Err(ActionAdapterIdError::MissingName);
         }
         if version.is_empty() {
-            return Err(AdapterIdError::EmptyVersion);
+            return Err(ActionAdapterIdError::EmptyVersion);
         }
         if !is_valid_version(version) {
-            return Err(AdapterIdError::InvalidVersion {
+            return Err(ActionAdapterIdError::InvalidVersion {
                 version: version.to_string(),
             });
         }
@@ -157,10 +159,10 @@ fn parse_adapter_id(s: &str) -> Result<ParsedAdapterId, AdapterIdError> {
     let name_end = protocol_len + 1 + name.len();
     let name_start = protocol_len + 1;
     if name_start >= name_end {
-        return Err(AdapterIdError::MissingName);
+        return Err(ActionAdapterIdError::MissingName);
     }
 
-    Ok(ParsedAdapterId {
+    Ok(ParsedActionAdapterId {
         protocol_end: protocol_len,
         name_end,
         version_start,
@@ -178,7 +180,7 @@ fn is_valid_version(version: &str) -> bool {
 
 /// Error returned by an adapter while decoding or lowering a transaction.
 #[derive(Debug, Error, PartialEq, Eq)]
-pub enum AdapterError {
+pub enum ActionAdapterError {
     /// Calldata did not match the adapter's expected ABI shape.
     #[error("adapter cannot decode this calldata: {0}")]
     BadCalldata(String),
@@ -186,7 +188,7 @@ pub enum AdapterError {
 
 /// Coarse adapter shape for registry/catalog UIs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AdapterKind {
+pub enum TransactionActionAdapterKind {
     /// One Solidity function maps to one adapter module.
     Function,
     /// One router function contains nested semantic calls.
@@ -226,27 +228,40 @@ impl SignatureMatchKey {
     }
 }
 
-/// Adapter surface for off-chain EIP-712 signature requests.
-pub trait SignatureAdapter: Send + Sync {
+/// Action adapter surface for off-chain EIP-712 signature requests.
+pub trait SignatureActionAdapter: Send + Sync {
     /// Stable adapter id.
-    fn id(&self) -> AdapterId;
+    fn id(&self) -> ActionAdapterId;
 
     /// The set of `(chain_id, verifying_contract, primary_type)` keys this
     /// adapter wants to match.
     fn match_keys(&self) -> Vec<SignatureMatchKey>;
+
+    /// Registry/catalog metadata. Simple adapters can use the default; richer
+    /// adapters should override it with emitted action kinds.
+    fn descriptor(&self) -> SignatureActionAdapterDescriptor {
+        let id = self.id();
+        let protocol_id = id.protocol().to_string();
+        SignatureActionAdapterDescriptor {
+            id,
+            protocol_id,
+            match_keys: self.match_keys(),
+            emitted_actions: Vec::new(),
+        }
+    }
 
     /// Try to construct an `Action` from this signature request.
     ///
     /// # Errors
     ///
     /// Returns an error when typed-data decoding or mapping fails.
-    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError>;
+    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError>;
 }
 
 /// Internal helper surface shared by first-party signature adapter crates.
 #[doc(hidden)]
 pub mod signature_helpers {
-    use super::{AdapterError, AdapterId};
+    use super::{ActionAdapterError, ActionAdapterId};
     use crate::core::{Address, ChainId, Token};
     use alloy_primitives::U256;
     use serde_json::{Map, Value};
@@ -330,29 +345,29 @@ pub mod signature_helpers {
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when `value` is not an object.
+    /// Returns [`ActionAdapterError::BadCalldata`] when `value` is not an object.
     pub fn object<'a>(
         value: &'a Value,
         label: &str,
-    ) -> Result<&'a Map<String, Value>, AdapterError> {
+    ) -> Result<&'a Map<String, Value>, ActionAdapterError> {
         value
             .as_object()
-            .ok_or_else(|| AdapterError::BadCalldata(format!("{label} must be an object")))
+            .ok_or_else(|| ActionAdapterError::BadCalldata(format!("{label} must be an object")))
     }
 
     /// Borrow a JSON object field.
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when `field` is missing or not an
+    /// Returns [`ActionAdapterError::BadCalldata`] when `field` is missing or not an
     /// object.
     pub fn object_field<'a>(
         object: &'a Map<String, Value>,
         field: &str,
-    ) -> Result<&'a Map<String, Value>, AdapterError> {
+    ) -> Result<&'a Map<String, Value>, ActionAdapterError> {
         object
             .get(field)
-            .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))
+            .ok_or_else(|| ActionAdapterError::BadCalldata(format!("missing field {field}")))
             .and_then(|value| self::object(value, field))
     }
 
@@ -360,79 +375,81 @@ pub mod signature_helpers {
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when `field` is missing or not an
+    /// Returns [`ActionAdapterError::BadCalldata`] when `field` is missing or not an
     /// array.
     pub fn array_field<'a>(
         object: &'a Map<String, Value>,
         field: &str,
-    ) -> Result<&'a [Value], AdapterError> {
+    ) -> Result<&'a [Value], ActionAdapterError> {
         object
             .get(field)
             .and_then(Value::as_array)
             .map(Vec::as_slice)
-            .ok_or_else(|| AdapterError::BadCalldata(format!("{field} must be an array")))
+            .ok_or_else(|| ActionAdapterError::BadCalldata(format!("{field} must be an array")))
     }
 
     /// Parse an address field.
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when the field is missing,
+    /// Returns [`ActionAdapterError::BadCalldata`] when the field is missing,
     /// non-stringish, or not an EVM address.
     pub fn address_field(
         object: &Map<String, Value>,
         field: &str,
-    ) -> Result<Address, AdapterError> {
+    ) -> Result<Address, ActionAdapterError> {
         let value = stringish_field(object, field)?;
-        Address::new(&value).map_err(AdapterError::BadCalldata)
+        Address::new(&value).map_err(ActionAdapterError::BadCalldata)
     }
 
     /// Parse a u64 field encoded as a JSON string or number.
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when the field is missing, not a
+    /// Returns [`ActionAdapterError::BadCalldata`] when the field is missing, not a
     /// uint256 decimal, or does not fit in u64.
-    pub fn u64_field(object: &Map<String, Value>, field: &str) -> Result<u64, AdapterError> {
+    pub fn u64_field(object: &Map<String, Value>, field: &str) -> Result<u64, ActionAdapterError> {
         let value = u256_string_field(object, field)?;
-        value
-            .parse::<u64>()
-            .map_err(|err| AdapterError::BadCalldata(format!("{field} does not fit u64: {err}")))
+        value.parse::<u64>().map_err(|err| {
+            ActionAdapterError::BadCalldata(format!("{field} does not fit u64: {err}"))
+        })
     }
 
     /// Parse and normalize a uint256 decimal field.
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when the field is missing,
+    /// Returns [`ActionAdapterError::BadCalldata`] when the field is missing,
     /// non-stringish, or not a uint256 decimal.
     pub fn u256_string_field(
         object: &Map<String, Value>,
         field: &str,
-    ) -> Result<String, AdapterError> {
+    ) -> Result<String, ActionAdapterError> {
         let value = stringish_field(object, field)?;
         U256::from_str_radix(&value, 10)
             .map(|parsed| parsed.to_string())
-            .map_err(|err| AdapterError::BadCalldata(format!("{field} must be uint256: {err}")))
+            .map_err(|err| {
+                ActionAdapterError::BadCalldata(format!("{field} must be uint256: {err}"))
+            })
     }
 
     /// Return a string value from a JSON string or number field.
     ///
     /// # Errors
     ///
-    /// Returns [`AdapterError::BadCalldata`] when the field is missing or not
+    /// Returns [`ActionAdapterError::BadCalldata`] when the field is missing or not
     /// a string/number.
     pub fn stringish_field(
         object: &Map<String, Value>,
         field: &str,
-    ) -> Result<String, AdapterError> {
+    ) -> Result<String, ActionAdapterError> {
         let value = object
             .get(field)
-            .ok_or_else(|| AdapterError::BadCalldata(format!("missing field {field}")))?;
+            .ok_or_else(|| ActionAdapterError::BadCalldata(format!("missing field {field}")))?;
         match value {
             Value::String(s) => Ok(s.clone()),
             Value::Number(n) => Ok(n.to_string()),
-            _ => Err(AdapterError::BadCalldata(format!(
+            _ => Err(ActionAdapterError::BadCalldata(format!(
                 "{field} must be a string or number"
             ))),
         }
@@ -441,8 +458,9 @@ pub mod signature_helpers {
     /// Parse a static adapter id and panic if it is malformed.
     #[must_use]
     #[allow(clippy::panic)]
-    pub fn static_adapter_id(raw: &str) -> AdapterId {
-        AdapterId::new(raw).unwrap_or_else(|err| panic!("invalid static adapter id {raw}: {err}"))
+    pub fn static_adapter_id(raw: &str) -> ActionAdapterId {
+        ActionAdapterId::new(raw)
+            .unwrap_or_else(|err| panic!("invalid static adapter id {raw}: {err}"))
     }
 
     /// Panic for malformed checked-in constants.
@@ -457,6 +475,12 @@ pub mod signature_helpers {
 pub enum ActionKind {
     /// DEX action family.
     Dex,
+    /// Permit2 EIP-712 permit or transfer action family.
+    Permit2,
+    /// EIP-2612 permit action family.
+    Eip2612,
+    /// Fallback unknown EIP-712 action family.
+    Eip712Other,
     /// Fallback unknown action family.
     Other,
 }
@@ -531,37 +555,37 @@ impl ContractTarget {
 
     /// Build a match key for `selector` at this target.
     #[must_use]
-    pub fn match_key(&self, selector: [u8; 4]) -> MatchKey {
-        MatchKey::exact(self.chain_id, self.address.clone(), selector)
+    pub fn match_key(&self, selector: [u8; 4]) -> TransactionMatchKey {
+        TransactionMatchKey::exact(self.chain_id, self.address.clone(), selector)
     }
 }
 
 /// Static-ish metadata a registry can index before invoking an adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AdapterDescriptor {
+pub struct TransactionActionAdapterDescriptor {
     /// Stable adapter id.
-    pub id: AdapterId,
+    pub id: ActionAdapterId,
     /// Protocol id used in policy context.
     pub protocol_id: String,
-    /// Adapter shape.
-    pub kind: AdapterKind,
+    /// `TransactionActionAdapter` shape.
+    pub kind: TransactionActionAdapterKind,
     /// Solidity functions covered by the adapter.
     pub functions: Vec<SolidityFunction>,
     /// Registry match keys covered by the adapter.
-    pub match_keys: Vec<MatchKey>,
+    pub match_keys: Vec<TransactionMatchKey>,
     /// Action kinds emitted by the adapter.
     pub emitted_actions: Vec<ActionKind>,
 }
 
-impl AdapterDescriptor {
+impl TransactionActionAdapterDescriptor {
     /// Construct adapter metadata.
     #[must_use]
     pub fn new(
-        id: AdapterId,
+        id: ActionAdapterId,
         protocol_id: &str,
-        kind: AdapterKind,
+        kind: TransactionActionAdapterKind,
         functions: Vec<SolidityFunction>,
-        match_keys: Vec<MatchKey>,
+        match_keys: Vec<TransactionMatchKey>,
         emitted_actions: Vec<ActionKind>,
     ) -> Self {
         Self {
@@ -575,13 +599,13 @@ impl AdapterDescriptor {
     }
 
     /// Build a minimal descriptor from a runtime adapter instance.
-    pub fn from_adapter(adapter: &dyn Adapter) -> Self {
+    pub fn from_adapter(adapter: &dyn TransactionActionAdapter) -> Self {
         let id = adapter.id();
         let protocol_id = id.protocol().to_string();
         Self {
             id,
             protocol_id,
-            kind: AdapterKind::Function,
+            kind: TransactionActionAdapterKind::Function,
             functions: Vec::new(),
             match_keys: adapter.match_keys(),
             emitted_actions: Vec::new(),
@@ -589,32 +613,73 @@ impl AdapterDescriptor {
     }
 }
 
-fn construct_typed_adapter<T: TypedAdapter>() -> Arc<dyn Adapter> {
+/// Static-ish metadata a signature registry can index before invoking a
+/// signature adapter.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SignatureActionAdapterDescriptor {
+    /// Stable adapter id.
+    pub id: ActionAdapterId,
+    /// Protocol id used in policy context.
+    pub protocol_id: String,
+    /// Registry match keys covered by the adapter.
+    pub match_keys: Vec<SignatureMatchKey>,
+    /// Action kinds emitted by the adapter.
+    pub emitted_actions: Vec<ActionKind>,
+}
+
+impl SignatureActionAdapterDescriptor {
+    /// Construct signature adapter metadata.
+    #[must_use]
+    pub fn new(
+        id: ActionAdapterId,
+        protocol_id: &str,
+        match_keys: Vec<SignatureMatchKey>,
+        emitted_actions: Vec<ActionKind>,
+    ) -> Self {
+        Self {
+            id,
+            protocol_id: protocol_id.into(),
+            match_keys,
+            emitted_actions,
+        }
+    }
+
+    /// Build a minimal descriptor from a runtime signature adapter instance.
+    pub fn from_adapter(adapter: &dyn SignatureActionAdapter) -> Self {
+        adapter.descriptor()
+    }
+}
+
+fn construct_declared_transaction_action_adapter<T: DeclaredTransactionActionAdapter>(
+) -> Arc<dyn TransactionActionAdapter> {
     Arc::new(T::default())
 }
 
 /// Factory surface a remote/local adapter registry can use to instantiate an
 /// adapter after it has matched the descriptor.
-pub trait AdapterFactory: Send + Sync {
+pub trait TransactionActionAdapterFactory: Send + Sync {
     /// Registry-visible metadata for this factory.
-    fn descriptor(&self) -> AdapterDescriptor;
+    fn descriptor(&self) -> TransactionActionAdapterDescriptor;
     /// Instantiate the adapter.
-    fn create(&self) -> Arc<dyn Adapter>;
+    fn create(&self) -> Arc<dyn TransactionActionAdapter>;
 }
 
 /// Function pointer used by static adapter factories.
-pub type AdapterConstructor = fn() -> Arc<dyn Adapter>;
+pub type TransactionActionAdapterConstructor = fn() -> Arc<dyn TransactionActionAdapter>;
 
 /// Static factory for adapters that can be constructed with `Default`.
 #[derive(Debug, Clone)]
-pub struct StaticAdapterFactory {
-    descriptor: AdapterDescriptor,
-    constructor: AdapterConstructor,
+pub struct StaticTransactionActionAdapterFactory {
+    descriptor: TransactionActionAdapterDescriptor,
+    constructor: TransactionActionAdapterConstructor,
 }
 
-impl StaticAdapterFactory {
+impl StaticTransactionActionAdapterFactory {
     /// Construct a factory from metadata and a constructor function.
-    pub fn new(descriptor: AdapterDescriptor, constructor: AdapterConstructor) -> Self {
+    pub fn new(
+        descriptor: TransactionActionAdapterDescriptor,
+        constructor: TransactionActionAdapterConstructor,
+    ) -> Self {
         Self {
             descriptor,
             constructor,
@@ -622,28 +687,29 @@ impl StaticAdapterFactory {
     }
 }
 
-impl AdapterFactory for StaticAdapterFactory {
-    fn descriptor(&self) -> AdapterDescriptor {
+impl TransactionActionAdapterFactory for StaticTransactionActionAdapterFactory {
+    fn descriptor(&self) -> TransactionActionAdapterDescriptor {
         self.descriptor.clone()
     }
 
-    fn create(&self) -> Arc<dyn Adapter> {
+    fn create(&self) -> Arc<dyn TransactionActionAdapter> {
         (self.constructor)()
     }
 }
 
-/// Typed authoring surface for third-party adapters.
+/// Declared authoring surface for third-party transaction adapters.
 ///
 /// Implement this trait when one crate/module owns one logical adapter. The
-/// associated constants describe the registry-visible surface; `build_action`
-/// is the only protocol-specific runtime function simple adapters must provide.
-pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
+/// associated constants describe the registry-visible surface;
+/// `build_transaction_action` is the only protocol-specific runtime function
+/// simple adapters must provide.
+pub trait DeclaredTransactionActionAdapter: Send + Sync + Default + Sized + 'static {
     /// Stable adapter id.
     const ADAPTER_ID: &'static str;
     /// Protocol id emitted into DEX context.
     const PROTOCOL_ID: &'static str;
-    /// Adapter shape.
-    const KIND: AdapterKind;
+    /// `TransactionActionAdapter` shape.
+    const KIND: TransactionActionAdapterKind;
     /// Solidity functions covered by this adapter.
     const FUNCTIONS: &'static [SolidityFunctionSpec];
     /// Semantic action families this adapter may emit.
@@ -657,17 +723,20 @@ pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
     /// # Errors
     ///
     /// Returns an error when calldata cannot be decoded or mapped.
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, AdapterError>;
+    fn build_transaction_action(
+        &self,
+        tx: &TransactionRequest,
+    ) -> Result<Action, ActionAdapterError>;
 
     /// Parsed static adapter id.
     #[allow(clippy::expect_used)]
     #[must_use]
-    fn adapter_id() -> AdapterId {
-        AdapterId::new(Self::ADAPTER_ID).expect("static AdapterId is well-formed")
+    fn adapter_id() -> ActionAdapterId {
+        ActionAdapterId::new(Self::ADAPTER_ID).expect("static ActionAdapterId is well-formed")
     }
 
     /// Match keys generated from contract targets and functions.
-    fn typed_match_keys(&self) -> Vec<MatchKey> {
+    fn declared_match_keys(&self) -> Vec<TransactionMatchKey> {
         let targets = self.contract_targets();
         targets
             .iter()
@@ -679,72 +748,71 @@ pub trait TypedAdapter: Send + Sync + Default + Sized + 'static {
             .collect()
     }
 
-    /// Registry descriptor generated from typed adapter constants.
-    fn typed_descriptor(&self) -> AdapterDescriptor {
+    /// Registry descriptor generated from declared adapter constants.
+    fn declared_descriptor(&self) -> TransactionActionAdapterDescriptor {
         let id = Self::adapter_id();
-        let protocol_id = id.protocol().to_string();
-        AdapterDescriptor::new(
+        TransactionActionAdapterDescriptor::new(
             id,
-            &protocol_id,
+            Self::PROTOCOL_ID,
             Self::KIND,
             Self::FUNCTIONS
                 .iter()
                 .map(|f| f.into_owned_function())
                 .collect(),
-            self.typed_match_keys(),
+            self.declared_match_keys(),
             Self::EMITTED_ACTIONS.to_vec(),
         )
     }
 
-    /// Static factory for this typed adapter.
-    fn factory() -> StaticAdapterFactory {
-        StaticAdapterFactory::new(
-            Self::default().typed_descriptor(),
-            construct_typed_adapter::<Self>,
+    /// Static factory for this declared adapter.
+    fn factory() -> StaticTransactionActionAdapterFactory {
+        StaticTransactionActionAdapterFactory::new(
+            Self::default().declared_descriptor(),
+            construct_declared_transaction_action_adapter::<Self>,
         )
     }
 }
 
-impl<T> Adapter for T
+impl<T> TransactionActionAdapter for T
 where
-    T: TypedAdapter,
+    T: DeclaredTransactionActionAdapter,
 {
-    fn id(&self) -> AdapterId {
+    fn id(&self) -> ActionAdapterId {
         T::adapter_id()
     }
 
-    fn match_keys(&self) -> Vec<MatchKey> {
-        self.typed_match_keys()
+    fn match_keys(&self) -> Vec<TransactionMatchKey> {
+        self.declared_match_keys()
     }
 
-    fn descriptor(&self) -> AdapterDescriptor {
-        self.typed_descriptor()
+    fn descriptor(&self) -> TransactionActionAdapterDescriptor {
+        self.declared_descriptor()
     }
 
-    fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
-        self.build_action(tx)
+    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+        DeclaredTransactionActionAdapter::build_transaction_action(self, tx)
     }
 }
 
 /// One adapter handles one (or a small set of) `(chain_id, to, selector)` keys
 /// and emits an `Action` from a decoded `TransactionRequest`.
-pub trait Adapter: Send + Sync {
+pub trait TransactionActionAdapter: Send + Sync {
     /// Stable adapter id.
-    fn id(&self) -> AdapterId;
+    fn id(&self) -> ActionAdapterId;
 
     /// The set of `(chain_id, to, selector)` keys this adapter wants to match.
     /// `to == None` means "any contract address".
-    fn match_keys(&self) -> Vec<MatchKey>;
+    fn match_keys(&self) -> Vec<TransactionMatchKey>;
 
     /// Registry/catalog metadata. Simple adapters can use the default; richer
     /// adapters should override it with function signatures and action kinds.
-    fn descriptor(&self) -> AdapterDescriptor {
+    fn descriptor(&self) -> TransactionActionAdapterDescriptor {
         let id = self.id();
         let protocol_id = id.protocol().to_string();
-        AdapterDescriptor {
+        TransactionActionAdapterDescriptor {
             id,
             protocol_id,
-            kind: AdapterKind::Function,
+            kind: TransactionActionAdapterKind::Function,
             functions: Vec::new(),
             match_keys: self.match_keys(),
             emitted_actions: Vec::new(),
@@ -757,12 +825,77 @@ pub trait Adapter: Send + Sync {
     /// # Errors
     ///
     /// Returns an error when calldata cannot be decoded or mapped.
-    fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError>;
+    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError>;
+}
+
+/// Declared authoring surface for third-party signature adapters.
+///
+/// Implement this trait when one crate/module owns one logical signature
+/// adapter. The associated constants describe the registry-visible surface;
+/// `build_signature_action` is the only protocol-specific runtime function
+/// simple adapters must provide.
+pub trait DeclaredSignatureActionAdapter: Send + Sync + Default + Sized + 'static {
+    /// Stable adapter id.
+    const ADAPTER_ID: &'static str;
+    /// Protocol id emitted into signature context.
+    const PROTOCOL_ID: &'static str;
+    /// Semantic action families this adapter may emit.
+    const EMITTED_ACTIONS: &'static [ActionKind];
+
+    /// The set of `(chain_id, verifying_contract, primary_type)` keys this
+    /// adapter wants to match.
+    fn match_keys(&self) -> Vec<SignatureMatchKey>;
+
+    /// Build a semantic action from a signature request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when typed-data decoding or mapping fails.
+    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError>;
+
+    /// Parsed static adapter id.
+    #[allow(clippy::expect_used)]
+    #[must_use]
+    fn adapter_id() -> ActionAdapterId {
+        ActionAdapterId::new(Self::ADAPTER_ID).expect("static ActionAdapterId is well-formed")
+    }
+
+    /// Registry descriptor generated from declared adapter constants.
+    fn declared_descriptor(&self) -> SignatureActionAdapterDescriptor {
+        let id = Self::adapter_id();
+        SignatureActionAdapterDescriptor::new(
+            id,
+            Self::PROTOCOL_ID,
+            self.match_keys(),
+            Self::EMITTED_ACTIONS.to_vec(),
+        )
+    }
+}
+
+impl<T> SignatureActionAdapter for T
+where
+    T: DeclaredSignatureActionAdapter,
+{
+    fn id(&self) -> ActionAdapterId {
+        T::adapter_id()
+    }
+
+    fn match_keys(&self) -> Vec<SignatureMatchKey> {
+        DeclaredSignatureActionAdapter::match_keys(self)
+    }
+
+    fn descriptor(&self) -> SignatureActionAdapterDescriptor {
+        self.declared_descriptor()
+    }
+
+    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
+        DeclaredSignatureActionAdapter::build_signature_action(self, sig)
+    }
 }
 
 /// A single `(chain_id, to, selector)` pattern an adapter matches.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MatchKey {
+pub struct TransactionMatchKey {
     /// EVM chain id.
     pub chain_id: ChainId,
     /// `None` represents the wildcard (`"*"` in the manifest spec).
@@ -771,7 +904,7 @@ pub struct MatchKey {
     pub selector: [u8; 4],
 }
 
-impl MatchKey {
+impl TransactionMatchKey {
     /// Exact target-address matcher.
     #[must_use]
     pub const fn exact(chain_id: ChainId, to: Address, selector: [u8; 4]) -> Self {
@@ -801,10 +934,13 @@ mod tests {
     #[derive(Default)]
     struct TypedNoopAdapter;
 
-    impl TypedAdapter for TypedNoopAdapter {
+    #[derive(Default)]
+    struct DeclaredSignatureNoopAdapter;
+
+    impl DeclaredTransactionActionAdapter for TypedNoopAdapter {
         const ADAPTER_ID: &'static str = "test/typed-noop@0.0.1";
         const PROTOCOL_ID: &'static str = "test";
-        const KIND: AdapterKind = AdapterKind::Function;
+        const KIND: TransactionActionAdapterKind = TransactionActionAdapterKind::Function;
         const FUNCTIONS: &'static [SolidityFunctionSpec] = &[SolidityFunctionSpec::new(
             "noop",
             "noop(uint256)",
@@ -819,7 +955,10 @@ mod tests {
             )]
         }
 
-        fn build_action(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
+        fn build_transaction_action(
+            &self,
+            tx: &TransactionRequest,
+        ) -> Result<Action, ActionAdapterError> {
             Ok(Action::Other(OtherAction {
                 actor: tx.from.clone(),
                 target: tx.to.clone(),
@@ -830,24 +969,56 @@ mod tests {
         }
     }
 
+    impl DeclaredSignatureActionAdapter for DeclaredSignatureNoopAdapter {
+        const ADAPTER_ID: &'static str = "test/signature-noop@0.0.1";
+        const PROTOCOL_ID: &'static str = "test-signature";
+        const EMITTED_ACTIONS: &'static [ActionKind] = &[ActionKind::Eip712Other];
+
+        fn match_keys(&self) -> Vec<SignatureMatchKey> {
+            vec![SignatureMatchKey::exact(
+                1,
+                Address::new("0x2222222222222222222222222222222222222222").unwrap(),
+                "Permit",
+            )]
+        }
+
+        fn build_signature_action(
+            &self,
+            sig: &SignatureRequest,
+        ) -> Result<Action, ActionAdapterError> {
+            Ok(Action::Other(OtherAction {
+                actor: sig.signer.clone(),
+                target: sig.typed_data.domain.verifying_contract.clone(),
+                selector: "0x".into(),
+                value_wei: "0".into(),
+                raw_calldata: "{}".into(),
+            }))
+        }
+    }
+
     #[test]
     fn typed_adapter_supplies_runtime_adapter_contract() {
         let adapter = TypedNoopAdapter;
-        let as_adapter: &dyn Adapter = &adapter;
+        let as_adapter: &dyn TransactionActionAdapter = &adapter;
         let target = Address::new("0x1111111111111111111111111111111111111111").unwrap();
 
         assert_eq!(
             as_adapter.id(),
-            AdapterId::new("test/typed-noop@0.0.1").expect("static AdapterId is well-formed")
+            ActionAdapterId::new("test/typed-noop@0.0.1")
+                .expect("static ActionAdapterId is well-formed")
         );
         assert_eq!(
             as_adapter.match_keys(),
-            vec![MatchKey::exact(1, target, [0xaa, 0xbb, 0xcc, 0xdd])]
+            vec![TransactionMatchKey::exact(
+                1,
+                target,
+                [0xaa, 0xbb, 0xcc, 0xdd]
+            )]
         );
 
         let descriptor = as_adapter.descriptor();
         assert_eq!(descriptor.protocol_id, "test");
-        assert_eq!(descriptor.kind, AdapterKind::Function);
+        assert_eq!(descriptor.kind, TransactionActionAdapterKind::Function);
         assert_eq!(descriptor.functions[0].signature, "noop(uint256)");
         assert_eq!(descriptor.emitted_actions, vec![ActionKind::Other]);
     }
@@ -857,11 +1028,35 @@ mod tests {
         let factory = TypedNoopAdapter::factory();
         assert_eq!(
             factory.descriptor().id,
-            AdapterId::new("test/typed-noop@0.0.1").expect("static AdapterId is well-formed")
+            ActionAdapterId::new("test/typed-noop@0.0.1")
+                .expect("static ActionAdapterId is well-formed")
         );
         assert_eq!(
             factory.create().id(),
-            AdapterId::new("test/typed-noop@0.0.1").expect("static AdapterId is well-formed")
+            ActionAdapterId::new("test/typed-noop@0.0.1")
+                .expect("static ActionAdapterId is well-formed")
         );
+    }
+
+    #[test]
+    fn declared_signature_adapter_supplies_runtime_adapter_contract() {
+        let adapter = DeclaredSignatureNoopAdapter;
+        let as_adapter: &dyn SignatureActionAdapter = &adapter;
+        let verifying_contract =
+            Address::new("0x2222222222222222222222222222222222222222").unwrap();
+
+        assert_eq!(
+            as_adapter.id(),
+            ActionAdapterId::new("test/signature-noop@0.0.1")
+                .expect("static ActionAdapterId is well-formed")
+        );
+        assert_eq!(
+            as_adapter.match_keys(),
+            vec![SignatureMatchKey::exact(1, verifying_contract, "Permit")]
+        );
+
+        let descriptor = as_adapter.descriptor();
+        assert_eq!(descriptor.protocol_id, "test-signature");
+        assert_eq!(descriptor.emitted_actions, vec![ActionKind::Eip712Other]);
     }
 }

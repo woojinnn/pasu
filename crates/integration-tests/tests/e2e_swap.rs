@@ -3,8 +3,8 @@
 
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
-    Address, HostCapabilities, MockAdapterRegistry, MockOracle, Pipeline, PolicyEngine, Token,
-    TransactionRequest, Verdict,
+    Address, HostCapabilities, MockOracle, MockTransactionActionAdapterRegistry, Pipeline,
+    PolicyEngine, Token, TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v3::{
     encode_exact_input_single, ExactInputSingleParams, UniswapV3ExactInputSingleAdapter,
@@ -79,8 +79,9 @@ fn full_oracle() -> MockOracle {
         .with_simple_price(&weth(), "3000.0000", 8)
 }
 
-fn registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new().with_adapter(Arc::new(UniswapV3ExactInputSingleAdapter::new()))
+fn registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
+        .with_adapter(Arc::new(UniswapV3ExactInputSingleAdapter::new()))
 }
 
 fn engine() -> PolicyEngine {

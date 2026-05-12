@@ -1,8 +1,8 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
-    enrich_dex_action, Action, Adapter, Address, HostCapabilities, MockAdapterRegistry,
-    MockApprovals, MockOracle, MockPortfolio, Pipeline, PolicyEngine, PolicyRequest, RequestKind,
-    Token, TransactionRequest, Verdict,
+    enrich_dex_action, Action, Address, HostCapabilities, MockApprovals, MockOracle, MockPortfolio,
+    MockTransactionActionAdapterRegistry, Pipeline, PolicyEngine, PolicyRequest, RequestKind,
+    Token, TransactionActionAdapter, TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v2::{
     encode_swap_exact_eth_for_tokens, encode_swap_exact_tokens_for_tokens, native_eth,
@@ -45,17 +45,19 @@ fn full_oracle() -> MockOracle {
     MockOracle::new().with_simple_price(&usdt(), "1.0000", 5)
 }
 
-fn v2_registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new()
+fn v2_registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
         .with_adapter(Arc::new(UniswapV2SwapExactTokensForTokensAdapter::new()))
 }
 
-fn v2_eth_registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new().with_adapter(Arc::new(UniswapV2SwapExactETHForTokensAdapter::new()))
+fn v2_eth_registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
+        .with_adapter(Arc::new(UniswapV2SwapExactETHForTokensAdapter::new()))
 }
 
-fn v3_multicall_registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new().with_adapter(Arc::new(UniswapV3MulticallAdapter::new()))
+fn v3_multicall_registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
+        .with_adapter(Arc::new(UniswapV3MulticallAdapter::new()))
 }
 
 fn v2_swap_tx(amount_in: U256) -> TransactionRequest {
@@ -131,12 +133,12 @@ fn v3_multicall_tx(first_input: U256, second_input: U256) -> TransactionRequest 
 }
 
 fn requests_from_adapter(
-    adapter: &dyn Adapter,
+    adapter: &dyn TransactionActionAdapter,
     tx: &TransactionRequest,
     host: &HostCapabilities,
 ) -> Vec<PolicyRequest> {
     let mut action = adapter
-        .build(tx)
+        .build_action(tx)
         .expect("adapter should build an aggregate action");
     match &mut action {
         Action::Dex(dex) => enrich_dex_action(dex, host),

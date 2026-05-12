@@ -87,7 +87,7 @@ pub(crate) fn decode_exact_input(
     tokens: &TokenLookup,
     input: &[u8],
     meta: ActionMeta,
-) -> Result<RoutedAction, AdapterError> {
+) -> Result<RoutedAction, ActionAdapterError> {
     exact_input::decode(tx, tokens, input, meta)
 }
 
@@ -96,7 +96,7 @@ pub(crate) fn decode_exact_input_single(
     tokens: &TokenLookup,
     input: &[u8],
     meta: ActionMeta,
-) -> Result<RoutedAction, AdapterError> {
+) -> Result<RoutedAction, ActionAdapterError> {
     exact_input_single::decode(tx, tokens, input, meta)
 }
 
@@ -105,7 +105,7 @@ pub(crate) fn decode_exact_output(
     tokens: &TokenLookup,
     input: &[u8],
     meta: ActionMeta,
-) -> Result<RoutedAction, AdapterError> {
+) -> Result<RoutedAction, ActionAdapterError> {
     exact_output::decode(tx, tokens, input, meta)
 }
 
@@ -114,7 +114,7 @@ pub(crate) fn decode_exact_output_single(
     tokens: &TokenLookup,
     input: &[u8],
     meta: ActionMeta,
-) -> Result<RoutedAction, AdapterError> {
+) -> Result<RoutedAction, ActionAdapterError> {
     exact_output_single::decode(tx, tokens, input, meta)
 }
 

@@ -136,7 +136,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
-/// Adapter for `exactInputSingle`. Holds chain-target list + token lookup.
+/// `TransactionActionAdapter` for `exactInputSingle`. Holds chain-target list + token lookup.
 #[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
@@ -167,10 +167,10 @@ impl Default for Adapter_ {
     }
 }
 
-impl TypedAdapter for Adapter_ {
+impl DeclaredTransactionActionAdapter for Adapter_ {
     const ADAPTER_ID: &'static str = "uniswap-v3/exactInputSingle@0.1.0";
     const PROTOCOL_ID: &'static str = "uniswap-v3";
-    const KIND: AdapterKind = AdapterKind::Function;
+    const KIND: TransactionActionAdapterKind = TransactionActionAdapterKind::Function;
     const FUNCTIONS: &'static [SolidityFunctionSpec] = &[SolidityFunctionSpec::new(
         "exactInputSingle",
         "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))",
@@ -185,8 +185,11 @@ impl TypedAdapter for Adapter_ {
             .collect()
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
-        let p = decode(&tx.data).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+    fn build_transaction_action(
+        &self,
+        tx: &TransactionRequest,
+    ) -> Result<Action, ActionAdapterError> {
+        let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
 
         let token_in_addr = Address::from_alloy(p.token_in);
         let token_out_addr = Address::from_alloy(p.token_out);
@@ -303,7 +306,7 @@ mod tests {
         assert_eq!(decoded.sqrt_price_limit_x96, U256::from(U160::MAX));
     }
 
-    // -- Adapter impl --
+    // -- TransactionActionAdapter impl --
 
     #[test]
     fn match_keys_target_swap_router_on_mainnet() {
@@ -322,7 +325,7 @@ mod tests {
     fn build_emits_dex_action_with_known_tokens() {
         let adapter = Adapter_::new();
         let action = adapter
-            .build(&build_tx(U256::from(200_000_000u64)))
+            .build_action(&build_tx(U256::from(200_000_000u64)))
             .unwrap();
         match action {
             Action::Dex(d) => {
@@ -360,7 +363,7 @@ mod tests {
             gas: None,
             nonce: None,
         };
-        match adapter.build(&tx).unwrap() {
+        match adapter.build_action(&tx).unwrap() {
             Action::Dex(d) => assert_eq!(d.facts.input_tokens[0].symbol, "UNKNOWN"),
             other => panic!("expected dex, got {other:?}"),
         }
@@ -378,6 +381,6 @@ mod tests {
             gas: None,
             nonce: None,
         };
-        assert!(adapter.build(&tx).is_err());
+        assert!(adapter.build_action(&tx).is_err());
     }
 }

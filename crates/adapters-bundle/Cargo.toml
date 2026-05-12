@@ -3,7 +3,7 @@ name = "policy-engine-adapters-bundle"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Aggregator: builds a default `MockAdapterRegistry` from every internal adapter crate"
+description = "Aggregator: builds default action adapter registries from every internal adapter crate"
 
 [dependencies]
 policy-engine.workspace = true

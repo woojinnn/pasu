@@ -97,21 +97,21 @@ pub(crate) fn expand_commands(
     commands: &[u8],
     inputs: &[Vec<u8>],
     depth: usize,
-) -> Result<Vec<RoutedAction>, AdapterError> {
+) -> Result<Vec<RoutedAction>, ActionAdapterError> {
     if depth > MAX_DEPTH {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "Universal Router sub-plan depth exceeds max {MAX_DEPTH}"
         )));
     }
     if commands.len() != inputs.len() {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "Universal Router length mismatch: {} commands, {} inputs",
             commands.len(),
             inputs.len()
         )));
     }
     if commands.len() > MAX_COMMANDS {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "Universal Router command count {} exceeds max {MAX_COMMANDS}",
             commands.len()
         )));
@@ -132,7 +132,7 @@ pub(crate) fn expand_commands(
             V4_SWAP => out.extend(decode_v4_swap(tx, tokens, input, &meta)?),
             EXECUTE_SUB_PLAN => {
                 let (sub_commands, sub_inputs) = SubPlanInput::abi_decode_sequence(input, true)
-                    .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+                    .map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
                 let sub_commands = sub_commands.to_vec();
                 let sub_inputs = sub_inputs
                     .into_iter()
@@ -165,7 +165,7 @@ pub(crate) fn expand_commands(
                 // ignored by the dex aggregation pass.
             }
             other => {
-                return Err(AdapterError::BadCalldata(format!(
+                return Err(ActionAdapterError::BadCalldata(format!(
                     "unsupported Universal Router command 0x{other:02x}"
                 )));
             }
@@ -182,9 +182,9 @@ pub(crate) fn token(tokens: &TokenLookup, chain_id: ChainId, address: AlloyAddre
 pub(crate) fn path_endpoints(
     path: &[AlloyAddress],
     label: &str,
-) -> Result<(AlloyAddress, AlloyAddress), AdapterError> {
+) -> Result<(AlloyAddress, AlloyAddress), ActionAdapterError> {
     if path.len() < 2 {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "{label} path must contain at least 2 tokens"
         )));
     }
@@ -254,7 +254,7 @@ pub(crate) fn swap_action(
 pub(crate) fn merge_dex_actions(
     tx: &TransactionRequest,
     routed_actions: Vec<RoutedAction>,
-) -> Result<DexAction, AdapterError> {
+) -> Result<DexAction, ActionAdapterError> {
     let mut facts = DexFacts::default();
     let mut oracle_requirements = Vec::new();
     let mut trace_steps = Vec::new();
@@ -264,7 +264,7 @@ pub(crate) fn merge_dex_actions(
         let dex = match action {
             Action::Dex(dex) => dex,
             other => {
-                return Err(AdapterError::BadCalldata(format!(
+                return Err(ActionAdapterError::BadCalldata(format!(
                     "Universal Router routed non-Dex action: {}",
                     other.kind()
                 )));
@@ -323,9 +323,11 @@ fn push_unique_token(tokens: &mut Vec<Token>, token: Token) {
     }
 }
 
-pub(crate) fn decode_v3_path(path: &[u8]) -> Result<(Vec<AlloyAddress>, Vec<u32>), AdapterError> {
+pub(crate) fn decode_v3_path(
+    path: &[u8],
+) -> Result<(Vec<AlloyAddress>, Vec<u32>), ActionAdapterError> {
     abi_resolver::subdecode::protocols::uniswap_v3::decode_v3_path(path)
-        .map_err(|e| AdapterError::BadCalldata(e.to_string()))
+        .map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))
 }
 
 pub(crate) fn fee_bips_avg(fees: &[u32]) -> Option<u32> {

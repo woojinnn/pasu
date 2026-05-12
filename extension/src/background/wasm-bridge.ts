@@ -12,11 +12,16 @@ import {
 } from "./wasm-bridge.types";
 
 export { WasmDecodeError } from "./wasm-bridge.types";
-export type { ParsedAction, Tier1Plan, VerdictDto, WindowKeys } from "./wasm-bridge.types";
+export type {
+  ParsedAction,
+  Tier1Plan,
+  VerdictDto,
+  WindowKeys,
+} from "./wasm-bridge.types";
 
 interface WasmExports {
   install_policies_json(input: string): string;
-  build_action_json(request_json: string): string;
+  build_action_for_request_json(request_json: string): string;
   tier1_fact_plan_json(action_json: string): string;
   tier2_window_keys_json(
     action_json: string,
@@ -75,15 +80,21 @@ export async function installPolicies(input: {
   unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
 }
 
-export async function buildAction(request: unknown): Promise<ParsedAction> {
+export async function buildActionForRequest(
+  request: unknown,
+): Promise<ParsedAction> {
   const exports = await load();
-  const raw = unwrap<unknown>(exports.build_action_json(JSON.stringify(request)));
+  const raw = unwrap<unknown>(
+    exports.build_action_for_request_json(JSON.stringify(request)),
+  );
   return parseAction(raw);
 }
 
 export async function tier1FactPlan(action: unknown): Promise<Tier1Plan> {
   const exports = await load();
-  const raw = unwrap<unknown>(exports.tier1_fact_plan_json(JSON.stringify(action)));
+  const raw = unwrap<unknown>(
+    exports.tier1_fact_plan_json(JSON.stringify(action)),
+  );
   return parseTier1Plan(raw);
 }
 

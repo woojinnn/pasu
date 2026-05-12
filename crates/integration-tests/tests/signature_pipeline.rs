@@ -1,8 +1,9 @@
 use policy_engine::{
-    Action, AdapterError, AdapterId, Address, Eip2612Action, HostCapabilities, MockAdapterRegistry,
-    MockClock, MockOracle, MockSignatureRegistry, Permit2Action, Permit2Approval,
-    Permit2PermitKind, Pipeline, PipelineError, PolicyEngine, Request, SignatureAdapter,
-    SignatureMatchKey, SignatureRequest, Token, TransactionRequest, Verdict,
+    Action, ActionAdapterError, ActionAdapterId, Address, Eip2612Action, HostCapabilities,
+    MockClock, MockOracle, MockSignatureActionAdapterRegistry,
+    MockTransactionActionAdapterRegistry, Permit2Action, Permit2Approval, Permit2PermitKind,
+    Pipeline, PipelineError, PolicyEngine, Request, SignatureActionAdapter, SignatureMatchKey,
+    SignatureRequest, Token, TransactionRequest, Verdict,
 };
 use policy_engine_adapters_bundle::default_signature_registry;
 use serde_json::{json, Value};
@@ -125,9 +126,9 @@ fn evaluate_result_with_registry(
     sig: SignatureRequest,
     policy: &str,
     clock: &MockClock,
-    sig_registry: &dyn policy_engine::SignatureRegistry,
+    sig_registry: &dyn policy_engine::SignatureActionAdapterRegistry,
 ) -> Result<Verdict, PipelineError> {
-    let tx_registry = MockAdapterRegistry::new();
+    let tx_registry = MockTransactionActionAdapterRegistry::new();
     let oracle = oracle();
     let policies = PolicyEngine::from_sources([policy]).expect("policy source parses");
     let pipe = Pipeline::new(
@@ -390,9 +391,9 @@ fn typed_data_validation_allows_well_formed_signature_to_dispatch() {
 #[derive(Debug)]
 struct MalformedAmountAdapter;
 
-impl SignatureAdapter for MalformedAmountAdapter {
-    fn id(&self) -> AdapterId {
-        AdapterId::new("test/malformed-signature-amount@1").unwrap()
+impl SignatureActionAdapter for MalformedAmountAdapter {
+    fn id(&self) -> ActionAdapterId {
+        ActionAdapterId::new("test/malformed-signature-amount@1").unwrap()
     }
 
     fn match_keys(&self) -> Vec<SignatureMatchKey> {
@@ -403,7 +404,7 @@ impl SignatureAdapter for MalformedAmountAdapter {
         )]
     }
 
-    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError> {
+    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
         let token = usdc();
         let approval = Permit2Approval {
             token: token.clone(),
@@ -436,9 +437,9 @@ impl SignatureAdapter for MalformedAmountAdapter {
 #[derive(Debug)]
 struct OwnerMismatchEip2612Adapter;
 
-impl SignatureAdapter for OwnerMismatchEip2612Adapter {
-    fn id(&self) -> AdapterId {
-        AdapterId::new("test/eip2612-owner-mismatch@1").unwrap()
+impl SignatureActionAdapter for OwnerMismatchEip2612Adapter {
+    fn id(&self) -> ActionAdapterId {
+        ActionAdapterId::new("test/eip2612-owner-mismatch@1").unwrap()
     }
 
     fn match_keys(&self) -> Vec<SignatureMatchKey> {
@@ -449,7 +450,7 @@ impl SignatureAdapter for OwnerMismatchEip2612Adapter {
         )]
     }
 
-    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError> {
+    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
         Ok(Action::Eip2612(Eip2612Action {
             signer: sig.signer.clone(),
             owner: Address::new("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb").unwrap(),
@@ -472,7 +473,8 @@ impl SignatureAdapter for OwnerMismatchEip2612Adapter {
 #[test]
 fn malformed_signature_amount_returns_pipeline_error() {
     let clock = MockClock::with_fixed(1000);
-    let sig_registry = MockSignatureRegistry::new().with_adapter(Arc::new(MalformedAmountAdapter));
+    let sig_registry =
+        MockSignatureActionAdapterRegistry::new().with_adapter(Arc::new(MalformedAmountAdapter));
 
     let error =
         evaluate_result_with_registry(permit2_single(), "", &clock, &sig_registry).unwrap_err();
@@ -585,8 +587,8 @@ when {
 };
 "#;
     let clock = MockClock::with_fixed(1000);
-    let sig_registry =
-        MockSignatureRegistry::new().with_adapter(Arc::new(OwnerMismatchEip2612Adapter));
+    let sig_registry = MockSignatureActionAdapterRegistry::new()
+        .with_adapter(Arc::new(OwnerMismatchEip2612Adapter));
 
     // Redundant with adapter-level enforcement; kept as belt-and-braces
     // defense in case the adapter is bypassed via Action construction in tests.
@@ -695,7 +697,7 @@ fn eip712_other_chain_match_passes_and_fails() {
 
 #[test]
 fn signature_verdict_is_reproducible_with_fixed_clock() {
-    let tx_registry = MockAdapterRegistry::new();
+    let tx_registry = MockTransactionActionAdapterRegistry::new();
     let sig_registry = default_signature_registry();
     let oracle = oracle();
     let clock = MockClock::with_fixed(1000);
@@ -742,7 +744,7 @@ when {
 
 #[test]
 fn tx_no_match_stays_transaction_other_not_signature_other() {
-    let tx_registry = MockAdapterRegistry::new();
+    let tx_registry = MockTransactionActionAdapterRegistry::new();
     let sig_registry = default_signature_registry();
     let oracle = oracle();
     let clock = MockClock::with_fixed(1000);

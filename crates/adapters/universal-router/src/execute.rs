@@ -106,7 +106,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
-/// Adapter for Universal Router execute calls.
+/// `TransactionActionAdapter` for Universal Router execute calls.
 #[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
@@ -129,8 +129,9 @@ impl Adapter_ {
     fn decode_routed_actions(
         &self,
         tx: &TransactionRequest,
-    ) -> Result<Vec<RoutedAction>, AdapterError> {
-        let params = decode(&tx.data).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+    ) -> Result<Vec<RoutedAction>, ActionAdapterError> {
+        let params =
+            decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
         expand_commands(tx, &self.tokens, &params.commands, &params.inputs, 0)
     }
 }
@@ -141,10 +142,10 @@ impl Default for Adapter_ {
     }
 }
 
-impl TypedAdapter for Adapter_ {
+impl DeclaredTransactionActionAdapter for Adapter_ {
     const ADAPTER_ID: &'static str = "uniswap/universal-router@0.1.0";
     const PROTOCOL_ID: &'static str = "uniswap";
-    const KIND: AdapterKind = AdapterKind::CompositeRouter;
+    const KIND: TransactionActionAdapterKind = TransactionActionAdapterKind::CompositeRouter;
     const FUNCTIONS: &'static [SolidityFunctionSpec] = &[
         SolidityFunctionSpec::new("execute", "execute(bytes,bytes[])", SELECTOR_EXECUTE),
         SolidityFunctionSpec::new(
@@ -162,7 +163,10 @@ impl TypedAdapter for Adapter_ {
             .collect()
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
+    fn build_transaction_action(
+        &self,
+        tx: &TransactionRequest,
+    ) -> Result<Action, ActionAdapterError> {
         let routed_actions = self.decode_routed_actions(tx)?;
         Ok(Action::Dex(merge_dex_actions(tx, routed_actions)?))
     }

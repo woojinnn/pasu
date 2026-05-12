@@ -28,7 +28,7 @@ vi.mock("webextension-polyfill", () => ({
 vi.mock("../../wasm/policy_engine_wasm", () => ({
   default: wasmMocks.init,
   install_policies_json: wasmMocks.installPoliciesJson,
-  build_action_json: wasmMocks.buildActionJson,
+  build_action_for_request_json: wasmMocks.buildActionJson,
   tier1_fact_plan_json: wasmMocks.tier1FactPlanJson,
   tier2_window_keys_json: wasmMocks.tier2WindowKeysJson,
   evaluate_json: wasmMocks.evaluateJson,
@@ -88,7 +88,9 @@ describe("wasm bridge parsers", () => {
     const plan = {
       tokens_for_oracle: [token],
       balances: [{ owner: dexAction.dex.actor, token }],
-      allowances: [{ owner: dexAction.dex.actor, token, spender: dexAction.dex.target }],
+      allowances: [
+        { owner: dexAction.dex.actor, token, spender: dexAction.dex.target },
+      ],
       clock_required: false,
       sig_oracle_requirements: [{ kind: "minOutput", token, raw_amount: "1" }],
     };
@@ -96,7 +98,10 @@ describe("wasm bridge parsers", () => {
     expect(parseTier1Plan(plan)).toEqual(plan);
     expect(() => parseTier1Plan({ wrong: "shape" })).toThrow(WasmDecodeError);
     expect(() =>
-      parseTier1Plan({ ...plan, sig_oracle_requirements: [{ kind: "output", token }] }),
+      parseTier1Plan({
+        ...plan,
+        sig_oracle_requirements: [{ kind: "output", token }],
+      }),
     ).toThrow(WasmDecodeError);
   });
 
@@ -107,9 +112,9 @@ describe("wasm bridge parsers", () => {
 
     expect(parseWindowKeys(windowKeys)).toEqual(windowKeys);
     expect(() => parseWindowKeys({ wrong: "shape" })).toThrow(WasmDecodeError);
-    expect(() => parseWindowKeys({ keys: [{ actor: dexAction.dex.actor }] })).toThrow(
-      WasmDecodeError,
-    );
+    expect(() =>
+      parseWindowKeys({ keys: [{ actor: dexAction.dex.actor }] }),
+    ).toThrow(WasmDecodeError);
   });
 
   it("parses and rejects verdict shapes", () => {
@@ -128,7 +133,10 @@ describe("wasm bridge parsers", () => {
     expect(parseVerdict(verdict)).toEqual(verdict);
     expect(() => parseVerdict({ wrong: "shape" })).toThrow(WasmDecodeError);
     expect(() =>
-      parseVerdict({ ...verdict, matched: [{ ...verdict.matched[0], severity: "info" }] }),
+      parseVerdict({
+        ...verdict,
+        matched: [{ ...verdict.matched[0], severity: "info" }],
+      }),
     ).toThrow(WasmDecodeError);
   });
 

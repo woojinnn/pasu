@@ -8,7 +8,7 @@
 //!   `StatWindows`) shared by adapters and pipeline.
 //! - **`policy`**: `PolicyEngine` (Cedar wrapper) and the `PolicyRequest`
 //!   shape that adapters produce and the engine consumes.
-//! - **`adapter`**: the `Adapter` trait + adapter ids/errors/match keys.
+//! - **`adapter`**: the `TransactionActionAdapter` trait + adapter ids/errors/match keys.
 //!   Concrete adapter implementations live in *their own crates* under
 //!   `crates/adapters/<name>/`.
 //! - **`registry`**: adapter resolution traits and the in-memory registry.
@@ -48,9 +48,12 @@ pub mod registry;
 pub mod schema;
 
 pub use adapter::{
-    ActionKind, Adapter, AdapterDescriptor, AdapterError, AdapterFactory, AdapterId, AdapterKind,
-    ContractTarget, MatchKey, SignatureAdapter, SignatureMatchKey, SolidityFunction,
-    SolidityFunctionSpec, StaticAdapterFactory, TypedAdapter,
+    ActionAdapterError, ActionAdapterId, ActionKind, ContractTarget,
+    DeclaredSignatureActionAdapter, DeclaredTransactionActionAdapter, SignatureActionAdapter,
+    SignatureActionAdapterDescriptor, SignatureMatchKey, SolidityFunction, SolidityFunctionSpec,
+    StaticTransactionActionAdapterFactory, TransactionActionAdapter,
+    TransactionActionAdapterDescriptor, TransactionActionAdapterFactory,
+    TransactionActionAdapterKind, TransactionMatchKey,
 };
 pub use core::{
     validate_typed_data, Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
@@ -74,7 +77,8 @@ pub use policy::{
     Severity, Verdict,
 };
 pub use registry::{
-    AdapterIndex, AdapterRegistry, MockAdapterRegistry, MockSignatureRegistry, ResolverOutcome,
-    SignatureRegistry, SignatureResolverOutcome,
+    MockSignatureActionAdapterRegistry, MockTransactionActionAdapterRegistry,
+    SignatureActionAdapterRegistry, SignatureActionResolverOutcome, TransactionActionAdapterIndex,
+    TransactionActionAdapterRegistry, TransactionResolverOutcome,
 };
 pub use schema::PolicySchemaComposer;

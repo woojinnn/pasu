@@ -12,11 +12,11 @@ pub(super) fn decode(
     tokens: &TokenLookup,
     input: &[u8],
     meta: ActionMeta,
-) -> Result<RoutedAction, AdapterError> {
+) -> Result<RoutedAction, ActionAdapterError> {
     let p = <V4ExactInputParams as SolValue>::abi_decode_sequence(input, true)
-        .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+        .map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
     if p.path.is_empty() {
-        return Err(AdapterError::BadCalldata(
+        return Err(ActionAdapterError::BadCalldata(
             "v4 exact-in path is empty".into(),
         ));
     }

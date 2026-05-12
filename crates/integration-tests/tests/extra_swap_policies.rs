@@ -3,8 +3,8 @@
 
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
-    Address, HostCapabilities, MockAdapterRegistry, MockOracle, Pipeline, PolicyEngine, Token,
-    TransactionRequest, Verdict,
+    Address, HostCapabilities, MockOracle, MockTransactionActionAdapterRegistry, Pipeline,
+    PolicyEngine, Token, TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v2::{
     encode_swap_exact_tokens_for_tokens, SwapExactTokensForTokensParams,
@@ -52,12 +52,13 @@ fn full_oracle() -> MockOracle {
         .with_simple_price(&weth_token(), "3000.0000", 5)
 }
 
-fn v3_registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new().with_adapter(Arc::new(UniswapV3ExactInputSingleAdapter::new()))
+fn v3_registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
+        .with_adapter(Arc::new(UniswapV3ExactInputSingleAdapter::new()))
 }
 
-fn v2_registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new()
+fn v2_registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
         .with_adapter(Arc::new(UniswapV2SwapExactTokensForTokensAdapter::new()))
 }
 
@@ -176,24 +177,25 @@ fn allowlist_passes_uniswap_v2() {
 mod fake_protocol_adapter {
     use super::*;
     use policy_engine::{
-        Action, Adapter, AdapterError, AdapterId, DexAction, DexFacts, DexTrace, MatchKey,
-        OracleRequirement, OracleRequirementKind,
+        Action, ActionAdapterError, ActionAdapterId, DexAction, DexFacts, DexTrace,
+        OracleRequirement, OracleRequirementKind, TransactionActionAdapter, TransactionMatchKey,
     };
 
     pub struct FakeProtocolAdapter;
 
-    impl Adapter for FakeProtocolAdapter {
-        fn id(&self) -> AdapterId {
-            AdapterId::new("test/fake-protocol@0.0.1").expect("static AdapterId is well-formed")
+    impl TransactionActionAdapter for FakeProtocolAdapter {
+        fn id(&self) -> ActionAdapterId {
+            ActionAdapterId::new("test/fake-protocol@0.0.1")
+                .expect("static ActionAdapterId is well-formed")
         }
-        fn match_keys(&self) -> Vec<MatchKey> {
-            vec![MatchKey::exact(
+        fn match_keys(&self) -> Vec<TransactionMatchKey> {
+            vec![TransactionMatchKey::exact(
                 1,
                 Address::new("0x000000000000000000000000000000000000beef").unwrap(),
                 [0xde, 0xad, 0xbe, 0xef],
             )]
         }
-        fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
+        fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
             let usdt = usdt_token();
             let weth = weth_token();
             Ok(Action::Dex(DexAction {
@@ -233,7 +235,8 @@ fn allowlist_denies_unknown_protocol() {
     use fake_protocol_adapter::FakeProtocolAdapter;
 
     let engine = PolicyEngine::from_sources([POLICY_ALLOWLIST]).unwrap();
-    let registry = MockAdapterRegistry::new().with_adapter(Arc::new(FakeProtocolAdapter));
+    let registry =
+        MockTransactionActionAdapterRegistry::new().with_adapter(Arc::new(FakeProtocolAdapter));
     let oracle = full_oracle();
     let pipe = Pipeline::new(&registry, HostCapabilities::new(&oracle), &engine);
 

@@ -23,11 +23,11 @@ thread_local! {
     pub static STATE: RefCell<Option<EngineState>> = const { RefCell::new(None) };
 }
 
-pub fn registry() -> impl policy_engine::registry::AdapterRegistry {
+pub fn registry() -> impl policy_engine::registry::TransactionActionAdapterRegistry {
     default_registry()
 }
 
-pub fn signature_registry() -> impl policy_engine::registry::SignatureRegistry {
+pub fn signature_registry() -> impl policy_engine::registry::SignatureActionAdapterRegistry {
     default_signature_registry()
 }
 
