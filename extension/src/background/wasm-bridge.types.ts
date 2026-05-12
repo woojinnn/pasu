@@ -44,7 +44,8 @@ export interface ParsedEip2612Action extends Readonly<Record<string, unknown>> {
   readonly eip2612: Eip2612Action;
 }
 
-export interface ParsedEip712OtherAction extends Readonly<Record<string, unknown>> {
+export interface ParsedEip712OtherAction
+  extends Readonly<Record<string, unknown>> {
   readonly eip712Other: Eip712OtherAction;
 }
 
@@ -232,12 +233,12 @@ export class WasmDecodeError extends Error {
 }
 
 export function parseAction(value: unknown): ParsedAction {
-  const record = requireRecord(value, "buildAction", "$");
+  const record = requireRecord(value, "buildActionForRequest", "$");
   const keys = Object.keys(record);
   const variantKeys = ACTION_VARIANTS.filter((key) => hasOwn(record, key));
   if (keys.length !== 1 || variantKeys.length !== 1) {
     fail(
-      "buildAction",
+      "buildActionForRequest",
       "$",
       `expected exactly one action variant (${ACTION_VARIANTS.join(", ")})`,
       value,
@@ -247,19 +248,31 @@ export function parseAction(value: unknown): ParsedAction {
   const variant = variantKeys[0];
   switch (variant) {
     case "dex":
-      return { dex: parseDexAction(record.dex, "$.dex", "buildAction") };
+      return {
+        dex: parseDexAction(record.dex, "$.dex", "buildActionForRequest"),
+      };
     case "other":
-      return { other: parseOtherAction(record.other, "$.other", "buildAction") };
+      return {
+        other: parseOtherAction(
+          record.other,
+          "$.other",
+          "buildActionForRequest",
+        ),
+      };
     case "permit2":
       return {
-        permit2: parsePermit2Action(record.permit2, "$.permit2", "buildAction"),
+        permit2: parsePermit2Action(
+          record.permit2,
+          "$.permit2",
+          "buildActionForRequest",
+        ),
       };
     case "eip2612":
       return {
         eip2612: parseEip2612Action(
           record.eip2612,
           "$.eip2612",
-          "buildAction",
+          "buildActionForRequest",
         ),
       };
     case "eip712Other":
@@ -267,7 +280,7 @@ export function parseAction(value: unknown): ParsedAction {
         eip712Other: parseEip712OtherAction(
           record.eip712Other,
           "$.eip712Other",
-          "buildAction",
+          "buildActionForRequest",
         ),
       };
   }
@@ -338,7 +351,12 @@ export function parseVerdict(value: unknown): VerdictDto {
 
   if (kind === "pass") {
     if (hasOwn(record, "matched")) {
-      fail("evaluate", "$.matched", "expected field to be absent", record.matched);
+      fail(
+        "evaluate",
+        "$.matched",
+        "expected field to be absent",
+        record.matched,
+      );
     }
     return { kind };
   }
@@ -364,8 +382,17 @@ function parseDexAction(
   return {
     actor: requireString(record, "actor", `${path}.actor`, exportName),
     target: requireString(record, "target", `${path}.target`, exportName),
-    value_wei: requireString(record, "value_wei", `${path}.value_wei`, exportName),
-    facts: parseDexFacts(requireField(record, "facts", `${path}.facts`, exportName), `${path}.facts`, exportName),
+    value_wei: requireString(
+      record,
+      "value_wei",
+      `${path}.value_wei`,
+      exportName,
+    ),
+    facts: parseDexFacts(
+      requireField(record, "facts", `${path}.facts`, exportName),
+      `${path}.facts`,
+      exportName,
+    ),
     oracle_requirements: parseArrayField(
       record,
       "oracle_requirements",
@@ -391,7 +418,12 @@ function parseOtherAction(
     actor: requireString(record, "actor", `${path}.actor`, exportName),
     target: requireString(record, "target", `${path}.target`, exportName),
     selector: requireString(record, "selector", `${path}.selector`, exportName),
-    value_wei: requireString(record, "value_wei", `${path}.value_wei`, exportName),
+    value_wei: requireString(
+      record,
+      "value_wei",
+      `${path}.value_wei`,
+      exportName,
+    ),
     raw_calldata: requireString(
       record,
       "raw_calldata",
@@ -620,7 +652,12 @@ function parseEip712OtherAction(
       `${path}.domain_salt`,
       exportName,
     ),
-    types_json: requireString(record, "types_json", `${path}.types_json`, exportName),
+    types_json: requireString(
+      record,
+      "types_json",
+      `${path}.types_json`,
+      exportName,
+    ),
     message_json: requireString(
       record,
       "message_json",
@@ -658,7 +695,12 @@ function parseDexFacts(
       parseToken,
     ),
     total_input_usd: parseNullableUsdValuation(
-      requireField(record, "total_input_usd", `${path}.total_input_usd`, exportName),
+      requireField(
+        record,
+        "total_input_usd",
+        `${path}.total_input_usd`,
+        exportName,
+      ),
       `${path}.total_input_usd`,
       exportName,
     ),
@@ -724,11 +766,26 @@ function parseDexTrace(
 function parseToken(value: unknown, path: string, exportName: string): Token {
   const record = requireRecord(value, exportName, path);
   return {
-    chain_id: requireUnsignedInteger(record, "chain_id", `${path}.chain_id`, exportName),
+    chain_id: requireUnsignedInteger(
+      record,
+      "chain_id",
+      `${path}.chain_id`,
+      exportName,
+    ),
     address: requireString(record, "address", `${path}.address`, exportName),
     symbol: requireString(record, "symbol", `${path}.symbol`, exportName),
-    decimals: requireUnsignedInteger(record, "decimals", `${path}.decimals`, exportName),
-    is_native: requireBoolean(record, "is_native", `${path}.is_native`, exportName),
+    decimals: requireUnsignedInteger(
+      record,
+      "decimals",
+      `${path}.decimals`,
+      exportName,
+    ),
+    is_native: requireBoolean(
+      record,
+      "is_native",
+      `${path}.is_native`,
+      exportName,
+    ),
   };
 }
 
@@ -740,9 +797,24 @@ function parseUsdValuation(
   const record = requireRecord(value, exportName, path);
   return {
     value: requireString(record, "value", `${path}.value`, exportName),
-    as_of_ts: requireUnsignedInteger(record, "as_of_ts", `${path}.as_of_ts`, exportName),
-    sources: parseStringArrayField(record, "sources", `${path}.sources`, exportName),
-    stale_sec: requireUnsignedInteger(record, "stale_sec", `${path}.stale_sec`, exportName),
+    as_of_ts: requireUnsignedInteger(
+      record,
+      "as_of_ts",
+      `${path}.as_of_ts`,
+      exportName,
+    ),
+    sources: parseStringArrayField(
+      record,
+      "sources",
+      `${path}.sources`,
+      exportName,
+    ),
+    stale_sec: requireUnsignedInteger(
+      record,
+      "stale_sec",
+      `${path}.stale_sec`,
+      exportName,
+    ),
   };
 }
 
@@ -861,7 +933,12 @@ function parseOracleRequirement(
       `${path}.token`,
       exportName,
     ),
-    raw_amount: requireString(record, "raw_amount", `${path}.raw_amount`, exportName),
+    raw_amount: requireString(
+      record,
+      "raw_amount",
+      `${path}.raw_amount`,
+      exportName,
+    ),
   };
 }
 
@@ -884,8 +961,18 @@ function parseMatchedPolicy(
 ): MatchedPolicy {
   const record = requireRecord(value, exportName, path);
   return {
-    policy_id: requireString(record, "policy_id", `${path}.policy_id`, exportName),
-    reason: requireNullableString(record, "reason", `${path}.reason`, exportName),
+    policy_id: requireString(
+      record,
+      "policy_id",
+      `${path}.policy_id`,
+      exportName,
+    ),
+    reason: requireNullableString(
+      record,
+      "reason",
+      `${path}.reason`,
+      exportName,
+    ),
     severity: requireOneOf(
       record,
       "severity",
@@ -914,7 +1001,9 @@ function parseArrayField<T>(
   if (!Array.isArray(value)) {
     fail(exportName, path, "expected array", value);
   }
-  return value.map((item, index) => parseItem(item, `${path}[${index}]`, exportName));
+  return value.map((item, index) =>
+    parseItem(item, `${path}[${index}]`, exportName),
+  );
 }
 
 function parseStringArrayField(

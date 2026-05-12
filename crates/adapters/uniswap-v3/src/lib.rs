@@ -3,7 +3,7 @@
 //! ## Module layout
 //!
 //! Each Uniswap V3 `SwapRouter` function lives in its own module under this
-//! crate, with `sol!` declaration, encode/decode helpers, the `Adapter` impl,
+//! crate, with `sol!` declaration, encode/decode helpers, the `TransactionActionAdapter` impl,
 //! and unit tests all co-located. Adding a new function (e.g., `exactInput`,
 //! `exactOutputSingle`, `multicall`) means: drop a new file next to
 //! `exact_input_single.rs`, declare it as `pub mod ...;` here, and re-export
@@ -21,7 +21,7 @@
 //! ```
 //!
 //! The `policy-engine-adapters-bundle` crate stitches each function's
-//! `Adapter_` into a single `MockAdapterRegistry` via `default_registry()`.
+//! `Adapter_` into a single `MockTransactionActionAdapterRegistry` via `default_registry()`.
 
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]

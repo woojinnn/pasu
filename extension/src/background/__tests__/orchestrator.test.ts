@@ -63,7 +63,7 @@ const mocks = vi.hoisted(() => {
     pendingPut: vi.fn(async () => undefined),
     pendingDelete: vi.fn(async () => undefined),
     auditAppend: vi.fn(async () => undefined),
-    buildAction: vi.fn(),
+    buildActionForRequest: vi.fn(),
     tier1FactPlan: vi.fn(),
     tier2WindowKeys: vi.fn(),
     evaluate: vi.fn(),
@@ -138,7 +138,7 @@ vi.mock("../storage", () => ({
   auditAppend: mocks.auditAppend,
 }));
 vi.mock("../wasm-bridge", () => ({
-  buildAction: mocks.buildAction,
+  buildActionForRequest: mocks.buildActionForRequest,
   evaluate: mocks.evaluate,
   EngineError: mocks.MockEngineError,
   tier1FactPlan: mocks.tier1FactPlan,
@@ -160,6 +160,17 @@ function txMessage(requestId = "req-1"): Message {
         value: "0xde0b6b3a7640000",
         data: "0x",
       },
+    },
+  } as Message;
+}
+
+function bypassedTxMessage(requestId = "bypass-1"): Message {
+  const message = txMessage(requestId);
+  return {
+    ...message,
+    data: {
+      ...message.data,
+      bypassed: true,
     },
   } as Message;
 }
@@ -222,10 +233,8 @@ function tokenLite(address: string, symbol: string, decimals = 18) {
   };
 }
 
-function setupDexPass(
-  verdict: VerdictDto = { kind: "pass" },
-) {
-  mocks.buildAction.mockResolvedValue(dexAction());
+function setupDexPass(verdict: VerdictDto = { kind: "pass" }) {
+  mocks.buildActionForRequest.mockResolvedValue(dexAction());
   mocks.tier1FactPlan.mockResolvedValue({
     tokens_for_oracle: [],
     balances: [],
@@ -276,7 +285,7 @@ describe("orchestrator", () => {
       ok: true,
     });
 
-    expect(mocks.buildAction).toHaveBeenCalledWith(
+    expect(mocks.buildActionForRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         Tx: expect.objectContaining({
           value_wei: "1000000000000000000",
@@ -303,6 +312,92 @@ describe("orchestrator", () => {
         ],
       }),
     );
+  });
+
+  it("records whether a wallet action arrived through the bypass observer", async () => {
+    setupDexPass();
+
+    await expect(decideMessage(bypassedTxMessage())).resolves.toMatchObject({
+      ok: true,
+    });
+
+    expect(mocks.auditAppend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: "bypass-1",
+        bypassed: true,
+      }),
+    );
+  });
+
+  it("logs transaction decisions with verdict and bypass context", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    setupDexPass();
+
+    await expect(
+      decideMessage(bypassedTxMessage("logged-bypass-1")),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      "[Scopeball] tx",
+      expect.objectContaining({
+        requestId: "logged-bypass-1",
+        hostname: "app.example",
+        chainId: 1,
+        to: ROUTER,
+        data: "0x",
+        bypassed: true,
+        verdict: "pass",
+        matchedPolicies: [],
+      }),
+    );
+
+    infoSpy.mockRestore();
+  });
+
+  it("logs action classification and oracle facts for runtime debugging", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    setupDexPass();
+
+    await expect(
+      decideMessage(txMessage("action-log-1")),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      "[Scopeball] action",
+      expect.objectContaining({
+        requestId: "action-log-1",
+        hostname: "app.example",
+        actionKind: "dex",
+        txTo: ROUTER,
+        dex: expect.objectContaining({
+          target: ROUTER,
+          protocolIds: ["uniswap_v3"],
+          oracleRequirements: [
+            {
+              kind: "input",
+              tokenKey: `1:${WETH}`,
+              symbol: "WETH",
+              rawAmount: "1000000000000000000",
+            },
+          ],
+        }),
+        tier1: expect.objectContaining({
+          tokensForOracle: [],
+          oracleEntries: [
+            expect.objectContaining({
+              tokenKey: `1:${WETH}`,
+              usdPerUnit: "3500",
+            }),
+          ],
+        }),
+      }),
+    );
+
+    infoSpy.mockRestore();
   });
 
   it("still reserves the DEX count delta when oracle input USD is unavailable", async () => {
@@ -342,12 +437,12 @@ describe("orchestrator", () => {
       allowances: [],
     });
 
-    await expect(decideMessage(txMessage("oracle-gap-1"))).resolves.toMatchObject(
-      {
-        ok: true,
-        verdict: { kind: "pass" },
-      },
-    );
+    await expect(
+      decideMessage(txMessage("oracle-gap-1")),
+    ).resolves.toMatchObject({
+      ok: true,
+      verdict: { kind: "pass" },
+    });
 
     expect(warnSpy).toHaveBeenCalledWith(
       "[Scopeball SW] oracle_requirements declared but no entries returned — dex/USD policies will silently miss",
@@ -386,12 +481,12 @@ describe("orchestrator", () => {
       allowances: [],
     });
 
-    await expect(decideMessage(txMessage("oracle-gap-2"))).resolves.toMatchObject(
-      {
-        ok: true,
-        verdict: { kind: "pass" },
-      },
-    );
+    await expect(
+      decideMessage(txMessage("oracle-gap-2")),
+    ).resolves.toMatchObject({
+      ok: true,
+      verdict: { kind: "pass" },
+    });
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(
@@ -436,7 +531,7 @@ describe("orchestrator", () => {
 
   it("turns engine timeout into a user-confirmable warning", async () => {
     vi.useFakeTimers();
-    mocks.buildAction.mockReturnValue(new Promise(() => undefined));
+    mocks.buildActionForRequest.mockReturnValue(new Promise(() => undefined));
     const awaitingUser = vi.fn();
 
     const result = decideMessage(txMessage("timeout-1"), {
@@ -461,14 +556,50 @@ describe("orchestrator", () => {
     expect(mocks.reservePending).not.toHaveBeenCalled();
   });
 
+  it("waits for the fail verdict window attempt before resolving", async () => {
+    let resolveWindow: (value: { id: number }) => void = () => {};
+    mocks.browser.windows.create.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveWindow = resolve;
+      }),
+    );
+    setupDexPass({
+      kind: "fail",
+      matched: [
+        {
+          policy_id: "policy::deny",
+          reason: "blocked",
+          severity: "deny",
+          origin: "tx",
+        },
+      ],
+    });
+
+    let settled = false;
+    const result = decideMessage(txMessage("fail-window-1")).then((value) => {
+      settled = true;
+      return value;
+    });
+
+    await vi.waitFor(() =>
+      expect(mocks.browser.windows.create).toHaveBeenCalledTimes(1),
+    );
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    resolveWindow({ id: 99 });
+    await expect(result).resolves.toMatchObject({
+      ok: false,
+      verdict: { kind: "fail" },
+    });
+  });
+
   it("surfaces malformed tier1 plans as engine-error failures", async () => {
     setupDexPass();
     mocks.tier1FactPlan.mockRejectedValue(
-      new WasmDecodeError(
-        "$: expected tier1 plan",
-        "tier1FactPlan",
-        { wrong: "shape" },
-      ),
+      new WasmDecodeError("$: expected tier1 plan", "tier1FactPlan", {
+        wrong: "shape",
+      }),
     );
 
     await expect(decideMessage(txMessage("decode-error-1"))).resolves.toEqual({
@@ -491,7 +622,7 @@ describe("orchestrator", () => {
       expect(mocks.browser.windows.create).toHaveBeenCalledTimes(1),
     );
 
-    expect(mocks.buildAction).not.toHaveBeenCalled();
+    expect(mocks.buildActionForRequest).not.toHaveBeenCalled();
     approve("sig-1", true);
 
     await expect(result).resolves.toMatchObject({

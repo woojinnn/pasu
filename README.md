@@ -58,9 +58,9 @@ policy-engine/
 - `core.rs`: `Address`, `Token`, `TransactionRequest`, `SignatureRequest`,
   `Request`, `Action`, `DexAction`, `DexFacts`, `OracleRequirement`,
   `OtherAction`, and signature action types.
-- `adapter.rs`: adapter SDK surface. Transaction adapters implement
-  `build(tx) -> Action` through `Adapter` / `TypedAdapter`; signature adapters
-  implement `SignatureAdapter`.
+- `adapter.rs`: action adapter SDK surface. Transaction adapters implement
+  `TransactionActionAdapter` or `DeclaredTransactionActionAdapter`; signature
+  adapters implement `SignatureActionAdapter` or `DeclaredSignatureActionAdapter`.
 - `registry.rs`: transaction lookup by `(chain_id, to, selector)` and
   signature lookup by `(chain_id, verifying_contract, primary_type)`.
 - `host/`: host capability traits and mocks:
@@ -180,7 +180,7 @@ The catch-all EIP-712 branch is intentionally not registered there.
 Adding an internal adapter:
 
 1. Create `crates/adapters/<name>/`.
-2. Implement `TypedAdapter` or `Adapter`.
+2. Implement `DeclaredTransactionActionAdapter` or `TransactionActionAdapter`.
 3. Return `Action::Dex` for supported DEX calldata or `Action::Other` if the
    adapter intentionally models an unknown/non-DEX action.
 4. Register it in `crates/adapters-bundle`.
@@ -212,15 +212,15 @@ omitted, and policies are expected to guard with `context has <field>`.
 ```text
 Pipeline::evaluate(&Request)
 |-- Request::Tx(TransactionRequest)
-|   |-- AdapterRegistry::resolve_with_adapter
-|   |-- Adapter::build or Action::Other
+|   |-- TransactionActionAdapterRegistry::resolve_with_adapter
+|   |-- TransactionActionAdapter::build_action or Action::Other
 |   |-- DEX host enrichment, if Action::Dex
 |   |-- lowering::request_from_action
 |   `-- Cedar action ids: dex, other
 |
 `-- Request::Sig(SignatureRequest)
-    |-- SignatureRegistry::resolve
-    |-- SignatureAdapter::build, if Permit2/EIP-2612 matched
+    |-- SignatureActionAdapterRegistry::resolve
+    |-- SignatureActionAdapter::build_action, if Permit2/EIP-2612 matched
     |-- Action::Eip712Other fallback, if unmatched
     |-- signature host enrichment with Oracle + Clock
     |-- lowering::request_from_action_with_host

@@ -17,6 +17,7 @@ export interface AuditEntry {
   requestId: string;
   hostname: string;
   type: PendingRequest["type"];
+  bypassed: boolean;
   verdict: "pass" | "warn" | "fail";
   matchedPolicies: { id: string; severity: string }[];
   decidedAtMs: number;

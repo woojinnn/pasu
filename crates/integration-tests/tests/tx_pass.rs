@@ -1,7 +1,7 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
-    Address, HostCapabilities, MockAdapterRegistry, MockOracle, Pipeline, PolicyEngine,
-    RequestKind, Token, TransactionRequest, Verdict,
+    Address, HostCapabilities, MockOracle, MockTransactionActionAdapterRegistry, Pipeline,
+    PolicyEngine, RequestKind, Token, TransactionRequest, Verdict,
 };
 use policy_engine_adapters_bundle::{default_registry, uniswap_v2, uniswap_v3};
 use std::str::FromStr;
@@ -215,7 +215,7 @@ fn dex_warning_and_fee_deny_share_action_origin() {
 
 #[test]
 fn no_match_tx_generates_other_action_and_allows_when_no_policies() {
-    let registry = MockAdapterRegistry::new();
+    let registry = MockTransactionActionAdapterRegistry::new();
     let policies = PolicyEngine::from_sources(Vec::<&str>::new()).unwrap();
     let oracle = oracle();
     let pipe = Pipeline::new(&registry, HostCapabilities::new(&oracle), &policies);
@@ -235,7 +235,7 @@ fn no_match_tx_generates_other_action_and_allows_when_no_policies() {
 
 #[test]
 fn unknown_target_other_action_can_be_blocklisted_by_other_policy() {
-    let registry = MockAdapterRegistry::new();
+    let registry = MockTransactionActionAdapterRegistry::new();
     let policies = PolicyEngine::from_sources([POLICY_OTHER_BLOCKLIST]).unwrap();
     let oracle = oracle();
     let pipe = Pipeline::new(&registry, HostCapabilities::new(&oracle), &policies);

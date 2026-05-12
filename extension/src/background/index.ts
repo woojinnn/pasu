@@ -25,12 +25,6 @@ installReceiptPoller();
 void ensureDefaultPoliciesInstalled().catch((err) => {
   console.warn('[Scopeball] cold-start prewarm failed:', err);
 });
-Browser.runtime.onInstalled.addListener(() => {
-  void ensureDefaultPoliciesInstalled().catch(() => {});
-});
-Browser.runtime.onStartup.addListener(() => {
-  void ensureDefaultPoliciesInstalled().catch(() => {});
-});
 
 Browser.runtime.onConnect.addListener((port) => {
   if (port.name !== Identifier.CONTENT_SCRIPT) return;

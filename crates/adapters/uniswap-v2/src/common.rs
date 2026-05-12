@@ -28,8 +28,8 @@ pub(crate) fn router_address() -> Address {
 }
 
 #[allow(clippy::panic)]
-pub(crate) fn static_adapter_id(raw: &str) -> AdapterId {
-    match AdapterId::new(raw) {
+pub(crate) fn static_adapter_id(raw: &str) -> ActionAdapterId {
+    match ActionAdapterId::new(raw) {
         Ok(id) => id,
         Err(err) => panic!("invalid static adapter id {raw}: {err}"),
     }
@@ -37,9 +37,9 @@ pub(crate) fn static_adapter_id(raw: &str) -> AdapterId {
 
 pub(crate) fn path_endpoints(
     path: &[AlloyAddress],
-) -> Result<(AlloyAddress, AlloyAddress), AdapterError> {
+) -> Result<(AlloyAddress, AlloyAddress), ActionAdapterError> {
     if path.len() < 2 {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "v2 path must contain at least 2 tokens, got {}",
             path.len()
         )));

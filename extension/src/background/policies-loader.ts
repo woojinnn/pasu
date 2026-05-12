@@ -1,7 +1,7 @@
-import Browser from 'webextension-polyfill';
-import { aggregatedPolicySet } from './marketplace/storage';
-import { getEnabledIds } from './policy-selection';
-import { installPolicies } from './wasm-bridge';
+import Browser from "webextension-polyfill";
+import { aggregatedPolicySet } from "./marketplace/storage";
+import { getEnabledIds } from "./policy-selection";
+import { installPolicies } from "./wasm-bridge";
 
 let installed = false;
 let inflight: Promise<void> | null = null;
@@ -12,7 +12,7 @@ interface PolicyEntry {
 }
 
 async function loadDefaultPolicySet(): Promise<PolicyEntry[]> {
-  const setUrl = Browser.runtime.getURL('default-policies/policy-set.json');
+  const setUrl = Browser.runtime.getURL("default-policies/policy-set.json");
   const policySetRaw = await (await fetch(setUrl)).text();
   return JSON.parse(policySetRaw) as PolicyEntry[];
 }
@@ -38,7 +38,12 @@ async function installFiltered(enabledIds: readonly string[]): Promise<void> {
   const enabledSet = new Set(enabledIds);
   const union = [...defaults, ...marketplacePolicies];
   const filtered = union.filter((p) => enabledSet.has(p.id));
-  await installPolicies({ schema_text: '', policy_set: filtered });
+  await installPolicies({ schema_text: "", policy_set: filtered });
+  console.info("[Scopeball] policies installed", {
+    requestedIds: [...enabledIds].sort(),
+    installedIds: filtered.map((p) => p.id).sort(),
+    availableCount: union.length,
+  });
 }
 
 /**
@@ -103,7 +108,9 @@ export async function ensureDefaultPoliciesInstalled(): Promise<void> {
  *
  * On reject, clears the `installed` flag so the next call retries.
  */
-export async function reinstallAllPolicies(ids: readonly string[]): Promise<void> {
+export async function reinstallAllPolicies(
+  ids: readonly string[],
+): Promise<void> {
   await withSerialization(async () => {
     try {
       await installFiltered(ids);

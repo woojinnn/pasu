@@ -1,5 +1,5 @@
 //! Aggregator crate: turns the directory of internal adapter crates
-//! (`crates/adapters/*`) into a single `MockAdapterRegistry` that pipeline
+//! (`crates/adapters/*`) into a single `MockTransactionActionAdapterRegistry` that pipeline
 //! tests/examples can use as a drop-in "virtual registry".
 //!
 //! Adding a new internal adapter is a two-step:
@@ -26,7 +26,10 @@
 #![cfg_attr(not(test), warn(clippy::panic))]
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
-use policy_engine::{MockAdapterRegistry, MockSignatureRegistry, TypedAdapter};
+use policy_engine::{
+    DeclaredTransactionActionAdapter, MockSignatureActionAdapterRegistry,
+    MockTransactionActionAdapterRegistry,
+};
 use std::sync::Arc;
 
 // All first-party adapter crates are re-exported under their module name so
@@ -37,14 +40,14 @@ pub use policy_engine_adapter_uniswap_v2 as uniswap_v2;
 pub use policy_engine_adapter_uniswap_v3 as uniswap_v3;
 pub use policy_engine_adapter_universal_router as universal_router;
 
-/// Build a `MockAdapterRegistry` populated with every first-party swap
+/// Build a `MockTransactionActionAdapterRegistry` populated with every first-party swap
 /// adapter shipped in this workspace.
 ///
 /// Tests or examples that want all known adapters installed should call this.
 /// Tests that want a narrower setup should build the registry by hand.
 #[must_use]
-pub fn default_registry() -> MockAdapterRegistry {
-    MockAdapterRegistry::new()
+pub fn default_registry() -> MockTransactionActionAdapterRegistry {
+    MockTransactionActionAdapterRegistry::new()
         // Uniswap Universal Router
         .with_factory(universal_router::Adapter_::factory())
         // Uniswap V3 SwapRouter
@@ -76,11 +79,11 @@ pub fn default_registry() -> MockAdapterRegistry {
         ))
 }
 
-/// Build a `MockSignatureRegistry` populated with first-party signature
+/// Build a `MockSignatureActionAdapterRegistry` populated with first-party signature
 /// adapters.
 #[must_use]
-pub fn default_signature_registry() -> MockSignatureRegistry {
-    MockSignatureRegistry::new()
+pub fn default_signature_registry() -> MockSignatureActionAdapterRegistry {
+    MockSignatureActionAdapterRegistry::new()
         .with_adapter(Arc::new(permit2::Permit2Adapter::new()))
         .with_adapter(Arc::new(eip2612::Eip2612Adapter::new()))
 }

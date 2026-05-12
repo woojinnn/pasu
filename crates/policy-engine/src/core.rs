@@ -204,7 +204,7 @@ pub struct DexAction {
     pub facts: DexFacts,
     /// Oracle lookups needed for enrichment.
     pub oracle_requirements: Vec<OracleRequirement>,
-    /// Adapter trace.
+    /// Action adapter trace.
     pub trace: DexTrace,
 }
 

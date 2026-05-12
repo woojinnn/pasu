@@ -18,19 +18,19 @@ pub(super) fn decode(
     tokens: &TokenLookup,
     input: &[u8],
     base_meta: &ActionMeta,
-) -> Result<Vec<RoutedAction>, AdapterError> {
+) -> Result<Vec<RoutedAction>, ActionAdapterError> {
     let (actions, params) = Input::abi_decode_sequence(input, true)
-        .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+        .map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
     let actions = actions.to_vec();
     if actions.len() != params.len() {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "v4 action length mismatch: {} actions, {} params",
             actions.len(),
             params.len()
         )));
     }
     if actions.len() > MAX_V4_ACTIONS {
-        return Err(AdapterError::BadCalldata(format!(
+        return Err(ActionAdapterError::BadCalldata(format!(
             "v4 action count {} exceeds max {MAX_V4_ACTIONS}",
             actions.len()
         )));
@@ -53,7 +53,7 @@ pub(super) fn decode(
             | V4_TAKE_PORTION | V4_TAKE_PAIR | V4_CLOSE_CURRENCY | V4_CLEAR_OR_TAKE | V4_SWEEP
             | V4_WRAP | V4_UNWRAP => {}
             other => {
-                return Err(AdapterError::BadCalldata(format!(
+                return Err(ActionAdapterError::BadCalldata(format!(
                     "unsupported v4 action 0x{other:02x}"
                 )));
             }

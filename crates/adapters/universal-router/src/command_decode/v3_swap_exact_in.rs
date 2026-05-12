@@ -15,10 +15,10 @@ pub(super) fn decode(
     tokens: &TokenLookup,
     input: &[u8],
     meta: ActionMeta,
-) -> Result<RoutedAction, AdapterError> {
+) -> Result<RoutedAction, ActionAdapterError> {
     let (recipient, amount_in, amount_out_min, path, _payer_is_user, _min_hop) =
         Input::abi_decode_sequence(input, true)
-            .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+            .map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
     let (path_tokens, fees) = decode_v3_path(path.as_ref())?;
     let (token_in_addr, token_out_addr) = path_endpoints(&path_tokens, "v3")?;
     let token_in = token(tokens, tx.chain_id, token_in_addr);

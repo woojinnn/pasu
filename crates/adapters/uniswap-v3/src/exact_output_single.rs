@@ -120,7 +120,7 @@ pub fn decode(calldata: &[u8]) -> Result<Params, DecodeError> {
     })
 }
 
-/// Adapter for `exactOutputSingle`.
+/// `TransactionActionAdapter` for `exactOutputSingle`.
 #[derive(Debug)]
 pub struct Adapter_ {
     chain_targets: Vec<(ChainId, Address)>,
@@ -144,20 +144,20 @@ impl Default for Adapter_ {
     }
 }
 
-impl Adapter for Adapter_ {
-    fn id(&self) -> AdapterId {
+impl TransactionActionAdapter for Adapter_ {
+    fn id(&self) -> ActionAdapterId {
         static_adapter_id("uniswap-v3/exactOutputSingle@0.1.0")
     }
 
-    fn match_keys(&self) -> Vec<MatchKey> {
+    fn match_keys(&self) -> Vec<TransactionMatchKey> {
         self.chain_targets
             .iter()
-            .map(|(chain, target)| MatchKey::exact(*chain, target.clone(), SELECTOR))
+            .map(|(chain, target)| TransactionMatchKey::exact(*chain, target.clone(), SELECTOR))
             .collect()
     }
 
-    fn build(&self, tx: &TransactionRequest) -> Result<Action, AdapterError> {
-        let p = decode(&tx.data).map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+        let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
         let token_in_addr = Address::from_alloy(p.token_in);
         let token_out_addr = Address::from_alloy(p.token_out);
         let recipient_addr = Address::from_alloy(p.recipient);
@@ -223,7 +223,7 @@ mod tests {
             gas: None,
             nonce: None,
         };
-        match adapter.build(&tx).unwrap() {
+        match adapter.build_action(&tx).unwrap() {
             Action::Dex(d) => {
                 assert_eq!(d.facts.protocol_ids, vec!["uniswap-v3"]);
                 assert_eq!(d.facts.input_tokens[0].symbol, "USDT");

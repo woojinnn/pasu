@@ -20,8 +20,8 @@
 
 use alloy_primitives::U512;
 use policy_engine::adapter::signature_helpers::{
-    address_field, array_field, object, object_field, panic_static, static_adapter_id,
-    static_token, u256_string_field, u64_field, TokenLookup,
+    address_field, array_field, object, object_field, panic_static, static_token,
+    u256_string_field, u64_field, TokenLookup,
 };
 use policy_engine::lowering::decimal::{
     CEDAR_DECIMAL_CEILING_FRACTION, HUMAN_DECIMAL_SCALE, HUMAN_INT_CEILING,
@@ -68,10 +68,10 @@ impl Default for Permit2Adapter {
     }
 }
 
-impl SignatureAdapter for Permit2Adapter {
-    fn id(&self) -> AdapterId {
-        static_adapter_id("permit2/eip712@0.1.0")
-    }
+impl DeclaredSignatureActionAdapter for Permit2Adapter {
+    const ADAPTER_ID: &'static str = "permit2/eip712@0.1.0";
+    const PROTOCOL_ID: &'static str = "permit2";
+    const EMITTED_ACTIONS: &'static [ActionKind] = &[ActionKind::Permit2];
 
     fn match_keys(&self) -> Vec<SignatureMatchKey> {
         let verifying_contract = permit2_address();
@@ -101,9 +101,9 @@ impl SignatureAdapter for Permit2Adapter {
             .collect()
     }
 
-    fn build(&self, sig: &SignatureRequest) -> Result<Action, AdapterError> {
+    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
         let Some(permit_kind) = Permit2PermitKind::from_primary_type(sig.primary_type()) else {
-            return Err(AdapterError::BadCalldata(format!(
+            return Err(ActionAdapterError::BadCalldata(format!(
                 "unsupported Permit2 primaryType {}",
                 sig.primary_type()
             )));
@@ -123,7 +123,7 @@ impl SignatureAdapter for Permit2Adapter {
 }
 
 impl Permit2Adapter {
-    fn decode_single(&self, sig: &SignatureRequest) -> Result<Permit2Action, AdapterError> {
+    fn decode_single(&self, sig: &SignatureRequest) -> Result<Permit2Action, ActionAdapterError> {
         let message = object(&sig.typed_data.message, "message")?;
         let details = object_field(message, "details")?;
         let approval = self.approval_from_details(sig.chain_id, details)?;
@@ -139,7 +139,7 @@ impl Permit2Adapter {
         )
     }
 
-    fn decode_batch(&self, sig: &SignatureRequest) -> Result<Permit2Action, AdapterError> {
+    fn decode_batch(&self, sig: &SignatureRequest) -> Result<Permit2Action, ActionAdapterError> {
         let message = object(&sig.typed_data.message, "message")?;
         let details = array_field(message, "details")?;
         let approvals = details
@@ -161,25 +161,28 @@ impl Permit2Adapter {
         )
     }
 
-    fn decode_transfer(&self, sig: &SignatureRequest) -> Result<Permit2Action, AdapterError> {
+    fn decode_transfer(&self, sig: &SignatureRequest) -> Result<Permit2Action, ActionAdapterError> {
         self.decode_transfer_kind(sig, Permit2PermitKind::PermitTransferFrom, false)
     }
 
-    fn decode_batch_transfer(&self, sig: &SignatureRequest) -> Result<Permit2Action, AdapterError> {
+    fn decode_batch_transfer(
+        &self,
+        sig: &SignatureRequest,
+    ) -> Result<Permit2Action, ActionAdapterError> {
         self.decode_batch_transfer_kind(sig, Permit2PermitKind::PermitBatchTransferFrom, false)
     }
 
     fn decode_witness_transfer(
         &self,
         sig: &SignatureRequest,
-    ) -> Result<Permit2Action, AdapterError> {
+    ) -> Result<Permit2Action, ActionAdapterError> {
         self.decode_transfer_kind(sig, Permit2PermitKind::PermitWitnessTransferFrom, true)
     }
 
     fn decode_batch_witness_transfer(
         &self,
         sig: &SignatureRequest,
-    ) -> Result<Permit2Action, AdapterError> {
+    ) -> Result<Permit2Action, ActionAdapterError> {
         self.decode_batch_transfer_kind(
             sig,
             Permit2PermitKind::PermitBatchWitnessTransferFrom,
@@ -192,7 +195,7 @@ impl Permit2Adapter {
         sig: &SignatureRequest,
         permit_kind: Permit2PermitKind,
         require_witness: bool,
-    ) -> Result<Permit2Action, AdapterError> {
+    ) -> Result<Permit2Action, ActionAdapterError> {
         let message = object(&sig.typed_data.message, "message")?;
         let witness_present = self.witness_present(message, require_witness)?;
         let permitted = object_field(message, "permitted")?;
@@ -226,7 +229,7 @@ impl Permit2Adapter {
         sig: &SignatureRequest,
         permit_kind: Permit2PermitKind,
         require_witness: bool,
-    ) -> Result<Permit2Action, AdapterError> {
+    ) -> Result<Permit2Action, ActionAdapterError> {
         let message = object(&sig.typed_data.message, "message")?;
         let witness_present = self.witness_present(message, require_witness)?;
         let permitted = array_field(message, "permitted")?;
@@ -267,10 +270,12 @@ impl Permit2Adapter {
         &self,
         message: &Map<String, Value>,
         require_witness: bool,
-    ) -> Result<bool, AdapterError> {
+    ) -> Result<bool, ActionAdapterError> {
         let witness_present = message.contains_key("witness");
         if require_witness && !witness_present {
-            return Err(AdapterError::BadCalldata("missing field witness".into()));
+            return Err(ActionAdapterError::BadCalldata(
+                "missing field witness".into(),
+            ));
         }
         Ok(witness_present)
     }
@@ -279,7 +284,7 @@ impl Permit2Adapter {
         &self,
         chain_id: ChainId,
         details: &Map<String, Value>,
-    ) -> Result<Permit2Approval, AdapterError> {
+    ) -> Result<Permit2Approval, ActionAdapterError> {
         let token = self.tokens.get(chain_id, &address_field(details, "token")?);
         Ok(Permit2Approval {
             token,
@@ -298,7 +303,7 @@ impl Permit2Adapter {
         sig_deadline: u64,
         approvals: Vec<Permit2Approval>,
         witness_present: bool,
-    ) -> Result<Permit2Action, AdapterError> {
+    ) -> Result<Permit2Action, ActionAdapterError> {
         let representative = representative_approval(&approvals)?;
         let is_unlimited = approvals
             .iter()
@@ -352,11 +357,11 @@ fn permit2_address() -> Address {
 
 fn representative_approval(
     approvals: &[Permit2Approval],
-) -> Result<&Permit2Approval, AdapterError> {
+) -> Result<&Permit2Approval, ActionAdapterError> {
     approvals
         .iter()
         .max_by(|left, right| cmp_approval_human_amount(left, right))
-        .ok_or_else(|| AdapterError::BadCalldata("Permit2 approval list is empty".into()))
+        .ok_or_else(|| ActionAdapterError::BadCalldata("Permit2 approval list is empty".into()))
 }
 
 #[derive(Debug, Clone, Copy)]

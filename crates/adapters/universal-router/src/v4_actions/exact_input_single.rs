@@ -12,9 +12,9 @@ pub(super) fn decode(
     tokens: &TokenLookup,
     input: &[u8],
     meta: ActionMeta,
-) -> Result<RoutedAction, AdapterError> {
+) -> Result<RoutedAction, ActionAdapterError> {
     let p = <V4ExactInputSingleParams as SolValue>::abi_decode_sequence(input, true)
-        .map_err(|e| AdapterError::BadCalldata(e.to_string()))?;
+        .map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
     let (token_in, token_out) = pool_key_tokens(tx.chain_id, tokens, &p.poolKey, p.zeroForOne);
     let action = swap_action(
         tx,

@@ -50,7 +50,7 @@ pub fn install_policies_json(policies_json: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn build_action_json(request_json: String) -> String {
+pub fn build_action_for_request_json(request_json: String) -> String {
     let result = (|| -> Result<serde_json::Value, EngineErrorDto> {
         let request = parse_request(&request_json)?;
         let registry = registry();
@@ -627,7 +627,7 @@ mod tests {
     fn build_action_returns_other() {
         install_empty_policies();
 
-        let output = build_action_json(tx_request_json().to_string());
+        let output = build_action_for_request_json(tx_request_json().to_string());
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["ok"], true, "{parsed}");
