@@ -62,7 +62,7 @@
 
     "validity": {
       "$ref": "../common/_common.json#/$defs/Validity",
-      "description": "유효기간 — source='tx-deadline'. V2 addLiquidity, V3/V4 NPM 계열, Balancer joinPool 의 deadline 인자. Curve V1/NG 는 deadline 부재 — 생략."
+      "description": "유효기간 — source='tx-deadline'. V2 addLiquidity 및 Balancer joinPool 의 deadline 인자. Curve V1/NG 는 deadline 부재 — 생략."
     }
   },
 

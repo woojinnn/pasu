@@ -14,13 +14,19 @@
 
     "pool": {
       "type": "object",
-      "description": "인출 대상 pool. add_liquidity.pool 과 동일 형식.",
+      "description": "인출 대상 pool. add_liquidity.pool 과 동일 형식 — protocol 별로 address / id / label 중 채워지는 부분이 다름.",
       "properties": {
-        "address": { "$ref": "../common/_common.json#/$defs/Address" },
-        "id": { "$ref": "../common/_common.json#/$defs/Hex" },
+        "address": {
+          "$ref": "../common/_common.json#/$defs/Address",
+          "description": "pool 컨트랙트 주소. Balancer 는 id 의 첫 20B 로부터 derive."
+        },
+        "id": {
+          "$ref": "../common/_common.json#/$defs/Hex",
+          "description": "bytes32 pool id. Balancer poolId."
+        },
         "label": {
           "type": "string",
-          "description": "host:registry 가 채우는 사람-친화적 라벨."
+          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'ETH/USDC 0.05%')."
         }
       }
     },
