@@ -41,7 +41,7 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 100000,
-      "description": "사용자 의도 슬리피지 (basis point, 1% = 100). amountOut.min 또는 amountIn.max 로부터 host 가 derive. 정책 'max 3% (300 bps)' 로 sandwich attack 방지."
+      "description": "사용자 의도 슬리피지 (basis point, 1% = 100). amountOut.min 또는 amountIn.max 와 host 의 quote 정보를 결합하여 derive. mode=market (슬리피지 한도 없음) 인 경우 본 필드 생략. 정책 'max 3% (300 bps)' 로 sandwich attack 방지."
     },
 
     "validity": {

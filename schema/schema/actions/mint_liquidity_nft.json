@@ -8,16 +8,19 @@
   "properties": {
     "pool": {
       "type": "object",
-      "description": "예치 대상 pool. address 는 V3 의 경우 (token0, token1, feeBps) 로부터 PoolAddress.computeAddress 로 derive 한 결과, V4 의 경우 PoolKey hash 로부터 derive. add_liquidity / remove_liquidity 와 동일 형식.",
+      "description": "예치 대상 pool. add_liquidity / remove_liquidity 와 동일 형식 — protocol 별로 address / id / label 중 채워지는 부분이 다름.",
       "properties": {
-        "address": { "$ref": "../common/_common.json#/$defs/Address" },
+        "address": {
+          "$ref": "../common/_common.json#/$defs/Address",
+          "description": "pool 컨트랙트 주소. V3 는 (token0, token1, feeTier) 로부터 PoolAddress.computeAddress 로, V4 는 PoolKey hash 로부터 host 가 derive."
+        },
         "id": {
           "$ref": "../common/_common.json#/$defs/Hex",
           "description": "bytes32 pool id. V4 PoolKey hash 등."
         },
         "label": {
           "type": "string",
-          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'ETH/USDC 0.05% (V3)'). 정책 'whitelisted pool 만 허용' 분기와 UI 표시에 사용."
+          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'ETH/USDC 0.05% (V3)')."
         }
       }
     },
@@ -25,7 +28,7 @@
     "feeTierBps": {
       "type": "integer",
       "minimum": 0,
-      "description": "Pool fee tier (basis point). V3: 1/5/30/100 (1bp/0.05%/0.3%/1%). V4: PoolKey.fee. dynamic-fee 풀은 0x800000 bit set — 그 경우 schema 에 그대로 두고 정책이 분기 (정책 'dynamic 차단')."
+      "description": "Pool fee tier (1 bps = 0.01%). V3 / V4 calldata 의 fee 는 hundredths-of-bip 단위 (예: 3000 = 0.30%) 라 host 가 ÷100 변환 후 본 필드에 저장 (예: V3 fee 3000 → feeTierBps 30). V3 의 표준 tier: 1 / 5 / 30 / 100. V4 dynamic-fee 풀은 raw `0x800000` 마커가 있어 bps 변환이 의미 없음 — 본 schema 는 raw 값을 그대로 두고 정책이 `(feeTierBps & 0x800000) != 0` 검사로 dynamic 감지."
     },
 
     "tickRange": {
