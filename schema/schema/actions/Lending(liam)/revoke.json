@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/actions/revoke.json",
+  "title": "RevokeAction",
+  "description": "이전에 부여한 권한을 회수하는 동작. caller 가 자신의 권한 (allowance, credit delegation, position manager role, manager role) 을 0 으로 reset. Aave V3 의 V3.6 신규 IncentivizedERC20.renounceAllowance (`erc20_allowance` kind), DebtTokenBase.renounceDelegation (`credit_delegation` kind), Pool.renouncePositionManagerRole (`position_manager_role` kind), Compound V3 의 allow(false) / approve(spender, 0) (`manager_role` kind, set_authorization 의 isAuthorized=false 와 의미 중복 — adapter 단계 통합), Morpho Blue 의 setAuthorization(false) 흡수. revoke 는 alert / allow 룰 — phishing 1차 신호의 사후 정리.",
+
+  "type": "object",
+  "properties": {
+    "target": {
+      "type": "object",
+      "description": "권한 회수 대상 contract / token / market 식별자.",
+      "properties": {
+        "address": { "$ref": "../common/_common.json#/$defs/Address" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "caller": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "revoke 호출자 (default = root.from). revoke 의 본질은 caller 가 자신에 대한 권한 정리 — Aave renounceAllowance(owner) 의 caller (spender), renounceDelegation(delegator) 의 caller (delegatee), renouncePositionManagerRole(user) 의 caller (positionManager) 모두 caller 가 권한 보유자 (수령자) 매핑."
+    },
+
+    "subject": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "권한이 회수되는 대상 — caller 가 권한을 부여받았던 owner / delegator / user 측. revokeKind 별 의미 다름:\n- erc20_allowance: subject = owner (token 보유자, caller 에게 allowance 부여한 측)\n- credit_delegation: subject = delegator (Aave variableDebtToken 의 credit 보유자)\n- position_manager_role: subject = user (Aave V3.6 position manager 권한 부여한 측)\n- manager_role: subject = owner (Compound manager 권한 부여한 측)."
+    },
+
+    "revokeKind": {
+      "type": "string",
+      "enum": ["erc20_allowance", "credit_delegation", "position_manager_role", "manager_role"],
+      "description": "revoke variant. erc20_allowance (Aave V3.6 aToken.renounceAllowance): caller (spender) 가 자신의 ERC-20 allowance 정리. credit_delegation (Aave V3.6 variableDebtToken.renounceDelegation): caller (delegatee) 가 자신의 credit delegation 정리. position_manager_role (Aave V3.6 Pool.renouncePositionManagerRole): caller (position manager) 가 자신의 manager role 정리. manager_role (Compound V3 CometExt.allow(false)): caller (owner) 가 manager 의 권한 정리 (caller pattern 이 위 3 와 반대 — owner 가 회수)."
+    }
+  },
+
+  "required": ["caller", "subject", "revokeKind"]
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/actions/supply.json",
+  "title": "SupplyAction",
+  "description": "Lending market 에 자산을 예치하는 동작. Aave V3 Pool.supply / supplyWithPermit / deposit-alias / WrappedTokenGatewayV3.depositETH, Compound V3 Comet.supply / supplyTo / supplyFrom (asset=collateral 또는 base + dst borrow=0), Morpho Blue Morpho.supply (loan asset, 이자 누적), Bundler ACTION_SUPPLY_* 를 흡수. Morpho 의 supplyCollateral 는 resource model 다르므로 별도 supply_collateral 로 분리.",
+
+  "type": "object",
+  "properties": {
+    "market": {
+      "type": "object",
+      "description": "예치 대상 market / pool / reserve 식별자. Aave 는 Pool 안 reserve (asset 별 단일), Compound 는 Comet 인스턴스 (cUSDCv3 등 base 별), Morpho 는 marketId 또는 MarketParams 5-tuple. host:registry 가 사람-친화적 라벨 보강.",
+      "properties": {
+        "address": {
+          "$ref": "../common/_common.json#/$defs/Address",
+          "description": "market contract address. Aave Pool, Compound Comet, Morpho singleton."
+        },
+        "id": {
+          "$ref": "../common/_common.json#/$defs/Hex",
+          "description": "bytes32 market id. Morpho Blue 의 marketId (= keccak256(MarketParams)). Aave / Compound 부재."
+        },
+        "label": {
+          "type": "string",
+          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'Aave V3 ETH', 'Compound USDC', 'Morpho ETH/USDC 91%')."
+        }
+      }
+    },
+
+    "asset": {
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "예치 자산. Aave reserve token, Compound base 또는 collateral asset, Morpho loan asset. 정책 'whitelisted asset 만 supply' 분기."
+    },
+
+    "amount": {
+      "$ref": "../common/_common.json#/$defs/AmountConstraint",
+      "description": "예치 양. amountMode 가 dimension 결정. kind=exact 일반적. uint256.max 입력 시 kind=unlimited (Compound 는 supplyInternal 에서 잔액으로 cap)."
+    },
+
+    "amountMode": {
+      "type": "string",
+      "enum": ["assets", "shares"],
+      "default": "assets",
+      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0 한정): amount 가 receive 받을 supply share 양 — share-to-asset ratio 변동 가능. inflation / donation 공격 표면. 정책 'amountMode == shares 차단' 으로 retail 사용자 보호 권장 (대부분 retail flow 는 assets mode)."
+    },
+
+    "recipient": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "supply position 소유자 (onBehalf). default = root.from. Aave 의 onBehalfOf, Compound 의 dst, Morpho 의 onBehalf 매핑. root.from 과 다르면 third-party supply — 정책 'recipient == root.from' 권고."
+    },
+
+    "fundSource": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "자산 출처 (default = root.from). Compound V3 `Comet.supplyFrom(from, dst, asset, amount)` 의 `from` 파라미터 매핑 — msg.sender 가 `from.allow(msg.sender, true)` 사전 권한 의무 (3자 model). Aave / Morpho 의 supply 는 항상 msg.sender 가 출처 — 본 field 생략. root.from 과 다르면 third-party fund pull — phishing 1차 신호 (`fundSource == victim && recipient == attacker` 패턴), 정책 'fundSource == root.from' 강력 권장."
+    },
+
+    "validity": {
+      "$ref": "../common/_common.json#/$defs/Validity",
+      "description": "deadline (optional). supplyWithPermit 의 EIP-2612 deadline 등. Aave / Compound / Morpho 의 supply 함수 자체 deadline 부재 — permit inline 일 때만 채워짐 (source='signature-deadline')."
+    }
+  },
+
+  "required": ["asset", "amount", "recipient"]
+}

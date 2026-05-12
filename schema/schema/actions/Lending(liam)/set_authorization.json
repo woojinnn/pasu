@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/actions/set_authorization.json",
+  "title": "SetAuthorizationAction",
+  "description": "Lending position 의 operation 권한을 임의 EOA / contract 에 위임하는 동작. Aave V3 VariableDebtToken.approveDelegation (`debt_only` scope — 차입 권한 한정), Compound V3 CometExt.allow / approve(uint.max\\|0 binary) (`manager_role` scope — supply / withdraw / transfer 전권), Morpho Blue Morpho.setAuthorization (`all` scope — supply / borrow / withdraw / repay 모든 operation) 흡수. phishing 1차 신호 — unknown delegatee 권한 위임 시 자산 손실 위험. 정책 'authorized not in whitelist → deny' 강력 권장.",
+
+  "type": "object",
+  "properties": {
+    "market": {
+      "type": "object",
+      "description": "권한 위임이 적용되는 market 또는 protocol 식별자. Aave 의 VariableDebtToken (reserve 별), Compound 의 Comet 인스턴스, Morpho 의 singleton (global).",
+      "properties": {
+        "address": { "$ref": "../common/_common.json#/$defs/Address" },
+        "id": { "$ref": "../common/_common.json#/$defs/Hex" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "authorizer": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "권한 부여자 (delegator / owner — default = root.from). Aave 의 delegator (msg.sender), Compound 의 owner (msg.sender), Morpho 의 authorizer (msg.sender for setAuthorization, sign event 의 authorizer for setAuthorizationWithSig)."
+    },
+
+    "authorized": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "권한 수령자 (delegatee / manager / authorized). Aave 의 delegatee, Compound 의 manager, Morpho 의 authorized. 정책 'whitelisted authorized 만 허용' 핵심. host:registry 가 known address (e.g., DeFi Saver, Instadapp router) 라벨 보강."
+    },
+
+    "isAuthorized": {
+      "type": "boolean",
+      "description": "권한 부여 (true) 또는 회수 (false). Compound 의 approve(uint.max) = true / approve(0) = false binary 도 본 필드로 표현. false 시 revoke atomic intent 와 의미 중복 — adapter 가 set_authorization (false) 으로 통합 매핑 권고."
+    },
+
+    "authorizationScope": {
+      "type": "string",
+      "enum": ["all", "debt_only", "manager_role"],
+      "description": "위임 권한 범위 분기 (3 protocol 의 본질 다름). all (Morpho Blue): supply / borrow / withdraw / repay 모든 operation 위임. debt_only (Aave V3): variableDebtToken 의 borrow 권한 한정 — delegator 의 collateral 위에서 차입 가능, delegator 가 빚 부담. manager_role (Compound V3): owner 의 supply / withdraw / transfer 전권 — 즉시 자산 drain 가능, 위협 모델 가장 큼."
+    },
+
+    "amount": {
+      "$ref": "../common/_common.json#/$defs/AmountConstraint",
+      "description": "위임 한도 (Aave 한정 — credit delegation 은 amount cap 가짐). Compound / Morpho 는 boolean toggle 만 (unlimited) — 본 필드 생략. authorizationScope=debt_only 시 채움. kind=exact 또는 unlimited."
+    }
+  },
+
+  "required": ["authorizer", "authorized", "isAuthorized", "authorizationScope"]
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/actions/borrow.json",
+  "title": "BorrowAction",
+  "description": "Lending market 에서 자산을 차입하는 동작. Aave V3 Pool.borrow / WrappedTokenGatewayV3.borrowETH (V3.6: interestRateMode = VARIABLE 만 유효, stable rate 완전 제거), Compound V3 Comet.withdraw* (asset=base + amount>userBaseSupply, 별도 borrow 함수 부재 — adapter 가 host:onchain balanceOf 조회로 분기), Morpho Blue Morpho.borrow (단일 IRM plug-in) 흡수. 차입은 HealthFactor (HF) check + onBehalf 의 credit delegation / authorization 사전 의무. Cedar 정책 'unknown delegatee borrow 차단' 핵심.",
+
+  "type": "object",
+  "properties": {
+    "market": {
+      "type": "object",
+      "description": "차입 대상 market 식별자.",
+      "properties": {
+        "address": { "$ref": "../common/_common.json#/$defs/Address" },
+        "id": { "$ref": "../common/_common.json#/$defs/Hex" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "asset": {
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "차입 자산. Aave reserve, Compound base asset (deployment 고정 — cUSDCv3 면 USDC), Morpho loan asset. 정책 'whitelisted borrow asset 만' 분기."
+    },
+
+    "amount": {
+      "$ref": "../common/_common.json#/$defs/AmountConstraint",
+      "description": "차입 양. kind=exact 일반적. amountMode 가 dimension 결정 — assets 일 때 underlying 자산 양, shares 일 때 protocol-internal share 양."
+    },
+
+    "amountMode": {
+      "type": "string",
+      "enum": ["assets", "shares"],
+      "default": "assets",
+      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0 한정): amount 가 borrow share 양 — share-to-asset ratio 가 다른 사용자 supply/repay 에 의해 변동 가능, MEV / inflation 공격 표면. 정책 'amountMode == shares 차단' 으로 Morpho dialect 의 share-mode borrow 회피 권장."
+    },
+
+    "recipient": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "차입 자산 수령자 (receiver, default = root.from). Aave V3 는 별도 receiver 인자 부재 — 자산은 항상 msg.sender 가 받음 (recipient = root.from). Morpho 의 receiver 인자 매핑. recipient 와 onBehalf 는 별 dimension — onBehalf 는 debt 소유자 (담보 사용 + 빚 부담), recipient 는 차입 자산 수령자. root.from 과 다르면 third-party 자산 전송 — 정책 'recipient == root.from' 강력 권장."
+    },
+
+    "onBehalf": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "debt position 소유자 (default = root.from). Aave 의 onBehalfOf — variableDebtToken mint 대상. Morpho 의 onBehalf. msg.sender != onBehalf 시 사전 credit delegation (Aave) 또는 authorization (Morpho) 의무 — phishing 1차 신호 (`Action::borrow && onBehalf != root.from && delegatee not in whitelist → deny` 권장)."
+    },
+
+    "validity": {
+      "$ref": "../common/_common.json#/$defs/Validity",
+      "description": "deadline (optional). Aave / Morpho 의 borrow 함수 자체 deadline 부재 — 일반 생략."
+    }
+  },
+
+  "required": ["asset", "amount", "recipient", "onBehalf"]
+}
