@@ -42,17 +42,17 @@
     "minAmountsIn": {
       "type": "array",
       "items": { "$ref": "../common/_common.json#/$defs/AmountConstraint" },
-      "description": "tokens[i] 와 1:1 매핑하는 토큰별 최소 예치량 (실제 예치가 이 값보다 적으면 revert — 슬리피지 보호). V2 의 amountAMin/amountBMin 이 본 필드로 들어옴. Curve / Balancer 는 LP 측 최소 (lpAmount) 만 가져 본 필드 생략. 정책 '모든 entry value > 0' 으로 슬리피지 보호 강제."
+      "description": "tokens[i] 와 1:1 매핑하는 토큰별 최소 예치량 (실제 예치가 이 값보다 적으면 revert — 슬리피지 보호). V2 의 amountAMin/amountBMin 이 본 필드. ★ minAmountsIn 과 lpAmount 는 *protocol family 별로 둘 중 하나만 채워짐* — V2 family (Aerodrome/Sushi/Pancake V2 포함) 는 본 필드, Curve/Balancer 는 lpAmount 사용. 정책은 *둘 중 하나라도 슬리피지 보호 존재* 여부로 분기 (예: `minAmountsIn != null OR lpAmount != null`)."
     },
 
     "lpToken": {
       "$ref": "../common/_common.json#/$defs/AssetRef",
-      "description": "발행되는 LP / BPT 토큰 (kind=erc20). V2/Aerodrome/Sushi 는 pair 컨트랙트 자체. Curve V1 은 별도 CurveTokenV3 컨트랙트, Curve NG 는 pool 컨트랙트 자체. Balancer 는 pool token (BPT). 정책 'whitelisted LP token 만' 분기."
+      "description": "발행되는 LP / BPT 토큰 (kind=erc20). V2/Aerodrome/Sushi 는 pair 컨트랙트 자체가 LP token. Curve V1 은 별도 CurveTokenV3 컨트랙트, Curve NG 는 pool 컨트랙트 자체. Balancer 는 pool token (BPT). 정책 'whitelisted LP token 만' 분기."
     },
 
     "lpAmount": {
       "$ref": "../common/_common.json#/$defs/AmountConstraint",
-      "description": "발행 LP 양. Curve 의 min_mint_amount 는 kind=min, Balancer joinPool 의 minimumBPT 는 kind=min, Balancer V3 PROPORTIONAL exactBptAmountOut 은 kind=exact, V2 는 router return value 라 calldata 부재 시 kind=estimated."
+      "description": "발행 LP 양. Curve 의 min_mint_amount 는 kind=min, Balancer joinPool 의 minimumBPT 는 kind=min, Balancer V3 PROPORTIONAL exactBptAmountOut 은 kind=exact, V2 는 router return value 라 calldata 부재 시 kind=estimated. ★ minAmountsIn 과 함께 *protocol family 별 dual slippage 표현* — Curve / Balancer 는 본 필드를 채우고 minAmountsIn 은 비움, V2 family 는 그 반대 (위 minAmountsIn 참조)."
     },
 
     "recipient": {

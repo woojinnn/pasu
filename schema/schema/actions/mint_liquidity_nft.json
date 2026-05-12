@@ -25,10 +25,10 @@
       }
     },
 
-    "feeTierBps": {
+    "feeBps": {
       "type": "integer",
       "minimum": 0,
-      "description": "Pool fee tier (1 bps = 0.01%). V3 / V4 calldata 의 fee 는 hundredths-of-bip 단위 (예: 3000 = 0.30%) 라 host 가 ÷100 변환 후 본 필드에 저장 (예: V3 fee 3000 → feeTierBps 30). V3 의 표준 tier: 1 / 5 / 30 / 100. V4 dynamic-fee 풀은 raw `0x800000` 마커가 있어 bps 변환이 의미 없음 — 본 schema 는 raw 값을 그대로 두고 정책이 `(feeTierBps & 0x800000) != 0` 검사로 dynamic 감지."
+      "description": "Pool fee (1 bps = 0.01%) — swap.feeBps 와 같은 의미·단위. V3 / V4 calldata 의 fee 는 hundredths-of-bip 단위 (예: 3000 = 0.30%) 라 host 가 ÷100 변환 후 본 필드에 저장 (예: V3 fee 3000 → feeBps 30). V3 의 표준 tier: 1 / 5 / 30 / 100. V4 dynamic-fee 풀은 raw `0x800000` 마커가 있어 bps 변환이 의미 없음 — 본 schema 는 raw 값을 그대로 두고 정책이 `(feeBps & 0x800000) != 0` 검사로 dynamic 감지."
     },
 
     "tickRange": {
@@ -87,5 +87,5 @@
     }
   },
 
-  "required": ["feeTierBps", "tickRange", "tokens", "amounts", "nft", "recipient"]
+  "required": ["feeBps", "tickRange", "tokens", "amounts", "nft", "recipient"]
 }

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/actions/claim_rewards.json",
+  "title": "ClaimRewardsAction",
+  "description": "특정 source 에 누적된 보상 토큰을 recipient 로 회수하는 동작. Uniswap V3/V4 NPM 의 collect (position 의 누적 fee), Aave V3 RewardsController.claimRewards 와 Compound V3 CometRewards.claim (lending 인센티브), Curve gauge.claim_rewards (yield/gauge), Pendle SY.redeemRewards (yield) 등이 모두 본 shape 으로 정규화. category 는 root.actions[].category 에 따라 dex/lending/yield/restaking 등으로 라벨링. protocol-specific 디테일 (Aave 의 aToken assets[], V3 NPM 의 amountMax 분리, Compound 의 shouldAccrue 플래그 등) 은 본 misc action 에 미포함 — 각 category 의 별도 claim action 으로 위임.",
+
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "object",
+      "description": "rewards 가 적립된 contract. 직접 호출 시 root.to 와 동일, multicall sub-action 일 때는 별도 derive. Aave RewardsController / Compound Comet / Curve gauge / Pendle SY 등 protocol 별로 다른 contract.",
+      "properties": {
+        "address": {
+          "$ref": "../common/_common.json#/$defs/Address",
+          "description": "source contract 주소."
+        },
+        "label": {
+          "type": "string",
+          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'Aave V3 USDC incentives', 'Compound v3 cUSDC rewards')."
+        }
+      }
+    },
+
+    "nft": {
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "V3/V4 NPM position 기반 claim 한정 — NFT collection (kind=erc721). burn / increase / decrease_liquidity_nft 의 nft 와 동일 패턴. 비-NFT claim (Aave / Compound / Curve / Pendle 등) 시 생략."
+    },
+
+    "tokenId": {
+      "$ref": "../common/_common.json#/$defs/DecimalString",
+      "description": "V3/V4 NPM position 의 tokenId — fee 가 적립된 NFT 의 식별자. nft 가 있을 때만 함께 채움. 정책 'host:onchain 으로 NFT.ownerOf(tokenId) == root.from 검증' 분기."
+    },
+
+    "from": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "rewards 의 소유자 — 누구의 누적 reward 를 회수하는가. 보통 root.from. Curve gauge `_addr` / Compound `src` / Aave `onBehalfOf` 처럼 calldata 에 명시되거나, 그 외엔 msg.sender (root.from) 로 implicit. root.from 과 다르면 '제3자의 reward 끌어가기' 패턴 — 정책 'from == root.from' 분기."
+    },
+
+    "recipient": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "reward 토큰을 받을 주소. V3 NPM `recipient`, Aave `to`, Compound `to`, Curve `_receiver` 등에서 직접 명시 또는 from 으로 default. root.from 과 다르면 claim 으로 위장한 송금 — 정책 'recipient == root.from' 강력 권장."
+    },
+
+    "rewardTokens": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AssetRef" },
+      "description": "회수되는 reward 토큰 목록. V3 NPM = pool token 2개 (token0/token1), Aave 단일 reward 호출 = 1개, Compound = 1개 (COMP), Curve gauge = 1~N (gauge config), Pendle SY = 1~N. 일부 protocol 은 calldata 단독으로 결정 불가 — host:onchain 으로 보강 (gauge.reward_tokens[] 등)."
+    },
+
+    "maxAmounts": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AmountConstraint" },
+      "description": "rewardTokens[i] 와 1:1 매핑하는 최대 회수량 (kind=max). V3 NPM 의 amount0Max/amount1Max, Aave 의 amount 인자가 본 필드. Compound / Curve / Pendle 처럼 cap 없는 protocol 은 생략."
+    }
+  },
+
+  "required": ["from", "recipient"]
+}
