@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/dex/decreaseLiquidity.json",
+  "title": "DecreaseLiquidityFields (minimal intent)",
+  "description": "기존 ERC-721 position 의 internal liquidity (uint128) 감소. V3 NPM.decreaseLiquidity / V4 modifyLiquidities DECREASE_LIQUIDITY action (0x01) 한정. 결과로 token 이 NFT 의 tokensOwed{0,1} 에 적립 — **wallet 자산 변화 X** (NFT 보유 수 불변, 실제 token 회수는 별도 collectFees / V4 TAKE 의 atomic). increaseLiquidity 의 mirror. V2/Curve/Balancer 의 ERC-20 LP burn 은 removeLiquidity.",
+
+  "type": "object",
+  "required": ["_kind", "nft", "tokenId", "outputs", "valueWei"],
+  "properties": {
+
+    "_kind": {
+      "const": "decreaseLiquidity",
+      "description": "ActionEnvelope.action 과 일치 의무"
+    },
+
+    "nft": {
+      "$ref": "../../schema/_common.json#/$defs/AssetRef",
+      "description": "Position 보유 NFT collection. kind=erc721. address = V3 NPM (mainnet 0xC36442b4a4522E871399CD717aBDD847Ab11FE88) / V4 PositionManager (mainnet 0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e)"
+    },
+
+    "tokenId": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "감소시킬 position 의 tokenId (uint256 decimal string). V3 DecreaseLiquidityParams.tokenId / V4 modifyLiquidities params. NPM 은 owner 검증 의무 (msg.sender == NFT.ownerOf 또는 approved) — V3 의 isAuthorizedForToken modifier"
+    },
+
+    "liquidityDelta": {
+      "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+      "description": "감소량 (uint128 raw, positive 표현). kind=exact: V4 modifyLiquidities params 의 liquidityDelta (negative 로 calldata 전달 — schema 는 절대값) / V3 DecreaseLiquidityParams.liquidity. kind=estimated: full decrease (uint128.max) 일 때 host:oracle derive"
+    },
+
+    "outputs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "회수 예정 token list (2-token 한정 — V3/V4 concentrated liquidity 의 token0/token1). **wallet 자산 변화 X** — NFT internal tokensOwed{0,1} 적립만, 실제 wallet 으로 가는 건 별도 collectFees / V4 TAKE atomic. outputs[0]=token0, outputs[1]=token1 정렬",
+      "items": {
+        "type": "object",
+        "properties": {
+          "asset": {
+            "$ref": "../../schema/_common.json#/$defs/AssetRef",
+            "description": "token0 / token1. V3 calldata 부재 (host:capability — NFT.positions 으로 derive). V4 modifyLiquidities params 의 PoolKey 로부터 추출 가능"
+          },
+          "amount": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "예상 release 양 (decrease 결과 tokensOwed 적립될 양). kind=estimated: host:oracle (post-tx event)"
+          },
+          "amountMin": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Slippage 하한 — V3 amount{0,1}Min / V4 minimum release. kind=min. pool re-balance 시 actual release < amountMin 이면 revert"
+          }
+        }
+      }
+    },
+
+    "valueWei": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "tx.value (uint256 decimal string). decreaseLiquidity 는 보통 0 (input token 부재). V4 batch 안에서 다른 action 이 native input 가질 때만 nonzero"
+    },
+
+    "deadline": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "Tx deadline (unix sec). V3 DecreaseLiquidityParams.deadline / V4 modifyLiquidities 의 wrapper deadline. host 가 blockTimestamp 와 비교"
+    }
+  }
+}

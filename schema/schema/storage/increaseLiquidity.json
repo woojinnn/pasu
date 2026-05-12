@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/dex/increaseLiquidity.json",
+  "title": "IncreaseLiquidityFields (minimal intent)",
+  "description": "기존 ERC-721 liquidity position 의 internal liquidity (uint128) 증가 → wallet 의 NFT 보유 수 불변, NFT 의 mutable state 만 변화. V3 NPM.increaseLiquidity / V4 PositionManager modifyLiquidities INCREASE_LIQUIDITY action (0x00) 한정. 핵심 intent 필드만 — V4 hook surface / PoolKey 는 Tier 3 schema 영역. token0/token1 정보는 host:capability (NFT.positions(tokenId)) 로 별도 lookup. 새 NFT 발행은 mintLiquidityNft.json, V2/Curve/Balancer 의 ERC-20 LP 발행은 addLiquidity.json.",
+
+  "type": "object",
+  "required": ["_kind", "nft", "tokenId", "inputs", "valueWei"],
+  "properties": {
+
+    "_kind": {
+      "const": "increaseLiquidity",
+      "description": "ActionEnvelope.action 과 일치 의무 (root.json 컨벤션)"
+    },
+
+    "nft": {
+      "$ref": "../../schema/_common.json#/$defs/AssetRef",
+      "description": "Position 보유 NFT collection. kind=erc721. address = V3 NPM (mainnet 0xC36442b4a4522E871399CD717aBDD847Ab11FE88) / V4 PositionManager (mainnet 0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e)"
+    },
+
+    "tokenId": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "Pre-existing position 의 tokenId (uint256 decimal string). V3 IncreaseLiquidityParams.tokenId / V4 modifyLiquidities params. V3 NPM 은 msg.sender == owner 검증 부재 — 누구나 남의 position 에 add 가능 (자기 token 소비). owner 검증은 host:capability (NFT.ownerOf)"
+    },
+
+    "inputs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "입금 토큰 = 정확히 2개. inputs[0] = token0, inputs[1] = token1 (NFT position 의 pool token 순서 일치, lexicographic). asset 필드는 optional — V3 calldata 부재 (host:capability lookup 필요), V4 modifyLiquidities params 의 PoolKey 로부터 derivable",
+      "items": {
+        "type": "object",
+        "required": ["amount"],
+        "properties": {
+          "asset": {
+            "$ref": "../../schema/_common.json#/$defs/AssetRef",
+            "description": "입금 토큰. V3 부재 시 host:capability (NFT.positions → pool → token{0,1}). V4 modifyLiquidities params 의 PoolKey.currency_{0,1} 로부터 추출 가능"
+          },
+          "amount": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Desired 입금량. V3 IncreaseLiquidityParams.amount{0,1}Desired / V4 SETTLE action max input"
+          },
+          "amountMin": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Token-level slippage 하한. V3 amount{0,1}Min / V4 minimum settle. kind=min"
+          }
+        }
+      }
+    },
+
+    "liquidityDelta": {
+      "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+      "description": "NFT internal liquidity 증가량 (uint128 raw). kind=exact: V4 modifyLiquidities params 의 명시적 인자 (positive = increase). kind=estimated: V3 NPM 가 amount{0,1}Desired 로부터 derive — calldata 부재, host:oracle (return value 또는 event). decreaseLiquidity.liquidityDelta 와 일치"
+    },
+
+    "valueWei": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "tx.value (uint256 decimal string). native ETH input 시 nonzero — V3 NPM (refundETH 패턴) / V4 PoolKey.currency0=0x0 + msg.value"
+    },
+
+    "deadline": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "Tx deadline (unix sec, uint256). V3 NPM.increaseLiquidity IncreaseLiquidityParams.deadline. V4 PositionManager 의 modifyLiquidities 는 직접 부재 — omit. host 가 blockTimestamp 와 비교"
+    }
+  }
+}

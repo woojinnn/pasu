@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/dex/addLiquidity.json",
+  "title": "AddLiquidityFields (minimal intent)",
+  "description": "Pool 에 N 토큰 입금 → wallet 의 ERC-20 LP/BPT balance 증가. V2 (pair LP) / Curve V1/NG (pool LP) / Balancer V2/V3 (BPT) 의 fungible LP 발행 의도. V3/V4 의 새 NFT 발행은 mintLiquidityNft.json, 기존 NFT 의 internal liquidity 증가는 increaseLiquidity.json 으로 분리. 핵심 intent 필드만 — protocol dialect (Balancer addLiquidityKind, Curve depositKind, V4 hook 등) 는 Tier 3 schema 영역.",
+
+  "type": "object",
+  "required": ["_kind", "pool", "inputs", "lpToken", "recipient", "valueWei"],
+  "properties": {
+
+    "_kind": {
+      "const": "addLiquidity",
+      "description": "ActionEnvelope.action 과 일치 의무 (root.json 컨벤션)"
+    },
+
+    "pool": {
+      "$ref": "../../schema/_common.json#/$defs/Address",
+      "description": "입금 대상 pool contract address. V2 pair / Curve pool (NG = LP token 자기 자신) / Balancer V2 Vault 측 pool (poolId 의 첫 20B) / V3 Vault 측 pool. router 진입 시 tx.to ≠ pool — adapter 가 calldata 에서 추출"
+    },
+
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "입금 토큰 list. V2 = 2 / Curve N_COINS = 2~8 / Balancer = 2~8. Balancer V3 SINGLE_TOKEN_EXACT_OUT 케이스는 1 token 만 nonzero — minItems=1 허용. 순서는 calldata 의 token index (V2 = A,B / Curve = coins[i] / Balancer = vault.getPoolTokens)",
+      "items": {
+        "type": "object",
+        "required": ["asset", "amount"],
+        "properties": {
+          "asset": {
+            "$ref": "../../schema/_common.json#/$defs/AssetRef",
+            "description": "입금 토큰. native ETH (kind=native) 또는 ERC-20 (kind=erc20)"
+          },
+          "amount": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Desired 입금량. kind=exact: V2 amountADesired / Balancer V3 UNBALANCED exactAmountsIn / Curve _amounts. kind=max: Balancer V3 PROPORTIONAL maxAmountsIn / SINGLE_TOKEN_EXACT_OUT maxAmountIn"
+          },
+          "amountMin": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Token-level slippage 하한 — V2 amountAMin / V3 amount0Min (mint params 측면) / Balancer minAmountsIn. Curve V1/NG 는 token-level slippage 부재 — omit"
+          }
+        }
+      }
+    },
+
+    "lpToken": {
+      "$ref": "../../schema/_common.json#/$defs/AssetRef",
+      "description": "발행 LP/BPT token. kind=erc20 항상. address = V2 pair / Curve LP (V1 = 별도 CurveTokenV3, NG = pool 자체) / Balancer pool token"
+    },
+
+    "lpAmount": {
+      "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+      "description": "발행 LP 양. kind=min: Curve _min_mint_amount / Balancer V3 UNBALANCED minBptAmountOut. kind=exact: Balancer V3 PROPORTIONAL exactBptAmountOut / SINGLE_TOKEN_EXACT_OUT exactBptAmountOut. kind=estimated: V2 router return value (slippage 표현 부재)"
+    },
+
+
+    "recipient": {
+      "$ref": "../../schema/_common.json#/$defs/Address",
+      "description": "LP 수령자. V2 의 to / Curve NG _receiver / Balancer recipient. default = root.from. Curve V1 은 msg.sender 고정 — calldata 부재 시 root.from"
+    },
+
+    "valueWei": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "tx.value (uint256 decimal string). native ETH input 시 nonzero — V2 addLiquidityETH / Balancer V3 wethIsEth=true / Curve ETH-template (V1 한정). NG 는 native 미지원 — 0"
+    },
+
+    "deadline": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "Tx deadline (unix sec, uint256). V2/V3/Balancer router params. Curve 는 부재 — omit. host 가 blockTimestamp 와 비교"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/dex/burnLiquidityNft.json",
+  "title": "BurnLiquidityNftFields (minimal intent)",
+  "description": "기존 ERC-721 position 소각 → wallet 의 NFT 보유 수 ↓. mintLiquidityNft 의 lifecycle mirror. V3 NPM.burn (precondition: position.liquidity == 0 && tokensOwed{0,1} == 0 — 빈 NFT 만 burn 가능, 자금 이동 X) / V4 modifyLiquidities BURN_POSITION action (0x03 — auto-decrease + take + burn atomic, slippage 보호 포함). 두 dialect 의 의미 차이는 burnKind enum 으로 흡수.",
+
+  "type": "object",
+  "required": ["_kind", "nft", "tokenId", "burnKind", "valueWei"],
+  "properties": {
+
+    "_kind": {
+      "const": "burnLiquidityNft",
+      "description": "ActionEnvelope.action 과 일치 의무"
+    },
+
+    "nft": {
+      "$ref": "../../schema/_common.json#/$defs/AssetRef",
+      "description": "소각 대상 NFT collection. kind=erc721. address = V3 NPM / V4 PositionManager"
+    },
+
+    "tokenId": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "소각 대상 position tokenId. V3 burn(uint256) 의 단일 인자 / V4 BURN_POSITION params tokenId. NPM 은 owner 검증 의무"
+    },
+
+    "burnKind": {
+      "type": "string",
+      "enum": ["empty_only", "auto_decrease"],
+      "description": "Close 의 종류. **empty_only**: V3 NPM.burn — precondition (liquidity == 0 && tokensOwed* == 0) 만족된 빈 NFT 소각, 자금 이동 X. wallet view 변화: NFT 보유 수 ↓. **auto_decrease**: V4 BURN_POSITION — full liquidity decrease + take + burn atomic. wallet view 변화: NFT 보유 수 ↓ + token0/token1 ↑ (outputs 에 표현)"
+    },
+
+    "outputs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "auto_decrease 시 회수 token (V4 BURN_POSITION 한정). empty_only 시 omit (자금 이동 X). outputs[0]=token0, outputs[1]=token1",
+      "items": {
+        "type": "object",
+        "properties": {
+          "asset": {
+            "$ref": "../../schema/_common.json#/$defs/AssetRef",
+            "description": "token0 / token1. V4 PoolKey 로부터 derive"
+          },
+          "amount": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "예상 release 양. kind=estimated: host:oracle (post-tx)"
+          },
+          "amountMin": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Slippage 하한. V4 BURN_POSITION params amount{0,1}Min. kind=min"
+          }
+        }
+      }
+    },
+
+    "recipient": {
+      "$ref": "../../schema/_common.json#/$defs/Address",
+      "description": "auto_decrease 시 release token 수령자 (V4 한정). empty_only 시 omit. default = root.from (NFT owner). recipient ≠ root.from 시 policy 가 별도 평가 (collectFees 와 동일 패턴)"
+    },
+
+    "valueWei": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "tx.value. burnLiquidityNft 자체는 0. V4 batch 안 다른 action 가 native input 시만 nonzero"
+    },
+
+    "deadline": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "Tx deadline. V3 burn 자체에는 deadline 인자 부재 — multicall wrapper deadline. V4 modifyLiquidities wrapper. omit 가능"
+    }
+  }
+}

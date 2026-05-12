@@ -2,71 +2,77 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema_v101/root.json",
   "title": "RootRequest",
-  "description": "최상위 컨테이너. 한 건의 서명-대기 요청을 Category 와 Action 단위로 분해한 결과. Policy 평가의 입력.",
+  "description": "한 건의 서명 대기 요청을 정책 평가용 정형 데이터로 정리한 최상위 컨테이너. 공통 메타 (chainId/from/to/value/selector/protocol) 와 의미 단위로 분해한 actions[] 로 구성.",
 
   "type": "object",
   "properties": {
     "schemaVersion": {
       "const": "1.0.1",
-      "description": "본 schema 의 버전."
+      "description": "본 schema 의 버전. 정책 엔진이 호환 가능한 버전을 확인하는 데 사용."
     },
 
     "requestKind": {
       "type": "string",
       "enum": ["transaction", "signature", "userOperation"],
-      "description": "어떤 형태의 서명 요청인가. transaction = eth_sendTransaction, signature = eth_signTypedData_v4 등, userOperation = ERC-4337."
+      "description": "서명 요청의 형식. transaction = eth_sendTransaction (일반 tx), signature = eth_signTypedData (EIP-712 서명), userOperation = ERC-4337. 정책이 형식별로 다르게 분기하는 데 사용."
     },
 
     "chainId": {
       "type": "integer",
       "minimum": 1,
-      "description": "EVM chain id. 정책 'mainnet 외 차단' 등 분기 핵심."
+      "description": "EVM 체인 식별자 (mainnet=1, base=8453 등). 정책이 'mainnet 외 차단' 또는 'L2 만 허용' 같은 분기에 사용."
     },
 
     "from": {
       "$ref": "common/_common.json#/$defs/Address",
-      "description": "서명 주체 (actor). 정책 모든 분기의 기준점 — 사용자 자신의 주소."
+      "description": "서명 주체 (actor) 의 주소 — 사용자 본인의 EOA. 다른 모든 필드 (특히 recipient) 와 비교하여 'self 인가 외부인가' 를 판정하는 기준점."
     },
 
     "to": {
       "$ref": "common/_common.json#/$defs/Address",
-      "description": "호출 대상 컨트랙트. 라우터 / 풀 / Vault / Manager 등. 정책 'whitelisted target 만 허용' 분기."
+      "description": "호출 대상 컨트랙트 주소 — 라우터, 풀, Vault, Manager 등. 정책 'whitelisted target 만 허용' 의 핵심."
     },
 
     "value": {
       "$ref": "common/_common.json#/$defs/DecimalString",
-      "description": "msg.value (wei, 10진 string). native 자산 이동량. 정책 'value=0 외 차단' 등 분기."
+      "description": "msg.value (wei 단위). 호출에 동반된 native 자산 이동량. 정책 'value=0 외 차단' 같은 분기에 사용."
     },
 
     "selector": {
       "type": "string",
       "pattern": "^0x[0-9a-fA-F]{8}$",
-      "description": "outer call 의 4-byte function selector. 정책 'allowed selectors only' 분기."
+      "description": "outer call 의 4-byte 함수 식별자. 정책 'allowed selectors only' (특정 selector 만 통과) 분기에 사용."
     },
 
     "protocol": {
       "type": "object",
-      "description": "어느 protocol 의 어느 컨트랙트인가. host 가 (chainId, address) → 매핑.",
+      "description": "to 가 가리키는 컨트랙트가 어느 protocol 의 어느 구성요소인지. host 가 자신의 (chainId, address) → protocol 매핑 테이블을 보고 채운다.",
       "properties": {
         "name": {
           "type": "string",
-          "description": "예: 'uniswap', 'curve', 'lido', 'compound', 'pendle'."
+          "description": "protocol 식별자 — Defillama 명에 맞춤. 예: 'uniswap', 'curve', 'lido', 'compound', 'pendle'."
         },
         "version": {
           "type": "string",
-          "description": "예: 'v3', 'v4', 'stableswap-ng', 'v2.1'."
+          "description": "protocol 버전. 예: 'v3', 'v4', 'stableswap-ng', 'v2.1'."
         },
         "component": {
           "type": "string",
-          "description": "역할 (optional). 예: 'router', 'pool', 'manager', 'vault'."
+          "description": "protocol 안의 역할 (선택). 예: 'router', 'pool', 'manager', 'vault'."
         }
       },
       "required": ["name"]
     },
 
+    "blockTimestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "현재 block.timestamp (unix 초). host 가 채움. 정책이 validity.expiresAt 와 비교하여 만료 horizon 을 계산할 때의 기준 시각."
+    },
+
     "actions": {
       "type": "array",
-      "description": "한 tx 는 의미적으로 여러 action 으로 분해될 수 있음 (Universal Router execute, multicall 등). 정책은 leaf action 단위 또는 묶음 단위로 평가.",
+      "description": "한 tx 가 의미적으로 분해된 action 묶음 (Universal Router execute, multicall 등은 N 개로 분해됨). 정책은 leaf action 별 평가와 묶음 전체 평가 모두 가능.",
       "items": { "$ref": "#/$defs/ActionEnvelope" },
       "minItems": 1
     }
@@ -86,11 +92,23 @@
   "$defs": {
     "ActionEnvelope": {
       "type": "object",
-      "description": "actions[] 의 1 entry. action + category 는 **직교 차원**: action 은 '무엇을 하는가' (의미 단위 식별), category 는 '어떤 protocol 맥락인가' (Defillama 분류 태그). 같은 action 이 여러 category 에 등장 가능 (예: swap → DEX/Lending/LST/RWA 모두).",
+      "description": "actions[] 의 한 entry. action 은 '무엇을 하는가', category 는 '어떤 protocol 맥락인가' — 두 차원은 직교이며 같은 action 이 여러 category 에 등장한다 (예: swap 은 dex, liquid_staking, rwa 모두 가능).",
       "properties": {
         "action": {
           "type": "string",
-          "description": "의미 단위 action 식별자. 정책 평가의 1차 분기점. v1.0.1 에서 정의된 값: swap / add_liquidity / remove_liquidity / wrap / unwrap / approve. fields._kind 와 반드시 동일."
+          "enum": [
+            "swap",
+            "add_liquidity",
+            "remove_liquidity",
+            "mint_liquidity_nft",
+            "burn_liquidity_nft",
+            "increase_liquidity",
+            "decrease_liquidity",
+            "wrap",
+            "unwrap",
+            "approve"
+          ],
+          "description": "이 entry 가 표현하는 의미 단위 (정책 평가의 1차 분기점). host validator 가 이 값을 보고 actions/<action>.json schema 를 골라 fields 를 추가 검증한다. liquidity 계열은 자산 변화 형태별로 6 분리 — fungible LP (V2/Curve/Balancer) 는 add/remove_liquidity, V3/V4 NFT 는 mint/burn_liquidity_nft 와 increase/decrease_liquidity. 새 action 추가는 schema minor version bump 동반."
         },
         "category": {
           "type": "string",
@@ -104,15 +122,11 @@
             "misc",
             "unknown"
           ],
-          "description": "이 action 이 발생한 protocol 맥락 태그. Defillama 기준 카테고리. action 의 유효성을 *제한하지 않음* — 단순 분류 태그. 예: action=swap 이어도 category=dex (Uniswap), category=liquid_staking (Lido stETH↔wstETH), category=rwa (LBTC↔WBTC mint) 모두 가능. 정책은 category 별 분기 (예: 'lending category swap 만 허용') 가능."
+          "description": "이 action 이 발생한 protocol 맥락 (Defillama 카테고리 기준). action 의 유효성을 제한하지 않는 단순 분류 태그 — 같은 swap 이라도 Uniswap 에서 발생하면 dex, Lido 의 stETH ↔ wstETH 에서 발생하면 liquid_staking. 정책은 (action, category) 결합 분기 (예: 'category=dex 인 swap 만 허용') 가능."
         },
         "fields": {
           "type": "object",
-          "description": "actions/<action>.json 으로 추가 검증되는 action 별 fields. _kind 가 action 과 동일.",
-          "properties": {
-            "_kind": { "type": "string" }
-          },
-          "required": ["_kind"]
+          "description": "action 별 schema (actions/<action>.json) 로 추가 검증되는 객체. 어느 schema 로 검증할지는 host validator 가 위 action 값을 보고 결정한다."
         }
       },
       "required": ["action", "category", "fields"]

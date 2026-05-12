@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/actions/burn_liquidity_nft.json",
+  "title": "BurnLiquidityNftAction",
+  "description": "Uniswap V3 NPM.burn 또는 Uniswap V4 BURN_POSITION action 한정 — ERC-721 position 을 소각하는 동작. V3 와 V4 의 동작 의미가 다르므로 burnKind 로 구분한다 (V3 = 빈 NFT 정리만, V4 = liquidity 감소 + token 회수 + NFT 소각 atomic).",
+
+  "type": "object",
+  "properties": {
+    "nft": {
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "소각 대상 NFT collection (kind=erc721). address = V3 NPM 또는 V4 PositionManager."
+    },
+
+    "tokenId": {
+      "$ref": "../common/_common.json#/$defs/DecimalString",
+      "description": "소각할 position 의 tokenId. V3 burn(uint256) 의 단일 인자, V4 BURN_POSITION params 의 tokenId."
+    },
+
+    "burnKind": {
+      "type": "string",
+      "enum": ["empty_only", "auto_decrease"],
+      "description": "V3 와 V4 의 burn 동작이 의미적으로 완전히 다름. empty_only = V3 NPM.burn — 선결조건 (liquidity==0 && tokensOwed==0) 만족된 빈 NFT 정리, 자금 이동 없음. auto_decrease = V4 BURN_POSITION — liquidity 전부 감소 + token take + NFT 소각이 한 번에. 정책은 burnKind 로 분기 (empty_only 는 안전, auto_decrease 는 recipient/slippage 검증 필요)."
+    },
+
+    "outputs": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AssetRef" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "burnKind=auto_decrease 시 회수되는 토큰 2개 (token0, token1). empty_only 시 자금 이동이 없어 생략."
+    },
+
+    "minAmountsOut": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AmountConstraint" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "outputs[i] 와 1:1 매핑하는 최소 수령량 (슬리피지 보호). V4 BURN_POSITION 의 amount0Min / amount1Min. empty_only 시 생략."
+    },
+
+    "recipient": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "burnKind=auto_decrease 시 회수 토큰 수령자. empty_only 시 생략. root.from 과 다르면 account drain 패턴 — 정책 분기."
+    },
+
+    "validity": {
+      "$ref": "../common/_common.json#/$defs/Validity",
+      "description": "유효기간 — source='tx-deadline'. V3 burn 자체에는 deadline 부재 (multicall wrapper 의 deadline). V4 modifyLiquidities 도 직접 부재 — wrapper 사용 시만."
+    }
+  },
+
+  "required": ["nft", "tokenId", "burnKind"]
+}

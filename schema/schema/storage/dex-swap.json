@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "policyschema/schema/dex-swap.json",
+  "title": "DEX Swap action fields — 순수 swap (functional-shape)",
+  "description": "DEX 카테고리의 **순수 swap action** 고유 필드. 의미 범위는 **단일 input token → 단일 output token으로의, slippage가 발생하는 가격 발견 교환**에 한정. 라우팅 디테일(어느 풀·어떤 path·hop별 fee 등)은 디코더·세미-어댑터 layer 책임이며 본 schema에 surface하지 않는다. derived·meta 필드(recipient↔actor 비교, hop minOut 0 여부, 신뢰도 등)도 정책 엔진이 envelope과 직접 비교·계산하므로 본 schema에 두지 않는다. Wrap/Unwrap·BatchSwap·HookedOperation은 별도 schema. 상위 TransactionEnvelope이 chainId / tx.to / tx.from(actor) / tx.value / gas / selector / protocolId·version을 제공한다고 가정. (deadline·deadlineHorizonSeconds는 v0.2에서 envelope `actionExpiration`으로 통합 예정.)",
+
+  "type": "object",
+  "required": [
+    "inputTokens",
+    "outputTokens",
+    "mode",
+    "amountIn",
+    "amountOut",
+    "slippageBps",
+    "settlement",
+    "recipient"
+  ],
+  "additionalProperties": false,
+
+  "properties": {
+    "inputTokens": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/AssetRef" },
+      "description": "swap 입력 토큰. 순수 swap은 항상 단일."
+    },
+    "outputTokens": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/AssetRef" },
+      "description": "swap 출력 토큰. 순수 swap은 항상 단일."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["exact_in", "exact_out", "market", "unknown"],
+      "description": "exact_in = 입력 정확·출력 최소 보장 / exact_out = 출력 정확·입력 최대 한도 / market = 시장가 swap (V4 hook 미사용 시) / unknown = 미확정. hook 활성 V4 swap은 본 schema 범위 외."
+    },
+    "amountIn": {
+      "$ref": "#/$defs/AmountConstraint",
+      "description": "입력 amount. ExactIn 모드는 exact, ExactOut 모드는 max."
+    },
+    "amountOut": {
+      "$ref": "#/$defs/AmountConstraint",
+      "description": "출력 amount. ExactIn 모드는 min(슬리피지 보장), ExactOut 모드는 exact."
+    },
+    "slippageBps": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000,
+      "description": "사용자 의도 슬리피지 (basis points, 1% = 100). amountOutMin/expectedOut 또는 amountInMax/quoteIn에서 derive. 정책 'max 3% slippage = 300 bps' 분기 핵심."
+    },
+    "settlement": {
+      "type": "string",
+      "enum": ["router", "direct", "callback", "unknown"],
+      "description": "router = 라우터가 transferFrom으로 입력 수집 후 풀로 forward / direct = 호출자가 풀에 직접 전송 / callback = 풀·vault가 콜백으로 입력 회수 / unknown = 미확정."
+    },
+    "recipient": {
+      "$ref": "#/$defs/Address",
+      "description": "출력 토큰 수신자. 프로토콜 sentinel은 Extension에 위임."
+    },
+    "deadline": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp (초). deadline 개념이 없는 프로토콜은 생략. (v0.2에서 envelope `actionExpiration`으로 통합 예정.)"
+    },
+    "deadlineHorizonSeconds": {
+      "type": "integer",
+      "description": "deadline - block.timestamp. 음수면 이미 만료. (v0.2 통합 예정.)"
+    }
+  },
+
+  "$defs": {
+    "Address": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$",
+      "description": "EVM address (lowercase 권장)."
+    },
+
+    "DecimalString": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "uint256 십진 문자열."
+    },
+
+    "AssetRef": {
+      "type": "object",
+      "description": "Asset 1차 식별자. native sentinel address: 0xeeee…eeee 또는 0x0000…0000. kind ∈ {erc20, erc721, erc1155}이면 address 필수.",
+      "required": ["kind", "chainId"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["native", "erc20", "erc721", "erc1155", "unknown"]
+        },
+        "chainId": { "type": "integer", "minimum": 1 },
+        "address": { "$ref": "#/$defs/Address" },
+        "symbol": { "type": "string" },
+        "decimals": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "isNative": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "enum": ["erc20", "erc721", "erc1155"] } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["address"] }
+        }
+      ]
+    },
+
+    "AmountConstraint": {
+      "type": "object",
+      "description": "amount + 의미 kind. exact/min/max/estimated는 value 필수, unlimited/unknown은 value 생략 가능.",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["exact", "min", "max", "unlimited", "estimated", "unknown"]
+        },
+        "value": { "$ref": "#/$defs/DecimalString" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "enum": ["exact", "min", "max", "estimated"] } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["value"] }
+        }
+      ]
+    }
+  }
+}

@@ -2,47 +2,55 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema_v101/common/_common.json",
   "title": "schema_v101 — common primitives",
-  "description": "Policy 평가에 필요한 최소 primitive 만 정의. Address / Hex / DecimalString / IntDecimalString / AmountConstraint / AssetRef. (Oracle / User Portfolio 데이터는 schema 인스턴스 생성 이후 별도 enrichment 단계에서 다룸 — 본 schema 표면에는 부재.)",
+  "description": "여러 schema 파일이 공유하는 기본 자료형. Address / Hex / DecimalString / IntDecimalString / AssetRef / AmountConstraint / Validity 7종. Oracle / User Portfolio 데이터는 schema 인스턴스 생성 이후 별도 enrichment 단계에서 다루므로 본 표면에는 없음.",
 
   "$defs": {
     "Address": {
       "type": "string",
       "pattern": "^0x[0-9a-fA-F]{40}$",
-      "description": "EVM address. lowercase 권장 (비교 시 lowercase 통일)."
+      "description": "EVM 컨트랙트 또는 EOA 주소. 비교를 일관되게 하려면 lowercase 로 통일하여 저장한다."
     },
 
     "Hex": {
       "type": "string",
       "pattern": "^0x[0-9a-fA-F]*$",
-      "description": "0x-prefixed hex string. 본 schema 에서는 selector / poolId 같은 짧은 ID 한정 사용."
+      "description": "0x 접두 hex 문자열. 본 schema 에서는 selector, bytes32 poolId 같은 짧은 식별자에만 사용 (raw calldata 같은 긴 blob 은 schema 에 두지 않는다)."
     },
 
     "DecimalString": {
       "type": "string",
       "pattern": "^[0-9]+$",
-      "description": "uint256 의 10진 문자열. JSON number 범위 초과 회피."
+      "description": "uint256 양의 정수를 10진 문자열로 표기한 값. JSON number 범위 (2^53) 초과를 피하기 위해 문자열로 다룬다."
     },
 
     "IntDecimalString": {
       "type": "string",
       "pattern": "^-?[0-9]+$",
-      "description": "int256 10진 문자열. 음수 가능 (V4 liquidityDelta, Balancer limits 등)."
+      "description": "int256 부호 있는 정수를 10진 문자열로 표기한 값. 음수 가능 — V4 liquidityDelta, Balancer batchSwap limits 등에서 사용."
     },
 
     "AssetRef": {
       "type": "object",
-      "description": "Asset 1차 식별자. address 와 메타 (symbol/decimals).",
+      "description": "자산을 식별하는 기본 단위. kind 로 자산 표준을 정하고, address / symbol / decimals 는 ERC 토큰일 때 채운다. 체인 컨텍스트는 root.chainId 가 제공하므로 본 객체는 chainId 를 가지지 않는다.",
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["native", "erc20", "erc721", "erc1155", "unknown"]
+          "enum": ["native", "erc20", "erc721", "erc1155", "unknown"],
+          "description": "자산의 표준. native 는 체인의 native 코인 (ETH, BNB 등)."
         },
-        "chainId": { "type": "integer", "minimum": 1 },
         "address": { "$ref": "#/$defs/Address" },
-        "symbol": { "type": "string", "description": "host 보강 (token registry 조회)." },
-        "decimals": { "type": "integer", "minimum": 0, "maximum": 30, "description": "host 보강." }
+        "symbol": {
+          "type": "string",
+          "description": "host:registry 가 token registry 조회로 채움. UI 표시와 정책의 토큰 식별 (예: 'symbol = USDC') 에 사용."
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30,
+          "description": "host:registry 가 채움. 정책이 amount 를 사람 단위로 비교할 때 필요."
+        }
       },
-      "required": ["kind", "chainId"],
+      "required": ["kind"],
       "allOf": [
         {
           "if": {
@@ -56,16 +64,16 @@
 
     "AmountConstraint": {
       "type": "object",
-      "description": "정책상 같은 숫자라도 '정확히/최소/최대/무한' 의미가 다름 — 의미를 보존하는 wrapper.",
+      "description": "단순 숫자가 아닌 '의미를 가진 금액'. 같은 값 1000000 이라도 '정확히 그만큼' 인지 '최소 그만큼' 인지가 정책 평가에 결정적이라 kind 와 value 를 함께 보존한다.",
       "properties": {
         "kind": {
           "type": "string",
           "enum": ["exact", "min", "max", "unlimited", "estimated", "unknown"],
-          "description": "exact = 정확히, min = 최소 (슬리피지 하한), max = 최대 (슬리피지 상한), unlimited = uint256.max, estimated = 라우터 추정치, unknown = 디코드 불가."
+          "description": "exact = 정확히 이 값. min = 최소 보장 (받을 양 하한). max = 최대 한도 (낼 양 상한). unlimited = uint256.max (무한 허용). estimated = 라우터가 quote 한 추정치. unknown = 디코드 불가."
         },
         "value": {
           "$ref": "#/$defs/DecimalString",
-          "description": "kind=unlimited / unknown 일 때 omit 가능."
+          "description": "kind 가 unlimited 또는 unknown 인 경우 생략 가능."
         }
       },
       "required": ["kind"]
@@ -73,20 +81,16 @@
 
     "Validity": {
       "type": "object",
-      "description": "이 action 의 시간적 유효기간. 'deadline / expiration' 통합 표현 — source 가 만료의 의미를 discriminate. 정책은 (action 타입, source) 결합으로 context-aware threshold 적용.",
+      "description": "이 action 의 시간적 유효기간을 표현하는 통합 타입. swap 의 deadline, Permit2 PermitDetails.expiration, EIP-2612 permit deadline 등 형식은 다르지만 의미상 모두 '이 시점 지나면 invalid' 인 값들을 source 태그로 구별하여 담는다. 정책이 horizon 을 보려면 'expiresAt - root.blockTimestamp' 를 직접 계산.",
       "properties": {
         "expiresAt": {
           "$ref": "#/$defs/DecimalString",
-          "description": "이 시점 (unix epoch sec) 지나면 invalid. swap deadline / Permit2 PermitDetails.expiration / EIP-2612 permit deadline 등."
-        },
-        "expiresInSeconds": {
-          "type": "integer",
-          "description": "derived: expiresAt - root.blockTimestamp. 음수면 이미 만료. 정책 'expiresInSeconds <= 3600' 같은 분기의 편의 필드."
+          "description": "만료 시점 (unix epoch 초). 이 시점이 지나면 해당 action 또는 권한이 invalid."
         },
         "source": {
           "type": "string",
           "enum": ["tx-deadline", "signature-deadline", "grant-expiration"],
-          "description": "만료의 의미: tx-deadline = 'tx 가 이 시점 전에 mining 되어야' (V2/V3 swap deadline, addLiquidity deadline, UR executeWithDeadline). signature-deadline = '서명이 이 시점까지만 유효' (EIP-2612 permit deadline, Permit2 SignatureTransferDetails.deadline). grant-expiration = '부여된 권한이 이 시점까지 유지' (Permit2 PermitDetails.expiration)."
+          "description": "만료의 의미. tx-deadline: tx 가 이 시점 전에 mining 되어야 함 (V2/V3 swap deadline, UR executeWithDeadline). signature-deadline: 서명이 이 시점까지만 유효 (EIP-2612 permit deadline, Permit2 SignatureTransferDetails.deadline). grant-expiration: 부여된 권한이 이 시점까지 유지 (Permit2 PermitDetails.expiration)."
         }
       },
       "required": ["expiresAt", "source"]

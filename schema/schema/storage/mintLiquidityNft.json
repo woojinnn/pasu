@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/dex/mintLiquidityNft.json",
+  "title": "MintLiquidityNftFields (minimal intent)",
+  "description": "새 ERC-721 liquidity position 발행 → wallet 에 새 NFT 1 개 추가. V3 NPM.mint / V4 PositionManager MINT_POSITION action 한정. Concentrated liquidity 의 tick range 신규 설정. 핵심 intent 필드만 — V4 hook surface (hookAddress flags / hookData) 는 Tier 3 schema 영역. V2/Curve/Balancer 의 ERC-20 LP 발행은 addLiquidity.json, 기존 NFT 의 internal liquidity 증가는 increaseLiquidity.json.",
+
+  "type": "object",
+  "required": ["_kind", "poolKey", "tickLower", "tickUpper", "inputs", "nft", "recipient", "valueWei"],
+  "properties": {
+
+    "_kind": {
+      "const": "mintLiquidityNft",
+      "description": "ActionEnvelope.action 과 일치 의무 (root.json 컨벤션)"
+    },
+
+    "poolKey": {
+      "type": "object",
+      "required": ["token0", "token1", "feeBips"],
+      "description": "Pool 식별자. V3 = (token0, token1, fee) 3-tuple / V4 PoolKey = (token0, token1, fee, tickSpacing, hooks). V3 의 fee tier 와 token pair 로 pool address 결정적 유도",
+      "properties": {
+        "token0": {
+          "$ref": "../../schema/_common.json#/$defs/Address",
+          "description": "정렬된 첫 토큰 (token0 < token1, lexicographic). V4 PoolKey.currency0 — native ETH 시 0x0"
+        },
+        "token1": {
+          "$ref": "../../schema/_common.json#/$defs/Address",
+          "description": "정렬된 둘째 토큰. V4 PoolKey.currency1"
+        },
+        "feeBips": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777215,
+          "description": "V3 fee tier (100=0.01% / 500=0.05% / 3000=0.3% / 10000=1%). V4 PoolKey.fee — dynamic fee 시 0x800000 (high bit set)"
+        }
+      }
+    },
+
+    "tickLower": {
+      "type": "integer",
+      "minimum": -887272,
+      "maximum": 887272,
+      "description": "가격 range 하한 (concentrated liquidity). tickLower < tickUpper 의무, tickLower % tickSpacing == 0. V3/V4 MIN_TICK = -887272"
+    },
+
+    "tickUpper": {
+      "type": "integer",
+      "minimum": -887272,
+      "maximum": 887272,
+      "description": "가격 range 상한. V3/V4 MAX_TICK = 887272"
+    },
+
+    "inputs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "입금 토큰 = 정확히 2개 (V3/V4 concentrated liquidity 는 2-token pool 한정). inputs[0] = token0, inputs[1] = token1 (poolKey 의 정렬 순서 일치)",
+      "items": {
+        "type": "object",
+        "required": ["asset", "amount"],
+        "properties": {
+          "asset": {
+            "$ref": "../../schema/_common.json#/$defs/AssetRef",
+            "description": "입금 토큰. native ETH (kind=native) 시 V3 NPM 의 msg.value 또는 V4 PoolKey.currency0=0x0"
+          },
+          "amount": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Desired 입금량. V3 MintParams.amount{0,1}Desired / V4 SETTLE action max input"
+          },
+          "amountMin": {
+            "$ref": "../../schema/_common.json#/$defs/AmountConstraint",
+            "description": "Token-level slippage 하한. V3 amount{0,1}Min / V4 minimum settle. kind=min"
+          }
+        }
+      }
+    },
+
+    "nft": {
+      "$ref": "../../schema/_common.json#/$defs/AssetRef",
+      "description": "발행 NFT collection. kind=erc721. address = V3 NPM (mainnet 0xC36442b4a4522E871399CD717aBDD847Ab11FE88) / V4 PositionManager (mainnet 0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e)"
+    },
+
+    "mintedTokenId": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "Post-execution 발급 tokenId (uint256 decimal string). Pre-tx calldata 만으로는 derive 불가 — host:oracle (event log / simulation) 보강"
+    },
+
+    "initialLiquidity": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "발행 NFT 의 초기 liquidity 값 (uint128 raw decimal string). V3 NPM.mint return value. host:oracle"
+    },
+
+    "recipient": {
+      "$ref": "../../schema/_common.json#/$defs/Address",
+      "description": "NFT 수령자 (= 새 position owner). default = root.from. V3 MintParams.recipient / V4 MINT_POSITION action 의 owner 인자"
+    },
+
+    "valueWei": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "tx.value (uint256 decimal string). native ETH input 시 nonzero — V3 NPM (refundETH 패턴) / V4 PoolKey.currency0=0x0 + msg.value"
+    },
+
+    "deadline": {
+      "$ref": "../../schema/_common.json#/$defs/DecimalString",
+      "description": "Tx deadline (unix sec, uint256). V3 NPM.mint MintParams.deadline. V4 PositionManager 의 modifyLiquidities 는 직접 부재 — wrapper 사용 시만 존재. host 가 blockTimestamp 와 비교"
+    }
+  }
+}

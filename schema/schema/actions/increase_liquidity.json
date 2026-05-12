@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema_v101/actions/increase_liquidity.json",
+  "title": "IncreaseLiquidityAction",
+  "description": "Uniswap V3 NPM.increaseLiquidity 또는 Uniswap V4 PositionManager 의 INCREASE_LIQUIDITY action 한정 — 기존 ERC-721 position 의 internal liquidity 를 증가시키는 동작. wallet 의 NFT 보유 수는 불변, NFT 의 mutable state 만 변화. 새 NFT 발행은 mint_liquidity_nft 로 분리.",
+
+  "type": "object",
+  "properties": {
+    "nft": {
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "Position 을 보유한 NFT collection (kind=erc721). address = V3 NPM 또는 V4 PositionManager."
+    },
+
+    "tokenId": {
+      "$ref": "../common/_common.json#/$defs/DecimalString",
+      "description": "기존 position 의 tokenId. V3 IncreaseLiquidityParams.tokenId / V4 INCREASE_LIQUIDITY action params. host:onchain 의 NFT.ownerOf(tokenId) == root.from 검증은 정책 책임."
+    },
+
+    "tokens": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AssetRef" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "예치 토큰 정확히 2개 — tokens[0]=token0, tokens[1]=token1. V3 calldata 에는 토큰 주소가 없으므로 host:onchain (NFT.positions(tokenId) 조회) 으로 보강. V4 는 modifyLiquidities params 의 PoolKey 로부터 추출."
+    },
+
+    "amounts": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AmountConstraint" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "tokens[i] 와 1:1 매핑하는 desired 예치량. V3 IncreaseLiquidityParams 의 amount0Desired / amount1Desired (kind=estimated)."
+    },
+
+    "minAmountsIn": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AmountConstraint" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "tokens[i] 와 1:1 매핑하는 토큰별 최소 예치량 (슬리피지 보호). V3 의 amount0Min / amount1Min (kind=min)."
+    },
+
+    "validity": {
+      "$ref": "../common/_common.json#/$defs/Validity",
+      "description": "유효기간 — source='tx-deadline'. V3 IncreaseLiquidityParams.deadline. V4 modifyLiquidities 는 직접 부재 — 생략."
+    }
+  },
+
+  "required": ["nft", "tokenId", "tokens", "amounts"]
+}

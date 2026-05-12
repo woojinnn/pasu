@@ -2,38 +2,25 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema_v101/actions/add_liquidity.json",
   "title": "AddLiquidityAction",
-  "description": "action=add_liquidity. Pool 에 자산을 예치하고 LP 토큰/Position NFT 를 수령. category-agnostic — DEX 의 V2/V3/V4 mint·add, Balancer joinPool, Curve add_liquidity, Aerodrome/Maverick mint position 외에도 Yield (Pendle SY 발행, vault deposit) 등에서도 발생. category 분기는 root.actions[].category 에서.",
+  "description": "Pool 에 N 개 토큰을 예치하고 fungible ERC-20 LP/BPT 를 받는 동작. Uniswap V2 / PancakeSwap V2 / Aerodrome / SushiSwap V2 의 addLiquidity, Curve V1/NG/Crypto 의 add_liquidity, Balancer V2 joinPool / V3 addLiquidity* 를 흡수. V3/V4 의 ERC-721 position 발행은 mint_liquidity_nft 로 분리.",
 
   "type": "object",
   "properties": {
-    "_kind": { "const": "add_liquidity" },
-
-    "positionScope": {
-      "type": "string",
-      "enum": ["new", "existing"],
-      "description": "new = 신규 position 생성 (V3/V4 NPM mint, V2 first add). existing = 기존 position 에 추가 (V3/V4 increaseLiquidity, V2 additional add). 정책 'no new position in unknown pool' 분기."
-    },
-
-    "positionId": {
-      "$ref": "../common/_common.json#/$defs/DecimalString",
-      "description": "ERC721 position NFT id. positionScope=existing 일 때만. 정책 'only my positions' 분기 (host:onchain 으로 owner 검증)."
-    },
-
     "pool": {
       "type": "object",
-      "description": "어느 pool 에 예치하는가. V2 pair / V3 pool / V4 PoolKey / Balancer poolId / Curve pool / Aerodrome pool 등.",
+      "description": "예치 대상 pool. V2 pair / Curve pool / Balancer pool 등 protocol 별 식별 방식을 통합.",
       "properties": {
         "address": {
           "$ref": "../common/_common.json#/$defs/Address",
-          "description": "pool 컨트랙트 주소. Balancer/V4 는 bytes32 id 가 1차 — id 를 우선 채우고 address 는 derive."
+          "description": "pool 컨트랙트 주소. Balancer 는 poolId 의 첫 20B 로부터 derive."
         },
         "id": {
           "$ref": "../common/_common.json#/$defs/Hex",
-          "description": "bytes32 poolId. Balancer / V4 PoolKey hash."
+          "description": "bytes32 pool id. Balancer poolId."
         },
         "label": {
           "type": "string",
-          "description": "host 보강 라벨 (예: 'ETH/USDC 0.05%'). UI 표시 및 정책 'only WETH-USDC pool' 분기."
+          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'ETH/USDC 0.05%'). 정책 'whitelisted pool 만 허용' 분기 및 UI 표시에 사용."
         }
       }
     },
@@ -41,45 +28,43 @@
     "tokens": {
       "type": "array",
       "items": { "$ref": "../common/_common.json#/$defs/AssetRef" },
-      "description": "참여 토큰 리스트. V2/V3/V4=2, Balancer=N (최대 8), Curve=2~4. V3/V4 NPM increaseLiquidity 는 calldata 에 tokens 없음 — host:onchain 으로 NPM.positions(tokenId) 조회 후 채움."
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "예치 토큰 리스트. V2 는 2개, Curve N_COINS = 2~4개, Balancer 는 최대 8개. Balancer V3 의 SINGLE_TOKEN_EXACT_OUT 처럼 한 토큰만 nonzero 인 케이스 때문에 minItems=1."
     },
 
     "amounts": {
       "type": "array",
       "items": { "$ref": "../common/_common.json#/$defs/AmountConstraint" },
-      "description": "tokens[i] 와 1:1. V2 addLiquidity 의 desired 값 = kind=estimated, V3/V4 NPM 의 amount0Desired/amount1Desired = kind=estimated, Curve add_liquidity 의 amounts[N] = kind=exact, Balancer joinPool 의 maxAmountsIn = kind=max."
+      "description": "tokens[i] 와 1:1 매핑하는 예치 양. V2 / V3 NPM 의 amountDesired 는 kind=estimated, Curve add_liquidity 의 amounts[N] 은 kind=exact, Balancer joinPool 의 maxAmountsIn 은 kind=max."
     },
 
-    "minLpReceived": {
-      "$ref": "../common/_common.json#/$defs/DecimalString",
-      "description": "최소 받을 LP 토큰 / liquidity unit. V2 의 amountAMin/BMin slippage 의 pair 측면, Curve 의 min_mint_amount, Balancer 의 minBPTOut. 정책 'slippage protection 존재 여부' 분기."
+    "minAmountsIn": {
+      "type": "array",
+      "items": { "$ref": "../common/_common.json#/$defs/AmountConstraint" },
+      "description": "tokens[i] 와 1:1 매핑하는 토큰별 최소 예치량 (실제 예치가 이 값보다 적으면 revert — 슬리피지 보호). V2 의 amountAMin/amountBMin 이 본 필드로 들어옴. Curve / Balancer 는 LP 측 최소 (lpAmount) 만 가져 본 필드 생략. 정책 '모든 entry value > 0' 으로 슬리피지 보호 강제."
+    },
+
+    "lpToken": {
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "발행되는 LP / BPT 토큰 (kind=erc20). V2/Aerodrome/Sushi 는 pair 컨트랙트 자체. Curve V1 은 별도 CurveTokenV3 컨트랙트, Curve NG 는 pool 컨트랙트 자체. Balancer 는 pool token (BPT). 정책 'whitelisted LP token 만' 분기."
+    },
+
+    "lpAmount": {
+      "$ref": "../common/_common.json#/$defs/AmountConstraint",
+      "description": "발행 LP 양. Curve 의 min_mint_amount 는 kind=min, Balancer joinPool 의 minimumBPT 는 kind=min, Balancer V3 PROPORTIONAL exactBptAmountOut 은 kind=exact, V2 는 router return value 라 calldata 부재 시 kind=estimated."
     },
 
     "recipient": {
       "$ref": "../common/_common.json#/$defs/Address",
-      "description": "LP 토큰 / position NFT 수령자. root.from 과 다르면 '다른 주소로 LP 발행' — 정책 분기."
+      "description": "LP 토큰 수령자. root.from 과 다르면 제3자 발행 — 정책 분기 신호."
     },
 
     "validity": {
       "$ref": "../common/_common.json#/$defs/Validity",
-      "description": "add_liquidity 의 유효기간 — source='tx-deadline'. V2 addLiquidity deadline / V3 NPM mint deadline / Balancer joinPool deadline. V4 PositionManager 일부 opcode 는 deadline 부재 — omit."
-    },
-
-    "feeTierBps": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "V3/V4 concentrated pool 의 fee tier (bps). 100/500/3000/10000 등. policy 'only blue-chip pools' 분기."
-    },
-
-    "tickRange": {
-      "type": "object",
-      "description": "V3/V4 NPM mint 시 — concentrated liquidity 의 가격 범위. 정책 'no extreme tight range' 또는 'no out-of-range LP'.",
-      "properties": {
-        "lower": { "type": "integer", "description": "tickLower (int24)." },
-        "upper": { "type": "integer", "description": "tickUpper (int24)." }
-      }
+      "description": "유효기간 — source='tx-deadline'. V2 addLiquidity, V3/V4 NPM 계열, Balancer joinPool 의 deadline 인자. Curve V1/NG 는 deadline 부재 — 생략."
     }
   },
 
-  "required": ["_kind", "positionScope", "tokens", "amounts"]
+  "required": ["tokens", "amounts", "recipient"]
 }
