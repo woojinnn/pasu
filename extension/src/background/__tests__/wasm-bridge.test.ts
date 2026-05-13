@@ -6,7 +6,7 @@ import {
   parseWindowKeys,
   WasmDecodeError,
 } from "../wasm-bridge.types";
-import { tier1FactPlan } from "../wasm-bridge";
+import { EngineError, routeRequest, tier1FactPlan } from "../wasm-bridge";
 
 const wasmMocks = vi.hoisted(() => ({
   init: vi.fn(async () => undefined),
@@ -15,6 +15,7 @@ const wasmMocks = vi.hoisted(() => ({
   tier1FactPlanJson: vi.fn(),
   tier2WindowKeysJson: vi.fn(),
   evaluateJson: vi.fn(),
+  routeRequestJson: vi.fn(),
 }));
 
 vi.mock("webextension-polyfill", () => ({
@@ -32,6 +33,7 @@ vi.mock("../../wasm/policy_engine_wasm", () => ({
   tier1_fact_plan_json: wasmMocks.tier1FactPlanJson,
   tier2_window_keys_json: wasmMocks.tier2WindowKeysJson,
   evaluate_json: wasmMocks.evaluateJson,
+  route_request_json: wasmMocks.routeRequestJson,
 }));
 
 const token = {
@@ -149,5 +151,50 @@ describe("wasm bridge parsers", () => {
     expect(wasmMocks.tier1FactPlanJson).toHaveBeenCalledWith(
       JSON.stringify(dexAction),
     );
+  });
+
+  it("routeRequest passes through the WASM envelope list", async () => {
+    const envelopes = [
+      { category: "dex", action: "swap", fields: { mode: "exact_in" } },
+      { category: "misc", action: "permit", fields: { permitKind: "eip2612" } },
+    ];
+    wasmMocks.routeRequestJson.mockReturnValue(
+      JSON.stringify({ ok: true, data: envelopes }),
+    );
+
+    const result = await routeRequest({
+      method: "eth_sendTransaction",
+      params: [],
+      chain_id: 1,
+    });
+
+    expect(result).toEqual(envelopes);
+    expect(wasmMocks.routeRequestJson).toHaveBeenCalledOnce();
+  });
+
+  it("routeRequest surfaces route_failed as an EngineError", async () => {
+    wasmMocks.routeRequestJson.mockReturnValue(
+      JSON.stringify({
+        ok: false,
+        error: { kind: "route_failed", message: "no adapter matched" },
+      }),
+    );
+
+    await expect(
+      routeRequest({ method: "eth_sendTransaction", params: [], chain_id: 1 }),
+    ).rejects.toBeInstanceOf(EngineError);
+  });
+
+  it("routeRequest rejects malformed envelopes (missing category)", async () => {
+    wasmMocks.routeRequestJson.mockReturnValue(
+      JSON.stringify({
+        ok: true,
+        data: [{ action: "swap", fields: {} }],
+      }),
+    );
+
+    await expect(
+      routeRequest({ method: "eth_sendTransaction", params: [], chain_id: 1 }),
+    ).rejects.toBeInstanceOf(EngineError);
   });
 });

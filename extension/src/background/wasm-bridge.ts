@@ -28,6 +28,25 @@ interface WasmExports {
     oracle_snapshot_json: string,
   ): string;
   evaluate_json(request_json: string, host_snapshot_json: string): string;
+  // Phase 7: new 32-variant ActionEnvelope pipeline. Coexists with
+  // build_action_for_request_json (legacy 5-variant Action).
+  route_request_json(input_json: string): string;
+}
+
+/**
+ * One ActionEnvelope emitted by the new (Phase 5) pipeline.
+ *
+ * `action` is the snake_case discriminator (e.g. "swap", "permit",
+ * "approve") and `fields` is the variant-specific payload.
+ *
+ * Field-level typing is intentionally deferred to a follow-up so this
+ * minimal binding stays small. Callers that need to introspect specific
+ * variants should add per-action zod-style guards as needed.
+ */
+export interface RouteEnvelope {
+  category: string;
+  action: string;
+  fields: unknown;
 }
 
 interface OkEnvelope<T> {
@@ -121,4 +140,45 @@ export async function evaluate(
     exports.evaluate_json(JSON.stringify(request), JSON.stringify(snapshot)),
   );
   return parseVerdict(raw);
+}
+
+/**
+ * Phase 5 pipeline entry. Takes a raw RPC payload and returns the list of
+ * `ActionEnvelope` values that the new Decoder/Mapper/CallAdapter or
+ * SignAdapter stack produces.
+ *
+ * Input shape: `{ method, params, chain_id, block_timestamp? }`.
+ * Throws `EngineError("route_failed", ...)` when no adapter matched.
+ */
+export async function routeRequest(input: {
+  method: string;
+  params: unknown;
+  chain_id: number;
+  block_timestamp?: number;
+}): Promise<RouteEnvelope[]> {
+  const exports = await load();
+  const raw = unwrap<unknown>(
+    exports.route_request_json(JSON.stringify(input)),
+  );
+  if (!Array.isArray(raw)) {
+    throw new EngineError(
+      "invalid_route_response",
+      `expected ActionEnvelope[] from WASM, got ${typeof raw}`,
+    );
+  }
+  return raw.map((entry, idx) => {
+    if (
+      typeof entry !== "object" ||
+      entry === null ||
+      typeof (entry as { category?: unknown }).category !== "string" ||
+      typeof (entry as { action?: unknown }).action !== "string"
+    ) {
+      throw new EngineError(
+        "invalid_route_envelope",
+        `route_request_json[${idx}] missing required fields`,
+      );
+    }
+    const obj = entry as { category: string; action: string; fields?: unknown };
+    return { category: obj.category, action: obj.action, fields: obj.fields };
+  });
 }
