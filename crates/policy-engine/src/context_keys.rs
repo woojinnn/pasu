@@ -45,12 +45,8 @@ pub const MAX_FEE_BPS: &str = "maxFeeBps";
 pub const HAS_ZERO_MIN_OUTPUT: &str = "hasZeroMinOutput";
 /// Whether any recipient differs from the actor.
 pub const HAS_EXTERNAL_RECIPIENT: &str = "hasExternalRecipient";
-/// Input size as basis points of the actor portfolio.
-pub const TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS: &str = "totalInputFractionOfPortfolioBps";
 /// Whether current allowances cover all ERC-20 inputs.
 pub const ALLOWANCES_COVER_INPUTS: &str = "allowancesCoverInputs";
-/// Aggregate stat-window context object.
-pub const WINDOW_STATS: &str = "windowStats";
 
 // Signature action context fields stamped by signature lowering.
 /// Shared signature base context record.
@@ -150,7 +146,7 @@ pub const EXTN_ARG: &str = "arg";
 /// Cedar Decimal extension function name.
 pub const EXTN_DECIMAL: &str = "decimal";
 
-// Stat-window keys consumed by lowering and stamped onto `windowStats`.
+// Stat-window keys consumed by lowering.
 /// Rolling 24-hour swap volume in USD.
 pub const SWAP_VOLUME_USD_24H: &str = "swapVolumeUsd24h";
 /// Rolling 24-hour swap count.

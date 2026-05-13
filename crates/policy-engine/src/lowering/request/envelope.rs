@@ -23,7 +23,8 @@ const VALIDITY: &str = "validity";
 const FEE_BPS: &str = "feeBps";
 const TOTAL_INPUT_USD: &str = "totalInputUsd";
 const TOTAL_MIN_OUTPUT_USD: &str = "totalMinOutputUsd";
-const TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS: &str = "totalInputFractionOfPortfolioBps";
+const ALLOWANCES_COVER_INPUTS: &str = "allowancesCoverInputs";
+const VALIDITY_DELTA_SEC: &str = "validityDeltaSec";
 
 const CHAIN_ID: &str = "chainId";
 const ADDRESS: &str = "address";
@@ -81,6 +82,9 @@ fn context(swap: &SwapAction, block_timestamp: u64) -> Value {
 
     if let Some(validity) = &swap.validity {
         context.insert(VALIDITY.into(), validity_json(validity));
+        if let Some(delta_sec) = validity_delta_sec(validity, block_timestamp) {
+            context.insert(VALIDITY_DELTA_SEC.into(), Value::from(delta_sec));
+        }
     }
     if let Some(fee_bps) = swap.fee_bps {
         context.insert(FEE_BPS.into(), cedar_long_u64(u64::from(fee_bps)));
@@ -97,11 +101,8 @@ fn context(swap: &SwapAction, block_timestamp: u64) -> Value {
             action_usd_valuation_json(usd, block_timestamp),
         );
     }
-    if let Some(fraction_bps) = swap.enrichment.input_fraction_of_portfolio_bps {
-        context.insert(
-            TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS.into(),
-            cedar_long_u64(u64::from(fraction_bps)),
-        );
+    if let Some(covers_input) = swap.enrichment.allowance_covers_input {
+        context.insert(ALLOWANCES_COVER_INPUTS.into(), Value::from(covers_input));
     }
 
     Value::Object(context)
@@ -177,6 +178,15 @@ fn validity_json(validity: &Validity) -> Value {
     Value::Object(out)
 }
 
+fn validity_delta_sec(validity: &Validity, block_timestamp: u64) -> Option<i64> {
+    let expires_at = validity.expires_at.to_string().parse::<i64>().ok()?;
+    if expires_at < 0 {
+        return None;
+    }
+    let block_timestamp = i64::try_from(block_timestamp).ok()?;
+    Some(expires_at - block_timestamp)
+}
+
 const fn validity_source_str(source: &ValiditySource) -> &'static str {
     match source {
         ValiditySource::TxDeadline => "tx-deadline",
@@ -213,6 +223,8 @@ mod tests {
     };
     use serde_json::{json, Value};
     use std::str::FromStr as _;
+
+    const BLOCK_TIMESTAMP: u64 = 1_700_000_000;
 
     fn address(value: &str) -> Address {
         Address::from_str(value).unwrap()
@@ -275,6 +287,13 @@ mod tests {
         }
     }
 
+    fn validity(expires_at: u64) -> Validity {
+        Validity {
+            expires_at: decimal(&expires_at.to_string()),
+            source: ValiditySource::TxDeadline,
+        }
+    }
+
     fn policy_request(envelope: &ActionEnvelope, from: &Address) -> PolicyRequest {
         policy_request_from_envelope(
             envelope,
@@ -282,7 +301,7 @@ mod tests {
             &address("0x2222222222222222222222222222222222222222"),
             &decimal("0"),
             1,
-            1_700_000_000,
+            BLOCK_TIMESTAMP,
         )
         .expect("swap envelope lowers to policy request")
     }
@@ -344,13 +363,6 @@ mod tests {
             request.context.get("feeBps").and_then(Value::as_i64),
             Some(30)
         );
-        assert_eq!(
-            request
-                .context
-                .get("totalInputFractionOfPortfolioBps")
-                .and_then(Value::as_i64),
-            Some(125)
-        );
     }
 
     #[test]
@@ -377,6 +389,84 @@ mod tests {
             1_700_000_000,
         )
         .is_none());
+    }
+
+    #[test]
+    fn swap_with_validity_lowers_validity_delta_sec() {
+        let from = address("0x1111111111111111111111111111111111111111");
+        let mut swap = swap(
+            from.clone(),
+            amount(AmountKind::Exact, "1000000000000000000"),
+        );
+        swap.validity = Some(validity(BLOCK_TIMESTAMP + 600));
+
+        let request = policy_request(&swap_envelope(swap), &from);
+
+        assert_eq!(
+            request
+                .context
+                .get("validityDeltaSec")
+                .and_then(Value::as_i64),
+            Some(600)
+        );
+    }
+
+    #[test]
+    fn swap_with_past_deadline_lowers_negative_delta() {
+        let from = address("0x1111111111111111111111111111111111111111");
+        let mut swap = swap(
+            from.clone(),
+            amount(AmountKind::Exact, "1000000000000000000"),
+        );
+        swap.validity = Some(validity(BLOCK_TIMESTAMP - 60));
+
+        let request = policy_request(&swap_envelope(swap), &from);
+
+        assert_eq!(
+            request
+                .context
+                .get("validityDeltaSec")
+                .and_then(Value::as_i64),
+            Some(-60)
+        );
+    }
+
+    #[test]
+    fn swap_without_validity_omits_validity_delta_sec() {
+        let from = address("0x1111111111111111111111111111111111111111");
+        let request = policy_request(
+            &swap_envelope(swap(
+                from.clone(),
+                amount(AmountKind::Exact, "1000000000000000000"),
+            )),
+            &from,
+        );
+
+        assert!(!request
+            .context
+            .as_object()
+            .unwrap()
+            .contains_key("validityDeltaSec"));
+    }
+
+    #[test]
+    fn swap_with_allowance_covers_input_lowers_field() {
+        let from = address("0x1111111111111111111111111111111111111111");
+        let mut swap = swap(
+            from.clone(),
+            amount(AmountKind::Exact, "1000000000000000000"),
+        );
+        swap.enrichment.allowance_covers_input = Some(true);
+
+        let request = policy_request(&swap_envelope(swap), &from);
+
+        assert_eq!(
+            request
+                .context
+                .get("allowancesCoverInputs")
+                .and_then(Value::as_bool),
+            Some(true)
+        );
     }
 
     #[test]

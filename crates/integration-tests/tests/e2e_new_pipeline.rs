@@ -154,6 +154,19 @@ fn e2e_swap_v2_passes_under_empty_policies() {
 }
 
 #[test]
+fn e2e_swap_v2_deadline_lowers_validity_delta_sec() {
+    let request = swap_request_from_fixture("swap_uniswap_v2_exact_in.json");
+
+    assert_eq!(
+        request
+            .context
+            .get("validityDeltaSec")
+            .and_then(Value::as_i64),
+        Some(9_999_999_999_i64 - BLOCK_TIMESTAMP as i64)
+    );
+}
+
+#[test]
 fn e2e_swap_v2_fails_under_blanket_forbid() {
     let request = swap_request_from_fixture("swap_uniswap_v2_exact_in.json");
     let oracle = MockOracle::default();
@@ -334,8 +347,7 @@ fn swap_passes_under_max_fee_policy() {
     // both swap-only policies should leave the verdict at Pass.
     let request = swap_request_from_fixture("swap_uniswap_v2_exact_eth_for_tokens.json");
 
-    let verdict =
-        evaluate_with_policies(&[MAX_FEE_POLICY, NO_ZERO_MIN_OUTPUT_POLICY], &request);
+    let verdict = evaluate_with_policies(&[MAX_FEE_POLICY, NO_ZERO_MIN_OUTPUT_POLICY], &request);
 
     assert_eq!(verdict, Verdict::Pass);
 }

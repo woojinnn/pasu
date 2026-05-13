@@ -7,9 +7,6 @@
 //! The lookup key is a strict `(owner, token)` pair (including chain-aware
 //! token identity). A missing record is an explicit error and does not block
 //! evaluation; the context field is simply skipped.
-//!
-//! When present, lowering also stamps `totalInputFractionOfPortfolioBps`,
-//! exposing normalized input sizing as a policy-usable ratio.
 
 use crate::core::{Address, AmountSpec, Token};
 use alloy_primitives::U256;

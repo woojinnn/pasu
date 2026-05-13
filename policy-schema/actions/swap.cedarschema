@@ -10,11 +10,8 @@ type SwapContext = {
 
   totalInputUsd?: UsdValuation,
   totalMinOutputUsd?: UsdValuation,
-  effectiveRateVsOracleBps?: Long,
-  totalInputFractionOfPortfolioBps?: Long,
+  allowancesCoverInputs?: Bool,
   validityDeltaSec?: Long,
-  recipientIsContract?: Bool,
-  windowStats?: WindowStats,
 };
 
 action "swap" appliesTo {
