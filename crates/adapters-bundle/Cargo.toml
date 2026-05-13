@@ -7,7 +7,6 @@ description = "Aggregator: builds default action adapter registries from every i
 
 [dependencies]
 policy-engine.workspace = true
-policy-engine-adapter-eip2612.workspace = true
 policy-engine-adapter-permit2.workspace = true
 policy-engine-adapter-universal-router.workspace = true
 policy-engine-adapter-uniswap-v2.workspace = true

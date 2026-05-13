@@ -1,23 +1,5 @@
 //! EIP-2612 Permit EIP-712 signature adapter.
 
-#![deny(unsafe_code)]
-#![deny(unused_must_use)]
-#![deny(rustdoc::bare_urls)]
-#![deny(rustdoc::broken_intra_doc_links)]
-#![warn(missing_docs)]
-#![warn(unreachable_pub)]
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![warn(missing_debug_implementations)]
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-#![warn(clippy::dbg_macro)]
-#![warn(clippy::todo)]
-#![cfg_attr(not(test), warn(clippy::expect_used))]
-#![cfg_attr(not(test), warn(clippy::panic))]
-#![cfg_attr(not(test), warn(clippy::unwrap_used))]
-
 use policy_engine::adapter::signature_helpers::{
     address_field, object, static_token, u256_string_field, u64_field, TokenLookup,
 };

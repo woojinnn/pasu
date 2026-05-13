@@ -6,8 +6,11 @@ use abi_resolver::decoders::erc20::{
     ERC20_TRANSFER_DECODER_ID, ERC20_TRANSFER_FROM_DECODER_ID,
 };
 use abi_resolver::decoders::uniswap_v2::{
-    SwapExactTokensForTokensDecoder, SwapTokensForExactTokensDecoder,
-    SWAP_EXACT_TOKENS_FOR_TOKENS_DECODER_ID, SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID,
+    SwapETHForExactTokensDecoder, SwapExactETHForTokensDecoder, SwapExactTokensForETHDecoder,
+    SwapExactTokensForTokensDecoder, SwapTokensForExactETHDecoder, SwapTokensForExactTokensDecoder,
+    SWAP_ETH_FOR_EXACT_TOKENS_DECODER_ID, SWAP_EXACT_ETH_FOR_TOKENS_DECODER_ID,
+    SWAP_EXACT_TOKENS_FOR_ETH_DECODER_ID, SWAP_EXACT_TOKENS_FOR_TOKENS_DECODER_ID,
+    SWAP_TOKENS_FOR_EXACT_ETH_DECODER_ID, SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID,
 };
 use abi_resolver::decoders::uniswap_v3::{
     ExactInputDecoder, ExactInputSingleDecoder, ExactOutputDecoder, ExactOutputSingleDecoder,
@@ -21,7 +24,8 @@ use call_adapter::{
 };
 use mappers::protocols::erc20::{Erc20ApproveMapper, Erc20TransferFromMapper, Erc20TransferMapper};
 use mappers::protocols::uniswap_v2::{
-    SwapExactTokensForTokensMapper, SwapTokensForExactTokensMapper,
+    SwapETHForExactTokensMapper, SwapExactETHForTokensMapper, SwapExactTokensForETHMapper,
+    SwapExactTokensForTokensMapper, SwapTokensForExactETHMapper, SwapTokensForExactTokensMapper,
 };
 use mappers::protocols::uniswap_v3::{
     UniswapV3ExactOutputMapper, UniswapV3ExactOutputSingleMapper, UniswapV3Mapper,
@@ -45,6 +49,10 @@ impl DefaultRegistries {
             InMemoryDecoderRegistry::builder()
                 .register(Arc::new(SwapExactTokensForTokensDecoder::new()))
                 .register(Arc::new(SwapTokensForExactTokensDecoder::new()))
+                .register(Arc::new(SwapExactETHForTokensDecoder::new()))
+                .register(Arc::new(SwapTokensForExactETHDecoder::new()))
+                .register(Arc::new(SwapExactTokensForETHDecoder::new()))
+                .register(Arc::new(SwapETHForExactTokensDecoder::new()))
                 .register(Arc::new(ExactInputSingleDecoder::new()))
                 .register(Arc::new(ExactInputDecoder::new()))
                 .register(Arc::new(ExactOutputSingleDecoder::new()))
@@ -67,6 +75,30 @@ impl DefaultRegistries {
                         decoder_id: DecoderId::new(SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID),
                     },
                     Arc::new(SwapTokensForExactTokensMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(SWAP_EXACT_ETH_FOR_TOKENS_DECODER_ID),
+                    },
+                    Arc::new(SwapExactETHForTokensMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(SWAP_TOKENS_FOR_EXACT_ETH_DECODER_ID),
+                    },
+                    Arc::new(SwapTokensForExactETHMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(SWAP_EXACT_TOKENS_FOR_ETH_DECODER_ID),
+                    },
+                    Arc::new(SwapExactTokensForETHMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(SWAP_ETH_FOR_EXACT_TOKENS_DECODER_ID),
+                    },
+                    Arc::new(SwapETHForExactTokensMapper::new()),
                 )
                 .register(
                     MapperMatchKey {
@@ -147,7 +179,11 @@ impl DefaultRegistries {
 #[cfg(test)]
 mod tests {
     use abi_resolver::decoders::uniswap_v2::{
+        SWAP_ETH_FOR_EXACT_TOKENS_DECODER_ID, SWAP_ETH_FOR_EXACT_TOKENS_SELECTOR,
+        SWAP_EXACT_ETH_FOR_TOKENS_DECODER_ID, SWAP_EXACT_ETH_FOR_TOKENS_SELECTOR,
+        SWAP_EXACT_TOKENS_FOR_ETH_DECODER_ID, SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR,
         SWAP_EXACT_TOKENS_FOR_TOKENS_DECODER_ID, SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR,
+        SWAP_TOKENS_FOR_EXACT_ETH_DECODER_ID, SWAP_TOKENS_FOR_EXACT_ETH_SELECTOR,
         SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID, SWAP_TOKENS_FOR_EXACT_TOKENS_SELECTOR,
         UNISWAP_V2_ROUTER_MAINNET,
     };
@@ -189,6 +225,22 @@ mod tests {
             .resolve(&v2_key(SWAP_TOKENS_FOR_EXACT_TOKENS_SELECTOR))
             .is_some());
         assert!(registries
+            .decoders
+            .resolve(&v2_key(SWAP_EXACT_ETH_FOR_TOKENS_SELECTOR))
+            .is_some());
+        assert!(registries
+            .decoders
+            .resolve(&v2_key(SWAP_TOKENS_FOR_EXACT_ETH_SELECTOR))
+            .is_some());
+        assert!(registries
+            .decoders
+            .resolve(&v2_key(SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR))
+            .is_some());
+        assert!(registries
+            .decoders
+            .resolve(&v2_key(SWAP_ETH_FOR_EXACT_TOKENS_SELECTOR))
+            .is_some());
+        assert!(registries
             .mappers
             .resolve(&MapperMatchKey {
                 decoder_id: DecoderId::new(SWAP_EXACT_TOKENS_FOR_TOKENS_DECODER_ID),
@@ -198,6 +250,30 @@ mod tests {
             .mappers
             .resolve(&MapperMatchKey {
                 decoder_id: DecoderId::new(SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID),
+            })
+            .is_some());
+        assert!(registries
+            .mappers
+            .resolve(&MapperMatchKey {
+                decoder_id: DecoderId::new(SWAP_EXACT_ETH_FOR_TOKENS_DECODER_ID),
+            })
+            .is_some());
+        assert!(registries
+            .mappers
+            .resolve(&MapperMatchKey {
+                decoder_id: DecoderId::new(SWAP_TOKENS_FOR_EXACT_ETH_DECODER_ID),
+            })
+            .is_some());
+        assert!(registries
+            .mappers
+            .resolve(&MapperMatchKey {
+                decoder_id: DecoderId::new(SWAP_EXACT_TOKENS_FOR_ETH_DECODER_ID),
+            })
+            .is_some());
+        assert!(registries
+            .mappers
+            .resolve(&MapperMatchKey {
+                decoder_id: DecoderId::new(SWAP_ETH_FOR_EXACT_TOKENS_DECODER_ID),
             })
             .is_some());
     }
