@@ -34,6 +34,9 @@ use abi_resolver::subdecode::protocols::pancake_infinity::{
 use abi_resolver::subdecode::protocols::pancake_ur::{
     is_pancake_universal_router, PANCAKE_UR_TABLE,
 };
+use abi_resolver::subdecode::protocols::safe_multisend::{
+    extract_transactions_bytes, parse_multisend_transactions, MULTISEND_SELECTOR,
+};
 use abi_resolver::subdecode::protocols::uniswap_v3::format_packed_path;
 use abi_resolver::subdecode::protocols::universal_router::{
     extract_commands_and_inputs, is_uniswap_universal_router, is_universal_router_execute,
@@ -71,6 +74,51 @@ use tower_http::trace::TraceLayer;
 
 mod etherscan;
 use etherscan::EtherscanClient;
+
+// ── /api/sign ─────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct SignDecodeRequest {
+    method: String,
+    params: serde_json::Value,
+    chain_id: u64,
+}
+
+#[derive(Serialize)]
+struct SignDecodeResponse {
+    method: String,
+    signer: String,
+    chain_id: u64,
+    payload: serde_json::Value,
+}
+
+fn sign_payload_to_json(payload: &sign_resolver::SignPayload) -> serde_json::Value {
+    use sign_resolver::SignPayload;
+    use serde_json::json;
+    match payload {
+        SignPayload::TypedData(v) => json!({ "kind": "typed_data", "data": v }),
+        SignPayload::RawMessage(s) => json!({ "kind": "raw_message", "message": s }),
+        SignPayload::RawHash(s) => json!({ "kind": "raw_hash", "hash": s }),
+        SignPayload::Transaction(v) => json!({ "kind": "transaction", "tx": v }),
+        SignPayload::UserOperation { user_op, entry_point } => {
+            json!({ "kind": "user_operation", "user_op": user_op, "entry_point": entry_point })
+        }
+        SignPayload::PermissionRequest(v) => json!({ "kind": "permission_request", "request": v }),
+    }
+}
+
+async fn decode_sign(Json(req): Json<SignDecodeRequest>) -> Response {
+    match sign_resolver::parse_sign_request(&req.method, &req.params, req.chain_id) {
+        Ok(sign_req) => Json(SignDecodeResponse {
+            method: sign_req.method.as_str().to_string(),
+            signer: sign_req.signer,
+            chain_id: sign_req.chain_id,
+            payload: sign_payload_to_json(&sign_req.payload),
+        })
+        .into_response(),
+        Err(e) => err(StatusCode::BAD_REQUEST, e.to_string()),
+    }
+}
 
 const SOURCIFY_BUNDLE: &[u8] = include_bytes!("../../abi-resolver/data/sourcify.json");
 
@@ -149,6 +197,14 @@ fn seed_signatures() -> &'static [([u8; 4], &'static str)] {
             [0x37, 0x4f, 0x43, 0x5d],
             "multicall((address target, bytes data, uint256 value, bool skipRevert, bytes32 callbackHash)[] calls)",
         ),
+        (
+            [0x8d, 0x80, 0xff, 0x0a],
+            "multiSend(bytes transactions)",
+        ),
+        (
+            [0x09, 0x7c, 0xd2, 0x32],
+            "injectReward(uint256,uint256)",
+        ),
     ]
 }
 
@@ -220,6 +276,17 @@ struct DecodeRequest {
     /// skipped (strict default).
     #[serde(default)]
     rpc_method: Option<String>,
+    /// Optional `tx.from` for schema-mapper context. Defaults to zero address.
+    #[serde(default)]
+    from: Option<String>,
+    /// Optional `tx.value` (decimal string of wei). Defaults to `"0"`.
+    #[serde(default)]
+    value: Option<String>,
+    /// Optional `block.timestamp` for `deadlineSecondsFromNow` derivation.
+    /// Defaults to 0; downstream consumers should treat the field as
+    /// "raw deadline minus 0" when omitted.
+    #[serde(default)]
+    block_timestamp: Option<i64>,
 }
 
 /// Whether `rpc_method` represents a wallet write or sign operation —
@@ -261,6 +328,11 @@ enum DecodeResponse {
         /// empty and omitted from JSON.
         #[serde(skip_serializing_if = "Vec::is_empty")]
         children: Vec<DecodeResponse>,
+        /// Schema-shaped `RootRequest` produced by `crates/mappers` when the
+        /// (chain, target, selector) triple matches a registered mapper.
+        /// Only populated at the top level (depth 0); sub-calls omit it.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        mapping: Option<serde_json::Value>,
     },
     NotFound {
         selector: String,
@@ -377,6 +449,34 @@ async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -
         0,
     )
     .await;
+
+    // Top-level schema mapping. Only attaches when a mapper is registered
+    // for `(chain_id, address, selector)`; otherwise the field is omitted.
+    let to_lc = format!("0x{}", hex::encode(address.0 .0));
+    let mapping_json = run_schema_mapper(state.resolver.as_ref(), &req, &address, &calldata, &to_lc);
+    let response = match (response, mapping_json) {
+        (
+            DecodeResponse::Resolved {
+                source,
+                function_name,
+                signature,
+                selector,
+                args,
+                children,
+                mapping: _,
+            },
+            mapping,
+        ) => DecodeResponse::Resolved {
+            source,
+            function_name,
+            signature,
+            selector,
+            args,
+            children,
+            mapping,
+        },
+        (other, _) => other,
+    };
     Json(response).into_response()
 }
 
@@ -515,6 +615,35 @@ fn decode_recursive<'a>(
                 }
                 None => Vec::new(),
             }
+        } else if selector_bytes == MULTISEND_SELECTOR {
+            // Safe multiSend(bytes transactions) — packed sub-tx list.
+            // Each sub-tx carries its own (to, data) so we recurse via the
+            // resolver. Plain ETH transfers (data.len() < 4) are skipped
+            // since there is no calldata to decode.
+            match extract_transactions_bytes(&decoded) {
+                Some(tx_bytes) => {
+                    let sub_txs = parse_multisend_transactions(&tx_bytes);
+                    let mut out =
+                        Vec::with_capacity(sub_txs.len().min(MAX_SUBDECODE_CHILDREN));
+                    for sub_tx in sub_txs.into_iter().take(MAX_SUBDECODE_CHILDREN) {
+                        if sub_tx.data.len() >= 4 {
+                            out.push(
+                                decode_recursive(
+                                    resolver,
+                                    etherscan,
+                                    chain_id,
+                                    &sub_tx.to,
+                                    &sub_tx.data,
+                                    depth + 1,
+                                )
+                                .await,
+                            );
+                        }
+                    }
+                    out
+                }
+                None => Vec::new(),
+            }
         } else {
             Vec::new()
         };
@@ -529,8 +658,61 @@ fn decode_recursive<'a>(
                 .map(|a| arg_to_api(a, Some(&selector_bytes)))
                 .collect(),
             children,
+            mapping: None, // filled at top level only — see `run_schema_mapper`
         }
     })
+}
+
+/// Run the `mappers` crate against the top-level tx and emit the resulting
+/// `RootRequest` as a `serde_json::Value`. Returns `None` when no mapper is
+/// registered for `(chain_id, to, selector)` or when decoding fails — the
+/// frontend treats both as "no schema view available" without an error.
+///
+/// Resolves the calldata via the same Resolver used by the display decoder
+/// so migrated mappers can consume the decoded `args` by name. Legacy
+/// mappers still `sol!`-decode `tx.input` and ignore the `call`.
+fn run_schema_mapper(
+    resolver: &Resolver,
+    req: &DecodeRequest,
+    address: &Address,
+    calldata: &[u8],
+    to_lc: &str,
+) -> Option<serde_json::Value> {
+    let from = req
+        .from
+        .as_deref()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "0x0000000000000000000000000000000000000000".to_string());
+    let value = req.value.clone().unwrap_or_else(|| "0".to_string());
+    let block_timestamp = req.block_timestamp.unwrap_or(0);
+
+    let tx = mappers::context::RawTx {
+        chain_id: req.chain_id,
+        from,
+        to: to_lc.to_string(),
+        value,
+        input: calldata.to_vec(),
+    };
+    let ctx = mappers::context::BuildContext {
+        chain_id: req.chain_id,
+        block_timestamp,
+        ..Default::default()
+    };
+    let call = match resolver.resolve(req.chain_id, address, calldata) {
+        ResolveOutcome::Resolved(r) => r.decoded,
+        ResolveOutcome::NotFound => abi_resolver::decode::DecodedCall {
+            function_name: String::new(),
+            signature: String::new(),
+            args: Vec::new(),
+        },
+    };
+    let envelopes = mappers::registry::dispatch(&ctx, &tx, &call).ok()?;
+    if envelopes.is_empty() {
+        return None;
+    }
+    let protocol = mappers::registry::protocol_for(to_lc);
+    let root = mappers::assembler::assemble(&tx, &ctx, protocol, envelopes);
+    serde_json::to_value(&root).ok()
 }
 
 fn source_label(s: Source) -> &'static str {
@@ -802,6 +984,7 @@ fn step_to_response<'a>(
             selector,
             args,
             children: nested_children,
+            mapping: None,
         }
     })
 }
@@ -914,6 +1097,7 @@ async fn main() {
 
     let mut app = Router::new()
         .route("/api/decode", post(decode))
+        .route("/api/sign", post(decode_sign))
         .route("/api/event", post(post_event))
         .route("/api/event/stream", get(event_stream))
         .route("/api/health", get(health))

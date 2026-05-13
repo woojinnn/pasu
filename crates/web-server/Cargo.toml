@@ -7,6 +7,8 @@ description = "HTTP API exposing abi-resolver decode functionality to a React fr
 
 [dependencies]
 abi-resolver = { workspace = true, features = ["sqlite"] }
+sign-resolver = { path = "../sign-resolver" }
+mappers = { path = "../mappers" }
 alloy-primitives.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-json-abi = "0.8"

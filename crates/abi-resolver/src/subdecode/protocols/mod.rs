@@ -7,6 +7,7 @@
 pub mod balancer_v2;
 pub mod pancake_infinity;
 pub mod pancake_ur;
+pub mod safe_multisend;
 pub mod uniswap_v3;
 pub mod universal_router;
 pub mod v4_router;
