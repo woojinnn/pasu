@@ -43,10 +43,14 @@ fn route(name: &str) -> Result<Vec<policy_engine::ActionEnvelope>, request_route
 }
 
 fn assert_single_action(name: &str, expected_kind: &str) {
-    let envelopes = route(name).unwrap_or_else(|e| {
-        panic!("fixture {name} should route successfully, got error: {e}")
-    });
-    assert_eq!(envelopes.len(), 1, "fixture {name} expected 1 envelope, got {}", envelopes.len());
+    let envelopes = route(name)
+        .unwrap_or_else(|e| panic!("fixture {name} should route successfully, got error: {e}"));
+    assert_eq!(
+        envelopes.len(),
+        1,
+        "fixture {name} expected 1 envelope, got {}",
+        envelopes.len()
+    );
     assert_eq!(
         envelopes[0].action.kind(),
         expected_kind,
@@ -72,8 +76,8 @@ fn swap_uniswap_v2_exact_in_routes() {
     let envelopes = route("swap_uniswap_v2_exact_in.json").expect("route ok");
     assert_eq!(envelopes.len(), 1);
     let swap = unwrap_swap(&envelopes[0]);
-    use policy_engine::action::dex::SwapMode;
     use policy_engine::action::common::AmountKind;
+    use policy_engine::action::dex::SwapMode;
     assert_eq!(swap.mode, SwapMode::ExactIn);
     assert_eq!(swap.amount_in.kind, AmountKind::Exact);
     assert_eq!(swap.amount_out.kind, AmountKind::Min);
@@ -84,8 +88,8 @@ fn swap_uniswap_v2_exact_out_routes() {
     let envelopes = route("swap_uniswap_v2_exact_out.json").expect("route ok");
     assert_eq!(envelopes.len(), 1);
     let swap = unwrap_swap(&envelopes[0]);
-    use policy_engine::action::dex::SwapMode;
     use policy_engine::action::common::AmountKind;
+    use policy_engine::action::dex::SwapMode;
     assert_eq!(swap.mode, SwapMode::ExactOut);
     assert_eq!(swap.amount_in.kind, AmountKind::Max);
     assert_eq!(swap.amount_out.kind, AmountKind::Exact);
@@ -108,7 +112,10 @@ fn swap_uniswap_v3_exact_input_multi_routes() {
     let swap = unwrap_swap(&envelopes[0]);
     use policy_engine::action::dex::SwapMode;
     assert_eq!(swap.mode, SwapMode::ExactIn);
-    assert!(swap.fee_bps.is_some(), "V3 multi-hop projects to first hop's fee");
+    assert!(
+        swap.fee_bps.is_some(),
+        "V3 multi-hop projects to first hop's fee"
+    );
     // token_in and token_out must differ on a real multi-hop fixture.
     assert_ne!(
         swap.token_in.address, swap.token_out.address,
@@ -165,15 +172,34 @@ fn erc20_approve_routes_to_unlimited_approve_envelope() {
     use policy_engine::action::envelope::{Action, Category};
     use policy_engine::action::misc::ApprovalKind;
 
-    let envelopes = route("erc20_approve.json")
-        .expect("erc20 approve fixture should route via ERC-20 mapper");
+    let envelopes =
+        route("erc20_approve.json").expect("erc20 approve fixture should route via ERC-20 mapper");
     assert_eq!(envelopes.len(), 1);
     assert_eq!(envelopes[0].category, Category::Misc);
     let Action::Approve(approve) = &envelopes[0].action else {
-        panic!("expected Action::Approve, got kind={}", envelopes[0].action.kind());
+        panic!(
+            "expected Action::Approve, got kind={}",
+            envelopes[0].action.kind()
+        );
     };
     // Fixture uses USDT and ffff…ff amount, so we expect Unlimited.
     assert_eq!(approve.amount.kind, AmountKind::Unlimited);
     assert!(approve.amount.value.is_none());
     assert_eq!(approve.approval_kind, ApprovalKind::Erc20);
+}
+
+#[test]
+fn erc20_transfer_routes_to_transfer_envelope() {
+    use policy_engine::action::envelope::{Action, Category};
+
+    let envelopes = route("erc20_transfer.json")
+        .expect("erc20 transfer fixture should route via ERC-20 mapper");
+    assert_eq!(envelopes.len(), 1);
+    assert_eq!(envelopes[0].category, Category::Misc);
+    let Action::Transfer(_transfer) = &envelopes[0].action else {
+        panic!(
+            "expected Action::Transfer, got kind={}",
+            envelopes[0].action.kind()
+        );
+    };
 }

@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use abi_resolver::decoders::erc20::{
+    Erc20ApproveDecoder, Erc20TransferDecoder, ERC20_APPROVE_DECODER_ID, ERC20_TRANSFER_DECODER_ID,
+};
 use abi_resolver::decoders::uniswap_v2::{
     SwapExactTokensForTokensDecoder, SwapTokensForExactTokensDecoder,
     SWAP_EXACT_TOKENS_FOR_TOKENS_DECODER_ID, SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID,
@@ -8,18 +11,17 @@ use abi_resolver::decoders::uniswap_v2::{
 use abi_resolver::decoders::uniswap_v3::{
     ExactInputDecoder, ExactInputSingleDecoder, UNISWAP_V3_DECODER_ID,
 };
-use abi_resolver::decoders::erc20::{Erc20ApproveDecoder, ERC20_APPROVE_DECODER_ID};
 use abi_resolver::InMemoryDecoderRegistry;
 use abi_resolver::{DecoderId, DecoderRegistry};
 use call_adapter::{
     CallAdapter as _, CallAdapterId, DefaultCallAdapter, InMemoryCallAdapterRegistry,
     UniversalRouterCallAdapter,
 };
+use mappers::protocols::erc20::{Erc20ApproveMapper, Erc20TransferMapper};
 use mappers::protocols::uniswap_v2::{
     SwapExactTokensForTokensMapper, SwapTokensForExactTokensMapper,
 };
 use mappers::protocols::uniswap_v3::UniswapV3Mapper;
-use mappers::protocols::erc20::Erc20ApproveMapper;
 use mappers::{InMemoryMapperRegistry, MapperMatchKey};
 use sign_resolver::adapters::eip2612::Eip2612Adapter;
 use sign_resolver::adapters::permit2::Permit2Adapter;
@@ -42,6 +44,7 @@ impl DefaultRegistries {
                 .register(Arc::new(ExactInputSingleDecoder::new()))
                 .register(Arc::new(ExactInputDecoder::new()))
                 .register(Arc::new(Erc20ApproveDecoder::new()))
+                .register(Arc::new(Erc20TransferDecoder::new()))
                 .build(),
         );
         let mappers = Arc::new(
@@ -69,6 +72,12 @@ impl DefaultRegistries {
                         decoder_id: DecoderId::new(ERC20_APPROVE_DECODER_ID),
                     },
                     Arc::new(Erc20ApproveMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(ERC20_TRANSFER_DECODER_ID),
+                    },
+                    Arc::new(Erc20TransferMapper::new()),
                 )
                 .build(),
         );
