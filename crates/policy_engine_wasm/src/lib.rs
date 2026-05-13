@@ -17,6 +17,6 @@ pub fn _start() {
 }
 
 pub use exports::{
-    build_action_for_request_json, evaluate_json, install_policies_json,
-    route_request_json, tier1_fact_plan_json, tier2_window_keys_json,
+    build_action_for_request_json, evaluate_json, install_policies_json, route_request_json,
+    tier1_fact_plan_json, tier2_window_keys_json,
 };

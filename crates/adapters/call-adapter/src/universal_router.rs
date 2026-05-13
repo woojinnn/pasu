@@ -256,8 +256,7 @@ fn parse_v3_path(path: &[u8]) -> Result<ParsedV3Path, AdapterError> {
 
     let token_in = address_from_bytes(&path[..ADDRESS_LEN])?;
     let token_out = address_from_bytes(&path[path.len() - ADDRESS_LEN..])?;
-    let first_fee =
-        (u32::from(path[20]) << 16) | (u32::from(path[21]) << 8) | u32::from(path[22]);
+    let first_fee = (u32::from(path[20]) << 16) | (u32::from(path[21]) << 8) | u32::from(path[22]);
 
     Ok(ParsedV3Path {
         token_in,

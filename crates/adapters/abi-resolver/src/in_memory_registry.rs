@@ -1,7 +1,14 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::decoder::{CallMatchKey, Decoder, DecoderRegistry};
+use policy_engine::action::Address;
+
+pub static WILDCARD_TO: LazyLock<Address> = LazyLock::new(|| {
+    "0x0000000000000000000000000000000000000000"
+        .parse()
+        .expect("wildcard address is valid")
+});
 
 pub struct InMemoryDecoderRegistry {
     by_key: HashMap<CallMatchKey, Arc<dyn Decoder>>,
@@ -61,7 +68,16 @@ impl InMemoryDecoderRegistryBuilder {
 
 impl DecoderRegistry for InMemoryDecoderRegistry {
     fn resolve(&self, key: &CallMatchKey) -> Option<Arc<dyn Decoder>> {
-        self.by_key.get(key).cloned()
+        if let Some(decoder) = self.by_key.get(key) {
+            return Some(decoder.clone());
+        }
+
+        let wildcard_key = CallMatchKey {
+            chain_id: key.chain_id,
+            to: WILDCARD_TO.clone(),
+            selector: key.selector,
+        };
+        self.by_key.get(&wildcard_key).cloned()
     }
 
     fn match_keys(&self) -> Vec<CallMatchKey> {
@@ -118,6 +134,14 @@ mod tests {
         }
     }
 
+    fn key_to(selector: [u8; 4], to: &str) -> CallMatchKey {
+        CallMatchKey {
+            chain_id: 1,
+            to: to.parse().unwrap(),
+            selector,
+        }
+    }
+
     #[test]
     fn test_in_memory_registry_resolves() {
         let key = key([0x38, 0xed, 0x17, 0x39]);
@@ -138,6 +162,28 @@ mod tests {
             .build();
 
         assert!(registry.resolve(&missing).is_none());
+    }
+
+    #[test]
+    fn test_in_memory_registry_falls_back_to_wildcard_to_after_exact_miss() {
+        let selector = [0x09, 0x5e, 0xa7, 0xb3];
+        let exact_key = key_to(selector, "0x1111111111111111111111111111111111111111");
+        let wildcard_key = key_to(selector, "0x0000000000000000000000000000000000000000");
+        let random_token_key = key_to(selector, "0x1234567890123456789012345678901234567890");
+        let registry = InMemoryDecoderRegistry::builder()
+            .register(Arc::new(MockDecoder::new("wildcard", vec![wildcard_key])))
+            .register(Arc::new(MockDecoder::new("exact", vec![exact_key.clone()])))
+            .build();
+
+        let wildcard_decoder = registry
+            .resolve(&random_token_key)
+            .expect("decoder should resolve via wildcard to");
+        assert_eq!(wildcard_decoder.id().as_str(), "wildcard");
+
+        let exact_decoder = registry
+            .resolve(&exact_key)
+            .expect("decoder should resolve via exact key");
+        assert_eq!(exact_decoder.id().as_str(), "exact");
     }
 
     #[test]
