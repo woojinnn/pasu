@@ -22,3 +22,5 @@ path = "src/bin/capture_baseline.rs"
 [dev-dependencies]
 alloy-primitives.workspace = true
 alloy-sol-types.workspace = true
+mappers.workspace = true
+request-router = { path = "../adapters/request-router" }
