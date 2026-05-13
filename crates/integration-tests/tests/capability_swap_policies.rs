@@ -4,13 +4,13 @@ use policy_engine::{
     MockPortfolio, MockTransactionActionAdapterRegistry, Pipeline, PolicyEngine, PolicyRequest,
     PolicyRequestOrigin, Token, TransactionActionAdapter, TransactionRequest, Verdict,
 };
-use policy_engine_adapter_uniswap_v2::{
+use policy_engine_adapters_bundle::uniswap_v2::{
     encode_swap_exact_eth_for_tokens, encode_swap_exact_tokens_for_tokens, native_eth,
     SwapExactETHForTokensParams, SwapExactTokensForTokensParams,
     UniswapV2SwapExactETHForTokensAdapter, UniswapV2SwapExactTokensForTokensAdapter,
     UNISWAP_V2_ROUTER_MAINNET,
 };
-use policy_engine_adapter_uniswap_v3::{
+use policy_engine_adapters_bundle::uniswap_v3::{
     encode_exact_input_single, encode_multicall_deadline, ExactInputSingleParams,
     UniswapV3MulticallAdapter, SWAP_ROUTER_MAINNET,
 };

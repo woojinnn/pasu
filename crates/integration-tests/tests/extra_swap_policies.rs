@@ -6,11 +6,11 @@ use policy_engine::{
     Address, HostCapabilities, MockOracle, MockTransactionActionAdapterRegistry, Pipeline,
     PolicyEngine, Token, TransactionRequest, Verdict,
 };
-use policy_engine_adapter_uniswap_v2::{
+use policy_engine_adapters_bundle::uniswap_v2::{
     encode_swap_exact_tokens_for_tokens, SwapExactTokensForTokensParams,
     UniswapV2SwapExactTokensForTokensAdapter,
 };
-use policy_engine_adapter_uniswap_v3::{
+use policy_engine_adapters_bundle::uniswap_v3::{
     encode_exact_input_single, ExactInputSingleParams, UniswapV3ExactInputSingleAdapter,
     SWAP_ROUTER_MAINNET,
 };

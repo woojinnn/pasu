@@ -10,7 +10,7 @@ use policy_engine::{
     Address, HostCapabilities, MockOracle, Pipeline, PolicyEngine, Token, TransactionRequest,
     Verdict,
 };
-use policy_engine_adapter_uniswap_v3::{
+use policy_engine_adapters_bundle::uniswap_v3::{
     encode_exact_input_single, encode_multicall_deadline, ExactInputSingleParams,
     SWAP_ROUTER_MAINNET,
 };

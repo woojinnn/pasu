@@ -4,7 +4,7 @@ use policy_engine::{
     Pipeline, PolicyEngine, PolicyRequestOrigin, StatDelta, StatKey, StatValue, StatWindows,
     TransactionRequest, Verdict,
 };
-use policy_engine_adapter_uniswap_v2::{
+use policy_engine_adapters_bundle::uniswap_v2::{
     encode_swap_exact_tokens_for_tokens, SwapExactTokensForTokensParams,
     UniswapV2SwapExactTokensForTokensAdapter, UNISWAP_V2_ROUTER_MAINNET,
 };

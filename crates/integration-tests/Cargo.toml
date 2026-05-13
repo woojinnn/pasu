@@ -9,8 +9,6 @@ publish = false
 [dependencies]
 hex.workspace = true
 policy-engine.workspace = true
-policy-engine-adapter-uniswap-v2.workspace = true
-policy-engine-adapter-uniswap-v3.workspace = true
 policy-engine-adapters-bundle.workspace = true
 serde.workspace = true
 serde_json.workspace = true
