@@ -53,10 +53,7 @@ pub fn enrich_swap_envelope(
 ) -> ActionEnvelope {
     let ActionEnvelope { category, action } = envelope;
     let Action::Swap(mut swap) = action else {
-        return ActionEnvelope {
-            category,
-            action,
-        };
+        return ActionEnvelope { category, action };
     };
 
     enrich_swap_action(&mut swap, from, target, host);
@@ -202,7 +199,11 @@ fn decimal_to_fixed_u256(value: &str, scale: u32) -> Option<U256> {
     } else if frac_padded.len() > scale_usize {
         frac_padded.truncate(scale_usize);
     }
-    let combined = format!("{}{}", if whole.is_empty() { "0" } else { whole }, frac_padded);
+    let combined = format!(
+        "{}{}",
+        if whole.is_empty() { "0" } else { whole },
+        frac_padded
+    );
     U256::from_str_radix(&combined, 10).ok()
 }
 
@@ -290,13 +291,17 @@ mod tests {
         }
     }
 
-    fn swap_action(token_in: AssetRef, token_out: AssetRef, amount_out_kind: AmountKind) -> SwapAction {
+    fn swap_action(
+        token_in: AssetRef,
+        token_out: AssetRef,
+        amount_out_kind: AmountKind,
+    ) -> SwapAction {
         SwapAction {
             mode: SwapMode::ExactIn,
             token_in,
             token_out,
             amount_in: amount(AmountKind::Exact, "1000000000000000000"), // 1 token (18 dp)
-            amount_out: amount(amount_out_kind, "2000000000"), // 2000 USDC (6 dp)
+            amount_out: amount(amount_out_kind, "2000000000"),           // 2000 USDC (6 dp)
             recipient: action_addr("0x2222222222222222222222222222222222222222"),
             validity: None,
             fee_bps: None,
@@ -340,23 +345,25 @@ mod tests {
     }
 
     fn usdc_priced_oracle() -> MockOracle {
-        MockOracle::new().with_price(
-            &token_for(&weth_asset()),
-            CoreUsdValuation {
-                value: "2000.0000".to_owned(),
-                as_of_ts: 1_700_000_000,
-                sources: vec!["mock-oracle".to_owned()],
-                stale_sec: 30,
-            },
-        ).with_price(
-            &token_for(&usdc_asset()),
-            CoreUsdValuation {
-                value: "1.0000".to_owned(),
-                as_of_ts: 1_700_000_000,
-                sources: vec!["mock-oracle".to_owned()],
-                stale_sec: 30,
-            },
-        )
+        MockOracle::new()
+            .with_price(
+                &token_for(&weth_asset()),
+                CoreUsdValuation {
+                    value: "2000.0000".to_owned(),
+                    as_of_ts: 1_700_000_000,
+                    sources: vec!["mock-oracle".to_owned()],
+                    stale_sec: 30,
+                },
+            )
+            .with_price(
+                &token_for(&usdc_asset()),
+                CoreUsdValuation {
+                    value: "1.0000".to_owned(),
+                    as_of_ts: 1_700_000_000,
+                    sources: vec!["mock-oracle".to_owned()],
+                    stale_sec: 30,
+                },
+            )
     }
 
     #[test]
@@ -377,7 +384,10 @@ mod tests {
         // 1 WETH (1e18 base units) * 2000.00 USD = 2000.0000 USD
         assert_eq!(value_in.value, "2000.0000");
         assert_eq!(value_in.as_of_ts, Some(1_700_000_000));
-        assert_eq!(value_in.sources.as_deref(), Some(&["mock-oracle".to_owned()][..]));
+        assert_eq!(
+            value_in.sources.as_deref(),
+            Some(&["mock-oracle".to_owned()][..])
+        );
         assert_eq!(value_in.stale_sec, Some(30));
     }
 

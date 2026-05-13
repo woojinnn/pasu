@@ -163,9 +163,7 @@ mod tests {
     use abi_resolver::decoders::weth::{WETH_DEPOSIT_DECODER_ID, WETH_WITHDRAW_DECODER_ID};
     use abi_resolver::{DecodedArg, DecodedCall, DecodedValue, DecoderId};
     use alloy_primitives::U256;
-    use policy_engine::action::common::{
-        Address, AmountKind, AssetKind, DecimalString,
-    };
+    use policy_engine::action::common::{Address, AmountKind, AssetKind, DecimalString};
     use policy_engine::action::envelope::{Action, Category};
 
     fn deposit_decoded() -> DecodedCall {

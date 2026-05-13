@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 alloy-primitives.workspace = true
 policy-engine.workspace = true
-request-router = { path = "../adapters/request-router" }
+request-router.workspace = true
 mappers.workspace = true
 serde.workspace = true
 serde_json.workspace = true
