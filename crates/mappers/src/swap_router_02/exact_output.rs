@@ -1,0 +1,45 @@
+//! SwapRouter02 exactOutput — selector 0x09b81346. Path reversed (out→in).
+
+use abi_resolver::decode::DecodedCall;
+
+use crate::context::{addr_to_string, BuildContext, RawTx};
+use crate::error::MapError;
+use crate::types::actions::{SwapAction, SwapMode};
+use crate::types::common::AmountConstraint;
+use crate::types::envelope::ActionEnvelope;
+use crate::uniswap_v3::common::{envelope_swap, fee_tier_to_bps, parse_path};
+
+pub const SELECTOR: [u8; 4] = [0x09, 0xb8, 0x13, 0x46];
+
+pub fn map(
+    ctx: &BuildContext,
+    _tx: &RawTx,
+    call: &DecodedCall,
+) -> Result<Vec<ActionEnvelope>, MapError> {
+    let p = call.arg("params")?;
+    let path = p.field("path")?.as_bytes()?;
+    let recipient = p.field("recipient")?.as_address()?;
+    let amount_out = p.field("amountOut")?.as_uint()?;
+    let amount_in_max = p.field("amountInMaximum")?.as_uint()?;
+
+    let (tokens, fees) = parse_path(path)?;
+    let fee_bps = if fees.len() == 1 {
+        Some(fee_tier_to_bps(fees[0]))
+    } else {
+        None
+    };
+    Ok(vec![envelope_swap(SwapAction {
+        mode: SwapMode::ExactOut,
+        token_in: ctx.tokens.erc20(ctx.chain_id, *tokens.last().unwrap()),
+        token_out: ctx.tokens.erc20(ctx.chain_id, *tokens.first().unwrap()),
+        amount_in: AmountConstraint::max(amount_in_max.to_string()),
+        amount_out: AmountConstraint::exact(amount_out.to_string()),
+        recipient: Some(addr_to_string(recipient)),
+        deadline_seconds_from_now: None,
+        fee_bps,
+        slippage_bps: None,
+        value_in_usd: None,
+        min_value_out_usd: None,
+        expected_value_out_usd: None,
+    })])
+}

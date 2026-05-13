@@ -19,6 +19,7 @@
 //!   - `subdecode`: parsers for non-standard payloads packed in `bytes` args.
 
 pub mod decode;
+pub mod extract;
 pub mod openchain;
 pub mod resolver;
 pub mod sourcify;
