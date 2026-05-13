@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/policy-engine",
     "crates/policy_engine_wasm",
-    "crates/adapters-bundle",
     "crates/integration-tests",
     "crates/adapters/abi-resolver",
     "crates/adapters/call-adapter",
@@ -32,7 +31,6 @@ thiserror = "2"
 
 # Internal crates referenced by path.
 policy-engine = { path = "crates/policy-engine", version = "0.1.0" }
-policy-engine-adapters-bundle = { path = "crates/adapters-bundle", version = "0.1.0" }
 abi-resolver = { path = "crates/adapters/abi-resolver", version = "0.1.0" }
 call-adapter = { path = "crates/adapters/call-adapter", version = "0.1.0" }
 sign-resolver = { path = "crates/adapters/sign-resolver", version = "0.1.0" }

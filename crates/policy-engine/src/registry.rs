@@ -6,8 +6,8 @@
 //! - `TransactionResolverOutcome` — what `lookup` / `resolve_with_adapter` returns.
 //! - `TransactionActionAdapterIndex` — internal `(chain_id, to, selector)` map shared by
 //!   `MockTransactionActionAdapterRegistry` and any future in-memory variants.
-//! - `MockTransactionActionAdapterRegistry` — the v0.1 in-memory registry used by tests,
-//!   examples, and the `adapters-bundle` aggregator.
+//! - `MockTransactionActionAdapterRegistry` — the v0.1 in-memory registry used by tests
+//!   and examples.
 
 #[cfg(test)]
 use crate::adapter::TransactionMatchKey;

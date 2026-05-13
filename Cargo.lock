@@ -2170,19 +2170,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "policy-engine-adapters-bundle"
-version = "0.1.0"
-dependencies = [
- "abi-resolver",
- "alloy-primitives",
- "alloy-sol-types",
- "hex",
- "policy-engine",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "policy-engine-integration-tests"
 version = "0.1.0"
 dependencies = [
@@ -2191,7 +2178,6 @@ dependencies = [
  "hex",
  "mappers",
  "policy-engine",
- "policy-engine-adapters-bundle",
  "request-router",
  "serde",
  "serde_json",
