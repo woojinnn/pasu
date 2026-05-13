@@ -28,6 +28,7 @@ interface WasmExports {
     oracle_snapshot_json: string,
   ): string;
   evaluate_json(request_json: string, host_snapshot_json: string): string;
+  evaluate_envelope_json(input_json: string): string;
   // Phase 7: new 32-variant ActionEnvelope pipeline. Coexists with
   // build_action_for_request_json (legacy 5-variant Action).
   route_request_json(input_json: string): string;
@@ -138,6 +139,43 @@ export async function evaluate(
   const exports = await load();
   const raw = unwrap<unknown>(
     exports.evaluate_json(JSON.stringify(request), JSON.stringify(snapshot)),
+  );
+  return parseVerdict(raw);
+}
+
+export async function evaluateEnvelope({
+  envelope,
+  from,
+  to,
+  value_wei,
+  chain_id,
+  block_timestamp,
+  host_snapshot,
+}: {
+  envelope: {
+    category: string;
+    action: string;
+    fields: Record<string, unknown>;
+  };
+  from: string;
+  to: string;
+  value_wei: string;
+  chain_id: number;
+  block_timestamp: number;
+  host_snapshot: Record<string, unknown>;
+}): Promise<VerdictDto> {
+  const exports = await load();
+  const input = {
+    envelope,
+    from,
+    to,
+    value_wei,
+    chain_id,
+    block_timestamp,
+    host_snapshot,
+  };
+  const raw = unwrap<unknown>(
+    exports.evaluate_envelope_json(JSON.stringify(input)),
   );
   return parseVerdict(raw);
 }

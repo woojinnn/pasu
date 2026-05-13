@@ -6,7 +6,12 @@ import {
   parseWindowKeys,
   WasmDecodeError,
 } from "../wasm-bridge.types";
-import { EngineError, routeRequest, tier1FactPlan } from "../wasm-bridge";
+import {
+  EngineError,
+  evaluateEnvelope,
+  routeRequest,
+  tier1FactPlan,
+} from "../wasm-bridge";
 
 const wasmMocks = vi.hoisted(() => ({
   init: vi.fn(async () => undefined),
@@ -15,6 +20,7 @@ const wasmMocks = vi.hoisted(() => ({
   tier1FactPlanJson: vi.fn(),
   tier2WindowKeysJson: vi.fn(),
   evaluateJson: vi.fn(),
+  evaluateEnvelopeJson: vi.fn(),
   routeRequestJson: vi.fn(),
 }));
 
@@ -33,6 +39,7 @@ vi.mock("../../wasm/policy_engine_wasm", () => ({
   tier1_fact_plan_json: wasmMocks.tier1FactPlanJson,
   tier2_window_keys_json: wasmMocks.tier2WindowKeysJson,
   evaluate_json: wasmMocks.evaluateJson,
+  evaluate_envelope_json: wasmMocks.evaluateEnvelopeJson,
   route_request_json: wasmMocks.routeRequestJson,
 }));
 
@@ -195,6 +202,65 @@ describe("wasm bridge parsers", () => {
 
     await expect(
       routeRequest({ method: "eth_sendTransaction", params: [], chain_id: 1 }),
+    ).rejects.toBeInstanceOf(EngineError);
+  });
+
+  it("evaluateEnvelope passes through the WASM verdict envelope", async () => {
+    const verdict = {
+      kind: "warn",
+      matched: [
+        {
+          policy_id: "policy::warn",
+          reason: "watch",
+          severity: "warn",
+          origin: "action",
+        },
+      ],
+    };
+    wasmMocks.evaluateEnvelopeJson.mockReturnValue(
+      JSON.stringify({ ok: true, data: verdict }),
+    );
+
+    const input = {
+      envelope: {
+        category: "dex",
+        action: "swap",
+        fields: { mode: "exact_in" },
+      },
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value_wei: "0",
+      chain_id: 1,
+      block_timestamp: 1_700_000_000,
+      host_snapshot: {},
+    };
+
+    const result = await evaluateEnvelope(input);
+
+    expect(result).toEqual(verdict);
+    expect(wasmMocks.evaluateEnvelopeJson).toHaveBeenCalledWith(
+      JSON.stringify(input),
+    );
+  });
+
+  it("evaluateEnvelope surfaces engine errors as EngineError", async () => {
+    wasmMocks.evaluateEnvelopeJson.mockReturnValue(
+      JSON.stringify({
+        ok: false,
+        error: { kind: "engine_failure", message: "x" },
+      }),
+    );
+
+    await expect(
+      evaluateEnvelope({
+        envelope: { category: "dex", action: "swap", fields: {} },
+        from: "0x1111111111111111111111111111111111111111",
+        to: "0x2222222222222222222222222222222222222222",
+        value_wei: "0",
+        chain_id: 1,
+        block_timestamp: 1_700_000_000,
+        host_snapshot: {},
+      }),
     ).rejects.toBeInstanceOf(EngineError);
   });
 });
