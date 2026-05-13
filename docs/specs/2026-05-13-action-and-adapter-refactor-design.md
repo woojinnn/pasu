@@ -9,10 +9,11 @@
 > - 기존 `crates/abi-resolver/` → `crates/adapters/abi-resolver/` 로 이동
 > - 기존 `crates/mappers/` → `crates/adapters/mappers/` 로 이동
 > - 기존 `crates/sign-resolver/` → `crates/adapters/sign-resolver/` 로 이동
-> - 기존 `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/` 5개 sub-crate는 **삭제** (로직만 위 3개 sub-crate로 흡수)
+> - 기존 `crates/request-router/` → `crates/adapters/request-router/` 로 이동 (adapter 스택의 top-level orchestrator)
+> - 기존 `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/` 5개 sub-crate는 **삭제** (로직만 위 sub-crate들로 흡수)
 > - 기존 `crates/adapters-bundle/`도 **삭제**
 >
-> Cargo workspace `members` 경로는 `crates/adapters/abi-resolver`, `crates/adapters/mappers`, `crates/adapters/sign-resolver` 로 갱신. crate **이름**(`Cargo.toml`의 `package.name`)은 기존과 동일 유지 (`abi-resolver`, `mappers`, `sign-resolver`) — 외부 의존성 import 경로(`use abi_resolver::...`)를 건드리지 않기 위함.
+> Cargo workspace `members` 경로는 `crates/adapters/{abi-resolver,mappers,sign-resolver,request-router}` 4개로 갱신. crate **이름**(`Cargo.toml`의 `package.name`)은 기존과 동일 유지 (`abi-resolver`, `mappers`, `sign-resolver`, `request-router`) — 외부 의존성 import 경로(`use abi_resolver::...`, `use request_router::...`)를 건드리지 않기 위함.
 
 ---
 
@@ -357,18 +358,24 @@ crates/
 │   │       │   └── universal_router/
 │   │       ├── context.rs
 │   │       └── lib.rs
-│   └── sign-resolver/         # 기존 crates/sign-resolver/ 이동 + SignAdapter trait 신설
+│   ├── sign-resolver/         # 기존 crates/sign-resolver/ 이동 + SignAdapter trait 신설
+│   │   └── src/
+│   │       ├── sign_adapter.rs         # SignAdapter trait + SignAdapterRegistry
+│   │       ├── adapters/               # signature-별 SignAdapter 구현
+│   │       │   ├── eip2612.rs          # 옛 crates/adapters/eip2612 의 로직
+│   │       │   └── permit2.rs          # 옛 crates/adapters/permit2 의 로직
+│   │       ├── method.rs               # 기존 SignMethod (그대로)
+│   │       ├── payload.rs              # 기존 SignPayload (그대로)
+│   │       └── lib.rs
+│   └── request-router/        # 기존 crates/request-router/ 이동. Adapter 스택 top-level orchestrator
 │       └── src/
-│           ├── sign_adapter.rs         # SignAdapter trait + SignAdapterRegistry
-│           ├── adapters/               # signature-별 SignAdapter 구현
-│           │   ├── eip2612.rs          # 옛 crates/adapters/eip2612 의 로직
-│           │   └── permit2.rs          # 옛 crates/adapters/permit2 의 로직
-│           ├── method.rs               # 기존 SignMethod (그대로)
-│           ├── payload.rs              # 기존 SignPayload (그대로)
-│           └── lib.rs
+│           ├── lib.rs                  # route_request(method, params, chain_id) -> RootRequest
+│           ├── transaction.rs          # eth_sendTransaction / eth_call 류
+│           ├── signature.rs            # eth_signTypedData_v4 / personal_sign / eth_sign
+│           ├── user_operation.rs       # eth_sendUserOperation (ERC-4337)
+│           └── error.rs
 ├── policy-engine/
 ├── policy_engine_wasm/
-├── request-router/
 ├── integration-tests/
 └── web-server/
 ```
@@ -380,6 +387,7 @@ crates/
 | `crates/abi-resolver/` (전체) | `crates/adapters/abi-resolver/` | `git mv` |
 | `crates/mappers/` (전체) | `crates/adapters/mappers/` | `git mv` |
 | `crates/sign-resolver/` (전체) | `crates/adapters/sign-resolver/` | `git mv` |
+| `crates/request-router/` (전체) | `crates/adapters/request-router/` | `git mv` |
 | `crates/adapters/eip2612/src/*.rs` | `crates/adapters/sign-resolver/src/adapters/eip2612.rs` 로 흡수 | SignAdapter trait 구현으로 재작성 |
 | `crates/adapters/permit2/src/*.rs` | `crates/adapters/sign-resolver/src/adapters/permit2.rs` 로 흡수 | SignAdapter trait 구현으로 재작성 |
 | `crates/adapters/uniswap-v2/src/*.rs` | 디코드는 `crates/adapters/abi-resolver/src/decoders/uniswap_v2.rs`, 매핑은 `crates/adapters/mappers/src/protocols/uniswap_v2/` | 둘로 분할 |
@@ -395,15 +403,15 @@ members = [
     "crates/adapters/abi-resolver",
     "crates/adapters/mappers",
     "crates/adapters/sign-resolver",
+    "crates/adapters/request-router",
     "crates/policy-engine",
     "crates/policy_engine_wasm",
-    "crates/request-router",
     "crates/integration-tests",
     "crates/web-server",
 ]
 ```
 
-crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`) → 다른 crate 의 `Cargo.toml` 의존성 선언 (`abi-resolver = { path = ... }`) 에서 path 만 갱신, name 변경 없음. `use abi_resolver::Resolver` 같은 import 코드는 변경 없음.
+crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`, `request-router`) → 다른 crate 의 `Cargo.toml` 의존성 선언 (`abi-resolver = { path = ... }`) 에서 path 만 갱신, name 변경 없음. `use abi_resolver::Resolver`, `use request_router::route_request` 같은 import 코드는 변경 없음.
 
 ### 2.4 PolicyRequest = Swap-only 단순화
 
@@ -434,24 +442,29 @@ crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`
 현재 둘 다 abi-resolver + mappers를 호출하는 entry point를 각자 만들고 있음. 본 리팩토링 후:
 
 ```
-[extension JS] ──→ wasm.build_request_for_calldata(json)
+[extension JS] ──→ wasm.route_request(method, params, chain_id)
                          │
                          ▼
                   policy_engine_wasm::api
                          │
                          ▼
-              request-router::route_transaction(...)  ← 공용 진입점
+        crates/adapters/request-router::route_request(...)  ← 공용 진입점
+                         │
+              ┌──────────┼──────────┐
+              ▼          ▼          ▼
+        abi-resolver  mappers   sign-resolver
+        (Decoder)    (Mapper)   (SignAdapter)
                          │
                          ▼
-            decoder_registry → mapper_registry → ActionEnvelope[]
+                   ActionEnvelope[]
 
 [web-server HTTP] POST /api/decode
                          │
                          ▼
-              request-router::route_transaction(...)  ← 같은 진입점
+        crates/adapters/request-router::route_request(...)  ← 같은 진입점
 ```
 
-`request-router::route_transaction(chain_id, to, calldata, ...) -> RootRequest` 단일 함수로 통일. WASM과 web-server 모두 이 함수를 호출. 호출자만 다르고 변환 로직은 0% 중복.
+`request_router::route_request(method, params, chain_id) -> RootRequest` 단일 함수로 통일. WASM과 web-server 모두 이 함수를 호출. 호출자만 다르고 변환 로직은 0% 중복. policy-engine 은 ActionEnvelope 만 받음 — RPC parsing 책임 없음.
 
 ### 2.6 CI 통합
 
@@ -484,11 +497,11 @@ crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`
 - `git mv crates/abi-resolver crates/adapters/abi-resolver`
 - `git mv crates/mappers crates/adapters/mappers`
 - `git mv crates/sign-resolver crates/adapters/sign-resolver`
-- 루트 `Cargo.toml`의 `[workspace] members` 경로 갱신 (3개 path)
+- `git mv crates/request-router crates/adapters/request-router`
+- 루트 `Cargo.toml`의 `[workspace] members` 경로 갱신 (4개 path)
 - 각 sub-crate를 의존하는 다른 crate (`Cargo.toml`의 `path = ...`) 경로 갱신:
   - `crates/policy-engine/Cargo.toml`
   - `crates/policy_engine_wasm/Cargo.toml`
-  - `crates/request-router/Cargo.toml`
   - `crates/integration-tests/Cargo.toml`
   - `crates/web-server/Cargo.toml`
   - 기존 `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/Cargo.toml` (아직 살아 있을 동안만)
@@ -579,7 +592,7 @@ crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`
 - [ ] `cargo deny check` 통과
 - [ ] extension `npm run typecheck && npm run build && npm test` 통과
 - [ ] web-server `tests/http_integration.rs` Phase 0 baseline과 swap calldata 10종에 대해 JSON-equivalent 응답 (token symbol/decimals 같은 host:registry 필드 제외)
-- [ ] `crates/adapters/`는 `abi-resolver/`, `mappers/`, `sign-resolver/` 3개 sub-crate만 포함 (그 외 sub-crate 없음). `crates/adapters-bundle/` 디렉토리 존재 X. `crates/abi-resolver/`, `crates/mappers/`, `crates/sign-resolver/` 모두 존재 X (모두 adapters/ 하위로 이동됨)
+- [ ] `crates/adapters/`는 `abi-resolver/`, `mappers/`, `sign-resolver/`, `request-router/` 4개 sub-crate만 포함 (그 외 sub-crate 없음). `crates/adapters-bundle/` 디렉토리 존재 X. `crates/abi-resolver/`, `crates/mappers/`, `crates/sign-resolver/`, `crates/request-router/` 모두 존재 X (전부 adapters/ 하위로 이동됨)
 - [ ] `policies/signature/` 디렉토리 존재 X
 - [ ] `Action` 정의가 `crates/policy-engine/src/action/` 한 곳에만 존재 (grep으로 검증)
 - [ ] Cedar swap policy 10종 (`policies/dex/*.cedar`) 모두 통과/실패 케이스 단위 테스트 그대로 통과
