@@ -170,7 +170,7 @@ fn e2e_swap_v2_passes_under_empty_policies() {
     let oracle = MockOracle::default();
     let host_snapshot = empty_host_snapshot(&oracle);
 
-    let verdict = install_policies_and_evaluate(&[], Some(&schema_text()), &request, &host_snapshot);
+    let verdict = install_policies_and_evaluate(&[], None, &request, &host_snapshot);
 
     assert_eq!(verdict, Verdict::Pass);
 }
@@ -186,7 +186,7 @@ fn e2e_swap_v2_fails_under_blanket_forbid() {
             "test/forbid-swap",
             r#"forbid (principal, action == Action::"swap", resource);"#,
         )],
-        Some(&schema_text()),
+        None,
         &request,
         &host_snapshot,
     );
@@ -220,7 +220,7 @@ fn e2e_swap_v3_evaluates_through_new_pipeline() {
             r#"forbid (principal, action == Action::"swap", resource)
                when { context.swapMode == "exact_in" };"#,
         )],
-        Some(&schema_text()),
+        None,
         &request,
         &host_snapshot,
     );
@@ -240,7 +240,7 @@ fn e2e_v2_exact_out_does_not_match_exact_in_only_policy() {
             r#"forbid (principal, action == Action::"swap", resource)
                when { context.swapMode == "exact_in" };"#,
         )],
-        Some(&schema_text()),
+        None,
         &request,
         &host_snapshot,
     );
