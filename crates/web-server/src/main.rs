@@ -330,24 +330,6 @@ struct DecodeRequest {
     /// skipped (strict default).
     #[serde(default)]
     rpc_method: Option<String>,
-    /// Optional `tx.from` for schema-mapper context. Defaults to zero address.
-    /// Currently unused — legacy schema mapper was removed in L5; L7 will
-    /// re-wire these into the new pipeline.
-    #[serde(default)]
-    #[allow(dead_code)]
-    from: Option<String>,
-    /// Optional `tx.value` (decimal string of wei). Defaults to `"0"`.
-    /// Currently unused — see `from` above.
-    #[serde(default)]
-    #[allow(dead_code)]
-    value: Option<String>,
-    /// Optional `block.timestamp` for `deadlineSecondsFromNow` derivation.
-    /// Defaults to 0; downstream consumers should treat the field as
-    /// "raw deadline minus 0" when omitted.
-    /// Currently unused — see `from` above.
-    #[serde(default)]
-    #[allow(dead_code)]
-    block_timestamp: Option<i64>,
 }
 
 /// Whether `rpc_method` represents a wallet write or sign operation —
@@ -389,11 +371,6 @@ enum DecodeResponse {
         /// empty and omitted from JSON.
         #[serde(skip_serializing_if = "Vec::is_empty")]
         children: Vec<DecodeResponse>,
-        /// Schema-shaped `RootRequest` produced by `crates/mappers` when the
-        /// (chain, target, selector) triple matches a registered mapper.
-        /// Only populated at the top level (depth 0); sub-calls omit it.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        mapping: Option<serde_json::Value>,
     },
     NotFound {
         selector: String,
@@ -510,35 +487,6 @@ async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -
         0,
     )
     .await;
-
-    // Legacy schema mapping has been removed (L5 of LegacyAction cleanup);
-    // the new pipeline (request-router → mappers::protocols) is invoked
-    // elsewhere. This field stays in the response shape for now and is
-    // always `None` until L7 wires the new pipeline through.
-    let mapping_json: Option<serde_json::Value> = None;
-    let response = match (response, mapping_json) {
-        (
-            DecodeResponse::Resolved {
-                source,
-                function_name,
-                signature,
-                selector,
-                args,
-                children,
-                mapping: _,
-            },
-            mapping,
-        ) => DecodeResponse::Resolved {
-            source,
-            function_name,
-            signature,
-            selector,
-            args,
-            children,
-            mapping,
-        },
-        (other, _) => other,
-    };
     Json(response).into_response()
 }
 
@@ -719,7 +667,6 @@ fn decode_recursive<'a>(
                 .map(|a| arg_to_api(a, Some(&selector_bytes)))
                 .collect(),
             children,
-            mapping: None, // filled at top level only.
         }
     })
 }
@@ -993,7 +940,6 @@ fn step_to_response<'a>(
             selector,
             args,
             children: nested_children,
-            mapping: None,
         }
     })
 }
