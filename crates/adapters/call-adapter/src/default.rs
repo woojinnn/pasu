@@ -74,6 +74,7 @@ impl CallAdapter for DefaultCallAdapter {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::sync::Arc;
 
     use abi_resolver::{
@@ -82,13 +83,15 @@ mod tests {
     };
     use mappers::{
         EmptyTokenRegistry, InMemoryMapperRegistry, MapContext, Mapper, MapperError, MapperId,
-        MapperMatchKey,
+        MapperMatchKey, TokenMetadata, TokenRegistry,
     };
+    use policy_engine::action::dex::{SwapAction, SwapEnrichment, SwapMode};
     use policy_engine::action::misc::WrapAction;
     use policy_engine::action::{
         Action, ActionEnvelope, Address, AmountConstraint, AmountKind, AssetKind, AssetRef,
-        Category, DecimalString,
+        Category, DecimalString, Validity, ValiditySource,
     };
+    use serde::Deserialize;
 
     use super::DefaultCallAdapter;
     use crate::{AdapterError, CallAdapter, CallAdapterId, CallContext};
@@ -351,5 +354,222 @@ mod tests {
             .unwrap_err();
 
         assert!(matches!(err, AdapterError::CalldataTooShort(3)));
+    }
+
+    #[derive(Deserialize)]
+    struct V2Fixture {
+        chain_id: u64,
+        rpc: V2Rpc,
+    }
+
+    #[derive(Deserialize)]
+    struct V2Rpc {
+        params: Vec<V2TxParam>,
+    }
+
+    #[derive(Deserialize)]
+    struct V2TxParam {
+        from: String,
+        to: String,
+        data: String,
+    }
+
+    struct StaticTokenRegistry {
+        tokens: HashMap<(u64, Address), TokenMetadata>,
+    }
+
+    impl StaticTokenRegistry {
+        fn new(tokens: impl IntoIterator<Item = (u64, Address, TokenMetadata)>) -> Self {
+            Self {
+                tokens: tokens
+                    .into_iter()
+                    .map(|(chain_id, address, metadata)| ((chain_id, address), metadata))
+                    .collect(),
+            }
+        }
+    }
+
+    impl TokenRegistry for StaticTokenRegistry {
+        fn lookup(&self, chain_id: u64, address: &Address) -> Option<TokenMetadata> {
+            self.tokens.get(&(chain_id, address.clone())).cloned()
+        }
+    }
+
+    fn v2_fixture(input: &str) -> (V2Fixture, Vec<u8>) {
+        let fixture: V2Fixture = serde_json::from_str(input).unwrap();
+        let data = fixture.rpc.params[0]
+            .data
+            .strip_prefix("0x")
+            .unwrap()
+            .to_owned();
+        (fixture, hex::decode(data).unwrap())
+    }
+
+    fn v2_token_registry() -> StaticTokenRegistry {
+        StaticTokenRegistry::new([
+            (
+                1,
+                address("0xdac17f958d2ee523a2206206994597c13d831ec7"),
+                TokenMetadata {
+                    symbol: "USDT".to_owned(),
+                    decimals: 6,
+                },
+            ),
+            (
+                1,
+                address("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+                TokenMetadata {
+                    symbol: "WETH".to_owned(),
+                    decimals: 18,
+                },
+            ),
+        ])
+    }
+
+    fn v2_mapper_registry() -> InMemoryMapperRegistry {
+        use mappers::protocols::uniswap_v2::{
+            SwapExactTokensForTokensMapper, SwapTokensForExactTokensMapper,
+        };
+
+        InMemoryMapperRegistry::builder()
+            .register(
+                MapperMatchKey {
+                    decoder_id: DecoderId::new("uniswap-v2/swapExactTokensForTokens"),
+                },
+                Arc::new(SwapExactTokensForTokensMapper::new()),
+            )
+            .register(
+                MapperMatchKey {
+                    decoder_id: DecoderId::new("uniswap-v2/swapTokensForExactTokens"),
+                },
+                Arc::new(SwapTokensForExactTokensMapper::new()),
+            )
+            .build()
+    }
+
+    fn erc20_asset(address_value: &str, symbol: &str, decimals: u8) -> AssetRef {
+        AssetRef {
+            kind: AssetKind::Erc20,
+            chain_id: 1,
+            address: Some(address(address_value)),
+            symbol: Some(symbol.to_owned()),
+            decimals: Some(decimals),
+        }
+    }
+
+    fn expected_v2_exact_in_envelope() -> ActionEnvelope {
+        ActionEnvelope {
+            category: Category::Dex,
+            action: Action::Swap(SwapAction {
+                mode: SwapMode::ExactIn,
+                token_in: erc20_asset("0xdac17f958d2ee523a2206206994597c13d831ec7", "USDT", 6),
+                token_out: erc20_asset("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18),
+                amount_in: AmountConstraint {
+                    kind: AmountKind::Exact,
+                    value: Some(decimal("200000000")),
+                },
+                amount_out: AmountConstraint {
+                    kind: AmountKind::Min,
+                    value: Some(decimal("0")),
+                },
+                recipient: address("0x1111111111111111111111111111111111111111"),
+                slippage_bps: None,
+                validity: Some(Validity {
+                    expires_at: decimal("9999999999"),
+                    source: ValiditySource::TxDeadline,
+                }),
+                fee_bps: Some(30),
+                enrichment: SwapEnrichment::default(),
+            }),
+        }
+    }
+
+    fn expected_v2_exact_out_envelope() -> ActionEnvelope {
+        ActionEnvelope {
+            category: Category::Dex,
+            action: Action::Swap(SwapAction {
+                mode: SwapMode::ExactOut,
+                token_in: erc20_asset("0xdac17f958d2ee523a2206206994597c13d831ec7", "USDT", 6),
+                token_out: erc20_asset("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18),
+                amount_in: AmountConstraint {
+                    kind: AmountKind::Max,
+                    value: Some(decimal("4000000000")),
+                },
+                amount_out: AmountConstraint {
+                    kind: AmountKind::Exact,
+                    value: Some(decimal("1000000000000000000")),
+                },
+                recipient: address("0x1111111111111111111111111111111111111111"),
+                slippage_bps: None,
+                validity: Some(Validity {
+                    expires_at: decimal("9999999999"),
+                    source: ValiditySource::TxDeadline,
+                }),
+                fee_bps: Some(30),
+                enrichment: SwapEnrichment::default(),
+            }),
+        }
+    }
+
+    fn v2_decoder_registry() -> InMemoryDecoderRegistry {
+        use abi_resolver::decoders::uniswap_v2::{
+            SwapExactTokensForTokensDecoder, SwapTokensForExactTokensDecoder,
+        };
+
+        InMemoryDecoderRegistry::builder()
+            .register(Arc::new(SwapExactTokensForTokensDecoder::new()))
+            .register(Arc::new(SwapTokensForExactTokensDecoder::new()))
+            .build()
+    }
+
+    fn build_v2_fixture(input: &str) -> Vec<ActionEnvelope> {
+        use abi_resolver::DecoderRegistry as _;
+
+        let (fixture, calldata) = v2_fixture(input);
+        let tx = &fixture.rpc.params[0];
+        let token_registry = v2_token_registry();
+        let decoder_registry = v2_decoder_registry();
+        let mapper_registry = v2_mapper_registry();
+        let adapter = DefaultCallAdapter::new(
+            CallAdapterId::new("default/uniswap-v2"),
+            decoder_registry.match_keys(),
+        );
+        let from = address(&tx.from);
+        let to = address(&tx.to);
+        let value_wei = decimal("0");
+
+        adapter
+            .build(
+                &CallContext {
+                    chain_id: fixture.chain_id,
+                    from: &from,
+                    to: &to,
+                    value_wei: &value_wei,
+                    block_timestamp: Some(1_700_000_000),
+                    token_registry: &token_registry,
+                    decoder_registry: &decoder_registry,
+                    mapper_registry: &mapper_registry,
+                },
+                &calldata,
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn test_default_call_adapter_build_produces_expected_v2_swap_exact_in_envelope() {
+        let result = build_v2_fixture(include_str!(
+            "../../../integration-tests/data/golden/inputs/swap_uniswap_v2_exact_in.json"
+        ));
+
+        assert_eq!(result, vec![expected_v2_exact_in_envelope()]);
+    }
+
+    #[test]
+    fn test_default_call_adapter_build_produces_expected_v2_swap_exact_out_envelope() {
+        let result = build_v2_fixture(include_str!(
+            "../../../integration-tests/data/golden/inputs/swap_uniswap_v2_exact_out.json"
+        ));
+
+        assert_eq!(result, vec![expected_v2_exact_out_envelope()]);
     }
 }
