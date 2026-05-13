@@ -6,7 +6,7 @@
 
   "type": "object",
   "properties": {
-    "mode": {
+    "swapMode": {
       "type": "string",
       "enum": ["exact_in", "exact_out", "market", "unknown"],
       "description": "사용자가 입력과 출력 중 어느 쪽을 고정했는지. exact_in = 낼 양 고정 (받을 양은 최소만 보장). exact_out = 받을 양 고정 (낼 양은 최대만 허용). market = 슬리피지 한도 없이 시장가 그대로 (amountOutMin=0 같은 무방어 호출). 정책 'market 또는 exact_out 차단' 분기에 사용."
