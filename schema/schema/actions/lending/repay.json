@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/lending/repay.json",
+  "title": "RepayAction",
+  "description": "Lending market 에서 차입을 상환하는 동작. Aave V3 Pool.repay / repayWithPermit / repayWithATokens / WrappedTokenGatewayV3.repayETH, Compound V3 Comet.supply* (asset=base + dst borrow>0, 별도 repay 함수 부재 — adapter 가 host:onchain borrowBalanceOf 조회로 분기), Morpho Blue Morpho.repay 흡수. partition-한정 kind `repayKind`: debt_asset (universal — underlying asset 직접 상환), atoken_direct (Aave V3 unique — aToken 직접 burn, underlying transfer 없음).",
+
+  "type": "object",
+  "properties": {
+    "market": {
+      "type": "object",
+      "description": "상환 대상 market 식별자. supply.market 과 동일 구조 (address / id / label — label 은 host:registry 보강).",
+      "properties": {
+        "address": { "$ref": "../../common/_common.json#/$defs/Address" },
+        "id": { "$ref": "../../common/_common.json#/$defs/Hex" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "asset": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "상환 자산. Aave debt asset, Compound base asset, Morpho loan asset. repayKind=atoken_direct 시 본 필드는 underlying (atoken 아님) 의 동의어."
+    },
+
+    "amount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "상환 양. amountMode 가 dimension 결정. uint256.max 입력 시 kind=unlimited (full repay). kind=exact 일반적."
+    },
+
+    "amountMode": {
+      "type": "string",
+      "enum": ["assets", "shares"],
+      "default": "assets",
+      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0 한정): amount 가 burn 할 debt share 양. 정책 'amountMode == shares 차단' 으로 Morpho dialect 의 share-mode repay 회피 권장."
+    },
+
+    "onBehalf": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "debt position 소유자 (default = root.from). Aave 의 onBehalfOf — variableDebtToken burn 대상. Compound 는 dst, Morpho 는 onBehalf 매핑. authorization 의무 부재 (누구나 남의 debt 상환 가능)."
+    },
+
+    "repayKind": {
+      "type": "string",
+      "enum": ["debt_asset", "atoken_direct"],
+      "description": "상환 funding source 분기. debt_asset (universal): underlying asset 직접 상환 (Aave repay, Compound supply(base) auto-repay, Morpho repay). atoken_direct (Aave V3 unique): aToken 보유분 직접 burn 으로 debt 상환 (Aave repayWithATokens). 정책 'atoken_direct 차단' 으로 aToken 의도치 않은 소모 방어 권장."
+    },
+
+    "validity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "deadline (optional). repayWithPermit 의 EIP-2612 deadline 일 때만 채워짐 (source='signature-deadline')."
+    }
+  },
+
+  "required": ["asset", "amount", "onBehalf", "repayKind"]
+}

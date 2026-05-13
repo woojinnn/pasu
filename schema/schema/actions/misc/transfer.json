@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/transfer.json",
+  "title": "TransferAction",
+  "description": "ERC-20 / ERC-721 / ERC-1155 토큰을 다른 주소로 직접 이전하는 동작. ERC-20 transfer, ERC-20/721 transferFrom, ERC-721/1155 safeTransferFrom 등 표준 토큰 이전 함수의 직접 호출 (tx.to = 토큰 컨트랙트) 한정. swap / liquidity / wrap 등 다른 action 의 *결과로 발생하는* 토큰 이동은 본 action 으로 표현하지 않는다 (그쪽 action 의 recipient 필드로 표현). 보통 category=misc 로 라벨링.",
+
+  "type": "object",
+  "properties": {
+    "token": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "이전 대상 토큰. kind 가 erc20 / erc721 / erc1155 중 하나 — kind 가 amount / tokenId 의 의미를 결정한다."
+    },
+
+    "from": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "자산이 빠져나가는 주소. ERC-20.transfer 직접 호출은 root.from (msg.sender) 와 동일, transferFrom 계열은 calldata 의 from 인자. root.from 과 다르면 사용자가 *남의 토큰을 사전 approval 로 이동* 시키는 패턴 — 정책 분기."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "자산을 받을 주소. root.from 과 다르면 외부 송금 — phishing 의 1차 표적. 정책 'recipient 가 whitelist 외 차단' 의 핵심 분기."
+    },
+
+    "amount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "이전 양. kind=exact 가 일반. token.kind=erc20 또는 erc1155 인 경우 채움. erc721 은 1 개씩 이전하므로 본 필드 생략 가능 (tokenId 가 식별자)."
+    },
+
+    "tokenId": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "ERC-721 / ERC-1155 의 tokenId. token.kind=erc20 인 경우 생략."
+    }
+  },
+
+  "required": ["token", "from", "recipient"]
+}

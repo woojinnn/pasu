@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/permit.json",
+  "title": "PermitAction",
+  "description": "EIP-712 typed-data 서명 기반의 토큰 권한 부여 또는 단발 이전. EIP-2612 permit 의 서명, Uniswap Permit2 의 PermitSingle (allowance grant) 및 PermitTransferFrom (단발 transfer) 의 서명을 통합 표현. requestKind=signature 시점의 의도 + requestKind=transaction 에서 on-chain 으로 relay 될 때 모두 적용. 보통 category=misc 로 라벨링. signature phishing 의 핵심 표면 — unlimited grant + 미식별 spender + 긴 만료 결합이 가장 위험.",
+
+  "type": "object",
+  "properties": {
+    "permitKind": {
+      "type": "string",
+      "enum": ["eip2612", "permit2_single", "permit2_transfer"],
+      "description": "permit 의 표준 / 모드. eip2612 = EIP-2612 의 ERC-20 permit (token 컨트랙트 자체에 구현, 단일 token). permit2_single = Uniswap Permit2 의 PermitSingle (canonical Permit2 컨트랙트 0x000000000022D473030F116dDEE9F6B43aC78BA3, allowance grant). permit2_transfer = Permit2 PermitTransferFrom (signature 1회 소비형 단발 이전 — allowance 잔존 없음). typed-data domain separator 가 항상 결정해 unknown 케이스 부재. 정책은 permitKind 별로 다른 위협 모델 적용 — grant 류 (eip2612 / permit2_single) 는 'unlimited + 긴 expiration' 차단, transfer 류는 recipient 검증."
+    },
+
+    "token": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "permit 대상 토큰 (kind=erc20). Permit2 는 ERC-20 한정, EIP-2612 도 ERC-20 한정."
+    },
+
+    "owner": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "서명자 — 자산 source. 일반적으로 root.from 와 동일. 다르면 signature relay 시나리오 (제3자가 owner 의 서명을 받아 broadcast). 정책 'owner == root.from' 으로 relay 패턴 차단 가능."
+    },
+
+    "spender": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "permitKind ∈ {eip2612, permit2_single} 일 때 채움 — grant 받는 주소. transferFrom 호출 권한을 갖는 contract / EOA. 정책 'whitelisted spender 만 허용' 의 핵심. permit2_transfer 시 생략 (대신 recipient)."
+    },
+
+    "spenderLabel": {
+      "type": "string",
+      "description": "host:registry 가 채우는 spender 의 사람-친화적 라벨 (예: 'Uniswap V3 SwapRouter02'). 미식별 spender 는 정책상 block 신호."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "permitKind=permit2_transfer 일 때 채움 — 1회 transfer 의 도착 주소 (SignatureTransferDetails.to). grant 류 (eip2612 / permit2_single) 시 생략. 정책 'recipient == root.from' 또는 whitelist 강제 권장 (signature phishing 표적)."
+    },
+
+    "amount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "허용 / 이전 양. EIP-2612 spec 상 본 필드는 'value' 라는 이름이지만, 본 schema 는 토큰 양 표현을 amount 로 일관 (다른 action 의 amount 와 정합). kind=unlimited 면 무한 위임 — 정책 거의 항상 차단 권장. permit2_transfer 의 경우 본 필드는 permitted.amount (서명으로 약정한 상한); 실제 pull 양은 requestedAmount 에."
+    },
+
+    "requestedAmount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "permitKind=permit2_transfer 한정 — SignatureTransferDetails.requestedAmount (실제 이전 양, kind=exact). 보통 amount (= permitted.amount, 상한) 보다 같거나 작음. 둘이 같을 수도, 다를 수도 있어 정보 보존 위해 분리. grant 류에서는 생략."
+    },
+
+    "validity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "permit 의 1차 유효기간. EIP-2612 는 deadline (source=signature-deadline). Permit2 PermitSingle 은 PermitDetails.expiration (source=grant-expiration — grant 수명) 으로 본 필드에 채움; sigDeadline (서명 relay 시한) 은 별도 signatureValidity 에. Permit2 PermitTransferFrom 은 deadline (source=signature-deadline)."
+    },
+
+    "signatureValidity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "permitKind=permit2_single 한정 — sigDeadline (PermitSingle.sigDeadline, source=signature-deadline). PermitSingle 은 PermitDetails.expiration (grant 수명) 과 sigDeadline (서명 relay 시한) 두 deadline 을 갖는데, validity 가 grant 측을, signatureValidity 가 signature relay 측을 담는다. 정책 'signature relay 시한 1시간 이내' 같은 분기로 grant 와 별개로 검사 가능. 다른 permitKind 는 deadline 1개라 본 필드 부재."
+    }
+  },
+
+  "required": ["permitKind", "token", "owner", "amount", "validity"]
+}

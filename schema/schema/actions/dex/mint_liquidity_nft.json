@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/dex/mint_liquidity_nft.json",
+  "title": "MintLiquidityNftAction",
+  "description": "Uniswap V3 NonfungiblePositionManager (NPM) 의 mint, Uniswap V4 PositionManager 의 MINT_POSITION action 한정 — 새 ERC-721 liquidity position 을 발행하는 동작. Concentrated liquidity 의 tick range 를 신규 설정한다. 기존 NFT 의 liquidity 추가는 increase_liquidity 로 분리.",
+
+  "type": "object",
+  "properties": {
+    "pool": {
+      "type": "object",
+      "description": "예치 대상 pool. add_liquidity / remove_liquidity 와 동일 형식 — protocol 별로 address / id / label 중 채워지는 부분이 다름.",
+      "properties": {
+        "address": {
+          "$ref": "../../common/_common.json#/$defs/Address",
+          "description": "pool 컨트랙트 주소. V3 는 (token0, token1, feeTier) 로부터 PoolAddress.computeAddress 로, V4 는 PoolKey hash 로부터 host 가 derive."
+        },
+        "id": {
+          "$ref": "../../common/_common.json#/$defs/Hex",
+          "description": "bytes32 pool id. V4 PoolKey hash 등."
+        },
+        "label": {
+          "type": "string",
+          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'ETH/USDC 0.05% (V3)')."
+        }
+      }
+    },
+
+    "feeBps": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Pool fee (1 bps = 0.01%) — swap.feeBps 와 같은 의미·단위. V3 / V4 calldata 의 fee 는 hundredths-of-bip 단위 (예: 3000 = 0.30%) 라 host 가 ÷100 변환 후 본 필드에 저장 (예: V3 fee 3000 → feeBps 30). V3 의 표준 tier: 1 / 5 / 30 / 100. V4 dynamic-fee 풀은 raw `0x800000` 마커가 있어 bps 변환이 의미 없음 — 본 schema 는 raw 값을 그대로 두고 정책이 `(feeBps & 0x800000) != 0` 검사로 dynamic 감지."
+    },
+
+    "tickRange": {
+      "type": "object",
+      "description": "신규 position 의 concentrated liquidity 가격 범위. tickLower < tickUpper 의무.",
+      "properties": {
+        "lower": {
+          "type": "integer",
+          "description": "tickLower (int24)."
+        },
+        "upper": {
+          "type": "integer",
+          "description": "tickUpper (int24)."
+        }
+      },
+      "required": ["lower", "upper"]
+    },
+
+    "tokens": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AssetRef" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "예치 토큰 정확히 2개 — tokens[0] = token0, tokens[1] = token1 (lexicographic 정렬 순서)."
+    },
+
+    "amounts": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "tokens[i] 와 1:1 매핑하는 desired 예치량. V3 MintParams 의 amount0Desired / amount1Desired (kind=estimated)."
+    },
+
+    "minAmountsIn": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "tokens[i] 와 1:1 매핑하는 토큰별 최소 예치량 (슬리피지 보호). V3 MintParams 의 amount0Min / amount1Min (kind=min)."
+    },
+
+    "nft": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "발행되는 NFT collection (kind=erc721). address = V3 NPM 또는 V4 PositionManager 컨트랙트."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "발행 NFT 의 owner. V3 MintParams.recipient / V4 MINT_POSITION 의 owner. root.from 과 다르면 제3자 발행 — 정책 분기 신호."
+    },
+
+    "validity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "유효기간 — source='tx-deadline'. V3 NPM.mint 의 deadline 인자. V4 modifyLiquidities 는 직접 deadline 부재 — wrapper 사용 시만 존재."
+    }
+  },
+
+  "required": ["feeBps", "tickRange", "tokens", "amounts", "nft", "recipient"]
+}

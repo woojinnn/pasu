@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/unwrap.json",
+  "title": "UnwrapAction",
+  "description": "wrapped ERC-20 을 native 자산으로 되돌리는 동작. WETH9.withdraw, V3 SwapRouter.unwrapWETH9, UR UNWRAP_WETH opcode, V4 Router UNWRAP action 등이 모두 본 shape 으로 정규화됨.",
+
+  "type": "object",
+  "properties": {
+    "wrappedAsset": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "소각될 wrapped ERC-20 (kind=erc20)."
+    },
+
+    "nativeAsset": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "수령할 native 코인 (kind=native)."
+    },
+
+    "amount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "unwrap 양. WETH9.withdraw 는 정확한 양 (kind=exact), UR UNWRAP_WETH 는 최소 보장 (kind=min)."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "native 자산을 받을 주소. root.from 과 다르면 unwrap 후 native 가 외부로 빠지는 패턴 — wrap 보다 회수가 어려워 정책상 더 엄격하게 검사 (강력 권장: recipient == from)."
+    }
+  },
+
+  "required": ["wrappedAsset", "nativeAsset", "amount", "recipient"]
+}

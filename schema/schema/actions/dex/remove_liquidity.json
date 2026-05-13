@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/dex/remove_liquidity.json",
+  "title": "RemoveLiquidityAction",
+  "description": "Pool 의 fungible ERC-20 LP/BPT 를 소각하고 underlying 토큰을 회수하는 동작. Uniswap V2 / PancakeSwap V2 / Aerodrome / SushiSwap V2 의 removeLiquidity, Curve 의 remove_liquidity 변형 (proportional / imbalance / one_coin), Balancer V2 exitPool / V3 removeLiquidity* 를 흡수. V3/V4 NFT 의 internal liquidity 감소는 decrease_liquidity, NFT 소각은 burn_liquidity_nft 로 분리.",
+
+  "type": "object",
+  "properties": {
+    "exitMode": {
+      "type": "string",
+      "enum": ["proportional", "single_asset", "exact_out"],
+      "description": "인출 방식. proportional = 모든 토큰을 비율대로 (V2 removeLiquidity, Curve remove_liquidity, Balancer EXACT_BPT_IN_FOR_TOKENS_OUT). single_asset = 한 토큰만 (Curve remove_liquidity_one_coin, Balancer EXACT_BPT_IN_FOR_ONE_TOKEN_OUT). exact_out = 토큰별로 정확한 양 (Curve remove_liquidity_imbalance, Balancer BPT_IN_FOR_EXACT_TOKENS_OUT)."
+    },
+
+    "pool": {
+      "type": "object",
+      "description": "인출 대상 pool. add_liquidity.pool 과 동일 형식 — protocol 별로 address / id / label 중 채워지는 부분이 다름.",
+      "properties": {
+        "address": {
+          "$ref": "../../common/_common.json#/$defs/Address",
+          "description": "pool 컨트랙트 주소. Balancer 는 id 의 첫 20B 로부터 derive."
+        },
+        "id": {
+          "$ref": "../../common/_common.json#/$defs/Hex",
+          "description": "bytes32 pool id. Balancer poolId."
+        },
+        "label": {
+          "type": "string",
+          "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'ETH/USDC 0.05%')."
+        }
+      }
+    },
+
+    "lpToken": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "소각되는 LP / BPT 토큰 (kind=erc20). add_liquidity.lpToken 과 동일 의미."
+    },
+
+    "lpBurnAmount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "소각할 LP 양. V2 removeLiquidity / Curve proportional·one_coin / Balancer SingleTokenExactIn 은 kind=exact, Curve remove_liquidity_imbalance / Balancer SingleTokenExactOut 의 max_burn_amount 는 kind=max."
+    },
+
+    "tokens": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AssetRef" },
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "pool 의 underlying 토큰 리스트. V2 는 2개, Curve N_COINS = 2~4개, Balancer 는 최대 8개. single_asset 모드여도 pool 의 전체 토큰을 보존하고 비활성 token 의 minAmountsOut[i].value = 0 으로 표현."
+    },
+
+    "minAmountsOut": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
+      "description": "tokens[i] 와 1:1 매핑하는 최소 수령량 (슬리피지 보호). V2 의 amountAMin/amountBMin, Curve 의 min_amounts[N], Balancer 의 minAmountsOut 모두 kind=min. exitMode=exact_out 에서는 kind=exact."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "underlying 토큰 수령자. remove 의 가장 위험한 필드 — 결과는 보통 가치 있는 자산이며 root.from 과 다르면 account drain 패턴. 정책 'recipient == root.from' 강제 권장."
+    },
+
+    "validity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "유효기간 — source='tx-deadline'. V2 / Balancer 의 deadline 인자. Curve 는 deadline 부재 — 생략."
+    }
+  },
+
+  "required": ["exitMode", "tokens", "minAmountsOut", "recipient"]
+}

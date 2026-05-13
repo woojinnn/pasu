@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/lending/sign_authorization.json",
+  "title": "SignAuthorizationAction",
+  "description": "Lending position 권한 위임의 EIP-712 typed data 서명 동작 (off-chain wallet sign event — eth_signTypedData). 후속 tx 에서 sig (v, r, s) 가 calldata 로 전달되어 on-chain 검증. Aave V3 VariableDebtToken.delegationWithSig (DelegationWithSig typed data, debt_only scope), Compound V3 CometExt.allowBySig (Authorization typed data, manager_role scope), Morpho Blue Morpho.setAuthorizationWithSig (Authorization typed data, all scope) 흡수. set_authorization 의 sign-only variant — root.requestKind='signature' 와 결합.",
+
+  "type": "object",
+  "properties": {
+    "market": {
+      "type": "object",
+      "description": "서명 대상 market / contract 식별자. EIP-712 domain 의 verifyingContract 매핑. label 은 host:registry 보강.",
+      "properties": {
+        "address": { "$ref": "../../common/_common.json#/$defs/Address" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "authorizer": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "서명자 = 권한 부여자 (default = root.from). Aave delegator, Compound owner, Morpho authorizer. EIP-712 typed data 의 `authorizer` (Morpho) / `owner` (Compound) / `delegator` (Aave) 필드 매핑."
+    },
+
+    "authorized": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "권한 수령자 (delegatee / manager / authorized). 정책 'whitelisted authorized 만' — phishing sign 차단."
+    },
+
+    "isAuthorized": {
+      "type": "boolean",
+      "description": "true (권한 부여) 또는 false (회수). EIP-712 typed data 의 isAuthorized / isAllowed boolean 매핑."
+    },
+
+    "authorizationScope": {
+      "type": "string",
+      "enum": ["all", "debt_only", "manager_role"],
+      "description": "EIP-712 typed data 의 typeHash 다름 (3 variant — set_authorization 의 `position_manager_role` 은 Aave V3.6 에서 sig 변형 부재 (`approvePositionManager` on-chain only) 로 본 enum 미포함):\n- all (Morpho): keccak256('Authorization(address authorizer,address authorized,bool isAuthorized,uint256 nonce,uint256 deadline)')\n- debt_only (Aave): keccak256('DelegationWithSig(address delegatee,uint256 value,uint256 nonce,uint256 deadline)')\n- manager_role (Compound): keccak256('Authorization(address owner,address manager,bool isAllowed,uint256 nonce,uint256 expiry)')\nhost adapter 가 (chainId, verifyingContract) → typeHash 매핑으로 식별."
+    },
+
+    "amount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "위임 한도 (Aave debt_only scope 한정 — DelegationWithSig 의 value). Compound / Morpho 의 Authorization typeHash 부재 — 생략."
+    },
+
+    "nonce": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "서명 nonce — per-authorizer 증가. EIP-712 sign 의 replay 방어. host:onchain 으로 현재 nonce 조회 검증 (Aave/Compound/Morpho 모두 nonces(address) view)."
+    },
+
+    "validity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "서명 만료 시점 — source='signature-deadline'. EIP-712 typed data 의 deadline (Aave/Morpho) 또는 expiry (Compound) 필드. tx mining 시점이 이 값 초과 시 서명 invalid."
+    }
+  },
+
+  "required": ["authorizer", "authorized", "isAuthorized", "authorizationScope", "validity"]
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/lending/flash_loan.json",
+  "title": "FlashLoanAction",
+  "description": "Lending pool 의 자산을 1 tx 안에서 빌리고 callback 안에서 임의 operation 후 같은 tx 안 상환하는 동작. Aave V3 Pool.flashLoan (multi-asset, V3.6 부터 interestRateModes[] 모두 0 만 허용 — debt-from-flashLoan 경로 deprecated) / Pool.flashLoanSimple (single-asset), Morpho Blue Morpho.flashLoan (무수수료, single asset) 흡수. Compound V3 부재 (지원 없음). DEX 카테고리 flash_loan 와 universal — Lending 에서 재사용. callback 안 atomic intent 시퀀스는 receiver-specific (adapter 의 receiver registry 로 추가 분해).",
+
+  "type": "object",
+  "properties": {
+    "pool": {
+      "type": "object",
+      "description": "flash loan 발행 pool / market 식별자. Aave Pool, Morpho singleton. label 은 host:registry 보강.",
+      "properties": {
+        "address": { "$ref": "../../common/_common.json#/$defs/Address" },
+        "id": { "$ref": "../../common/_common.json#/$defs/Hex" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AssetRef" },
+      "minItems": 1,
+      "maxItems": 16,
+      "description": "빌릴 asset list. Aave flashLoan 은 multi-asset, flashLoanSimple / Morpho flashLoan 은 single (length=1)."
+    },
+
+    "amounts": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
+      "minItems": 1,
+      "maxItems": 16,
+      "description": "assets[i] 와 1:1 매핑하는 차입 양. kind=exact 일반적."
+    },
+
+    "receiver": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "flash loan callback contract — `IFlashLoanReceiver.executeOperation` (Aave) 또는 `IMorphoFlashLoanCallback.onMorphoFlashLoan` (Morpho) 구현. 정책 'whitelisted receiver 만' 핵심 — unknown receiver = 임의 contract 가 flash loan 자산으로 임의 operation 수행 가능 (위협 모델 큼). host:registry 가 known receiver (e.g., DeFi Saver, Instadapp leverage) 라벨 보강."
+    },
+
+    "onBehalf": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "debt position 소유자 — Aave V3 flashLoan 한정 (interestRateModes 가 nonzero 시 debt 가 본 주소로 mint). V3.6 부터 deprecated (interestRateModes 모두 0 만 허용 — 실질 의미 사라짐). Morpho 부재. default = root.from."
+    },
+
+    "flashLoanKind": {
+      "type": "string",
+      "enum": ["multi", "simple", "morpho"],
+      "description": "flash loan variant. multi (Aave flashLoan, multi-asset). simple (Aave flashLoanSimple, single-asset, lower gas). morpho (Morpho flashLoan, 무수수료 single-asset). 정책 'whitelisted kind 만' 분기 가능."
+    },
+
+    "fee": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "flash loan fee (Aave 한정 — 0.05% 기본). Morpho 는 무수수료라 본 필드 0 또는 생략. host:onchain `Pool.FLASHLOAN_PREMIUM_TOTAL` view 로 enrichment 가능."
+    }
+  },
+
+  "required": ["assets", "amounts", "receiver", "flashLoanKind"]
+}

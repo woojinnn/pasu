@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/staking/stake.json",
+  "title": "StakeAction",
+  "description": "base asset 을 staking pool 에 입금하고 LST 수령증을 발급받는 동작. Lido submit, Rocket Pool RocketDepositPool.deposit, Binance Staked ETH WBETH.deposit, ether.fi LiquidityPool.deposit, Frax frxETHMinter.submit 등이 모두 본 shape 으로 정규화. mint rate 가 동적이라 amountOut 은 일반적으로 estimated.",
+
+  "type": "object",
+  "properties": {
+    "tokenIn": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "staking 으로 입금되는 자산. 대부분 native (kind=native, 예: ETH, BNB, SOL) 이지만 일부 프로토콜은 LST 또는 다른 ERC-20 도 받는다 (예: ether.fi 는 stETH 도 수용). swap.json 의 tokenIn 과 동일한 의미 (native/ERC-20 통칭). 정책 'native ETH staking 만 허용' 분기."
+    },
+
+    "receiptToken": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "발급되는 LST 수령증 (kind=erc20). stETH / rETH / WBETH / cbETH / mETH / frxETH / ETHx / swETH 등. 정책 'whitelisted LST 만 허용' 의 핵심 분기."
+    },
+
+    "amountIn": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "입금 양. native 입금이면 kind=exact 이며 값은 root.value 와 일치. ERC-20 입금이면 calldata 의 amount (kind=exact)."
+    },
+
+    "amountOut": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "받을 LST 양. mint rate (share/exchange rate) 가 동적이라 일반적으로 kind=estimated — host 가 컨트랙트 view 함수로 quote 한 값. 일부 프로토콜이 minOut 슬리피지 보호를 제공하면 kind=min."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "LST 수령자. root.from 과 다르면 staking 후 즉시 제3자에게 전달되는 패턴 — 정책 'recipient == root.from' 권장."
+    }
+  },
+
+  "required": ["tokenIn", "receiptToken", "amountIn", "recipient"]
+}

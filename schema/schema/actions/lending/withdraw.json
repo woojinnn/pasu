@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/lending/withdraw.json",
+  "title": "WithdrawAction",
+  "description": "Lending market 에서 supply position 의 자산을 회수하는 동작. Aave V3 Pool.withdraw / WrappedTokenGatewayV3.withdrawETH(+permit), Compound V3 Comet.withdraw / withdrawTo / withdrawFrom (asset=collateral 또는 asset=base + amount≤userBaseSupply), Morpho Blue Morpho.withdraw (loan asset), Bundler ACTION_WITHDRAW_* 흡수. Compound 의 withdraw(base, amount>balance) 케이스는 adapter 가 borrow 로 재분기 — withdraw schema 인스턴스는 amount ≤ balance 케이스만. Morpho 의 withdrawCollateral 는 별도 withdraw_collateral.",
+
+  "type": "object",
+  "properties": {
+    "market": {
+      "type": "object",
+      "description": "회수 대상 market 식별자. supply.market 과 동일 구조 (address / id / label — label 은 host:registry 보강).",
+      "properties": {
+        "address": { "$ref": "../../common/_common.json#/$defs/Address" },
+        "id": { "$ref": "../../common/_common.json#/$defs/Hex" },
+        "label": { "type": "string" }
+      }
+    },
+
+    "asset": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "회수 자산. Aave reserve token, Compound base 또는 collateral asset, Morpho loan asset."
+    },
+
+    "amount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "회수 양. amountMode 가 dimension 결정. uint256.max 입력 시 kind=unlimited (full withdraw, Aave / Compound 공통). kind=exact 일반적."
+    },
+
+    "amountMode": {
+      "type": "string",
+      "enum": ["assets", "shares"],
+      "default": "assets",
+      "description": "amount field 의 dimension 분기. assets (Aave / Compound / Morpho calldata 의 assets>0, 또는 Euler V2 ERC-4626 `Vault.withdraw(amount, receiver, owner)`): amount 가 underlying 자산 양. shares (Morpho calldata 의 shares>0, 또는 Euler V2 ERC-4626 `Vault.redeem(shares, receiver, owner)`): amount 가 burn 할 supply share 양 — derive 되는 자산 양은 현재 ratio 기반 변동. 정책 'amountMode == shares 차단' 으로 share-mode withdraw 회피 권장."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "자산 수령자 (receiver). default = root.from. Aave 의 to, Compound 의 to, Morpho 의 receiver 매핑. root.from 과 다르면 third-party 전송 — phishing 1차 신호, 정책 'recipient == root.from' 강력 권장."
+    },
+
+    "onBehalf": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "supply position 소유자 (default = root.from). Compound 의 withdrawFrom(src, to, ...) 의 src, Morpho 의 onBehalf 매핑. msg.sender != onBehalf 시 authorization 사전 의무 (Compound `allow` / Morpho `setAuthorization` / Aave V3.6 position manager)."
+    }
+  },
+
+  "required": ["asset", "amount", "recipient"]
+}

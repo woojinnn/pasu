@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/restaking/request_restake_withdrawal.json",
+  "title": "RequestRestakeWithdrawalAction",
+  "description": "재위임 자산 인출의 escrow/queue 진입 동작. EigenLayer DelegationManager.queueWithdrawals (bytes32 withdrawal root 발급, 7+ 일 escrow), Renzo/Kelp/Puffer/ether.fi/Swell LRT 프로토콜의 WithdrawQueue.requestRedemption (LRT burn + NFT ticket 발급) 등이 본 shape. 청구는 별도 claim_restake_withdrawal 액션으로 분리. Lending 의 일반 withdrawal 과 구분하기 위해 'restake' 를 파일명에 명시.",
+
+  "type": "object",
+  "properties": {
+    "tokenOut": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "escrow 후 받을 asset (LST 또는 native). calldata 에 명시되지 않는 경우 host:registry 가 LRT/strategy → underlying 매핑 (ezETH→ETH/stETH, rsETH→ETH 등) 으로 채움. 정책 'underlying asset 검증' 분기."
+    },
+
+    "receiptToken": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "burn 되는 LRT (LRT redemption 케이스만, kind=erc20). EigenLayer 직접 withdrawal 은 strategy share 가 burn 되므로 본 필드 생략."
+    },
+
+    "amountIn": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "burn 또는 lock 되는 양 (kind=exact). LRT redemption 이면 LRT 양, 직접 withdrawal 이면 strategy share 양."
+    },
+
+    "amountOut": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "escrow 후 받게 될 asset 양. 일부 프로토콜이 명시적 슬리피지 보호를 제공하면 kind=min, 그 외에는 host 가 share rate 로 quote 한 kind=estimated. 별도 minAmount 필드를 두지 않고 AmountConstraint.kind 로 의미를 구분 (swap.json:30 컨벤션)."
+    },
+
+    "strategy": {
+      "type": "object",
+      "description": "어느 strategy/vault 에서 인출하는지. restake.json 의 strategy 와 동일 shape. 정책 'unwind 가능한 strategy 검증' 분기.",
+      "properties": {
+        "address": {
+          "$ref": "../../common/_common.json#/$defs/Address",
+          "description": "strategy/vault 컨트랙트 주소."
+        },
+        "id": {
+          "$ref": "../../common/_common.json#/$defs/Hex",
+          "description": "bytes32 strategy/vault id."
+        },
+        "label": {
+          "type": "string",
+          "description": "host:registry 가 채우는 라벨."
+        }
+      }
+    },
+
+    "ticket": {
+      "type": "object",
+      "description": "이후 claim_restake_withdrawal 이 참조할 청구권 식별자. EigenLayer 는 bytes32 withdrawal root (id 필드), LRT 프로토콜은 일반적으로 ERC-721 NFT (nft + tokenId). LiquidStaking 의 ticket 과 동일 shape.",
+      "properties": {
+        "nft": {
+          "$ref": "../../common/_common.json#/$defs/AssetRef",
+          "description": "ticket NFT collection (kind=erc721). LRT 프로토콜의 WithdrawRequestNFT 등. ticket 이 NFT 가 아니면 생략."
+        },
+        "tokenId": {
+          "$ref": "../../common/_common.json#/$defs/DecimalString",
+          "description": "NFT tokenId 또는 sequence id. nft 가 채워질 때 함께."
+        },
+        "id": {
+          "$ref": "../../common/_common.json#/$defs/Hex",
+          "description": "bytes32 형식 식별자. EigenLayer DelegationManager 의 withdrawal root 등. NFT 또는 sequence 형식이면 생략."
+        }
+      }
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "escrow 후 claim_restake_withdrawal 을 호출할 권한자. EigenLayer 의 queueWithdrawals 인자 `withdrawer`, LRT 의 ticket NFT owner. root.from 과 다르면 청구권 양도 패턴 — 정책 분기 강력 권장."
+    }
+  },
+
+  "required": ["amountIn", "recipient"]
+}

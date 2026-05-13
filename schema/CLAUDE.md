@@ -125,39 +125,44 @@ schema_v101/
 │   ├── root.json             ← 최상위 컨테이너 (action enum 32종)
 │   ├── common/_common.json   ← Address / Hex / DecimalString
 │   │                           / AssetRef / AmountConstraint / Validity (6종)
-│   └── actions/
-│       ├── swap.json
-│       ├── add_liquidity.json          ← fungible LP (V2/Curve/Balancer)
-│       ├── remove_liquidity.json       ← fungible LP (V2/Curve/Balancer)
-│       ├── mint_liquidity_nft.json     ← V3/V4 NPM 신규 발행
-│       ├── burn_liquidity_nft.json     ← V3/V4 NPM 소각 (burnKind enum)
-│       ├── increase_liquidity.json     ← V3/V4 NPM 기존 NFT liquidity ↑
-│       ├── decrease_liquidity.json     ← V3/V4 NPM 기존 NFT liquidity ↓
-│       ├── wrap.json
-│       ├── unwrap.json
-│       ├── approve.json                ← ERC-20 / Permit2 amount 기반 (on-chain)
-│       ├── set_approval_for_all.json   ← ERC-721/1155 collection 전체 boolean 위임
-│       ├── transfer.json               ← ERC-20/721/1155 직접 이전
-│       ├── permit.json                 ← EIP-712 서명 (EIP-2612 / Permit2 PermitSingle / PermitTransferFrom)
-│       ├── claim_rewards.json          ← 누적 보상 회수 (V3/V4 NPM collect / Aave / Compound / Curve / Pendle)
-│       ├── sign_message.json           ← EIP-712 typed data envelope-only 안전판
-│       ├── delegate.json               ← ERC20Votes voting power 위임 (Compound / UNI / ENS / Aave / ARB / OP)
-│       ├── vote.json                   ← on-chain governance castVote (OZ Governor / Compound Bravo / Aave)
-│       ├── stake.json                  ← LST 발급 (Lido / Rocket Pool / Mantle mETH / ether.fi / Frax)
-│       ├── request_unstake.json        ← LST → ticket cooldown 진입
-│       ├── claim_unstake.json          ← ticket 청구 → base asset 수령
-│       ├── restake.json                ← LRT/share 발급 (EigenLayer / Renzo / Kelp / Symbiotic / Karak)
-│       ├── request_restake_withdrawal.json  ← LRT/share → escrow 진입
-│       ├── claim_restake_withdrawal.json    ← escrow 청구 → asset 수령
-│       ├── supply.json                 ← lending market 자산 예치 (Aave/Compound/Morpho/Euler/Fluid/Compound V2)
-│       ├── withdraw.json               ← supply position 회수
-│       ├── borrow.json                 ← lending market 차입 (HF check + onBehalf credit delegation)
-│       ├── repay.json                  ← debt 상환 (repayKind: debt_asset / atoken_direct)
-│       ├── liquidate.json              ← underwater position 청산 (4 dialect: pool_share/protocol_absorb/socializable/single_asset)
-│       ├── flash_loan.json             ← 1-tx 차입+상환 (Aave / Morpho)
-│       ├── set_authorization.json      ← lending 권한 위임 (4 scope: all / debt_only / manager_role / position_manager_role)
-│       ├── sign_authorization.json     ← set_authorization 의 EIP-712 sign 변형 (3 scope — position_manager_role 부재)
-│       └── revoke.json                 ← 권한 *받은* 측의 자기-반납 (4 kind)
+│   └── actions/                  ← 32 action 을 5 category subdir 로 organized
+│       ├── misc/                 ← 10 protocol-agnostic action
+│       │   ├── wrap.json
+│       │   ├── unwrap.json
+│       │   ├── approve.json                ← ERC-20 / Permit2 amount 기반 (on-chain)
+│       │   ├── set_approval_for_all.json   ← ERC-721/1155 collection 전체 boolean 위임
+│       │   ├── transfer.json               ← ERC-20/721/1155 직접 이전
+│       │   ├── permit.json                 ← EIP-712 서명 (EIP-2612 / Permit2 PermitSingle / PermitTransferFrom)
+│       │   ├── claim_rewards.json          ← 누적 보상 회수 (V3/V4 NPM collect / Aave / Compound / Curve / Pendle)
+│       │   ├── sign_message.json           ← EIP-712 typed data envelope-only 안전판
+│       │   ├── delegate.json               ← ERC20Votes voting power 위임 (Compound / UNI / ENS / Aave / ARB / OP)
+│       │   └── vote.json                   ← on-chain governance castVote (OZ Governor / Compound Bravo / Aave)
+│       ├── dex/                  ← 7 DEX action (swap + 6-way liquidity)
+│       │   ├── swap.json
+│       │   ├── add_liquidity.json          ← fungible LP (V2/Curve/Balancer)
+│       │   ├── remove_liquidity.json
+│       │   ├── mint_liquidity_nft.json     ← V3/V4 NPM 신규 발행
+│       │   ├── burn_liquidity_nft.json     ← V3/V4 NPM 소각
+│       │   ├── increase_liquidity.json     ← V3/V4 기존 NFT liquidity ↑
+│       │   └── decrease_liquidity.json     ← V3/V4 기존 NFT liquidity ↓
+│       ├── lending/              ← 9 lending action
+│       │   ├── supply.json                 ← Aave/Compound/Morpho/Euler/Fluid/Compound V2
+│       │   ├── withdraw.json
+│       │   ├── borrow.json                 ← HF check + onBehalf credit delegation
+│       │   ├── repay.json                  ← repayKind: debt_asset / atoken_direct
+│       │   ├── liquidate.json              ← 4 dialect: pool_share/protocol_absorb/socializable/single_asset
+│       │   ├── flash_loan.json             ← 1-tx 차입+상환 (Aave / Morpho)
+│       │   ├── set_authorization.json      ← 4 scope: all/debt_only/manager_role/position_manager_role
+│       │   ├── sign_authorization.json     ← set_authorization 의 EIP-712 sign 변형 (3 scope)
+│       │   └── revoke.json                 ← 권한 *받은* 측의 자기-반납 (4 kind)
+│       ├── staking/              ← 3 liquid staking lifecycle
+│       │   ├── stake.json                  ← LST 발급 (Lido / Rocket Pool / Mantle mETH / ether.fi / Frax)
+│       │   ├── request_unstake.json        ← LST → ticket cooldown
+│       │   └── claim_unstake.json          ← ticket 청구 → base asset 수령
+│       └── restaking/            ← 3 restaking lifecycle
+│           ├── restake.json                ← LRT/share 발급 (EigenLayer / Renzo / Kelp / Symbiotic / Karak)
+│           ├── request_restake_withdrawal.json  ← LRT/share → escrow 진입
+│           └── claim_restake_withdrawal.json    ← escrow 청구 → asset 수령
 ├── storage/                  ← 백업 / legacy (schema 디렉터리 외부 — 헷갈림 방지)
 │   └── lending_liam_original/  ← liam 의 lending 원본 9 JSON (sync 전 백업)
 └── docs/
