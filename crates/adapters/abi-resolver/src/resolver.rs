@@ -10,11 +10,13 @@
 //! Decoding is delegated to `crate::decode` once a signature is found.
 
 use crate::decode::{decode_with_function, decode_with_signature, DecodeError, DecodedCall};
+use crate::decoder::{CallMatchKey, DecodeContext, DecoderRegistry};
 use crate::openchain::OpenchainIndex;
 use crate::sourcify::SourcifyIndex;
 #[cfg(feature = "sqlite")]
 use crate::sqlite_index::SqliteSourcifyIndex;
 use alloy_primitives::Address;
+use std::sync::Arc;
 
 /// Where the matching signature came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +57,7 @@ pub struct Resolver {
     #[cfg(feature = "sqlite")]
     sqlite: Option<SqliteSourcifyIndex>,
     openchain: OpenchainIndex,
+    decoders: Option<Arc<dyn DecoderRegistry>>,
 }
 
 impl Resolver {
@@ -65,6 +68,7 @@ impl Resolver {
             #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain,
+            decoders: None,
         }
     }
 
@@ -78,6 +82,15 @@ impl Resolver {
         self
     }
 
+    /// Attach a decoder registry fast-path. The decoded result is observed for
+    /// now, then resolution continues through the existing Sourcify/openchain
+    /// tiers so `ResolveOutcome` remains unchanged.
+    #[must_use]
+    pub fn with_decoder_registry(mut self, decoders: Arc<dyn DecoderRegistry>) -> Self {
+        self.decoders = Some(decoders);
+        self
+    }
+
     /// Sourcify-only resolver (openchain index empty).
     #[must_use]
     pub fn from_sourcify(sourcify: SourcifyIndex) -> Self {
@@ -86,6 +99,7 @@ impl Resolver {
             #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain: OpenchainIndex::empty(),
+            decoders: None,
         }
     }
 
@@ -97,6 +111,7 @@ impl Resolver {
             #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain,
+            decoders: None,
         }
     }
 
@@ -108,6 +123,7 @@ impl Resolver {
             #[cfg(feature = "sqlite")]
             sqlite: None,
             openchain: OpenchainIndex::empty(),
+            decoders: None,
         }
     }
 
@@ -120,6 +136,8 @@ impl Resolver {
         let Some(selector) = selector_from_calldata(calldata) else {
             return ResolveOutcome::NotFound;
         };
+
+        self.try_decoder_fast_path(chain_id, address, selector, calldata);
 
         // Tier 1 — In-memory Sourcify (curated).
         if let Some(info) = self.sourcify.lookup(chain_id, address, selector) {
@@ -159,6 +177,55 @@ impl Resolver {
 
         ResolveOutcome::NotFound
     }
+
+    fn try_decoder_fast_path(
+        &self,
+        chain_id: u64,
+        address: &Address,
+        selector: [u8; 4],
+        calldata: &[u8],
+    ) {
+        let Some(decoders) = &self.decoders else {
+            return;
+        };
+
+        let to = policy_address_from_alloy(address);
+        let key = CallMatchKey {
+            chain_id,
+            to,
+            selector,
+        };
+        let Some(decoder) = decoders.resolve(&key) else {
+            return;
+        };
+
+        let value: policy_engine::action::DecimalString =
+            "0".parse().expect("literal zero is a valid DecimalString");
+        let ctx = DecodeContext {
+            chain_id,
+            to: &key.to,
+            value: &value,
+            block_timestamp: None,
+        };
+
+        match decoder.decode(&ctx, calldata) {
+            Ok(decoded_call) => {
+                tracing::debug!(
+                    decoder_id = decoded_call.decoder_id.as_str(),
+                    function_signature = decoded_call.function_signature.as_str(),
+                    "decoder matched"
+                );
+            }
+            Err(err) => {
+                let decoder_id = decoder.id();
+                tracing::debug!(
+                    decoder_id = decoder_id.as_str(),
+                    error = %err,
+                    "decoder matched but decode failed"
+                );
+            }
+        }
+    }
 }
 
 fn selector_from_calldata(calldata: &[u8]) -> Option<[u8; 4]> {
@@ -167,6 +234,12 @@ fn selector_from_calldata(calldata: &[u8]) -> Option<[u8; 4]> {
     } else {
         Some([calldata[0], calldata[1], calldata[2], calldata[3]])
     }
+}
+
+fn policy_address_from_alloy(address: &Address) -> policy_engine::action::Address {
+    format!("0x{}", hex::encode(address.as_slice()))
+        .parse()
+        .expect("alloy address renders as a valid policy address")
 }
 
 /// Re-exported here so `DecodeError` is reachable from the same module the
@@ -183,9 +256,47 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::decoder::{
+        CallMatchKey, DecodeContext, DecodedCall as RegistryDecodedCall, Decoder, DecoderError,
+        DecoderId,
+    };
+    use crate::in_memory_registry::InMemoryDecoderRegistry;
     use crate::openchain::SignatureCandidate;
     use alloy_json_abi::Function;
     use alloy_primitives::U256;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+
+    struct RecordingDecoder {
+        key: CallMatchKey,
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl Decoder for RecordingDecoder {
+        fn id(&self) -> DecoderId {
+            DecoderId::new("recording")
+        }
+
+        fn match_keys(&self) -> Vec<CallMatchKey> {
+            vec![self.key.clone()]
+        }
+
+        fn decode(
+            &self,
+            _ctx: &DecodeContext<'_>,
+            _calldata: &[u8],
+        ) -> Result<RegistryDecodedCall, DecoderError> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            Ok(RegistryDecodedCall {
+                decoder_id: self.id(),
+                function_signature: "approve(address,uint256)".into(),
+                args: Vec::new(),
+                nested: Vec::new(),
+            })
+        }
+    }
 
     fn approve_calldata(spender: [u8; 20], amount: u128) -> Vec<u8> {
         let mut data = vec![0x09, 0x5e, 0xa7, 0xb3];
@@ -311,5 +422,31 @@ mod tests {
             resolver.resolve(1, &address, &[0x09, 0x5e]),
             ResolveOutcome::NotFound
         ));
+    }
+
+    #[test]
+    fn decoder_registry_match_preserves_existing_outcome_shape() {
+        let address = Address::from([0x42u8; 20]);
+        let key = CallMatchKey {
+            chain_id: 1,
+            to: "0x4242424242424242424242424242424242424242"
+                .parse()
+                .unwrap(),
+            selector: [0x09, 0x5e, 0xa7, 0xb3],
+        };
+        let calls = Arc::new(AtomicUsize::new(0));
+        let decoder = Arc::new(RecordingDecoder {
+            key,
+            calls: Arc::clone(&calls),
+        });
+        let registry = Arc::new(InMemoryDecoderRegistry::builder().register(decoder).build());
+        let resolver = Resolver::empty().with_decoder_registry(registry);
+
+        let calldata = approve_calldata([0x11; 20], 100);
+        assert!(matches!(
+            resolver.resolve(1, &address, &calldata),
+            ResolveOutcome::NotFound
+        ));
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
     }
 }
