@@ -1,9 +1,9 @@
 //! Universal Router command `V2_SWAP_EXACT_OUT`.
 
+use super::super::common::TokenLookup;
 use crate::universal_router::commands::{
     map_recipient, path_endpoints, swap_action, token, ActionMeta, RoutedAction,
 };
-use super::super::common::TokenLookup;
 use alloy_sol_types::{sol, SolType};
 use policy_engine::prelude::*;
 

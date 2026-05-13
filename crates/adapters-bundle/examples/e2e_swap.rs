@@ -12,10 +12,10 @@ use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
     Address, HostCapabilities, MockOracle, Pipeline, PolicyEngine, Token, TransactionRequest,
 };
+use policy_engine_adapters_bundle::default_registry;
 use policy_engine_adapters_bundle::uniswap_v3::{
     encode_exact_input_single, ExactInputSingleParams, SWAP_ROUTER_MAINNET,
 };
-use policy_engine_adapters_bundle::default_registry;
 use std::str::FromStr;
 
 const USDT_ADDR: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";

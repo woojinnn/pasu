@@ -6,7 +6,7 @@
 //!
 //! ```text
 //!   src/
-//!     ├── lib.rs                              ← module index + re-exports
+//!     ├── mod.rs                              ← module index + re-exports
 //!     ├── common.rs                           ← shared: ROUTER, TokenLookup,
 //!     │                                         shift_decimals, NATIVE_TOKEN
 //!     ├── swap_exact_tokens_for_tokens.rs
@@ -16,7 +16,6 @@
 //!     ├── swap_exact_tokens_for_eth.rs
 //!     └── swap_tokens_for_exact_eth.rs
 //! ```
-
 
 pub mod common;
 pub mod swap_eth_for_exact_tokens;

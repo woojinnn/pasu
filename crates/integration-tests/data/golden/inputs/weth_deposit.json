@@ -1,0 +1,15 @@
+{
+  "label": "WETH9 deposit wrapping ETH into WETH for msg.sender",
+  "rpc": {
+    "method": "eth_sendTransaction",
+    "params": [
+      {
+        "from": "0x0000000000000000000000000000000000000001",
+        "to": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        "value": "0x1",
+        "data": "0xd0e30db0"
+      }
+    ]
+  },
+  "chain_id": 1
+}

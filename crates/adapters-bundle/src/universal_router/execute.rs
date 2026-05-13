@@ -1,9 +1,9 @@
 //! Universal Router `execute(bytes,bytes[])`.
 
-use crate::universal_router::commands::{expand_commands, merge_dex_actions, RoutedAction};
 #[cfg(test)]
 use super::common::UNIVERSAL_ROUTER_MAINNET;
 use super::common::{router_addresses_mainnet, TokenLookup};
+use crate::universal_router::commands::{expand_commands, merge_dex_actions, RoutedAction};
 use alloy_primitives::U256;
 use alloy_sol_types::{sol, SolCall};
 use policy_engine::prelude::*;
@@ -176,7 +176,9 @@ impl DeclaredTransactionActionAdapter for Adapter_ {
 mod tests {
     use super::*;
     use crate::universal_router::commands::{V2_SWAP_EXACT_IN, V3_SWAP_EXACT_IN, V4_SWAP};
-    use crate::universal_router::v4_actions::{V4_SETTLE_ALL, V4_SWAP_EXACT_IN_SINGLE, V4_TAKE_ALL};
+    use crate::universal_router::v4_actions::{
+        V4_SETTLE_ALL, V4_SWAP_EXACT_IN_SINGLE, V4_TAKE_ALL,
+    };
     use alloy_primitives::{
         aliases::{I24, U24},
         Address as AlloyAddress,

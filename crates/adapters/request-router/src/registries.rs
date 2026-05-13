@@ -16,6 +16,9 @@ use abi_resolver::decoders::uniswap_v3::{
     ExactInputDecoder, ExactInputSingleDecoder, ExactOutputDecoder, ExactOutputSingleDecoder,
     EXACT_OUTPUT_DECODER_ID, EXACT_OUTPUT_SINGLE_DECODER_ID, UNISWAP_V3_DECODER_ID,
 };
+use abi_resolver::decoders::weth::{
+    WethDepositDecoder, WethWithdrawDecoder, WETH_DEPOSIT_DECODER_ID, WETH_WITHDRAW_DECODER_ID,
+};
 use abi_resolver::InMemoryDecoderRegistry;
 use abi_resolver::{DecoderId, DecoderRegistry};
 use call_adapter::{
@@ -30,6 +33,7 @@ use mappers::protocols::uniswap_v2::{
 use mappers::protocols::uniswap_v3::{
     UniswapV3ExactOutputMapper, UniswapV3ExactOutputSingleMapper, UniswapV3Mapper,
 };
+use mappers::protocols::weth::{WethDepositMapper, WethWithdrawMapper};
 use mappers::{InMemoryMapperRegistry, MapperMatchKey};
 use sign_resolver::adapters::eip2612::Eip2612Adapter;
 use sign_resolver::adapters::permit2::Permit2Adapter;
@@ -60,6 +64,8 @@ impl DefaultRegistries {
                 .register(Arc::new(Erc20ApproveDecoder::new()))
                 .register(Arc::new(Erc20TransferDecoder::new()))
                 .register(Arc::new(Erc20TransferFromDecoder::new()))
+                .register(Arc::new(WethDepositDecoder::new()))
+                .register(Arc::new(WethWithdrawDecoder::new()))
                 .build(),
         );
         let mappers = Arc::new(
@@ -135,6 +141,18 @@ impl DefaultRegistries {
                         decoder_id: DecoderId::new(ERC20_TRANSFER_FROM_DECODER_ID),
                     },
                     Arc::new(Erc20TransferFromMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(WETH_DEPOSIT_DECODER_ID),
+                    },
+                    Arc::new(WethDepositMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(WETH_WITHDRAW_DECODER_ID),
+                    },
+                    Arc::new(WethWithdrawMapper::new()),
                 )
                 .build(),
         );

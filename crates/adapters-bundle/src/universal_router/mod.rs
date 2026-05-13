@@ -5,7 +5,6 @@
 //! adapter aggregates supported swap commands into a single `DexAction` so
 //! route-wide dex policies evaluate one policy action per router transaction.
 
-
 pub mod command_decode;
 pub mod commands;
 pub mod common;

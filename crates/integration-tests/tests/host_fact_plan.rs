@@ -22,7 +22,7 @@ const V3_SWAP_ROUTER: &str = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
 fn weth_swap_calldata_v3_exact_input_single() -> Vec<u8> {
     // Calldata for a Uniswap V3 exactInputSingle WETH->USDC swap.
     // Selector 0x414bf389 then 8 × 32-byte words (matches
-    // crates/adapters/uniswap-v3/src/exact_input_single.rs:99 decode shape).
+    // crates/adapters-bundle/src/uniswap_v3/exact_input_single.rs decode shape).
     let raw = concat!(
         "414bf389",
         "000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // tokenIn = WETH

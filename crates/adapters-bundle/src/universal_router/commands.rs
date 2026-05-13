@@ -1,10 +1,10 @@
 //! Universal Router command dispatch and shared command helpers.
 
+use super::common::{currency_to_policy_address, TokenLookup};
 use crate::universal_router::command_decode::{
     decode_v2_swap_exact_in, decode_v2_swap_exact_out, decode_v3_swap_exact_in,
     decode_v3_swap_exact_out, decode_v4_swap,
 };
-use super::common::{currency_to_policy_address, TokenLookup};
 use alloy_primitives::{Address as AlloyAddress, U256};
 use alloy_sol_types::{sol, SolType};
 use policy_engine::prelude::*;

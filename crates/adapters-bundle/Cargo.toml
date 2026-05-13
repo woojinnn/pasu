@@ -8,13 +8,11 @@ description = "Aggregator: builds default action adapter registries from every i
 [dependencies]
 alloy-primitives.workspace = true
 alloy-sol-types.workspace = true
-policy-engine.workspace = true
-abi-resolver = { workspace = true }
-serde_json.workspace = true
 hex.workspace = true
+policy-engine.workspace = true
+abi-resolver.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
-
-[dev-dependencies]
 
 [[example]]
 name = "e2e_swap"

@@ -3,15 +3,15 @@
 //! ## Module layout
 //!
 //! Each Uniswap V3 `SwapRouter` function lives in its own module under this
-//! crate, with `sol!` declaration, encode/decode helpers, the `TransactionActionAdapter` impl,
+//! module, with `sol!` declaration, encode/decode helpers, the `TransactionActionAdapter` impl,
 //! and unit tests all co-located. Adding a new function (e.g., `exactInput`,
 //! `exactOutputSingle`, `multicall`) means: drop a new file next to
 //! `exact_input_single.rs`, declare it as `pub mod ...;` here, and re-export
-//! its `Adapter_` from this `lib.rs`.
+//! its `Adapter_` from this `mod.rs`.
 //!
 //! ```text
 //!   src/
-//!     ├── lib.rs                   ← module declarations + flat re-exports
+//!     ├── mod.rs                   ← module declarations + flat re-exports
 //!     ├── common.rs                ← shared: SWAP_ROUTER_MAINNET, TokenLookup,
 //!     │                              shift_decimals, DecodeError
 //!     ├── exact_input_single.rs    ← `Adapter_` + `Params` + encode/decode
@@ -23,13 +23,16 @@
 //! The `policy-engine-adapters-bundle` crate stitches each function's
 //! `Adapter_` into a single `MockTransactionActionAdapterRegistry` via `default_registry()`.
 
-
 pub mod common;
 pub mod exact_input;
 pub mod exact_input_single;
 pub mod exact_output;
 pub mod exact_output_single;
 pub mod multicall;
+
+#[cfg(test)]
+#[path = "tests/abi_cross_check.rs"]
+mod abi_cross_check;
 
 pub use common::{decode_v3_path, shift_decimals, DecodeError, TokenLookup, SWAP_ROUTER_MAINNET};
 

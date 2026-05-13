@@ -1,8 +1,10 @@
 //! V4 action `SWAP_EXACT_OUT_SINGLE`.
 
-use crate::universal_router::commands::{swap_action, ActionMeta, RoutedAction};
 use super::super::common::TokenLookup;
-use crate::universal_router::v4_actions::{pool_key_tokens, v4_fee_bips, V4ExactOutputSingleParams};
+use crate::universal_router::commands::{swap_action, ActionMeta, RoutedAction};
+use crate::universal_router::v4_actions::{
+    pool_key_tokens, v4_fee_bips, V4ExactOutputSingleParams,
+};
 use alloy_primitives::U256;
 use alloy_sol_types::SolValue;
 use policy_engine::prelude::*;

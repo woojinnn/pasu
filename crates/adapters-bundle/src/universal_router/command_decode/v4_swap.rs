@@ -1,7 +1,7 @@
 //! Universal Router command `V4_SWAP`.
 
-use crate::universal_router::commands::{ActionMeta, RoutedAction};
 use super::super::common::TokenLookup;
+use crate::universal_router::commands::{ActionMeta, RoutedAction};
 use crate::universal_router::v4_actions::{
     decode_exact_input, decode_exact_input_single, decode_exact_output, decode_exact_output_single,
     MAX_V4_ACTIONS, V4_CLEAR_OR_TAKE, V4_CLOSE_CURRENCY, V4_SETTLE, V4_SETTLE_ALL, V4_SETTLE_PAIR,

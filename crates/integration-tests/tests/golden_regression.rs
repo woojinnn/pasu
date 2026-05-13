@@ -235,6 +235,16 @@ fn erc20_transfer_routes_to_transfer_envelope() {
 }
 
 #[test]
+fn weth_deposit_routes_to_wrap() {
+    assert_single_action("weth_deposit.json", "wrap");
+}
+
+#[test]
+fn weth_withdraw_routes_to_unwrap() {
+    assert_single_action("weth_withdraw.json", "unwrap");
+}
+
+#[test]
 fn erc20_transfer_from_routes_to_transfer_envelope() {
     use policy_engine::action::common::AmountKind;
     use policy_engine::action::envelope::{Action, Category};

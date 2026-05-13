@@ -1,7 +1,7 @@
 //! V4 action `SWAP_EXACT_OUT`.
 
-use crate::universal_router::commands::{swap_action, ActionMeta, RoutedAction};
 use super::super::common::{currency_to_policy_address, TokenLookup};
+use crate::universal_router::commands::{swap_action, ActionMeta, RoutedAction};
 use crate::universal_router::v4_actions::{u32_from_u24, v4_fee_bips_avg, V4ExactOutputParams};
 use alloy_primitives::U256;
 use alloy_sol_types::SolValue;
