@@ -16,7 +16,11 @@ pub(super) fn request(action: &DexAction) -> PolicyRequest {
     let principal = format!(r#"Wallet::"{}""#, action.actor.as_str());
     let resource = r#"Protocol::"dex""#.to_string();
     let entities = json!([
-        { "uid": { "type": "Wallet", "id": action.actor.as_str() }, "attrs": {}, "parents": [] },
+        {
+            "uid": { "type": "Wallet", "id": action.actor.as_str() },
+            "attrs": { "address": action.actor.as_str() },
+            "parents": []
+        },
         { "uid": { "type": "Protocol", "id": "dex" }, "attrs": {}, "parents": [] },
     ]);
 

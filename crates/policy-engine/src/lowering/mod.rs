@@ -13,7 +13,8 @@ pub use host_fact_plan::{
     required_host_facts, required_window_keys, HostFactPlan, WindowKey, WindowKeyPlan,
 };
 pub use request::{
-    request_from_action, request_from_action_with_host, requests_from_action, requests_from_actions,
+    policy_request_from_envelope, request_from_action, request_from_action_with_host,
+    requests_from_action, requests_from_actions,
 };
 pub use stamping::{
     compute_dex_window_deltas, enrich_dex_action, enrich_dex_action_base, enrich_dex_window_stats,

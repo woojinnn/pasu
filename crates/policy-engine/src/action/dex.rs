@@ -113,9 +113,6 @@ pub struct SwapAction {
     pub amount_out: AmountConstraint,
     /// Recipient of the output asset.
     pub recipient: Address,
-    /// Slippage tolerance in basis points, when known.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub slippage_bps: Option<u32>,
     /// Validity window, when present in calldata or wrapper context.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validity: Option<Validity>,
@@ -374,7 +371,6 @@ mod tests {
             amount_in: amount(AmountKind::Exact, "1000000000000000000"),
             amount_out: amount(AmountKind::Min, "1900000"),
             recipient: address("0x2222222222222222222222222222222222222222"),
-            slippage_bps: None,
             validity: None,
             fee_bps: None,
             enrichment: SwapEnrichment::default(),
@@ -392,7 +388,6 @@ mod tests {
             amount_in: amount(AmountKind::Max, "1100000000000000000"),
             amount_out: amount(AmountKind::Exact, "2000000"),
             recipient: address("0x2222222222222222222222222222222222222222"),
-            slippage_bps: Some(50),
             validity: Some(validity()),
             fee_bps: Some(5),
             enrichment: SwapEnrichment {
@@ -614,7 +609,6 @@ mod tests {
             amount_in: amount(AmountKind::Exact, "1000000000000000000"),
             amount_out: amount(AmountKind::Min, "1900000"),
             recipient: address("0x2222222222222222222222222222222222222222"),
-            slippage_bps: None,
             validity: None,
             fee_bps: None,
             enrichment: SwapEnrichment::default(),

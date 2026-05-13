@@ -51,7 +51,6 @@ impl Mapper for SwapExactTokensForTokensMapper {
             amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
             amount_out: amount_constraint(AmountKind::Min, amount_out_min)?,
             recipient,
-            slippage_bps: None,
             validity: Some(validity(deadline)?),
             fee_bps: Some(30),
             enrichment: SwapEnrichment::default(),
@@ -97,7 +96,6 @@ impl Mapper for SwapTokensForExactTokensMapper {
             amount_in: amount_constraint(AmountKind::Max, amount_in_max)?,
             amount_out: amount_constraint(AmountKind::Exact, amount_out)?,
             recipient,
-            slippage_bps: None,
             validity: Some(validity(deadline)?),
             fee_bps: Some(30),
             enrichment: SwapEnrichment::default(),
@@ -429,7 +427,6 @@ mod tests {
                 amount_in: amount(AmountKind::Exact, "200000000"),
                 amount_out: amount(AmountKind::Min, "0"),
                 recipient: address("0x1111111111111111111111111111111111111111"),
-                slippage_bps: None,
                 validity: Some(Validity {
                     expires_at: decimal("9999999999"),
                     source: ValiditySource::TxDeadline,
@@ -465,7 +462,6 @@ mod tests {
                 amount_in: amount(AmountKind::Max, "4000000000"),
                 amount_out: amount(AmountKind::Exact, "1000000000000000000"),
                 recipient: address("0x1111111111111111111111111111111111111111"),
-                slippage_bps: None,
                 validity: Some(Validity {
                     expires_at: decimal("9999999999"),
                     source: ValiditySource::TxDeadline,
