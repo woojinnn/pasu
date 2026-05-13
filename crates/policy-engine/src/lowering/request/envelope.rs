@@ -1,15 +1,9 @@
 //! `ActionEnvelope` to `PolicyRequest` conversion for swap actions.
 
-use crate::action::dex::SwapAction;
+use crate::action::dex::{SwapAction, SwapMode};
 use crate::action::{
-    Action, ActionEnvelope, Address, AmountKind, AssetKind, AssetRef, DecimalString,
-    UsdValuation as ActionUsdValuation,
-};
-use crate::context_keys::{
-    ADDRESS, ALLOWANCES_COVER_INPUTS, CHAIN_ID, DECIMALS, HAS_EXTERNAL_RECIPIENT,
-    HAS_ZERO_MIN_OUTPUT, INPUT_TOKENS, IS_NATIVE, MAX_FEE_BPS, OUTPUT_TOKENS, PROTOCOL_IDS, SYMBOL,
-    TARGET, TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS, TOTAL_INPUT_USD, TOTAL_MIN_OUTPUT_USD,
-    VALUE_WEI,
+    Action, ActionEnvelope, Address, AmountConstraint, AmountKind, AssetKind, AssetRef,
+    DecimalString, UsdValuation as ActionUsdValuation, Validity, ValiditySource,
 };
 use crate::core::UsdValuation;
 use crate::policy::PolicyRequest;
@@ -17,73 +11,88 @@ use serde_json::{json, Map, Value};
 
 use super::amount::usd_valuation_json;
 
-const DEFAULT_PROTOCOL_ID: &str = "swap";
-const NATIVE_ASSET_ADDRESS: &str = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const ACTION_ID: &str = "swap";
+const DEFAULT_PROTOCOL_ID: &str = "unknown";
 
-/// Build a DEX policy request from a normalized swap action envelope.
+const PROTOCOL_IDS: &str = "protocolIds";
+const SWAP_MODE: &str = "swapMode";
+const TOKEN_IN: &str = "tokenIn";
+const TOKEN_OUT: &str = "tokenOut";
+const AMOUNT_IN: &str = "amountIn";
+const AMOUNT_OUT: &str = "amountOut";
+const RECIPIENT: &str = "recipient";
+const VALIDITY: &str = "validity";
+const FEE_BPS: &str = "feeBps";
+const TOTAL_INPUT_USD: &str = "totalInputUsd";
+const TOTAL_MIN_OUTPUT_USD: &str = "totalMinOutputUsd";
+const TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS: &str = "totalInputFractionOfPortfolioBps";
+
+const CHAIN_ID: &str = "chainId";
+const ADDRESS: &str = "address";
+const SYMBOL: &str = "symbol";
+const DECIMALS: &str = "decimals";
+const IS_NATIVE: &str = "isNative";
+const KIND: &str = "kind";
+const VALUE: &str = "value";
+const EXPIRES_AT: &str = "expiresAt";
+const SOURCE: &str = "source";
+
+/// Build a swap policy request from a normalized swap action envelope.
 #[must_use]
 pub fn policy_request_from_envelope(
     envelope: &ActionEnvelope,
     from: &Address,
-    to: &Address,
-    value_wei: &DecimalString,
-    chain_id: u64,
+    _to: &Address,
+    _value_wei: &DecimalString,
+    _chain_id: u64,
     block_timestamp: u64,
 ) -> Option<PolicyRequest> {
     let Action::Swap(swap) = &envelope.action else {
         return None;
     };
 
+    let wallet_id = from.to_string();
     let principal = format!(r#"Wallet::"{from}""#);
-    let resource = r#"Protocol::"dex""#.to_string();
+    let resource = r#"Protocol::"swap""#.to_string();
     let entities = json!([
-        { "uid": { "type": "Wallet", "id": from.to_string() }, "attrs": {}, "parents": [] },
-        { "uid": { "type": "Protocol", "id": "dex" }, "attrs": {}, "parents": [] },
+        {
+            "uid": { "type": "Wallet", "id": wallet_id.as_str() },
+            "attrs": { "address": wallet_id.as_str() },
+            "parents": []
+        },
+        { "uid": { "type": "Protocol", "id": ACTION_ID }, "attrs": {}, "parents": [] },
     ]);
 
     Some(PolicyRequest::new(
         principal,
-        r#"Action::"dex""#,
+        r#"Action::"swap""#,
         resource,
         entities,
-        context(swap, from, to, value_wei, chain_id, block_timestamp),
+        context(swap, block_timestamp),
     ))
 }
 
-fn context(
-    swap: &SwapAction,
-    from: &Address,
-    to: &Address,
-    value_wei: &DecimalString,
-    chain_id: u64,
-    block_timestamp: u64,
-) -> Value {
+fn context(swap: &SwapAction, block_timestamp: u64) -> Value {
     let mut context = Map::new();
-    context.insert(TARGET.into(), Value::from(to.to_string()));
-    context.insert(VALUE_WEI.into(), Value::from(value_wei.to_string()));
     context.insert(PROTOCOL_IDS.into(), json!([DEFAULT_PROTOCOL_ID]));
+    context.insert(SWAP_MODE.into(), Value::from(swap_mode_str(&swap.mode)));
     context.insert(
-        INPUT_TOKENS.into(),
-        Value::Array(vec![asset_ref_json(&swap.token_in, chain_id)]),
+        TOKEN_IN.into(),
+        Value::Array(vec![asset_ref_json(&swap.token_in)]),
     );
     context.insert(
-        OUTPUT_TOKENS.into(),
-        Value::Array(vec![asset_ref_json(&swap.token_out, chain_id)]),
+        TOKEN_OUT.into(),
+        Value::Array(vec![asset_ref_json(&swap.token_out)]),
     );
-    context.insert(
-        HAS_ZERO_MIN_OUTPUT.into(),
-        Value::from(has_zero_min_output(swap)),
-    );
-    context.insert(
-        HAS_EXTERNAL_RECIPIENT.into(),
-        Value::from(&swap.recipient != from),
-    );
+    context.insert(AMOUNT_IN.into(), amount_constraint_json(&swap.amount_in));
+    context.insert(AMOUNT_OUT.into(), amount_constraint_json(&swap.amount_out));
+    context.insert(RECIPIENT.into(), Value::from(swap.recipient.to_string()));
 
-    if let Some(usd) = &swap.enrichment.value_in_usd {
-        context.insert(
-            TOTAL_INPUT_USD.into(),
-            action_usd_valuation_json(usd, block_timestamp),
-        );
+    if let Some(validity) = &swap.validity {
+        context.insert(VALIDITY.into(), validity_json(validity));
+    }
+    if let Some(fee_bps) = swap.fee_bps {
+        context.insert(FEE_BPS.into(), cedar_long_u64(u64::from(fee_bps)));
     }
     if let Some(usd) = &swap.enrichment.min_value_out_usd {
         context.insert(
@@ -91,8 +100,11 @@ fn context(
             action_usd_valuation_json(usd, block_timestamp),
         );
     }
-    if let Some(max_fee_bps) = swap.fee_bps {
-        context.insert(MAX_FEE_BPS.into(), Value::from(max_fee_bps));
+    if let Some(usd) = &swap.enrichment.value_in_usd {
+        context.insert(
+            TOTAL_INPUT_USD.into(),
+            action_usd_valuation_json(usd, block_timestamp),
+        );
     }
     if let Some(fraction_bps) = swap.enrichment.input_fraction_of_portfolio_bps {
         context.insert(
@@ -100,20 +112,23 @@ fn context(
             cedar_long_u64(u64::from(fraction_bps)),
         );
     }
-    if let Some(allowance_covers_input) = swap.enrichment.allowance_covers_input {
-        context.insert(
-            ALLOWANCES_COVER_INPUTS.into(),
-            Value::from(allowance_covers_input),
-        );
-    }
 
     Value::Object(context)
 }
 
-fn asset_ref_json(asset: &AssetRef, chain_id: u64) -> Value {
+fn asset_ref_json(asset: &AssetRef) -> Value {
     let mut out = Map::new();
-    out.insert(CHAIN_ID.into(), cedar_long_u64(chain_id));
-    out.insert(ADDRESS.into(), Value::from(asset_address(asset)));
+    out.insert(CHAIN_ID.into(), cedar_long_u64(asset.chain_id));
+    out.insert(
+        ADDRESS.into(),
+        Value::from(
+            asset
+                .address
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_default(),
+        ),
+    );
     out.insert(
         SYMBOL.into(),
         Value::from(asset.symbol.as_deref().unwrap_or_default()),
@@ -129,17 +144,54 @@ fn asset_ref_json(asset: &AssetRef, chain_id: u64) -> Value {
     Value::Object(out)
 }
 
-fn asset_address(asset: &AssetRef) -> String {
-    asset.address.as_ref().map_or_else(
-        || {
-            if matches!(asset.kind, AssetKind::Native) {
-                NATIVE_ASSET_ADDRESS.to_owned()
-            } else {
-                String::new()
-            }
-        },
-        ToString::to_string,
-    )
+fn amount_constraint_json(amount: &AmountConstraint) -> Value {
+    let mut out = Map::new();
+    out.insert(KIND.into(), Value::from(amount_kind_str(&amount.kind)));
+    if let Some(value) = &amount.value {
+        out.insert(VALUE.into(), Value::from(value.to_string()));
+    }
+    Value::Object(out)
+}
+
+const fn swap_mode_str(mode: &SwapMode) -> &'static str {
+    match mode {
+        SwapMode::ExactIn => "exact_in",
+        SwapMode::ExactOut => "exact_out",
+        SwapMode::Market => "market",
+        SwapMode::Unknown => "unknown",
+    }
+}
+
+const fn amount_kind_str(kind: &AmountKind) -> &'static str {
+    match kind {
+        AmountKind::Exact => "exact",
+        AmountKind::Min => "min",
+        AmountKind::Max => "max",
+        AmountKind::Unlimited => "unlimited",
+        AmountKind::Estimated => "estimated",
+        AmountKind::Unknown => "unknown",
+    }
+}
+
+fn validity_json(validity: &Validity) -> Value {
+    let mut out = Map::new();
+    out.insert(
+        EXPIRES_AT.into(),
+        Value::from(validity.expires_at.to_string()),
+    );
+    out.insert(
+        SOURCE.into(),
+        Value::from(validity_source_str(&validity.source)),
+    );
+    Value::Object(out)
+}
+
+const fn validity_source_str(source: &ValiditySource) -> &'static str {
+    match source {
+        ValiditySource::TxDeadline => "tx-deadline",
+        ValiditySource::SignatureDeadline => "signature-deadline",
+        ValiditySource::GrantExpiration => "grant-expiration",
+    }
 }
 
 fn action_usd_valuation_json(valuation: &ActionUsdValuation, block_timestamp: u64) -> Value {
@@ -149,15 +201,6 @@ fn action_usd_valuation_json(valuation: &ActionUsdValuation, block_timestamp: u6
         sources: valuation.sources.clone().unwrap_or_default(),
         stale_sec: valuation.stale_sec.unwrap_or_default(),
     })
-}
-
-fn has_zero_min_output(swap: &SwapAction) -> bool {
-    swap.amount_out.kind == AmountKind::Min
-        && swap
-            .amount_out
-            .value
-            .as_ref()
-            .is_some_and(|value| value.to_string() == "0")
 }
 
 fn cedar_long_u64(value: u64) -> Value {
@@ -177,12 +220,7 @@ mod tests {
     use crate::action::{
         Action, AmountConstraint, AmountKind, AssetKind, AssetRef, Category, UsdValuation,
     };
-    use crate::context_keys::{
-        ADDRESS, ALLOWANCES_COVER_INPUTS, HAS_EXTERNAL_RECIPIENT, HAS_ZERO_MIN_OUTPUT,
-        INPUT_TOKENS, MAX_FEE_BPS, OUTPUT_TOKENS, PROTOCOL_IDS,
-        TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS, TOTAL_INPUT_USD, TOTAL_MIN_OUTPUT_USD,
-    };
-    use serde_json::Value;
+    use serde_json::{json, Value};
     use std::str::FromStr as _;
 
     fn address(value: &str) -> Address {
@@ -219,12 +257,12 @@ mod tests {
         }
     }
 
-    fn swap(recipient: Address) -> SwapAction {
+    fn swap(recipient: Address, amount_in: AmountConstraint) -> SwapAction {
         SwapAction {
             mode: SwapMode::ExactIn,
             token_in: erc20("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "WETH", 18),
             token_out: erc20("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6),
-            amount_in: amount(AmountKind::Exact, "1000000000000000000"),
+            amount_in,
             amount_out: amount(AmountKind::Min, "0"),
             recipient,
             validity: None,
@@ -239,10 +277,10 @@ mod tests {
         }
     }
 
-    fn swap_envelope(recipient: Address) -> ActionEnvelope {
+    fn swap_envelope(action: SwapAction) -> ActionEnvelope {
         ActionEnvelope {
             category: Category::Dex,
-            action: Action::Swap(swap(recipient)),
+            action: Action::Swap(action),
         }
     }
 
@@ -261,68 +299,81 @@ mod tests {
     #[test]
     fn swap_action_lowers_to_policy_request() {
         let from = address("0x1111111111111111111111111111111111111111");
-        let request = policy_request(&swap_envelope(from.clone()), &from);
+        let request = policy_request(
+            &swap_envelope(swap(
+                from.clone(),
+                amount(AmountKind::Exact, "1000000000000000000"),
+            )),
+            &from,
+        );
 
         assert_eq!(
             request.principal,
             r#"Wallet::"0x1111111111111111111111111111111111111111""#
         );
-        assert_eq!(request.action, r#"Action::"dex""#);
-        assert_eq!(request.resource, r#"Protocol::"dex""#);
+        assert!(request.action.contains("swap"));
+        assert_eq!(request.resource, r#"Protocol::"swap""#);
+        assert_eq!(
+            request.entities,
+            json!([
+                {
+                    "uid": { "type": "Wallet", "id": "0x1111111111111111111111111111111111111111" },
+                    "attrs": { "address": "0x1111111111111111111111111111111111111111" },
+                    "parents": []
+                },
+                { "uid": { "type": "Protocol", "id": "swap" }, "attrs": {}, "parents": [] },
+            ])
+        );
         assert_eq!(
             request
                 .context
-                .get(PROTOCOL_IDS)
+                .get("protocolIds")
                 .and_then(Value::as_array)
                 .and_then(|ids| ids.first())
                 .and_then(Value::as_str),
-            Some("swap")
-        );
-        assert!(
-            request.context.get(TOTAL_INPUT_USD).is_some(),
-            "total input USD valuation should be present"
-        );
-        assert!(
-            request.context.get(TOTAL_MIN_OUTPUT_USD).is_some(),
-            "minimum output USD valuation should be present"
+            Some("unknown")
         );
         assert_eq!(
-            request.context.get(MAX_FEE_BPS).and_then(Value::as_u64),
+            request.context.get("swapMode").and_then(Value::as_str),
+            Some("exact_in")
+        );
+        assert_eq!(
+            request
+                .context
+                .get("tokenIn")
+                .and_then(Value::as_array)
+                .and_then(|tokens| tokens.first())
+                .and_then(|token| token.get("address"))
+                .and_then(Value::as_str),
+            Some("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+        );
+        assert_eq!(
+            request
+                .context
+                .get("tokenOut")
+                .and_then(Value::as_array)
+                .and_then(|tokens| tokens.first())
+                .and_then(|token| token.get("address"))
+                .and_then(Value::as_str),
+            Some("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+        );
+        assert!(request.context.get("totalInputUsd").is_some());
+        assert!(request.context.get("totalMinOutputUsd").is_some());
+        assert_eq!(
+            request.context.get("feeBps").and_then(Value::as_i64),
             Some(30)
         );
         assert_eq!(
             request
                 .context
-                .get(HAS_ZERO_MIN_OUTPUT)
-                .and_then(Value::as_bool),
-            Some(true)
-        );
-        assert_eq!(
-            request
-                .context
-                .get(ALLOWANCES_COVER_INPUTS)
-                .and_then(Value::as_bool),
-            Some(true)
-        );
-        assert_eq!(
-            request
-                .context
-                .get(TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS)
+                .get("totalInputFractionOfPortfolioBps")
                 .and_then(Value::as_i64),
             Some(125)
-        );
-        assert_eq!(
-            token_address(&request.context, INPUT_TOKENS),
-            Some("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
-        );
-        assert_eq!(
-            token_address(&request.context, OUTPUT_TOKENS),
-            Some("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
         );
     }
 
     #[test]
-    fn non_swap_action_returns_none() {
+    fn non_swap_returns_none() {
         let envelope = ActionEnvelope {
             category: Category::Misc,
             action: Action::Approve(ApproveAction {
@@ -348,26 +399,46 @@ mod tests {
     }
 
     #[test]
-    fn external_recipient_flag_set() {
+    fn external_recipient_does_not_collapse_recipient_field() {
         let from = address("0x1111111111111111111111111111111111111111");
         let recipient = address("0x3333333333333333333333333333333333333333");
-        let request = policy_request(&swap_envelope(recipient), &from);
+        let request = policy_request(
+            &swap_envelope(swap(
+                recipient.clone(),
+                amount(AmountKind::Exact, "1000000000000000000"),
+            )),
+            &from,
+        );
 
         assert_eq!(
-            request
-                .context
-                .get(HAS_EXTERNAL_RECIPIENT)
-                .and_then(Value::as_bool),
-            Some(true)
+            request.context.get("recipient").and_then(Value::as_str),
+            Some(recipient.to_string().as_str())
         );
     }
 
-    fn token_address<'a>(context: &'a Value, field: &str) -> Option<&'a str> {
-        context
-            .get(field)
-            .and_then(Value::as_array)
-            .and_then(|tokens| tokens.first())
-            .and_then(|token| token.get(ADDRESS))
-            .and_then(Value::as_str)
+    #[test]
+    fn unlimited_amount_serializes_without_value_key() {
+        let from = address("0x1111111111111111111111111111111111111111");
+        let request = policy_request(
+            &swap_envelope(swap(
+                from.clone(),
+                AmountConstraint {
+                    kind: AmountKind::Unlimited,
+                    value: None,
+                },
+            )),
+            &from,
+        );
+        let amount_in = request
+            .context
+            .get("amountIn")
+            .and_then(Value::as_object)
+            .expect("amountIn is an object");
+
+        assert_eq!(
+            amount_in.get("kind").and_then(Value::as_str),
+            Some("unlimited")
+        );
+        assert!(!amount_in.contains_key("value"));
     }
 }
