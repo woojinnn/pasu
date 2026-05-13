@@ -37,13 +37,6 @@
       "description": "swap 결과를 받을 주소. root.from 과 다르면 swap-and-send 패턴으로 phishing 1차 신호 — 정책 'recipient == root.from' 강력 권장."
     },
 
-    "slippageBps": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 100000,
-      "description": "사용자 의도 슬리피지 (basis point, 1% = 100). amountOut.min 또는 amountIn.max 와 host 의 quote 정보를 결합하여 derive. mode=market (슬리피지 한도 없음) 인 경우 본 필드 생략. 정책 'max 3% (300 bps)' 로 sandwich attack 방지."
-    },
-
     "validity": {
       "$ref": "../../common/_common.json#/$defs/Validity",
       "description": "swap 의 유효기간 — source='tx-deadline'. V2/V3 swap 함수의 deadline 인자, UR executeWithDeadline 의 outer deadline 등이 본 필드. V4 PoolManager.swap 과 V4Router 의 SWAP_* opcode 는 deadline 부재 — 그 경우 생략."

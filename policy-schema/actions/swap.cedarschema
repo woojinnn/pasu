@@ -3,17 +3,16 @@ type SwapContext = {
 
   swapMode: String,
 
-  inputTokens: Set<Token>,
-  outputTokens: Set<Token>,
+  tokenIn: Set<Token>,
+  tokenOut: Set<Token>,
 
   amountIn: AmountConstraint,
   amountOut: AmountConstraint,
 
   recipient: String,
 
-  slippageBps?: Long,
   validity?: Validity,
-  maxFeeBps?: Long,
+  feeBps?: Long,
 
   totalInputUsd?: UsdValuation,
   totalMinOutputUsd?: UsdValuation,
