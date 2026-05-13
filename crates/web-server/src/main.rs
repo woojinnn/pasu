@@ -123,7 +123,7 @@ async fn decode_sign(Json(req): Json<SignDecodeRequest>) -> Response {
     }
 }
 
-const SOURCIFY_BUNDLE: &[u8] = include_bytes!("../../abi-resolver/data/sourcify.json");
+const SOURCIFY_BUNDLE: &[u8] = include_bytes!("../../adapters/abi-resolver/data/sourcify.json");
 
 /// Address-agnostic selector → signature seed list used as the third resolver
 /// tier. Each entry is reached only when neither tier 1 (curated
