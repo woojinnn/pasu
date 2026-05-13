@@ -1,0 +1,15 @@
+{
+  "label": "Unknown selector transaction for unsupported decoder path",
+  "rpc": {
+    "method": "eth_sendTransaction",
+    "params": [
+      {
+        "from": "0x0000000000000000000000000000000000000001",
+        "to": "0x000000000000000000000000000000000000dEaD",
+        "value": "0x0",
+        "data": "0xdeadbeef0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  },
+  "chain_id": 1
+}

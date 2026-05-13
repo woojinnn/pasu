@@ -1,0 +1,15 @@
+{
+  "label": "Plain ERC-20 approve spender for unlimited USDT amount",
+  "rpc": {
+    "method": "eth_sendTransaction",
+    "params": [
+      {
+        "from": "0x0000000000000000000000000000000000000001",
+        "to": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "value": "0x0",
+        "data": "0x095ea7b30000000000000000000000001111111111111111111111111111111111111111ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    ]
+  },
+  "chain_id": 1
+}
