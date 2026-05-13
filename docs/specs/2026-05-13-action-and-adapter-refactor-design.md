@@ -6,14 +6,15 @@
 
 > **Crate 재배치 결정 (2026-05-13 사용자 지시)**: Adapter 관련 로직은 모두 `crates/adapters/`를 **컨테이너 디렉토리**로 두고 그 아래 sub-crate로 둔다.
 >
-> - 기존 `crates/abi-resolver/` → `crates/adapters/abi-resolver/` 로 이동
-> - 기존 `crates/mappers/` → `crates/adapters/mappers/` 로 이동
-> - 기존 `crates/sign-resolver/` → `crates/adapters/sign-resolver/` 로 이동
+> - 기존 `crates/abi-resolver/` → `crates/adapters/abi-resolver/` 로 이동 (Decoder — 내부 building block)
+> - 기존 `crates/mappers/` → `crates/adapters/mappers/` 로 이동 (Mapper — 내부 building block)
+> - 기존 `crates/sign-resolver/` → `crates/adapters/sign-resolver/` 로 이동 (SignAdapter — composite, `build()`)
 > - 기존 `crates/request-router/` → `crates/adapters/request-router/` 로 이동 (adapter 스택의 top-level orchestrator)
+> - **신규 `crates/adapters/call-adapter/`** 추가 (CallAdapter — composite, `build()`, 내부에서 Decoder → Mapper 호출). SignAdapter 와 대칭.
 > - 기존 `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/` 5개 sub-crate는 **삭제** (로직만 위 sub-crate들로 흡수)
 > - 기존 `crates/adapters-bundle/`도 **삭제**
 >
-> Cargo workspace `members` 경로는 `crates/adapters/{abi-resolver,mappers,sign-resolver,request-router}` 4개로 갱신. crate **이름**(`Cargo.toml`의 `package.name`)은 기존과 동일 유지 (`abi-resolver`, `mappers`, `sign-resolver`, `request-router`) — 외부 의존성 import 경로(`use abi_resolver::...`, `use request_router::...`)를 건드리지 않기 위함.
+> Cargo workspace `members` 경로는 `crates/adapters/{abi-resolver,mappers,call-adapter,sign-resolver,request-router}` 5개로 갱신. crate **이름**(`Cargo.toml`의 `package.name`)은 기존과 동일 유지 (`abi-resolver`, `mappers`, `sign-resolver`, `request-router`) + 신규 `call-adapter` — 외부 의존성 import 경로(`use abi_resolver::...`, `use call_adapter::...`)를 건드리지 않기 위함.
 
 ---
 
@@ -297,6 +298,54 @@ pub struct MapContext<'a> {
 
 Registry: `MapperRegistry`. Decoder가 nested call 트리를 만들면 Mapper도 트리를 따라 재귀 매핑 가능.
 
+#### 2.2.2.5 CallAdapter trait — `crates/adapters/call-adapter/src/call_adapter.rs` ⭐ NEW
+
+`Decoder` 와 `Mapper` 를 조립한 composite. request-router 가 transaction 류 RPC 를 받으면 `CallAdapter.build()` 한 번 호출로 ActionEnvelope 까지 도달. SignAdapter 와 대칭.
+
+```rust
+/// Transaction-류 RPC 요청 → ActionEnvelope[]
+/// 내부적으로 Decoder.decode() → Mapper.map() 을 호출.
+pub trait CallAdapter: Send + Sync {
+    fn id(&self) -> CallAdapterId;
+    fn match_keys(&self) -> Vec<CallMatchKey>;    // (chain_id, to, selector)
+    fn build(&self, ctx: &CallContext, tx: &TransactionRequest)
+        -> Result<Vec<ActionEnvelope>, AdapterError>;
+}
+
+pub struct CallContext<'a> {
+    pub chain_id: u64,
+    pub from: &'a Address,
+    pub block_timestamp: Option<u64>,
+    pub token_registry: &'a dyn TokenRegistry,
+    pub decoder_registry: &'a dyn DecoderRegistry,   // 내부 호출용
+    pub mapper_registry: &'a dyn MapperRegistry,     // 내부 호출용
+}
+```
+
+기본 구현: `DefaultCallAdapter` — match_key 로 `DecoderRegistry` 에서 Decoder 찾아 호출, 결과 `DecodedCall` 을 `MapperRegistry` 에서 찾은 Mapper 로 매핑. 99% 의 protocol 은 이 기본 구현으로 커버. 특수 케이스 (예: Universal Router 처럼 nested call 트리를 한 번에 처리해야 하는 protocol) 는 protocol-specific `CallAdapter` 구현체로 처리.
+
+```rust
+pub struct DefaultCallAdapter {
+    id: CallAdapterId,
+    match_keys: Vec<CallMatchKey>,
+}
+
+impl CallAdapter for DefaultCallAdapter {
+    fn build(&self, ctx: &CallContext, tx: &TransactionRequest)
+        -> Result<Vec<ActionEnvelope>, AdapterError>
+    {
+        let decoded = ctx.decoder_registry
+            .resolve(&CallMatchKey::from(tx))
+            .ok_or(AdapterError::NoDecoder)?
+            .decode(/* ... */)?;
+        let mapper = ctx.mapper_registry
+            .resolve(&MapperMatchKey::from(&decoded))
+            .ok_or(AdapterError::NoMapper)?;
+        mapper.map(&ctx.into(), &decoded)
+    }
+}
+```
+
 #### 2.2.3 SignAdapter trait — `crates/adapters/sign-resolver/src/sign_adapter.rs`
 
 ```rust
@@ -311,24 +360,30 @@ pub trait SignAdapter: Send + Sync {
 
 `SignRequest`는 기존 `sign-resolver::SignRequest` 그대로 (이미 잘 구조화됨). 서명용 Adapter는 EIP-2612 → `Action::Permit`, Permit2 PermitSingle/PermitBatch → `Action::Permit` 또는 `Action::Approve`로 매핑.
 
-#### 2.2.4 trait 공통 표면 — `crates/policy-engine/src/adapter.rs`
+#### 2.2.4 trait 공통 표면 — request-router 가 두 composite 만 알면 됨
 
-기존 `TransactionActionAdapter` / `SignatureActionAdapter` trait은 **삭제**. 대신 Pipeline 레벨에서 Decoder/Mapper/SignAdapter를 직접 호출. policy-engine은 trait들을 모르고, request-router가 조립.
+기존 `TransactionActionAdapter` / `SignatureActionAdapter` trait은 **삭제**. 대신 request-router 는 `CallAdapter` 와 `SignAdapter` **두 composite trait 만** 알면 됨. `Decoder` / `Mapper` 는 `call-adapter` 내부 구현 디테일.
 
 ```
-request-router::route(request):
-  match request {
-    Transaction(tx) =>
-      let decoded = decoder_registry.resolve(tx)?
-      let actions = mapper_registry.map(decoded)?
+request-router::route(rpc_request):
+  match rpc_request.method_class() {
+    Call(tx) =>
+      let adapter = call_adapter_registry.resolve(&CallMatchKey::from(tx))?;
+      let actions = adapter.build(&call_ctx, &tx)?;
       actions
     Sign(sig) =>
-      let actions = sign_adapter_registry.map(sig)?
+      let adapter = sign_adapter_registry.resolve(&SignMatchKey::from(sig))?;
+      let actions = adapter.build(&sign_ctx, &sig)?;
       actions
   }
 ```
 
-이 분리로 policy-engine은 순수하게 "Action → Verdict"만 담당하게 됨.
+대칭성:
+- 양쪽 모두 `Registry → resolve → Adapter.build()` 한 동선
+- 양쪽 모두 `Vec<ActionEnvelope>` 반환
+- `Decoder` / `Mapper` 는 `call-adapter` 안쪽으로 캡슐화 → request-router 와 policy-engine 은 모름
+
+이 분리로 policy-engine 은 순수하게 "Action → Verdict" 만, request-router 는 "RPC → Adapter dispatch" 만 담당.
 
 ### 2.3 Adapter crate 재배치 + 옛 sub-crate 삭제
 
@@ -337,9 +392,9 @@ request-router::route(request):
 ```
 crates/
 ├── adapters/
-│   ├── abi-resolver/          # 기존 crates/abi-resolver/ 이동 + Decoder trait 신설
+│   ├── abi-resolver/          # 내부 building block: Decoder trait
 │   │   └── src/
-│   │       ├── decoder.rs              # Decoder trait + DecoderRegistry
+│   │       ├── decoder.rs              # Decoder trait + DecoderRegistry trait
 │   │       ├── decoders/               # protocol-별 Decoder 구현
 │   │       │   ├── uniswap_v2.rs
 │   │       │   ├── uniswap_v3.rs
@@ -348,9 +403,9 @@ crates/
 │   │       ├── resolver.rs             # 기존 Sourcify/OpenChain 폴백 (그대로)
 │   │       ├── subdecode/              # 기존 nested calldata 파서 (그대로)
 │   │       └── lib.rs
-│   ├── mappers/               # 기존 crates/mappers/ 이동 + Mapper trait 신설
+│   ├── mappers/               # 내부 building block: Mapper trait
 │   │   └── src/
-│   │       ├── mapper.rs               # Mapper trait + MapperRegistry
+│   │       ├── mapper.rs               # Mapper trait + MapperRegistry trait
 │   │       ├── protocols/              # protocol-별 Mapper 구현
 │   │       │   ├── uniswap_v2/
 │   │       │   ├── uniswap_v3/
@@ -358,21 +413,28 @@ crates/
 │   │       │   └── universal_router/
 │   │       ├── context.rs
 │   │       └── lib.rs
-│   ├── sign-resolver/         # 기존 crates/sign-resolver/ 이동 + SignAdapter trait 신설
+│   ├── call-adapter/          # ⭐ NEW: composite — Decoder + Mapper 를 조립한 build()
 │   │   └── src/
-│   │       ├── sign_adapter.rs         # SignAdapter trait + SignAdapterRegistry
+│   │       ├── call_adapter.rs         # CallAdapter trait + CallAdapterRegistry trait
+│   │       ├── default.rs              # DefaultCallAdapter: Decoder→Mapper 자동 연결
+│   │       ├── in_memory.rs            # InMemoryCallAdapterRegistry (기본 구현체)
+│   │       └── lib.rs
+│   ├── sign-resolver/         # composite — SignAdapter trait with build()
+│   │   └── src/
+│   │       ├── sign_adapter.rs         # SignAdapter trait + SignAdapterRegistry trait
 │   │       ├── adapters/               # signature-별 SignAdapter 구현
 │   │       │   ├── eip2612.rs          # 옛 crates/adapters/eip2612 의 로직
 │   │       │   └── permit2.rs          # 옛 crates/adapters/permit2 의 로직
+│   │       ├── in_memory.rs            # InMemorySignAdapterRegistry
 │   │       ├── method.rs               # 기존 SignMethod (그대로)
 │   │       ├── payload.rs              # 기존 SignPayload (그대로)
 │   │       └── lib.rs
-│   └── request-router/        # 기존 crates/request-router/ 이동. Adapter 스택 top-level orchestrator
+│   └── request-router/        # Top-level: RPC method → CallAdapter or SignAdapter (대칭 dispatch)
 │       └── src/
 │           ├── lib.rs                  # route_request(method, params, chain_id) -> RootRequest
-│           ├── transaction.rs          # eth_sendTransaction / eth_call 류
-│           ├── signature.rs            # eth_signTypedData_v4 / personal_sign / eth_sign
-│           ├── user_operation.rs       # eth_sendUserOperation (ERC-4337)
+│           ├── transaction.rs          # eth_sendTransaction / eth_call 류 → CallAdapter
+│           ├── signature.rs            # eth_signTypedData_v4 / personal_sign 류 → SignAdapter
+│           ├── user_operation.rs       # eth_sendUserOperation (ERC-4337) → CallAdapter (inner call)
 │           └── error.rs
 ├── policy-engine/
 ├── policy_engine_wasm/
@@ -466,7 +528,62 @@ crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`
 
 `request_router::route_request(method, params, chain_id) -> RootRequest` 단일 함수로 통일. WASM과 web-server 모두 이 함수를 호출. 호출자만 다르고 변환 로직은 0% 중복. policy-engine 은 ActionEnvelope 만 받음 — RPC parsing 책임 없음.
 
-### 2.6 CI 통합
+### 2.6 Remote Adapter Registry — 미래 확장 호환성 가드 ⭐ NEW
+
+본 PR 에서는 **구현하지 않지만**, 구조가 미래에 remote-fetch registry 를 깨끗하게 도입할 수 있도록 4가지 가드를 둠.
+
+**문제 (미래)**: 모든 protocol 의 Decoder/Mapper/CallAdapter/SignAdapter 를 extension/web-server 빌드에 정적으로 포함시키는 것은 비현실적 — 수천 개 protocol × 수만 개 contract address. 이상적 형태는: 평가 시점에 `(chain_id, to, selector)` 로 remote registry 에 query → 해당 adapter 구현을 fetch → 실행.
+
+**본 PR 의 가드 (구현 0, 인터페이스만 정합):**
+
+1. **Registry 는 trait 으로 정의** — concrete struct 가 아님. 본 PR 의 구현은 `InMemory*Registry` 단 하나. 향후 `RemoteCallAdapterRegistry`, `CompositeCallAdapterRegistry { primary: InMemory, fallback: Remote }` 등을 추가해도 request-router 변경 0.
+
+```rust
+pub trait CallAdapterRegistry: Send + Sync {
+    fn resolve(&self, key: &CallMatchKey) -> Option<Arc<dyn CallAdapter>>;
+}
+pub trait SignAdapterRegistry: Send + Sync {
+    fn resolve(&self, key: &SignMatchKey) -> Option<Arc<dyn SignAdapter>>;
+}
+pub trait DecoderRegistry: Send + Sync {
+    fn resolve(&self, key: &CallMatchKey) -> Option<Arc<dyn Decoder>>;
+}
+pub trait MapperRegistry: Send + Sync {
+    fn resolve(&self, key: &MapperMatchKey) -> Option<Arc<dyn Mapper>>;
+}
+```
+
+2. **MatchKey 는 Serializable** — 향후 remote 에 query 보낼 때 wire 로 그대로 직렬화. `Serialize + Deserialize` derive 필수.
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CallMatchKey {
+    pub chain_id: u64,
+    pub to: Address,
+    pub selector: Selector,
+}
+```
+
+3. **Registry trait 은 일단 sync** — sync 가 빌드 단순. 향후 비동기 fetch 가 필요해지면 평행 trait 추가:
+
+```rust
+// 미래 (별도 PR):
+#[async_trait]
+pub trait AsyncCallAdapterRegistry: Send + Sync {
+    async fn resolve(&self, key: &CallMatchKey)
+        -> Result<Option<Arc<dyn CallAdapter>>, RegistryError>;
+}
+```
+
+또는 sync trait 을 async wrapper 로 감싸기 — 본 PR 에서 결정 안 함.
+
+4. **Trait method 시그니처는 monomorphic** — `CallAdapter` / `SignAdapter` / `Decoder` / `Mapper` 어느 trait method 도 generic parameter 두지 않음. 모두 trait object (`Arc<dyn ...>`) 로 만들 수 있어야 함. 이유: 향후 `DeclarativeCallAdapter` (ABI JSON + 매핑 rule DSL 으로 동작하는 데이터-driven 구현체) 가 추가될 때, trait 이 generic 이면 declarative 구현체 작성이 어려움.
+
+**가드 결과**: 본 PR 만 보면 in-memory registry 하나뿐이라 trait 도입이 over-engineering 처럼 보일 수 있지만, 4 가지 가드로 향후 별도 PR 에서 (a) remote fetch, (b) declarative adapter, (c) composite registry, (d) async resolve 어느 것을 추가해도 본 구조와 호환됨.
+
+**별도 PR 로 분리**: remote-fetch 자체의 설계 (HTTP/gRPC 프로토콜, 인증, fetched bundle 의 신뢰성 검증, 캐싱/오프라인 fallback, declarative DSL 의 표현 범위) 는 본 spec 범위 외. 추후 별도 spec 으로 다룸.
+
+### 2.7 CI 통합
 
 `.github/workflows/ci.yml`에 다음 추가:
 1. `cargo test -p web-server` — web-server 단위/통합 테스트 실행
@@ -480,6 +597,17 @@ crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`
 ## 3. 마이그레이션 단계 (Codex 위임 단위)
 
 각 단계는 별도 PR + 별도 Codex 위임 task. 단계 사이에 사용자 검수.
+
+### 3.0 단계 끝마다 mandatory 코드 리뷰
+
+각 Phase 종료 시 (`git commit` 직전) 다음 review gate 수행:
+
+1. **자동 review**: `comprehensive-review:code-reviewer` (또는 `code-review:code-review`) 에이전트 호출 — diff 전체에 대해 architecture/security/clarity 리뷰
+2. **회귀 검증**: `cargo test --workspace` + `cargo clippy --workspace -- -D warnings` 통과
+3. **golden vector diff**: Phase 0 에서 캡쳐한 baseline JSON 과 비교 — 의도하지 않은 wire format 변화 0 (호환성 명시한 Phase 7/8 에서만 변화 허용)
+4. **사용자 승인**: 위 3가지 결과를 사용자에게 제시 → 명시적 승인 후 다음 Phase 시작
+
+세부 task-level review gate (각 task 끝의 step) 는 implementation plan 에서 명시.
 
 ### Phase 0 — Baseline 스냅샷 (사용자 직접)
 - 현재 web-server 응답을 sample calldata 10종에 대해 capture → `tests/golden/legacy/` (PR 직전 dump)
@@ -524,19 +652,26 @@ crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`
 - 기존 `mappers/protocols/{uniswap_v2,uniswap_v3,uniswap_v4,universal_router}` 모듈을 Mapper trait 구현으로 변환
 - 각 Mapper의 출력 ActionEnvelope이 schema JSON과 round-trip 가능한지 테스트
 
+### Phase 3.5 — CallAdapter composite + call-adapter 신규 crate (Codex) ⭐ NEW
+- 신규 crate: `crates/adapters/call-adapter/`
+- `CallAdapter` trait + `CallAdapterRegistry` trait + `InMemoryCallAdapterRegistry` 구현체
+- `DefaultCallAdapter`: 기본 Decoder→Mapper 자동 조립 구현체
+- protocol-specific CallAdapter 가 필요한 경우 (예: Universal Router 의 nested call 트리 일괄 처리) 를 위한 escape hatch — `CallAdapter` 를 직접 구현
+- `Decoder` / `Mapper` 는 더 이상 외부에 직접 노출하지 않고 `CallAdapter` 내부 디테일로 캡슐화
+- 단위 테스트: 6 기본 action (swap/wrap/unwrap/approve/add_liquidity/remove_liquidity) round-trip
+
 ### Phase 4 — SignAdapter trait + sign-resolver 재정비 (Codex)
 - 위치: `crates/adapters/sign-resolver/src/sign_adapter.rs`, `crates/adapters/sign-resolver/src/adapters/`
-- `SignAdapter` trait
-- `SignAdapterRegistry`
+- `SignAdapter` trait + `SignAdapterRegistry` trait + `InMemorySignAdapterRegistry` 구현체
 - 옛 `crates/adapters/eip2612` 로직 → `crates/adapters/sign-resolver/src/adapters/eip2612.rs`로 이전 (SignAdapter trait 구현, 출력 `Action::Permit`)
 - 옛 `crates/adapters/permit2` 로직 → `crates/adapters/sign-resolver/src/adapters/permit2.rs`로 동일 이전
 
-### Phase 5 — 옛 adapter sub-crate 삭제 (Codex)
+### Phase 5 — 옛 adapter sub-crate 삭제 + request-router 대칭 dispatch (Codex)
 - `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/` 5개 sub-crate 디렉토리 삭제
 - `crates/adapters-bundle/` 삭제 (workspace member 에서도 제거)
-- 루트 `Cargo.toml` workspace `members` 정리 (이미 옮긴 abi-resolver/mappers/sign-resolver 3개만 adapters/ 하위에 남도록)
+- 루트 `Cargo.toml` workspace `members` 정리 (`crates/adapters/{abi-resolver,mappers,call-adapter,sign-resolver,request-router}` 5개만 남도록)
 - `policy-engine::adapter` module에서 `TransactionActionAdapter` / `SignatureActionAdapter` trait 삭제
-- request-router가 새 registry 3종 (`DecoderRegistry`, `MapperRegistry`, `SignAdapterRegistry`)을 직접 사용하도록 변경
+- request-router 가 **`CallAdapter` + `SignAdapter` 두 composite 만** 직접 사용하도록 변경 (Decoder / Mapper 는 호출 X — 캡슐화 검증)
 
 ### Phase 6 — Pipeline & PolicyRequest Swap-only (Codex)
 - `policy.rs`의 `request_from_action`을 `Action::Swap`만 처리하도록 단순화
@@ -592,7 +727,11 @@ crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`
 - [ ] `cargo deny check` 통과
 - [ ] extension `npm run typecheck && npm run build && npm test` 통과
 - [ ] web-server `tests/http_integration.rs` Phase 0 baseline과 swap calldata 10종에 대해 JSON-equivalent 응답 (token symbol/decimals 같은 host:registry 필드 제외)
-- [ ] `crates/adapters/`는 `abi-resolver/`, `mappers/`, `sign-resolver/`, `request-router/` 4개 sub-crate만 포함 (그 외 sub-crate 없음). `crates/adapters-bundle/` 디렉토리 존재 X. `crates/abi-resolver/`, `crates/mappers/`, `crates/sign-resolver/`, `crates/request-router/` 모두 존재 X (전부 adapters/ 하위로 이동됨)
+- [ ] `crates/adapters/`는 `abi-resolver/`, `mappers/`, `call-adapter/`, `sign-resolver/`, `request-router/` 5개 sub-crate만 포함 (그 외 sub-crate 없음). `crates/adapters-bundle/` 디렉토리 존재 X. `crates/abi-resolver/`, `crates/mappers/`, `crates/sign-resolver/`, `crates/request-router/` 모두 존재 X (전부 adapters/ 하위로 이동됨)
+- [ ] `Decoder`, `Mapper`, `CallAdapter`, `SignAdapter`, 4개 Registry 모두 trait 으로 정의되어 있고, 본 PR 의 in-memory 구현체 외에 추가 구현체 도입에 trait method 시그니처 변경 없이 가능 (compile 만으로 검증)
+- [ ] `CallMatchKey`, `SignMatchKey`, `MapperMatchKey` 모두 `Serialize + Deserialize` derive
+- [ ] request-router 가 `Decoder` / `Mapper` 를 직접 호출하는 코드 0 (`grep "decoder_registry" crates/adapters/request-router/` 결과 비어 있음). CallAdapter / SignAdapter 만 호출
+- [ ] 각 Phase 종료 시 `comprehensive-review:code-reviewer` 에이전트 리뷰 통과 기록이 PR description 또는 commit message 에 첨부됨
 - [ ] `policies/signature/` 디렉토리 존재 X
 - [ ] `Action` 정의가 `crates/policy-engine/src/action/` 한 곳에만 존재 (grep으로 검증)
 - [ ] Cedar swap policy 10종 (`policies/dex/*.cedar`) 모두 통과/실패 케이스 단위 테스트 그대로 통과
