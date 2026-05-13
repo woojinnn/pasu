@@ -13,4 +13,4 @@ serde_json.workspace = true
 [dev-dependencies]
 alloy-primitives.workspace = true
 mappers.workspace = true
-request-router = { path = "../adapters/request-router" }
+request-router.workspace = true

@@ -13,7 +13,9 @@ pub use crate::action::{
     AssetRef, Category, DecimalString, Hex, UsdValuation as ActionUsdValuation, Validity,
     ValiditySource,
 };
-pub use crate::core::{Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation};
+pub use crate::core::{
+    Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation,
+};
 pub use crate::host::{Approvals, ApprovalsError, MockApprovals};
 pub use crate::host::{Clock, HostCapabilities, MockClock, Oracle, SystemClock};
 pub use crate::host::{

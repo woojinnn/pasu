@@ -52,12 +52,12 @@ pub use action::{
     ValiditySource,
 };
 pub use core::{Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation};
+pub use enrichment::enrich_swap_envelope;
 pub use host::{
     Approvals, ApprovalsError, Clock, HostCapabilities, MockApprovals, MockClock, MockOracle,
     MockPortfolio, MockStatWindows, Oracle, OracleError, Portfolio, PortfolioError, ReservationId,
     StatDelta, StatKey, StatValue, StatWindows, SystemClock,
 };
-pub use enrichment::enrich_swap_envelope;
 pub use lowering::policy_request_from_envelope;
 pub use policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest,

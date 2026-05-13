@@ -9,7 +9,7 @@ description = "HTTP API exposing abi-resolver decode functionality to a React fr
 abi-resolver = { workspace = true, features = ["sqlite"] }
 sign-resolver.workspace = true
 mappers.workspace = true
-request-router = { path = "../adapters/request-router" }
+request-router.workspace = true
 policy-engine.workspace = true
 alloy-primitives.workspace = true
 alloy-dyn-abi.workspace = true

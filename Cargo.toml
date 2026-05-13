@@ -35,6 +35,7 @@ abi-resolver = { path = "crates/adapters/abi-resolver", version = "0.1.0" }
 call-adapter = { path = "crates/adapters/call-adapter", version = "0.1.0" }
 sign-resolver = { path = "crates/adapters/sign-resolver", version = "0.1.0" }
 mappers = { path = "crates/adapters/mappers", version = "0.1.0" }
+request-router = { path = "crates/adapters/request-router", version = "0.1.0" }
 
 # WASM bridge deps
 wasm-bindgen = "0.2"
