@@ -10,16 +10,20 @@ use policy_engine::action::common::{
     Address, AmountConstraint, AmountKind, AssetKind, AssetRef, DecimalString,
 };
 use policy_engine::action::envelope::{Action, ActionEnvelope, Category};
-use policy_engine::action::misc::{ApprovalKind, ApproveAction, TransferAction};
+use policy_engine::action::misc::{
+    ApprovalKind, ApproveAction, SetApprovalForAllAction, TransferAction,
+};
 
 use crate::mapper::{MapContext, Mapper, MapperError, MapperId};
 
 const ERC20_APPROVE_DECODER_ID: &str = "erc20/approve";
 const ERC20_TRANSFER_DECODER_ID: &str = "erc20/transfer";
 pub const ERC20_TRANSFER_FROM_DECODER_ID: &str = "erc20/transferFrom";
+const SET_APPROVAL_FOR_ALL_DECODER_ID: &str = "erc/setApprovalForAll";
 const APPROVE_MAPPER_ID: &str = "erc20/approve";
 const TRANSFER_MAPPER_ID: &str = "erc20/transfer";
 pub const TRANSFER_FROM_MAPPER_ID: &str = "erc20/transferFrom";
+const SET_APPROVAL_FOR_ALL_MAPPER_ID: &str = "erc/setApprovalForAll";
 
 /// `approve(spender, amount)` → `Action::Approve` envelope under `Category::Misc`.
 /// `amount == U256::MAX` is normalised to `AmountKind::Unlimited` per schema
@@ -225,6 +229,56 @@ impl Mapper for Erc20TransferFromMapper {
     }
 }
 
+/// `setApprovalForAll(operator, approved)` → `Action::SetApprovalForAll`.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SetApprovalForAllMapper;
+
+impl SetApprovalForAllMapper {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Mapper for SetApprovalForAllMapper {
+    fn id(&self) -> MapperId {
+        MapperId::new(SET_APPROVAL_FOR_ALL_MAPPER_ID)
+    }
+
+    fn accepts(&self, decoded: &DecodedCall) -> bool {
+        decoded.decoder_id.as_str() == SET_APPROVAL_FOR_ALL_DECODER_ID
+    }
+
+    fn map(
+        &self,
+        ctx: &MapContext<'_>,
+        decoded: &DecodedCall,
+    ) -> Result<Vec<ActionEnvelope>, MapperError> {
+        let operator = find_address(decoded, "operator")?;
+        let approved = find_bool(decoded, "approved")?;
+        let collection = AssetRef {
+            kind: AssetKind::Erc721,
+            chain_id: ctx.chain_id,
+            address: Some(ctx.to.clone()),
+            symbol: None,
+            decimals: None,
+        };
+
+        let action = SetApprovalForAllAction {
+            collection,
+            operator,
+            operator_label: None,
+            approved,
+            previously_approved: None,
+        };
+
+        Ok(vec![ActionEnvelope {
+            category: Category::Misc,
+            action: Action::SetApprovalForAll(action),
+        }])
+    }
+}
+
 fn find_address(decoded: &DecodedCall, name: &str) -> Result<Address, MapperError> {
     decoded
         .args
@@ -232,6 +286,18 @@ fn find_address(decoded: &DecodedCall, name: &str) -> Result<Address, MapperErro
         .find(|a| a.name == name)
         .and_then(|a| match &a.value {
             DecodedValue::Address(addr) => Some(addr.clone()),
+            _ => None,
+        })
+        .ok_or_else(|| MapperError::MissingArgument(name.into()))
+}
+
+fn find_bool(decoded: &DecodedCall, name: &str) -> Result<bool, MapperError> {
+    decoded
+        .args
+        .iter()
+        .find(|a| a.name == name)
+        .and_then(|a| match &a.value {
+            DecodedValue::Bool(value) => Some(*value),
             _ => None,
         })
         .ok_or_else(|| MapperError::MissingArgument(name.into()))
@@ -289,6 +355,20 @@ pub fn transfer_from_mapper_key() -> crate::mapper::MapperMatchKey {
 #[must_use]
 pub fn transfer_from_mapper_arc() -> Arc<dyn Mapper> {
     Arc::new(Erc20TransferFromMapper::new())
+}
+
+/// Convenience: the `MapperMatchKey` this Mapper should be registered under.
+#[must_use]
+pub fn set_approval_for_all_mapper_key() -> crate::mapper::MapperMatchKey {
+    crate::mapper::MapperMatchKey {
+        decoder_id: DecoderId::new(SET_APPROVAL_FOR_ALL_DECODER_ID),
+    }
+}
+
+/// Convenience: build an `Arc<dyn Mapper>` for registration.
+#[must_use]
+pub fn set_approval_for_all_mapper_arc() -> Arc<dyn Mapper> {
+    Arc::new(SetApprovalForAllMapper::new())
 }
 
 #[cfg(test)]
@@ -360,6 +440,26 @@ mod tests {
                     name: "amount".into(),
                     abi_type: "uint256".into(),
                     value: DecodedValue::Uint(amount),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
+    fn build_set_approval_for_all_decoded(operator: Address, approved: bool) -> DecodedCall {
+        DecodedCall {
+            decoder_id: DecoderId::new(SET_APPROVAL_FOR_ALL_DECODER_ID),
+            function_signature: "setApprovalForAll(address,bool)".into(),
+            args: vec![
+                DecodedArg {
+                    name: "operator".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(operator),
+                },
+                DecodedArg {
+                    name: "approved".into(),
+                    abi_type: "bool".into(),
+                    value: DecodedValue::Bool(approved),
                 },
             ],
             nested: vec![],
@@ -504,5 +604,39 @@ mod tests {
             amount.value.as_ref().map(ToString::to_string),
             Some("1000000".to_string()),
         );
+    }
+
+    #[test]
+    fn set_approval_for_all_maps_to_set_approval_for_all_envelope() {
+        let token_registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x0000000000000000000000000000000000000001").unwrap();
+        let collection = Address::from_str("0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = MapContext {
+            chain_id: 1,
+            from: &from,
+            to: &collection,
+            value_wei: &value,
+            block_timestamp: None,
+            token_registry: &token_registry,
+        };
+        let operator = Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
+        let decoded = build_set_approval_for_all_decoded(operator.clone(), true);
+
+        let envelopes = SetApprovalForAllMapper::new().map(&ctx, &decoded).unwrap();
+        assert_eq!(envelopes.len(), 1);
+        assert_eq!(envelopes[0].category, Category::Misc);
+        assert_eq!(envelopes[0].action.kind(), "set_approval_for_all");
+        let Action::SetApprovalForAll(action) = &envelopes[0].action else {
+            panic!(
+                "expected SetApprovalForAll, got kind={}",
+                envelopes[0].action.kind()
+            );
+        };
+        assert_eq!(action.collection.kind, AssetKind::Erc721);
+        assert_eq!(action.collection.address.as_ref(), Some(&collection));
+        assert_eq!(action.operator, operator);
+        assert!(action.approved);
+        assert!(action.previously_approved.is_none());
     }
 }

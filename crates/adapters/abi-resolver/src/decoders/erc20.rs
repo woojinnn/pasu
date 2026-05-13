@@ -19,6 +19,7 @@ use crate::{
 pub const ERC20_APPROVE_DECODER_ID: &str = "erc20/approve";
 pub const ERC20_TRANSFER_DECODER_ID: &str = "erc20/transfer";
 pub const ERC20_TRANSFER_FROM_DECODER_ID: &str = "erc20/transferFrom";
+pub const SET_APPROVAL_FOR_ALL_DECODER_ID: &str = "erc/setApprovalForAll";
 
 /// `approve(address,uint256)` selector. Same across every ERC-20.
 pub const APPROVE_SELECTOR: [u8; 4] = [0x09, 0x5e, 0xa7, 0xb3];
@@ -26,15 +27,19 @@ pub const APPROVE_SELECTOR: [u8; 4] = [0x09, 0x5e, 0xa7, 0xb3];
 pub const TRANSFER_SELECTOR: [u8; 4] = [0xa9, 0x05, 0x9c, 0xbb];
 /// `transferFrom(address,address,uint256)` selector. Same across every ERC-20.
 pub const TRANSFER_FROM_SELECTOR: [u8; 4] = [0x23, 0xb8, 0x72, 0xdd];
+/// `setApprovalForAll(address,bool)` selector. Same across ERC-721 and ERC-1155.
+pub const SET_APPROVAL_FOR_ALL_SELECTOR: [u8; 4] = [0xa2, 0x2c, 0xb4, 0x65];
 
 const APPROVE_SIGNATURE: &str = "approve(address,uint256)";
 const TRANSFER_SIGNATURE: &str = "transfer(address,uint256)";
 const TRANSFER_FROM_SIGNATURE: &str = "transferFrom(address,address,uint256)";
+const SET_APPROVAL_FOR_ALL_SIGNATURE: &str = "setApprovalForAll(address,bool)";
 
 sol! {
     function approve(address spender, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function setApprovalForAll(address operator, bool approved) external;
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -196,6 +201,57 @@ impl Decoder for Erc20TransferFromDecoder {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SetApprovalForAllDecoder;
+
+impl SetApprovalForAllDecoder {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Decoder for SetApprovalForAllDecoder {
+    fn id(&self) -> DecoderId {
+        DecoderId::new(SET_APPROVAL_FOR_ALL_DECODER_ID)
+    }
+
+    fn match_keys(&self) -> Vec<CallMatchKey> {
+        vec![CallMatchKey {
+            chain_id: 1,
+            to: WILDCARD_TO.clone(),
+            selector: SET_APPROVAL_FOR_ALL_SELECTOR,
+        }]
+    }
+
+    fn decode(
+        &self,
+        _ctx: &DecodeContext<'_>,
+        calldata: &[u8],
+    ) -> Result<DecodedCall, DecoderError> {
+        let call = setApprovalForAllCall::abi_decode(calldata, true)
+            .map_err(|e| DecoderError::AbiMismatch(e.to_string()))?;
+        let operator = decode_address(&call.operator)?;
+        Ok(DecodedCall {
+            decoder_id: self.id(),
+            function_signature: SET_APPROVAL_FOR_ALL_SIGNATURE.to_string(),
+            args: vec![
+                DecodedArg {
+                    name: "operator".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(operator),
+                },
+                DecodedArg {
+                    name: "approved".into(),
+                    abi_type: "bool".into(),
+                    value: DecodedValue::Bool(call.approved),
+                },
+            ],
+            nested: vec![],
+        })
+    }
+}
+
 fn decode_address(value: &AlloyAddress) -> Result<Address, DecoderError> {
     Address::from_str(&format!("{value:#x}"))
         .map_err(|e| DecoderError::Internal(anyhow::anyhow!("address: {e}")))
@@ -243,6 +299,20 @@ mod tests {
                 chain_id: 1,
                 to: WILDCARD_TO.clone(),
                 selector: TRANSFER_FROM_SELECTOR,
+            }]
+        );
+    }
+
+    #[test]
+    fn set_approval_for_all_match_key_uses_wildcard_to() {
+        let adapter = SetApprovalForAllDecoder::new();
+        let keys = adapter.match_keys();
+        assert_eq!(
+            keys,
+            vec![CallMatchKey {
+                chain_id: 1,
+                to: WILDCARD_TO.clone(),
+                selector: SET_APPROVAL_FOR_ALL_SELECTOR,
             }]
         );
     }
@@ -328,5 +398,32 @@ mod tests {
         assert_eq!(decoded.args[0].name, "from");
         assert_eq!(decoded.args[1].name, "to");
         assert_eq!(decoded.args[2].name, "amount");
+    }
+
+    #[test]
+    fn decodes_set_approval_for_all() {
+        let adapter = SetApprovalForAllDecoder::new();
+        // setApprovalForAll(0x1111..., true)
+        let calldata: Vec<u8> = {
+            let mut v = Vec::from(SET_APPROVAL_FOR_ALL_SELECTOR);
+            v.extend_from_slice(&[0u8; 12]);
+            v.extend_from_slice(&[0x11; 20]);
+            v.extend_from_slice(&alloy_primitives::U256::from(1_u8).to_be_bytes::<32>());
+            v
+        };
+        let collection = Address::from_str("0x1234567890123456789012345678901234567890").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let ctx = DecodeContext {
+            chain_id: 1,
+            to: &collection,
+            value: &value,
+            block_timestamp: None,
+        };
+        let decoded = adapter.decode(&ctx, &calldata).unwrap();
+        assert_eq!(decoded.decoder_id.as_str(), SET_APPROVAL_FOR_ALL_DECODER_ID);
+        assert_eq!(decoded.args.len(), 2);
+        assert_eq!(decoded.args[0].name, "operator");
+        assert_eq!(decoded.args[1].name, "approved");
+        assert_eq!(decoded.args[1].value, DecodedValue::Bool(true));
     }
 }

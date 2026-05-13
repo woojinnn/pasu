@@ -2,8 +2,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use abi_resolver::decoders::erc20::{
-    Erc20ApproveDecoder, Erc20TransferDecoder, Erc20TransferFromDecoder, ERC20_APPROVE_DECODER_ID,
-    ERC20_TRANSFER_DECODER_ID, ERC20_TRANSFER_FROM_DECODER_ID,
+    Erc20ApproveDecoder, Erc20TransferDecoder, Erc20TransferFromDecoder, SetApprovalForAllDecoder,
+    ERC20_APPROVE_DECODER_ID, ERC20_TRANSFER_DECODER_ID, ERC20_TRANSFER_FROM_DECODER_ID,
+    SET_APPROVAL_FOR_ALL_DECODER_ID,
 };
 use abi_resolver::decoders::uniswap_v2::{
     SwapETHForExactTokensDecoder, SwapExactETHForTokensDecoder, SwapExactTokensForETHDecoder,
@@ -25,7 +26,9 @@ use call_adapter::{
     CallAdapter as _, CallAdapterId, DefaultCallAdapter, InMemoryCallAdapterRegistry,
     UniversalRouterCallAdapter,
 };
-use mappers::protocols::erc20::{Erc20ApproveMapper, Erc20TransferFromMapper, Erc20TransferMapper};
+use mappers::protocols::erc20::{
+    Erc20ApproveMapper, Erc20TransferFromMapper, Erc20TransferMapper, SetApprovalForAllMapper,
+};
 use mappers::protocols::uniswap_v2::{
     SwapETHForExactTokensMapper, SwapExactETHForTokensMapper, SwapExactTokensForETHMapper,
     SwapExactTokensForTokensMapper, SwapTokensForExactETHMapper, SwapTokensForExactTokensMapper,
@@ -64,6 +67,7 @@ impl DefaultRegistries {
                 .register(Arc::new(Erc20ApproveDecoder::new()))
                 .register(Arc::new(Erc20TransferDecoder::new()))
                 .register(Arc::new(Erc20TransferFromDecoder::new()))
+                .register(Arc::new(SetApprovalForAllDecoder::new()))
                 .register(Arc::new(WethDepositDecoder::new()))
                 .register(Arc::new(WethWithdrawDecoder::new()))
                 .build(),
@@ -141,6 +145,12 @@ impl DefaultRegistries {
                         decoder_id: DecoderId::new(ERC20_TRANSFER_FROM_DECODER_ID),
                     },
                     Arc::new(Erc20TransferFromMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(SET_APPROVAL_FOR_ALL_DECODER_ID),
+                    },
+                    Arc::new(SetApprovalForAllMapper::new()),
                 )
                 .register(
                     MapperMatchKey {

@@ -219,6 +219,24 @@ fn erc20_approve_random_token_routes() {
 }
 
 #[test]
+fn erc721_set_approval_for_all_routes_to_set_approval_for_all_envelope() {
+    use policy_engine::action::envelope::{Action, Category};
+
+    let envelopes = route("erc721_set_approval_for_all.json")
+        .expect("erc721 setApprovalForAll fixture should route via ERC mapper");
+    assert_eq!(envelopes.len(), 1);
+    assert_eq!(envelopes[0].category, Category::Misc);
+    assert_eq!(envelopes[0].action.kind(), "set_approval_for_all");
+    let Action::SetApprovalForAll(action) = &envelopes[0].action else {
+        panic!(
+            "expected Action::SetApprovalForAll, got kind={}",
+            envelopes[0].action.kind()
+        );
+    };
+    assert!(action.approved);
+}
+
+#[test]
 fn erc20_transfer_routes_to_transfer_envelope() {
     use policy_engine::action::envelope::{Action, Category};
 
