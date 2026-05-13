@@ -10,11 +10,11 @@ members = [
     "crates/adapters/universal-router",
     "crates/adapters-bundle",
     "crates/integration-tests",
-    "crates/abi-resolver",
-    "crates/sign-resolver",
-    "crates/request-router",
+    "crates/adapters/abi-resolver",
+    "crates/adapters/sign-resolver",
+    "crates/adapters/request-router",
     "crates/web-server",
-    "crates/mappers",
+    "crates/adapters/mappers",
 ]
 
 [workspace.package]
@@ -41,9 +41,9 @@ policy-engine-adapter-uniswap-v2 = { path = "crates/adapters/uniswap-v2", versio
 policy-engine-adapter-uniswap-v3 = { path = "crates/adapters/uniswap-v3", version = "0.1.0" }
 policy-engine-adapter-universal-router = { path = "crates/adapters/universal-router", version = "0.1.0" }
 policy-engine-adapters-bundle = { path = "crates/adapters-bundle", version = "0.1.0" }
-abi-resolver = { path = "crates/abi-resolver", version = "0.1.0" }
-sign-resolver = { path = "crates/sign-resolver", version = "0.1.0" }
-mappers = { path = "crates/mappers", version = "0.1.0" }
+abi-resolver = { path = "crates/adapters/abi-resolver", version = "0.1.0" }
+sign-resolver = { path = "crates/adapters/sign-resolver", version = "0.1.0" }
+mappers = { path = "crates/adapters/mappers", version = "0.1.0" }
 
 # WASM bridge deps
 wasm-bindgen = "0.2"
