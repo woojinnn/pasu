@@ -66,7 +66,7 @@ impl TokenLookup {
     }
 
     /// Look up a token; returns a synthetic `UNKNOWN` placeholder when missing
-    /// so adapters can still emit a structurally valid `Action`.
+    /// so adapters can still emit a structurally valid `LegacyAction`.
     #[must_use]
     pub fn get(&self, chain_id: ChainId, addr: &Address) -> Token {
         self.tokens
@@ -124,7 +124,7 @@ pub fn dex_swap_action(
     recipient: &Address,
     max_fee_bps: Option<u32>,
     trace_step: impl Into<String>,
-) -> Action {
+) -> LegacyAction {
     let mut oracle_requirements = vec![OracleRequirement {
         kind: OracleRequirementKind::Input,
         token: input_token.clone(),
@@ -140,7 +140,7 @@ pub fn dex_swap_action(
         });
     }
 
-    Action::Dex(DexAction {
+    LegacyAction::Dex(DexAction {
         actor: tx.from.clone(),
         target: tx.to.clone(),
         value_wei: tx.value_wei.clone(),
@@ -167,9 +167,9 @@ pub fn dex_swap_action(
 /// Returns an error if any child action is not a DEX action.
 pub fn merge_dex_actions(
     tx: &TransactionRequest,
-    actions: Vec<Action>,
+    actions: Vec<LegacyAction>,
     trace_step: impl Into<String>,
-) -> Result<Action, ActionAdapterError> {
+) -> Result<LegacyAction, ActionAdapterError> {
     let mut protocol_ids = Vec::new();
     let mut seen_protocol_ids = HashSet::new();
     let mut input_tokens = Vec::new();
@@ -183,7 +183,7 @@ pub fn merge_dex_actions(
     let mut has_external_recipient = false;
 
     for action in actions {
-        let Action::Dex(dex) = action else {
+        let LegacyAction::Dex(dex) = action else {
             return Err(ActionAdapterError::BadCalldata(format!(
                 "multicall child emitted non-dex action: {}",
                 action.kind()
@@ -214,7 +214,7 @@ pub fn merge_dex_actions(
         trace_steps.extend(dex.trace.steps);
     }
 
-    Ok(Action::Dex(DexAction {
+    Ok(LegacyAction::Dex(DexAction {
         actor: tx.from.clone(),
         target: tx.to.clone(),
         value_wei: tx.value_wei.clone(),

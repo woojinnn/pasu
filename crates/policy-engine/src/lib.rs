@@ -63,10 +63,11 @@ pub use adapter::{
     TransactionActionAdapterKind, TransactionMatchKey,
 };
 pub use core::{
-    validate_typed_data, Action as LegacyAction, Address, AmountSpec, ChainId, DexAction, DexFacts,
-    DexTrace, Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement,
-    OracleRequirementKind, OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request,
-    SignatureRequest, Token, TransactionRequest, TypedDataError, UsdValuation, WindowStatsContext,
+    validate_typed_data, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
+    Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, LegacyAction,
+    OracleRequirement, OracleRequirementKind, OtherAction, Permit2Action, Permit2Approval,
+    Permit2PermitKind, Request, SignatureRequest, Token, TransactionRequest, TypedDataError,
+    UsdValuation, WindowStatsContext,
 };
 pub use host::{
     Approvals, ApprovalsError, Clock, HostCapabilities, MockApprovals, MockClock, MockOracle,

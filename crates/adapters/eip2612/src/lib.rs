@@ -90,7 +90,10 @@ impl DeclaredSignatureActionAdapter for Eip2612Adapter {
     /// Returns [`ActionAdapterError::BadCalldata`] when the primary type is not
     /// `Permit`, the permit message fields are malformed, or `message.owner`
     /// differs from `SignatureRequest::signer`.
-    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
+    fn build_signature_action(
+        &self,
+        sig: &SignatureRequest,
+    ) -> Result<LegacyAction, ActionAdapterError> {
         if !sig.primary_type().eq_ignore_ascii_case("Permit") {
             return Err(ActionAdapterError::BadCalldata(format!(
                 "unsupported EIP-2612 primaryType {}",
@@ -119,7 +122,7 @@ impl DeclaredSignatureActionAdapter for Eip2612Adapter {
             .tokens
             .get(sig.chain_id, &sig.typed_data.domain.verifying_contract);
 
-        Ok(Action::Eip2612(Eip2612Action {
+        Ok(LegacyAction::Eip2612(Eip2612Action {
             signer: sig.signer.clone(),
             owner,
             chain_id: sig.chain_id,

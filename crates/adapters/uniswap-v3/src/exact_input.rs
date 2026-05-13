@@ -133,7 +133,7 @@ impl TransactionActionAdapter for Adapter_ {
             .collect()
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+    fn build_action(&self, tx: &TransactionRequest) -> Result<LegacyAction, ActionAdapterError> {
         let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
         let (alloy_tokens, fees) =
             decode_v3_path(&p.path).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
@@ -215,7 +215,7 @@ mod tests {
             nonce: None,
         };
         match adapter.build_action(&tx).unwrap() {
-            Action::Dex(d) => {
+            LegacyAction::Dex(d) => {
                 assert_eq!(d.facts.protocol_ids, vec!["uniswap-v3"]);
                 assert_eq!(d.facts.input_tokens[0].symbol, "USDT");
                 assert_eq!(d.facts.output_tokens[0].symbol, "WETH");
@@ -269,7 +269,7 @@ mod tests {
             nonce: None,
         };
         match adapter.build_action(&tx).unwrap() {
-            Action::Dex(d) => {
+            LegacyAction::Dex(d) => {
                 assert_eq!(d.facts.input_tokens[0].symbol, "USDT");
                 assert_eq!(d.facts.output_tokens[0].symbol, "WETH");
                 assert_eq!(d.facts.max_fee_bps, Some(30));

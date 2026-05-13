@@ -8,7 +8,7 @@ use crate::state::{
     registry, signature_registry, snapshot_oracle_from_entries, EngineState, FixedClock,
     SnapshotApprovals, SnapshotPortfolio, SnapshotStatWindows, STATE,
 };
-use policy_engine::core::{Action, Request};
+use policy_engine::core::{LegacyAction, Request};
 use policy_engine::host::oracle::SnapshotOracle;
 use policy_engine::host::HostCapabilities;
 use policy_engine::lowering::{required_host_facts, required_window_keys};
@@ -154,7 +154,7 @@ fn parse_request(request_json: &str) -> Result<Request, EngineErrorDto> {
         .map_err(|error| EngineErrorDto::new("invalid_request_json", error.to_string()))
 }
 
-fn parse_action(action_json: &str) -> Result<Action, EngineErrorDto> {
+fn parse_action(action_json: &str) -> Result<LegacyAction, EngineErrorDto> {
     serde_json::from_str(action_json)
         .map_err(|error| EngineErrorDto::new("invalid_action_json", error.to_string()))
 }

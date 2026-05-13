@@ -1,7 +1,7 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
-    enrich_dex_action, Action, Address, HostCapabilities, MockApprovals, MockOracle, MockPortfolio,
-    MockTransactionActionAdapterRegistry, Pipeline, PolicyEngine, PolicyRequest,
+    enrich_dex_action, Address, HostCapabilities, LegacyAction, MockApprovals, MockOracle,
+    MockPortfolio, MockTransactionActionAdapterRegistry, Pipeline, PolicyEngine, PolicyRequest,
     PolicyRequestOrigin, Token, TransactionActionAdapter, TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v2::{
@@ -141,7 +141,7 @@ fn requests_from_adapter(
         .build_action(tx)
         .expect("adapter should build an aggregate action");
     match &mut action {
-        Action::Dex(dex) => enrich_dex_action(dex, host),
+        LegacyAction::Dex(dex) => enrich_dex_action(dex, host),
         other => panic!("expected adapter to emit Dex action, got {other:?}"),
     }
     policy_engine::lowering::requests_from_action(&action)

@@ -1,4 +1,4 @@
-//! `Action::Other` to `PolicyRequest` conversion.
+//! `LegacyAction::Other` to `PolicyRequest` conversion.
 
 use crate::core::OtherAction;
 use crate::policy::PolicyRequest;

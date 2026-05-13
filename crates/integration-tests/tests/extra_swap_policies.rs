@@ -177,7 +177,7 @@ fn allowlist_passes_uniswap_v2() {
 mod fake_protocol_adapter {
     use super::*;
     use policy_engine::{
-        Action, ActionAdapterError, ActionAdapterId, DexAction, DexFacts, DexTrace,
+        ActionAdapterError, ActionAdapterId, DexAction, DexFacts, DexTrace, LegacyAction,
         OracleRequirement, OracleRequirementKind, TransactionActionAdapter, TransactionMatchKey,
     };
 
@@ -195,10 +195,13 @@ mod fake_protocol_adapter {
                 [0xde, 0xad, 0xbe, 0xef],
             )]
         }
-        fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+        fn build_action(
+            &self,
+            tx: &TransactionRequest,
+        ) -> Result<LegacyAction, ActionAdapterError> {
             let usdt = usdt_token();
             let weth = weth_token();
-            Ok(Action::Dex(DexAction {
+            Ok(LegacyAction::Dex(DexAction {
                 actor: tx.from.clone(),
                 target: tx.to.clone(),
                 value_wei: tx.value_wei.clone(),

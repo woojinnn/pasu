@@ -1,4 +1,4 @@
-//! Core domain types: Address, Token, `AmountSpec`, Action.
+//! Core domain types: Address, Token, `AmountSpec`, `LegacyAction`.
 
 use alloy_primitives::{Address as AlloyAddress, U256};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -14,7 +14,7 @@ use thiserror::Error;
 /// `Address::new` / `from_alloy`) wouldn't match incoming requests whose
 /// `to` arrives EIP-55 checksummed (mixed case) — every adapter lookup
 /// would `NoMatch` on otherwise valid contract addresses, and the
-/// orchestrator would fall back to `Action::Other`, silently bypassing
+/// orchestrator would fall back to `LegacyAction::Other`, silently bypassing
 /// every dex/permit/etc. policy.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Address(String);
@@ -421,7 +421,7 @@ impl Eip712OtherAction {
 /// Semantic action emitted by adapters.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Action {
+pub enum LegacyAction {
     /// Aggregate DEX action.
     #[serde(rename = "dex")]
     Dex(DexAction),
@@ -439,7 +439,7 @@ pub enum Action {
     Eip712Other(Eip712OtherAction),
 }
 
-impl Action {
+impl LegacyAction {
     /// Return the stable action kind string used in Cedar action ids.
     #[must_use]
     pub const fn kind(&self) -> &'static str {
@@ -531,7 +531,7 @@ impl SignatureRequest {
 #[cfg(test)]
 impl SignatureRequest {
     /// Minimal EIP-712 signature request that no adapter will match. Used by
-    /// pipeline tests that exercise the catch-all `Action::Eip712Other` path.
+    /// pipeline tests that exercise the catch-all `LegacyAction::Eip712Other` path.
     ///
     /// # Panics
     ///
@@ -1037,7 +1037,7 @@ mod tests {
     fn dex_action_kind_actor_and_target_are_transaction_level() {
         let actor = Address::new("0x0000000000000000000000000000000000000001").unwrap();
         let target = Address::new("0x0000000000000000000000000000000000000002").unwrap();
-        let action = Action::Dex(DexAction {
+        let action = LegacyAction::Dex(DexAction {
             actor: actor.clone(),
             target: target.clone(),
             value_wei: "0".into(),
@@ -1055,7 +1055,7 @@ mod tests {
     fn other_action_kind_actor_and_target_are_transaction_level() {
         let actor = Address::new("0x0000000000000000000000000000000000000001").unwrap();
         let target = Address::new("0x0000000000000000000000000000000000000002").unwrap();
-        let action = Action::Other(OtherAction {
+        let action = LegacyAction::Other(OtherAction {
             actor: actor.clone(),
             target: target.clone(),
             selector: "0x12345678".into(),
@@ -1073,7 +1073,7 @@ mod tests {
         let actor = Address::new("0x0000000000000000000000000000000000000001").unwrap();
         let target = Address::new("0x0000000000000000000000000000000000000002").unwrap();
 
-        let dex = Action::Dex(DexAction {
+        let dex = LegacyAction::Dex(DexAction {
             actor: actor.clone(),
             target: target.clone(),
             value_wei: "0".into(),
@@ -1081,7 +1081,7 @@ mod tests {
             oracle_requirements: Vec::new(),
             trace: DexTrace::default(),
         });
-        let other = Action::Other(OtherAction {
+        let other = LegacyAction::Other(OtherAction {
             actor,
             target,
             selector: "0x12345678".into(),
@@ -1096,7 +1096,7 @@ mod tests {
     #[test]
     fn action_dex_kind_string() {
         let zero = Address::new("0x0000000000000000000000000000000000000000").unwrap();
-        let act = Action::Dex(DexAction {
+        let act = LegacyAction::Dex(DexAction {
             actor: zero.clone(),
             target: zero,
             value_wei: "0".into(),

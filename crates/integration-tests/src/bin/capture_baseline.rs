@@ -10,7 +10,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-const CURRENT_API: &str = "policy_engine::Pipeline::build_action_for(&policy_engine::Request) -> Result<policy_engine::Action, policy_engine::PipelineError>";
+const CURRENT_API: &str = "policy_engine::Pipeline::build_action_for(&policy_engine::Request) -> Result<policy_engine::LegacyAction, policy_engine::PipelineError>";
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Fixture {

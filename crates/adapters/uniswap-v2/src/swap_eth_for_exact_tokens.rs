@@ -120,7 +120,7 @@ impl TransactionActionAdapter for Adapter_ {
             .collect()
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+    fn build_action(&self, tx: &TransactionRequest) -> Result<LegacyAction, ActionAdapterError> {
         let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
         let (_, token_out) = path_endpoints(&p.path)?;
         let token_out_addr = Address::from_alloy(token_out);
@@ -184,7 +184,7 @@ mod tests {
             nonce: None,
         };
         match adapter.build_action(&tx).unwrap() {
-            Action::Dex(d) => {
+            LegacyAction::Dex(d) => {
                 assert_eq!(d.facts.protocol_ids, vec!["uniswap-v2".to_string()]);
                 assert!(d.facts.input_tokens[0].is_native);
                 assert_eq!(d.facts.input_tokens[0].symbol, "ETH");

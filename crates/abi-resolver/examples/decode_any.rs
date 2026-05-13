@@ -91,7 +91,7 @@ fn main() -> ExitCode {
             println!("─── NOT FOUND ───");
             println!("  No matching signature in the resolver. With a real");
             println!("  Sourcify/openchain dump imported, more selectors would");
-            println!("  resolve. Falling through to Action::Other upstream.");
+            println!("  resolve. Falling through to LegacyAction::Other upstream.");
             ExitCode::from(1)
         }
     }

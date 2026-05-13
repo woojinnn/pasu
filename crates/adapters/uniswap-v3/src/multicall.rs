@@ -121,7 +121,7 @@ impl Adapter_ {
         tx: &TransactionRequest,
         calls: Vec<Vec<u8>>,
         depth: usize,
-    ) -> Result<Vec<Action>, ActionAdapterError> {
+    ) -> Result<Vec<LegacyAction>, ActionAdapterError> {
         if depth > MAX_DEPTH {
             return Err(ActionAdapterError::BadCalldata(format!(
                 "multicall nesting exceeds max depth {MAX_DEPTH}"
@@ -178,7 +178,7 @@ impl Adapter_ {
         tx: &TransactionRequest,
         calls: Vec<Vec<u8>>,
         depth: usize,
-    ) -> Result<Action, ActionAdapterError> {
+    ) -> Result<LegacyAction, ActionAdapterError> {
         let actions = self.expand_calls(tx, calls, depth)?;
         merge_dex_actions(tx, actions, "multicall")
     }
@@ -207,7 +207,7 @@ impl TransactionActionAdapter for Adapter_ {
             .collect()
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+    fn build_action(&self, tx: &TransactionRequest) -> Result<LegacyAction, ActionAdapterError> {
         let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
         self.build_from_calls(tx, p.data, 0)
     }
@@ -281,7 +281,7 @@ mod tests {
             )))
             .unwrap();
         match action {
-            Action::Dex(d) => {
+            LegacyAction::Dex(d) => {
                 assert_eq!(d.facts.protocol_ids, vec!["uniswap-v3"]);
                 assert_eq!(d.facts.input_tokens.len(), 1);
                 assert_eq!(d.facts.input_tokens[0].symbol, "USDT");

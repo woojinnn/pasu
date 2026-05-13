@@ -59,7 +59,7 @@ pub fn dex_swap_action(
     recipient: &Address,
     max_fee_bps: Option<u32>,
     trace_step: impl Into<String>,
-) -> Action {
+) -> LegacyAction {
     let mut oracle_requirements = vec![OracleRequirement {
         kind: OracleRequirementKind::Input,
         token: input_token.clone(),
@@ -74,7 +74,7 @@ pub fn dex_swap_action(
         });
     }
 
-    Action::Dex(DexAction {
+    LegacyAction::Dex(DexAction {
         actor: tx.from.clone(),
         target: tx.to.clone(),
         value_wei: tx.value_wei.clone(),
@@ -284,7 +284,7 @@ mod tests {
             Some(30),
             "uniswap-v2/test",
         ) {
-            Action::Dex(d) => {
+            LegacyAction::Dex(d) => {
                 assert_eq!(d.actor, tx.from);
                 assert_eq!(d.target, tx.to);
                 assert_eq!(d.value_wei, "123");

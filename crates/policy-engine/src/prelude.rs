@@ -6,7 +6,7 @@
 //!
 //! This module re-exports the trait surface and supporting types an
 //! adapter implementation typically needs: the `TransactionActionAdapter` trait, `ActionAdapterId`,
-//! `ActionAdapterError`, `TransactionMatchKey`, the domain types (`Action`, `Token`,
+//! `ActionAdapterError`, `TransactionMatchKey`, the domain types (`LegacyAction`, `Token`,
 //! `TransactionRequest`, `AmountSpec`, `UsdValuation`, `DexAction`), and
 //! the `Oracle` trait + `PolicyRequest` (used by the policy evaluator surface).
 //!
@@ -24,10 +24,11 @@ pub use crate::adapter::{
     TransactionActionAdapterKind, TransactionMatchKey,
 };
 pub use crate::core::{
-    validate_typed_data, Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
-    Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement,
-    OracleRequirementKind, OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request,
-    SignatureRequest, Token, TransactionRequest, TypedDataError, UsdValuation, WindowStatsContext,
+    validate_typed_data, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
+    Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, LegacyAction,
+    OracleRequirement, OracleRequirementKind, OtherAction, Permit2Action, Permit2Approval,
+    Permit2PermitKind, Request, SignatureRequest, Token, TransactionRequest, TypedDataError,
+    UsdValuation, WindowStatsContext,
 };
 pub use crate::host::{Approvals, ApprovalsError, MockApprovals};
 pub use crate::host::{Clock, HostCapabilities, MockClock, Oracle, SystemClock};

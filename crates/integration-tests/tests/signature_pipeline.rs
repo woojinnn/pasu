@@ -1,5 +1,5 @@
 use policy_engine::{
-    Action, ActionAdapterError, ActionAdapterId, Address, Eip2612Action, HostCapabilities,
+    ActionAdapterError, ActionAdapterId, Address, Eip2612Action, HostCapabilities, LegacyAction,
     MockClock, MockOracle, MockSignatureActionAdapterRegistry,
     MockTransactionActionAdapterRegistry, Permit2Action, Permit2Approval, Permit2PermitKind,
     Pipeline, PipelineError, PolicyEngine, Request, SignatureActionAdapter, SignatureMatchKey,
@@ -404,7 +404,7 @@ impl SignatureActionAdapter for MalformedAmountAdapter {
         )]
     }
 
-    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
+    fn build_action(&self, sig: &SignatureRequest) -> Result<LegacyAction, ActionAdapterError> {
         let token = usdc();
         let approval = Permit2Approval {
             token: token.clone(),
@@ -412,7 +412,7 @@ impl SignatureActionAdapter for MalformedAmountAdapter {
             expiration: 4600,
             nonce: "1".into(),
         };
-        Ok(Action::Permit2(Permit2Action {
+        Ok(LegacyAction::Permit2(Permit2Action {
             signer: sig.signer.clone(),
             chain_id: sig.chain_id,
             domain_chain_id: sig.typed_data.domain.chain_id,
@@ -450,8 +450,8 @@ impl SignatureActionAdapter for OwnerMismatchEip2612Adapter {
         )]
     }
 
-    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
-        Ok(Action::Eip2612(Eip2612Action {
+    fn build_action(&self, sig: &SignatureRequest) -> Result<LegacyAction, ActionAdapterError> {
+        Ok(LegacyAction::Eip2612(Eip2612Action {
             signer: sig.signer.clone(),
             owner: Address::new("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb").unwrap(),
             chain_id: sig.chain_id,
@@ -591,7 +591,7 @@ when {
         .with_adapter(Arc::new(OwnerMismatchEip2612Adapter));
 
     // Redundant with adapter-level enforcement; kept as belt-and-braces
-    // defense in case the adapter is bypassed via Action construction in tests.
+    // defense in case the adapter is bypassed via LegacyAction construction in tests.
     assert_fail_id(
         evaluate_result_with_registry(eip2612_permit(), OWNER_MATCH, &clock, &sig_registry)
             .expect("pipeline ok"),

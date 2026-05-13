@@ -125,7 +125,7 @@ impl TransactionActionAdapter for Adapter_ {
             .collect()
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+    fn build_action(&self, tx: &TransactionRequest) -> Result<LegacyAction, ActionAdapterError> {
         let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
         let (alloy_tokens, fees) =
             decode_v3_path(&p.path).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
@@ -209,7 +209,7 @@ mod tests {
             nonce: None,
         };
         match adapter.build_action(&tx).unwrap() {
-            Action::Dex(d) => {
+            LegacyAction::Dex(d) => {
                 // Path was [WETH, fee, USDT] but exact-out reads it reversed:
                 // input = USDT (last), output = WETH (first).
                 assert_eq!(d.facts.protocol_ids, vec!["uniswap-v3"]);

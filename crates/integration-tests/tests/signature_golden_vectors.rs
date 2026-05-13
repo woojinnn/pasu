@@ -1,5 +1,5 @@
 use policy_engine::{
-    Action, ActionAdapterError, Eip712OtherAction, Permit2PermitKind, SignatureActionAdapter,
+    ActionAdapterError, Eip712OtherAction, LegacyAction, Permit2PermitKind, SignatureActionAdapter,
     SignatureActionAdapterRegistry, SignatureActionResolverOutcome, SignatureRequest,
 };
 use policy_engine_adapters_bundle::default_signature_registry;
@@ -32,8 +32,8 @@ fn permit2_permit_single_decodes_to_action() {
     let adapter = resolved_adapter(&registry, &sig);
     let action = adapter.build_action(&sig).expect("Permit2 fixture decodes");
 
-    let Action::Permit2(action) = action else {
-        panic!("expected Action::Permit2");
+    let LegacyAction::Permit2(action) = action else {
+        panic!("expected LegacyAction::Permit2");
     };
     assert_eq!(action.permit_kind, Permit2PermitKind::PermitSingle);
     assert_eq!(
@@ -52,8 +52,8 @@ fn permit2_permit_batch_decodes_to_action() {
     let adapter = resolved_adapter(&registry, &sig);
     let action = adapter.build_action(&sig).expect("Permit2 batch decodes");
 
-    let Action::Permit2(action) = action else {
-        panic!("expected Action::Permit2");
+    let LegacyAction::Permit2(action) = action else {
+        panic!("expected LegacyAction::Permit2");
     };
     assert_eq!(action.permit_kind, Permit2PermitKind::PermitBatch);
     assert_eq!(action.approvals.len(), 2);
@@ -71,8 +71,8 @@ fn permit2_permit_transfer_from_decodes_to_action() {
         .build_action(&sig)
         .expect("Permit2 transfer decodes");
 
-    let Action::Permit2(action) = action else {
-        panic!("expected Action::Permit2");
+    let LegacyAction::Permit2(action) = action else {
+        panic!("expected LegacyAction::Permit2");
     };
     assert_eq!(action.permit_kind, Permit2PermitKind::PermitTransferFrom);
     assert_eq!(action.nonce, "3");
@@ -90,8 +90,8 @@ fn permit2_permit_batch_transfer_from_decodes_to_action() {
         .build_action(&sig)
         .expect("Permit2 batch transfer decodes");
 
-    let Action::Permit2(action) = action else {
-        panic!("expected Action::Permit2");
+    let LegacyAction::Permit2(action) = action else {
+        panic!("expected LegacyAction::Permit2");
     };
     assert_eq!(
         action.permit_kind,
@@ -118,8 +118,8 @@ fn permit2_permit_witness_transfer_from_decodes_to_action() {
         .build_action(&sig)
         .expect("Permit2 witness transfer decodes");
 
-    let Action::Permit2(action) = action else {
-        panic!("expected Action::Permit2");
+    let LegacyAction::Permit2(action) = action else {
+        panic!("expected LegacyAction::Permit2");
     };
     assert_eq!(
         action.permit_kind,
@@ -141,8 +141,8 @@ fn permit2_permit_batch_witness_transfer_from_decodes_to_action() {
         .build_action(&sig)
         .expect("Permit2 batch witness transfer decodes");
 
-    let Action::Permit2(action) = action else {
-        panic!("expected Action::Permit2");
+    let LegacyAction::Permit2(action) = action else {
+        panic!("expected LegacyAction::Permit2");
     };
     assert_eq!(
         action.permit_kind,
@@ -164,8 +164,8 @@ fn eip2612_permit_decodes_to_action() {
         .build_action(&sig)
         .expect("EIP-2612 fixture decodes");
 
-    let Action::Eip2612(action) = action else {
-        panic!("expected Action::Eip2612");
+    let LegacyAction::Eip2612(action) = action else {
+        panic!("expected LegacyAction::Eip2612");
     };
     assert_eq!(
         action.spender.as_str(),
@@ -208,8 +208,8 @@ fn eip2612_permit_allows_owner_when_signer_matches() {
         .build_action(&sig)
         .expect("EIP-2612 signer/owner match decodes");
 
-    let Action::Eip2612(action) = action else {
-        panic!("expected Action::Eip2612");
+    let LegacyAction::Eip2612(action) = action else {
+        panic!("expected LegacyAction::Eip2612");
     };
     assert_eq!(
         action.signer.as_str(),
@@ -230,9 +230,9 @@ fn unmatched_eip712_builds_catch_all_action() {
         SignatureActionResolverOutcome::NoMatch
     ));
 
-    let action = Action::Eip712Other(Eip712OtherAction::from_request(&sig));
-    let Action::Eip712Other(action) = action else {
-        panic!("expected Action::Eip712Other");
+    let action = LegacyAction::Eip712Other(Eip712OtherAction::from_request(&sig));
+    let LegacyAction::Eip712Other(action) = action else {
+        panic!("expected LegacyAction::Eip712Other");
     };
     assert_eq!(action.primary_type, "Mail");
     assert_eq!(
@@ -254,8 +254,8 @@ fn permit2_primary_type_matches_case_insensitively() {
         .build_action(&sig)
         .expect("lowercase Permit2 fixture decodes");
 
-    let Action::Permit2(action) = action else {
-        panic!("expected Action::Permit2");
+    let LegacyAction::Permit2(action) = action else {
+        panic!("expected LegacyAction::Permit2");
     };
     assert_eq!(action.permit_kind, Permit2PermitKind::PermitSingle);
     assert_eq!(action.primary_type, "permitSingle");

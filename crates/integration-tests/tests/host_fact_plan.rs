@@ -8,7 +8,7 @@
 //! 3. Evaluating with a `SnapshotOracle` populated from the plan yields the
 //!    same verdict as evaluating with a `MockOracle` populated identically.
 
-use policy_engine::core::{Action, Address, Request, TransactionRequest, UsdValuation};
+use policy_engine::core::{Address, LegacyAction, Request, TransactionRequest, UsdValuation};
 use policy_engine::host::oracle::{MockOracle, SnapshotOracle};
 use policy_engine::host::HostCapabilities;
 use policy_engine::lowering::required_host_facts;
@@ -61,7 +61,7 @@ fn extract_plan_then_evaluate_matches_direct_path() {
     let action = pipeline_a
         .build_action_for(&Request::Tx(tx.clone()))
         .unwrap();
-    assert!(matches!(action, Action::Dex(_)));
+    assert!(matches!(action, LegacyAction::Dex(_)));
 
     let plan = required_host_facts(&action);
     // The plan must enumerate WETH (input) + USDC (output) for oracle.

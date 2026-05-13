@@ -12,7 +12,7 @@
 //! projects the same window stats on demand in a single call.
 
 use crate::core::{
-    validate_typed_data, Action, Eip712OtherAction, OtherAction, Request, SignatureRequest,
+    validate_typed_data, Eip712OtherAction, LegacyAction, OtherAction, Request, SignatureRequest,
     TransactionRequest,
 };
 use crate::host::stat_windows::ReservationId;
@@ -103,7 +103,7 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
         self
     }
 
-    /// Build the semantic [`Action`] for a request without enrichment, lowering,
+    /// Build the semantic [`LegacyAction`] for a request without enrichment, lowering,
     /// or evaluation.
     ///
     /// Wraps the existing private TX and signature builders behind the unified
@@ -117,7 +117,7 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
     /// [`PipelineError::AdapterBuild`] if the matched adapter fails to build.
     ///
     /// [`HostFactPlan`]: crate::lowering::HostFactPlan
-    pub fn build_action_for(&self, request: &Request) -> Result<Action, PipelineError> {
+    pub fn build_action_for(&self, request: &Request) -> Result<LegacyAction, PipelineError> {
         match request {
             Request::Tx(tx) => self.build_action_for_tx(tx),
             Request::Sig(sig) => {
@@ -133,15 +133,15 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
         }
     }
 
-    fn build_action_for_tx(&self, tx: &TransactionRequest) -> Result<Action, PipelineError> {
+    fn build_action_for_tx(&self, tx: &TransactionRequest) -> Result<LegacyAction, PipelineError> {
         let (outcome, adapter) = self.registry.resolve_with_adapter(tx);
 
         match (outcome, adapter) {
             (TransactionResolverOutcome::Ambiguous(ids), _) => Err(PipelineError::Ambiguous(ids)),
             (TransactionResolverOutcome::NoMatch, _) => {
-                // No adapter matched — emit `Action::Other` and let user
+                // No adapter matched — emit `LegacyAction::Other` and let user
                 // policies decide whether to allow unrecognized calls.
-                Ok(Action::Other(OtherAction {
+                Ok(LegacyAction::Other(OtherAction {
                     actor: tx.from.clone(),
                     target: tx.to.clone(),
                     selector: tx.selector_hex().unwrap_or_else(|| "0x".into()),
@@ -171,7 +171,7 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
         let mut action = self.build_action_for_tx(tx)?;
         let mut reservation = None;
 
-        if let Action::Dex(dex) = &mut action {
+        if let LegacyAction::Dex(dex) = &mut action {
             enrich_dex_action_base(dex, &self.host);
             let deltas = compute_dex_window_deltas(dex);
             if !deltas.is_empty() {
@@ -223,7 +223,7 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
     fn evaluate_tx(&self, tx: &TransactionRequest) -> Result<Verdict, PipelineError> {
         let mut action = self.build_action_for_tx(tx)?;
 
-        if let Action::Dex(dex) = &mut action {
+        if let LegacyAction::Dex(dex) = &mut action {
             enrich_dex_action_base(dex, &self.host);
             let deltas = compute_dex_window_deltas(dex);
             enrich_dex_window_stats(dex, &self.host, &deltas);
@@ -246,7 +246,10 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
         Ok(self.evaluate_one_request(&request)?)
     }
 
-    fn build_action_for_signature(&self, sig: &SignatureRequest) -> Result<Action, PipelineError> {
+    fn build_action_for_signature(
+        &self,
+        sig: &SignatureRequest,
+    ) -> Result<LegacyAction, PipelineError> {
         if let Some(registry) = self.signature_registry {
             match registry.resolve(sig) {
                 SignatureActionResolverOutcome::Resolved(adapter) => {
@@ -261,7 +264,9 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
             }
         }
 
-        Ok(Action::Eip712Other(Eip712OtherAction::from_request(sig)))
+        Ok(LegacyAction::Eip712Other(Eip712OtherAction::from_request(
+            sig,
+        )))
     }
 
     fn evaluate_one_request(&self, request: &PolicyRequest) -> Result<Verdict, PolicyError> {
@@ -343,7 +348,7 @@ mod build_action_for_tests {
             nonce: None,
         };
         let action = pipeline.build_action_for(&Request::Tx(tx)).unwrap();
-        assert!(matches!(action, Action::Other(_)));
+        assert!(matches!(action, LegacyAction::Other(_)));
     }
 
     #[test]
@@ -354,6 +359,6 @@ mod build_action_for_tests {
 
         let sig = SignatureRequest::test_minimal_eip712_other();
         let action = pipeline.build_action_for(&Request::Sig(sig)).unwrap();
-        assert!(matches!(action, Action::Eip712Other(_)));
+        assert!(matches!(action, LegacyAction::Eip712Other(_)));
     }
 }
