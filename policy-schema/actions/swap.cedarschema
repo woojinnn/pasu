@@ -1,28 +1,19 @@
 type SwapContext = {
-  protocolIds: Set<String>,
-
   swapMode: String,
-
-  tokenIn: Set<Token>,
-  tokenOut: Set<Token>,
-
+  tokenIn: Token,
+  tokenOut: Token,
   amountIn: AmountConstraint,
   amountOut: AmountConstraint,
-
   recipient: String,
-
   validity?: Validity,
   feeBps?: Long,
 
   totalInputUsd?: UsdValuation,
   totalMinOutputUsd?: UsdValuation,
   effectiveRateVsOracleBps?: Long,
-
   totalInputFractionOfPortfolioBps?: Long,
-
   validityDeltaSec?: Long,
   recipientIsContract?: Bool,
-
   windowStats?: WindowStats,
 };
 
