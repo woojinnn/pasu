@@ -1,36 +1,13 @@
 import Browser from "webextension-polyfill";
 import init, * as wasmExports from "../wasm/policy_engine_wasm";
-import {
-  parseAction,
-  parseTier1Plan,
-  parseVerdict,
-  parseWindowKeys,
-  type ParsedAction,
-  type Tier1Plan,
-  type VerdictDto,
-  type WindowKeys,
-} from "./wasm-bridge.types";
+import { parseVerdict, type VerdictDto } from "./wasm-bridge.types";
 
 export { WasmDecodeError } from "./wasm-bridge.types";
-export type {
-  ParsedAction,
-  Tier1Plan,
-  VerdictDto,
-  WindowKeys,
-} from "./wasm-bridge.types";
+export type { VerdictDto } from "./wasm-bridge.types";
 
 interface WasmExports {
   install_policies_json(input: string): string;
-  build_action_for_request_json(request_json: string): string;
-  tier1_fact_plan_json(action_json: string): string;
-  tier2_window_keys_json(
-    action_json: string,
-    oracle_snapshot_json: string,
-  ): string;
-  evaluate_json(request_json: string, host_snapshot_json: string): string;
   evaluate_envelope_json(input_json: string): string;
-  // Phase 7: new 32-variant ActionEnvelope pipeline. Coexists with
-  // build_action_for_request_json (legacy 5-variant Action).
   route_request_json(input_json: string): string;
 }
 
@@ -98,49 +75,6 @@ export async function installPolicies(input: {
 }): Promise<void> {
   const exports = await load();
   unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
-}
-
-export async function buildActionForRequest(
-  request: unknown,
-): Promise<ParsedAction> {
-  const exports = await load();
-  const raw = unwrap<unknown>(
-    exports.build_action_for_request_json(JSON.stringify(request)),
-  );
-  return parseAction(raw);
-}
-
-export async function tier1FactPlan(action: unknown): Promise<Tier1Plan> {
-  const exports = await load();
-  const raw = unwrap<unknown>(
-    exports.tier1_fact_plan_json(JSON.stringify(action)),
-  );
-  return parseTier1Plan(raw);
-}
-
-export async function tier2WindowKeys(
-  action: unknown,
-  oracleEntries: unknown,
-): Promise<WindowKeys> {
-  const exports = await load();
-  const raw = unwrap<unknown>(
-    exports.tier2_window_keys_json(
-      JSON.stringify(action),
-      JSON.stringify(oracleEntries),
-    ),
-  );
-  return parseWindowKeys(raw);
-}
-
-export async function evaluate(
-  request: unknown,
-  snapshot: unknown,
-): Promise<VerdictDto> {
-  const exports = await load();
-  const raw = unwrap<unknown>(
-    exports.evaluate_json(JSON.stringify(request), JSON.stringify(snapshot)),
-  );
-  return parseVerdict(raw);
 }
 
 export async function evaluateEnvelope({

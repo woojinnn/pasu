@@ -1,50 +1,24 @@
 import Browser from "webextension-polyfill";
 import { ensureDefaultPoliciesInstalled } from "./policies-loader";
-import { fetchTier1, intoHostSnapshot } from "./facts/tier1-fetcher";
-import { tokenKey } from "./oracle/token-key";
-import {
-  committedForActor,
-  pendingForActor,
-  reservePending,
-  setTxHash,
-} from "./pending-deltas";
+import { setTxHash } from "./pending-deltas";
 import {
   auditAppend,
   pendingDelete,
   pendingPut,
   type PendingRequest,
 } from "./storage";
-import {
-  buildActionForRequest,
-  evaluate,
-  EngineError,
-  tier1FactPlan,
-  tier2WindowKeys,
-} from "./wasm-bridge";
-import type {
-  DexAction,
-  OtherAction,
-  ParsedAction,
-  Tier1Plan,
-  VerdictDto,
-} from "./wasm-bridge.types";
+import { EngineError } from "./wasm-bridge";
+import type { VerdictDto } from "./wasm-bridge.types";
 import {
   isTransaction,
   isTypedSignature,
   isUntypedSignature,
   type Message,
 } from "@lib/types";
-import type { OracleEntry } from "./types/host-snapshot";
 
-// Caps `runLifecycle` (action build + tier-1 fact fetch + tier-2 window
-// keys + Cedar evaluate). Three independent 1.5 s tier-1 dimension
-// races (oracle/balances/allowances) plus a Cedar evaluation can take
-// ~2-3 s on a cold service-worker boot. Set the cap higher so the
-// timeout-warn fallback only fires on genuinely stuck engine work,
-// not on routine cold-cache lifecycles. Aligned to be a few seconds
-// shorter than the proxy's PHASE1_MS so the SW always has time to
-// post back a real verdict (or an `awaiting-user` extension request)
-// before the proxy gives up.
+// Caps `runLifecycle`. Aligned to be a few seconds shorter than the
+// proxy's PHASE1_MS so the SW always has time to post back a real verdict
+// (or an `awaiting-user` extension request) before the proxy gives up.
 const HARD_TIMEOUT_MS = 8_000;
 
 interface DecisionResult {
@@ -58,22 +32,13 @@ interface DecisionOptions {
 
 interface LifecycleResult {
   verdict: VerdictDto;
-  dexWindowEntries?: WindowEntryDelta[];
-}
-
-interface WindowEntryDelta {
-  name: string;
-  value: string;
 }
 
 /**
- * Per-actor mutex chain. The read-evaluate-reserve sequence (read pending
- * + committed → evaluate → reserve a delta on Pass) is non-atomic at the
- * storage layer; without serialization two concurrent decisions for the
- * same wallet could each see the same baseline and both pass an over-the-
- * cap swap. We serialize lifecycles per `actor` (lowercased) by chaining
- * promises so the second decision strictly waits for the first to commit
- * its reservation.
+ * Per-actor mutex chain. The read-evaluate-reserve sequence is non-atomic
+ * at the storage layer; we serialize lifecycles per `actor` (lowercased)
+ * by chaining promises so the second decision strictly waits for the
+ * first to commit.
  */
 const actorChain = new Map<string, Promise<unknown>>();
 
@@ -132,7 +97,6 @@ async function decideInner(
 
     let ok = false;
     if (verdict.kind === "pass") {
-      await reserveDexDeltaIfNeeded(message, lifecycle.dexWindowEntries);
       ok = true;
     } else if (verdict.kind === "fail") {
       // Surface the matched policies in a popup so the user understands
@@ -151,9 +115,6 @@ async function decideInner(
         verdict,
         options.onAwaitingUser,
       );
-      if (ok) {
-        await reserveDexDeltaIfNeeded(message, lifecycle.dexWindowEntries);
-      }
     }
 
     await appendAudit(message, pending.type, verdict);
@@ -230,384 +191,33 @@ function logDecision(message: Message, verdict: VerdictDto): void {
   }
 }
 
-async function reserveDexDeltaIfNeeded(
-  message: Message,
-  windowEntries: WindowEntryDelta[] | undefined,
-): Promise<void> {
-  const actor = inferActor(message);
-  if (!windowEntries || !actor || !isTransaction(message)) return;
-  await reservePending({
-    requestId: message.requestId,
-    chainId: message.data.chainId,
-    actor,
-    windowEntries,
-    enqueuedAtMs: Date.now(),
-  });
-}
-
 async function runLifecycle(message: Message): Promise<LifecycleResult> {
-  const requestJson = encodeRequestForEngine(message);
-  if (!requestJson) {
-    if (isUntypedSignature(message)) {
-      return { verdict: unsupportedUntypedSignatureVerdict() };
-    }
-    return {
-      verdict: engineErrorVerdict(
-        new EngineError("unsupported", "request type is not yet evaluable"),
-      ),
-    };
+  if (isUntypedSignature(message)) {
+    return { verdict: unsupportedUntypedSignatureVerdict() };
   }
 
-  // Phase A: build action (no host needed).
-  const actionParsed: ParsedAction = await buildActionForRequest(
-    JSON.parse(requestJson),
+  // L8: the legacy `buildActionForRequest` + `tier1FactPlan` +
+  // `tier2WindowKeys` + `evaluate` pipeline was removed when its
+  // underlying WASM exports were deleted in cf13612. The surviving
+  // surface (`routeRequest` + `evaluateEnvelope` + `installPolicies`)
+  // is sufficient to migrate this orchestrator, but full feature parity
+  // (per-actor window deltas, oracle/balance/allowance fact fetch,
+  // host-snapshot assembly) is a non-trivial follow-up. Until then,
+  // every wallet action surfaces as a deny-with-engine-error so the
+  // dApp gets 4001 and the user sees a clear modal.
+  //
+  // TODO(L9+): migrate to routeRequest + evaluateEnvelope, including a
+  // replacement for the deleted tier1-fetcher / host-snapshot builder.
+  throw new EngineError(
+    "legacy_pipeline_removed",
+    "orchestrator not yet migrated to the new routeRequest/evaluateEnvelope pipeline",
   );
-
-  // Phase B: derive Tier-1 plan and fetch facts.
-  const plan: Tier1Plan = await tier1FactPlan(actionParsed);
-  const tier1 = await fetchTier1(plan);
-  logActionContext(message, actionParsed, plan, tier1);
-  warnMissingOracleEntries(message, plan, tier1.oracle);
-
-  // Phase C: tier-2 window keys derived from oracle snapshot.
-  const tier2 = await tier2WindowKeys(actionParsed, tier1.oracle);
-
-  // Merge committed + pending window state for the actor.
-  const actor = inferActor(message);
-  const actorLower = actor ? actor.toLowerCase() : null;
-  const windowsMap = new Map<string, string>();
-  if (actorLower) {
-    for (const e of await committedForActor(actorLower)) {
-      windowsMap.set(e.name, e.value);
-    }
-    for (const e of await pendingForActor(actorLower)) {
-      const previous = windowsMap.get(e.name);
-      windowsMap.set(
-        e.name,
-        previous === undefined
-          ? e.value
-          : addWindowValues(e.name, previous, e.value),
-      );
-    }
-  }
-  for (const k of tier2.keys) {
-    if (!windowsMap.has(k.name))
-      windowsMap.set(k.name, zeroWindowValue(k.name));
-  }
-  const windows = actorLower
-    ? [...windowsMap.entries()].map(([name, value]) => ({
-        actor: actorLower,
-        name,
-        value,
-      }))
-    : [];
-
-  const snapshot = intoHostSnapshot(tier1, windows);
-
-  // Phase D: evaluate.
-  const verdict = await evaluate(JSON.parse(requestJson), snapshot);
-  const dexWindowEntries = computeDexWindowEntries(actionParsed, tier1.oracle);
-  return dexWindowEntries ? { verdict, dexWindowEntries } : { verdict };
-}
-
-function logActionContext(
-  message: Message,
-  actionParsed: ParsedAction,
-  plan: Tier1Plan,
-  tier1: Awaited<ReturnType<typeof fetchTier1>>,
-): void {
-  const base: Record<string, unknown> = {
-    requestId: message.requestId,
-    hostname: message.data.hostname,
-    actionKind: actionKind(actionParsed),
-    txTo: isTransaction(message) ? message.data.transaction.to : undefined,
-    tier1: {
-      tokensForOracle: plan.tokens_for_oracle.map((token) => ({
-        tokenKey: tokenKey({
-          chainId: token.chain_id,
-          address: token.address,
-          isNative: token.is_native,
-        }),
-        symbol: token.symbol,
-      })),
-      oracleEntries: tier1.oracle.map((entry) => ({
-        tokenKey: entry.token_key,
-        usdPerUnit: entry.usd_per_unit,
-        staleSec: entry.stale_sec,
-      })),
-      balances: tier1.balances.length,
-      allowances: tier1.allowances.length,
-    },
-  };
-
-  if (isParsedDexAction(actionParsed)) {
-    base.dex = {
-      target: actionParsed.dex.target,
-      protocolIds: [...actionParsed.dex.facts.protocol_ids],
-      inputTokens: actionParsed.dex.facts.input_tokens.map((token) => ({
-        tokenKey: tokenKey({
-          chainId: token.chain_id,
-          address: token.address,
-          isNative: token.is_native,
-        }),
-        symbol: token.symbol,
-      })),
-      oracleRequirements: actionParsed.dex.oracle_requirements.map((req) => ({
-        kind: req.kind,
-        tokenKey: tokenKey({
-          chainId: req.token.chain_id,
-          address: req.token.address,
-          isNative: req.token.is_native,
-        }),
-        symbol: req.token.symbol,
-        rawAmount: req.raw_amount,
-      })),
-      trace: actionParsed.dex.trace.steps.slice(0, 8),
-    };
-  } else if (isParsedOtherAction(actionParsed)) {
-    base.other = {
-      target: actionParsed.other.target,
-      selector: actionParsed.other.selector,
-    };
-  }
-
-  console.info("[Scopeball] action", base);
-}
-
-function actionKind(actionParsed: ParsedAction): string {
-  if ("dex" in actionParsed) return "dex";
-  if ("other" in actionParsed) return "other";
-  if ("permit2" in actionParsed) return "permit2";
-  if ("eip2612" in actionParsed) return "eip2612";
-  return "eip712Other";
-}
-
-function warnMissingOracleEntries(
-  message: Message,
-  plan: Tier1Plan,
-  oracleEntries: OracleEntry[],
-): void {
-  const requested = plannedOracleTokenKeys(plan);
-  if (requested.length === 0) return;
-
-  const resolved = new Set(
-    oracleEntries.map((entry) => entry.token_key.toLowerCase()),
-  );
-  const missing = requested.filter((tokenKey) => !resolved.has(tokenKey));
-  if (missing.length === 0) return;
-
-  console.warn(
-    "[Scopeball SW] oracle_requirements declared but no entries returned — dex/USD policies will silently miss",
-    {
-      requestId: message.requestId,
-      hostname: message.data.hostname,
-      requested,
-      missing,
-    },
-  );
-}
-
-function plannedOracleTokenKeys(plan: Tier1Plan): string[] {
-  const keys = new Set<string>();
-  const addToken = (token: {
-    chain_id: number;
-    address: string;
-    is_native?: boolean;
-  }): void => {
-    keys.add(
-      tokenKey({
-        chainId: token.chain_id,
-        address: token.address,
-      }),
-    );
-  };
-
-  for (const token of plan.tokens_for_oracle) addToken(token);
-  for (const requirement of plan.sig_oracle_requirements) {
-    if ("token" in requirement) {
-      addToken(requirement.token);
-    } else {
-      keys.add(tokenKey(requirement));
-    }
-  }
-
-  return [...keys];
 }
 
 function inferActor(message: Message): string | undefined {
   if (isTransaction(message)) return message.data.transaction.from;
   if (isTypedSignature(message)) return message.data.address;
   return undefined;
-}
-
-function computeDexWindowEntries(
-  actionParsed: ParsedAction,
-  oracleEntries: OracleEntry[],
-): WindowEntryDelta[] | undefined {
-  if (!isParsedDexAction(actionParsed)) return undefined;
-  const dexInputUsd = computeDexInputUsd(actionParsed.dex, oracleEntries);
-  const entries: WindowEntryDelta[] = [];
-  if (dexInputUsd) {
-    entries.push({ name: "swapVolumeUsd24h", value: dexInputUsd });
-  }
-  entries.push({ name: "swapCount24h", value: "1" });
-  return entries;
-}
-
-function isParsedDexAction(
-  actionParsed: ParsedAction,
-): actionParsed is ParsedAction & { readonly dex: DexAction } {
-  return "dex" in actionParsed && actionParsed.dex !== undefined;
-}
-
-function isParsedOtherAction(
-  actionParsed: ParsedAction,
-): actionParsed is ParsedAction & { readonly other: OtherAction } {
-  return "other" in actionParsed && actionParsed.other !== undefined;
-}
-
-function computeDexInputUsd(
-  dex: DexAction,
-  oracleEntries: OracleEntry[],
-): string | undefined {
-  const prices = new Map(
-    oracleEntries.map((entry) => [
-      entry.token_key.toLowerCase(),
-      entry.usd_per_unit,
-    ]),
-  );
-
-  let total = 0n;
-  let found = false;
-  for (const requirement of dex.oracle_requirements) {
-    if (requirement.kind !== "input") continue;
-    const requirementTokenKey = tokenKey({
-      chainId: requirement.token.chain_id,
-      address: requirement.token.address,
-    });
-    const raw = parseUnsignedDecimal(requirement.raw_amount);
-    const price = prices.get(requirementTokenKey);
-    if (raw === undefined || !price) continue;
-
-    const fixedUsd = multiplyRawByUsd(raw, requirement.token.decimals, price);
-    if (fixedUsd === undefined) continue;
-    total += fixedUsd;
-    found = true;
-  }
-
-  return found ? fixedToDecimal(total) : undefined;
-}
-
-function parseUnsignedDecimal(value: unknown): bigint | undefined {
-  if (typeof value !== "string" || !/^\d+$/.test(value)) return undefined;
-  try {
-    return BigInt(value);
-  } catch {
-    return undefined;
-  }
-}
-
-function multiplyRawByUsd(
-  raw: bigint,
-  decimals: number,
-  price: string,
-): bigint | undefined {
-  if (!Number.isSafeInteger(decimals) || decimals < 0 || decimals > 255)
-    return undefined;
-  const priceFixed = decimalToFixed(price);
-  if (priceFixed === undefined) return undefined;
-  const scaled = (raw * priceFixed) / 10n ** BigInt(decimals);
-  return scaled <= 9223372036854775807n ? scaled : undefined;
-}
-
-function decimalToFixed(value: string): bigint | undefined {
-  const parts = value.split(".");
-  if (parts.length > 2) return undefined;
-  const [whole, fraction = ""] = parts;
-  if (whole === "" && fraction === "") return undefined;
-  if (!/^\d*$/.test(whole) || !/^\d*$/.test(fraction)) return undefined;
-  const padded = `${fraction}0000`.slice(0, 4);
-  try {
-    return BigInt(`${whole || "0"}${padded}`);
-  } catch {
-    return undefined;
-  }
-}
-
-function fixedToDecimal(value: bigint): string {
-  const raw = value.toString().padStart(5, "0");
-  const whole = raw.slice(0, -4);
-  const fraction = raw.slice(-4);
-  return `${whole}.${fraction}`;
-}
-
-function addWindowValues(name: string, left: string, right: string): string {
-  if (name === "swapVolumeUsd24h") {
-    const leftFixed = decimalToFixed(left);
-    const rightFixed = decimalToFixed(right);
-    if (leftFixed === undefined) return right;
-    if (rightFixed === undefined) return left;
-    return fixedToDecimal(leftFixed + rightFixed);
-  }
-  return (BigInt(left) + BigInt(right)).toString();
-}
-
-function zeroWindowValue(name: string): string {
-  return name === "swapVolumeUsd24h" ? "0.0000" : "0";
-}
-
-function hexToBytes(hex: string | undefined): number[] {
-  if (!hex) return [];
-  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
-  if (clean.length % 2 !== 0) return [];
-  const out: number[] = new Array(clean.length / 2);
-  for (let i = 0; i < out.length; i++)
-    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-  return out;
-}
-
-function encodeRequestForEngine(message: Message): string | null {
-  if (isTransaction(message)) {
-    return JSON.stringify({
-      Tx: {
-        chain_id: message.data.chainId,
-        from: message.data.transaction.from,
-        to: message.data.transaction.to,
-        value_wei: quantityToDecimal(message.data.transaction.value),
-        data: hexToBytes(message.data.transaction.data),
-        gas: null,
-        nonce: null,
-      },
-    });
-  }
-  if (isTypedSignature(message)) {
-    let typedData = message.data.typedData;
-    if (typeof typedData === "string") {
-      try {
-        typedData = JSON.parse(typedData);
-      } catch {
-        return null;
-      }
-    }
-    return JSON.stringify({
-      Sig: {
-        chainId: message.data.chainId,
-        signer: message.data.address,
-        typedData,
-      },
-    });
-  }
-  return null;
-}
-
-function quantityToDecimal(value: string | undefined): string {
-  if (!value) return "0";
-  if (!value.toLowerCase().startsWith("0x")) return value;
-  try {
-    return BigInt(value).toString();
-  } catch {
-    return value;
-  }
 }
 
 function redactEnvelope(message: Message): unknown {

@@ -1,12 +1,12 @@
-// Mirrors the HostSnapshotDto consumed by `evaluate_json` in the WASM
-// bridge (crates/policy_engine_wasm/src/dto.rs). Wire-compatible JSON.
+// Mirrors the HostSnapshotDto consumed by `evaluate_envelope_json` in the
+// WASM bridge (crates/policy_engine_wasm/src/dto.rs). Wire-compatible JSON.
 
 export interface OracleEntry {
   /** `${chainId}:${address.toLowerCase()}` — matches engine `Token::key()`. */
   token_key: string;
   /** TS-side convenience field requested by Plan 4 fact fetchers. */
   usd_price: number;
-  /** WASM bridge DTO field consumed by `evaluate_json`. */
+  /** WASM bridge DTO field consumed by `evaluate_envelope_json`. */
   usd_per_unit: string;
   /** Unix seconds, matching HostSnapshotDto. */
   as_of_ts: number;
