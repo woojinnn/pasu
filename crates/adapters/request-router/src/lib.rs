@@ -15,6 +15,12 @@
 //! Methods that are neither recognised sign methods nor parseable as a
 //! write (no `to` address) return [`RouterOutput::Unsupported`].
 
+pub mod registries;
+pub mod router;
+pub use registries::DefaultRegistries;
+pub use router::RouterError as RouteRequestError;
+pub use router::{route_request, RouterContext, RouterError};
+
 use abi_resolver::resolver::{ResolveOutcome, Resolver};
 use alloy_primitives::Address;
 use serde_json::Value;
@@ -27,7 +33,7 @@ pub enum RouterOutput {
     Write(WriteRouterResult),
     /// Method is not a sign method and params could not be parsed as a write.
     Unsupported(String),
-    Error(RouterError),
+    Error(LegacyRouterError),
 }
 
 /// Result for a sign request.
@@ -50,7 +56,7 @@ pub struct WriteRouterResult {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum RouterError {
+pub enum LegacyRouterError {
     #[error("sign parse error: {0}")]
     SignParse(#[from] SignResolveError),
     #[error("missing `to` address in params")]
@@ -80,7 +86,7 @@ pub fn route(method: &str, params: &Value, chain_id: u64, resolver: &Resolver) -
 fn route_sign(method: &str, params: &Value, chain_id: u64, resolver: &Resolver) -> RouterOutput {
     let request = match parse_sign_request(method, params, chain_id) {
         Ok(r) => r,
-        Err(e) => return RouterOutput::Error(RouterError::SignParse(e)),
+        Err(e) => return RouterOutput::Error(LegacyRouterError::SignParse(e)),
     };
 
     // Step 5: delegate inner callData to abi-resolver for tx / userOp.
@@ -133,7 +139,7 @@ fn resolve_inner_calldata(request: &SignRequest, resolver: &Resolver) -> Option<
 fn route_write(params: &Value, chain_id: u64, resolver: &Resolver) -> RouterOutput {
     match try_route_write(params, chain_id, resolver) {
         Ok(result) => RouterOutput::Write(result),
-        Err(RouterError::MissingTo) => RouterOutput::Unsupported("no `to` in params".into()),
+        Err(LegacyRouterError::MissingTo) => RouterOutput::Unsupported("no `to` in params".into()),
         Err(e) => RouterOutput::Error(e),
     }
 }
@@ -142,18 +148,18 @@ fn try_route_write(
     params: &Value,
     chain_id: u64,
     resolver: &Resolver,
-) -> Result<WriteRouterResult, RouterError> {
+) -> Result<WriteRouterResult, LegacyRouterError> {
     let tx = params
         .as_array()
         .and_then(|a| a.first())
-        .ok_or(RouterError::MissingTo)?;
+        .ok_or(LegacyRouterError::MissingTo)?;
 
     let to_str = tx
         .get("to")
         .and_then(|v| v.as_str())
-        .ok_or(RouterError::MissingTo)?;
-    let address =
-        Address::from_str(to_str).map_err(|_| RouterError::InvalidAddress(to_str.to_string()))?;
+        .ok_or(LegacyRouterError::MissingTo)?;
+    let address = Address::from_str(to_str)
+        .map_err(|_| LegacyRouterError::InvalidAddress(to_str.to_string()))?;
 
     let from = tx
         .get("from")
@@ -319,5 +325,75 @@ mod tests {
         // personal_sign with non-array params
         let out = route("personal_sign", &json!({"a": 1}), 1, &empty_resolver());
         assert!(matches!(out, RouterOutput::Error(_)));
+    }
+}
+
+#[cfg(test)]
+mod tests_route_request {
+    use mappers::EmptyTokenRegistry;
+    use policy_engine::Action;
+    use serde_json::{json, Value};
+
+    use super::{route_request, DefaultRegistries, RouteRequestError, RouterContext};
+
+    fn context<'a>(
+        registries: &'a DefaultRegistries,
+        token_registry: &'a EmptyTokenRegistry,
+    ) -> RouterContext<'a> {
+        RouterContext {
+            registries,
+            token_registry,
+            block_timestamp: None,
+        }
+    }
+
+    #[test]
+    fn standard_registries_constructs() {
+        let _registries = DefaultRegistries::standard();
+    }
+
+    #[test]
+    fn unsupported_method_returns_unsupported() {
+        let registries = DefaultRegistries::standard();
+        let token_registry = EmptyTokenRegistry;
+
+        let err = route_request(
+            &context(&registries, &token_registry),
+            "eth_getBalance",
+            &json!([]),
+            1,
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            err,
+            RouteRequestError::Unsupported(method) if method == "eth_getBalance"
+        ));
+    }
+
+    #[test]
+    fn v2_fixture_routes_to_one_swap_envelope() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../integration-tests/data/golden/inputs/swap_uniswap_v2_exact_in.json"
+        ))
+        .unwrap();
+        let rpc = fixture.get("rpc").unwrap();
+        let method = rpc.get("method").and_then(Value::as_str).unwrap();
+        let params = rpc.get("params").unwrap();
+        let chain_id = fixture.get("chain_id").and_then(Value::as_u64).unwrap();
+        let registries = DefaultRegistries::standard();
+        let token_registry = EmptyTokenRegistry;
+
+        let envelopes = route_request(
+            &context(&registries, &token_registry),
+            method,
+            params,
+            chain_id,
+        )
+        .unwrap();
+
+        assert_eq!(envelopes.len(), 1);
+        assert_eq!(envelopes[0].action.kind(), "swap");
+        assert!(matches!(envelopes[0].action, Action::Swap(_)));
     }
 }

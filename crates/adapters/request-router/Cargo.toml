@@ -6,9 +6,13 @@ license.workspace = true
 description = "Routes raw EVM RPC requests to sign-resolver or abi-resolver based on method type."
 
 [dependencies]
-sign-resolver.workspace = true
-abi-resolver.workspace = true
-alloy-primitives.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-hex.workspace = true
+call-adapter = { workspace = true }
+mappers = { workspace = true }
+sign-resolver = { workspace = true }
+policy-engine = { workspace = true }
+abi-resolver = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+hex = { workspace = true }
+alloy-primitives = { workspace = true }
