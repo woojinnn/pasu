@@ -8,6 +8,7 @@ description = "Resolve function signatures (Sourcify / openchain) and decode sta
 [dependencies]
 alloy-primitives.workspace = true
 alloy-dyn-abi.workspace = true
+alloy-sol-types.workspace = true
 alloy-json-abi = "0.8"
 anyhow = "1"
 policy-engine.workspace = true

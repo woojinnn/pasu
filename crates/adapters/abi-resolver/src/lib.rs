@@ -20,6 +20,7 @@
 
 pub mod decode;
 pub mod decoder;
+pub mod decoders;
 pub mod extract;
 pub mod in_memory_registry;
 pub mod openchain;

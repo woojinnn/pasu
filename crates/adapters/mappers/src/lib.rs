@@ -32,6 +32,7 @@ pub mod context;
 pub mod error;
 pub mod in_memory_mapper_registry;
 pub mod mapper;
+pub mod protocols;
 pub mod registry;
 pub mod token_registry;
 pub mod types;
