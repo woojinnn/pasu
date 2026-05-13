@@ -127,10 +127,16 @@ fn decode_v3_swap_exact_out(
     let _payer_is_user = read_bool_word(input, 4)?;
     let parsed_path = parse_v3_path(path)?;
 
+    // V3 exact-out paths are encoded in REVERSE order on Universal Router:
+    // the path starts with the output token and ends with the input token,
+    // because the swap router walks the path from the requested output side.
+    // `parse_v3_path` always returns (first, fee, last) of the byte stream,
+    // so for exact-out we flip the endpoints back into wallet-side semantics
+    // (token_in = what the user spends, token_out = what they receive).
     Ok(swap_envelope(SwapAction {
         mode: SwapMode::ExactOut,
-        token_in: asset_ref(ctx, &parsed_path.token_in),
-        token_out: asset_ref(ctx, &parsed_path.token_out),
+        token_in: asset_ref(ctx, &parsed_path.token_out),
+        token_out: asset_ref(ctx, &parsed_path.token_in),
         amount_in: amount_constraint(AmountKind::Max, amount_in_max),
         amount_out: amount_constraint(AmountKind::Exact, amount_out),
         recipient,
@@ -235,28 +241,28 @@ struct ParsedV3Path {
     fee_bps: Option<u32>,
 }
 
+/// Parse a Uniswap V3 packed swap path: `token(20) | (fee(3) | token(20))+`.
+/// Returns the first and last 20-byte addresses plus the *first* hop's fee.
+/// Strict on length: `path.len() == 20 + 23*k` for some `k >= 1`.
 fn parse_v3_path(path: &[u8]) -> Result<ParsedV3Path, AdapterError> {
-    if path.len() < ADDRESS_LEN * 2 {
+    const FEE_HOP_LEN: usize = 3 + ADDRESS_LEN; // 23 bytes per (fee, next-token) hop
+    let min_len = ADDRESS_LEN + FEE_HOP_LEN; // single hop = 43 bytes
+    if path.len() < min_len || !(path.len() - ADDRESS_LEN).is_multiple_of(FEE_HOP_LEN) {
         return Err(AdapterError::Invalid(format!(
-            "Universal Router v3 path must contain at least 40 bytes, got {}",
+            "Universal Router v3 path malformed: expected `addr(20) + (fee(3)+addr(20))+`, got {} bytes",
             path.len()
         )));
     }
 
     let token_in = address_from_bytes(&path[..ADDRESS_LEN])?;
     let token_out = address_from_bytes(&path[path.len() - ADDRESS_LEN..])?;
-    let fee_bps = if path.len() >= ADDRESS_LEN * 2 + 3 {
-        let first_fee =
-            (u32::from(path[20]) << 16) | (u32::from(path[21]) << 8) | u32::from(path[22]);
-        Some(first_fee / 100)
-    } else {
-        None
-    };
+    let first_fee =
+        (u32::from(path[20]) << 16) | (u32::from(path[21]) << 8) | u32::from(path[22]);
 
     Ok(ParsedV3Path {
         token_in,
         token_out,
-        fee_bps,
+        fee_bps: Some(first_fee / 100),
     })
 }
 

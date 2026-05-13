@@ -54,29 +54,75 @@ fn assert_single_action(name: &str, expected_kind: &str) {
     );
 }
 
+fn unwrap_swap(env: &policy_engine::ActionEnvelope) -> &policy_engine::action::dex::SwapAction {
+    use policy_engine::action::envelope::Action;
+    if let Action::Swap(swap) = &env.action {
+        swap
+    } else {
+        panic!(
+            "expected Action::Swap, got kind={} (category={:?})",
+            env.action.kind(),
+            env.category,
+        );
+    }
+}
+
 #[test]
 fn swap_uniswap_v2_exact_in_routes() {
-    assert_single_action("swap_uniswap_v2_exact_in.json", "swap");
+    let envelopes = route("swap_uniswap_v2_exact_in.json").expect("route ok");
+    assert_eq!(envelopes.len(), 1);
+    let swap = unwrap_swap(&envelopes[0]);
+    use policy_engine::action::dex::SwapMode;
+    use policy_engine::action::common::AmountKind;
+    assert_eq!(swap.mode, SwapMode::ExactIn);
+    assert_eq!(swap.amount_in.kind, AmountKind::Exact);
+    assert_eq!(swap.amount_out.kind, AmountKind::Min);
 }
 
 #[test]
 fn swap_uniswap_v2_exact_out_routes() {
-    assert_single_action("swap_uniswap_v2_exact_out.json", "swap");
+    let envelopes = route("swap_uniswap_v2_exact_out.json").expect("route ok");
+    assert_eq!(envelopes.len(), 1);
+    let swap = unwrap_swap(&envelopes[0]);
+    use policy_engine::action::dex::SwapMode;
+    use policy_engine::action::common::AmountKind;
+    assert_eq!(swap.mode, SwapMode::ExactOut);
+    assert_eq!(swap.amount_in.kind, AmountKind::Max);
+    assert_eq!(swap.amount_out.kind, AmountKind::Exact);
 }
 
 #[test]
 fn swap_uniswap_v3_exact_input_single_routes() {
-    assert_single_action("swap_uniswap_v3_exact_input_single.json", "swap");
+    let envelopes = route("swap_uniswap_v3_exact_input_single.json").expect("route ok");
+    assert_eq!(envelopes.len(), 1);
+    let swap = unwrap_swap(&envelopes[0]);
+    use policy_engine::action::dex::SwapMode;
+    assert_eq!(swap.mode, SwapMode::ExactIn);
+    assert!(swap.fee_bps.is_some(), "V3 single-hop should carry fee_bps");
 }
 
 #[test]
 fn swap_uniswap_v3_exact_input_multi_routes() {
-    assert_single_action("swap_uniswap_v3_exact_input_multi.json", "swap");
+    let envelopes = route("swap_uniswap_v3_exact_input_multi.json").expect("route ok");
+    assert_eq!(envelopes.len(), 1);
+    let swap = unwrap_swap(&envelopes[0]);
+    use policy_engine::action::dex::SwapMode;
+    assert_eq!(swap.mode, SwapMode::ExactIn);
+    assert!(swap.fee_bps.is_some(), "V3 multi-hop projects to first hop's fee");
+    // token_in and token_out must differ on a real multi-hop fixture.
+    assert_ne!(
+        swap.token_in.address, swap.token_out.address,
+        "multi-hop swap collapsed to a single token",
+    );
 }
 
 #[test]
 fn swap_universal_router_routes() {
-    assert_single_action("swap_universal_router.json", "swap");
+    let envelopes = route("swap_universal_router.json").expect("route ok");
+    assert_eq!(envelopes.len(), 1);
+    let swap = unwrap_swap(&envelopes[0]);
+    use policy_engine::action::dex::SwapMode;
+    assert_eq!(swap.mode, SwapMode::ExactIn);
 }
 
 #[test]

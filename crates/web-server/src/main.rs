@@ -105,10 +105,18 @@ async fn route(State(state): State<AppState>, Json(req): Json<RouteRequest>) -> 
     };
     match request_router::route_request(&ctx, &req.method, &req.params, req.chain_id) {
         Ok(envelopes) => {
-            let actions: Vec<serde_json::Value> = envelopes
-                .iter()
-                .filter_map(|e| serde_json::to_value(e).ok())
-                .collect();
+            let mut actions = Vec::with_capacity(envelopes.len());
+            for env in &envelopes {
+                match serde_json::to_value(env) {
+                    Ok(v) => actions.push(v),
+                    Err(e) => {
+                        return err(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("envelope serialize: {e}"),
+                        );
+                    }
+                }
+            }
             Json(RouteResponse { actions }).into_response()
         }
         Err(e) => err(StatusCode::BAD_REQUEST, format!("route error: {e}")),
