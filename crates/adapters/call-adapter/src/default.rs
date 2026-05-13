@@ -473,7 +473,6 @@ mod tests {
                     value: Some(decimal("0")),
                 },
                 recipient: address("0x1111111111111111111111111111111111111111"),
-                slippage_bps: None,
                 validity: Some(Validity {
                     expires_at: decimal("9999999999"),
                     source: ValiditySource::TxDeadline,
@@ -500,7 +499,6 @@ mod tests {
                     value: Some(decimal("1000000000000000000")),
                 },
                 recipient: address("0x1111111111111111111111111111111111111111"),
-                slippage_bps: None,
                 validity: Some(Validity {
                     expires_at: decimal("9999999999"),
                     source: ValiditySource::TxDeadline,

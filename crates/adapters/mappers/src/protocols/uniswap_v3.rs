@@ -132,7 +132,6 @@ fn map_exact_input_single(
         amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
         amount_out: amount_constraint(AmountKind::Min, amount_out_minimum)?,
         recipient,
-        slippage_bps: None,
         validity: Some(validity(deadline)?),
         fee_bps: Some(fee_bps(fee)?),
         enrichment: SwapEnrichment::default(),
@@ -157,7 +156,6 @@ fn map_exact_input(
         amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
         amount_out: amount_constraint(AmountKind::Min, amount_out_minimum)?,
         recipient,
-        slippage_bps: None,
         validity: Some(validity(deadline)?),
         fee_bps: Some(parsed.first_fee / 100),
         enrichment: SwapEnrichment::default(),
@@ -555,7 +553,6 @@ mod tests {
                 amount_in: amount(AmountKind::Exact, "200000000"),
                 amount_out: amount(AmountKind::Min, "0"),
                 recipient: address("0x1111111111111111111111111111111111111111"),
-                slippage_bps: None,
                 validity: Some(Validity {
                     expires_at: decimal("9999999999"),
                     source: ValiditySource::TxDeadline,
@@ -591,7 +588,6 @@ mod tests {
                 amount_in: amount(AmountKind::Exact, "1000000"),
                 amount_out: amount(AmountKind::Min, "0"),
                 recipient: address("0x1111111111111111111111111111111111111111"),
-                slippage_bps: None,
                 validity: Some(Validity {
                     expires_at: decimal("1"),
                     source: ValiditySource::TxDeadline,

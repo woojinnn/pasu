@@ -567,7 +567,9 @@ mod tests {
         json!([
             {
                 "uid": { "type": "Wallet", "id": "0xUser" },
-                "attrs": {},
+                "attrs": {
+                    "address": "0x0000000000000000000000000000000000000001"
+                },
                 "parents": []
             },
             {

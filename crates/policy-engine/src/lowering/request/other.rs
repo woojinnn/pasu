@@ -9,7 +9,11 @@ pub(super) fn request(action: &OtherAction) -> PolicyRequest {
     let action_uid = r#"Action::"other""#.to_string();
     let resource = r#"Protocol::"unknown""#.to_string();
     let entities = json!([
-        { "uid": { "type": "Wallet",   "id": action.actor.as_str() },   "attrs": {}, "parents": [] },
+        {
+            "uid": { "type": "Wallet", "id": action.actor.as_str() },
+            "attrs": { "address": action.actor.as_str() },
+            "parents": []
+        },
         { "uid": { "type": "Protocol", "id": "unknown" },   "attrs": {}, "parents": [] },
     ]);
     PolicyRequest::new(principal, action_uid, resource, entities, context(action))

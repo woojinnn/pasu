@@ -57,7 +57,11 @@ fn principal(signer: &str) -> String {
 
 fn entities(signer: &str, protocol: &str) -> Value {
     json!([
-        { "uid": { "type": "Wallet", "id": signer }, "attrs": {}, "parents": [] },
+        {
+            "uid": { "type": "Wallet", "id": signer },
+            "attrs": { "address": signer },
+            "parents": []
+        },
         { "uid": { "type": "Protocol", "id": protocol }, "attrs": {}, "parents": [] },
     ])
 }

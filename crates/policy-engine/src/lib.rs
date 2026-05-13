@@ -76,8 +76,8 @@ pub use host::{
 };
 pub use lowering::{
     compute_dex_window_deltas, enrich_dex_action, enrich_dex_action_base, enrich_dex_window_stats,
-    enrich_signature_action, request_from_action, request_from_action_with_host,
-    requests_from_action, requests_from_actions,
+    enrich_signature_action, policy_request_from_envelope, request_from_action,
+    request_from_action_with_host, requests_from_action, requests_from_actions,
 };
 pub use pipeline::{EvaluationOutcome, Pipeline, PipelineError, PipelineRequest};
 pub use policy::{
