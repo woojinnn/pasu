@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { decode } from './api'
-import type { DecodeRequest, DecodeResponse } from './api'
+import { decode, decodeSign } from './api'
+import type { DecodeRequest, DecodeResponse, SignDecodeRequest, SignDecodeResponse } from './api'
 import { DecodeForm } from './components/DecodeForm'
 import { DecodeResult } from './components/DecodeResult'
+import { SignDecodeForm } from './components/SignDecodeForm'
+import { SignDecodeResult } from './components/SignDecodeResult'
 import './App.css'
 
 interface RpcEvent {
@@ -12,6 +14,9 @@ interface RpcEvent {
   chainIds?: string[]
   to?: string
   calldata?: string[]
+  addresses?: string[]
+  rawParams?: unknown
+  parsedTypedData?: unknown
   [extra: string]: unknown
 }
 
@@ -30,7 +35,11 @@ type MethodCategory = 'write' | 'sign' | 'connect' | 'wallet' | 'read'
 function categorize(method?: string): MethodCategory {
   if (!method) return 'read'
   if (method === 'eth_sendTransaction' || method === 'eth_signTransaction') return 'write'
-  if (method === 'personal_sign' || method.startsWith('eth_sign')) return 'sign'
+  if (
+    method === 'personal_sign' ||
+    method === 'eth_sendUserOperation' ||
+    method.startsWith('eth_sign')
+  ) return 'sign'
   if (method === 'eth_requestAccounts' || method === 'eth_accounts') return 'connect'
   if (method.startsWith('wallet_')) return 'wallet'
   return 'read'
@@ -69,52 +78,81 @@ function isRecentDuplicate(
   return av === bv
 }
 
-// "Decodable" = the form can be filled from this event (we need a target
-// address + calldata). Currently that's only eth_sendTransaction-shaped writes.
-function isDecodable(entry: EventEntry): boolean {
+function parseChainId(payload: RpcEvent): string {
+  const cidRaw = payload.primaryChainId ?? payload.chainIds?.[0]
+  if (typeof cidRaw === 'string') {
+    const n = cidRaw.startsWith('0x') ? parseInt(cidRaw, 16) : Number(cidRaw)
+    if (Number.isFinite(n) && n > 0) return String(n)
+  }
+  return '1'
+}
+
+// Write event: needs a target address + calldata.
+function isWriteDecodable(entry: EventEntry): boolean {
   const cat = categorize(entry.payload.method)
   if (cat !== 'write') return false
   const cd = entry.payload.calldata
   return Array.isArray(cd) && typeof cd[0] === 'string' && cd[0].length > 0
 }
 
-interface FormFill {
+// Sign event: needs a recognized sign method.
+function isSignDecodable(entry: EventEntry): boolean {
+  return categorize(entry.payload.method) === 'sign' && !!entry.payload.method
+}
+
+interface WriteFill {
   chainId: string
   address: string
   calldata: string
 }
 
-function fillFromEvent(payload: RpcEvent): FormFill | null {
+interface SignFill {
+  method: string
+  chainId: string
+  params: string
+}
+
+function fillWriteFromEvent(payload: RpcEvent): WriteFill | null {
   const cd = Array.isArray(payload.calldata) ? payload.calldata[0] : null
   if (!cd) return null
-  const cidRaw = payload.primaryChainId ?? payload.chainIds?.[0]
-  let chainId = '1'
-  if (typeof cidRaw === 'string') {
-    const n = cidRaw.startsWith('0x') ? parseInt(cidRaw, 16) : Number(cidRaw)
-    if (Number.isFinite(n) && n > 0) chainId = String(n)
-  }
   return {
-    chainId,
+    chainId: parseChainId(payload),
     address: typeof payload.to === 'string' ? payload.to : '',
     calldata: cd,
   }
 }
 
+function fillSignFromEvent(payload: RpcEvent): SignFill | null {
+  if (!payload.method) return null
+  return {
+    method: payload.method,
+    chainId: parseChainId(payload),
+    params: payload.rawParams !== undefined
+      ? JSON.stringify(payload.rawParams, null, 2)
+      : '[]',
+  }
+}
+
 function App() {
+  // ── write decoder state ───────────────────────────────────────────────────
   const [chainId, setChainId] = useState<string>('1')
   const [address, setAddress] = useState<string>('')
   const [calldata, setCalldata] = useState<string>('')
-
   const [result, setResult] = useState<DecodeResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [pendingRpcMethod, setPendingRpcMethod] = useState<string | undefined>(undefined)
+
+  // ── sign decoder state ────────────────────────────────────────────────────
+  const [signMethod, setSignMethod] = useState<string>('eth_signTypedData_v4')
+  const [signChainId, setSignChainId] = useState<string>('1')
+  const [signParams, setSignParams] = useState<string>('')
+  const [signResult, setSignResult] = useState<SignDecodeResponse | null>(null)
+  const [signError, setSignError] = useState<string | null>(null)
+  const [signLoading, setSignLoading] = useState(false)
+
   const [transactions, setTransactions] = useState<EventEntry[]>([])
   const [others, setOthers] = useState<EventEntry[]>([])
-  // RPC method that produced the currently loaded form data. Forwarded to
-  // the backend so it can gate the Etherscan API fallback to write/sign
-  // calls only (read/wallet RPCs don't burn the rate-limit budget).
-  // Cleared whenever the user edits the form manually.
-  const [pendingRpcMethod, setPendingRpcMethod] = useState<string | undefined>(undefined)
 
   // Subscribe to RPC events broadcast by the backend (the userscript posts
   // here). We DON'T auto-prefill any more — the user explicitly clicks a
@@ -161,16 +199,26 @@ function App() {
     }
   }, [])
 
-  function loadEventIntoForm(entry: EventEntry) {
-    const f = fillFromEvent(entry.payload)
+  function loadWriteEventIntoForm(entry: EventEntry) {
+    const f = fillWriteFromEvent(entry.payload)
     if (!f) return
     setChainId(f.chainId)
     setAddress(f.address)
     setCalldata(f.calldata)
     setPendingRpcMethod(entry.payload.method)
-    // Scroll the form into view so the user immediately sees what got loaded.
     requestAnimationFrame(() => {
-      document.querySelector('.form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      document.querySelector('.write-decoder')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  function loadSignEventIntoForm(entry: EventEntry) {
+    const f = fillSignFromEvent(entry.payload)
+    if (!f) return
+    setSignMethod(f.method)
+    setSignChainId(f.chainId)
+    setSignParams(f.params)
+    requestAnimationFrame(() => {
+      document.querySelector('.sign-decoder')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
 
@@ -204,6 +252,20 @@ function App() {
     setPendingRpcMethod(undefined)
   }
 
+  async function handleSignSubmit(req: SignDecodeRequest) {
+    setSignLoading(true)
+    setSignError(null)
+    setSignResult(null)
+    try {
+      const r = await decodeSign(req)
+      setSignResult(r)
+    } catch (e) {
+      setSignError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSignLoading(false)
+    }
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -218,19 +280,38 @@ function App() {
             setTransactions([])
             setOthers([])
           }}
-          onLoad={loadEventIntoForm}
+          onLoadWrite={loadWriteEventIntoForm}
+          onLoadSign={loadSignEventIntoForm}
         />
-        <DecodeForm
-          chainId={chainId}
-          address={address}
-          calldata={calldata}
-          onChainIdChange={trackedSetChainId}
-          onAddressChange={trackedSetAddress}
-          onCalldataChange={trackedSetCalldata}
-          onSubmit={handleSubmit}
-          loading={loading}
-        />
-        <DecodeResult result={result} error={error} />
+        <div className="decoders">
+          <section className="write-decoder">
+            <h2>Write Decoder</h2>
+            <DecodeForm
+              chainId={chainId}
+              address={address}
+              calldata={calldata}
+              onChainIdChange={trackedSetChainId}
+              onAddressChange={trackedSetAddress}
+              onCalldataChange={trackedSetCalldata}
+              onSubmit={handleSubmit}
+              loading={loading}
+            />
+            <DecodeResult result={result} error={error} />
+          </section>
+          <section className="sign-decoder">
+            <h2>Sign Decoder</h2>
+            <SignDecodeForm
+              method={signMethod}
+              chainId={signChainId}
+              params={signParams}
+              onMethodChange={(v) => { setSignMethod(v); }}
+              onChainIdChange={(v) => { setSignChainId(v); }}
+              onSubmit={handleSignSubmit}
+              loading={signLoading}
+            />
+            <SignDecodeResult result={signResult} error={signError} />
+          </section>
+        </div>
       </main>
       <footer>
         <a href="https://sourcify.dev" target="_blank" rel="noreferrer">
@@ -248,12 +329,14 @@ function App() {
 interface EventCardProps {
   entry: EventEntry
   open?: boolean
-  onLoad?: (entry: EventEntry) => void
+  onLoadWrite?: (entry: EventEntry) => void
+  onLoadSign?: (entry: EventEntry) => void
 }
 
-function EventCard({ entry, open, onLoad }: EventCardProps) {
+function EventCard({ entry, open, onLoadWrite, onLoadSign }: EventCardProps) {
   const cat = categorize(entry.payload.method)
-  const decodable = isDecodable(entry)
+  const writeDecodable = isWriteDecodable(entry)
+  const signDecodable = isSignDecodable(entry)
   return (
     <details open={open} className={`rpc-event cat-${cat}`}>
       <summary>
@@ -261,18 +344,32 @@ function EventCard({ entry, open, onLoad }: EventCardProps) {
         <span className="ts">{formatTime(entry.receivedAt)}</span>{' '}
         <code className="method">{entry.payload.method ?? '?'}</code>{' '}
         <span className="muted">{entry.payload.origin ?? ''}</span>
-        {decodable && onLoad ? (
+        {writeDecodable && onLoadWrite ? (
           <button
             type="button"
             className="use-btn"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              onLoad(entry)
+              onLoadWrite(entry)
             }}
-            title="Load this transaction into the decode form"
+            title="Load into Write Decoder"
           >
-            Use ↓
+            Use → Write ↓
+          </button>
+        ) : null}
+        {signDecodable && onLoadSign ? (
+          <button
+            type="button"
+            className="use-btn use-btn-sign"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onLoadSign(entry)
+            }}
+            title="Load into Sign Decoder"
+          >
+            Use → Sign ↓
           </button>
         ) : null}
       </summary>
@@ -293,14 +390,16 @@ interface RpcEventsPanelProps {
   transactions: EventEntry[]
   others: EventEntry[]
   onClear: () => void
-  onLoad: (entry: EventEntry) => void
+  onLoadWrite: (entry: EventEntry) => void
+  onLoadSign: (entry: EventEntry) => void
 }
 
 function RpcEventsPanel({
   transactions,
   others,
   onClear,
-  onLoad,
+  onLoadWrite,
+  onLoadSign,
 }: RpcEventsPanelProps) {
   if (transactions.length === 0 && others.length === 0) {
     return (
@@ -335,7 +434,8 @@ function RpcEventsPanel({
               key={`tx-${e.receivedAt}-${i}`}
               entry={e}
               open={i === 0}
-              onLoad={onLoad}
+              onLoadWrite={onLoadWrite}
+              onLoadSign={onLoadSign}
             />
           ))}
         </div>

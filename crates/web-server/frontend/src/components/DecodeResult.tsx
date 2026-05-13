@@ -1,4 +1,4 @@
-import type { DecodeResponse } from '../api'
+import type { DecodeResponse, MappingActionEnvelope, MappingRoot } from '../api'
 
 interface Props {
   result: DecodeResponse | null
@@ -29,15 +29,89 @@ export function DecodeResult({ result, error }: Props) {
     )
   }
 
+  const mapping = result.outcome === 'resolved' ? result.mapping : undefined
+
   return (
     <section className="result">
       <DecodeNode node={result} depth={0} />
+      {mapping && <MappingSection root={mapping} />}
       <details className="raw">
         <summary>Raw JSON</summary>
         <pre>{JSON.stringify(result, null, 2)}</pre>
       </details>
     </section>
   )
+}
+
+function MappingSection({ root }: { root: MappingRoot }) {
+  return (
+    <div className="mapping">
+      <header>
+        <h3>Schema mapping</h3>
+        <span className="schema-version">schema v{root.schemaVersion}</span>
+      </header>
+      {root.protocol && (
+        <p className="protocol">
+          <strong>Protocol:</strong>{' '}
+          <code>
+            {root.protocol.name}
+            {root.protocol.version ? ` ${root.protocol.version}` : ''}
+            {root.protocol.component ? ` / ${root.protocol.component}` : ''}
+          </code>
+        </p>
+      )}
+      <div className="actions">
+        {root.actions.map((env, i) => (
+          <MappingAction key={i} env={env} index={i} />
+        ))}
+      </div>
+      <details className="raw">
+        <summary>Mapping JSON</summary>
+        <pre>{JSON.stringify(root, null, 2)}</pre>
+      </details>
+    </div>
+  )
+}
+
+function MappingAction({ env, index }: { env: MappingActionEnvelope; index: number }) {
+  const f = env.fields as Record<string, unknown>
+  const rows: Array<[string, string]> = []
+  for (const [k, v] of Object.entries(f)) {
+    if (k === '_kind') continue
+    rows.push([k, renderValue(v)])
+  }
+  return (
+    <div className="action">
+      <header>
+        <h4>
+          <span className="idx">#{index}</span> {env.action}{' '}
+          <span className="category">[{env.category}]</span>
+        </h4>
+      </header>
+      <table className="fields">
+        <tbody>
+          {rows.map(([k, v], i) => (
+            <tr key={i}>
+              <td>
+                <code>{k}</code>
+              </td>
+              <td className="value">
+                <code>{v}</code>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function renderValue(v: unknown): string {
+  if (v === null || v === undefined) return '—'
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+    return String(v)
+  }
+  return JSON.stringify(v)
 }
 
 interface NodeProps {

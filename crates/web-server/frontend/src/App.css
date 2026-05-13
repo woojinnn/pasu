@@ -217,6 +217,75 @@ table.args td.value code {
   word-break: break-all;
 }
 
+.mapping {
+  margin-top: 20px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid #2d4255;
+  background: rgba(45, 66, 85, 0.18);
+}
+.mapping > header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.mapping h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--accent, #4ea0ff);
+}
+.mapping .schema-version {
+  font-size: 11px;
+  color: var(--muted);
+}
+.mapping .protocol {
+  margin: 6px 0 12px;
+  font-size: 13px;
+}
+.mapping .actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mapping .action {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.mapping .action header h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.mapping .action .idx {
+  color: var(--muted);
+  font-weight: 400;
+  margin-right: 6px;
+}
+.mapping .action .category {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+  margin-left: 4px;
+}
+.mapping table.fields {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.mapping table.fields td {
+  padding: 3px 8px 3px 0;
+  vertical-align: top;
+}
+.mapping table.fields td:first-child {
+  color: var(--muted);
+  white-space: nowrap;
+  width: 1px;
+}
+.mapping table.fields td.value code {
+  word-break: break-all;
+}
+
 .raw {
   margin-top: 16px;
 }
@@ -407,6 +476,13 @@ table.args td.value code {
 .use-btn:hover {
   background: var(--accent);
 }
+.use-btn-sign {
+  margin-left: 6px;
+  background: rgba(255, 195, 108, 0.85);
+}
+.use-btn-sign:hover {
+  background: var(--warn);
+}
 
 .rpc-event-history {
   margin-top: 12px;
@@ -448,4 +524,98 @@ footer a:hover {
 
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ── Two-decoder layout ─────────────────────────────────────────────────── */
+
+.decoders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .decoders {
+    grid-template-columns: 1fr;
+  }
+}
+
+.write-decoder,
+.sign-decoder {
+  display: grid;
+  gap: 16px;
+}
+
+.write-decoder h2,
+.sign-decoder h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* ── Sign form gas fields collapsible ───────────────────────────────────── */
+
+.sign-form-gas {
+  border: 1px solid #2a3340;
+  border-radius: 8px;
+  padding: 0 12px;
+}
+.sign-form-gas > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 0;
+  list-style: none;
+}
+.sign-form-gas > summary::-webkit-details-marker { display: none; }
+.sign-form-gas > summary::before { content: '▸ '; }
+.sign-form-gas[open] > summary::before { content: '▾ '; }
+
+/* ── Sign payload detail ────────────────────────────────────────────────── */
+
+.sign-payload {
+  margin-top: 14px;
+}
+.sign-payload h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sign-payload pre {
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+  margin: 6px 0 0 0;
+  border: 1px solid #2a3340;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.sign-payload code.value {
+  word-break: break-all;
+  font-size: 13px;
+}
+
+/* ── Form select ────────────────────────────────────────────────────────── */
+
+.form select {
+  background: var(--panel-2);
+  border: 1px solid #2a3340;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.form select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.form select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
