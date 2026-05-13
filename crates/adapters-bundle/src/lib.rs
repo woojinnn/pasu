@@ -36,6 +36,7 @@ use std::sync::Arc;
 // downstream code (tests, examples) doesn't need to depend on each one.
 pub mod eip2612;
 pub mod permit2;
+pub mod shim;
 pub mod uniswap_v2;
 pub mod uniswap_v3;
 pub mod universal_router;
