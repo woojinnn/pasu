@@ -189,6 +189,24 @@ fn erc20_approve_routes_to_unlimited_approve_envelope() {
 }
 
 #[test]
+fn erc20_approve_random_token_routes() {
+    use policy_engine::action::envelope::{Action, Category};
+    use policy_engine::action::misc::ApprovalKind;
+
+    let envelopes = route("erc20_approve_random_token.json")
+        .expect("random ERC-20 approve fixture should route via wildcard ERC-20 mapper");
+    assert_eq!(envelopes.len(), 1);
+    assert_eq!(envelopes[0].category, Category::Misc);
+    let Action::Approve(approve) = &envelopes[0].action else {
+        panic!(
+            "expected Action::Approve, got kind={}",
+            envelopes[0].action.kind()
+        );
+    };
+    assert_eq!(approve.approval_kind, ApprovalKind::Erc20);
+}
+
+#[test]
 fn erc20_transfer_routes_to_transfer_envelope() {
     use policy_engine::action::envelope::{Action, Category};
 

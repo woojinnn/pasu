@@ -707,11 +707,8 @@ pub fn route_request_json(input_json: String) -> String {
     let input = match parse_result {
         Ok(v) => v,
         Err(e) => {
-            return Envelope::<()>::err(
-                "invalid_input_json",
-                format!("invalid input json: {e}"),
-            )
-            .to_json();
+            return Envelope::<()>::err("invalid_input_json", format!("invalid input json: {e}"))
+                .to_json();
         }
     };
 

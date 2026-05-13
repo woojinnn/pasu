@@ -1,7 +1,14 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::call_adapter::{CallAdapter, CallAdapterRegistry};
+use policy_engine::action::Address;
+
+pub static WILDCARD_TO: LazyLock<Address> = LazyLock::new(|| {
+    "0x0000000000000000000000000000000000000000"
+        .parse()
+        .expect("wildcard address is valid")
+});
 
 pub struct InMemoryCallAdapterRegistry {
     by_key: HashMap<abi_resolver::CallMatchKey, Arc<dyn CallAdapter>>,
@@ -80,7 +87,16 @@ impl InMemoryCallAdapterRegistryBuilder {
 
 impl CallAdapterRegistry for InMemoryCallAdapterRegistry {
     fn resolve(&self, key: &abi_resolver::CallMatchKey) -> Option<Arc<dyn CallAdapter>> {
-        self.by_key.get(key).cloned()
+        if let Some(adapter) = self.by_key.get(key) {
+            return Some(adapter.clone());
+        }
+
+        let wildcard_key = abi_resolver::CallMatchKey {
+            chain_id: key.chain_id,
+            to: WILDCARD_TO.clone(),
+            selector: key.selector,
+        };
+        self.by_key.get(&wildcard_key).cloned()
     }
 }
 
@@ -174,6 +190,14 @@ mod tests {
         }
     }
 
+    fn key_to(selector: [u8; 4], to: &str) -> CallMatchKey {
+        CallMatchKey {
+            chain_id: 1,
+            to: address(to),
+            selector,
+        }
+    }
+
     #[test]
     fn test_in_memory_registry_resolves() {
         let key = key([0xde, 0xad, 0xbe, 0xef]);
@@ -184,6 +208,34 @@ mod tests {
         let adapter = registry.resolve(&key).expect("adapter should resolve");
 
         assert_eq!(adapter.id().as_str(), "mock");
+    }
+
+    #[test]
+    fn test_in_memory_registry_falls_back_to_wildcard_to_after_exact_miss() {
+        let selector = [0x09, 0x5e, 0xa7, 0xb3];
+        let exact_key = key_to(selector, "0x2222222222222222222222222222222222222222");
+        let wildcard_key = key_to(selector, "0x0000000000000000000000000000000000000000");
+        let random_token_key = key_to(selector, "0x1234567890123456789012345678901234567890");
+        let registry = InMemoryCallAdapterRegistry::builder()
+            .register(Arc::new(MockCallAdapter::new(
+                "wildcard",
+                vec![wildcard_key],
+            )))
+            .register(Arc::new(MockCallAdapter::new(
+                "exact",
+                vec![exact_key.clone()],
+            )))
+            .build();
+
+        let wildcard_adapter = registry
+            .resolve(&random_token_key)
+            .expect("adapter should resolve via wildcard to");
+        assert_eq!(wildcard_adapter.id().as_str(), "wildcard");
+
+        let exact_adapter = registry
+            .resolve(&exact_key)
+            .expect("adapter should resolve via exact key");
+        assert_eq!(exact_adapter.id().as_str(), "exact");
     }
 
     #[test]
