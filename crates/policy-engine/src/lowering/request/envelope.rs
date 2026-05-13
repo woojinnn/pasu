@@ -12,9 +12,7 @@ use serde_json::{json, Map, Value};
 use super::amount::usd_valuation_json;
 
 const ACTION_ID: &str = "swap";
-const DEFAULT_PROTOCOL_ID: &str = "unknown";
 
-const PROTOCOL_IDS: &str = "protocolIds";
 const SWAP_MODE: &str = "swapMode";
 const TOKEN_IN: &str = "tokenIn";
 const TOKEN_OUT: &str = "tokenOut";
@@ -74,16 +72,9 @@ pub fn policy_request_from_envelope(
 
 fn context(swap: &SwapAction, block_timestamp: u64) -> Value {
     let mut context = Map::new();
-    context.insert(PROTOCOL_IDS.into(), json!([DEFAULT_PROTOCOL_ID]));
     context.insert(SWAP_MODE.into(), Value::from(swap_mode_str(&swap.mode)));
-    context.insert(
-        TOKEN_IN.into(),
-        Value::Array(vec![asset_ref_json(&swap.token_in)]),
-    );
-    context.insert(
-        TOKEN_OUT.into(),
-        Value::Array(vec![asset_ref_json(&swap.token_out)]),
-    );
+    context.insert(TOKEN_IN.into(), asset_ref_json(&swap.token_in));
+    context.insert(TOKEN_OUT.into(), asset_ref_json(&swap.token_out));
     context.insert(AMOUNT_IN.into(), amount_constraint_json(&swap.amount_in));
     context.insert(AMOUNT_OUT.into(), amount_constraint_json(&swap.amount_out));
     context.insert(RECIPIENT.into(), Value::from(swap.recipient.to_string()));
@@ -324,25 +315,17 @@ mod tests {
                 { "uid": { "type": "Protocol", "id": "swap" }, "attrs": {}, "parents": [] },
             ])
         );
-        assert_eq!(
-            request
-                .context
-                .get("protocolIds")
-                .and_then(Value::as_array)
-                .and_then(|ids| ids.first())
-                .and_then(Value::as_str),
-            Some("unknown")
-        );
+        // protocolIds was removed from the swap.cedarschema in commit 9031401.
+        assert!(request.context.get("protocolIds").is_none());
         assert_eq!(
             request.context.get("swapMode").and_then(Value::as_str),
             Some("exact_in")
         );
+        // tokenIn / tokenOut are now single `Token` objects (Set<Token> removed).
         assert_eq!(
             request
                 .context
                 .get("tokenIn")
-                .and_then(Value::as_array)
-                .and_then(|tokens| tokens.first())
                 .and_then(|token| token.get("address"))
                 .and_then(Value::as_str),
             Some("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
@@ -351,8 +334,6 @@ mod tests {
             request
                 .context
                 .get("tokenOut")
-                .and_then(Value::as_array)
-                .and_then(|tokens| tokens.first())
                 .and_then(|token| token.get("address"))
                 .and_then(Value::as_str),
             Some("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
