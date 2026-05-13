@@ -188,7 +188,7 @@ impl DeclaredTransactionActionAdapter for Adapter_ {
     fn build_transaction_action(
         &self,
         tx: &TransactionRequest,
-    ) -> Result<Action, ActionAdapterError> {
+    ) -> Result<LegacyAction, ActionAdapterError> {
         let p = decode(&tx.data).map_err(|e| ActionAdapterError::BadCalldata(e.to_string()))?;
 
         let token_in_addr = Address::from_alloy(p.token_in);
@@ -328,7 +328,7 @@ mod tests {
             .build_action(&build_tx(U256::from(200_000_000u64)))
             .unwrap();
         match action {
-            Action::Dex(d) => {
+            LegacyAction::Dex(d) => {
                 assert_eq!(d.facts.protocol_ids, vec!["uniswap-v3"]);
                 assert_eq!(d.facts.input_tokens[0].symbol, "USDT");
                 assert_eq!(d.facts.output_tokens[0].symbol, "WETH");
@@ -364,7 +364,7 @@ mod tests {
             nonce: None,
         };
         match adapter.build_action(&tx).unwrap() {
-            Action::Dex(d) => assert_eq!(d.facts.input_tokens[0].symbol, "UNKNOWN"),
+            LegacyAction::Dex(d) => assert_eq!(d.facts.input_tokens[0].symbol, "UNKNOWN"),
             other => panic!("expected dex, got {other:?}"),
         }
     }

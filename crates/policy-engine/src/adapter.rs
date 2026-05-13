@@ -5,10 +5,10 @@
 //! and program against [`crate::prelude`].
 //!
 //! Two responsibilities:
-//! - [`TransactionActionAdapter::build_action`] — parsed calldata → semantic [`Action`].
-//! - [`SignatureActionAdapter::build_action`] — parsed typed data → semantic [`Action`].
+//! - [`TransactionActionAdapter::build_action`] — parsed calldata → semantic [`LegacyAction`].
+//! - [`SignatureActionAdapter::build_action`] — parsed typed data → semantic [`LegacyAction`].
 
-use crate::core::{Action, Address, ChainId, SignatureRequest, TransactionRequest};
+use crate::core::{Address, ChainId, LegacyAction, SignatureRequest, TransactionRequest};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -250,12 +250,12 @@ pub trait SignatureActionAdapter: Send + Sync {
         }
     }
 
-    /// Try to construct an `Action` from this signature request.
+    /// Try to construct a `LegacyAction` from this signature request.
     ///
     /// # Errors
     ///
     /// Returns an error when typed-data decoding or mapping fails.
-    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError>;
+    fn build_action(&self, sig: &SignatureRequest) -> Result<LegacyAction, ActionAdapterError>;
 }
 
 /// Internal helper surface shared by first-party signature adapter crates.
@@ -726,7 +726,7 @@ pub trait DeclaredTransactionActionAdapter: Send + Sync + Default + Sized + 'sta
     fn build_transaction_action(
         &self,
         tx: &TransactionRequest,
-    ) -> Result<Action, ActionAdapterError>;
+    ) -> Result<LegacyAction, ActionAdapterError>;
 
     /// Parsed static adapter id.
     #[allow(clippy::expect_used)]
@@ -789,13 +789,13 @@ where
         self.declared_descriptor()
     }
 
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
+    fn build_action(&self, tx: &TransactionRequest) -> Result<LegacyAction, ActionAdapterError> {
         DeclaredTransactionActionAdapter::build_transaction_action(self, tx)
     }
 }
 
 /// One adapter handles one (or a small set of) `(chain_id, to, selector)` keys
-/// and emits an `Action` from a decoded `TransactionRequest`.
+/// and emits a `LegacyAction` from a decoded `TransactionRequest`.
 pub trait TransactionActionAdapter: Send + Sync {
     /// Stable adapter id.
     fn id(&self) -> ActionAdapterId;
@@ -819,13 +819,13 @@ pub trait TransactionActionAdapter: Send + Sync {
         }
     }
 
-    /// Try to construct an `Action` from this transaction. Called only after
+    /// Try to construct a `LegacyAction` from this transaction. Called only after
     /// the resolver has selected this adapter, so the implementation may
     /// assume the calldata starts with the matching selector.
     /// # Errors
     ///
     /// Returns an error when calldata cannot be decoded or mapped.
-    fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError>;
+    fn build_action(&self, tx: &TransactionRequest) -> Result<LegacyAction, ActionAdapterError>;
 }
 
 /// Declared authoring surface for third-party signature adapters.
@@ -851,7 +851,10 @@ pub trait DeclaredSignatureActionAdapter: Send + Sync + Default + Sized + 'stati
     /// # Errors
     ///
     /// Returns an error when typed-data decoding or mapping fails.
-    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError>;
+    fn build_signature_action(
+        &self,
+        sig: &SignatureRequest,
+    ) -> Result<LegacyAction, ActionAdapterError>;
 
     /// Parsed static adapter id.
     #[allow(clippy::expect_used)]
@@ -888,7 +891,7 @@ where
         self.declared_descriptor()
     }
 
-    fn build_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
+    fn build_action(&self, sig: &SignatureRequest) -> Result<LegacyAction, ActionAdapterError> {
         DeclaredSignatureActionAdapter::build_signature_action(self, sig)
     }
 }
@@ -958,8 +961,8 @@ mod tests {
         fn build_transaction_action(
             &self,
             tx: &TransactionRequest,
-        ) -> Result<Action, ActionAdapterError> {
-            Ok(Action::Other(OtherAction {
+        ) -> Result<LegacyAction, ActionAdapterError> {
+            Ok(LegacyAction::Other(OtherAction {
                 actor: tx.from.clone(),
                 target: tx.to.clone(),
                 selector: "0xaabbccdd".into(),
@@ -985,8 +988,8 @@ mod tests {
         fn build_signature_action(
             &self,
             sig: &SignatureRequest,
-        ) -> Result<Action, ActionAdapterError> {
-            Ok(Action::Other(OtherAction {
+        ) -> Result<LegacyAction, ActionAdapterError> {
+            Ok(LegacyAction::Other(OtherAction {
                 actor: sig.signer.clone(),
                 target: sig.typed_data.domain.verifying_contract.clone(),
                 selector: "0x".into(),

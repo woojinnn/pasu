@@ -5,7 +5,7 @@
 //! 1. **In-memory Sourcify** (curated bundle, parameter names, EIP-1967-aware)
 //! 2. **SQLite Sourcify dump** (~hundreds of thousands of mainnet contracts)
 //! 3. **openchain** (selector → signature, no parameter names)
-//! 4. `NotFound` (caller decides — typically maps to `Action::Other` upstream)
+//! 4. `NotFound` (caller decides — typically maps to `LegacyAction::Other` upstream)
 //!
 //! Decoding is delegated to `crate::decode` once a signature is found.
 

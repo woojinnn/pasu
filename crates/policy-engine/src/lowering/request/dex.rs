@@ -1,4 +1,4 @@
-//! `Action::Dex` to `PolicyRequest` conversion.
+//! `LegacyAction::Dex` to `PolicyRequest` conversion.
 
 use crate::context_keys::{
     ALLOWANCES_COVER_INPUTS, HAS_EXTERNAL_RECIPIENT, HAS_ZERO_MIN_OUTPUT, INPUT_TOKENS,

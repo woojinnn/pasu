@@ -10,10 +10,10 @@ pub mod dex;
 pub mod lending;
 /// Miscellaneous action schema types.
 pub mod misc;
-/// Staking action schema types.
-pub mod staking;
 /// Restaking action schema types.
 pub mod restaking;
+/// Staking action schema types.
+pub mod staking;
 
 pub use common::{
     Address, AmountConstraint, AmountKind, AssetKind, AssetRef, DecimalString, Hex, UsdValuation,

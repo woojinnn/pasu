@@ -1,7 +1,7 @@
 //! Focused request-lowering tests for action-to-Cedar request conversion.
 
 use policy_engine::{
-    request_from_action, Action, Address, DexAction, DexFacts, DexTrace, OtherAction,
+    request_from_action, Address, DexAction, DexFacts, DexTrace, LegacyAction, OtherAction,
 };
 use serde_json::json;
 
@@ -9,7 +9,7 @@ use serde_json::json;
 fn dex_action_lowers_to_one_dex_policy_request() {
     let actor = Address::new("0x0000000000000000000000000000000000000001").unwrap();
     let target = Address::new("0x0000000000000000000000000000000000000002").unwrap();
-    let action = Action::Dex(DexAction {
+    let action = LegacyAction::Dex(DexAction {
         actor: actor.clone(),
         target: target.clone(),
         value_wei: "0".into(),
@@ -43,7 +43,7 @@ fn dex_action_lowers_to_one_dex_policy_request() {
 fn other_action_lowers_to_one_other_policy_request() {
     let actor = Address::new("0x0000000000000000000000000000000000000001").unwrap();
     let target = Address::new("0x0000000000000000000000000000000000000002").unwrap();
-    let action = Action::Other(OtherAction {
+    let action = LegacyAction::Other(OtherAction {
         actor: actor.clone(),
         target: target.clone(),
         selector: "0xaabbccdd".into(),

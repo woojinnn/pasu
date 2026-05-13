@@ -1,13 +1,13 @@
 //! Signature action enrichment.
 
-use crate::core::{Action, Token, UsdValuation};
+use crate::core::{LegacyAction, Token, UsdValuation};
 use crate::host::{HostCapabilities, Oracle};
 use crate::lowering::decimal::{try_add_decimal_strings, try_multiply_decimal_strings};
 
 /// Enrich signature actions with oracle-derived USD valuations.
-pub fn enrich_signature_action(action: &mut Action, host: &HostCapabilities<'_>) {
+pub fn enrich_signature_action(action: &mut LegacyAction, host: &HostCapabilities<'_>) {
     match action {
-        Action::Permit2(permit) => {
+        LegacyAction::Permit2(permit) => {
             permit.total_approved_usd = total_usd(
                 permit
                     .approvals
@@ -16,11 +16,11 @@ pub fn enrich_signature_action(action: &mut Action, host: &HostCapabilities<'_>)
                 host.oracle(),
             );
         }
-        Action::Eip2612(permit) => {
+        LegacyAction::Eip2612(permit) => {
             permit.total_approved_usd =
                 total_usd([(&permit.token, permit.value.as_str())], host.oracle());
         }
-        Action::Dex(_) | Action::Other(_) | Action::Eip712Other(_) => {}
+        LegacyAction::Dex(_) | LegacyAction::Other(_) | LegacyAction::Eip712Other(_) => {}
     }
 }
 

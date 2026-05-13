@@ -101,7 +101,10 @@ impl DeclaredSignatureActionAdapter for Permit2Adapter {
             .collect()
     }
 
-    fn build_signature_action(&self, sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
+    fn build_signature_action(
+        &self,
+        sig: &SignatureRequest,
+    ) -> Result<LegacyAction, ActionAdapterError> {
         let Some(permit_kind) = Permit2PermitKind::from_primary_type(sig.primary_type()) else {
             return Err(ActionAdapterError::BadCalldata(format!(
                 "unsupported Permit2 primaryType {}",
@@ -118,7 +121,7 @@ impl DeclaredSignatureActionAdapter for Permit2Adapter {
                 self.decode_batch_witness_transfer(sig)?
             }
         };
-        Ok(Action::Permit2(decoded))
+        Ok(LegacyAction::Permit2(decoded))
     }
 }
 

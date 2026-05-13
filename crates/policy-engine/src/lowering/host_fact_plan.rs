@@ -1,16 +1,16 @@
 //! Host fact plan extraction.
 //!
-//! `required_host_facts(&Action) -> HostFactPlan` describes what host data
+//! `required_host_facts(&LegacyAction) -> HostFactPlan` describes what host data
 //! must be fetched before enrichment runs. The plan is the contract the
 //! engine exposes to external orchestrators (notably the Chrome extension's
 //! WASM bridge) so they can prefetch RPC reads and price quotes in parallel.
 //!
 //! Two tiers exist because windowing depends on already-stamped USD values:
-//! - Tier 1: oracle, balances, allowances, clock — derivable from a bare Action.
+//! - Tier 1: oracle, balances, allowances, clock — derivable from a bare `LegacyAction`.
 //! - Tier 2: window keys — requires an `OracleSnapshot` because window keys
 //!   are derived per-actor from USD-stamped enrichment output.
 
-use crate::core::{Action, Address, OracleRequirement, Token};
+use crate::core::{Address, LegacyAction, OracleRequirement, Token};
 use crate::host::oracle::SnapshotOracle;
 use crate::host::stat_windows::StatKey;
 
@@ -58,12 +58,12 @@ pub struct WindowKey {
     pub key: StatKey,
 }
 
-/// Tier-1 plan extraction. Pure function over a built Action.
+/// Tier-1 plan extraction. Pure function over a built `LegacyAction`.
 #[must_use]
-pub fn required_host_facts(action: &Action) -> HostFactPlan {
+pub fn required_host_facts(action: &LegacyAction) -> HostFactPlan {
     let mut plan = HostFactPlan::default();
     match action {
-        Action::Dex(dex) => {
+        LegacyAction::Dex(dex) => {
             // Oracle: derive from `dex.oracle_requirements` so the plan matches
             // exactly what enrichment will consult (lowering/stamping/dex.rs:64,
             // :164). Falling back to `input_tokens`/`output_tokens` would miss
@@ -118,7 +118,7 @@ pub fn required_host_facts(action: &Action) -> HostFactPlan {
                 }
             }
         }
-        Action::Permit2(p) => {
+        LegacyAction::Permit2(p) => {
             let mut seen = std::collections::HashSet::new();
             for approval in &p.approvals {
                 if seen.insert(approval.token.key()) {
@@ -143,7 +143,7 @@ pub fn required_host_facts(action: &Action) -> HostFactPlan {
             }
             plan.clock_required = true;
         }
-        Action::Eip2612(p) => {
+        LegacyAction::Eip2612(p) => {
             plan.tokens_for_oracle.push(p.token.clone());
             plan.sig_oracle_requirements.push(OracleRequirement {
                 kind: crate::core::OracleRequirementKind::Input,
@@ -152,22 +152,22 @@ pub fn required_host_facts(action: &Action) -> HostFactPlan {
             });
             plan.clock_required = true;
         }
-        Action::Eip712Other(_) => {
+        LegacyAction::Eip712Other(_) => {
             plan.clock_required = true;
         }
-        Action::Other(_) => {
+        LegacyAction::Other(_) => {
             // No host facts needed; user policies decide based on calldata + selector.
         }
     }
     plan
 }
 
-/// Tier-2 plan extraction. Pure function over a built Action plus the
+/// Tier-2 plan extraction. Pure function over a built `LegacyAction` plus the
 /// already-fetched oracle snapshot.
 #[must_use]
-pub fn required_window_keys(action: &Action, _oracle: &SnapshotOracle) -> WindowKeyPlan {
+pub fn required_window_keys(action: &LegacyAction, _oracle: &SnapshotOracle) -> WindowKeyPlan {
     let mut plan = WindowKeyPlan::default();
-    if let Action::Dex(dex) = action {
+    if let LegacyAction::Dex(dex) = action {
         plan.keys.push(WindowKey {
             actor: dex.actor.clone(),
             key: StatKey::SWAP_VOLUME_USD_24H,
@@ -218,8 +218,8 @@ mod tests {
         }
     }
 
-    fn dex_swap_weth_to_usdc(actor: Address, target: Address) -> Action {
-        Action::Dex(DexAction {
+    fn dex_swap_weth_to_usdc(actor: Address, target: Address) -> LegacyAction {
+        LegacyAction::Dex(DexAction {
             actor,
             target,
             value_wei: "0".into(),
@@ -282,11 +282,11 @@ mod tests {
         Permit2PermitKind,
     };
 
-    fn permit2_action_two_tokens() -> Action {
+    fn permit2_action_two_tokens() -> LegacyAction {
         let signer = addr("0x2222222222222222222222222222222222222222");
         let spender = addr("0x3333333333333333333333333333333333333333");
         let permit2 = addr("0x000000000022D473030F116dDEE9F6B43aC78BA3");
-        Action::Permit2(Permit2Action {
+        LegacyAction::Permit2(Permit2Action {
             signer,
             chain_id: 1 as CId,
             domain_chain_id: 1 as CId,
@@ -351,7 +351,7 @@ mod tests {
     #[test]
     fn eip2612_plan_collects_single_token_and_clock() {
         let signer = addr("0x4444444444444444444444444444444444444444");
-        let action = Action::Eip2612(Eip2612Action {
+        let action = LegacyAction::Eip2612(Eip2612Action {
             signer: signer.clone(),
             owner: signer,
             chain_id: 1 as CId,
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn eip712_other_plan_only_clock() {
         let signer = addr("0x6666666666666666666666666666666666666666");
-        let action = Action::Eip712Other(Eip712OtherAction {
+        let action = LegacyAction::Eip712Other(Eip712OtherAction {
             signer,
             chain_id: 1 as CId,
             domain_chain_id: 1 as CId,
@@ -405,7 +405,7 @@ mod tests {
     fn permit2_with_empty_approvals_falls_back_to_representative() {
         let signer = addr("0x2222222222222222222222222222222222222222");
         let permit2 = addr("0x000000000022D473030F116dDEE9F6B43aC78BA3");
-        let action = Action::Permit2(Permit2Action {
+        let action = LegacyAction::Permit2(Permit2Action {
             signer,
             chain_id: 1 as CId,
             domain_chain_id: 1 as CId,
@@ -441,7 +441,7 @@ mod tests {
         // populated `oracle_requirements` but left `input_tokens` empty.
         let actor = addr("0x1111111111111111111111111111111111111111");
         let target = addr("0xE592427A0AEce92De3Edee1F18E0157C05861564");
-        let action = Action::Dex(DexAction {
+        let action = LegacyAction::Dex(DexAction {
             actor: actor.clone(),
             target: target.clone(),
             value_wei: "0".into(),
@@ -496,7 +496,7 @@ mod tests {
 
     #[test]
     fn non_dex_window_keys_empty() {
-        let action = Action::Eip712Other(Eip712OtherAction {
+        let action = LegacyAction::Eip712Other(Eip712OtherAction {
             signer: addr("0x6666666666666666666666666666666666666666"),
             chain_id: 1 as CId,
             domain_chain_id: 1 as CId,
@@ -516,7 +516,7 @@ mod tests {
     fn dex_plan_skips_native_token_for_balance_and_allowance() {
         let actor = addr("0x1111111111111111111111111111111111111111");
         let target = addr("0xE592427A0AEce92De3Edee1F18E0157C05861564");
-        let action = Action::Dex(DexAction {
+        let action = LegacyAction::Dex(DexAction {
             actor,
             target,
             value_wei: "1000000000000000000".into(),

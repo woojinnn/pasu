@@ -87,7 +87,7 @@ impl ActionMeta {
 
 #[derive(Debug)]
 pub(crate) struct RoutedAction {
-    pub(crate) action: Action,
+    pub(crate) action: LegacyAction,
     pub(crate) meta: ActionMeta,
 }
 
@@ -214,8 +214,8 @@ pub(crate) fn swap_action(
     recipient: &Address,
     fee_bips: Option<u32>,
     meta: &ActionMeta,
-) -> Action {
-    Action::Dex(DexAction {
+) -> LegacyAction {
+    LegacyAction::Dex(DexAction {
         actor: tx.from.clone(),
         target: tx.to.clone(),
         value_wei: tx.value_wei.clone(),
@@ -262,7 +262,7 @@ pub(crate) fn merge_dex_actions(
     for routed in routed_actions {
         let RoutedAction { action, meta } = routed;
         let dex = match action {
-            Action::Dex(dex) => dex,
+            LegacyAction::Dex(dex) => dex,
             other => {
                 return Err(ActionAdapterError::BadCalldata(format!(
                     "Universal Router routed non-Dex action: {}",

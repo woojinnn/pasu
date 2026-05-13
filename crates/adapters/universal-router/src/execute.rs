@@ -166,9 +166,9 @@ impl DeclaredTransactionActionAdapter for Adapter_ {
     fn build_transaction_action(
         &self,
         tx: &TransactionRequest,
-    ) -> Result<Action, ActionAdapterError> {
+    ) -> Result<LegacyAction, ActionAdapterError> {
         let routed_actions = self.decode_routed_actions(tx)?;
-        Ok(Action::Dex(merge_dex_actions(tx, routed_actions)?))
+        Ok(LegacyAction::Dex(merge_dex_actions(tx, routed_actions)?))
     }
 }
 
@@ -244,7 +244,7 @@ mod tests {
         let calldata = encode_execute(vec![V3_SWAP_EXACT_IN], vec![input]);
         let action = Adapter_::new().build_action(&tx(calldata)).unwrap();
         match &action {
-            Action::Dex(dex) => {
+            LegacyAction::Dex(dex) => {
                 assert_eq!(dex.facts.protocol_ids, vec!["uniswap-v3"]);
                 assert_eq!(symbols(&dex.facts.input_tokens), vec!["USDT"]);
                 assert_eq!(symbols(&dex.facts.output_tokens), vec!["WETH"]);
@@ -303,7 +303,7 @@ mod tests {
 
         let action = Adapter_::new().build_action(&tx(calldata)).unwrap();
         match &action {
-            Action::Dex(dex) => {
+            LegacyAction::Dex(dex) => {
                 assert_eq!(dex.facts.protocol_ids, vec!["uniswap-v4"]);
                 assert_eq!(symbols(&dex.facts.input_tokens), vec!["USDT"]);
                 assert_eq!(symbols(&dex.facts.output_tokens), vec!["WETH"]);
@@ -356,7 +356,7 @@ mod tests {
 
         let action = Adapter_::new().build_action(&tx(calldata)).unwrap();
         match &action {
-            Action::Dex(dex) => {
+            LegacyAction::Dex(dex) => {
                 assert_eq!(dex.facts.protocol_ids, vec!["uniswap-v3", "uniswap-v2"]);
                 assert_eq!(symbols(&dex.facts.input_tokens), vec!["USDT"]);
                 assert_eq!(symbols(&dex.facts.output_tokens), vec!["WETH"]);

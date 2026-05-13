@@ -29,7 +29,7 @@ type SignatureKey = (ChainId, Address, String);
 pub enum TransactionResolverOutcome {
     /// Exactly one adapter matched the (`chain_id`, to, selector) key.
     Resolved(ActionAdapterId),
-    /// No adapter matched. The pipeline should emit `Action::Other`.
+    /// No adapter matched. The pipeline should emit `LegacyAction::Other`.
     NoMatch,
     /// Two or more adapters matched. v0.1 surfaces the candidate ids; the
     /// pipeline rejects the transaction until the user pins one.
@@ -42,7 +42,7 @@ pub enum SignatureActionResolverOutcome<'a> {
     /// (`chain_id`, `verifyingContract`, `primaryType`) key.
     Resolved(&'a dyn SignatureActionAdapter),
     /// No signature adapter matched. The pipeline should emit
-    /// `Action::Eip712Other`.
+    /// `LegacyAction::Eip712Other`.
     NoMatch,
     /// Two or more signature adapters matched.
     Ambiguous(Vec<ActionAdapterId>),
@@ -287,13 +287,14 @@ mod tests {
     use super::*;
     use crate::adapter::{ActionAdapterError, SignatureMatchKey, TransactionActionAdapter};
     use crate::core::{
-        Action, Eip712Domain, Eip712TypedData, OtherAction, SignatureRequest, TransactionRequest,
+        Eip712Domain, Eip712TypedData, LegacyAction, OtherAction, SignatureRequest,
+        TransactionRequest,
     };
     use serde_json::json;
 
     /// Minimal in-crate adapter used only to exercise the registry. Doesn't
     /// touch ABI decoding or oracle data — it just claims a fixed set of
-    /// match keys and returns `Action::Other` from `build`.
+    /// match keys and returns `LegacyAction::Other` from `build`.
     struct TestAdapter {
         id: ActionAdapterId,
         keys: Vec<TransactionMatchKey>,
@@ -311,8 +312,11 @@ mod tests {
         fn match_keys(&self) -> Vec<TransactionMatchKey> {
             self.keys.clone()
         }
-        fn build_action(&self, tx: &TransactionRequest) -> Result<Action, ActionAdapterError> {
-            Ok(Action::Other(OtherAction {
+        fn build_action(
+            &self,
+            tx: &TransactionRequest,
+        ) -> Result<LegacyAction, ActionAdapterError> {
+            Ok(LegacyAction::Other(OtherAction {
                 actor: tx.from.clone(),
                 target: tx.to.clone(),
                 selector: tx.selector_hex().unwrap_or_else(|| "0x".into()),
@@ -331,8 +335,11 @@ mod tests {
             self.keys.clone()
         }
 
-        fn build_action(&self, _sig: &SignatureRequest) -> Result<Action, ActionAdapterError> {
-            Ok(Action::Other(OtherAction {
+        fn build_action(
+            &self,
+            _sig: &SignatureRequest,
+        ) -> Result<LegacyAction, ActionAdapterError> {
+            Ok(LegacyAction::Other(OtherAction {
                 actor: Address::new("0x0000000000000000000000000000000000000001").unwrap(),
                 target: fixed_target(),
                 selector: "0x".into(),
