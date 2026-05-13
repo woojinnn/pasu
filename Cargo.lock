@@ -2623,7 +2623,11 @@ version = "0.1.0"
 dependencies = [
  "abi-resolver",
  "alloy-primitives",
+ "anyhow",
+ "call-adapter",
  "hex",
+ "mappers",
+ "policy-engine",
  "serde_json",
  "sign-resolver",
  "thiserror",

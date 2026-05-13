@@ -28,6 +28,7 @@ license = "MIT"
 alloy-primitives = { version = "0.8", features = ["serde"] }
 alloy-sol-types = "0.8"
 alloy-dyn-abi = "0.8"
+anyhow = "1"
 cedar-policy = "4"
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }
