@@ -1,4 +1,6 @@
-entity Wallet;
+entity Wallet {
+  address: String,
+};
 entity Protocol;
 
 type Token = {
@@ -7,6 +9,16 @@ type Token = {
   symbol: String,
   decimals: Long,
   isNative: Bool,
+};
+
+type AmountConstraint = {
+  kind: String,
+  value?: String,
+};
+
+type Validity = {
+  expiresAt: String,
+  source: String,
 };
 
 type UsdValuation = {
@@ -18,5 +30,5 @@ type UsdValuation = {
 
 type WindowStats = {
   swapVolumeUsd24h?: decimal,
-  swapCount24h?: Long,
+  swapCount24h?: Long
 };
