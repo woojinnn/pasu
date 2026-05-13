@@ -1,7 +1,7 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
     Address, HostCapabilities, MockOracle, MockStatWindows, MockTransactionActionAdapterRegistry,
-    Pipeline, PolicyEngine, RequestKind, StatDelta, StatKey, StatValue, StatWindows,
+    Pipeline, PolicyEngine, PolicyRequestOrigin, StatDelta, StatKey, StatValue, StatWindows,
     TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v2::{
@@ -92,7 +92,7 @@ fn window_stats_snapshot_reflects_confirmed_history() {
         Verdict::Fail(matched) => {
             assert!(matched.iter().any(|m| m.policy_id
                 == "user/window-swap-volume-usd-24h-cap-5000"
-                && matches!(m.origin, RequestKind::Action)));
+                && matches!(m.origin, PolicyRequestOrigin::Action)));
         }
         other => panic!("expected Verdict::Fail, got {other:?}"),
     }
@@ -158,7 +158,7 @@ fn window_cap_boundary_crossing_uses_projected_post_tx_state() {
                 match_info.policy_id,
                 "user/window-swap-volume-usd-24h-cap-5000"
             );
-            assert!(matches!(match_info.origin, RequestKind::Action));
+            assert!(matches!(match_info.origin, PolicyRequestOrigin::Action));
         }
         other => panic!("expected Verdict::Fail, got {other:?}"),
     }

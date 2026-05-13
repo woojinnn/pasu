@@ -73,8 +73,8 @@ pub use lowering::{
 };
 pub use pipeline::{EvaluationOutcome, Pipeline, PipelineError, PipelineRequest};
 pub use policy::{
-    MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest, RequestKind,
-    Severity, Verdict,
+    MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest,
+    PolicyRequestOrigin, Severity, Verdict,
 };
 pub use registry::{
     MockSignatureActionAdapterRegistry, MockTransactionActionAdapterRegistry,

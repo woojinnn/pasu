@@ -1,7 +1,7 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
     Address, HostCapabilities, MockOracle, MockTransactionActionAdapterRegistry, Pipeline,
-    PolicyEngine, RequestKind, Token, TransactionRequest, Verdict,
+    PolicyEngine, PolicyRequestOrigin, Token, TransactionRequest, Verdict,
 };
 use policy_engine_adapters_bundle::{default_registry, uniswap_v2, uniswap_v3};
 use std::str::FromStr;
@@ -180,7 +180,7 @@ fn multicall_v3_aggregate_action_exceeds_total_input_and_fails_on_action_origin(
         Verdict::Fail(matched) => {
             assert_eq!(matched.len(), 1);
             assert_eq!(matched[0].policy_id, "user/total-input-usd-cap-500");
-            assert!(matches!(matched[0].origin, RequestKind::Action));
+            assert!(matches!(matched[0].origin, PolicyRequestOrigin::Action));
         }
         _ => panic!("expected Verdict::Fail, got {verdict:?}"),
     }
@@ -201,7 +201,7 @@ fn dex_warning_and_fee_deny_share_action_origin() {
             assert_eq!(matched.len(), 2);
             assert!(matched
                 .iter()
-                .all(|m| matches!(m.origin, RequestKind::Action)));
+                .all(|m| matches!(m.origin, PolicyRequestOrigin::Action)));
             assert!(matched
                 .iter()
                 .any(|m| m.policy_id == "user/max-fee-bps-100"));
@@ -254,7 +254,7 @@ fn unknown_target_other_action_can_be_blocklisted_by_other_policy() {
         Verdict::Fail(matched) => {
             assert_eq!(matched.len(), 1);
             assert_eq!(matched[0].policy_id, "user/other-target-blocklist");
-            assert!(matches!(matched[0].origin, RequestKind::Action));
+            assert!(matches!(matched[0].origin, PolicyRequestOrigin::Action));
         }
         v => panic!("expected Verdict::Fail, got {v:?}"),
     }

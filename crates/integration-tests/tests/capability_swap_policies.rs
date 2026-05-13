@@ -1,8 +1,8 @@
 use alloy_primitives::{Address as AlloyAddress, U256};
 use policy_engine::{
     enrich_dex_action, Action, Address, HostCapabilities, MockApprovals, MockOracle, MockPortfolio,
-    MockTransactionActionAdapterRegistry, Pipeline, PolicyEngine, PolicyRequest, RequestKind,
-    Token, TransactionActionAdapter, TransactionRequest, Verdict,
+    MockTransactionActionAdapterRegistry, Pipeline, PolicyEngine, PolicyRequest,
+    PolicyRequestOrigin, Token, TransactionActionAdapter, TransactionRequest, Verdict,
 };
 use policy_engine_adapter_uniswap_v2::{
     encode_swap_exact_eth_for_tokens, encode_swap_exact_tokens_for_tokens, native_eth,
@@ -166,7 +166,7 @@ fn balance_fraction_deny_when_fraction_exceeds_20_percent() {
                 matched[0].policy_id,
                 "user/max-input-fraction-of-portfolio-2000-bps"
             );
-            assert!(matches!(matched[0].origin, RequestKind::Action));
+            assert!(matches!(matched[0].origin, PolicyRequestOrigin::Action));
         }
         other => panic!("expected Verdict::Fail, got {other:?}"),
     }
@@ -216,7 +216,7 @@ fn allowance_warn_fires_when_allowance_does_not_cover_input() {
         Verdict::Warn(matched) => {
             assert_eq!(matched.len(), 1);
             assert_eq!(matched[0].policy_id, "user/allowance-must-cover-input");
-            assert!(matches!(matched[0].origin, RequestKind::Action));
+            assert!(matches!(matched[0].origin, PolicyRequestOrigin::Action));
         }
         other => panic!("expected Verdict::Warn, got {other:?}"),
     }
@@ -311,11 +311,11 @@ fn multicall_aggregate_action_receives_capability_enrichment() {
         Verdict::Fail(matched) => {
             assert!(matched.iter().any(|m| m.policy_id
                 == "user/max-input-fraction-of-portfolio-2000-bps"
-                && matches!(m.origin, RequestKind::Action)));
+                && matches!(m.origin, PolicyRequestOrigin::Action)));
             assert!(matched
                 .iter()
                 .any(|m| m.policy_id == "user/allowance-must-cover-input"
-                    && matches!(m.origin, RequestKind::Action)));
+                    && matches!(m.origin, PolicyRequestOrigin::Action)));
         }
         other => panic!("expected Verdict::Fail, got {other:?}"),
     }

@@ -108,12 +108,13 @@ pub enum Severity {
     Warn,
 }
 
-/// One `forbid` clause that fired during evaluation.
+/// Origin of the Cedar `PolicyRequest` that caused a policy match.
 ///
-/// Severity is preserved per-element so that, when a `Verdict::Fail` is
-/// produced because a deny fired, any also-fired warns are still reported.
+/// This is intentionally separate from [`crate::core::Request`]: `Request::Tx`
+/// and `Request::Sig` are host-facing inputs, while `PolicyRequestOrigin`
+/// describes which Cedar request layer produced the returned match.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RequestKind {
+pub enum PolicyRequestOrigin {
     /// Request originated from an action-level policy request.
     Action,
     /// Request originated from a transaction-level policy request.
@@ -129,8 +130,8 @@ pub struct MatchedPolicy {
     pub reason: Option<String>,
     /// Parsed severity annotation.
     pub severity: Severity,
-    /// Originating policy request kind.
-    pub origin: RequestKind,
+    /// Originating Cedar policy request layer.
+    pub origin: PolicyRequestOrigin,
 }
 
 /// Self-contained Cedar evaluation input.
@@ -271,7 +272,7 @@ impl PolicyEngine {
     ///
     /// Returns an error when Cedar request construction or evaluation fails.
     pub fn evaluate_request(&self, req: &PolicyRequest) -> Result<Verdict, PolicyError> {
-        self.evaluate_request_with_origin(req, RequestKind::Action)
+        self.evaluate_request_with_origin(req, PolicyRequestOrigin::Action)
     }
 
     /// Evaluate a `PolicyRequest` and annotate matches with the originating
@@ -283,7 +284,7 @@ impl PolicyEngine {
     pub fn evaluate_request_with_origin(
         &self,
         req: &PolicyRequest,
-        origin: RequestKind,
+        origin: PolicyRequestOrigin,
     ) -> Result<Verdict, PolicyError> {
         let mut verdict = self.evaluate(
             &req.principal,
@@ -312,7 +313,7 @@ impl PolicyEngine {
     /// Returns an error when any request fails to build or evaluate.
     pub fn evaluate_requests<'a, I>(&self, reqs: I) -> Result<Verdict, PolicyError>
     where
-        I: IntoIterator<Item = (&'a PolicyRequest, RequestKind)>,
+        I: IntoIterator<Item = (&'a PolicyRequest, PolicyRequestOrigin)>,
     {
         let verdicts = reqs
             .into_iter()
@@ -387,7 +388,7 @@ impl PolicyEngine {
                 policy_id: pid_str.clone(),
                 reason: self.reasons.get(&pid_str).cloned(),
                 severity,
-                origin: RequestKind::Action,
+                origin: PolicyRequestOrigin::Action,
             });
         }
 
@@ -873,7 +874,7 @@ mod tests {
 
         match verdict {
             Verdict::Fail(matched) => {
-                assert_eq!(matched[0].origin, RequestKind::Action);
+                assert_eq!(matched[0].origin, PolicyRequestOrigin::Action);
             }
             other => panic!("expected Verdict::Fail, got {other:?}"),
         }

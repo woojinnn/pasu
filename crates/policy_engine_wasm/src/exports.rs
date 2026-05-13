@@ -13,7 +13,9 @@ use policy_engine::host::oracle::SnapshotOracle;
 use policy_engine::host::HostCapabilities;
 use policy_engine::lowering::{required_host_facts, required_window_keys};
 use policy_engine::pipeline::PipelineError;
-use policy_engine::policy::{MatchedPolicy, PolicyEngineBuilder, RequestKind, Severity, Verdict};
+use policy_engine::policy::{
+    MatchedPolicy, PolicyEngineBuilder, PolicyRequestOrigin, Severity, Verdict,
+};
 use policy_engine::Pipeline;
 use wasm_bindgen::prelude::*;
 
@@ -218,10 +220,10 @@ fn severity_to_string(severity: Severity) -> String {
     .to_string()
 }
 
-fn origin_to_string(origin: RequestKind) -> String {
+fn origin_to_string(origin: PolicyRequestOrigin) -> String {
     match origin {
-        RequestKind::Action => "action",
-        RequestKind::Tx => "tx",
+        PolicyRequestOrigin::Action => "action",
+        PolicyRequestOrigin::Tx => "tx",
     }
     .to_string()
 }

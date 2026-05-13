@@ -228,7 +228,7 @@ Pipeline::evaluate(&Request)
         signature.eip712_other
 
 Both branches:
-  -> PolicyEngine::evaluate_requests(... RequestKind::Action ...)
+  -> PolicyEngine::evaluate_requests(... PolicyRequestOrigin::Action ...)
   -> Verdict
 ```
 
@@ -249,18 +249,22 @@ pub struct MatchedPolicy {
     pub policy_id: String,
     pub reason: Option<String>,
     pub severity: Severity,
-    pub origin: RequestKind,
+    pub origin: PolicyRequestOrigin,
 }
 
-pub enum RequestKind {
+pub enum PolicyRequestOrigin {
     Action,
     Tx,
 }
 ```
 
-The current pipeline evaluates one action request per transaction or signature
-and uses `RequestKind::Action` for matches. `RequestKind::Tx` remains available
-for future transaction-level policies.
+`PolicyRequestOrigin` is not the same thing as the host-facing `Request::Tx` /
+`Request::Sig` input enum. It records which Cedar request layer produced a
+matched policy. The current pipeline lowers each evaluated transaction or
+signature to action-level Cedar and therefore reports
+`PolicyRequestOrigin::Action`. `PolicyRequestOrigin::Tx` is reserved for a
+future raw transaction-level Cedar request, if the engine adds one alongside
+the semantic action request.
 
 ## Running
 

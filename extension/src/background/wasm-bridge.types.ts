@@ -19,7 +19,7 @@ const PERMIT2_KINDS = [
 ] as const;
 const VERDICT_KINDS = ["pass", "fail", "warn"] as const;
 const POLICY_SEVERITIES = ["deny", "warn"] as const;
-const POLICY_ORIGINS = ["action", "tx", "engine_error"] as const;
+const POLICY_REQUEST_ORIGINS = ["action", "tx", "engine_error"] as const;
 
 export type ParsedAction =
   | ParsedDexAction
@@ -218,7 +218,7 @@ export interface MatchedPolicy {
   readonly policy_id: string;
   readonly reason: string | null;
   readonly severity: (typeof POLICY_SEVERITIES)[number];
-  readonly origin: (typeof POLICY_ORIGINS)[number];
+  readonly origin: (typeof POLICY_REQUEST_ORIGINS)[number];
 }
 
 export class WasmDecodeError extends Error {
@@ -985,7 +985,7 @@ function parseMatchedPolicy(
       "origin",
       `${path}.origin`,
       exportName,
-      POLICY_ORIGINS,
+      POLICY_REQUEST_ORIGINS,
     ),
   };
 }

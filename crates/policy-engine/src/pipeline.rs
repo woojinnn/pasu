@@ -21,7 +21,7 @@ use crate::lowering::{
     compute_dex_window_deltas, enrich_dex_action_base, enrich_dex_window_stats,
     enrich_signature_action, request_from_action, request_from_action_with_host,
 };
-use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, RequestKind, Verdict};
+use crate::policy::{PolicyEngine, PolicyError, PolicyRequest, PolicyRequestOrigin, Verdict};
 use crate::registry::{
     SignatureActionAdapterRegistry, SignatureActionResolverOutcome,
     TransactionActionAdapterRegistry, TransactionResolverOutcome,
@@ -266,7 +266,7 @@ impl<'a, R: TransactionActionAdapterRegistry + ?Sized> Pipeline<'a, R> {
 
     fn evaluate_one_request(&self, request: &PolicyRequest) -> Result<Verdict, PolicyError> {
         self.policies
-            .evaluate_requests(std::iter::once((request, RequestKind::Action)))
+            .evaluate_requests(std::iter::once((request, PolicyRequestOrigin::Action)))
     }
 
     fn release_reservation(&self, reservation: Option<ReservationId>) {
