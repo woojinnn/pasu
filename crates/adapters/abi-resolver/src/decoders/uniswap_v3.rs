@@ -10,14 +10,21 @@ use crate::{
 };
 
 pub const UNISWAP_V3_DECODER_ID: &str = "uniswap_v3";
+pub const EXACT_OUTPUT_SINGLE_DECODER_ID: &str = "uniswap-v3/exactOutputSingle";
+pub const EXACT_OUTPUT_DECODER_ID: &str = "uniswap-v3/exactOutput";
 pub const SWAP_ROUTER_MAINNET: &str = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
 
 pub const EXACT_INPUT_SINGLE_SELECTOR: [u8; 4] = [0x41, 0x4b, 0xf3, 0x89];
 pub const EXACT_INPUT_SELECTOR: [u8; 4] = [0xc0, 0x4b, 0x8d, 0x59];
+pub const EXACT_OUTPUT_SINGLE_SELECTOR: [u8; 4] = [0xdb, 0x3e, 0x21, 0x98];
+pub const EXACT_OUTPUT_SELECTOR: [u8; 4] = [0xf2, 0x8c, 0x04, 0x98];
 
 const EXACT_INPUT_SINGLE_SIGNATURE: &str =
     "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))";
 const EXACT_INPUT_SIGNATURE: &str = "exactInput((bytes,address,uint256,uint256,uint256))";
+const EXACT_OUTPUT_SINGLE_SIGNATURE: &str =
+    "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))";
+const EXACT_OUTPUT_SIGNATURE: &str = "exactOutput((bytes,address,uint256,uint256,uint256))";
 
 sol! {
     struct SolExactInputSingleParams {
@@ -42,6 +49,29 @@ sol! {
     }
 
     function exactInput(SolExactInputParams params) external payable returns (uint256 amountOut);
+
+    struct SolExactOutputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountOut;
+        uint256 amountInMaximum;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    function exactOutputSingle(SolExactOutputSingleParams params) external payable returns (uint256 amountIn);
+
+    struct SolExactOutputParams {
+        bytes path;
+        address recipient;
+        uint256 deadline;
+        uint256 amountOut;
+        uint256 amountInMaximum;
+    }
+
+    function exactOutput(SolExactOutputParams params) external payable returns (uint256 amountIn);
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -63,6 +93,8 @@ impl Decoder for UniswapV3Decoder {
         vec![
             mainnet_match_key(EXACT_INPUT_SINGLE_SELECTOR),
             mainnet_match_key(EXACT_INPUT_SELECTOR),
+            mainnet_match_key(EXACT_OUTPUT_SINGLE_SELECTOR),
+            mainnet_match_key(EXACT_OUTPUT_SELECTOR),
         ]
     }
 
@@ -75,6 +107,8 @@ impl Decoder for UniswapV3Decoder {
         match selector {
             EXACT_INPUT_SINGLE_SELECTOR => decode_exact_input_single(calldata),
             EXACT_INPUT_SELECTOR => decode_exact_input(calldata),
+            EXACT_OUTPUT_SINGLE_SELECTOR => decode_exact_output_single(calldata),
+            EXACT_OUTPUT_SELECTOR => decode_exact_output(calldata),
             _ => Err(DecoderError::UnsupportedSelector),
         }
     }
@@ -138,6 +172,64 @@ impl Decoder for ExactInputDecoder {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ExactOutputSingleDecoder;
+
+impl ExactOutputSingleDecoder {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Decoder for ExactOutputSingleDecoder {
+    fn id(&self) -> DecoderId {
+        DecoderId::new(EXACT_OUTPUT_SINGLE_DECODER_ID)
+    }
+
+    fn match_keys(&self) -> Vec<CallMatchKey> {
+        vec![mainnet_match_key(EXACT_OUTPUT_SINGLE_SELECTOR)]
+    }
+
+    fn decode(
+        &self,
+        _ctx: &DecodeContext<'_>,
+        calldata: &[u8],
+    ) -> Result<DecodedCall, DecoderError> {
+        ensure_selector(calldata, EXACT_OUTPUT_SINGLE_SELECTOR)?;
+        decode_exact_output_single(calldata)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ExactOutputDecoder;
+
+impl ExactOutputDecoder {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Decoder for ExactOutputDecoder {
+    fn id(&self) -> DecoderId {
+        DecoderId::new(EXACT_OUTPUT_DECODER_ID)
+    }
+
+    fn match_keys(&self) -> Vec<CallMatchKey> {
+        vec![mainnet_match_key(EXACT_OUTPUT_SELECTOR)]
+    }
+
+    fn decode(
+        &self,
+        _ctx: &DecodeContext<'_>,
+        calldata: &[u8],
+    ) -> Result<DecodedCall, DecoderError> {
+        ensure_selector(calldata, EXACT_OUTPUT_SELECTOR)?;
+        decode_exact_output(calldata)
+    }
+}
+
 fn decode_exact_input_single(calldata: &[u8]) -> Result<DecodedCall, DecoderError> {
     let call = exactInputSingleCall::abi_decode(calldata, true)
         .map_err(|e| DecoderError::AbiMismatch(e.to_string()))?;
@@ -180,6 +272,53 @@ fn decode_exact_input(calldata: &[u8]) -> Result<DecodedCall, DecoderError> {
             uint_arg("deadline", call.params.deadline),
             uint_arg("amountIn", call.params.amountIn),
             uint_arg("amountOutMinimum", call.params.amountOutMinimum),
+        ],
+        nested: vec![],
+    })
+}
+
+fn decode_exact_output_single(calldata: &[u8]) -> Result<DecodedCall, DecoderError> {
+    let call = exactOutputSingleCall::abi_decode(calldata, true)
+        .map_err(|e| DecoderError::AbiMismatch(e.to_string()))?;
+    let fee = u32::try_from(call.params.fee)
+        .map_err(|e| DecoderError::AbiMismatch(format!("fee out of range: {e}")))?;
+
+    Ok(DecodedCall {
+        decoder_id: DecoderId::new(EXACT_OUTPUT_SINGLE_DECODER_ID),
+        function_signature: EXACT_OUTPUT_SINGLE_SIGNATURE.to_owned(),
+        args: vec![
+            address_arg("tokenIn", call.params.tokenIn)?,
+            address_arg("tokenOut", call.params.tokenOut)?,
+            uint_arg_typed("fee", "uint24", alloy_primitives::U256::from(fee as u64)),
+            address_arg("recipient", call.params.recipient)?,
+            uint_arg("deadline", call.params.deadline),
+            uint_arg("amountOut", call.params.amountOut),
+            uint_arg("amountInMaximum", call.params.amountInMaximum),
+            uint_arg_typed(
+                "sqrtPriceLimitX96",
+                "uint160",
+                alloy_primitives::U256::from_be_slice(
+                    &call.params.sqrtPriceLimitX96.to_be_bytes::<20>(),
+                ),
+            ),
+        ],
+        nested: vec![],
+    })
+}
+
+fn decode_exact_output(calldata: &[u8]) -> Result<DecodedCall, DecoderError> {
+    let call = exactOutputCall::abi_decode(calldata, true)
+        .map_err(|e| DecoderError::AbiMismatch(e.to_string()))?;
+
+    Ok(DecodedCall {
+        decoder_id: DecoderId::new(EXACT_OUTPUT_DECODER_ID),
+        function_signature: EXACT_OUTPUT_SIGNATURE.to_owned(),
+        args: vec![
+            bytes_arg("path", call.params.path.to_vec()),
+            address_arg("recipient", call.params.recipient)?,
+            uint_arg("deadline", call.params.deadline),
+            uint_arg("amountOut", call.params.amountOut),
+            uint_arg("amountInMaximum", call.params.amountInMaximum),
         ],
         nested: vec![],
     })
@@ -249,8 +388,10 @@ fn policy_address(value: AlloyAddress) -> Result<Address, DecoderError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ExactInputDecoder, ExactInputSingleDecoder, UniswapV3Decoder, EXACT_INPUT_SELECTOR,
-        EXACT_INPUT_SINGLE_SELECTOR, SWAP_ROUTER_MAINNET, UNISWAP_V3_DECODER_ID,
+        ExactInputDecoder, ExactInputSingleDecoder, ExactOutputDecoder, ExactOutputSingleDecoder,
+        UniswapV3Decoder, EXACT_INPUT_SELECTOR, EXACT_INPUT_SINGLE_SELECTOR,
+        EXACT_OUTPUT_DECODER_ID, EXACT_OUTPUT_SELECTOR, EXACT_OUTPUT_SINGLE_DECODER_ID,
+        EXACT_OUTPUT_SINGLE_SELECTOR, SWAP_ROUTER_MAINNET, UNISWAP_V3_DECODER_ID,
     };
     use crate::{DecodeContext, DecodedValue, Decoder as _, DecoderId};
     use alloy_primitives::U256;
@@ -304,6 +445,37 @@ mod tests {
 
     fn decimal(value: &str) -> DecimalString {
         DecimalString::from_str(value).unwrap()
+    }
+
+    fn exact_output_single_calldata() -> Vec<u8> {
+        hex::decode(concat!(
+            "db3e2198",
+            "000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7",
+            "000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "0000000000000000000000000000000000000000000000000000000000000bb8",
+            "0000000000000000000000001111111111111111111111111111111111111111",
+            "00000000000000000000000000000000000000000000000000000002540be3ff",
+            "0000000000000000000000000000000000000000000000000000000005f5e100",
+            "000000000000000000000000000000000000000000000000000000000bebc200",
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        ))
+        .unwrap()
+    }
+
+    fn exact_output_calldata() -> Vec<u8> {
+        hex::decode(concat!(
+            "f28c0498",
+            "0000000000000000000000000000000000000000000000000000000000000020",
+            "00000000000000000000000000000000000000000000000000000000000000a0",
+            "0000000000000000000000001111111111111111111111111111111111111111",
+            "0000000000000000000000000000000000000000000000000000000000000001",
+            "00000000000000000000000000000000000000000000000000000000000f4240",
+            "00000000000000000000000000000000000000000000000000000000001e8480",
+            "000000000000000000000000000000000000000000000000000000000000002b",
+            "c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000bb8dac17f958d2ee523",
+            "a2206206994597c13d831ec7000000000000000000000000000000000000000000",
+        ))
+        .unwrap()
     }
 
     fn arg<'a>(decoded: &'a crate::DecodedCall, name: &str) -> &'a DecodedValue {
@@ -414,6 +586,121 @@ mod tests {
     }
 
     #[test]
+    fn decodes_exact_output_single() {
+        let calldata = exact_output_single_calldata();
+        let fixture = Fixture {
+            chain_id: 1,
+            rpc: Rpc {
+                params: vec![TxParam {
+                    to: SWAP_ROUTER_MAINNET.to_owned(),
+                    data: format!("0x{}", hex::encode(&calldata)),
+                }],
+            },
+        };
+        let to = address(&fixture.rpc.params[0].to);
+        let value = decimal("0");
+
+        let decoded = ExactOutputSingleDecoder::new()
+            .decode(&context(&fixture, &to, &value), &calldata)
+            .unwrap();
+
+        assert_eq!(
+            decoded.decoder_id,
+            DecoderId::new(EXACT_OUTPUT_SINGLE_DECODER_ID)
+        );
+        assert_eq!(
+            decoded.function_signature,
+            "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))"
+        );
+        assert!(decoded.nested.is_empty());
+        assert_eq!(decoded.args.len(), 8);
+        assert_eq!(
+            arg(&decoded, "tokenIn"),
+            &DecodedValue::Address(address("0xdac17f958d2ee523a2206206994597c13d831ec7"))
+        );
+        assert_eq!(
+            arg(&decoded, "tokenOut"),
+            &DecodedValue::Address(address("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"))
+        );
+        assert_eq!(
+            arg(&decoded, "fee"),
+            &DecodedValue::Uint(U256::from(3000u64))
+        );
+        assert_eq!(
+            arg(&decoded, "recipient"),
+            &DecodedValue::Address(address("0x1111111111111111111111111111111111111111"))
+        );
+        assert_eq!(
+            arg(&decoded, "deadline"),
+            &DecodedValue::Uint(U256::from(9_999_999_999u64))
+        );
+        assert_eq!(
+            arg(&decoded, "amountOut"),
+            &DecodedValue::Uint(U256::from(100_000_000u64))
+        );
+        assert_eq!(
+            arg(&decoded, "amountInMaximum"),
+            &DecodedValue::Uint(U256::from(200_000_000u64))
+        );
+        assert_eq!(
+            arg(&decoded, "sqrtPriceLimitX96"),
+            &DecodedValue::Uint(U256::ZERO)
+        );
+    }
+
+    #[test]
+    fn decodes_exact_output() {
+        let calldata = exact_output_calldata();
+        let fixture = Fixture {
+            chain_id: 1,
+            rpc: Rpc {
+                params: vec![TxParam {
+                    to: SWAP_ROUTER_MAINNET.to_owned(),
+                    data: format!("0x{}", hex::encode(&calldata)),
+                }],
+            },
+        };
+        let to = address(&fixture.rpc.params[0].to);
+        let value = decimal("0");
+
+        let decoded = ExactOutputDecoder::new()
+            .decode(&context(&fixture, &to, &value), &calldata)
+            .unwrap();
+
+        assert_eq!(decoded.decoder_id, DecoderId::new(EXACT_OUTPUT_DECODER_ID));
+        assert_eq!(
+            decoded.function_signature,
+            "exactOutput((bytes,address,uint256,uint256,uint256))"
+        );
+        assert!(decoded.nested.is_empty());
+        assert_eq!(decoded.args.len(), 5);
+        assert_eq!(decoded.args[0].name, "path");
+        assert_eq!(decoded.args[0].abi_type, "bytes");
+        assert_eq!(
+            arg(&decoded, "path"),
+            &DecodedValue::Bytes(
+                hex::decode(
+                    "c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000bb8dac17f958d2ee523a2206206994597c13d831ec7"
+                )
+                .unwrap()
+            )
+        );
+        assert_eq!(
+            arg(&decoded, "recipient"),
+            &DecodedValue::Address(address("0x1111111111111111111111111111111111111111"))
+        );
+        assert_eq!(arg(&decoded, "deadline"), &DecodedValue::Uint(U256::ONE));
+        assert_eq!(
+            arg(&decoded, "amountOut"),
+            &DecodedValue::Uint(U256::from(1_000_000u64))
+        );
+        assert_eq!(
+            arg(&decoded, "amountInMaximum"),
+            &DecodedValue::Uint(U256::from(2_000_000u64))
+        );
+    }
+
+    #[test]
     fn test_match_keys_cover_mainnet_router() {
         let router = address(SWAP_ROUTER_MAINNET);
 
@@ -431,6 +718,20 @@ mod tests {
                 to: router.clone(),
                 selector: EXACT_INPUT_SELECTOR,
             }));
+        assert!(ExactOutputSingleDecoder::new()
+            .match_keys()
+            .contains(&crate::CallMatchKey {
+                chain_id: 1,
+                to: router.clone(),
+                selector: EXACT_OUTPUT_SINGLE_SELECTOR,
+            }));
+        assert!(ExactOutputDecoder::new()
+            .match_keys()
+            .contains(&crate::CallMatchKey {
+                chain_id: 1,
+                to: router.clone(),
+                selector: EXACT_OUTPUT_SELECTOR,
+            }));
 
         let keys = UniswapV3Decoder::new().match_keys();
         assert!(keys.contains(&crate::CallMatchKey {
@@ -440,8 +741,18 @@ mod tests {
         }));
         assert!(keys.contains(&crate::CallMatchKey {
             chain_id: 1,
-            to: router,
+            to: router.clone(),
             selector: EXACT_INPUT_SELECTOR,
+        }));
+        assert!(keys.contains(&crate::CallMatchKey {
+            chain_id: 1,
+            to: router.clone(),
+            selector: EXACT_OUTPUT_SINGLE_SELECTOR,
+        }));
+        assert!(keys.contains(&crate::CallMatchKey {
+            chain_id: 1,
+            to: router,
+            selector: EXACT_OUTPUT_SELECTOR,
         }));
     }
 }

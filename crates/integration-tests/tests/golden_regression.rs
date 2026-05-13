@@ -124,6 +124,18 @@ fn swap_uniswap_v3_exact_input_multi_routes() {
 }
 
 #[test]
+fn swap_uniswap_v3_exact_output_single_routes() {
+    let envelopes = route("swap_uniswap_v3_exact_output_single.json").expect("route ok");
+    assert_eq!(envelopes.len(), 1);
+    let swap = unwrap_swap(&envelopes[0]);
+    use policy_engine::action::common::AmountKind;
+    use policy_engine::action::dex::SwapMode;
+    assert_eq!(swap.mode, SwapMode::ExactOut);
+    assert_eq!(swap.amount_in.kind, AmountKind::Max);
+    assert_eq!(swap.amount_out.kind, AmountKind::Exact);
+}
+
+#[test]
 fn swap_universal_router_routes() {
     let envelopes = route("swap_universal_router.json").expect("route ok");
     assert_eq!(envelopes.len(), 1);

@@ -10,7 +10,8 @@ use abi_resolver::decoders::uniswap_v2::{
     SWAP_EXACT_TOKENS_FOR_TOKENS_DECODER_ID, SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID,
 };
 use abi_resolver::decoders::uniswap_v3::{
-    ExactInputDecoder, ExactInputSingleDecoder, UNISWAP_V3_DECODER_ID,
+    ExactInputDecoder, ExactInputSingleDecoder, ExactOutputDecoder, ExactOutputSingleDecoder,
+    EXACT_OUTPUT_DECODER_ID, EXACT_OUTPUT_SINGLE_DECODER_ID, UNISWAP_V3_DECODER_ID,
 };
 use abi_resolver::InMemoryDecoderRegistry;
 use abi_resolver::{DecoderId, DecoderRegistry};
@@ -22,7 +23,9 @@ use mappers::protocols::erc20::{Erc20ApproveMapper, Erc20TransferFromMapper, Erc
 use mappers::protocols::uniswap_v2::{
     SwapExactTokensForTokensMapper, SwapTokensForExactTokensMapper,
 };
-use mappers::protocols::uniswap_v3::UniswapV3Mapper;
+use mappers::protocols::uniswap_v3::{
+    UniswapV3ExactOutputMapper, UniswapV3ExactOutputSingleMapper, UniswapV3Mapper,
+};
 use mappers::{InMemoryMapperRegistry, MapperMatchKey};
 use sign_resolver::adapters::eip2612::Eip2612Adapter;
 use sign_resolver::adapters::permit2::Permit2Adapter;
@@ -44,6 +47,8 @@ impl DefaultRegistries {
                 .register(Arc::new(SwapTokensForExactTokensDecoder::new()))
                 .register(Arc::new(ExactInputSingleDecoder::new()))
                 .register(Arc::new(ExactInputDecoder::new()))
+                .register(Arc::new(ExactOutputSingleDecoder::new()))
+                .register(Arc::new(ExactOutputDecoder::new()))
                 .register(Arc::new(Erc20ApproveDecoder::new()))
                 .register(Arc::new(Erc20TransferDecoder::new()))
                 .register(Arc::new(Erc20TransferFromDecoder::new()))
@@ -68,6 +73,18 @@ impl DefaultRegistries {
                         decoder_id: DecoderId::new(UNISWAP_V3_DECODER_ID),
                     },
                     Arc::new(UniswapV3Mapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(EXACT_OUTPUT_SINGLE_DECODER_ID),
+                    },
+                    Arc::new(UniswapV3ExactOutputSingleMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(EXACT_OUTPUT_DECODER_ID),
+                    },
+                    Arc::new(UniswapV3ExactOutputMapper::new()),
                 )
                 .register(
                     MapperMatchKey {

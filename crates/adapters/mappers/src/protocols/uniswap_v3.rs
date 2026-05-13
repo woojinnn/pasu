@@ -11,10 +11,15 @@ use policy_engine::action::{
 use crate::mapper::{MapContext, Mapper, MapperError, MapperId};
 
 pub const UNISWAP_V3_MAPPER_ID: &str = "uniswap_v3";
+pub const EXACT_OUTPUT_SINGLE_MAPPER_ID: &str = "uniswap-v3/exactOutputSingle";
+pub const EXACT_OUTPUT_MAPPER_ID: &str = "uniswap-v3/exactOutput";
 
 const EXACT_INPUT_SINGLE_SIGNATURE: &str =
     "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))";
 const EXACT_INPUT_SIGNATURE: &str = "exactInput((bytes,address,uint256,uint256,uint256))";
+const EXACT_OUTPUT_SINGLE_SIGNATURE: &str =
+    "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))";
+const EXACT_OUTPUT_SIGNATURE: &str = "exactOutput((bytes,address,uint256,uint256,uint256))";
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct UniswapV3Mapper;
@@ -32,11 +37,16 @@ impl Mapper for UniswapV3Mapper {
     }
 
     fn accepts(&self, decoded: &DecodedCall) -> bool {
-        decoded.decoder_id == DecoderId::new(UNISWAP_V3_MAPPER_ID)
-            && matches!(
-                decoded.function_signature.as_str(),
-                EXACT_INPUT_SINGLE_SIGNATURE | EXACT_INPUT_SIGNATURE
-            )
+        match decoded.function_signature.as_str() {
+            EXACT_INPUT_SINGLE_SIGNATURE | EXACT_INPUT_SIGNATURE => {
+                decoded.decoder_id == DecoderId::new(UNISWAP_V3_MAPPER_ID)
+            }
+            EXACT_OUTPUT_SINGLE_SIGNATURE => {
+                decoded.decoder_id == DecoderId::new(EXACT_OUTPUT_SINGLE_MAPPER_ID)
+            }
+            EXACT_OUTPUT_SIGNATURE => decoded.decoder_id == DecoderId::new(EXACT_OUTPUT_MAPPER_ID),
+            _ => false,
+        }
     }
 
     fn map(
@@ -47,6 +57,8 @@ impl Mapper for UniswapV3Mapper {
         match decoded.function_signature.as_str() {
             EXACT_INPUT_SINGLE_SIGNATURE => Ok(vec![map_exact_input_single(ctx, decoded)?]),
             EXACT_INPUT_SIGNATURE => Ok(vec![map_exact_input(ctx, decoded)?]),
+            EXACT_OUTPUT_SINGLE_SIGNATURE => Ok(vec![map_exact_output_single(ctx, decoded)?]),
+            EXACT_OUTPUT_SIGNATURE => Ok(vec![map_exact_output(ctx, decoded)?]),
             other => Err(argument_mismatch(
                 "function_signature",
                 format!("unsupported Uniswap V3 function {other}"),
@@ -113,6 +125,64 @@ impl Mapper for ExactInputMapper {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct UniswapV3ExactOutputSingleMapper;
+
+impl UniswapV3ExactOutputSingleMapper {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Mapper for UniswapV3ExactOutputSingleMapper {
+    fn id(&self) -> MapperId {
+        MapperId::new(EXACT_OUTPUT_SINGLE_MAPPER_ID)
+    }
+
+    fn accepts(&self, decoded: &DecodedCall) -> bool {
+        decoded.decoder_id == DecoderId::new(EXACT_OUTPUT_SINGLE_MAPPER_ID)
+            && decoded.function_signature == EXACT_OUTPUT_SINGLE_SIGNATURE
+    }
+
+    fn map(
+        &self,
+        ctx: &MapContext<'_>,
+        decoded: &DecodedCall,
+    ) -> Result<Vec<ActionEnvelope>, MapperError> {
+        Ok(vec![map_exact_output_single(ctx, decoded)?])
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct UniswapV3ExactOutputMapper;
+
+impl UniswapV3ExactOutputMapper {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Mapper for UniswapV3ExactOutputMapper {
+    fn id(&self) -> MapperId {
+        MapperId::new(EXACT_OUTPUT_MAPPER_ID)
+    }
+
+    fn accepts(&self, decoded: &DecodedCall) -> bool {
+        decoded.decoder_id == DecoderId::new(EXACT_OUTPUT_MAPPER_ID)
+            && decoded.function_signature == EXACT_OUTPUT_SIGNATURE
+    }
+
+    fn map(
+        &self,
+        ctx: &MapContext<'_>,
+        decoded: &DecodedCall,
+    ) -> Result<Vec<ActionEnvelope>, MapperError> {
+        Ok(vec![map_exact_output(ctx, decoded)?])
+    }
+}
+
 fn map_exact_input_single(
     ctx: &MapContext<'_>,
     decoded: &DecodedCall,
@@ -155,6 +225,55 @@ fn map_exact_input(
         token_out: asset_ref(ctx, &parsed.token_out),
         amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
         amount_out: amount_constraint(AmountKind::Min, amount_out_minimum)?,
+        recipient,
+        validity: Some(validity(deadline)?),
+        fee_bps: Some(parsed.first_fee / 100),
+        enrichment: SwapEnrichment::default(),
+    }))
+}
+
+fn map_exact_output_single(
+    ctx: &MapContext<'_>,
+    decoded: &DecodedCall,
+) -> Result<ActionEnvelope, MapperError> {
+    let token_in = address_arg(decoded, "tokenIn")?;
+    let token_out = address_arg(decoded, "tokenOut")?;
+    let fee = uint_arg(decoded, "fee")?;
+    let recipient = address_arg(decoded, "recipient")?;
+    let deadline = uint_arg(decoded, "deadline")?;
+    let amount_out = uint_arg(decoded, "amountOut")?;
+    let amount_in_maximum = uint_arg(decoded, "amountInMaximum")?;
+
+    Ok(swap_envelope(SwapAction {
+        mode: SwapMode::ExactOut,
+        token_in: asset_ref(ctx, &token_in),
+        token_out: asset_ref(ctx, &token_out),
+        amount_in: amount_constraint(AmountKind::Max, amount_in_maximum)?,
+        amount_out: amount_constraint(AmountKind::Exact, amount_out)?,
+        recipient,
+        validity: Some(validity(deadline)?),
+        fee_bps: Some(fee_bps(fee)?),
+        enrichment: SwapEnrichment::default(),
+    }))
+}
+
+fn map_exact_output(
+    ctx: &MapContext<'_>,
+    decoded: &DecodedCall,
+) -> Result<ActionEnvelope, MapperError> {
+    let path = bytes_arg(decoded, "path")?;
+    let recipient = address_arg(decoded, "recipient")?;
+    let deadline = uint_arg(decoded, "deadline")?;
+    let amount_out = uint_arg(decoded, "amountOut")?;
+    let amount_in_maximum = uint_arg(decoded, "amountInMaximum")?;
+    let parsed = parse_path(path)?;
+
+    Ok(swap_envelope(SwapAction {
+        mode: SwapMode::ExactOut,
+        token_in: asset_ref(ctx, &parsed.token_out),
+        token_out: asset_ref(ctx, &parsed.token_in),
+        amount_in: amount_constraint(AmountKind::Max, amount_in_maximum)?,
+        amount_out: amount_constraint(AmountKind::Exact, amount_out)?,
         recipient,
         validity: Some(validity(deadline)?),
         fee_bps: Some(parsed.first_fee / 100),
@@ -300,9 +419,13 @@ fn argument_mismatch(name: &str, message: String) -> MapperError {
 
 #[cfg(test)]
 mod tests {
-    use super::{UniswapV3Mapper, UNISWAP_V3_MAPPER_ID};
+    use super::{
+        UniswapV3ExactOutputMapper, UniswapV3ExactOutputSingleMapper, UniswapV3Mapper,
+        UNISWAP_V3_MAPPER_ID,
+    };
     use abi_resolver::decoders::uniswap_v3::{
-        ExactInputDecoder, ExactInputSingleDecoder, UNISWAP_V3_DECODER_ID,
+        ExactInputDecoder, ExactInputSingleDecoder, EXACT_OUTPUT_DECODER_ID,
+        EXACT_OUTPUT_SINGLE_DECODER_ID, UNISWAP_V3_DECODER_ID,
     };
     use abi_resolver::{
         DecodeContext, DecodedArg, DecodedCall, DecodedValue, Decoder as _, DecoderId,
@@ -528,6 +651,106 @@ mod tests {
         }
     }
 
+    fn exact_output_single_decoded() -> DecodedCall {
+        DecodedCall {
+            decoder_id: DecoderId::new(EXACT_OUTPUT_SINGLE_DECODER_ID),
+            function_signature:
+                "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))"
+                    .to_owned(),
+            args: vec![
+                DecodedArg {
+                    name: "tokenIn".to_owned(),
+                    abi_type: "address".to_owned(),
+                    value: DecodedValue::Address(address(
+                        "0xdac17f958d2ee523a2206206994597c13d831ec7",
+                    )),
+                },
+                DecodedArg {
+                    name: "tokenOut".to_owned(),
+                    abi_type: "address".to_owned(),
+                    value: DecodedValue::Address(address(
+                        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    )),
+                },
+                DecodedArg {
+                    name: "fee".to_owned(),
+                    abi_type: "uint24".to_owned(),
+                    value: DecodedValue::Uint(U256::from(3000u64)),
+                },
+                DecodedArg {
+                    name: "recipient".to_owned(),
+                    abi_type: "address".to_owned(),
+                    value: DecodedValue::Address(address(
+                        "0x1111111111111111111111111111111111111111",
+                    )),
+                },
+                DecodedArg {
+                    name: "deadline".to_owned(),
+                    abi_type: "uint256".to_owned(),
+                    value: DecodedValue::Uint(U256::from(9_999_999_999u64)),
+                },
+                DecodedArg {
+                    name: "amountOut".to_owned(),
+                    abi_type: "uint256".to_owned(),
+                    value: DecodedValue::Uint(U256::from(100_000_000u64)),
+                },
+                DecodedArg {
+                    name: "amountInMaximum".to_owned(),
+                    abi_type: "uint256".to_owned(),
+                    value: DecodedValue::Uint(U256::from(200_000_000u64)),
+                },
+                DecodedArg {
+                    name: "sqrtPriceLimitX96".to_owned(),
+                    abi_type: "uint160".to_owned(),
+                    value: DecodedValue::Uint(U256::ZERO),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
+    fn exact_output_decoded() -> DecodedCall {
+        DecodedCall {
+            decoder_id: DecoderId::new(EXACT_OUTPUT_DECODER_ID),
+            function_signature: "exactOutput((bytes,address,uint256,uint256,uint256))".to_owned(),
+            args: vec![
+                DecodedArg {
+                    name: "path".to_owned(),
+                    abi_type: "bytes".to_owned(),
+                    value: DecodedValue::Bytes(
+                        hex::decode(
+                            "c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000bb8dac17f958d2ee523a2206206994597c13d831ec7",
+                        )
+                        .unwrap(),
+                    ),
+                },
+                DecodedArg {
+                    name: "recipient".to_owned(),
+                    abi_type: "address".to_owned(),
+                    value: DecodedValue::Address(address(
+                        "0x1111111111111111111111111111111111111111",
+                    )),
+                },
+                DecodedArg {
+                    name: "deadline".to_owned(),
+                    abi_type: "uint256".to_owned(),
+                    value: DecodedValue::Uint(U256::ONE),
+                },
+                DecodedArg {
+                    name: "amountOut".to_owned(),
+                    abi_type: "uint256".to_owned(),
+                    value: DecodedValue::Uint(U256::from(1_000_000u64)),
+                },
+                DecodedArg {
+                    name: "amountInMaximum".to_owned(),
+                    abi_type: "uint256".to_owned(),
+                    value: DecodedValue::Uint(U256::from(2_000_000u64)),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
     fn expected_exact_input_single_envelope(symbols: bool) -> ActionEnvelope {
         let (in_symbol, in_decimals, out_symbol, out_decimals) = if symbols {
             (Some("USDT"), Some(6), Some("WETH"), Some(18))
@@ -651,6 +874,83 @@ mod tests {
             Some(address("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"))
         );
         assert_eq!(swap.fee_bps, Some(5));
+    }
+
+    #[test]
+    fn maps_exact_output_single_to_swap_action() {
+        let token_registry = EmptyTokenRegistry;
+        let from = address("0x0000000000000000000000000000000000000001");
+        let to = address("0xe592427a0aece92de3edee1f18e0157c05861564");
+        let value_wei = decimal("0");
+
+        let result = UniswapV3ExactOutputSingleMapper::new()
+            .map(
+                &ctx(&token_registry, &from, &to, &value_wei),
+                &exact_output_single_decoded(),
+            )
+            .unwrap();
+
+        assert_eq!(result.len(), 1);
+        let Action::Swap(swap) = &result[0].action else {
+            panic!("expected swap action");
+        };
+        assert_eq!(result[0].category, Category::Dex);
+        assert_eq!(swap.mode, SwapMode::ExactOut);
+        assert_eq!(swap.amount_in, amount(AmountKind::Max, "200000000"));
+        assert_eq!(swap.amount_out, amount(AmountKind::Exact, "100000000"));
+        assert_eq!(
+            swap.token_in.address,
+            Some(address("0xdac17f958d2ee523a2206206994597c13d831ec7"))
+        );
+        assert_eq!(
+            swap.token_out.address,
+            Some(address("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"))
+        );
+        assert_eq!(
+            swap.recipient,
+            address("0x1111111111111111111111111111111111111111")
+        );
+        assert_eq!(
+            swap.validity,
+            Some(Validity {
+                expires_at: decimal("9999999999"),
+                source: ValiditySource::TxDeadline,
+            })
+        );
+        assert_eq!(swap.fee_bps, Some(30));
+        assert_eq!(swap.enrichment, SwapEnrichment::default());
+    }
+
+    #[test]
+    fn maps_exact_output_path_uses_reverse_direction() {
+        let token_registry = EmptyTokenRegistry;
+        let from = address("0x0000000000000000000000000000000000000001");
+        let to = address("0xe592427a0aece92de3edee1f18e0157c05861564");
+        let value_wei = decimal("0");
+
+        let result = UniswapV3ExactOutputMapper::new()
+            .map(
+                &ctx(&token_registry, &from, &to, &value_wei),
+                &exact_output_decoded(),
+            )
+            .unwrap();
+
+        assert_eq!(result.len(), 1);
+        let Action::Swap(swap) = &result[0].action else {
+            panic!("expected swap action");
+        };
+        assert_eq!(swap.mode, SwapMode::ExactOut);
+        assert_eq!(swap.amount_in.kind, AmountKind::Max);
+        assert_eq!(swap.amount_out.kind, AmountKind::Exact);
+        assert_eq!(
+            swap.token_in.address,
+            Some(address("0xdac17f958d2ee523a2206206994597c13d831ec7"))
+        );
+        assert_eq!(
+            swap.token_out.address,
+            Some(address("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"))
+        );
+        assert_eq!(swap.fee_bps, Some(30));
     }
 
     #[test]
