@@ -62,19 +62,19 @@ function PayloadDetail({ payload }: { payload: SignDecodeResponse['payload'] }) 
       return (
         <div className="sign-payload">
           <h4>Typed Data</h4>
-          {data?.primaryType && (
-            <p><strong>primaryType:</strong> <code>{String(data.primaryType)}</code></p>
+          {Boolean(data?.primaryType) && (
+            <p><strong>primaryType:</strong> <code>{String(data?.primaryType)}</code></p>
           )}
-          {data?.domain && (
+          {Boolean(data?.domain) && (
             <details open>
               <summary>domain</summary>
-              <pre>{JSON.stringify(data.domain, null, 2)}</pre>
+              <pre>{JSON.stringify(data?.domain, null, 2)}</pre>
             </details>
           )}
-          {data?.message && (
+          {Boolean(data?.message) && (
             <details open>
               <summary>message</summary>
-              <pre>{JSON.stringify(data.message, null, 2)}</pre>
+              <pre>{JSON.stringify(data?.message, null, 2)}</pre>
             </details>
           )}
         </div>
@@ -105,7 +105,7 @@ function PayloadDetail({ payload }: { payload: SignDecodeResponse['payload'] }) 
       return (
         <div className="sign-payload">
           <h4>UserOperation</h4>
-          {payload.entry_point && (
+          {Boolean(payload.entry_point) && (
             <p><strong>entryPoint:</strong> <code>{String(payload.entry_point)}</code></p>
           )}
           <pre>{JSON.stringify(payload.user_op, null, 2)}</pre>
