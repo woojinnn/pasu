@@ -4,8 +4,9 @@ use policy_engine::action::dex::{SwapAction, SwapEnrichment, SwapMode};
 use policy_engine::core::{Address as CoreAddress, Token, UsdValuation as CoreUsdValuation};
 use policy_engine::{
     enrich_swap_envelope, policy_request_from_envelope, Action, ActionAddress, ActionEnvelope,
-    AmountConstraint, AmountKind, AssetKind, AssetRef, Category, DecimalString, HostCapabilities,
-    MockOracle, PolicyEngineBuilder, PolicyRequest, Verdict,
+    ActionUsdValuation, AmountConstraint, AmountKind, AssetKind, AssetRef, Category, DecimalString,
+    HostCapabilities, MockOracle, PolicyEngineBuilder, PolicyRequest, Severity, Validity,
+    ValiditySource, Verdict,
 };
 use request_router::{route_request, DefaultRegistries, RouterContext};
 use serde_json::Value;
@@ -239,6 +240,15 @@ fn e2e_v2_exact_out_does_not_match_exact_in_only_policy() {
 const MAX_FEE_POLICY: &str = include_str!("../../../policies/swap/max-fee-bps-100.cedar");
 const NO_ZERO_MIN_OUTPUT_POLICY: &str =
     include_str!("../../../policies/swap/no-zero-min-output.cedar");
+const MAX_INPUT_USD_100_POLICY: &str =
+    include_str!("../../../policies/swap/max-input-usd-100.cedar");
+const MIN_OUTPUT_USD_FLOOR_POLICY: &str =
+    include_str!("../../../policies/swap/min-output-usd-floor.cedar");
+const KNOWN_TOKEN_ONLY_POLICY: &str = include_str!("../../../policies/swap/known-token-only.cedar");
+const ALLOWANCE_MUST_COVER_INPUT_POLICY: &str =
+    include_str!("../../../policies/swap/allowance-must-cover-input.cedar");
+const MAX_FEE_BPS_30_POLICY: &str = include_str!("../../../policies/swap/max-fee-bps-30.cedar");
+const EXPIRED_DEADLINE_POLICY: &str = include_str!("../../../policies/swap/expired-deadline.cedar");
 
 fn evaluate_with_policies(policies: &[&str], request: &PolicyRequest) -> Verdict {
     let mut builder = PolicyEngineBuilder::new();
@@ -259,19 +269,63 @@ fn evaluate_with_policies(policies: &[&str], request: &PolicyRequest) -> Verdict
         .unwrap_or_else(|error| panic!("policy request should evaluate: {error}"))
 }
 
+struct SyntheticSwapInput<'a> {
+    token_in_kind: AssetKind,
+    token_in_symbol: &'a str,
+    token_out_symbol: &'a str,
+    amount_out_kind: AmountKind,
+    fee_bps: Option<u32>,
+    total_input_usd: Option<&'a str>,
+    total_min_output_usd: Option<&'a str>,
+    allowance_covers_input: Option<bool>,
+    validity_delta_sec: Option<i64>,
+}
+
+impl<'a> Default for SyntheticSwapInput<'a> {
+    fn default() -> Self {
+        Self {
+            token_in_kind: AssetKind::Erc20,
+            token_in_symbol: "USDC",
+            token_out_symbol: "ETH",
+            amount_out_kind: AmountKind::Min,
+            fee_bps: None,
+            total_input_usd: None,
+            total_min_output_usd: None,
+            allowance_covers_input: None,
+            validity_delta_sec: None,
+        }
+    }
+}
+
+fn usd_valuation(value: &str) -> ActionUsdValuation {
+    ActionUsdValuation {
+        value: value.to_owned(),
+        as_of_ts: Some(BLOCK_TIMESTAMP),
+        sources: Some(vec!["synthetic".to_owned()]),
+        stale_sec: Some(0),
+    }
+}
+
 fn synthetic_swap_request(fee_bps: u32) -> PolicyRequest {
+    synthetic_swap_request_with(SyntheticSwapInput {
+        fee_bps: Some(fee_bps),
+        ..SyntheticSwapInput::default()
+    })
+}
+
+fn synthetic_swap_request_with(input: SyntheticSwapInput<'_>) -> PolicyRequest {
     let from = ActionAddress::from_str("0x1111111111111111111111111111111111111111")
         .expect("valid synthetic from address");
     let to = ActionAddress::from_str("0x2222222222222222222222222222222222222222")
         .expect("valid synthetic to address");
     let token_in = AssetRef {
-        kind: AssetKind::Erc20,
+        kind: input.token_in_kind,
         chain_id: 1,
         address: Some(
-            ActionAddress::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7")
-                .expect("valid USDT address"),
+            ActionAddress::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+                .expect("valid USDC address"),
         ),
-        symbol: Some("USDT".to_owned()),
+        symbol: Some(input.token_in_symbol.to_owned()),
         decimals: Some(6),
     };
     let token_out = AssetRef {
@@ -281,7 +335,7 @@ fn synthetic_swap_request(fee_bps: u32) -> PolicyRequest {
             ActionAddress::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
                 .expect("valid WETH address"),
         ),
-        symbol: Some("WETH".to_owned()),
+        symbol: Some(input.token_out_symbol.to_owned()),
         decimals: Some(18),
     };
     let amount_in = AmountConstraint {
@@ -289,8 +343,20 @@ fn synthetic_swap_request(fee_bps: u32) -> PolicyRequest {
         value: Some(DecimalString::from_str("10000000000").expect("valid amount-in")),
     };
     let amount_out = AmountConstraint {
-        kind: AmountKind::Min,
+        kind: input.amount_out_kind,
         value: Some(DecimalString::from_str("200000000").expect("valid amount-out")),
+    };
+    let validity = input.validity_delta_sec.map(|delta_sec| Validity {
+        expires_at: DecimalString::from_str(&(BLOCK_TIMESTAMP as i64 + delta_sec).to_string())
+            .expect("valid synthetic expiry"),
+        source: ValiditySource::TxDeadline,
+    });
+    let enrichment = SwapEnrichment {
+        value_in_usd: input.total_input_usd.map(usd_valuation),
+        min_value_out_usd: input.total_min_output_usd.map(usd_valuation),
+        expected_value_out_usd: None,
+        allowance_covers_input: input.allowance_covers_input,
+        input_fraction_of_portfolio_bps: None,
     };
     let envelope = ActionEnvelope {
         category: Category::Dex,
@@ -301,9 +367,9 @@ fn synthetic_swap_request(fee_bps: u32) -> PolicyRequest {
             amount_in,
             amount_out,
             recipient: from.clone(),
-            validity: None,
-            fee_bps: Some(fee_bps),
-            enrichment: SwapEnrichment::default(),
+            validity,
+            fee_bps: input.fee_bps,
+            enrichment,
         }),
     };
 
@@ -316,6 +382,174 @@ fn synthetic_swap_request(fee_bps: u32) -> PolicyRequest {
         BLOCK_TIMESTAMP,
     )
     .expect("synthetic swap envelope should lower to a policy request")
+}
+
+fn assert_policy_passes(policy_text: &str, request: &PolicyRequest) {
+    let verdict = evaluate_with_policies(&[policy_text], request);
+
+    assert_eq!(verdict, Verdict::Pass);
+}
+
+fn assert_policy_denies(policy_text: &str, request: &PolicyRequest, policy_id: &str) {
+    let verdict = evaluate_with_policies(&[policy_text], request);
+
+    match verdict {
+        Verdict::Fail(matched) => {
+            assert!(
+                matched.iter().any(
+                    |policy| policy.policy_id == policy_id && policy.severity == Severity::Deny
+                ),
+                "expected deny policy {policy_id} to fire, got {matched:?}"
+            );
+        }
+        other => panic!("expected Verdict::Fail, got {other:?}"),
+    }
+}
+
+fn assert_policy_warns(policy_text: &str, request: &PolicyRequest, policy_id: &str) {
+    let verdict = evaluate_with_policies(&[policy_text], request);
+
+    match verdict {
+        Verdict::Warn(matched) => {
+            assert!(
+                matched.iter().any(
+                    |policy| policy.policy_id == policy_id && policy.severity == Severity::Warn
+                ),
+                "expected warn policy {policy_id} to fire, got {matched:?}"
+            );
+        }
+        other => panic!("expected Verdict::Warn, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_max_input_usd_100_pass() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        total_input_usd: Some("50.0000"),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_passes(MAX_INPUT_USD_100_POLICY, &request);
+}
+
+#[test]
+fn test_max_input_usd_100_fail() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        total_input_usd: Some("200.0000"),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_denies(MAX_INPUT_USD_100_POLICY, &request, "user/max-input-usd-100");
+}
+
+#[test]
+fn test_min_output_usd_floor_pass() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        total_min_output_usd: Some("75.0000"),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_passes(MIN_OUTPUT_USD_FLOOR_POLICY, &request);
+}
+
+#[test]
+fn test_min_output_usd_floor_fail() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        total_min_output_usd: Some("25.0000"),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_denies(
+        MIN_OUTPUT_USD_FLOOR_POLICY,
+        &request,
+        "user/min-output-usd-floor",
+    );
+}
+
+#[test]
+fn test_known_token_only_pass() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        token_in_symbol: "USDC",
+        token_out_symbol: "ETH",
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_passes(KNOWN_TOKEN_ONLY_POLICY, &request);
+}
+
+#[test]
+fn test_known_token_only_fail() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        token_in_symbol: "",
+        token_out_symbol: "ETH",
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_denies(KNOWN_TOKEN_ONLY_POLICY, &request, "user/known-token-only");
+}
+
+#[test]
+fn test_allowance_must_cover_input_pass() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        allowance_covers_input: Some(true),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_passes(ALLOWANCE_MUST_COVER_INPUT_POLICY, &request);
+}
+
+#[test]
+fn test_allowance_must_cover_input_fail() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        allowance_covers_input: Some(false),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_warns(
+        ALLOWANCE_MUST_COVER_INPUT_POLICY,
+        &request,
+        "user/allowance-must-cover-input",
+    );
+}
+
+#[test]
+fn test_max_fee_bps_30_pass() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        fee_bps: Some(10),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_passes(MAX_FEE_BPS_30_POLICY, &request);
+}
+
+#[test]
+fn test_max_fee_bps_30_fail() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        fee_bps: Some(50),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_denies(MAX_FEE_BPS_30_POLICY, &request, "user/max-fee-bps-30");
+}
+
+#[test]
+fn test_expired_deadline_pass() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        validity_delta_sec: Some(300),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_passes(EXPIRED_DEADLINE_POLICY, &request);
+}
+
+#[test]
+fn test_expired_deadline_fail() {
+    let request = synthetic_swap_request_with(SyntheticSwapInput {
+        validity_delta_sec: Some(0),
+        ..SyntheticSwapInput::default()
+    });
+
+    assert_policy_denies(EXPIRED_DEADLINE_POLICY, &request, "user/expired-deadline");
 }
 
 #[test]
