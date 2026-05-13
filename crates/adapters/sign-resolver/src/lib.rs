@@ -13,6 +13,7 @@
 //! Non-sign methods (e.g. `eth_sendTransaction`) return
 //! [`SignResolveError::UnsupportedMethod`].
 
+pub mod adapters;
 pub mod error;
 pub mod in_memory;
 pub mod method;
