@@ -19,10 +19,18 @@
 //!   - `subdecode`: parsers for non-standard payloads packed in `bytes` args.
 
 pub mod decode;
+pub mod decoder;
 pub mod extract;
+pub mod in_memory_registry;
 pub mod openchain;
 pub mod resolver;
 pub mod sourcify;
 #[cfg(feature = "sqlite")]
 pub mod sqlite_index;
 pub mod subdecode;
+
+pub use decoder::{
+    CallMatchKey, DecodeContext, DecodedArg, DecodedCall, DecodedValue, Decoder, DecoderError,
+    DecoderId, DecoderRegistry,
+};
+pub use in_memory_registry::{InMemoryDecoderRegistry, InMemoryDecoderRegistryBuilder};
