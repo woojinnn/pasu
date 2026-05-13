@@ -36,6 +36,7 @@
 #![cfg_attr(not(test), warn(clippy::panic))]
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
+pub mod action;
 pub mod adapter;
 pub mod context_keys;
 pub mod core;
@@ -47,6 +48,11 @@ pub mod prelude;
 pub mod registry;
 pub mod schema;
 
+pub use action::{
+    Action, ActionEnvelope, Address as ActionAddress, AmountConstraint, AmountKind, AssetKind,
+    AssetRef, Category, DecimalString, Hex, UsdValuation as ActionUsdValuation, Validity,
+    ValiditySource,
+};
 pub use adapter::{
     ActionAdapterError, ActionAdapterId, ActionKind, ContractTarget,
     DeclaredSignatureActionAdapter, DeclaredTransactionActionAdapter, SignatureActionAdapter,
@@ -56,8 +62,8 @@ pub use adapter::{
     TransactionActionAdapterKind, TransactionMatchKey,
 };
 pub use core::{
-    validate_typed_data, Action, Address, AmountSpec, ChainId, DexAction, DexFacts, DexTrace,
-    Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement,
+    validate_typed_data, Action as LegacyAction, Address, AmountSpec, ChainId, DexAction, DexFacts,
+    DexTrace, Eip2612Action, Eip712Domain, Eip712OtherAction, Eip712TypedData, OracleRequirement,
     OracleRequirementKind, OtherAction, Permit2Action, Permit2Approval, Permit2PermitKind, Request,
     SignatureRequest, Token, TransactionRequest, TypedDataError, UsdValuation, WindowStatsContext,
 };
