@@ -4,7 +4,8 @@
 pub mod common;
 pub mod envelope;
 // Following modules added in subsequent tasks (1.3-1.6):
-// pub mod dex;
+/// Decentralized exchange action schema types.
+pub mod dex;
 // pub mod lending;
 // pub mod misc;
 // pub mod staking;
