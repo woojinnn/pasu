@@ -9,6 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+alloy-primitives.workspace = true
 policy-engine.workspace = true
 request-router = { path = "../adapters/request-router" }
 mappers.workspace = true

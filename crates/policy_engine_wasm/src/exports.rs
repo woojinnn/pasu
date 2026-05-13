@@ -1,9 +1,14 @@
 //! Thin `#[wasm_bindgen]` JSON-string exports.
 
 use crate::dto::{
-    EngineErrorDto, Envelope, EvaluateEnvelopeInputDto, InstallPoliciesInputDto, MatchedPolicyDto,
-    VerdictDto,
+    AllowanceEntryDto, BalanceEntryDto, EngineErrorDto, Envelope, EvaluateEnvelopeInputDto,
+    HostSnapshotDto, InstallPoliciesInputDto, MatchedPolicyDto, OracleEntryDto, VerdictDto,
 };
+use alloy_primitives::U256;
+use policy_engine::core::{Address as CoreAddress, Token, UsdValuation as CoreUsdValuation};
+use policy_engine::enrichment::enrich_swap_envelope;
+use policy_engine::host::oracle::SnapshotOracle;
+use policy_engine::host::{HostCapabilities, MockApprovals, MockPortfolio};
 use policy_engine::lowering::policy_request_from_envelope;
 use policy_engine::policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyRequestOrigin, Severity, Verdict,
@@ -608,7 +613,7 @@ pub fn evaluate_envelope_json(input_json: String) -> String {
             value_wei,
             chain_id,
             block_timestamp,
-            host_snapshot: _,
+            host_snapshot,
         } = input;
 
         let envelope: ActionEnvelope = serde_json::from_value(envelope)
@@ -622,6 +627,14 @@ pub fn evaluate_envelope_json(input_json: String) -> String {
         let value_wei: DecimalString = value_wei
             .parse()
             .map_err(|error| EngineErrorDto::new("invalid_value_wei", error))?;
+
+        // Build host capabilities from the snapshot DTO, then enrich the
+        // envelope's swap action (if any) before lowering. Non-swap envelopes
+        // pass through unchanged. Missing host data simply leaves enrichment
+        // fields as `None`.
+        let host_parts = host_capabilities_parts_from_dto(&host_snapshot);
+        let host = host_parts.as_capabilities();
+        let envelope = enrich_swap_envelope(envelope, &from, &to, &host);
 
         let Some(request) = policy_request_from_envelope(
             &envelope,
@@ -649,4 +662,119 @@ pub fn evaluate_envelope_json(input_json: String) -> String {
         Err(error) => engine_error_verdict(error),
     };
     Envelope::ok(dto).to_json()
+}
+
+/// Owned storage for the host capability traits constructed from a snapshot
+/// DTO. Held in this struct so the borrowed [`HostCapabilities`] can reference
+/// the trait objects for the duration of a single `evaluate_envelope_json`
+/// call.
+struct HostCapabilityParts {
+    oracle: SnapshotOracle,
+    portfolio: Option<MockPortfolio>,
+    approvals: Option<MockApprovals>,
+}
+
+impl HostCapabilityParts {
+    fn as_capabilities(&self) -> HostCapabilities<'_> {
+        let mut host = HostCapabilities::new(&self.oracle);
+        if let Some(portfolio) = &self.portfolio {
+            host = host.with_portfolio(portfolio);
+        }
+        if let Some(approvals) = &self.approvals {
+            host = host.with_approvals(approvals);
+        }
+        host
+    }
+}
+
+fn host_capabilities_parts_from_dto(snapshot: &HostSnapshotDto) -> HostCapabilityParts {
+    let oracle = snapshot_oracle_from_entries(&snapshot.oracle);
+    let portfolio = snapshot_portfolio_from_entries(&snapshot.balances);
+    let approvals = snapshot_approvals_from_entries(&snapshot.allowances);
+    HostCapabilityParts {
+        oracle,
+        portfolio,
+        approvals,
+    }
+}
+
+fn snapshot_oracle_from_entries(entries: &[OracleEntryDto]) -> SnapshotOracle {
+    let mut oracle = SnapshotOracle::new();
+    for entry in entries {
+        let Some(token) = token_from_token_key(&entry.token_key) else {
+            continue;
+        };
+        oracle.insert(
+            &token,
+            CoreUsdValuation {
+                value: entry.usd_per_unit.clone(),
+                as_of_ts: entry.as_of_ts,
+                sources: entry.sources.clone(),
+                stale_sec: entry.stale_sec,
+            },
+        );
+    }
+    oracle
+}
+
+fn snapshot_portfolio_from_entries(entries: &[BalanceEntryDto]) -> Option<MockPortfolio> {
+    if entries.is_empty() {
+        return None;
+    }
+    let mut portfolio = MockPortfolio::new();
+    for entry in entries {
+        let Some(owner) = CoreAddress::new(&entry.owner).ok() else {
+            continue;
+        };
+        let Some(token) = token_from_token_key(&entry.token_key) else {
+            continue;
+        };
+        let Some(balance) = U256::from_str_radix(&entry.balance, 10).ok() else {
+            continue;
+        };
+        portfolio = portfolio.with_balance(&owner, &token, balance);
+    }
+    Some(portfolio)
+}
+
+fn snapshot_approvals_from_entries(entries: &[AllowanceEntryDto]) -> Option<MockApprovals> {
+    if entries.is_empty() {
+        return None;
+    }
+    let mut approvals = MockApprovals::new();
+    for entry in entries {
+        let Some(owner) = CoreAddress::new(&entry.owner).ok() else {
+            continue;
+        };
+        let Some(spender) = CoreAddress::new(&entry.spender).ok() else {
+            continue;
+        };
+        let Some(token) = token_from_token_key(&entry.token_key) else {
+            continue;
+        };
+        let Some(allowance) = U256::from_str_radix(&entry.allowance, 10).ok() else {
+            continue;
+        };
+        approvals = approvals.with_allowance(&owner, &token, &spender, allowance);
+    }
+    Some(approvals)
+}
+
+/// Parse a `Token::key()` of the form `"chain_id:address"` back into a
+/// minimal `Token`. The `symbol` and `decimals` fields are not encoded in the
+/// key — host trait lookups only consult `Token::key()` (chain_id + address),
+/// so we stub the remaining fields. Enrichment paths that need real decimals
+/// (e.g. USD scaling) read them from the envelope's `AssetRef.decimals`
+/// instead, not from this reconstructed `Token`.
+fn token_from_token_key(key: &str) -> Option<Token> {
+    let (chain, address) = key.split_once(':')?;
+    let chain_id = chain.parse::<u64>().ok()?;
+    let address = CoreAddress::new(address).ok()?;
+    Some(Token {
+        chain_id,
+        address,
+        symbol: String::new(),
+        decimals: 0,
+        is_native: false,
+    })
 }

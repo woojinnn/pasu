@@ -38,6 +38,7 @@
 pub mod action;
 pub mod context_keys;
 pub mod core;
+pub mod enrichment;
 pub mod host;
 pub mod lowering;
 pub mod policy;
@@ -56,6 +57,7 @@ pub use host::{
     MockPortfolio, MockStatWindows, Oracle, OracleError, Portfolio, PortfolioError, ReservationId,
     StatDelta, StatKey, StatValue, StatWindows, SystemClock,
 };
+pub use enrichment::enrich_swap_envelope;
 pub use lowering::policy_request_from_envelope;
 pub use policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest,

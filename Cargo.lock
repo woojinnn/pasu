@@ -2182,6 +2182,7 @@ dependencies = [
 name = "policy-engine-wasm"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "console_error_panic_hook",
  "getrandom 0.2.17",
  "js-sys",

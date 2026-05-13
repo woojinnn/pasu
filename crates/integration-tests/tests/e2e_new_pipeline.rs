@@ -1,10 +1,11 @@
 use alloy_primitives::U256;
 use mappers::EmptyTokenRegistry;
 use policy_engine::action::dex::{SwapAction, SwapEnrichment, SwapMode};
+use policy_engine::core::{Address as CoreAddress, Token, UsdValuation as CoreUsdValuation};
 use policy_engine::{
-    policy_request_from_envelope, Action, ActionAddress, ActionEnvelope, AmountConstraint,
-    AmountKind, AssetKind, AssetRef, Category, DecimalString, HostCapabilities, MockOracle,
-    PolicyEngineBuilder, PolicyRequest, Verdict,
+    enrich_swap_envelope, policy_request_from_envelope, Action, ActionAddress, ActionEnvelope,
+    AmountConstraint, AmountKind, AssetKind, AssetRef, Category, DecimalString, HostCapabilities,
+    MockOracle, PolicyEngineBuilder, PolicyRequest, Verdict,
 };
 use request_router::{route_request, DefaultRegistries, RouterContext};
 use serde_json::Value;
@@ -337,4 +338,97 @@ fn swap_passes_under_max_fee_policy() {
         evaluate_with_policies(&[MAX_FEE_POLICY, NO_ZERO_MIN_OUTPUT_POLICY], &request);
 
     assert_eq!(verdict, Verdict::Pass);
+}
+
+/// End-to-end: route a v2 swap fixture, attach a `MockOracle` priced for both
+/// tokens, call `enrich_swap_envelope` to fill `SwapEnrichment`, then lower
+/// through `policy_request_from_envelope` and assert that the resulting
+/// Cedar context carries `totalInputUsd` (i.e., the enrichment value reaches
+/// the policy request).
+#[test]
+fn enrich_fills_usd_valuation_on_v2_swap() {
+    // Reproduce what `policy_request_from_fixture` does, but stop at the
+    // routed envelope so we can run the enrichment stage before lowering.
+    let fixture = load_fixture("swap_uniswap_v2_exact_in.json");
+    let rpc = fixture.get("rpc").unwrap();
+    let method = rpc.get("method").and_then(Value::as_str).unwrap();
+    let params = rpc.get("params").unwrap();
+    let chain_id = fixture.get("chain_id").and_then(Value::as_u64).unwrap();
+
+    let registries = DefaultRegistries::standard();
+    let token_registry = EmptyTokenRegistry;
+    let ctx = RouterContext {
+        registries: &registries,
+        token_registry: &token_registry,
+        block_timestamp: Some(BLOCK_TIMESTAMP),
+    };
+    let envelopes = route_request(&ctx, method, params, chain_id).expect("route");
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes[0].clone();
+
+    let tx = params.as_array().unwrap().first().unwrap();
+    let from = address_field(tx, "from", "swap_uniswap_v2_exact_in.json");
+    let to = address_field(tx, "to", "swap_uniswap_v2_exact_in.json");
+
+    // Build an oracle that prices both USDT and WETH so both value_in_usd
+    // and (min/expected)_value_out_usd are populated.
+    let usdt = Token {
+        chain_id,
+        address: CoreAddress::new("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap(),
+        symbol: String::new(),
+        decimals: 6,
+        is_native: false,
+    };
+    let weth = Token {
+        chain_id,
+        address: CoreAddress::new("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+        symbol: String::new(),
+        decimals: 18,
+        is_native: false,
+    };
+    let oracle = MockOracle::new()
+        .with_price(
+            &usdt,
+            CoreUsdValuation {
+                value: "1.0000".to_owned(),
+                as_of_ts: BLOCK_TIMESTAMP,
+                sources: vec!["mock-oracle".to_owned()],
+                stale_sec: 30,
+            },
+        )
+        .with_price(
+            &weth,
+            CoreUsdValuation {
+                value: "2000.0000".to_owned(),
+                as_of_ts: BLOCK_TIMESTAMP,
+                sources: vec!["mock-oracle".to_owned()],
+                stale_sec: 30,
+            },
+        );
+    let host = HostCapabilities::new(&oracle);
+
+    let enriched = enrich_swap_envelope(envelope, &from, &to, &host);
+    let Action::Swap(swap) = &enriched.action else {
+        panic!("expected swap action");
+    };
+    assert!(
+        swap.enrichment.value_in_usd.is_some(),
+        "enrichment.value_in_usd should be set when oracle has a price for token_in"
+    );
+
+    let request = policy_request_from_envelope(
+        &enriched,
+        &from,
+        &to,
+        &DecimalString::from_str("0").unwrap(),
+        chain_id,
+        BLOCK_TIMESTAMP,
+    )
+    .expect("envelope should lower to a swap policy request");
+
+    assert!(
+        request.context.get("totalInputUsd").is_some(),
+        "policy request context should include totalInputUsd after enrichment, got: {}",
+        request.context
+    );
 }
