@@ -1,7 +1,9 @@
 use alloy_primitives::U256;
 use mappers::EmptyTokenRegistry;
+use policy_engine::action::dex::{SwapAction, SwapEnrichment, SwapMode};
 use policy_engine::{
-    policy_request_from_envelope, ActionAddress, DecimalString, HostCapabilities, MockOracle,
+    policy_request_from_envelope, Action, ActionAddress, ActionEnvelope, AmountConstraint,
+    AmountKind, AssetKind, AssetRef, Category, DecimalString, HostCapabilities, MockOracle,
     PolicyEngineBuilder, PolicyRequest, Verdict,
 };
 use request_router::{route_request, DefaultRegistries, RouterContext};
@@ -244,6 +246,123 @@ fn e2e_v2_exact_out_does_not_match_exact_in_only_policy() {
         &request,
         &host_snapshot,
     );
+
+    assert_eq!(verdict, Verdict::Pass);
+}
+
+const MAX_FEE_POLICY: &str = include_str!("../../../policies/swap/max-fee-bps-100.cedar");
+const NO_ZERO_MIN_OUTPUT_POLICY: &str =
+    include_str!("../../../policies/swap/no-zero-min-output.cedar");
+
+fn evaluate_with_policies(policies: &[&str], request: &PolicyRequest) -> Verdict {
+    let mut builder = PolicyEngineBuilder::new();
+    for policy_text in policies {
+        builder = builder.add_text(*policy_text);
+    }
+    let engine = builder
+        .build()
+        .unwrap_or_else(|error| panic!("policy engine should build: {error}"));
+    engine
+        .evaluate(
+            &request.principal,
+            &request.action,
+            &request.resource,
+            &request.entities,
+            &request.context,
+        )
+        .unwrap_or_else(|error| panic!("policy request should evaluate: {error}"))
+}
+
+fn synthetic_swap_request(fee_bps: u32) -> PolicyRequest {
+    let from = ActionAddress::from_str("0x1111111111111111111111111111111111111111")
+        .expect("valid synthetic from address");
+    let to = ActionAddress::from_str("0x2222222222222222222222222222222222222222")
+        .expect("valid synthetic to address");
+    let token_in = AssetRef {
+        kind: AssetKind::Erc20,
+        chain_id: 1,
+        address: Some(
+            ActionAddress::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7")
+                .expect("valid USDT address"),
+        ),
+        symbol: Some("USDT".to_owned()),
+        decimals: Some(6),
+    };
+    let token_out = AssetRef {
+        kind: AssetKind::Erc20,
+        chain_id: 1,
+        address: Some(
+            ActionAddress::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+                .expect("valid WETH address"),
+        ),
+        symbol: Some("WETH".to_owned()),
+        decimals: Some(18),
+    };
+    let amount_in = AmountConstraint {
+        kind: AmountKind::Exact,
+        value: Some(DecimalString::from_str("10000000000").expect("valid amount-in")),
+    };
+    let amount_out = AmountConstraint {
+        kind: AmountKind::Min,
+        value: Some(DecimalString::from_str("200000000").expect("valid amount-out")),
+    };
+    let envelope = ActionEnvelope {
+        category: Category::Dex,
+        action: Action::Swap(SwapAction {
+            mode: SwapMode::ExactIn,
+            token_in,
+            token_out,
+            amount_in,
+            amount_out,
+            recipient: from.clone(),
+            validity: None,
+            fee_bps: Some(fee_bps),
+            enrichment: SwapEnrichment::default(),
+        }),
+    };
+
+    policy_request_from_envelope(
+        &envelope,
+        &from,
+        &to,
+        &DecimalString::from_str("0").expect("zero decimal"),
+        1,
+        BLOCK_TIMESTAMP,
+    )
+    .expect("synthetic swap envelope should lower to a policy request")
+}
+
+#[test]
+fn swap_fails_when_fee_bps_exceeds_cap() {
+    // No fixture has fee_bps > 100 (V3 tiers are 1/5/30/100); construct a
+    // synthetic envelope with fee_bps = 500 to exercise the max-fee-bps-100
+    // policy end-to-end through policy_request_from_envelope.
+    let request = synthetic_swap_request(500);
+
+    let verdict = evaluate_with_policies(&[MAX_FEE_POLICY], &request);
+
+    match verdict {
+        Verdict::Fail(matched) => {
+            assert!(
+                matched
+                    .iter()
+                    .any(|policy| policy.policy_id.contains("max-fee-bps-100")),
+                "expected max-fee-bps-100 policy to fire, got {matched:?}"
+            );
+        }
+        other => panic!("expected Verdict::Fail, got {other:?}"),
+    }
+}
+
+#[test]
+fn swap_passes_under_max_fee_policy() {
+    // V2 swapExactETHForTokens fixture has fee 30 bps (well under the 100
+    // bps cap) and a non-zero amountOutMin (0x0bebc200 = 200_000_000), so
+    // both swap-only policies should leave the verdict at Pass.
+    let request = swap_request_from_fixture("swap_uniswap_v2_exact_eth_for_tokens.json");
+
+    let verdict =
+        evaluate_with_policies(&[MAX_FEE_POLICY, NO_ZERO_MIN_OUTPUT_POLICY], &request);
 
     assert_eq!(verdict, Verdict::Pass);
 }
