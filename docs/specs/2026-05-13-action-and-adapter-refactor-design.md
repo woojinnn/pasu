@@ -2,7 +2,17 @@
 
 작성일: 2026-05-13
 대상 브랜치: `main` (작업은 별도 feature 브랜치 권장)
-범위: `crates/policy-engine`, `crates/adapters/*` (전체 삭제), `crates/abi-resolver`, `crates/mappers`, `crates/sign-resolver`, `crates/web-server`, `crates/policy_engine_wasm`, `extension/`, `policies/`, `policy-schema/`
+범위: `crates/policy-engine`, `crates/adapters/*` (구조 재편성), `crates/web-server`, `crates/policy_engine_wasm`, `extension/`, `policies/`, `policy-schema/`
+
+> **Crate 재배치 결정 (2026-05-13 사용자 지시)**: Adapter 관련 로직은 모두 `crates/adapters/`를 **컨테이너 디렉토리**로 두고 그 아래 sub-crate로 둔다.
+>
+> - 기존 `crates/abi-resolver/` → `crates/adapters/abi-resolver/` 로 이동
+> - 기존 `crates/mappers/` → `crates/adapters/mappers/` 로 이동
+> - 기존 `crates/sign-resolver/` → `crates/adapters/sign-resolver/` 로 이동
+> - 기존 `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/` 5개 sub-crate는 **삭제** (로직만 위 3개 sub-crate로 흡수)
+> - 기존 `crates/adapters-bundle/`도 **삭제**
+>
+> Cargo workspace `members` 경로는 `crates/adapters/abi-resolver`, `crates/adapters/mappers`, `crates/adapters/sign-resolver` 로 갱신. crate **이름**(`Cargo.toml`의 `package.name`)은 기존과 동일 유지 (`abi-resolver`, `mappers`, `sign-resolver`) — 외부 의존성 import 경로(`use abi_resolver::...`)를 건드리지 않기 위함.
 
 ---
 
@@ -223,7 +233,7 @@ pub enum ValiditySource { TxDeadline, SignatureDeadline, GrantExpiration }
 
 ### 2.2 Decoder / Mapper / SignAdapter trait 3종
 
-#### 2.2.1 Decoder trait — `crates/abi-resolver/src/decoder.rs`
+#### 2.2.1 Decoder trait — `crates/adapters/abi-resolver/src/decoder.rs`
 
 ```rust
 /// Calldata → 구조화된 디코딩 결과.
@@ -262,7 +272,7 @@ pub enum DecodedValue {
 
 Registry: `DecoderRegistry` (match_keys 기반 lookup, 기존 `Resolver` 구현 위에 trait dispatch 추가).
 
-#### 2.2.2 Mapper trait — `crates/mappers/src/mapper.rs`
+#### 2.2.2 Mapper trait — `crates/adapters/mappers/src/mapper.rs`
 
 ```rust
 /// Decoded calldata → 의미 단위 Action(s).
@@ -286,7 +296,7 @@ pub struct MapContext<'a> {
 
 Registry: `MapperRegistry`. Decoder가 nested call 트리를 만들면 Mapper도 트리를 따라 재귀 매핑 가능.
 
-#### 2.2.3 SignAdapter trait — `crates/sign-resolver/src/sign_adapter.rs`
+#### 2.2.3 SignAdapter trait — `crates/adapters/sign-resolver/src/sign_adapter.rs`
 
 ```rust
 /// 서명 요청 → 의미 단위 Action.
@@ -319,15 +329,81 @@ request-router::route(request):
 
 이 분리로 policy-engine은 순수하게 "Action → Verdict"만 담당하게 됨.
 
-### 2.3 Adapter crate 삭제 + 신규 위치
+### 2.3 Adapter crate 재배치 + 옛 sub-crate 삭제
 
-- `crates/adapters/eip2612/` → 로직을 `crates/sign-resolver/src/adapters/eip2612.rs`로 이전 (SignAdapter trait 구현)
-- `crates/adapters/permit2/` → `crates/sign-resolver/src/adapters/permit2.rs` (SignAdapter trait 구현)
-- `crates/adapters/uniswap-v2/` → 디코드 부분은 `crates/abi-resolver/src/decoders/uniswap_v2.rs`, 매핑은 `crates/mappers/src/protocols/uniswap_v2/` (이미 일부 존재)
-- `crates/adapters/uniswap-v3/` → 동일하게 분할
-- `crates/adapters/universal-router/` → 동일하게 분할 (command stream 디코드는 abi-resolver, command별 매핑은 mappers)
-- `crates/adapters/` 디렉토리 자체 삭제
-- `crates/adapters-bundle/`은 **삭제** (역할 사라짐). 통합 registry 조립은 `crates/policy-engine/src/registry.rs` 또는 `crates/request-router/`로 이전.
+최종 디렉토리 구조:
+
+```
+crates/
+├── adapters/
+│   ├── abi-resolver/          # 기존 crates/abi-resolver/ 이동 + Decoder trait 신설
+│   │   └── src/
+│   │       ├── decoder.rs              # Decoder trait + DecoderRegistry
+│   │       ├── decoders/               # protocol-별 Decoder 구현
+│   │       │   ├── uniswap_v2.rs
+│   │       │   ├── uniswap_v3.rs
+│   │       │   ├── uniswap_v4.rs
+│   │       │   └── universal_router.rs
+│   │       ├── resolver.rs             # 기존 Sourcify/OpenChain 폴백 (그대로)
+│   │       ├── subdecode/              # 기존 nested calldata 파서 (그대로)
+│   │       └── lib.rs
+│   ├── mappers/               # 기존 crates/mappers/ 이동 + Mapper trait 신설
+│   │   └── src/
+│   │       ├── mapper.rs               # Mapper trait + MapperRegistry
+│   │       ├── protocols/              # protocol-별 Mapper 구현
+│   │       │   ├── uniswap_v2/
+│   │       │   ├── uniswap_v3/
+│   │       │   ├── uniswap_v4/
+│   │       │   └── universal_router/
+│   │       ├── context.rs
+│   │       └── lib.rs
+│   └── sign-resolver/         # 기존 crates/sign-resolver/ 이동 + SignAdapter trait 신설
+│       └── src/
+│           ├── sign_adapter.rs         # SignAdapter trait + SignAdapterRegistry
+│           ├── adapters/               # signature-별 SignAdapter 구현
+│           │   ├── eip2612.rs          # 옛 crates/adapters/eip2612 의 로직
+│           │   └── permit2.rs          # 옛 crates/adapters/permit2 의 로직
+│           ├── method.rs               # 기존 SignMethod (그대로)
+│           ├── payload.rs              # 기존 SignPayload (그대로)
+│           └── lib.rs
+├── policy-engine/
+├── policy_engine_wasm/
+├── request-router/
+├── integration-tests/
+└── web-server/
+```
+
+이동 매핑:
+
+| 출처 | 도착지 | 비고 |
+|---|---|---|
+| `crates/abi-resolver/` (전체) | `crates/adapters/abi-resolver/` | `git mv` |
+| `crates/mappers/` (전체) | `crates/adapters/mappers/` | `git mv` |
+| `crates/sign-resolver/` (전체) | `crates/adapters/sign-resolver/` | `git mv` |
+| `crates/adapters/eip2612/src/*.rs` | `crates/adapters/sign-resolver/src/adapters/eip2612.rs` 로 흡수 | SignAdapter trait 구현으로 재작성 |
+| `crates/adapters/permit2/src/*.rs` | `crates/adapters/sign-resolver/src/adapters/permit2.rs` 로 흡수 | SignAdapter trait 구현으로 재작성 |
+| `crates/adapters/uniswap-v2/src/*.rs` | 디코드는 `crates/adapters/abi-resolver/src/decoders/uniswap_v2.rs`, 매핑은 `crates/adapters/mappers/src/protocols/uniswap_v2/` | 둘로 분할 |
+| `crates/adapters/uniswap-v3/src/*.rs` | 동일하게 분할 | 동일 |
+| `crates/adapters/universal-router/src/*.rs` | 디코드는 abi-resolver 의 command-stream 파서로, 매핑은 mappers 로 | 분할 |
+| `crates/adapters-bundle/` | 삭제 | 역할 사라짐 (registry 조립은 `policy_engine_wasm` 또는 `request-router` 에서) |
+
+Cargo workspace `Cargo.toml` 변경:
+
+```toml
+[workspace]
+members = [
+    "crates/adapters/abi-resolver",
+    "crates/adapters/mappers",
+    "crates/adapters/sign-resolver",
+    "crates/policy-engine",
+    "crates/policy_engine_wasm",
+    "crates/request-router",
+    "crates/integration-tests",
+    "crates/web-server",
+]
+```
+
+crate **이름**은 기존 그대로 (`abi-resolver`, `mappers`, `sign-resolver`) → 다른 crate 의 `Cargo.toml` 의존성 선언 (`abi-resolver = { path = ... }`) 에서 path 만 갱신, name 변경 없음. `use abi_resolver::Resolver` 같은 import 코드는 변경 없음.
 
 ### 2.4 PolicyRequest = Swap-only 단순화
 
@@ -404,7 +480,23 @@ request-router::route(request):
 - **기존 `core::Action`은 일단 그대로 유지** (`LegacyAction`으로 이름 변경 검토). 빌드는 그대로 통과해야 함.
 - 신규 타입 단위 테스트 (각 action JSON sample을 Rust struct로 round-trip)
 
+### Phase 1.5 — Crate 위치 재배치 (Codex) ⭐ 추가
+- `git mv crates/abi-resolver crates/adapters/abi-resolver`
+- `git mv crates/mappers crates/adapters/mappers`
+- `git mv crates/sign-resolver crates/adapters/sign-resolver`
+- 루트 `Cargo.toml`의 `[workspace] members` 경로 갱신 (3개 path)
+- 각 sub-crate를 의존하는 다른 crate (`Cargo.toml`의 `path = ...`) 경로 갱신:
+  - `crates/policy-engine/Cargo.toml`
+  - `crates/policy_engine_wasm/Cargo.toml`
+  - `crates/request-router/Cargo.toml`
+  - `crates/integration-tests/Cargo.toml`
+  - `crates/web-server/Cargo.toml`
+  - 기존 `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/Cargo.toml` (아직 살아 있을 동안만)
+- `cargo build --workspace`, `cargo test --workspace` 통과 확인
+- crate **이름**은 변경 없음, import 경로 그대로
+
 ### Phase 2 — Decoder trait + abi-resolver 재정비 (Codex)
+- 위치: `crates/adapters/abi-resolver/src/decoder.rs`, `crates/adapters/abi-resolver/src/decoders/`
 - `Decoder` trait + `DecodedCall` 정의
 - `DecoderRegistry` (match_keys 기반)
 - 기존 `subdecode/`의 protocol-specific 디코딩 로직을 trait 구현으로 wrap
@@ -412,6 +504,7 @@ request-router::route(request):
 - Uniswap V2 / V3 / V4 / Universal Router 4개 Decoder 구현
 
 ### Phase 3 — Mapper trait + mappers 재정비 (Codex)
+- 위치: `crates/adapters/mappers/src/mapper.rs`, `crates/adapters/mappers/src/protocols/`
 - `Mapper` trait + `MapContext`
 - `MapperRegistry`
 - `mappers::types`를 삭제하고 `policy-engine::action`을 import
@@ -419,15 +512,16 @@ request-router::route(request):
 - 각 Mapper의 출력 ActionEnvelope이 schema JSON과 round-trip 가능한지 테스트
 
 ### Phase 4 — SignAdapter trait + sign-resolver 재정비 (Codex)
+- 위치: `crates/adapters/sign-resolver/src/sign_adapter.rs`, `crates/adapters/sign-resolver/src/adapters/`
 - `SignAdapter` trait
 - `SignAdapterRegistry`
-- `crates/adapters/eip2612` 로직 → `crates/sign-resolver/src/adapters/eip2612.rs`로 이전 (SignAdapter trait 구현, 출력 `Action::Permit`)
-- `crates/adapters/permit2` 로직 → 동일하게 이전
+- 옛 `crates/adapters/eip2612` 로직 → `crates/adapters/sign-resolver/src/adapters/eip2612.rs`로 이전 (SignAdapter trait 구현, 출력 `Action::Permit`)
+- 옛 `crates/adapters/permit2` 로직 → `crates/adapters/sign-resolver/src/adapters/permit2.rs`로 동일 이전
 
-### Phase 5 — 옛 adapters crate 제거 (Codex)
-- `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}` 전체 삭제
-- `crates/adapters-bundle/` 삭제
-- `Cargo.toml` workspace `members` 정리
+### Phase 5 — 옛 adapter sub-crate 삭제 (Codex)
+- `crates/adapters/{eip2612,permit2,uniswap-v2,uniswap-v3,universal-router}/` 5개 sub-crate 디렉토리 삭제
+- `crates/adapters-bundle/` 삭제 (workspace member 에서도 제거)
+- 루트 `Cargo.toml` workspace `members` 정리 (이미 옮긴 abi-resolver/mappers/sign-resolver 3개만 adapters/ 하위에 남도록)
 - `policy-engine::adapter` module에서 `TransactionActionAdapter` / `SignatureActionAdapter` trait 삭제
 - request-router가 새 registry 3종 (`DecoderRegistry`, `MapperRegistry`, `SignAdapterRegistry`)을 직접 사용하도록 변경
 
@@ -485,7 +579,7 @@ request-router::route(request):
 - [ ] `cargo deny check` 통과
 - [ ] extension `npm run typecheck && npm run build && npm test` 통과
 - [ ] web-server `tests/http_integration.rs` Phase 0 baseline과 swap calldata 10종에 대해 JSON-equivalent 응답 (token symbol/decimals 같은 host:registry 필드 제외)
-- [ ] `crates/adapters/`, `crates/adapters-bundle/` 디렉토리 존재 X
+- [ ] `crates/adapters/`는 `abi-resolver/`, `mappers/`, `sign-resolver/` 3개 sub-crate만 포함 (그 외 sub-crate 없음). `crates/adapters-bundle/` 디렉토리 존재 X. `crates/abi-resolver/`, `crates/mappers/`, `crates/sign-resolver/` 모두 존재 X (모두 adapters/ 하위로 이동됨)
 - [ ] `policies/signature/` 디렉토리 존재 X
 - [ ] `Action` 정의가 `crates/policy-engine/src/action/` 한 곳에만 존재 (grep으로 검증)
 - [ ] Cedar swap policy 10종 (`policies/dex/*.cedar`) 모두 통과/실패 케이스 단위 테스트 그대로 통과
