@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use abi_resolver::decoders::uniswap_v2::{
@@ -7,9 +8,12 @@ use abi_resolver::decoders::uniswap_v2::{
 use abi_resolver::decoders::uniswap_v3::{
     ExactInputDecoder, ExactInputSingleDecoder, UNISWAP_V3_DECODER_ID,
 };
-use abi_resolver::DecoderId;
 use abi_resolver::InMemoryDecoderRegistry;
-use call_adapter::InMemoryCallAdapterRegistry;
+use abi_resolver::{DecoderId, DecoderRegistry};
+use call_adapter::{
+    CallAdapter as _, CallAdapterId, DefaultCallAdapter, InMemoryCallAdapterRegistry,
+    UniversalRouterCallAdapter,
+};
 use mappers::protocols::uniswap_v2::{
     SwapExactTokensForTokensMapper, SwapTokensForExactTokensMapper,
 };
@@ -59,9 +63,28 @@ impl DefaultRegistries {
                 )
                 .build(),
         );
-        let call_adapters = Arc::new(InMemoryCallAdapterRegistry::from_decoder_registry(
-            decoders.as_ref(),
-        ));
+        let universal_router_adapter = Arc::new(UniversalRouterCallAdapter::new());
+        let universal_router_targets = universal_router_adapter
+            .match_keys()
+            .into_iter()
+            .map(|key| (key.chain_id, key.to))
+            .collect::<HashSet<_>>();
+        let mut call_adapter_builder =
+            InMemoryCallAdapterRegistry::builder().register(universal_router_adapter);
+        for key in decoders.match_keys() {
+            if universal_router_targets.contains(&(key.chain_id, key.to.clone())) {
+                continue;
+            }
+            let id = CallAdapterId::new(format!(
+                "default/chain={}/to={}/sel=0x{}",
+                key.chain_id,
+                key.to,
+                hex::encode(key.selector)
+            ));
+            call_adapter_builder =
+                call_adapter_builder.register(Arc::new(DefaultCallAdapter::new(id, vec![key])));
+        }
+        let call_adapters = Arc::new(call_adapter_builder.build());
         let sign_adapters = Arc::new(
             InMemorySignAdapterRegistry::builder()
                 .register(Arc::new(Eip2612Adapter::new()))
@@ -147,5 +170,29 @@ mod tests {
         });
 
         assert!(adapter.is_some());
+    }
+
+    #[test]
+    fn route_universal_router_fixture() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../integration-tests/data/golden/inputs/swap_universal_router.json"
+        ))
+        .unwrap();
+        let registries = DefaultRegistries::standard();
+        let token_registry = mappers::EmptyTokenRegistry;
+        let ctx = crate::RouterContext {
+            registries: &registries,
+            token_registry: &token_registry,
+            block_timestamp: None,
+        };
+        let envelopes = crate::route_request(
+            &ctx,
+            fixture["rpc"]["method"].as_str().unwrap(),
+            &fixture["rpc"]["params"],
+            fixture["chain_id"].as_u64().unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(envelopes.len(), 1);
     }
 }
