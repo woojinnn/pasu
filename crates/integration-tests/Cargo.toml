@@ -7,13 +7,10 @@ description = "Workspace-level integration tests for policy-engine. No public AP
 publish = false
 
 [dependencies]
-hex.workspace = true
 policy-engine.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
 alloy-primitives.workspace = true
-alloy-sol-types.workspace = true
 mappers.workspace = true
 request-router = { path = "../adapters/request-router" }

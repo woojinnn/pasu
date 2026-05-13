@@ -2174,12 +2174,9 @@ name = "policy-engine-integration-tests"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
- "alloy-sol-types",
- "hex",
  "mappers",
  "policy-engine",
  "request-router",
- "serde",
  "serde_json",
 ]
 
