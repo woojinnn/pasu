@@ -1,7 +1,5 @@
 //! Serde-friendly DTOs for the WASM JSON boundary.
 
-use policy_engine::core::{OracleRequirementKind, Token};
-use policy_engine::lowering::{HostFactPlan, WindowKey, WindowKeyPlan};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
@@ -77,56 +75,13 @@ pub struct MatchedPolicyDto {
     pub origin: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct HostFactPlanDto {
-    pub tokens_for_oracle: Vec<TokenDto>,
-    pub balances: Vec<BalanceFactDto>,
-    pub allowances: Vec<AllowanceFactDto>,
-    pub clock_required: bool,
-    pub sig_oracle_requirements: Vec<OracleRequirementDto>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct WindowKeyPlanDto {
-    pub keys: Vec<WindowKeyDto>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct WindowKeyDto {
-    pub actor: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct TokenDto {
-    pub chain_id: u64,
-    pub address: String,
-    pub symbol: String,
-    pub decimals: u32,
-    pub is_native: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct BalanceFactDto {
-    pub owner: String,
-    pub token: TokenDto,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct AllowanceFactDto {
-    pub owner: String,
-    pub token: TokenDto,
-    pub spender: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct OracleRequirementDto {
-    pub kind: String,
-    pub token: TokenDto,
-    pub raw_amount: String,
-}
-
+// `HostSnapshotDto` and its entry types are kept for the JSON wire shape only.
+// The new pipeline does not yet consume the snapshot (oracle/balances/allowances/
+// windows are tier-1/tier-2 facts that the rebuilt host capabilities layer will
+// rewire later). For now we still accept the same input shape from TS callers so
+// the boundary contract is stable — hence `#[allow(dead_code)]` on the fields.
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct HostSnapshotDto {
     #[serde(default)]
     pub oracle: Vec<OracleEntryDto>,
@@ -148,10 +103,12 @@ pub struct EvaluateEnvelopeInputDto {
     pub value_wei: String,
     pub chain_id: u64,
     pub block_timestamp: u64,
+    #[allow(dead_code)]
     pub host_snapshot: HostSnapshotDto,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct OracleEntryDto {
     pub token_key: String,
     pub usd_per_unit: String,
@@ -163,6 +120,7 @@ pub struct OracleEntryDto {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct BalanceEntryDto {
     pub owner: String,
     pub token_key: String,
@@ -170,6 +128,7 @@ pub struct BalanceEntryDto {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct AllowanceEntryDto {
     pub owner: String,
     pub token_key: String,
@@ -178,83 +137,11 @@ pub struct AllowanceEntryDto {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct WindowEntryDto {
     pub actor: String,
     pub name: String,
     pub value: String,
-}
-
-impl From<&Token> for TokenDto {
-    fn from(token: &Token) -> Self {
-        Self {
-            chain_id: token.chain_id,
-            address: token.address.as_str().to_string(),
-            symbol: token.symbol.clone(),
-            decimals: token.decimals,
-            is_native: token.is_native,
-        }
-    }
-}
-
-impl From<HostFactPlan> for HostFactPlanDto {
-    fn from(plan: HostFactPlan) -> Self {
-        let HostFactPlan {
-            tokens_for_oracle,
-            balances,
-            allowances,
-            clock_required,
-            sig_oracle_requirements,
-        } = plan;
-
-        Self {
-            tokens_for_oracle: tokens_for_oracle.iter().map(TokenDto::from).collect(),
-            balances: balances
-                .into_iter()
-                .map(|(owner, token)| BalanceFactDto {
-                    owner: owner.as_str().to_string(),
-                    token: TokenDto::from(&token),
-                })
-                .collect(),
-            allowances: allowances
-                .into_iter()
-                .map(|(owner, token, spender)| AllowanceFactDto {
-                    owner: owner.as_str().to_string(),
-                    token: TokenDto::from(&token),
-                    spender: spender.as_str().to_string(),
-                })
-                .collect(),
-            clock_required,
-            sig_oracle_requirements: sig_oracle_requirements
-                .iter()
-                .map(|requirement| OracleRequirementDto {
-                    kind: match requirement.kind {
-                        OracleRequirementKind::Input => "input",
-                        OracleRequirementKind::MinOutput => "minOutput",
-                    }
-                    .to_string(),
-                    token: TokenDto::from(&requirement.token),
-                    raw_amount: requirement.raw_amount.clone(),
-                })
-                .collect(),
-        }
-    }
-}
-
-impl From<WindowKeyPlan> for WindowKeyPlanDto {
-    fn from(plan: WindowKeyPlan) -> Self {
-        Self {
-            keys: plan.keys.iter().map(WindowKeyDto::from).collect(),
-        }
-    }
-}
-
-impl From<&WindowKey> for WindowKeyDto {
-    fn from(key: &WindowKey) -> Self {
-        Self {
-            actor: key.actor.as_str().to_string(),
-            name: key.key.as_str().to_string(),
-        }
-    }
 }
 
 #[cfg(test)]

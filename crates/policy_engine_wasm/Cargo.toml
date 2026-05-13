@@ -10,7 +10,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 policy-engine.workspace = true
-policy-engine-adapters-bundle.workspace = true
 request-router = { path = "../adapters/request-router" }
 mappers.workspace = true
 serde.workspace = true
@@ -19,7 +18,6 @@ wasm-bindgen.workspace = true
 js-sys.workspace = true
 console_error_panic_hook.workspace = true
 thiserror.workspace = true
-alloy-primitives.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom.workspace = true

@@ -1,26 +1,24 @@
 //! Thin `#[wasm_bindgen]` JSON-string exports.
 
 use crate::dto::{
-    EngineErrorDto, Envelope, EvaluateEnvelopeInputDto, HostFactPlanDto, HostSnapshotDto,
-    InstallPoliciesInputDto, MatchedPolicyDto, OracleEntryDto, VerdictDto, WindowKeyPlanDto,
+    EngineErrorDto, Envelope, EvaluateEnvelopeInputDto, InstallPoliciesInputDto, MatchedPolicyDto,
+    VerdictDto,
 };
-use crate::state::{
-    registry, signature_registry, snapshot_oracle_from_entries, EngineState, FixedClock,
-    SnapshotApprovals, SnapshotPortfolio, SnapshotStatWindows, STATE,
-};
-use policy_engine::core::{LegacyAction, Request};
-use policy_engine::host::oracle::SnapshotOracle;
-use policy_engine::host::HostCapabilities;
-use policy_engine::lowering::{
-    policy_request_from_envelope, required_host_facts, required_window_keys,
-};
-use policy_engine::pipeline::PipelineError;
+use policy_engine::lowering::policy_request_from_envelope;
 use policy_engine::policy::{
-    MatchedPolicy, PolicyEngineBuilder, PolicyRequestOrigin, Severity, Verdict,
+    MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyRequestOrigin, Severity, Verdict,
 };
-use policy_engine::Pipeline;
 use policy_engine::{ActionAddress, ActionEnvelope, DecimalString};
+use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
+
+pub struct EngineState {
+    pub policies: PolicyEngine,
+}
+
+thread_local! {
+    static STATE: RefCell<Option<EngineState>> = const { RefCell::new(None) };
+}
 
 #[wasm_bindgen]
 pub fn install_policies_json(policies_json: String) -> String {
@@ -54,132 +52,11 @@ pub fn install_policies_json(policies_json: String) -> String {
     }
 }
 
-#[wasm_bindgen]
-pub fn build_action_for_request_json(request_json: String) -> String {
-    let result = (|| -> Result<serde_json::Value, EngineErrorDto> {
-        let request = parse_request(&request_json)?;
-        let registry = registry();
-        let signature_registry = signature_registry();
-        let oracle = SnapshotOracle::new();
-
-        let action = STATE.with(|state| {
-            let state = state.borrow();
-            let state = state.as_ref().ok_or_else(not_installed_error)?;
-            let host = HostCapabilities::new(&oracle);
-            Pipeline::new(&registry, host, &state.policies)
-                .with_signature_registry(&signature_registry)
-                .build_action_for(&request)
-                .map_err(pipeline_error)
-        })?;
-
-        serde_json::to_value(action)
-            .map_err(|error| EngineErrorDto::new("serialize_action", error.to_string()))
-    })();
-
-    match result {
-        Ok(action) => Envelope::ok(action).to_json(),
-        Err(error) => Envelope::<serde_json::Value>::err(error.kind, error.message).to_json(),
-    }
-}
-
-#[wasm_bindgen]
-pub fn tier1_fact_plan_json(action_json: String) -> String {
-    let result = (|| -> Result<HostFactPlanDto, EngineErrorDto> {
-        let action = parse_action(&action_json)?;
-        Ok(required_host_facts(&action).into())
-    })();
-
-    match result {
-        Ok(plan) => Envelope::ok(plan).to_json(),
-        Err(error) => Envelope::<HostFactPlanDto>::err(error.kind, error.message).to_json(),
-    }
-}
-
-#[wasm_bindgen]
-pub fn tier2_window_keys_json(action_json: String, oracle_snapshot_json: String) -> String {
-    let result = (|| -> Result<WindowKeyPlanDto, EngineErrorDto> {
-        let action = parse_action(&action_json)?;
-        let entries: Vec<OracleEntryDto> =
-            serde_json::from_str(&oracle_snapshot_json).map_err(|error| {
-                EngineErrorDto::new("invalid_oracle_snapshot_json", error.to_string())
-            })?;
-        let oracle = snapshot_oracle_from_entries(&entries);
-        Ok(required_window_keys(&action, &oracle).into())
-    })();
-
-    match result {
-        Ok(plan) => Envelope::ok(plan).to_json(),
-        Err(error) => Envelope::<WindowKeyPlanDto>::err(error.kind, error.message).to_json(),
-    }
-}
-
-#[wasm_bindgen]
-pub fn evaluate_json(request_json: String, host_snapshot_json: String) -> String {
-    let verdict = (|| -> Result<Verdict, EngineErrorDto> {
-        let request = parse_request(&request_json)?;
-        let snapshot: HostSnapshotDto =
-            serde_json::from_str(&host_snapshot_json).map_err(|error| {
-                EngineErrorDto::new("invalid_host_snapshot_json", error.to_string())
-            })?;
-
-        let oracle = snapshot_oracle_from_entries(&snapshot.oracle);
-        let portfolio = SnapshotPortfolio::from_entries(&snapshot.balances);
-        let approvals = SnapshotApprovals::from_entries(&snapshot.allowances);
-        let stats = SnapshotStatWindows::from_entries(&snapshot.windows);
-        let clock = FixedClock(snapshot.now_ts.unwrap_or(0));
-        let registry = registry();
-        let signature_registry = signature_registry();
-
-        STATE.with(|state| {
-            let state = state.borrow();
-            let state = state.as_ref().ok_or_else(not_installed_error)?;
-            let host = HostCapabilities::new(&oracle)
-                .with_clock(&clock)
-                .with_portfolio(&portfolio)
-                .with_approvals(&approvals)
-                .with_stats(&stats);
-            Pipeline::new(&registry, host, &state.policies)
-                .with_signature_registry(&signature_registry)
-                .evaluate(&request)
-                .map_err(pipeline_error)
-        })
-    })();
-
-    let dto = match verdict {
-        Ok(verdict) => verdict_to_dto(verdict),
-        Err(error) => engine_error_verdict(error),
-    };
-    Envelope::ok(dto).to_json()
-}
-
-fn parse_request(request_json: &str) -> Result<Request, EngineErrorDto> {
-    serde_json::from_str(request_json)
-        .map_err(|error| EngineErrorDto::new("invalid_request_json", error.to_string()))
-}
-
-fn parse_action(action_json: &str) -> Result<LegacyAction, EngineErrorDto> {
-    serde_json::from_str(action_json)
-        .map_err(|error| EngineErrorDto::new("invalid_action_json", error.to_string()))
-}
-
 fn not_installed_error() -> EngineErrorDto {
     EngineErrorDto::new(
         "not_installed",
         "install_policies_json must be called first",
     )
-}
-
-fn pipeline_error(error: PipelineError) -> EngineErrorDto {
-    EngineErrorDto::new(pipeline_error_kind(&error), error.to_string())
-}
-
-fn pipeline_error_kind(error: &PipelineError) -> &'static str {
-    match error {
-        PipelineError::Ambiguous(_) => "adapter_ambiguous",
-        PipelineError::AdapterBuild(_) => "adapter_build",
-        PipelineError::Lowering(_) => "lowering_rejected",
-        PipelineError::Policy(_) => "policy",
-    }
 }
 
 fn verdict_to_dto(verdict: Verdict) -> VerdictDto {
@@ -457,20 +334,6 @@ mod tests {
     use super::*;
     use serde_json::{json, Value};
 
-    fn tx_request_json() -> Value {
-        json!({
-            "Tx": {
-                "chain_id": 1,
-                "from": "0x1111111111111111111111111111111111111111",
-                "to": "0x2222222222222222222222222222222222222222",
-                "value_wei": "0",
-                "data": [0xde, 0xad, 0xbe, 0xef],
-                "gas": null,
-                "nonce": null
-            }
-        })
-    }
-
     fn empty_snapshot_json() -> Value {
         json!({
             "oracle": [],
@@ -481,63 +344,14 @@ mod tests {
         })
     }
 
-    fn install_empty_policies() {
-        let output = install_policies_json(
-            json!({
-                "schema_text": "",
-                "policy_set": []
-            })
-            .to_string(),
-        );
-        let parsed: Value = serde_json::from_str(&output).unwrap();
-        assert_eq!(parsed["ok"], true, "{parsed}");
-    }
-
-    fn dex_action_json() -> Value {
-        json!({
-            "dex": {
-                "actor": "0x1111111111111111111111111111111111111111",
-                "target": "0xe592427a0aece92de3edee1f18e0157c05861564",
-                "value_wei": "0",
-                "facts": {
-                    "protocol_ids": ["uniswap_v3"],
-                    "input_tokens": [{
-                        "chain_id": 1,
-                        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                        "symbol": "WETH",
-                        "decimals": 18,
-                        "is_native": false
-                    }],
-                    "output_tokens": [{
-                        "chain_id": 1,
-                        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-                        "symbol": "USDC",
-                        "decimals": 6,
-                        "is_native": false
-                    }],
-                    "total_input_usd": null,
-                    "total_min_output_usd": null,
-                    "max_fee_bps": null,
-                    "has_zero_min_output": false,
-                    "has_external_recipient": false,
-                    "total_input_fraction_of_portfolio_bps": null,
-                    "allowances_cover_inputs": null,
-                    "window_stats": null
-                },
-                "oracle_requirements": [],
-                "trace": {"steps": []}
-            }
-        })
-    }
-
-    fn swap_schema_text() -> &'static str {
-        include_str!("../../../policy-schema/actions/swap.cedarschema")
-    }
-
+    // The bundled Cedar schema (composed by `PolicyEngineBuilder::new()`) already
+    // contains the `swap` action declaration, so adding `swap.cedarschema` again
+    // would fail with a duplicate-declaration error. Tests that want a swap-aware
+    // engine therefore install with empty `schema_text`.
     fn install_empty_policies_with_swap_schema() {
         let output = install_policies_json(
             json!({
-                "schema_text": swap_schema_text(),
+                "schema_text": "",
                 "policy_set": []
             })
             .to_string(),
@@ -630,7 +444,7 @@ mod tests {
     fn evaluate_envelope_swap_routes_to_swap_action() {
         let install_output = install_policies_json(
             json!({
-                "schema_text": swap_schema_text(),
+                "schema_text": "",
                 "policy_set": [{
                     "id": "bundle::block-swap",
                     "text": r#"
@@ -653,75 +467,6 @@ mod tests {
         assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
         assert_eq!(
             parsed["data"]["matched"][0]["policy_id"], "bundle::block-swap",
-            "{parsed}"
-        );
-    }
-
-    #[test]
-    fn install_round_trip_injects_id_before_evaluation() {
-        let policy = r#"
-            @severity("deny")
-            @reason("blocked")
-            forbid(principal, action == Action::"other", resource);
-        "#;
-        let install_output = install_policies_json(
-            json!({
-                "schema_text": "",
-                "policy_set": [{
-                    "id": "bundle::block-other",
-                    "text": policy
-                }]
-            })
-            .to_string(),
-        );
-        let install: Value = serde_json::from_str(&install_output).unwrap();
-        assert_eq!(install["ok"], true, "{install}");
-
-        let output = evaluate_json(
-            tx_request_json().to_string(),
-            empty_snapshot_json().to_string(),
-        );
-        let parsed: Value = serde_json::from_str(&output).unwrap();
-
-        assert_eq!(parsed["ok"], true, "{parsed}");
-        assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
-        assert_eq!(
-            parsed["data"]["matched"][0]["policy_id"], "bundle::block-other",
-            "{parsed}"
-        );
-    }
-
-    #[test]
-    fn install_overrides_existing_single_id_with_entry_id() {
-        let policy = r#"
-            @id("evil/untrusted")
-            @severity("deny")
-            @reason("blocked")
-            forbid(principal, action == Action::"other", resource);
-        "#;
-        let install_output = install_policies_json(
-            json!({
-                "schema_text": "",
-                "policy_set": [{
-                    "id": "bundle::block-other",
-                    "text": policy
-                }]
-            })
-            .to_string(),
-        );
-        let install: Value = serde_json::from_str(&install_output).unwrap();
-        assert_eq!(install["ok"], true, "{install}");
-
-        let output = evaluate_json(
-            tx_request_json().to_string(),
-            empty_snapshot_json().to_string(),
-        );
-        let parsed: Value = serde_json::from_str(&output).unwrap();
-
-        assert_eq!(parsed["ok"], true, "{parsed}");
-        assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
-        assert_eq!(
-            parsed["data"]["matched"][0]["policy_id"], "bundle::block-other",
             "{parsed}"
         );
     }
@@ -754,73 +499,11 @@ mod tests {
 
         assert!(!has_id_annotation(policy));
     }
-
-    #[test]
-    fn build_action_returns_other() {
-        install_empty_policies();
-
-        let output = build_action_for_request_json(tx_request_json().to_string());
-        let parsed: Value = serde_json::from_str(&output).unwrap();
-
-        assert_eq!(parsed["ok"], true, "{parsed}");
-        assert!(parsed["data"].get("other").is_some(), "{parsed}");
-        assert_eq!(parsed["data"]["other"]["selector"], "0xdeadbeef");
-    }
-
-    #[test]
-    fn tier1_for_dex_returns_expected_host_facts() {
-        let output = tier1_fact_plan_json(dex_action_json().to_string());
-        let parsed: Value = serde_json::from_str(&output).unwrap();
-
-        assert_eq!(parsed["ok"], true, "{parsed}");
-        assert_eq!(
-            parsed["data"]["tokens_for_oracle"]
-                .as_array()
-                .unwrap()
-                .len(),
-            2
-        );
-        assert_eq!(parsed["data"]["balances"].as_array().unwrap().len(), 1);
-        assert_eq!(parsed["data"]["allowances"].as_array().unwrap().len(), 1);
-        assert_eq!(parsed["data"]["clock_required"], false);
-    }
-
-    #[test]
-    fn tier2_emits_stat_key_wire_strings() {
-        let output = tier2_window_keys_json(dex_action_json().to_string(), "[]".to_string());
-        let parsed: Value = serde_json::from_str(&output).unwrap();
-
-        assert_eq!(parsed["ok"], true, "{parsed}");
-        let names: Vec<&str> = parsed["data"]["keys"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|key| key["name"].as_str().unwrap())
-            .collect();
-        assert!(names.contains(&"swapVolumeUsd24h"), "{parsed}");
-        assert!(names.contains(&"swapCount24h"), "{parsed}");
-    }
-
-    #[test]
-    fn evaluate_pass_on_unknown_calldata() {
-        install_empty_policies();
-
-        let output = evaluate_json(
-            tx_request_json().to_string(),
-            empty_snapshot_json().to_string(),
-        );
-        let parsed: Value = serde_json::from_str(&output).unwrap();
-
-        assert_eq!(parsed["ok"], true, "{parsed}");
-        assert_eq!(parsed["data"]["kind"], "pass", "{parsed}");
-    }
 }
 
 // ── Phase 7: route_request_json ───────────────────────────────────────────────
 // New-pipeline entry point exposing `request_router::route_request` to JS.
 // Returns the `Vec<ActionEnvelope>` JSON inside the standard `{ok, data}` envelope.
-// Parallel to `build_action_for_request_json` which emits LegacyAction;
-// `route_request_json` is the migration target.
 
 #[derive(serde::Deserialize)]
 struct RouteRequestInput {
@@ -925,7 +608,7 @@ pub fn evaluate_envelope_json(input_json: String) -> String {
             value_wei,
             chain_id,
             block_timestamp,
-            host_snapshot,
+            host_snapshot: _,
         } = input;
 
         let envelope: ActionEnvelope = serde_json::from_value(envelope)
@@ -950,17 +633,6 @@ pub fn evaluate_envelope_json(input_json: String) -> String {
         ) else {
             return Ok(Verdict::Pass);
         };
-
-        let oracle = snapshot_oracle_from_entries(&host_snapshot.oracle);
-        let portfolio = SnapshotPortfolio::from_entries(&host_snapshot.balances);
-        let approvals = SnapshotApprovals::from_entries(&host_snapshot.allowances);
-        let stats = SnapshotStatWindows::from_entries(&host_snapshot.windows);
-        let clock = FixedClock(host_snapshot.now_ts.unwrap_or(0));
-        let _host = HostCapabilities::new(&oracle)
-            .with_clock(&clock)
-            .with_portfolio(&portfolio)
-            .with_approvals(&approvals)
-            .with_stats(&stats);
 
         STATE.with(|state| {
             let state = state.borrow();
