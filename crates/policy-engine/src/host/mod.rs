@@ -126,14 +126,6 @@ impl<'a> HostCapabilities<'a> {
     pub fn stats(&self) -> Option<&dyn stat_windows::StatWindows> {
         self.stats
     }
-
-    #[cfg(test)]
-    pub(crate) fn assert_signature_clock_not_default(&self) {
-        assert!(
-            !(self.panic_on_default_signature_clock && self.uses_default_clock),
-            "signature pipeline test evaluated with default SystemClock; use MockClock::with_fixed(t)"
-        );
-    }
 }
 
 impl fmt::Debug for HostCapabilities<'_> {

@@ -302,6 +302,7 @@ mod tests {
     use serde_json::{json, Value};
     use std::fmt::Debug;
 
+    #[allow(clippy::needless_pass_by_value)]
     fn assert_json_roundtrip<T>(fixture: Value)
     where
         T: Serialize + DeserializeOwned + PartialEq + Debug,

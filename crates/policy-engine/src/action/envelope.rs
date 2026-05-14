@@ -254,6 +254,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::too_many_lines)]
     fn sample_actions() -> Vec<(Action, &'static str, Category)> {
         vec![
             (action("swap", swap_fields()), "swap", Category::Dex),
@@ -401,6 +402,7 @@ mod tests {
         ]
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn action(action: &str, fields: Value) -> Action {
         serde_json::from_value(json!({ "action": action, "fields": fields })).unwrap()
     }
