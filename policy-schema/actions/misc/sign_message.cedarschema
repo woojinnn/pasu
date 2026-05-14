@@ -8,6 +8,7 @@ type SignMessageContext = {
 
   domainLabel?: String,
   primaryTypeLabel?: String,
+  verifyingContractKnown?: Bool,
 
   messageDigest: String,
 };

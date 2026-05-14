@@ -10,6 +10,9 @@ type RestakeContext = {
   recipient: String,
 
   totalInputUsd?: UsdValuation,
+  totalInputFractionOfPortfolioBps?: Long,
+  allowancesCoverInputs?: Bool,
+  windowStats?: WindowStats,
 };
 
 action "restake" appliesTo {

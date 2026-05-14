@@ -8,6 +8,7 @@ type ClaimRewardsContext = {
   recipient: String,
 
   totalRewardsUsd?: UsdValuation,
+  nftOwnerIsActor?: Bool,
 };
 
 action "claim_rewards" appliesTo {

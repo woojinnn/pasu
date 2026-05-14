@@ -12,6 +12,8 @@ type ApproveContext = {
   validityDeltaSec?: Long,
 
   totalApprovedUsd?: UsdValuation,
+  amountFractionOfPortfolioBps?: Long,
+  windowStats?: WindowStats,
 };
 
 action "approve" appliesTo {

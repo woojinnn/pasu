@@ -5,6 +5,8 @@ type SetApprovalForAllContext = {
 
   approved: Bool,
   previouslyApproved?: Bool,
+
+  windowStats?: WindowStats,
 };
 
 action "set_approval_for_all" appliesTo {

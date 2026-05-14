@@ -8,6 +8,8 @@ type TransferContext = {
   recipientIsContract?: Bool,
 
   totalUsd?: UsdValuation,
+  amountFractionOfPortfolioBps?: Long,
+  windowStats?: WindowStats,
 };
 
 action "transfer" appliesTo {

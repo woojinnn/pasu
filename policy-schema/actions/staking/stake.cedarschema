@@ -8,6 +8,8 @@ type StakeContext = {
   recipient: String,
 
   totalInputUsd?: UsdValuation,
+  totalInputFractionOfPortfolioBps?: Long,
+  windowStats?: WindowStats,
 };
 
 action "stake" appliesTo {
