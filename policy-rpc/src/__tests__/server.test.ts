@@ -122,4 +122,123 @@ describe("policy-rpc HTTP server", () => {
     expect(debug.entries[0].duration_ms).toEqual(expect.any(Number));
     expect(debug.entries[0].calls[0].duration_ms).toEqual(expect.any(Number));
   });
+
+  it("executes ERC-20 and native asset-object params in one batch", async () => {
+    const rpcResponse = await fetch(`${baseUrl}/v1/rpc`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        request_id: "eval-assets",
+        calls: [
+          {
+            id: "erc20-input",
+            method: "oracle.usd_value",
+            params: {
+              chain_id: 1,
+              asset: {
+                kind: "erc20",
+                address: wethAddress,
+                symbol: "WETH",
+                decimals: 18,
+              },
+              amount: "1000000000000000000",
+            },
+          },
+          {
+            id: "native-input",
+            method: "oracle.usd_value",
+            params: {
+              chain_id: 1,
+              asset: {
+                kind: "native",
+                symbol: "ETH",
+                decimals: 18,
+              },
+              amount: "2000000000000000000",
+            },
+          },
+        ],
+      }),
+    });
+
+    await expect(rpcResponse.json()).resolves.toEqual({
+      request_id: "eval-assets",
+      results: [
+        {
+          id: "erc20-input",
+          ok: true,
+          result: {
+            value: "3500.1200",
+            asOfTs: 1778750000,
+            staleSec: 5,
+            sources: ["coingecko"],
+          },
+        },
+        {
+          id: "native-input",
+          ok: true,
+          result: {
+            value: "7000.2400",
+            asOfTs: 1778750000,
+            staleSec: 5,
+            sources: ["coingecko"],
+          },
+        },
+      ],
+    });
+  });
+
+  it("returns per-call invalid_params errors and logs failed calls", async () => {
+    const rpcResponse = await fetch(`${baseUrl}/v1/rpc`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        request_id: "eval-invalid",
+        calls: [
+          {
+            id: "nft-value",
+            method: "oracle.usd_value",
+            params: {
+              chain_id: 1,
+              asset: {
+                kind: "erc721",
+                address: wethAddress,
+                symbol: "NFT",
+                decimals: 0,
+              },
+              amount: "1",
+            },
+          },
+        ],
+      }),
+    });
+
+    await expect(rpcResponse.json()).resolves.toEqual({
+      request_id: "eval-invalid",
+      results: [
+        {
+          id: "nft-value",
+          ok: false,
+          error: {
+            code: "invalid_params",
+            message: "asset.kind must be erc20 or native",
+          },
+        },
+      ],
+    });
+
+    const debugResponse = await fetch(`${baseUrl}/debug/recent`);
+    const debug = await debugResponse.json();
+    expect(debug.entries[0]).toMatchObject({
+      request_id: "eval-invalid",
+      calls: [
+        {
+          id: "nft-value",
+          method: "oracle.usd_value",
+          ok: false,
+          error_code: "invalid_params",
+        },
+      ],
+    });
+  });
 });
