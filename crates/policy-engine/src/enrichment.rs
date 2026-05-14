@@ -1,4 +1,4 @@
-//! Swap enrichment stage: fill [`SwapEnrichment`] from [`HostCapabilities`].
+//! Swap enrichment stage: fill [`crate::action::dex::SwapEnrichment`] from [`crate::host::HostCapabilities`].
 //!
 //! The new envelope pipeline emits `Action::Swap(SwapAction { enrichment: default, .. })`
 //! from Mappers — Mappers know nothing about prices, balances, or allowances.
