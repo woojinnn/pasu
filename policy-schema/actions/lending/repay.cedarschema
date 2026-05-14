@@ -8,7 +8,6 @@ type RepayContext = {
   validity?: Validity,
 
   totalRepaidUsd?: UsdValuation,
-  allowancesCoverInputs?: Bool,
 };
 
 action "repay" appliesTo {

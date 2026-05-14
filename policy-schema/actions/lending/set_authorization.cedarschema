@@ -5,8 +5,6 @@ type SetAuthorizationContext = {
   isAuthorized: Bool,
   authorizationScope: String,
   amount?: AmountConstraint,
-
-  authorizedIsContract?: Bool,
 };
 
 action "set_authorization" appliesTo {

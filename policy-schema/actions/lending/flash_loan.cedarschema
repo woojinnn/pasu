@@ -7,7 +7,6 @@ type FlashLoanContext = {
   fee?: AmountConstraint,
 
   totalLoanUsd?: UsdValuation,
-  receiverIsContract?: Bool,
 };
 
 action "flash_loan" appliesTo {

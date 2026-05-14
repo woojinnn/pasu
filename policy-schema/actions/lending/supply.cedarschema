@@ -9,9 +9,6 @@ type SupplyContext = {
 
   totalInputUsd?: UsdValuation,
   totalInputFractionOfPortfolioBps?: Long,
-  allowancesCoverInputs?: Bool,
-  hasUnlimitedAllowance?: Bool,
-  recipientIsContract?: Bool,
 };
 
 action "supply" appliesTo {

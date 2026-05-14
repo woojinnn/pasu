@@ -8,7 +8,6 @@ type BorrowContext = {
   validity?: Validity,
 
   totalBorrowedUsd?: UsdValuation,
-  recipientIsContract?: Bool,
 };
 
 action "borrow" appliesTo {

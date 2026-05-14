@@ -7,8 +7,6 @@ type SignAuthorizationContext = {
   amount?: AmountConstraint,
   nonce?: String,
   validity: Validity,
-
-  authorizedIsContract?: Bool,
 };
 
 action "sign_authorization" appliesTo {

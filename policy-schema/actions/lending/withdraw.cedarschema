@@ -7,7 +7,6 @@ type WithdrawContext = {
   onBehalf?: String,
 
   totalOutputUsd?: UsdValuation,
-  recipientIsContract?: Bool,
 };
 
 action "withdraw" appliesTo {
