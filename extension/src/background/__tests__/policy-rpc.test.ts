@@ -118,4 +118,84 @@ describe("policy-rpc coordinator", () => {
       manifests: [],
     });
   });
+
+  it("passes per-call RPC failures back into WASM evaluation", async () => {
+    const plan = {
+      request_id: "req-1",
+      root: {
+        chain_id: 1,
+        from: "0x1111111111111111111111111111111111111111",
+        to: "0x2222222222222222222222222222222222222222",
+        value_wei: "0",
+      },
+      envelopes: [],
+      calls: [{ id: "call-1", method: "oracle.usd_value", params: {} }],
+      manifest_set_hash: "sha256:manifest",
+      schema_hash: "sha256:schema",
+      diagnostics: [],
+    };
+    const rpcResponse = {
+      request_id: "req-1",
+      results: [
+        {
+          id: "call-1",
+          ok: false,
+          error: { code: "invalid_params", message: "bad asset" },
+        },
+      ],
+    };
+    const verdict = {
+      kind: "fail" as const,
+      matched: [
+        {
+          policy_id: "__engine::projection_failed",
+          reason: "__engine::projection_failed",
+          severity: "deny" as const,
+          origin: "engine_error" as const,
+        },
+      ],
+    };
+    mocks.planPolicyRpc.mockResolvedValue(plan);
+    mocks.evaluatePolicyRpc.mockResolvedValue(verdict);
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => rpcResponse,
+    } as Response);
+
+    const result = await evaluateWithPolicyRpc(txMessage());
+
+    expect(mocks.evaluatePolicyRpc).toHaveBeenCalledWith({
+      plan,
+      rpc_response: rpcResponse,
+      manifests: [],
+    });
+    expect(result.verdict).toEqual(verdict);
+  });
+
+  it("rejects malformed RPC responses before WASM evaluation", async () => {
+    const plan = {
+      request_id: "req-1",
+      root: {
+        chain_id: 1,
+        from: "0x1111111111111111111111111111111111111111",
+        to: "0x2222222222222222222222222222222222222222",
+        value_wei: "0",
+      },
+      envelopes: [],
+      calls: [{ id: "call-1", method: "oracle.usd_value", params: {} }],
+      manifest_set_hash: "sha256:manifest",
+      schema_hash: "sha256:schema",
+      diagnostics: [],
+    };
+    mocks.planPolicyRpc.mockResolvedValue(plan);
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ request_id: "different", results: [] }),
+    } as Response);
+
+    await expect(evaluateWithPolicyRpc(txMessage())).rejects.toThrow(
+      "policy-rpc returned malformed response",
+    );
+    expect(mocks.evaluatePolicyRpc).not.toHaveBeenCalled();
+  });
 });

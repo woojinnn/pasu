@@ -979,6 +979,20 @@ mod tests_policy_rpc {
         })
     }
 
+    fn default_max_input_manifest_json() -> Value {
+        serde_json::from_str(include_str!(
+            "../../../policies/swap/max-input-usd-100.policy-rpc.json"
+        ))
+        .unwrap()
+    }
+
+    fn default_min_output_manifest_json() -> Value {
+        serde_json::from_str(include_str!(
+            "../../../policies/swap/min-output-usd-floor.policy-rpc.json"
+        ))
+        .unwrap()
+    }
+
     fn custom_field_manifest_json() -> Value {
         json!({
             "id": "user/custom-risk-score",
@@ -1121,6 +1135,147 @@ mod tests_policy_rpc {
         assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
         assert_eq!(
             parsed["data"]["matched"][0]["policy_id"], "bundle::max-input-usd-100",
+            "{parsed}"
+        );
+    }
+
+    #[test]
+    fn evaluate_policy_rpc_json_fails_closed_on_required_rpc_error() {
+        install_usd_policy();
+        let plan_output = plan_policy_rpc_json(plan_input().to_string());
+        let plan: Value = serde_json::from_str::<Value>(&plan_output).unwrap()["data"].clone();
+
+        let output = evaluate_policy_rpc_json(
+            json!({
+                "plan": plan,
+                "rpc_response": {
+                    "request_id": "eval-1",
+                    "results": [{
+                        "id": "user/max-input-usd-100::0::swap-total-input-usd",
+                        "ok": false,
+                        "error": {
+                            "code": "invalid_params",
+                            "message": "bad asset"
+                        }
+                    }]
+                },
+                "manifests": [manifest_json()]
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
+        assert_eq!(
+            parsed["data"]["matched"][0]["policy_id"], "__engine::projection_failed",
+            "{parsed}"
+        );
+    }
+
+    #[test]
+    fn default_swap_policy_rpc_files_plan_and_evaluate() {
+        let max_manifest = default_max_input_manifest_json();
+        let min_manifest = default_min_output_manifest_json();
+        let manifests = vec![max_manifest, min_manifest];
+
+        let install_output = install_policies_json(
+            json!({
+                "schema_text": "",
+                "manifests": manifests.clone(),
+                "policy_set": [
+                    {
+                        "id": "default::swap/max-input-usd-100",
+                        "text": include_str!("../../../policies/swap/max-input-usd-100.cedar")
+                    },
+                    {
+                        "id": "default::swap/min-output-usd-floor",
+                        "text": include_str!("../../../policies/swap/min-output-usd-floor.cedar")
+                    }
+                ]
+            })
+            .to_string(),
+        );
+        let installed: Value = serde_json::from_str(&install_output).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        let plan_output = plan_policy_rpc_json(
+            json!({
+                "request_id": "default-eval-1",
+                "raw_request": swap_raw_request(),
+                "manifests": manifests.clone()
+            })
+            .to_string(),
+        );
+        let plan: Value = serde_json::from_str::<Value>(&plan_output).unwrap()["data"].clone();
+        let calls = plan["calls"].as_array().expect("calls is array");
+        assert_eq!(calls.len(), 2, "{plan}");
+
+        let input_call = calls
+            .iter()
+            .find(|call| {
+                call["id"]
+                    .as_str()
+                    .is_some_and(|id| id.contains("swap-total-input-usd"))
+            })
+            .expect("input USD call");
+        assert_eq!(input_call["params"]["asset"]["symbol"], "USDT");
+        assert_eq!(input_call["params"]["amount"], "200000000");
+
+        let output_call = calls
+            .iter()
+            .find(|call| {
+                call["id"]
+                    .as_str()
+                    .is_some_and(|id| id.contains("swap-min-output-usd"))
+            })
+            .expect("min output USD call");
+        assert_eq!(output_call["params"]["asset"]["symbol"], "WETH");
+        assert_eq!(output_call["params"]["amount"], "0");
+
+        let results: Vec<Value> = calls
+            .iter()
+            .map(|call| {
+                let id = call["id"].as_str().expect("call id");
+                let value = if id.contains("swap-min-output-usd") {
+                    "40.0000"
+                } else {
+                    "80.0000"
+                };
+                json!({
+                    "id": id,
+                    "ok": true,
+                    "result": {
+                        "value": value,
+                        "asOfTs": 1_700_000_000_u64,
+                        "staleSec": 5,
+                        "sources": ["coingecko"]
+                    }
+                })
+            })
+            .collect();
+
+        let output = evaluate_policy_rpc_json(
+            json!({
+                "plan": plan,
+                "rpc_response": {
+                    "request_id": "default-eval-1",
+                    "results": results
+                },
+                "manifests": manifests
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+        let matched = parsed["data"]["matched"].as_array().expect("matched array");
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
+        assert_eq!(matched.len(), 1, "{parsed}");
+        assert!(
+            matched[0]["reason"]
+                .as_str()
+                .is_some_and(|reason| reason.contains("Minimum output")),
             "{parsed}"
         );
     }

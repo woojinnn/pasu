@@ -101,6 +101,37 @@ describe("policies-loader (filtered install)", () => {
     expect(getActivePolicyRpcManifests()).toEqual([manifestA]);
   });
 
+  it("collects both singular and array policy-rpc manifest entries", async () => {
+    const manifestA = { id: "manifest-a", schema_version: 1 };
+    const manifestB = { id: "manifest-b", schema_version: 1 };
+    const manifestC = { id: "manifest-c", schema_version: 1 };
+    mocks.localStore.set("policy-selection:enabled-ids", ["default::dex/a"]);
+    mocks.fetchedDefaults = JSON.stringify([
+      {
+        id: "default::dex/a",
+        text: A,
+        manifest: manifestA,
+        manifests: [manifestB, manifestC],
+      },
+      { id: "default::dex/b", text: B, manifests: [{ id: "manifest-d" }] },
+    ]);
+
+    const { ensureDefaultPoliciesInstalled, getActivePolicyRpcManifests } =
+      await import("../policies-loader");
+    await ensureDefaultPoliciesInstalled();
+
+    expect(mocks.installPolicies.mock.calls[0][0].manifests).toEqual([
+      manifestA,
+      manifestB,
+      manifestC,
+    ]);
+    expect(getActivePolicyRpcManifests()).toEqual([
+      manifestA,
+      manifestB,
+      manifestC,
+    ]);
+  });
+
   it("on SW boot with no enabled-ids, installs an empty policy_set", async () => {
     const { ensureDefaultPoliciesInstalled } = await import(
       "../policies-loader"
