@@ -2,6 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use policy_engine::policy_rpc::{PolicyManifest, PolicyRpcCall, PolicyRpcResponse, RootInput};
+use policy_engine::ActionEnvelope;
+
 #[derive(Debug, Serialize)]
 pub struct Envelope<T: Serialize> {
     pub ok: bool,
@@ -51,6 +54,8 @@ pub struct InstallPoliciesInputDto {
     #[serde(default)]
     pub schema_text: String,
     pub policy_set: Vec<PolicyEntryDto>,
+    #[serde(default)]
+    pub manifests: Vec<PolicyManifest>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,6 +110,48 @@ pub struct EvaluateEnvelopeInputDto {
     pub block_timestamp: u64,
     #[allow(dead_code)]
     pub host_snapshot: HostSnapshotDto,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawRequestDto {
+    pub method: String,
+    pub params: serde_json::Value,
+    pub chain_id: u64,
+    #[serde(default)]
+    pub block_timestamp: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PlanPolicyRpcInputDto {
+    pub request_id: String,
+    pub raw_request: RawRequestDto,
+    #[serde(default)]
+    pub manifests: Vec<PolicyManifest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyRpcPlanDto {
+    pub request_id: String,
+    pub root: RootInput,
+    pub envelopes: Vec<ActionEnvelope>,
+    pub calls: Vec<PolicyRpcCall>,
+    pub manifest_set_hash: String,
+    pub schema_hash: String,
+    pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct EvaluatePolicyRpcInputDto {
+    pub plan: PolicyRpcPlanDto,
+    pub rpc_response: PolicyRpcResponse,
+    #[serde(default)]
+    pub manifests: Vec<PolicyManifest>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PreviewSchemaInputDto {
+    #[serde(default)]
+    pub manifests: Vec<PolicyManifest>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

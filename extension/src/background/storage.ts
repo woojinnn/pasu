@@ -20,6 +20,13 @@ export interface AuditEntry {
   bypassed: boolean;
   verdict: "pass" | "warn" | "fail";
   matchedPolicies: { id: string; severity: string }[];
+  policyRpc?: {
+    request_id: string;
+    manifest_set_hash: string;
+    schema_hash: string;
+    call_ids: string[];
+    methods: string[];
+  };
   decidedAtMs: number;
 }
 

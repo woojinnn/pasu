@@ -1,4 +1,5 @@
 use crate::action::dex::{SwapAction, SwapMode};
+use crate::action::AssetRefWithAmountConstraint;
 use crate::context_keys::{
     FEE_BPS, RECIPIENT, TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS, TOTAL_INPUT_USD,
     TOTAL_MIN_OUTPUT_USD, VALIDITY_DELTA_SEC,
@@ -6,8 +7,8 @@ use crate::context_keys::{
 use crate::policy::PolicyRequest;
 use serde_json::{Map, Value};
 
-use crate::lowering::common::amount::{action_usd_valuation_json, amount_constraint_json};
-use crate::lowering::common::asset::asset_ref_json;
+use crate::lowering::common::amount::action_usd_valuation_json;
+use crate::lowering::common::asset::asset_ref_with_amount_json;
 use crate::lowering::common::cedar::cedar_long_u64;
 use crate::lowering::common::validity::{validity_delta_sec, validity_json};
 use crate::lowering::dispatch::{Lower, LoweringCtx};
@@ -15,10 +16,8 @@ use crate::lowering::dispatch::{Lower, LoweringCtx};
 const ACTION_ID: &str = "swap";
 
 const SWAP_MODE: &str = "swapMode";
-const TOKEN_IN: &str = "tokenIn";
-const TOKEN_OUT: &str = "tokenOut";
-const AMOUNT_IN: &str = "amountIn";
-const AMOUNT_OUT: &str = "amountOut";
+const INPUT_TOKEN: &str = "inputToken";
+const OUTPUT_TOKEN: &str = "outputToken";
 const VALIDITY: &str = "validity";
 
 impl Lower for SwapAction {
@@ -33,10 +32,20 @@ fn context(swap: &SwapAction, ctx: &LoweringCtx<'_>) -> Value {
         SWAP_MODE.into(),
         Value::from(swap_mode_str(&swap.swap_mode)),
     );
-    context.insert(TOKEN_IN.into(), asset_ref_json(&swap.token_in));
-    context.insert(TOKEN_OUT.into(), asset_ref_json(&swap.token_out));
-    context.insert(AMOUNT_IN.into(), amount_constraint_json(&swap.amount_in));
-    context.insert(AMOUNT_OUT.into(), amount_constraint_json(&swap.amount_out));
+    context.insert(
+        INPUT_TOKEN.into(),
+        asset_ref_with_amount_json(&AssetRefWithAmountConstraint {
+            asset: swap.token_in.clone(),
+            amount: swap.amount_in.clone(),
+        }),
+    );
+    context.insert(
+        OUTPUT_TOKEN.into(),
+        asset_ref_with_amount_json(&AssetRefWithAmountConstraint {
+            asset: swap.token_out.clone(),
+            amount: swap.amount_out.clone(),
+        }),
+    );
     context.insert(RECIPIENT.into(), Value::from(swap.recipient.to_string()));
 
     if let Some(validity) = &swap.validity {
@@ -154,7 +163,10 @@ mod tests {
             Some("exact_in")
         );
         assert_eq!(
-            request.context.get("tokenIn"),
+            request
+                .context
+                .get("inputToken")
+                .and_then(|token| token.get("asset")),
             Some(&json!({
                 "kind": "erc20",
                 "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
@@ -165,8 +177,9 @@ mod tests {
         assert_eq!(
             request
                 .context
-                .get("tokenOut")
-                .and_then(|token| token.get("address"))
+                .get("outputToken")
+                .and_then(|token| token.get("asset"))
+                .and_then(|asset| asset.get("address"))
                 .and_then(Value::as_str),
             Some("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
         );
@@ -299,9 +312,10 @@ mod tests {
         );
         let amount_in = request
             .context
-            .get("amountIn")
+            .get("inputToken")
+            .and_then(|token| token.get("amount"))
             .and_then(Value::as_object)
-            .expect("amountIn is an object");
+            .expect("inputToken.amount is an object");
 
         assert_eq!(
             amount_in.get("kind").and_then(Value::as_str),

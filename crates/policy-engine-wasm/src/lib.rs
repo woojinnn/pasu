@@ -14,4 +14,7 @@ pub fn _start() {
     console_error_panic_hook::set_once();
 }
 
-pub use exports::{evaluate_envelope_json, install_policies_json, route_request_json};
+pub use exports::{
+    evaluate_envelope_json, evaluate_policy_rpc_json, install_policies_json, plan_policy_rpc_json,
+    preview_installed_schema_json, preview_schema_json, route_request_json,
+};

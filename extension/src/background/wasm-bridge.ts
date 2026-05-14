@@ -1,6 +1,13 @@
 import Browser from "webextension-polyfill";
 import init, * as wasmExports from "../wasm/policy_engine_wasm";
-import { parseVerdict, type VerdictDto } from "./wasm-bridge.types";
+import {
+  parsePolicyRpcPlan,
+  parseVerdict,
+  type EvaluatePolicyRpcInputDto,
+  type PlanPolicyRpcInputDto,
+  type PolicyRpcPlanDto,
+  type VerdictDto,
+} from "./wasm-bridge.types";
 
 export { WasmDecodeError } from "./wasm-bridge.types";
 export type { VerdictDto } from "./wasm-bridge.types";
@@ -8,6 +15,8 @@ export type { VerdictDto } from "./wasm-bridge.types";
 interface WasmExports {
   install_policies_json(input: string): string;
   evaluate_envelope_json(input_json: string): string;
+  evaluate_policy_rpc_json(input_json: string): string;
+  plan_policy_rpc_json(input_json: string): string;
   route_request_json(input_json: string): string;
 }
 
@@ -72,6 +81,7 @@ function unwrap<T>(json: string): T {
 export async function installPolicies(input: {
   schema_text: string;
   policy_set: { id: string; text: string }[];
+  manifests?: readonly unknown[];
 }): Promise<void> {
   const exports = await load();
   unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
@@ -153,4 +163,22 @@ export async function routeRequest(input: {
     const obj = entry as { category: string; action: string; fields?: unknown };
     return { category: obj.category, action: obj.action, fields: obj.fields };
   });
+}
+
+export async function planPolicyRpc(
+  input: PlanPolicyRpcInputDto,
+): Promise<PolicyRpcPlanDto> {
+  const exports = await load();
+  const raw = unwrap<unknown>(exports.plan_policy_rpc_json(JSON.stringify(input)));
+  return parsePolicyRpcPlan(raw);
+}
+
+export async function evaluatePolicyRpc(
+  input: EvaluatePolicyRpcInputDto,
+): Promise<VerdictDto> {
+  const exports = await load();
+  const raw = unwrap<unknown>(
+    exports.evaluate_policy_rpc_json(JSON.stringify(input)),
+  );
+  return parseVerdict(raw);
 }

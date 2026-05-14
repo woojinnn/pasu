@@ -1,40 +1,12 @@
 //! Shared Cedar JSON serialization for amount-shaped context fields.
 
 use crate::action::{AmountConstraint, AmountKind, UsdValuation as ActionUsdValuation};
-use crate::context_keys::{
-    AS_OF_TS, EXTN_ARG, EXTN_DECIMAL, EXTN_FN, EXTN_KEY, SOURCES, STALE_SEC, VALUE,
-};
+use crate::context_keys::VALUE;
 use crate::core::UsdValuation;
 use serde_json::{Map, Value};
 
-use super::cedar::cedar_long_u64;
-
-pub(crate) fn decimal_json(value: &str) -> Value {
-    let mut extension = Map::new();
-    extension.insert(EXTN_FN.into(), Value::from(EXTN_DECIMAL));
-    extension.insert(EXTN_ARG.into(), Value::from(value));
-
-    let mut out = Map::new();
-    out.insert(EXTN_KEY.into(), Value::Object(extension));
-    Value::Object(out)
-}
-
 pub(crate) fn usd_valuation_json(valuation: &UsdValuation) -> Value {
-    let mut out = Map::new();
-    out.insert(VALUE.into(), decimal_json(&valuation.value));
-    out.insert(AS_OF_TS.into(), cedar_long_u64(valuation.as_of_ts));
-    out.insert(STALE_SEC.into(), cedar_long_u64(valuation.stale_sec));
-    out.insert(
-        SOURCES.into(),
-        Value::Array(
-            valuation
-                .sources
-                .iter()
-                .map(|source| Value::from(source.as_str()))
-                .collect(),
-        ),
-    );
-    Value::Object(out)
+    crate::cedar_json::usd_valuation_json(valuation)
 }
 
 pub(crate) fn action_usd_valuation_json(
@@ -66,19 +38,5 @@ pub(crate) const fn amount_kind_str(kind: &AmountKind) -> &'static str {
         AmountKind::Unlimited => "unlimited",
         AmountKind::Estimated => "estimated",
         AmountKind::Unknown => "unknown",
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn decimal_json_uses_cedar_extension_keys() {
-        assert_eq!(
-            decimal_json("12.34"),
-            json!({ "__extn": { "fn": "decimal", "arg": "12.34" } })
-        );
     }
 }

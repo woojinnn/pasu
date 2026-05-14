@@ -3,18 +3,36 @@ import { aggregatedPolicySet } from "./marketplace/storage";
 import { getEnabledIds } from "./policy-selection";
 import { installPolicies } from "./wasm-bridge";
 
+let activePolicyRpcManifests: unknown[] = [];
 let installed = false;
 let inflight: Promise<void> | null = null;
 
 interface PolicyEntry {
   id: string;
   text: string;
+  manifest?: unknown;
+  manifests?: readonly unknown[];
 }
 
 async function loadDefaultPolicySet(): Promise<PolicyEntry[]> {
   const setUrl = Browser.runtime.getURL("default-policies/policy-set.json");
   const policySetRaw = await (await fetch(setUrl)).text();
   return JSON.parse(policySetRaw) as PolicyEntry[];
+}
+
+export function getActivePolicyRpcManifests(): unknown[] {
+  return [...activePolicyRpcManifests];
+}
+
+function collectPolicyRpcManifests(
+  policies: readonly PolicyEntry[],
+): unknown[] {
+  const manifests: unknown[] = [];
+  for (const policy of policies) {
+    if (policy.manifest !== undefined) manifests.push(policy.manifest);
+    if (policy.manifests !== undefined) manifests.push(...policy.manifests);
+  }
+  return manifests;
 }
 
 /**
@@ -38,7 +56,13 @@ async function installFiltered(enabledIds: readonly string[]): Promise<void> {
   const enabledSet = new Set(enabledIds);
   const union = [...defaults, ...marketplacePolicies];
   const filtered = union.filter((p) => enabledSet.has(p.id));
-  await installPolicies({ schema_text: "", policy_set: filtered });
+  const manifests = collectPolicyRpcManifests(filtered);
+  await installPolicies({
+    schema_text: "",
+    policy_set: filtered.map(({ id, text }) => ({ id, text })),
+    manifests,
+  });
+  activePolicyRpcManifests = manifests;
   console.info("[Scopeball] policies installed", {
     requestedIds: [...enabledIds].sort(),
     installedIds: filtered.map((p) => p.id).sort(),

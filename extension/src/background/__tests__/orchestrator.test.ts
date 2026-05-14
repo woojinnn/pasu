@@ -47,10 +47,12 @@ const mocks = vi.hoisted(() => {
     runtimeMessageListeners,
     windowRemovedListeners,
     ensureDefaultPoliciesInstalled: vi.fn(async () => undefined),
+    getActivePolicyRpcManifests: vi.fn(() => [{ id: "manifest-a" }]),
     setTxHash: vi.fn(async () => undefined),
     pendingPut: vi.fn(async () => undefined),
     pendingDelete: vi.fn(async () => undefined),
-    auditAppend: vi.fn(async () => undefined),
+  auditAppend: vi.fn(async () => undefined),
+  evaluateWithPolicyRpc: vi.fn(),
     browser: {
       storage: {
         session: {
@@ -105,6 +107,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("webextension-polyfill", () => ({ default: mocks.browser }));
 vi.mock("../policies-loader", () => ({
   ensureDefaultPoliciesInstalled: mocks.ensureDefaultPoliciesInstalled,
+  getActivePolicyRpcManifests: mocks.getActivePolicyRpcManifests,
 }));
 vi.mock("../pending-deltas", () => ({
   setTxHash: mocks.setTxHash,
@@ -116,6 +119,9 @@ vi.mock("../storage", () => ({
 }));
 vi.mock("../wasm-bridge", () => ({
   EngineError: mocks.MockEngineError,
+}));
+vi.mock("../policy-rpc", () => ({
+  evaluateWithPolicyRpc: mocks.evaluateWithPolicyRpc,
 }));
 
 import { decideMessage } from "../orchestrator";
@@ -154,7 +160,7 @@ function approve(requestId: string, ok: boolean): void {
   }
 }
 
-describe("orchestrator (legacy pipeline stubbed; awaiting evaluateEnvelope migration)", () => {
+describe("orchestrator", () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
@@ -162,22 +168,37 @@ describe("orchestrator (legacy pipeline stubbed; awaiting evaluateEnvelope migra
     mocks.localStore.clear();
     mocks.runtimeMessageListeners.length = 0;
     mocks.windowRemovedListeners.length = 0;
+    mocks.evaluateWithPolicyRpc.mockResolvedValue({
+      verdict: { kind: "pass" },
+      audit: {
+        request_id: "stubbed-tx-1",
+        manifest_set_hash: "sha256:manifest",
+        schema_hash: "sha256:schema",
+        call_ids: [],
+        methods: [],
+      },
+    });
   });
 
-  it("returns an engine-error fail verdict for transactions while the legacy pipeline is stubbed", async () => {
+  it("evaluates transactions through policy-rpc coordinator", async () => {
     const result = await decideMessage(txMessage("stubbed-tx-1"));
 
-    expect(result.ok).toBe(false);
-    expect(result.verdict.kind).toBe("fail");
-    expect(result.verdict.matched?.[0]).toEqual(
-      expect.objectContaining({
-        policy_id: expect.stringMatching(/^__engine::/),
-        origin: "engine_error",
-      }),
+    expect(result.ok).toBe(true);
+    expect(result.verdict.kind).toBe("pass");
+    expect(mocks.evaluateWithPolicyRpc).toHaveBeenCalledWith(
+      txMessage("stubbed-tx-1"),
+      { manifests: [{ id: "manifest-a" }] },
     );
     expect(mocks.pendingPut).toHaveBeenCalledOnce();
     expect(mocks.pendingDelete).toHaveBeenCalledWith("stubbed-tx-1");
-    expect(mocks.auditAppend).toHaveBeenCalledOnce();
+    expect(mocks.auditAppend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policyRpc: expect.objectContaining({
+          manifest_set_hash: "sha256:manifest",
+          schema_hash: "sha256:schema",
+        }),
+      }),
+    );
   });
 
   it("lets the user explicitly approve unsupported untyped signatures", async () => {

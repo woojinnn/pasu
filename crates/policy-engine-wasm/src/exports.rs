@@ -2,7 +2,9 @@
 
 use crate::dto::{
     AllowanceEntryDto, BalanceEntryDto, EngineErrorDto, Envelope, EvaluateEnvelopeInputDto,
-    HostSnapshotDto, InstallPoliciesInputDto, MatchedPolicyDto, OracleEntryDto, VerdictDto,
+    EvaluatePolicyRpcInputDto, HostSnapshotDto, InstallPoliciesInputDto, MatchedPolicyDto,
+    OracleEntryDto, PlanPolicyRpcInputDto, PolicyRpcPlanDto, PreviewSchemaInputDto, RawRequestDto,
+    VerdictDto,
 };
 use alloy_primitives::U256;
 use policy_engine::core::{Address as CoreAddress, Token, UsdValuation as CoreUsdValuation};
@@ -13,12 +15,21 @@ use policy_engine::lowering::policy_request_from_envelope;
 use policy_engine::policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyRequestOrigin, Severity, Verdict,
 };
+use policy_engine::policy_rpc::{
+    apply_rpc_results_with_indices, manifest_set_hash, plan_calls, RootInput,
+};
+use policy_engine::schema::AddedContextField;
+use policy_engine::schema::{schema_hash, PolicySchemaComposer};
 use policy_engine::{ActionAddress, ActionEnvelope, DecimalString};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
 pub struct EngineState {
     pub policies: PolicyEngine,
+    pub manifest_set_hash: String,
+    pub schema_hash: String,
+    pub schema_text: String,
+    pub added_fields: Vec<AddedContextField>,
 }
 
 thread_local! {
@@ -33,10 +44,17 @@ pub fn install_policies_json(policies_json: String) -> String {
                 EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
             })?;
 
-        let mut builder = PolicyEngineBuilder::new();
-        if !input.schema_text.trim().is_empty() {
-            builder = builder.add_schema_text(input.schema_text);
-        }
+        let schema_preview = PolicySchemaComposer::new()
+            .with_manifests(&input.manifests)
+            .map_err(|error| EngineErrorDto::new("schema_failed", error.to_string()))?
+            .preview();
+        let schema_text = if input.schema_text.trim().is_empty() {
+            schema_preview.schema_text.clone()
+        } else {
+            format!("{}\n{}", schema_preview.schema_text, input.schema_text)
+        };
+        let installed_schema_hash = schema_hash(&schema_text);
+        let mut builder = PolicyEngineBuilder::with_schema_text(schema_text.clone());
         for policy in input.policy_set {
             builder = builder.add_text(namespace_policy_text(&policy.id, &policy.text));
         }
@@ -46,7 +64,13 @@ pub fn install_policies_json(policies_json: String) -> String {
             .map_err(|error| EngineErrorDto::new("install_failed", error.to_string()))?;
 
         STATE.with(|state| {
-            *state.borrow_mut() = Some(EngineState { policies });
+            *state.borrow_mut() = Some(EngineState {
+                policies,
+                manifest_set_hash: manifest_set_hash(&input.manifests),
+                schema_hash: installed_schema_hash,
+                schema_text,
+                added_fields: schema_preview.added_fields,
+            });
         });
         Ok(())
     })();
@@ -509,18 +533,9 @@ mod tests {
 // New-pipeline entry point exposing `request_router::route_request` to JS.
 // Returns the `Vec<ActionEnvelope>` JSON inside the standard `{ok, data}` envelope.
 
-#[derive(serde::Deserialize)]
-struct RouteRequestInput {
-    method: String,
-    params: serde_json::Value,
-    chain_id: u64,
-    #[serde(default)]
-    block_timestamp: Option<u64>,
-}
-
 #[wasm_bindgen]
 pub fn route_request_json(input_json: String) -> String {
-    let parse_result: Result<RouteRequestInput, _> = serde_json::from_str(&input_json);
+    let parse_result: Result<RawRequestDto, _> = serde_json::from_str(&input_json);
     let input = match parse_result {
         Ok(v) => v,
         Err(e) => {
@@ -530,7 +545,7 @@ pub fn route_request_json(input_json: String) -> String {
     };
 
     let registries = request_router::DefaultRegistries::standard();
-    let token_registry = mappers::EmptyTokenRegistry;
+    let token_registry = BuiltinTokenRegistry;
     let ctx = request_router::RouterContext {
         registries: &registries,
         token_registry: &token_registry,
@@ -540,6 +555,340 @@ pub fn route_request_json(input_json: String) -> String {
         Ok(envelopes) => Envelope::ok(envelopes).to_json(),
         Err(e) => Envelope::<()>::err("route_failed", e.to_string()).to_json(),
     }
+}
+
+#[wasm_bindgen]
+pub fn preview_schema_json(input_json: String) -> String {
+    let result = (|| -> Result<policy_engine::schema::SchemaPreview, EngineErrorDto> {
+        let input: PreviewSchemaInputDto = serde_json::from_str(&input_json).map_err(|error| {
+            EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
+        })?;
+        PolicySchemaComposer::new()
+            .with_manifests(&input.manifests)
+            .map_err(|error| EngineErrorDto::new("schema_failed", error.to_string()))
+            .map(|composer| composer.preview())
+    })();
+
+    match result {
+        Ok(preview) => Envelope::ok(preview).to_json(),
+        Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn preview_installed_schema_json() -> String {
+    let result: Result<policy_engine::schema::SchemaPreview, EngineErrorDto> =
+        STATE.with(|state| {
+            let state = state.borrow();
+            let state = state.as_ref().ok_or_else(not_installed_error)?;
+            Ok(policy_engine::schema::SchemaPreview {
+                schema_text: state.schema_text.clone(),
+                schema_hash: state.schema_hash.clone(),
+                added_fields: state.added_fields.clone(),
+            })
+        });
+
+    match result {
+        Ok(preview) => Envelope::ok(preview).to_json(),
+        Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn plan_policy_rpc_json(input_json: String) -> String {
+    let result = (|| -> Result<PolicyRpcPlanDto, EngineErrorDto> {
+        let input: PlanPolicyRpcInputDto = serde_json::from_str(&input_json).map_err(|error| {
+            EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
+        })?;
+        let envelopes = route_envelopes(&input.raw_request)?;
+        let root = root_from_raw_request(&input.raw_request)?;
+        let schema_preview = PolicySchemaComposer::new()
+            .with_manifests(&input.manifests)
+            .map_err(|error| EngineErrorDto::new("schema_failed", error.to_string()))?
+            .preview();
+        let manifest_hash = manifest_set_hash(&input.manifests);
+        let schema_hash = STATE.with(|state| {
+            state
+                .borrow()
+                .as_ref()
+                .filter(|state| state.manifest_set_hash == manifest_hash)
+                .map_or_else(
+                    || schema_preview.schema_hash.clone(),
+                    |state| state.schema_hash.clone(),
+                )
+        });
+        let calls = plan_calls(
+            &root,
+            &envelopes,
+            &input.manifests,
+            &input.raw_request.params,
+        )
+        .map_err(|error| EngineErrorDto::new("plan_failed", error.to_string()))?;
+
+        Ok(PolicyRpcPlanDto {
+            request_id: input.request_id,
+            root,
+            envelopes,
+            calls,
+            manifest_set_hash: manifest_hash,
+            schema_hash,
+            diagnostics: Vec::new(),
+        })
+    })();
+
+    match result {
+        Ok(plan) => Envelope::ok(plan).to_json(),
+        Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn evaluate_policy_rpc_json(input_json: String) -> String {
+    let verdict = (|| -> Result<Verdict, EngineErrorDto> {
+        let input: EvaluatePolicyRpcInputDto =
+            serde_json::from_str(&input_json).map_err(|error| {
+                EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
+            })?;
+
+        if input.rpc_response.request_id != input.plan.request_id {
+            return Err(EngineErrorDto::new(
+                "request_id_mismatch",
+                "rpc_response.request_id does not match plan.request_id",
+            ));
+        }
+        let manifest_hash = manifest_set_hash(&input.manifests);
+        if manifest_hash != input.plan.manifest_set_hash {
+            return Err(EngineErrorDto::new(
+                "manifest_hash_mismatch",
+                "active manifests do not match policy-rpc plan",
+            ));
+        }
+        STATE.with(|state| {
+            let state = state.borrow();
+            let state = state.as_ref().ok_or_else(not_installed_error)?;
+            if state.manifest_set_hash != manifest_hash {
+                return Err(EngineErrorDto::new(
+                    "installed_manifest_hash_mismatch",
+                    "installed policies were built with a different manifest set",
+                ));
+            }
+            if state.schema_hash != input.plan.schema_hash {
+                return Err(EngineErrorDto::new(
+                    "installed_schema_hash_mismatch",
+                    "installed policies were built with a different schema",
+                ));
+            }
+            Ok(())
+        })?;
+
+        let from: ActionAddress = input
+            .plan
+            .root
+            .from
+            .parse()
+            .map_err(|error| EngineErrorDto::new("invalid_from", error))?;
+        let to: ActionAddress = input
+            .plan
+            .root
+            .to
+            .parse()
+            .map_err(|error| EngineErrorDto::new("invalid_to", error))?;
+        let value_wei: DecimalString = input
+            .plan
+            .root
+            .value_wei
+            .parse()
+            .map_err(|error| EngineErrorDto::new("invalid_value_wei", error))?;
+        let block_timestamp = input.plan.root.block_timestamp.unwrap_or_default();
+
+        let mut policy_envelopes = Vec::new();
+        let mut requests = Vec::new();
+        for (envelope_index, envelope) in input.plan.envelopes.iter().enumerate() {
+            if let Some(request) = policy_request_from_envelope(
+                envelope,
+                &from,
+                &to,
+                &value_wei,
+                input.plan.root.chain_id,
+                block_timestamp,
+            ) {
+                policy_envelopes.push((envelope_index, envelope));
+                requests.push(request);
+            }
+        }
+
+        apply_rpc_results_with_indices(
+            &mut requests,
+            &policy_envelopes,
+            &input.manifests,
+            &input.rpc_response,
+        )
+        .map_err(|error| EngineErrorDto::new("projection_failed", error.to_string()))?;
+
+        STATE.with(|state| {
+            let state = state.borrow();
+            let state = state.as_ref().ok_or_else(not_installed_error)?;
+            if state.manifest_set_hash != manifest_hash {
+                return Err(EngineErrorDto::new(
+                    "installed_manifest_hash_mismatch",
+                    "installed policies were built with a different manifest set",
+                ));
+            }
+            if state.schema_hash != input.plan.schema_hash {
+                return Err(EngineErrorDto::new(
+                    "installed_schema_hash_mismatch",
+                    "installed policies were built with a different schema",
+                ));
+            }
+            state
+                .policies
+                .evaluate_requests(
+                    requests
+                        .iter()
+                        .map(|request| (request, PolicyRequestOrigin::Action)),
+                )
+                .map_err(|error| EngineErrorDto::new("policy", error.to_string()))
+        })
+    })();
+
+    let dto = match verdict {
+        Ok(verdict) => verdict_to_dto(verdict),
+        Err(error) => engine_error_verdict(error),
+    };
+    Envelope::ok(dto).to_json()
+}
+
+fn route_envelopes(input: &RawRequestDto) -> Result<Vec<ActionEnvelope>, EngineErrorDto> {
+    let registries = request_router::DefaultRegistries::standard();
+    let token_registry = BuiltinTokenRegistry;
+    let ctx = request_router::RouterContext {
+        registries: &registries,
+        token_registry: &token_registry,
+        block_timestamp: input.block_timestamp,
+    };
+    request_router::route_request(&ctx, &input.method, &input.params, input.chain_id)
+        .map_err(|error| EngineErrorDto::new("route_failed", error.to_string()))
+}
+
+struct BuiltinTokenRegistry;
+
+impl mappers::TokenRegistry for BuiltinTokenRegistry {
+    fn lookup(
+        &self,
+        chain_id: u64,
+        address: &policy_engine::ActionAddress,
+    ) -> Option<mappers::TokenMetadata> {
+        if chain_id != 1 {
+            return None;
+        }
+        match address.to_string().as_str() {
+            "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" => Some(mappers::TokenMetadata {
+                symbol: "WETH".to_owned(),
+                decimals: 18,
+            }),
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => Some(mappers::TokenMetadata {
+                symbol: "USDC".to_owned(),
+                decimals: 6,
+            }),
+            "0xdac17f958d2ee523a2206206994597c13d831ec7" => Some(mappers::TokenMetadata {
+                symbol: "USDT".to_owned(),
+                decimals: 6,
+            }),
+            _ => None,
+        }
+    }
+}
+
+fn root_from_raw_request(input: &RawRequestDto) -> Result<RootInput, EngineErrorDto> {
+    if input.method.starts_with("eth_signTypedData") {
+        return root_from_typed_signature_raw_request(input);
+    }
+    root_from_transaction_raw_request(input)
+}
+
+fn root_from_transaction_raw_request(input: &RawRequestDto) -> Result<RootInput, EngineErrorDto> {
+    let tx = input
+        .params
+        .as_array()
+        .and_then(|params| params.first())
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| {
+            EngineErrorDto::new("invalid_raw_request", "missing transaction params[0]")
+        })?;
+    let from = tx
+        .get("from")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| EngineErrorDto::new("invalid_raw_request", "missing transaction.from"))?;
+    let to = tx
+        .get("to")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| EngineErrorDto::new("invalid_raw_request", "missing transaction.to"))?;
+    let value_wei = tx
+        .get("value")
+        .and_then(serde_json::Value::as_str)
+        .map_or_else(|| Ok("0".to_owned()), value_to_decimal_wei)?;
+
+    Ok(RootInput {
+        chain_id: input.chain_id,
+        from: from.to_ascii_lowercase(),
+        to: to.to_ascii_lowercase(),
+        value_wei,
+        block_timestamp: input.block_timestamp,
+    })
+}
+
+fn root_from_typed_signature_raw_request(
+    input: &RawRequestDto,
+) -> Result<RootInput, EngineErrorDto> {
+    let params = input.params.as_array().ok_or_else(|| {
+        EngineErrorDto::new(
+            "invalid_raw_request",
+            "typed signature params must be an array",
+        )
+    })?;
+    let signer = params
+        .first()
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| {
+            EngineErrorDto::new("invalid_raw_request", "missing typed signature signer")
+        })?;
+    let typed_data = params.get(1).ok_or_else(|| {
+        EngineErrorDto::new("invalid_raw_request", "missing typed signature payload")
+    })?;
+    let parsed_typed_data;
+    let typed_data = if let Some(raw) = typed_data.as_str() {
+        parsed_typed_data = serde_json::from_str::<serde_json::Value>(raw).map_err(|error| {
+            EngineErrorDto::new(
+                "invalid_raw_request",
+                format!("invalid typed signature json: {error}"),
+            )
+        })?;
+        &parsed_typed_data
+    } else {
+        typed_data
+    };
+    let verifying_contract = typed_data
+        .get("domain")
+        .and_then(|domain| domain.get("verifyingContract"))
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("0x0000000000000000000000000000000000000000");
+
+    Ok(RootInput {
+        chain_id: input.chain_id,
+        from: signer.to_ascii_lowercase(),
+        to: verifying_contract.to_ascii_lowercase(),
+        value_wei: "0".to_owned(),
+        block_timestamp: input.block_timestamp,
+    })
+}
+
+fn value_to_decimal_wei(value: &str) -> Result<String, EngineErrorDto> {
+    if let Some(hex) = value.strip_prefix("0x") {
+        return U256::from_str_radix(if hex.is_empty() { "0" } else { hex }, 16)
+            .map(|value| value.to_string())
+            .map_err(|error| EngineErrorDto::new("invalid_value_wei", error.to_string()));
+    }
+    Ok(value.to_owned())
 }
 
 #[cfg(test)]
@@ -595,6 +944,260 @@ mod tests_route_request {
         let actions = parsed["data"].as_array().expect("data is array");
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0]["action"], "swap");
+    }
+}
+
+#[cfg(test)]
+mod tests_policy_rpc {
+    use super::*;
+    use serde_json::{json, Value};
+
+    fn manifest_json() -> Value {
+        json!({
+            "id": "user/max-input-usd-100",
+            "schema_version": 1,
+            "requires": [{
+                "id": "swap-total-input-usd",
+                "when": { "action": "swap" },
+                "method": "oracle.usd_value",
+                "params": {
+                    "chain_id": "$.root.chain_id",
+                    "address": "$.action.tokenIn.address",
+                    "amount": "$.action.amountIn.value",
+                    "decimals": "$.action.tokenIn.decimals"
+                },
+                "outputs": [{
+                    "kind": "context",
+                    "field": "rpcTotalInputUsd",
+                    "type": "UsdValuation",
+                    "from": "$.result",
+                    "required": true
+                }]
+            }],
+            "context_extensions": {
+                "swap": { "rpcTotalInputUsd": "UsdValuation" }
+            }
+        })
+    }
+
+    fn custom_field_manifest_json() -> Value {
+        json!({
+            "id": "user/custom-risk-score",
+            "schema_version": 1,
+            "requires": [],
+            "context_extensions": {
+                "swap": { "tokenRiskScore": "Long" }
+            }
+        })
+    }
+
+    fn install_usd_policy() {
+        let output = install_policies_json(
+            json!({
+                "schema_text": "",
+                "manifests": [manifest_json()],
+                "policy_set": [{
+                    "id": "bundle::max-input-usd-100",
+                    "text": r#"
+                        @severity("deny")
+                        @reason("too much USD")
+                        forbid(principal, action == Action::"swap", resource)
+                        when {
+                            context has rpcTotalInputUsd &&
+                            context.rpcTotalInputUsd.value.greaterThan(decimal("100.00"))
+                        };
+                    "#
+                }]
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+    }
+
+    fn swap_raw_request() -> Value {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../crates/integration-tests/data/golden/inputs/swap_uniswap_v2_exact_in.json"
+        ))
+        .unwrap();
+        json!({
+            "method": fixture["rpc"]["method"],
+            "params": fixture["rpc"]["params"],
+            "chain_id": fixture["chain_id"],
+            "block_timestamp": 1_700_000_000_u64
+        })
+    }
+
+    fn typed_signature_raw_request() -> Value {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../crates/integration-tests/data/golden/inputs/eip2612_permit.json"
+        ))
+        .unwrap();
+        json!({
+            "method": fixture["rpc"]["method"],
+            "params": fixture["rpc"]["params"],
+            "chain_id": fixture["chain_id"],
+            "block_timestamp": 1_700_000_000_u64
+        })
+    }
+
+    fn plan_input() -> Value {
+        json!({
+            "request_id": "eval-1",
+            "raw_request": swap_raw_request(),
+            "manifests": [manifest_json()]
+        })
+    }
+
+    #[test]
+    fn plan_policy_rpc_json_returns_oracle_call() {
+        let output = plan_policy_rpc_json(plan_input().to_string());
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["calls"][0]["method"],
+            json!("oracle.usd_value"),
+            "{parsed}"
+        );
+        assert_eq!(
+            parsed["data"]["calls"][0]["params"]["chain_id"],
+            json!(1),
+            "{parsed}"
+        );
+    }
+
+    #[test]
+    fn plan_policy_rpc_json_accepts_typed_signature_request() {
+        let output = plan_policy_rpc_json(
+            json!({
+                "request_id": "typed-1",
+                "raw_request": typed_signature_raw_request(),
+                "manifests": []
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["root"]["from"], "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "{parsed}"
+        );
+        assert_eq!(
+            parsed["data"]["root"]["to"], "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "{parsed}"
+        );
+    }
+
+    #[test]
+    fn evaluate_policy_rpc_json_projects_result_and_evaluates_policy() {
+        install_usd_policy();
+        let plan_output = plan_policy_rpc_json(plan_input().to_string());
+        let plan: Value = serde_json::from_str::<Value>(&plan_output).unwrap()["data"].clone();
+
+        let output = evaluate_policy_rpc_json(
+            json!({
+                "plan": plan,
+                "rpc_response": {
+                    "request_id": "eval-1",
+                    "results": [{
+                        "id": "user/max-input-usd-100::0::swap-total-input-usd",
+                        "ok": true,
+                        "result": {
+                            "value": "3500.1200",
+                            "asOfTs": 1_700_000_000_u64,
+                            "staleSec": 5,
+                            "sources": ["coingecko"]
+                        }
+                    }]
+                },
+                "manifests": [manifest_json()]
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
+        assert_eq!(
+            parsed["data"]["matched"][0]["policy_id"], "bundle::max-input-usd-100",
+            "{parsed}"
+        );
+    }
+
+    #[test]
+    fn preview_schema_json_reports_schema_text_and_hash() {
+        let output = preview_schema_json(json!({ "manifests": [manifest_json()] }).to_string());
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert!(parsed["data"]["schema_text"]
+            .as_str()
+            .unwrap()
+            .contains("rpcTotalInputUsd?: UsdValuation"));
+        assert!(parsed["data"]["schema_hash"]
+            .as_str()
+            .unwrap()
+            .starts_with("sha256:"));
+    }
+
+    #[test]
+    fn preview_installed_schema_json_preserves_added_fields() {
+        let output = install_policies_json(
+            json!({
+                "schema_text": "",
+                "manifests": [custom_field_manifest_json()],
+                "policy_set": []
+            })
+            .to_string(),
+        );
+        let installed: Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        let output = preview_installed_schema_json();
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["added_fields"][0],
+            json!({
+                "action": "swap",
+                "field": "tokenRiskScore",
+                "type": "Long",
+                "source_manifest": "user/custom-risk-score"
+            }),
+            "{parsed}"
+        );
+    }
+
+    #[test]
+    fn installed_schema_hash_includes_custom_schema_text() {
+        let base_output =
+            preview_schema_json(json!({ "manifests": [custom_field_manifest_json()] }).to_string());
+        let base: Value = serde_json::from_str(&base_output).unwrap();
+        assert_eq!(base["ok"], true, "{base}");
+
+        let installed_output = install_policies_json(
+            json!({
+                "schema_text": "type PolicyRpcDebug = { enabled: Bool };",
+                "manifests": [custom_field_manifest_json()],
+                "policy_set": []
+            })
+            .to_string(),
+        );
+        let installed: Value = serde_json::from_str(&installed_output).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        let output = preview_installed_schema_json();
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert!(parsed["data"]["schema_text"]
+            .as_str()
+            .unwrap()
+            .contains("type PolicyRpcDebug"));
+        assert_ne!(parsed["data"]["schema_hash"], base["data"]["schema_hash"]);
     }
 }
 

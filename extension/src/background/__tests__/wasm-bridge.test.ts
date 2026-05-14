@@ -4,6 +4,8 @@ import {
   EngineError,
   evaluateEnvelope,
   installPolicies,
+  evaluatePolicyRpc,
+  planPolicyRpc,
   routeRequest,
 } from "../wasm-bridge";
 
@@ -11,6 +13,8 @@ const wasmMocks = vi.hoisted(() => ({
   init: vi.fn(async () => undefined),
   installPoliciesJson: vi.fn(),
   evaluateEnvelopeJson: vi.fn(),
+  evaluatePolicyRpcJson: vi.fn(),
+  planPolicyRpcJson: vi.fn(),
   routeRequestJson: vi.fn(),
 }));
 
@@ -26,6 +30,8 @@ vi.mock("../../wasm/policy_engine_wasm", () => ({
   default: wasmMocks.init,
   install_policies_json: wasmMocks.installPoliciesJson,
   evaluate_envelope_json: wasmMocks.evaluateEnvelopeJson,
+  evaluate_policy_rpc_json: wasmMocks.evaluatePolicyRpcJson,
+  plan_policy_rpc_json: wasmMocks.planPolicyRpcJson,
   route_request_json: wasmMocks.routeRequestJson,
 }));
 
@@ -124,6 +130,73 @@ describe("wasm bridge parsers", () => {
     await expect(
       routeRequest({ method: "eth_sendTransaction", params: [], chain_id: 1 }),
     ).rejects.toBeInstanceOf(EngineError);
+  });
+
+  it("planPolicyRpc unwraps the WASM plan envelope", async () => {
+    const plan = {
+      request_id: "eval-1",
+      root: {
+        chain_id: 1,
+        from: "0x1111111111111111111111111111111111111111",
+        to: "0x2222222222222222222222222222222222222222",
+        value_wei: "0",
+        block_timestamp: 1_700_000_000,
+      },
+      envelopes: [],
+      calls: [{ id: "call-1", method: "oracle.usd_value", params: {} }],
+      manifest_set_hash: "sha256:1",
+      schema_hash: "sha256:2",
+      diagnostics: [],
+    };
+    const input = {
+      request_id: "eval-1",
+      raw_request: {
+        method: "eth_sendTransaction",
+        params: [],
+        chain_id: 1,
+      },
+      manifests: [],
+    };
+    wasmMocks.planPolicyRpcJson.mockReturnValue(
+      JSON.stringify({ ok: true, data: plan }),
+    );
+
+    await expect(planPolicyRpc(input)).resolves.toEqual(plan);
+    expect(wasmMocks.planPolicyRpcJson).toHaveBeenCalledWith(
+      JSON.stringify(input),
+    );
+  });
+
+  it("evaluatePolicyRpc unwraps and parses the WASM verdict", async () => {
+    const verdict = {
+      kind: "pass",
+    };
+    const input = {
+      plan: {
+        request_id: "eval-1",
+        root: {
+          chain_id: 1,
+          from: "0x1111111111111111111111111111111111111111",
+          to: "0x2222222222222222222222222222222222222222",
+          value_wei: "0",
+        },
+        envelopes: [],
+        calls: [],
+        manifest_set_hash: "sha256:1",
+        schema_hash: "sha256:2",
+        diagnostics: [],
+      },
+      rpc_response: { request_id: "eval-1", results: [] },
+      manifests: [],
+    };
+    wasmMocks.evaluatePolicyRpcJson.mockReturnValue(
+      JSON.stringify({ ok: true, data: verdict }),
+    );
+
+    await expect(evaluatePolicyRpc(input)).resolves.toEqual(verdict);
+    expect(wasmMocks.evaluatePolicyRpcJson).toHaveBeenCalledWith(
+      JSON.stringify(input),
+    );
   });
 
   it("evaluateEnvelope passes through the WASM verdict envelope", async () => {

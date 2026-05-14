@@ -1,5 +1,8 @@
 import Browser from "webextension-polyfill";
-import { ensureDefaultPoliciesInstalled } from "./policies-loader";
+import {
+  ensureDefaultPoliciesInstalled,
+  getActivePolicyRpcManifests,
+} from "./policies-loader";
 import { setTxHash } from "./pending-deltas";
 import {
   auditAppend,
@@ -8,6 +11,7 @@ import {
   type PendingRequest,
 } from "./storage";
 import { EngineError } from "./wasm-bridge";
+import { evaluateWithPolicyRpc, type PolicyRpcAuditMeta } from "./policy-rpc";
 import type { VerdictDto } from "./wasm-bridge.types";
 import {
   isTransaction,
@@ -32,6 +36,7 @@ interface DecisionOptions {
 
 interface LifecycleResult {
   verdict: VerdictDto;
+  policyRpc?: PolicyRpcAuditMeta;
 }
 
 /**
@@ -117,7 +122,7 @@ async function decideInner(
       );
     }
 
-    await appendAudit(message, pending.type, verdict);
+    await appendAudit(message, pending.type, verdict, lifecycle.policyRpc);
     return { ok, verdict };
   } catch (err) {
     const verdict = engineErrorVerdict(err);
@@ -132,6 +137,7 @@ async function appendAudit(
   message: Message,
   type: PendingRequest["type"],
   verdict: VerdictDto,
+  policyRpc?: PolicyRpcAuditMeta,
 ): Promise<void> {
   logDecision(message, verdict);
   await auditAppend({
@@ -145,6 +151,7 @@ async function appendAudit(
         id: m.policy_id,
         severity: m.severity,
       })) ?? [],
+    ...(policyRpc ? { policyRpc } : {}),
     decidedAtMs: Date.now(),
   });
 }
@@ -196,22 +203,10 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
     return { verdict: unsupportedUntypedSignatureVerdict() };
   }
 
-  // L8: the legacy `buildActionForRequest` + `tier1FactPlan` +
-  // `tier2WindowKeys` + `evaluate` pipeline was removed when its
-  // underlying WASM exports were deleted in cf13612. The surviving
-  // surface (`routeRequest` + `evaluateEnvelope` + `installPolicies`)
-  // is sufficient to migrate this orchestrator, but full feature parity
-  // (per-actor window deltas, oracle/balance/allowance fact fetch,
-  // host-snapshot assembly) is a non-trivial follow-up. Until then,
-  // every wallet action surfaces as a deny-with-engine-error so the
-  // dApp gets 4001 and the user sees a clear modal.
-  //
-  // TODO(L9+): migrate to routeRequest + evaluateEnvelope, including a
-  // replacement for the deleted tier1-fetcher / host-snapshot builder.
-  throw new EngineError(
-    "legacy_pipeline_removed",
-    "orchestrator not yet migrated to the new routeRequest/evaluateEnvelope pipeline",
-  );
+  const result = await evaluateWithPolicyRpc(message, {
+    manifests: getActivePolicyRpcManifests(),
+  });
+  return { verdict: result.verdict, policyRpc: result.audit };
 }
 
 function inferActor(message: Message): string | undefined {

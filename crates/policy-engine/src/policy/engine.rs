@@ -323,10 +323,14 @@ mod tests {
     fn context_swap(usd_value: &str) -> JsonValue {
         json!({
             "swapMode": "exact_in",
-            "tokenIn": token("WETH"),
-            "tokenOut": token("USDC"),
-            "amountIn": { "kind": "exact", "value": "1000" },
-            "amountOut": { "kind": "min", "value": "900" },
+            "inputToken": {
+                "asset": token("WETH"),
+                "amount": { "kind": "exact", "value": "1000" },
+            },
+            "outputToken": {
+                "asset": token("USDC"),
+                "amount": { "kind": "min", "value": "900" },
+            },
             "recipient": "0x0000000000000000000000000000000000000001",
             "totalInputUsd": {
                 "value": { "__extn": { "fn": "decimal", "arg": usd_value } },

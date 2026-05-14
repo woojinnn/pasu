@@ -6,6 +6,6 @@ forbid (
   action == Action::"swap",
   resource
 ) when {
-  context.tokenIn.symbol == "" ||
-  context.tokenOut.symbol == ""
+  context.inputToken.asset.symbol == "" ||
+  context.outputToken.asset.symbol == ""
 };

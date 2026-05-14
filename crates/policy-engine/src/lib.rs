@@ -39,12 +39,14 @@
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 pub mod action;
+pub mod cedar_json;
 pub mod context_keys;
 pub mod core;
 pub mod enrichment;
 pub mod host;
 pub mod lowering;
 pub mod policy;
+pub mod policy_rpc;
 pub mod prelude;
 pub mod root;
 pub mod schema;

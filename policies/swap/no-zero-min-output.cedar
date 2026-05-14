@@ -6,7 +6,7 @@ forbid (
   action == Action::"swap",
   resource
 ) when {
-  context.amountOut.kind == "min" &&
-  context.amountOut has value &&
-  context.amountOut.value == "0"
+  context.outputToken.amount.kind == "min" &&
+  context.outputToken.amount has value &&
+  context.outputToken.amount.value == "0"
 };

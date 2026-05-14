@@ -3,12 +3,19 @@ import type { ParamValues } from "./params-validator";
 
 const KEY = "marketplace:bundles";
 
+export interface RenderedPolicyEntry {
+  id: string;
+  text: string;
+  manifest?: unknown;
+  manifests?: readonly unknown[];
+}
+
 export interface InstalledBundle {
   bundle_id: string;
   version: string;
   author_pubkey: string;
   paramValues: ParamValues;
-  renderedPolicySet: { id: string; text: string }[];
+  renderedPolicySet: RenderedPolicyEntry[];
   installedAtMs: number;
 }
 
@@ -58,7 +65,7 @@ export async function uninstall(bundleId: string): Promise<void> {
 /** Aggregate the renderedPolicySet from every installed bundle, suitable
  *  for handing to the WASM bridge's installPolicies. */
 export async function aggregatedPolicySet(): Promise<
-  { id: string; text: string }[]
+  RenderedPolicyEntry[]
 > {
   const list = await listInstalled();
   return list.flatMap((b) => b.renderedPolicySet);

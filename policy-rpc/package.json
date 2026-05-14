@@ -1,0 +1,17 @@
+{
+  "name": "policy-rpc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference policy-rpc server for policy-engine remote facts",
+  "scripts": {
+    "build": "../extension/node_modules/.bin/tsc -p tsconfig.json",
+    "test": "../extension/node_modules/.bin/vitest run",
+    "test:watch": "../extension/node_modules/.bin/vitest",
+    "typecheck": "../extension/node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "start": "node --enable-source-maps dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

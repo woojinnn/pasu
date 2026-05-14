@@ -27,6 +27,7 @@ cedar-policy = "4"
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
 thiserror = "2"
 
 # Internal crates referenced by path.

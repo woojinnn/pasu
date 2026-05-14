@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
       async (_input: {
         schema_text: string;
         policy_set: { id: string; text: string }[];
+        manifests?: unknown[];
       }) => {},
     ),
     aggregatedPolicySet: vi.fn(
@@ -79,6 +80,25 @@ describe("policies-loader (filtered install)", () => {
       "default::dex/a",
       "default::dex/c",
     ]);
+  });
+
+  it("passes filtered policy-rpc manifests to WASM install and exposes them as active", async () => {
+    const manifestA = { id: "manifest-a", schema_version: 1 };
+    const manifestB = { id: "manifest-b", schema_version: 1 };
+    mocks.localStore.set("policy-selection:enabled-ids", ["default::dex/a"]);
+    mocks.fetchedDefaults = JSON.stringify([
+      { id: "default::dex/a", text: A, manifest: manifestA },
+      { id: "default::dex/b", text: B, manifest: manifestB },
+    ]);
+
+    const { ensureDefaultPoliciesInstalled, getActivePolicyRpcManifests } =
+      await import("../policies-loader");
+    await ensureDefaultPoliciesInstalled();
+
+    expect(mocks.installPolicies.mock.calls[0][0].manifests).toEqual([
+      manifestA,
+    ]);
+    expect(getActivePolicyRpcManifests()).toEqual([manifestA]);
   });
 
   it("on SW boot with no enabled-ids, installs an empty policy_set", async () => {

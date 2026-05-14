@@ -38,6 +38,15 @@ impl PolicyEngineBuilder {
         }
     }
 
+    /// Construct a builder with an already-composed schema text.
+    #[must_use]
+    pub fn with_schema_text<S: Into<String>>(schema_text: S) -> Self {
+        Self {
+            text_sources: Vec::new(),
+            schema_sources: vec![schema_text.into()],
+        }
+    }
+
     /// Append one or more text Cedar policies. Multiple `forbid`/`permit`
     /// clauses in the string are fine — they'll all be parsed.
     #[must_use]
