@@ -2,8 +2,8 @@
 
 pub use dispatch::policy_request_from_envelope;
 
-mod actions;
 mod common;
+mod dex;
 pub mod decimal;
 mod dispatch;
 

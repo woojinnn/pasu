@@ -54,7 +54,7 @@ mod tests {
     use crate::action::dex::MintLiquidityNftAction;
     use crate::action::{Action, AmountKind};
 
-    use crate::lowering::actions::test_support::{
+    use crate::lowering::dex::test_support::{
         address, asset_amount_pair, envelope, nft, policy_request, pool, tick_range, validity,
         BLOCK_TIMESTAMP,
     };

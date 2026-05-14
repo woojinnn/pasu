@@ -31,22 +31,22 @@ pub fn policy_request_from_envelope(
     };
 
     match &envelope.action {
-        Action::Swap(action) => Some(super::actions::swap::build(action, &ctx)),
-        Action::AddLiquidity(action) => Some(super::actions::add_liquidity::build(action, &ctx)),
+        Action::Swap(action) => Some(super::dex::swap::build(action, &ctx)),
+        Action::AddLiquidity(action) => Some(super::dex::add_liquidity::build(action, &ctx)),
         Action::RemoveLiquidity(action) => {
-            Some(super::actions::remove_liquidity::build(action, &ctx))
+            Some(super::dex::remove_liquidity::build(action, &ctx))
         }
         Action::MintLiquidityNft(action) => {
-            Some(super::actions::mint_liquidity_nft::build(action, &ctx))
+            Some(super::dex::mint_liquidity_nft::build(action, &ctx))
         }
         Action::BurnLiquidityNft(action) => {
-            Some(super::actions::burn_liquidity_nft::build(action, &ctx))
+            Some(super::dex::burn_liquidity_nft::build(action, &ctx))
         }
         Action::IncreaseLiquidity(action) => {
-            Some(super::actions::increase_liquidity::build(action, &ctx))
+            Some(super::dex::increase_liquidity::build(action, &ctx))
         }
         Action::DecreaseLiquidity(action) => {
-            Some(super::actions::decrease_liquidity::build(action, &ctx))
+            Some(super::dex::decrease_liquidity::build(action, &ctx))
         }
         _ => None,
     }

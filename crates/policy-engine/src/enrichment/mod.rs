@@ -5,6 +5,6 @@
 
 pub use dispatch::enrich_envelope;
 
-mod actions;
+mod dex;
 mod dispatch;
 pub(crate) mod usd;

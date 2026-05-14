@@ -3,7 +3,7 @@
 use crate::action::{Action, ActionEnvelope, Address as ActionAddress};
 use crate::host::HostCapabilities;
 
-use super::actions;
+use super::dex;
 
 /// Populate host-derived facts on an action envelope.
 ///
@@ -20,31 +20,31 @@ pub fn enrich_envelope(
     let ActionEnvelope { category, action } = envelope;
     let action = match action {
         Action::Swap(mut swap) => {
-            actions::enrich_swap(&mut swap, from, target, host);
+            dex::enrich_swap(&mut swap, from, target, host);
             Action::Swap(swap)
         }
         Action::AddLiquidity(mut action) => {
-            actions::enrich_add_liquidity(&mut action, from, target, host);
+            dex::enrich_add_liquidity(&mut action, from, target, host);
             Action::AddLiquidity(action)
         }
         Action::RemoveLiquidity(mut action) => {
-            actions::enrich_remove_liquidity(&mut action, from, target, host);
+            dex::enrich_remove_liquidity(&mut action, from, target, host);
             Action::RemoveLiquidity(action)
         }
         Action::MintLiquidityNft(mut action) => {
-            actions::enrich_mint_liquidity_nft(&mut action, from, target, host);
+            dex::enrich_mint_liquidity_nft(&mut action, from, target, host);
             Action::MintLiquidityNft(action)
         }
         Action::BurnLiquidityNft(mut action) => {
-            actions::enrich_burn_liquidity_nft(&mut action, from, target, host);
+            dex::enrich_burn_liquidity_nft(&mut action, from, target, host);
             Action::BurnLiquidityNft(action)
         }
         Action::IncreaseLiquidity(mut action) => {
-            actions::enrich_increase_liquidity(&mut action, from, target, host);
+            dex::enrich_increase_liquidity(&mut action, from, target, host);
             Action::IncreaseLiquidity(action)
         }
         Action::DecreaseLiquidity(mut action) => {
-            actions::enrich_decrease_liquidity(&mut action, from, target, host);
+            dex::enrich_decrease_liquidity(&mut action, from, target, host);
             Action::DecreaseLiquidity(action)
         }
         other => other,

@@ -44,7 +44,7 @@ mod tests {
     use crate::action::dex::DecreaseLiquidityAction;
     use crate::action::{Action, AmountKind};
 
-    use crate::lowering::actions::test_support::{
+    use crate::lowering::dex::test_support::{
         address, amount, asset_amount_pair, envelope, nft, policy_request, validity,
         BLOCK_TIMESTAMP,
     };

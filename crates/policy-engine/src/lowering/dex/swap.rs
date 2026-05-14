@@ -85,7 +85,7 @@ mod tests {
     use crate::action::{Action, AmountConstraint, AmountKind, Category};
     use serde_json::{json, Value};
 
-    use crate::lowering::actions::test_support::{
+    use crate::lowering::dex::test_support::{
         address, amount, amount_without_value, decimal, envelope, erc20, policy_request, usd,
         validity, BLOCK_TIMESTAMP,
     };
