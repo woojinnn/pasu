@@ -9,12 +9,7 @@ use crate::host::HostCapabilities;
 /// matches on [`Action`] and calls [`Enrich::enrich`] on the wrapped payload,
 /// so every per-action implementation shares the same signature.
 pub(crate) trait Enrich {
-    fn enrich(
-        &mut self,
-        from: &ActionAddress,
-        target: &ActionAddress,
-        host: &HostCapabilities<'_>,
-    );
+    fn enrich(&mut self, from: &ActionAddress, target: &ActionAddress, host: &HostCapabilities<'_>);
 }
 
 /// Populate host-derived facts on an action envelope.
