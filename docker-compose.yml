@@ -23,6 +23,19 @@ services:
     tty: true
     command: ["sleep", "infinity"]
 
+  policy-rpc:
+    profiles:
+      - policy-rpc
+    build:
+      context: .
+      dockerfile: policy-rpc/Dockerfile
+    container_name: scopeball-policy-rpc
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8787
+    ports:
+      - "8787:8787"
+
 volumes:
   cargo-registry:
   cargo-git:

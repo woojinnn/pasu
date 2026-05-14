@@ -18,7 +18,7 @@ corepack-enabled Yarn 4 for the extension. Headless Chromium for
 | File | Purpose |
 |------|---------|
 | `docker/Dockerfile.dev` | Image definition (Rust + Node + wasm-pack + Chromium) |
-| `docker-compose.yml` | One service `dev` with persistent volumes for cargo + yarn |
+| `docker-compose.yml` | `dev` service with persistent volumes, plus optional `policy-rpc` service |
 | `scripts/dev-up.sh` | Build + start + drop into shell |
 | `scripts/test-all.sh` | Full test/lint/build sweep |
 | `scripts/lint.sh` | Auto-fix formatters and clippy |

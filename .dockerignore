@@ -1,0 +1,9 @@
+.git
+.DS_Store
+
+target
+**/node_modules
+
+extension/dist
+crates/policy-engine-wasm/pkg
+policy-rpc/dist
