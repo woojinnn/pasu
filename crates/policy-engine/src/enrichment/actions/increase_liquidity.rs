@@ -5,7 +5,7 @@ use crate::action::Address as ActionAddress;
 use crate::host::HostCapabilities;
 
 /// Enrich an increase-liquidity action when host facts become available.
-pub(super) fn enrich(
+pub(super) const fn enrich(
     _action: &mut IncreaseLiquidityAction,
     _from: &ActionAddress,
     _target: &ActionAddress,

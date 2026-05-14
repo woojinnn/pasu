@@ -401,21 +401,6 @@ fn assert_policy_denies(policy_text: &str, request: &PolicyRequest, policy_id: &
     }
 }
 
-fn assert_policy_warns(policy_text: &str, request: &PolicyRequest, policy_id: &str) {
-    let verdict = evaluate_with_policies(&[policy_text], request);
-
-    match verdict {
-        Verdict::Warn(matched) => {
-            assert!(
-                matched.iter().any(
-                    |policy| policy.policy_id == policy_id && policy.severity == Severity::Warn
-                ),
-                "expected warn policy {policy_id} to fire, got {matched:?}"
-            );
-        }
-        other => panic!("expected Verdict::Warn, got {other:?}"),
-    }
-}
 
 #[test]
 fn test_max_input_usd_100_pass() {

@@ -24,7 +24,7 @@ pub(super) fn enrich_swap(
     swap::enrich(action, from, target, host);
 }
 
-pub(super) fn enrich_add_liquidity(
+pub(super) const fn enrich_add_liquidity(
     action: &mut AddLiquidityAction,
     from: &ActionAddress,
     target: &ActionAddress,
@@ -33,7 +33,7 @@ pub(super) fn enrich_add_liquidity(
     add_liquidity::enrich(action, from, target, host);
 }
 
-pub(super) fn enrich_remove_liquidity(
+pub(super) const fn enrich_remove_liquidity(
     action: &mut RemoveLiquidityAction,
     from: &ActionAddress,
     target: &ActionAddress,
@@ -42,7 +42,7 @@ pub(super) fn enrich_remove_liquidity(
     remove_liquidity::enrich(action, from, target, host);
 }
 
-pub(super) fn enrich_mint_liquidity_nft(
+pub(super) const fn enrich_mint_liquidity_nft(
     action: &mut MintLiquidityNftAction,
     from: &ActionAddress,
     target: &ActionAddress,
@@ -51,7 +51,7 @@ pub(super) fn enrich_mint_liquidity_nft(
     mint_liquidity_nft::enrich(action, from, target, host);
 }
 
-pub(super) fn enrich_burn_liquidity_nft(
+pub(super) const fn enrich_burn_liquidity_nft(
     action: &mut BurnLiquidityNftAction,
     from: &ActionAddress,
     target: &ActionAddress,
@@ -60,7 +60,7 @@ pub(super) fn enrich_burn_liquidity_nft(
     burn_liquidity_nft::enrich(action, from, target, host);
 }
 
-pub(super) fn enrich_increase_liquidity(
+pub(super) const fn enrich_increase_liquidity(
     action: &mut IncreaseLiquidityAction,
     from: &ActionAddress,
     target: &ActionAddress,
@@ -69,7 +69,7 @@ pub(super) fn enrich_increase_liquidity(
     increase_liquidity::enrich(action, from, target, host);
 }
 
-pub(super) fn enrich_decrease_liquidity(
+pub(super) const fn enrich_decrease_liquidity(
     action: &mut DecreaseLiquidityAction,
     from: &ActionAddress,
     target: &ActionAddress,

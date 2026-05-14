@@ -31,6 +31,9 @@
 #![warn(clippy::nursery)]
 #![warn(clippy::dbg_macro)]
 #![warn(clippy::todo)]
+// `unreachable_pub` already catches over-broad visibility; `pub(crate)` in a
+// private module is the more honest spelling for crate-internal helpers.
+#![allow(clippy::redundant_pub_crate)]
 #![cfg_attr(not(test), warn(clippy::expect_used))]
 #![cfg_attr(not(test), warn(clippy::panic))]
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
