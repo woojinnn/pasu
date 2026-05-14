@@ -3,7 +3,6 @@ use crate::context_keys::{LIQUIDITY_DELTA, NFT, OUTPUTS, RECIPIENT};
 use crate::policy::PolicyRequest;
 use serde_json::{Map, Value};
 
-use super::request;
 use crate::lowering::common::amount::amount_constraint_json;
 use crate::lowering::common::asset::{asset_ref_json, asset_ref_with_amount_json};
 use crate::lowering::common::validity::validity_json;
@@ -36,7 +35,7 @@ impl Lower for DecreaseLiquidityAction {
             context.insert(VALIDITY.into(), validity_json(validity));
         }
 
-        request(ACTION_ID, ctx, Value::Object(context))
+        ctx.request(ACTION_ID, Value::Object(context))
     }
 }
 

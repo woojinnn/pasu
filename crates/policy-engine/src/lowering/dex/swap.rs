@@ -6,7 +6,6 @@ use crate::context_keys::{
 use crate::policy::PolicyRequest;
 use serde_json::{Map, Value};
 
-use super::request;
 use crate::lowering::common::amount::{action_usd_valuation_json, amount_constraint_json};
 use crate::lowering::common::asset::asset_ref_json;
 use crate::lowering::common::cedar::cedar_long_u64;
@@ -24,7 +23,7 @@ const VALIDITY: &str = "validity";
 
 impl Lower for SwapAction {
     fn build(&self, ctx: &LoweringCtx<'_>) -> PolicyRequest {
-        request(ACTION_ID, ctx, context(self, ctx))
+        ctx.request(ACTION_ID, context(self, ctx))
     }
 }
 

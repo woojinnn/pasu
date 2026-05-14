@@ -1,3 +1,8 @@
+//! Per-action lowering for DEX actions.
+//!
+//! Each submodule provides an `impl Lower for <Action>` so the dispatcher in
+//! [`crate::lowering::dispatch`] can call `action.build(&ctx)` uniformly.
+
 pub(crate) mod add_liquidity;
 pub(crate) mod burn_liquidity_nft;
 pub(crate) mod decrease_liquidity;
@@ -5,28 +10,6 @@ pub(crate) mod increase_liquidity;
 pub(crate) mod mint_liquidity_nft;
 pub(crate) mod remove_liquidity;
 pub(crate) mod swap;
-
-use crate::policy::PolicyRequest;
-use serde_json::Value;
-
-use super::common::cedar::entities;
-use super::dispatch::LoweringCtx;
-
-/// Assemble the standard `Wallet`/`Action`/`Protocol` triple for a DEX action.
-///
-/// `action_kind` flows into `Action::"<kind>"`. The `Protocol` resource uid is
-/// the transaction target (`ctx.to`) so policies can match the contract the
-/// user is interacting with — e.g.
-/// `resource == Protocol::"0xUniswapV3Router"`.
-pub(crate) fn request(action_kind: &str, ctx: &LoweringCtx<'_>, context: Value) -> PolicyRequest {
-    PolicyRequest::new(
-        format!(r#"Wallet::"{}""#, ctx.from),
-        format!(r#"Action::"{action_kind}""#),
-        format!(r#"Protocol::"{}""#, ctx.to),
-        entities(ctx.from, ctx.to),
-        context,
-    )
-}
 
 #[cfg(test)]
 pub(crate) mod test_support {

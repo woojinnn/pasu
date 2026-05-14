@@ -3,7 +3,6 @@ use crate::context_keys::{INPUTS, LP_AMOUNT, LP_TOKEN, POOL, RECIPIENT};
 use crate::policy::PolicyRequest;
 use serde_json::{Map, Value};
 
-use super::request;
 use crate::lowering::common::amount::amount_constraint_json;
 use crate::lowering::common::asset::{asset_ref_json, asset_ref_with_amount_json};
 use crate::lowering::common::pool::pool_json;
@@ -21,12 +20,7 @@ impl Lower for AddLiquidityAction {
         }
         context.insert(
             INPUTS.into(),
-            Value::Array(
-                self.inputs
-                    .iter()
-                    .map(asset_ref_with_amount_json)
-                    .collect(),
-            ),
+            Value::Array(self.inputs.iter().map(asset_ref_with_amount_json).collect()),
         );
         if let Some(lp_token) = &self.lp_token {
             context.insert(LP_TOKEN.into(), asset_ref_json(lp_token));
@@ -39,7 +33,7 @@ impl Lower for AddLiquidityAction {
             context.insert(VALIDITY.into(), validity_json(validity));
         }
 
-        request(ACTION_ID, ctx, Value::Object(context))
+        ctx.request(ACTION_ID, Value::Object(context))
     }
 }
 

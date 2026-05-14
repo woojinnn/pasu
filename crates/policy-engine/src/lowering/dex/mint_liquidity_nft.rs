@@ -3,7 +3,6 @@ use crate::context_keys::{FEE_TIER_BPS, INPUTS, LOWER, NFT, POOL, RECIPIENT, TIC
 use crate::policy::PolicyRequest;
 use serde_json::{Map, Value};
 
-use super::request;
 use crate::lowering::common::asset::{asset_ref_json, asset_ref_with_amount_json};
 use crate::lowering::common::cedar::cedar_long_u64;
 use crate::lowering::common::pool::pool_json;
@@ -26,12 +25,7 @@ impl Lower for MintLiquidityNftAction {
         context.insert(TICK_RANGE.into(), tick_range_json(&self.tick_range));
         context.insert(
             INPUTS.into(),
-            Value::Array(
-                self.inputs
-                    .iter()
-                    .map(asset_ref_with_amount_json)
-                    .collect(),
-            ),
+            Value::Array(self.inputs.iter().map(asset_ref_with_amount_json).collect()),
         );
         context.insert(NFT.into(), asset_ref_json(&self.nft));
         context.insert(RECIPIENT.into(), Value::from(self.recipient.to_string()));
@@ -39,7 +33,7 @@ impl Lower for MintLiquidityNftAction {
             context.insert(VALIDITY.into(), validity_json(validity));
         }
 
-        request(ACTION_ID, ctx, Value::Object(context))
+        ctx.request(ACTION_ID, Value::Object(context))
     }
 }
 
