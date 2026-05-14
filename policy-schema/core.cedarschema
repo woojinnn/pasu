@@ -3,12 +3,22 @@ entity Wallet {
 };
 entity Protocol;
 
-type Token = {
-  chainId: Long,
+type AssetRefWithAmountConstraint = {
+    asset: AssetRef,
+    amount: AmountConstraint,
+};
+
+type TickRange = {
+  lower: Long,
+  upper: Long,
+};
+
+type AssetRef = {
+  kind: String,
   address: String,
+  tokenId?: String,
   symbol: String,
   decimals: Long,
-  isNative: Bool,
 };
 
 type AmountConstraint = {
@@ -31,4 +41,10 @@ type UsdValuation = {
 type WindowStats = {
   swapVolumeUsd24h?: decimal,
   swapCount24h?: Long
+};
+
+type Pool = {
+  address: String,
+  id?: String,
+  label?: String,
 };

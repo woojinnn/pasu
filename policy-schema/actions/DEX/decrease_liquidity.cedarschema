@@ -1,0 +1,18 @@
+type DecreaseLiquidityContext = {
+  nft: AssetRef,
+  liquidityDelta: AmountConstraint,
+  outputs: Set<AssetRefWithAmountConstraint>,
+  recipient?: String,
+  validity?: Validity,
+
+  totalOutputUsd?: UsdValuation,
+  nftOwnerIsActor?: Bool,
+  recipientIsContract?: Bool,
+  windowStats?: WindowStats,
+};
+
+action "decrease_liquidity" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: DecreaseLiquidityContext,
+};

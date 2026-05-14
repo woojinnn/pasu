@@ -23,9 +23,19 @@
       "description": "uint256 양의 정수를 10진 문자열로 표기한 값. JSON number 범위 (2^53) 초과를 피하기 위해 문자열로 다룬다."
     },
 
+    "AssetRefWithAmountConstraint": {
+      "type": "object",
+      "description": "자산 + 자산-매핑 금액의 묶음. parallel array 의 index correspondence 를 record 차원에서 보존. amount.kind 가 슬리피지/의도 표현(min/max/exact/estimated/unlimited).",
+      "properties": {
+        "asset":  { "$ref": "#/$defs/AssetRef" },
+        "amount": { "$ref": "#/$defs/AmountConstraint" }
+      },
+      "required": ["asset", "amount"]
+    },
+
     "AssetRef": {
       "type": "object",
-      "description": "자산을 식별하는 기본 단위. kind 로 자산 표준을 정하고, address / symbol / decimals 는 ERC 토큰일 때 채운다. 체인 컨텍스트는 root.chainId 가 제공하므로 본 객체는 chainId 를 가지지 않는다.",
+      "description": "자산을 식별하는 기본 단위. kind 로 자산 표준을 정하고, address / symbol / decimals 는 ERC 토큰일 때 채운다. tokenId 는 ERC-721/1155 의 특정 instance 식별. 체인 컨텍스트는 root.chainId 가 제공하므로 본 객체는 chainId 를 가지지 않는다.",
       "properties": {
         "kind": {
           "type": "string",
@@ -33,6 +43,10 @@
           "description": "자산의 표준. native 는 체인의 native 코인 (ETH, BNB 등)."
         },
         "address": { "$ref": "#/$defs/Address" },
+        "tokenId": {
+          "$ref": "#/$defs/DecimalString",
+          "description": "ERC-721/1155 의 specific instance 식별자. ERC-721 spec 의 canonical identifier = (contract address, tokenId) pair. erc20/native 시 부재."
+        },
         "symbol": {
           "type": "string",
           "description": "host:registry 가 token registry 조회로 채움. UI 표시와 정책의 토큰 식별 (예: 'symbol = USDC') 에 사용."
@@ -52,6 +66,13 @@
             "required": ["kind"]
           },
           "then": { "required": ["address"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "enum": ["erc721", "erc1155"] } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["tokenId"] }
         }
       ]
     },

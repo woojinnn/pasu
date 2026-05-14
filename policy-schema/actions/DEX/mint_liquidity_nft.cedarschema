@@ -1,0 +1,22 @@
+type MintLiquidityNftContext = {
+  pool?: Pool,
+  feeTierBps: Long,
+  tickRange: TickRange,
+  inputs: Set<AssetRefWithAmountConstraint>,
+  nft: AssetRef,
+  recipient: String,
+  validity?: Validity,
+
+  totalInputUsd?: UsdValuation,
+  totalInputFractionOfPortfolioBps?: Long,
+  allowancesCoverInputs?: Bool,
+  hasUnlimitedAllowance?: Bool,
+  recipientIsContract?: Bool,
+  windowStats?: WindowStats,
+};
+
+action "mint_liquidity_nft" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: MintLiquidityNftContext,
+};

@@ -7,44 +7,23 @@
   "type": "object",
   "properties": {
     "nft": {
-      "$ref": "../../common/_common.json#/$defs/AssetRef",
-      "description": "Position 을 보유한 NFT collection (kind=erc721). address = V3 NPM 또는 V4 PositionManager."
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "Position 을 보유한 NFT instance (kind=erc721). address = V3 NPM 또는 V4 PositionManager. tokenId = 기존 position 의 ID (V3 IncreaseLiquidityParams.tokenId, V4 INCREASE_LIQUIDITY params). AssetRef 의 (address, tokenId) pair 가 NFT 의 canonical identifier. host:onchain 의 NFT.ownerOf(tokenId) == root.from 검증은 정책 책임."
     },
 
-    "tokenId": {
-      "$ref": "../../common/_common.json#/$defs/DecimalString",
-      "description": "기존 position 의 tokenId. V3 IncreaseLiquidityParams.tokenId / V4 INCREASE_LIQUIDITY action params. host:onchain 의 NFT.ownerOf(tokenId) == root.from 검증은 정책 책임."
-    },
-
-    "tokens": {
+    "inputs": {
       "type": "array",
-      "items": { "$ref": "../../common/_common.json#/$defs/AssetRef" },
+      "items": { "$ref": "../common/_common.json#/$defs/AssetRefWithAmountConstraint" },
       "minItems": 2,
       "maxItems": 2,
-      "description": "예치 토큰 정확히 2개 — tokens[0]=token0, tokens[1]=token1. V3 calldata 에는 토큰 주소가 없으므로 host:onchain (NFT.positions(tokenId) 조회) 으로 보강. V4 는 modifyLiquidities params 의 PoolKey 로부터 추출."
-    },
-
-    "amounts": {
-      "type": "array",
-      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
-      "minItems": 2,
-      "maxItems": 2,
-      "description": "tokens[i] 와 1:1 매핑하는 desired 예치량. V3 IncreaseLiquidityParams 의 amount0Desired / amount1Desired (kind=estimated)."
-    },
-
-    "minAmountsIn": {
-      "type": "array",
-      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
-      "minItems": 2,
-      "maxItems": 2,
-      "description": "tokens[i] 와 1:1 매핑하는 토큰별 최소 예치량 (슬리피지 보호). V3 의 amount0Min / amount1Min (kind=min)."
+      "description": "예치 자산 + 토큰별 슬리피지 보호 양의 묶음 정확히 2개 — inputs[0]=token0, inputs[1]=token1. V3 calldata 에는 토큰 주소가 없으므로 host:onchain (NFT.positions(tokenId) 조회) 으로 asset 보강. V4 는 modifyLiquidities params 의 PoolKey 로부터 추출. V3 IncreaseLiquidityParams 의 amount0Min / amount1Min 이 amount.kind=min. V4 의 amount0Max / amount1Max 는 amount.kind=max. V3 의 amount0Desired / amount1Desired 같은 router 내부 quote 정보는 universal 표면 부재."
     },
 
     "validity": {
-      "$ref": "../../common/_common.json#/$defs/Validity",
+      "$ref": "../common/_common.json#/$defs/Validity",
       "description": "유효기간 — source='tx-deadline'. V3 IncreaseLiquidityParams.deadline. V4 modifyLiquidities 는 직접 부재 — 생략."
     }
   },
 
-  "required": ["nft", "tokenId", "tokens", "amounts"]
+  "required": ["nft", "inputs"]
 }

@@ -1,0 +1,24 @@
+type SwapContext = {
+  swapMode: String,
+  tokenIn: AssetRef,
+  tokenOut: AssetRef,
+  amountIn: AmountConstraint,
+  amountOut: AmountConstraint,
+  recipient: String,
+  validity?: Validity,
+  feeBps?: Long,
+
+  totalInputUsd?: UsdValuation,
+  totalMinOutputUsd?: UsdValuation,
+  effectiveRateVsOracleBps?: Long,
+  totalInputFractionOfPortfolioBps?: Long,
+  validityDeltaSec?: Long,
+  recipientIsContract?: Bool,
+  windowStats?: WindowStats,
+};
+
+action "swap" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: SwapContext,
+};

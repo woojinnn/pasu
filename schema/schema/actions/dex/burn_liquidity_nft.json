@@ -7,13 +7,8 @@
   "type": "object",
   "properties": {
     "nft": {
-      "$ref": "../../common/_common.json#/$defs/AssetRef",
-      "description": "소각 대상 NFT collection (kind=erc721). address = V3 NPM 또는 V4 PositionManager."
-    },
-
-    "tokenId": {
-      "$ref": "../../common/_common.json#/$defs/DecimalString",
-      "description": "소각할 position 의 tokenId. V3 burn(uint256) 의 단일 인자, V4 BURN_POSITION params 의 tokenId."
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "소각 대상 NFT instance (kind=erc721). address = V3 NPM 또는 V4 PositionManager. tokenId = 소각할 position 의 ID (V3 burn(uint256) 인자, V4 BURN_POSITION params.tokenId). AssetRef 의 (address, tokenId) pair 가 NFT 의 canonical identifier."
     },
 
     "burnKind": {
@@ -24,30 +19,22 @@
 
     "outputs": {
       "type": "array",
-      "items": { "$ref": "../../common/_common.json#/$defs/AssetRef" },
+      "items": { "$ref": "../common/_common.json#/$defs/AssetRefWithAmountConstraint" },
       "minItems": 2,
       "maxItems": 2,
-      "description": "burnKind=auto_decrease 시 회수되는 토큰 2개 (token0, token1). empty_only 시 자금 이동이 없어 생략."
-    },
-
-    "minAmountsOut": {
-      "type": "array",
-      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
-      "minItems": 2,
-      "maxItems": 2,
-      "description": "outputs[i] 와 1:1 매핑하는 최소 수령량 (슬리피지 보호). V4 BURN_POSITION 의 amount0Min / amount1Min. empty_only 시 생략."
+      "description": "burnKind=auto_decrease 시 회수 자산 + 최소 수령량 (슬리피지 보호) 의 묶음 정확히 2개 (token0, token1). V4 BURN_POSITION 의 amount0Min / amount1Min 이 본 필드 의 amount.kind=min. empty_only 시 자금 이동 부재라 본 필드 전체 생략."
     },
 
     "recipient": {
-      "$ref": "../../common/_common.json#/$defs/Address",
+      "$ref": "../common/_common.json#/$defs/Address",
       "description": "burnKind=auto_decrease 시 회수 토큰 수령자. empty_only 시 생략. root.from 과 다르면 account drain 패턴 — 정책 분기."
     },
 
     "validity": {
-      "$ref": "../../common/_common.json#/$defs/Validity",
+      "$ref": "../common/_common.json#/$defs/Validity",
       "description": "유효기간 — source='tx-deadline'. V3 burn 자체에는 deadline 부재 (multicall wrapper 의 deadline). V4 modifyLiquidities 도 직접 부재 — wrapper 사용 시만."
     }
   },
 
-  "required": ["nft", "tokenId", "burnKind"]
+  "required": ["nft", "burnKind"]
 }

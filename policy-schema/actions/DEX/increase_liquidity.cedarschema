@@ -1,0 +1,18 @@
+type IncreaseLiquidityContext = {
+  nft: AssetRef,
+  inputs: Set<AssetRefWithAmountConstraint>,
+  validity?: Validity,
+
+  totalInputUsd?: UsdValuation,
+  totalInputFractionOfPortfolioBps?: Long,
+  allowancesCoverInputs?: Bool,
+  hasUnlimitedAllowance?: Bool,
+  nftOwnerIsActor?: Bool,
+  windowStats?: WindowStats,
+};
+
+action "increase_liquidity" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: IncreaseLiquidityContext,
+};

@@ -7,41 +7,33 @@
   "type": "object",
   "properties": {
     "nft": {
-      "$ref": "../../common/_common.json#/$defs/AssetRef",
-      "description": "Position 을 보유한 NFT collection (kind=erc721). address = V3 NPM 또는 V4 PositionManager."
-    },
-
-    "tokenId": {
-      "$ref": "../../common/_common.json#/$defs/DecimalString",
-      "description": "기존 position 의 tokenId. V3 DecreaseLiquidityParams.tokenId / V4 DECREASE_LIQUIDITY action params. NPM 은 msg.sender == owner 또는 approved 검증."
+      "$ref": "../common/_common.json#/$defs/AssetRef",
+      "description": "Position 을 보유한 NFT instance (kind=erc721). address = V3 NPM 또는 V4 PositionManager. tokenId = 기존 position 의 ID (V3 DecreaseLiquidityParams.tokenId, V4 DECREASE_LIQUIDITY params). AssetRef 의 (address, tokenId) pair 가 NFT 의 canonical identifier. NPM 은 msg.sender == owner 또는 approved 검증."
     },
 
     "liquidityDelta": {
-      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "$ref": "../common/_common.json#/$defs/AmountConstraint",
       "description": "감소시킬 internal liquidity 양 (uint128, 양수 표현). V3 DecreaseLiquidityParams.liquidity / V4 modifyLiquidities params 의 liquidityDelta (calldata 에서는 음수 전달이지만 schema 는 절대값). kind=exact."
     },
 
     "outputs": {
       "type": "array",
-      "items": { "$ref": "../../common/_common.json#/$defs/AssetRef" },
+      "items": { "$ref": "../common/_common.json#/$defs/AssetRefWithAmountConstraint" },
       "minItems": 2,
       "maxItems": 2,
-      "description": "회수 예정 토큰 2개 (token0, token1). V3 는 tokensOwed 적립, V4 는 wallet 으로 즉시 송금."
+      "description": "회수 자산 + 토큰별 최소 회수량 (슬리피지 보호) 의 묶음 정확히 2개 (token0, token1). V3 는 tokensOwed 적립, V4 는 wallet 으로 즉시 송금. V3 / V4 의 amount0Min / amount1Min 이 amount.kind=min."
     },
 
-    "minAmountsOut": {
-      "type": "array",
-      "items": { "$ref": "../../common/_common.json#/$defs/AmountConstraint" },
-      "minItems": 2,
-      "maxItems": 2,
-      "description": "outputs[i] 와 1:1 매핑하는 최소 회수량 (슬리피지 보호). V3 의 amount0Min / amount1Min, V4 의 amount0Min / amount1Min (kind=min)."
+    "recipient": {
+      "$ref": "../common/_common.json#/$defs/Address",
+      "description": "V4 atomic [DECREASE_LIQUIDITY, TAKE_PAIR] 묶음의 TAKE_PAIR.recipient — wallet 으로 회수되는 토큰의 수령자. V3 의 경우 NFT 의 tokensOwed 에 적립이라 wallet 즉시 변화 없음 — 본 필드 부재. V4 atomic 시 채워지며 root.from 과 다르면 account drain 패턴 — 정책 'recipient == root.from' 강제 권장."
     },
 
     "validity": {
-      "$ref": "../../common/_common.json#/$defs/Validity",
+      "$ref": "../common/_common.json#/$defs/Validity",
       "description": "유효기간 — source='tx-deadline'. V3 DecreaseLiquidityParams.deadline. V4 는 wrapper deadline."
     }
   },
 
-  "required": ["nft", "tokenId", "liquidityDelta", "outputs", "minAmountsOut"]
+  "required": ["nft", "liquidityDelta", "outputs"]
 }
