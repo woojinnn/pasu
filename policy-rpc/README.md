@@ -41,4 +41,22 @@ should bind to a different container port.
 
 ```bash
 curl http://127.0.0.1:8787/health
+curl http://127.0.0.1:8787/v1/methods
+curl -sS http://127.0.0.1:8787/v1/rpc \
+  -H 'content-type: application/json' \
+  -d '{
+    "request_id": "manual-test-1",
+    "calls": [
+      {
+        "id": "call-1",
+        "method": "oracle.usd_value",
+        "params": {
+          "chain_id": 1,
+          "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "amount": "1000000000000000000",
+          "decimals": 18
+        }
+      }
+    ]
+  }'
 ```

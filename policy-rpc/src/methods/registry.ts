@@ -1,10 +1,10 @@
-import { createOracleUsdValueMethod, type OracleUsdValueMethodOptions } from "./oracle-usd-value";
+import { createOracleUsdValueMethod, type OracleUsdValueMethodOptions } from "./oracle-usd-value.js";
 import {
   RpcMethodError,
   type JsonObject,
   type PolicyRpcCall,
   type RpcResult,
-} from "../types";
+} from "../types.js";
 
 export type RpcMethod = (params: unknown) => Promise<JsonObject>;
 

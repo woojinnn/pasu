@@ -1,4 +1,4 @@
-import { RpcMethodError, type JsonObject, type PolicyRpcCall, type PolicyRpcRequest } from "./types";
+import { RpcMethodError, type JsonObject, type PolicyRpcCall, type PolicyRpcRequest } from "./types.js";
 
 export class ValidationError extends Error {
   constructor(message: string) {

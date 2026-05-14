@@ -1,15 +1,15 @@
 import {
   CoinGeckoClient,
   type CoinGeckoClientOptions,
-} from "../coingecko-client";
+} from "../coingecko-client.js";
 import {
   RpcMethodError,
   type JsonValue,
   type NowMs,
   type OracleUsdValueParams,
   type UsdValuation,
-} from "../types";
-import { parseOracleUsdValueParams } from "../validation";
+} from "../types.js";
+import { parseOracleUsdValueParams } from "../validation.js";
 
 const USD_DECIMAL_PLACES = 4;
 

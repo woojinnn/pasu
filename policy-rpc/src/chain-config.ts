@@ -1,4 +1,4 @@
-import { RpcMethodError } from "./types";
+import { RpcMethodError } from "./types.js";
 
 const coinGeckoPlatforms = new Map<number, string>([
   [1, "ethereum"],

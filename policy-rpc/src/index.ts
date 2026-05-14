@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 
-import { createPolicyRpcServer, type PolicyRpcServerOptions } from "./server";
+import { createPolicyRpcServer, type PolicyRpcServerOptions } from "./server.js";
 
 export interface StartPolicyRpcServerOptions extends PolicyRpcServerOptions {
   host?: string;

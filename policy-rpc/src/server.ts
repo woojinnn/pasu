@@ -1,13 +1,13 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
-import { LogStore, type RecentCallLog } from "./log-store";
+import { LogStore, type RecentCallLog } from "./log-store.js";
 import {
   createMethodRegistry,
   type MethodRegistry,
   type MethodRegistryOptions,
-} from "./methods/registry";
-import { type NowMs, type PolicyRpcRequest } from "./types";
-import { parsePolicyRpcRequest, ValidationError } from "./validation";
+} from "./methods/registry.js";
+import { type NowMs, type PolicyRpcRequest } from "./types.js";
+import { parsePolicyRpcRequest, ValidationError } from "./validation.js";
 
 export interface PolicyRpcServerOptions extends MethodRegistryOptions {
   logStore?: LogStore;

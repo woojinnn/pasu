@@ -1,6 +1,6 @@
-import { coinGeckoPlatformForChain } from "./chain-config";
-import { RpcMethodError, type FetchLike, type NowMs } from "./types";
-import { isRecord } from "./validation";
+import { coinGeckoPlatformForChain } from "./chain-config.js";
+import { RpcMethodError, type FetchLike, type NowMs } from "./types.js";
+import { isRecord } from "./validation.js";
 
 export interface CoinGeckoTokenPrice {
   priceUsd: string;
