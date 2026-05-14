@@ -1,0 +1,17 @@
+type TransferContext = {
+  token: AssetRef,
+  from: String,
+  recipient: String,
+
+  amount?: AmountConstraint,
+
+  recipientIsContract?: Bool,
+
+  totalUsd?: UsdValuation,
+};
+
+action "transfer" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: TransferContext,
+};

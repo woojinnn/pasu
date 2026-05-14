@@ -1,0 +1,14 @@
+type ClaimRestakeWithdrawalContext = {
+  tokenOut: AssetRef,
+  amountOut?: AmountConstraint,
+
+  recipient: String,
+
+  totalOutputUsd?: UsdValuation,
+};
+
+action "claim_restake_withdrawal" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: ClaimRestakeWithdrawalContext,
+};

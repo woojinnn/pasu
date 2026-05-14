@@ -1,0 +1,15 @@
+type UnwrapContext = {
+  wrappedAsset: AssetRef,
+  nativeAsset: AssetRef,
+
+  amount: AmountConstraint,
+  recipient: String,
+
+  totalUsd?: UsdValuation,
+};
+
+action "unwrap" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: UnwrapContext,
+};

@@ -1,0 +1,21 @@
+type ApproveContext = {
+  approvalKind: String,
+
+  token: AssetRef,
+  spender: String,
+  spenderLabel?: String,
+
+  amount: AmountConstraint,
+  currentAllowance?: String,
+
+  validity?: Validity,
+  validityDeltaSec?: Long,
+
+  totalApprovedUsd?: UsdValuation,
+};
+
+action "approve" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: ApproveContext,
+};

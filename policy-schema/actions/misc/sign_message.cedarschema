@@ -1,0 +1,19 @@
+type SignMessageContext = {
+  signer: String,
+  requestChainId: Long,
+  domainChainId: Long,
+  verifyingContract: String,
+  primaryType: String,
+  nowTs: Long,
+
+  domainLabel?: String,
+  primaryTypeLabel?: String,
+
+  messageDigest: String,
+};
+
+action "sign_message" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: SignMessageContext,
+};

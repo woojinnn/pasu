@@ -1,0 +1,14 @@
+type SetApprovalForAllContext = {
+  collection: AssetRef,
+  operator: String,
+  operatorLabel?: String,
+
+  approved: Bool,
+  previouslyApproved?: Bool,
+};
+
+action "set_approval_for_all" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: SetApprovalForAllContext,
+};

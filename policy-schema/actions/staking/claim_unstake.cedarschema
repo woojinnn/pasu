@@ -1,0 +1,14 @@
+type ClaimUnstakeContext = {
+  tokenOut: AssetRef,
+  amountOut?: AmountConstraint,
+
+  recipient: String,
+
+  totalOutputUsd?: UsdValuation,
+};
+
+action "claim_unstake" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: ClaimUnstakeContext,
+};

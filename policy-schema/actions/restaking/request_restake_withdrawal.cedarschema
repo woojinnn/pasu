@@ -1,0 +1,19 @@
+type RequestRestakeWithdrawalContext = {
+  tokenOut?: AssetRef,
+  receiptToken?: AssetRef,
+
+  amountIn: AmountConstraint,
+  amountOut?: AmountConstraint,
+
+  strategy?: Pool,
+
+  recipient: String,
+
+  totalInputUsd?: UsdValuation,
+};
+
+action "request_restake_withdrawal" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: RequestRestakeWithdrawalContext,
+};
