@@ -3,33 +3,34 @@
 use crate::action::common::AmountKind;
 use crate::action::dex::SwapAction;
 use crate::action::Address as ActionAddress;
+use crate::enrichment::dispatch::Enrich;
+use crate::enrichment::usd::usd_value_for_amount;
 use crate::host::HostCapabilities;
 
-use crate::enrichment::usd::usd_value_for_amount;
+impl Enrich for SwapAction {
+    fn enrich(
+        &mut self,
+        _from: &ActionAddress,
+        _target: &ActionAddress,
+        host: &HostCapabilities<'_>,
+    ) {
+        if self.enrichment.value_in_usd.is_none() {
+            self.enrichment.value_in_usd =
+                usd_value_for_amount(&self.token_in, &self.amount_in, host);
+        }
 
-/// Populate host-derived facts on a swap action.
-pub(super) fn enrich(
-    swap: &mut SwapAction,
-    _from: &ActionAddress,
-    _target: &ActionAddress,
-    host: &HostCapabilities<'_>,
-) {
-    if swap.enrichment.value_in_usd.is_none() {
-        swap.enrichment.value_in_usd = usd_value_for_amount(&swap.token_in, &swap.amount_in, host);
+        if self.enrichment.expected_value_out_usd.is_none() {
+            self.enrichment.expected_value_out_usd =
+                usd_value_for_amount(&self.token_out, &self.amount_out, host);
+        }
+
+        if self.enrichment.min_value_out_usd.is_none()
+            && matches!(self.amount_out.kind, AmountKind::Min)
+        {
+            self.enrichment.min_value_out_usd =
+                usd_value_for_amount(&self.token_out, &self.amount_out, host);
+        }
     }
-
-    if swap.enrichment.expected_value_out_usd.is_none() {
-        swap.enrichment.expected_value_out_usd =
-            usd_value_for_amount(&swap.token_out, &swap.amount_out, host);
-    }
-
-    if swap.enrichment.min_value_out_usd.is_none()
-        && matches!(swap.amount_out.kind, AmountKind::Min)
-    {
-        swap.enrichment.min_value_out_usd =
-            usd_value_for_amount(&swap.token_out, &swap.amount_out, host);
-    }
-
 }
 
 #[cfg(test)]

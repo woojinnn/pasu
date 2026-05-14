@@ -8,38 +8,39 @@ use crate::lowering::common::asset::{asset_ref_json, asset_ref_with_amount_json}
 use crate::lowering::common::cedar::cedar_long_u64;
 use crate::lowering::common::pool::pool_json;
 use crate::lowering::common::validity::validity_json;
-use crate::lowering::dispatch::LoweringCtx;
+use crate::lowering::dispatch::{Lower, LoweringCtx};
 
 const ACTION_ID: &str = "mint_liquidity_nft";
 const VALIDITY: &str = "validity";
 
-pub(crate) fn build(action: &MintLiquidityNftAction, ctx: &LoweringCtx<'_>) -> PolicyRequest {
-    let mut context = Map::new();
-    if let Some(pool) = &action.pool {
-        context.insert(POOL.into(), pool_json(pool));
-    }
-    context.insert(
-        FEE_TIER_BPS.into(),
-        cedar_long_u64(u64::from(action.fee_tier_bps)),
-    );
-    context.insert(TICK_RANGE.into(), tick_range_json(&action.tick_range));
-    context.insert(
-        INPUTS.into(),
-        Value::Array(
-            action
-                .inputs
-                .iter()
-                .map(asset_ref_with_amount_json)
-                .collect(),
-        ),
-    );
-    context.insert(NFT.into(), asset_ref_json(&action.nft));
-    context.insert(RECIPIENT.into(), Value::from(action.recipient.to_string()));
-    if let Some(validity) = &action.validity {
-        context.insert(VALIDITY.into(), validity_json(validity));
-    }
+impl Lower for MintLiquidityNftAction {
+    fn build(&self, ctx: &LoweringCtx<'_>) -> PolicyRequest {
+        let mut context = Map::new();
+        if let Some(pool) = &self.pool {
+            context.insert(POOL.into(), pool_json(pool));
+        }
+        context.insert(
+            FEE_TIER_BPS.into(),
+            cedar_long_u64(u64::from(self.fee_tier_bps)),
+        );
+        context.insert(TICK_RANGE.into(), tick_range_json(&self.tick_range));
+        context.insert(
+            INPUTS.into(),
+            Value::Array(
+                self.inputs
+                    .iter()
+                    .map(asset_ref_with_amount_json)
+                    .collect(),
+            ),
+        );
+        context.insert(NFT.into(), asset_ref_json(&self.nft));
+        context.insert(RECIPIENT.into(), Value::from(self.recipient.to_string()));
+        if let Some(validity) = &self.validity {
+            context.insert(VALIDITY.into(), validity_json(validity));
+        }
 
-    request(ACTION_ID, ctx, Value::Object(context))
+        request(ACTION_ID, ctx, Value::Object(context))
+    }
 }
 
 fn tick_range_json(tick_range: &TickRange) -> Value {

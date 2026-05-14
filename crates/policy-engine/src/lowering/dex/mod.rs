@@ -12,12 +12,18 @@ use serde_json::Value;
 use super::common::cedar::entities;
 use super::dispatch::LoweringCtx;
 
+/// Assemble the standard `Wallet`/`Action`/`Protocol` triple for a DEX action.
+///
+/// `action_kind` flows into `Action::"<kind>"`. The `Protocol` resource uid is
+/// the transaction target (`ctx.to`) so policies can match the contract the
+/// user is interacting with — e.g.
+/// `resource == Protocol::"0xUniswapV3Router"`.
 pub(crate) fn request(action_kind: &str, ctx: &LoweringCtx<'_>, context: Value) -> PolicyRequest {
     PolicyRequest::new(
         format!(r#"Wallet::"{}""#, ctx.from),
         format!(r#"Action::"{action_kind}""#),
-        format!(r#"Protocol::"{action_kind}""#),
-        entities(ctx.from, action_kind),
+        format!(r#"Protocol::"{}""#, ctx.to),
+        entities(ctx.from, ctx.to),
         context,
     )
 }

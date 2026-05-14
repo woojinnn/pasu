@@ -8,38 +8,39 @@ use crate::lowering::common::amount::amount_constraint_json;
 use crate::lowering::common::asset::{asset_ref_json, asset_ref_with_amount_json};
 use crate::lowering::common::pool::pool_json;
 use crate::lowering::common::validity::validity_json;
-use crate::lowering::dispatch::LoweringCtx;
+use crate::lowering::dispatch::{Lower, LoweringCtx};
 
 const ACTION_ID: &str = "add_liquidity";
 const VALIDITY: &str = "validity";
 
-pub(crate) fn build(action: &AddLiquidityAction, ctx: &LoweringCtx<'_>) -> PolicyRequest {
-    let mut context = Map::new();
-    if let Some(pool) = &action.pool {
-        context.insert(POOL.into(), pool_json(pool));
-    }
-    context.insert(
-        INPUTS.into(),
-        Value::Array(
-            action
-                .inputs
-                .iter()
-                .map(asset_ref_with_amount_json)
-                .collect(),
-        ),
-    );
-    if let Some(lp_token) = &action.lp_token {
-        context.insert(LP_TOKEN.into(), asset_ref_json(lp_token));
-    }
-    if let Some(lp_amount) = &action.lp_amount {
-        context.insert(LP_AMOUNT.into(), amount_constraint_json(lp_amount));
-    }
-    context.insert(RECIPIENT.into(), Value::from(action.recipient.to_string()));
-    if let Some(validity) = &action.validity {
-        context.insert(VALIDITY.into(), validity_json(validity));
-    }
+impl Lower for AddLiquidityAction {
+    fn build(&self, ctx: &LoweringCtx<'_>) -> PolicyRequest {
+        let mut context = Map::new();
+        if let Some(pool) = &self.pool {
+            context.insert(POOL.into(), pool_json(pool));
+        }
+        context.insert(
+            INPUTS.into(),
+            Value::Array(
+                self.inputs
+                    .iter()
+                    .map(asset_ref_with_amount_json)
+                    .collect(),
+            ),
+        );
+        if let Some(lp_token) = &self.lp_token {
+            context.insert(LP_TOKEN.into(), asset_ref_json(lp_token));
+        }
+        if let Some(lp_amount) = &self.lp_amount {
+            context.insert(LP_AMOUNT.into(), amount_constraint_json(lp_amount));
+        }
+        context.insert(RECIPIENT.into(), Value::from(self.recipient.to_string()));
+        if let Some(validity) = &self.validity {
+            context.insert(VALIDITY.into(), validity_json(validity));
+        }
 
-    request(ACTION_ID, ctx, Value::Object(context))
+        request(ACTION_ID, ctx, Value::Object(context))
+    }
 }
 
 #[cfg(test)]

@@ -3,13 +3,25 @@
 use crate::action::{Action, ActionEnvelope, Address as ActionAddress};
 use crate::host::HostCapabilities;
 
-use super::dex;
+/// Per-action enrichment contract: fill host-derived fields on a single action
+/// payload in place. Implemented once per action variant in the matching
+/// `enrichment/<category>/<action>.rs` file; the dispatcher in this module
+/// matches on [`Action`] and calls [`Enrich::enrich`] on the wrapped payload,
+/// so every per-action implementation shares the same signature.
+pub(crate) trait Enrich {
+    fn enrich(
+        &mut self,
+        from: &ActionAddress,
+        target: &ActionAddress,
+        host: &HostCapabilities<'_>,
+    );
+}
 
 /// Populate host-derived facts on an action envelope.
 ///
-/// Swap actions currently receive USD and allowance enrichment. Other DEX
-/// actions are routed through no-op stubs so their enrichers can grow in place.
-/// Non-DEX actions pass through unchanged.
+/// Swap actions currently receive USD enrichment. Other DEX actions route
+/// through no-op stubs so their enrichers can grow in place. Non-DEX actions
+/// pass through unchanged.
 #[must_use]
 pub fn enrich_envelope(
     envelope: ActionEnvelope,
@@ -19,33 +31,33 @@ pub fn enrich_envelope(
 ) -> ActionEnvelope {
     let ActionEnvelope { category, action } = envelope;
     let action = match action {
-        Action::Swap(mut swap) => {
-            dex::enrich_swap(&mut swap, from, target, host);
-            Action::Swap(swap)
+        Action::Swap(mut a) => {
+            a.enrich(from, target, host);
+            Action::Swap(a)
         }
-        Action::AddLiquidity(mut action) => {
-            dex::enrich_add_liquidity(&mut action, from, target, host);
-            Action::AddLiquidity(action)
+        Action::AddLiquidity(mut a) => {
+            a.enrich(from, target, host);
+            Action::AddLiquidity(a)
         }
-        Action::RemoveLiquidity(mut action) => {
-            dex::enrich_remove_liquidity(&mut action, from, target, host);
-            Action::RemoveLiquidity(action)
+        Action::RemoveLiquidity(mut a) => {
+            a.enrich(from, target, host);
+            Action::RemoveLiquidity(a)
         }
-        Action::MintLiquidityNft(mut action) => {
-            dex::enrich_mint_liquidity_nft(&mut action, from, target, host);
-            Action::MintLiquidityNft(action)
+        Action::MintLiquidityNft(mut a) => {
+            a.enrich(from, target, host);
+            Action::MintLiquidityNft(a)
         }
-        Action::BurnLiquidityNft(mut action) => {
-            dex::enrich_burn_liquidity_nft(&mut action, from, target, host);
-            Action::BurnLiquidityNft(action)
+        Action::BurnLiquidityNft(mut a) => {
+            a.enrich(from, target, host);
+            Action::BurnLiquidityNft(a)
         }
-        Action::IncreaseLiquidity(mut action) => {
-            dex::enrich_increase_liquidity(&mut action, from, target, host);
-            Action::IncreaseLiquidity(action)
+        Action::IncreaseLiquidity(mut a) => {
+            a.enrich(from, target, host);
+            Action::IncreaseLiquidity(a)
         }
-        Action::DecreaseLiquidity(mut action) => {
-            dex::enrich_decrease_liquidity(&mut action, from, target, host);
-            Action::DecreaseLiquidity(action)
+        Action::DecreaseLiquidity(mut a) => {
+            a.enrich(from, target, host);
+            Action::DecreaseLiquidity(a)
         }
         other => other,
     };

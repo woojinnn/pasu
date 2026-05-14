@@ -11,7 +11,7 @@ use crate::lowering::common::amount::{action_usd_valuation_json, amount_constrai
 use crate::lowering::common::asset::asset_ref_json;
 use crate::lowering::common::cedar::cedar_long_u64;
 use crate::lowering::common::validity::{validity_delta_sec, validity_json};
-use crate::lowering::dispatch::LoweringCtx;
+use crate::lowering::dispatch::{Lower, LoweringCtx};
 
 const ACTION_ID: &str = "swap";
 
@@ -22,8 +22,10 @@ const AMOUNT_IN: &str = "amountIn";
 const AMOUNT_OUT: &str = "amountOut";
 const VALIDITY: &str = "validity";
 
-pub(crate) fn build(swap: &SwapAction, ctx: &LoweringCtx<'_>) -> PolicyRequest {
-    request(ACTION_ID, ctx, context(swap, ctx))
+impl Lower for SwapAction {
+    fn build(&self, ctx: &LoweringCtx<'_>) -> PolicyRequest {
+        request(ACTION_ID, ctx, context(self, ctx))
+    }
 }
 
 fn context(swap: &SwapAction, ctx: &LoweringCtx<'_>) -> Value {
@@ -125,7 +127,13 @@ mod tests {
             r#"Wallet::"0x1111111111111111111111111111111111111111""#
         );
         assert!(request.action.contains("swap"));
-        assert_eq!(request.resource, r#"Protocol::"swap""#);
+        // The Protocol resource uid is the transaction target (`to`), so
+        // policies can match by router/contract address rather than by action
+        // name. policy_request() in test_support uses 0x2222...2 for `to`.
+        assert_eq!(
+            request.resource,
+            r#"Protocol::"0x2222222222222222222222222222222222222222""#
+        );
         assert_eq!(
             request.entities,
             json!([
@@ -134,7 +142,11 @@ mod tests {
                     "attrs": { "address": "0x1111111111111111111111111111111111111111" },
                     "parents": []
                 },
-                { "uid": { "type": "Protocol", "id": "swap" }, "attrs": {}, "parents": [] },
+                {
+                    "uid": { "type": "Protocol", "id": "0x2222222222222222222222222222222222222222" },
+                    "attrs": {},
+                    "parents": []
+                },
             ])
         );
         assert!(request.context.get("protocolIds").is_none());

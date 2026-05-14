@@ -7,36 +7,37 @@ use super::request;
 use crate::lowering::common::amount::amount_constraint_json;
 use crate::lowering::common::asset::{asset_ref_json, asset_ref_with_amount_json};
 use crate::lowering::common::validity::validity_json;
-use crate::lowering::dispatch::LoweringCtx;
+use crate::lowering::dispatch::{Lower, LoweringCtx};
 
 const ACTION_ID: &str = "decrease_liquidity";
 const VALIDITY: &str = "validity";
 
-pub(crate) fn build(action: &DecreaseLiquidityAction, ctx: &LoweringCtx<'_>) -> PolicyRequest {
-    let mut context = Map::new();
-    context.insert(NFT.into(), asset_ref_json(&action.nft));
-    context.insert(
-        LIQUIDITY_DELTA.into(),
-        amount_constraint_json(&action.liquidity_delta),
-    );
-    context.insert(
-        OUTPUTS.into(),
-        Value::Array(
-            action
-                .outputs
-                .iter()
-                .map(asset_ref_with_amount_json)
-                .collect(),
-        ),
-    );
-    if let Some(recipient) = &action.recipient {
-        context.insert(RECIPIENT.into(), Value::from(recipient.to_string()));
-    }
-    if let Some(validity) = &action.validity {
-        context.insert(VALIDITY.into(), validity_json(validity));
-    }
+impl Lower for DecreaseLiquidityAction {
+    fn build(&self, ctx: &LoweringCtx<'_>) -> PolicyRequest {
+        let mut context = Map::new();
+        context.insert(NFT.into(), asset_ref_json(&self.nft));
+        context.insert(
+            LIQUIDITY_DELTA.into(),
+            amount_constraint_json(&self.liquidity_delta),
+        );
+        context.insert(
+            OUTPUTS.into(),
+            Value::Array(
+                self.outputs
+                    .iter()
+                    .map(asset_ref_with_amount_json)
+                    .collect(),
+            ),
+        );
+        if let Some(recipient) = &self.recipient {
+            context.insert(RECIPIENT.into(), Value::from(recipient.to_string()));
+        }
+        if let Some(validity) = &self.validity {
+            context.insert(VALIDITY.into(), validity_json(validity));
+        }
 
-    request(ACTION_ID, ctx, Value::Object(context))
+        request(ACTION_ID, ctx, Value::Object(context))
+    }
 }
 
 #[cfg(test)]

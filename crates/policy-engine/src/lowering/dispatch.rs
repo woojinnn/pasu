@@ -12,6 +12,16 @@ pub(crate) struct LoweringCtx<'a> {
     pub(crate) block_timestamp: u64,
 }
 
+/// Per-action contract: build a Cedar `PolicyRequest` from a single action
+/// payload plus the lowering context. Implemented once per action variant in
+/// the matching `lowering/<category>/<action>.rs` file. The dispatcher in this
+/// module matches on [`Action`] and calls [`Lower::build`] on the wrapped
+/// payload, which keeps every per-action implementation honest about its
+/// signature.
+pub(crate) trait Lower {
+    fn build(&self, ctx: &LoweringCtx<'_>) -> PolicyRequest;
+}
+
 /// Build a Cedar policy request from a normalized action envelope.
 #[must_use]
 pub fn policy_request_from_envelope(
@@ -31,23 +41,13 @@ pub fn policy_request_from_envelope(
     };
 
     match &envelope.action {
-        Action::Swap(action) => Some(super::dex::swap::build(action, &ctx)),
-        Action::AddLiquidity(action) => Some(super::dex::add_liquidity::build(action, &ctx)),
-        Action::RemoveLiquidity(action) => {
-            Some(super::dex::remove_liquidity::build(action, &ctx))
-        }
-        Action::MintLiquidityNft(action) => {
-            Some(super::dex::mint_liquidity_nft::build(action, &ctx))
-        }
-        Action::BurnLiquidityNft(action) => {
-            Some(super::dex::burn_liquidity_nft::build(action, &ctx))
-        }
-        Action::IncreaseLiquidity(action) => {
-            Some(super::dex::increase_liquidity::build(action, &ctx))
-        }
-        Action::DecreaseLiquidity(action) => {
-            Some(super::dex::decrease_liquidity::build(action, &ctx))
-        }
+        Action::Swap(action) => Some(action.build(&ctx)),
+        Action::AddLiquidity(action) => Some(action.build(&ctx)),
+        Action::RemoveLiquidity(action) => Some(action.build(&ctx)),
+        Action::MintLiquidityNft(action) => Some(action.build(&ctx)),
+        Action::BurnLiquidityNft(action) => Some(action.build(&ctx)),
+        Action::IncreaseLiquidity(action) => Some(action.build(&ctx)),
+        Action::DecreaseLiquidity(action) => Some(action.build(&ctx)),
         _ => None,
     }
 }

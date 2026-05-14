@@ -10,15 +10,25 @@ pub(crate) fn cedar_long_u64(value: u64) -> Value {
     Value::from(narrowed)
 }
 
-pub(crate) fn entities(from: &Address, action_kind: &str) -> Value {
+/// Build the standard `Wallet` + `Protocol` entity bag for a policy request.
+///
+/// `from` becomes the `Wallet` uid; `to` (the transaction target contract)
+/// becomes the `Protocol` uid so policies can write
+/// `resource == Protocol::"0x..."` against the contract address.
+pub(crate) fn entities(from: &Address, to: &Address) -> Value {
     let wallet_id = from.to_string();
+    let protocol_id = to.to_string();
     json!([
         {
             "uid": { "type": "Wallet", "id": wallet_id.as_str() },
             "attrs": { "address": wallet_id.as_str() },
             "parents": []
         },
-        { "uid": { "type": "Protocol", "id": action_kind }, "attrs": {}, "parents": [] },
+        {
+            "uid": { "type": "Protocol", "id": protocol_id.as_str() },
+            "attrs": {},
+            "parents": []
+        },
     ])
 }
 

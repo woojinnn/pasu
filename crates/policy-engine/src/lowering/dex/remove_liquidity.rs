@@ -8,45 +8,46 @@ use crate::lowering::common::amount::amount_constraint_json;
 use crate::lowering::common::asset::{asset_ref_json, asset_ref_with_amount_json};
 use crate::lowering::common::pool::pool_json;
 use crate::lowering::common::validity::validity_json;
-use crate::lowering::dispatch::LoweringCtx;
+use crate::lowering::dispatch::{Lower, LoweringCtx};
 
 const ACTION_ID: &str = "remove_liquidity";
 const VALIDITY: &str = "validity";
 
-pub(crate) fn build(action: &RemoveLiquidityAction, ctx: &LoweringCtx<'_>) -> PolicyRequest {
-    let mut context = Map::new();
-    context.insert(
-        EXIT_MODE.into(),
-        Value::from(exit_mode_str(&action.exit_mode)),
-    );
-    if let Some(pool) = &action.pool {
-        context.insert(POOL.into(), pool_json(pool));
-    }
-    if let Some(lp_token) = &action.lp_token {
-        context.insert(LP_TOKEN.into(), asset_ref_json(lp_token));
-    }
-    if let Some(lp_burn_amount) = &action.lp_burn_amount {
+impl Lower for RemoveLiquidityAction {
+    fn build(&self, ctx: &LoweringCtx<'_>) -> PolicyRequest {
+        let mut context = Map::new();
         context.insert(
-            LP_BURN_AMOUNT.into(),
-            amount_constraint_json(lp_burn_amount),
+            EXIT_MODE.into(),
+            Value::from(exit_mode_str(&self.exit_mode)),
         );
-    }
-    context.insert(
-        OUTPUTS.into(),
-        Value::Array(
-            action
-                .outputs
-                .iter()
-                .map(asset_ref_with_amount_json)
-                .collect(),
-        ),
-    );
-    context.insert(RECIPIENT.into(), Value::from(action.recipient.to_string()));
-    if let Some(validity) = &action.validity {
-        context.insert(VALIDITY.into(), validity_json(validity));
-    }
+        if let Some(pool) = &self.pool {
+            context.insert(POOL.into(), pool_json(pool));
+        }
+        if let Some(lp_token) = &self.lp_token {
+            context.insert(LP_TOKEN.into(), asset_ref_json(lp_token));
+        }
+        if let Some(lp_burn_amount) = &self.lp_burn_amount {
+            context.insert(
+                LP_BURN_AMOUNT.into(),
+                amount_constraint_json(lp_burn_amount),
+            );
+        }
+        context.insert(
+            OUTPUTS.into(),
+            Value::Array(
+                self.outputs
+                    .iter()
+                    .map(asset_ref_with_amount_json)
+                    .collect(),
+            ),
+        );
+        context.insert(RECIPIENT.into(), Value::from(self.recipient.to_string()));
+        if let Some(validity) = &self.validity {
+            context.insert(VALIDITY.into(), validity_json(validity));
+        }
 
-    request(ACTION_ID, ctx, Value::Object(context))
+        request(ACTION_ID, ctx, Value::Object(context))
+    }
 }
 
 const fn exit_mode_str(mode: &RemoveLiquidityExitMode) -> &'static str {
