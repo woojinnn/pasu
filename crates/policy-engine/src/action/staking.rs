@@ -101,7 +101,6 @@ mod tests {
     fn native(symbol: &str) -> Value {
         json!({
             "kind": "native",
-            "chainId": 1,
             "symbol": symbol,
             "decimals": 18
         })
@@ -110,7 +109,6 @@ mod tests {
     fn erc20(symbol: &str) -> Value {
         json!({
             "kind": "erc20",
-            "chainId": 1,
             "address": address(0x10),
             "symbol": symbol,
             "decimals": 18
@@ -120,7 +118,6 @@ mod tests {
     fn erc721(symbol: &str) -> Value {
         json!({
             "kind": "erc721",
-            "chainId": 1,
             "address": address(0x11),
             "symbol": symbol
         })

@@ -3,7 +3,7 @@ use mappers::EmptyTokenRegistry;
 use policy_engine::action::dex::{SwapAction, SwapEnrichment, SwapMode};
 use policy_engine::core::{Address as CoreAddress, Token, UsdValuation as CoreUsdValuation};
 use policy_engine::{
-    enrich_swap_envelope, policy_request_from_envelope, Action, ActionAddress, ActionEnvelope,
+    enrich_envelope, policy_request_from_envelope, Action, ActionAddress, ActionEnvelope,
     ActionUsdValuation, AmountConstraint, AmountKind, AssetKind, AssetRef, Category, DecimalString,
     HostCapabilities, MockOracle, PolicyEngineBuilder, PolicyRequest, Severity, Validity,
     ValiditySource, Verdict,
@@ -245,8 +245,6 @@ const MAX_INPUT_USD_100_POLICY: &str =
 const MIN_OUTPUT_USD_FLOOR_POLICY: &str =
     include_str!("../../../policies/swap/min-output-usd-floor.cedar");
 const KNOWN_TOKEN_ONLY_POLICY: &str = include_str!("../../../policies/swap/known-token-only.cedar");
-const ALLOWANCE_MUST_COVER_INPUT_POLICY: &str =
-    include_str!("../../../policies/swap/allowance-must-cover-input.cedar");
 const MAX_FEE_BPS_30_POLICY: &str = include_str!("../../../policies/swap/max-fee-bps-30.cedar");
 const EXPIRED_DEADLINE_POLICY: &str = include_str!("../../../policies/swap/expired-deadline.cedar");
 
@@ -277,7 +275,6 @@ struct SyntheticSwapInput<'a> {
     fee_bps: Option<u32>,
     total_input_usd: Option<&'a str>,
     total_min_output_usd: Option<&'a str>,
-    allowance_covers_input: Option<bool>,
     validity_delta_sec: Option<i64>,
 }
 
@@ -291,7 +288,6 @@ impl<'a> Default for SyntheticSwapInput<'a> {
             fee_bps: None,
             total_input_usd: None,
             total_min_output_usd: None,
-            allowance_covers_input: None,
             validity_delta_sec: None,
         }
     }
@@ -320,21 +316,21 @@ fn synthetic_swap_request_with(input: SyntheticSwapInput<'_>) -> PolicyRequest {
         .expect("valid synthetic to address");
     let token_in = AssetRef {
         kind: input.token_in_kind,
-        chain_id: 1,
         address: Some(
             ActionAddress::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
                 .expect("valid USDC address"),
         ),
+        token_id: None,
         symbol: Some(input.token_in_symbol.to_owned()),
         decimals: Some(6),
     };
     let token_out = AssetRef {
         kind: AssetKind::Erc20,
-        chain_id: 1,
         address: Some(
             ActionAddress::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
                 .expect("valid WETH address"),
         ),
+        token_id: None,
         symbol: Some(input.token_out_symbol.to_owned()),
         decimals: Some(18),
     };
@@ -355,13 +351,12 @@ fn synthetic_swap_request_with(input: SyntheticSwapInput<'_>) -> PolicyRequest {
         value_in_usd: input.total_input_usd.map(usd_valuation),
         min_value_out_usd: input.total_min_output_usd.map(usd_valuation),
         expected_value_out_usd: None,
-        allowance_covers_input: input.allowance_covers_input,
         input_fraction_of_portfolio_bps: None,
     };
     let envelope = ActionEnvelope {
         category: Category::Dex,
         action: Action::Swap(SwapAction {
-            mode: SwapMode::ExactIn,
+            swap_mode: SwapMode::ExactIn,
             token_in,
             token_out,
             amount_in,
@@ -489,30 +484,6 @@ fn test_known_token_only_fail() {
 }
 
 #[test]
-fn test_allowance_must_cover_input_pass() {
-    let request = synthetic_swap_request_with(SyntheticSwapInput {
-        allowance_covers_input: Some(true),
-        ..SyntheticSwapInput::default()
-    });
-
-    assert_policy_passes(ALLOWANCE_MUST_COVER_INPUT_POLICY, &request);
-}
-
-#[test]
-fn test_allowance_must_cover_input_fail() {
-    let request = synthetic_swap_request_with(SyntheticSwapInput {
-        allowance_covers_input: Some(false),
-        ..SyntheticSwapInput::default()
-    });
-
-    assert_policy_warns(
-        ALLOWANCE_MUST_COVER_INPUT_POLICY,
-        &request,
-        "user/allowance-must-cover-input",
-    );
-}
-
-#[test]
 fn test_max_fee_bps_30_pass() {
     let request = synthetic_swap_request_with(SyntheticSwapInput {
         fee_bps: Some(10),
@@ -587,7 +558,7 @@ fn swap_passes_under_max_fee_policy() {
 }
 
 /// End-to-end: route a v2 swap fixture, attach a `MockOracle` priced for both
-/// tokens, call `enrich_swap_envelope` to fill `SwapEnrichment`, then lower
+/// tokens, call `enrich_envelope` to fill `SwapEnrichment`, then lower
 /// through `policy_request_from_envelope` and assert that the resulting
 /// Cedar context carries `totalInputUsd` (i.e., the enrichment value reaches
 /// the policy request).
@@ -619,14 +590,14 @@ fn enrich_fills_usd_valuation_on_v2_swap() {
     // Build an oracle that prices both USDT and WETH so both value_in_usd
     // and (min/expected)_value_out_usd are populated.
     let usdt = Token {
-        chain_id,
+        chain_id: 0,
         address: CoreAddress::new("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap(),
         symbol: String::new(),
         decimals: 6,
         is_native: false,
     };
     let weth = Token {
-        chain_id,
+        chain_id: 0,
         address: CoreAddress::new("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
         symbol: String::new(),
         decimals: 18,
@@ -653,7 +624,7 @@ fn enrich_fills_usd_valuation_on_v2_swap() {
         );
     let host = HostCapabilities::new(&oracle);
 
-    let enriched = enrich_swap_envelope(envelope, &from, &to, &host);
+    let enriched = enrich_envelope(envelope, &from, &to, &host);
     let Action::Swap(swap) = &enriched.action else {
         panic!("expected swap action");
     };

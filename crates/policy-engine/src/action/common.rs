@@ -133,23 +133,34 @@ pub enum AssetKind {
     Unknown,
 }
 
-/// Chain-qualified asset reference.
+/// Asset reference used by action fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetRef {
     /// Asset classification.
     pub kind: AssetKind,
-    /// EVM chain id.
-    pub chain_id: u64,
     /// Token contract address, when applicable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<Address>,
+    /// Token id for non-fungible or multi-token assets, when applicable.
+    #[serde(rename = "tokenId", skip_serializing_if = "Option::is_none")]
+    pub token_id: Option<DecimalString>,
     /// Human-readable asset symbol, when known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub symbol: Option<String>,
     /// Token decimal precision, when known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub decimals: Option<u8>,
+}
+
+/// Asset reference paired with an amount constraint.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetRefWithAmountConstraint {
+    /// Referenced asset.
+    pub asset: AssetRef,
+    /// Amount constraint for the referenced asset.
+    pub amount: AmountConstraint,
 }
 
 /// Constraint semantics for an amount field.
@@ -247,8 +258,8 @@ fn validate_hex_prefixed(
 #[cfg(test)]
 mod tests {
     use super::{
-        Address, AmountConstraint, AmountKind, AssetKind, AssetRef, DecimalString, Validity,
-        ValiditySource,
+        Address, AmountConstraint, AmountKind, AssetKind, AssetRef, AssetRefWithAmountConstraint,
+        DecimalString, Validity, ValiditySource,
     };
     use std::str::FromStr as _;
 
@@ -295,8 +306,8 @@ mod tests {
     fn test_asset_ref_serde_roundtrip_erc20() {
         let asset = AssetRef {
             kind: AssetKind::Erc20,
-            chain_id: 1,
             address: Some(Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap()),
+            token_id: None,
             symbol: Some("USDC".to_owned()),
             decimals: Some(6),
         };
@@ -305,7 +316,26 @@ mod tests {
 
         assert_eq!(
             json,
-            r#"{"kind":"erc20","chainId":1,"address":"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48","symbol":"USDC","decimals":6}"#
+            r#"{"kind":"erc20","address":"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48","symbol":"USDC","decimals":6}"#
+        );
+        assert_eq!(serde_json::from_str::<AssetRef>(&json).unwrap(), asset);
+    }
+
+    #[test]
+    fn test_asset_ref_token_id_serde_roundtrip() {
+        let asset = AssetRef {
+            kind: AssetKind::Erc721,
+            address: Some(Address::from_str("0x1234567890abcdef1234567890abcdef12345678").unwrap()),
+            token_id: Some(DecimalString::from_str("42").unwrap()),
+            symbol: Some("PUNK".to_owned()),
+            decimals: None,
+        };
+
+        let json = serde_json::to_string(&asset).unwrap();
+
+        assert_eq!(
+            json,
+            r#"{"kind":"erc721","address":"0x1234567890abcdef1234567890abcdef12345678","tokenId":"42","symbol":"PUNK"}"#
         );
         assert_eq!(serde_json::from_str::<AssetRef>(&json).unwrap(), asset);
     }
@@ -314,15 +344,45 @@ mod tests {
     fn test_asset_ref_serde_omits_optional_fields() {
         let asset = AssetRef {
             kind: AssetKind::Native,
-            chain_id: 1,
             address: None,
+            token_id: None,
             symbol: None,
             decimals: None,
         };
 
         let json = serde_json::to_string(&asset).unwrap();
 
-        assert_eq!(json, r#"{"kind":"native","chainId":1}"#);
+        assert_eq!(json, r#"{"kind":"native"}"#);
+    }
+
+    #[test]
+    fn test_asset_ref_with_amount_constraint_serde_roundtrip() {
+        let constrained = AssetRefWithAmountConstraint {
+            asset: AssetRef {
+                kind: AssetKind::Erc1155,
+                address: Some(
+                    Address::from_str("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd").unwrap(),
+                ),
+                token_id: Some(DecimalString::from_str("7").unwrap()),
+                symbol: None,
+                decimals: None,
+            },
+            amount: AmountConstraint {
+                kind: AmountKind::Min,
+                value: Some(DecimalString::from_str("1000").unwrap()),
+            },
+        };
+
+        let json = serde_json::to_string(&constrained).unwrap();
+
+        assert_eq!(
+            json,
+            r#"{"asset":{"kind":"erc1155","address":"0xabcdefabcdefabcdefabcdefabcdefabcdefabcd","tokenId":"7"},"amount":{"kind":"min","value":"1000"}}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<AssetRefWithAmountConstraint>(&json).unwrap(),
+            constrained
+        );
     }
 
     #[test]

@@ -48,11 +48,11 @@ pub mod schema;
 
 pub use action::{
     Action, ActionEnvelope, Address as ActionAddress, AmountConstraint, AmountKind, AssetKind,
-    AssetRef, Category, DecimalString, Hex, UsdValuation as ActionUsdValuation, Validity,
-    ValiditySource,
+    AssetRef, AssetRefWithAmountConstraint, Category, DecimalString, Hex,
+    UsdValuation as ActionUsdValuation, Validity, ValiditySource,
 };
 pub use core::{Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation};
-pub use enrichment::enrich_swap_envelope;
+pub use enrichment::enrich_envelope;
 pub use host::{
     Approvals, ApprovalsError, Clock, HostCapabilities, MockApprovals, MockClock, MockOracle,
     MockPortfolio, MockStatWindows, Oracle, OracleError, Portfolio, PortfolioError, ReservationId,

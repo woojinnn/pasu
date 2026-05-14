@@ -1,7 +1,10 @@
 //! Lowering stages: `ActionEnvelope` -> `PolicyRequest`.
 
+pub use dispatch::policy_request_from_envelope;
+
+mod actions;
+mod common;
 pub mod decimal;
-pub mod request;
+mod dispatch;
 
 pub(crate) use decimal::add_decimal_strings;
-pub use request::policy_request_from_envelope;

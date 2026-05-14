@@ -169,11 +169,11 @@ fn permit_amount(value: &DecimalString, unlimited_value: &str) -> AmountConstrai
     }
 }
 
-fn erc20(chain_id: u64, address: Address) -> AssetRef {
+fn erc20(_chain_id: u64, address: Address) -> AssetRef {
     AssetRef {
         kind: AssetKind::Erc20,
-        chain_id,
         address: Some(address),
+        token_id: None,
         symbol: None,
         decimals: None,
     }
@@ -325,7 +325,7 @@ mod tests {
                     .unwrap()
             )
         );
-        assert_eq!(action.token.chain_id, 1);
+        assert_eq!(action.token.token_id, None);
         assert_eq!(action.amount.kind, AmountKind::Exact);
         assert_eq!(
             action.amount.value.as_ref().map(ToString::to_string),

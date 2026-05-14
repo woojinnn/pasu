@@ -100,11 +100,11 @@ impl Mapper for WethWithdrawMapper {
     }
 }
 
-fn native_eth(chain_id: u64) -> AssetRef {
+fn native_eth(_chain_id: u64) -> AssetRef {
     AssetRef {
         kind: AssetKind::Native,
-        chain_id,
         address: None,
+        token_id: None,
         symbol: Some("ETH".to_owned()),
         decimals: Some(18),
     }
@@ -113,8 +113,8 @@ fn native_eth(chain_id: u64) -> AssetRef {
 fn wrapped_weth(ctx: &MapContext<'_>) -> AssetRef {
     AssetRef {
         kind: AssetKind::Erc20,
-        chain_id: ctx.chain_id,
         address: Some(ctx.to.clone()),
+        token_id: None,
         symbol: Some("WETH".to_owned()),
         decimals: Some(18),
     }
@@ -214,12 +214,12 @@ mod tests {
             panic!("expected Wrap, got kind={}", envelopes[0].action.kind());
         };
         assert_eq!(wrap.native_asset.kind, AssetKind::Native);
-        assert_eq!(wrap.native_asset.chain_id, 1);
+        assert_eq!(wrap.native_asset.token_id, None);
         assert!(wrap.native_asset.address.is_none());
         assert_eq!(wrap.native_asset.symbol.as_deref(), Some("ETH"));
         assert_eq!(wrap.native_asset.decimals, Some(18));
         assert_eq!(wrap.wrapped_asset.kind, AssetKind::Erc20);
-        assert_eq!(wrap.wrapped_asset.chain_id, 1);
+        assert_eq!(wrap.wrapped_asset.token_id, None);
         assert_eq!(wrap.wrapped_asset.address.as_ref(), Some(&weth));
         assert_eq!(wrap.wrapped_asset.symbol.as_deref(), Some("WETH"));
         assert_eq!(wrap.wrapped_asset.decimals, Some(18));
@@ -256,12 +256,12 @@ mod tests {
             panic!("expected Unwrap, got kind={}", envelopes[0].action.kind());
         };
         assert_eq!(unwrap.wrapped_asset.kind, AssetKind::Erc20);
-        assert_eq!(unwrap.wrapped_asset.chain_id, 1);
+        assert_eq!(unwrap.wrapped_asset.token_id, None);
         assert_eq!(unwrap.wrapped_asset.address.as_ref(), Some(&weth));
         assert_eq!(unwrap.wrapped_asset.symbol.as_deref(), Some("WETH"));
         assert_eq!(unwrap.wrapped_asset.decimals, Some(18));
         assert_eq!(unwrap.native_asset.kind, AssetKind::Native);
-        assert_eq!(unwrap.native_asset.chain_id, 1);
+        assert_eq!(unwrap.native_asset.token_id, None);
         assert!(unwrap.native_asset.address.is_none());
         assert_eq!(unwrap.native_asset.symbol.as_deref(), Some("ETH"));
         assert_eq!(unwrap.native_asset.decimals, Some(18));

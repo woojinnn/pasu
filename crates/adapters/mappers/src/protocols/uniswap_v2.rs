@@ -49,7 +49,7 @@ impl Mapper for SwapExactTokensForTokensMapper {
         let (token_in, token_out) = path_assets(ctx, &path)?;
 
         Ok(vec![swap_envelope(SwapAction {
-            mode: SwapMode::ExactIn,
+            swap_mode: SwapMode::ExactIn,
             token_in,
             token_out,
             amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
@@ -94,7 +94,7 @@ impl Mapper for SwapTokensForExactTokensMapper {
         let (token_in, token_out) = path_assets(ctx, &path)?;
 
         Ok(vec![swap_envelope(SwapAction {
-            mode: SwapMode::ExactOut,
+            swap_mode: SwapMode::ExactOut,
             token_in,
             token_out,
             amount_in: amount_constraint(AmountKind::Max, amount_in_max)?,
@@ -137,7 +137,7 @@ impl Mapper for SwapExactETHForTokensMapper {
         let deadline = uint_arg(decoded, "deadline")?;
 
         Ok(vec![swap_envelope(SwapAction {
-            mode: SwapMode::ExactIn,
+            swap_mode: SwapMode::ExactIn,
             token_in: native_eth_asset_ref(ctx),
             token_out: path_last_asset(ctx, &path)?,
             amount_in: decimal_amount_constraint(AmountKind::Exact, ctx.value_wei),
@@ -181,7 +181,7 @@ impl Mapper for SwapTokensForExactETHMapper {
         let deadline = uint_arg(decoded, "deadline")?;
 
         Ok(vec![swap_envelope(SwapAction {
-            mode: SwapMode::ExactOut,
+            swap_mode: SwapMode::ExactOut,
             token_in: path_first_asset(ctx, &path)?,
             token_out: native_eth_asset_ref(ctx),
             amount_in: amount_constraint(AmountKind::Max, amount_in_max)?,
@@ -225,7 +225,7 @@ impl Mapper for SwapExactTokensForETHMapper {
         let deadline = uint_arg(decoded, "deadline")?;
 
         Ok(vec![swap_envelope(SwapAction {
-            mode: SwapMode::ExactIn,
+            swap_mode: SwapMode::ExactIn,
             token_in: path_first_asset(ctx, &path)?,
             token_out: native_eth_asset_ref(ctx),
             amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
@@ -268,7 +268,7 @@ impl Mapper for SwapETHForExactTokensMapper {
         let deadline = uint_arg(decoded, "deadline")?;
 
         Ok(vec![swap_envelope(SwapAction {
-            mode: SwapMode::ExactOut,
+            swap_mode: SwapMode::ExactOut,
             token_in: native_eth_asset_ref(ctx),
             token_out: path_last_asset(ctx, &path)?,
             amount_in: decimal_amount_constraint(AmountKind::Max, ctx.value_wei),
@@ -336,18 +336,18 @@ fn asset_ref(ctx: &MapContext<'_>, address: &Address) -> AssetRef {
     let metadata = ctx.token_registry.lookup(ctx.chain_id, address);
     AssetRef {
         kind: AssetKind::Erc20,
-        chain_id: ctx.chain_id,
         address: Some(address.clone()),
+        token_id: None,
         symbol: metadata.as_ref().map(|m| m.symbol.clone()),
         decimals: metadata.map(|m| m.decimals),
     }
 }
 
-fn native_eth_asset_ref(ctx: &MapContext<'_>) -> AssetRef {
+fn native_eth_asset_ref(_ctx: &MapContext<'_>) -> AssetRef {
     AssetRef {
         kind: AssetKind::Native,
-        chain_id: ctx.chain_id,
         address: None,
+        token_id: None,
         symbol: Some("ETH".to_owned()),
         decimals: Some(18),
     }
@@ -496,21 +496,26 @@ mod tests {
         }
     }
 
-    fn erc20(chain_id: u64, address: &str, symbol: Option<&str>, decimals: Option<u8>) -> AssetRef {
+    fn erc20(
+        _chain_id: u64,
+        address: &str,
+        symbol: Option<&str>,
+        decimals: Option<u8>,
+    ) -> AssetRef {
         AssetRef {
             kind: AssetKind::Erc20,
-            chain_id,
             address: Some(address.parse().unwrap()),
+            token_id: None,
             symbol: symbol.map(str::to_owned),
             decimals,
         }
     }
 
-    fn native_eth(chain_id: u64) -> AssetRef {
+    fn native_eth(_chain_id: u64) -> AssetRef {
         AssetRef {
             kind: AssetKind::Native,
-            chain_id,
             address: None,
+            token_id: None,
             symbol: Some("ETH".to_owned()),
             decimals: Some(18),
         }
@@ -822,7 +827,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactIn,
+                swap_mode: SwapMode::ExactIn,
                 token_in: erc20(
                     1,
                     "0xdac17f958d2ee523a2206206994597c13d831ec7",
@@ -857,7 +862,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactOut,
+                swap_mode: SwapMode::ExactOut,
                 token_in: erc20(
                     1,
                     "0xdac17f958d2ee523a2206206994597c13d831ec7",
@@ -887,7 +892,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactIn,
+                swap_mode: SwapMode::ExactIn,
                 token_in: native_eth(1),
                 token_out: erc20(1, "0xdac17f958d2ee523a2206206994597c13d831ec7", None, None),
                 amount_in: amount(AmountKind::Exact, "1000000000000000000"),
@@ -907,7 +912,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactOut,
+                swap_mode: SwapMode::ExactOut,
                 token_in: erc20(1, "0xdac17f958d2ee523a2206206994597c13d831ec7", None, None),
                 token_out: native_eth(1),
                 amount_in: amount(AmountKind::Max, "4000000000"),
@@ -927,7 +932,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactIn,
+                swap_mode: SwapMode::ExactIn,
                 token_in: erc20(1, "0xdac17f958d2ee523a2206206994597c13d831ec7", None, None),
                 token_out: native_eth(1),
                 amount_in: amount(AmountKind::Exact, "200000000"),
@@ -947,7 +952,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactOut,
+                swap_mode: SwapMode::ExactOut,
                 token_in: native_eth(1),
                 token_out: erc20(1, "0xdac17f958d2ee523a2206206994597c13d831ec7", None, None),
                 amount_in: amount(AmountKind::Max, "1500000000000000000"),
@@ -982,7 +987,7 @@ mod tests {
             panic!("expected swap action");
         };
         assert_eq!(result[0].category, Category::Dex);
-        assert_eq!(swap.mode, SwapMode::ExactIn);
+        assert_eq!(swap.swap_mode, SwapMode::ExactIn);
         assert_eq!(swap.amount_in.kind, AmountKind::Exact);
         assert_eq!(swap.amount_out.kind, AmountKind::Min);
     }
@@ -1005,7 +1010,7 @@ mod tests {
         let Action::Swap(swap) = &result[0].action else {
             panic!("expected swap action");
         };
-        assert_eq!(swap.mode, SwapMode::ExactOut);
+        assert_eq!(swap.swap_mode, SwapMode::ExactOut);
         assert_eq!(swap.amount_in.kind, AmountKind::Max);
         assert_eq!(swap.amount_out.kind, AmountKind::Exact);
     }

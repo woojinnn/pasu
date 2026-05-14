@@ -2,7 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::common::{Address, AmountConstraint, AssetRef, DecimalString, UsdValuation, Validity};
+use super::common::{
+    Address, AmountConstraint, AssetRef, AssetRefWithAmountConstraint, UsdValuation, Validity,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -66,7 +68,7 @@ pub struct TickRange {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-/// Optional host-derived valuation and allowance facts for a swap.
+/// Optional host-derived valuation facts for a swap.
 pub struct SwapEnrichment {
     /// USD value of the input amount.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -77,9 +79,6 @@ pub struct SwapEnrichment {
     /// Expected USD value of the output amount.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_value_out_usd: Option<UsdValuation>,
-    /// Whether current allowance covers the input amount.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub allowance_covers_input: Option<bool>,
     /// Input amount as basis points of the portfolio value.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input_fraction_of_portfolio_bps: Option<u32>,
@@ -92,7 +91,6 @@ impl SwapEnrichment {
         self.value_in_usd.is_none()
             && self.min_value_out_usd.is_none()
             && self.expected_value_out_usd.is_none()
-            && self.allowance_covers_input.is_none()
             && self.input_fraction_of_portfolio_bps.is_none()
     }
 }
@@ -102,7 +100,8 @@ impl SwapEnrichment {
 /// Single-hop token swap action.
 pub struct SwapAction {
     /// Swap amount mode.
-    pub mode: SwapMode,
+    #[serde(rename = "swapMode")]
+    pub swap_mode: SwapMode,
     /// Asset sent by the user.
     pub token_in: AssetRef,
     /// Asset received by the user.
@@ -131,13 +130,8 @@ pub struct AddLiquidityAction {
     /// Target pool, when known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pool: Option<PoolRef>,
-    /// Assets deposited into the pool.
-    pub tokens: Vec<AssetRef>,
-    /// Deposit amount constraints matching `tokens`.
-    pub amounts: Vec<AmountConstraint>,
-    /// Minimum per-token input amounts, when represented by the protocol.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_amounts_in: Option<Vec<AmountConstraint>>,
+    /// Assets deposited into the pool with amount constraints.
+    pub inputs: Vec<AssetRefWithAmountConstraint>,
     /// LP token minted by the pool, when known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lp_token: Option<AssetRef>,
@@ -166,10 +160,8 @@ pub struct RemoveLiquidityAction {
     /// LP burn amount constraint, when present.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lp_burn_amount: Option<AmountConstraint>,
-    /// Underlying pool assets.
-    pub tokens: Vec<AssetRef>,
-    /// Minimum output constraints matching `tokens`.
-    pub min_amounts_out: Vec<AmountConstraint>,
+    /// Underlying pool assets with amount constraints.
+    pub outputs: Vec<AssetRefWithAmountConstraint>,
     /// Recipient of the withdrawn assets.
     pub recipient: Address,
     /// Validity window, when available.
@@ -185,16 +177,11 @@ pub struct MintLiquidityNftAction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pool: Option<PoolRef>,
     /// Pool fee in basis points.
-    pub fee_bps: u32,
+    pub fee_tier_bps: u32,
     /// Minted position tick range.
     pub tick_range: TickRange,
-    /// Position token pair.
-    pub tokens: [AssetRef; 2],
-    /// Desired deposit amounts matching `tokens`.
-    pub amounts: [AmountConstraint; 2],
-    /// Minimum deposit amounts matching `tokens`, when present.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_amounts_in: Option<[AmountConstraint; 2]>,
+    /// Position token pair with amount constraints.
+    pub inputs: Vec<AssetRefWithAmountConstraint>,
     /// NFT collection for the minted position.
     pub nft: AssetRef,
     /// Recipient of the minted NFT.
@@ -210,16 +197,11 @@ pub struct MintLiquidityNftAction {
 pub struct BurnLiquidityNftAction {
     /// NFT collection for the position.
     pub nft: AssetRef,
-    /// Position token id.
-    pub token_id: DecimalString,
     /// Burn semantics.
     pub burn_kind: BurnKind,
-    /// Output assets for auto-decrease burns.
+    /// Output assets with amount constraints for auto-decrease burns.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub outputs: Option<[AssetRef; 2]>,
-    /// Minimum output amounts for auto-decrease burns.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_amounts_out: Option<[AmountConstraint; 2]>,
+    pub outputs: Option<Vec<AssetRefWithAmountConstraint>>,
     /// Recipient for auto-decrease burn outputs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recipient: Option<Address>,
@@ -234,15 +216,8 @@ pub struct BurnLiquidityNftAction {
 pub struct IncreaseLiquidityAction {
     /// NFT collection for the position.
     pub nft: AssetRef,
-    /// Position token id.
-    pub token_id: DecimalString,
-    /// Position token pair.
-    pub tokens: [AssetRef; 2],
-    /// Desired input amounts matching `tokens`.
-    pub amounts: [AmountConstraint; 2],
-    /// Minimum input amounts matching `tokens`, when present.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_amounts_in: Option<[AmountConstraint; 2]>,
+    /// Position token pair with amount constraints.
+    pub inputs: Vec<AssetRefWithAmountConstraint>,
     /// Validity window, when available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validity: Option<Validity>,
@@ -254,14 +229,13 @@ pub struct IncreaseLiquidityAction {
 pub struct DecreaseLiquidityAction {
     /// NFT collection for the position.
     pub nft: AssetRef,
-    /// Position token id.
-    pub token_id: DecimalString,
     /// Internal liquidity amount to remove.
     pub liquidity_delta: AmountConstraint,
-    /// Output assets.
-    pub outputs: [AssetRef; 2],
-    /// Minimum output amounts matching `outputs`.
-    pub min_amounts_out: [AmountConstraint; 2],
+    /// Output assets with amount constraints.
+    pub outputs: Vec<AssetRefWithAmountConstraint>,
+    /// Recipient of withdrawn assets, when the protocol sends them immediately.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recipient: Option<Address>,
     /// Validity window, when available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validity: Option<Validity>,
@@ -271,8 +245,8 @@ pub struct DecreaseLiquidityAction {
 mod tests {
     use super::*;
     use crate::action::common::{
-        Address, AmountConstraint, AmountKind, AssetKind, AssetRef, DecimalString, UsdValuation,
-        Validity, ValiditySource,
+        Address, AmountConstraint, AmountKind, AssetKind, AssetRef, AssetRefWithAmountConstraint,
+        DecimalString, UsdValuation, Validity, ValiditySource,
     };
     use serde::{de::DeserializeOwned, Serialize};
     use serde_json::{json, Value};
@@ -289,8 +263,8 @@ mod tests {
     fn erc20(address_value: &str, symbol: &str, decimals: u8) -> AssetRef {
         AssetRef {
             kind: AssetKind::Erc20,
-            chain_id: 1,
             address: Some(address(address_value)),
+            token_id: None,
             symbol: Some(symbol.to_owned()),
             decimals: Some(decimals),
         }
@@ -299,10 +273,17 @@ mod tests {
     fn erc721(address_value: &str, symbol: &str) -> AssetRef {
         AssetRef {
             kind: AssetKind::Erc721,
-            chain_id: 1,
             address: Some(address(address_value)),
+            token_id: None,
             symbol: Some(symbol.to_owned()),
             decimals: None,
+        }
+    }
+
+    fn nft_position() -> AssetRef {
+        AssetRef {
+            token_id: Some(decimal("42")),
+            ..erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS")
         }
     }
 
@@ -344,6 +325,24 @@ mod tests {
         ]
     }
 
+    fn asset_amount_pair(
+        first: AmountKind,
+        second: AmountKind,
+    ) -> Vec<AssetRefWithAmountConstraint> {
+        let [asset_a, asset_b] = token_pair();
+        let [amount_a, amount_b] = amount_pair(first, second);
+        vec![
+            AssetRefWithAmountConstraint {
+                asset: asset_a,
+                amount: amount_a,
+            },
+            AssetRefWithAmountConstraint {
+                asset: asset_b,
+                amount: amount_b,
+            },
+        ]
+    }
+
     fn usd(value: &str) -> UsdValuation {
         UsdValuation {
             value: value.to_owned(),
@@ -365,7 +364,7 @@ mod tests {
     #[test]
     fn test_swap_action_serde_roundtrip_minimal() {
         let action = SwapAction {
-            mode: SwapMode::ExactIn,
+            swap_mode: SwapMode::ExactIn,
             token_in: token_pair()[0].clone(),
             token_out: token_pair()[1].clone(),
             amount_in: amount(AmountKind::Exact, "1000000000000000000"),
@@ -377,12 +376,15 @@ mod tests {
         };
 
         assert_roundtrip(&action);
+        let value = serde_json::to_value(&action).unwrap();
+        assert_eq!(value.get("swapMode"), Some(&json!("exact_in")));
+        assert!(value.get("mode").is_none());
     }
 
     #[test]
     fn test_swap_action_serde_roundtrip_full() {
         let action = SwapAction {
-            mode: SwapMode::ExactOut,
+            swap_mode: SwapMode::ExactOut,
             token_in: token_pair()[0].clone(),
             token_out: token_pair()[1].clone(),
             amount_in: amount(AmountKind::Max, "1100000000000000000"),
@@ -394,21 +396,21 @@ mod tests {
                 value_in_usd: Some(usd("2000.00")),
                 min_value_out_usd: Some(usd("1990.00")),
                 expected_value_out_usd: Some(usd("2001.00")),
-                allowance_covers_input: Some(true),
                 input_fraction_of_portfolio_bps: Some(125),
             },
         };
 
         assert_roundtrip(&action);
+        let value = serde_json::to_value(&action).unwrap();
+        assert_eq!(value.get("swapMode"), Some(&json!("exact_out")));
+        assert!(value.get("mode").is_none());
     }
 
     #[test]
     fn test_add_liquidity_action_serde_roundtrip_minimal() {
         let action = AddLiquidityAction {
             pool: None,
-            tokens: token_pair().to_vec(),
-            amounts: amount_pair(AmountKind::Exact, AmountKind::Exact).to_vec(),
-            min_amounts_in: None,
+            inputs: asset_amount_pair(AmountKind::Exact, AmountKind::Exact),
             lp_token: None,
             lp_amount: None,
             recipient: address("0x2222222222222222222222222222222222222222"),
@@ -422,9 +424,7 @@ mod tests {
     fn test_add_liquidity_action_serde_roundtrip_full() {
         let action = AddLiquidityAction {
             pool: Some(pool()),
-            tokens: token_pair().to_vec(),
-            amounts: amount_pair(AmountKind::Estimated, AmountKind::Estimated).to_vec(),
-            min_amounts_in: Some(amount_pair(AmountKind::Min, AmountKind::Min).to_vec()),
+            inputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
             lp_token: Some(erc20(
                 "0x3333333333333333333333333333333333333333",
                 "UNI-V2",
@@ -445,8 +445,7 @@ mod tests {
             pool: None,
             lp_token: None,
             lp_burn_amount: None,
-            tokens: token_pair().to_vec(),
-            min_amounts_out: amount_pair(AmountKind::Min, AmountKind::Min).to_vec(),
+            outputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
             recipient: address("0x2222222222222222222222222222222222222222"),
             validity: None,
         };
@@ -465,8 +464,7 @@ mod tests {
                 18,
             )),
             lp_burn_amount: Some(amount(AmountKind::Exact, "100000000000000000")),
-            tokens: token_pair().to_vec(),
-            min_amounts_out: amount_pair(AmountKind::Min, AmountKind::Min).to_vec(),
+            outputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
             recipient: address("0x2222222222222222222222222222222222222222"),
             validity: Some(validity()),
         };
@@ -478,14 +476,12 @@ mod tests {
     fn test_mint_liquidity_nft_action_serde_roundtrip_minimal() {
         let action = MintLiquidityNftAction {
             pool: None,
-            fee_bps: 5,
+            fee_tier_bps: 5,
             tick_range: TickRange {
                 lower: -60,
                 upper: 60,
             },
-            tokens: token_pair(),
-            amounts: amount_pair(AmountKind::Estimated, AmountKind::Estimated),
-            min_amounts_in: None,
+            inputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
             nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
             recipient: address("0x2222222222222222222222222222222222222222"),
             validity: None,
@@ -498,14 +494,12 @@ mod tests {
     fn test_mint_liquidity_nft_action_serde_roundtrip_full() {
         let action = MintLiquidityNftAction {
             pool: Some(pool()),
-            fee_bps: 30,
+            fee_tier_bps: 30,
             tick_range: TickRange {
                 lower: -120,
                 upper: 120,
             },
-            tokens: token_pair(),
-            amounts: amount_pair(AmountKind::Estimated, AmountKind::Estimated),
-            min_amounts_in: Some(amount_pair(AmountKind::Min, AmountKind::Min)),
+            inputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
             nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
             recipient: address("0x2222222222222222222222222222222222222222"),
             validity: Some(validity()),
@@ -517,11 +511,9 @@ mod tests {
     #[test]
     fn test_burn_liquidity_nft_action_serde_roundtrip_minimal() {
         let action = BurnLiquidityNftAction {
-            nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
-            token_id: decimal("42"),
+            nft: nft_position(),
             burn_kind: BurnKind::EmptyOnly,
             outputs: None,
-            min_amounts_out: None,
             recipient: None,
             validity: None,
         };
@@ -532,11 +524,9 @@ mod tests {
     #[test]
     fn test_burn_liquidity_nft_action_serde_roundtrip_full() {
         let action = BurnLiquidityNftAction {
-            nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
-            token_id: decimal("42"),
+            nft: nft_position(),
             burn_kind: BurnKind::AutoDecrease,
-            outputs: Some(token_pair()),
-            min_amounts_out: Some(amount_pair(AmountKind::Min, AmountKind::Min)),
+            outputs: Some(asset_amount_pair(AmountKind::Min, AmountKind::Min)),
             recipient: Some(address("0x2222222222222222222222222222222222222222")),
             validity: Some(validity()),
         };
@@ -547,11 +537,8 @@ mod tests {
     #[test]
     fn test_increase_liquidity_action_serde_roundtrip_minimal() {
         let action = IncreaseLiquidityAction {
-            nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
-            token_id: decimal("42"),
-            tokens: token_pair(),
-            amounts: amount_pair(AmountKind::Estimated, AmountKind::Estimated),
-            min_amounts_in: None,
+            nft: nft_position(),
+            inputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
             validity: None,
         };
 
@@ -561,11 +548,8 @@ mod tests {
     #[test]
     fn test_increase_liquidity_action_serde_roundtrip_full() {
         let action = IncreaseLiquidityAction {
-            nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
-            token_id: decimal("42"),
-            tokens: token_pair(),
-            amounts: amount_pair(AmountKind::Estimated, AmountKind::Estimated),
-            min_amounts_in: Some(amount_pair(AmountKind::Min, AmountKind::Min)),
+            nft: nft_position(),
+            inputs: asset_amount_pair(AmountKind::Max, AmountKind::Max),
             validity: Some(validity()),
         };
 
@@ -575,11 +559,10 @@ mod tests {
     #[test]
     fn test_decrease_liquidity_action_serde_roundtrip_minimal() {
         let action = DecreaseLiquidityAction {
-            nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
-            token_id: decimal("42"),
+            nft: nft_position(),
             liquidity_delta: amount(AmountKind::Exact, "100000000000000000"),
-            outputs: token_pair(),
-            min_amounts_out: amount_pair(AmountKind::Min, AmountKind::Min),
+            outputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
+            recipient: None,
             validity: None,
         };
 
@@ -589,11 +572,10 @@ mod tests {
     #[test]
     fn test_decrease_liquidity_action_serde_roundtrip_full() {
         let action = DecreaseLiquidityAction {
-            nft: erc721("0x4444444444444444444444444444444444444444", "UNI-V3-POS"),
-            token_id: decimal("42"),
+            nft: nft_position(),
             liquidity_delta: amount(AmountKind::Exact, "100000000000000000"),
-            outputs: token_pair(),
-            min_amounts_out: amount_pair(AmountKind::Min, AmountKind::Min),
+            outputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
+            recipient: Some(address("0x2222222222222222222222222222222222222222")),
             validity: Some(validity()),
         };
 
@@ -603,7 +585,7 @@ mod tests {
     #[test]
     fn test_swap_enrichment_omitted_when_empty() {
         let action = SwapAction {
-            mode: SwapMode::ExactIn,
+            swap_mode: SwapMode::ExactIn,
             token_in: token_pair()[0].clone(),
             token_out: token_pair()[1].clone(),
             amount_in: amount(AmountKind::Exact, "1000000000000000000"),
@@ -632,17 +614,15 @@ mod tests {
             .cloned()
             .unwrap_or_else(|| {
                 json!({
-                    "mode": "exact_in",
+                    "swapMode": "exact_in",
                     "tokenIn": {
                         "kind": "erc20",
-                        "chainId": 1,
                         "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
                         "symbol": "WETH",
                         "decimals": 18
                     },
                     "tokenOut": {
                         "kind": "erc20",
-                        "chainId": 1,
                         "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
                         "symbol": "USDC",
                         "decimals": 6
@@ -661,7 +641,7 @@ mod tests {
 
         let action = serde_json::from_value::<SwapAction>(fixture).unwrap();
 
-        assert_eq!(action.mode, SwapMode::ExactIn);
+        assert_eq!(action.swap_mode, SwapMode::ExactIn);
         assert!(action.enrichment.is_empty());
     }
 }

@@ -147,7 +147,6 @@ mod tests {
     fn erc20(symbol: &str) -> Value {
         json!({
             "kind": "erc20",
-            "chainId": 1,
             "address": address(0x10),
             "symbol": symbol,
             "decimals": 18
@@ -160,7 +159,7 @@ mod tests {
 
     fn swap_fields() -> Value {
         json!({
-            "mode": "exact_in",
+            "swapMode": "exact_in",
             "tokenIn": erc20("WETH"),
             "tokenOut": erc20("USDC"),
             "amountIn": amount("exact", "1000"),

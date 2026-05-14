@@ -196,7 +196,7 @@ fn map_exact_input_single(
     let amount_out_minimum = uint_arg(decoded, "amountOutMinimum")?;
 
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactIn,
+        swap_mode: SwapMode::ExactIn,
         token_in: asset_ref(ctx, &token_in),
         token_out: asset_ref(ctx, &token_out),
         amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
@@ -220,7 +220,7 @@ fn map_exact_input(
     let parsed = parse_path(path)?;
 
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactIn,
+        swap_mode: SwapMode::ExactIn,
         token_in: asset_ref(ctx, &parsed.token_in),
         token_out: asset_ref(ctx, &parsed.token_out),
         amount_in: amount_constraint(AmountKind::Exact, amount_in)?,
@@ -245,7 +245,7 @@ fn map_exact_output_single(
     let amount_in_maximum = uint_arg(decoded, "amountInMaximum")?;
 
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactOut,
+        swap_mode: SwapMode::ExactOut,
         token_in: asset_ref(ctx, &token_in),
         token_out: asset_ref(ctx, &token_out),
         amount_in: amount_constraint(AmountKind::Max, amount_in_maximum)?,
@@ -269,7 +269,7 @@ fn map_exact_output(
     let parsed = parse_path(path)?;
 
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactOut,
+        swap_mode: SwapMode::ExactOut,
         token_in: asset_ref(ctx, &parsed.token_out),
         token_out: asset_ref(ctx, &parsed.token_in),
         amount_in: amount_constraint(AmountKind::Max, amount_in_maximum)?,
@@ -338,8 +338,8 @@ fn asset_ref(ctx: &MapContext<'_>, address: &Address) -> AssetRef {
     let metadata = ctx.token_registry.lookup(ctx.chain_id, address);
     AssetRef {
         kind: AssetKind::Erc20,
-        chain_id: ctx.chain_id,
         address: Some(address.clone()),
+        token_id: None,
         symbol: metadata.as_ref().map(|m| m.symbol.clone()),
         decimals: metadata.map(|m| m.decimals),
     }
@@ -496,11 +496,16 @@ mod tests {
         }
     }
 
-    fn erc20(chain_id: u64, address: &str, symbol: Option<&str>, decimals: Option<u8>) -> AssetRef {
+    fn erc20(
+        _chain_id: u64,
+        address: &str,
+        symbol: Option<&str>,
+        decimals: Option<u8>,
+    ) -> AssetRef {
         AssetRef {
             kind: AssetKind::Erc20,
-            chain_id,
             address: Some(address.parse().unwrap()),
+            token_id: None,
             symbol: symbol.map(str::to_owned),
             decimals,
         }
@@ -760,7 +765,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactIn,
+                swap_mode: SwapMode::ExactIn,
                 token_in: erc20(
                     1,
                     "0xdac17f958d2ee523a2206206994597c13d831ec7",
@@ -795,7 +800,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactIn,
+                swap_mode: SwapMode::ExactIn,
                 token_in: erc20(
                     1,
                     "0xdac17f958d2ee523a2206206994597c13d831ec7",
@@ -841,7 +846,7 @@ mod tests {
             panic!("expected swap action");
         };
         assert_eq!(result[0].category, Category::Dex);
-        assert_eq!(swap.mode, SwapMode::ExactIn);
+        assert_eq!(swap.swap_mode, SwapMode::ExactIn);
         assert_eq!(swap.amount_in.kind, AmountKind::Exact);
         assert_eq!(swap.amount_out.kind, AmountKind::Min);
         assert_eq!(swap.fee_bps, Some(30));
@@ -895,7 +900,7 @@ mod tests {
             panic!("expected swap action");
         };
         assert_eq!(result[0].category, Category::Dex);
-        assert_eq!(swap.mode, SwapMode::ExactOut);
+        assert_eq!(swap.swap_mode, SwapMode::ExactOut);
         assert_eq!(swap.amount_in, amount(AmountKind::Max, "200000000"));
         assert_eq!(swap.amount_out, amount(AmountKind::Exact, "100000000"));
         assert_eq!(
@@ -939,7 +944,7 @@ mod tests {
         let Action::Swap(swap) = &result[0].action else {
             panic!("expected swap action");
         };
-        assert_eq!(swap.mode, SwapMode::ExactOut);
+        assert_eq!(swap.swap_mode, SwapMode::ExactOut);
         assert_eq!(swap.amount_in.kind, AmountKind::Max);
         assert_eq!(swap.amount_out.kind, AmountKind::Exact);
         assert_eq!(

@@ -10,8 +10,8 @@
 
 pub use crate::action::{
     Action, ActionEnvelope, Address as ActionAddress, AmountConstraint, AmountKind, AssetKind,
-    AssetRef, Category, DecimalString, Hex, UsdValuation as ActionUsdValuation, Validity,
-    ValiditySource,
+    AssetRef, AssetRefWithAmountConstraint, Category, DecimalString, Hex,
+    UsdValuation as ActionUsdValuation, Validity, ValiditySource,
 };
 pub use crate::core::{
     Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation,

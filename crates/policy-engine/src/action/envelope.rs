@@ -418,7 +418,6 @@ mod tests {
     fn native(symbol: &str) -> Value {
         json!({
             "kind": "native",
-            "chainId": 1,
             "symbol": symbol,
             "decimals": 18
         })
@@ -427,7 +426,6 @@ mod tests {
     fn erc20(symbol: &str) -> Value {
         json!({
             "kind": "erc20",
-            "chainId": 1,
             "address": address(0x10),
             "symbol": symbol,
             "decimals": 18
@@ -437,7 +435,6 @@ mod tests {
     fn erc721(symbol: &str) -> Value {
         json!({
             "kind": "erc721",
-            "chainId": 1,
             "address": address(0x11),
             "symbol": symbol
         })
@@ -454,17 +451,22 @@ mod tests {
         })
     }
 
-    fn token_pair() -> Value {
-        json!([erc20("WETH"), erc20("USDC")])
-    }
-
-    fn amount_pair(first_kind: &str, second_kind: &str) -> Value {
-        json!([amount(first_kind, "1000"), amount(second_kind, "900")])
+    fn asset_amount_pair(first_kind: &str, second_kind: &str) -> Value {
+        json!([
+            {
+                "asset": erc20("WETH"),
+                "amount": amount(first_kind, "1000")
+            },
+            {
+                "asset": erc20("USDC"),
+                "amount": amount(second_kind, "900")
+            }
+        ])
     }
 
     fn swap_fields() -> Value {
         json!({
-            "mode": "exact_in",
+            "swapMode": "exact_in",
             "tokenIn": erc20("WETH"),
             "tokenOut": erc20("USDC"),
             "amountIn": amount("exact", "1000"),
@@ -475,8 +477,7 @@ mod tests {
 
     fn add_liquidity_fields() -> Value {
         json!({
-            "tokens": token_pair(),
-            "amounts": amount_pair("exact", "exact"),
+            "inputs": asset_amount_pair("exact", "exact"),
             "recipient": address(0x30)
         })
     }
@@ -484,21 +485,19 @@ mod tests {
     fn remove_liquidity_fields() -> Value {
         json!({
             "exitMode": "proportional",
-            "tokens": token_pair(),
-            "minAmountsOut": amount_pair("min", "min"),
+            "outputs": asset_amount_pair("min", "min"),
             "recipient": address(0x30)
         })
     }
 
     fn mint_liquidity_nft_fields() -> Value {
         json!({
-            "feeBps": 5,
+            "feeTierBps": 5,
             "tickRange": {
                 "lower": -60,
                 "upper": 60
             },
-            "tokens": token_pair(),
-            "amounts": amount_pair("estimated", "estimated"),
+            "inputs": asset_amount_pair("min", "min"),
             "nft": erc721("UNI-V3-POS"),
             "recipient": address(0x30)
         })
@@ -516,8 +515,7 @@ mod tests {
         json!({
             "nft": erc721("UNI-V3-POS"),
             "tokenId": "42",
-            "tokens": token_pair(),
-            "amounts": amount_pair("estimated", "estimated")
+            "inputs": asset_amount_pair("min", "min")
         })
     }
 
@@ -526,8 +524,7 @@ mod tests {
             "nft": erc721("UNI-V3-POS"),
             "tokenId": "42",
             "liquidityDelta": amount("exact", "1000"),
-            "outputs": token_pair(),
-            "minAmountsOut": amount_pair("min", "min")
+            "outputs": asset_amount_pair("min", "min")
         })
     }
 

@@ -6,7 +6,7 @@ use crate::dto::{
 };
 use alloy_primitives::U256;
 use policy_engine::core::{Address as CoreAddress, Token, UsdValuation as CoreUsdValuation};
-use policy_engine::enrichment::enrich_swap_envelope;
+use policy_engine::enrichment::enrich_envelope;
 use policy_engine::host::oracle::SnapshotOracle;
 use policy_engine::host::{HostCapabilities, MockApprovals, MockPortfolio};
 use policy_engine::lowering::policy_request_from_envelope;
@@ -368,7 +368,6 @@ mod tests {
     fn asset_ref(address: &str, symbol: &str, decimals: u64) -> Value {
         json!({
             "kind": "erc20",
-            "chainId": 1,
             "address": address,
             "symbol": symbol,
             "decimals": decimals
@@ -400,7 +399,7 @@ mod tests {
             "category": "dex",
             "action": "swap",
             "fields": {
-                "mode": "exact_in",
+                "swapMode": "exact_in",
                 "tokenIn": asset_ref("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18),
                 "tokenOut": asset_ref("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6),
                 "amountIn": amount_constraint("exact", "1000000000000000000"),
@@ -634,7 +633,7 @@ pub fn evaluate_envelope_json(input_json: String) -> String {
         // fields as `None`.
         let host_parts = host_capabilities_parts_from_dto(&host_snapshot);
         let host = host_parts.as_capabilities();
-        let envelope = enrich_swap_envelope(envelope, &from, &to, &host);
+        let envelope = enrich_envelope(envelope, &from, &to, &host);
 
         let Some(request) = policy_request_from_envelope(
             &envelope,

@@ -16,7 +16,7 @@ pub mod restaking;
 pub mod staking;
 
 pub use common::{
-    Address, AmountConstraint, AmountKind, AssetKind, AssetRef, DecimalString, Hex, UsdValuation,
-    Validity, ValiditySource,
+    Address, AmountConstraint, AmountKind, AssetKind, AssetRef, AssetRefWithAmountConstraint,
+    DecimalString, Hex, UsdValuation, Validity, ValiditySource,
 };
 pub use envelope::{Action, ActionEnvelope, Category};

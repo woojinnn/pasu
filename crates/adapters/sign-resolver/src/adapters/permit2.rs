@@ -296,11 +296,11 @@ fn permit_amount(value: &DecimalString, default_kind: AmountKind) -> AmountConst
     }
 }
 
-fn erc20(chain_id: u64, address: Address) -> AssetRef {
+fn erc20(_chain_id: u64, address: Address) -> AssetRef {
     AssetRef {
         kind: AssetKind::Erc20,
-        chain_id,
         address: Some(address),
+        token_id: None,
         symbol: None,
         decimals: None,
     }

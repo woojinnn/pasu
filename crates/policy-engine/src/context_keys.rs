@@ -28,25 +28,71 @@ pub const RAW_CALLDATA: &str = "rawCalldata";
 /// Semantic action target address.
 pub const TARGET: &str = "target";
 
-// Dex action context fields stamped by `lowering::request_from_action`.
+// Dex action context fields stamped by envelope lowering.
 /// Protocol ids observed in the aggregate DEX action.
 pub const PROTOCOL_IDS: &str = "protocolIds";
+/// Assets deposited or spent by a DEX action.
+pub const INPUTS: &str = "inputs";
+/// Assets received or withdrawn by a DEX action.
+pub const OUTPUTS: &str = "outputs";
 /// Tokens the aggregate DEX action spends.
 pub const INPUT_TOKENS: &str = "inputTokens";
 /// Tokens the aggregate DEX action expects to receive.
 pub const OUTPUT_TOKENS: &str = "outputTokens";
+/// LP token minted or burned by a liquidity action.
+pub const LP_TOKEN: &str = "lpToken";
+/// LP amount constraint.
+pub const LP_AMOUNT: &str = "lpAmount";
+/// LP burn amount constraint.
+pub const LP_BURN_AMOUNT: &str = "lpBurnAmount";
+/// Fungible liquidity exit mode.
+pub const EXIT_MODE: &str = "exitMode";
+/// Concentrated liquidity NFT burn kind.
+pub const BURN_KIND: &str = "burnKind";
+/// Internal concentrated-liquidity amount delta.
+pub const LIQUIDITY_DELTA: &str = "liquidityDelta";
+/// Pool fee tier in basis points.
+pub const FEE_TIER_BPS: &str = "feeTierBps";
+/// Swap or pool fee in basis points.
+pub const FEE_BPS: &str = "feeBps";
+/// Concentrated liquidity tick range.
+pub const TICK_RANGE: &str = "tickRange";
+/// Lower tick bound.
+pub const LOWER: &str = "lower";
+/// Upper tick bound.
+pub const UPPER: &str = "upper";
+/// DEX pool reference.
+pub const POOL: &str = "pool";
+/// Position NFT reference.
+pub const NFT: &str = "nft";
+/// DEX action recipient.
+pub const RECIPIENT: &str = "recipient";
 /// Total USD value of input requirements.
 pub const TOTAL_INPUT_USD: &str = "totalInputUsd";
 /// Total USD value of minimum output requirements.
 pub const TOTAL_MIN_OUTPUT_USD: &str = "totalMinOutputUsd";
+/// Total USD value of output requirements.
+pub const TOTAL_OUTPUT_USD: &str = "totalOutputUsd";
+/// Input amount as basis points of portfolio value.
+pub const TOTAL_INPUT_FRACTION_OF_PORTFOLIO_BPS: &str = "totalInputFractionOfPortfolioBps";
 /// Highest pool or route fee in basis points.
 pub const MAX_FEE_BPS: &str = "maxFeeBps";
 /// Whether any swap leg has a zero minimum output.
 pub const HAS_ZERO_MIN_OUTPUT: &str = "hasZeroMinOutput";
 /// Whether any recipient differs from the actor.
 pub const HAS_EXTERNAL_RECIPIENT: &str = "hasExternalRecipient";
-/// Whether current allowances cover all ERC-20 inputs.
-pub const ALLOWANCES_COVER_INPUTS: &str = "allowancesCoverInputs";
+/// Whether any allowance grants an unlimited spend.
+pub const HAS_UNLIMITED_ALLOWANCE: &str = "hasUnlimitedAllowance";
+/// Whether the recipient address is a contract.
+pub const RECIPIENT_IS_CONTRACT: &str = "recipientIsContract";
+/// Swap effective rate versus oracle price, in basis points.
+pub const EFFECTIVE_RATE_VS_ORACLE_BPS: &str = "effectiveRateVsOracleBps";
+/// Whether the current actor owns the position NFT.
+pub const NFT_OWNER_IS_ACTOR: &str = "nftOwnerIsActor";
+/// Rolling-window statistics for the action.
+pub const WINDOW_STATS: &str = "windowStats";
+/// Validity deadline delta in seconds.
+pub const VALIDITY_DELTA_SEC: &str = "validityDeltaSec";
 
 // Signature action context fields stamped by signature lowering.
 /// Shared signature base context record.
@@ -115,12 +161,20 @@ pub const MESSAGE_JSON: &str = "messageJson";
 // AmountSpec sub-record fields.
 /// Token address field.
 pub const ADDRESS: &str = "address";
+/// Protocol-specific id field.
+pub const ID: &str = "id";
+/// Human-readable label field.
+pub const LABEL: &str = "label";
+/// Nested asset field.
+pub const ASSET: &str = "asset";
+/// Nested amount field.
+pub const AMOUNT: &str = "amount";
+/// Token id field.
+pub const TOKEN_ID: &str = "tokenId";
 /// Token symbol field.
 pub const SYMBOL: &str = "symbol";
 /// Token decimal precision field.
 pub const DECIMALS: &str = "decimals";
-/// Native-asset marker field.
-pub const IS_NATIVE: &str = "isNative";
 /// Raw integer amount field.
 pub const RAW: &str = "raw";
 /// Human decimal amount field.

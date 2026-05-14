@@ -102,7 +102,7 @@ fn decode_v3_swap_exact_in(
     let parsed_path = parse_v3_path(path)?;
 
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactIn,
+        swap_mode: SwapMode::ExactIn,
         token_in: asset_ref(ctx, &parsed_path.token_in),
         token_out: asset_ref(ctx, &parsed_path.token_out),
         amount_in: amount_constraint(AmountKind::Exact, amount_in),
@@ -133,7 +133,7 @@ fn decode_v3_swap_exact_out(
     // so for exact-out we flip the endpoints back into wallet-side semantics
     // (token_in = what the user spends, token_out = what they receive).
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactOut,
+        swap_mode: SwapMode::ExactOut,
         token_in: asset_ref(ctx, &parsed_path.token_out),
         token_out: asset_ref(ctx, &parsed_path.token_in),
         amount_in: amount_constraint(AmountKind::Max, amount_in_max),
@@ -158,7 +158,7 @@ fn decode_v2_swap_exact_in(
     let (token_in, token_out) = path_endpoints(&path, "v2")?;
 
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactIn,
+        swap_mode: SwapMode::ExactIn,
         token_in: asset_ref(ctx, token_in),
         token_out: asset_ref(ctx, token_out),
         amount_in: amount_constraint(AmountKind::Exact, amount_in),
@@ -183,7 +183,7 @@ fn decode_v2_swap_exact_out(
     let (token_in, token_out) = path_endpoints(&path, "v2")?;
 
     Ok(swap_envelope(SwapAction {
-        mode: SwapMode::ExactOut,
+        swap_mode: SwapMode::ExactOut,
         token_in: asset_ref(ctx, token_in),
         token_out: asset_ref(ctx, token_out),
         amount_in: amount_constraint(AmountKind::Max, amount_in_max),
@@ -213,8 +213,8 @@ fn asset_ref(ctx: &CallContext<'_>, address: &Address) -> AssetRef {
     let metadata = ctx.token_registry.lookup(ctx.chain_id, address);
     AssetRef {
         kind: AssetKind::Erc20,
-        chain_id: ctx.chain_id,
         address: Some(address.clone()),
+        token_id: None,
         symbol: metadata.as_ref().map(|m| m.symbol.clone()),
         decimals: metadata.map(|m| m.decimals),
     }

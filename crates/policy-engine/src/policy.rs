@@ -581,11 +581,10 @@ mod tests {
 
     fn token(symbol: &str) -> JsonValue {
         json!({
-            "chainId": 1,
+            "kind": "erc20",
             "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
             "symbol": symbol,
             "decimals": 18,
-            "isNative": false,
         })
     }
 

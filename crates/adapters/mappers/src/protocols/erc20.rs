@@ -77,8 +77,8 @@ impl Mapper for Erc20ApproveMapper {
 
         let token = AssetRef {
             kind: AssetKind::Erc20,
-            chain_id: ctx.chain_id,
             address: Some(ctx.to.clone()),
+            token_id: None,
             symbol,
             decimals,
         };
@@ -143,8 +143,8 @@ impl Mapper for Erc20TransferMapper {
 
         let token = AssetRef {
             kind: AssetKind::Erc20,
-            chain_id: ctx.chain_id,
             address: Some(ctx.to.clone()),
+            token_id: None,
             symbol,
             decimals,
         };
@@ -208,8 +208,8 @@ impl Mapper for Erc20TransferFromMapper {
 
         let token = AssetRef {
             kind: AssetKind::Erc20,
-            chain_id: ctx.chain_id,
             address: Some(ctx.to.clone()),
+            token_id: None,
             symbol,
             decimals,
         };
@@ -258,8 +258,8 @@ impl Mapper for SetApprovalForAllMapper {
         let approved = find_bool(decoded, "approved")?;
         let collection = AssetRef {
             kind: AssetKind::Erc721,
-            chain_id: ctx.chain_id,
             address: Some(ctx.to.clone()),
+            token_id: None,
             symbol: None,
             decimals: None,
         };

@@ -78,7 +78,7 @@ fn swap_uniswap_v2_exact_in_routes() {
     let swap = unwrap_swap(&envelopes[0]);
     use policy_engine::action::common::AmountKind;
     use policy_engine::action::dex::SwapMode;
-    assert_eq!(swap.mode, SwapMode::ExactIn);
+    assert_eq!(swap.swap_mode, SwapMode::ExactIn);
     assert_eq!(swap.amount_in.kind, AmountKind::Exact);
     assert_eq!(swap.amount_out.kind, AmountKind::Min);
 }
@@ -90,7 +90,7 @@ fn swap_uniswap_v2_exact_out_routes() {
     let swap = unwrap_swap(&envelopes[0]);
     use policy_engine::action::common::AmountKind;
     use policy_engine::action::dex::SwapMode;
-    assert_eq!(swap.mode, SwapMode::ExactOut);
+    assert_eq!(swap.swap_mode, SwapMode::ExactOut);
     assert_eq!(swap.amount_in.kind, AmountKind::Max);
     assert_eq!(swap.amount_out.kind, AmountKind::Exact);
 }
@@ -101,7 +101,7 @@ fn swap_uniswap_v3_exact_input_single_routes() {
     assert_eq!(envelopes.len(), 1);
     let swap = unwrap_swap(&envelopes[0]);
     use policy_engine::action::dex::SwapMode;
-    assert_eq!(swap.mode, SwapMode::ExactIn);
+    assert_eq!(swap.swap_mode, SwapMode::ExactIn);
     assert!(swap.fee_bps.is_some(), "V3 single-hop should carry fee_bps");
 }
 
@@ -111,7 +111,7 @@ fn swap_uniswap_v3_exact_input_multi_routes() {
     assert_eq!(envelopes.len(), 1);
     let swap = unwrap_swap(&envelopes[0]);
     use policy_engine::action::dex::SwapMode;
-    assert_eq!(swap.mode, SwapMode::ExactIn);
+    assert_eq!(swap.swap_mode, SwapMode::ExactIn);
     assert!(
         swap.fee_bps.is_some(),
         "V3 multi-hop projects to first hop's fee"
@@ -130,7 +130,7 @@ fn swap_uniswap_v3_exact_output_single_routes() {
     let swap = unwrap_swap(&envelopes[0]);
     use policy_engine::action::common::AmountKind;
     use policy_engine::action::dex::SwapMode;
-    assert_eq!(swap.mode, SwapMode::ExactOut);
+    assert_eq!(swap.swap_mode, SwapMode::ExactOut);
     assert_eq!(swap.amount_in.kind, AmountKind::Max);
     assert_eq!(swap.amount_out.kind, AmountKind::Exact);
 }
@@ -141,7 +141,7 @@ fn swap_universal_router_routes() {
     assert_eq!(envelopes.len(), 1);
     let swap = unwrap_swap(&envelopes[0]);
     use policy_engine::action::dex::SwapMode;
-    assert_eq!(swap.mode, SwapMode::ExactIn);
+    assert_eq!(swap.swap_mode, SwapMode::ExactIn);
 }
 
 #[test]

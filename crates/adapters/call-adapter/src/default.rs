@@ -179,21 +179,21 @@ mod tests {
         }
     }
 
-    fn wrap_envelope(chain_id: u64, recipient: Address) -> ActionEnvelope {
+    fn wrap_envelope(_chain_id: u64, recipient: Address) -> ActionEnvelope {
         ActionEnvelope {
             category: Category::Misc,
             action: Action::Wrap(WrapAction {
                 native_asset: AssetRef {
                     kind: AssetKind::Native,
-                    chain_id,
                     address: None,
+                    token_id: None,
                     symbol: Some("ETH".to_owned()),
                     decimals: Some(18),
                 },
                 wrapped_asset: AssetRef {
                     kind: AssetKind::Erc20,
-                    chain_id,
                     address: Some(address("0x3333333333333333333333333333333333333333")),
+                    token_id: None,
                     symbol: Some("WETH".to_owned()),
                     decimals: Some(18),
                 },
@@ -450,8 +450,8 @@ mod tests {
     fn erc20_asset(address_value: &str, symbol: &str, decimals: u8) -> AssetRef {
         AssetRef {
             kind: AssetKind::Erc20,
-            chain_id: 1,
             address: Some(address(address_value)),
+            token_id: None,
             symbol: Some(symbol.to_owned()),
             decimals: Some(decimals),
         }
@@ -461,7 +461,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactIn,
+                swap_mode: SwapMode::ExactIn,
                 token_in: erc20_asset("0xdac17f958d2ee523a2206206994597c13d831ec7", "USDT", 6),
                 token_out: erc20_asset("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18),
                 amount_in: AmountConstraint {
@@ -487,7 +487,7 @@ mod tests {
         ActionEnvelope {
             category: Category::Dex,
             action: Action::Swap(SwapAction {
-                mode: SwapMode::ExactOut,
+                swap_mode: SwapMode::ExactOut,
                 token_in: erc20_asset("0xdac17f958d2ee523a2206206994597c13d831ec7", "USDT", 6),
                 token_out: erc20_asset("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "WETH", 18),
                 amount_in: AmountConstraint {
