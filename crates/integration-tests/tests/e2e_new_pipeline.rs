@@ -401,7 +401,6 @@ fn assert_policy_denies(policy_text: &str, request: &PolicyRequest, policy_id: &
     }
 }
 
-
 #[test]
 fn test_max_input_usd_100_pass() {
     let request = synthetic_swap_request_with(SyntheticSwapInput {

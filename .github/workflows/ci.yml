@@ -56,13 +56,13 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Build wasm
-        run: wasm-pack build crates/policy_engine_wasm --target web --release
+        run: wasm-pack build crates/policy-engine-wasm --target web --release
 
       - name: Cargo test (native) on wasm crate
         run: cargo test -p policy-engine-wasm
 
       - name: wasm-bindgen-tests (headless Chrome)
-        run: wasm-pack test --headless --chrome crates/policy_engine_wasm
+        run: wasm-pack test --headless --chrome crates/policy-engine-wasm
 
   extension:
     runs-on: ubuntu-latest
