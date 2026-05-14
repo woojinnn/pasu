@@ -1,0 +1,22 @@
+type RestakeContext = {
+  tokenIn: AssetRef,
+  receiptToken?: AssetRef,
+
+  amountIn: AmountConstraint,
+  amountOut?: AmountConstraint,
+
+  strategy?: Pool,
+
+  recipient: String,
+
+  totalInputUsd?: UsdValuation,
+  totalInputFractionOfPortfolioBps?: Long,
+  allowancesCoverInputs?: Bool,
+  windowStats?: WindowStats,
+};
+
+action "restake" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: RestakeContext,
+};

@@ -1,0 +1,17 @@
+type RequestUnstakeContext = {
+  receiptToken: AssetRef,
+  tokenOut?: AssetRef,
+
+  amountIn: AmountConstraint,
+  amountOut?: AmountConstraint,
+
+  recipient: String,
+
+  totalInputUsd?: UsdValuation,
+};
+
+action "request_unstake" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: RequestUnstakeContext,
+};
