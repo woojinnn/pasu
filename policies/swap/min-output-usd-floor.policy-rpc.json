@@ -1,0 +1,30 @@
+{
+  "id": "default::swap/min-output-usd-floor",
+  "schema_version": 1,
+  "requires": [
+    {
+      "id": "swap-min-output-usd",
+      "when": { "action": "swap" },
+      "method": "oracle.usd_value",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "asset": "$.action.tokenOut",
+        "amount": "$.action.amountOut.value"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "rpcTotalMinOutputUsd",
+          "type": "UsdValuation",
+          "from": "$.result",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "context_extensions": {
+    "swap": {
+      "rpcTotalMinOutputUsd": "UsdValuation"
+    }
+  }
+}

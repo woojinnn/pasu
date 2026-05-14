@@ -6,7 +6,11 @@ forbid (
   action == Action::"swap",
   resource
 ) when {
-  context has totalMinOutputUsd &&
   context.outputToken.amount.kind == "min" &&
-  context.totalMinOutputUsd.value.lessThan(decimal("50.0000"))
+  (
+    (context has rpcTotalMinOutputUsd &&
+     context.rpcTotalMinOutputUsd.value.lessThan(decimal("50.0000"))) ||
+    (context has totalMinOutputUsd &&
+     context.totalMinOutputUsd.value.lessThan(decimal("50.0000")))
+  )
 };

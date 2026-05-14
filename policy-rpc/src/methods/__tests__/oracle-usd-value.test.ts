@@ -44,6 +44,102 @@ describe("oracle.usd_value", () => {
     expect(requestedUrls[0]).toContain(`contract_addresses=${wethAddress}`);
   });
 
+  it("accepts action asset params for ERC-20 inputs", async () => {
+    const requestedUrls: string[] = [];
+    const method = createOracleUsdValueMethod({
+      fetch: async (input) => {
+        requestedUrls.push(String(input));
+
+        return new Response(
+          JSON.stringify({
+            [wethAddress]: {
+              usd: "2000.0000",
+              last_updated_at: 1778750000,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      },
+      nowMs: () => 1778750009000,
+    });
+
+    const result = await method({
+      chain_id: 1,
+      asset: {
+        kind: "erc20",
+        address: wethAddress,
+        symbol: "WETH",
+        decimals: 18,
+      },
+      amount: "1000000000000000000",
+    });
+
+    expect(result.value).toBe("2000.0000");
+    expect(requestedUrls[0]).toContain(`contract_addresses=${wethAddress}`);
+  });
+
+  it("prices native assets through the wrapped native token address", async () => {
+    const requestedUrls: string[] = [];
+    const method = createOracleUsdValueMethod({
+      fetch: async (input) => {
+        requestedUrls.push(String(input));
+
+        return new Response(
+          JSON.stringify({
+            [wethAddress]: {
+              usd: "2100.0000",
+              last_updated_at: 1778750000,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      },
+      nowMs: () => 1778750009000,
+    });
+
+    const result = await method({
+      chain_id: 1,
+      asset: {
+        kind: "native",
+        symbol: "ETH",
+        decimals: 18,
+      },
+      amount: "2000000000000000000",
+    });
+
+    expect(result.value).toBe("4200.0000");
+    expect(requestedUrls[0]).toContain(`contract_addresses=${wethAddress}`);
+  });
+
+  it("rejects unsupported asset kinds", async () => {
+    const method = createOracleUsdValueMethod({
+      fetch: async () => {
+        throw new Error("fetch should not be called");
+      },
+    });
+
+    await expect(
+      method({
+        chain_id: 1,
+        asset: {
+          kind: "erc721",
+          address: wethAddress,
+          decimals: 0,
+        },
+        amount: "1",
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_params",
+      message: "asset.kind must be erc20 or native",
+    });
+  });
+
   it("returns a not_found method error when CoinGecko has no USD price", async () => {
     const method = createOracleUsdValueMethod({
       fetch: async () =>

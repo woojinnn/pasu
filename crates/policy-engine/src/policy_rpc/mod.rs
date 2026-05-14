@@ -29,9 +29,8 @@ mod tests {
                 "method": "oracle.usd_value",
                 "params": {
                     "chain_id": "$.root.chain_id",
-                    "address": "$.action.tokenIn.address",
-                    "amount": "$.action.amountIn.value",
-                    "decimals": "$.action.tokenIn.decimals"
+                    "asset": "$.action.tokenIn",
+                    "amount": "$.action.amountIn.value"
                 },
                 "outputs": [{
                     "kind": "context",
@@ -97,9 +96,13 @@ mod tests {
             calls[0].params,
             json!({
                 "chain_id": 1,
-                "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                "amount": "1000000000000000000",
-                "decimals": 18
+                "asset": {
+                    "kind": "erc20",
+                    "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "symbol": "WETH",
+                    "decimals": 18
+                },
+                "amount": "1000000000000000000"
             })
         );
     }

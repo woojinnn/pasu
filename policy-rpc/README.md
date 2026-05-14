@@ -52,11 +52,19 @@ curl -sS http://127.0.0.1:8787/v1/rpc \
         "method": "oracle.usd_value",
         "params": {
           "chain_id": 1,
-          "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-          "amount": "1000000000000000000",
-          "decimals": 18
+          "asset": {
+            "kind": "erc20",
+            "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "symbol": "WETH",
+            "decimals": 18
+          },
+          "amount": "1000000000000000000"
         }
       }
     ]
   }'
 ```
+
+`oracle.usd_value` also accepts the older flat `{ chain_id, address, amount,
+decimals }` shape. The asset-object shape is what default swap policy manifests
+emit.

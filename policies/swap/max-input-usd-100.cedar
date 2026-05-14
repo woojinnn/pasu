@@ -6,6 +6,8 @@ forbid (
   action == Action::"swap",
   resource
 ) when {
-  context has totalInputUsd &&
-  context.totalInputUsd.value.greaterThan(decimal("100.0000"))
+  (context has rpcTotalInputUsd &&
+   context.rpcTotalInputUsd.value.greaterThan(decimal("100.0000"))) ||
+  (context has totalInputUsd &&
+   context.totalInputUsd.value.greaterThan(decimal("100.0000")))
 };

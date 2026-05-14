@@ -1,0 +1,30 @@
+{
+  "id": "default::swap/max-input-usd-100",
+  "schema_version": 1,
+  "requires": [
+    {
+      "id": "swap-total-input-usd",
+      "when": { "action": "swap" },
+      "method": "oracle.usd_value",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "asset": "$.action.tokenIn",
+        "amount": "$.action.amountIn.value"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "rpcTotalInputUsd",
+          "type": "UsdValuation",
+          "from": "$.result",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "context_extensions": {
+    "swap": {
+      "rpcTotalInputUsd": "UsdValuation"
+    }
+  }
+}
