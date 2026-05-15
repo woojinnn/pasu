@@ -93,6 +93,9 @@ pub fn policy_request_from_envelope(
         Action::Stake(action) => Ok(action.build(&ctx)),
         Action::RequestUnstake(action) => Ok(action.build(&ctx)),
         Action::ClaimUnstake(action) => Ok(action.build(&ctx)),
+        Action::Restake(action) => Ok(action.build(&ctx)),
+        Action::RequestRestakeWithdrawal(action) => Ok(action.build(&ctx)),
+        Action::ClaimRestakeWithdrawal(action) => Ok(action.build(&ctx)),
         Action::Wrap(_)
         | Action::Unwrap(_)
         | Action::Approve(_)
@@ -102,10 +105,7 @@ pub fn policy_request_from_envelope(
         | Action::ClaimRewards(_)
         | Action::SignMessage(_)
         | Action::Delegate(_)
-        | Action::Vote(_)
-        | Action::Restake(_)
-        | Action::RequestRestakeWithdrawal(_)
-        | Action::ClaimRestakeWithdrawal(_) => Err(LoweringError::UnsupportedAction {
+        | Action::Vote(_) => Err(LoweringError::UnsupportedAction {
             kind: envelope.action.kind().to_owned(),
         }),
     }

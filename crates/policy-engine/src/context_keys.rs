@@ -128,6 +128,10 @@ pub const AMOUNT_OUT: &str = "amountOut";
 /// Receipt or share token associated with a staking or restaking action.
 pub const RECEIPT_TOKEN: &str = "receiptToken";
 
+// ── Restaking action context fields ──
+/// Restaking strategy or vault reference.
+pub const STRATEGY: &str = "strategy";
+
 // ── Derived action context fields ──
 /// Validity-window delta from `block_timestamp` in seconds.
 pub const VALIDITY_DELTA_SEC: &str = "validityDeltaSec";

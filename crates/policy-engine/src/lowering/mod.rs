@@ -8,4 +8,5 @@ mod dex;
 mod dispatch;
 mod error;
 mod lending;
+mod restaking;
 mod staking;
