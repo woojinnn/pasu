@@ -120,6 +120,12 @@ mod tests {
         SignAuthorizationAction, SignAuthorizationScope, SupplyAction, WithdrawAction,
     };
     use crate::action::misc::ClaimRewardsAction;
+    use crate::action::restaking::{
+        ClaimRestakeWithdrawalAction, RequestRestakeWithdrawalAction, RestakeAction,
+    };
+    use crate::action::staking::{
+        ClaimUnstakeAction, RequestUnstakeAction, StakeAction, TicketRef,
+    };
     use crate::action::{
         Action, ActionEnvelope, Address, AmountConstraint, AmountKind, AssetKind, AssetRef,
         Category, DecimalString, Validity, ValiditySource,
@@ -151,6 +157,14 @@ mod tests {
         }
     }
 
+    fn empty_ticket() -> TicketRef {
+        TicketRef {
+            nft: None,
+            token_id: None,
+            id: None,
+        }
+    }
+
     fn validity() -> Validity {
         Validity {
             expires_at: decimal("1700000600"),
@@ -172,6 +186,20 @@ mod tests {
     fn envelope(action: Action) -> ActionEnvelope {
         ActionEnvelope {
             category: Category::Lending,
+            action,
+        }
+    }
+
+    fn staking_envelope(action: Action) -> ActionEnvelope {
+        ActionEnvelope {
+            category: Category::LiquidStaking,
+            action,
+        }
+    }
+
+    fn restaking_envelope(action: Action) -> ActionEnvelope {
+        ActionEnvelope {
+            category: Category::Restaking,
             action,
         }
     }
@@ -292,6 +320,104 @@ mod tests {
 
         for (action, expected_action_id) in cases {
             let envelope = envelope(action);
+            let request = lower(&envelope)
+                .unwrap_or_else(|error| panic!("{expected_action_id} should lower: {error}"));
+            assert_eq!(
+                request.action,
+                format!(r#"Action::"{expected_action_id}""#),
+                "wrong action uid for {expected_action_id}",
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_routes_each_staking_variant_to_its_action_id() {
+        let me = address("0x1111111111111111111111111111111111111111");
+        let cases: Vec<(Action, &'static str)> = vec![
+            (
+                Action::Stake(StakeAction {
+                    token_in: erc20(),
+                    receipt_token: erc20(),
+                    amount_in: exact("1000"),
+                    amount_out: None,
+                    recipient: me.clone(),
+                }),
+                "stake",
+            ),
+            (
+                Action::RequestUnstake(RequestUnstakeAction {
+                    receipt_token: erc20(),
+                    token_out: None,
+                    amount_in: exact("1000"),
+                    amount_out: None,
+                    ticket: None,
+                    recipient: me.clone(),
+                }),
+                "request_unstake",
+            ),
+            (
+                Action::ClaimUnstake(ClaimUnstakeAction {
+                    token_out: erc20(),
+                    amount_out: None,
+                    ticket: empty_ticket(),
+                    recipient: me,
+                }),
+                "claim_unstake",
+            ),
+        ];
+
+        for (action, expected_action_id) in cases {
+            let envelope = staking_envelope(action);
+            let request = lower(&envelope)
+                .unwrap_or_else(|error| panic!("{expected_action_id} should lower: {error}"));
+            assert_eq!(
+                request.action,
+                format!(r#"Action::"{expected_action_id}""#),
+                "wrong action uid for {expected_action_id}",
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_routes_each_restaking_variant_to_its_action_id() {
+        let me = address("0x1111111111111111111111111111111111111111");
+        let cases: Vec<(Action, &'static str)> = vec![
+            (
+                Action::Restake(RestakeAction {
+                    token_in: erc20(),
+                    receipt_token: None,
+                    amount_in: exact("1000"),
+                    amount_out: None,
+                    strategy: None,
+                    recipient: me.clone(),
+                }),
+                "restake",
+            ),
+            (
+                Action::RequestRestakeWithdrawal(RequestRestakeWithdrawalAction {
+                    token_out: None,
+                    receipt_token: None,
+                    amount_in: exact("1000"),
+                    amount_out: None,
+                    strategy: None,
+                    ticket: None,
+                    recipient: me.clone(),
+                }),
+                "request_restake_withdrawal",
+            ),
+            (
+                Action::ClaimRestakeWithdrawal(ClaimRestakeWithdrawalAction {
+                    token_out: erc20(),
+                    amount_out: None,
+                    ticket: empty_ticket(),
+                    recipient: me,
+                }),
+                "claim_restake_withdrawal",
+            ),
+        ];
+
+        for (action, expected_action_id) in cases {
+            let envelope = restaking_envelope(action);
             let request = lower(&envelope)
                 .unwrap_or_else(|error| panic!("{expected_action_id} should lower: {error}"));
             assert_eq!(
