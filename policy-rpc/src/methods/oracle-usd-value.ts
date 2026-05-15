@@ -1,7 +1,13 @@
+import type { CoinGeckoClientOptions } from "../coingecko-client.js";
 import {
-  CoinGeckoClient,
-  type CoinGeckoClientOptions,
-} from "../coingecko-client.js";
+  AggregatorError,
+  OracleAggregator,
+  type OracleAggregatorOptions,
+} from "../oracle/aggregator.js";
+import { ChainlinkSource } from "../oracle/sources/chainlink.js";
+import { CoinGeckoSource } from "../oracle/sources/coingecko.js";
+import { UniswapV3TwapSource } from "../oracle/sources/uniswap-v3-twap.js";
+import type { OracleSource } from "../oracle/source.js";
 import {
   RpcMethodError,
   type JsonValue,
@@ -14,7 +20,12 @@ import { parseOracleUsdValueParams } from "../validation.js";
 const USD_DECIMAL_PLACES = 4;
 
 export interface OracleUsdValueMethodOptions extends CoinGeckoClientOptions {
-  client?: CoinGeckoClient;
+  /** Pre-constructed aggregator (tests inject a fully mocked instance). */
+  aggregator?: OracleAggregator;
+  /** Override the source list when constructing the default aggregator. */
+  sources?: OracleSource[];
+  /** Aggregator tuning when sources are supplied (otherwise built fresh). */
+  aggregatorOptions?: Omit<OracleAggregatorOptions, "sources">;
 }
 
 export type OracleUsdValueMethod = (params: unknown) => Promise<UsdValuation>;
@@ -22,46 +33,105 @@ export type OracleUsdValueMethod = (params: unknown) => Promise<UsdValuation>;
 export function createOracleUsdValueMethod(
   options: OracleUsdValueMethodOptions = {},
 ): OracleUsdValueMethod {
-  const client = options.client ?? new CoinGeckoClient(options);
+  const aggregator = options.aggregator ?? buildDefaultAggregator(options);
   const nowMs = options.nowMs ?? Date.now;
 
   return async (rawParams: unknown): Promise<UsdValuation> => {
     const params = parseOracleUsdValueParams(rawParams);
-    const tokenPrice = await client.tokenUsdPrice(params.chain_id, params.address);
 
-    return valueFromPrice(params, tokenPrice.priceUsd, tokenPrice.asOfTs, nowMs);
+    let valuation: UsdValuation;
+    try {
+      valuation = await aggregator.aggregate(params.chain_id, {
+        address: params.address,
+        decimals: params.decimals,
+      });
+    } catch (error) {
+      throw mapAggregatorError(error);
+    }
+
+    return scaleValuationByAmount(valuation, params, nowMs);
   };
 }
 
-function valueFromPrice(
+function buildDefaultAggregator(
+  options: OracleUsdValueMethodOptions,
+): OracleAggregator {
+  const sources: OracleSource[] = options.sources ?? [
+    new ChainlinkSource(),
+    new UniswapV3TwapSource(),
+    new CoinGeckoSource(options),
+  ];
+
+  return new OracleAggregator({
+    sources,
+    outputDecimals: USD_DECIMAL_PLACES,
+    ...(options.aggregatorOptions ?? {}),
+    ...(options.nowMs ? { nowMs: options.nowMs } : {}),
+  });
+}
+
+/**
+ * The aggregator returns the USD value of a single token unit (e.g. "1 WETH
+ * costs $X"). The RPC method must scale that by the requested raw amount.
+ * We do this in bigint by combining the unit price (scaled by
+ * `USD_DECIMAL_PLACES`) with the raw amount divided by `10^token.decimals`.
+ */
+function scaleValuationByAmount(
+  unitValuation: UsdValuation,
   params: OracleUsdValueParams,
-  unitPriceUsd: string,
-  asOfTs: number,
   nowMs: NowMs,
 ): UsdValuation {
-  const priceScaled = decimalToScaledBigInt(unitPriceUsd, USD_DECIMAL_PLACES);
+  const unitPriceScaled = decimalToScaledBigInt(
+    unitValuation.value,
+    USD_DECIMAL_PLACES,
+  );
   const amount = BigInt(params.amount);
   const tokenScale = 10n ** BigInt(params.decimals);
-  const scaledUsd = (amount * priceScaled) / tokenScale;
+  const scaledUsd = (amount * unitPriceScaled) / tokenScale;
   const nowSec = Math.floor(nowMs() / 1000);
 
   return {
+    ...unitValuation,
     value: formatScaledDecimal(scaledUsd, USD_DECIMAL_PLACES),
-    asOfTs,
-    staleSec: Math.max(0, nowSec - asOfTs),
-    sources: ["coingecko"],
+    staleSec: Math.max(0, nowSec - unitValuation.asOfTs),
   };
+}
+
+function mapAggregatorError(error: unknown): RpcMethodError {
+  if (error instanceof RpcMethodError) {
+    return error;
+  }
+  if (error instanceof AggregatorError) {
+    switch (error.code) {
+      case "all_sources_stale":
+        return new RpcMethodError("stale_data", error.message);
+      case "oracle_disagreement":
+        return new RpcMethodError("oracle_disagreement", error.message);
+      case "no_sources_configured":
+        return new RpcMethodError("internal_error", error.message);
+      case "all_sources_failed":
+      default:
+        return new RpcMethodError("upstream_error", error.message);
+    }
+  }
+  if (error instanceof Error) {
+    return new RpcMethodError("internal_error", error.message);
+  }
+  return new RpcMethodError("internal_error", "Unknown aggregator failure");
 }
 
 export function decimalToScaledBigInt(input: string, scale: number): bigint {
   const normalized = expandExponentialDecimal(input.trim());
-  const match = /^([+-]?)([0-9]+)(?:\.([0-9]+))?$/.exec(normalized);
+  const matched = /^([+-]?)([0-9]+)(?:\.([0-9]+))?$/.exec(normalized);
 
-  if (!match) {
-    throw new RpcMethodError("upstream_error", "CoinGecko returned an invalid USD price");
+  if (!matched) {
+    throw new RpcMethodError(
+      "internal_error",
+      "Aggregator returned a malformed USD value",
+    );
   }
 
-  const [, sign, whole, fraction = ""] = match;
+  const [, sign, whole, fraction = ""] = matched;
   const scaledFraction = fraction.padEnd(scale, "0").slice(0, scale);
   const digits = `${whole}${scaledFraction}`.replace(/^0+(?=\d)/, "");
   const scaled = BigInt(digits === "" ? "0" : digits);
@@ -85,14 +155,14 @@ export function formatScaledDecimal(value: bigint, scale: number): string {
 }
 
 function expandExponentialDecimal(input: string): string {
-  const match = /^([+-]?)([0-9]+)(?:\.([0-9]+))?[eE]([+-]?[0-9]+)$/.exec(input);
+  const matched = /^([+-]?)([0-9]+)(?:\.([0-9]+))?[eE]([+-]?[0-9]+)$/.exec(input);
 
-  if (!match) {
+  if (!matched) {
     return input;
   }
 
-  const [, sign, whole, fraction = "", exponentText] = match;
-  const exponent = Number(exponentText);
+  const [, sign, whole, fraction = "", exponentString] = matched;
+  const exponent = Number(exponentString);
   const digits = `${whole}${fraction}`;
   const decimalIndex = whole.length + exponent;
 
