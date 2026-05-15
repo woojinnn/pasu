@@ -1,4 +1,7 @@
-import type { Address, Hex } from "viem";
+/** 0x-prefixed hex address (40 hex chars). Matches `viem`'s shape. */
+export type Address = `0x${string}`;
+/** 0x-prefixed hex string of arbitrary length. Matches `viem`'s shape. */
+export type Hex = `0x${string}`;
 
 export enum RequestType {
   TRANSACTION = "transaction",

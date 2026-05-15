@@ -48,8 +48,6 @@ const mocks = vi.hoisted(() => {
     windowRemovedListeners,
     ensureDefaultPoliciesInstalled: vi.fn(async () => undefined),
     getActivePolicyRpcManifests: vi.fn(() => [{ id: "manifest-a" }]),
-    pendingPut: vi.fn(async () => undefined),
-    pendingDelete: vi.fn(async () => undefined),
     auditAppend: vi.fn(async () => undefined),
     evaluateWithPolicyRpc: vi.fn(),
     browser: {
@@ -109,8 +107,6 @@ vi.mock("../policies-loader", () => ({
   getActivePolicyRpcManifests: mocks.getActivePolicyRpcManifests,
 }));
 vi.mock("../storage", () => ({
-  pendingPut: mocks.pendingPut,
-  pendingDelete: mocks.pendingDelete,
   auditAppend: mocks.auditAppend,
 }));
 vi.mock("../wasm-bridge", () => ({
@@ -185,8 +181,6 @@ describe("orchestrator", () => {
       txMessage("stubbed-tx-1"),
       { manifests: [{ id: "manifest-a" }] },
     );
-    expect(mocks.pendingPut).toHaveBeenCalledOnce();
-    expect(mocks.pendingDelete).toHaveBeenCalledWith("stubbed-tx-1");
     expect(mocks.auditAppend).toHaveBeenCalledWith(
       expect.objectContaining({
         policyRpc: expect.objectContaining({

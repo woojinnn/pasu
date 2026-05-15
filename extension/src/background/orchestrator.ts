@@ -3,12 +3,7 @@ import {
   ensureDefaultPoliciesInstalled,
   getActivePolicyRpcManifests,
 } from "./policies-loader";
-import {
-  auditAppend,
-  pendingDelete,
-  pendingPut,
-  type PendingRequest,
-} from "./storage";
+import { auditAppend, type RequestKind } from "./storage";
 import { EngineError } from "./wasm-bridge";
 import { evaluateWithPolicyRpc, type PolicyRpcAuditMeta } from "./policy-rpc";
 import type { VerdictDto } from "./wasm-bridge.types";
@@ -81,15 +76,7 @@ async function decideInner(
   message: Message,
   options: DecisionOptions,
 ): Promise<DecisionResult> {
-  const pending: PendingRequest = {
-    requestId: message.requestId,
-    hostname: message.data.hostname,
-    type: message.data.type as PendingRequest["type"],
-    bypassed: "bypassed" in message.data && !!message.data.bypassed,
-    envelope: redactEnvelope(message),
-    enqueuedAtMs: Date.now(),
-  };
-  await pendingPut(pending);
+  const type = message.data.type as RequestKind;
 
   try {
     const { result: lifecycle } = await withTimeout(
@@ -121,7 +108,7 @@ async function decideInner(
       );
     }
 
-    await appendAudit(message, pending.type, verdict, lifecycle.policyRpc);
+    await appendAudit(message, type, verdict, lifecycle.policyRpc);
     return { ok, verdict };
   } catch (err) {
     const errInfo =
@@ -146,25 +133,23 @@ async function decideInner(
     logAt("[Scopeball] decideMessage threw", {
       requestId: message.requestId,
       hostname: message.data.hostname,
-      type: pending.type,
+      type,
       ...errInfo,
       err,
     });
     const verdict = engineErrorVerdict(err);
-    await appendAudit(message, pending.type, verdict);
+    await appendAudit(message, type, verdict);
     // `engineErrorVerdict` may downgrade some failures (e.g. route_failed)
     // to a pass — in that case the inpage proxy must be told to forward the
     // request to the wallet, so `ok` has to track the verdict, not be
     // hard-coded to false.
     return { ok: verdict.kind === "pass", verdict };
-  } finally {
-    await pendingDelete(message.requestId);
   }
 }
 
 async function appendAudit(
   message: Message,
-  type: PendingRequest["type"],
+  type: RequestKind,
   verdict: VerdictDto,
   policyRpc?: PolicyRpcAuditMeta,
 ): Promise<void> {
@@ -242,26 +227,6 @@ function inferActor(message: Message): string | undefined {
   if (isTransaction(message)) return message.data.transaction.from;
   if (isTypedSignature(message)) return message.data.address;
   return undefined;
-}
-
-function redactEnvelope(message: Message): unknown {
-  if (isTransaction(message)) {
-    return {
-      to: message.data.transaction.to,
-      chainId: message.data.chainId,
-      value: message.data.transaction.value,
-    };
-  }
-  if (isTypedSignature(message)) {
-    return {
-      primaryType: (message.data.typedData as { primaryType?: string })
-        ?.primaryType,
-      verifyingContract: (
-        message.data.typedData as { domain?: { verifyingContract?: string } }
-      )?.domain?.verifyingContract,
-    };
-  }
-  return {};
 }
 
 function buildTimeoutVerdict(): VerdictDto {

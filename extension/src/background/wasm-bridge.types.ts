@@ -2,7 +2,7 @@ type JsonRecord = Record<string, unknown>;
 
 const VERDICT_KINDS = ["pass", "fail", "warn"] as const;
 const POLICY_SEVERITIES = ["deny", "warn"] as const;
-const POLICY_REQUEST_ORIGINS = ["action", "tx", "engine_error"] as const;
+const POLICY_REQUEST_ORIGINS = ["tx", "engine_error"] as const;
 
 export type Severity = (typeof POLICY_SEVERITIES)[number];
 export type Origin = (typeof POLICY_REQUEST_ORIGINS)[number];
