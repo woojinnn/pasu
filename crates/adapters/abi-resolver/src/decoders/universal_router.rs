@@ -77,7 +77,14 @@ impl Decoder for UniversalRouterDecoder {
 }
 
 fn decode_execute(calldata: &[u8]) -> Result<DecodedCall, DecoderError> {
-    let (commands, inputs) = ExecuteInput::abi_decode_sequence(payload(calldata)?, true)
+    // validate=false: Uniswap's production frontend emits ABI-valid calldata
+    // whose canonical re-encoding differs byte-for-byte (non-minimal dynamic
+    // offsets, inner V*_SWAP payload padding). validate=true rejects those as
+    // "reserialization did not match original" even though the decoded values
+    // are correct. The tx itself is signed by the user and executed by the
+    // EVM as-is — our decoded view is only used for policy evaluation, so
+    // accepting the slack here doesn't widen the signing surface.
+    let (commands, inputs) = ExecuteInput::abi_decode_sequence(payload(calldata)?, false)
         .map_err(|e| DecoderError::AbiMismatch(e.to_string()))?;
 
     Ok(DecodedCall {
@@ -95,8 +102,9 @@ fn decode_execute(calldata: &[u8]) -> Result<DecodedCall, DecoderError> {
 }
 
 fn decode_execute_with_deadline(calldata: &[u8]) -> Result<DecodedCall, DecoderError> {
+    // validate=false — see `decode_execute` rationale.
     let (commands, inputs, deadline) =
-        ExecuteWithDeadlineInput::abi_decode_sequence(payload(calldata)?, true)
+        ExecuteWithDeadlineInput::abi_decode_sequence(payload(calldata)?, false)
             .map_err(|e| DecoderError::AbiMismatch(e.to_string()))?;
 
     Ok(DecodedCall {

@@ -124,15 +124,39 @@ async function decideInner(
     await appendAudit(message, pending.type, verdict, lifecycle.policyRpc);
     return { ok, verdict };
   } catch (err) {
-    console.error("[Scopeball] decideMessage threw", {
+    const errInfo =
+      err instanceof Error
+        ? {
+            name: err.name,
+            message: err.message,
+            kind:
+              err instanceof EngineError
+                ? err.kind
+                : (err as { kind?: string }).kind,
+            stack: err.stack,
+          }
+        : { raw: String(err) };
+    // route_failed is a known no-op outcome (we pass it through in
+    // engineErrorVerdict), so log at warn to avoid noisy red counters
+    // on chrome://extensions. Other errors stay at error.
+    const logAt =
+      err instanceof EngineError && err.kind === "route_failed"
+        ? console.warn
+        : console.error;
+    logAt("[Scopeball] decideMessage threw", {
       requestId: message.requestId,
       hostname: message.data.hostname,
       type: pending.type,
+      ...errInfo,
       err,
     });
     const verdict = engineErrorVerdict(err);
     await appendAudit(message, pending.type, verdict);
-    return { ok: false, verdict };
+    // `engineErrorVerdict` may downgrade some failures (e.g. route_failed)
+    // to a pass — in that case the inpage proxy must be told to forward the
+    // request to the wallet, so `ok` has to track the verdict, not be
+    // hard-coded to false.
+    return { ok: verdict.kind === "pass", verdict };
   } finally {
     await pendingDelete(message.requestId);
   }
@@ -271,6 +295,12 @@ function unsupportedUntypedSignatureVerdict(): VerdictDto {
 function engineErrorVerdict(err: unknown): VerdictDto {
   const kind = err instanceof EngineError ? err.kind : "unexpected";
   const message = err instanceof Error ? err.message : String(err);
+  // Calls the engine has no registered adapter for (e.g. Permit2.approve,
+  // unknown routers) carry no policy-relevant signal — let them through
+  // instead of blocking everything outside the engine's known set.
+  if (kind === "route_failed") {
+    return { kind: "pass" };
+  }
   return {
     kind: "fail",
     matched: [
