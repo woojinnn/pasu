@@ -43,6 +43,7 @@ use mappers::protocols::uniswap_v3::{
 use mappers::protocols::weth::{WethDepositMapper, WethWithdrawMapper};
 use mappers::{InMemoryMapperRegistry, MapperMatchKey};
 use sign_resolver::adapters::eip2612::Eip2612Adapter;
+use sign_resolver::adapters::lending_auth::LendingAuthSignAdapter;
 use sign_resolver::adapters::permit2::Permit2Adapter;
 use sign_resolver::InMemorySignAdapterRegistry;
 
@@ -356,6 +357,7 @@ impl DefaultRegistries {
             InMemorySignAdapterRegistry::builder()
                 .register(Arc::new(Eip2612Adapter::new()))
                 .register(Arc::new(Permit2Adapter::new()))
+                .register(Arc::new(LendingAuthSignAdapter::new()))
                 .build(),
         );
 
