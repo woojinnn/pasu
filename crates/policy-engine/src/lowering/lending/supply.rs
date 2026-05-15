@@ -131,4 +131,58 @@ mod tests {
             Some(600)
         );
     }
+
+    /// End-to-end coverage closing the schema/lowering drift gap that PR #21
+    /// review caught: the lowering emits `validityDeltaSec` for lending
+    /// `supply`, but the bundled lending schema didn't declare it, so Cedar
+    /// strict validation rejected any policy that referenced
+    /// `context.validityDeltaSec`. With the schema fix in place, this test
+    /// proves both halves end to end:
+    ///   1. The policy parses + strict-validates against the schema
+    ///      (the engine builder unwrap below would fail otherwise).
+    ///   2. The lowered request's `validityDeltaSec` flows through the engine
+    ///      and the `< 300` guard fires, producing `Verdict::Fail`.
+    #[test]
+    fn supply_policy_referencing_validity_delta_sec_evaluates_end_to_end() {
+        use crate::policy::{PolicyEngineBuilder, Severity, Verdict};
+
+        const SUPPLY_SCHEMA: &str =
+            include_str!("../../../../../policy-schema/actions/lending/supply.cedarschema");
+
+        let from = address("0x1111111111111111111111111111111111111111");
+        let mut action = supply(from.clone());
+        // delta_sec = 100, which is < 300, so the `forbid` clause must fire.
+        action.validity = Some(validity(BLOCK_TIMESTAMP + 100));
+
+        let request = policy_request(&envelope(Action::Supply(action)), &from);
+
+        let policy = r#"
+            @id("user/supply-validity-short")
+            @severity("deny")
+            @reason("Supply validity window too short")
+            forbid (principal, action == Action::"supply", resource)
+            when {
+              context has validityDeltaSec && context.validityDeltaSec < 300
+            };
+        "#;
+
+        let engine = PolicyEngineBuilder::new()
+            .add_schema_text(SUPPLY_SCHEMA)
+            .add_text(policy)
+            .build()
+            .expect("schema extended with lending supply must strict-validate the policy");
+
+        let verdict = engine
+            .evaluate_request(&request)
+            .expect("engine evaluates lowered supply request");
+
+        match verdict {
+            Verdict::Fail(matched) => {
+                assert_eq!(matched.len(), 1);
+                assert_eq!(matched[0].policy_id, "user/supply-validity-short");
+                assert_eq!(matched[0].severity, Severity::Deny);
+            }
+            other => panic!("expected Verdict::Fail, got {other:?}"),
+        }
+    }
 }

@@ -9,6 +9,7 @@ type SignAuthorizationContext = {
   validity: Validity,
 
   authorizedIsContract?: Bool,
+  validityDeltaSec?: Long,
 };
 
 action "sign_authorization" appliesTo {

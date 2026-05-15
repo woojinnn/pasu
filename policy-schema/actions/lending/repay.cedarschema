@@ -9,6 +9,7 @@ type RepayContext = {
 
   totalRepaidUsd?: UsdValuation,
   allowancesCoverInputs?: Bool,
+  validityDeltaSec?: Long,
 };
 
 action "repay" appliesTo {

@@ -12,6 +12,7 @@ type SupplyContext = {
   allowancesCoverInputs?: Bool,
   hasUnlimitedAllowance?: Bool,
   recipientIsContract?: Bool,
+  validityDeltaSec?: Long,
 };
 
 action "supply" appliesTo {

@@ -9,6 +9,7 @@ type BorrowContext = {
 
   totalBorrowedUsd?: UsdValuation,
   recipientIsContract?: Bool,
+  validityDeltaSec?: Long,
 };
 
 action "borrow" appliesTo {
