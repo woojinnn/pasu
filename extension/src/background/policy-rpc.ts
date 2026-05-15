@@ -85,19 +85,40 @@ async function postPolicyRpc(
   policyRpcUrl: string,
   plan: PolicyRpcPlanDto,
 ): Promise<PolicyRpcResponseDto> {
-  const response = await fetch(`${policyRpcUrl.replace(/\/+$/, "")}/v1/rpc`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ request_id: plan.request_id, calls: plan.calls }),
-  });
-  if (!response.ok) {
-    throw new Error(`policy-rpc returned HTTP ${response.status}`);
+  const url = `${policyRpcUrl.replace(/\/+$/, "")}/v1/rpc`;
+  const startedAtMs = Date.now();
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ request_id: plan.request_id, calls: plan.calls }),
+    });
+    if (!response.ok) {
+      throw new Error(`policy-rpc returned HTTP ${response.status}`);
+    }
+    const body = (await response.json()) as PolicyRpcResponseDto;
+    if (body.request_id !== plan.request_id || !Array.isArray(body.results)) {
+      throw new Error("policy-rpc returned malformed response");
+    }
+    console.debug("[Scopeball] policy-rpc", {
+      requestId: plan.request_id,
+      url,
+      callCount: plan.calls.length,
+      status: response.status,
+      durationMs: Date.now() - startedAtMs,
+      resultCount: body.results.length,
+    });
+    return body;
+  } catch (err) {
+    console.error("[Scopeball] policy-rpc failed", {
+      requestId: plan.request_id,
+      url,
+      callCount: plan.calls.length,
+      durationMs: Date.now() - startedAtMs,
+      err,
+    });
+    throw err;
   }
-  const body = (await response.json()) as PolicyRpcResponseDto;
-  if (body.request_id !== plan.request_id || !Array.isArray(body.results)) {
-    throw new Error("policy-rpc returned malformed response");
-  }
-  return body;
 }
 
 function defaultPolicyRpcUrl(): string {

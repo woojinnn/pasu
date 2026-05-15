@@ -124,6 +124,12 @@ async function decideInner(
     await appendAudit(message, pending.type, verdict, lifecycle.policyRpc);
     return { ok, verdict };
   } catch (err) {
+    console.error("[Scopeball] decideMessage threw", {
+      requestId: message.requestId,
+      hostname: message.data.hostname,
+      type: pending.type,
+      err,
+    });
     const verdict = engineErrorVerdict(err);
     await appendAudit(message, pending.type, verdict);
     return { ok: false, verdict };

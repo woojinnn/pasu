@@ -131,16 +131,45 @@ export async function planPolicyRpc(
   input: PlanPolicyRpcInputDto,
 ): Promise<PolicyRpcPlanDto> {
   const exports = await load();
+  const startedAtMs = Date.now();
   const raw = unwrap<unknown>(exports.plan_policy_rpc_json(JSON.stringify(input)));
-  return parsePolicyRpcPlan(raw);
+  const plan = parsePolicyRpcPlan(raw);
+  console.debug("[Scopeball] wasm.plan", {
+    requestId: input.request_id,
+    method: input.raw_request.method,
+    chainId: input.raw_request.chain_id,
+    manifestCount: input.manifests.length,
+    durationMs: Date.now() - startedAtMs,
+    manifestSetHash: plan.manifest_set_hash,
+    schemaHash: plan.schema_hash,
+    envelopeCount: plan.envelopes.length,
+    calls: plan.calls.map((c) => ({ id: c.id, method: c.method })),
+    diagnostics: plan.diagnostics,
+  });
+  return plan;
 }
 
 export async function evaluatePolicyRpc(
   input: EvaluatePolicyRpcInputDto,
 ): Promise<VerdictDto> {
   const exports = await load();
+  const startedAtMs = Date.now();
   const raw = unwrap<unknown>(
     exports.evaluate_policy_rpc_json(JSON.stringify(input)),
   );
-  return parseVerdict(raw);
+  const verdict = parseVerdict(raw);
+  console.debug("[Scopeball] wasm.evaluate", {
+    requestId: input.plan.request_id,
+    planCallCount: input.plan.calls.length,
+    rpcResultCount: input.rpc_response.results.length,
+    manifestCount: input.manifests.length,
+    durationMs: Date.now() - startedAtMs,
+    verdict: verdict.kind,
+    matched:
+      verdict.matched?.map((m) => ({
+        id: m.policy_id,
+        severity: m.severity,
+      })) ?? [],
+  });
+  return verdict;
 }
