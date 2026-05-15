@@ -90,6 +90,9 @@ pub fn policy_request_from_envelope(
         Action::SetAuthorization(action) => Ok(action.build(&ctx)),
         Action::SignAuthorization(action) => Ok(action.build(&ctx)),
         Action::Revoke(action) => Ok(action.build(&ctx)),
+        Action::Stake(action) => Ok(action.build(&ctx)),
+        Action::RequestUnstake(action) => Ok(action.build(&ctx)),
+        Action::ClaimUnstake(action) => Ok(action.build(&ctx)),
         Action::Wrap(_)
         | Action::Unwrap(_)
         | Action::Approve(_)
@@ -100,9 +103,6 @@ pub fn policy_request_from_envelope(
         | Action::SignMessage(_)
         | Action::Delegate(_)
         | Action::Vote(_)
-        | Action::Stake(_)
-        | Action::RequestUnstake(_)
-        | Action::ClaimUnstake(_)
         | Action::Restake(_)
         | Action::RequestRestakeWithdrawal(_)
         | Action::ClaimRestakeWithdrawal(_) => Err(LoweringError::UnsupportedAction {

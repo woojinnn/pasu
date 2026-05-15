@@ -116,6 +116,18 @@ pub const REVOKE_KIND: &str = "revokeKind";
 /// Set of assets borrowed in a flash loan.
 pub const ASSETS: &str = "assets";
 
+// ── Staking action context fields ──
+/// Asset being staked or restaked.
+pub const TOKEN_IN: &str = "tokenIn";
+/// Asset withdrawn from staking or restaking.
+pub const TOKEN_OUT: &str = "tokenOut";
+/// Input amount staked, locked, or burned.
+pub const AMOUNT_IN: &str = "amountIn";
+/// Expected output amount from staking, unstaking, or restaking.
+pub const AMOUNT_OUT: &str = "amountOut";
+/// Receipt or share token associated with a staking or restaking action.
+pub const RECEIPT_TOKEN: &str = "receiptToken";
+
 // ── Derived action context fields ──
 /// Validity-window delta from `block_timestamp` in seconds.
 pub const VALIDITY_DELTA_SEC: &str = "validityDeltaSec";
