@@ -3,7 +3,6 @@ import {
   ensureDefaultPoliciesInstalled,
   getActivePolicyRpcManifests,
 } from "./policies-loader";
-import { setTxHash } from "./pending-deltas";
 import {
   auditAppend,
   pendingDelete,
@@ -293,15 +292,6 @@ async function withTimeout<T>(
   );
   const wrapped = p.then((result) => ({ result, timedOut }));
   return Promise.race([wrapped, timeoutPromise]);
-}
-
-/** Receive tx-hash reports from the inpage proxy and stamp them onto pending deltas. */
-export async function recordTxHash(
-  requestId: string,
-  txHash: string,
-): Promise<void> {
-  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) return;
-  await setTxHash(requestId, txHash);
 }
 
 const PENDING_DECISION_KEY = "requests:pending-decisions";

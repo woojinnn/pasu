@@ -47,20 +47,12 @@ export interface FrozenProviderWarningPayload {
   providerName: string;
 }
 
-export interface TransactionHashReportPayload {
-  type: "tx-hash-report";
-  requestId: string;
-  txHash: Hex;
-  hostname: string;
-}
-
 export type MessageData =
   | TransactionPayload
   | TypedSignaturePayload
   | UntypedSignaturePayload
   | RawTransactionAdvisoryPayload
-  | FrozenProviderWarningPayload
-  | TransactionHashReportPayload;
+  | FrozenProviderWarningPayload;
 
 export interface Message {
   requestId: string;

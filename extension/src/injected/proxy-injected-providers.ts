@@ -1,7 +1,7 @@
 import { WindowPostMessageStream } from "@metamask/post-message-stream";
 import { ethErrors } from "eth-rpc-errors";
 import { Identifier, PROVIDER_MARKER } from "@lib/identifier";
-import { generateRequestId, sendToStreamAndAwaitResponse } from "@lib/messages";
+import { sendToStreamAndAwaitResponse } from "@lib/messages";
 import { RequestType } from "@lib/types";
 import type { MessageData } from "@lib/types";
 
@@ -80,9 +80,7 @@ const TYPED_SIGNATURE_METHODS = new Set([
   "eth_signTypedData_v4",
 ]);
 const UNTYPED_SIGNATURE_METHODS = new Set(["eth_sign", "personal_sign"]);
-const TX_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
-const txRequestIds = new WeakMap<object, string>();
 const chainIdCache = new WeakMap<object, number>();
 const chainIdListeners = new WeakSet<object>();
 const wrappedProviders = new WeakSet<object>();
@@ -187,7 +185,6 @@ async function checkTransaction(
     transaction,
   } as MessageData;
 
-  txRequestIds.set(transaction, generateRequestId(data));
   return sendToStreamAndAwaitResponse(stream, data);
 }
 
@@ -327,11 +324,6 @@ async function ensureAllowed(
   }
 }
 
-function requestIdForTransaction(params: unknown[]): string | undefined {
-  const tx = params[0];
-  return tx && typeof tx === "object" ? txRequestIds.get(tx) : undefined;
-}
-
 function logRawTransaction(params: unknown[]): void {
   const raw = String(params[0] ?? "");
   console.warn("Scopeball: eth_sendRawTransaction pass-through advisory", {
@@ -348,22 +340,6 @@ function logRawTransaction(params: unknown[]): void {
   });
 }
 
-function reportTransactionHash(params: unknown[], result: unknown): void {
-  if (typeof result !== "string" || !TX_HASH_RE.test(result)) return;
-  const requestId = requestIdForTransaction(params);
-  if (!requestId) return;
-
-  stream.write({
-    requestId: `tx-hash-${requestId}`,
-    data: {
-      type: "tx-hash-report",
-      requestId,
-      txHash: result,
-      hostname: location.hostname,
-    },
-  });
-}
-
 function rejectJsonRpc(
   callback: JsonRpcCallback,
   request: JsonRpcRequest,
@@ -374,23 +350,6 @@ function rejectJsonRpc(
     jsonrpc: request.jsonrpc ?? "2.0",
     error,
   });
-}
-
-function wrapCallbackForTxHash(
-  callback: JsonRpcCallback,
-  method: string | undefined,
-  params: unknown[],
-): JsonRpcCallback {
-  return (error, response) => {
-    if (!error && method === "eth_sendTransaction") {
-      const result =
-        response && typeof response === "object" && "result" in response
-          ? (response as { result?: unknown }).result
-          : response;
-      reportTransactionHash(params, result);
-    }
-    callback(error, response);
-  };
 }
 
 function reportFrozenProvider(provider: Eip1193Provider, error: unknown): void {
@@ -479,11 +438,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
       // silently no-ops — no error, no popup. This was tolerable for
       // `eth_sendTransaction` (the dApp's call shape happened to align)
       // but breaks `wallet_sendCalls`, which arrives via a different stack.
-      const result = await Reflect.apply(target, provider, args);
-      if (method === "eth_sendTransaction") {
-        reportTransactionHash(params, result);
-      }
-      return result;
+      return Reflect.apply(target, provider, args);
     },
   });
 
@@ -505,11 +460,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
               if (!method) return Reflect.apply(target, provider, args);
               return (async () => {
                 await ensureAllowed(provider, method, params, originalRequest);
-                const result = Reflect.apply(target, provider, args);
-                if (method === "eth_sendTransaction") {
-                  reportTransactionHash(params, result);
-                }
-                return result;
+                return Reflect.apply(target, provider, args);
               })();
             }
 
@@ -518,7 +469,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
                 await ensureAllowed(provider, method, params, originalRequest);
                 Reflect.apply(target, provider, [
                   request,
-                  wrapCallbackForTxHash(callback, method, params),
+                  callback,
                   ...args.slice(2),
                 ]);
               } catch (error) {
@@ -550,11 +501,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
               if (!method) return Reflect.apply(target, provider, args);
               return (async () => {
                 await ensureAllowed(provider, method, params, originalRequest);
-                const result = Reflect.apply(target, provider, args);
-                if (method === "eth_sendTransaction") {
-                  reportTransactionHash(params, result);
-                }
-                return result;
+                return Reflect.apply(target, provider, args);
               })();
             }
 
@@ -567,11 +514,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
                 await ensureAllowed(provider, method, params, originalRequest);
                 Reflect.apply(target, provider, [
                   request,
-                  wrapCallbackForTxHash(
-                    callbackOrParams as JsonRpcCallback,
-                    method,
-                    params,
-                  ),
+                  callbackOrParams,
                   ...args.slice(2),
                 ]);
               } catch (error) {

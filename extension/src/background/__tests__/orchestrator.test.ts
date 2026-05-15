@@ -48,11 +48,10 @@ const mocks = vi.hoisted(() => {
     windowRemovedListeners,
     ensureDefaultPoliciesInstalled: vi.fn(async () => undefined),
     getActivePolicyRpcManifests: vi.fn(() => [{ id: "manifest-a" }]),
-    setTxHash: vi.fn(async () => undefined),
     pendingPut: vi.fn(async () => undefined),
     pendingDelete: vi.fn(async () => undefined),
-  auditAppend: vi.fn(async () => undefined),
-  evaluateWithPolicyRpc: vi.fn(),
+    auditAppend: vi.fn(async () => undefined),
+    evaluateWithPolicyRpc: vi.fn(),
     browser: {
       storage: {
         session: {
@@ -108,9 +107,6 @@ vi.mock("webextension-polyfill", () => ({ default: mocks.browser }));
 vi.mock("../policies-loader", () => ({
   ensureDefaultPoliciesInstalled: mocks.ensureDefaultPoliciesInstalled,
   getActivePolicyRpcManifests: mocks.getActivePolicyRpcManifests,
-}));
-vi.mock("../pending-deltas", () => ({
-  setTxHash: mocks.setTxHash,
 }));
 vi.mock("../storage", () => ({
   pendingPut: mocks.pendingPut,

@@ -1,13 +1,12 @@
-import Browser from 'webextension-polyfill';
-import { Identifier } from '@lib/identifier';
-import { decideMessage, recordTxHash } from './orchestrator';
+import Browser from "webextension-polyfill";
+import { Identifier } from "@lib/identifier";
+import { decideMessage } from "./orchestrator";
 import {
   ensureDefaultPoliciesInstalled,
   reinstallAllPolicies,
-} from './policies-loader';
-import { applyEnabledIds, getCatalog } from './policy-selection';
-import { installReceiptPoller } from './receipt-poller';
-import { RequestType, type Message, type MessageResponse } from '@lib/types';
+} from "./policies-loader";
+import { applyEnabledIds, getCatalog } from "./policy-selection";
+import { RequestType, type Message, type MessageResponse } from "@lib/types";
 
 const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
@@ -15,15 +14,14 @@ const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.UNTYPED_SIGNATURE,
 ]);
 
-console.log('Scopeball SW alive at', new Date().toISOString());
-installReceiptPoller();
+console.log("Scopeball SW alive at", new Date().toISOString());
 
 // Cold-start prewarm: kick off WASM module load + default policy install
 // the moment the SW boots so the first dApp request doesn't pay the 4.77MB
 // compile cost inside the 3s lifecycle budget. Best-effort; failures are
 // logged and the first decideMessage call retries.
 void ensureDefaultPoliciesInstalled().catch((err) => {
-  console.warn('[Scopeball] cold-start prewarm failed:', err);
+  console.warn("[Scopeball] cold-start prewarm failed:", err);
 });
 
 Browser.runtime.onConnect.addListener((port) => {
@@ -38,21 +36,14 @@ async function handleMessage(
   message: Message,
   port: Browser.Runtime.Port,
 ): Promise<void> {
-  // Tx-hash reports come in over the same port from the inpage proxy.
-  if (message.data.type === 'tx-hash-report') {
-    recordTxHash(message.data.requestId, message.data.txHash).catch((err) => {
-      console.warn('[Scopeball] tx-hash record failed:', err);
-    });
-    return;
-  }
   // Raw / frozen advisories: log only (Plan 5 doesn't gate, but surfaces
   // them so the user can see something happened).
-  if (message.data.type === 'raw-transaction-advisory') {
-    console.warn('[Scopeball] raw-tx advisory', message.data);
+  if (message.data.type === "raw-transaction-advisory") {
+    console.warn("[Scopeball] raw-tx advisory", message.data);
     return;
   }
-  if (message.data.type === 'provider-frozen-warning') {
-    console.error('[Scopeball] provider frozen', message.data);
+  if (message.data.type === "provider-frozen-warning") {
+    console.error("[Scopeball] provider frozen", message.data);
     return;
   }
 
@@ -72,7 +63,7 @@ async function handleMessage(
       try {
         port.postMessage({
           requestId: message.requestId,
-          kind: 'awaiting-user',
+          kind: "awaiting-user",
         });
       } catch {
         /* dApp tab gone */
@@ -93,10 +84,10 @@ async function handleMessage(
 }
 
 interface PolicyCatalogRequest {
-  type: 'policy-catalog';
+  type: "policy-catalog";
 }
 interface SetEnabledIdsRequest {
-  type: 'set-enabled-ids';
+  type: "set-enabled-ids";
   ids: string[];
 }
 type PopupRequest = PolicyCatalogRequest | SetEnabledIdsRequest;
@@ -107,28 +98,31 @@ type PopupRequest = PolicyCatalogRequest | SetEnabledIdsRequest;
 Browser.runtime.onMessage.addListener(
   (message: unknown, _sender, sendResponse: (r: unknown) => void) => {
     const req = message as Partial<PopupRequest> | null;
-    if (!req || typeof req !== 'object') return;
+    if (!req || typeof req !== "object") return;
 
-    if (req.type === 'policy-catalog') {
+    if (req.type === "policy-catalog") {
       void getCatalog()
         .then((cat) => sendResponse({ ok: true, data: cat }))
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: 'catalog_failed', message: String(err) },
+            error: { kind: "catalog_failed", message: String(err) },
           }),
         );
       return true; // keep the channel open for the async response
     }
 
-    if (req.type === 'set-enabled-ids') {
+    if (req.type === "set-enabled-ids") {
       // Reject malformed `ids` instead of silently coercing to []. A
       // non-array, or an array containing non-strings, would otherwise
       // disable all policies without telling the caller.
-      if (!Array.isArray(req.ids) || !req.ids.every((id) => typeof id === 'string')) {
+      if (
+        !Array.isArray(req.ids) ||
+        !req.ids.every((id) => typeof id === "string")
+      ) {
         sendResponse({
           ok: false,
-          error: { kind: 'invalid_request', message: 'ids must be string[]' },
+          error: { kind: "invalid_request", message: "ids must be string[]" },
         });
         return true;
       }
@@ -138,7 +132,7 @@ Browser.runtime.onMessage.addListener(
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: 'apply_failed', message: String(err) },
+            error: { kind: "apply_failed", message: String(err) },
           }),
         );
       return true;
