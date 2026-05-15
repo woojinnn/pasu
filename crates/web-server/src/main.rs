@@ -498,6 +498,13 @@ enum DecodeResponse {
         /// empty and omitted from JSON.
         #[serde(skip_serializing_if = "Vec::is_empty")]
         children: Vec<DecodeResponse>,
+        /// Schema-shaped `RootRequest` produced by `request_router::route_request`
+        /// when the (chain, target, selector) triple matches a registered call
+        /// adapter or a Sourcify-resolvable mapper. Only populated at the top
+        /// level (depth 0); sub-calls omit it. Frontend renders this via
+        /// `MappingSection`.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        mapping: Option<serde_json::Value>,
     },
     NotFound {
         selector: String,
@@ -605,7 +612,7 @@ async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -
     } else {
         None
     };
-    let response = decode_recursive(
+    let mut response = decode_recursive(
         state.resolver.as_ref(),
         etherscan,
         req.chain_id,
@@ -614,7 +621,61 @@ async fn decode(State(state): State<AppState>, Json(req): Json<DecodeRequest>) -
         0,
     )
     .await;
+    // Populate top-level `mapping` by routing the same calldata through
+    // request-router. Failure (no adapter, parse error, etc.) leaves
+    // `mapping = None` and the frontend simply omits the section — never
+    // breaks the decode response itself.
+    if let DecodeResponse::Resolved { mapping, .. } = &mut response {
+        *mapping = build_mapping(&state.route_registries, req.chain_id, &address, &calldata);
+    }
     Json(response).into_response()
+}
+
+/// Build the schema-shaped `mapping` payload the frontend renders via
+/// `MappingSection`. Returns `None` when no call adapter / mapper matches
+/// (e.g. unknown selector) — the absence is silent because the resolved
+/// decode itself is still useful.
+fn build_mapping(
+    registries: &Arc<request_router::DefaultRegistries>,
+    chain_id: u64,
+    target: &Address,
+    calldata: &[u8],
+) -> Option<serde_json::Value> {
+    use serde_json::json;
+
+    let token_registry = mappers::EmptyTokenRegistry;
+    let ctx = request_router::RouterContext {
+        registries,
+        token_registry: &token_registry,
+        block_timestamp: None,
+    };
+
+    let to_hex = format!("0x{}", hex::encode(target));
+    let data_hex = format!("0x{}", hex::encode(calldata));
+    let params = json!([{ "to": to_hex, "data": data_hex }]);
+
+    let envelopes = match request_router::route_request(&ctx, "eth_sendTransaction", &params, chain_id) {
+        Ok(e) if !e.is_empty() => e,
+        _ => return None,
+    };
+
+    let actions: Vec<serde_json::Value> = envelopes
+        .iter()
+        .filter_map(|env| serde_json::to_value(env).ok())
+        .collect();
+
+    let selector_hex = format!("0x{}", hex::encode(&calldata[..4.min(calldata.len())]));
+
+    Some(json!({
+        "schemaVersion": "1.0.1",
+        "requestKind": "transaction",
+        "chainId": chain_id,
+        "from": "0x0000000000000000000000000000000000000000",
+        "to": to_hex,
+        "value": "0",
+        "selector": selector_hex,
+        "actions": actions,
+    }))
 }
 
 /// Resolve `calldata` against the parent target, then if the function is a
@@ -794,6 +855,9 @@ fn decode_recursive<'a>(
                 .map(|a| arg_to_api(a, Some(&selector_bytes)))
                 .collect(),
             children,
+            // Filled in by the top-level decode() handler (depth 0 only) via
+            // build_mapping(). Sub-calls leave it None.
+            mapping: None,
         }
     })
 }
@@ -1067,6 +1131,8 @@ fn step_to_response<'a>(
             selector,
             args,
             children: nested_children,
+            // Sub-step nodes never carry the top-level mapping.
+            mapping: None,
         }
     })
 }
