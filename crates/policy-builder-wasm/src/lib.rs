@@ -17,9 +17,7 @@
 
 use policy_builder::operators::{operators_for, OperatorArity};
 use policy_builder::schemas;
-use policy_builder::types::{
-    ActionSchema, CedarType, FieldSpec, PolicyRule,
-};
+use policy_builder::types::{ActionSchema, CedarType, FieldSpec, PolicyRule};
 use policy_builder::{compile, validate, CompileError, ValidationError};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -230,11 +228,7 @@ struct OperatorDto {
 }
 
 fn schema_to_dto(schema: &ActionSchema) -> ActionSchemaDto {
-    let fields = schema
-        .fields
-        .values()
-        .map(field_to_dto)
-        .collect();
+    let fields = schema.fields.values().map(field_to_dto).collect();
     ActionSchemaDto {
         action: schema.action.clone(),
         principal_type: schema.principal_type.clone(),

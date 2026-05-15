@@ -178,7 +178,9 @@ impl<'de> Deserialize<'de> for AssetRef {
             decimals: raw.decimals,
         };
 
-        asset.validate_required_fields().map_err(de::Error::custom)?;
+        asset
+            .validate_required_fields()
+            .map_err(de::Error::custom)?;
         Ok(asset)
     }
 }
@@ -193,9 +195,7 @@ impl AssetRef {
             return Err("address is required for erc20, erc721, and erc1155 assets");
         }
 
-        if matches!(self.kind, AssetKind::Erc721 | AssetKind::Erc1155)
-            && self.token_id.is_none()
-        {
+        if matches!(self.kind, AssetKind::Erc721 | AssetKind::Erc1155) && self.token_id.is_none() {
             return Err("tokenId is required for erc721 and erc1155 assets");
         }
 
@@ -423,8 +423,7 @@ mod tests {
 
     #[test]
     fn test_asset_ref_deserialize_erc721_missing_token_id_err() {
-        let json =
-            r#"{"kind":"erc721","address":"0x1234567890abcdef1234567890abcdef12345678"}"#;
+        let json = r#"{"kind":"erc721","address":"0x1234567890abcdef1234567890abcdef12345678"}"#;
 
         let err = serde_json::from_str::<AssetRef>(json).unwrap_err();
 

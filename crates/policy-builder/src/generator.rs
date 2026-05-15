@@ -258,9 +258,7 @@ mod tests {
             value: PredicateValue::Multi(vec!["chainlink".into(), "pyth".into()]),
         }]);
         let out = compile(&rule, &swap::schema()).unwrap();
-        assert!(out.contains(
-            r#"context.totalInputUsd.sources.containsAny(["chainlink", "pyth"])"#
-        ));
+        assert!(out.contains(r#"context.totalInputUsd.sources.containsAny(["chainlink", "pyth"])"#));
     }
 
     #[test]

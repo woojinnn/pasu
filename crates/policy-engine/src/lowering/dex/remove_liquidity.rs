@@ -21,7 +21,10 @@ impl Lower for RemoveLiquidityAction {
         );
         context.insert(POOL.into(), pool_json(&self.pool));
         context.insert(INPUT_LP.into(), asset_with_amount_json(&self.input_lp)?);
-        context.insert(OUTPUT_TOKENS.into(), asset_with_amounts_json(&self.outputs)?);
+        context.insert(
+            OUTPUT_TOKENS.into(),
+            asset_with_amounts_json(&self.outputs)?,
+        );
         context.insert(RECIPIENT.into(), Value::from(self.recipient.to_string()));
         if let Some(validity) = &self.validity {
             context.insert(VALIDITY.into(), validity_json(validity));
@@ -57,11 +60,7 @@ mod tests {
                 exit_mode: RemoveLiquidityExitMode::Proportional,
                 pool: pool(),
                 input_lp: AssetRefWithAmountConstraint {
-                    asset: erc20(
-                        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                        "UNI-V2",
-                        18,
-                    ),
+                    asset: erc20("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "UNI-V2", 18),
                     amount: amount(AmountKind::Exact, "1000"),
                 },
                 outputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),

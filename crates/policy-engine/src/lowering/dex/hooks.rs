@@ -36,7 +36,10 @@ pub(crate) fn hook_permissions_json(permissions: &HookPermissions) -> Value {
         HOOK_AFTER_REMOVE_LIQUIDITY.into(),
         Value::Bool(permissions.after_remove_liquidity),
     );
-    out.insert(HOOK_BEFORE_SWAP.into(), Value::Bool(permissions.before_swap));
+    out.insert(
+        HOOK_BEFORE_SWAP.into(),
+        Value::Bool(permissions.before_swap),
+    );
     out.insert(HOOK_AFTER_SWAP.into(), Value::Bool(permissions.after_swap));
     out.insert(
         HOOK_BEFORE_DONATE.into(),

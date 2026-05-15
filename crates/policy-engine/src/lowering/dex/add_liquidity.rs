@@ -45,11 +45,7 @@ mod tests {
                 pool: pool(),
                 inputs: asset_amount_pair(AmountKind::Max, AmountKind::Max),
                 output_lp: AssetRefWithAmountConstraint {
-                    asset: erc20(
-                        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                        "UNI-V2",
-                        18,
-                    ),
+                    asset: erc20("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "UNI-V2", 18),
                     amount: amount(AmountKind::Min, "1000"),
                 },
                 recipient: from.clone(),

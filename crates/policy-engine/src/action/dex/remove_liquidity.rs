@@ -41,11 +41,7 @@ mod tests {
             exit_mode: RemoveLiquidityExitMode::Proportional,
             pool: pool(),
             input_lp: AssetRefWithAmountConstraint {
-                asset: erc20(
-                    "0x3333333333333333333333333333333333333333",
-                    "UNI-V2",
-                    18,
-                ),
+                asset: erc20("0x3333333333333333333333333333333333333333", "UNI-V2", 18),
                 amount: amount(AmountKind::Exact, "100000000000000000"),
             },
             outputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
@@ -62,11 +58,7 @@ mod tests {
             exit_mode: RemoveLiquidityExitMode::SingleAsset,
             pool: pool(),
             input_lp: AssetRefWithAmountConstraint {
-                asset: erc20(
-                    "0x3333333333333333333333333333333333333333",
-                    "UNI-V2",
-                    18,
-                ),
+                asset: erc20("0x3333333333333333333333333333333333333333", "UNI-V2", 18),
                 amount: amount(AmountKind::Exact, "100000000000000000"),
             },
             outputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),

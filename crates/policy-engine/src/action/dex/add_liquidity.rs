@@ -39,11 +39,7 @@ mod tests {
             pool: pool(),
             inputs: asset_amount_pair(AmountKind::Exact, AmountKind::Exact),
             output_lp: AssetRefWithAmountConstraint {
-                asset: erc20(
-                    "0x3333333333333333333333333333333333333333",
-                    "UNI-V2",
-                    18,
-                ),
+                asset: erc20("0x3333333333333333333333333333333333333333", "UNI-V2", 18),
                 amount: amount(AmountKind::Min, "100000000000000000"),
             },
             recipient: address("0x2222222222222222222222222222222222222222"),
@@ -59,11 +55,7 @@ mod tests {
             pool: pool(),
             inputs: asset_amount_pair(AmountKind::Min, AmountKind::Min),
             output_lp: AssetRefWithAmountConstraint {
-                asset: erc20(
-                    "0x3333333333333333333333333333333333333333",
-                    "UNI-V2",
-                    18,
-                ),
+                asset: erc20("0x3333333333333333333333333333333333333333", "UNI-V2", 18),
                 amount: amount(AmountKind::Min, "100000000000000000"),
             },
             recipient: address("0x2222222222222222222222222222222222222222"),

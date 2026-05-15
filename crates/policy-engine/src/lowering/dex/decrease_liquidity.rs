@@ -21,7 +21,10 @@ impl Lower for DecreaseLiquidityAction {
             LIQUIDITY_DELTA.into(),
             amount_constraint_json(&self.liquidity_delta),
         );
-        context.insert(OUTPUT_TOKENS.into(), asset_with_amounts_json(&self.outputs)?);
+        context.insert(
+            OUTPUT_TOKENS.into(),
+            asset_with_amounts_json(&self.outputs)?,
+        );
         if let Some(recipient) = &self.recipient {
             context.insert(RECIPIENT.into(), Value::from(recipient.to_string()));
         }

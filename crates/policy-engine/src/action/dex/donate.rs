@@ -43,7 +43,7 @@ mod tests {
     use super::*;
     use crate::action::common::AmountKind;
     use crate::action::dex::test_support::{
-        address, asset_amount_pair, assert_roundtrip, hex, pool, validity,
+        address, assert_roundtrip, asset_amount_pair, hex, pool, validity,
     };
 
     #[test]
