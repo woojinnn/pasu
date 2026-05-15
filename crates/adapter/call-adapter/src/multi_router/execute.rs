@@ -41,16 +41,24 @@ pub(super) fn decode_outer_call(
         .try_into()
         .expect("slice length checked");
 
+    // The two real on-chain Solidity functions are both named `execute` (an
+    // overload pair distinguished by parameter count). Rust can't host two
+    // `executeCall` types in one module, so the deadline overload is renamed
+    // to `executeWithDeadline` for the `sol!` macro. That makes
+    // `executeWithDeadlineCall::SELECTOR` ≠ the on-chain `0x3593564c`, so we
+    // skip the macro's strict selector check by feeding the post-selector
+    // payload directly into `abi_decode_raw`.
+    let payload = &calldata[4..];
     match selector {
         EXECUTE_SELECTOR => {
-            let call = executeCall::abi_decode(calldata, true).map_err(|e| {
+            let call = executeCall::abi_decode_raw(payload, true).map_err(|e| {
                 AdapterError::Invalid(format!("UR execute ABI decode failed: {e}"))
             })?;
             let inputs: Vec<Vec<u8>> = call.inputs.iter().map(|b| b.to_vec()).collect();
             Ok((call.commands.to_vec(), inputs, None))
         }
         EXECUTE_DEADLINE_SELECTOR => {
-            let call = executeWithDeadlineCall::abi_decode(calldata, true).map_err(|e| {
+            let call = executeWithDeadlineCall::abi_decode_raw(payload, true).map_err(|e| {
                 AdapterError::Invalid(format!(
                     "UR executeWithDeadline ABI decode failed: {e}"
                 ))

@@ -43,6 +43,7 @@ mod execute;
 mod merge;
 mod v4_actions;
 
+use abi_resolver::subdecode::protocols::pancake_ur::pancake_universal_router_deployments;
 use abi_resolver::subdecode::protocols::universal_router::{
     uniswap_universal_router_deployments, EXECUTE_DEADLINE_SELECTOR, EXECUTE_SELECTOR,
 };
@@ -100,6 +101,27 @@ impl MultiRouterCallAdapter {
             OpcodeConstants::UNISWAP_UR,
         )
     }
+
+    /// Pre-built adapter for PancakeSwap (Infinity) Universal Router. Reuses
+    /// the same dispatcher with a different opcode mapping (mask `0x3f`,
+    /// see [`OpcodeConstants::PANCAKE_UR`]). Pancake Infinity sub-actions
+    /// (opcodes 0x10–0x16) and stable-swap (0x22/0x23) are recognised but
+    /// not yet decoded — they're treated as `Ignored` until dedicated
+    /// decoders land. Common-range opcodes (V2/V3 swaps, WRAP/UNWRAP,
+    /// Permit2 family, settlement utilities) work identically to Uniswap.
+    #[must_use]
+    pub fn pancake_ur() -> Self {
+        let deployments = pancake_universal_router_deployments()
+            .map(|(chain_id, alloy_addr)| {
+                (chain_id, common::policy_address_from_alloy(&alloy_addr))
+            })
+            .collect();
+        Self::new(
+            "multi-router/pancake-universal-router",
+            deployments,
+            OpcodeConstants::PANCAKE_UR,
+        )
+    }
 }
 
 impl CallAdapter for MultiRouterCallAdapter {
@@ -147,5 +169,18 @@ mod tests {
     #[test]
     fn test_uniswap_ur_factory_match_keys_non_empty() {
         assert!(!MultiRouterCallAdapter::uniswap_ur().match_keys().is_empty());
+    }
+
+    #[test]
+    fn test_pancake_ur_factory_match_keys_non_empty() {
+        assert!(!MultiRouterCallAdapter::pancake_ur().match_keys().is_empty());
+    }
+
+    #[test]
+    fn test_uniswap_and_pancake_have_distinct_ids() {
+        assert_ne!(
+            MultiRouterCallAdapter::uniswap_ur().id(),
+            MultiRouterCallAdapter::pancake_ur().id(),
+        );
     }
 }

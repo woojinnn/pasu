@@ -79,6 +79,17 @@ impl OpcodeConstants {
         mask: 0x7f,
         classify: classify_uniswap_ur,
     };
+
+    /// PancakeSwap (Infinity) Universal Router opcode table.
+    /// Mirrors Uniswap on the 0x00–0x0e common range, omits 0x07 (Pancake
+    /// dispatcher reverts), maps 0x10 to Pancake Infinity (different from
+    /// Uniswap V4 — treated as Ignored pending an Infinity decoder), and
+    /// adds 0x22/0x23 stable-swap (Ignored pending a stable-swap decoder).
+    /// The mask is `0x3f` (top two bits reserved by Pancake).
+    pub const PANCAKE_UR: Self = Self {
+        mask: 0x3f,
+        classify: classify_pancake_ur,
+    };
 }
 
 fn classify_uniswap_ur(opcode: u8) -> OpcodeKind {
@@ -106,6 +117,37 @@ fn classify_uniswap_ur(opcode: u8) -> OpcodeKind {
         //   outside the current swap policy scope.
         0x02 | 0x03 | 0x04 | 0x05 | 0x06 | 0x07 | 0x0a | 0x0d | 0x0e | 0x11 | 0x12
         | 0x13 | 0x14 => OpcodeKind::Ignored,
+        _ => OpcodeKind::Unknown,
+    }
+}
+
+fn classify_pancake_ur(opcode: u8) -> OpcodeKind {
+    // Pancake forks Uniswap UR; the 0x00..=0x0e range is identical. Differences:
+    //   - 0x07 is a placeholder in Pancake (Uniswap uses it for
+    //     PAY_PORTION_FULL_PRECISION); Pancake's dispatcher reverts on it,
+    //     so we surface as Unknown rather than silently ignore.
+    //   - 0x10 is INFI_SWAP (Pancake Infinity, V4-like) instead of Uniswap's
+    //     V4_SWAP. The two share the outer `(actions, params[])` shape but
+    //     dispatch inner actions against a different table (PANCAKE_INFI_TABLE).
+    //     Until a dedicated Infinity decoder lands we classify it Ignored —
+    //     wallet sees the Pancake UR call but the Infinity sub-actions don't
+    //     surface (better to under-report than mis-report against Uniswap V4).
+    //   - 0x22/0x23 are Pancake stable-swap opcodes; Ignored for the same
+    //     reason (no stable-swap decoder yet).
+    match opcode {
+        0x00 => OpcodeKind::V3SwapExactIn,
+        0x01 => OpcodeKind::V3SwapExactOut,
+        0x08 => OpcodeKind::V2SwapExactIn,
+        0x09 => OpcodeKind::V2SwapExactOut,
+        0x0b => OpcodeKind::WrapEth,
+        0x0c => OpcodeKind::UnwrapWeth,
+        0x21 => OpcodeKind::ExecuteSubPlan,
+        // Permit2 family + settlement/utility (same as Uniswap)
+        0x02 | 0x03 | 0x04 | 0x05 | 0x06 | 0x0a | 0x0d | 0x0e
+        // V3 position manager + Pancake Infinity slots (0x10..=0x16)
+        | 0x10 | 0x11 | 0x12 | 0x13 | 0x14 | 0x15 | 0x16
+        // Pancake stable-swap
+        | 0x22 | 0x23 => OpcodeKind::Ignored,
         _ => OpcodeKind::Unknown,
     }
 }

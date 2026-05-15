@@ -351,6 +351,7 @@ impl DefaultRegistries {
         let call_adapters = Arc::new(
             InMemoryCallAdapterRegistry::builder()
                 .register(Arc::new(MultiRouterCallAdapter::uniswap_ur()))
+                .register(Arc::new(MultiRouterCallAdapter::pancake_ur()))
                 .build(),
         );
         let sign_adapters = Arc::new(
