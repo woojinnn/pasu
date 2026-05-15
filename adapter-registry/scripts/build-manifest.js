@@ -144,6 +144,11 @@ function coerceSupportedAddresses(raw) {
         `metadata.supported_addresses[${idx}] must be { chain_id: number, address: string }`
       );
     }
+    if (!Number.isInteger(entry.chain_id) || entry.chain_id < 0) {
+      throw new Error(
+        `metadata.supported_addresses[${idx}].chain_id must be a non-negative integer`
+      );
+    }
     const address = entry.address.toLowerCase();
     if (!HEX_ADDRESS.test(address)) {
       throw new Error(
