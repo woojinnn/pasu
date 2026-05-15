@@ -40,9 +40,6 @@ mod command_decode;
 pub mod commands;
 mod common;
 mod execute;
-mod merge;
-// Simulator infrastructure (PR 10a). Switched on as the merge step in PR 10b;
-// for now it builds and unit-tests but `build()` still calls `merge::merge`.
 mod sim;
 mod v4_actions;
 
@@ -160,7 +157,7 @@ impl CallAdapter for MultiRouterCallAdapter {
             0,
             &self.opcode_constants,
         )?;
-        Ok(merge::merge(envelopes))
+        Ok(sim::simulate(envelopes, ctx))
     }
 }
 

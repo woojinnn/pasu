@@ -113,6 +113,27 @@ impl Ledger {
         bucket.constraint = combine(bucket.constraint, delta_constraint);
     }
 
+    /// Read the current `(net, constraint)` for one bucket. Returns the
+    /// zero bucket when no entry exists. Used by `simulate` to decide who
+    /// the swap payer is — if the router already holds the input asset
+    /// (a prior wrap/transfer left it there) the swap consumes from the
+    /// router, otherwise it consumes from the user.
+    pub(in crate::multi_router) fn balance(&self, actor: &Actor, asset: &Asset) -> Bucket {
+        self.entries
+            .get(&(actor.clone(), asset.clone()))
+            .copied()
+            .unwrap_or(Bucket::ZERO)
+    }
+
+    /// Resolve a symbolic `ActorRef` to its concrete `Actor` against `ctx`.
+    /// Exposed so `simulate` can run resolution before reading balances.
+    pub(in crate::multi_router) fn resolve_actor(
+        actor_ref: ActorRef,
+        ctx: &CallContext<'_>,
+    ) -> Actor {
+        resolve(actor_ref, ctx)
+    }
+
     /// Pull every non-zero bucket belonging to the wallet user, sorted by
     /// asset for deterministic iteration. Used by `interpret` to derive
     /// the user-visible intent.
