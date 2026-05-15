@@ -71,6 +71,7 @@ impl<'de> Deserialize<'de> for PermitAction {
 }
 
 impl PermitAction {
+    #[allow(clippy::missing_const_for_fn)]
     fn validate_required_fields(raw: &RawPermitAction) -> Result<(), &'static str> {
         if raw.owner.is_none() {
             return Err("owner is required for permit actions");

@@ -9,6 +9,7 @@ use super::{HookPermissions, PoolRef};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// Create a new pool or set its initial price.
+#[allow(clippy::doc_markdown)]
 pub struct InitializePoolAction {
     /// Pool identifier (V3 CREATE2-derived address or V4 PoolManager address + id).
     pub pool: PoolRef,

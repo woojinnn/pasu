@@ -26,6 +26,7 @@ impl std::fmt::Display for LoweringError {
 
 impl std::error::Error for LoweringError {}
 
+#[allow(clippy::unnecessary_wraps)]
 pub(crate) fn asset_ref_json(asset: &AssetRef) -> Result<Value, LoweringError> {
     let mut out = Map::new();
     out.insert("kind".into(), Value::from(asset_kind_str(&asset.kind)));

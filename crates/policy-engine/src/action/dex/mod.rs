@@ -90,6 +90,7 @@ pub struct TickRange {
 /// All fields default to `false` so JSON payloads may omit any subset of flags;
 /// the cedar shape (`policy-schema/core.cedarschema`) requires every field to
 /// be present when the record is emitted.
+#[allow(clippy::struct_excessive_bools)]
 pub struct HookPermissions {
     /// Hook implements `beforeInitialize`.
     pub before_initialize: bool,

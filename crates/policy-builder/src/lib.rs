@@ -8,7 +8,7 @@
 //!
 //! Entry points:
 //! - [`compile`] — `PolicyRule` -> Cedar text.
-//! - [`validate`] — check a rule against its action schema without emitting.
+//! - [`mod@validate`] — check a rule against its action schema without emitting.
 //! - [`schemas::registry`] — built-in action schemas (swap today, more later).
 
 #![deny(unsafe_code)]

@@ -186,6 +186,7 @@ impl<'de> Deserialize<'de> for AssetRef {
 }
 
 impl AssetRef {
+    #[allow(clippy::missing_const_for_fn)]
     fn validate_required_fields(&self) -> Result<(), &'static str> {
         if matches!(
             self.kind,

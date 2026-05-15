@@ -61,6 +61,7 @@ pub fn policy_request_from_envelope(
 
 /// Build a Cedar policy request from a normalized action envelope, preserving
 /// lowering failures for supported action categories.
+#[allow(clippy::missing_errors_doc)]
 pub fn try_policy_request_from_envelope(
     envelope: &ActionEnvelope,
     from: &Address,

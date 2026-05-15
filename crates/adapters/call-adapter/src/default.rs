@@ -73,6 +73,7 @@ impl CallAdapter for DefaultCallAdapter {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;

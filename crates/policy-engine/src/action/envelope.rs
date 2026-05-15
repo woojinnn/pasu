@@ -479,6 +479,7 @@ mod tests {
         ])
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn asset_amount(asset: Value, kind: &str, value: &str) -> Value {
         json!({
             "asset": asset,

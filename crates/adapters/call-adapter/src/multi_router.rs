@@ -293,7 +293,7 @@ fn v4_swap_exact_in_single(
         ),
         recipient: ctx.from.clone(), // V4 doesn't carry recipient in swap params (uses delta + take action)
         validity,
-        fee_bps: extract_pool_fee_bps(&pk)?,
+        fee_bps: extract_pool_fee_bps(pk)?,
     }))
 }
 
@@ -379,7 +379,7 @@ fn v4_swap_exact_out_single(
         ),
         recipient: ctx.from.clone(),
         validity,
-        fee_bps: extract_pool_fee_bps(&pk)?,
+        fee_bps: extract_pool_fee_bps(pk)?,
     }))
 }
 
@@ -456,6 +456,7 @@ fn v4_asset_ref(ctx: &CallContext<'_>, address: &Address) -> AssetRef {
 /// Decode the outer `execute(bytes,bytes[][,uint256])` ABI envelope via the
 /// inline `sol!` macros. Returns `(commands, inputs, optional_validity)` so
 /// the opcode dispatcher can iterate without going through a `DecodedCall`.
+#[allow(clippy::type_complexity)]
 fn decode_outer_call(
     calldata: &[u8],
 ) -> Result<(Vec<u8>, Vec<Vec<u8>>, Option<Validity>), AdapterError> {
