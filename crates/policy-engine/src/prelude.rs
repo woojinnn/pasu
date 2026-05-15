@@ -14,7 +14,7 @@ pub use crate::action::{
 pub use crate::core::{
     Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation,
 };
-pub use crate::lowering::policy_request_from_envelope;
+pub use crate::lowering::{policy_request_from_envelope, LoweringError};
 pub use crate::policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest,
     PolicyRequestOrigin, Severity, Verdict,

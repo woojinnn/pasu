@@ -6,8 +6,8 @@ use policy_engine::policy_rpc::{
 };
 use policy_engine::{
     policy_request_from_envelope, Action, ActionAddress, ActionEnvelope, AmountConstraint,
-    AmountKind, AssetKind, AssetRef, Category, DecimalString, PolicyEngineBuilder, PolicyRequest,
-    PolicySchemaComposer, Severity, Validity, ValiditySource, Verdict,
+    AmountKind, AssetKind, AssetRef, Category, DecimalString, LoweringError, PolicyEngineBuilder,
+    PolicyRequest, PolicySchemaComposer, Severity, Validity, ValiditySource, Verdict,
 };
 use request_router::{route_request, DefaultRegistries, RouterContext};
 use serde_json::{json, Value};
@@ -54,7 +54,7 @@ fn load_fixture(filename: &str) -> Value {
         .unwrap_or_else(|error| panic!("failed to parse fixture {}: {error}", path.display()))
 }
 
-fn policy_request_from_fixture(filename: &str) -> Option<PolicyRequest> {
+fn policy_request_from_fixture(filename: &str) -> Result<PolicyRequest, LoweringError> {
     let fixture = load_fixture(filename);
     let rpc = fixture
         .get("rpc")
@@ -129,7 +129,7 @@ fn tx_value_wei(tx: &Value, filename: &str) -> DecimalString {
 
 fn swap_request_from_fixture(filename: &str) -> PolicyRequest {
     policy_request_from_fixture(filename)
-        .unwrap_or_else(|| panic!("{filename} should lower to a swap policy request"))
+        .unwrap_or_else(|error| panic!("{filename} should lower to a swap policy request: {error}"))
 }
 
 #[test]
@@ -178,9 +178,15 @@ fn e2e_swap_v2_fails_under_blanket_forbid() {
 
 #[test]
 fn e2e_approve_action_is_unsupported_for_now() {
-    let request = policy_request_from_fixture("erc20_approve.json");
+    let error = policy_request_from_fixture("erc20_approve.json")
+        .expect_err("approve has no lowering yet");
 
-    assert!(request.is_none());
+    assert_eq!(
+        error,
+        LoweringError::UnsupportedAction {
+            kind: "approve".to_owned(),
+        }
+    );
 }
 
 #[test]

@@ -105,15 +105,21 @@ fn action_context_json(
     let value_wei = root.value_wei.parse::<DecimalString>().map_err(|error| {
         PolicyRpcError::InvalidManifest(format!("invalid root.value_wei: {error}"))
     })?;
-    let Some(request) = crate::policy_request_from_envelope(
+    // Selector resolution falls back to an empty context when the action has
+    // no lowering yet so that planning of unrelated manifests can proceed.
+    // Cedar evaluation still fails closed via [`policy_request_from_envelope`]
+    // being called directly in the evaluation path.
+    match crate::policy_request_from_envelope(
         envelope,
         &from,
         &to,
         &value_wei,
         root.chain_id,
         root.block_timestamp.unwrap_or_default(),
-    ) else {
-        return Ok(Value::Object(Map::new()));
-    };
-    Ok(request.context)
+    ) {
+        Ok(request) => Ok(request.context),
+        Err(crate::lowering::LoweringError::UnsupportedAction { .. }) => {
+            Ok(Value::Object(Map::new()))
+        }
+    }
 }

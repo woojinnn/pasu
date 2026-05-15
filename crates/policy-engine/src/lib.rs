@@ -52,7 +52,7 @@ pub use action::{
     AssetRef, AssetRefWithAmountConstraint, Category, DecimalString, Hex, Validity, ValiditySource,
 };
 pub use core::{Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation};
-pub use lowering::policy_request_from_envelope;
+pub use lowering::{policy_request_from_envelope, LoweringError};
 pub use policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest,
     PolicyRequestOrigin, Severity, Verdict,

@@ -163,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    fn non_dex_action_returns_none() {
+    fn non_dex_action_returns_unsupported_action_error() {
         let envelope = crate::action::ActionEnvelope {
             category: Category::Misc,
             action: Action::Approve(ApproveAction {
@@ -177,7 +177,7 @@ mod tests {
             }),
         };
 
-        assert!(crate::lowering::policy_request_from_envelope(
+        let error = crate::lowering::policy_request_from_envelope(
             &envelope,
             &address("0x1111111111111111111111111111111111111111"),
             &address("0x2222222222222222222222222222222222222222"),
@@ -185,7 +185,14 @@ mod tests {
             1,
             BLOCK_TIMESTAMP,
         )
-        .is_none());
+        .expect_err("approve has no lowering yet");
+
+        assert_eq!(
+            error,
+            crate::lowering::LoweringError::UnsupportedAction {
+                kind: "approve".to_owned(),
+            }
+        );
     }
 
     #[test]

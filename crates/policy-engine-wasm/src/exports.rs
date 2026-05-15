@@ -561,17 +561,19 @@ pub fn evaluate_policy_rpc_json(input_json: String) -> String {
         let mut policy_envelopes = Vec::new();
         let mut requests = Vec::new();
         for (envelope_index, envelope) in input.plan.envelopes.iter().enumerate() {
-            if let Some(request) = policy_request_from_envelope(
+            let request = policy_request_from_envelope(
                 envelope,
                 &from,
                 &to,
                 &value_wei,
                 input.plan.root.chain_id,
                 block_timestamp,
-            ) {
-                policy_envelopes.push((envelope_index, envelope));
-                requests.push(request);
-            }
+            )
+            .map_err(|error| {
+                EngineErrorDto::new("unsupported_action", error.to_string())
+            })?;
+            policy_envelopes.push((envelope_index, envelope));
+            requests.push(request);
         }
 
         apply_rpc_results_with_indices(
