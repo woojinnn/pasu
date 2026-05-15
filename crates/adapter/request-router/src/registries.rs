@@ -350,7 +350,7 @@ impl DefaultRegistries {
         // fallback path which lowers via `bridge` → `MapperRegistry`.
         let call_adapters = Arc::new(
             InMemoryCallAdapterRegistry::builder()
-                .register(Arc::new(MultiRouterCallAdapter::new()))
+                .register(Arc::new(MultiRouterCallAdapter::uniswap_ur()))
                 .build(),
         );
         let sign_adapters = Arc::new(
