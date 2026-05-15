@@ -1,0 +1,27 @@
+[package]
+name = "request-router"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Routes raw EVM RPC requests to sign-resolver or abi-resolver based on method type."
+
+[dependencies]
+call-adapter = { workspace = true }
+mappers = { workspace = true }
+sign-resolver = { workspace = true }
+policy-engine = { workspace = true }
+abi-resolver = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+hex = { workspace = true }
+alloy-primitives = { workspace = true }
+tracing = "0.1"
+
+[features]
+# `sqlite` enables the Sourcify SQLite dump tier in the fallback decoding path
+# (`route_request`'s second-tier sourcify fallback). Pulled in via
+# `abi-resolver/sqlite`. Off by default so wasm consumers (extension build) can
+# disable it together with the abi-resolver sqlite feature.
+default = []
+sqlite = ["abi-resolver/sqlite"]

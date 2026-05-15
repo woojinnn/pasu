@@ -4,14 +4,22 @@ members = [
     "crates/policy-engine",
     "crates/policy_engine_wasm",
     "crates/integration-tests",
+    "crates/adapter/abi-resolver",
+    "crates/adapter/call-adapter",
+    "crates/adapter/sign-resolver",
+    "crates/adapter/request-router",
+    "crates/web-server",
+    "crates/adapter/mappers",
+    "crates/policy-builder",
+    "crates/policy-builder-wasm",
+]
+exclude = [
+    # 옛 어댑터 폴더 — crates/adapter/로 복사됐고 기능 검증 후 삭제 예정
     "crates/adapters/abi-resolver",
     "crates/adapters/call-adapter",
     "crates/adapters/sign-resolver",
     "crates/adapters/request-router",
-    "crates/web-server",
     "crates/adapters/mappers",
-    "crates/policy-builder",
-    "crates/policy-builder-wasm",
 ]
 
 [workspace.package]
@@ -33,11 +41,11 @@ thiserror = "2"
 
 # Internal crates referenced by path.
 policy-engine = { path = "crates/policy-engine", version = "0.1.0" }
-abi-resolver = { path = "crates/adapters/abi-resolver", version = "0.1.0" }
-call-adapter = { path = "crates/adapters/call-adapter", version = "0.1.0" }
-sign-resolver = { path = "crates/adapters/sign-resolver", version = "0.1.0" }
-mappers = { path = "crates/adapters/mappers", version = "0.1.0" }
-request-router = { path = "crates/adapters/request-router", version = "0.1.0" }
+abi-resolver = { path = "crates/adapter/abi-resolver", version = "0.1.0" }
+call-adapter = { path = "crates/adapter/call-adapter", version = "0.1.0" }
+sign-resolver = { path = "crates/adapter/sign-resolver", version = "0.1.0" }
+mappers = { path = "crates/adapter/mappers", version = "0.1.0" }
+request-router = { path = "crates/adapter/request-router", version = "0.1.0" }
 policy-builder = { path = "crates/policy-builder", version = "0.1.0" }
 
 # WASM bridge deps

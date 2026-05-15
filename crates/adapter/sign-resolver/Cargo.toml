@@ -1,0 +1,14 @@
+[package]
+name = "sign-resolver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Decode EVM sign requests (eth_signTypedData_v4, personal_sign, eth_sign, eth_signTransaction, eth_sendUserOperation, wallet_grantPermissions) into structured SignRequest values."
+
+[dependencies]
+anyhow = "1"
+mappers.workspace = true
+policy-engine.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

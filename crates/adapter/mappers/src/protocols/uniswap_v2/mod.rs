@@ -1,0 +1,22 @@
+//! Uniswap V2 Router02 mappers (per-function).
+
+pub mod common;
+pub mod swap_eth_for_exact_tokens;
+pub mod swap_exact_eth_for_tokens;
+pub mod swap_exact_eth_for_tokens_supporting_fee_on_transfer_tokens;
+pub mod swap_exact_tokens_for_eth;
+pub mod swap_exact_tokens_for_eth_supporting_fee_on_transfer_tokens;
+pub mod swap_exact_tokens_for_tokens;
+pub mod swap_exact_tokens_for_tokens_supporting_fee_on_transfer_tokens;
+pub mod swap_tokens_for_exact_eth;
+pub mod swap_tokens_for_exact_tokens;
+
+pub use swap_eth_for_exact_tokens::SwapETHForExactTokensMapper;
+pub use swap_exact_eth_for_tokens::SwapExactETHForTokensMapper;
+pub use swap_exact_eth_for_tokens_supporting_fee_on_transfer_tokens::SwapExactETHForTokensFotMapper;
+pub use swap_exact_tokens_for_eth::SwapExactTokensForETHMapper;
+pub use swap_exact_tokens_for_eth_supporting_fee_on_transfer_tokens::SwapExactTokensForETHFotMapper;
+pub use swap_exact_tokens_for_tokens::SwapExactTokensForTokensMapper;
+pub use swap_exact_tokens_for_tokens_supporting_fee_on_transfer_tokens::SwapExactTokensForTokensFotMapper;
+pub use swap_tokens_for_exact_eth::SwapTokensForExactETHMapper;
+pub use swap_tokens_for_exact_tokens::SwapTokensForExactTokensMapper;
