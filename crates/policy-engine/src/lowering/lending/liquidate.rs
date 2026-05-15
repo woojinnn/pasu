@@ -159,4 +159,72 @@ mod tests {
             Some("WETH")
         );
     }
+
+    /// End-to-end coverage that the `liquidationKind` enum lowering reaches
+    /// Cedar with the exact snake_case spelling `liquidation_kind_str`
+    /// produces. The schema declares `liquidationKind: String`, so a Cedar
+    /// `==` against the emitted literal is the right type-correct gate.
+    ///
+    /// Two evaluations prove the enum flows through:
+    ///   * `LiquidationKind::PoolShare` (lowered as `"pool_share"`) → forbid
+    ///     fires → `Verdict::Fail`.
+    ///   * `LiquidationKind::Socializable` (lowered as `"socializable"`) →
+    ///     no match → `Verdict::Pass`.
+    #[test]
+    fn liquidate_policy_on_liquidation_kind_evaluates_end_to_end() {
+        use crate::policy::{PolicyEngineBuilder, Severity, Verdict};
+
+        const LIQUIDATE_SCHEMA: &str =
+            include_str!("../../../../../policy-schema/actions/lending/liquidate.cedarschema");
+
+        let policy = r#"
+            @id("user/liquidate-deny-pool-share")
+            @severity("deny")
+            @reason("Pool-share liquidations disallowed")
+            forbid (principal, action == Action::"liquidate", resource)
+            when {
+              context.liquidationKind == "pool_share"
+            };
+        "#;
+
+        let engine = PolicyEngineBuilder::new()
+            .add_schema_text(LIQUIDATE_SCHEMA)
+            .add_text(policy)
+            .build()
+            .expect("liquidate policy strict-validates against the bundled schema");
+
+        let from = address("0x1111111111111111111111111111111111111111");
+        let borrower = address("0x4444444444444444444444444444444444444444");
+
+        // PoolShare → forbid fires.
+        let mut pool_share = liquidate(borrower.clone());
+        pool_share.liquidation_kind = LiquidationKind::PoolShare;
+        let pool_share_request =
+            policy_request(&envelope(Action::Liquidate(pool_share)), &from);
+
+        match engine
+            .evaluate_request(&pool_share_request)
+            .expect("engine evaluates lowered liquidate request (pool_share)")
+        {
+            Verdict::Fail(matched) => {
+                assert_eq!(matched.len(), 1);
+                assert_eq!(matched[0].policy_id, "user/liquidate-deny-pool-share");
+                assert_eq!(matched[0].severity, Severity::Deny);
+            }
+            other => panic!(
+                "expected Verdict::Fail for PoolShare liquidation, got {other:?}"
+            ),
+        }
+
+        // Socializable → no match → Pass.
+        let mut socializable = liquidate(borrower);
+        socializable.liquidation_kind = LiquidationKind::Socializable;
+        let socializable_request =
+            policy_request(&envelope(Action::Liquidate(socializable)), &from);
+
+        let pass_verdict = engine
+            .evaluate_request(&socializable_request)
+            .expect("engine evaluates lowered liquidate request (socializable)");
+        assert_eq!(pass_verdict, Verdict::Pass);
+    }
 }

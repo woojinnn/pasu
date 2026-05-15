@@ -116,4 +116,72 @@ mod tests {
             Some(60)
         );
     }
+
+    /// End-to-end coverage that the `repayKind` enum lowering reaches Cedar
+    /// untouched. `RepayAction.repay_kind` is required (non-optional) and the
+    /// lowering serializes it via `repay_kind_str` to the snake_case strings
+    /// `"debt_asset"` / `"atoken_direct"` — so the only way to verify the
+    /// enum flows correctly is to install a policy that gates on the exact
+    /// emitted spelling and assert the verdict flips with the variant.
+    ///
+    /// Two evaluations prove both branches reach Cedar:
+    ///   * `RepayKind::AtokenDirect` (lowered as `"atoken_direct"`) →
+    ///     `Verdict::Fail` on the forbid clause.
+    ///   * `RepayKind::DebtAsset` (lowered as `"debt_asset"`) → no match →
+    ///     `Verdict::Pass`.
+    #[test]
+    fn repay_policy_on_repay_kind_evaluates_end_to_end() {
+        use crate::policy::{PolicyEngineBuilder, Severity, Verdict};
+
+        const REPAY_SCHEMA: &str =
+            include_str!("../../../../../policy-schema/actions/lending/repay.cedarschema");
+
+        let policy = r#"
+            @id("user/repay-deny-atoken-direct")
+            @severity("deny")
+            @reason("Direct aToken repay disallowed")
+            forbid (principal, action == Action::"repay", resource)
+            when {
+              context.repayKind == "atoken_direct"
+            };
+        "#;
+
+        let engine = PolicyEngineBuilder::new()
+            .add_schema_text(REPAY_SCHEMA)
+            .add_text(policy)
+            .build()
+            .expect("repay policy strict-validates against the bundled schema");
+
+        let from = address("0x1111111111111111111111111111111111111111");
+
+        // AtokenDirect → forbid fires.
+        let mut atoken = repay(from.clone());
+        atoken.repay_kind = RepayKind::AtokenDirect;
+        let atoken_request =
+            policy_request(&envelope(Action::Repay(atoken)), &from);
+
+        match engine
+            .evaluate_request(&atoken_request)
+            .expect("engine evaluates lowered repay request (atoken_direct)")
+        {
+            Verdict::Fail(matched) => {
+                assert_eq!(matched.len(), 1);
+                assert_eq!(matched[0].policy_id, "user/repay-deny-atoken-direct");
+                assert_eq!(matched[0].severity, Severity::Deny);
+            }
+            other => panic!(
+                "expected Verdict::Fail for AtokenDirect repay, got {other:?}"
+            ),
+        }
+
+        // DebtAsset → no match → Pass.
+        let mut debt = repay(from.clone());
+        debt.repay_kind = RepayKind::DebtAsset;
+        let debt_request = policy_request(&envelope(Action::Repay(debt)), &from);
+
+        let debt_verdict = engine
+            .evaluate_request(&debt_request)
+            .expect("engine evaluates lowered repay request (debt_asset)");
+        assert_eq!(debt_verdict, Verdict::Pass);
+    }
 }

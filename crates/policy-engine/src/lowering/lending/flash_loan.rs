@@ -207,4 +207,50 @@ mod tests {
             Some("unknown")
         );
     }
+
+    /// End-to-end coverage that an action-level blanket deny (no `when`
+    /// clause, no context predicate) fires on the `Action::"flash_loan"` UID
+    /// the dispatcher emits. This is the lightest possible smoke test that
+    /// the action kind alone is sufficient to match — `flashLoanKind`,
+    /// `assets`, and the rest of the context never come into play.
+    #[test]
+    fn flash_loan_policy_blanket_deny_evaluates_end_to_end() {
+        use crate::policy::{PolicyEngineBuilder, Severity, Verdict};
+
+        const FLASH_LOAN_SCHEMA: &str = include_str!(
+            "../../../../../policy-schema/actions/lending/flash_loan.cedarschema"
+        );
+
+        let policy = r#"
+            @id("user/flash-loan-blanket-deny")
+            @severity("deny")
+            @reason("Flash loans disallowed")
+            forbid (principal, action == Action::"flash_loan", resource);
+        "#;
+
+        let engine = PolicyEngineBuilder::new()
+            .add_schema_text(FLASH_LOAN_SCHEMA)
+            .add_text(policy)
+            .build()
+            .expect("flash_loan blanket-deny policy strict-validates against the bundled schema");
+
+        let from = address("0x1111111111111111111111111111111111111111");
+        let receiver = address("0x6666666666666666666666666666666666666666");
+        let request =
+            policy_request(&envelope(Action::FlashLoan(flash_loan(receiver))), &from);
+
+        match engine
+            .evaluate_request(&request)
+            .expect("engine evaluates lowered flash_loan request")
+        {
+            Verdict::Fail(matched) => {
+                assert_eq!(matched.len(), 1);
+                assert_eq!(matched[0].policy_id, "user/flash-loan-blanket-deny");
+                assert_eq!(matched[0].severity, Severity::Deny);
+            }
+            other => panic!(
+                "expected Verdict::Fail for blanket-deny flash_loan, got {other:?}"
+            ),
+        }
+    }
 }

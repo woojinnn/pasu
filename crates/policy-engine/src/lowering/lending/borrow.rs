@@ -119,4 +119,71 @@ mod tests {
             Some(300)
         );
     }
+
+    /// End-to-end coverage that a Cedar policy guarding on
+    /// `context.amount.value` evaluates against the lowered `BorrowAction`.
+    ///
+    /// `AmountConstraint.value` is a `String` in the core schema (BigInt-on-the-
+    /// wire, since EVM amounts overflow `Long`), so the policy compares against
+    /// the literal decimal string the lowering emits rather than using a
+    /// numeric `>`. Two evaluations prove both halves of the gate flow through:
+    ///   * `1_000_000_000_000` (large) → matches the forbid → `Verdict::Fail`.
+    ///   * `100` (small) → no match → `Verdict::Pass`.
+    /// Together they lock that `amount.value` reaches Cedar with the exact
+    /// string the lowering produced.
+    #[test]
+    fn borrow_policy_on_amount_value_evaluates_end_to_end() {
+        use crate::policy::{PolicyEngineBuilder, Severity, Verdict};
+
+        const BORROW_SCHEMA: &str =
+            include_str!("../../../../../policy-schema/actions/lending/borrow.cedarschema");
+
+        let policy = r#"
+            @id("user/borrow-amount-too-large")
+            @severity("deny")
+            @reason("Borrow amount exceeds limit")
+            forbid (principal, action == Action::"borrow", resource)
+            when {
+              context has amount &&
+              context.amount has value &&
+              context.amount.value == "1000000000000"
+            };
+        "#;
+
+        let engine = PolicyEngineBuilder::new()
+            .add_schema_text(BORROW_SCHEMA)
+            .add_text(policy)
+            .build()
+            .expect("borrow policy strict-validates against the bundled schema");
+
+        // Large borrow: amount.value == "1000000000000" → forbid fires.
+        let from = address("0x1111111111111111111111111111111111111111");
+        let on_behalf = address("0x3333333333333333333333333333333333333333");
+        let mut large = borrow(from.clone(), on_behalf.clone());
+        large.amount = amount(AmountKind::Exact, "1000000000000");
+        let large_request =
+            policy_request(&envelope(Action::Borrow(large)), &from);
+
+        match engine
+            .evaluate_request(&large_request)
+            .expect("engine evaluates lowered borrow request (large)")
+        {
+            Verdict::Fail(matched) => {
+                assert_eq!(matched.len(), 1);
+                assert_eq!(matched[0].policy_id, "user/borrow-amount-too-large");
+                assert_eq!(matched[0].severity, Severity::Deny);
+            }
+            other => panic!("expected Verdict::Fail for large borrow, got {other:?}"),
+        }
+
+        // Small borrow: amount.value == "100" → no match → Pass.
+        let mut small = borrow(from.clone(), on_behalf);
+        small.amount = amount(AmountKind::Exact, "100");
+        let small_request = policy_request(&envelope(Action::Borrow(small)), &from);
+
+        let small_verdict = engine
+            .evaluate_request(&small_request)
+            .expect("engine evaluates lowered borrow request (small)");
+        assert_eq!(small_verdict, Verdict::Pass);
+    }
 }
