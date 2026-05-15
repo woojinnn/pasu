@@ -36,6 +36,21 @@ services:
     ports:
       - "8787:8787"
 
+  adapter-registry:
+    profiles:
+      - adapter-registry
+    build:
+      context: .
+      dockerfile: adapter-registry/Dockerfile
+    container_name: scopeball-adapter-registry
+    ports:
+      - "8788:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/manifest.json"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
 volumes:
   cargo-registry:
   cargo-git:
