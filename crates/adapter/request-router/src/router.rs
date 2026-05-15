@@ -10,7 +10,8 @@ use mappers::{MapContext, MapperMatchKey, MapperRegistry as _};
 use policy_engine::action::{Address, DecimalString};
 use serde_json::Value;
 use sign_resolver::{
-    parse_sign_request, SignAdapterRegistry, SignContext, SignMatchKey, SignPayload,
+    parse_sign_request, SignAdapterRegistry, SignContext, SignMatchKey, SignMethod, SignPayload,
+    SignRequest,
 };
 
 use crate::registries::DefaultRegistries;
@@ -45,9 +46,11 @@ pub fn route_request(
     params: &Value,
     chain_id: u64,
 ) -> Result<Vec<policy_engine::ActionEnvelope>, RouterError> {
+    if SignMethod::detect(method).is_some() {
+        return route_sign(ctx, method, params, chain_id);
+    }
     match method {
         "eth_sendTransaction" | "eth_call" => route_call(ctx, params, chain_id),
-        "eth_signTypedData_v4" => route_sign_typed_data(ctx, method, params, chain_id),
         _ => Err(RouterError::Unsupported(method.to_owned())),
     }
 }
@@ -76,6 +79,23 @@ fn route_call(
         .ok_or_else(|| RouterError::InvalidParams("missing tx data/input".into()))
         .and_then(hex_to_bytes)?;
 
+    dispatch_call(ctx, chain_id, &from, &to, &value, &calldata)
+}
+
+/// Core call-side dispatch shared by `route_call` and the inner-calldata
+/// paths in `route_sign` (eth_signTransaction, eth_sendUserOperation).
+///
+/// Tier 1 is the per-function `CallAdapter` registry; tier 2 is the
+/// Sourcify-backed legacy resolver + bridge → mapper fallback. Returns
+/// `InvalidParams` if the calldata is shorter than a 4-byte selector.
+fn dispatch_call(
+    ctx: &RouterContext<'_>,
+    chain_id: u64,
+    from: &Address,
+    to: &Address,
+    value: &DecimalString,
+    calldata: &[u8],
+) -> Result<Vec<policy_engine::ActionEnvelope>, RouterError> {
     if calldata.len() < 4 {
         return Err(RouterError::InvalidParams(format!(
             "calldata too short: {} bytes",
@@ -83,37 +103,32 @@ fn route_call(
         )));
     }
 
-    let selector = selector(&calldata)?;
+    let selector = selector(calldata)?;
     let key = CallMatchKey {
         chain_id,
         to: to.clone(),
         selector,
     };
 
-    // Tier 1: a registered `CallAdapter` (new pipeline). Covers protocols where
-    // we ship a per-function `sol!`-backed decoder + mapper.
+    // Tier 1: per-function CallAdapter.
     if let Some(adapter) = ctx.registries.call_adapters.resolve(&key) {
         let call_ctx = CallContext {
             chain_id,
-            from: &from,
-            to: &to,
-            value_wei: &value,
+            from,
+            to,
+            value_wei: value,
             block_timestamp: ctx.block_timestamp,
             token_registry: ctx.token_registry,
             decoder_registry: ctx.registries.decoders.as_ref(),
             mapper_registry: ctx.registries.mappers.as_ref(),
         };
         return adapter
-            .build(&call_ctx, &calldata)
+            .build(&call_ctx, calldata)
             .map_err(|err| RouterError::Call(err.into()));
     }
 
-    // Tier 2: legacy `Resolver` fallback (Sourcify bundle + openchain seed + optional
-    // SQLite). We decode dynamically, then convert the result into the new
-    // `DecodedCall` shape and dispatch through the new `MapperRegistry` using
-    // the canonical decoder_id derived from the selector. This lets us pick up
-    // any function whose ABI Sourcify knows about, as long as a mapper exists.
-    route_call_fallback(ctx, chain_id, &from, &to, &value, &calldata, selector)
+    // Tier 2: Sourcify dynamic decode + mapper dispatch.
+    route_call_fallback(ctx, chain_id, from, to, value, calldata, selector)
 }
 
 /// Sourcify-backed fallback decode + mapper dispatch. Invoked from
@@ -165,7 +180,20 @@ fn route_call_fallback(
         .map_err(|e| RouterError::Call(e.into()))
 }
 
-fn route_sign_typed_data(
+/// Top-level dispatch for any sign method recognised by `SignMethod::detect`.
+///
+/// Routing per payload variant:
+///   - `TypedData`: `(verifyingContract, primaryType)` lookup against
+///     `sign_adapters`, with wildcard fallback on `verifyingContract`.
+///   - `Transaction` (eth_signTransaction): treat the embedded `tx.data`
+///     as inner calldata and re-dispatch through `dispatch_call` so the
+///     wallet UI shows what the signed transaction would do.
+///   - `UserOperation` (eth_sendUserOperation): treat `user_op.callData`
+///     as inner calldata directed at `user_op.sender` (the smart account).
+///   - `RawMessage`/`RawHash`/`PermissionRequest`: gracefully return an
+///     empty envelope list — callers still see the parsed `SignRequest`
+///     structure but no semantic action is emitted today.
+fn route_sign(
     ctx: &RouterContext<'_>,
     method: &str,
     params: &Value,
@@ -175,8 +203,28 @@ fn route_sign_typed_data(
         .map_err(|err| RouterError::InvalidParams(err.to_string()))?;
     let signer = Address::from_str(&request.signer)
         .map_err(|err| RouterError::InvalidParams(format!("invalid signer: {err}")))?;
+
+    match &request.payload {
+        SignPayload::TypedData(_) => route_sign_typed_data(ctx, &request, &signer),
+        SignPayload::Transaction(tx) => route_sign_transaction_inner(ctx, &request, tx),
+        SignPayload::UserOperation { user_op, .. } => {
+            route_user_op_inner(ctx, &request, user_op)
+        }
+        SignPayload::RawMessage(_)
+        | SignPayload::RawHash(_)
+        | SignPayload::PermissionRequest(_) => Ok(Vec::new()),
+    }
+}
+
+fn route_sign_typed_data(
+    ctx: &RouterContext<'_>,
+    request: &SignRequest,
+    signer: &Address,
+) -> Result<Vec<policy_engine::ActionEnvelope>, RouterError> {
     let SignPayload::TypedData(typed_data) = &request.payload else {
-        return Err(RouterError::Unsupported(method.to_owned()));
+        return Err(RouterError::InvalidParams(
+            "route_sign_typed_data called with non-TypedData payload".into(),
+        ));
     };
 
     let primary_type = typed_data
@@ -212,14 +260,70 @@ fn route_sign_typed_data(
         .ok_or(RouterError::NoMatch)?;
     let sign_ctx = SignContext {
         chain_id: request.chain_id,
-        signer: &signer,
+        signer,
         block_timestamp: ctx.block_timestamp,
         token_registry: ctx.token_registry,
     };
 
     adapter
-        .build(&sign_ctx, &request)
+        .build(&sign_ctx, request)
         .map_err(|err| RouterError::Sign(err.into()))
+}
+
+/// `eth_signTransaction`: the embedded transaction object is a normal
+/// EVM tx that the wallet is being asked to sign without broadcasting.
+/// Re-dispatch its `data` payload through the call-side pipeline so the
+/// resulting envelopes describe what the signed tx would do on-chain.
+fn route_sign_transaction_inner(
+    ctx: &RouterContext<'_>,
+    request: &SignRequest,
+    tx: &Value,
+) -> Result<Vec<policy_engine::ActionEnvelope>, RouterError> {
+    let to = required_address(tx, "to")?;
+    let from = optional_address(tx, "from")?.unwrap_or_else(zero_address);
+    let value = tx
+        .get("value")
+        .map(value_to_decimal_string)
+        .transpose()?
+        .unwrap_or_else(zero_decimal);
+    let calldata = tx
+        .get("data")
+        .or_else(|| tx.get("input"))
+        .and_then(Value::as_str)
+        .map(hex_to_bytes)
+        .transpose()?
+        .unwrap_or_default();
+
+    if calldata.is_empty() {
+        return Ok(Vec::new());
+    }
+    dispatch_call(ctx, request.chain_id, &from, &to, &value, &calldata)
+}
+
+/// `eth_sendUserOperation` (ERC-4337): `user_op.callData` is the calldata
+/// the EntryPoint will replay against `user_op.sender` (the smart account).
+/// We re-dispatch it through the same pipeline. Returns an empty envelope
+/// list — not an error — when callData is empty (account-only ops like
+/// `validateUserOp`).
+fn route_user_op_inner(
+    ctx: &RouterContext<'_>,
+    request: &SignRequest,
+    user_op: &Value,
+) -> Result<Vec<policy_engine::ActionEnvelope>, RouterError> {
+    let sender = required_address(user_op, "sender")?;
+    let calldata = user_op
+        .get("callData")
+        .or_else(|| user_op.get("call_data"))
+        .and_then(Value::as_str)
+        .map(hex_to_bytes)
+        .transpose()?
+        .unwrap_or_default();
+
+    if calldata.is_empty() {
+        return Ok(Vec::new());
+    }
+    let value = zero_decimal();
+    dispatch_call(ctx, request.chain_id, &sender, &sender, &value, &calldata)
 }
 
 fn selector(calldata: &[u8]) -> Result<[u8; 4], RouterError> {
@@ -467,17 +571,37 @@ mod tests {
 
     #[test]
     fn test_route_request_unsupported_method() {
+        // Methods we genuinely don't recognise (neither call nor sign) still
+        // surface as Unsupported.
         let registries = DefaultRegistries::standard();
         let token_registry = EmptyTokenRegistry;
         let err = route_request(
+            &ctx(&registries, &token_registry),
+            "eth_getBalance",
+            &json!(["0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "latest"]),
+            1,
+        )
+        .unwrap_err();
+
+        assert!(matches!(err, RouterError::Unsupported(method) if method == "eth_getBalance"));
+    }
+
+    #[test]
+    fn test_route_request_personal_sign_now_recognised_with_no_envelopes() {
+        // Since PR 5 wired SignMethod::detect into the dispatcher, personal_sign
+        // is now a recognised sign method that produces no semantic envelope
+        // (vs. the old Unsupported error). Wallet UIs still see the parsed
+        // SignRequest via parse_sign_request; the router just emits no Action.
+        let registries = DefaultRegistries::standard();
+        let token_registry = EmptyTokenRegistry;
+        let envelopes = route_request(
             &ctx(&registries, &token_registry),
             "personal_sign",
             &json!(["0xdeadbeef", "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]),
             1,
         )
-        .unwrap_err();
-
-        assert!(matches!(err, RouterError::Unsupported(method) if method == "personal_sign"));
+        .unwrap();
+        assert!(envelopes.is_empty());
     }
 
     #[test]
