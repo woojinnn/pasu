@@ -3,8 +3,10 @@
 //! Each submodule provides an `impl Lower for <Action>` so the dispatcher in
 //! [`crate::lowering::dispatch`] can call `action.build(&ctx)` uniformly.
 
+pub(crate) mod borrow;
 pub(crate) mod common;
 pub(crate) mod supply;
+pub(crate) mod withdraw;
 
 #[cfg(test)]
 pub(crate) mod test_support {

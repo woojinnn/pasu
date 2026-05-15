@@ -82,9 +82,9 @@ pub fn policy_request_from_envelope(
         Action::IncreaseLiquidity(action) => Ok(action.build(&ctx)),
         Action::DecreaseLiquidity(action) => Ok(action.build(&ctx)),
         Action::Supply(action) => Ok(action.build(&ctx)),
-        Action::Withdraw(_)
-        | Action::Borrow(_)
-        | Action::Repay(_)
+        Action::Withdraw(action) => Ok(action.build(&ctx)),
+        Action::Borrow(action) => Ok(action.build(&ctx)),
+        Action::Repay(_)
         | Action::Liquidate(_)
         | Action::FlashLoan(_)
         | Action::SetAuthorization(_)
