@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowImportingTsExtensions": false,
+    "noEmit": true,
+    "types": ["node"],
+    "typeRoots": ["../extension/node_modules/@types"],
+    "baseUrl": ".",
+    "paths": {
+      "vitest": ["../extension/node_modules/vitest"]
+    }
+  },
+  "include": ["tests/**/*.ts"],
+  "exclude": ["node_modules"]
+}
