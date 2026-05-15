@@ -5,14 +5,19 @@
 // per artifact, merges per-version `metadata.json`, per-protocol `channels.json`,
 // and the optional `.revoked` sentinel file, and writes `public/manifest.json`.
 //
-// The output conforms to the `AdapterManifest` shape that lives (or will live)
-// at `extension/src/lib/adapter-manifest.ts`. While that canonical type is not
-// yet committed (track-B prerequisite), see `adapter-registry/tests/README.md`
-// for the temporary vendored copy used by tests.
+// The output conforms to the canonical `AdapterManifest` shape defined at
+// `extension/src/lib/adapter-manifest.ts` (track-B). While that file is not
+// yet on this branch, `tests/_vendored/adapter-manifest.ts` holds a duplicate
+// for test-time validation; see `tests/README.md` for the reconciliation plan.
 //
 // Idempotent: running twice in a row over an unchanged tree produces identical
 // output, modulo the `generated_at` timestamp. To make CI diffs reproducible,
 // set `MANIFEST_GENERATED_AT` to a fixed ISO-8601 string.
+//
+// Note: when `metadata.json` does not supply `published_at`, the script falls
+// back to the wasm file's mtime. This is mtime-dependent — copying the wasm
+// without `-p` will perturb the manifest. Authors should set `published_at`
+// explicitly in `metadata.json` once an artifact is published.
 //
 // Exit codes:
 //   0 — success
@@ -34,6 +39,11 @@ const REGISTRY_ROOT = path.resolve(HERE, "..");
 const PUBLIC_ROOT = path.join(REGISTRY_ROOT, "public");
 const ADAPTERS_ROOT = path.join(PUBLIC_ROOT, "adapters");
 const MANIFEST_PATH = path.join(PUBLIC_ROOT, "manifest.json");
+
+// ---------------------------------------------------------------------------
+// validation regexes (mirror the canonical parser)
+
+const HEX_ADDRESS = /^0x[0-9a-f]{40}$/;
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -134,7 +144,13 @@ function coerceSupportedAddresses(raw) {
         `metadata.supported_addresses[${idx}] must be { chain_id: number, address: string }`
       );
     }
-    return { chain_id: entry.chain_id, address: entry.address };
+    const address = entry.address.toLowerCase();
+    if (!HEX_ADDRESS.test(address)) {
+      throw new Error(
+        `metadata.supported_addresses[${idx}].address must be a 0x-prefixed 20-byte hex string`
+      );
+    }
+    return { chain_id: entry.chain_id, address };
   });
 }
 
@@ -161,6 +177,18 @@ function coerceDisplayName(raw) {
   return raw;
 }
 
+function coercePublishedAt(raw) {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "string" || raw.length === 0) {
+    throw new Error("metadata.published_at must be a non-empty ISO-8601 string");
+  }
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) {
+    throw new Error("metadata.published_at must be a valid ISO-8601 string");
+  }
+  return raw;
+}
+
 // ---------------------------------------------------------------------------
 // version + protocol walkers
 
@@ -172,17 +200,37 @@ async function buildVersionEntry({ protocol, version }) {
     throw new Error(`Missing ${wasmPath}; every version directory must ship adapter.wasm`);
   }
 
-  const sha256 = await sha256OfFile(wasmPath);
+  const sha256Hex = await sha256OfFile(wasmPath);
+  const wasmStat = await fs.stat(wasmPath);
   const metadata = (await readJsonOptional(path.join(versionDir, "metadata.json"))) ?? {};
   const revokedSentinel = await pathExists(path.join(versionDir, ".revoked"));
 
+  // published_at: prefer metadata.json; fall back to file mtime; emit a
+  // clear warning when metadata is missing so authors are nudged to add it.
+  let publishedAt = coercePublishedAt(metadata.published_at);
+  if (publishedAt === undefined) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `warning: ${protocol}/${version}/metadata.json lacks "published_at"; falling back to wasm mtime (needs metadata)`
+    );
+    if (wasmStat.mtime instanceof Date && !Number.isNaN(wasmStat.mtime.getTime())) {
+      publishedAt = wasmStat.mtime.toISOString();
+    } else {
+      publishedAt = new Date(0).toISOString();
+    }
+  }
+
   return {
     version,
-    wasm_url: `/adapters/${protocol}/${version}/adapter.wasm`,
-    sha256,
+    url: `/adapters/${protocol}/${version}/adapter.wasm`,
+    sha256: `0x${sha256Hex}`,
+    size_bytes: wasmStat.size,
     supported_chains: coerceSupportedChains(metadata.supported_chains),
     supported_addresses: coerceSupportedAddresses(metadata.supported_addresses),
     host_capabilities: coerceHostCapabilities(metadata.host_capabilities),
+    signature: null,
+    signer_id: null,
+    published_at: publishedAt,
     revoked: Boolean(revokedSentinel),
     display_name_override: coerceDisplayName(metadata.display_name),
   };
@@ -200,24 +248,44 @@ async function buildProtocolEntry(protocol) {
   // filesystem ordering.
   versions.sort((a, b) => compareSemver(a.version, b.version));
 
-  // `display_name`: per-version metadata can override; protocol-level falls
-  // back to the latest version's name, or the protocol slug.
+  // `display_name`: per-version metadata can override; we pick the latest
+  // version that supplied one. If no version supplied a display_name, refuse
+  // to emit — the protocol slug is not a human-readable substitute.
   const latestWithName = [...versions]
     .reverse()
     .find((v) => v.display_name_override !== undefined);
-  const protocolDisplayName = latestWithName?.display_name_override ?? protocol;
+  if (!latestWithName) {
+    throw new Error(
+      `Protocol ${protocol} has no version supplying metadata.display_name; add display_name to at least one version's metadata.json`
+    );
+  }
+  const protocolDisplayName = latestWithName.display_name_override;
 
   // `stable_version`: prefer `channels.json`; fall back to highest semver.
+  // `canary_version` is null in Phase 1 unless channels.json explicitly pins
+  // a non-null value.
   const channels = await readJsonOptional(path.join(protocolDir, "channels.json"));
   let stableVersion = null;
-  if (channels && typeof channels === "object" && typeof channels.stable === "string") {
-    if (!versions.some((v) => v.version === channels.stable)) {
-      throw new Error(
-        `channels.json for ${protocol} pins stable=${channels.stable}, but that version directory is missing`
-      );
+  let canaryVersion = null;
+  if (channels && typeof channels === "object") {
+    if (typeof channels.stable === "string") {
+      if (!versions.some((v) => v.version === channels.stable)) {
+        throw new Error(
+          `channels.json for ${protocol} pins stable=${channels.stable}, but that version directory is missing`
+        );
+      }
+      stableVersion = channels.stable;
     }
-    stableVersion = channels.stable;
-  } else {
+    if (typeof channels.canary === "string") {
+      if (!versions.some((v) => v.version === channels.canary)) {
+        throw new Error(
+          `channels.json for ${protocol} pins canary=${channels.canary}, but that version directory is missing`
+        );
+      }
+      canaryVersion = channels.canary;
+    }
+  }
+  if (stableVersion === null) {
     const versionList = versions.map((v) => v.version);
     stableVersion = highestVersion(versionList);
   }
@@ -229,6 +297,7 @@ async function buildProtocolEntry(protocol) {
     protocol,
     display_name: protocolDisplayName,
     stable_version: stableVersion,
+    canary_version: canaryVersion,
     versions: versions.map(({ display_name_override, ...rest }) => rest),
   };
 }
