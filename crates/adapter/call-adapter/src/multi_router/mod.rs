@@ -41,6 +41,9 @@ pub mod commands;
 mod common;
 mod execute;
 mod merge;
+// Simulator infrastructure (PR 10a). Switched on as the merge step in PR 10b;
+// for now it builds and unit-tests but `build()` still calls `merge::merge`.
+mod sim;
 mod v4_actions;
 
 use abi_resolver::subdecode::protocols::pancake_ur::pancake_universal_router_deployments;
