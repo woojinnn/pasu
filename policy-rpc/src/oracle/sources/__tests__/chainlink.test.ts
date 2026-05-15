@@ -145,6 +145,41 @@ describe("ChainlinkSource", () => {
     });
   });
 
+  it("caches feed decimals across calls (single decimals() RPC per feed)", async () => {
+    const updatedAtSec = 1_778_750_000;
+    const readContract = vi.fn(
+      async (params: { functionName: string }) => {
+        if (params.functionName === "latestRoundData") {
+          return [1n, 2_000_00000000n, BigInt(updatedAtSec), BigInt(updatedAtSec), 1n] as const;
+        }
+        if (params.functionName === "decimals") {
+          return 8;
+        }
+        throw new Error(`unexpected function ${params.functionName}`);
+      },
+    );
+    const client = { readContract } as unknown as PublicClient;
+
+    const source = new ChainlinkSource({
+      feeds: { 1: { [wethAddress]: fakeFeed } },
+      publicClient: client,
+      nowMs: () => updatedAtSec * 1000,
+    });
+
+    await source.fetch(1, { address: wethAddress });
+    await source.fetch(1, { address: wethAddress });
+    await source.fetch(1, { address: wethAddress });
+
+    const decimalsCalls = readContract.mock.calls.filter(
+      ([params]: [{ functionName: string }]) => params.functionName === "decimals",
+    );
+    const latestCalls = readContract.mock.calls.filter(
+      ([params]: [{ functionName: string }]) => params.functionName === "latestRoundData",
+    );
+    expect(decimalsCalls).toHaveLength(1);
+    expect(latestCalls).toHaveLength(3);
+  });
+
   it("seeds mainnet feeds for USDC/USDT/WETH/WBTC/DAI by default", async () => {
     const knownTokens = [
       wethAddress,

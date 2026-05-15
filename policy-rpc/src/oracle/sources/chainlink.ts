@@ -96,6 +96,13 @@ export class ChainlinkSource implements OracleSource {
   private readonly clientFactory: (chainId: number) => PublicClient;
   private readonly maxAgeSec: number;
   private readonly nowMs: NowMs;
+  /**
+   * `(chainId, feedAddress) -> decimals()` cache. Feed decimals are immutable
+   * per Chainlink AggregatorV3Interface contract, so once we read them we can
+   * skip the RPC call on subsequent price lookups. The cache is instance-
+   * scoped so test cases that swap mock clients don't leak state.
+   */
+  private readonly decimalsCache = new Map<string, number>();
 
   constructor(options: ChainlinkSourceOptions = {}) {
     this.feeds = options.feeds ?? CHAINLINK_FEEDS;
@@ -114,8 +121,11 @@ export class ChainlinkSource implements OracleSource {
 
     let round: LatestRoundData;
     try {
-      round = await readLatestRoundData(client, feed);
+      round = await this.readLatestRoundData(client, chainId, feed);
     } catch (error) {
+      if (error instanceof OracleSourceError) {
+        throw error;
+      }
       throw new OracleSourceError(
         "unavailable",
         SOURCE_ID,
@@ -176,40 +186,53 @@ export class ChainlinkSource implements OracleSource {
 
     return feed as `0x${string}`;
   }
-}
 
-async function readLatestRoundData(
-  client: PublicClient,
-  feedAddress: `0x${string}`,
-): Promise<LatestRoundData> {
-  const [latest, decimals] = await Promise.all([
-    client.readContract({
+  private async readLatestRoundData(
+    client: PublicClient,
+    chainId: number,
+    feedAddress: `0x${string}`,
+  ): Promise<LatestRoundData> {
+    const cacheKey = `${chainId}:${feedAddress.toLowerCase()}`;
+    const cachedDecimals = this.decimalsCache.get(cacheKey);
+
+    // Issue `decimals()` only on first read per (chainId, feedAddress). On
+    // cache hits the latest round is the sole RPC call.
+    const latestPromise = client.readContract({
       address: feedAddress,
       abi: CHAINLINK_AGGREGATOR_ABI,
       functionName: "latestRoundData",
       args: [],
-    }),
-    client.readContract({
-      address: feedAddress,
-      abi: CHAINLINK_AGGREGATOR_ABI,
-      functionName: "decimals",
-      args: [],
-    }),
-  ]);
+    });
 
-  const [, answer, , updatedAt] = latest as readonly [
-    bigint,
-    bigint,
-    bigint,
-    bigint,
-    bigint,
-  ];
+    let decimals: number;
+    if (cachedDecimals !== undefined) {
+      decimals = cachedDecimals;
+    } else {
+      const decimalsRaw = await client.readContract({
+        address: feedAddress,
+        abi: CHAINLINK_AGGREGATOR_ABI,
+        functionName: "decimals",
+        args: [],
+      });
+      decimals = Number(decimalsRaw);
+      this.decimalsCache.set(cacheKey, decimals);
+    }
 
-  return {
-    answer,
-    updatedAt,
-    decimals: Number(decimals),
-  };
+    const latest = await latestPromise;
+    const [, answer, , updatedAt] = latest as readonly [
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+    ];
+
+    return {
+      answer,
+      updatedAt,
+      decimals,
+    };
+  }
 }
 
 /**
