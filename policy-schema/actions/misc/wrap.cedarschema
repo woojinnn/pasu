@@ -1,8 +1,6 @@
 type WrapContext = {
-  nativeAsset: AssetRef,
-  wrappedAsset: AssetRef,
-
-  amount: AmountConstraint,
+  nativeAsset: AssetRefWithAmountConstraint,
+  wrappedAsset: AssetRefWithAmountConstraint,
   recipient: String,
 
   totalUsd?: UsdValuation,

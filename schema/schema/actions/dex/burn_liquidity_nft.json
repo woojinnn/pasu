@@ -36,5 +36,15 @@
     }
   },
 
-  "required": ["nft", "burnKind"]
+  "required": ["nft", "burnKind"],
+
+  "allOf": [
+    {
+      "if": {
+        "properties": { "burnKind": { "const": "auto_decrease" } },
+        "required": ["burnKind"]
+      },
+      "then": { "required": ["outputTokens", "recipient"] }
+    }
+  ]
 }

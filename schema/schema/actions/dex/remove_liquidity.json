@@ -22,7 +22,8 @@
           "type": "string",
           "description": "host:registry 가 채우는 사람-친화적 라벨."
         }
-      }
+      },
+      "required": ["address"]
     },
 
     "inputLp": {

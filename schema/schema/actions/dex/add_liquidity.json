@@ -22,7 +22,8 @@
           "type": "string",
           "description": "host:registry 가 채우는 사람-친화적 라벨 (예: 'ETH/USDC 0.05%'). 정책 'whitelisted pool 만 허용' 분기 및 UI 표시에 사용."
         }
-      }
+      },
+      "required": ["address"]
     },
 
     "inputTokens": {

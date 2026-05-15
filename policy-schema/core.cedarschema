@@ -48,3 +48,20 @@ type Pool = {
   id?: String,
   label?: String,
 };
+
+type HookPermissions = {
+  beforeInitialize: Bool,
+  afterInitialize: Bool,
+  beforeAddLiquidity: Bool,
+  afterAddLiquidity: Bool,
+  beforeRemoveLiquidity: Bool,
+  afterRemoveLiquidity: Bool,
+  beforeSwap: Bool,
+  afterSwap: Bool,
+  beforeDonate: Bool,
+  afterDonate: Bool,
+  beforeSwapReturnDelta: Bool,
+  afterSwapReturnDelta: Bool,
+  afterAddLiquidityReturnDelta: Bool,
+  afterRemoveLiquidityReturnDelta: Bool,
+};

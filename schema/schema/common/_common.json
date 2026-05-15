@@ -83,12 +83,12 @@
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["exact", "min", "max", "unlimited", "estimated", "unknown"],
-          "description": "exact = 정확히 이 값. min = 최소 보장 (받을 양 하한). max = 최대 한도 (낼 양 상한). unlimited = uint256.max (무한 허용). estimated = 라우터가 quote 한 추정치. unknown = 디코드 불가."
+          "enum": ["exact", "min", "max", "unlimited", "portion", "estimated", "unknown"],
+          "description": "exact = 정확히 이 값. min = 최소 보장 (받을 양 하한). max = 최대 한도 (낼 양 상한). unlimited = uint256.max (무한 허용). portion = 컨트랙트 잔액의 비율 — value 는 토큰 양이 아니라 basis point (Universal Router 의 PAY_PORTION 등). estimated = 라우터가 quote 한 추정치. unknown = 디코드 불가."
         },
         "value": {
           "$ref": "#/$defs/DecimalString",
-          "description": "kind 가 unlimited 또는 unknown 인 경우 생략 가능."
+          "description": "kind 가 unlimited 또는 unknown 인 경우 생략 가능. kind 가 portion 인 경우 value 는 토큰 절대량이 아니라 basis point (1~10000, 10000 = 100%)"
         }
       },
       "required": ["kind"]

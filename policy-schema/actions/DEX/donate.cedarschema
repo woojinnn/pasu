@@ -1,0 +1,19 @@
+type DonateContext = {
+  pool: Pool,
+  inputTokens: Set<AssetRefWithAmountConstraint>,
+  from?: String,
+  validity?: Validity,
+  hooks?: String,
+  hookPermissions?: HookPermissions,
+  isDynamicFee?: Bool,
+  hookDataLen?: Long,
+  hookDataSelector?: String,
+
+  hookLabel?: String,
+};
+
+action "donate" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: DonateContext,
+};

@@ -1,0 +1,27 @@
+type PermitContext = {
+  permitKind: String,
+  token: AssetRef,
+  owner: String,
+  spender?: String,
+  recipient?: String,
+  amount?: AmountConstraint,
+  requestedAmount?: AmountConstraint,
+  operator?: String,
+  approved?: Bool,
+  validity: Validity,
+  signatureValidity?: Validity,
+
+  spenderLabel?: String,
+  operatorLabel?: String,
+  currentAllowance?: String,
+  tokenOwnerOnchain?: String,
+  totalApprovedUsd?: UsdValuation,
+  amountFractionOfPortfolioBps?: Long,
+  windowStats?: WindowStats,
+};
+
+action "permit" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: PermitContext,
+};

@@ -1,12 +1,9 @@
 type TransferContext = {
-  token: AssetRef,
+  token: AssetRefWithAmountConstraint,
   from: String,
   recipient: String,
 
-  amount?: AmountConstraint,
-
   recipientIsContract?: Bool,
-
   totalUsd?: UsdValuation,
   amountFractionOfPortfolioBps?: Long,
   windowStats?: WindowStats,

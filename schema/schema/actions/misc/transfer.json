@@ -7,28 +7,18 @@
   "type": "object",
   "properties": {
     "token": {
-      "$ref": "../../common/_common.json#/$defs/AssetRef",
-      "description": "이전 대상 토큰. kind 가 erc20 / erc721 / erc1155 중 하나 — kind 가 amount / tokenId 의 의미를 결정한다."
+      "$ref": "../../common/_common.json#/$defs/AssetRefWithAmountConstraint",
+      "description": "이전 대상 토큰 + 양. token.asset.kind 가 erc20/erc721/erc1155/native 를 결정. ERC-721 은 1 instance 이전이라 token.amount 가 kind=exact, value=1 이고 tokenId 는 token.asset.tokenId. Universal Router 의 PAY_PORTION 은 token.amount.kind=portion (value 는 basis point)."
     },
 
     "from": {
       "$ref": "../../common/_common.json#/$defs/Address",
-      "description": "자산이 빠져나가는 주소. ERC-20.transfer 직접 호출은 root.from (msg.sender) 와 동일, transferFrom 계열은 calldata 의 from 인자. root.from 과 다르면 사용자가 *남의 토큰을 사전 approval 로 이동* 시키는 패턴 — 정책 분기."
+      "description": "자산이 빠져나가는 주소. from == root.from 이면 user 본인 직접 전송, from == root.to 이면 tx 대상 컨트랙트(Universal Router / aggregator)의 working-buffer 정산('남의 토큰' 아님), 둘 다 아니면 사전 approval(allowance / Permit2)로 제3자 토큰을 이동시키는 패턴(phishing 1차 신호). 정책 예시: 'from == root.from || from == root.to' 외를 의심 분기."
     },
 
     "recipient": {
       "$ref": "../../common/_common.json#/$defs/Address",
       "description": "자산을 받을 주소. root.from 과 다르면 외부 송금 — phishing 의 1차 표적. 정책 'recipient 가 whitelist 외 차단' 의 핵심 분기."
-    },
-
-    "amount": {
-      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
-      "description": "이전 양. kind=exact 가 일반. token.kind=erc20 또는 erc1155 인 경우 채움. erc721 은 1 개씩 이전하므로 본 필드 생략 가능 (tokenId 가 식별자)."
-    },
-
-    "tokenId": {
-      "$ref": "../../common/_common.json#/$defs/DecimalString",
-      "description": "ERC-721 / ERC-1155 의 tokenId. token.kind=erc20 인 경우 생략."
     }
   },
 

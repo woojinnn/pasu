@@ -7,18 +7,13 @@
   "type": "object",
   "properties": {
     "wrappedAsset": {
-      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "$ref": "../../common/_common.json#/$defs/AssetRefWithAmountConstraint",
       "description": "소각될 wrapped ERC-20 (kind=erc20)."
     },
 
     "nativeAsset": {
-      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "$ref": "../../common/_common.json#/$defs/AssetRefWithAmountConstraint",
       "description": "수령할 native 코인 (kind=native)."
-    },
-
-    "amount": {
-      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
-      "description": "unwrap 양. WETH9.withdraw 는 정확한 양 (kind=exact), UR UNWRAP_WETH 는 최소 보장 (kind=min)."
     },
 
     "recipient": {
@@ -27,5 +22,5 @@
     }
   },
 
-  "required": ["wrappedAsset", "nativeAsset", "amount", "recipient"]
+  "required": ["wrappedAsset", "nativeAsset", "recipient"]
 }

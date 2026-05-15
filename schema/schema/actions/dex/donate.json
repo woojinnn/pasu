@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/dex/donate.json",
+  "title": "DonateAction",
+  "description": "pool 의 in-range liquidity provider 들에게 토큰을 무상 기부하는 동작 — LP 토큰이나 position 을 받지 않고 자산만 pool 로 보낸다. Uniswap V4 의 PoolManager.donate (Universal Router 의 V4_POSITION_MANAGER_CALL 안 DONATE action) 를 흡수. V2/V3 에는 대응 함수가 없는 V4 전용 동작. 본 JSON schema 의 필드는 모두 calldata 직접 decode 또는 adapter 의 정적 derive (PoolKey 디코드 / 비트 마스크 / hookData 길이 측정) 로 채워진다. host enrichment 필드 (pool.label / token symbol·decimals / hookLabel) 는 cedar 표면에서 정책 평가에 사용된다.",
+
+  "type": "object",
+  "properties": {
+    "pool": {
+      "type": "object",
+      "description": "기부 대상 pool. V4 모든 pool 은 chain-specific PoolManager 의 단일 컨트랙트 안 mapping 으로 저장되므로 pool.address 는 PoolManager 주소 그 자체 (adapter chain constant). pool.id 가 PoolKey hash 로 실제 pool 인스턴스 식별. add_liquidity / initialize_pool 의 pool 과 동일 형식.",
+      "properties": {
+        "address": {
+          "$ref": "../../common/_common.json#/$defs/Address",
+          "description": "pool 컨트랙트 주소 — V4 의 경우 chain-specific PoolManager 주소 (모든 V4 pool 이 동일 컨트랙트 안의 mapping). adapter 가 chainId 별 hardcoded constant 로 채움. host RPC 호출 불필요."
+        },
+        "id": {
+          "$ref": "../../common/_common.json#/$defs/Hex",
+          "description": "bytes32 pool id — V4 PoolKey 의 keccak256(abi.encode(PoolKey)) 결과. adapter 가 calldata 의 PoolKey 로부터 정적 derive."
+        }
+      },
+      "required": ["address"]
+    },
+
+    "inputTokens": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/AssetRefWithAmountConstraint" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "기부하는 자산 + 양의 묶음 정확히 2개 — inputTokens[0] = PoolKey.currency0 (낮은 address), inputTokens[1] = PoolKey.currency1 (높은 address). adapter 는 PoolKey 의 정렬을 그대로 보존. V4 donate calldata 의 amount0 / amount1 이 각 amount.kind=exact 으로 매핑. 한쪽 currency 만 기부하면 다른 쪽 amount.value=0. 명시적 수령자 없이 pool 의 in-range LP 에게 pro-rata 분배되므로 recipient 필드가 없다 — 자산이 wallet 에서 나가지만 누구에게 가는지 calldata 만으로 특정할 수 없어, 정책은 inputTokens 의 규모로 검사하도록 권장."
+    },
+
+    "from": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "자산이 빠져나가는 주소 — V4 donate 의 msg.sender. calldata 에 명시적 인자로 없으므로 adapter 가 root.to 보고 정적 derive: tx.to == V4 PoolManager 면 from = root.from (user direct call), tx.to == Universal Router 면 from = root.to (UR working-buffer 정산). 정책 예시: 'from == root.from 외 의심', 'from == root.to 이면 사전 PERMIT2_TRANSFER_FROM 으로 끌어온 자산인지 cross-intent 검사'."
+    },
+
+    "validity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "유효기간 — source='tx-deadline'. V4 PoolManager.donate 자체에는 deadline 인자가 없고, Universal Router 등 wrapper 를 경유할 때만 outer deadline 이 본 필드를 채운다."
+    },
+
+    "hooks": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "pool 에 연결된 hook contract 주소 — PoolKey.hooks 그대로. 0x0 이면 plain pool (hook 없음, donate 시 beforeDonate/afterDonate 콜백 미발생). 0 이외의 주소면 그 address 의 lowest 14 bits 가 활성 callback flag — adapter 가 hookPermissions 필드에 14 boolean 으로 derive 해서 채운다. host:registry 가 알려진 hook 의 hookLabel 을 cedar 표면에서 보강한다."
+    },
+
+    "hookPermissions": {
+      "type": "object",
+      "description": "hooks address 의 lowest 14 bits 에서 derive 한 hook 의 활성 callback flag 들. adapter 가 hooks address 의 비트 마스크 (v4-core Hooks.sol 상수) 로 정적 계산. hooks == 0x0 시 본 필드 부재. donate 의 정책 핵심: 'beforeDonate / afterDonate 가 true 면 hook 이 기부 흐름에 개입 — hookLabel whitelist 검증 강제'.",
+      "properties": {
+        "beforeInitialize":                { "type": "boolean" },
+        "afterInitialize":                 { "type": "boolean" },
+        "beforeAddLiquidity":              { "type": "boolean" },
+        "afterAddLiquidity":               { "type": "boolean" },
+        "beforeRemoveLiquidity":           { "type": "boolean" },
+        "afterRemoveLiquidity":            { "type": "boolean" },
+        "beforeSwap":                      { "type": "boolean" },
+        "afterSwap":                       { "type": "boolean" },
+        "beforeDonate":                    { "type": "boolean" },
+        "afterDonate":                     { "type": "boolean" },
+        "beforeSwapReturnDelta":           { "type": "boolean" },
+        "afterSwapReturnDelta":            { "type": "boolean" },
+        "afterAddLiquidityReturnDelta":    { "type": "boolean" },
+        "afterRemoveLiquidityReturnDelta": { "type": "boolean" }
+      }
+    },
+
+    "isDynamicFee": {
+      "type": "boolean",
+      "description": "pool 이 V4 dynamic-fee 풀인지 — adapter 가 (PoolKey.fee & 0x800000) != 0 로 정적 derive. donate 자체는 fee 와 무관하나, pool 이 dynamic-fee 면 그 hook 이 swap 시 fee 를 결정하는 광범위 권한을 가진다는 신호로 정책 분기 가능."
+    },
+
+    "hookDataLen": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "donate 의 4번째 인자 hookData (bytes) 의 길이 — adapter 가 calldata 에서 정적 측정. 0 이면 빈 payload (hook 이 받는 데이터 없음). 4 이상이면 보통 selector + params 형식. 정책 예시: 'hookDataLen > 256 차단' (대용량 payload 의심), 'hookDataLen == 0 만 허용'."
+    },
+
+    "hookDataSelector": {
+      "$ref": "../../common/_common.json#/$defs/Hex",
+      "description": "hookData 의 첫 4 bytes — adapter 가 hookDataLen >= 4 인 경우 정적 추출. hookData 가 'selector + ABI-encoded params' 형식일 때 hook 의 sub-action 식별자. host:registry 가 알려진 selector 를 hookLabel 과 결합해 라벨링 가능. hookDataLen < 4 또는 비표준 payload 시 부재."
+    }
+  },
+
+  "required": ["pool", "inputTokens"]
+}

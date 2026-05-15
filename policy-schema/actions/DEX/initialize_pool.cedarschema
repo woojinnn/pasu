@@ -1,0 +1,19 @@
+type InitializePoolContext = {
+  pool: Pool,
+  token0: AssetRef,
+  token1: AssetRef,
+  feeBps: Long,
+
+  tickSpacing?: Long,
+  sqrtPriceX96?: String,
+  hooks?: String,
+  isDynamicFee?: Bool,
+  hookPermissions?: HookPermissions,
+  hookLabel?: String,
+};
+
+action "initialize_pool" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: InitializePoolContext,
+};

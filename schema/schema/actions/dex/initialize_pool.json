@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/dex/initialize_pool.json",
+  "title": "InitializePoolAction",
+  "description": "새 liquidity pool 을 생성하거나 초기 가격을 설정하는 동작 — 자산 이동이 없는 state-only 변경. Uniswap V3 의 UniswapV3Factory.createPool 과 NonfungiblePositionManager.createAndInitializePoolIfNecessary, V4 의 PoolManager.initialize (Universal Router 의 V4_INITIALIZE_POOL command 가 forward) 를 흡수. 본 JSON schema 의 필드는 모두 calldata 직접 decode 또는 adapter 의 정적 derive (CREATE2 / 비트 마스크 / chain constant) 로 채워진다. host enrichment 필드 (pool.label / token symbol·decimals / hookLabel) 는 cedar 표면에서 정책 평가에 사용된다.",
+
+  "type": "object",
+  "properties": {
+    "pool": {
+      "type": "object",
+      "description": "생성 또는 초기화되는 pool 식별자. V3 는 (token0, token1, fee) 로부터 CREATE2 정적 derive, V4 는 chain-specific PoolManager 주소 (adapter 가 chainId 별 hardcoded constant 로 채움). add_liquidity / mint_liquidity_nft 의 pool 과 동일 형식.",
+      "properties": {
+        "address": {
+          "$ref": "../../common/_common.json#/$defs/Address",
+          "description": "pool 컨트랙트 주소. V3 는 (UniswapV3Factory 주소, INIT_CODE_HASH, salt=keccak256(token0,token1,fee)) 로부터 adapter 가 CREATE2 정적 계산. V4 는 chain-specific PoolManager 주소 (모든 V4 pool 이 동일 컨트랙트 안의 mapping). 모두 정적 derive 영역으로 host RPC 호출 불필요."
+        },
+        "id": {
+          "$ref": "../../common/_common.json#/$defs/Hex",
+          "description": "bytes32 pool id — V4 PoolKey 의 keccak256(abi.encode(PoolKey)) 결과. adapter 가 calldata 의 PoolKey 로부터 정적 derive. V3 는 PoolId 개념이 없어 부재."
+        }
+      },
+      "required": ["address"]
+    },
+
+    "token0": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "pool 의 첫 번째 토큰 (정렬상 낮은 주소 — V3/V4 컨트랙트가 token0.address < token1.address 강제. adapter 는 그 정렬 그대로 채움). V3 createPool 의 tokenA 또는 V4 PoolKey 의 currency0. AssetRef.kind 및 address 는 calldata 정적 decode 로 채워지며, symbol·decimals 같은 host:registry 메타는 cedar 표면에서 정책 평가에 사용된다. 정책 예시: '특정 토큰 pair 만 pool 생성 허용', 'token0.address == token1.address 분기 차단'."
+    },
+
+    "token1": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "pool 의 두 번째 토큰 (정렬상 높은 주소). V3 createPool 의 tokenB 또는 V4 PoolKey 의 currency1. token0 과 동일하게 adapter 가 정적 decode."
+    },
+
+    "feeBps": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "pool 의 fee tier — 단위는 hundredths of a basis point (V3 PoolKey.fee 및 V4 PoolKey.fee 의 raw uint24 값을 그대로 보존, 1_000_000 = 100%). V3 표준 tier 는 100 / 500 / 3000 / 10000 (0.01% / 0.05% / 0.3% / 1%). V4 의 dynamic-fee 풀은 0x800000 bit 가 set 된 채로 그대로 두고, 별도 isDynamicFee 필드에서 boolean 으로도 노출. 정책 예시: 'feeBps > 10000 차단', 'isDynamicFee == true 차단'."
+    },
+
+    "tickSpacing": {
+      "type": "integer",
+      "description": "V4 한정 — pool 의 tick 간격 (PoolKey.tickSpacing). position 의 tick 경계는 이 값의 배수여야 한다. V3 는 fee tier 에서 결정되므로 본 필드 부재."
+    },
+
+    "sqrtPriceX96": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "pool 의 초기 가격 (Q64.96 고정소수점, uint160 의 10진 표기). V3 createAndInitializePoolIfNecessary 및 V4 initialize 가 설정. V3 factory.createPool 단독 호출은 가격 미초기화라 본 필드 부재. 사람이 읽을 수 있는 가격으로의 환산은 enrichment 단계."
+    },
+
+    "hooks": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "V4 한정 — pool 에 연결되는 hook contract 주소 (PoolKey.hooks). 0x0 이면 plain pool (hook 없음). 0 이외의 주소면 그 address 의 lowest 14 bits 가 활성 callback flag — adapter 가 hookPermissions 필드에 14 boolean 으로 derive 해서 채운다. V3 는 hook 개념이 없어 본 필드 부재. host:registry 가 알려진 hook 의 hookLabel 을 cedar 표면에서 보강한다."
+    },
+
+    "isDynamicFee": {
+      "type": "boolean",
+      "description": "V4 dynamic-fee 풀 여부 — adapter 가 (feeBps & 0x800000) != 0 로 정적 derive. true 이면 정적 feeBps 값이 무의미 (실제 fee 는 매 swap 마다 hook 의 beforeSwap 콜백이 계산). 정책 예시: 'dynamic fee 풀의 신규 생성은 hookLabel whitelist 일치 시에만 허용'."
+    },
+
+    "hookPermissions": {
+      "type": "object",
+      "description": "V4 한정 — hooks address 의 lowest 14 bits 에서 derive 한 hook 의 활성 callback flag 들. adapter 가 hooks address 의 비트 마스크 (Hooks.sol 상수와 동일) 로 정적 계산. hooks == 0x0 시 본 필드 부재. 정책 핵심: 'beforeSwapReturnDelta 또는 afterSwapReturnDelta 가 true 인 hook 차단' 같은 가격-조작 권한 분기.",
+      "properties": {
+        "beforeInitialize":               { "type": "boolean" },
+        "afterInitialize":                { "type": "boolean" },
+        "beforeAddLiquidity":             { "type": "boolean" },
+        "afterAddLiquidity":              { "type": "boolean" },
+        "beforeRemoveLiquidity":          { "type": "boolean" },
+        "afterRemoveLiquidity":           { "type": "boolean" },
+        "beforeSwap":                     { "type": "boolean" },
+        "afterSwap":                      { "type": "boolean" },
+        "beforeDonate":                   { "type": "boolean" },
+        "afterDonate":                    { "type": "boolean" },
+        "beforeSwapReturnDelta":          { "type": "boolean" },
+        "afterSwapReturnDelta":           { "type": "boolean" },
+        "afterAddLiquidityReturnDelta":   { "type": "boolean" },
+        "afterRemoveLiquidityReturnDelta":{ "type": "boolean" }
+      }
+    }
+  },
+
+  "required": ["pool", "token0", "token1", "feeBps"]
+}
