@@ -15,13 +15,12 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "baseUrl": "src",
-    "rootDir": "src",
+    "baseUrl": ".",
     "paths": {
-      "@lib/*": ["lib/*"],
-      "@background/*": ["background/*"]
+      "@lib/*": ["backend/lib/*"],
+      "@background/*": ["backend/service-worker/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["backend/**/*", "frontend/**/*", "sdk/**/*"],
+  "exclude": ["node_modules", "dist", "backend/wasm"]
 }

@@ -5,16 +5,18 @@ const Dotenv = require("dotenv-webpack");
 const WextManifestWebpackPlugin = require("wext-manifest-webpack-plugin");
 
 const targetBrowser = process.env.TARGET_BROWSER || "chrome";
-const sourceDir = path.resolve(__dirname, "..", "src");
-const distDir = path.resolve(__dirname, "..", "dist", targetBrowser);
+const extRoot = path.resolve(__dirname, "..");
+const backendDir = path.join(extRoot, "backend");
+const frontendDir = path.join(extRoot, "frontend");
+const distDir = path.join(extRoot, "dist", targetBrowser);
 
 // Shared bits of the webpack config — the actual exported configs differ
 // only in `entry`, `target`, and which build-time plugins they own.
 const sharedResolve = {
   extensions: [".ts", ".tsx", ".js", ".json"],
   alias: {
-    "@lib": path.resolve(sourceDir, "lib"),
-    "@background": path.resolve(sourceDir, "background"),
+    "@lib": path.join(backendDir, "lib"),
+    "@background": path.join(backendDir, "service-worker"),
   },
   fallback: {
     buffer: require.resolve("buffer/"),
@@ -51,7 +53,7 @@ const sharedModule = {
 
 const sharedPlugins = () => [
   new Dotenv({
-    path: path.resolve(__dirname, "..", ".env"),
+    path: path.join(extRoot, ".env"),
     safe: false,
     silent: true,
   }),
@@ -72,33 +74,33 @@ const pageConfig = {
   target: "web",
   entry: {
     "content-scripts/inject-scripts": path.join(
-      sourceDir,
+      backendDir,
       "content-scripts",
       "inject-scripts.ts",
     ),
     "content-scripts/window-ethereum-messages": path.join(
-      sourceDir,
+      backendDir,
       "content-scripts",
       "window-ethereum-messages.ts",
     ),
     "content-scripts/bypass-check": path.join(
-      sourceDir,
+      backendDir,
       "content-scripts",
       "bypass-check.ts",
     ),
     "content-scripts/dashboard-bridge": path.join(
-      sourceDir,
+      backendDir,
       "content-scripts",
       "dashboard-bridge.ts",
     ),
     "injected/proxy-injected-providers": path.join(
-      sourceDir,
+      backendDir,
       "injected",
       "proxy-injected-providers.ts",
     ),
-    "confirm/index": path.join(sourceDir, "confirm", "index.ts"),
-    "popup/index": path.join(sourceDir, "popup", "index.ts"),
-    manifest: path.join(sourceDir, "manifest.json"),
+    "confirm/index": path.join(frontendDir, "confirm", "index.ts"),
+    "popup/index": path.join(frontendDir, "popup", "index.ts"),
+    manifest: path.join(backendDir, "manifest.json"),
   },
   output: {
     filename: "js/[name].js",
@@ -114,9 +116,7 @@ const pageConfig = {
     ...sharedPlugins(),
     new WextManifestWebpackPlugin(),
     new CopyPlugin({
-      patterns: [
-        { from: path.resolve(__dirname, "..", "public"), to: distDir },
-      ],
+      patterns: [{ from: path.join(extRoot, "public"), to: distDir }],
     }),
   ],
 };
@@ -132,7 +132,7 @@ const swConfig = {
   target: "webworker",
   dependencies: ["pages"],
   entry: {
-    background: path.join(sourceDir, "background", "index.ts"),
+    background: path.join(backendDir, "service-worker", "index.ts"),
   },
   output: {
     filename: "js/[name].js",

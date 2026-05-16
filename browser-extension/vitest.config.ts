@@ -9,8 +9,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@lib": path.resolve(__dirname, "src/lib"),
-      "@background": path.resolve(__dirname, "src/background"),
+      "@lib": path.resolve(__dirname, "backend/lib"),
+      "@background": path.resolve(__dirname, "backend/service-worker"),
     },
   },
 });
