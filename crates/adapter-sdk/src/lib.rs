@@ -16,12 +16,11 @@ pub mod traits;
 pub mod types;
 
 pub mod prelude {
-    // Re-exports populated by Tasks 2–8 as submodules gain real types.
-    // pub use crate::action::{Action, ActionEnvelope};
-    // pub use crate::ctx::{CallCtx, SignCtx};
-    // pub use crate::error::{AdapterError, CtxError, LogLevel};
-    // pub use crate::primitives::{Address, B256, Selector};
-    // pub use crate::sign::{SignPayload, SignRequest};
-    // pub use crate::traits::{CallAdapter, Decoder, SignAdapter};
-    // pub use crate::types::{DecodedArg, DecodedCall, DecodedValue};
+    pub use crate::action::{Action, ActionEnvelope};
+    pub use crate::ctx::{CallCtx, SignCtx};
+    pub use crate::error::{AdapterError, CtxError, LogLevel};
+    pub use crate::primitives::{Address, B256, ChainId, Selector};
+    pub use crate::sign::{SignPayload, SignRequest};
+    pub use crate::traits::{CallAdapter, Decoder, SignAdapter};
+    pub use crate::types::{DecodedArg, DecodedCall, DecodedValue};
 }

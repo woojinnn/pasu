@@ -1,0 +1,15 @@
+[package]
+name = "adapter-sample-erc20-transfer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "ERC-20 transfer adapter — canary for the SDK end-to-end"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+adapter-sdk = { path = "../../adapter-sdk" }
+adapter-sdk-macros = { path = "../../adapter-sdk-macros" }
+hex = { version = "0.4", default-features = false, features = ["alloc"] }
