@@ -1,20 +1,19 @@
 // "Try a sample" data for the Sign Decoder.
 //
-// Each sample JSON lives in `swap_samples/sign/<method>/<scenario>.json`
-// at the workspace root and is imported here verbatim via vite's JSON
-// module support. Adding a new sample = drop a file in that directory
-// and append a row below.
+// Each sample JSON lives in `crates/web-server/swap_samples/sign/<method>/<scenario>.json`
+// and is imported here verbatim via vite's JSON module support. Adding a
+// new sample = drop a file in that directory and append a row below.
 
-import permit2Single from '../../../../../swap_samples/sign/eth_signTypedData_v4/permit2_permit_single_usdc.json'
-import permit2Transfer from '../../../../../swap_samples/sign/eth_signTypedData_v4/permit2_permit_transfer.json'
-import eip2612Usdc from '../../../../../swap_samples/sign/eth_signTypedData_v4/eip2612_usdc_permit.json'
-import morphoAuth from '../../../../../swap_samples/sign/eth_signTypedData_v4/morpho_authorization.json'
-import seaportOrder from '../../../../../swap_samples/sign/eth_signTypedData_v4/opensea_seaport_order.json'
-import siweLogin from '../../../../../swap_samples/sign/personal_sign/siwe_login.json'
-import ethSignRawHash from '../../../../../swap_samples/sign/eth_sign/raw_hash.json'
-import v3Swap from '../../../../../swap_samples/sign/eth_signTransaction/v3_swap_exact_input.json'
-import simpleAccountSwap from '../../../../../swap_samples/sign/eth_sendUserOperation/simple_account_v3_swap.json'
-import grantPerms from '../../../../../swap_samples/sign/wallet_grantPermissions/native_transfer.json'
+import permit2Single from '../../../swap_samples/sign/eth_signTypedData_v4/permit2_permit_single_usdc.json'
+import permit2Transfer from '../../../swap_samples/sign/eth_signTypedData_v4/permit2_permit_transfer.json'
+import eip2612Usdc from '../../../swap_samples/sign/eth_signTypedData_v4/eip2612_usdc_permit.json'
+import morphoAuth from '../../../swap_samples/sign/eth_signTypedData_v4/morpho_authorization.json'
+import seaportOrder from '../../../swap_samples/sign/eth_signTypedData_v4/opensea_seaport_order.json'
+import siweLogin from '../../../swap_samples/sign/personal_sign/siwe_login.json'
+import ethSignRawHash from '../../../swap_samples/sign/eth_sign/raw_hash.json'
+import v3Swap from '../../../swap_samples/sign/eth_signTransaction/v3_swap_exact_input.json'
+import simpleAccountSwap from '../../../swap_samples/sign/eth_sendUserOperation/simple_account_v3_swap.json'
+import grantPerms from '../../../swap_samples/sign/wallet_grantPermissions/native_transfer.json'
 
 /** Shape of every JSON file under `swap_samples/sign/`. */
 export interface SignSample {

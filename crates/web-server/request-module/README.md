@@ -104,7 +104,7 @@ npm run dev
 
 1. Chrome에 [Tampermonkey](https://www.tampermonkey.net/) 설치
 2. Tampermonkey 대시보드 → "Create a new script"
-3. `request-module/userscript/scopeball.user.js` 내용 복사·붙여넣기 → 저장
+3. `crates/web-server/request-module/userscript/scopeball.user.js` 내용 복사·붙여넣기 → 저장
 
 → 이제 **모든 dApp 페이지에서 자동 hook**.
 
@@ -229,12 +229,12 @@ scopeball/
 │   │   │   ├── build_db.py
 │   │   │   └── curate_bundle.sh
 │   │   └── src/                 (Rust 라이브러리)
-│   └── web-server/               ★ HTTP API + React 프론트
+│   └── web-server/               ★ HTTP API + React 프론트 + 브라우저 hook
 │       ├── src/main.rs           (axum)
-│       └── frontend/             (Vite + React + TS)
-└── request-module/               ★ 브라우저 측 RPC hook
-    ├── core/extractRpcFields.ts (Phase 2 extension에 재사용)
-    └── userscript/scopeball.user.js   (Phase 1 Tampermonkey)
+│       ├── frontend/             (Vite + React + TS)
+│       └── request-module/       ★ 브라우저 측 RPC hook
+│           ├── core/extractRpcFields.ts (Phase 2 extension에 재사용)
+│           └── userscript/scopeball.user.js   (Phase 1 Tampermonkey)
 ```
 
 ---
@@ -243,7 +243,7 @@ scopeball/
 
 지금은 Tampermonkey 기반 (Phase 1). 다음 단계는:
 
-- `request-module/extension/` 추가
+- `crates/web-server/request-module/extension/` 추가
 - `core/extractRpcFields.ts` 를 `inject.js`에서 import
 - transport를 `chrome.runtime.sendMessage`로 교체
 - frontend 컴포넌트(`DecodeForm`, `DecodeResult`)는 side panel에 마운트
