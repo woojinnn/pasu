@@ -302,6 +302,12 @@ pub fn is_pancake_universal_router(chain_id: u64, target: &Address) -> bool {
         .any(|(chain, addr)| *chain == chain_id && addr == target)
 }
 
+/// Iterator over known PancakeSwap UR deployments as `(chain_id, address)`
+/// pairs. Mirrors `universal_router::uniswap_universal_router_deployments()`.
+pub fn pancake_universal_router_deployments() -> impl Iterator<Item = (u64, Address)> {
+    PANCAKE_UR_ADDRESSES.iter().copied()
+}
+
 /// Allowlist of PancakeSwap Universal Router deployments (chain_id, address).
 const PANCAKE_UR_ADDRESSES: &[(u64, Address)] = &[
     // Ethereum mainnet — Pancake (Infinity) UR address observed in
