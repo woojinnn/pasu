@@ -23,8 +23,6 @@ action ids: `signature.permit2`, `signature.eip2612`, and
 policy-engine/
 |-- Cargo.toml
 |-- README.md
-|-- docs/
-|   `-- specs/
 |-- policy-schema/
 |   |-- core.cedarschema
 |   `-- actions/
@@ -261,18 +259,6 @@ the semantic action request.
 cargo test
 cargo run -p policy-engine-adapters-bundle --example e2e_swap
 ```
-
-### Docker dev environment
-
-A reproducible toolchain (Rust 1.83 + wasm-pack + Node 20 + Yarn 4 + headless Chromium) is available via Docker Compose so contributors don't need to manage the polyglot setup locally.
-
-```bash
-./scripts/dev-up.sh      # build the image, start the container, drop into a shell
-./scripts/test-all.sh    # run the full test/lint/build sweep inside the container
-./scripts/wasm-build.sh  # rebuild the wasm artifact and copy it into extension/
-```
-
-Persistent volumes keep cargo, yarn, and `extension/node_modules` caches alive across `docker compose down`. Wipe with `docker compose down -v`. See `docker/README.md` for the full layout.
 
 ### CI
 

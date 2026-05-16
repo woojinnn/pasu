@@ -8,17 +8,17 @@
 #   scripts/serve.sh status
 #   scripts/serve.sh logs
 #
-# `start` auto-builds the policy-builder WASM, both Vite frontends, then
-# launches `cargo run -p web-server` in the background and waits until
-# `/api/health` answers. Logs land in `target/web-server.log`; the
-# foreground process id lands in `target/web-server.pid`.
+# `start` auto-builds the Vite frontend, then launches `cargo run -p web-server`
+# in the background and waits until `/api/health` answers. Logs land in
+# `target/web-server.log`; the foreground process id lands in
+# `target/web-server.pid`.
 #
 # `stop` finds whatever is bound to the port (default 3000, overridable
 # via `WEB_SERVER_PORT`) and TERMs it.
 #
 # `--build` forces a rebuild even if `dist/` already exists; `--no-build`
-# skips the rebuild step entirely; default (`auto`) only builds when one
-# of the frontend `dist/` directories is missing.
+# skips the rebuild step entirely; default (`auto`) only builds when the
+# frontend's `dist/` is missing.
 
 set -euo pipefail
 
@@ -84,7 +84,6 @@ should_build() {
     yes) return 0 ;;
     no)  return 1 ;;
     auto)
-      [[ ! -d web/policy-builder/dist ]] && return 0
       [[ ! -d crates/web-server/frontend/dist ]] && return 0
       return 1
       ;;
@@ -92,12 +91,6 @@ should_build() {
 }
 
 build_assets() {
-  echo "→ building policy-builder wasm"
-  bash scripts/wasm-build-policy-builder.sh
-
-  echo "→ building policy-builder web"
-  (cd web/policy-builder && npm install --silent --no-fund --no-audit && npx vite build)
-
   echo "→ building main frontend"
   (cd crates/web-server/frontend && npm install --silent --no-fund --no-audit && npx vite build)
 }
@@ -125,9 +118,8 @@ start_server() {
     if is_alive; then
       echo " ✓"
       echo
-      echo "main:           ${URL}/"
-      echo "policy-builder: ${URL}/policy-builder/"
-      echo "logs:           tail -f ${LOG_FILE}"
+      echo "main: ${URL}/"
+      echo "logs: tail -f ${LOG_FILE}"
       [[ "${open_after}" -eq 1 ]] && open "${URL}/"
       return 0
     fi

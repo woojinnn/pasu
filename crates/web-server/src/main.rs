@@ -1252,27 +1252,6 @@ fn frontend_dir() -> Option<PathBuf> {
     }
 }
 
-/// Resolve the policy-builder Vite build output. Checked locations, in order:
-/// 1. `$POLICY_BUILDER_DIST` if set.
-/// 2. The workspace-relative `web/policy-builder/dist` next to this crate.
-fn policy_builder_dir() -> Option<PathBuf> {
-    if let Ok(p) = std::env::var("POLICY_BUILDER_DIST") {
-        let pb = PathBuf::from(p);
-        if pb.exists() {
-            return Some(pb);
-        }
-    }
-    let here = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("web/policy-builder/dist");
-    if here.exists() {
-        Some(here)
-    } else {
-        None
-    }
-}
-
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
@@ -1306,19 +1285,6 @@ async fn main() {
         .route("/api/event/stream", get(event_stream))
         .route("/api/health", get(health))
         .with_state(state);
-
-    // Mount the policy-builder Vite build under /policy-builder/*. Built
-    // assets resolve relative to that path because the Vite config sets
-    // `base: "/policy-builder/"`. Mounted as a nested service so the
-    // existing root-level frontend fallback below is untouched.
-    if let Some(dir) = policy_builder_dir() {
-        tracing::info!("serving policy-builder build from {}", dir.display());
-        app = app.nest_service("/policy-builder", ServeDir::new(dir));
-    } else {
-        tracing::info!(
-            "web/policy-builder/dist not found — /policy-builder/ disabled (run `npm run build` in web/policy-builder)"
-        );
-    }
 
     // `allow_private_network(true)` opts in to Chrome's Private Network Access
     // preflight so Tampermonkey's `GM_xmlhttpRequest` from an HTTPS dApp page
