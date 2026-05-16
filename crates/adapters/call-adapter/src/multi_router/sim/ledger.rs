@@ -155,7 +155,7 @@ impl Ledger {
             })
             .map(|((_, asset), bucket)| (asset.clone(), *bucket))
             .collect();
-        out.sort_by(|a, b| asset_sort_key(&a.0).cmp(&asset_sort_key(&b.0)));
+        out.sort_by_key(|a| asset_sort_key(&a.0));
         out
     }
 }
