@@ -119,44 +119,79 @@ fn v4_swap_action_stream_decodes_swap_settle_take() {
     assert_eq!(take_args[1].name, "recipient");
     assert_eq!(take_args[2].name, "amount");
 
-    // SWAP_EXACT_IN's `params` tuple should carry inner-field names through
-    // the JSON-ABI path (`currencyIn`, `path`, `minHopPriceX36`, `amountIn`,
-    // `amountOutMinimum`). Those names live in the arg's `components` so the
-    // renderer can surface them as `(field: value, …)`.
+    // SWAP_EXACT_IN's `params` tuple decodes positionally — JSON ABI was
+    // removed so the dispatcher can fall back from the post-#497 (5-field)
+    // shape to the mainnet (4-field) shape. The outer `params` name still
+    // propagates because alloy's signature parser keeps function-arg names.
     let swap_args = steps[0].args.as_ref().unwrap();
     assert_eq!(swap_args[0].name, "params");
-    let params_components = &swap_args[0].components;
-    let component_names: Vec<&str> = params_components.iter().map(|p| p.name.as_str()).collect();
+    let DynSolValue::Tuple(params_fields) = &swap_args[0].value else {
+        panic!("expected SWAP_EXACT_IN params to decode as a tuple");
+    };
+    // Calldata above was encoded with the post-#497 5-field shape; verify the
+    // dispatcher picked that signature first.
+    assert_eq!(params_fields.len(), 5);
+    let DynSolValue::Address(currency_in) = &params_fields[0] else {
+        panic!("currencyIn should be address");
+    };
     assert_eq!(
-        component_names,
-        [
-            "currencyIn",
-            "path",
-            "minHopPriceX36",
-            "amountIn",
-            "amountOutMinimum",
-        ]
+        *currency_in,
+        Address::ZERO,
+        "currencyIn should be native ETH"
     );
-    // PathKey field names propagate one level deeper.
-    let path_param = params_components
-        .iter()
-        .find(|p| p.name == "path")
-        .expect("path component present");
-    let path_field_names: Vec<&str> = path_param
-        .components
-        .iter()
-        .map(|p| p.name.as_str())
-        .collect();
-    assert_eq!(
-        path_field_names,
-        [
-            "intermediateCurrency",
-            "fee",
-            "tickSpacing",
-            "hooks",
-            "hookData",
-        ]
+    let DynSolValue::Uint(amount_in, _) = &params_fields[3] else {
+        panic!("amountIn should be uint");
+    };
+    assert_eq!(*amount_in, U256::from(30_000_000_000_000u64));
+}
+
+#[test]
+fn v4_swap_exact_in_falls_back_to_pre_497_shape() {
+    // Same SWAP_EXACT_IN action encoded with the **mainnet** shape (no
+    // `minHopPriceX36` per-hop slippage array). The dispatcher tries the
+    // post-#497 signature first, hits a buffer overrun, then falls back to
+    // the pre-#497 signature and decodes cleanly.
+    let usdc =
+        Address::from_slice(&hex::decode("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap());
+    let native = Address::ZERO;
+
+    let path = DynSolValue::Array(vec![DynSolValue::Tuple(vec![
+        DynSolValue::Address(usdc),
+        DynSolValue::Uint(U256::from(7u64), 24),
+        DynSolValue::Int(alloy_primitives::I256::ONE, 24),
+        DynSolValue::Address(Address::ZERO),
+        DynSolValue::Bytes(Vec::new()),
+    ])]);
+    // 4-field shape (no minHopPriceX36[]).
+    let swap_in_input = encode(
+        "((address,(address,uint24,int24,address,bytes)[],uint128,uint128))",
+        vec![DynSolValue::Tuple(vec![
+            DynSolValue::Address(native),
+            path,
+            DynSolValue::Uint(U256::from(6_531_525u64), 128),
+            DynSolValue::Uint(U256::from(6_497_371u64), 128),
+        ])],
     );
+
+    let steps = dispatch(&[0x07], &[swap_in_input], &V4_ROUTER_TABLE);
+    assert_eq!(steps.len(), 1);
+    assert_eq!(steps[0].name, "SWAP_EXACT_IN");
+    let args = steps[0]
+        .args
+        .as_ref()
+        .expect("pre-#497 SWAP_EXACT_IN should decode via the fallback signature");
+    let DynSolValue::Tuple(fields) = &args[0].value else {
+        panic!("expected SWAP_EXACT_IN params to decode as a tuple");
+    };
+    assert_eq!(fields.len(), 4, "fallback shape has 4 fields, not 5");
+    let DynSolValue::Uint(amount_in, _) = &fields[2] else {
+        panic!("amountIn should be uint at index 2 in 4-field shape");
+    };
+    assert_eq!(*amount_in, U256::from(6_531_525u64));
+    let DynSolValue::Uint(amount_out_min, _) = &fields[3] else {
+        panic!("amountOutMinimum should be uint at index 3 in 4-field shape");
+    };
+    assert_eq!(*amount_out_min, U256::from(6_497_371u64));
 }
 
 #[test]

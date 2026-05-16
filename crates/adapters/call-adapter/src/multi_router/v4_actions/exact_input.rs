@@ -1,5 +1,11 @@
 //! `V4Router.swapExactIn(params: ExactInputParams)` — multi-hop variant.
-//! params: (currencyIn, path[], minHopPriceX36, amountIn, amountOutMinimum)
+//!
+//! Two on-chain shapes coexist:
+//!   - post-#497: `(currencyIn, path[], minHopPriceX36[], amountIn, amountOutMinimum)`
+//!   - mainnet:   `(currencyIn, path[], amountIn, amountOutMinimum)`
+//!
+//! We branch on `fields.len()` to read amountIn/amountOutMinimum from the
+//! correct positions.
 
 use abi_resolver::subdecode::opcode_stream::DecodedStep;
 use alloy_dyn_abi::DynSolValue;
@@ -32,8 +38,19 @@ pub(in crate::multi_router) fn decode(
     };
     let currency_out = tuple_address(&last_fields[0], "path.last.intermediateCurrency")?;
 
-    let amount_in = tuple_uint(&fields[3], "amountIn")?;
-    let amount_out_min = tuple_uint(&fields[4], "amountOutMinimum")?;
+    // post-#497 has 5 fields (extra minHopPriceX36[] at index 2);
+    // mainnet has 4 fields and amountIn/amountOutMinimum sit one slot earlier.
+    let (amount_in_idx, amount_out_min_idx) = match fields.len() {
+        5 => (3, 4),
+        4 => (2, 3),
+        n => {
+            return Err(AdapterError::Invalid(format!(
+                "V4 ExactInputParams expected 4 or 5 fields, got {n}"
+            )))
+        }
+    };
+    let amount_in = tuple_uint(&fields[amount_in_idx], "amountIn")?;
+    let amount_out_min = tuple_uint(&fields[amount_out_min_idx], "amountOutMinimum")?;
     let fee_bps = match &last_fields[1] {
         DynSolValue::Uint(u, _) => Some(u32::try_from(*u).unwrap_or(0) / 100),
         _ => None,
