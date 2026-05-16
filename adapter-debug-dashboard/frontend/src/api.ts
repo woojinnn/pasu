@@ -1,6 +1,6 @@
 // Thin wrapper around the Rust /api/decode endpoint.
 //
-// The shape mirrors `DecodeResponse` in `crates/web-server/src/main.rs` —
+// The shape mirrors `DecodeResponse` in `adapter-debug-dashboard/src/main.rs` —
 // keep them in sync if you add fields.
 
 export interface DecodedArg {

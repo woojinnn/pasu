@@ -1,9 +1,9 @@
 [package]
-name = "web-server"
+name = "adapter-debug-dashboard"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "HTTP API exposing abi-resolver decode functionality to a React frontend"
+description = "HTTP API + React frontend that visualizes abi-resolver/mappers/request-router output. Used as a dev/debug dashboard for the adapter pipeline."
 
 [dependencies]
 abi-resolver = { workspace = true, features = ["sqlite"] }

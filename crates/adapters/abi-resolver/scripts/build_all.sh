@@ -153,4 +153,4 @@ echo "  DB:           $DB_PATH ($db_size)"
 echo "  Dump dir now: $remaining"
 echo
 echo "Start the server:"
-echo "  WEB_SERVER_ADDR=127.0.0.1:8080 cargo run -p web-server"
+echo "  WEB_SERVER_ADDR=127.0.0.1:8080 cargo run -p adapter-debug-dashboard"

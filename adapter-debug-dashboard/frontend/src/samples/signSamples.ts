@@ -1,6 +1,6 @@
 // "Try a sample" data for the Sign Decoder.
 //
-// Each sample JSON lives in `crates/web-server/swap_samples/sign/<method>/<scenario>.json`
+// Each sample JSON lives in `adapter-debug-dashboard/swap_samples/sign/<method>/<scenario>.json`
 // and is imported here verbatim via vite's JSON module support. Adding a
 // new sample = drop a file in that directory and append a row below.
 

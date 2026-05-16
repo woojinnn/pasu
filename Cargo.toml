@@ -8,7 +8,7 @@ members = [
     "crates/adapters/call-adapter",
     "crates/adapters/sign-resolver",
     "crates/adapters/request-router",
-    "crates/web-server",
+    "adapter-debug-dashboard",
     "crates/adapters/mappers",
     "crates/policy-builder",
     "crates/policy-builder-wasm",

@@ -13,7 +13,7 @@
 //! | caller-dependent    | schema known only to the receiving contract (e.g. V4 `hookData`)       | _todo_             |
 //! | opaque              | no schema known and likely no canonical one (raw blob)                 | (graceful default) |
 //!
-//! Each sub-decoder feeds the orchestrator (web-server) a tree of
+//! Each sub-decoder feeds the orchestrator (adapter-debug-dashboard) a tree of
 //! `DecodeResponse` children so the structure surfaces in the UI. Unknown
 //! payloads fall back to opaque hex without further interpretation.
 

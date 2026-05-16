@@ -10,7 +10,7 @@
 //!   when present; otherwise return a hint message.
 //!
 //! Run with:
-//!     cargo run -p web-server
+//!     cargo run -p adapter-debug-dashboard
 //!
 //! Defaults to `0.0.0.0:3000`. Override with `WEB_SERVER_ADDR=127.0.0.1:8080`.
 
@@ -300,7 +300,8 @@ async fn decode_sign(Json(req): Json<SignDecodeRequest>) -> Response {
     }
 }
 
-const SOURCIFY_BUNDLE: &[u8] = include_bytes!("../../adapters/abi-resolver/data/sourcify.json");
+const SOURCIFY_BUNDLE: &[u8] =
+    include_bytes!("../../crates/adapters/abi-resolver/data/sourcify.json");
 
 /// Address-agnostic selector → signature seed list used as the third resolver
 /// tier. Each entry is reached only when neither tier 1 (curated
@@ -1257,7 +1258,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "web_server=info,tower_http=info".into()),
+                .unwrap_or_else(|_| "adapter_debug_dashboard=info,tower_http=info".into()),
         )
         .init();
 

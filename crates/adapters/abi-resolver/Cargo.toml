@@ -24,7 +24,7 @@ rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 # and pulls in `rusqlite` (which compiles `libsqlite3-sys` from C). It is
 # off by default so wasm consumers (`policy-engine-wasm`, the browser
 # extension bundle) don't end up trying to compile sqlite to wasm32.
-# The native binary (`web-server`) opts in via `features = ["sqlite"]`.
+# The native binary (`adapter-debug-dashboard`) opts in via `features = ["sqlite"]`.
 default = []
 sqlite = ["dep:rusqlite"]
 

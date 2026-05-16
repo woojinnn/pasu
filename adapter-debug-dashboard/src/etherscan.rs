@@ -61,7 +61,7 @@ impl EtherscanClient {
             .filter(|s| !s.trim().is_empty())?;
         let http = reqwest::Client::builder()
             .timeout(HTTP_TIMEOUT)
-            .user_agent("scopeball-web-server/0.1")
+            .user_agent("adapter-debug-dashboard/0.1")
             .build()
             .ok()?;
         Some(Self {

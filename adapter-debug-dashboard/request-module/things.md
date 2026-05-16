@@ -2,9 +2,9 @@
 
 ## 0. TL;DR
 
-dApp이 MetaMask에 보내는 RPC 요청을 가로채서 `method / chainId / from / to / calldata / value / gas` 같은 공통 필드만 **얕게 추출**하고, 그 결과를 ScopeBall(crates/web-server)의 ABI Resolver UI에 자동으로 채워 넣는다. 의미해석/ABI decode는 이미 백엔드(`abi-resolver` crate)가 담당하므로 여기서는 **요청 필드 수집기**만 만든다.
+dApp이 MetaMask에 보내는 RPC 요청을 가로채서 `method / chainId / from / to / calldata / value / gas` 같은 공통 필드만 **얕게 추출**하고, 그 결과를 ScopeBall(adapter-debug-dashboard)의 ABI Resolver UI에 자동으로 채워 넣는다. 의미해석/ABI decode는 이미 백엔드(`abi-resolver` crate)가 담당하므로 여기서는 **요청 필드 수집기**만 만든다.
 
-최종 목표는 크롬 확장 1개로 자기완결시키는 것이지만, 우선은 기존 web-server + 프런트엔드 인프라 위에서 동작 검증 먼저 한 뒤 확장으로 옮긴다.
+최종 목표는 크롬 확장 1개로 자기완결시키는 것이지만, 우선은 기존 adapter-debug-dashboard + 프런트엔드 인프라 위에서 동작 검증 먼저 한 뒤 확장으로 옮긴다.
 
 ---
 
@@ -20,7 +20,7 @@ dApp이 MetaMask에 보내는 RPC 요청을 가로채서 `method / chainId / fro
 │   └ GM_xmlhttpRequest("POST http://127.0.0.1:8080/api/event") │
 └──────────────────────────────────────────────────────────┘
                              ↓
-┌─ crates/web-server (Axum, :8080) ──────────────┐
+┌─ adapter-debug-dashboard (Axum, :8080) ──────────────┐
 │  POST /api/event       ← 추출된 JSON 수신                  │
 │  GET  /api/event/stream (SSE) ← 프런트엔드에 push         │
 │  POST /api/decode      ← 기존 ABI 디코드 그대로            │
@@ -232,7 +232,7 @@ await window.ethereum.request({
 - page-world inject + sandbox postMessage + GM_xmlhttpRequest 패턴
 
 ### Step 3: 백엔드 수신/스트림
-- `crates/web-server/src/main.rs`에 추가:
+- `adapter-debug-dashboard/src/main.rs`에 추가:
   - `POST /api/event` — JSON 수신, broadcast로 fanout
   - `GET /api/event/stream` — SSE
 - 의존성: `tokio-stream`(broadcast → Stream 변환), 기존 axum/serde로 충분
@@ -245,7 +245,7 @@ await window.ethereum.request({
 - 이벤트 받으면 `setChainId(payload.primaryChainId 16진수→10진수)`, `setAddress(payload.to)`, `setCalldata(payload.calldata[0])`
 
 ### Step 5: 검증
-- web-server 실행 (`cargo run -p web-server`)
+- adapter-debug-dashboard 실행 (`cargo run -p adapter-debug-dashboard`)
 - frontend dev (`cd frontend && npm run dev`)
 - 유저스크립트 Tampermonkey에 등록
 - 테스트 dApp(예: app.uniswap.org)에서 swap 시도

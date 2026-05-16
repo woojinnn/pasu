@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# web-server lifecycle helper.
+# adapter-debug-dashboard lifecycle helper.
 #
 # Usage:
 #   scripts/serve.sh start    [--build|--no-build] [--open]
@@ -8,10 +8,10 @@
 #   scripts/serve.sh status
 #   scripts/serve.sh logs
 #
-# `start` auto-builds the Vite frontend, then launches `cargo run -p web-server`
-# in the background and waits until `/api/health` answers. Logs land in
-# `target/web-server.log`; the foreground process id lands in
-# `target/web-server.pid`.
+# `start` auto-builds the Vite frontend, then launches
+# `cargo run -p adapter-debug-dashboard` in the background and waits until
+# `/api/health` answers. Logs land in `target/dashboard.log`; the
+# foreground process id lands in `target/dashboard.pid`.
 #
 # `stop` finds whatever is bound to the port (default 3000, overridable
 # via `WEB_SERVER_PORT`) and TERMs it.
@@ -25,8 +25,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PORT="${WEB_SERVER_PORT:-8080}"
-LOG_FILE="target/web-server.log"
-PID_FILE="target/web-server.pid"
+LOG_FILE="target/dashboard.log"
+PID_FILE="target/dashboard.pid"
 URL="http://localhost:${PORT}"
 
 mkdir -p target
@@ -84,7 +84,7 @@ should_build() {
     yes) return 0 ;;
     no)  return 1 ;;
     auto)
-      [[ ! -d crates/web-server/frontend/dist ]] && return 0
+      [[ ! -d adapter-debug-dashboard/frontend/dist ]] && return 0
       return 1
       ;;
   esac
@@ -92,7 +92,7 @@ should_build() {
 
 build_assets() {
   echo "→ building main frontend"
-  (cd crates/web-server/frontend && npm install --silent --no-fund --no-audit && npx vite build)
+  (cd adapter-debug-dashboard/frontend && npm install --silent --no-fund --no-audit && npx vite build)
 }
 
 start_server() {
@@ -106,11 +106,11 @@ start_server() {
     build_assets
   fi
 
-  echo "→ starting web-server on :${PORT}"
+  echo "→ starting adapter-debug-dashboard on :${PORT}"
   : > "${LOG_FILE}"
   WEB_SERVER_ADDR="0.0.0.0:${PORT}" \
-  RUST_LOG="${RUST_LOG:-web_server=info,tower_http=info}" \
-    nohup cargo run -p web-server --quiet >>"${LOG_FILE}" 2>&1 &
+  RUST_LOG="${RUST_LOG:-adapter_debug_dashboard=info,tower_http=info}" \
+    nohup cargo run -p adapter-debug-dashboard --quiet >>"${LOG_FILE}" 2>&1 &
   echo $! > "${PID_FILE}"
 
   echo -n "waiting for /api/health"
@@ -160,15 +160,15 @@ case "${cmd}" in
 usage: $0 <command> [flags]
 
 commands:
-  start [--build|--no-build] [--open]   build assets and run web-server
+  start [--build|--no-build] [--open]   build assets and run adapter-debug-dashboard
   stop                                  kill server on :${PORT}
   restart [--build|--no-build] [--open] stop + start
   status                                check /api/health
-  logs                                  tail target/web-server.log
+  logs                                  tail target/dashboard.log
 
 env:
   WEB_SERVER_PORT   override port (default 3000)
-  RUST_LOG          override log filter (default web_server=info,tower_http=info)
+  RUST_LOG          override log filter (default adapter_debug_dashboard=info,tower_http=info)
 USAGE
     exit 1
     ;;

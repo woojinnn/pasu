@@ -18,7 +18,7 @@ allow = [
     "CC0-1.0",
     # CDLA-Permissive-2.0 is a permissive, OSI-style license (no copyleft).
     # Pulled in by `webpki-roots` via `reqwest` → `rustls` for the Etherscan
-    # HTTP fallback in `web-server`.
+    # HTTP fallback in `adapter-debug-dashboard`.
     "CDLA-Permissive-2.0",
     "ISC",
     "MIT",

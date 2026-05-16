@@ -22,6 +22,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "adapter-debug-dashboard"
+version = "0.1.0"
+dependencies = [
+ "abi-resolver",
+ "alloy-dyn-abi",
+ "alloy-json-abi",
+ "alloy-primitives",
+ "axum",
+ "hex",
+ "mappers",
+ "policy-engine",
+ "request-router",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sign-resolver",
+ "tokio",
+ "tokio-stream",
+ "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3898,30 +3922,6 @@ dependencies = [
  "hashbrown 0.15.5",
  "indexmap 2.14.0",
  "semver 1.0.28",
-]
-
-[[package]]
-name = "web-server"
-version = "0.1.0"
-dependencies = [
- "abi-resolver",
- "alloy-dyn-abi",
- "alloy-json-abi",
- "alloy-primitives",
- "axum",
- "hex",
- "mappers",
- "policy-engine",
- "request-router",
- "reqwest",
- "serde",
- "serde_json",
- "sign-resolver",
- "tokio",
- "tokio-stream",
- "tower-http 0.5.2",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

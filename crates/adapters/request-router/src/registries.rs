@@ -47,15 +47,16 @@ use sign_resolver::adapters::permit2::Permit2Adapter;
 use sign_resolver::InMemorySignAdapterRegistry;
 
 /// Built-in Sourcify bundle, embedded at compile time. Mirrors the bundle
-/// loaded by `web-server`. Keeps the fallback decode path self-contained: even
-/// if no external SQLite DB is attached, we can still resolve calldata for the
-/// curated contract set.
+/// loaded by `adapter-debug-dashboard`. Keeps the fallback decode path
+/// self-contained: even if no external SQLite DB is attached, we can still
+/// resolve calldata for the curated contract set.
 const SOURCIFY_BUNDLE: &[u8] = include_bytes!("../../abi-resolver/data/sourcify.json");
 
 /// Selector → human-readable signature pairs used to seed the openchain
-/// fallback tier. Mirrors the seed list in `web-server`'s build_resolver().
-/// Keeping it here lets the `request-router` test/standalone wasm path resolve
-/// common DeFi entrypoints without depending on the web-server binary.
+/// fallback tier. Mirrors the seed list in `adapter-debug-dashboard`'s
+/// build_resolver(). Keeping it here lets the `request-router`
+/// test/standalone wasm path resolve common DeFi entrypoints without
+/// depending on the dashboard binary.
 fn openchain_seed() -> &'static [([u8; 4], &'static str)] {
     &[
         ([0x09, 0x5e, 0xa7, 0xb3], "approve(address spender, uint256 amount)"),

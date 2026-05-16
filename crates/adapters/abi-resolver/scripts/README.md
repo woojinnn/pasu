@@ -60,7 +60,7 @@ resolves proxies via RPC, and writes `data/sourcify.json`.
 
 ```bash
 SOURCIFY_SQLITE_PATH=/tmp/sourcify_dump/sourcify.sqlite \
-  cargo run -p web-server
+  cargo run -p adapter-debug-dashboard
 ```
 
 If the env var is unset, the server defaults to looking at
