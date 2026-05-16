@@ -22,9 +22,9 @@ pub(super) fn v4_params_tuple(step: &DecodedStep) -> Result<&[DynSolValue], Adap
     let args = step.args.as_ref().ok_or_else(|| {
         AdapterError::Invalid(format!("V4 action {} carried no decoded args", step.name))
     })?;
-    let first = args.first().ok_or_else(|| {
-        AdapterError::Invalid(format!("V4 action {} args empty", step.name))
-    })?;
+    let first = args
+        .first()
+        .ok_or_else(|| AdapterError::Invalid(format!("V4 action {} args empty", step.name)))?;
     match &first.value {
         DynSolValue::Tuple(fields) => Ok(fields),
         other => Err(AdapterError::Invalid(format!(
@@ -34,7 +34,10 @@ pub(super) fn v4_params_tuple(step: &DecodedStep) -> Result<&[DynSolValue], Adap
     }
 }
 
-pub(super) fn tuple_address(value: &DynSolValue, field_name: &str) -> Result<Address, AdapterError> {
+pub(super) fn tuple_address(
+    value: &DynSolValue,
+    field_name: &str,
+) -> Result<Address, AdapterError> {
     use std::str::FromStr as _;
     match value {
         DynSolValue::Address(addr) => Address::from_str(&format!("0x{}", hex::encode(addr.0)))

@@ -122,9 +122,7 @@ impl SignAdapter for LendingAuthSignAdapter {
             (PRIMARY_AUTHORIZATION, Some(vc)) if vc == MORPHO_BLUE_LC => {
                 morpho_authorization(ctx, message)?
             }
-            (PRIMARY_AUTHORIZATION, Some(vc))
-                if compound_market_label(vc).is_some() =>
-            {
+            (PRIMARY_AUTHORIZATION, Some(vc)) if compound_market_label(vc).is_some() => {
                 compound_authorization(ctx, vc, message)?
             }
             (PRIMARY_DELEGATION_WITH_SIG, Some(vc)) => aave_delegation(ctx, vc, message)?,

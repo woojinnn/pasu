@@ -7,7 +7,8 @@ use policy_engine::action::{Action, ActionEnvelope, AmountConstraint, AmountKind
 use crate::{AdapterError, CallContext};
 
 use super::super::common::{
-    asset_with_amount, map_recipient, native_asset, read_address_word, read_decimal_word, weth_asset,
+    asset_with_amount, map_recipient, native_asset, read_address_word, read_decimal_word,
+    weth_asset,
 };
 
 pub(in crate::multi_router) fn decode(

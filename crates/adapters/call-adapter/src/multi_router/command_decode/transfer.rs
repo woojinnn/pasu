@@ -45,5 +45,6 @@ pub(in crate::multi_router) fn decode(
 }
 
 fn is_zero_address(addr: &policy_engine::action::Address) -> bool {
-    addr.to_string().to_ascii_lowercase() == "0x0000000000000000000000000000000000000000"
+    addr.to_string()
+        .eq_ignore_ascii_case("0x0000000000000000000000000000000000000000")
 }

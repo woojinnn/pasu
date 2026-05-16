@@ -265,9 +265,8 @@ fn interpret(
         return fallback.to_vec();
     }
 
-    let (spent, received): (Vec<_>, Vec<_>) = delta
-        .into_iter()
-        .partition(|(_, b)| b.net.is_negative());
+    let (spent, received): (Vec<_>, Vec<_>) =
+        delta.into_iter().partition(|(_, b)| b.net.is_negative());
 
     match (spent.len(), received.len()) {
         (1, 1) => {

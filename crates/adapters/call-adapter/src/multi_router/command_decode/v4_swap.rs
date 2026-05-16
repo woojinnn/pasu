@@ -25,7 +25,9 @@ use policy_engine::action::{Action, ActionEnvelope, Address, Validity};
 
 use crate::{AdapterError, CallContext};
 
-use super::super::v4_actions::{exact_input, exact_input_single, exact_output, exact_output_single};
+use super::super::v4_actions::{
+    exact_input, exact_input_single, exact_output, exact_output_single,
+};
 
 // Inner V4 action opcodes (dispatched against V4_ROUTER_TABLE).
 const V4_ACTION_SWAP_EXACT_IN_SINGLE: u8 = 0x06;

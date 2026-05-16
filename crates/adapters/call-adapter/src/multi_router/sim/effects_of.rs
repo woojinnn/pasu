@@ -10,7 +10,7 @@ use std::str::FromStr as _;
 use alloy_primitives::U256;
 use policy_engine::action::{AmountConstraint, AmountKind, AssetKind, AssetRef};
 
-use super::effect::{Asset, AmountSpec};
+use super::effect::{AmountSpec, Asset};
 
 /// Translate `AssetRef` (policy-engine schema) to the simulator's `Asset`.
 /// Native (no address) → `Asset::Native`; ERC-20 with address → `Asset::Erc20`.

@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use alloy_primitives::{I256, U256};
 use policy_engine::action::Address;
 
-use super::effect::{ActorRef, Asset, AmountSpec, Effect};
+use super::effect::{ActorRef, AmountSpec, Asset, Effect};
 use crate::CallContext;
 
 /// Concrete actor identity (after [`ActorRef`] resolution against ctx).
@@ -80,10 +80,19 @@ impl Ledger {
                 asset,
                 amount,
             } => {
-                self.add(resolve(from, ctx), asset.clone(), amount, /* sign */ -1);
+                self.add(
+                    resolve(from, ctx),
+                    asset.clone(),
+                    amount,
+                    /* sign */ -1,
+                );
                 self.add(resolve(to, ctx), asset, amount, /* sign */ 1);
             }
-            Effect::Burn { from, asset, amount } => {
+            Effect::Burn {
+                from,
+                asset,
+                amount,
+            } => {
                 self.add(resolve(from, ctx), asset, amount, -1);
             }
             Effect::Mint { to, asset, amount } => {
@@ -142,9 +151,7 @@ impl Ledger {
             .entries
             .iter()
             .filter(|((actor, _), bucket)| {
-                actor.kind == ActorKind::User
-                    && &actor.address == user
-                    && bucket.net != I256::ZERO
+                actor.kind == ActorKind::User && &actor.address == user && bucket.net != I256::ZERO
             })
             .map(|((_, asset), bucket)| (asset.clone(), *bucket))
             .collect();
@@ -226,7 +233,7 @@ fn asset_sort_key(a: &Asset) -> (u8, Vec<u8>) {
 mod tests {
     use std::str::FromStr as _;
 
-    use abi_resolver::{DecoderId, InMemoryDecoderRegistry};
+    use abi_resolver::InMemoryDecoderRegistry;
     use mappers::{EmptyTokenRegistry, InMemoryMapperRegistry};
     use policy_engine::action::{Address, DecimalString};
 

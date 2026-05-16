@@ -162,11 +162,18 @@ fn wrap_then_swap_collapses_even_without_msg_value() {
         ],
         "0", // ← no msg.value
     );
-    assert_eq!(merged.len(), 1, "WRAP+SWAP should collapse even without msg.value");
+    assert_eq!(
+        merged.len(),
+        1,
+        "WRAP+SWAP should collapse even without msg.value"
+    );
     let Action::Swap(s) = &merged[0].action else {
         panic!("expected Swap")
     };
-    assert!(s.input_token.asset.address.is_none(), "token_in should be native ETH");
+    assert!(
+        s.input_token.asset.address.is_none(),
+        "token_in should be native ETH"
+    );
     assert_eq!(s.output_token.asset.address, Some(addr(USDC)));
 }
 
@@ -218,7 +225,7 @@ fn two_independent_swaps_to_same_pair_stay_split() {
     );
     // Aggregating same-pair into one is debatable; today both pass through.
     // The bar is that we don't *crash* and the result is non-empty.
-    assert!(merged.len() >= 1);
+    assert!(!merged.is_empty());
 }
 
 #[test]
