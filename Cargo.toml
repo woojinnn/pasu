@@ -12,6 +12,7 @@ members = [
     "crates/adapters/mappers",
     "crates/policy-builder",
     "crates/policy-builder-wasm",
+    "crates/adapter-sdk",
 ]
 
 [workspace.package]

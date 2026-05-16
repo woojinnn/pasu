@@ -1,0 +1,16 @@
+[package]
+name = "adapter-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Public SDK for policy-engine adapter authors"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+hex = "0.4"
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_test = "1"
