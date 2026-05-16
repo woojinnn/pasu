@@ -1,6 +1,7 @@
 //! adapter-cli — build, validate, and publish adapter packages.
 
 mod cmd_build;
+mod cmd_validate;
 mod manifest;
 
 use clap::{Parser, Subcommand};
@@ -22,11 +23,16 @@ enum Cmd {
         #[arg(long, default_value = "release")]
         profile: String,
     },
+    Validate {
+        /// Path to the built .wasm file.
+        wasm: PathBuf,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Cmd::Build { manifest_path, profile } => cmd_build::run(&manifest_path, &profile),
+        Cmd::Validate { wasm } => cmd_validate::run(&wasm),
     }
 }
