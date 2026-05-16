@@ -1,0 +1,16 @@
+[package]
+name = "adapter-sdk-macros"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "#[adapter] proc-macro for adapter-sdk authors"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+syn = { version = "2", features = ["full", "extra-traits"] }
+quote = "1"
+serde_json.workspace = true
