@@ -838,14 +838,14 @@ mod tests_policy_rpc {
 
     fn default_max_input_manifest_json() -> Value {
         serde_json::from_str(include_str!(
-            "../../../policies/swap/max-input-usd-100.policy-rpc.json"
+            "../../../policy-examples/swap/max-input-usd-100.policy-rpc.json"
         ))
         .unwrap()
     }
 
     fn default_min_output_manifest_json() -> Value {
         serde_json::from_str(include_str!(
-            "../../../policies/swap/min-output-usd-floor.policy-rpc.json"
+            "../../../policy-examples/swap/min-output-usd-floor.policy-rpc.json"
         ))
         .unwrap()
     }
@@ -1063,11 +1063,11 @@ mod tests_policy_rpc {
                 "policy_set": [
                     {
                         "id": "default::swap/max-input-usd-100",
-                        "text": include_str!("../../../policies/swap/max-input-usd-100.cedar")
+                        "text": include_str!("../../../policy-examples/swap/max-input-usd-100.cedar")
                     },
                     {
                         "id": "default::swap/min-output-usd-floor",
-                        "text": include_str!("../../../policies/swap/min-output-usd-floor.cedar")
+                        "text": include_str!("../../../policy-examples/swap/min-output-usd-floor.cedar")
                     }
                 ]
             })

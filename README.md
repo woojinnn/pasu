@@ -32,7 +32,7 @@ policy-engine/
 |       |-- eip712_other.cedarschema
 |       |-- other.cedarschema
 |       `-- permit2.cedarschema
-|-- policies/
+|-- policy-examples/
 |   |-- dex/
 |   `-- signature/
 |       |-- eip2612/
@@ -138,7 +138,7 @@ the base schema. They are added by `.policy-rpc.json` manifests through
 `context_extensions` and materialized from Policy RPC JSON responses before
 Cedar evaluation.
 
-The shipped policies under `policies/swap/` validate against the composed base
+The shipped policies under `policy-examples/swap/` validate against the composed base
 schema plus their paired Policy RPC manifests.
 
 Signature requests evaluate:
