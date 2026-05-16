@@ -21,92 +21,13 @@ use alloy_dyn_abi::DynSolValue;
 use crate::subdecode::opcode_stream::{DecodedStep, OpcodeEntry, OpcodeTable};
 
 // ---------------------------------------------------------------------------
-// JSON-ABI literals for the four V4Router swap actions. Using JSON instead of
-// Solidity signature strings is what lets us preserve named fields **inside**
-// the parameter struct (`params.poolKey.currency0`, `params.path[].fee`, …) —
-// alloy's signature parser only accepts named identifiers at the outer
-// function-arg level. Each constant is a JSON array of standard ABI Param
-// objects describing the inputs to a synthetic 1-arg function whose only arg
-// is the action's parameter struct.
+// V4Router swap actions live as paired Solidity signatures on the OpcodeEntry
+// below. We deliberately do *not* use a JSON-ABI literal for them because
+// mainnet V4Router is still pre-#497 (no `minHopPriceX36`) while the latest
+// v4-periphery source includes it; JSON ABI can only carry one shape, and we
+// need the dispatcher to try the post-#497 shape first and fall back when the
+// buffer overruns on shorter mainnet calldata.
 // ---------------------------------------------------------------------------
-
-/// `IV4Router.ExactInputSingleParams`.
-const SWAP_EXACT_IN_SINGLE_JSON: &str = r#"[{
-    "name": "params",
-    "type": "tuple",
-    "components": [
-        { "name": "poolKey", "type": "tuple", "components": [
-            { "name": "currency0",   "type": "address" },
-            { "name": "currency1",   "type": "address" },
-            { "name": "fee",         "type": "uint24" },
-            { "name": "tickSpacing", "type": "int24" },
-            { "name": "hooks",       "type": "address" }
-        ]},
-        { "name": "zeroForOne",       "type": "bool" },
-        { "name": "amountIn",         "type": "uint128" },
-        { "name": "amountOutMinimum", "type": "uint128" },
-        { "name": "minHopPriceX36",   "type": "uint256" },
-        { "name": "hookData",         "type": "bytes" }
-    ]
-}]"#;
-
-/// `IV4Router.ExactInputParams` (multi-hop exact-in).
-const SWAP_EXACT_IN_JSON: &str = r#"[{
-    "name": "params",
-    "type": "tuple",
-    "components": [
-        { "name": "currencyIn", "type": "address" },
-        { "name": "path", "type": "tuple[]", "components": [
-            { "name": "intermediateCurrency", "type": "address" },
-            { "name": "fee",                  "type": "uint24" },
-            { "name": "tickSpacing",          "type": "int24" },
-            { "name": "hooks",                "type": "address" },
-            { "name": "hookData",             "type": "bytes" }
-        ]},
-        { "name": "minHopPriceX36",   "type": "uint256[]" },
-        { "name": "amountIn",         "type": "uint128" },
-        { "name": "amountOutMinimum", "type": "uint128" }
-    ]
-}]"#;
-
-/// `IV4Router.ExactOutputSingleParams`.
-const SWAP_EXACT_OUT_SINGLE_JSON: &str = r#"[{
-    "name": "params",
-    "type": "tuple",
-    "components": [
-        { "name": "poolKey", "type": "tuple", "components": [
-            { "name": "currency0",   "type": "address" },
-            { "name": "currency1",   "type": "address" },
-            { "name": "fee",         "type": "uint24" },
-            { "name": "tickSpacing", "type": "int24" },
-            { "name": "hooks",       "type": "address" }
-        ]},
-        { "name": "zeroForOne",      "type": "bool" },
-        { "name": "amountOut",       "type": "uint128" },
-        { "name": "amountInMaximum", "type": "uint128" },
-        { "name": "minHopPriceX36",  "type": "uint256" },
-        { "name": "hookData",        "type": "bytes" }
-    ]
-}]"#;
-
-/// `IV4Router.ExactOutputParams` (multi-hop exact-out).
-const SWAP_EXACT_OUT_JSON: &str = r#"[{
-    "name": "params",
-    "type": "tuple",
-    "components": [
-        { "name": "currencyOut", "type": "address" },
-        { "name": "path", "type": "tuple[]", "components": [
-            { "name": "intermediateCurrency", "type": "address" },
-            { "name": "fee",                  "type": "uint24" },
-            { "name": "tickSpacing",          "type": "int24" },
-            { "name": "hooks",                "type": "address" },
-            { "name": "hookData",             "type": "bytes" }
-        ]},
-        { "name": "minHopPriceX36",  "type": "uint256[]" },
-        { "name": "amountOut",       "type": "uint128" },
-        { "name": "amountInMaximum", "type": "uint128" }
-    ]
-}]"#;
 
 // ---------------------------------------------------------------------------
 // PositionManager liquidity actions (0x00–0x05). Source:
@@ -249,37 +170,56 @@ const ENTRIES: &[OpcodeEntry] = &[
     // struct in an outer tuple here. Inner field names are dropped because
     // alloy's signature parser only accepts named identifiers at the outer
     // function-arg level.
+    // Each entry registers BOTH the post-#497 (with `minHopPriceX36`) and
+    // the pre-#497 (mainnet-deployed) struct shapes. The dispatcher tries
+    // them in order — the post-#497 shape is attempted first because it is
+    // strictly longer; if the calldata is mainnet-deployed (shorter) the
+    // first decode buffer-overruns and the dispatcher falls back to the
+    // mainnet shape. JSON ABI is deliberately omitted: it can only carry one
+    // shape, which would block the fallback path.
     OpcodeEntry {
         opcode: 0x06,
         name: "SWAP_EXACT_IN_SINGLE",
         input_signatures: &[
+            // post-#497 shape (per-hop slippage)
             "(((address,address,uint24,int24,address),bool,uint128,uint128,uint256,bytes) params)",
+            // mainnet-deployed shape (no per-hop slippage)
+            "(((address,address,uint24,int24,address),bool,uint128,uint128,bytes) params)",
         ],
-        input_json_abi: Some(SWAP_EXACT_IN_SINGLE_JSON),
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x07,
         name: "SWAP_EXACT_IN",
         input_signatures: &[
+            // post-#497 shape (per-hop slippage)
             "((address,(address,uint24,int24,address,bytes)[],uint256[],uint128,uint128) params)",
+            // mainnet-deployed shape (no per-hop slippage)
+            "((address,(address,uint24,int24,address,bytes)[],uint128,uint128) params)",
         ],
-        input_json_abi: Some(SWAP_EXACT_IN_JSON),
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x08,
         name: "SWAP_EXACT_OUT_SINGLE",
         input_signatures: &[
+            // post-#497 shape (per-hop slippage)
             "(((address,address,uint24,int24,address),bool,uint128,uint128,uint256,bytes) params)",
+            // mainnet-deployed shape (no per-hop slippage)
+            "(((address,address,uint24,int24,address),bool,uint128,uint128,bytes) params)",
         ],
-        input_json_abi: Some(SWAP_EXACT_OUT_SINGLE_JSON),
+        input_json_abi: None,
     },
     OpcodeEntry {
         opcode: 0x09,
         name: "SWAP_EXACT_OUT",
         input_signatures: &[
+            // post-#497 shape (per-hop slippage)
             "((address,(address,uint24,int24,address,bytes)[],uint256[],uint128,uint128) params)",
+            // mainnet-deployed shape (no per-hop slippage)
+            "((address,(address,uint24,int24,address,bytes)[],uint128,uint128) params)",
         ],
-        input_json_abi: Some(SWAP_EXACT_OUT_JSON),
+        input_json_abi: None,
     },
     // ---- donate (not supported by router or PM in current periphery) ----
     OpcodeEntry {
