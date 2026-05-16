@@ -6,11 +6,11 @@
 
 use std::str::FromStr as _;
 
+use policy_engine::action::dex::SwapAction;
 use policy_engine::action::{
     Action, ActionEnvelope, Address, AmountConstraint, AmountKind, AssetKind, AssetRef, Category,
     DecimalString,
 };
-use policy_engine::action::dex::SwapAction;
 
 use crate::{AdapterError, CallContext};
 
@@ -148,7 +148,10 @@ pub(super) fn read_address_word(input: &[u8], word_index: usize) -> Result<Addre
     address_from_bytes(&word[WORD_LEN - ADDRESS_LEN..])
 }
 
-pub(super) fn read_decimal_word(input: &[u8], word_index: usize) -> Result<DecimalString, AdapterError> {
+pub(super) fn read_decimal_word(
+    input: &[u8],
+    word_index: usize,
+) -> Result<DecimalString, AdapterError> {
     decimal(&uint_decimal(word_at(input, word_index)?))
 }
 
@@ -164,7 +167,10 @@ pub(super) fn read_bool_word(input: &[u8], word_index: usize) -> Result<bool, Ad
     }
 }
 
-pub(super) fn read_dynamic_bytes(input: &[u8], offset_word_index: usize) -> Result<&[u8], AdapterError> {
+pub(super) fn read_dynamic_bytes(
+    input: &[u8],
+    offset_word_index: usize,
+) -> Result<&[u8], AdapterError> {
     let offset = word_as_usize(word_at(input, offset_word_index)?)?;
     let length = word_as_usize(word_at_offset(input, offset)?)?;
     let start = offset

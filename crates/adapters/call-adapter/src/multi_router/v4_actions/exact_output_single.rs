@@ -49,6 +49,6 @@ pub(in crate::multi_router) fn decode(
         ),
         recipient: ctx.from.clone(),
         validity,
-        fee_bps: extract_pool_fee_bps(&pk)?,
+        fee_bps: extract_pool_fee_bps(pk)?,
     }))
 }

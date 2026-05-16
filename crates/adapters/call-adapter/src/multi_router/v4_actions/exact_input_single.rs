@@ -49,6 +49,6 @@ pub(in crate::multi_router) fn decode(
         // V4 doesn't carry recipient in swap params (uses delta + take action)
         recipient: ctx.from.clone(),
         validity,
-        fee_bps: extract_pool_fee_bps(&pk)?,
+        fee_bps: extract_pool_fee_bps(pk)?,
     }))
 }

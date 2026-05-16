@@ -1,8 +1,8 @@
 //! Universal-Router-style command-stream dispatcher.
 //!
-//! Walks the `(commands, inputs)` pair produced by [`super::execute::decode_outer_call`]
+//! Walks the `(commands, inputs)` pair produced by `super::execute::decode_outer_call`
 //! and emits an `ActionEnvelope` per recognized opcode. Per-opcode decoding lives
-//! in [`super::command_decode`].
+//! in `super::command_decode`.
 //!
 //! # Fork support
 //!
@@ -104,8 +104,8 @@ fn classify_uniswap_ur(opcode: u8) -> OpcodeKind {
     match opcode {
         0x00 => OpcodeKind::V3SwapExactIn,
         0x01 => OpcodeKind::V3SwapExactOut,
-        0x04 => OpcodeKind::Sweep,         // surfaced as TransferAction for the simulator
-        0x05 => OpcodeKind::Transfer,      // ditto
+        0x04 => OpcodeKind::Sweep, // surfaced as TransferAction for the simulator
+        0x05 => OpcodeKind::Transfer, // ditto
         0x08 => OpcodeKind::V2SwapExactIn,
         0x09 => OpcodeKind::V2SwapExactOut,
         0x0b => OpcodeKind::WrapEth,
@@ -250,15 +250,12 @@ pub(super) fn expand_commands(
                 )?);
             }
             OpcodeKind::ExecuteSubPlan => {
-                let (sub_commands, sub_inputs) =
-                    SubPlanInput::abi_decode_sequence(input, true).map_err(|e| {
-                        AdapterError::Invalid(format!(
-                            "EXECUTE_SUB_PLAN outer decode failed: {e}"
-                        ))
+                let (sub_commands, sub_inputs) = SubPlanInput::abi_decode_sequence(input, true)
+                    .map_err(|e| {
+                        AdapterError::Invalid(format!("EXECUTE_SUB_PLAN outer decode failed: {e}"))
                     })?;
                 let sub_commands = sub_commands.to_vec();
-                let sub_inputs: Vec<Vec<u8>> =
-                    sub_inputs.into_iter().map(|b| b.to_vec()).collect();
+                let sub_inputs: Vec<Vec<u8>> = sub_inputs.into_iter().map(|b| b.to_vec()).collect();
                 envelopes.extend(expand_commands(
                     ctx,
                     &sub_commands,

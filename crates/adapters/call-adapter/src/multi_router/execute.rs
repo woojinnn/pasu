@@ -32,9 +32,11 @@ sol! {
     );
 }
 
-pub(super) fn decode_outer_call(
-    calldata: &[u8],
-) -> Result<(Vec<u8>, Vec<Vec<u8>>, Option<Validity>), AdapterError> {
+/// Decoded outer-call shape: `(commands, inputs, validity)`. The deadline
+/// overload sets `validity`; the no-deadline overload leaves it `None`.
+pub(super) type DecodedOuterCall = (Vec<u8>, Vec<Vec<u8>>, Option<Validity>);
+
+pub(super) fn decode_outer_call(calldata: &[u8]) -> Result<DecodedOuterCall, AdapterError> {
     let selector: [u8; 4] = calldata
         .get(..4)
         .ok_or_else(|| AdapterError::Invalid("UR calldata shorter than selector".into()))?
@@ -51,17 +53,14 @@ pub(super) fn decode_outer_call(
     let payload = &calldata[4..];
     match selector {
         EXECUTE_SELECTOR => {
-            let call = executeCall::abi_decode_raw(payload, true).map_err(|e| {
-                AdapterError::Invalid(format!("UR execute ABI decode failed: {e}"))
-            })?;
+            let call = executeCall::abi_decode_raw(payload, true)
+                .map_err(|e| AdapterError::Invalid(format!("UR execute ABI decode failed: {e}")))?;
             let inputs: Vec<Vec<u8>> = call.inputs.iter().map(|b| b.to_vec()).collect();
             Ok((call.commands.to_vec(), inputs, None))
         }
         EXECUTE_DEADLINE_SELECTOR => {
             let call = executeWithDeadlineCall::abi_decode_raw(payload, true).map_err(|e| {
-                AdapterError::Invalid(format!(
-                    "UR executeWithDeadline ABI decode failed: {e}"
-                ))
+                AdapterError::Invalid(format!("UR executeWithDeadline ABI decode failed: {e}"))
             })?;
             let inputs: Vec<Vec<u8>> = call.inputs.iter().map(|b| b.to_vec()).collect();
             let validity = Some(Validity {

@@ -8,7 +8,8 @@ use crate::{AdapterError, CallContext};
 
 use super::super::common::{
     amount_constraint, asset_ref, asset_with_amount, map_recipient, path_endpoints,
-    read_address_word, read_bool_word, read_decimal_word, read_dynamic_address_array, swap_envelope,
+    read_address_word, read_bool_word, read_decimal_word, read_dynamic_address_array,
+    swap_envelope,
 };
 
 pub(in crate::multi_router) fn decode(
