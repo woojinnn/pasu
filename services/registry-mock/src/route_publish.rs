@@ -64,6 +64,8 @@ pub async fn handle(
         .await
         .map_err(|e| internal(&format!("storage write: {e}")))?;
 
+    state.index.add(&manifest);
+
     Ok((
         StatusCode::CREATED,
         Json(json!({

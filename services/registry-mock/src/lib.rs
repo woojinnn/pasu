@@ -1,4 +1,6 @@
+mod index;
 mod manifest;
+mod route_chains;
 mod route_packages;
 mod route_publish;
 mod storage;
@@ -13,18 +15,21 @@ use tracing_subscriber::EnvFilter;
 #[derive(Clone)]
 pub struct AppState {
     pub storage: storage::Storage,
+    pub index: Arc<index::Index>,
 }
 
 pub async fn build_app(state_dir: PathBuf) -> Router {
     tokio::fs::create_dir_all(&state_dir).await.ok();
-    let state = AppState {
-        storage: storage::Storage::new(state_dir),
-    };
+    let storage = storage::Storage::new(state_dir);
+    let index = Arc::new(index::Index::new());
+    index.rebuild_from_disk(&storage).await.ok();
+    let state = AppState { storage, index };
     Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/publish", post(route_publish::handle))
         .route("/packages/:name/:version/adapter.wasm", get(route_packages::wasm))
         .route("/packages/:name/:version/manifest.json", get(route_packages::manifest))
+        .route("/chains/:chain/:address", get(route_chains::handle))
         .with_state(Arc::new(state))
 }
 
