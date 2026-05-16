@@ -25,7 +25,7 @@ impl Default for PolicyEngineBuilder {
 
 impl PolicyEngineBuilder {
     /// Construct a builder pre-loaded with the bundled Cedar schema (core +
-    /// every action under `policy-schema/actions/`). The bundled schema is
+    /// every action under `schema/policy-schema/actions/`). The bundled schema is
     /// mandatory: every engine produced by this builder is strict-validated.
     ///
     /// To extend the schema with adapter-contributed fragments, chain

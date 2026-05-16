@@ -24,7 +24,7 @@ facts while the backing services are still being designed:
 - `stat_window.snapshot`
 - `stat_window.swap_stats`
 
-`policy-schema/extensions/DEX/swap.policy-rpc.json` shows how the legacy swap
+`schema/policy-schema/extensions/DEX/swap.policy-rpc.json` shows how the legacy swap
 enrichment fields can be requested and projected through policy-rpc manifests.
 
 ## Development

@@ -23,10 +23,11 @@ action ids: `signature.permit2`, `signature.eip2612`, and
 policy-engine/
 |-- Cargo.toml
 |-- README.md
-|-- policy-schema/
-|   |-- core.cedarschema
-|   `-- actions/
-|       |-- dex.cedarschema
+|-- schema/
+|   |-- policy-schema/
+|   |   |-- core.cedarschema
+|   |   `-- actions/
+|   |       |-- dex.cedarschema
 |       |-- eip2612.cedarschema
 |       |-- eip712_other.cedarschema
 |       |-- other.cedarschema
@@ -67,7 +68,7 @@ policy-engine/
   conversion.
 - `policy.rs`: Cedar wrapper, schema validation, `Verdict`, `MatchedPolicy`.
 - `pipeline.rs`: resolver -> adapter -> enrichment -> lowering -> Cedar.
-- `schema.rs`: `PolicySchemaComposer`, which loads `policy-schema/*`.
+- `schema.rs`: `PolicySchemaComposer`, which loads `schema/policy-schema/*`.
 - `context_keys.rs`: centralized Cedar context field names used by lowering.
 
 `context_keys.rs` is the engine-side Cedar context vocabulary. Adapter authors
@@ -111,8 +112,8 @@ directly.
 The composed schema is:
 
 ```text
-policy-schema/core.cedarschema
-policy-schema/actions/**/<action>.cedarschema
+schema/policy-schema/core.cedarschema
+schema/policy-schema/actions/**/<action>.cedarschema
 manifest-provided context_extensions, when a Policy RPC manifest is installed
 ```
 

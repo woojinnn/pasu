@@ -632,7 +632,7 @@ mod tests {
     #[test]
     fn schema_swap_extension_manifest_declares_legacy_enrichment_fields() {
         let manifest = serde_json::from_str::<super::PolicyManifest>(include_str!(
-            "../../../../policy-schema/extensions/DEX/swap.policy-rpc.json"
+            "../../../../schema/policy-schema/extensions/DEX/swap.policy-rpc.json"
         ))
         .expect("schema extension manifest parses");
         let root = super::RootInput {

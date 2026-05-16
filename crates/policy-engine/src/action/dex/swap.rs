@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn test_swap_action_matches_schema_fixture() {
         let schema: Value = serde_json::from_str(include_str!(
-            "../../../../../schema/schema/actions/dex/swap.json"
+            "../../../../../schema/action-schema/schema/actions/dex/swap.json"
         ))
         .unwrap();
         let fixture = schema

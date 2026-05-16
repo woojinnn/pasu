@@ -1,4 +1,4 @@
-//! Top-level request envelope. Mirrors schema/schema/root.json.
+//! Top-level request envelope. Mirrors schema/action-schema/schema/root.json.
 
 use crate::action::{ActionEnvelope, Address, DecimalString};
 use serde::{Deserialize, Serialize};

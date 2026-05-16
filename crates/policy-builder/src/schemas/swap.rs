@@ -1,6 +1,6 @@
 //! `swap` action schema.
 //!
-//! Mirrors the `SwapContext` declared in `policy-schema/actions/DEX/swap.cedarschema`.
+//! Mirrors the `SwapContext` declared in `schema/policy-schema/actions/DEX/swap.cedarschema`.
 //! Composite record fields (`inputToken`, `outputToken`, `totalInputUsd`,
 //! `validity`, `windowStats`) are flattened into dotted leaf paths so each
 //! addressable comparison gets its own [`FieldSpec`].

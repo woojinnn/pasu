@@ -1,5 +1,5 @@
 //! Normalized envelope-driven Action types.
-//! Mirrors `schema/schema/actions/` JSON definitions.
+//! Mirrors `schema/action-schema/schema/actions/` JSON definitions.
 
 pub mod common;
 /// Decentralized exchange action schema types.

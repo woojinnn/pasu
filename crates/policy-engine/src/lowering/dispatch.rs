@@ -89,7 +89,7 @@ pub fn try_policy_request_from_envelope(
         Action::Donate(action) => action.build(&ctx).map(Some),
         Action::InitializePool(action) => action.build(&ctx).map(Some),
         // TODO: lending / misc / restaking / staking lowering not yet implemented —
-        // current phase only supports DEX actions. See policy-schema/actions/<category>/
+        // current phase only supports DEX actions. See schema/policy-schema/actions/<category>/
         // for the cedar schemas already defined for these actions.
         _ => Ok(None),
     }
