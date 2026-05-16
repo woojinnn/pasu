@@ -27,7 +27,30 @@ TMP=$(mktemp -d)
 echo "=> Building sample WASM"
 cargo build -p adapter-sample-erc20-transfer --target wasm32-unknown-unknown --release
 
-WASM="$(pwd)/target/wasm32-unknown-unknown/release/adapter_sample_erc20_transfer.wasm"
+WASM_RAW="$(pwd)/target/wasm32-unknown-unknown/release/adapter_sample_erc20_transfer.wasm"
+WASM_OPT="${WASM_RAW%.wasm}.opt.wasm"
+
+if which wasm-opt >/dev/null 2>&1 && which wasm-tools >/dev/null 2>&1; then
+    echo "=> Optimising WASM (wasm-opt -Oz, wasm-tools strip)"
+    wasm-opt -Oz "$WASM_RAW" -o "$WASM_OPT"
+    # Strip non-essential custom sections but keep `adapter_manifest`
+    # (consumed by adapter-cli validate / publish).
+    wasm-tools strip -d '^(name|producers|target_features)$' "$WASM_OPT" -o "$WASM_OPT"
+    WASM_FINAL="$WASM_OPT"
+else
+    echo "=> Skipping wasm-opt/wasm-tools (not installed)"
+    WASM_FINAL="$WASM_RAW"
+fi
+
+BUDGET_BYTES=$((182 * 1024))
+ACTUAL=$(wc -c < "$WASM_FINAL" | tr -d ' ')
+if (( ACTUAL > BUDGET_BYTES )); then
+    echo "FAIL: optimised wasm ${ACTUAL} bytes exceeds budget ${BUDGET_BYTES}" >&2
+    exit 1
+fi
+echo "WASM size OK: ${ACTUAL} bytes (budget ${BUDGET_BYTES})"
+
+WASM="$WASM_FINAL"
 test -f "$WASM"
 
 echo "=> Building adapter-cli + registry-mock"

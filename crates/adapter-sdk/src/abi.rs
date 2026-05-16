@@ -295,3 +295,7 @@ mod tests {
     // pack_result deliberately untested on host: it's wasm32-only because
     // host pointers don't fit in u32 (UB on truncation).
 }
+
+#[cfg(all(feature = "slim-alloc", target_arch = "wasm32"))]
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;

@@ -14,3 +14,11 @@ thiserror.workspace = true
 
 [dev-dependencies]
 serde_test = "1"
+
+[features]
+default = []
+slim-alloc = ["dep:wee_alloc"]
+
+[dependencies.wee_alloc]
+version = "0.4"
+optional = true

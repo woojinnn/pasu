@@ -10,6 +10,6 @@ description = "ERC-20 transfer adapter — canary for the SDK end-to-end"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-adapter-sdk = { path = "../../adapter-sdk" }
+adapter-sdk = { path = "../../adapter-sdk", features = ["slim-alloc"] }
 adapter-sdk-macros = { path = "../../adapter-sdk-macros" }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
