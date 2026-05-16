@@ -10,13 +10,16 @@ const RES_TAG = "scopeball-extension";
 const BROADCAST_ID = "__broadcast__";
 
 // Origins that the page bridge accepts. The manifest already restricts where
-// this script runs, but if Chrome ever loads it on an unintended page (e.g.
-// a localhost dev server proxied through https), we still want to refuse.
+// this script runs (matches: http://localhost:5174/*, http://127.0.0.1:5174/*),
+// but we re-check at runtime so a future manifest change can't accidentally
+// widen the bridge to arbitrary origins. Keep these two in sync.
+const DASHBOARD_ORIGINS = new Set([
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+]);
+
 function originAllowed(origin: string): boolean {
-  return (
-    origin.startsWith("http://localhost") ||
-    origin.startsWith("http://127.0.0.1")
-  );
+  return DASHBOARD_ORIGINS.has(origin);
 }
 
 interface BridgeRequest {
