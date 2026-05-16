@@ -14,6 +14,7 @@ members = [
     "crates/policy-builder-wasm",
     "crates/adapter-sdk",
     "crates/adapter-sdk-macros",
+    "crates/adapter-cli",
     "crates/adapter-samples/erc20-transfer",
     "services/registry-mock",
 ]

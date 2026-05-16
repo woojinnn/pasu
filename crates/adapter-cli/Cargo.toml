@@ -1,0 +1,18 @@
+[package]
+name = "adapter-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "adapter-cli"
+path = "src/main.rs"
+
+[dependencies]
+adapter-sdk = { path = "../adapter-sdk" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.12", features = ["multipart", "blocking", "json"] }
+serde_json.workspace = true
+wasmparser = "0.224"
