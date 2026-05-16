@@ -1,0 +1,14 @@
+services:
+  registry:
+    build:
+      context: ../..
+      dockerfile: services/registry-mock/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - registry-data:/var/lib/registry
+    environment:
+      RUST_LOG: info,registry_mock=debug
+
+volumes:
+  registry-data: {}
