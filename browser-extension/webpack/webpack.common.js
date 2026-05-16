@@ -86,6 +86,11 @@ const pageConfig = {
       "content-scripts",
       "bypass-check.ts",
     ),
+    "content-scripts/dashboard-bridge": path.join(
+      sourceDir,
+      "content-scripts",
+      "dashboard-bridge.ts",
+    ),
     "injected/proxy-injected-providers": path.join(
       sourceDir,
       "injected",

@@ -1,4 +1,5 @@
 import Browser from "webextension-polyfill";
+import { aggregatedManagedPolicySet } from "./dashboard/storage";
 import { aggregatedPolicySet } from "./marketplace/storage";
 import { getEnabledIds } from "./policy-selection";
 import { installPolicies } from "./wasm-bridge";
@@ -49,12 +50,13 @@ function collectPolicyRpcManifests(
  * "`Wallet` is declared twice" and kill SW boot.
  */
 async function installFiltered(enabledIds: readonly string[]): Promise<void> {
-  const [defaults, marketplacePolicies] = await Promise.all([
+  const [defaults, marketplacePolicies, dashboardPolicies] = await Promise.all([
     loadDefaultPolicySet(),
     aggregatedPolicySet(),
+    aggregatedManagedPolicySet(),
   ]);
   const enabledSet = new Set(enabledIds);
-  const union = [...defaults, ...marketplacePolicies];
+  const union = [...defaults, ...marketplacePolicies, ...dashboardPolicies];
   const filtered = union.filter((p) => enabledSet.has(p.id));
   const manifests = collectPolicyRpcManifests(filtered);
   await installPolicies({

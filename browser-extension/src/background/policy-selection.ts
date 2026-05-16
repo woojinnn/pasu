@@ -1,5 +1,6 @@
 import Browser from 'webextension-polyfill';
 import { parsePolicyMeta, type Severity } from '@lib/policy-meta';
+import { listManaged } from './dashboard/storage';
 import { listInstalled } from './marketplace/storage';
 
 const ENABLED_KEY = 'policy-selection:enabled-ids';
@@ -140,9 +141,10 @@ function namespaceOf(id: string): string {
 }
 
 export async function getCatalog(): Promise<Catalog> {
-  const [defaults, bundles, enabledRaw, appliedRaw] = await Promise.all([
+  const [defaults, bundles, managed, enabledRaw, appliedRaw] = await Promise.all([
     loadDefaults(),
     listInstalled(),
+    listManaged(),
     getEnabledIds(),
     getAppliedIds(),
   ]);
@@ -168,6 +170,15 @@ export async function getCatalog(): Promise<Catalog> {
         sourceLabel,
       });
     }
+  }
+  for (const entry of managed) {
+    const meta = parsePolicyMeta(entry.text);
+    policies.push({
+      id: entry.id,
+      rules: meta.rules,
+      dominantSeverity: meta.dominantSeverity,
+      sourceLabel: 'dashboard',
+    });
   }
 
   const knownIds = new Set(policies.map((p) => p.id));

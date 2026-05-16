@@ -36,6 +36,12 @@ vi.mock("../marketplace/storage", () => ({
   aggregatedPolicySet: mocks.aggregatedPolicySet,
   listInstalled: vi.fn(async () => []),
 }));
+vi.mock("../dashboard/storage", () => ({
+  aggregatedManagedPolicySet: vi.fn(
+    async () => [] as { id: string; text: string }[],
+  ),
+  listManaged: vi.fn(async () => []),
+}));
 
 const fetchMock = vi.fn(async (url: string) => {
   if (url.endsWith("policy-set.json"))

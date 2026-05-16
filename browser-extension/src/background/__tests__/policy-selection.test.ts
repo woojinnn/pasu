@@ -39,6 +39,9 @@ vi.mock('webextension-polyfill', () => ({ default: mocks.browser }));
 vi.mock('@background/marketplace/storage', () => ({
   listInstalled: mocks.listInstalled,
 }));
+vi.mock('@background/dashboard/storage', () => ({
+  listManaged: vi.fn(async () => []),
+}));
 
 const fetchMock = vi.fn(async (url: string) => {
   if (url.endsWith('policy-set.json')) return new Response(mocks.fetched.defaults);

@@ -1,5 +1,9 @@
 import Browser from "webextension-polyfill";
 import { Identifier } from "@lib/identifier";
+import {
+  handleDashboardRequest,
+  isDashboardRequest,
+} from "./dashboard/api";
 import { decideMessage } from "./orchestrator";
 import {
   ensureDefaultPoliciesInstalled,
@@ -110,6 +114,18 @@ Browser.runtime.onMessage.addListener(
           }),
         );
       return true; // keep the channel open for the async response
+    }
+
+    if (isDashboardRequest(req)) {
+      void handleDashboardRequest(req)
+        .then((response) => sendResponse(response))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "dashboard_failed", message: String(err) },
+          }),
+        );
+      return true;
     }
 
     if (req.type === "set-enabled-ids") {
