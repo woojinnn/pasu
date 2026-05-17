@@ -6,7 +6,6 @@ license.workspace = true
 description = "Routes raw EVM RPC requests to sign-resolver or abi-resolver based on method type."
 
 [dependencies]
-call-adapter = { workspace = true }
 mappers = { workspace = true }
 sign-resolver = { workspace = true }
 policy-engine = { workspace = true }
