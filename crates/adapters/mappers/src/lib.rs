@@ -23,6 +23,7 @@
 //!     weth.rs
 //! ```
 
+pub mod declarative;
 pub mod in_memory_mapper_registry;
 pub mod mapper;
 pub mod protocols;
