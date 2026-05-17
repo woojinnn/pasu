@@ -88,7 +88,7 @@ pub enum DecodedValue {
     Tuple(Vec<DecodedValue>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DecodedCall {
     pub decoder_id: DecoderId,
     pub function_signature: String,

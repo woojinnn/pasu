@@ -32,6 +32,7 @@ impl IdentitySplitter {
             to: ctx.to.clone(),
             value_wei: ctx.value_wei.clone(),
             calldata: calldata.to_vec(),
+            decoded: None,
         }])
     }
 }

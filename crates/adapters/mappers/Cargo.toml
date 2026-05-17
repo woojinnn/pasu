@@ -14,3 +14,7 @@ alloy-primitives = { workspace = true }
 abi-resolver = { workspace = true }
 policy-engine = { workspace = true }
 hex = "0.4"
+
+[dev-dependencies]
+alloy-dyn-abi = { workspace = true }
+alloy-json-abi = "0.8"

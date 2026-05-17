@@ -114,6 +114,7 @@ mod tests {
                 to: ctx.to.clone(),
                 value_wei: ctx.value_wei.clone(),
                 calldata: Vec::new(),
+                decoded: None,
             }])
         }
     }
