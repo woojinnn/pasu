@@ -38,7 +38,7 @@ use policy_engine::action::{
     AssetRefWithAmountConstraint, Category, DecimalString,
 };
 
-use crate::CallContext;
+use crate::MapContext;
 
 use effect::{ActorRef, AmountSpec, Asset, Effect};
 use effects_of::{amount_spec_from, asset_from_ref};
@@ -47,10 +47,7 @@ use ledger::{Bucket, Constraint, Ledger};
 /// Top-level entry point. Apply every envelope to a fresh ledger and let
 /// the interpreter decide whether the deltas describe a single semantic
 /// action (collapsed envelope) or fall back to the per-opcode fan-out.
-pub(super) fn simulate(
-    envelopes: Vec<ActionEnvelope>,
-    ctx: &CallContext<'_>,
-) -> Vec<ActionEnvelope> {
+pub fn simulate(envelopes: Vec<ActionEnvelope>, ctx: &MapContext<'_>) -> Vec<ActionEnvelope> {
     let mut ledger = Ledger::new();
 
     // Initial state: msg.value moves from User to Router. EVM applies this
@@ -79,7 +76,7 @@ pub(super) fn simulate(
 
 /// Dispatch one envelope to the ledger, deciding actor refs from current
 /// ledger state where the envelope itself doesn't pin them down.
-fn apply_envelope(ledger: &mut Ledger, env: &ActionEnvelope, ctx: &CallContext<'_>) {
+fn apply_envelope(ledger: &mut Ledger, env: &ActionEnvelope, ctx: &MapContext<'_>) {
     match &env.action {
         Action::Swap(s) => apply_swap(ledger, s, ctx),
         Action::Wrap(w) => apply_wrap(ledger, w, ctx),
@@ -99,7 +96,7 @@ fn apply_envelope(ledger: &mut Ledger, env: &ActionEnvelope, ctx: &CallContext<'
 /// staged the input on the router. We resolve at apply-time by reading
 /// the ledger — if the router already holds the input asset, it pays;
 /// otherwise the user does (covering the simple direct-from-user case).
-fn apply_swap(ledger: &mut Ledger, s: &SwapAction, ctx: &CallContext<'_>) {
+fn apply_swap(ledger: &mut Ledger, s: &SwapAction, ctx: &MapContext<'_>) {
     let token_in = asset_from_ref(&s.input_token.asset);
     let token_out = asset_from_ref(&s.output_token.asset);
 
@@ -136,7 +133,7 @@ fn apply_swap(ledger: &mut Ledger, s: &SwapAction, ctx: &CallContext<'_>) {
 /// callers that don't supply `value`, where the simulator would otherwise
 /// burn from a router that holds nothing and lose the user's ETH loss
 /// from the ledger entirely.
-fn apply_wrap(ledger: &mut Ledger, w: &WrapAction, ctx: &CallContext<'_>) {
+fn apply_wrap(ledger: &mut Ledger, w: &WrapAction, ctx: &MapContext<'_>) {
     let Some(amount) = amount_spec_from(&w.native_asset.amount) else {
         return;
     };
@@ -165,7 +162,7 @@ fn apply_wrap(ledger: &mut Ledger, w: &WrapAction, ctx: &CallContext<'_>) {
 /// Move(t.from, t.recipient). When the from address resolves to neither
 /// User nor Router (an external sender — rare here), we still apply it
 /// so the ledger stays balanced and `interpret` falls back gracefully.
-fn apply_transfer(ledger: &mut Ledger, t: &TransferAction, ctx: &CallContext<'_>) {
+fn apply_transfer(ledger: &mut Ledger, t: &TransferAction, ctx: &MapContext<'_>) {
     let Some(amount) = amount_spec_from(&t.token.amount) else {
         return;
     };
@@ -194,7 +191,7 @@ fn apply_transfer(ledger: &mut Ledger, t: &TransferAction, ctx: &CallContext<'_>
 /// already holds the wrapped asset (the typical post-swap case), the
 /// user pays when it doesn't (rare: user calls UNWRAP_WETH directly
 /// without a preceding swap that staged WETH on the router).
-fn apply_unwrap(ledger: &mut Ledger, u: &UnwrapAction, ctx: &CallContext<'_>) {
+fn apply_unwrap(ledger: &mut Ledger, u: &UnwrapAction, ctx: &MapContext<'_>) {
     let Some(amount) = amount_spec_from(&u.wrapped_asset.amount) else {
         return;
     };
@@ -230,7 +227,7 @@ fn apply_unwrap(ledger: &mut Ledger, u: &UnwrapAction, ctx: &CallContext<'_>) {
 /// /api/decode didn't pass `value`, or the call has no preceding stage),
 /// the safest assumption is "the user pays" — which matches direct
 /// `transferFrom` flows and keeps the user's loss visible in the ledger.
-fn decide_native_payer(ledger: &Ledger, asset: &Asset, ctx: &CallContext<'_>) -> ActorRef {
+fn decide_native_payer(ledger: &Ledger, asset: &Asset, ctx: &MapContext<'_>) -> ActorRef {
     let router_actor = Ledger::resolve_actor(ActorRef::Router, ctx);
     let router_balance = ledger.balance(&router_actor, asset);
     if router_balance.net.is_positive() {
@@ -242,7 +239,7 @@ fn decide_native_payer(ledger: &Ledger, asset: &Asset, ctx: &CallContext<'_>) ->
 
 /// `apply_swap` shim — kept as a named export so the call site reads
 /// "decide_swap_payer" intentionally even though the logic is shared.
-fn decide_swap_payer(ledger: &Ledger, token_in: &Asset, ctx: &CallContext<'_>) -> ActorRef {
+fn decide_swap_payer(ledger: &Ledger, token_in: &Asset, ctx: &MapContext<'_>) -> ActorRef {
     decide_native_payer(ledger, token_in, ctx)
 }
 
@@ -253,7 +250,7 @@ fn decide_swap_payer(ledger: &Ledger, token_in: &Asset, ctx: &CallContext<'_>) -
 fn interpret(
     ledger: &Ledger,
     fallback: &[ActionEnvelope],
-    ctx: &CallContext<'_>,
+    ctx: &MapContext<'_>,
 ) -> Vec<ActionEnvelope> {
     let delta = ledger.user_delta(ctx.from);
 
@@ -296,7 +293,7 @@ fn build_swap(
     spent: (Asset, Bucket),
     received: (Asset, Bucket),
     template: SwapAction,
-    ctx: &CallContext<'_>,
+    ctx: &MapContext<'_>,
 ) -> SwapAction {
     let (spent_asset, spent_bucket) = spent;
     let (received_asset, received_bucket) = received;

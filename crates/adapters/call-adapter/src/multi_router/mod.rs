@@ -40,7 +40,6 @@ mod command_decode;
 pub mod commands;
 mod common;
 mod execute;
-mod sim;
 mod v4_actions;
 
 use abi_resolver::subdecode::protocols::pancake_ur::pancake_universal_router_deployments;
@@ -48,6 +47,7 @@ use abi_resolver::subdecode::protocols::universal_router::{
     uniswap_universal_router_deployments, EXECUTE_DEADLINE_SELECTOR, EXECUTE_SELECTOR,
 };
 use abi_resolver::CallMatchKey;
+use mappers::MapContext;
 use policy_engine::action::{ActionEnvelope, Address};
 
 use crate::{AdapterError, CallAdapter, CallAdapterId, CallContext};
@@ -157,7 +157,15 @@ impl CallAdapter for MultiRouterCallAdapter {
             0,
             &self.opcode_constants,
         )?;
-        Ok(sim::simulate(envelopes, ctx))
+        let map_ctx = MapContext {
+            chain_id: ctx.chain_id,
+            from: ctx.from,
+            to: ctx.to,
+            value_wei: ctx.value_wei,
+            block_timestamp: ctx.block_timestamp,
+            token_registry: ctx.token_registry,
+        };
+        Ok(mappers::simulate(envelopes, &map_ctx))
     }
 }
 
