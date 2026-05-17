@@ -23,6 +23,7 @@ pub mod v2_swap_exact_in;
 pub mod v2_swap_exact_out;
 pub mod v3_swap_exact_in;
 pub mod v3_swap_exact_out;
+pub mod v4_swap;
 pub mod wrap_eth;
 
 #[cfg(test)]
@@ -51,6 +52,7 @@ pub use v3_swap_exact_out::{
     v3_swap_exact_out_mapper_arc, v3_swap_exact_out_mapper_key, UrV3SwapExactOutMapper,
     UR_V3_SWAP_EXACT_OUT_MAPPER_ID,
 };
+pub use v4_swap::{v4_swap_mapper_arc, v4_swap_mapper_key, UrV4SwapMapper, UR_V4_SWAP_MAPPER_ID};
 pub use wrap_eth::{
     wrap_eth_mapper_arc, wrap_eth_mapper_key, UrWrapEthMapper, UR_WRAP_ETH_MAPPER_ID,
 };
