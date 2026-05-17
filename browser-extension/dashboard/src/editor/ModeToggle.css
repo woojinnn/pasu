@@ -1,0 +1,28 @@
+.mode-toggle {
+  display: inline-flex;
+  background: var(--surface-primary);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-subtle);
+  gap: 2px;
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.mode-btn:hover {
+  color: var(--text-secondary);
+}
+.mode-btn.active {
+  background: var(--green-400);
+  color: #ffffff;
+}

@@ -1,0 +1,26 @@
+.stub-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stub-page h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.stub-card {
+  background: var(--surface-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6) var(--space-7);
+}
+
+.stub-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 60ch;
+}

@@ -1,0 +1,51 @@
+.predicate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.predicate-row select,
+.predicate-row input {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--green-200);
+  background: var(--surface-primary);
+  font-size: 13px;
+  color: var(--text-primary);
+  font-family: inherit;
+  min-width: 0;
+}
+.predicate-row select:focus,
+.predicate-row input:focus {
+  outline: none;
+  border-color: var(--green-400);
+  box-shadow: 0 0 0 3px rgba(144, 192, 60, 0.18);
+}
+
+.pr-value-none {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding-left: var(--space-2);
+}
+
+.pr-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-secondary);
+  color: var(--text-tertiary);
+  border: 1px solid var(--green-200);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pr-remove:hover {
+  background: var(--coral-50);
+  color: var(--coral-600);
+  border-color: var(--coral-100);
+}

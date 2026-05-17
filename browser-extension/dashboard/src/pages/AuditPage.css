@@ -1,0 +1,217 @@
+.audit-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.audit-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.audit-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.audit-meta {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.audit-toolbar {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.audit-select,
+.audit-search {
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--green-200);
+  background: var(--surface-primary);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary);
+}
+.audit-search {
+  min-width: 200px;
+}
+.audit-search:focus {
+  outline: none;
+  border-color: var(--green-400);
+  box-shadow: 0 0 0 3px rgba(144, 192, 60, 0.18);
+}
+
+.audit-refresh {
+  background: var(--green-400);
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+}
+.audit-refresh:hover {
+  background: var(--green-600);
+}
+.audit-refresh:disabled {
+  background: var(--green-200);
+  cursor: not-allowed;
+}
+
+.audit-err {
+  background: var(--coral-50);
+  border: 1px solid var(--coral-100);
+  color: var(--coral-600);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.audit-loading {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  padding: var(--space-3);
+}
+
+.audit-empty {
+  background: var(--surface-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.audit-empty strong {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.audit-empty span {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+
+.audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.audit-card {
+  background: var(--surface-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-subtle);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-left: 3px solid var(--text-tertiary);
+}
+.audit-card.kind-pass {
+  border-left-color: var(--green-400);
+}
+.audit-card.kind-warn {
+  border-left-color: var(--gold-600);
+  background: var(--gold-50);
+}
+.audit-card.kind-fail {
+  border-left-color: var(--coral-600);
+  background: var(--coral-50);
+}
+
+.audit-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.audit-card-host {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+  flex: 1;
+  word-break: break-all;
+}
+
+.audit-card-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.audit-card-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.audit-matched {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.audit-policy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--surface-primary);
+  border: 1px solid var(--green-100);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.audit-policy.is-owned {
+  cursor: pointer;
+  border-color: var(--green-400);
+}
+.audit-policy.is-owned:hover {
+  background: var(--green-50);
+}
+
+.audit-policy-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-primary);
+}
+
+.audit-policy-sev {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+.audit-policy-sev.sev-deny {
+  background: var(--coral-100);
+  color: var(--coral-600);
+}
+.audit-policy-sev.sev-warn {
+  background: var(--gold-100);
+  color: var(--gold-800);
+}
+
+.audit-no-match {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
