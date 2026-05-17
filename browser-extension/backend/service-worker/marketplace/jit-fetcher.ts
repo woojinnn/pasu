@@ -1,0 +1,146 @@
+/**
+ * Phase 2B — Just-In-Time adapter resolver.
+ *
+ * Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §7 (3-layer loading) and
+ * §7.3 (`resolveAdapter` / `doJitFetch` pseudocode).
+ *
+ * Lookup order:
+ *   1. Layer 1 — `lookupMountedBundle` (seed bundles + JIT-installed
+ *      bundles previously mounted in the same SW lifetime).
+ *   2. Negative cache — return the cached verdict without re-hitting the
+ *      registry. Reasons: `no_publisher` (5 min), `integrity_failed`
+ *      (5 min), `timeout` (30 s).
+ *   3. Layer 3 — JIT fetch from the registry, dedup'd via an `inflight`
+ *      `Map<key, Promise>` so N concurrent callers share one network
+ *      round-trip + WASM mount.
+ *
+ * Not implemented (deferred per task spec):
+ *   - Layer 2 prefetch (LRU IndexedDB) — Phase 4+
+ *   - HMAC-SHA256 key obfuscation (§7.5)
+ *   - cross-worker BroadcastChannel coordination (§7.4 future row)
+ */
+
+import {
+  byCallKey,
+  RegistryError,
+  type ByCallKeyOptions,
+  type CallMatchKey,
+} from "../registry/client";
+import { lookupMountedBundle, type MountResult } from "./declarative-adapter-loader";
+import { InstallError, installBundle } from "./installBundle";
+import {
+  negativeCache,
+  serializeKey,
+  type NegativeReason,
+} from "./negative-cache";
+
+/**
+ * Output of `resolveAdapter`. Either a ready-to-use adapter (Layer 1 hit
+ * or JIT install success) or a verdict the orchestrator can short-circuit
+ * Cedar evaluation on.
+ */
+export type AdapterOrVerdict =
+  | { kind: "adapter"; adapter: MountResult; source: "layer1" | "jit" }
+  | { kind: "verdict"; verdict: "no_adapter"; reason: NegativeReason };
+
+export interface ResolveAdapterOptions {
+  /** Forwarded to the registry client — baseUrl, timeoutMs, fetchImpl. */
+  registry?: ByCallKeyOptions;
+}
+
+/**
+ * In-flight dedupe (§7.3:811-813). Same SW process — a `Map` is enough.
+ * Cross-worker dedupe via BroadcastChannel is a future enhancement.
+ */
+const inflight = new Map<string, Promise<AdapterOrVerdict>>();
+
+/**
+ * Resolve the adapter that should handle the given call. Walks the
+ * Layer-1 → negative-cache → JIT chain.
+ */
+export async function resolveAdapter(
+  key: CallMatchKey,
+  options: ResolveAdapterOptions = {},
+): Promise<AdapterOrVerdict> {
+  // Layer 1 — already mounted (seed bundle or earlier JIT install).
+  const mounted = lookupMountedBundle(key.chain_id, key.to, key.selector);
+  if (mounted) {
+    return { kind: "adapter", adapter: mounted, source: "layer1" };
+  }
+
+  // Negative cache — short-circuit known misses without going to the wire.
+  const neg = negativeCache.get(key);
+  if (neg) {
+    return { kind: "verdict", verdict: "no_adapter", reason: neg.reason };
+  }
+
+  // Layer 3 — JIT. Dedupe so concurrent callers share one fetch.
+  const k = serializeKey(key);
+  const existing = inflight.get(k);
+  if (existing) return existing;
+
+  const p = doJitFetch(key, options).finally(() => {
+    // Always clean up so a settled Promise can't keep blocking the slot.
+    // The cleanup runs regardless of resolve/reject.
+    inflight.delete(k);
+  });
+  inflight.set(k, p);
+  return p;
+}
+
+/**
+ * Inner JIT fetch + install + cache-on-failure pipeline. Wraps
+ * `installBundle` so any failure produces a uniform negative-cache entry
+ * matching the spec's TTL map.
+ */
+async function doJitFetch(
+  key: CallMatchKey,
+  options: ResolveAdapterOptions,
+): Promise<AdapterOrVerdict> {
+  try {
+    const result = await byCallKey(key, options.registry);
+    // 200 OK with matched: true — install + mount.
+    const adapter = await installBundle(result.bundle, result.bundle_sha256);
+    // Layer 2 prefetch is intentionally deferred (Phase 4+).
+    return { kind: "adapter", adapter, source: "jit" };
+  } catch (e) {
+    return classifyAndCache(key, e);
+  }
+}
+
+/**
+ * Map a JIT error to the spec's three negative-cache reasons and TTLs:
+ *
+ *   - bundle_hash_mismatch → integrity_failed (300s) — suspicious tamper
+ *   - registry 404         → no_publisher    (300s) — permanent absence
+ *   - any other failure    → timeout         (30s)  — self-healing
+ *
+ * Other `InstallError` variants (`schema_invalid`, `wasm_install_failed`)
+ * fall into `timeout`. Rationale: they're not a publisher absence and
+ * not a hash mismatch; a 30 s cool-down lets the user retry without
+ * spamming the registry, and downstream telemetry can pick them up.
+ */
+function classifyAndCache(
+  key: CallMatchKey,
+  e: unknown,
+): AdapterOrVerdict {
+  if (e instanceof InstallError && e.code === "bundle_hash_mismatch") {
+    negativeCache.add(key, 300, "integrity_failed");
+    return { kind: "verdict", verdict: "no_adapter", reason: "integrity_failed" };
+  }
+  if (e instanceof RegistryError && e.code === "not_found") {
+    negativeCache.add(key, 300, "no_publisher");
+    return { kind: "verdict", verdict: "no_adapter", reason: "no_publisher" };
+  }
+  // timeout, network, malformed_response, schema_invalid, wasm_install_failed
+  negativeCache.add(key, 30, "timeout");
+  return { kind: "verdict", verdict: "no_adapter", reason: "timeout" };
+}
+
+/**
+ * Test helper — drop the inflight Map between cases so a dangling
+ * Promise from a previous case can't merge into the new one.
+ */
+export function __resetJitFetcherForTest(): void {
+  inflight.clear();
+}

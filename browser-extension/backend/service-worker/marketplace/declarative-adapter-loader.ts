@@ -32,12 +32,26 @@ import {
 import {
   BundleParseError,
   parseBundle,
+  type AdapterFunctionBundle,
 } from "./bundle-schema";
 
 export interface MountResult {
   decoderId: string;
   bundleId: string;
 }
+
+/**
+ * Phase 2B — registry of every bundle currently mounted in the WASM
+ * engine, keyed by the canonical callkey
+ * (`${chain_id}__${to.toLowerCase()}__${selector.toLowerCase()}`). Used by
+ * the JIT fetcher's Layer 1 / Layer 2 lookup before reaching for the
+ * network.
+ *
+ * One bundle can register many callkeys (cartesian product of
+ * `match.chain_ids × match.to`), so we eagerly expand the match table at
+ * mount time. The same `MountResult` is shared across all expanded keys.
+ */
+const mountedByCallKey = new Map<string, MountResult>();
 
 /**
  * Index of the seed bundles shipped inside the extension. Mirrors what
@@ -94,8 +108,9 @@ export async function mountDeclarativeBundle(
     );
   }
   // Phase 0 validator — catches malformed BNF before we round-trip to WASM.
+  let parsedBundle: AdapterFunctionBundle;
   try {
-    parseBundle(parsedShape);
+    parsedBundle = parseBundle(parsedShape);
   } catch (err) {
     if (err instanceof BundleParseError) {
       throw new DeclarativeAdapterLoadError("parse", "<inline>", err);
@@ -113,10 +128,42 @@ export async function mountDeclarativeBundle(
       err instanceof Error ? err : new Error(String(err)),
     );
   }
-  return {
+  const result: MountResult = {
     decoderId: installed.decoder_id,
     bundleId: installed.bundle_id,
   };
+  // Phase 2B — expand the bundle's match table into the callkey lookup so
+  // the JIT fetcher can detect Layer 1 hits without a network round-trip.
+  registerCallKeys(parsedBundle, result);
+  return result;
+}
+
+function registerCallKeys(
+  bundle: AdapterFunctionBundle,
+  result: MountResult,
+): void {
+  const sel = bundle.match.selector.toLowerCase();
+  for (const chainId of bundle.match.chain_ids) {
+    for (const to of bundle.match.to) {
+      const key = `${chainId}__${to.toLowerCase()}__${sel}`;
+      mountedByCallKey.set(key, result);
+    }
+  }
+}
+
+/**
+ * Phase 2B — Layer 1 lookup. Given a callkey, return the already-mounted
+ * adapter if one matches, or `null` otherwise. Callkey format mirrors the
+ * registry filename convention:
+ * `${chain_id}__${to.toLowerCase()}__${selector.toLowerCase()}`.
+ */
+export function lookupMountedBundle(
+  chainId: number,
+  to: string,
+  selector: string,
+): MountResult | null {
+  const key = `${chainId}__${to.toLowerCase()}__${selector.toLowerCase()}`;
+  return mountedByCallKey.get(key) ?? null;
 }
 
 let seededOnce: Promise<void> | null = null;
@@ -195,8 +242,11 @@ async function fetchSeedBundle(url: string, filename: string): Promise<string> {
 
 /**
  * Test helper — drop the cached promise so successive vitest cases can
- * re-trigger `ensureSeedBundlesInstalled` from a cold slate.
+ * re-trigger `ensureSeedBundlesInstalled` from a cold slate. Also wipes
+ * the callkey lookup so a Layer 1 hit from a previous case can't bleed
+ * into the next.
  */
 export function __resetSeedBundlesForTest(): void {
   seededOnce = null;
+  mountedByCallKey.clear();
 }
