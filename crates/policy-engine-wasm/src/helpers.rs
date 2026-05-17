@@ -2,6 +2,7 @@
 //! JS performs routing/dispatch on top of these.
 
 use serde::Serialize;
+use serde_json::json;
 use sign_resolver::{parse_sign_request, SignResolveError};
 use wasm_bindgen::prelude::*;
 
@@ -51,4 +52,30 @@ pub fn parse_sign_request_json(method: &str, params_json: &str, chain_id: u64) -
 
 fn error_message(e: &SignResolveError) -> String {
     e.to_string()
+}
+
+/// Structural framing of arbitrary calldata. No ABI lookup — just splits
+/// `selector` (first 4 bytes) and `body_hex` (rest). The JS adapter-loader
+/// uses this when the registry has no entry for `(chainId, address)`.
+#[wasm_bindgen]
+pub fn decode_abi_standard_json(calldata_hex: &str) -> String {
+    let raw = calldata_hex.strip_prefix("0x").unwrap_or(calldata_hex);
+    let bytes = match hex::decode(raw) {
+        Ok(b) => b,
+        Err(_) => return json!({ "error": "bad_hex" }).to_string(),
+    };
+    if bytes.len() < 4 {
+        return json!({
+            "selector": format!("0x{}", hex::encode(&bytes)),
+            "body_hex": "",
+        })
+        .to_string();
+    }
+    let selector = &bytes[..4];
+    let body = &bytes[4..];
+    json!({
+        "selector": format!("0x{}", hex::encode(selector)),
+        "body_hex": hex::encode(body),
+    })
+    .to_string()
 }

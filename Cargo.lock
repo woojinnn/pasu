@@ -2244,6 +2244,7 @@ dependencies = [
  "alloy-primitives",
  "console_error_panic_hook",
  "getrandom 0.2.17",
+ "hex",
  "js-sys",
  "mappers",
  "policy-engine",
