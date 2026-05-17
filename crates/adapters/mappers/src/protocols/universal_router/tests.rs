@@ -13,13 +13,18 @@ use abi_resolver::{SplitContext, Splitter};
 use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
 use alloy_json_abi::Function as AbiFunction;
 use alloy_primitives::{Address as AlloyAddress, U256};
+use policy_engine::action::common::AmountKind;
+use policy_engine::action::dex::SwapMode;
 use policy_engine::action::envelope::{Action, Category};
 use policy_engine::action::{Address, DecimalString};
 
 use crate::mapper::{MapContext, Mapper};
 use crate::EmptyTokenRegistry;
 
-use super::{UrUnwrapWethMapper, UrWrapEthMapper};
+use super::{
+    UrSweepMapper, UrTransferMapper, UrUnwrapWethMapper, UrV2SwapExactInMapper,
+    UrV2SwapExactOutMapper, UrV3SwapExactInMapper, UrV3SwapExactOutMapper, UrWrapEthMapper,
+};
 
 fn addr(s: &str) -> Address {
     s.parse().unwrap()
@@ -196,21 +201,21 @@ fn unwrap_weth_splits_and_maps_to_unwrap_action() {
 
 #[test]
 fn unknown_opcode_leaves_subcall_decoded_none() {
-    // Use SWEEP (opcode 0x04) which is *not* yet handled by Phase 4a's
-    // pre_decode_for_opcode. The splitter still emits a SubCall, but its
-    // `decoded` field stays None — the downstream pipeline would need a
-    // fallback path (or a Phase 4b mapper) to handle it.
-    let sweep_input = {
+    // Use PAY_PORTION (opcode 0x06) which is *not* yet pre-decoded. The
+    // splitter still emits a SubCall, but its `decoded` field stays None —
+    // the downstream pipeline would need a fallback path (or a future
+    // mapper) to handle it.
+    let pay_portion_input = {
         let func = AbiFunction::parse("step(address,address,uint256)").unwrap();
         let values = vec![
             DynSolValue::Address(AlloyAddress::from([0x11; 20])),
             DynSolValue::Address(AlloyAddress::from([0x22; 20])),
-            DynSolValue::Uint(U256::from(10u64), 256),
+            DynSolValue::Uint(U256::from(50u64), 256),
         ];
         let raw = func.abi_encode_input(&values).unwrap();
         raw[4..].to_vec()
     };
-    let calldata = encode_execute(&[0x04], &[sweep_input]);
+    let calldata = encode_execute(&[0x06], &[pay_portion_input]);
 
     let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
@@ -228,6 +233,347 @@ fn unknown_opcode_leaves_subcall_decoded_none() {
     assert_eq!(sub_calls.len(), 1);
     assert!(
         sub_calls[0].decoded.is_none(),
-        "SWEEP (not yet migrated) should leave SubCall.decoded as None"
+        "PAY_PORTION (not yet migrated) should leave SubCall.decoded as None"
     );
+}
+
+// ---------------------------------------------------------------------------
+// SWEEP / TRANSFER (router → recipient) — Phase 4b.
+// ---------------------------------------------------------------------------
+
+/// Encode `(address, address, uint256)` for SWEEP/TRANSFER opcodes.
+fn encode_addr_addr_uint(a: [u8; 20], b: [u8; 20], v: u128) -> Vec<u8> {
+    let func = AbiFunction::parse("step(address,address,uint256)").unwrap();
+    let values = vec![
+        DynSolValue::Address(AlloyAddress::from(a)),
+        DynSolValue::Address(AlloyAddress::from(b)),
+        DynSolValue::Uint(U256::from(v), 256),
+    ];
+    let raw = func.abi_encode_input(&values).unwrap();
+    raw[4..].to_vec()
+}
+
+#[test]
+fn sweep_splits_and_maps_to_transfer_min() {
+    let token = [0x33; 20];
+    let recipient_bytes = [0x44; 20];
+    let amount_min: u128 = 1_000;
+    let input = encode_addr_addr_uint(token, recipient_bytes, amount_min);
+    let calldata = encode_execute(&[0x04], &[input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    let decoded = sub_calls[0].decoded.as_ref().expect("SWEEP pre-decoded");
+    assert_eq!(decoded.decoder_id.as_str(), "uniswap-ur/SWEEP");
+
+    let tr = EmptyTokenRegistry;
+    let ctx = map_ctx(&user, &router, &value, &tr);
+    let envelopes = UrSweepMapper::new().map(&ctx, decoded).unwrap();
+    let Action::Transfer(t) = &envelopes[0].action else {
+        panic!("expected Transfer");
+    };
+    // SWEEP from = router (ctx.to).
+    assert_eq!(t.from, router);
+    assert_eq!(t.token.amount.kind, AmountKind::Min);
+    assert_eq!(t.token.amount.value.as_ref().unwrap().to_string(), "1000");
+}
+
+#[test]
+fn transfer_splits_and_maps_to_transfer_exact() {
+    let token = [0x55; 20];
+    let recipient_bytes = [0x66; 20];
+    let value_amt: u128 = 7_500;
+    let input = encode_addr_addr_uint(token, recipient_bytes, value_amt);
+    let calldata = encode_execute(&[0x05], &[input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    let decoded = sub_calls[0].decoded.as_ref().expect("TRANSFER pre-decoded");
+    assert_eq!(decoded.decoder_id.as_str(), "uniswap-ur/TRANSFER");
+
+    let tr = EmptyTokenRegistry;
+    let ctx = map_ctx(&user, &router, &value, &tr);
+    let envelopes = UrTransferMapper::new().map(&ctx, decoded).unwrap();
+    let Action::Transfer(t) = &envelopes[0].action else {
+        panic!("expected Transfer");
+    };
+    assert_eq!(t.token.amount.kind, AmountKind::Exact);
+    assert_eq!(t.token.amount.value.as_ref().unwrap().to_string(), "7500");
+}
+
+// ---------------------------------------------------------------------------
+// V2 swap — Phase 4b.
+// ---------------------------------------------------------------------------
+
+/// Encode `(address, uint256, uint256, address[], bool)` for V2 swap opcodes.
+fn encode_v2_swap_input(
+    recipient: [u8; 20],
+    amt1: u128,
+    amt2: u128,
+    path: &[[u8; 20]],
+    payer_is_user: bool,
+) -> Vec<u8> {
+    let func = AbiFunction::parse("step(address,uint256,uint256,address[],bool)").unwrap();
+    let path_vals: Vec<DynSolValue> = path
+        .iter()
+        .map(|a| DynSolValue::Address(AlloyAddress::from(*a)))
+        .collect();
+    let values = vec![
+        DynSolValue::Address(AlloyAddress::from(recipient)),
+        DynSolValue::Uint(U256::from(amt1), 256),
+        DynSolValue::Uint(U256::from(amt2), 256),
+        DynSolValue::Array(path_vals),
+        DynSolValue::Bool(payer_is_user),
+    ];
+    let raw = func.abi_encode_input(&values).unwrap();
+    raw[4..].to_vec()
+}
+
+#[test]
+fn v2_swap_exact_in_emits_swap_action() {
+    let weth = [0xc0; 20];
+    let usdc = [0xa0; 20];
+    let amount_in: u128 = 10_000;
+    let amount_out_min: u128 = 9_500;
+    let input = encode_v2_swap_input([0x77; 20], amount_in, amount_out_min, &[weth, usdc], true);
+    let calldata = encode_execute(&[0x08], &[input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    let decoded = sub_calls[0]
+        .decoded
+        .as_ref()
+        .expect("V2_SWAP_EXACT_IN pre-decoded");
+    assert_eq!(decoded.decoder_id.as_str(), "uniswap-ur/V2_SWAP_EXACT_IN");
+
+    let tr = EmptyTokenRegistry;
+    let ctx = map_ctx(&user, &router, &value, &tr);
+    let envelopes = UrV2SwapExactInMapper::new().map(&ctx, decoded).unwrap();
+    let Action::Swap(s) = &envelopes[0].action else {
+        panic!("expected Swap");
+    };
+    assert_eq!(s.swap_mode, SwapMode::ExactIn);
+    assert_eq!(s.fee_bps, Some(30));
+    assert_eq!(s.input_token.amount.kind, AmountKind::Exact);
+    assert_eq!(s.output_token.amount.kind, AmountKind::Min);
+    assert_eq!(
+        s.input_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(weth))
+    );
+    assert_eq!(
+        s.output_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdc))
+    );
+}
+
+#[test]
+fn v2_swap_exact_out_emits_swap_action() {
+    let weth = [0xc0; 20];
+    let usdc = [0xa0; 20];
+    let amount_out: u128 = 1_000;
+    let amount_in_max: u128 = 2_000;
+    let input = encode_v2_swap_input([0x77; 20], amount_out, amount_in_max, &[weth, usdc], true);
+    let calldata = encode_execute(&[0x09], &[input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    let decoded = sub_calls[0]
+        .decoded
+        .as_ref()
+        .expect("V2_SWAP_EXACT_OUT pre-decoded");
+    let envelopes = UrV2SwapExactOutMapper::new()
+        .map(
+            &map_ctx(&user, &router, &value, &EmptyTokenRegistry),
+            decoded,
+        )
+        .unwrap();
+    let Action::Swap(s) = &envelopes[0].action else {
+        panic!("expected Swap");
+    };
+    assert_eq!(s.swap_mode, SwapMode::ExactOut);
+    assert_eq!(s.input_token.amount.kind, AmountKind::Max);
+    assert_eq!(s.output_token.amount.kind, AmountKind::Exact);
+}
+
+// ---------------------------------------------------------------------------
+// V3 swap — Phase 4b. Packed path = addr(20) | fee(3) | addr(20) | …
+// ---------------------------------------------------------------------------
+
+fn encode_v3_swap_input(
+    recipient: [u8; 20],
+    amt1: u128,
+    amt2: u128,
+    path_bytes: &[u8],
+    payer_is_user: bool,
+) -> Vec<u8> {
+    let func = AbiFunction::parse("step(address,uint256,uint256,bytes,bool)").unwrap();
+    let values = vec![
+        DynSolValue::Address(AlloyAddress::from(recipient)),
+        DynSolValue::Uint(U256::from(amt1), 256),
+        DynSolValue::Uint(U256::from(amt2), 256),
+        DynSolValue::Bytes(path_bytes.to_vec()),
+        DynSolValue::Bool(payer_is_user),
+    ];
+    let raw = func.abi_encode_input(&values).unwrap();
+    raw[4..].to_vec()
+}
+
+/// Build a packed V3 single-hop path: `addr_in(20) | fee(3) | addr_out(20)`.
+fn pack_v3_path(token_in: [u8; 20], fee_pips: u32, token_out: [u8; 20]) -> Vec<u8> {
+    let mut path = Vec::with_capacity(20 + 3 + 20);
+    path.extend_from_slice(&token_in);
+    path.push(((fee_pips >> 16) & 0xff) as u8);
+    path.push(((fee_pips >> 8) & 0xff) as u8);
+    path.push((fee_pips & 0xff) as u8);
+    path.extend_from_slice(&token_out);
+    path
+}
+
+#[test]
+fn v3_swap_exact_in_emits_swap_action_with_fee_bps() {
+    let usdt = [0xda; 20];
+    let usdc = [0xa0; 20];
+    // 500 pips = 0.05%. UR encodes fee in hundredths of bps; mapper divides
+    // by 100 → expects 5 bps in the surfaced fee_bps.
+    let path = pack_v3_path(usdt, 500, usdc);
+    let amount_in: u128 = 6_531_525;
+    let amount_out_min: u128 = 6_497_371;
+    let input = encode_v3_swap_input([0x77; 20], amount_in, amount_out_min, &path, true);
+    let calldata = encode_execute(&[0x00], &[input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    let decoded = sub_calls[0]
+        .decoded
+        .as_ref()
+        .expect("V3_SWAP_EXACT_IN pre-decoded");
+    assert_eq!(decoded.decoder_id.as_str(), "uniswap-ur/V3_SWAP_EXACT_IN");
+
+    let envelopes = UrV3SwapExactInMapper::new()
+        .map(
+            &map_ctx(&user, &router, &value, &EmptyTokenRegistry),
+            decoded,
+        )
+        .unwrap();
+    let Action::Swap(s) = &envelopes[0].action else {
+        panic!("expected Swap");
+    };
+    assert_eq!(s.fee_bps, Some(5), "500 pips → 5 bps");
+    assert_eq!(
+        s.input_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdt))
+    );
+    assert_eq!(
+        s.output_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdc))
+    );
+}
+
+#[test]
+fn v3_swap_exact_out_reverses_path_endpoints() {
+    let usdt = [0xda; 20];
+    let usdc = [0xa0; 20];
+    // For exact-out, the packed path is reversed (output first, input last).
+    // pack_v3_path(usdc, 500, usdt) → parser sees token_in=usdc, token_out=usdt,
+    // but the mapper relabels: input=usdt, output=usdc.
+    let path = pack_v3_path(usdc, 3000, usdt);
+    let amount_out: u128 = 1_000;
+    let amount_in_max: u128 = 2_000;
+    let input = encode_v3_swap_input([0x77; 20], amount_out, amount_in_max, &path, true);
+    let calldata = encode_execute(&[0x01], &[input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    let decoded = sub_calls[0]
+        .decoded
+        .as_ref()
+        .expect("V3_SWAP_EXACT_OUT pre-decoded");
+
+    let envelopes = UrV3SwapExactOutMapper::new()
+        .map(
+            &map_ctx(&user, &router, &value, &EmptyTokenRegistry),
+            decoded,
+        )
+        .unwrap();
+    let Action::Swap(s) = &envelopes[0].action else {
+        panic!("expected Swap");
+    };
+    assert_eq!(s.swap_mode, SwapMode::ExactOut);
+    // Confirm the input is the originally-second token in the packed path
+    // (usdt), and output is the originally-first (usdc) — the relabel.
+    assert_eq!(
+        s.input_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdt))
+    );
+    assert_eq!(
+        s.output_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdc))
+    );
+    assert_eq!(s.fee_bps, Some(30), "3000 pips → 30 bps");
 }

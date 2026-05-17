@@ -36,7 +36,11 @@ use alloy_sol_types::{sol, SolCall};
 use policy_engine::action::Address;
 
 use crate::decoder::{DecodedArg, DecodedCall, DecodedValue, DecoderId};
-use crate::ids::{UR_UNWRAP_WETH_DECODER_ID, UR_WRAP_ETH_DECODER_ID};
+use crate::ids::{
+    UR_SWEEP_DECODER_ID, UR_TRANSFER_DECODER_ID, UR_UNWRAP_WETH_DECODER_ID,
+    UR_V2_SWAP_EXACT_IN_DECODER_ID, UR_V2_SWAP_EXACT_OUT_DECODER_ID,
+    UR_V3_SWAP_EXACT_IN_DECODER_ID, UR_V3_SWAP_EXACT_OUT_DECODER_ID, UR_WRAP_ETH_DECODER_ID,
+};
 use crate::subdecode::opcode_stream::{dispatch as dispatch_opcodes, DecodedStep, OpcodeTable};
 use crate::subdecode::protocols::pancake_ur::{
     pancake_universal_router_deployments, PANCAKE_UR_TABLE,
@@ -52,6 +56,12 @@ use super::{SplitContext, SplitError, Splitter, SubCall};
 // UR opcode constants we know how to fully decode at splitter time. Adding
 // a new opcode here is the only place the splitter→mapper handshake needs
 // to grow (the mapper itself lives in mappers/protocols/universal_router/).
+const UR_OPCODE_V3_SWAP_EXACT_IN: u8 = 0x00;
+const UR_OPCODE_V3_SWAP_EXACT_OUT: u8 = 0x01;
+const UR_OPCODE_SWEEP: u8 = 0x04;
+const UR_OPCODE_TRANSFER: u8 = 0x05;
+const UR_OPCODE_V2_SWAP_EXACT_IN: u8 = 0x08;
+const UR_OPCODE_V2_SWAP_EXACT_OUT: u8 = 0x09;
 const UR_OPCODE_WRAP_ETH: u8 = 0x0b;
 const UR_OPCODE_UNWRAP_WETH: u8 = 0x0c;
 
@@ -181,6 +191,12 @@ impl UniversalRouterSplitter {
 /// pick it up later.
 fn pre_decode_for_opcode(step: &DecodedStep) -> Option<DecodedCall> {
     let decoder_id = match step.opcode {
+        UR_OPCODE_V3_SWAP_EXACT_IN => UR_V3_SWAP_EXACT_IN_DECODER_ID,
+        UR_OPCODE_V3_SWAP_EXACT_OUT => UR_V3_SWAP_EXACT_OUT_DECODER_ID,
+        UR_OPCODE_SWEEP => UR_SWEEP_DECODER_ID,
+        UR_OPCODE_TRANSFER => UR_TRANSFER_DECODER_ID,
+        UR_OPCODE_V2_SWAP_EXACT_IN => UR_V2_SWAP_EXACT_IN_DECODER_ID,
+        UR_OPCODE_V2_SWAP_EXACT_OUT => UR_V2_SWAP_EXACT_OUT_DECODER_ID,
         UR_OPCODE_WRAP_ETH => UR_WRAP_ETH_DECODER_ID,
         UR_OPCODE_UNWRAP_WETH => UR_UNWRAP_WETH_DECODER_ID,
         _ => return None,
