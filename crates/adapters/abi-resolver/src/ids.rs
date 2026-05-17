@@ -89,3 +89,9 @@ pub const WETH_WITHDRAW_SELECTOR: [u8; 4] = [0x2e, 0x1a, 0x7d, 0x4d];
 // ───────────────────────────────────────────────────────────────────────────
 pub const UR_WRAP_ETH_DECODER_ID: &str = "uniswap-ur/WRAP_ETH";
 pub const UR_UNWRAP_WETH_DECODER_ID: &str = "uniswap-ur/UNWRAP_WETH";
+pub const UR_SWEEP_DECODER_ID: &str = "uniswap-ur/SWEEP";
+pub const UR_TRANSFER_DECODER_ID: &str = "uniswap-ur/TRANSFER";
+pub const UR_V2_SWAP_EXACT_IN_DECODER_ID: &str = "uniswap-ur/V2_SWAP_EXACT_IN";
+pub const UR_V2_SWAP_EXACT_OUT_DECODER_ID: &str = "uniswap-ur/V2_SWAP_EXACT_OUT";
+pub const UR_V3_SWAP_EXACT_IN_DECODER_ID: &str = "uniswap-ur/V3_SWAP_EXACT_IN";
+pub const UR_V3_SWAP_EXACT_OUT_DECODER_ID: &str = "uniswap-ur/V3_SWAP_EXACT_OUT";
