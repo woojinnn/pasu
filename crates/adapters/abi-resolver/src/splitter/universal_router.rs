@@ -31,9 +31,12 @@
 
 use std::sync::Arc;
 
+use alloy_dyn_abi::DynSolValue;
 use alloy_sol_types::{sol, SolCall};
 use policy_engine::action::Address;
 
+use crate::decoder::{DecodedArg, DecodedCall, DecodedValue, DecoderId};
+use crate::ids::{UR_UNWRAP_WETH_DECODER_ID, UR_WRAP_ETH_DECODER_ID};
 use crate::subdecode::opcode_stream::{dispatch as dispatch_opcodes, DecodedStep, OpcodeTable};
 use crate::subdecode::protocols::pancake_ur::{
     pancake_universal_router_deployments, PANCAKE_UR_TABLE,
@@ -45,6 +48,12 @@ use crate::subdecode::protocols::universal_router::{
 use crate::CallMatchKey;
 
 use super::{SplitContext, SplitError, Splitter, SubCall};
+
+// UR opcode constants we know how to fully decode at splitter time. Adding
+// a new opcode here is the only place the splitter→mapper handshake needs
+// to grow (the mapper itself lives in mappers/protocols/universal_router/).
+const UR_OPCODE_WRAP_ETH: u8 = 0x0b;
+const UR_OPCODE_UNWRAP_WETH: u8 = 0x0c;
 
 // Inline ABI decoders for the two UR `execute` overloads. The deadline
 // overload is renamed because Rust can't host two `executeCall` types in
@@ -145,15 +154,80 @@ impl UniversalRouterSplitter {
 
     /// Turn one decoded opcode step into a SubCall. See the module doc for
     /// the calldata format we emit.
+    ///
+    /// When the opcode is one of the "fully understood" set (currently
+    /// WRAP_ETH / UNWRAP_WETH; expanding in subsequent phases), the SubCall
+    /// also carries a pre-decoded [`DecodedCall`] so downstream skips
+    /// resolver+bridge and dispatches directly to the matching UR mapper.
     fn step_to_subcall(&self, ctx: &SplitContext<'_>, step: &DecodedStep) -> SubCall {
         let mut calldata = Vec::with_capacity(1 + step.raw_input.len());
         calldata.push(step.opcode);
         calldata.extend_from_slice(&step.raw_input);
+
+        let decoded = pre_decode_for_opcode(step);
+
         SubCall {
             to: ctx.to.clone(),
             value_wei: ctx.value_wei.clone(),
             calldata,
+            decoded,
         }
+    }
+}
+
+/// Build a [`DecodedCall`] for an opcode the splitter fully understands.
+/// Returns `None` for opcodes we haven't migrated yet — the SubCall still
+/// carries the raw `[opcode | input]` calldata so a fallback path could
+/// pick it up later.
+fn pre_decode_for_opcode(step: &DecodedStep) -> Option<DecodedCall> {
+    let decoder_id = match step.opcode {
+        UR_OPCODE_WRAP_ETH => UR_WRAP_ETH_DECODER_ID,
+        UR_OPCODE_UNWRAP_WETH => UR_UNWRAP_WETH_DECODER_ID,
+        _ => return None,
+    };
+    let args = step
+        .args
+        .as_ref()?
+        .iter()
+        .map(|legacy| DecodedArg {
+            name: legacy.name.clone(),
+            abi_type: legacy.sol_type.clone(),
+            value: dyn_to_decoded(&legacy.value),
+        })
+        .collect();
+    Some(DecodedCall {
+        decoder_id: DecoderId::new(decoder_id),
+        function_signature: format!("{}({})", step.name, "..."),
+        args,
+        nested: Vec::new(),
+    })
+}
+
+/// Translate `DynSolValue` → `DecodedValue`. Mirrors `crate::bridge::convert_value`
+/// in shape; we duplicate the dispatch table here so the splitter doesn't
+/// depend on `bridge` (which is itself a thin compatibility shim).
+fn dyn_to_decoded(value: &DynSolValue) -> DecodedValue {
+    use std::str::FromStr as _;
+    match value {
+        DynSolValue::Address(addr) => {
+            let hex = format!("0x{}", hex::encode(addr.0));
+            DecodedValue::Address(Address::from_str(&hex).expect("alloy address renders as policy"))
+        }
+        DynSolValue::Uint(v, _) => DecodedValue::Uint(*v),
+        DynSolValue::Int(v, _) => DecodedValue::Int(*v),
+        DynSolValue::Bool(b) => DecodedValue::Bool(*b),
+        DynSolValue::Bytes(b) => DecodedValue::Bytes(b.clone()),
+        DynSolValue::FixedBytes(word, len) => DecodedValue::Bytes(word.as_slice()[..*len].to_vec()),
+        DynSolValue::String(s) => DecodedValue::String(s.clone()),
+        DynSolValue::Array(items) | DynSolValue::FixedArray(items) => {
+            DecodedValue::Array(items.iter().map(dyn_to_decoded).collect())
+        }
+        DynSolValue::Tuple(items) => {
+            DecodedValue::Tuple(items.iter().map(dyn_to_decoded).collect())
+        }
+        // Function values don't appear in UR opcode ABIs; fall back to empty
+        // bytes if one slips through rather than panicking.
+        DynSolValue::Function(_) => DecodedValue::Bytes(Vec::new()),
     }
 }
 

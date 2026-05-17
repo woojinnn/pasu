@@ -80,3 +80,12 @@ pub const WETH_WITHDRAW_DECODER_ID: &str = "weth/withdraw";
 
 pub const WETH_DEPOSIT_SELECTOR: [u8; 4] = [0xd0, 0xe3, 0x0d, 0xb0];
 pub const WETH_WITHDRAW_SELECTOR: [u8; 4] = [0x2e, 0x1a, 0x7d, 0x4d];
+
+// ── Universal Router (synthetic decoder ids for opcodes that have no direct
+//    on-chain selector — they live inside UR's `execute(commands, inputs)`
+//    opcode stream). Splitter populates `SubCall.decoded.decoder_id` with one
+//    of these; downstream mappers in `mappers/protocols/universal_router/`
+//    key on the same strings.
+// ───────────────────────────────────────────────────────────────────────────
+pub const UR_WRAP_ETH_DECODER_ID: &str = "uniswap-ur/WRAP_ETH";
+pub const UR_UNWRAP_WETH_DECODER_ID: &str = "uniswap-ur/UNWRAP_WETH";

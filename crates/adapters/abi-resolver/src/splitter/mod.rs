@@ -30,7 +30,7 @@ pub use identity::IdentitySplitter;
 pub use registry::{InMemorySplitterRegistry, InMemorySplitterRegistryBuilder, SplitterRegistry};
 pub use universal_router::UniversalRouterSplitter;
 
-use crate::CallMatchKey;
+use crate::{CallMatchKey, DecodedCall};
 
 /// One sub-call produced by a [`Splitter`]. Carries everything a downstream
 /// resolver/mapper needs to treat the sub-call as if it were a standalone
@@ -38,7 +38,12 @@ use crate::CallMatchKey;
 ///
 /// `calldata` includes the 4-byte selector prefix so the resolver can index
 /// by `(chain_id, to, selector)` the same way it would for a top-level call.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// When the splitter has already done the ABI work (UR opcodes, Safe
+/// multiSend inner txs, …), it may populate [`decoded`](Self::decoded) so
+/// the downstream pipeline can skip resolver+bridge and dispatch straight
+/// to `MapperRegistry::resolve(&decoded.decoder_id)`.
+#[derive(Debug, Clone, PartialEq)]
 pub struct SubCall {
     /// Destination contract for the sub-call. For a UR-wrapped V3 swap this
     /// is the V3 SwapRouter; for a direct call it's the original `tx.to`.
@@ -50,6 +55,10 @@ pub struct SubCall {
     /// Full calldata (4-byte selector + ABI args). Empty `Vec` is allowed
     /// for value-only transfers, but most sub-calls will carry a selector.
     pub calldata: Vec<u8>,
+    /// Pre-decoded call when the splitter has already parsed the inputs.
+    /// Downstream skips resolver+bridge whenever this is `Some(_)` and
+    /// goes straight to mapper lookup by `decoded.decoder_id`.
+    pub decoded: Option<DecodedCall>,
 }
 
 /// Context handed to a [`Splitter`] when it walks an outer transaction.
@@ -113,6 +122,7 @@ mod tests {
             to: addr("0x1111111111111111111111111111111111111111"),
             value_wei: dec("0"),
             calldata: vec![0x09, 0x5e, 0xa7, 0xb3, 0x00],
+            decoded: None,
         };
         let b = a.clone();
         assert_eq!(a, b);
