@@ -1,7 +1,7 @@
 //! WASM bridge for the policy engine.
 //!
 //! The bridge exposes a JSON-string boundary for TypeScript callers:
-//! `install_policies_json`, `route_request_json`, `plan_policy_rpc_json`, and
+//! `install_policies_json`, `plan_policy_rpc_json`, and
 //! `evaluate_policy_rpc_json`.
 
 mod dto;
@@ -18,6 +18,6 @@ pub fn _start() {
 
 pub use exports::{
     evaluate_policy_rpc_json, install_policies_json, plan_policy_rpc_json,
-    preview_installed_schema_json, preview_schema_json, route_request_json,
+    preview_installed_schema_json, preview_schema_json,
 };
 pub use helpers::{decode_abi_standard_json, parse_sign_request_json};
