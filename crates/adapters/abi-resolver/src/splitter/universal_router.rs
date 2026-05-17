@@ -39,7 +39,8 @@ use crate::decoder::{DecodedArg, DecodedCall, DecodedValue, DecoderId};
 use crate::ids::{
     UR_SWEEP_DECODER_ID, UR_TRANSFER_DECODER_ID, UR_UNWRAP_WETH_DECODER_ID,
     UR_V2_SWAP_EXACT_IN_DECODER_ID, UR_V2_SWAP_EXACT_OUT_DECODER_ID,
-    UR_V3_SWAP_EXACT_IN_DECODER_ID, UR_V3_SWAP_EXACT_OUT_DECODER_ID, UR_WRAP_ETH_DECODER_ID,
+    UR_V3_SWAP_EXACT_IN_DECODER_ID, UR_V3_SWAP_EXACT_OUT_DECODER_ID, UR_V4_SWAP_DECODER_ID,
+    UR_WRAP_ETH_DECODER_ID,
 };
 use crate::subdecode::opcode_stream::{dispatch as dispatch_opcodes, DecodedStep, OpcodeTable};
 use crate::subdecode::protocols::pancake_ur::{
@@ -64,6 +65,7 @@ const UR_OPCODE_V2_SWAP_EXACT_IN: u8 = 0x08;
 const UR_OPCODE_V2_SWAP_EXACT_OUT: u8 = 0x09;
 const UR_OPCODE_WRAP_ETH: u8 = 0x0b;
 const UR_OPCODE_UNWRAP_WETH: u8 = 0x0c;
+const UR_OPCODE_V4_SWAP: u8 = 0x10;
 
 // Inline ABI decoders for the two UR `execute` overloads. The deadline
 // overload is renamed because Rust can't host two `executeCall` types in
@@ -199,6 +201,10 @@ fn pre_decode_for_opcode(step: &DecodedStep) -> Option<DecodedCall> {
         UR_OPCODE_V2_SWAP_EXACT_OUT => UR_V2_SWAP_EXACT_OUT_DECODER_ID,
         UR_OPCODE_WRAP_ETH => UR_WRAP_ETH_DECODER_ID,
         UR_OPCODE_UNWRAP_WETH => UR_UNWRAP_WETH_DECODER_ID,
+        // V4_SWAP carries (bytes actions, bytes[] params); the splitter only
+        // pre-decodes the outer wrapper and lets the mapper re-dispatch the
+        // inner V4 action stream itself.
+        UR_OPCODE_V4_SWAP => UR_V4_SWAP_DECODER_ID,
         _ => return None,
     };
     let args = step

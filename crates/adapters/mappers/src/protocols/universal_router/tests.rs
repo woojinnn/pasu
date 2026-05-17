@@ -23,7 +23,8 @@ use crate::EmptyTokenRegistry;
 
 use super::{
     UrSweepMapper, UrTransferMapper, UrUnwrapWethMapper, UrV2SwapExactInMapper,
-    UrV2SwapExactOutMapper, UrV3SwapExactInMapper, UrV3SwapExactOutMapper, UrWrapEthMapper,
+    UrV2SwapExactOutMapper, UrV3SwapExactInMapper, UrV3SwapExactOutMapper, UrV4SwapMapper,
+    UrWrapEthMapper,
 };
 
 fn addr(s: &str) -> Address {
@@ -576,4 +577,193 @@ fn v3_swap_exact_out_reverses_path_endpoints() {
         format!("0x{}", hex::encode(usdc))
     );
     assert_eq!(s.fee_bps, Some(30), "3000 pips → 30 bps");
+}
+
+// ---------------------------------------------------------------------------
+// V4_SWAP — Phase 4c. The opcode wraps a nested `(bytes actions, bytes[]
+// params)` stream that gets dispatched against V4_ROUTER_TABLE. The mapper
+// builds a SwapAction per inner swap action and patches the recipient from
+// any trailing TAKE step.
+// ---------------------------------------------------------------------------
+
+/// Encode the inner V4_SWAP_EXACT_IN_SINGLE params (mainnet 4-field shape):
+/// `(poolKey, zeroForOne, amountIn, amountOutMinimum, hookData)` wrapped in
+/// an outer tuple so the dispatcher sees a single named-param arg.
+fn encode_v4_swap_exact_in_single_params(
+    currency0: [u8; 20],
+    currency1: [u8; 20],
+    fee_pips: u32,
+    zero_for_one: bool,
+    amount_in: u128,
+    amount_out_min: u128,
+) -> Vec<u8> {
+    let func = AbiFunction::parse(
+        "step(((address,address,uint24,int24,address),bool,uint128,uint128,bytes))",
+    )
+    .unwrap();
+    let pool_key = DynSolValue::Tuple(vec![
+        DynSolValue::Address(AlloyAddress::from(currency0)),
+        DynSolValue::Address(AlloyAddress::from(currency1)),
+        DynSolValue::Uint(U256::from(fee_pips), 24),
+        DynSolValue::Int(alloy_primitives::I256::ONE, 24),
+        DynSolValue::Address(AlloyAddress::ZERO),
+    ]);
+    let params = DynSolValue::Tuple(vec![
+        pool_key,
+        DynSolValue::Bool(zero_for_one),
+        DynSolValue::Uint(U256::from(amount_in), 128),
+        DynSolValue::Uint(U256::from(amount_out_min), 128),
+        DynSolValue::Bytes(Vec::new()),
+    ]);
+    let raw = func.abi_encode_input(&[params]).unwrap();
+    raw[4..].to_vec()
+}
+
+fn encode_v4_settle_params(currency: [u8; 20], amount: u128, payer_is_user: bool) -> Vec<u8> {
+    let func = AbiFunction::parse("step(address,uint256,bool)").unwrap();
+    let values = vec![
+        DynSolValue::Address(AlloyAddress::from(currency)),
+        DynSolValue::Uint(U256::from(amount), 256),
+        DynSolValue::Bool(payer_is_user),
+    ];
+    let raw = func.abi_encode_input(&values).unwrap();
+    raw[4..].to_vec()
+}
+
+fn encode_v4_take_params(currency: [u8; 20], recipient: [u8; 20], amount: u128) -> Vec<u8> {
+    let func = AbiFunction::parse("step(address,address,uint256)").unwrap();
+    let values = vec![
+        DynSolValue::Address(AlloyAddress::from(currency)),
+        DynSolValue::Address(AlloyAddress::from(recipient)),
+        DynSolValue::Uint(U256::from(amount), 256),
+    ];
+    let raw = func.abi_encode_input(&values).unwrap();
+    raw[4..].to_vec()
+}
+
+/// Encode the V4_SWAP outer wrapper: `(bytes actions, bytes[] params)`.
+fn encode_v4_swap_outer(actions: &[u8], params: &[Vec<u8>]) -> Vec<u8> {
+    let func = AbiFunction::parse("step(bytes,bytes[])").unwrap();
+    let values = vec![
+        DynSolValue::Bytes(actions.to_vec()),
+        DynSolValue::Array(
+            params
+                .iter()
+                .map(|b| DynSolValue::Bytes(b.clone()))
+                .collect(),
+        ),
+    ];
+    let raw = func.abi_encode_input(&values).unwrap();
+    raw[4..].to_vec()
+}
+
+#[test]
+fn v4_swap_emits_swap_action_with_take_recipient_patch() {
+    // Inner V4 action sequence: [SWAP_EXACT_IN_SINGLE, SETTLE, TAKE].
+    // V4 swap params don't carry a recipient → mapper defaults to ctx.from,
+    // then patches it with TAKE's recipient.
+    let usdt = [0xda; 20];
+    let usdc = [0xa0; 20];
+    let real_recipient = [0x55; 20];
+    let amount_in: u128 = 6_531_525;
+    let amount_out_min: u128 = 6_497_371;
+
+    let swap_params =
+        encode_v4_swap_exact_in_single_params(usdt, usdc, 500, true, amount_in, amount_out_min);
+    let settle_params = encode_v4_settle_params(usdt, amount_in, true);
+    let take_params = encode_v4_take_params(usdc, real_recipient, amount_out_min);
+
+    let v4_swap_input = encode_v4_swap_outer(
+        &[0x06, 0x0b, 0x0e],
+        &[swap_params, settle_params, take_params],
+    );
+    let calldata = encode_execute(&[0x10], &[v4_swap_input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    assert_eq!(sub_calls.len(), 1);
+    let decoded = sub_calls[0]
+        .decoded
+        .as_ref()
+        .expect("V4_SWAP must be pre-decoded by the splitter");
+    assert_eq!(decoded.decoder_id.as_str(), "uniswap-ur/V4_SWAP");
+
+    let tr = EmptyTokenRegistry;
+    let ctx = map_ctx(&user, &router, &value, &tr);
+    let envelopes = UrV4SwapMapper::new().map(&ctx, decoded).unwrap();
+    assert_eq!(envelopes.len(), 1);
+    let Action::Swap(s) = &envelopes[0].action else {
+        panic!("expected Swap action");
+    };
+    assert_eq!(s.swap_mode, SwapMode::ExactIn);
+
+    // zeroForOne=true with currency0=USDT, currency1=USDC means swap goes
+    // USDT → USDC.
+    assert_eq!(
+        s.input_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdt))
+    );
+    assert_eq!(
+        s.output_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdc))
+    );
+
+    // Fee 500 pips / 100 = 5 bps.
+    assert_eq!(s.fee_bps, Some(5));
+
+    // TAKE recipient patching: the swap defaulted to ctx.from (user), then
+    // got patched to TAKE's recipient.
+    let expected_recipient = Address::from_str(&format!("0x{}", hex::encode(real_recipient)))
+        .expect("hex address parses");
+    assert_eq!(
+        s.recipient, expected_recipient,
+        "TAKE recipient should overwrite the default ctx.from"
+    );
+}
+
+#[test]
+fn v4_swap_without_take_keeps_default_recipient() {
+    // SWAP without a TAKE step (degenerate but legal — settlement could be
+    // handled out-of-band). The mapper should leave the default ctx.from.
+    let usdt = [0xda; 20];
+    let usdc = [0xa0; 20];
+    let swap_params = encode_v4_swap_exact_in_single_params(usdt, usdc, 500, true, 1_000, 950);
+    let v4_swap_input = encode_v4_swap_outer(&[0x06], &[swap_params]);
+    let calldata = encode_execute(&[0x10], &[v4_swap_input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    let decoded = sub_calls[0].decoded.as_ref().unwrap();
+    let envelopes = UrV4SwapMapper::new()
+        .map(
+            &map_ctx(&user, &router, &value, &EmptyTokenRegistry),
+            decoded,
+        )
+        .unwrap();
+    let Action::Swap(s) = &envelopes[0].action else {
+        panic!("expected Swap");
+    };
+    assert_eq!(s.recipient, user, "no TAKE → recipient stays as ctx.from");
 }
