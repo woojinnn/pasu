@@ -22,11 +22,13 @@
 
 mod identity;
 mod registry;
+pub mod universal_router;
 
 use policy_engine::action::{Address, DecimalString};
 
 pub use identity::IdentitySplitter;
 pub use registry::{InMemorySplitterRegistry, InMemorySplitterRegistryBuilder, SplitterRegistry};
+pub use universal_router::UniversalRouterSplitter;
 
 use crate::CallMatchKey;
 
