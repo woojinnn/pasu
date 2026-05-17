@@ -18,6 +18,10 @@ hex = { workspace = true }
 alloy-primitives = { workspace = true }
 tracing = "0.1"
 
+[dev-dependencies]
+alloy-dyn-abi = { workspace = true }
+alloy-json-abi = "0.8"
+
 [features]
 # `sqlite` enables the Sourcify SQLite dump tier in the fallback decoding path
 # (`route_request`'s second-tier sourcify fallback). Pulled in via
