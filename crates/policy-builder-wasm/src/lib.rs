@@ -18,7 +18,7 @@
 use policy_builder::operators::{operators_for, OperatorArity};
 use policy_builder::schemas;
 use policy_builder::types::{ActionSchema, CedarType, FieldSpec, PolicyRule};
-use policy_builder::{compile, validate, CompileError, ValidationError};
+use policy_builder::{compile, parse_cedar, validate, CompileError, ParseError, ValidationError};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -154,6 +154,38 @@ pub fn compile_policy_json(rule_json: String) -> String {
     match compile(&rule, schema) {
         Ok(text) => Envelope::success(CompileSuccess { cedar_text: text }).to_json(),
         Err(error) => Envelope::<()>::failure(compile_error_to_envelope(&error)).to_json(),
+    }
+}
+
+/// Parse Cedar policy text back to a `PolicyRule` (narrow subset, Phase 2).
+///
+/// `data` on success is the JSON-serialized `PolicyRule`. On failure,
+/// `error.kind` is `parse_error` and `message` carries the underlying
+/// [`ParseError`] description. Use this to attempt Code → Builder
+/// round-trip after the user opted into raw Cedar editing.
+#[wasm_bindgen]
+#[must_use]
+pub fn parse_cedar_json(cedar_text: String) -> String {
+    match parse_cedar(&cedar_text) {
+        Ok(rule) => Envelope::success(rule).to_json(),
+        Err(error) => Envelope::<()>::failure(EnvelopeError {
+            kind: parse_error_kind(&error).to_string(),
+            message: error.to_string(),
+            predicate_index: None,
+        })
+        .to_json(),
+    }
+}
+
+const fn parse_error_kind(error: &ParseError) -> &'static str {
+    match error {
+        ParseError::MissingAnnotation(_) => "missing_annotation",
+        ParseError::InvalidSeverity(_) => "invalid_severity",
+        ParseError::MalformedHead => "malformed_head",
+        ParseError::MissingAction => "missing_action",
+        ParseError::MalformedWhen => "malformed_when",
+        ParseError::UnsupportedShape(_) => "unsupported_shape",
+        ParseError::Escape(_) => "invalid_escape",
     }
 }
 
