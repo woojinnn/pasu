@@ -32,7 +32,6 @@ use abi_resolver::splitter::universal_router::UniversalRouterSplitter;
 use abi_resolver::DecoderId;
 use abi_resolver::InMemoryDecoderRegistry;
 use abi_resolver::InMemorySplitterRegistry;
-use call_adapter::{InMemoryCallAdapterRegistry, MultiRouterCallAdapter, WethWithdrawCallAdapter};
 use mappers::protocols::erc20::{
     Erc20ApproveMapper, Erc20TransferFromMapper, Erc20TransferMapper, SetApprovalForAllMapper,
 };
@@ -198,17 +197,15 @@ fn build_fallback_resolver() -> Resolver {
 pub struct DefaultRegistries {
     pub decoders: Arc<InMemoryDecoderRegistry>,
     pub mappers: Arc<InMemoryMapperRegistry>,
-    pub call_adapters: Arc<InMemoryCallAdapterRegistry>,
     pub sign_adapters: Arc<InMemorySignAdapterRegistry>,
     /// Splitter registry for multi-call routers (Universal Router today).
-    /// Looked up by `route_call` before the call-adapter / Sourcify tiers —
-    /// when a splitter matches, the request becomes N sub-call envelopes
-    /// flowing through the unified mapper pipeline + compactor.
+    /// `route_call` consults this first; when a splitter matches, the request
+    /// becomes a `Vec<SubCall>` flowing through the unified mapper pipeline +
+    /// compactor.
     pub splitters: Arc<InMemorySplitterRegistry>,
-    /// Legacy `Resolver` used as the fallback decode tier when no per-function
-    /// `Decoder` matches in `route_request`. The bridge module converts its
-    /// `decode::DecodedCall` output to the new shape so existing mappers can
-    /// consume it unchanged.
+    /// `Resolver` used as the fallback decode tier when no splitter matches.
+    /// The bridge module converts its `decode::DecodedCall` output to the new
+    /// shape so existing mappers consume it unchanged.
     pub resolver: Arc<Resolver>,
 }
 
@@ -419,17 +416,6 @@ impl DefaultRegistries {
                 )
                 .build(),
         );
-        // Universal Router has both a legacy `CallAdapter` (kept for now as a
-        // fallback) and a new splitter-based path (below). `router.rs:route_call`
-        // tries the splitter first; the CallAdapter only fires when the splitter
-        // registry doesn't match (and will go away entirely in Phase 5b).
-        let call_adapters = Arc::new(
-            InMemoryCallAdapterRegistry::builder()
-                .register(Arc::new(MultiRouterCallAdapter::uniswap_ur()))
-                .register(Arc::new(MultiRouterCallAdapter::pancake_ur()))
-                .register(Arc::new(WethWithdrawCallAdapter::new()))
-                .build(),
-        );
         let sign_adapters = Arc::new(
             InMemorySignAdapterRegistry::builder()
                 .register(Arc::new(Eip2612Adapter::new()))
@@ -437,11 +423,11 @@ impl DefaultRegistries {
                 .build(),
         );
 
-        // UR splitter — same chain/router/selector keys as the CallAdapter
-        // above, but the new pipeline (router.rs:route_call) consults
-        // `splitters` first and falls back to `call_adapters` only when no
-        // splitter matches. Once Phase 5b removes the legacy CallAdapter,
-        // this registry becomes the sole UR entry point.
+        // Splitter registry — multi-call routers (Universal Router family).
+        // The sole entry point for UR calldata now that the legacy
+        // CallAdapter has been removed. Plain WETH9.withdraw(uint256) and
+        // every other direct contract call flows through Tier 1 (Sourcify
+        // fallback) instead.
         let splitters = Arc::new(
             InMemorySplitterRegistry::builder()
                 .register(Arc::new(UniversalRouterSplitter::uniswap_ur()))
@@ -454,7 +440,6 @@ impl DefaultRegistries {
         Self {
             decoders,
             mappers,
-            call_adapters,
             sign_adapters,
             splitters,
             resolver,

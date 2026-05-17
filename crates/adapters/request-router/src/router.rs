@@ -6,7 +6,6 @@ use abi_resolver::splitter::{SplitContext, SubCall};
 use abi_resolver::{CallMatchKey, SplitterRegistry as _};
 use alloy_primitives::Address as AlloyAddress;
 use alloy_primitives::U256;
-use call_adapter::{CallAdapterRegistry, CallContext};
 use mappers::{MapContext, MapperMatchKey, MapperRegistry as _};
 use policy_engine::action::{Address, DecimalString};
 use serde_json::Value;
@@ -91,11 +90,11 @@ fn route_call(
         selector,
     };
 
-    // Tier 0: Splitter-based pipeline (new). Picks up multi-call routers
-    // (Universal Router today) and turns them into a Vec<SubCall>, each of
-    // which carries either a pre-decoded DecodedCall (UR opcodes) or raw
-    // calldata for the Sourcify path. Final envelopes pass through the
-    // ledger-based compactor in `mappers::simulate`.
+    // Tier 0: Splitter-based pipeline. Multi-call routers (Universal Router
+    // today) turn into a Vec<SubCall>; each SubCall either carries a
+    // pre-decoded DecodedCall (UR opcodes) or raw calldata for the Sourcify
+    // path. Final envelopes pass through the ledger-based compactor in
+    // `mappers::simulate`.
     if let Some(splitter) = ctx.registries.splitters.resolve(&key) {
         let split_ctx = SplitContext {
             chain_id,
@@ -110,30 +109,12 @@ fn route_call(
         return run_subcalls_pipeline(ctx, chain_id, &from, &to, &value, sub_calls);
     }
 
-    // Tier 1: a registered `CallAdapter` (legacy multi-call path). Kept as a
-    // fallback while the splitter migration finishes; will be removed in
-    // Phase 5b.
-    if let Some(adapter) = ctx.registries.call_adapters.resolve(&key) {
-        let call_ctx = CallContext {
-            chain_id,
-            from: &from,
-            to: &to,
-            value_wei: &value,
-            block_timestamp: ctx.block_timestamp,
-            token_registry: ctx.token_registry,
-            decoder_registry: ctx.registries.decoders.as_ref(),
-            mapper_registry: ctx.registries.mappers.as_ref(),
-        };
-        return adapter
-            .build(&call_ctx, &calldata)
-            .map_err(|err| RouterError::Call(err.into()));
-    }
-
-    // Tier 2: legacy `Resolver` fallback (Sourcify bundle + openchain seed + optional
-    // SQLite). We decode dynamically, then convert the result into the new
-    // `DecodedCall` shape and dispatch through the new `MapperRegistry` using
-    // the canonical decoder_id derived from the selector. This lets us pick up
-    // any function whose ABI Sourcify knows about, as long as a mapper exists.
+    // Tier 1: legacy `Resolver` fallback (Sourcify bundle + openchain seed +
+    // optional SQLite). We decode dynamically, then convert the result into
+    // the new `DecodedCall` shape and dispatch through the new
+    // `MapperRegistry` using the canonical decoder_id derived from the
+    // selector. This handles every direct contract call whose ABI Sourcify
+    // knows about (V2/V3 swap, ERC20, WETH9, lending, …).
     route_call_fallback(ctx, chain_id, &from, &to, &value, &calldata, selector)
 }
 
