@@ -124,6 +124,24 @@ fn evaluate_transform(
                 .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))?;
             Ok(serde_json::Value::String(address.to_string()))
         }
+        BuiltinFn::UnfoldV3Path => {
+            if args.len() != 2 {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "unfold_v3_path expects 2 args, got {}",
+                    args.len()
+                )));
+            }
+            let bytes_value = evaluate(ctx, args_json, &args[0])?;
+            let select_value = evaluate(ctx, args_json, &args[1])?;
+            let select = select_value.as_str().ok_or_else(|| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "unfold_v3_path: select must be string literal, got {select_value}"
+                ))
+            })?;
+            let address = builtin_fn::unfold_v3_path(&bytes_value, select)
+                .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))?;
+            Ok(serde_json::Value::String(address.to_string()))
+        }
         other => Err(MapperError::Internal(anyhow::anyhow!(
             "builtin {other:?} is not implemented in Phase 1A"
         ))),
@@ -335,6 +353,61 @@ mod tests {
         assert_eq!(
             evaluate_with(&decoded, &expr),
             json!("0x1111111111111111111111111111111111111111")
+        );
+    }
+
+    /// Build a `DecodedCall` with a `path` arg containing a single-hop V3
+    /// packed payload (`WETH --3000--> USDC`).
+    fn v3_path_decoded() -> DecodedCall {
+        let bytes = hex::decode(concat!(
+            "c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "000bb8",
+            "a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        ))
+        .unwrap();
+        DecodedCall {
+            decoder_id: DecoderId::new("test"),
+            function_signature: "exactInput((bytes,address,uint256,uint256,uint256))".into(),
+            args: vec![DecodedArg {
+                name: "path".into(),
+                abi_type: "bytes".into(),
+                value: DecodedValue::Bytes(bytes),
+            }],
+            nested: vec![],
+        }
+    }
+
+    #[test]
+    fn evaluate_transform_unfold_v3_path_first_token() {
+        let decoded = v3_path_decoded();
+        let expr: ValueExpr = serde_json::from_value(json!({
+            "fn": "unfold_v3_path",
+            "args": [
+                { "from": "$.args.path" },
+                { "literal": "first_token" }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(
+            evaluate_with(&decoded, &expr),
+            json!("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+        );
+    }
+
+    #[test]
+    fn evaluate_transform_unfold_v3_path_last_token() {
+        let decoded = v3_path_decoded();
+        let expr: ValueExpr = serde_json::from_value(json!({
+            "fn": "unfold_v3_path",
+            "args": [
+                { "from": "$.args.path" },
+                { "literal": "last_token" }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(
+            evaluate_with(&decoded, &expr),
+            json!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
         );
     }
 }

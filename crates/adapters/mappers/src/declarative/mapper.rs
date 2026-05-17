@@ -312,4 +312,419 @@ mod tests {
         assert_eq!(s.fee_bps, Some(30));
         assert_eq!(d.fee_bps, None);
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Phase 3 — V3 + SR02 single_emit bundles
+    //
+    // Equivalence with the static V3 mappers (`UniswapV3Mapper`, the SR02
+    // family). The declarative bundles intentionally omit `fee_bps` (Phase 3
+    // does not implement `div(uint, u32)` over a path-derived value), and the
+    // SR02 bundles omit `validity` (SR02 calldata has no `deadline` —
+    // deadline lives on the outer Multicall wrapper).
+    // ──────────────────────────────────────────────────────────────────────
+
+    const V3_EXACT_INPUT_BUNDLE: &str =
+        include_str!("../../tests/fixtures/uniswap-v3-exact-input.json");
+    const V3_EXACT_INPUT_SINGLE_BUNDLE: &str =
+        include_str!("../../tests/fixtures/uniswap-v3-exact-input-single.json");
+    const SR02_EXACT_INPUT_BUNDLE: &str =
+        include_str!("../../tests/fixtures/sr02-exact-input.json");
+    const SR02_EXACT_INPUT_SINGLE_BUNDLE: &str =
+        include_str!("../../tests/fixtures/sr02-exact-input-single.json");
+
+    /// `[USDT][fee=500=0x0001f4][USDC][fee=3000=0x000bb8][WETH]` — two hops.
+    /// `decode_v3_path` returns tokens=`[USDT, USDC, WETH]`.
+    fn v3_two_hop_path() -> Vec<u8> {
+        hex::decode(concat!(
+            "dac17f958d2ee523a2206206994597c13d831ec7",
+            "0001f4",
+            "a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "000bb8",
+            "c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        ))
+        .unwrap()
+    }
+
+    fn v3_first_token() -> Address {
+        Address::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap()
+    }
+
+    fn v3_last_token() -> Address {
+        Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()
+    }
+
+    /// Build a `DecodedCall` mirroring what `bridge.rs::flatten_tuple_arg`
+    /// produces for `exactInput((bytes,address,uint256,uint256,uint256))` —
+    /// the wrapping `params` tuple is flattened to top-level args.
+    fn v3_exact_input_decoded(decoder_id: DecoderId) -> DecodedCall {
+        DecodedCall {
+            decoder_id,
+            function_signature: "exactInput((bytes,address,uint256,uint256,uint256))".into(),
+            args: vec![
+                DecodedArg {
+                    name: "path".into(),
+                    abi_type: "bytes".into(),
+                    value: DecodedValue::Bytes(v3_two_hop_path()),
+                },
+                DecodedArg {
+                    name: "recipient".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(recipient()),
+                },
+                DecodedArg {
+                    name: "deadline".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(9_999_999_999_u64)),
+                },
+                DecodedArg {
+                    name: "amountIn".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(1_000_000_u64)),
+                },
+                DecodedArg {
+                    name: "amountOutMinimum".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(900_000_u64)),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
+    /// V3 `exactInputSingle` — `params` tuple flattened to 8 args.
+    fn v3_exact_input_single_decoded(decoder_id: DecoderId) -> DecodedCall {
+        DecodedCall {
+            decoder_id,
+            function_signature:
+                "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))"
+                    .into(),
+            args: vec![
+                DecodedArg {
+                    name: "tokenIn".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(v3_first_token()),
+                },
+                DecodedArg {
+                    name: "tokenOut".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(v3_last_token()),
+                },
+                DecodedArg {
+                    name: "fee".into(),
+                    abi_type: "uint24".into(),
+                    value: DecodedValue::Uint(U256::from(3000_u64)),
+                },
+                DecodedArg {
+                    name: "recipient".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(recipient()),
+                },
+                DecodedArg {
+                    name: "deadline".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(9_999_999_999_u64)),
+                },
+                DecodedArg {
+                    name: "amountIn".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(200_000_000_u64)),
+                },
+                DecodedArg {
+                    name: "amountOutMinimum".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(100_000_u64)),
+                },
+                DecodedArg {
+                    name: "sqrtPriceLimitX96".into(),
+                    abi_type: "uint160".into(),
+                    value: DecodedValue::Uint(U256::ZERO),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
+    /// SR02 `exactInput` — no `deadline` parameter (lives on outer Multicall).
+    fn sr02_exact_input_decoded(decoder_id: DecoderId) -> DecodedCall {
+        DecodedCall {
+            decoder_id,
+            function_signature: "exactInput((bytes,address,uint256,uint256))".into(),
+            args: vec![
+                DecodedArg {
+                    name: "path".into(),
+                    abi_type: "bytes".into(),
+                    value: DecodedValue::Bytes(v3_two_hop_path()),
+                },
+                DecodedArg {
+                    name: "recipient".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(recipient()),
+                },
+                DecodedArg {
+                    name: "amountIn".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(1_000_000_u64)),
+                },
+                DecodedArg {
+                    name: "amountOutMinimum".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(900_000_u64)),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
+    /// SR02 `exactInputSingle` — no `deadline`.
+    fn sr02_exact_input_single_decoded(decoder_id: DecoderId) -> DecodedCall {
+        DecodedCall {
+            decoder_id,
+            function_signature:
+                "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))"
+                    .into(),
+            args: vec![
+                DecodedArg {
+                    name: "tokenIn".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(v3_first_token()),
+                },
+                DecodedArg {
+                    name: "tokenOut".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(v3_last_token()),
+                },
+                DecodedArg {
+                    name: "fee".into(),
+                    abi_type: "uint24".into(),
+                    value: DecodedValue::Uint(U256::from(3000_u64)),
+                },
+                DecodedArg {
+                    name: "recipient".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(recipient()),
+                },
+                DecodedArg {
+                    name: "amountIn".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(200_000_000_u64)),
+                },
+                DecodedArg {
+                    name: "amountOutMinimum".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(100_000_u64)),
+                },
+                DecodedArg {
+                    name: "sqrtPriceLimitX96".into(),
+                    abi_type: "uint160".into(),
+                    value: DecodedValue::Uint(U256::ZERO),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
+    /// Compare every field the declarative bundle is expected to populate.
+    /// `expect_validity` controls whether `validity` must match; SR02 bundles
+    /// intentionally omit it. `expect_fee_bps` is the value the *static*
+    /// mapper produces — the declarative side must be `None` (Phase 3 gap).
+    fn assert_swap_equivalent(
+        static_swap: &policy_engine::action::dex::SwapAction,
+        declarative_swap: &policy_engine::action::dex::SwapAction,
+        expect_validity: bool,
+        expect_static_fee_bps: Option<u32>,
+    ) {
+        assert_eq!(static_swap.swap_mode, declarative_swap.swap_mode);
+        assert_eq!(
+            static_swap.input_token.asset.kind,
+            declarative_swap.input_token.asset.kind
+        );
+        assert_eq!(
+            static_swap.input_token.asset.address,
+            declarative_swap.input_token.asset.address
+        );
+        assert_eq!(static_swap.input_token.amount, declarative_swap.input_token.amount);
+
+        assert_eq!(
+            static_swap.output_token.asset.kind,
+            declarative_swap.output_token.asset.kind
+        );
+        assert_eq!(
+            static_swap.output_token.asset.address,
+            declarative_swap.output_token.asset.address
+        );
+        assert_eq!(
+            static_swap.output_token.amount,
+            declarative_swap.output_token.amount
+        );
+
+        assert_eq!(static_swap.recipient, declarative_swap.recipient);
+        if expect_validity {
+            assert_eq!(static_swap.validity, declarative_swap.validity);
+        } else {
+            assert!(declarative_swap.validity.is_none());
+        }
+        // Documented gap — declarative bundle does not currently emit fee_bps.
+        assert_eq!(static_swap.fee_bps, expect_static_fee_bps);
+        assert!(declarative_swap.fee_bps.is_none());
+    }
+
+    /// Run the declarative bundle and return its single emitted envelope.
+    fn run_declarative(
+        bundle_json: &str,
+        decoded_factory: impl FnOnce(DecoderId) -> DecodedCall,
+    ) -> policy_engine::action::ActionEnvelope {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(bundle_json).unwrap();
+        let mapper = DeclarativeMapper::new(bundle);
+        let decoded = decoded_factory(mapper.declarative_decoder_id());
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = mapper.map(&ctx, &decoded).unwrap();
+        assert_eq!(envelopes.len(), 1);
+        envelopes.into_iter().next().unwrap()
+    }
+
+    #[test]
+    fn declarative_equivalent_to_static_v3_exact_input() {
+        use crate::protocols::uniswap_v3::UniswapV3Mapper;
+
+        let static_decoded =
+            v3_exact_input_decoded(DecoderId::new(abi_resolver::ids::UNISWAP_V3_DECODER_ID));
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+        let static_env = UniswapV3Mapper::new()
+            .map(&ctx, &static_decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+
+        let declarative_env = run_declarative(V3_EXACT_INPUT_BUNDLE, v3_exact_input_decoded);
+
+        let Action::Swap(s) = &static_env.action else {
+            panic!("static is not swap");
+        };
+        let Action::Swap(d) = &declarative_env.action else {
+            panic!("declarative is not swap");
+        };
+        // Path's first hop fee = 500 → first_fee/100 = 5.
+        assert_swap_equivalent(s, d, true, Some(5));
+
+        // Endpoints derived from the packed path.
+        assert_eq!(d.input_token.asset.address, Some(v3_first_token()));
+        assert_eq!(d.output_token.asset.address, Some(v3_last_token()));
+    }
+
+    #[test]
+    fn declarative_equivalent_to_static_v3_exact_input_single() {
+        use crate::protocols::uniswap_v3::UniswapV3Mapper;
+
+        let static_decoded = v3_exact_input_single_decoded(DecoderId::new(
+            abi_resolver::ids::UNISWAP_V3_DECODER_ID,
+        ));
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+        let static_env = UniswapV3Mapper::new()
+            .map(&ctx, &static_decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+
+        let declarative_env =
+            run_declarative(V3_EXACT_INPUT_SINGLE_BUNDLE, v3_exact_input_single_decoded);
+
+        let Action::Swap(s) = &static_env.action else {
+            panic!("static is not swap");
+        };
+        let Action::Swap(d) = &declarative_env.action else {
+            panic!("declarative is not swap");
+        };
+        // fee = 3000 → fee/100 = 30.
+        assert_swap_equivalent(s, d, true, Some(30));
+        assert_eq!(d.input_token.asset.address, Some(v3_first_token()));
+        assert_eq!(d.output_token.asset.address, Some(v3_last_token()));
+    }
+
+    #[test]
+    fn declarative_equivalent_to_static_sr02_exact_input() {
+        use crate::protocols::swap_router_02::Sr02ExactInputMapper;
+
+        let static_decoded =
+            sr02_exact_input_decoded(DecoderId::new(abi_resolver::ids::SR02_EXACT_INPUT_DECODER_ID));
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+        let static_env = Sr02ExactInputMapper::new()
+            .map(&ctx, &static_decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+
+        let declarative_env =
+            run_declarative(SR02_EXACT_INPUT_BUNDLE, sr02_exact_input_decoded);
+
+        let Action::Swap(s) = &static_env.action else {
+            panic!("static is not swap");
+        };
+        let Action::Swap(d) = &declarative_env.action else {
+            panic!("declarative is not swap");
+        };
+        // SR02 bundle omits validity; static mapper also returns None.
+        assert!(s.validity.is_none());
+        // first_fee = 500 → 5.
+        assert_swap_equivalent(s, d, false, Some(5));
+        assert_eq!(d.input_token.asset.address, Some(v3_first_token()));
+        assert_eq!(d.output_token.asset.address, Some(v3_last_token()));
+    }
+
+    #[test]
+    fn declarative_equivalent_to_static_sr02_exact_input_single() {
+        use crate::protocols::swap_router_02::Sr02ExactInputSingleMapper;
+
+        let static_decoded = sr02_exact_input_single_decoded(DecoderId::new(
+            abi_resolver::ids::SR02_EXACT_INPUT_SINGLE_DECODER_ID,
+        ));
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+        let static_env = Sr02ExactInputSingleMapper::new()
+            .map(&ctx, &static_decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+
+        let declarative_env = run_declarative(
+            SR02_EXACT_INPUT_SINGLE_BUNDLE,
+            sr02_exact_input_single_decoded,
+        );
+
+        let Action::Swap(s) = &static_env.action else {
+            panic!("static is not swap");
+        };
+        let Action::Swap(d) = &declarative_env.action else {
+            panic!("declarative is not swap");
+        };
+        assert!(s.validity.is_none());
+        // fee = 3000 → 30.
+        assert_swap_equivalent(s, d, false, Some(30));
+        assert_eq!(d.input_token.asset.address, Some(v3_first_token()));
+        assert_eq!(d.output_token.asset.address, Some(v3_last_token()));
+    }
 }
