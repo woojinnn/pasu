@@ -14,7 +14,7 @@ use policy_engine::action::Address;
 /// emit them without knowing the concrete addresses; resolution to actual
 /// `Address` happens inside the ledger using the current `CallContext`.
 #[derive(Debug, Clone)]
-pub(in crate::multi_router) enum Effect {
+pub(in crate::compactor) enum Effect {
     /// Equivalent to `Burn(from, asset, amount)` + `Mint(to, asset, amount)`.
     /// Use when one party hands the asset to another in a single step
     /// (e.g. `transfer`, V4 `TAKE`).
@@ -49,7 +49,7 @@ pub(in crate::multi_router) enum Effect {
 /// [`super::ledger::Ledger::resolve`] using the current `CallContext`.
 /// Decoupling lets `effects_of_*` functions stay pure (no ctx capture).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(in crate::multi_router) enum ActorRef {
+pub(in crate::compactor) enum ActorRef {
     /// Resolves to `ctx.from`.
     User,
     /// Resolves to `ctx.to` (the router contract receiving `execute(...)`).
@@ -62,7 +62,7 @@ pub(in crate::multi_router) enum ActorRef {
 /// address (chain id is implicit in the surrounding `CallContext`). Token
 /// metadata (symbol/decimals) lives outside the simulator.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(in crate::multi_router) enum Asset {
+pub(in crate::compactor) enum Asset {
     Native,
     Erc20(Address),
 }
@@ -71,7 +71,7 @@ pub(in crate::multi_router) enum Asset {
 /// but lives in the simulator domain so the ledger arithmetic doesn't
 /// depend on the policy schema.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::multi_router) enum AmountSpec {
+pub(in crate::compactor) enum AmountSpec {
     /// Exact value — known from calldata (e.g. `amountIn` of an exact-in swap).
     Exact(U256),
     /// At-least bound — used for slippage-protected outputs (`amountOutMin`).
@@ -81,7 +81,7 @@ pub(in crate::multi_router) enum AmountSpec {
 }
 
 impl AmountSpec {
-    pub(in crate::multi_router) fn value(self) -> U256 {
+    pub(in crate::compactor) fn value(self) -> U256 {
         match self {
             Self::Exact(v) | Self::AtLeast(v) | Self::AtMost(v) => v,
         }
