@@ -27,6 +27,7 @@ pub mod in_memory_registry;
 pub mod openchain;
 pub mod resolver;
 pub mod sourcify;
+pub mod splitter;
 #[cfg(feature = "sqlite")]
 pub mod sqlite_index;
 pub mod subdecode;
@@ -36,3 +37,7 @@ pub use decoder::{
     DecoderId, DecoderRegistry,
 };
 pub use in_memory_registry::{InMemoryDecoderRegistry, InMemoryDecoderRegistryBuilder};
+pub use splitter::{
+    IdentitySplitter, InMemorySplitterRegistry, InMemorySplitterRegistryBuilder, SplitContext,
+    SplitError, Splitter, SplitterRegistry, SubCall,
+};
