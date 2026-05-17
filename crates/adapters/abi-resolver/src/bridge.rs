@@ -124,7 +124,11 @@ fn flatten_tuple_arg(arg: LegacyArg) -> Result<Vec<DecodedArg>, BridgeError> {
     Ok(out)
 }
 
-fn convert_arg(legacy: LegacyArg) -> Result<DecodedArg, BridgeError> {
+/// Convert a single legacy `decode::DecodedArg` (the form Tier B
+/// `subdecode::opcode_stream::dispatch` emits) into a new-pipeline
+/// [`DecodedArg`]. Wraps [`convert_value`] for the value field while preserving
+/// the argument's `name` and `sol_type`.
+pub fn convert_arg(legacy: LegacyArg) -> Result<DecodedArg, BridgeError> {
     Ok(DecodedArg {
         name: legacy.name,
         abi_type: legacy.sol_type,
@@ -132,7 +136,11 @@ fn convert_arg(legacy: LegacyArg) -> Result<DecodedArg, BridgeError> {
     })
 }
 
-fn convert_value(value: DynSolValue) -> Result<DecodedValue, BridgeError> {
+/// Convert a single `alloy_dyn_abi::DynSolValue` into the policy-engine /
+/// mapper-pipeline [`DecodedValue`]. Exposed for callers (e.g. the declarative
+/// Phase 5 opcode-stream dispatcher) that consume Tier B `subdecode` output —
+/// which carries `DynSolValue` — and need to feed it into the new pipeline.
+pub fn convert_value(value: DynSolValue) -> Result<DecodedValue, BridgeError> {
     Ok(match value {
         DynSolValue::Address(addr) => DecodedValue::Address(address_to_policy(addr)?),
         DynSolValue::Uint(v, _) => DecodedValue::Uint(v),

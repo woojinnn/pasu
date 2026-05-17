@@ -148,11 +148,18 @@ fn evaluate_transform(
     }
 }
 
-/// PoC JsonPath walker — supports `$.args.<name>` and `$.args.<name>[<idx>]`.
+/// PoC JsonPath walker — supports:
+///   * `$.args.<name>`
+///   * `$.args.<name>[<idx>]`
+///   * `$.args.<name>[<idx>][<idx>]...` (chained indices, Phase 5 — needed for
+///     UR `PERMIT2_PERMIT.permitSingle[0][0]` style nested tuple access)
 ///
-/// We intentionally avoid pulling in a full JSONPath library: each Tier A
-/// fixture in Phase 1 uses one of these two shapes, and richer queries fall
-/// into later phases (`unfold_v3_path`, multicall recurse, etc.).
+/// We intentionally avoid pulling in a full JSONPath library. Each fixture's
+/// queries reduce to "look up a named arg, then optionally index into nested
+/// arrays/tuples". Dotted nested object access (`$.args.x.y`) is not supported
+/// — call sites that need named-field access through a tuple should rely on
+/// the Tier B JSON ABI bridge to expose top-level args, or use numeric tuple
+/// indices.
 fn evaluate_json_path<'a>(
     args_json: &'a serde_json::Value,
     path: &str,
@@ -163,24 +170,10 @@ fn evaluate_json_path<'a>(
             "Phase 1A JsonPath must start with \"$.args.\", got {path:?}"
         )))?;
 
-    // Split off optional [idx] suffix.
-    let (name, idx_part) = match rest.find('[') {
-        Some(open) => {
-            let after = &rest[open + 1..];
-            let close = after.find(']').ok_or_else(|| MapperError::Internal(anyhow::anyhow!(
-                "JsonPath {path:?}: unterminated [..] index"
-            )))?;
-            let name = &rest[..open];
-            let trailing = &after[close + 1..];
-            if !trailing.is_empty() {
-                return Err(MapperError::Internal(anyhow::anyhow!(
-                    "JsonPath {path:?}: trailing characters after closing ]"
-                )));
-            }
-            let idx_str = &after[..close];
-            (name, Some(idx_str))
-        }
-        None => (rest, None),
+    // Split off the leading name from any chain of `[idx]` suffixes.
+    let (name, mut remainder) = match rest.find('[') {
+        Some(open) => (&rest[..open], &rest[open..]),
+        None => (rest, ""),
     };
 
     if name.is_empty() {
@@ -189,41 +182,63 @@ fn evaluate_json_path<'a>(
         )));
     }
 
-    let value = args_json.get(name).ok_or_else(|| {
+    let mut value = args_json.get(name).ok_or_else(|| {
         MapperError::MissingArgument(format!("$.args.{name} (path: {path})"))
     })?;
 
-    let Some(idx_str) = idx_part else {
-        return Ok(value);
-    };
+    // Walk the chain of [idx] segments left-to-right.
+    while !remainder.is_empty() {
+        let open = remainder.find('[').ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "JsonPath {path:?}: unexpected remainder {remainder:?} (expected '[')"
+            ))
+        })?;
+        if open != 0 {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "JsonPath {path:?}: characters between indices not supported (got \
+                 {:?} before next '[')",
+                &remainder[..open]
+            )));
+        }
+        let after = &remainder[1..];
+        let close = after.find(']').ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "JsonPath {path:?}: unterminated [..] index"
+            ))
+        })?;
+        let idx_str = &after[..close];
+        let trailing = &after[close + 1..];
 
-    let idx: i64 = idx_str.parse().map_err(|_| {
-        MapperError::Internal(anyhow::anyhow!(
-            "JsonPath {path:?}: invalid index {idx_str:?}"
-        ))
-    })?;
-    let arr = value.as_array().ok_or_else(|| {
-        MapperError::Internal(anyhow::anyhow!(
-            "JsonPath {path:?}: indexed access on non-array"
-        ))
-    })?;
+        let idx: i64 = idx_str.parse().map_err(|_| {
+            MapperError::Internal(anyhow::anyhow!(
+                "JsonPath {path:?}: invalid index {idx_str:?}"
+            ))
+        })?;
+        let arr = value.as_array().ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "JsonPath {path:?}: indexed access on non-array at remainder {remainder:?}"
+            ))
+        })?;
+        let resolved_opt: Option<usize> = if idx >= 0 {
+            usize::try_from(idx).ok().filter(|i| *i < arr.len())
+        } else {
+            usize::try_from(-idx)
+                .ok()
+                .filter(|abs| *abs <= arr.len())
+                .map(|abs| arr.len() - abs)
+        };
+        let resolved = resolved_opt.ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "JsonPath {path:?}: index {idx} out of bounds (len={})",
+                arr.len()
+            ))
+        })?;
 
-    let resolved_opt: Option<usize> = if idx >= 0 {
-        usize::try_from(idx).ok().filter(|i| *i < arr.len())
-    } else {
-        usize::try_from(-idx)
-            .ok()
-            .filter(|abs| *abs <= arr.len())
-            .map(|abs| arr.len() - abs)
-    };
-    let resolved = resolved_opt.ok_or_else(|| {
-        MapperError::Internal(anyhow::anyhow!(
-            "JsonPath {path:?}: index {idx} out of bounds (len={})",
-            arr.len()
-        ))
-    })?;
+        value = &arr[resolved];
+        remainder = trailing;
+    }
 
-    Ok(&arr[resolved])
+    Ok(value)
 }
 
 #[cfg(test)]

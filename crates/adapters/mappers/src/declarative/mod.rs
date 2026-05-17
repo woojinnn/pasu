@@ -22,6 +22,7 @@ pub mod builtin_fn;
 pub mod eval;
 pub mod mapper;
 pub mod multicall;
+pub mod opcode_stream;
 pub mod single_emit;
 pub mod types;
 

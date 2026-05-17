@@ -3,11 +3,12 @@
 //!
 //! Spec §5.4 (DeclarativeMapper struct), §5.5 (Bridge: DecodedCall.decoder_id).
 //!
-//! Phase 1A wired the `single_emit` strategy. Phase 4 adds `multicall_recurse`
-//! (delegated to [`super::multicall::execute`]). The remaining strategies
-//! (`opcode_stream_dispatch`, `enum_tagged_dispatch`) parse via Phase 0
-//! [`super::types`] but return [`MapperError::Internal`] when invoked — Phase 5
-//! / 향후 will fill them in.
+//! Phase 1A wired the `single_emit` strategy. Phase 4 added `multicall_recurse`
+//! (delegated to [`super::multicall::execute`]). Phase 5 adds
+//! `opcode_stream_dispatch` (delegated to [`super::opcode_stream::execute`]).
+//! The remaining strategy (`enum_tagged_dispatch`) parses via Phase 0
+//! [`super::types`] but returns [`MapperError::Internal`] when invoked — 향후
+//! will fill it in.
 
 use abi_resolver::{DecodedCall, DecoderId};
 use policy_engine::ActionEnvelope;
@@ -15,6 +16,7 @@ use policy_engine::ActionEnvelope;
 use crate::mapper::{MapContext, Mapper, MapperError, MapperId};
 
 use super::multicall;
+use super::opcode_stream;
 use super::single_emit;
 use super::types::{AdapterFunctionBundle, EmitRule};
 
@@ -85,9 +87,9 @@ impl Mapper for DeclarativeMapper {
                 let envelope = single_emit::execute(ctx, decoded, &self.bundle.emit)?;
                 Ok(vec![envelope])
             }
-            EmitRule::OpcodeStreamDispatch { .. } => Err(MapperError::Internal(
-                anyhow::anyhow!("opcode_stream_dispatch not implemented in Phase 1A"),
-            )),
+            EmitRule::OpcodeStreamDispatch { .. } => {
+                opcode_stream::execute(ctx, decoded, &self.bundle.emit)
+            }
             EmitRule::EnumTaggedDispatch { .. } => Err(MapperError::Internal(
                 anyhow::anyhow!("enum_tagged_dispatch not implemented in Phase 1A"),
             )),
