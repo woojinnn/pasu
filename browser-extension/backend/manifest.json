@@ -62,7 +62,8 @@
         "confirm.html",
         "wasm/policy_engine_wasm_bg.wasm",
         "default-policies/schema.cedarschema",
-        "default-policies/policy-set.json"
+        "default-policies/policy-set.json",
+        "seed-bundles/*.json"
       ]
     }
   ],
@@ -72,7 +73,8 @@
     "confirm.html",
     "wasm/policy_engine_wasm_bg.wasm",
     "default-policies/schema.cedarschema",
-    "default-policies/policy-set.json"
+    "default-policies/policy-set.json",
+    "seed-bundles/*.json"
   ],
   "background": {
     "__chrome__service_worker": "js/background.js",

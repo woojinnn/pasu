@@ -17,6 +17,57 @@ interface WasmExports {
   evaluate_policy_rpc_json(input_json: string): string;
   plan_policy_rpc_json(input_json: string): string;
   route_request_json(input_json: string): string;
+  // Phase 1B — declarative adapter pipeline.
+  // Contract documented in
+  // `crates/policy-engine-wasm/src/declarative_exports.rs`.
+  declarative_install_json(bundle_json: string): string;
+  declarative_lookup_json(input_json: string): string;
+}
+
+/**
+ * Result of a successful `declarative_install_json` call. `decoder_id` is the
+ * `declarative.<path>` key the engine uses to route lookups; `bundle_id` is the
+ * `<path>@<version>` identifier from the bundle JSON, retained for audit /
+ * debug surfaces.
+ */
+export interface DeclarativeInstallResult {
+  decoder_id: string;
+  bundle_id: string;
+}
+
+/**
+ * Wire shape consumed by `declarative_lookup_json`. The
+ * `decoded.value.kind` discriminator mirrors `DecodedValueDto` in
+ * `crates/policy-engine-wasm/src/dto.rs`.
+ */
+export interface DeclarativeLookupInput {
+  decoder_id: string;
+  ctx: {
+    chain_id: number;
+    from: string;
+    to: string;
+    value_wei?: string;
+    block_timestamp?: number;
+  };
+  decoded: {
+    decoder_id: string;
+    function_signature: string;
+    args: Array<{
+      name: string;
+      abi_type: string;
+      value: unknown;
+    }>;
+  };
+}
+
+/**
+ * Per Phase 1A, `envelopes` are the JSON-serialised `Vec<ActionEnvelope>` that
+ * `DeclarativeMapper::map` produces. We surface them as opaque records so the
+ * bridge does not couple to the variant-specific schema yet — downstream
+ * consumers (policy-rpc / Cedar) parse them against the action schema.
+ */
+export interface DeclarativeLookupResult {
+  envelopes: Record<string, unknown>[];
 }
 
 /**
@@ -147,6 +198,42 @@ export async function planPolicyRpc(
     diagnostics: plan.diagnostics,
   });
   return plan;
+}
+
+/**
+ * Phase 1B — install a declarative adapter bundle into the engine. The
+ * bundle JSON must conform to `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §4.1; the
+ * engine returns the `declarative.<path>` decoder id keyed off the bundle.
+ *
+ * Re-installing the same bundle is idempotent on the engine side — the
+ * mapper is replaced in the process-local registry — so callers don't have
+ * to dedupe.
+ */
+export async function installDeclarativeBundle(
+  bundleJson: string,
+): Promise<DeclarativeInstallResult> {
+  const exports = await load();
+  return unwrap<DeclarativeInstallResult>(
+    exports.declarative_install_json(bundleJson),
+  );
+}
+
+/**
+ * Phase 1B — run an installed declarative mapper against a decoded call.
+ *
+ * The input shape is forwarded verbatim to the WASM contract; see
+ * `crates/policy-engine-wasm/src/declarative_exports.rs` for the DTO
+ * definitions. Throws `EngineError("decoder_id_not_installed", ...)` when
+ * the lookup id is unknown — the caller is expected to fetch + install the
+ * bundle via `installDeclarativeBundle` before retrying.
+ */
+export async function declarativeMap(
+  input: DeclarativeLookupInput,
+): Promise<DeclarativeLookupResult> {
+  const exports = await load();
+  return unwrap<DeclarativeLookupResult>(
+    exports.declarative_lookup_json(JSON.stringify(input)),
+  );
 }
 
 export async function evaluatePolicyRpc(

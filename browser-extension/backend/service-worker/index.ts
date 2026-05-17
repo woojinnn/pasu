@@ -4,6 +4,7 @@ import {
   handleDashboardRequest,
   isDashboardRequest,
 } from "./dashboard/api";
+import { ensureSeedBundlesInstalled } from "./marketplace/declarative-adapter-loader";
 import { decideMessage } from "./orchestrator";
 import {
   ensureDefaultPoliciesInstalled,
@@ -24,9 +25,16 @@ console.log("Scopeball SW alive at", new Date().toISOString());
 // the moment the SW boots so the first dApp request doesn't pay the 4.77MB
 // compile cost inside the 3s lifecycle budget. Best-effort; failures are
 // logged and the first decideMessage call retries.
-void ensureDefaultPoliciesInstalled().catch((err) => {
-  console.warn("[Scopeball] cold-start prewarm failed:", err);
-});
+//
+// `ensureSeedBundlesInstalled` runs after the policy install resolves
+// because both call into the same WASM module; sequencing them keeps the
+// init() singleton's first caller from racing the second. Failures here
+// don't abort policy install — the decideMessage path retries.
+void ensureDefaultPoliciesInstalled()
+  .then(() => ensureSeedBundlesInstalled())
+  .catch((err) => {
+    console.warn("[Scopeball] cold-start prewarm failed:", err);
+  });
 
 Browser.runtime.onConnect.addListener((port) => {
   if (port.name !== Identifier.CONTENT_SCRIPT) return;
