@@ -39,5 +39,5 @@ pub use decoder::{
 pub use in_memory_registry::{InMemoryDecoderRegistry, InMemoryDecoderRegistryBuilder};
 pub use splitter::{
     IdentitySplitter, InMemorySplitterRegistry, InMemorySplitterRegistryBuilder, SplitContext,
-    SplitError, Splitter, SplitterRegistry, SubCall,
+    SplitError, Splitter, SplitterRegistry, SubCall, UniversalRouterSplitter,
 };
