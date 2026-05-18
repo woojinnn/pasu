@@ -1,6 +1,11 @@
 //! Cedar policy schema composition.
 
 pub mod aliases;
+pub mod enriched;
+pub mod fragment;
+
+pub use enriched::EnrichedSchema;
+pub use fragment::{CedarTypeFragment, CustomFieldSource};
 
 use crate::policy_rpc::{validate_manifests, PolicyManifest, PolicyRpcError};
 use serde::Serialize;
