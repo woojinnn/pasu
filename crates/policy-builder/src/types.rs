@@ -34,9 +34,21 @@ pub enum CedarType {
 /// `parent_optional` is `true`. The generator uses `parent_path` /
 /// `parent_optional` to emit `context has parent && …` guards exactly once
 /// per parent, regardless of how many leaves under it are referenced.
+///
+/// Fields are split into two groups by `is_custom`:
+/// - Base fields (`is_custom == false`) are calldata-derived and live directly
+///   under `context.<path>` — e.g. `context.feeBps`.
+/// - Custom fields (`is_custom == true`) are manifest-enriched and live under
+///   the optional `context.custom` record — e.g.
+///   `context.custom.totalInputUsd.value`. The generator emits
+///   `context has custom && context.custom has <parent> && …` guards for
+///   these so the resulting policy validates against the v1 schema.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldSpec {
-    /// Dotted path under `context`. Example: `"totalInputUsd.value"`.
+    /// Dotted path under `context` (base) or `context.custom` (custom). The
+    /// path itself never includes the `custom.` prefix; that's a property of
+    /// the field's `is_custom` flag.
+    /// Example: `"totalInputUsd.value"`.
     pub path: String,
     /// Cedar type of this leaf.
     #[serde(rename = "type")]
@@ -52,6 +64,12 @@ pub struct FieldSpec {
     /// Human-readable label for UIs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+    /// `true` when this field is a manifest-contributed extension that lives
+    /// under the optional `context.custom` record. `false` for calldata-derived
+    /// base fields. The generator/parser key off this flag to emit and accept
+    /// the `context.custom.<path>` prefix.
+    #[serde(default)]
+    pub is_custom: bool,
 }
 
 /// Schema for one action keyword.

@@ -76,8 +76,8 @@ pub fn parse_cedar(text: &str) -> Result<PolicyRule, ParseError> {
         "warn" => Severity::Warn,
         other => return Err(ParseError::InvalidSeverity(other.to_string())),
     };
-    let reason = capture_annotation(&cleaned, "reason")?
-        .ok_or(ParseError::MissingAnnotation("reason"))?;
+    let reason =
+        capture_annotation(&cleaned, "reason")?.ok_or(ParseError::MissingAnnotation("reason"))?;
 
     // `forbid (…)` head — verify presence first so `permit` and free-form
     // policies are rejected with the more specific MalformedHead error
@@ -258,10 +258,14 @@ fn parse_predicate(frag: &str) -> Result<Predicate, ParseError> {
     Err(ParseError::UnsupportedShape(frag.to_string()))
 }
 
+// `Result<Option<…>>` mirrors every other `try_*` arm in this module — they
+// can fail via the escape decoder. `try_bool_isfalse` happens not to (yet),
+// but parallel return shapes let `parse_predicate` use `?` uniformly.
+#[allow(clippy::unnecessary_wraps)]
 fn try_bool_isfalse(frag: &str) -> Result<Option<Predicate>, ParseError> {
     if let Some(caps) = bool_isfalse_regex().captures(frag) {
         return Ok(Some(Predicate {
-            field: caps[1].to_string(),
+            field: strip_custom_prefix(&caps[1]),
             op: "isFalse".into(),
             value: PredicateValue::None,
         }));
@@ -271,7 +275,7 @@ fn try_bool_isfalse(frag: &str) -> Result<Option<Predicate>, ParseError> {
 
 fn try_bool_istrue(frag: &str) -> Option<Predicate> {
     bool_istrue_regex().captures(frag).map(|caps| Predicate {
-        field: caps[1].to_string(),
+        field: strip_custom_prefix(&caps[1]),
         op: "isTrue".into(),
         value: PredicateValue::None,
     })
@@ -281,7 +285,7 @@ fn try_string_in(frag: &str) -> Result<Option<Predicate>, ParseError> {
     // Emit shape: `[ "a", "b" ].contains(context.field)`
     if let Some(caps) = string_in_regex().captures(frag) {
         let list_body = &caps[1];
-        let field = caps[2].to_string();
+        let field = strip_custom_prefix(&caps[2]);
         let values = parse_string_list(list_body)?;
         return Ok(Some(Predicate {
             field,
@@ -296,7 +300,7 @@ fn try_method_call(frag: &str) -> Result<Option<Predicate>, ParseError> {
     let Some(caps) = method_call_regex().captures(frag) else {
         return Ok(None);
     };
-    let field = caps[1].to_string();
+    let field = strip_custom_prefix(&caps[1]);
     let method = &caps[2];
     let args = caps[3].trim();
 
@@ -326,7 +330,7 @@ fn try_infix_cmp(frag: &str) -> Result<Option<Predicate>, ParseError> {
     let Some(caps) = infix_cmp_regex().captures(frag) else {
         return Ok(None);
     };
-    let field = caps[1].to_string();
+    let field = strip_custom_prefix(&caps[1]);
     let symbol = &caps[2];
     let rhs = caps[3].trim();
 
@@ -468,6 +472,23 @@ fn strip_double_quotes(s: &str) -> Option<&str> {
     Some(stripped)
 }
 
+/// Strip the `custom.` prefix from a captured Cedar field path.
+///
+/// The generator emits custom (manifest-enriched) fields as
+/// `context.custom.<path>`, but the canonical `PolicyRule::predicates[].field`
+/// form is just `<path>` — the custom-vs-base split is recovered structurally
+/// from the schema at compile time. Strip the prefix on parse so the round
+/// trip lands back on the same `field` string.
+///
+/// Note: this is an auto-migrate on read — v0 Cedar text that addresses an
+/// enrichment field directly under `context.<path>` will land here without
+/// the prefix and will validate-fail on re-emit if the field's schema entry
+/// has `is_custom = true`. There are no v0 examples in the repo any more so
+/// this is the desired behaviour: reject v0 input cleanly at compile time.
+fn strip_custom_prefix(path: &str) -> String {
+    path.strip_prefix("custom.").unwrap_or(path).to_string()
+}
+
 // ── regex caches (compiled once) ───────────────────────────────────────────
 
 macro_rules! cached_regex {
@@ -481,16 +502,40 @@ macro_rules! cached_regex {
 
 cached_regex!(line_comment_regex, r"//[^\n]*");
 cached_regex!(block_comment_regex, r"(?s)/\*.*?\*/");
-cached_regex!(annotation_regex, r#"@(id|severity|reason)\("((?:\\.|[^"\\])*)"\)"#);
+cached_regex!(
+    annotation_regex,
+    r#"@(id|severity|reason)\("((?:\\.|[^"\\])*)"\)"#
+);
 cached_regex!(action_regex, r#"action\s*==\s*Action::"((?:\\.|[^"\\])*)""#);
 cached_regex!(head_regex, r"(?s)forbid\s*\([^)]*\)");
-cached_regex!(has_guard_regex, r"^\s*context(?:\.[A-Za-z_][A-Za-z0-9_]*)*\s+has\s+[A-Za-z_][A-Za-z0-9_]*\s*$");
-cached_regex!(bool_isfalse_regex, r"^\s*!\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\s*$");
-cached_regex!(bool_istrue_regex, r"^\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\s*$");
-cached_regex!(string_in_regex, r#"^\s*\[(.*)\]\.contains\(context\.([A-Za-z_][A-Za-z0-9_.]*)\)\s*$"#);
-cached_regex!(method_call_regex, r"^\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\.([A-Za-z]+)\((.*)\)\s*$");
-cached_regex!(infix_cmp_regex, r"^\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\s*(==|!=|>=|<=|>|<)\s*(.+)$");
-cached_regex!(decimal_arg_regex, r#"^\s*decimal\("((?:\\.|[^"\\])*)"\)\s*$"#);
+cached_regex!(
+    has_guard_regex,
+    r"^\s*context(?:\.[A-Za-z_][A-Za-z0-9_]*)*\s+has\s+[A-Za-z_][A-Za-z0-9_]*\s*$"
+);
+cached_regex!(
+    bool_isfalse_regex,
+    r"^\s*!\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\s*$"
+);
+cached_regex!(
+    bool_istrue_regex,
+    r"^\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\s*$"
+);
+cached_regex!(
+    string_in_regex,
+    r"^\s*\[(.*)\]\.contains\(context\.([A-Za-z_][A-Za-z0-9_.]*)\)\s*$"
+);
+cached_regex!(
+    method_call_regex,
+    r"^\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\.([A-Za-z]+)\((.*)\)\s*$"
+);
+cached_regex!(
+    infix_cmp_regex,
+    r"^\s*context\.([A-Za-z_][A-Za-z0-9_.]*)\s*(==|!=|>=|<=|>|<)\s*(.+)$"
+);
+cached_regex!(
+    decimal_arg_regex,
+    r#"^\s*decimal\("((?:\\.|[^"\\])*)"\)\s*$"#
+);
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
@@ -662,6 +707,91 @@ mod tests {
         "#;
         let err = parse_cedar(text).unwrap_err();
         assert!(matches!(err, ParseError::MissingAnnotation("severity")));
+    }
+
+    #[test]
+    fn custom_field_path_is_canonicalized() {
+        // Generator emits `context.custom.totalInputUsd.value` but the
+        // canonical PolicyRule field is `totalInputUsd.value` — the
+        // builder/schema does the custom-vs-base discrimination, not the
+        // wire format.
+        let rule = rule_with(vec![Predicate {
+            field: "totalInputUsd.value".into(),
+            op: "gt".into(),
+            value: PredicateValue::Single("100.00".into()),
+        }]);
+        let parsed = roundtrip(&rule);
+        assert_eq!(parsed.predicates.len(), 1);
+        assert_eq!(parsed.predicates[0].field, "totalInputUsd.value");
+    }
+
+    /// Normalize Cedar text for whitespace-insensitive comparison.
+    ///
+    /// The generator emits slightly different surface formatting than the
+    /// hand-written `policy-rpc/examples/policies/swap/*.cedar` fixtures
+    /// (e.g. `principal is Wallet,` vs `principal,`, `&&` at start vs end of
+    /// line). Both are semantically identical Cedar; this helper collapses
+    /// whitespace and drops the optional `is <Type>` qualifier so a
+    /// round-trip test can assert structural equivalence.
+    fn normalize_cedar(text: &str) -> String {
+        let mut s = text.replace("principal is Wallet", "principal");
+        s = s.replace("resource is Protocol", "resource");
+        // Collapse all whitespace runs to a single space.
+        let collapsed: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
+        collapsed
+    }
+
+    #[test]
+    fn parse_max_input_usd_100_example_roundtrips() {
+        // The Phase 7.3 fixed-fixture `max-input-usd-100.cedar` is the v1
+        // golden. Parsing it back and re-emitting via the generator must
+        // produce structurally identical text.
+        let example = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../policy-rpc/examples/policies/swap/max-input-usd-100.cedar"
+        ));
+        let parsed = parse_cedar(example).unwrap();
+        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        assert_eq!(
+            normalize_cedar(&reemitted),
+            normalize_cedar(example),
+            "round-trip not structurally identical.\n--- example ---\n{example}\n--- reemitted ---\n{reemitted}"
+        );
+    }
+
+    #[test]
+    fn parse_expired_deadline_example_roundtrips() {
+        let example = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../policy-rpc/examples/policies/swap/expired-deadline.cedar"
+        ));
+        let parsed = parse_cedar(example).unwrap();
+        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        assert_eq!(normalize_cedar(&reemitted), normalize_cedar(example));
+    }
+
+    #[test]
+    fn parse_max_fee_bps_100_base_field_example_roundtrips() {
+        // Base field — feeBps lives directly under context, no custom prefix.
+        let example = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../policy-rpc/examples/policies/swap/max-fee-bps-100.cedar"
+        ));
+        let parsed = parse_cedar(example).unwrap();
+        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        assert_eq!(normalize_cedar(&reemitted), normalize_cedar(example));
+    }
+
+    #[test]
+    fn parse_max_input_usd_3_example_roundtrips() {
+        // Decimal greaterThanOrEqual + custom field round-trip.
+        let example = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../policy-rpc/examples/policies/swap/max-input-usd-3.cedar"
+        ));
+        let parsed = parse_cedar(example).unwrap();
+        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        assert_eq!(normalize_cedar(&reemitted), normalize_cedar(example));
     }
 
     #[test]

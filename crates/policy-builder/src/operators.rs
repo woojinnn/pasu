@@ -457,16 +457,20 @@ mod tests {
 
     #[test]
     fn decimal_gt_emits_method_call() {
+        // The left-hand expression is the generator's responsibility; the
+        // operator just substitutes whatever it's given. In v1, custom
+        // fields arrive prefixed with `context.custom.` — exercise that
+        // shape here so the regression bar is visible.
         let op = find(CedarType::Decimal, "gt").unwrap();
         let out = op
             .emit(
-                "context.totalInputUsd.value",
+                "context.custom.totalInputUsd.value",
                 &PredicateValue::Single("100.00".into()),
             )
             .unwrap();
         assert_eq!(
             out,
-            r#"context.totalInputUsd.value.greaterThan(decimal("100.00"))"#
+            r#"context.custom.totalInputUsd.value.greaterThan(decimal("100.00"))"#
         );
     }
 
@@ -514,16 +518,18 @@ mod tests {
 
     #[test]
     fn set_string_contains_any() {
+        // Exercise a custom-prefixed left-hand expression — set operators
+        // are field-agnostic but the v1 wire shape is `context.custom.<path>`.
         let op = find(CedarType::SetOfString, "containsAny").unwrap();
         let out = op
             .emit(
-                "context.protocolIds",
-                &PredicateValue::Multi(vec!["uniswap_v2".into(), "uniswap_v3".into()]),
+                "context.custom.totalInputUsd.sources",
+                &PredicateValue::Multi(vec!["chainlink".into(), "pyth".into()]),
             )
             .unwrap();
         assert_eq!(
             out,
-            r#"context.protocolIds.containsAny(["uniswap_v2", "uniswap_v3"])"#
+            r#"context.custom.totalInputUsd.sources.containsAny(["chainlink", "pyth"])"#
         );
     }
 

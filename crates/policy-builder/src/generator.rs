@@ -70,7 +70,11 @@ pub fn compile(rule: &PolicyRule, schema: &ActionSchema) -> Result<String, Compi
         collect_has_guards(field_spec, &mut needed_has_guards);
 
         let op = operators::find(field_spec.cedar_type, &predicate.op).expect("validated above");
-        let left = format!("context.{}", predicate.field);
+        let left = if field_spec.is_custom {
+            format!("context.custom.{}", predicate.field)
+        } else {
+            format!("context.{}", predicate.field)
+        };
         let fragment = op
             .emit(&left, &predicate.value)
             .map_err(|source| CompileError::Emit { index, source })?;
@@ -98,17 +102,32 @@ pub fn compile_with_registry(
 
 fn collect_has_guards(field_spec: &crate::types::FieldSpec, out: &mut BTreeSet<String>) {
     // Cedar strict validation requires a `has` guard before any access to an
-    // optional attribute. Three cases:
+    // optional attribute. Three structural cases:
     //   1. top-level optional leaf      → `context has <leaf>`
     //   2. optional parent record       → `context has <parent>`
     //   3. optional leaf within parent  → `context.<parent> has <leaf_name>`
     // Cases 2 and 3 can both fire for the same field (optional leaf inside
     // an optional parent); both guards are needed and `BTreeSet` dedupes
     // shared parents across multiple predicates.
+    //
+    // Custom fields live under the optional `context.custom` record. Any
+    // custom predicate therefore needs an additional `context has custom`
+    // guard, and the parent/leaf guards anchor under `context.custom.*`
+    // rather than `context.*`. `BTreeSet`'s lexicographic order places
+    // `context has custom` (space < dot) before `context.custom has X`,
+    // and that in turn before `context.custom.X has y`, so the emitted
+    // guard cluster narrows the type from outside in without further
+    // bookkeeping.
+    let prefix = if field_spec.is_custom {
+        out.insert("context has custom".to_string());
+        "context.custom"
+    } else {
+        "context"
+    };
     match field_spec.parent_path.as_deref() {
         Some(parent) => {
             if field_spec.parent_optional {
-                out.insert(format!("context has {parent}"));
+                out.insert(format!("{prefix} has {parent}"));
             }
             if field_spec.optional {
                 let leaf_name = field_spec
@@ -116,12 +135,12 @@ fn collect_has_guards(field_spec: &crate::types::FieldSpec, out: &mut BTreeSet<S
                     .rsplit('.')
                     .next()
                     .expect("dotted path has at least one segment");
-                out.insert(format!("context.{parent} has {leaf_name}"));
+                out.insert(format!("{prefix}.{parent} has {leaf_name}"));
             }
         }
         None => {
             if field_spec.optional {
-                out.insert(format!("context has {}", field_spec.path));
+                out.insert(format!("{prefix} has {}", field_spec.path));
             }
         }
     }
@@ -209,6 +228,10 @@ mod tests {
 
     #[test]
     fn optional_parent_emits_single_has_guard() {
+        // totalInputUsd lives under context.custom in v1: every predicate on
+        // it must be guarded by both `context has custom` and
+        // `context.custom has totalInputUsd`, but each guard only once
+        // regardless of how many leaves under the parent are referenced.
         let rule = rule_with(vec![
             Predicate {
                 field: "totalInputUsd.value".into(),
@@ -223,12 +246,19 @@ mod tests {
         ]);
         let out = compile(&rule, &swap::schema()).unwrap();
         assert_eq!(
-            out.matches("context has totalInputUsd").count(),
+            out.matches("context has custom").count(),
             1,
-            "guard should appear once, got:\n{out}"
+            "context-has-custom guard should appear once, got:\n{out}"
         );
-        assert!(out.contains(r#"context.totalInputUsd.value.greaterThan(decimal("100.00"))"#));
-        assert!(out.contains("context.totalInputUsd.staleSec <= 60"));
+        assert_eq!(
+            out.matches("context.custom has totalInputUsd").count(),
+            1,
+            "parent guard should appear once, got:\n{out}"
+        );
+        assert!(
+            out.contains(r#"context.custom.totalInputUsd.value.greaterThan(decimal("100.00"))"#)
+        );
+        assert!(out.contains("context.custom.totalInputUsd.staleSec <= 60"));
     }
 
     #[test]
@@ -246,8 +276,11 @@ mod tests {
             },
         ]);
         let out = compile(&rule, &swap::schema()).unwrap();
-        assert!(out.contains("context has totalInputUsd"));
-        assert!(out.contains("context has totalMinOutputUsd"));
+        // Single context-has-custom narrows the type; parent guards anchor
+        // under context.custom.
+        assert_eq!(out.matches("context has custom").count(), 1);
+        assert!(out.contains("context.custom has totalInputUsd"));
+        assert!(out.contains("context.custom has totalMinOutputUsd"));
     }
 
     #[test]
@@ -258,7 +291,69 @@ mod tests {
             value: PredicateValue::Multi(vec!["chainlink".into(), "pyth".into()]),
         }]);
         let out = compile(&rule, &swap::schema()).unwrap();
-        assert!(out.contains(r#"context.totalInputUsd.sources.containsAny(["chainlink", "pyth"])"#));
+        assert!(out.contains(
+            r#"context.custom.totalInputUsd.sources.containsAny(["chainlink", "pyth"])"#
+        ));
+    }
+
+    #[test]
+    fn custom_field_top_level_optional_leaf_emits_full_guard_cluster() {
+        // validityDeltaSec is an optional top-level custom leaf — needs both
+        // `context has custom` and `context.custom has validityDeltaSec`
+        // before the comparison.
+        let rule = rule_with(vec![Predicate {
+            field: "validityDeltaSec".into(),
+            op: "lte".into(),
+            value: PredicateValue::Single("0".into()),
+        }]);
+        let out = compile(&rule, &swap::schema()).unwrap();
+        assert!(out.contains("context has custom"), "got:\n{out}");
+        assert!(
+            out.contains("context.custom has validityDeltaSec"),
+            "got:\n{out}"
+        );
+        assert!(
+            out.contains("context.custom.validityDeltaSec <= 0"),
+            "got:\n{out}"
+        );
+    }
+
+    #[test]
+    fn base_field_does_not_emit_context_has_custom() {
+        // feeBps is a base optional Long — no custom prefix or guard.
+        let rule = rule_with(vec![Predicate {
+            field: "feeBps".into(),
+            op: "gt".into(),
+            value: PredicateValue::Single("100".into()),
+        }]);
+        let out = compile(&rule, &swap::schema()).unwrap();
+        assert!(!out.contains("context has custom"), "got:\n{out}");
+        assert!(out.contains("context has feeBps"));
+        assert!(out.contains("context.feeBps > 100"));
+    }
+
+    #[test]
+    fn mixed_base_and_custom_predicates_share_no_guards() {
+        let rule = rule_with(vec![
+            Predicate {
+                field: "feeBps".into(),
+                op: "gt".into(),
+                value: PredicateValue::Single("100".into()),
+            },
+            Predicate {
+                field: "totalInputUsd.value".into(),
+                op: "gt".into(),
+                value: PredicateValue::Single("100.00".into()),
+            },
+        ]);
+        let out = compile(&rule, &swap::schema()).unwrap();
+        assert!(out.contains("context has feeBps"));
+        assert!(out.contains("context has custom"));
+        assert!(out.contains("context.custom has totalInputUsd"));
+        assert!(out.contains("context.feeBps > 100"));
+        assert!(
+            out.contains(r#"context.custom.totalInputUsd.value.greaterThan(decimal("100.00"))"#)
+        );
     }
 
     #[test]
