@@ -122,6 +122,25 @@ pub struct PreviewSchemaInputDto {
     pub manifests: Vec<PolicyManifest>,
 }
 
+/// One entry in the base alias table surfaced through `get_alias_table_json`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AliasEntryDto {
+    /// Manifest-facing alias name.
+    pub name: String,
+    /// `"scalar"` or `"record"`.
+    pub kind: String,
+    /// Cedar source spelling.
+    pub cedar_spelling: String,
+}
+
+/// `get_alias_table_json` success payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct AliasTableOutput {
+    /// Alias entries.
+    pub entries: Vec<AliasEntryDto>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

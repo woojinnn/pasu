@@ -16,6 +16,6 @@ pub fn _start() {
 }
 
 pub use exports::{
-    evaluate_policy_rpc_json, install_policies_json, plan_policy_rpc_json,
+    evaluate_policy_rpc_json, get_alias_table_json, install_policies_json, plan_policy_rpc_json,
     preview_installed_schema_json, preview_schema_json, route_request_json,
 };

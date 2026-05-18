@@ -1,8 +1,9 @@
 //! Thin `#[wasm_bindgen]` JSON-string exports.
 
 use crate::dto::{
-    EngineErrorDto, Envelope, EvaluatePolicyRpcInputDto, InstallPoliciesInputDto, MatchedPolicyDto,
-    PlanPolicyRpcInputDto, PolicyRpcPlanDto, PreviewSchemaInputDto, RawRequestDto, VerdictDto,
+    AliasEntryDto, AliasTableOutput, EngineErrorDto, Envelope, EvaluatePolicyRpcInputDto,
+    InstallPoliciesInputDto, MatchedPolicyDto, PlanPolicyRpcInputDto, PolicyRpcPlanDto,
+    PreviewSchemaInputDto, RawRequestDto, VerdictDto,
 };
 use alloy_primitives::U256;
 use policy_engine::lowering::policy_request_from_envelope;
@@ -412,6 +413,24 @@ pub fn route_request_json(input_json: String) -> String {
         Ok(envelopes) => Envelope::ok(envelopes).to_json(),
         Err(e) => Envelope::<()>::err("route_failed", e.to_string()).to_json(),
     }
+}
+
+#[wasm_bindgen]
+pub fn get_alias_table_json() -> String {
+    use policy_engine::schema::aliases::{base_alias_table, AliasKind};
+    let entries = base_alias_table()
+        .iter()
+        .map(|(name, entry)| AliasEntryDto {
+            name: (*name).to_owned(),
+            kind: match entry.kind {
+                AliasKind::Scalar => "scalar",
+                AliasKind::Record => "record",
+            }
+            .to_owned(),
+            cedar_spelling: entry.cedar_spelling.to_owned(),
+        })
+        .collect();
+    Envelope::ok(AliasTableOutput { entries }).to_json()
 }
 
 #[wasm_bindgen]
@@ -1220,6 +1239,34 @@ mod tests_policy_rpc {
             }),
             "{parsed}"
         );
+    }
+
+    #[test]
+    fn get_alias_table_returns_known_aliases() {
+        let out = get_alias_table_json();
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        let entries = parsed["data"]["entries"].as_array().expect("entries array");
+        let by_name: std::collections::BTreeMap<&str, &Value> = entries
+            .iter()
+            .map(|e| (e["name"].as_str().expect("name string"), e))
+            .collect();
+
+        // Scalars and records both present, keyed by their manifest spelling.
+        assert!(by_name.contains_key("String"));
+        assert_eq!(by_name["String"]["kind"], "scalar");
+        assert_eq!(by_name["String"]["cedarSpelling"], "String");
+
+        assert!(by_name.contains_key("UsdValuation"));
+        assert_eq!(by_name["UsdValuation"]["kind"], "record");
+        assert_eq!(by_name["UsdValuation"]["cedarSpelling"], "UsdValuation");
+
+        assert!(by_name.contains_key("Set<String>"));
+        assert_eq!(by_name["Set<String>"]["kind"], "scalar");
+
+        // Unknown aliases must be absent.
+        assert!(!by_name.contains_key("RiskScore"));
     }
 
     #[test]
