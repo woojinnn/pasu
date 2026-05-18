@@ -480,11 +480,14 @@ fn strip_double_quotes(s: &str) -> Option<&str> {
 /// from the schema at compile time. Strip the prefix on parse so the round
 /// trip lands back on the same `field` string.
 ///
-/// Note: this is an auto-migrate on read — v0 Cedar text that addresses an
-/// enrichment field directly under `context.<path>` will land here without
-/// the prefix and will validate-fail on re-emit if the field's schema entry
-/// has `is_custom = true`. There are no v0 examples in the repo any more so
-/// this is the desired behaviour: reject v0 input cleanly at compile time.
+/// As a side effect this gives **lenient auto-migration of v0 input**: a
+/// hand-rolled v0 policy that addresses an enrichment field directly as
+/// `context.totalInputUsd.value` parses to the canonical
+/// `field: "totalInputUsd.value"`, the schema lookup still resolves it, and
+/// re-emitting produces the v1 `context.custom.totalInputUsd.value` form
+/// with the right guard cluster. v0 input is therefore accepted as a
+/// migration path, not rejected — see
+/// [`tests::v0_input_auto_migrates_to_v1`].
 fn strip_custom_prefix(path: &str) -> String {
     path.strip_prefix("custom.").unwrap_or(path).to_string()
 }
@@ -780,6 +783,47 @@ mod tests {
         let parsed = parse_cedar(example).unwrap();
         let reemitted = compile(&parsed, &swap::schema()).unwrap();
         assert_eq!(normalize_cedar(&reemitted), normalize_cedar(example));
+    }
+
+    #[test]
+    fn v0_input_auto_migrates_to_v1() {
+        // Hand-rolled v0 shape: enrichment field addressed directly under
+        // `context` (no `custom.` prefix), with the matching legacy
+        // `context has totalInputUsd` guard. Parser strips the (absent)
+        // prefix, schema lookup still resolves the canonical path, and
+        // re-emit lifts the field into the v1 `context.custom.*` namespace
+        // with the correct guard cluster. This is documented behaviour —
+        // see `strip_custom_prefix`.
+        let v0 = concat!(
+            "@id(\"user/legacy\")\n",
+            "@severity(\"deny\")\n",
+            "@reason(\"legacy v0 shape\")\n",
+            "forbid (\n",
+            "  principal,\n",
+            "  action == Action::\"swap\",\n",
+            "  resource\n",
+            ") when {\n",
+            "  context has totalInputUsd &&\n",
+            "  context.totalInputUsd.value.greaterThan(decimal(\"100.0000\"))\n",
+            "};\n"
+        );
+        let parsed = parse_cedar(v0).expect("v0 input must parse");
+        assert_eq!(parsed.predicates.len(), 1);
+        assert_eq!(parsed.predicates[0].field, "totalInputUsd.value");
+        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        assert!(
+            reemitted.contains("context has custom"),
+            "v0 → v1 migration must emit context-has-custom guard, got:\n{reemitted}"
+        );
+        assert!(
+            reemitted.contains("context.custom has totalInputUsd"),
+            "v0 → v1 migration must emit nested has guard, got:\n{reemitted}"
+        );
+        assert!(
+            reemitted
+                .contains(r#"context.custom.totalInputUsd.value.greaterThan(decimal("100.0000"))"#),
+            "v0 → v1 migration must rewrite the comparison to context.custom.*, got:\n{reemitted}"
+        );
     }
 
     #[test]
