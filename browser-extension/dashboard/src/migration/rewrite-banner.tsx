@@ -29,6 +29,11 @@ import "./rewrite-banner.css";
 // or rewrite tokens that shouldn't be touched. This set is the
 // pre-v1 base alias-table names from spec §"Migration of existing
 // user-installed policies (D10)".
+// How long the "No rewrite needed" toast stays visible after an
+// `applied: false` migration. Short enough to feel ephemeral, long
+// enough for the user to read it.
+const INFO_AUTO_CLEAR_MS = 3_000;
+
 const V0_KNOWN_FIELDS: readonly string[] = [
   "totalInputUsd",
   "totalMinOutputUsd",
@@ -45,6 +50,11 @@ export function RewriteBanner(): JSX.Element | null {
   const [managed, setManaged] = useState<ManagedPolicy[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Phase 7 carry-over K: when `migration:rewrite` returns
+  // `applied: false` the SW auto-acks and the row disappears with no
+  // user feedback. We surface a brief inline "No rewrite needed" notice
+  // keyed by id; it auto-clears after `INFO_AUTO_CLEAR_MS`.
+  const [info, setInfo] = useState<{ id: string; text: string } | null>(null);
 
   const managedById = useMemo(() => {
     const m = new Map<string, ManagedPolicy>();
@@ -72,6 +82,13 @@ export function RewriteBanner(): JSX.Element | null {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Auto-clear the "No rewrite needed" toast after a short delay.
+  useEffect(() => {
+    if (!info) return;
+    const handle = setTimeout(() => setInfo(null), INFO_AUTO_CLEAR_MS);
+    return () => clearTimeout(handle);
+  }, [info]);
 
   const onRewrite = useCallback(
     async (id: string) => {
@@ -101,8 +118,16 @@ export function RewriteBanner(): JSX.Element | null {
           // user can retry.
           await client.putRaw({ id, text: result.rewritten });
           await client.migrationAck(id);
+        } else {
+          // Phase 7 carry-over K: SW auto-acked (the rewriter found
+          // nothing to substitute). Surface that explicitly so the
+          // user knows the row didn't disappear because of a hidden
+          // error.
+          setInfo({
+            id,
+            text: "No rewrite needed — this policy is already on the v1 layout.",
+          });
         }
-        // applied === false → SW auto-acked; nothing else to do.
         await refresh();
       } catch (err) {
         const message =
@@ -116,7 +141,22 @@ export function RewriteBanner(): JSX.Element | null {
   );
 
   if (pendingIds === null) return null;
-  if (pendingIds.length === 0) return null;
+  // When the pending list is empty we may still have an outstanding
+  // "No rewrite needed" toast from the last `applied: false` action.
+  // Render a slim variant of the banner so the toast is visible.
+  if (pendingIds.length === 0) {
+    if (!info) return null;
+    return (
+      <div className="rewrite-banner rewrite-banner-info-only" role="status">
+        <div
+          className="rewrite-banner-info"
+          data-testid="rewrite-banner-info"
+        >
+          {info.text}
+        </div>
+      </div>
+    );
+  }
 
   const noun = pendingIds.length === 1 ? "policy needs" : "policies need";
 
@@ -134,6 +174,14 @@ export function RewriteBanner(): JSX.Element | null {
           새로고침
         </button>
       </div>
+      {info ? (
+        <div
+          className="rewrite-banner-info"
+          data-testid="rewrite-banner-info"
+        >
+          {info.text}
+        </div>
+      ) : null}
       <p className="rewrite-banner-sub">
         이전 버전에서 작성된 정책들이 새로운 스키마에 맞춰
         <code>context.custom.</code>으로 옮겨져야 합니다. 자동 변환을 시도하려면

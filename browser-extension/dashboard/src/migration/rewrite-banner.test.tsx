@@ -183,6 +183,54 @@ describe("RewriteBanner", () => {
     );
   });
 
+  // Phase 7 codex carry-over K: previously `applied:false` was a silent
+  // pass-through — the row vanished with no user feedback. The banner
+  // now surfaces a "No rewrite needed" toast that auto-clears after a
+  // few seconds.
+  it("surfaces a 'No rewrite needed' info toast when rewrite returns applied:false", async () => {
+    vi.useFakeTimers();
+    try {
+      let pending = ["dashboard::p1"];
+      const listMigrationPending = vi.fn(async () => ({ ids: [...pending] }));
+      const listManaged = vi.fn(async () => [
+        managed(
+          "dashboard::p1",
+          '@id("dashboard::p1") forbid (principal, action, resource);',
+        ),
+      ]);
+      const rewritePolicyToCustom = vi.fn(
+        async (args: { id: string; text: string }) => {
+          pending = pending.filter((p) => p !== args.id);
+          return { id: args.id, rewritten: args.text, applied: false };
+        },
+      );
+      renderBanner({
+        listMigrationPending,
+        listManaged,
+        rewritePolicyToCustom,
+      });
+
+      // findByRole drains microtasks under fake timers via the
+      // testing-library async helpers.
+      const btn = await vi.waitFor(() =>
+        screen.getByRole("button", { name: /Rewrite/i }),
+      );
+      fireEvent.click(btn);
+
+      // The toast shows up after the rewrite resolves.
+      const toast = await vi.waitFor(() =>
+        screen.getByTestId("rewrite-banner-info"),
+      );
+      expect(toast.textContent).toMatch(/No rewrite needed/i);
+
+      // After the auto-clear delay the toast is gone.
+      await vi.advanceTimersByTimeAsync(3_500);
+      expect(screen.queryByTestId("rewrite-banner-info")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("surfaces an inline error when rewrite throws", async () => {
     const listMigrationPending = vi.fn(async () => ({ ids: ["dashboard::p1"] }));
     const listManaged = vi.fn(async () => [
