@@ -40,19 +40,50 @@ export function PredicateRow({
     });
   };
 
+  // Group fields by base vs custom so users see at a glance that the second
+  // set is manifest-enriched (context.custom.*) and therefore subject to a
+  // runtime `has` guard. We use <optgroup> rather than two selects so keyboard
+  // navigation stays intact and a missing isCustom (older WASM build) still
+  // renders flat. The Korean labels match the rest of the BuilderView copy.
+  const baseFields = fields.filter((f) => !f.isCustom);
+  const customFields = fields.filter((f) => f.isCustom);
+  const selected = fields.find((f) => f.path === predicate.field);
+  const isCustomSelected = selected?.isCustom === true;
+
   return (
-    <div className="predicate-row">
+    <div
+      className={`predicate-row${isCustomSelected ? " predicate-row-custom" : ""}`}
+    >
       <select
         className="pr-field"
         value={predicate.field}
         onChange={(e) => handleField(e.target.value)}
       >
         <option value="">— field —</option>
-        {fields.map((f) => (
-          <option key={f.path} value={f.path}>
-            {f.label ? `${f.label} (${f.path})` : f.path}
-          </option>
-        ))}
+        {customFields.length === 0 ? (
+          fields.map((f) => (
+            <option key={f.path} value={f.path}>
+              {f.label ? `${f.label} (${f.path})` : f.path}
+            </option>
+          ))
+        ) : (
+          <>
+            <optgroup label="기본 필드 (calldata)">
+              {baseFields.map((f) => (
+                <option key={f.path} value={f.path}>
+                  {f.label ? `${f.label} (${f.path})` : f.path}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="커스텀 필드 (manifest enrichment)">
+              {customFields.map((f) => (
+                <option key={f.path} value={f.path}>
+                  {f.label ? `${f.label} (${f.path})` : f.path}
+                </option>
+              ))}
+            </optgroup>
+          </>
+        )}
       </select>
 
       <select

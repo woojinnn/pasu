@@ -3,6 +3,24 @@
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
+  position: relative;
+  padding: var(--space-1) 0;
+  border-left: 3px solid transparent;
+  padding-left: var(--space-2);
+}
+
+/* Custom (manifest-enriched) fields live under context.custom.*, which is
+ * optional — the engine emits a `has` guard before evaluating. Treat the
+ * row as a subtle accent so users see at a glance that this predicate is
+ * only meaningful when the manifest's enrichment populated the field. */
+.predicate-row-custom {
+  border-left-color: var(--gold-200, var(--green-200));
+  background: linear-gradient(
+    to right,
+    var(--gold-50, transparent),
+    transparent 40%
+  );
+  border-radius: var(--radius-md);
 }
 
 .predicate-row select,

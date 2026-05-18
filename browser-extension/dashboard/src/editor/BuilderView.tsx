@@ -171,6 +171,15 @@ export function BuilderView({
           <div className="builder-error">스키마 로드 실패: {schemaErr}</div>
         ) : null}
 
+        {schema && schema.fields.some((f) => f.isCustom) ? (
+          <p className="builder-predicates-note">
+            <strong>커스텀 필드</strong>는 매니페스트 enrichment로 채워지는
+            <code> context.custom.* </code>아래 값입니다. 컴파일러가 자동으로
+            <code> has </code>가드를 삽입하므로 매니페스트가 해당 필드를
+            제공하지 않으면 규칙은 일치하지 않습니다.
+          </p>
+        ) : null}
+
         {schema && rule.predicates.length === 0 ? (
           <p className="builder-empty">
             조건이 없으면 무조건 forbid(=Fail) 처리됩니다. 보통은 1개 이상

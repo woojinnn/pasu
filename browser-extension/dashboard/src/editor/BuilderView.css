@@ -115,6 +115,24 @@
   font-style: italic;
 }
 
+.builder-predicates-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--gold-50, rgba(245, 222, 130, 0.18));
+  border: 1px solid var(--gold-100, rgba(220, 188, 90, 0.30));
+  color: var(--gold-800, var(--text-secondary));
+  font-size: 12px;
+  line-height: 1.55;
+}
+.builder-predicates-note code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
 .builder-compile {
   align-self: flex-start;
   background: var(--green-400);

@@ -63,6 +63,19 @@ export interface FieldDto {
   parentPath?: string;
   parentOptional: boolean;
   label?: string;
+  /**
+   * `true` when the field is a manifest-contributed extension and lives
+   * under `context.custom.<path>`. `false` for calldata-derived base
+   * fields under `context.<path>`. The WASM compiler emits the
+   * `context.custom` prefix and the `has` guard cluster automatically —
+   * UIs should use this flag for grouping/labelling only, never to rewrite
+   * predicate paths.
+   *
+   * Optional + defaulted to `false` to stay compatible with the previous
+   * wire shape; the field will always be present from v1 builds of
+   * policy-builder-wasm.
+   */
+  isCustom?: boolean;
   operators: OperatorDto[];
 }
 
