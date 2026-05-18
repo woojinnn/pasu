@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ManagedPolicy } from "@scopeball/sdk";
 import { useExtension } from "../sdk-context";
+import { RewriteBanner } from "../migration/rewrite-banner";
 import {
   detectConflicts,
   describeKind,
@@ -218,6 +219,7 @@ export function LibraryPage() {
 
   return (
     <div className="library-page">
+      <RewriteBanner />
       <header className="library-header">
         <div>
           <h1>Library</h1>
