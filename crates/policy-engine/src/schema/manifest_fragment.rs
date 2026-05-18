@@ -68,6 +68,17 @@ pub fn manifest_to_cedarschema(
             validate_param_selector(&req.id, name, raw)?;
         }
 
+        // Rule 2 (per-requirement): the requirement's `when.action` must be a
+        // registered action regardless of whether it matches the action arg.
+        // Otherwise a manifest can ship requirements targeting non-existent
+        // actions and the validator would silently skip them.
+        if !REGISTERED_ACTIONS.contains(&req.when.action.as_str()) {
+            return Err(PolicyRpcError::InvalidManifest(format!(
+                "requirement `{}` targets unregistered action `{}`",
+                req.id, req.when.action
+            )));
+        }
+
         if req.when.action != action {
             continue;
         }
@@ -503,6 +514,42 @@ mod tests {
         let m = manifest_with_one_output();
         let err = manifest_to_cedarschema("unknown_action", &m).unwrap_err();
         assert!(matches!(err, PolicyRpcError::InvalidManifest(_)));
+    }
+
+    /// Rule 2 also rejects requirements whose `when.action` targets an action
+    /// that is not registered, even when the validator is being asked about a
+    /// different (registered) action. Without this check the validator would
+    /// silently skip the requirement at the `continue` below the registered-
+    /// action match and a manifest could ship typo'd / unsupported actions.
+    #[test]
+    fn rule2_unregistered_when_action_errors() {
+        let mut m = manifest_with_one_output();
+        m.requires[0].when.action = "totally_fake_action".into();
+        let err = manifest_to_cedarschema("swap", &m).unwrap_err();
+        match err {
+            PolicyRpcError::InvalidManifest(msg) => {
+                assert!(
+                    msg.contains("totally_fake_action"),
+                    "expected unregistered action in error: {msg}"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    /// Conversely, a requirement whose `when.action` is a *different but
+    /// registered* action must still be accepted — the loop just skips its
+    /// outputs for the action argument under inspection. This guards against a
+    /// regression where Rule 2 over-rejects valid multi-action manifests.
+    #[test]
+    fn rule2_other_registered_when_action_is_skipped_not_rejected() {
+        let mut m = manifest_with_one_output();
+        // `borrow` is a registered action but != the inspection arg "swap".
+        m.requires[0].when.action = "borrow".into();
+        let frag = manifest_to_cedarschema("swap", &m).expect("ok");
+        // No fields contributed because the requirement targets a different action.
+        assert!(frag.fields.is_empty());
+        assert!(frag.type_text.contains("type SwapCustomContext = {};"));
     }
 
     #[test]
