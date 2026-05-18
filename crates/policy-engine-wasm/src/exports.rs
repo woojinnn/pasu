@@ -1370,6 +1370,83 @@ mod tests_policy_rpc {
         );
     }
 
+    /// Fix N reproducer: mirrors the production SW first-run install.
+    /// `policies-loader.installFiltered` reads `getAllManifests()` —
+    /// which returns `{}` on first boot — and sends `manifests: {}` to
+    /// WASM. With an empty Map shape `compose_enriched` produces no
+    /// `<Action>CustomContext` fragments, so every default policy that
+    /// references `context.custom.<field>` (e.g. `expired-deadline.cedar`,
+    /// `max-input-usd-100.cedar`, `min-output-usd-floor.cedar`) fails
+    /// Cedar strict validation and the SW boot fails closed.
+    ///
+    /// This test pins the regression: with the production wiring fixed,
+    /// the install must return `ok: true` without the SW or this test
+    /// having to know which manifests power which fields.
+    #[test]
+    fn default_policy_set_installs_with_production_first_run_wiring() {
+        use std::fs;
+        use std::path::Path;
+
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let policies_dir = repo_root.join("policy-rpc/examples/policies");
+
+        let mut policy_entries: Vec<(String, String)> = Vec::new();
+        for action_dir in fs::read_dir(&policies_dir).expect("policies dir") {
+            let action_dir = action_dir.unwrap();
+            if !action_dir.file_type().unwrap().is_dir() {
+                continue;
+            }
+            let action = action_dir.file_name().to_string_lossy().into_owned();
+            for entry in fs::read_dir(action_dir.path()).expect("action dir") {
+                let entry = entry.unwrap();
+                let path = entry.path();
+                if path.extension().is_some_and(|e| e == "cedar") {
+                    let id = format!(
+                        "default::{action}/{stem}",
+                        stem = path.file_stem().unwrap().to_string_lossy()
+                    );
+                    let text = fs::read_to_string(&path).expect("read cedar");
+                    policy_entries.push((id, text));
+                }
+            }
+        }
+        let policy_set: Vec<Value> = policy_entries
+            .iter()
+            .map(|(id, text)| json!({ "id": id, "text": text }))
+            .collect();
+
+        // The smoking gun: production first-run sends an EMPTY Map shape
+        // because `getAllManifests()` returns `{}` until the user opens
+        // the dashboard and runs `manifest:put`. We mirror that here.
+        let install_output = install_policies_json(
+            json!({
+                "schema_text": "",
+                "manifests": {},
+                "policy_set": policy_set,
+            })
+            .to_string(),
+        );
+        let installed: Value = serde_json::from_str(&install_output).unwrap();
+        assert_eq!(
+            installed["ok"],
+            true,
+            "default policy-set must install cleanly with empty manifests on first run: \
+             policies={ids:?} envelope={installed}",
+            ids = policy_entries.iter().map(|(id, _)| id).collect::<Vec<_>>(),
+        );
+
+        // The success rests on every default policy guarding its
+        // custom-field accesses with `context has custom && context.custom
+        // has <field>`. Without those guards Cedar strict mode would
+        // reject the access against the empty `<Action>CustomContext`.
+        // If a future default drops a guard and lands here, this test
+        // is the regression target.
+    }
+
     /// Carry-over Fix N: every default-bundle policy text under
     /// `policy-rpc/examples/policies/<action>/*.cedar` must install
     /// cleanly against the enriched schema composed from the shipped
