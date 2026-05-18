@@ -19,7 +19,7 @@ export interface AuditEntry {
   type: PendingRequest["type"];
   bypassed: boolean;
   verdict: "pass" | "warn" | "fail";
-  matchedPolicies: { id: string; severity: string }[];
+  matchedPolicies: { id: string; severity: string; reason?: string }[];
   policyRpc?: {
     request_id: string;
     manifest_set_hash: string;
