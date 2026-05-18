@@ -1,29 +1,31 @@
 //! Cedar policy schema composition.
 
+pub mod aliases;
+
 use crate::policy_rpc::{validate_manifests, PolicyManifest, PolicyRpcError};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
-const CORE_SCHEMA: &str = include_str!("../../../schema/policy-schema/core.cedarschema");
+const CORE_SCHEMA: &str = include_str!("../../../../schema/policy-schema/core.cedarschema");
 const DEX_ADD_LIQUIDITY_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/add_liquidity.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/add_liquidity.cedarschema");
 const DEX_BURN_LIQUIDITY_NFT_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/burn_liquidity_nft.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/burn_liquidity_nft.cedarschema");
 const DEX_DECREASE_LIQUIDITY_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/decrease_liquidity.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/decrease_liquidity.cedarschema");
 const DEX_DONATE_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/donate.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/donate.cedarschema");
 const DEX_INCREASE_LIQUIDITY_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/increase_liquidity.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/increase_liquidity.cedarschema");
 const DEX_INITIALIZE_POOL_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/initialize_pool.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/initialize_pool.cedarschema");
 const DEX_MINT_LIQUIDITY_NFT_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/mint_liquidity_nft.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/mint_liquidity_nft.cedarschema");
 const DEX_REMOVE_LIQUIDITY_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/remove_liquidity.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/remove_liquidity.cedarschema");
 const DEX_SWAP_SCHEMA: &str =
-    include_str!("../../../schema/policy-schema/actions/DEX/swap.cedarschema");
+    include_str!("../../../../schema/policy-schema/actions/DEX/swap.cedarschema");
 
 /// Composes the shipped core and action Cedar schemas.
 #[derive(Debug, Default, Clone)]
