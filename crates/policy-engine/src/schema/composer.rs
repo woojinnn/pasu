@@ -47,6 +47,16 @@ pub(crate) fn compose_enriched_with_base(
         let pascal = snake_to_pascal(action);
         let stub = format!("type {pascal}CustomContext = {{}};\n");
         if let Some(f) = fragments.get(*action) {
+            if !text.contains(&stub) {
+                // Safety net for Phase 2: the composer assumes every action's
+                // base cedarschema declares `type <Action>CustomContext = {};`.
+                // If that stub is missing we cannot reliably merge the
+                // manifest fragment, so surface a `Schema` error pointing at
+                // the offending action instead of silently no-op'ing.
+                return Err(PolicyRpcError::Schema(format!(
+                    "base schema missing `type {pascal}CustomContext = {{}};` stub for action `{action}`"
+                )));
+            }
             text = text.replace(&stub, &f.type_text);
         }
     }
@@ -129,5 +139,49 @@ mod tests {
         assert!(!enriched
             .schema_text
             .contains("type SwapCustomContext = {};"));
+    }
+
+    #[test]
+    fn composer_errors_when_action_stub_is_missing() {
+        // Carry-over from Phase 1 codex review: a manifest supplied for an
+        // action whose `<Action>CustomContext = {};` stub is absent from the
+        // base schema must produce `PolicyRpcError::Schema(...)` rather than
+        // silently no-op.
+        let m = swap_manifest_with_total_input_usd();
+        let manifests = BTreeMap::from([("swap".to_owned(), m)]);
+        // Base text omits the SwapCustomContext stub entirely.
+        let base = String::from("type AddLiquidityCustomContext = {};\n");
+        let err = compose_enriched_with_base(&base, &manifests).unwrap_err();
+        match err {
+            crate::policy_rpc::PolicyRpcError::Schema(msg) => {
+                assert!(
+                    msg.contains("swap"),
+                    "error msg should name the action: {msg}"
+                );
+                assert!(
+                    msg.contains("SwapCustomContext"),
+                    "error msg should name the missing stub: {msg}"
+                );
+            }
+            other => panic!("expected Schema error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn composer_no_error_when_manifest_action_has_no_outputs() {
+        // A manifest with zero matching outputs renders an empty
+        // `type <Action>CustomContext = {};` fragment that equals the stub,
+        // so even if the stub were absent the replace would no-op. We still
+        // require the stub to be present for the contract to hold.
+        let m = PolicyManifest {
+            id: "test::swap".into(),
+            schema_version: 1,
+            requires: vec![],
+            context_extensions: BTreeMap::default(),
+        };
+        let manifests = BTreeMap::from([("swap".to_owned(), m)]);
+        let base = String::from("type SwapCustomContext = {};\n");
+        // With the stub present, this must succeed.
+        compose_enriched_with_base(&base, &manifests).expect("ok");
     }
 }
