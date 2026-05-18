@@ -10,7 +10,7 @@ use policy_engine::policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyRequestOrigin, Severity, Verdict,
 };
 use policy_engine::policy_rpc::{
-    apply_rpc_results_with_indices, manifest_set_hash, plan_calls, RootInput,
+    apply_rpc_results_with_indices, manifest_set_hash, plan_calls, system_fail_verdict, RootInput,
 };
 use policy_engine::schema::AddedContextField;
 use policy_engine::schema::{schema_hash, PolicySchemaComposer};
@@ -574,13 +574,21 @@ pub fn evaluate_policy_rpc_json(input_json: String) -> String {
             }
         }
 
-        apply_rpc_results_with_indices(
+        if let Err(error) = apply_rpc_results_with_indices(
             &mut requests,
             &policy_envelopes,
             &input.manifests,
             &input.rpc_response,
-        )
-        .map_err(|error| EngineErrorDto::new("projection_failed", error.to_string()))?;
+        ) {
+            // D9: surface `SystemFail` as the legitimate evaluation outcome
+            // (`Verdict::Fail` with the synthetic `__system__` matched policy)
+            // rather than an engine error. Any other variant remains an
+            // engine-level projection failure.
+            if let Some(verdict) = system_fail_verdict(&error) {
+                return Ok(verdict);
+            }
+            return Err(EngineErrorDto::new("projection_failed", error.to_string()));
+        }
 
         STATE.with(|state| {
             let state = state.borrow();
@@ -873,8 +881,9 @@ mod tests_policy_rpc {
                         @reason("too much USD")
                         forbid(principal, action == Action::"swap", resource)
                         when {
-                            context has totalInputUsd &&
-                            context.totalInputUsd.value.greaterThan(decimal("100.00"))
+                            context has custom &&
+                            context.custom has totalInputUsd &&
+                            context.custom.totalInputUsd.value.greaterThan(decimal("100.00"))
                         };
                     "#
                 }]
@@ -961,7 +970,7 @@ mod tests_policy_rpc {
     }
 
     #[test]
-    #[ignore = "TODO(phase-5): D3+D9 migration in policy-engine moved RPC outputs under `context.custom.*` and dropped the legacy top-level field used by `install_usd_policy`. The matching wasm-side install/evaluate test needs Phase 5's `preview_custom_schema_json` + manifest-driven schema compose to land before its Cedar body (`context.totalInputUsd`) gets rewritten to `context.custom.totalInputUsd`."]
+    #[ignore = "TODO(phase-5.3): un-ignore once `install_policies_json` accepts the `manifests` map and composes via `compose_enriched` so the inline policy body's `context.custom.totalInputUsd` resolves against `SwapCustomContext`."]
     fn evaluate_policy_rpc_json_projects_result_and_evaluates_policy() {
         install_usd_policy();
         let plan_output = plan_policy_rpc_json(plan_input().to_string());
@@ -1026,7 +1035,16 @@ mod tests_policy_rpc {
         assert_eq!(parsed["ok"], true, "{parsed}");
         assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
         assert_eq!(
-            parsed["data"]["matched"][0]["policy_id"], "__engine::projection_failed",
+            parsed["data"]["matched"][0]["policy_id"], "__system__",
+            "{parsed}"
+        );
+        assert_eq!(
+            parsed["data"]["matched"][0]["reason"],
+            "rpc-unavailable: user/max-input-usd-100::0::swap-total-input-usd",
+            "{parsed}"
+        );
+        assert_eq!(
+            parsed["data"]["matched"][0]["origin"], "action",
             "{parsed}"
         );
     }
