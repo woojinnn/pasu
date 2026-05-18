@@ -101,16 +101,46 @@
           "from": "$.result",
           "required": false
         }
-      ]
+      ],
+      "optional": true
+    },
+    {
+      "id": "swap-validity-delta-sec",
+      "when": { "action": "swap" },
+      "method": "clock.validity_delta_sec",
+      "params": {
+        "expires_at": "$.action.validity.expiresAt",
+        "block_timestamp": "$.root.block_timestamp"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "validityDeltaSec",
+          "type": "Long",
+          "from": "$.result.delta_sec",
+          "required": false
+        }
+      ],
+      "optional": true
+    },
+    {
+      "id": "swap-recipient-is-contract",
+      "when": { "action": "swap" },
+      "method": "chain.is_contract",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "address": "$.action.recipient"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "recipientIsContract",
+          "type": "Bool",
+          "from": "$.result.is_contract",
+          "required": false
+        }
+      ],
+      "optional": true
     }
-  ],
-  "context_extensions": {
-    "swap": {
-      "totalInputUsd": "UsdValuation",
-      "totalMinOutputUsd": "UsdValuation",
-      "effectiveRateVsOracleBps": "Long",
-      "totalInputFractionOfPortfolioBps": "Long",
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

@@ -506,11 +506,13 @@ mod tests {
             .unwrap()
             .preview();
 
+        // Post-Phase-2 the base no longer ships totalInputUsd, so the legacy
+        // composer adds it from the manifest's context_extensions block.
         assert!(preview.schema_text.contains("totalInputUsd?: UsdValuation"));
         assert!(preview
             .added_fields
             .iter()
-            .all(|field| field.field != "totalInputUsd"));
+            .any(|field| field.field == "totalInputUsd"));
 
         let conflict = serde_json::from_value::<super::PolicyManifest>(json!({
             "id": "user/conflict",
@@ -630,7 +632,12 @@ mod tests {
     }
 
     #[test]
-    fn schema_swap_extension_manifest_declares_legacy_enrichment_fields() {
+    fn schema_swap_extension_manifest_plans_legacy_enrichment_calls() {
+        // Post-Phase-2 the shipped swap manifest no longer hand-declares
+        // `context_extensions` — the composer derives them from outputs. The
+        // test now exercises the planning path to assert the manifest still
+        // emits the same set of RPC method calls plus the two new ones moved
+        // from base into manifest-driven enrichment.
         let manifest = serde_json::from_str::<super::PolicyManifest>(include_str!(
             "../../../../schema/policy-schema/extensions/DEX/swap.policy-rpc.json"
         ))
@@ -642,34 +649,65 @@ mod tests {
             value_wei: "0".to_owned(),
             block_timestamp: Some(1_700_000_000),
         };
-        let preview = crate::schema::PolicySchemaComposer::new()
-            .with_manifests(std::slice::from_ref(&manifest))
-            .unwrap()
-            .preview();
 
-        assert!(preview.added_fields.is_empty(), "{preview:?}");
-        assert_eq!(
-            manifest.context_extensions["swap"]["totalInputUsd"],
-            "UsdValuation"
-        );
-        assert_eq!(
-            manifest.context_extensions["swap"]["totalMinOutputUsd"],
-            "UsdValuation"
-        );
-        assert_eq!(
-            manifest.context_extensions["swap"]["effectiveRateVsOracleBps"],
-            "Long"
-        );
-        assert_eq!(
-            manifest.context_extensions["swap"]["totalInputFractionOfPortfolioBps"],
-            "Long"
-        );
-        assert_eq!(
-            manifest.context_extensions["swap"]["windowStats"],
-            "WindowStats"
+        assert!(
+            manifest.context_extensions.is_empty(),
+            "context_extensions must be derived, not hand-authored: {:?}",
+            manifest.context_extensions
         );
 
-        let calls = super::plan_calls(&root, &[swap_envelope()], &[manifest], &json!({})).unwrap();
+        let output_fields = manifest
+            .requires
+            .iter()
+            .flat_map(|req| req.outputs.iter().map(|out| out.field.as_str()))
+            .collect::<std::collections::BTreeSet<_>>();
+        for expected in [
+            "totalInputUsd",
+            "totalMinOutputUsd",
+            "effectiveRateVsOracleBps",
+            "totalInputFractionOfPortfolioBps",
+            "windowStats",
+            "validityDeltaSec",
+            "recipientIsContract",
+        ] {
+            assert!(
+                output_fields.contains(expected),
+                "swap manifest must still produce `{expected}`"
+            );
+        }
+
+        // Envelope with a validity block so the validity-delta-sec requirement
+        // doesn't get skipped by the optional-param selector check.
+        let envelope_with_validity: ActionEnvelope = serde_json::from_value(json!({
+            "category": "dex",
+            "action": "swap",
+            "fields": {
+                "swapMode": "exact_in",
+                "inputToken": {
+                    "asset": {
+                        "kind": "erc20",
+                        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                        "symbol": "WETH",
+                        "decimals": 18
+                    },
+                    "amount": { "kind": "exact", "value": "1000000000000000000" }
+                },
+                "outputToken": {
+                    "asset": {
+                        "kind": "erc20",
+                        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                        "symbol": "USDC",
+                        "decimals": 6
+                    },
+                    "amount": { "kind": "min", "value": "900000000" }
+                },
+                "recipient": "0x1111111111111111111111111111111111111111",
+                "validity": { "expiresAt": "1700000300", "source": "tx-deadline" }
+            }
+        }))
+        .unwrap();
+        let calls =
+            super::plan_calls(&root, &[envelope_with_validity], &[manifest], &json!({})).unwrap();
         let methods = calls
             .iter()
             .map(|call| call.method.as_str())
@@ -678,6 +716,8 @@ mod tests {
         assert!(methods.contains("oracle.effective_rate_bps"));
         assert!(methods.contains("portfolio.input_fraction_bps"));
         assert!(methods.contains("stat_window.swap_stats"));
+        assert!(methods.contains("clock.validity_delta_sec"));
+        assert!(methods.contains("chain.is_contract"));
     }
 
     #[test]

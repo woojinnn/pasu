@@ -6,6 +6,7 @@ forbid (
   action == Action::"swap",
   resource
 ) when {
-  context has totalInputUsd &&
-  context.totalInputUsd.value.greaterThan(decimal("100.0000"))
+  context has custom &&
+  context.custom has totalInputUsd &&
+  context.custom.totalInputUsd.value.greaterThan(decimal("100.0000"))
 };

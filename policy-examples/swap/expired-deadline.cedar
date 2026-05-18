@@ -6,6 +6,7 @@ forbid (
   action == Action::"swap",
   resource
 ) when {
-  context has validityDeltaSec &&
-  context.validityDeltaSec <= 0
+  context has custom &&
+  context.custom has validityDeltaSec &&
+  context.custom.validityDeltaSec <= 0
 };

@@ -5,15 +5,10 @@ type SwapContext = {
   recipient: String,
   validity?: Validity,
   feeBps?: Long,
-
-  totalInputUsd?: UsdValuation,
-  totalMinOutputUsd?: UsdValuation,
-  effectiveRateVsOracleBps?: Long,
-  totalInputFractionOfPortfolioBps?: Long,
-  validityDeltaSec?: Long,
-  recipientIsContract?: Bool,
-  windowStats?: WindowStats,
+  custom?: SwapCustomContext,
 };
+
+type SwapCustomContext = {};
 
 action "swap" appliesTo {
   principal: Wallet,

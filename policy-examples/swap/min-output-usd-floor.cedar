@@ -7,6 +7,7 @@ forbid (
   resource
 ) when {
   context.outputToken.amount.kind == "min" &&
-  context has totalMinOutputUsd &&
-  context.totalMinOutputUsd.value.lessThan(decimal("50.0000"))
+  context has custom &&
+  context.custom has totalMinOutputUsd &&
+  context.custom.totalMinOutputUsd.value.lessThan(decimal("50.0000"))
 };

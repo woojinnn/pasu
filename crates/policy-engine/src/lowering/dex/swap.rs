@@ -1,12 +1,12 @@
 use crate::action::dex::{SwapAction, SwapMode};
-use crate::context_keys::{FEE_BPS, RECIPIENT, VALIDITY_DELTA_SEC};
+use crate::context_keys::{FEE_BPS, RECIPIENT};
 use crate::lowering::dex::asset_with_amount_json;
 use crate::lowering::LoweringError;
 use crate::policy::PolicyRequest;
 use serde_json::{Map, Value};
 
 use crate::lowering::common::cedar::cedar_long_u64;
-use crate::lowering::common::validity::{validity_delta_sec, validity_json};
+use crate::lowering::common::validity::validity_json;
 use crate::lowering::dispatch::{Lower, LoweringCtx};
 
 const ACTION_ID: &str = "swap";
@@ -18,11 +18,11 @@ const VALIDITY: &str = "validity";
 
 impl Lower for SwapAction {
     fn build(&self, ctx: &LoweringCtx<'_>) -> Result<PolicyRequest, LoweringError> {
-        Ok(ctx.request(ACTION_ID, context(self, ctx)?))
+        Ok(ctx.request(ACTION_ID, context(self)?))
     }
 }
 
-fn context(swap: &SwapAction, ctx: &LoweringCtx<'_>) -> Result<Value, LoweringError> {
+fn context(swap: &SwapAction) -> Result<Value, LoweringError> {
     let mut context = Map::new();
     context.insert(
         SWAP_MODE.into(),
@@ -40,13 +40,13 @@ fn context(swap: &SwapAction, ctx: &LoweringCtx<'_>) -> Result<Value, LoweringEr
 
     if let Some(validity) = &swap.validity {
         context.insert(VALIDITY.into(), validity_json(validity));
-        if let Some(delta_sec) = validity_delta_sec(validity, ctx.block_timestamp) {
-            context.insert(VALIDITY_DELTA_SEC.into(), Value::from(delta_sec));
-        }
     }
     if let Some(fee_bps) = swap.fee_bps {
         context.insert(FEE_BPS.into(), cedar_long_u64(u64::from(fee_bps)));
     }
+    // Post-Phase-2: `validityDeltaSec` is manifest-driven enrichment produced
+    // by `clock.validity_delta_sec`, no longer derived from `block_timestamp`
+    // host-side.
     Ok(Value::Object(context))
 }
 
@@ -192,7 +192,10 @@ mod tests {
     }
 
     #[test]
-    fn swap_with_validity_lowers_validity_delta_sec() {
+    fn swap_with_validity_passes_validity_through_to_context() {
+        // Post-Phase-2 the lowering no longer derives `validityDeltaSec`
+        // host-side — the matching policy manifest produces it via an RPC
+        // call. The lowering simply forwards the validity object verbatim.
         let from = address("0x1111111111111111111111111111111111111111");
         let mut swap = swap(
             from.clone(),
@@ -202,37 +205,20 @@ mod tests {
 
         let request = policy_request(&envelope(Action::Swap(swap)), &from);
 
-        assert_eq!(
-            request
-                .context
-                .get("validityDeltaSec")
-                .and_then(Value::as_i64),
-            Some(600)
-        );
+        assert!(request
+            .context
+            .get("validity")
+            .and_then(Value::as_object)
+            .is_some());
+        assert!(!request
+            .context
+            .as_object()
+            .expect("context is an object")
+            .contains_key("validityDeltaSec"));
     }
 
     #[test]
-    fn swap_with_past_deadline_lowers_negative_delta() {
-        let from = address("0x1111111111111111111111111111111111111111");
-        let mut swap = swap(
-            from.clone(),
-            amount(AmountKind::Exact, "1000000000000000000"),
-        );
-        swap.validity = Some(validity(BLOCK_TIMESTAMP - 60));
-
-        let request = policy_request(&envelope(Action::Swap(swap)), &from);
-
-        assert_eq!(
-            request
-                .context
-                .get("validityDeltaSec")
-                .and_then(Value::as_i64),
-            Some(-60)
-        );
-    }
-
-    #[test]
-    fn swap_without_validity_omits_validity_delta_sec() {
+    fn swap_without_validity_omits_validity_block() {
         let from = address("0x1111111111111111111111111111111111111111");
         let request = policy_request(
             &envelope(Action::Swap(swap(
@@ -242,6 +228,11 @@ mod tests {
             &from,
         );
 
+        assert!(!request
+            .context
+            .as_object()
+            .expect("context is an object")
+            .contains_key("validity"));
         assert!(!request
             .context
             .as_object()
