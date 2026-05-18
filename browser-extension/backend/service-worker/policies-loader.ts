@@ -1,6 +1,7 @@
 import Browser from "webextension-polyfill";
 import { aggregatedManagedPolicySet } from "./dashboard/storage";
 import { aggregatedPolicySet } from "./marketplace/storage";
+import { getAllManifests } from "./manifests/store";
 import { getEnabledIds } from "./policy-selection";
 import { installPolicies } from "./wasm-bridge";
 
@@ -79,25 +80,38 @@ function collectPolicyRpcManifests(
  * "`Wallet` is declared twice" and kill SW boot.
  */
 async function installFiltered(enabledIds: readonly string[]): Promise<void> {
-  const [defaults, marketplacePolicies, dashboardPolicies] = await Promise.all([
-    loadDefaultPolicySet(),
-    aggregatedPolicySet(),
-    aggregatedManagedPolicySet(),
-  ]);
+  const [defaults, marketplacePolicies, dashboardPolicies, manifestMap] =
+    await Promise.all([
+      loadDefaultPolicySet(),
+      aggregatedPolicySet(),
+      aggregatedManagedPolicySet(),
+      getAllManifests(),
+    ]);
   const enabledSet = new Set(enabledIds);
   const union = [...defaults, ...marketplacePolicies, ...dashboardPolicies];
   const filtered = union.filter((p) => enabledSet.has(p.id));
-  const manifests = collectPolicyRpcManifests(filtered);
+  // Phase 7 codex carry-over H follow-up: pass the Map-shape manifest
+  // store through to `install_policies_json` instead of the legacy
+  // embedded-Vec collection. The orchestrator's evaluate path reads
+  // from the same Map; aligning install + evaluate on a single source
+  // closes the hash-mismatch window that appeared after a popup toggle
+  // following a manifest:put. Map shape also triggers the enriched
+  // composer in WASM so the engine sees the user-installed manifests.
+  const manifests: Record<string, unknown> = { ...manifestMap };
   await installPolicies({
     schema_text: "",
     policy_set: filtered.map(({ id, text }) => ({ id, text })),
     manifests,
   });
-  activePolicyRpcManifests = manifests;
+  // Keep the legacy Vec in sync as a fallback only — the orchestrator
+  // prefers `manifests/store.ts` and reads this Vec just when the Map
+  // is empty (no manifests installed yet).
+  activePolicyRpcManifests = collectPolicyRpcManifests(filtered);
   console.info("[Scopeball] policies installed", {
     requestedIds: [...enabledIds].sort(),
     installedIds: filtered.map((p) => p.id).sort(),
     availableCount: union.length,
+    manifestActions: Object.keys(manifestMap).sort(),
   });
 }
 

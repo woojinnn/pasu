@@ -9,6 +9,10 @@ const mocks = vi.hoisted(() => {
     previewInstalledSchema: vi.fn(),
     getAliasTable: vi.fn(),
     fetch: vi.fn(),
+    // Phase 7 codex carry-over H follow-up: handlers must invoke
+    // `loadCurrentEnabledPolicySet()` so the Map-install path includes
+    // the user-enabled Cedar policies (not just the manifests).
+    loadCurrentEnabledPolicySet: vi.fn(async () => [] as { id: string; text: string }[]),
     browser: {
       storage: {
         local: {
@@ -39,6 +43,9 @@ vi.mock("../wasm-bridge", () => ({
   previewCustomSchema: mocks.previewCustomSchema,
   previewInstalledSchema: mocks.previewInstalledSchema,
   getAliasTable: mocks.getAliasTable,
+}));
+vi.mock("../policies-loader", () => ({
+  loadCurrentEnabledPolicySet: mocks.loadCurrentEnabledPolicySet,
 }));
 
 import { handleManifestRequest, isManifestRequest } from "./handlers";
@@ -96,6 +103,35 @@ describe("handleManifestRequest", () => {
     expect(callArg.manifests).toEqual({ swap: manifest });
     expect((await store.getManifest("swap"))!.id).toBe("user::swap");
     expect(await store.getHash()).toBe("sha256:new");
+  });
+
+  // Phase 7 codex carry-over H follow-up: `manifest:put` must forward
+  // the currently-enabled Cedar policy set to WASM. The earlier
+  // implementation passed `policy_set: []`, which silently wiped every
+  // installed policy on the next manifest edit — converting the loud
+  // `manifest_hash_mismatch` failure into a quiet "every tx passes"
+  // failure mode.
+  it("manifest:put forwards loadCurrentEnabledPolicySet() into WASM (carry-over H follow-up)", async () => {
+    mocks.wasmInstall.mockResolvedValue({
+      enrichedSchemaHash: "sha256:fresh",
+      addedCustomFields: { swap: [] },
+    });
+    const enabledPolicies = [
+      { id: "dashboard::p1", text: "@id('p1') forbid (principal, action, resource);" },
+      { id: "user::p2", text: "@id('p2') forbid (principal, action, resource);" },
+    ];
+    mocks.loadCurrentEnabledPolicySet.mockResolvedValue(enabledPolicies);
+
+    const r = await handleManifestRequest({
+      type: "manifest:put",
+      action: "swap",
+      manifest: emptyManifest("user::swap"),
+    });
+
+    expect(r.ok).toBe(true);
+    expect(mocks.wasmInstall).toHaveBeenCalledTimes(1);
+    const callArg = mocks.wasmInstall.mock.calls[0][0];
+    expect(callArg.policy_set).toEqual(enabledPolicies);
   });
 
   it("manifest:put rolls back when WASM rejects", async () => {

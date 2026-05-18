@@ -16,6 +16,7 @@ import {
   previewCustomSchema,
   previewInstalledSchema,
 } from "../wasm-bridge";
+import { loadCurrentEnabledPolicySet } from "../policies-loader";
 import { atomicInstall, type AtomicInstallResult } from "./atomic-install";
 import {
   KEY_PENDING_MIGRATION,
@@ -87,7 +88,19 @@ async function callWasmInstallMap(
   | { enrichedSchemaHash: string; addedCustomFields: Record<string, unknown[]> }
   | null
 > {
-  return installPolicies({ schema_text: "", policy_set: [], manifests });
+  // Phase 7 codex carry-over H follow-up: the previous implementation
+  // passed `policy_set: []`, which silently wiped every installed
+  // Cedar policy on each manifest:put. `install_policies_json`
+  // *replaces* engine state — so handing it an empty policy set is the
+  // same as `engine.clear_policies()`. We mirror `hydrate.ts`'s pattern
+  // and forward the currently-enabled policy set so the engine keeps
+  // serving real verdicts while the manifest map turns over.
+  const policySet = await loadCurrentEnabledPolicySet();
+  return installPolicies({
+    schema_text: "",
+    policy_set: policySet,
+    manifests,
+  });
 }
 
 async function installWith(
