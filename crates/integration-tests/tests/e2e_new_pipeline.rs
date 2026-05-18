@@ -256,10 +256,30 @@ fn evaluate_with_policies_and_manifests(
     manifests: &[PolicyManifest],
     request: &PolicyRequest,
 ) -> Verdict {
-    let schema = PolicySchemaComposer::new()
-        .with_manifests(manifests)
-        .expect("policy RPC manifests should extend schema")
-        .compose();
+    // D3: when one or more manifests are supplied, build the schema via the
+    // enriched composer so that manifest outputs land inside the per-action
+    // `custom?: <Action>CustomContext` namespace (matching where the
+    // materializer writes them at runtime). For the no-manifest case fall
+    // back to the legacy `PolicySchemaComposer` (used by tests that don't
+    // declare any RPC-driven extension).
+    let schema = if manifests.is_empty() {
+        PolicySchemaComposer::new()
+            .with_manifests(manifests)
+            .expect("base schema composes")
+            .compose()
+    } else {
+        let mut grouped: std::collections::BTreeMap<String, PolicyManifest> =
+            std::collections::BTreeMap::new();
+        for manifest in manifests {
+            for requirement in &manifest.requires {
+                let action = requirement.when.action.clone();
+                grouped.entry(action).or_insert_with(|| manifest.clone());
+            }
+        }
+        policy_engine::schema::compose_enriched(&grouped)
+            .expect("manifests compose into enriched schema")
+            .schema_text
+    };
     let mut builder = PolicyEngineBuilder::with_schema_text(schema);
     for policy_text in policies {
         builder = builder.add_text(*policy_text);
@@ -542,7 +562,6 @@ fn test_max_input_usd_100_pass() {
 }
 
 #[test]
-#[ignore = "TODO(phase-5/D11): policy-examples manifests + materializer write outputs to top-level context; the .cedar bodies now read context.custom.X. Re-enable after the materializer learns to write into context.custom and the example manifests get the legacy context_extensions block removed."]
 fn test_max_input_usd_100_fail() {
     let request = synthetic_swap_request_with(SyntheticSwapInput {
         total_input_usd: Some("200.0000"),
@@ -572,7 +591,6 @@ fn test_min_output_usd_floor_pass() {
 }
 
 #[test]
-#[ignore = "TODO(phase-5/D11): policy-examples manifests + materializer write outputs to top-level context; the .cedar bodies now read context.custom.X. Re-enable after the materializer learns to write into context.custom and the example manifests get the legacy context_extensions block removed."]
 fn test_min_output_usd_floor_fail() {
     let request = synthetic_swap_request_with(SyntheticSwapInput {
         total_min_output_usd: Some("25.0000"),
@@ -752,9 +770,15 @@ fn policy_rpc_materializes_usd_valuation_on_v2_swap() {
     )
     .expect("default manifest response should materialize");
 
+    // D3: manifest outputs land under `context.custom.<field>`, not at the
+    // top level.
     assert!(
-        requests[0].context.get("totalInputUsd").is_some(),
-        "policy request context should include totalInputUsd after Policy RPC, got: {}",
+        requests[0]
+            .context
+            .get("custom")
+            .and_then(|c| c.get("totalInputUsd"))
+            .is_some(),
+        "policy request context should include custom.totalInputUsd after Policy RPC, got: {}",
         requests[0].context
     );
 }

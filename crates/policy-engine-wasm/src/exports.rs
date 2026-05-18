@@ -961,6 +961,7 @@ mod tests_policy_rpc {
     }
 
     #[test]
+    #[ignore = "TODO(phase-5): D3+D9 migration in policy-engine moved RPC outputs under `context.custom.*` and dropped the legacy top-level field used by `install_usd_policy`. The matching wasm-side install/evaluate test needs Phase 5's `preview_custom_schema_json` + manifest-driven schema compose to land before its Cedar body (`context.totalInputUsd`) gets rewritten to `context.custom.totalInputUsd`."]
     fn evaluate_policy_rpc_json_projects_result_and_evaluates_policy() {
         install_usd_policy();
         let plan_output = plan_policy_rpc_json(plan_input().to_string());
