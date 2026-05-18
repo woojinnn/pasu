@@ -276,7 +276,7 @@ export function ManifestEditor(): JSX.Element {
 
       {err ? (
         <div className="manifest-err">
-          <strong>{err.kind}</strong>: {err.message}
+          <strong>{err.kind}</strong>: {renderErrMessage(err.message)}
         </div>
       ) : null}
       {info ? <div className="manifest-info">{info}</div> : null}
@@ -451,4 +451,48 @@ function extractErr(e: unknown): { kind: string; message: string } {
     return { kind, message };
   }
   return { kind: "error", message: String(e) };
+}
+
+// Pattern matches the policy id conventions used in this codebase:
+//   - `dashboard::<slug>` for dashboard-installed policies
+//   - `user::<slug>` for user-installed via SDK
+//   - `__system__` synthetic ids
+//   - quoted-id-of-the-form 'X' already declared by Y (the validator's
+//     duplicate_field message format).
+//
+// We highlight any match inside the server error message so the user can
+// jump straight to the offending policy. Spec §"/manifests/:action":
+// "if the message mentions a specific policy id, highlight that".
+const POLICY_ID_PATTERN =
+  /(\b(?:dashboard|user|__system__|engine|marketplace)::[A-Za-z0-9_.\-/]+)|(already declared by [A-Za-z0-9_.:\-/]+)/g;
+
+function renderErrMessage(message: string): JSX.Element[] {
+  const parts: JSX.Element[] = [];
+  const re = new RegExp(POLICY_ID_PATTERN.source, "g");
+  let lastIndex = 0;
+  let key = 0;
+  // matchAll walks the regex without manual stateful state, so we get a
+  // simple linear scan over `message`.
+  for (const m of message.matchAll(re)) {
+    const idx = m.index ?? 0;
+    if (idx > lastIndex) {
+      parts.push(
+        <span key={`t${key++}`}>{message.slice(lastIndex, idx)}</span>,
+      );
+    }
+    const matched = m[0];
+    parts.push(
+      <mark key={`m${key++}`} className="policy-id-highlight">
+        {matched}
+      </mark>,
+    );
+    lastIndex = idx + matched.length;
+  }
+  if (lastIndex < message.length) {
+    parts.push(<span key={`t${key++}`}>{message.slice(lastIndex)}</span>);
+  }
+  if (parts.length === 0) {
+    parts.push(<span key="t0">{message}</span>);
+  }
+  return parts;
 }

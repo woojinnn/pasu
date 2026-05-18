@@ -138,6 +138,13 @@
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.85rem;
 }
+.policy-id-highlight {
+  background: #fffacd;
+  color: #800;
+  padding: 0.05em 0.2em;
+  border-radius: 3px;
+  font-weight: 600;
+}
 .manifest-info {
   padding: 0.6rem 0.8rem;
   border-radius: 4px;
