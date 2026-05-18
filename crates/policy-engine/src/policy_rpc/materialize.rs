@@ -95,13 +95,9 @@ pub fn apply_rpc_results_with_indices(
             )));
         }
     }
-    for expected_id in &expected_ids {
-        if !results.contains_key(expected_id.as_str()) {
-            return Err(PolicyRpcError::RpcResult(format!(
-                "missing result id `{expected_id}`"
-            )));
-        }
-    }
+    // D9: missing-result detection is delegated to `apply_requirement_result`,
+    // which routes the absence through `d9_branch` so optional requirements
+    // omit silently and non-optional requirements produce `SystemFail`.
 
     for (request, (envelope_index, envelope)) in requests.iter_mut().zip(indexed_envelopes.iter()) {
         let action_kind = envelope.action.kind();
