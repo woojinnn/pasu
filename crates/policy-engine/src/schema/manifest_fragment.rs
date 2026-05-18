@@ -219,12 +219,18 @@ fn validate_context_extensions(
 
 /// Names that the action's base `Context` type already declares.
 ///
-/// Phase 2 will rewrite each shipped cedarschema so that enrichment fields move
-/// to `<Action>CustomContext`. Until then the base field set for actions other
-/// than `swap` is "unknown" — Rule 4 simply doesn't fire for them, and the
-/// stricter base check arrives with Phase 2.
+/// Post-Phase-2 every shipped cedarschema is trimmed to its calldata-derived
+/// fields; enrichment lives in `<Action>CustomContext` and is contributed by
+/// manifests. The sets below mirror those base schemas exactly so Rule 4 can
+/// reject a manifest output that would collide with a base field.
+///
+/// The `custom` field itself is intentionally absent from every list — it is
+/// the placeholder the composer overwrites with the manifest fragment and
+/// must not be reserved against manifest authors.
+#[allow(clippy::too_many_lines, clippy::match_same_arms)]
 fn base_field_names(action: &str) -> &'static [&'static str] {
     match action {
+        // DEX
         "swap" => &[
             "swapMode",
             "inputToken",
@@ -232,7 +238,194 @@ fn base_field_names(action: &str) -> &'static [&'static str] {
             "recipient",
             "validity",
             "feeBps",
-            "custom",
+        ],
+        "add_liquidity" => &["pool", "inputTokens", "outputLp", "recipient", "validity"],
+        "burn_liquidity_nft" => &["nft", "burnKind", "outputTokens", "recipient", "validity"],
+        "decrease_liquidity" => &[
+            "nft",
+            "liquidityDelta",
+            "outputTokens",
+            "recipient",
+            "validity",
+        ],
+        "donate" => &[
+            "pool",
+            "inputTokens",
+            "from",
+            "validity",
+            "hooks",
+            "hookPermissions",
+            "isDynamicFee",
+            "hookDataLen",
+            "hookDataSelector",
+        ],
+        "increase_liquidity" => &["nft", "inputTokens", "validity"],
+        "initialize_pool" => &[
+            "pool",
+            "token0",
+            "token1",
+            "feeBps",
+            "tickSpacing",
+            "sqrtPriceX96",
+            "hooks",
+            "isDynamicFee",
+            "hookPermissions",
+        ],
+        "mint_liquidity_nft" => &[
+            "pool",
+            "feeBps",
+            "tickRange",
+            "inputTokens",
+            "recipient",
+            "validity",
+        ],
+        "remove_liquidity" => &[
+            "exitMode",
+            "pool",
+            "inputLp",
+            "outputTokens",
+            "recipient",
+            "validity",
+        ],
+        // lending
+        "borrow" => &[
+            "market",
+            "asset",
+            "amount",
+            "amountMode",
+            "recipient",
+            "onBehalf",
+            "validity",
+        ],
+        "flash_loan" => &[
+            "pool",
+            "assets",
+            "receiver",
+            "onBehalf",
+            "flashLoanKind",
+            "fee",
+        ],
+        "liquidate" => &[
+            "market",
+            "borrower",
+            "collateralAsset",
+            "debtAsset",
+            "debtToCover",
+            "seizedCollateralAmount",
+            "liquidationKind",
+            "liquidateMode",
+            "recipient",
+            "receiveAToken",
+        ],
+        "repay" => &[
+            "market",
+            "asset",
+            "amount",
+            "amountMode",
+            "onBehalf",
+            "repayKind",
+            "validity",
+        ],
+        "revoke" => &["target", "caller", "subject", "revokeKind"],
+        "set_authorization" => &[
+            "market",
+            "authorizer",
+            "authorized",
+            "isAuthorized",
+            "authorizationScope",
+            "amount",
+        ],
+        "sign_authorization" => &[
+            "market",
+            "authorizer",
+            "authorized",
+            "isAuthorized",
+            "authorizationScope",
+            "amount",
+            "nonce",
+            "validity",
+        ],
+        "supply" => &[
+            "market",
+            "asset",
+            "amount",
+            "amountMode",
+            "recipient",
+            "from",
+            "validity",
+        ],
+        "withdraw" => &[
+            "market",
+            "asset",
+            "amount",
+            "amountMode",
+            "recipient",
+            "onBehalf",
+        ],
+        // misc
+        "approve" => &["approvalKind", "token", "spender", "amount", "validity"],
+        "claim_rewards" => &["sourceAddress", "nft", "from", "recipient", "rewards"],
+        "delegate" => &["token", "delegatee", "validity"],
+        "permit" => &[
+            "permitKind",
+            "token",
+            "owner",
+            "spender",
+            "recipient",
+            "amount",
+            "requestedAmount",
+            "operator",
+            "approved",
+            "validity",
+            "signatureValidity",
+        ],
+        "set_approval_for_all" => &["collection", "operator", "approved"],
+        "sign_message" => &[
+            "signer",
+            "requestChainId",
+            "domainChainId",
+            "verifyingContract",
+            "primaryType",
+            "nowTs",
+            "messageDigest",
+        ],
+        "transfer" => &["token", "from", "recipient"],
+        "unwrap" => &["wrappedAsset", "nativeAsset", "recipient"],
+        "vote" => &["governance", "proposalId", "support", "reason", "validity"],
+        "wrap" => &["nativeAsset", "wrappedAsset", "recipient"],
+        // restaking
+        "claim_restake_withdrawal" => &["tokenOut", "amountOut", "recipient"],
+        "request_restake_withdrawal" => &[
+            "tokenOut",
+            "receiptToken",
+            "amountIn",
+            "amountOut",
+            "strategy",
+            "recipient",
+        ],
+        "restake" => &[
+            "tokenIn",
+            "receiptToken",
+            "amountIn",
+            "amountOut",
+            "strategy",
+            "recipient",
+        ],
+        // staking
+        "claim_unstake" => &["tokenOut", "amountOut", "recipient"],
+        "request_unstake" => &[
+            "receiptToken",
+            "tokenOut",
+            "amountIn",
+            "amountOut",
+            "recipient",
+        ],
+        "stake" => &[
+            "tokenIn",
+            "receiptToken",
+            "amountIn",
+            "amountOut",
+            "recipient",
         ],
         _ => &[],
     }

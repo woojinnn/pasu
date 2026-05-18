@@ -18,6 +18,8 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 const CORE_SCHEMA: &str = include_str!("../../../../schema/policy-schema/core.cedarschema");
+
+// DEX (alphabetical)
 const DEX_ADD_LIQUIDITY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/DEX/add_liquidity.cedarschema");
 const DEX_BURN_LIQUIDITY_NFT_SCHEMA: &str =
@@ -36,6 +38,66 @@ const DEX_REMOVE_LIQUIDITY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/DEX/remove_liquidity.cedarschema");
 const DEX_SWAP_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/DEX/swap.cedarschema");
+
+// lending (alphabetical)
+const LENDING_BORROW_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/borrow.cedarschema");
+const LENDING_FLASH_LOAN_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/flash_loan.cedarschema");
+const LENDING_LIQUIDATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/liquidate.cedarschema");
+const LENDING_REPAY_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/repay.cedarschema");
+const LENDING_REVOKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/revoke.cedarschema");
+const LENDING_SET_AUTHORIZATION_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/set_authorization.cedarschema");
+const LENDING_SIGN_AUTHORIZATION_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/sign_authorization.cedarschema");
+const LENDING_SUPPLY_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/supply.cedarschema");
+const LENDING_WITHDRAW_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/withdraw.cedarschema");
+
+// misc (alphabetical)
+const MISC_APPROVE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/approve.cedarschema");
+const MISC_CLAIM_REWARDS_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/claim_rewards.cedarschema");
+const MISC_DELEGATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/delegate.cedarschema");
+const MISC_PERMIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/permit.cedarschema");
+const MISC_SET_APPROVAL_FOR_ALL_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/set_approval_for_all.cedarschema");
+const MISC_SIGN_MESSAGE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/sign_message.cedarschema");
+const MISC_TRANSFER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/transfer.cedarschema");
+const MISC_UNWRAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/unwrap.cedarschema");
+const MISC_VOTE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/vote.cedarschema");
+const MISC_WRAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/wrap.cedarschema");
+
+// restaking (alphabetical)
+const RESTAKING_CLAIM_RESTAKE_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/restaking/claim_restake_withdrawal.cedarschema"
+);
+const RESTAKING_REQUEST_RESTAKE_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/restaking/request_restake_withdrawal.cedarschema"
+);
+const RESTAKING_RESTAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/restake.cedarschema");
+
+// staking (alphabetical)
+const STAKING_CLAIM_UNSTAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/claim_unstake.cedarschema");
+const STAKING_REQUEST_UNSTAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/request_unstake.cedarschema");
+const STAKING_STAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/stake.cedarschema");
 
 /// Composes the shipped core and action Cedar schemas.
 #[derive(Debug, Default, Clone)]
@@ -146,6 +208,7 @@ const BASE_SCHEMA_TEXT: &str = "";
 pub(crate) fn base_schema_text() -> String {
     [
         CORE_SCHEMA,
+        // DEX (alphabetical)
         DEX_ADD_LIQUIDITY_SCHEMA,
         DEX_BURN_LIQUIDITY_NFT_SCHEMA,
         DEX_DECREASE_LIQUIDITY_SCHEMA,
@@ -155,6 +218,35 @@ pub(crate) fn base_schema_text() -> String {
         DEX_MINT_LIQUIDITY_NFT_SCHEMA,
         DEX_REMOVE_LIQUIDITY_SCHEMA,
         DEX_SWAP_SCHEMA,
+        // lending (alphabetical)
+        LENDING_BORROW_SCHEMA,
+        LENDING_FLASH_LOAN_SCHEMA,
+        LENDING_LIQUIDATE_SCHEMA,
+        LENDING_REPAY_SCHEMA,
+        LENDING_REVOKE_SCHEMA,
+        LENDING_SET_AUTHORIZATION_SCHEMA,
+        LENDING_SIGN_AUTHORIZATION_SCHEMA,
+        LENDING_SUPPLY_SCHEMA,
+        LENDING_WITHDRAW_SCHEMA,
+        // misc (alphabetical)
+        MISC_APPROVE_SCHEMA,
+        MISC_CLAIM_REWARDS_SCHEMA,
+        MISC_DELEGATE_SCHEMA,
+        MISC_PERMIT_SCHEMA,
+        MISC_SET_APPROVAL_FOR_ALL_SCHEMA,
+        MISC_SIGN_MESSAGE_SCHEMA,
+        MISC_TRANSFER_SCHEMA,
+        MISC_UNWRAP_SCHEMA,
+        MISC_VOTE_SCHEMA,
+        MISC_WRAP_SCHEMA,
+        // restaking (alphabetical)
+        RESTAKING_CLAIM_RESTAKE_WITHDRAWAL_SCHEMA,
+        RESTAKING_REQUEST_RESTAKE_WITHDRAWAL_SCHEMA,
+        RESTAKING_RESTAKE_SCHEMA,
+        // staking (alphabetical)
+        STAKING_CLAIM_UNSTAKE_SCHEMA,
+        STAKING_REQUEST_UNSTAKE_SCHEMA,
+        STAKING_STAKE_SCHEMA,
     ]
     .join("\n")
 }
@@ -323,6 +415,7 @@ fn canonical_type(type_name: &str) -> Result<&'static str, PolicyRpcError> {
 }
 
 const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
+    // DEX (alphabetical)
     ("add_liquidity", "AddLiquidityContext"),
     ("burn_liquidity_nft", "BurnLiquidityNftContext"),
     ("decrease_liquidity", "DecreaseLiquidityContext"),
@@ -332,4 +425,36 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("mint_liquidity_nft", "MintLiquidityNftContext"),
     ("remove_liquidity", "RemoveLiquidityContext"),
     ("swap", "SwapContext"),
+    // lending (alphabetical)
+    ("borrow", "BorrowContext"),
+    ("flash_loan", "FlashLoanContext"),
+    ("liquidate", "LiquidateContext"),
+    ("repay", "RepayContext"),
+    ("revoke", "RevokeContext"),
+    ("set_authorization", "SetAuthorizationContext"),
+    ("sign_authorization", "SignAuthorizationContext"),
+    ("supply", "SupplyContext"),
+    ("withdraw", "WithdrawContext"),
+    // misc (alphabetical)
+    ("approve", "ApproveContext"),
+    ("claim_rewards", "ClaimRewardsContext"),
+    ("delegate", "DelegateContext"),
+    ("permit", "PermitContext"),
+    ("set_approval_for_all", "SetApprovalForAllContext"),
+    ("sign_message", "SignMessageContext"),
+    ("transfer", "TransferContext"),
+    ("unwrap", "UnwrapContext"),
+    ("vote", "VoteContext"),
+    ("wrap", "WrapContext"),
+    // restaking (alphabetical)
+    ("claim_restake_withdrawal", "ClaimRestakeWithdrawalContext"),
+    (
+        "request_restake_withdrawal",
+        "RequestRestakeWithdrawalContext",
+    ),
+    ("restake", "RestakeContext"),
+    // staking (alphabetical)
+    ("claim_unstake", "ClaimUnstakeContext"),
+    ("request_unstake", "RequestUnstakeContext"),
+    ("stake", "StakeContext"),
 ];
