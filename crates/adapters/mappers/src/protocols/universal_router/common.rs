@@ -41,14 +41,23 @@ pub(super) fn native_eth() -> AssetRef {
     }
 }
 
-/// `AssetRef` for WETH. We don't know WETH's per-chain address from inside
-/// the mapper, so we surface it as an ERC20 without an address — downstream
-/// (compactor / wallet UI) treats it as the canonical wrapped pair for the
-/// chain. Future work: thread WETH addresses through `MapContext`.
-pub(super) fn wrapped_weth() -> AssetRef {
+/// `AssetRef` for the wrapped-native token (WETH on mainnet/Ethereum L2s,
+/// WMATIC on Polygon, …) of `ctx.chain_id`.
+///
+/// The compactor's ledger keys assets by `Asset::Erc20(address)`. If the
+/// address is `None`, the WRAP_ETH envelope's wrapped-asset bucket
+/// collides with `Asset::Native` (via the `_ =>` fallback in
+/// `asset_from_ref`) and never matches the SWAP envelope's WETH input
+/// bucket — defeating the WRAP+SWAP → Swap(ETH→X) collapse the compactor
+/// is built to do. The address comes from
+/// `ctx.token_registry.wrapped_native(chain_id)`, which defaults to a
+/// small static table (see
+/// [`crate::token_registry::default_wrapped_native`]); custom registries
+/// can override the trait method to extend coverage without a code change.
+pub(super) fn wrapped_weth(ctx: &MapContext<'_>) -> AssetRef {
     AssetRef {
         kind: AssetKind::Erc20,
-        address: None,
+        address: ctx.token_registry.wrapped_native(ctx.chain_id),
         token_id: None,
         symbol: Some("WETH".to_owned()),
         decimals: Some(18),

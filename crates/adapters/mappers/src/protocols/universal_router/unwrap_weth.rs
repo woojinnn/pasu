@@ -57,7 +57,7 @@ impl Mapper for UrUnwrapWethMapper {
         };
 
         let action = UnwrapAction {
-            wrapped_asset: asset_with_amount(wrapped_weth(), amount.clone()),
+            wrapped_asset: asset_with_amount(wrapped_weth(ctx), amount.clone()),
             native_asset: asset_with_amount(native_eth(), amount),
             recipient,
         };
