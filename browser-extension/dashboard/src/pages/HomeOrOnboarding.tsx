@@ -3,7 +3,7 @@
 // Spec: "redirect to /onboarding when both `rpc:endpointUrl` is null
 // AND `rpc:manifests` is empty". The router previously dropped fresh
 // installs straight on `/` (HomePage), which links the user to
-// `/editor` and `/library` — surfaces that assume a working policy-rpc
+// `/editor` and `/policies` — surfaces that assume a working policy-rpc
 // endpoint and at least one manifest. New users would hit blank cards
 // or unhelpful errors before discovering the existence of `/onboarding`.
 //

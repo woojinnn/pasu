@@ -18,7 +18,7 @@ export function HomePage() {
             <Link to="/editor" className="btn btn-primary">
               새 정책 작성
             </Link>
-            <Link to="/library" className="btn btn-secondary">
+            <Link to="/policies" className="btn btn-secondary">
               내 정책 보기
             </Link>
           </div>
@@ -53,7 +53,7 @@ export function HomePage() {
         <SurfaceCard
           title="Library"
           subtitle="내가 만든 정책 활성화 · 삭제"
-          to="/library"
+          to="/policies"
         />
         <SurfaceCard
           title="Audit"
