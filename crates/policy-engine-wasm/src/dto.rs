@@ -64,12 +64,33 @@ pub struct InstallPoliciesInputDto {
 }
 
 /// Wire shape for `install_policies_json` `manifests`.
+///
+/// **Phase 6 / D5 carry-over:** the two variants are NOT equivalent.
+///
+/// - [`ManifestsInputDto::Map`] (new, preferred) drives the
+///   `compose_enriched` install path and produces an
+///   [`InstallPoliciesOutputDto`] in the success envelope with
+///   `enrichedSchemaHash` + per-action `addedCustomFields`.
+/// - [`ManifestsInputDto::List`] (legacy) preserves the historical
+///   `Vec<PolicyManifest>` install. It returns a `null` data envelope and
+///   does **not** populate the enriched schema fields — callers that read
+///   `enrichedSchemaHash` will silently see `undefined`.
+///
+/// **New Phase 6+ callers (browser-extension service worker manifest store,
+/// dashboard SDK, anything that reads `enrichedSchemaHash`) MUST use the
+/// Map shape.** The List shape exists only for the legacy
+/// `policies-loader.ts` aggregator path and pre-Phase-5 plan/eval test
+/// fixtures; it should not grow new consumers.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum ManifestsInputDto {
-    /// New shape: per-action map.
+    /// New, preferred shape: per-action map.
+    ///
+    /// Triggers `compose_enriched` and returns a populated
+    /// [`InstallPoliciesOutputDto`] in the success envelope.
     Map(std::collections::BTreeMap<String, PolicyManifest>),
-    /// Legacy shape: flat list.
+    /// Legacy shape: flat list. Skips `compose_enriched` and returns a
+    /// null `data` envelope. Do NOT use this shape from new code.
     List(Vec<PolicyManifest>),
 }
 

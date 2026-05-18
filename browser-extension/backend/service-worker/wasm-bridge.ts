@@ -77,13 +77,60 @@ function unwrap<T>(json: string): T {
   throw new EngineError(parsed.error.kind, parsed.error.message);
 }
 
+/**
+ * Result envelope from the manifest-map install path (Phase 5/6).
+ *
+ * Present when the caller passes `manifests` as a `{ [action]: manifest }`
+ * map — the WASM install path then composes the enriched schema and
+ * returns these fields. Absent when the caller passes the legacy
+ * `Vec<PolicyManifest>` shape (the install path skips `compose_enriched`
+ * and returns a `null` data envelope).
+ */
+export interface InstallPoliciesOutput {
+  enrichedSchemaHash: string;
+  addedCustomFields: Record<string, unknown[]>;
+}
+
+/**
+ * Install Cedar policies into the WASM engine.
+ *
+ * **Phase 6 / carry-over E:** `manifests` accepts both the legacy
+ * `Vec<PolicyManifest>` (array) and the new `{ [action]: manifest }`
+ * map shape. They are NOT equivalent:
+ *
+ * - Map shape → composes the enriched schema and the returned object
+ *   carries `enrichedSchemaHash` + `addedCustomFields`. **All new
+ *   Phase-6 callers (the manifest store, atomic-install, dev-seed,
+ *   dashboard SDK) must use this shape.**
+ * - Array shape → legacy, preserves the pre-Phase-5 install. Returns
+ *   `null` for the install output. Only the legacy
+ *   `policies-loader.ts` aggregator still uses it.
+ *
+ * Returns `null` when WASM returned the legacy null envelope, otherwise
+ * the populated [`InstallPoliciesOutput`].
+ */
 export async function installPolicies(input: {
   schema_text: string;
   policy_set: { id: string; text: string }[];
-  manifests?: readonly unknown[];
-}): Promise<void> {
+  manifests?: readonly unknown[] | Record<string, unknown>;
+}): Promise<InstallPoliciesOutput | null> {
   const exports = await load();
-  unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
+  const raw = unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
+  if (raw === null || raw === undefined) return null;
+  if (
+    typeof raw === "object" &&
+    typeof (raw as { enrichedSchemaHash?: unknown }).enrichedSchemaHash === "string"
+  ) {
+    const r = raw as {
+      enrichedSchemaHash: string;
+      addedCustomFields?: Record<string, unknown[]>;
+    };
+    return {
+      enrichedSchemaHash: r.enrichedSchemaHash,
+      addedCustomFields: r.addedCustomFields ?? {},
+    };
+  }
+  return null;
 }
 
 /**

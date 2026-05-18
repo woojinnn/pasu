@@ -60,15 +60,43 @@ describe("wasm bridge parsers", () => {
     ).toThrow(WasmDecodeError);
   });
 
-  it("installPolicies unwraps the WASM ok envelope", async () => {
+  it("installPolicies returns null for the legacy null envelope", async () => {
     wasmMocks.installPoliciesJson.mockReturnValue(
       JSON.stringify({ ok: true, data: null }),
     );
 
+    // Legacy (Vec-shaped) install path returns `data: null` — bridge
+    // surfaces that as `null` so callers can detect they used the wrong
+    // shape and missed `enrichedSchemaHash`.
     await expect(
       installPolicies({ schema_text: "schema", policy_set: [] }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBeNull();
     expect(wasmMocks.installPoliciesJson).toHaveBeenCalledOnce();
+  });
+
+  it("installPolicies returns enrichedSchemaHash for the map-shape install", async () => {
+    // Map-shape install path: WASM composes the enriched schema and the
+    // success envelope carries `enrichedSchemaHash` + `addedCustomFields`.
+    wasmMocks.installPoliciesJson.mockReturnValue(
+      JSON.stringify({
+        ok: true,
+        data: {
+          enrichedSchemaHash: "sha256:abc",
+          addedCustomFields: { swap: [{ field: "totalInputUsd" }] },
+        },
+      }),
+    );
+
+    await expect(
+      installPolicies({
+        schema_text: "",
+        policy_set: [],
+        manifests: { swap: { id: "x", schema_version: 1, requires: [] } },
+      }),
+    ).resolves.toEqual({
+      enrichedSchemaHash: "sha256:abc",
+      addedCustomFields: { swap: [{ field: "totalInputUsd" }] },
+    });
   });
 
   it("installPolicies surfaces engine errors as EngineError", async () => {
