@@ -5,10 +5,10 @@ type WithdrawContext = {
   amountMode?: String,
   recipient: String,
   onBehalf?: String,
-
-  totalOutputUsd?: UsdValuation,
-  recipientIsContract?: Bool,
+  custom?: WithdrawCustomContext,
 };
+
+type WithdrawCustomContext = {};
 
 action "withdraw" appliesTo {
   principal: Wallet,

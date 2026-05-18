@@ -4,14 +4,10 @@ type AddLiquidityContext = {
   outputLp: AssetRefWithAmountConstraint,
   recipient: String,
   validity?: Validity,
-
-  totalInputUsd?: UsdValuation,
-  totalMinOutputUsd?: UsdValuation,
-  effectiveRateVsOracleBps?: Long,
-  totalInputFractionOfPortfolioBps?: Long,
-  recipientIsContract?: Bool,
-  windowStats?: WindowStats,
+  custom?: AddLiquidityCustomContext,
 };
+
+type AddLiquidityCustomContext = {};
 
 action "add_liquidity" appliesTo {
   principal: Wallet,

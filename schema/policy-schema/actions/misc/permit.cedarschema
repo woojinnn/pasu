@@ -10,15 +10,10 @@ type PermitContext = {
   approved?: Bool,
   validity: Validity,
   signatureValidity?: Validity,
-
-  spenderLabel?: String,
-  operatorLabel?: String,
-  currentAllowance?: String,
-  tokenOwnerOnchain?: String,
-  totalApprovedUsd?: UsdValuation,
-  amountFractionOfPortfolioBps?: Long,
-  windowStats?: WindowStats,
+  custom?: PermitCustomContext,
 };
+
+type PermitCustomContext = {};
 
 action "permit" appliesTo {
   principal: Wallet,

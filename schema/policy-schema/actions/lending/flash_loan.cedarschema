@@ -5,10 +5,10 @@ type FlashLoanContext = {
   onBehalf?: String,
   flashLoanKind: String,
   fee?: AmountConstraint,
-
-  totalLoanUsd?: UsdValuation,
-  receiverIsContract?: Bool,
+  custom?: FlashLoanCustomContext,
 };
+
+type FlashLoanCustomContext = {};
 
 action "flash_loan" appliesTo {
   principal: Wallet,

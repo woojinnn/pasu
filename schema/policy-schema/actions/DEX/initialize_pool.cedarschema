@@ -9,8 +9,10 @@ type InitializePoolContext = {
   hooks?: String,
   isDynamicFee?: Bool,
   hookPermissions?: HookPermissions,
-  hookLabel?: String,
+  custom?: InitializePoolCustomContext,
 };
+
+type InitializePoolCustomContext = {};
 
 action "initialize_pool" appliesTo {
   principal: Wallet,

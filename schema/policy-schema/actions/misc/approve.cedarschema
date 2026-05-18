@@ -3,18 +3,14 @@ type ApproveContext = {
 
   token: AssetRef,
   spender: String,
-  spenderLabel?: String,
 
   amount: AmountConstraint,
-  currentAllowance?: String,
 
   validity?: Validity,
-  validityDeltaSec?: Long,
-
-  totalApprovedUsd?: UsdValuation,
-  amountFractionOfPortfolioBps?: Long,
-  windowStats?: WindowStats,
+  custom?: ApproveCustomContext,
 };
+
+type ApproveCustomContext = {};
 
 action "approve" appliesTo {
   principal: Wallet,

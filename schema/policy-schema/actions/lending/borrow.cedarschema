@@ -6,10 +6,10 @@ type BorrowContext = {
   recipient: String,
   onBehalf: String,
   validity?: Validity,
-
-  totalBorrowedUsd?: UsdValuation,
-  recipientIsContract?: Bool,
+  custom?: BorrowCustomContext,
 };
+
+type BorrowCustomContext = {};
 
 action "borrow" appliesTo {
   principal: Wallet,

@@ -4,14 +4,10 @@ type BurnLiquidityNftContext = {
   outputTokens?: Set<AssetRefWithAmountConstraint>,
   recipient?: String,
   validity?: Validity,
-
-  totalInputUsd?: UsdValuation,
-  totalMinOutputUsd?: UsdValuation,
-  effectiveRateVsOracleBps?: Long,
-  nftOwnerIsActor?: Bool,
-  recipientIsContract?: Bool,
-  windowStats?: WindowStats,
+  custom?: BurnLiquidityNftCustomContext,
 };
+
+type BurnLiquidityNftCustomContext = {};
 
 action "burn_liquidity_nft" appliesTo {
   principal: Wallet,
