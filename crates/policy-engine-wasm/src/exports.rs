@@ -1019,6 +1019,45 @@ mod tests_policy_rpc {
         })
     }
 
+    /// Merge `requires[]` from `manifests` that target `action` into a
+    /// single manifest object suitable for the install-path Map shape.
+    /// `requires[].id` is rewritten by suffixing the source manifest id
+    /// so two manifests can contribute the same requirement id without
+    /// colliding under Rule 1.
+    fn merge_manifests_for_action(action: &str, manifests: &[Value]) -> Value {
+        let mut requires: Vec<Value> = Vec::new();
+        let mut extensions: serde_json::Map<String, Value> = serde_json::Map::new();
+        for (i, m) in manifests.iter().enumerate() {
+            if let Some(arr) = m["requires"].as_array() {
+                for req in arr {
+                    let mut req_clone = req.clone();
+                    if let Some(when_action) = req_clone["when"]["action"].as_str() {
+                        if when_action != action {
+                            continue;
+                        }
+                    }
+                    if let Some(req_id) = req_clone["id"].as_str() {
+                        req_clone["id"] = Value::String(format!("{req_id}__src{i}"));
+                    }
+                    requires.push(req_clone);
+                }
+            }
+            if let Some(ext_obj) = m["context_extensions"][action].as_object() {
+                for (k, v) in ext_obj {
+                    extensions.entry(k.clone()).or_insert(v.clone());
+                }
+            }
+        }
+        json!({
+            "id": format!("merged::{action}"),
+            "schema_version": 1,
+            "requires": requires,
+            "context_extensions": {
+                action: extensions,
+            },
+        })
+    }
+
     fn install_usd_policy() {
         let output = install_policies_json(
             json!({
@@ -1196,7 +1235,6 @@ mod tests_policy_rpc {
     }
 
     #[test]
-    #[ignore = "TODO(phase-5/D11): policy-rpc/examples/policies/swap/max-input-usd-100.cedar and min-output-usd-floor.cedar now read context.custom.X but their matching .policy-rpc.json manifests still place outputs at top-level context. Re-enable once the materializer writes outputs under context.custom (Phase 5) and the example manifests retire their legacy context_extensions block."]
     fn default_swap_policy_rpc_files_plan_and_evaluate() {
         let max_manifest = default_max_input_manifest_json();
         let min_manifest = default_min_output_manifest_json();
@@ -1220,12 +1258,21 @@ mod tests_policy_rpc {
                 .is_none(),
             "{min_manifest}"
         );
-        let manifests = vec![max_manifest, min_manifest];
+        // Install path requires the Map shape so `compose_enriched`
+        // produces the `<Action>CustomContext` block the v1 policy texts
+        // depend on. The two example manifests both target `swap`, so we
+        // merge their requirements into a single manifest keyed under
+        // "swap" — plan/evaluate then consume the same merged set via
+        // the list shape (`as_vec()` flattens the map's `.values()` to
+        // the same sequence the planner sees).
+        let merged_swap_manifest =
+            merge_manifests_for_action("swap", &[max_manifest.clone(), min_manifest.clone()]);
+        let manifests = vec![merged_swap_manifest.clone()];
 
         let install_output = install_policies_json(
             json!({
                 "schema_text": "",
-                "manifests": manifests.clone(),
+                "manifests": { "swap": merged_swap_manifest },
                 "policy_set": [
                     {
                         "id": "default::swap/max-input-usd-100",
@@ -1320,6 +1367,124 @@ mod tests_policy_rpc {
                 .as_str()
                 .is_some_and(|reason| reason.contains("Minimum output")),
             "{parsed}"
+        );
+    }
+
+    /// Carry-over Fix N: every default-bundle policy text under
+    /// `policy-rpc/examples/policies/<action>/*.cedar` must install
+    /// cleanly against the enriched schema composed from the shipped
+    /// manifests under `schema/policy-schema/extensions/<cat>/<action>.policy-rpc.json`.
+    ///
+    /// The `policy-set.json` the extension fetches at first run is
+    /// generated from these `.cedar` files by
+    /// `browser-extension/scripts/copy-default-policies.js`. If any
+    /// policy text references a field that isn't projected by the
+    /// shipped manifest (e.g. left-over `context.totalInputUsd`), the
+    /// extension's first-run install fails closed.
+    #[test]
+    fn shipped_default_policies_install_against_shipped_manifests() {
+        use std::collections::BTreeMap;
+        use std::fs;
+        use std::path::Path;
+
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let policies_dir = repo_root.join("policy-rpc/examples/policies");
+        let manifests_dir = repo_root.join("schema/policy-schema/extensions");
+
+        // Walk every `<action>/*.cedar` under `policy-rpc/examples/policies/`.
+        let mut policy_entries: Vec<(String, String)> = Vec::new();
+        for action_dir in fs::read_dir(&policies_dir).expect("policies dir") {
+            let action_dir = action_dir.unwrap();
+            if !action_dir.file_type().unwrap().is_dir() {
+                continue;
+            }
+            let action = action_dir.file_name().to_string_lossy().into_owned();
+            for entry in fs::read_dir(action_dir.path()).expect("action dir") {
+                let entry = entry.unwrap();
+                let path = entry.path();
+                if path.extension().is_some_and(|e| e == "cedar") {
+                    let id = format!(
+                        "default::{action}/{stem}",
+                        stem = path.file_stem().unwrap().to_string_lossy()
+                    );
+                    let text = fs::read_to_string(&path).expect("read cedar");
+                    policy_entries.push((id, text));
+                }
+            }
+        }
+        assert!(
+            !policy_entries.is_empty(),
+            "expected at least one default .cedar policy"
+        );
+
+        // Build the enriched schema from every shipped manifest under
+        // `schema/policy-schema/extensions/<cat>/<action>.policy-rpc.json`.
+        // Each file is keyed in the install map by its `<action>` stem.
+        let mut manifest_map: BTreeMap<String, Value> = BTreeMap::new();
+        for cat_dir in fs::read_dir(&manifests_dir).expect("manifests dir") {
+            let cat_dir = cat_dir.unwrap();
+            if !cat_dir.file_type().unwrap().is_dir() {
+                continue;
+            }
+            for entry in fs::read_dir(cat_dir.path()).expect("category dir") {
+                let entry = entry.unwrap();
+                let path = entry.path();
+                if path
+                    .file_name()
+                    .is_some_and(|n| n.to_string_lossy().ends_with(".policy-rpc.json"))
+                {
+                    let stem = path
+                        .file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                        .trim_end_matches(".policy-rpc.json")
+                        .to_owned();
+                    let raw = fs::read_to_string(&path).expect("read manifest");
+                    let manifest: Value = serde_json::from_str(&raw).expect("manifest json");
+                    manifest_map.insert(stem, manifest);
+                }
+            }
+        }
+        assert!(
+            manifest_map.contains_key("swap"),
+            "shipped swap manifest must exist; found keys: {:?}",
+            manifest_map.keys().collect::<Vec<_>>()
+        );
+
+        let policy_set: Vec<Value> = policy_entries
+            .iter()
+            .map(|(id, text)| json!({ "id": id, "text": text }))
+            .collect();
+
+        let install_output = install_policies_json(
+            json!({
+                "schema_text": "",
+                "manifests": manifest_map,
+                "policy_set": policy_set,
+            })
+            .to_string(),
+        );
+        let installed: Value = serde_json::from_str(&install_output).unwrap();
+        assert_eq!(
+            installed["ok"],
+            true,
+            "shipped default policy-set must install against shipped manifests: \
+             policies={ids:?} envelope={installed}",
+            ids = policy_entries.iter().map(|(id, _)| id).collect::<Vec<_>>(),
+        );
+
+        // Cross-check: the enriched schema text must declare every custom
+        // field referenced by `context.custom.<field>` in any default policy.
+        let schema_text = installed["data"]["enrichedSchemaHash"]
+            .as_str()
+            .expect("enrichedSchemaHash present");
+        assert!(
+            schema_text.starts_with("sha256:"),
+            "enrichedSchemaHash should be hash-formatted: {schema_text}"
         );
     }
 
