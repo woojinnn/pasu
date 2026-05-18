@@ -28,7 +28,11 @@ const router = createBrowserRouter([
       // to `/onboarding`. Otherwise it renders `HomePage`.
       { index: true, element: <HomeOrOnboarding /> },
       { path: "editor", element: <EditorPage /> },
-      { path: "library", element: <LibraryPage /> },
+      // Fix S: policies-list route is `/policies` (spec acceptance + Phase 7.5
+      // banner host + onboarding nav). The page component is still named
+      // `LibraryPage` for historical reasons; the route name is the only
+      // user-visible contract.
+      { path: "policies", element: <LibraryPage /> },
       { path: "audit", element: <AuditPage /> },
       { path: "settings", element: <SettingsPage /> },
       // Phase 7.2: per-action manifest authoring. Preview navigates to
