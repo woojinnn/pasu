@@ -160,6 +160,32 @@ export interface MigrationRewriteResult {
   applied: boolean;
 }
 
+/**
+ * V0 (pre-Phase-5) enrichment field names that lived at top-level
+ * `context.<field>` before the schema moved them under
+ * `context.custom.<field>`. Both the dashboard's rewrite banner and the
+ * SW-side migration detector must agree on this set, so it lives here
+ * — the only module both build graphs reach (dashboard via the
+ * `@scopeball/sdk` path alias, SW via a relative import).
+ *
+ * Used by:
+ *  - `dashboard/src/migration/rewrite-banner.tsx` — passes to
+ *    `migration:rewrite` so `rewritePolicyText` only substitutes known
+ *    fields.
+ *  - `backend/service-worker/manifests/migration-detector.ts` — scans
+ *    managed-policy texts for `context.<field>` references and queues
+ *    matching ids into `migration:pending`.
+ */
+export const V0_KNOWN_FIELDS: readonly string[] = [
+  "totalInputUsd",
+  "totalMinOutputUsd",
+  "effectiveRateVsOracleBps",
+  "totalInputFractionOfPortfolioBps",
+  "windowStats",
+  "validityDeltaSec",
+  "recipientIsContract",
+];
+
 export interface ExtensionClient {
   ping(): Promise<{ version: number }>;
   getCatalog(): Promise<Catalog>;

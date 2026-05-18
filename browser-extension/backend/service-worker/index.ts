@@ -9,6 +9,7 @@ import {
   isManifestRequest,
 } from "./manifests/handlers";
 import { hydrateManifests } from "./manifests/hydrate";
+import { detectPendingMigrations } from "./manifests/migration-detector";
 import { decideMessage } from "./orchestrator";
 import {
   ensureDefaultPoliciesInstalled,
@@ -70,6 +71,17 @@ async function bootSequence(): Promise<void> {
     await hydrateManifests();
   } catch (err) {
     console.warn("[Scopeball] manifest hydration failed:", err);
+  }
+
+  // Fix O: scan stored managed-policy texts for v0
+  // `context.<knownEnrichmentField>` references and queue their ids
+  // onto `migration:pending` so the dashboard's rewrite banner shows
+  // on the next open. Idempotent — re-running after a manual rewrite
+  // never appends already-cleared ids.
+  try {
+    await detectPendingMigrations();
+  } catch (err) {
+    console.warn("[Scopeball] migration auto-detect failed:", err);
   }
 }
 

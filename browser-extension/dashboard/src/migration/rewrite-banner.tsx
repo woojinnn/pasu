@@ -19,30 +19,18 @@
 // stays intact — the user can retry.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ManagedPolicy } from "@scopeball/sdk";
+import { V0_KNOWN_FIELDS, type ManagedPolicy } from "@scopeball/sdk";
 import { useExtension } from "../sdk-context";
 import "./rewrite-banner.css";
 
-// The v0 known-field set. The Phase-6 SW handler's `rewritePolicyText`
-// only substitutes occurrences of `context.<name>` for names listed
-// here, so passing the wrong list would either leave fields un-rewritten
-// or rewrite tokens that shouldn't be touched. This set is the
-// pre-v1 base alias-table names from spec §"Migration of existing
-// user-installed policies (D10)".
+// `V0_KNOWN_FIELDS` is hoisted into `@scopeball/sdk` so the SW-side
+// migration detector and this banner can never drift on the list of
+// pre-Phase-5 enrichment names (Fix O).
+//
 // How long the "No rewrite needed" toast stays visible after an
 // `applied: false` migration. Short enough to feel ephemeral, long
 // enough for the user to read it.
 const INFO_AUTO_CLEAR_MS = 3_000;
-
-const V0_KNOWN_FIELDS: readonly string[] = [
-  "totalInputUsd",
-  "totalMinOutputUsd",
-  "effectiveRateVsOracleBps",
-  "totalInputFractionOfPortfolioBps",
-  "windowStats",
-  "validityDeltaSec",
-  "recipientIsContract",
-];
 
 export function RewriteBanner(): JSX.Element | null {
   const { client } = useExtension();
