@@ -32,7 +32,7 @@ pub fn compose_enriched(
 ///
 /// Returns an error when any manifest fails the validation rules of
 /// [`manifest_to_cedarschema`].
-pub fn compose_enriched_with_base(
+pub(crate) fn compose_enriched_with_base(
     base_text: &str,
     manifests: &BTreeMap<String, PolicyManifest>,
 ) -> Result<EnrichedSchema, PolicyRpcError> {

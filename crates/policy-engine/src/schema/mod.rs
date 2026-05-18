@@ -7,7 +7,7 @@ pub mod enriched;
 pub mod fragment;
 pub mod manifest_fragment;
 
-pub use composer::{compose_enriched, compose_enriched_with_base};
+pub use composer::compose_enriched;
 pub use enriched::EnrichedSchema;
 pub use fragment::{CedarTypeFragment, CustomFieldSource};
 pub use manifest_fragment::manifest_to_cedarschema;

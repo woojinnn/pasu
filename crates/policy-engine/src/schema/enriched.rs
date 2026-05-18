@@ -20,8 +20,9 @@ impl EnrichedSchema {
     /// Build an enriched schema with a canonical hash.
     ///
     /// `per_action` may arrive in any order; fields within each action are
-    /// sorted by name before hashing so equivalent inputs produce identical
-    /// hashes regardless of insertion order.
+    /// sorted by name before storage. Per D13 the hash is SHA-256 of the
+    /// canonical `schema_text` only — provenance is metadata that does not
+    /// participate in the hash.
     #[must_use]
     pub fn compute(
         schema_text: impl Into<String>,
@@ -33,19 +34,8 @@ impl EnrichedSchema {
             map.insert(action, fields);
         }
         let schema_text = schema_text.into();
-        let mut h = Sha256::new();
-        h.update(schema_text.as_bytes());
-        for (action, fields) in &map {
-            h.update(b"\x00");
-            h.update(action.as_bytes());
-            for f in fields {
-                h.update(b"\x01");
-                h.update(f.field.as_bytes());
-                h.update(b"\x02");
-                h.update(f.cedar_type.as_bytes());
-            }
-        }
-        let schema_hash = format!("sha256:{:x}", h.finalize());
+        let digest = Sha256::digest(schema_text.as_bytes());
+        let schema_hash = format!("sha256:{digest:x}");
         Self {
             schema_text,
             schema_hash,
@@ -89,10 +79,12 @@ mod tests {
     }
 
     #[test]
-    fn schema_hash_differs_when_field_type_changes() {
+    fn schema_hash_ignores_provenance_when_schema_text_is_identical() {
+        // D13: hash is SHA-256 of the canonical schema text only. Field-level
+        // provenance is metadata and does not participate in the hash.
         let a = EnrichedSchema::compute("t", vec![("swap".into(), vec![mk_src("a", "Long")])]);
         let b = EnrichedSchema::compute("t", vec![("swap".into(), vec![mk_src("a", "String")])]);
-        assert_ne!(a.schema_hash, b.schema_hash);
+        assert_eq!(a.schema_hash, b.schema_hash);
     }
 
     #[test]
