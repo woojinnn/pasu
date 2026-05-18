@@ -2,10 +2,12 @@
 
 pub mod action_name;
 pub mod aliases;
+pub mod composer;
 pub mod enriched;
 pub mod fragment;
 pub mod manifest_fragment;
 
+pub use composer::{compose_enriched, compose_enriched_with_base};
 pub use enriched::EnrichedSchema;
 pub use fragment::{CedarTypeFragment, CustomFieldSource};
 pub use manifest_fragment::manifest_to_cedarschema;
@@ -141,7 +143,7 @@ pub fn schema_hash(schema_text: &str) -> String {
 
 const BASE_SCHEMA_TEXT: &str = "";
 
-fn base_schema_text() -> String {
+pub(crate) fn base_schema_text() -> String {
     [
         CORE_SCHEMA,
         DEX_ADD_LIQUIDITY_SCHEMA,
