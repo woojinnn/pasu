@@ -94,14 +94,5 @@
         }
       ]
     }
-  ],
-  "context_extensions": {
-    "increase_liquidity": {
-      "totalInputUsd": "UsdValuation",
-      "totalInputFractionOfPortfolioBps": "Long",
-      "effectiveRateVsOracleBps": "Long",
-      "nftOwnerIsActor": "Bool",
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

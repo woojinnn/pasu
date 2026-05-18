@@ -78,13 +78,5 @@
         }
       ]
     }
-  ],
-  "context_extensions": {
-    "remove_liquidity": {
-      "totalInputUsd": "UsdValuation",
-      "totalMinOutputUsd": "UsdValuation",
-      "effectiveRateVsOracleBps": "Long",
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

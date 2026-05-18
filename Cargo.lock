@@ -2221,6 +2221,7 @@ dependencies = [
  "policy-engine",
  "request-router",
  "serde_json",
+ "walkdir",
 ]
 
 [[package]]
