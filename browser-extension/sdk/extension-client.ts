@@ -69,6 +69,14 @@ export type VerdictKind = "pass" | "warn" | "fail";
 export interface AuditMatchedPolicy {
   id: string;
   severity: string;
+  /**
+   * Phase 6 / D9: present when the engine surfaces a runtime failure
+   * (e.g. an unreachable policy-rpc endpoint). The matched entry's
+   * `id` is the `__system__` sentinel and `reason` carries the WASM-
+   * provided diagnostic (e.g. `"rpc-unavailable: <call-id>"`).
+   * Ordinary policy matches don't include this field.
+   */
+  reason?: string;
 }
 
 export interface AuditPolicyRpc {

@@ -10,7 +10,11 @@ import {
   type PendingRequest,
 } from "./storage";
 import { EngineError } from "./wasm-bridge";
-import { evaluateWithPolicyRpc, type PolicyRpcAuditMeta } from "./policy-rpc";
+import {
+  evaluateWithPolicyRpc,
+  formatAuditMatched,
+  type PolicyRpcAuditMeta,
+} from "./policy-rpc";
 import type { VerdictDto } from "./wasm-bridge.types";
 import {
   isTransaction,
@@ -175,11 +179,10 @@ async function appendAudit(
     type,
     bypassed: "bypassed" in message.data && !!message.data.bypassed,
     verdict: verdict.kind,
-    matchedPolicies:
-      verdict.matched?.map((m) => ({
-        id: m.policy_id,
-        severity: m.severity,
-      })) ?? [],
+    // D9: route through `formatAuditMatched` so a `__system__` match
+    // keeps its policy id + reason. The dashboard reads this list as a
+    // first-class verdict.
+    matchedPolicies: formatAuditMatched(verdict),
     ...(policyRpc ? { policyRpc } : {}),
     decidedAtMs: Date.now(),
   });

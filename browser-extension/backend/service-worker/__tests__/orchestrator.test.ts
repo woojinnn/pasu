@@ -118,6 +118,19 @@ vi.mock("../wasm-bridge", () => ({
 }));
 vi.mock("../policy-rpc", () => ({
   evaluateWithPolicyRpc: mocks.evaluateWithPolicyRpc,
+  // Pass-through so the orchestrator's audit-log builder behaves like
+  // the real `formatAuditMatched`. Mirrors the trivial D9-aware impl.
+  formatAuditMatched: (verdict: { matched?: { policy_id: string; severity: string; reason?: string }[] }) =>
+    (verdict.matched ?? []).map((m) => {
+      const base: { id: string; severity: string; reason?: string } = {
+        id: m.policy_id,
+        severity: m.severity,
+      };
+      if (m.policy_id === "__system__" && typeof m.reason === "string") {
+        base.reason = m.reason;
+      }
+      return base;
+    }),
 }));
 
 import { decideMessage } from "../orchestrator";
