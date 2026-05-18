@@ -1,9 +1,10 @@
 //! Thin `#[wasm_bindgen]` JSON-string exports.
 
 use crate::dto::{
-    AliasEntryDto, AliasTableOutput, EngineErrorDto, Envelope, EvaluatePolicyRpcInputDto,
-    InstallPoliciesInputDto, MatchedPolicyDto, PlanPolicyRpcInputDto, PolicyRpcPlanDto,
-    PreviewSchemaInputDto, RawRequestDto, VerdictDto,
+    AliasEntryDto, AliasTableOutput, CustomFieldChangeDto, CustomSchemaDiffDto, CustomTypeDto,
+    EngineErrorDto, Envelope, EvaluatePolicyRpcInputDto, InstallPoliciesInputDto, MatchedPolicyDto,
+    PlanPolicyRpcInputDto, PolicyRpcPlanDto, PreviewCustomSchemaInputDto,
+    PreviewCustomSchemaOutputDto, PreviewSchemaInputDto, RawRequestDto, VerdictDto,
 };
 use alloy_primitives::U256;
 use policy_engine::lowering::policy_request_from_envelope;
@@ -13,8 +14,10 @@ use policy_engine::policy::{
 use policy_engine::policy_rpc::{
     apply_rpc_results_with_indices, manifest_set_hash, plan_calls, system_fail_verdict, RootInput,
 };
-use policy_engine::schema::AddedContextField;
-use policy_engine::schema::{schema_hash, PolicySchemaComposer};
+use policy_engine::schema::{
+    compose_enriched, schema_hash, AddedContextField, CustomFieldSource, EnrichedSchema,
+    PolicySchemaComposer,
+};
 use policy_engine::{ActionAddress, ActionEnvelope, DecimalString};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
@@ -25,6 +28,9 @@ pub struct EngineState {
     pub schema_hash: String,
     pub schema_text: String,
     pub added_fields: Vec<AddedContextField>,
+    /// Installed enriched schema (Phase 5). Some when the caller passed the
+    /// `manifests` map shape to `install_policies_json`; None otherwise.
+    pub enriched: Option<EnrichedSchema>,
 }
 
 thread_local! {
@@ -65,6 +71,7 @@ pub fn install_policies_json(policies_json: String) -> String {
                 schema_hash: installed_schema_hash,
                 schema_text,
                 added_fields: schema_preview.added_fields,
+                enriched: None,
             });
         });
         Ok(())
@@ -413,6 +420,96 @@ pub fn route_request_json(input_json: String) -> String {
         Ok(envelopes) => Envelope::ok(envelopes).to_json(),
         Err(e) => Envelope::<()>::err("route_failed", e.to_string()).to_json(),
     }
+}
+
+#[wasm_bindgen]
+pub fn preview_custom_schema_json(input_json: String) -> String {
+    let result = (|| -> Result<PreviewCustomSchemaOutputDto, EngineErrorDto> {
+        let input: PreviewCustomSchemaInputDto =
+            serde_json::from_str(&input_json).map_err(|error| {
+                EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
+            })?;
+        let mut map: std::collections::BTreeMap<String, policy_engine::policy_rpc::PolicyManifest> =
+            std::collections::BTreeMap::new();
+        map.insert(input.action.clone(), input.manifest);
+
+        let enriched = compose_enriched(&map)
+            .map_err(|error| EngineErrorDto::new("schema_failed", error.to_string()))?;
+
+        // D14: diff the previewed action against the currently-installed
+        // enriched schema's custom fields for the same action. Compare empty
+        // when nothing is installed yet, or when the installed state was
+        // produced via the legacy (Vec-shaped) install path.
+        let installed_fields = STATE.with(|state| {
+            state
+                .borrow()
+                .as_ref()
+                .and_then(|s| s.enriched.as_ref())
+                .and_then(|e| e.custom_types_by_action.get(&input.action).cloned())
+                .unwrap_or_default()
+        });
+        let preview_fields = enriched
+            .custom_types_by_action
+            .get(&input.action)
+            .cloned()
+            .unwrap_or_default();
+        let diff = diff_custom_fields(&installed_fields, &preview_fields);
+
+        let custom_types = enriched
+            .custom_types_by_action
+            .iter()
+            .map(|(name, fields)| CustomTypeDto {
+                name: name.clone(),
+                fields: fields.clone(),
+            })
+            .collect();
+
+        Ok(PreviewCustomSchemaOutputDto {
+            custom_types,
+            enriched_schema_text: enriched.schema_text,
+            diff,
+            schema_hash: enriched.schema_hash,
+        })
+    })();
+
+    match result {
+        Ok(preview) => Envelope::ok(preview).to_json(),
+        Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
+    }
+}
+
+/// Build the per-action D14 diff between an installed and a previewed custom-
+/// field list, keyed by `field` name.
+fn diff_custom_fields(
+    installed: &[CustomFieldSource],
+    preview: &[CustomFieldSource],
+) -> CustomSchemaDiffDto {
+    use std::collections::BTreeMap;
+    let installed_by: BTreeMap<&str, &CustomFieldSource> =
+        installed.iter().map(|f| (f.field.as_str(), f)).collect();
+    let preview_by: BTreeMap<&str, &CustomFieldSource> =
+        preview.iter().map(|f| (f.field.as_str(), f)).collect();
+
+    let mut diff = CustomSchemaDiffDto::default();
+    for (name, prev) in &preview_by {
+        match installed_by.get(name) {
+            None => diff.added.push((*prev).clone()),
+            Some(inst) if inst.cedar_type != prev.cedar_type => {
+                diff.changed.push(CustomFieldChangeDto {
+                    field: (*name).to_owned(),
+                    installed_cedar_type: inst.cedar_type.clone(),
+                    preview_cedar_type: prev.cedar_type.clone(),
+                });
+            }
+            Some(_) => {}
+        }
+    }
+    for (name, inst) in &installed_by {
+        if !preview_by.contains_key(name) {
+            diff.removed.push((*inst).clone());
+        }
+    }
+    diff
 }
 
 #[wasm_bindgen]
@@ -1239,6 +1336,55 @@ mod tests_policy_rpc {
             }),
             "{parsed}"
         );
+    }
+
+    #[test]
+    fn preview_custom_schema_with_one_output() {
+        let input = json!({
+            "action": "swap",
+            "manifest": manifest_json()
+        })
+        .to_string();
+        let out = preview_custom_schema_json(input);
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        let data = &parsed["data"];
+
+        let schema_text = data["enrichedSchemaText"]
+            .as_str()
+            .expect("enrichedSchemaText is string");
+        assert!(
+            schema_text.contains("type SwapCustomContext = {"),
+            "{schema_text}"
+        );
+        assert!(
+            schema_text.contains("totalInputUsd?: UsdValuation"),
+            "{schema_text}"
+        );
+
+        let custom_types = data["customTypes"]
+            .as_array()
+            .expect("customTypes is array");
+        assert_eq!(custom_types.len(), 1, "{data}");
+        assert_eq!(custom_types[0]["name"], "swap", "{data}");
+        let fields = custom_types[0]["fields"]
+            .as_array()
+            .expect("fields is array");
+        assert_eq!(fields.len(), 1, "{data}");
+        assert_eq!(fields[0]["field"], "totalInputUsd", "{data}");
+        assert_eq!(fields[0]["cedar_type"], "UsdValuation", "{data}");
+
+        let hash = data["schemaHash"].as_str().expect("schemaHash is string");
+        assert!(hash.starts_with("sha256:"), "{hash}");
+
+        // D14 diff: no install yet, so every previewed field is `added` and
+        // both `removed` and `changed` are empty.
+        let diff = &data["diff"];
+        assert_eq!(diff["added"].as_array().unwrap().len(), 1, "{diff}");
+        assert_eq!(diff["added"][0]["field"], "totalInputUsd", "{diff}");
+        assert!(diff["removed"].as_array().unwrap().is_empty(), "{diff}");
+        assert!(diff["changed"].as_array().unwrap().is_empty(), "{diff}");
     }
 
     #[test]

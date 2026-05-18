@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use policy_engine::policy_rpc::{PolicyManifest, PolicyRpcCall, PolicyRpcResponse, RootInput};
+use policy_engine::schema::CustomFieldSource;
 use policy_engine::ActionEnvelope;
 
 #[derive(Debug, Serialize)]
@@ -139,6 +140,65 @@ pub struct AliasEntryDto {
 pub struct AliasTableOutput {
     /// Alias entries.
     pub entries: Vec<AliasEntryDto>,
+}
+
+/// `preview_custom_schema_json` input shape: a single `{action, manifest}` pair.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PreviewCustomSchemaInputDto {
+    /// Target action (snake_case).
+    pub action: String,
+    /// Manifest contributing the action's custom context fields.
+    pub manifest: PolicyManifest,
+}
+
+/// One entry in `preview_custom_schema_json` `customTypes` array.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomTypeDto {
+    /// Action name (`snake_case`).
+    pub name: String,
+    /// Fields contributed by the manifest for this action.
+    pub fields: Vec<CustomFieldSource>,
+}
+
+/// One side of the `D14` per-action diff.
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomSchemaDiffDto {
+    /// Fields present in the previewed manifest but missing from the
+    /// currently-installed enriched schema for the action.
+    pub added: Vec<CustomFieldSource>,
+    /// Fields present in the installed schema but absent from the preview.
+    pub removed: Vec<CustomFieldSource>,
+    /// Fields whose name matches but whose `cedar_type` differs.
+    pub changed: Vec<CustomFieldChangeDto>,
+}
+
+/// A single changed-field entry: the same `field` with two different types.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomFieldChangeDto {
+    /// Field name shared by both sides.
+    pub field: String,
+    /// Cedar type currently installed for the action (or empty on first install).
+    pub installed_cedar_type: String,
+    /// Cedar type the previewed manifest would produce.
+    pub preview_cedar_type: String,
+}
+
+/// `preview_custom_schema_json` success payload.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewCustomSchemaOutputDto {
+    /// Per-action custom types contributed by the previewed manifest.
+    pub custom_types: Vec<CustomTypeDto>,
+    /// Full enriched cedarschema text after merging the previewed manifest
+    /// with the bundled base.
+    pub enriched_schema_text: String,
+    /// Per-action `D14` diff against the currently-installed enriched schema.
+    pub diff: CustomSchemaDiffDto,
+    /// SHA-256 of `enriched_schema_text`.
+    pub schema_hash: String,
 }
 
 #[cfg(test)]
