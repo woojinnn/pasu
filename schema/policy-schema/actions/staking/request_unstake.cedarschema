@@ -6,9 +6,10 @@ type RequestUnstakeContext = {
   amountOut?: AmountConstraint,
 
   recipient: String,
-
-  totalInputUsd?: UsdValuation,
+  custom?: RequestUnstakeCustomContext,
 };
+
+type RequestUnstakeCustomContext = {};
 
 action "request_unstake" appliesTo {
   principal: Wallet,

@@ -5,9 +5,10 @@ type SetAuthorizationContext = {
   isAuthorized: Bool,
   authorizationScope: String,
   amount?: AmountConstraint,
-
-  authorizedIsContract?: Bool,
+  custom?: SetAuthorizationCustomContext,
 };
+
+type SetAuthorizationCustomContext = {};
 
 action "set_authorization" appliesTo {
   principal: Wallet,

@@ -5,13 +5,10 @@ type RemoveLiquidityContext = {
   outputTokens: Set<AssetRefWithAmountConstraint>,
   recipient: String,
   validity?: Validity,
-
-  totalInputUsd?: UsdValuation,
-  totalMinOutputUsd?: UsdValuation,
-  effectiveRateVsOracleBps?: Long,
-  recipientIsContract?: Bool,
-  windowStats?: WindowStats,
+  custom?: RemoveLiquidityCustomContext,
 };
+
+type RemoveLiquidityCustomContext = {};
 
 action "remove_liquidity" appliesTo {
   principal: Wallet,

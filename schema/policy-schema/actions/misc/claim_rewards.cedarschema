@@ -1,6 +1,5 @@
 type ClaimRewardsContext = {
   sourceAddress: String,
-  sourceLabel?: String,
 
   nft?: AssetRef,
 
@@ -8,10 +7,10 @@ type ClaimRewardsContext = {
   recipient: String,
 
   rewards?: Set<AssetRefWithAmountConstraint>,
-
-  totalRewardsUsd?: UsdValuation,
-  nftOwnerIsActor?: Bool,
+  custom?: ClaimRewardsCustomContext,
 };
+
+type ClaimRewardsCustomContext = {};
 
 action "claim_rewards" appliesTo {
   principal: Wallet,

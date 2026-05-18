@@ -3,7 +3,10 @@ type RevokeContext = {
   caller: String,
   subject: String,
   revokeKind: String,
+  custom?: RevokeCustomContext,
 };
+
+type RevokeCustomContext = {};
 
 action "revoke" appliesTo {
   principal: Wallet,

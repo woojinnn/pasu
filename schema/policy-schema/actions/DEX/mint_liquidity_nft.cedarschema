@@ -5,13 +5,10 @@ type MintLiquidityNftContext = {
   inputTokens: Set<AssetRefWithAmountConstraint>,
   recipient: String,
   validity?: Validity,
-
-  totalInputUsd?: UsdValuation,
-  totalInputFractionOfPortfolioBps?: Long,
-  effectiveRateVsOracleBps?: Long,
-  recipientIsContract?: Bool,
-  windowStats?: WindowStats,
+  custom?: MintLiquidityNftCustomContext,
 };
+
+type MintLiquidityNftCustomContext = {};
 
 action "mint_liquidity_nft" appliesTo {
   principal: Wallet,

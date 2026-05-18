@@ -9,10 +9,10 @@ type LiquidateContext = {
   liquidateMode?: String,
   recipient?: String,
   receiveAToken?: Bool,
-
-  totalDebtUsd?: UsdValuation,
-  totalCollateralUsd?: UsdValuation,
+  custom?: LiquidateCustomContext,
 };
+
+type LiquidateCustomContext = {};
 
 action "liquidate" appliesTo {
   principal: Wallet,

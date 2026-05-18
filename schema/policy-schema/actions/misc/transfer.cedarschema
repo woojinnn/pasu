@@ -2,12 +2,10 @@ type TransferContext = {
   token: AssetRefWithAmountConstraint,
   from: String,
   recipient: String,
-
-  recipientIsContract?: Bool,
-  totalUsd?: UsdValuation,
-  amountFractionOfPortfolioBps?: Long,
-  windowStats?: WindowStats,
+  custom?: TransferCustomContext,
 };
+
+type TransferCustomContext = {};
 
 action "transfer" appliesTo {
   principal: Wallet,

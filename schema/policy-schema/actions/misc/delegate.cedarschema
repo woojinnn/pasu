@@ -1,15 +1,12 @@
 type DelegateContext = {
   token: AssetRef,
   delegatee: String,
-  delegateeLabel?: String,
-
-  currentDelegate?: String,
-  votingPower?: String,
-  powerType?: String,
 
   validity?: Validity,
-  validityDeltaSec?: Long,
+  custom?: DelegateCustomContext,
 };
+
+type DelegateCustomContext = {};
 
 action "delegate" appliesTo {
   principal: Wallet,

@@ -6,10 +6,10 @@ type RepayContext = {
   onBehalf: String,
   repayKind: String,
   validity?: Validity,
-
-  totalRepaidUsd?: UsdValuation,
-  allowancesCoverInputs?: Bool,
+  custom?: RepayCustomContext,
 };
+
+type RepayCustomContext = {};
 
 action "repay" appliesTo {
   principal: Wallet,

@@ -6,11 +6,10 @@ type StakeContext = {
   amountOut?: AmountConstraint,
 
   recipient: String,
-
-  totalInputUsd?: UsdValuation,
-  totalInputFractionOfPortfolioBps?: Long,
-  windowStats?: WindowStats,
+  custom?: StakeCustomContext,
 };
+
+type StakeCustomContext = {};
 
 action "stake" appliesTo {
   principal: Wallet,

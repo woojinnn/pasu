@@ -2,13 +2,10 @@ type IncreaseLiquidityContext = {
   nft: AssetRef,
   inputTokens: Set<AssetRefWithAmountConstraint>,
   validity?: Validity,
-
-  totalInputUsd?: UsdValuation,
-  totalInputFractionOfPortfolioBps?: Long,
-  effectiveRateVsOracleBps?: Long,
-  nftOwnerIsActor?: Bool,
-  windowStats?: WindowStats,
+  custom?: IncreaseLiquidityCustomContext,
 };
+
+type IncreaseLiquidityCustomContext = {};
 
 action "increase_liquidity" appliesTo {
   principal: Wallet,
