@@ -262,6 +262,29 @@ fn validate_declared_context_projection(
     action_kind: &str,
     output: &super::ContextProjection,
 ) -> Result<(), PolicyRpcError> {
+    // C: per Phase 2 the shipped manifests omit `context_extensions` and rely
+    // on the composer to derive the declaration set from `requires[].outputs[]`.
+    // Mirror that here: when the hand-authored block is empty for this
+    // manifest, build the declaration map from outputs targeting `action_kind`.
+    // Otherwise (legacy/backwards-compat) keep the existing strict check.
+    if manifest.context_extensions.is_empty() {
+        let derived = derived_action_declarations(manifest, action_kind);
+        let declared_type = derived.get(output.field.as_str()).ok_or_else(|| {
+            PolicyRpcError::InvalidManifest(format!(
+                "undeclared context projection `{action_kind}.{}` in manifest `{}`",
+                output.field, manifest.id
+            ))
+        })?;
+        if canonical_manifest_type(declared_type)? != output.type_name.cedar_type() {
+            return Err(PolicyRpcError::InvalidManifest(format!(
+                "context projection `{action_kind}.{}` has type {}, but derived outputs declare {declared_type}",
+                output.field,
+                output.type_name.cedar_type()
+            )));
+        }
+        return Ok(());
+    }
+
     let declared_type = manifest
         .context_extensions
         .get(action_kind)
@@ -280,6 +303,28 @@ fn validate_declared_context_projection(
         )));
     }
     Ok(())
+}
+
+/// Build a `field -> manifest_type_name` map from the manifest's own outputs
+/// for the given action. Used as the implicit declaration set when the
+/// manifest ships with an empty `context_extensions` block.
+fn derived_action_declarations<'a>(
+    manifest: &'a PolicyManifest,
+    action_kind: &str,
+) -> HashMap<&'a str, &'a str> {
+    let mut out = HashMap::new();
+    for requirement in &manifest.requires {
+        if requirement.when.action != action_kind {
+            continue;
+        }
+        for output in &requirement.outputs {
+            if output.kind != "context" {
+                continue;
+            }
+            out.insert(output.field.as_str(), output.type_name.cedar_type());
+        }
+    }
+    out
 }
 
 fn canonical_manifest_type(type_name: &str) -> Result<&'static str, PolicyRpcError> {

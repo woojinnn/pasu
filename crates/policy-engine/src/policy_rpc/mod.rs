@@ -950,6 +950,153 @@ mod tests {
         assert!(super::system_fail_verdict(&error).is_some());
     }
 
+    /// C: when `manifest.context_extensions` is empty, the materializer must
+    /// derive the declaration set from `requires[].outputs[]` rather than
+    /// rejecting the projection as `undeclared`. The shipped manifests now
+    /// arrive with empty `context_extensions` per Phase 2.
+    #[test]
+    fn materialization_accepts_derived_declarations_when_context_extensions_empty() {
+        let manifest = serde_json::from_value::<super::PolicyManifest>(json!({
+            "id": "user/derive-only",
+            "schema_version": 1,
+            "requires": [{
+                "id": "swap-total-input-usd",
+                "when": { "action": "swap" },
+                "method": "oracle.usd_value",
+                "params": {
+                    "chain_id": "$.root.chain_id",
+                    "asset": "$.action.inputToken.asset",
+                    "amount": "$.action.inputToken.amount.value"
+                },
+                "outputs": [{
+                    "kind": "context",
+                    "field": "totalInputUsd",
+                    "type": "UsdValuation",
+                    "from": "$.result",
+                    "required": true
+                }]
+            }],
+            "context_extensions": {}
+        }))
+        .expect("manifest parses");
+        let envelope = swap_envelope();
+        let mut requests = vec![crate::policy_request_from_envelope(
+            &envelope,
+            &"0x1111111111111111111111111111111111111111"
+                .parse()
+                .unwrap(),
+            &"0x2222222222222222222222222222222222222222"
+                .parse()
+                .unwrap(),
+            &"0".parse().unwrap(),
+            1,
+            1_700_000_000,
+        )
+        .expect("swap lowers")];
+
+        super::apply_rpc_results(
+            &mut requests,
+            &[envelope],
+            &[manifest],
+            &super::PolicyRpcResponse {
+                request_id: "eval-1".to_owned(),
+                results: vec![super::PolicyRpcResult {
+                    id: "user/derive-only::0::swap-total-input-usd".to_owned(),
+                    ok: true,
+                    result: Some(json!({
+                        "value": "1234.5678",
+                        "asOfTs": 1_700_000_000_u64,
+                        "staleSec": 5,
+                        "sources": ["coingecko"]
+                    })),
+                    error: None,
+                }],
+            },
+        )
+        .expect("derived declarations should validate without context_extensions");
+
+        let custom = requests[0]
+            .context
+            .get("custom")
+            .and_then(|c| c.get("totalInputUsd"))
+            .expect("context.custom.totalInputUsd materialized");
+        assert_eq!(
+            custom["value"],
+            json!({ "__extn": { "fn": "decimal", "arg": "1234.5678" } })
+        );
+    }
+
+    /// C: backwards-compat — when `context_extensions` is non-empty the legacy
+    /// validator still fires. A projection that the legacy block does not
+    /// declare must still surface `InvalidManifest("undeclared …")`.
+    #[test]
+    fn materialization_rejects_undeclared_projection_with_legacy_context_extensions() {
+        let manifest = serde_json::from_value::<super::PolicyManifest>(json!({
+            "id": "user/legacy-strict",
+            "schema_version": 1,
+            "requires": [{
+                "id": "swap-total-input-usd",
+                "when": { "action": "swap" },
+                "method": "oracle.usd_value",
+                "params": {},
+                "outputs": [{
+                    "kind": "context",
+                    "field": "totalInputUsd",
+                    "type": "UsdValuation",
+                    "from": "$.result",
+                    "required": true
+                }]
+            }],
+            // Legacy block declares an unrelated field but NOT totalInputUsd.
+            "context_extensions": {
+                "swap": { "tokenRiskScore": "Long" }
+            }
+        }))
+        .expect("manifest parses");
+        let envelope = swap_envelope();
+        let mut requests = vec![crate::policy_request_from_envelope(
+            &envelope,
+            &"0x1111111111111111111111111111111111111111"
+                .parse()
+                .unwrap(),
+            &"0x2222222222222222222222222222222222222222"
+                .parse()
+                .unwrap(),
+            &"0".parse().unwrap(),
+            1,
+            1_700_000_000,
+        )
+        .expect("swap lowers")];
+
+        let error = super::apply_rpc_results(
+            &mut requests,
+            &[envelope],
+            &[manifest],
+            &super::PolicyRpcResponse {
+                request_id: "eval-1".to_owned(),
+                results: vec![super::PolicyRpcResult {
+                    id: "user/legacy-strict::0::swap-total-input-usd".to_owned(),
+                    ok: true,
+                    result: Some(json!({
+                        "value": "1.0000",
+                        "asOfTs": 1_700_000_000_u64,
+                        "staleSec": 5,
+                        "sources": ["coingecko"]
+                    })),
+                    error: None,
+                }],
+            },
+        )
+        .unwrap_err();
+        assert!(
+            matches!(
+                error,
+                super::PolicyRpcError::InvalidManifest(ref msg) if msg.contains("undeclared")
+            ),
+            "{error:?}"
+        );
+    }
+
     /// D9: a missing RPC result for a non-optional requirement must route
     /// through the same D9 branch as ok=false (i.e. `SystemFail`), not the
     /// legacy generic `RpcResult("missing result …")` early return.
