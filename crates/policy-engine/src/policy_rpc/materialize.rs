@@ -46,8 +46,10 @@ pub fn system_fail_verdict(error: &PolicyRpcError) -> Option<Verdict> {
 ///
 /// # Errors
 ///
-/// Returns an error when a required result is missing or failed, a selector
-/// cannot be resolved, or a projected value does not match its declared type.
+/// Returns an error when a required result fails (D9 `SystemFail`), a
+/// selector cannot be resolved, or a projected value does not match its
+/// declared type. A missing required result is routed through the same D9
+/// branch (`SystemFail`) by `apply_requirement_result`.
 pub fn apply_rpc_results(
     requests: &mut [PolicyRequest],
     envelopes: &[ActionEnvelope],
@@ -63,8 +65,10 @@ pub fn apply_rpc_results(
 ///
 /// # Errors
 ///
-/// Returns an error when response ids are duplicated, unexpected, or missing,
-/// or when a required projection cannot be materialized.
+/// Returns an error when response ids are duplicated or unexpected, or when
+/// a required projection cannot be materialized. Per D9, a non-optional
+/// requirement whose result is missing returns `PolicyRpcError::SystemFail`
+/// (routed through `apply_requirement_result` rather than rejected up front).
 pub fn apply_rpc_results_with_indices(
     requests: &mut [PolicyRequest],
     indexed_envelopes: &[(usize, &ActionEnvelope)],

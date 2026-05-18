@@ -256,7 +256,14 @@ pub struct PreviewInstalledSchemaOutputDto {
     /// Per-action custom-context fields contributed by manifests (camelCase).
     #[serde(rename = "customContexts")]
     pub custom_contexts: std::collections::BTreeMap<String, Vec<CustomFieldSource>>,
-    /// SHA-256 of the enriched schema text (camelCase alias of `schema_hash`).
+    /// SHA-256 of the manifest-derived enriched cedarschema only.
+    ///
+    /// Equals `schema_hash` when no extra adapter fragment was concatenated.
+    /// When the caller passed a non-empty `schema_text` to
+    /// `install_policies_json`, the legacy `schema_hash` covers
+    /// `enriched_text + "\n" + extra_schema_text` while this field still
+    /// hashes only `enriched_text`. Phase 7's `/schema` viewer renders
+    /// `enrichedSchemaText`, so the camelCase field is the one to display.
     #[serde(rename = "schemaHash")]
     pub schema_hash_camel: String,
 }
