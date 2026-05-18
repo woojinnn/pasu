@@ -949,4 +949,95 @@ mod tests {
         );
         assert!(super::system_fail_verdict(&error).is_some());
     }
+
+    /// D9: a missing RPC result for a non-optional requirement must route
+    /// through the same D9 branch as ok=false (i.e. `SystemFail`), not the
+    /// legacy generic `RpcResult("missing result …")` early return.
+    #[test]
+    fn missing_rpc_result_on_non_optional_requirement_produces_system_fail() {
+        let manifest = serde_json::from_value::<super::PolicyManifest>(manifest_json(true))
+            .expect("manifest parses");
+        let envelope = swap_envelope();
+        let mut requests = vec![crate::policy_request_from_envelope(
+            &envelope,
+            &"0x1111111111111111111111111111111111111111"
+                .parse()
+                .unwrap(),
+            &"0x2222222222222222222222222222222222222222"
+                .parse()
+                .unwrap(),
+            &"0".parse().unwrap(),
+            1,
+            1_700_000_000,
+        )
+        .expect("swap lowers")];
+
+        // No matching result entry at all — the call id the materializer
+        // expects is `user/max-input-usd-100::0::swap-total-input-usd`, but
+        // the response carries an empty result vec.
+        let error = super::apply_rpc_results(
+            &mut requests,
+            &[envelope],
+            &[manifest],
+            &super::PolicyRpcResponse {
+                request_id: "eval-1".to_owned(),
+                results: vec![],
+            },
+        )
+        .unwrap_err();
+
+        match &error {
+            super::PolicyRpcError::SystemFail { call_id, reason } => {
+                assert_eq!(call_id, "user/max-input-usd-100::0::swap-total-input-usd");
+                assert!(
+                    reason.starts_with("missing"),
+                    "expected reason to start with `missing`, got `{reason}`"
+                );
+            }
+            other => panic!("expected SystemFail, got {other:?}"),
+        }
+        assert!(super::system_fail_verdict(&error).is_some());
+    }
+
+    /// D9: a missing RPC result for an optional requirement is swallowed; the
+    /// projected field is omitted from `context.custom` and the call succeeds.
+    #[test]
+    fn missing_rpc_result_on_optional_requirement_omits_field_and_continues() {
+        let mut manifest_value = manifest_json(true);
+        manifest_value["requires"][0]["optional"] = json!(true);
+        let manifest = serde_json::from_value::<super::PolicyManifest>(manifest_value)
+            .expect("manifest parses");
+        let envelope = swap_envelope();
+        let mut requests = vec![crate::policy_request_from_envelope(
+            &envelope,
+            &"0x1111111111111111111111111111111111111111"
+                .parse()
+                .unwrap(),
+            &"0x2222222222222222222222222222222222222222"
+                .parse()
+                .unwrap(),
+            &"0".parse().unwrap(),
+            1,
+            1_700_000_000,
+        )
+        .expect("swap lowers")];
+
+        super::apply_rpc_results(
+            &mut requests,
+            &[envelope],
+            &[manifest],
+            &super::PolicyRpcResponse {
+                request_id: "eval-1".to_owned(),
+                results: vec![],
+            },
+        )
+        .expect("optional requirement absorbs missing result");
+
+        assert!(requests[0].context.get("totalInputUsd").is_none());
+        let custom = requests[0].context.get("custom");
+        assert!(
+            custom.is_none() || custom.and_then(|c| c.get("totalInputUsd")).is_none(),
+            "expected totalInputUsd to be omitted from context.custom, got {custom:?}"
+        );
+    }
 }
