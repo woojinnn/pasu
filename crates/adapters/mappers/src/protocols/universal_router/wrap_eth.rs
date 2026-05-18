@@ -61,7 +61,7 @@ impl Mapper for UrWrapEthMapper {
 
         let action = WrapAction {
             native_asset: asset_with_amount(native_eth(), amount.clone()),
-            wrapped_asset: asset_with_amount(wrapped_weth(), amount),
+            wrapped_asset: asset_with_amount(wrapped_weth(ctx), amount),
             recipient,
         };
 

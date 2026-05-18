@@ -767,3 +767,131 @@ fn v4_swap_without_take_keeps_default_recipient() {
     };
     assert_eq!(s.recipient, user, "no TAKE → recipient stays as ctx.from");
 }
+
+// ---------------------------------------------------------------------------
+// End-to-end collapse: UR [WRAP_ETH + V3_SWAP_EXACT_IN] should compact to a
+// single Swap(ETH → X). Regression for the bug where wrapped_weth() returned
+// `address: None`, which made the compactor's ledger treat WRAP's WETH
+// output as `Asset::Native` (via the Erc20-without-address fallback) — a
+// different bucket from SWAP's WETH input. With wrapped_weth() now pulling
+// the address from `ctx.token_registry.wrapped_native()`, the buckets line
+// up and the collapse pass fires.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn wrap_plus_v3_swap_collapses_to_single_swap_envelope() {
+    use crate::compactor::simulate;
+
+    // 1. Build the per-opcode SubCall payloads.
+    let recipient_router = {
+        // UR ACTION_ADDRESS_THIS sentinel (`0x...02`) — WRAP credits WETH to
+        // the router so the subsequent V3_SWAP can consume it.
+        let mut bytes = [0u8; 20];
+        bytes[19] = 0x02;
+        bytes
+    };
+    let recipient_user_sentinel = {
+        // ACTION_MSG_SENDER (`0x...01`) — V3_SWAP sends USDC to the original
+        // caller. The mapper resolves this to ctx.from.
+        let mut bytes = [0u8; 20];
+        bytes[19] = 0x01;
+        bytes
+    };
+    let amount_in: u128 = 30_000_000_000_000;
+    let amount_out_min: u128 = 63_460;
+
+    let wrap_input = encode_address_uint256(recipient_router, amount_in);
+
+    // V3_SWAP_EXACT_IN: (recipient, amountIn, amountOutMin, bytes path, payerIsUser).
+    // Path = WETH | fee(500) | USDC. UR's V3_SWAP consumes WETH the router
+    // is holding (post-WRAP), so payerIsUser=false in real calldata.
+    let weth = [
+        0xc0, 0x2a, 0xaa, 0x39, 0xb2, 0x23, 0xfe, 0x8d, 0x0a, 0x0e, 0x5c, 0x4f, 0x27, 0xea, 0xd9,
+        0x08, 0x3c, 0x75, 0x6c, 0xc2,
+    ];
+    let usdc = [
+        0xa0, 0xb8, 0x69, 0x91, 0xc6, 0x21, 0x8b, 0x36, 0xc1, 0xd1, 0x9d, 0x4a, 0x2e, 0x9e, 0xb0,
+        0xce, 0x36, 0x06, 0xeb, 0x48,
+    ];
+    let mut path = Vec::with_capacity(20 + 3 + 20);
+    path.extend_from_slice(&weth);
+    path.extend_from_slice(&[0x00, 0x01, 0xf4]); // fee = 500 pips
+    path.extend_from_slice(&usdc);
+
+    let v3_input = {
+        let f = AbiFunction::parse("step(address,uint256,uint256,bytes,bool)").unwrap();
+        let vals = vec![
+            DynSolValue::Address(AlloyAddress::from(recipient_user_sentinel)),
+            DynSolValue::Uint(U256::from(amount_in), 256),
+            DynSolValue::Uint(U256::from(amount_out_min), 256),
+            DynSolValue::Bytes(path),
+            DynSolValue::Bool(false),
+        ];
+        let raw = f.abi_encode_input(&vals).unwrap();
+        raw[4..].to_vec()
+    };
+
+    // 2. UR execute() with commands = [WRAP_ETH, V3_SWAP_EXACT_IN].
+    let calldata = encode_execute(&[0x0b, 0x00], &[wrap_input, v3_input]);
+
+    let user = addr("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let router = addr("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let value = dec("0");
+    let split_ctx = SplitContext {
+        chain_id: 1,
+        from: &user,
+        to: &router,
+        value_wei: &value,
+        block_timestamp: None,
+    };
+
+    // 3. Splitter → 2 SubCalls, both pre-decoded.
+    let splitter = UniversalRouterSplitter::uniswap_ur();
+    let sub_calls = splitter.split(&split_ctx, &calldata).unwrap();
+    assert_eq!(sub_calls.len(), 2);
+
+    let tr = EmptyTokenRegistry;
+    let ctx = map_ctx(&user, &router, &value, &tr);
+
+    // 4. Run each SubCall through its mapper.
+    let mut envelopes = Vec::new();
+    {
+        let wrap_decoded = sub_calls[0].decoded.as_ref().expect("WRAP pre-decoded");
+        let mut out = UrWrapEthMapper::new().map(&ctx, wrap_decoded).unwrap();
+        envelopes.append(&mut out);
+    }
+    {
+        let swap_decoded = sub_calls[1].decoded.as_ref().expect("V3 SWAP pre-decoded");
+        let mut out = UrV3SwapExactInMapper::new()
+            .map(&ctx, swap_decoded)
+            .unwrap();
+        envelopes.append(&mut out);
+    }
+    assert_eq!(envelopes.len(), 2, "pre-compactor: WRAP + SWAP envelopes");
+
+    // 5. Compactor: must collapse to a single Swap(ETH → USDC).
+    let collapsed = simulate(envelopes, &ctx);
+    assert_eq!(
+        collapsed.len(),
+        1,
+        "compactor must merge WRAP+SWAP into one envelope; got {} envelopes",
+        collapsed.len()
+    );
+    let Action::Swap(s) = &collapsed[0].action else {
+        panic!("expected merged Swap action, got {:?}", collapsed[0].action);
+    };
+    // Input collapses to native ETH (the WRAP source).
+    assert!(
+        matches!(
+            s.input_token.asset.kind,
+            policy_engine::action::AssetKind::Native
+        ),
+        "input_token should be native ETH after collapse, got kind={:?}",
+        s.input_token.asset.kind,
+    );
+    // Output is USDC.
+    assert_eq!(
+        s.output_token.asset.address.as_ref().unwrap().to_string(),
+        format!("0x{}", hex::encode(usdc))
+    );
+}
