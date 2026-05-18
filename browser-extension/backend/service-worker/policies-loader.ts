@@ -25,6 +25,35 @@ export function getActivePolicyRpcManifests(): unknown[] {
   return [...activePolicyRpcManifests];
 }
 
+/**
+ * Build the same `{id, text}[]` set that the next `installFiltered()`
+ * would install, without actually pushing it into WASM. Used by the
+ * manifest-hydration boot stage so it can pass the currently-enabled
+ * policy set alongside the per-action manifest map and avoid the
+ * `install_policies_json` "replace state" semantics from wiping the
+ * Cedar policies that `ensureDefaultPoliciesInstalled` just installed.
+ *
+ * Returns the policy entries (id + text) sorted in the same order
+ * `installFiltered()` would compute. Safe to call before / after
+ * defaults-install; reads enabled-ids and storage on every invocation.
+ */
+export async function loadCurrentEnabledPolicySet(): Promise<
+  { id: string; text: string }[]
+> {
+  const [defaults, marketplacePolicies, dashboardPolicies, enabledIds] =
+    await Promise.all([
+      loadDefaultPolicySet(),
+      aggregatedPolicySet(),
+      aggregatedManagedPolicySet(),
+      getEnabledIds(),
+    ]);
+  const enabledSet = new Set(enabledIds);
+  const union = [...defaults, ...marketplacePolicies, ...dashboardPolicies];
+  return union
+    .filter((p) => enabledSet.has(p.id))
+    .map(({ id, text }) => ({ id, text }));
+}
+
 function collectPolicyRpcManifests(
   policies: readonly PolicyEntry[],
 ): unknown[] {

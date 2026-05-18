@@ -4,12 +4,11 @@ import {
   handleDashboardRequest,
   isDashboardRequest,
 } from "./dashboard/api";
-import { devSeed, fetchBundledDefaultManifests } from "./manifests/dev-seed";
 import {
   handleManifestRequest,
   isManifestRequest,
 } from "./manifests/handlers";
-import * as manifestStore from "./manifests/store";
+import { hydrateManifests } from "./manifests/hydrate";
 import { decideMessage } from "./orchestrator";
 import {
   ensureDefaultPoliciesInstalled,
@@ -17,7 +16,6 @@ import {
 } from "./policies-loader";
 import { applyEnabledIds, getCatalog } from "./policy-selection";
 import { RequestType, type Message, type MessageResponse } from "@lib/types";
-import { installPolicies as wasmInstallPolicies } from "./wasm-bridge";
 
 const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
@@ -73,47 +71,6 @@ async function bootSequence(): Promise<void> {
   } catch (err) {
     console.warn("[Scopeball] manifest hydration failed:", err);
   }
-}
-
-async function hydrateManifests(): Promise<void> {
-  const existing = await manifestStore.getAllManifests();
-  if (Object.keys(existing).length > 0) {
-    // Cold-start restore: re-push the stored manifest map into WASM so
-    // policies authored on previous startups validate against the
-    // enriched schema.
-    //
-    // KNOWN LIMITATION (carry-over G, deeper issue, to address in
-    // Phase 8 e2e): `install_policies_json` REPLACES engine state
-    // (crates/policy-engine-wasm/src/exports.rs:92 — `*state.borrow_mut()
-    // = Some(EngineState { policies, ... })`). The empty `policy_set: []`
-    // here therefore wipes the Cedar policies that
-    // `ensureDefaultPoliciesInstalled` just installed. Serializing the
-    // two boot stages makes this deterministic, but the policy set
-    // still ends up empty after hydrate when there are stored
-    // manifests. A future fix should either route hydrate through
-    // `reinstallAllPolicies` (preserving the policy_set) or extend
-    // `installFiltered` to merge the SW-stored manifest map alongside
-    // the legacy per-policy manifests.
-    const installed = await wasmInstallPolicies({
-      schema_text: "",
-      policy_set: [],
-      manifests: existing,
-    });
-    if (installed) {
-      await manifestStore.setHash(installed.enrichedSchemaHash);
-    }
-  }
-  await devSeed({
-    fetchDefaults: fetchBundledDefaultManifests,
-    wasmInstall: async (manifests) => {
-      const r = await wasmInstallPolicies({
-        schema_text: "",
-        policy_set: [],
-        manifests,
-      });
-      return r;
-    },
-  });
 }
 
 Browser.runtime.onConnect.addListener((port) => {
