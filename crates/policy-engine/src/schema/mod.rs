@@ -1,5 +1,6 @@
 //! Cedar policy schema composition.
 
+pub mod action_name;
 pub mod aliases;
 pub mod enriched;
 pub mod fragment;
