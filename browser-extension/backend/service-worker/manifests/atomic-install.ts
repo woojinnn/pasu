@@ -89,12 +89,16 @@ export async function atomicInstall(
     };
   }
 
-  // Atomic commit: replace the manifest map and the hash. The store's
-  // `replaceAllManifests` swaps the value of the single
-  // `rpc:manifests` key, so even if the runtime crashes between calls
-  // the hash is the only key that could lag behind.
-  await store.replaceAllManifests(next);
-  await store.setHash(installed.enrichedSchemaHash);
+  // Atomic commit: write the manifest map and its hash in a single
+  // `chrome.storage.local.set` call. `set` accepts a multi-key object
+  // and applies it atomically — if the call throws, neither key is
+  // updated, so storage cannot land in a "new manifests / old hash"
+  // (or vice versa) half-state.
+  try {
+    await store.commitManifestsAndHash(next, installed.enrichedSchemaHash);
+  } catch (err) {
+    return { ok: false, error: asError(err) };
+  }
 
   return { ok: true, data: installed };
 }

@@ -92,6 +92,27 @@ export async function replaceAllManifests(
 }
 
 /**
+ * Commit the manifest map and its enriched-schema hash in a single
+ * `chrome.storage.local.set` call. `set` accepts a multi-key object and
+ * applies it atomically, so callers (notably `atomicInstall`) avoid the
+ * window where the map persists with a stale hash if the second write
+ * throws.
+ *
+ * If `next` is empty AND `hash` is null the call is still issued so the
+ * underlying storage reflects the cleared state; tests and dev-seed rely
+ * on that being observable.
+ */
+export async function commitManifestsAndHash(
+  next: Record<string, PolicyManifest>,
+  hash: string,
+): Promise<void> {
+  await Browser.storage.local.set({
+    [KEY_MANIFESTS]: next,
+    [KEY_HASH]: hash,
+  });
+}
+
+/**
  * Reset every key this module owns. Used by tests and by the dev-build
  * "wipe and reseed" path. Does NOT clear other extension storage.
  */

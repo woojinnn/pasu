@@ -121,4 +121,64 @@ describe("atomicInstall", () => {
     expect(Object.keys(after)).toEqual(["swap"]);
     expect(after.swap.id).toBe("user::swap-new");
   });
+
+  it("commits the manifest map and the hash in a single storage.set call", async () => {
+    // The map + hash must be persisted atomically — otherwise a thrown
+    // second write would leave storage half-installed (manifests with
+    // an old/missing hash, or vice versa). We assert this by counting
+    // the number of `.set` calls issued AFTER the WASM install returns.
+    const wasmInstall: WasmInstallFn = vi.fn(async () => ({
+      enrichedSchemaHash: "sha256:atomic",
+      addedCustomFields: {},
+    }));
+    const setSpy = mocks.browser.storage.local.set as ReturnType<typeof vi.fn>;
+    setSpy.mockClear();
+
+    const next = { swap: manifest("user::swap") };
+    const result = await atomicInstall(next, { wasmInstall });
+
+    expect(result.ok).toBe(true);
+    // Exactly one .set call should fire after wasm install — the
+    // combined commit that writes KEY_MANIFESTS and KEY_HASH together.
+    expect(setSpy).toHaveBeenCalledTimes(1);
+    const arg = setSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(Object.keys(arg).sort()).toEqual(
+      ["rpc:enrichedSchemaHash", "rpc:manifests"].sort(),
+    );
+    expect(arg["rpc:manifests"]).toEqual(next);
+    expect(arg["rpc:enrichedSchemaHash"]).toBe("sha256:atomic");
+  });
+
+  it("leaves both keys unchanged when the storage commit throws", async () => {
+    // Pre-existing state we expect to survive a failed install.
+    await store.putManifestRaw("swap", manifest("user::swap-old"));
+    await store.setHash("sha256:old");
+
+    const wasmInstall: WasmInstallFn = vi.fn(async () => ({
+      enrichedSchemaHash: "sha256:new",
+      addedCustomFields: {},
+    }));
+
+    const setSpy = mocks.browser.storage.local.set as ReturnType<typeof vi.fn>;
+    // Force only the *commit* set() (the one with both KEY_MANIFESTS
+    // and KEY_HASH) to fail; earlier setup writes already went through
+    // so by clearing + re-installing the failing impl we cover the
+    // exact "post-wasm commit" window.
+    setSpy.mockImplementationOnce(async () => {
+      throw Object.assign(new Error("disk full"), { kind: "storage_failed" });
+    });
+
+    const next = { swap: manifest("user::swap-new") };
+    const result = await atomicInstall(next, { wasmInstall });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("storage_failed");
+    }
+    // Neither key was updated — both still hold their pre-install
+    // values because the combined .set was atomic.
+    const after = await store.getAllManifests();
+    expect(after.swap.id).toBe("user::swap-old");
+    expect(await store.getHash()).toBe("sha256:old");
+  });
 });
