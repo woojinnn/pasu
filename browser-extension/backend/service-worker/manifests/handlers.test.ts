@@ -209,6 +209,73 @@ describe("handleManifestRequest", () => {
     }
   });
 
+  // Phase 7 codex carry-over M: the SW must enforce the http(s) scheme
+  // server-side. Dashboard validation is a UX nicety; the SDK is
+  // reachable from any content-script context and we can't trust the
+  // caller to honour the contract.
+  it("manifest:set-endpoint-url accepts http and https URLs", async () => {
+    const r1 = await handleManifestRequest({
+      type: "manifest:set-endpoint-url",
+      url: "http://localhost:8787",
+    });
+    expect(r1.ok).toBe(true);
+    if (r1.ok) {
+      expect((r1.data as { url: string | null }).url).toBe(
+        "http://localhost:8787",
+      );
+    }
+    const r2 = await handleManifestRequest({
+      type: "manifest:set-endpoint-url",
+      url: "https://policy-rpc.example.com",
+    });
+    expect(r2.ok).toBe(true);
+    if (r2.ok) {
+      expect((r2.data as { url: string | null }).url).toBe(
+        "https://policy-rpc.example.com",
+      );
+    }
+  });
+
+  it("manifest:set-endpoint-url rejects URLs with non-http(s) schemes", async () => {
+    for (const bad of [
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "ftp://example.com",
+      "//example.com",
+      "example.com",
+      "  no-scheme",
+    ]) {
+      const r = await handleManifestRequest({
+        type: "manifest:set-endpoint-url",
+        url: bad,
+      });
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.error.kind).toBe("invalid_endpoint_url");
+      }
+    }
+    // Storage was never written.
+    expect(await store.getEndpointUrl()).toBeNull();
+  });
+
+  it("manifest:set-endpoint-url clears the value when null or empty string is passed", async () => {
+    await store.setEndpointUrl("http://localhost:8787");
+    const r1 = await handleManifestRequest({
+      type: "manifest:set-endpoint-url",
+      url: null,
+    });
+    expect(r1.ok).toBe(true);
+    expect(await store.getEndpointUrl()).toBeNull();
+
+    await store.setEndpointUrl("http://localhost:8787");
+    const r2 = await handleManifestRequest({
+      type: "manifest:set-endpoint-url",
+      url: "",
+    });
+    expect(r2.ok).toBe(true);
+    expect(await store.getEndpointUrl()).toBeNull();
+  });
+
   it("migration:list returns the persisted pending ids", async () => {
     await mocks.browser.storage.local.set({
       "migration:pending": ["a", "b"],

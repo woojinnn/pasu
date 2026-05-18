@@ -168,9 +168,21 @@ export async function handleManifestRequest(
       }
 
       case "manifest:set-endpoint-url": {
-        await store.setEndpointUrl(
-          typeof req.url === "string" ? req.url : null,
-        );
+        // Phase 7 codex carry-over M: server-side URL scheme check.
+        // The dashboard already validates this client-side, but the SDK
+        // is reachable from any content script / Vite test and we
+        // cannot rely on the caller honouring the contract — only
+        // `http(s)://...` (or `null` to clear) should land in storage.
+        const url = typeof req.url === "string" ? req.url.trim() : null;
+        if (url !== null && url !== "") {
+          if (!/^https?:\/\/[^\s]+/i.test(url)) {
+            return fail(
+              "invalid_endpoint_url",
+              `endpoint URL must use http:// or https://, got: ${url.slice(0, 40)}`,
+            );
+          }
+        }
+        await store.setEndpointUrl(url && url.length > 0 ? url : null);
         return { ok: true, data: { url: await store.getEndpointUrl() } };
       }
 
