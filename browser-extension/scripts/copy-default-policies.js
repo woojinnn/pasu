@@ -48,7 +48,7 @@ function main() {
     .join("\n\n");
   fs.writeFileSync(path.join(DEST, "schema.cedarschema"), schema);
 
-  const policiesDir = path.join(REPO_ROOT, "policy-examples");
+  const policiesDir = path.join(REPO_ROOT, "policy-rpc", "examples", "policies");
   if (fs.existsSync(policiesDir)) {
     const files = listCedarFiles(policiesDir);
     const policySet = files.map((f) => {
@@ -76,7 +76,9 @@ function main() {
     );
   } else {
     fs.writeFileSync(path.join(DEST, "policy-set.json"), "[]");
-    console.log(`Wrote empty policy-set.json (no policy-examples/ dir found)`);
+    console.log(
+      `Wrote empty policy-set.json (no policy-rpc/examples/policies/ dir found)`,
+    );
   }
 }
 

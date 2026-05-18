@@ -229,23 +229,24 @@ fn e2e_v2_exact_out_does_not_match_exact_in_only_policy() {
     assert_eq!(verdict, Verdict::Pass);
 }
 
-const MAX_FEE_POLICY: &str = include_str!("../../../policy-examples/swap/max-fee-bps-100.cedar");
+const MAX_FEE_POLICY: &str =
+    include_str!("../../../policy-rpc/examples/policies/swap/max-fee-bps-100.cedar");
 const NO_ZERO_MIN_OUTPUT_POLICY: &str =
-    include_str!("../../../policy-examples/swap/no-zero-min-output.cedar");
+    include_str!("../../../policy-rpc/examples/policies/swap/no-zero-min-output.cedar");
 const MAX_INPUT_USD_100_POLICY: &str =
-    include_str!("../../../policy-examples/swap/max-input-usd-100.cedar");
+    include_str!("../../../policy-rpc/examples/policies/swap/max-input-usd-100.cedar");
 const MAX_INPUT_USD_100_MANIFEST: &str =
-    include_str!("../../../policy-examples/swap/max-input-usd-100.policy-rpc.json");
+    include_str!("../../../policy-rpc/examples/policies/swap/max-input-usd-100.policy-rpc.json");
 const MIN_OUTPUT_USD_FLOOR_POLICY: &str =
-    include_str!("../../../policy-examples/swap/min-output-usd-floor.cedar");
+    include_str!("../../../policy-rpc/examples/policies/swap/min-output-usd-floor.cedar");
 const MIN_OUTPUT_USD_FLOOR_MANIFEST: &str =
-    include_str!("../../../policy-examples/swap/min-output-usd-floor.policy-rpc.json");
+    include_str!("../../../policy-rpc/examples/policies/swap/min-output-usd-floor.policy-rpc.json");
 const KNOWN_TOKEN_ONLY_POLICY: &str =
-    include_str!("../../../policy-examples/swap/known-token-only.cedar");
+    include_str!("../../../policy-rpc/examples/policies/swap/known-token-only.cedar");
 const MAX_FEE_BPS_30_POLICY: &str =
-    include_str!("../../../policy-examples/swap/max-fee-bps-30.cedar");
+    include_str!("../../../policy-rpc/examples/policies/swap/max-fee-bps-30.cedar");
 const EXPIRED_DEADLINE_POLICY: &str =
-    include_str!("../../../policy-examples/swap/expired-deadline.cedar");
+    include_str!("../../../policy-rpc/examples/policies/swap/expired-deadline.cedar");
 
 fn evaluate_with_policies(policies: &[&str], request: &PolicyRequest) -> Verdict {
     evaluate_with_policies_and_manifests(policies, &[], request)

@@ -838,14 +838,14 @@ mod tests_policy_rpc {
 
     fn default_max_input_manifest_json() -> Value {
         serde_json::from_str(include_str!(
-            "../../../policy-examples/swap/max-input-usd-100.policy-rpc.json"
+            "../../../policy-rpc/examples/policies/swap/max-input-usd-100.policy-rpc.json"
         ))
         .unwrap()
     }
 
     fn default_min_output_manifest_json() -> Value {
         serde_json::from_str(include_str!(
-            "../../../policy-examples/swap/min-output-usd-floor.policy-rpc.json"
+            "../../../policy-rpc/examples/policies/swap/min-output-usd-floor.policy-rpc.json"
         ))
         .unwrap()
     }
@@ -1032,7 +1032,7 @@ mod tests_policy_rpc {
     }
 
     #[test]
-    #[ignore = "TODO(phase-5/D11): policy-examples/swap/max-input-usd-100.cedar and min-output-usd-floor.cedar now read context.custom.X but their matching .policy-rpc.json manifests still place outputs at top-level context. Re-enable once the materializer writes outputs under context.custom (Phase 5) and the example manifests retire their legacy context_extensions block (Phase 4)."]
+    #[ignore = "TODO(phase-5/D11): policy-rpc/examples/policies/swap/max-input-usd-100.cedar and min-output-usd-floor.cedar now read context.custom.X but their matching .policy-rpc.json manifests still place outputs at top-level context. Re-enable once the materializer writes outputs under context.custom (Phase 5) and the example manifests retire their legacy context_extensions block."]
     fn default_swap_policy_rpc_files_plan_and_evaluate() {
         let max_manifest = default_max_input_manifest_json();
         let min_manifest = default_min_output_manifest_json();
@@ -1065,11 +1065,11 @@ mod tests_policy_rpc {
                 "policy_set": [
                     {
                         "id": "default::swap/max-input-usd-100",
-                        "text": include_str!("../../../policy-examples/swap/max-input-usd-100.cedar")
+                        "text": include_str!("../../../policy-rpc/examples/policies/swap/max-input-usd-100.cedar")
                     },
                     {
                         "id": "default::swap/min-output-usd-floor",
-                        "text": include_str!("../../../policy-examples/swap/min-output-usd-floor.cedar")
+                        "text": include_str!("../../../policy-rpc/examples/policies/swap/min-output-usd-floor.cedar")
                     }
                 ]
             })
