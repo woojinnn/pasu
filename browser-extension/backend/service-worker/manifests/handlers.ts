@@ -16,10 +16,19 @@ import {
   previewCustomSchema,
   previewInstalledSchema,
 } from "../wasm-bridge";
-import { loadCurrentEnabledPolicySet } from "../policies-loader";
+import {
+  loadCurrentEnabledPolicySet,
+  reinstallAllPolicies,
+} from "../policies-loader";
+import {
+  applyEnabledIds,
+  getEnabledIds,
+} from "../policy-selection";
 import { atomicInstall, type AtomicInstallResult } from "./atomic-install";
 import {
   KEY_PENDING_MIGRATION,
+  clearOriginalEnabled,
+  getOriginalEnabled,
   listPending,
   rewritePolicyText,
   setPending,
@@ -228,6 +237,33 @@ export async function handleManifestRequest(
         if (typeof req.id !== "string") {
           return fail("invalid_request", "id required");
         }
+        // Fix R, ack-side restore. The dashboard's rewrite flow runs
+        // `migration:rewrite` → `dashboard:put-raw` → `migration:ack`.
+        // The put-raw step always re-adds the id to `enabled-ids` (see
+        // `persistThenApply` → `autoApplyEnabled`). For users whose
+        // original preference was DISABLED, that's wrong — we strip
+        // the id off again here and reinstall via the apply-queue so
+        // BOTH `enabled-ids` AND `applied-ids` move in lockstep and
+        // serialize against any concurrent popup toggle. For users
+        // whose original preference was ENABLED (or who never had a
+        // snapshot because the detector didn't run for this id),
+        // put-raw's add is exactly right and we leave enabled-ids alone.
+        const original = await getOriginalEnabled();
+        const wasEnabled = original[req.id];
+        if (wasEnabled === false) {
+          const current = await getEnabledIds();
+          if (current.includes(req.id)) {
+            const next = current.filter((x) => x !== req.id);
+            const result = await applyEnabledIds(next, reinstallAllPolicies);
+            if (!result.ok) {
+              // Surface the apply-queue failure verbatim. Leaving the
+              // snapshot + pending entry in place lets the next ack
+              // retry pick up where we stopped.
+              return { ok: false, error: result.error };
+            }
+          }
+        }
+        await clearOriginalEnabled(req.id);
         const pending = await listPending();
         await setPending(pending.filter((p) => p !== req.id));
         return { ok: true, data: { id: req.id, remaining: await listPending() } };

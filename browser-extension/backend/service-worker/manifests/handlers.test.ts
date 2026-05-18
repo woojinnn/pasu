@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     // `loadCurrentEnabledPolicySet()` so the Map-install path includes
     // the user-enabled Cedar policies (not just the manifests).
     loadCurrentEnabledPolicySet: vi.fn(async () => [] as { id: string; text: string }[]),
+    reinstallAllPolicies: vi.fn(async (_ids: string[]) => undefined),
     browser: {
       storage: {
         local: {
@@ -46,6 +47,7 @@ vi.mock("../wasm-bridge", () => ({
 }));
 vi.mock("../policies-loader", () => ({
   loadCurrentEnabledPolicySet: mocks.loadCurrentEnabledPolicySet,
+  reinstallAllPolicies: mocks.reinstallAllPolicies,
 }));
 
 import { handleManifestRequest, isManifestRequest } from "./handlers";
@@ -392,5 +394,104 @@ describe("handleManifestRequest", () => {
     });
     expect(r.ok).toBe(true);
     expect(mocks.localStore.get("migration:pending")).toEqual(["dashboard::a"]);
+  });
+
+  // Fix R: when the detector force-disabled a v0 policy that the user
+  // had off pre-upgrade, ack must NOT leave it re-enabled (put-raw
+  // unconditionally adds the id to `policy-selection:enabled-ids`).
+  // The original-enabled snapshot drives the restore: `false` means the
+  // ack handler must strip the id from enabled-ids again and reinstall.
+  // `true` means leave put-raw's add intact (the policy stays enabled).
+  it("migration:ack restores the user's prior disabled preference (original = false)", async () => {
+    // Simulate the dashboard's complete rewrite flow up to ack:
+    //   1. Detector saved {v0: false} and stripped v0 from enabled-ids.
+    //   2. User clicked Rewrite → put-raw added v0 back to enabled-ids.
+    //   3. Now `migration:ack` fires. Because original-enabled[v0] is
+    //      false, ack pops v0 off the enabled set and reinstalls.
+    mocks.wasmInstall.mockResolvedValue({
+      enrichedSchemaHash: "sha256:installed",
+      addedCustomFields: {},
+    });
+    await mocks.browser.storage.local.set({
+      "migration:pending": ["dashboard::v0"],
+      "migration:original-enabled": { "dashboard::v0": false },
+      "policy-selection:enabled-ids": [
+        "dashboard::v0",
+        "default::dex/keep",
+      ],
+    });
+
+    const r = await handleManifestRequest({
+      type: "migration:ack",
+      id: "dashboard::v0",
+    });
+    expect(r.ok).toBe(true);
+    // pending is empty + snapshot cleared. The helper removes empty
+    // keys entirely to keep storage tidy, so we assert on absence.
+    expect(mocks.localStore.has("migration:pending")).toBe(false);
+    expect(mocks.localStore.has("migration:original-enabled")).toBe(false);
+    // enabled-ids no longer contains v0 — and applied-ids tracks it
+    // because we route the strip through `applyEnabledIds`, which
+    // writes both keys in lockstep.
+    expect(mocks.localStore.get("policy-selection:enabled-ids")).toEqual([
+      "default::dex/keep",
+    ]);
+    expect(mocks.localStore.get("policy-selection:applied-ids")).toEqual([
+      "default::dex/keep",
+    ]);
+    // Reinstall fired with the new (v0-less) enabled set so WASM mirrors
+    // the persisted state. This is the critical bit Fix R closes —
+    // without it the rejection-on-every-request mode persists until SW
+    // reboot.
+    expect(mocks.reinstallAllPolicies).toHaveBeenCalledTimes(1);
+    expect(mocks.reinstallAllPolicies.mock.calls[0][0]).toEqual([
+      "default::dex/keep",
+    ]);
+  });
+
+  it("migration:ack leaves the id enabled when original was true", async () => {
+    // The detector saved {v0: true} (user had it on). put-raw re-added
+    // it. Ack should NOT touch enabled-ids — the user's preference is
+    // already restored.
+    await mocks.browser.storage.local.set({
+      "migration:pending": ["dashboard::v0"],
+      "migration:original-enabled": { "dashboard::v0": true },
+      "policy-selection:enabled-ids": [
+        "dashboard::v0",
+        "default::dex/keep",
+      ],
+    });
+
+    const r = await handleManifestRequest({
+      type: "migration:ack",
+      id: "dashboard::v0",
+    });
+    expect(r.ok).toBe(true);
+    expect(mocks.localStore.has("migration:pending")).toBe(false);
+    expect(mocks.localStore.has("migration:original-enabled")).toBe(false);
+    expect(mocks.localStore.get("policy-selection:enabled-ids")).toEqual([
+      "dashboard::v0",
+      "default::dex/keep",
+    ]);
+    // No reinstall — the persisted set already matches the user's wish.
+    expect(mocks.reinstallAllPolicies).not.toHaveBeenCalled();
+  });
+
+  it("migration:ack tolerates a missing original-enabled snapshot", async () => {
+    // Defensive: if the detector never ran for this id (e.g. ack called
+    // out of order), ack still clears pending without crashing.
+    await mocks.browser.storage.local.set({
+      "migration:pending": ["dashboard::v0"],
+      "policy-selection:enabled-ids": ["dashboard::v0"],
+    });
+    const r = await handleManifestRequest({
+      type: "migration:ack",
+      id: "dashboard::v0",
+    });
+    expect(r.ok).toBe(true);
+    expect(mocks.localStore.has("migration:pending")).toBe(false);
+    expect(mocks.localStore.get("policy-selection:enabled-ids")).toEqual([
+      "dashboard::v0",
+    ]);
   });
 });

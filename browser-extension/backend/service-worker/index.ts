@@ -46,6 +46,24 @@ void bootSequence().catch((err) => {
 });
 
 async function bootSequence(): Promise<void> {
+  // Fix R: run the migration detector BEFORE the install passes. The
+  // detector strips v0 policy ids out of `policy-selection:enabled-ids`
+  // and snapshots their prior enabled-state into
+  // `migration:original-enabled`. If we ran the install first the
+  // enriched-schema validation would reject every v0 policy and the
+  // whole `installFiltered` call would error — orchestrator's reject
+  // path would then fire on every request until the user opened the
+  // dashboard and clicked Rewrite. By detecting + disabling first we
+  // keep the rest of the enabled set installable and the engine green.
+  //
+  // Idempotent: re-running after a manual rewrite never appends
+  // already-cleared ids and preserves the first-detection snapshot.
+  try {
+    await detectPendingMigrations();
+  } catch (err) {
+    console.warn("[Scopeball] migration auto-detect failed:", err);
+  }
+
   // Cold-start prewarm: kick off WASM module load + default policy
   // install so the first dApp request doesn't pay the 4.77MB compile
   // cost inside the 3s lifecycle budget. We await this before hydrating
@@ -71,17 +89,6 @@ async function bootSequence(): Promise<void> {
     await hydrateManifests();
   } catch (err) {
     console.warn("[Scopeball] manifest hydration failed:", err);
-  }
-
-  // Fix O: scan stored managed-policy texts for v0
-  // `context.<knownEnrichmentField>` references and queue their ids
-  // onto `migration:pending` so the dashboard's rewrite banner shows
-  // on the next open. Idempotent — re-running after a manual rewrite
-  // never appends already-cleared ids.
-  try {
-    await detectPendingMigrations();
-  } catch (err) {
-    console.warn("[Scopeball] migration auto-detect failed:", err);
   }
 }
 

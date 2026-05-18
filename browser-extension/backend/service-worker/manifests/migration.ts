@@ -15,6 +15,25 @@ import Browser from "webextension-polyfill";
 export const KEY_PENDING_MIGRATION = "migration:pending";
 
 /**
+ * Sibling key to `migration:pending`. Stores `Record<policyId, boolean>`
+ * captured at detection time: the policy's enabled-state in
+ * `policy-selection:enabled-ids` BEFORE the detector force-disabled it.
+ *
+ * Fix R: detection alone isn't enough. v0 policies stay in
+ * `installFiltered`'s payload until they're stripped from the enabled
+ * set, and once we strip them we have to remember whether the user
+ * actually wanted them on so a successful Rewrite + ack can restore the
+ * preference. `migration:original-enabled[id] === false` means the user
+ * had the policy off and ack must remove it from enabled-ids again
+ * after `put-raw` re-added it.
+ *
+ * First-write-wins on re-runs (see `mergeOriginalEnabled`): a second
+ * detector pass observing the policy already-disabled must NOT overwrite
+ * the original `true` snapshot.
+ */
+export const KEY_ORIGINAL_ENABLED = "migration:original-enabled";
+
+/**
  * Rewrite a Cedar policy text from the v0 `context.<field>` layout to
  * the v1 `context.custom.<field>` layout for the supplied
  * `knownFields`. For each known field that appears as a direct
@@ -118,4 +137,45 @@ export async function setPending(ids: readonly string[]): Promise<void> {
     return;
   }
   await Browser.storage.local.set({ [KEY_PENDING_MIGRATION]: [...ids] });
+}
+
+/**
+ * Read the original-enabled snapshot. Returns `{}` when absent or
+ * malformed; ids whose stored value isn't a boolean are dropped.
+ */
+export async function getOriginalEnabled(): Promise<Record<string, boolean>> {
+  const r = (await Browser.storage.local.get(KEY_ORIGINAL_ENABLED)) as Record<
+    string,
+    unknown
+  >;
+  const raw = r[KEY_ORIGINAL_ENABLED];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "boolean") out[k] = v;
+  }
+  return out;
+}
+
+export async function setOriginalEnabled(
+  snapshot: Record<string, boolean>,
+): Promise<void> {
+  if (Object.keys(snapshot).length === 0) {
+    await Browser.storage.local.remove(KEY_ORIGINAL_ENABLED);
+    return;
+  }
+  await Browser.storage.local.set({ [KEY_ORIGINAL_ENABLED]: { ...snapshot } });
+}
+
+/**
+ * Pop one id off the original-enabled snapshot. Used by `migration:ack`
+ * after the rewrite flow completes and the user's preference has been
+ * restored (or doesn't need restoring). Removes the key entirely when
+ * the last id is popped to keep storage tidy.
+ */
+export async function clearOriginalEnabled(id: string): Promise<void> {
+  const cur = await getOriginalEnabled();
+  if (!(id in cur)) return;
+  delete cur[id];
+  await setOriginalEnabled(cur);
 }

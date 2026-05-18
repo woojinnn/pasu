@@ -16,10 +16,22 @@
 // Wired into the boot path AFTER `hydrateManifests` so the banner sees
 // the queue on the next dashboard load.
 
+import Browser from "webextension-polyfill";
 import { V0_KNOWN_FIELDS } from "../../../sdk/extension-client";
 import { listManaged as defaultListManaged } from "../dashboard/storage";
 import type { ManagedPolicy } from "../dashboard/storage";
-import { listPending, setPending } from "./migration";
+import {
+  KEY_ORIGINAL_ENABLED,
+  KEY_PENDING_MIGRATION,
+  getOriginalEnabled,
+  listPending,
+} from "./migration";
+
+// Mirrors `policy-selection.ts` ENABLED_KEY. Declared here too so the
+// detector doesn't have to take a runtime dependency on policy-selection
+// (which would also drag in the catalog/listManaged graph at module
+// init).
+const KEY_ENABLED_IDS = "policy-selection:enabled-ids";
 
 export interface MigrationDetectorDeps {
   listManaged: () => Promise<ManagedPolicy[]>;
@@ -30,40 +42,132 @@ const DEFAULT_DEPS: MigrationDetectorDeps = {
 };
 
 /**
- * Detect v0 policy texts and push their ids onto `migration:pending`.
+ * Detect v0 policy texts and:
+ *   1. Push their ids onto `migration:pending` (set-merge with prior).
+ *   2. Strip them from `policy-selection:enabled-ids` so the next
+ *      `installFiltered` skips them — without this, every install retry
+ *      keeps hitting the enriched schema's "no `context.<field>`" error
+ *      and the orchestrator's reject path runs on every request (Fix R).
+ *   3. Snapshot each id's prior enabled-state into
+ *      `migration:original-enabled` so `migration:ack` can restore the
+ *      preference after the user clicks Rewrite and the rewrite +
+ *      put-raw lands. First-write-wins — a second detector pass
+ *      observing the policy already-disabled does NOT clobber the
+ *      original snapshot.
  *
- * Idempotent. The merge uses a Set so the same id added twice still
- * appears once.
+ * Idempotent: re-running with the same inputs does not change pending,
+ * does not re-strip an already-stripped id, and does not flip an
+ * existing original-enabled value.
  *
  * The scan is intentionally conservative: it matches occurrences of
  * `context.<field>` where `<field>` is in [`V0_KNOWN_FIELDS`] and is
  * NOT preceded by `.custom` (those are already migrated). Identifiers
  * outside the known set are never flagged.
+ *
+ * Storage writes are batched into a single `chrome.storage.local.set`
+ * call so an interrupt mid-call can never leave `migration:pending`
+ * populated while the enabled-set still contains the id (the exact
+ * failure mode Fix R closes).
  */
 export async function detectPendingMigrations(
   overrides: Partial<MigrationDetectorDeps> = {},
 ): Promise<{ pending: readonly string[]; added: readonly string[] }> {
   const deps: MigrationDetectorDeps = { ...DEFAULT_DEPS, ...overrides };
 
-  const managed = await deps.listManaged();
-  const existing = new Set<string>(await listPending());
+  const [managed, currentPending, currentEnabledRaw, currentOriginal] =
+    await Promise.all([
+      deps.listManaged(),
+      listPending(),
+      readEnabledIds(),
+      getOriginalEnabled(),
+    ]);
+
+  const pendingSet = new Set<string>(currentPending);
+  const enabledSet = new Set<string>(currentEnabledRaw);
+  const originalSnapshot: Record<string, boolean> = { ...currentOriginal };
   const added: string[] = [];
+  let mutated = false;
 
   for (const policy of managed) {
     if (!policy?.text) continue;
-    if (containsV0Reference(policy.text)) {
-      if (!existing.has(policy.id)) {
-        existing.add(policy.id);
-        added.push(policy.id);
-      }
+    if (!containsV0Reference(policy.text)) continue;
+
+    if (!pendingSet.has(policy.id)) {
+      pendingSet.add(policy.id);
+      added.push(policy.id);
+      mutated = true;
+    }
+    // First-write-wins. If the snapshot already has this id, the user's
+    // original preference (captured on the FIRST detection) is the
+    // truth — we must not overwrite it just because the policy is now
+    // disabled by a prior detector pass.
+    if (!(policy.id in originalSnapshot)) {
+      originalSnapshot[policy.id] = enabledSet.has(policy.id);
+      mutated = true;
+    }
+    if (enabledSet.has(policy.id)) {
+      enabledSet.delete(policy.id);
+      mutated = true;
     }
   }
 
-  // Preserve insertion order (existing first, then newly-detected). Set
-  // iteration order is insertion-order in JS so this is stable.
-  const next = Array.from(existing);
-  await setPending(next);
-  return { pending: next, added };
+  const nextPending = Array.from(pendingSet);
+
+  if (mutated) {
+    await writeDetectorState({
+      pending: nextPending,
+      enabled: Array.from(enabledSet),
+      original: originalSnapshot,
+    });
+  }
+
+  return { pending: nextPending, added };
+}
+
+async function readEnabledIds(): Promise<string[]> {
+  const r = (await Browser.storage.local.get(KEY_ENABLED_IDS)) as Record<
+    string,
+    unknown
+  >;
+  const raw = r[KEY_ENABLED_IDS];
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is string => typeof x === "string");
+}
+
+/**
+ * Single-`set()` write of all three keys so the storage state is
+ * internally consistent even if the SW is suspended mid-flush. The
+ * trio:
+ *   - `migration:pending` — list of ids the banner shows. Removed when
+ *     empty so storage stays tidy.
+ *   - `policy-selection:enabled-ids` — the source of truth
+ *     `installFiltered` reads. Force-disabled v0 ids are gone.
+ *   - `migration:original-enabled` — `{id → wasEnabledPriorToDetection}`.
+ *     Drives ack-side restore. Removed when empty.
+ */
+async function writeDetectorState(state: {
+  pending: readonly string[];
+  enabled: readonly string[];
+  original: Record<string, boolean>;
+}): Promise<void> {
+  const toSet: Record<string, unknown> = {
+    [KEY_ENABLED_IDS]: [...state.enabled],
+  };
+  const toRemove: string[] = [];
+  if (state.pending.length > 0) {
+    toSet[KEY_PENDING_MIGRATION] = [...state.pending];
+  } else {
+    toRemove.push(KEY_PENDING_MIGRATION);
+  }
+  if (Object.keys(state.original).length > 0) {
+    toSet[KEY_ORIGINAL_ENABLED] = { ...state.original };
+  } else {
+    toRemove.push(KEY_ORIGINAL_ENABLED);
+  }
+  await Browser.storage.local.set(toSet);
+  if (toRemove.length > 0) {
+    await Browser.storage.local.remove(toRemove);
+  }
 }
 
 /**

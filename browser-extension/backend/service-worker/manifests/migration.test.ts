@@ -31,9 +31,13 @@ const mocks = vi.hoisted(() => {
 vi.mock("webextension-polyfill", () => ({ default: mocks.browser }));
 
 import {
+  KEY_ORIGINAL_ENABLED,
   KEY_PENDING_MIGRATION,
+  clearOriginalEnabled,
+  getOriginalEnabled,
   listPending,
   rewritePolicyText,
+  setOriginalEnabled,
   setPending,
 } from "./migration";
 
@@ -115,5 +119,50 @@ describe("pending-migration list", () => {
     await setPending(["policy:a"]);
     await setPending([]);
     expect(await listPending()).toEqual([]);
+  });
+});
+
+describe("original-enabled snapshot", () => {
+  beforeEach(() => {
+    mocks.localStore.clear();
+    vi.clearAllMocks();
+  });
+
+  it("getOriginalEnabled returns {} when nothing has been recorded", async () => {
+    expect(await getOriginalEnabled()).toEqual({});
+  });
+
+  it("setOriginalEnabled writes a Record<id, bool> under KEY_ORIGINAL_ENABLED", async () => {
+    await setOriginalEnabled({
+      "dashboard::v0": true,
+      "dashboard::v1": false,
+    });
+    expect(mocks.localStore.get(KEY_ORIGINAL_ENABLED)).toEqual({
+      "dashboard::v0": true,
+      "dashboard::v1": false,
+    });
+  });
+
+  it("setOriginalEnabled({}) removes the key entirely", async () => {
+    await setOriginalEnabled({ a: true });
+    await setOriginalEnabled({});
+    expect(await getOriginalEnabled()).toEqual({});
+    expect(mocks.localStore.has(KEY_ORIGINAL_ENABLED)).toBe(false);
+  });
+
+  it("clearOriginalEnabled(id) pops a single key but leaves the rest", async () => {
+    await setOriginalEnabled({
+      "dashboard::v0": true,
+      "dashboard::v1": false,
+    });
+    await clearOriginalEnabled("dashboard::v0");
+    expect(await getOriginalEnabled()).toEqual({ "dashboard::v1": false });
+  });
+
+  it("clearOriginalEnabled removes the key entirely when the last id is popped", async () => {
+    await setOriginalEnabled({ "dashboard::v0": true });
+    await clearOriginalEnabled("dashboard::v0");
+    expect(await getOriginalEnabled()).toEqual({});
+    expect(mocks.localStore.has(KEY_ORIGINAL_ENABLED)).toBe(false);
   });
 });
