@@ -20,6 +20,17 @@ pub enum PolicyRpcError {
     /// Schema generation failed.
     #[error("schema error: {0}")]
     Schema(String),
+    /// D9: a non-`optional` requirement failed to materialize (ok=false,
+    /// missing payload, type-coercion failure, or absent result). The caller
+    /// boundary must translate this into a synthetic `Verdict::Fail` carrying
+    /// a `__system__` matched policy with reason `"rpc-unavailable: <call_id>"`.
+    #[error("rpc unavailable for required requirement `{call_id}`: {reason}")]
+    SystemFail {
+        /// The originating policy-rpc call id (`manifest::index::requirement`).
+        call_id: String,
+        /// Human-readable cause (ok=false message, "missing payload", etc.).
+        reason: String,
+    },
 }
 
 /// Root transaction metadata used by selectors and WASM plan outputs.

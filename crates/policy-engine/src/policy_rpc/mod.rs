@@ -10,7 +10,9 @@ pub use manifest::{
     PolicyRpcErrorBody, PolicyRpcResponse, PolicyRpcResult, ProjectionType, Requirement,
     RequirementWhen, RootInput,
 };
-pub use materialize::{apply_rpc_results, apply_rpc_results_with_indices};
+pub use materialize::{
+    apply_rpc_results, apply_rpc_results_with_indices, system_fail_verdict, SYSTEM_POLICY_ID,
+};
 pub use planning::{manifest_set_hash, plan_calls};
 pub use selector::resolve_selector;
 
@@ -253,7 +255,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            requests[0].context["totalInputUsd"],
+            requests[0].context["custom"]["totalInputUsd"],
             json!({
                 "value": { "__extn": { "fn": "decimal", "arg": "3500.1200" } },
                 "asOfTs": 1_700_000_000,
@@ -291,7 +293,12 @@ mod tests {
 
     #[test]
     fn optional_projection_type_error_omits_context_field() {
-        let manifest = serde_json::from_value::<super::PolicyManifest>(manifest_json(false))
+        // D9: when requirement.optional=true, a type coercion failure on the
+        // projected payload is swallowed and the field is simply omitted from
+        // context.custom — evaluation continues.
+        let mut manifest_value = manifest_json(false);
+        manifest_value["requires"][0]["optional"] = json!(true);
+        let manifest = serde_json::from_value::<super::PolicyManifest>(manifest_value)
             .expect("manifest parses");
         let envelope = swap_envelope();
         let mut requests = vec![crate::policy_request_from_envelope(
@@ -324,7 +331,13 @@ mod tests {
         )
         .unwrap();
 
+        // No top-level field and no nested custom field for totalInputUsd.
         assert!(requests[0].context.get("totalInputUsd").is_none());
+        let custom = requests[0].context.get("custom");
+        assert!(
+            custom.is_none() || custom.and_then(|c| c.get("totalInputUsd")).is_none(),
+            "expected totalInputUsd omitted from context.custom, got {custom:?}"
+        );
     }
 
     #[test]
@@ -395,24 +408,47 @@ mod tests {
 
     #[test]
     fn materialization_rejects_projection_over_existing_context_field() {
-        let manifest = serde_json::from_value::<super::PolicyManifest>(json!({
-            "id": "user/context-overwrite",
+        // D3: outputs live under `context.custom.<field>`. Two manifests
+        // declaring the same custom field collide.
+        let manifest_a = serde_json::from_value::<super::PolicyManifest>(json!({
+            "id": "user/custom-a",
             "schema_version": 1,
             "requires": [{
-                "id": "overwrite-recipient",
+                "id": "produce-foo",
                 "when": { "action": "swap" },
                 "method": "debug.echo",
                 "params": {},
                 "outputs": [{
                     "kind": "context",
-                    "field": "recipient",
+                    "field": "foo",
                     "type": "String",
-                    "from": "$.result.recipient",
+                    "from": "$.result.foo",
                     "required": true
                 }]
             }],
             "context_extensions": {
-                "swap": { "recipient": "String" }
+                "swap": { "foo": "String" }
+            }
+        }))
+        .expect("manifest parses");
+        let manifest_b = serde_json::from_value::<super::PolicyManifest>(json!({
+            "id": "user/custom-b",
+            "schema_version": 1,
+            "requires": [{
+                "id": "produce-foo-again",
+                "when": { "action": "swap" },
+                "method": "debug.echo",
+                "params": {},
+                "outputs": [{
+                    "kind": "context",
+                    "field": "foo",
+                    "type": "String",
+                    "from": "$.result.foo",
+                    "required": true
+                }]
+            }],
+            "context_extensions": {
+                "swap": { "foo": "String" }
             }
         }))
         .expect("manifest parses");
@@ -434,17 +470,23 @@ mod tests {
         let error = super::apply_rpc_results(
             &mut requests,
             &[envelope],
-            &[manifest],
+            &[manifest_a, manifest_b],
             &super::PolicyRpcResponse {
                 request_id: "eval-1".to_owned(),
-                results: vec![super::PolicyRpcResult {
-                    id: "user/context-overwrite::0::overwrite-recipient".to_owned(),
-                    ok: true,
-                    result: Some(json!({
-                        "recipient": "0x9999999999999999999999999999999999999999"
-                    })),
-                    error: None,
-                }],
+                results: vec![
+                    super::PolicyRpcResult {
+                        id: "user/custom-a::0::produce-foo".to_owned(),
+                        ok: true,
+                        result: Some(json!({ "foo": "alpha" })),
+                        error: None,
+                    },
+                    super::PolicyRpcResult {
+                        id: "user/custom-b::0::produce-foo-again".to_owned(),
+                        ok: true,
+                        result: Some(json!({ "foo": "beta" })),
+                        error: None,
+                    },
+                ],
             },
         )
         .unwrap_err();
@@ -454,10 +496,6 @@ mod tests {
                 .to_string()
                 .contains("would overwrite an existing context field"),
             "{error}"
-        );
-        assert_eq!(
-            requests[0].context["recipient"],
-            json!("0x1111111111111111111111111111111111111111")
         );
     }
 
@@ -623,7 +661,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            requests[0].context["windowStats"],
+            requests[0].context["custom"]["windowStats"],
             json!({
                 "swapVolumeUsd24h": { "__extn": { "fn": "decimal", "arg": "42.0000" } },
                 "swapCount24h": 3
@@ -739,5 +777,176 @@ mod tests {
 
         assert!(preview.schema_text.contains("tokenPrice?: decimal"));
         assert_eq!(preview.added_fields[0].type_name, "decimal");
+    }
+
+    // -----------------------------------------------------------------
+    // D9 — runtime failure model (Phase 3)
+    // -----------------------------------------------------------------
+
+    /// D9: a non-optional requirement whose RPC result returned ok=false
+    /// produces `PolicyRpcError::SystemFail`. The caller boundary maps that
+    /// into a synthetic `Verdict::Fail` with `policy_id == "__system__"` and
+    /// reason starting with "rpc-unavailable: ".
+    #[test]
+    fn rpc_failure_on_non_optional_requirement_produces_system_fail() {
+        // optional=false (default) ⇒ ok:false materialization must SystemFail.
+        let manifest = serde_json::from_value::<super::PolicyManifest>(manifest_json(true))
+            .expect("manifest parses");
+        let envelope = swap_envelope();
+        let mut requests = vec![crate::policy_request_from_envelope(
+            &envelope,
+            &"0x1111111111111111111111111111111111111111"
+                .parse()
+                .unwrap(),
+            &"0x2222222222222222222222222222222222222222"
+                .parse()
+                .unwrap(),
+            &"0".parse().unwrap(),
+            1,
+            1_700_000_000,
+        )
+        .expect("swap lowers")];
+
+        let error = super::apply_rpc_results(
+            &mut requests,
+            &[envelope],
+            &[manifest],
+            &super::PolicyRpcResponse {
+                request_id: "eval-1".to_owned(),
+                results: vec![super::PolicyRpcResult {
+                    id: "user/max-input-usd-100::0::swap-total-input-usd".to_owned(),
+                    ok: false,
+                    result: None,
+                    error: Some(super::PolicyRpcErrorBody {
+                        code: "upstream".to_owned(),
+                        message: "oracle offline".to_owned(),
+                    }),
+                }],
+            },
+        )
+        .unwrap_err();
+
+        match &error {
+            super::PolicyRpcError::SystemFail { call_id, reason } => {
+                assert_eq!(call_id, "user/max-input-usd-100::0::swap-total-input-usd");
+                assert!(reason.contains("oracle offline"), "{reason}");
+            }
+            other => panic!("expected SystemFail, got {other:?}"),
+        }
+
+        // Verdict-shape assertion per the plan: `Verdict::Fail` with the
+        // `__system__` matched policy and the required reason prefix.
+        let verdict = super::system_fail_verdict(&error).expect("system fail produces a verdict");
+        match verdict {
+            crate::policy::Verdict::Fail(matched) => {
+                assert!(
+                    matched.iter().any(|p| p.policy_id == super::SYSTEM_POLICY_ID
+                        && p.reason
+                            .as_deref()
+                            .unwrap_or("")
+                            .starts_with("rpc-unavailable:")),
+                    "expected __system__ matched policy with rpc-unavailable reason, got {matched:?}"
+                );
+            }
+            other => panic!("expected Verdict::Fail, got {other:?}"),
+        }
+    }
+
+    /// D9: when `requirement.optional == true`, an ok=false RPC result is
+    /// swallowed silently — the projected field is omitted from
+    /// `context.custom.*` and evaluation continues.
+    #[test]
+    fn rpc_failure_on_optional_requirement_omits_field_and_continues() {
+        let mut manifest_value = manifest_json(true);
+        manifest_value["requires"][0]["optional"] = json!(true);
+        let manifest = serde_json::from_value::<super::PolicyManifest>(manifest_value)
+            .expect("manifest parses");
+        let envelope = swap_envelope();
+        let mut requests = vec![crate::policy_request_from_envelope(
+            &envelope,
+            &"0x1111111111111111111111111111111111111111"
+                .parse()
+                .unwrap(),
+            &"0x2222222222222222222222222222222222222222"
+                .parse()
+                .unwrap(),
+            &"0".parse().unwrap(),
+            1,
+            1_700_000_000,
+        )
+        .expect("swap lowers")];
+
+        super::apply_rpc_results(
+            &mut requests,
+            &[envelope],
+            &[manifest],
+            &super::PolicyRpcResponse {
+                request_id: "eval-1".to_owned(),
+                results: vec![super::PolicyRpcResult {
+                    id: "user/max-input-usd-100::0::swap-total-input-usd".to_owned(),
+                    ok: false,
+                    result: None,
+                    error: Some(super::PolicyRpcErrorBody {
+                        code: "upstream".to_owned(),
+                        message: "oracle offline".to_owned(),
+                    }),
+                }],
+            },
+        )
+        .expect("optional requirement absorbs ok=false");
+
+        // No top-level field, and either no `custom` block or no totalInputUsd
+        // inside it. The contract is "field omitted", not "custom not created".
+        assert!(requests[0].context.get("totalInputUsd").is_none());
+        let custom = requests[0].context.get("custom");
+        assert!(
+            custom.is_none() || custom.and_then(|c| c.get("totalInputUsd")).is_none(),
+            "expected totalInputUsd to be omitted from context.custom, got {custom:?}"
+        );
+    }
+
+    /// D9: a non-optional requirement whose payload fails per-field type
+    /// coercion also produces `SystemFail` (not the legacy `RpcResult` error).
+    #[test]
+    fn rpc_type_coercion_failure_on_non_optional_requirement_produces_system_fail() {
+        let manifest = serde_json::from_value::<super::PolicyManifest>(manifest_json(true))
+            .expect("manifest parses");
+        let envelope = swap_envelope();
+        let mut requests = vec![crate::policy_request_from_envelope(
+            &envelope,
+            &"0x1111111111111111111111111111111111111111"
+                .parse()
+                .unwrap(),
+            &"0x2222222222222222222222222222222222222222"
+                .parse()
+                .unwrap(),
+            &"0".parse().unwrap(),
+            1,
+            1_700_000_000,
+        )
+        .expect("swap lowers")];
+
+        let error = super::apply_rpc_results(
+            &mut requests,
+            &[envelope],
+            &[manifest],
+            &super::PolicyRpcResponse {
+                request_id: "eval-1".to_owned(),
+                results: vec![super::PolicyRpcResult {
+                    id: "user/max-input-usd-100::0::swap-total-input-usd".to_owned(),
+                    ok: true,
+                    // value must be string per UsdValuation, but is a Number.
+                    result: Some(json!({ "value": 3500 })),
+                    error: None,
+                }],
+            },
+        )
+        .unwrap_err();
+
+        assert!(
+            matches!(error, super::PolicyRpcError::SystemFail { .. }),
+            "{error:?}"
+        );
+        assert!(super::system_fail_verdict(&error).is_some());
     }
 }

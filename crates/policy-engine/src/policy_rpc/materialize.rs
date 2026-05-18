@@ -7,9 +7,37 @@ use super::{
 };
 use crate::action::ActionEnvelope;
 use crate::core::UsdValuation;
-use crate::policy::PolicyRequest;
+use crate::policy::{MatchedPolicy, PolicyRequest, PolicyRequestOrigin, Severity, Verdict};
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
+
+/// D9 synthetic policy id.
+///
+/// Reported when a non-optional manifest requirement fails to materialize.
+/// Callers that need a verdict-shaped result (rather than the raw
+/// `PolicyRpcError`) should funnel `SystemFail` through
+/// [`system_fail_verdict`].
+pub const SYSTEM_POLICY_ID: &str = "__system__";
+
+/// Translate `PolicyRpcError::SystemFail` into the D9 synthetic verdict.
+///
+/// Returns `Verdict::Fail` containing a single `MatchedPolicy` whose
+/// `policy_id` is [`SYSTEM_POLICY_ID`] and whose `reason` is
+/// `"rpc-unavailable: <call_id>"`. Returns `None` for any other variant so
+/// the caller can propagate non-D9 failures as engine errors.
+#[must_use]
+pub fn system_fail_verdict(error: &PolicyRpcError) -> Option<Verdict> {
+    if let PolicyRpcError::SystemFail { call_id, .. } = error {
+        Some(Verdict::Fail(vec![MatchedPolicy {
+            policy_id: SYSTEM_POLICY_ID.to_owned(),
+            reason: Some(format!("rpc-unavailable: {call_id}")),
+            severity: Severity::Deny,
+            origin: PolicyRequestOrigin::Action,
+        }]))
+    } else {
+        None
+    }
+}
 
 /// Apply policy-rpc results to lowered policy request contexts.
 ///
@@ -132,6 +160,26 @@ fn apply_requirement_result(
     call_id: &str,
     result: Option<&PolicyRpcResult>,
 ) -> Result<(), PolicyRpcError> {
+    // D9: per-requirement failure model. Once we've decided the requirement is
+    // unavailable we either return SystemFail (optional=false) or skip every
+    // output the requirement would have produced (optional=true).
+    let payload = match result {
+        None => return d9_branch(requirement, call_id, "missing rpc result".to_owned()),
+        Some(result) if !result.ok => {
+            let reason = result
+                .error
+                .as_ref()
+                .map_or_else(|| "rpc result not ok".to_owned(), |e| e.message.clone());
+            return d9_branch(requirement, call_id, reason);
+        }
+        Some(result) => match result.result.as_ref() {
+            None => {
+                return d9_branch(requirement, call_id, "rpc result has no payload".to_owned())
+            }
+            Some(payload) => payload,
+        },
+    };
+
     for output in &requirement.outputs {
         if output.kind != "context" {
             return Err(PolicyRpcError::InvalidManifest(format!(
@@ -140,37 +188,6 @@ fn apply_requirement_result(
             )));
         }
         validate_declared_context_projection(manifest, action_kind, output)?;
-
-        let Some(result) = result else {
-            if output.required {
-                return Err(PolicyRpcError::RpcResult(format!(
-                    "required rpc result `{call_id}` is missing"
-                )));
-            }
-            continue;
-        };
-
-        if !result.ok {
-            if output.required {
-                let message = result
-                    .error
-                    .as_ref()
-                    .map_or("required rpc result failed", |error| error.message.as_str());
-                return Err(PolicyRpcError::RpcResult(format!(
-                    "required rpc result `{call_id}` failed: {message}"
-                )));
-            }
-            continue;
-        }
-
-        let Some(payload) = &result.result else {
-            if output.required {
-                return Err(PolicyRpcError::RpcResult(format!(
-                    "required rpc result `{call_id}` has no payload"
-                )));
-            }
-            continue;
-        };
 
         let materialized = match resolve_selector(
             &output.from,
@@ -183,21 +200,64 @@ fn apply_requirement_result(
         .and_then(|selected| materialize_value(&selected, &output.type_name))
         {
             Ok(materialized) => materialized,
-            Err(error) if output.required => return Err(error),
-            Err(_) => continue,
+            Err(error) => {
+                // D9: a per-output projection failure (selector miss / type
+                // coercion) is itself a requirement-level failure. Branch on
+                // `requirement.optional` rather than the legacy
+                // `output.required` discriminator.
+                if requirement.optional {
+                    continue;
+                }
+                return Err(PolicyRpcError::SystemFail {
+                    call_id: call_id.to_owned(),
+                    reason: error.to_string(),
+                });
+            }
         };
-        let context = request.context.as_object_mut().ok_or_else(|| {
-            PolicyRpcError::RpcResult("policy request context is not an object".to_owned())
-        })?;
-        if context.contains_key(&output.field) {
-            return Err(PolicyRpcError::InvalidManifest(format!(
-                "context projection `{action_kind}.{}` would overwrite an existing context field",
-                output.field
-            )));
-        }
-        context.insert(output.field.clone(), materialized);
+        insert_custom_field(request, action_kind, &output.field, materialized)?;
     }
 
+    Ok(())
+}
+
+fn d9_branch(
+    requirement: &super::Requirement,
+    call_id: &str,
+    reason: String,
+) -> Result<(), PolicyRpcError> {
+    if requirement.optional {
+        // optional=true → omit projected fields, evaluation continues.
+        Ok(())
+    } else {
+        Err(PolicyRpcError::SystemFail {
+            call_id: call_id.to_owned(),
+            reason,
+        })
+    }
+}
+
+/// D3: write the projected field under `context.custom.<field>`, allocating
+/// the nested `custom` record on first use.
+fn insert_custom_field(
+    request: &mut PolicyRequest,
+    action_kind: &str,
+    field: &str,
+    value: Value,
+) -> Result<(), PolicyRpcError> {
+    let context = request.context.as_object_mut().ok_or_else(|| {
+        PolicyRpcError::RpcResult("policy request context is not an object".to_owned())
+    })?;
+    let custom = context
+        .entry("custom")
+        .or_insert_with(|| Value::Object(Map::new()))
+        .as_object_mut()
+        .ok_or_else(|| PolicyRpcError::RpcResult("context.custom is not an object".to_owned()))?;
+    if custom.contains_key(field) {
+        return Err(PolicyRpcError::InvalidManifest(format!(
+            "context projection `{action_kind}.custom.{field}` would overwrite an existing context field"
+        )));
+    }
+    custom.insert(field.to_owned(), value);
     Ok(())
 }
 
