@@ -174,4 +174,81 @@ describe("ManifestEditor", () => {
     const after = screen.queryAllByLabelText(/output field name/i);
     expect(after.length).toBe(before.length + 1);
   });
+
+  // Phase 7 codex carry-over L: the Save button used to be enabled
+  // whenever `busy === null`, including on a wholly empty form. Now
+  // it stays disabled until the draft passes basic validation: id
+  // non-empty, every requirement has an id + method, every required
+  // (non-optional) requirement contributes at least one output.
+  describe("Save validity gate (carry-over L)", () => {
+    it("disables Save and shows a hint when the manifest id is empty", async () => {
+      const putManifest = vi.fn(async () => mkPutResult());
+      const { client } = renderEditor("swap", { putManifest });
+      await waitFor(() => expect(client.getAliasTable).toHaveBeenCalled());
+
+      const save = screen.getByRole("button", { name: /^Save$/ });
+      expect(save.getAttribute("aria-disabled")).toBe("true");
+      expect(save.hasAttribute("disabled")).toBe(true);
+      expect(screen.getByTestId("manifest-validation-hint")).toBeTruthy();
+
+      // Clicking the disabled Save must NOT call the SDK.
+      fireEvent.click(save);
+      expect(putManifest).not.toHaveBeenCalled();
+    });
+
+    it("enables Save once the id is filled (no requires is valid)", async () => {
+      const putManifest = vi.fn(async () => mkPutResult());
+      const { client } = renderEditor("swap", { putManifest });
+      await waitFor(() => expect(client.getAliasTable).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByLabelText(/manifest id/i), {
+        target: { value: "user.swap.v1" },
+      });
+
+      const save = screen.getByRole("button", { name: /^Save$/ });
+      expect(save.hasAttribute("disabled")).toBe(false);
+      expect(screen.queryByTestId("manifest-validation-hint")).toBeNull();
+
+      fireEvent.click(save);
+      await waitFor(() => expect(putManifest).toHaveBeenCalledTimes(1));
+    });
+
+    it("keeps Save disabled when a non-optional requirement has no outputs", async () => {
+      const putManifest = vi.fn(async () => mkPutResult());
+      const { client } = renderEditor("swap", { putManifest });
+      await waitFor(() => expect(client.getAliasTable).toHaveBeenCalled());
+
+      // Fill the manifest id; add a required requirement WITHOUT outputs.
+      fireEvent.change(screen.getByLabelText(/manifest id/i), {
+        target: { value: "user.swap.v1" },
+      });
+      fireEvent.click(screen.getByText(/Add requirement/i));
+      fireEvent.change(screen.getByLabelText(/requirement id/i), {
+        target: { value: "oracle-usd" },
+      });
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+
+      // Required requirement with no outputs → Save should stay disabled.
+      const save = screen.getByRole("button", { name: /^Save$/ });
+      expect(save.hasAttribute("disabled")).toBe(true);
+
+      // Marking the requirement `optional` unblocks the form.
+      fireEvent.click(screen.getByLabelText(/requirement optional/i));
+      expect(save.hasAttribute("disabled")).toBe(false);
+    });
+
+    it("Preview stays clickable while the form is invalid", async () => {
+      const previewManifest = vi.fn(async () => mkPreviewResult());
+      const { client } = renderEditor("swap", { previewManifest });
+      await waitFor(() => expect(client.getAliasTable).toHaveBeenCalled());
+
+      // Default draft is invalid (no id) — Save disabled but Preview live.
+      const preview = screen.getByRole("button", { name: /^Preview$/ });
+      expect(preview.hasAttribute("disabled")).toBe(false);
+      fireEvent.click(preview);
+      await waitFor(() => expect(previewManifest).toHaveBeenCalledTimes(1));
+    });
+  });
 });
