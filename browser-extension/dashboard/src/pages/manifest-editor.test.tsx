@@ -127,11 +127,13 @@ describe("ManifestEditor", () => {
   it("surfaces the error kind + message when Save is rejected", async () => {
     const putManifest = vi.fn(async () => {
       throw Object.assign(
-        new Error("duplicate_field: outputs[0].field 'usdValue' already declared by my-other-policy"),
+        new Error(
+          "outputs[0].field 'usdValue' already declared by dashboard::my-other-policy",
+        ),
         {
           kind: "duplicate_field",
           message:
-            "outputs[0].field 'usdValue' already declared by my-other-policy",
+            "outputs[0].field 'usdValue' already declared by dashboard::my-other-policy",
         },
       );
     });
@@ -144,7 +146,11 @@ describe("ManifestEditor", () => {
     fireEvent.click(screen.getByText(/^Save$/));
 
     await screen.findByText(/duplicate_field/i);
-    expect(screen.getByText(/my-other-policy/)).toBeTruthy();
+    // The offending policy id is highlighted via a <mark> with the
+    // `policy-id-highlight` class — not just present in the DOM.
+    const highlighted = await screen.findByText(/dashboard::my-other-policy/);
+    expect(highlighted.tagName.toLowerCase()).toBe("mark");
+    expect(highlighted.className).toContain("policy-id-highlight");
   });
 
   it("adds a new requires row when 'Add requirement' is clicked", async () => {

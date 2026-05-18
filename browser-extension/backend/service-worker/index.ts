@@ -81,6 +81,19 @@ async function hydrateManifests(): Promise<void> {
     // Cold-start restore: re-push the stored manifest map into WASM so
     // policies authored on previous startups validate against the
     // enriched schema.
+    //
+    // KNOWN LIMITATION (carry-over G, deeper issue, to address in
+    // Phase 8 e2e): `install_policies_json` REPLACES engine state
+    // (crates/policy-engine-wasm/src/exports.rs:92 — `*state.borrow_mut()
+    // = Some(EngineState { policies, ... })`). The empty `policy_set: []`
+    // here therefore wipes the Cedar policies that
+    // `ensureDefaultPoliciesInstalled` just installed. Serializing the
+    // two boot stages makes this deterministic, but the policy set
+    // still ends up empty after hydrate when there are stored
+    // manifests. A future fix should either route hydrate through
+    // `reinstallAllPolicies` (preserving the policy_set) or extend
+    // `installFiltered` to merge the SW-stored manifest map alongside
+    // the legacy per-policy manifests.
     const installed = await wasmInstallPolicies({
       schema_text: "",
       policy_set: [],
