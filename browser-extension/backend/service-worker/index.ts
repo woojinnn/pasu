@@ -5,6 +5,10 @@ import {
   isDashboardRequest,
 } from "./dashboard/api";
 import { devSeed, fetchBundledDefaultManifests } from "./manifests/dev-seed";
+import {
+  handleManifestRequest,
+  isManifestRequest,
+} from "./manifests/handlers";
 import * as manifestStore from "./manifests/store";
 import { decideMessage } from "./orchestrator";
 import {
@@ -170,6 +174,19 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "dashboard_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    // Phase 6 / Task 6.5: manifest CRUD, schema preview, migration.
+    if (isManifestRequest(req)) {
+      void handleManifestRequest(req)
+        .then((response) => sendResponse(response))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "manifest_failed", message: String(err) },
           }),
         );
       return true;
