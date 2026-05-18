@@ -1,7 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { ExtensionProvider } from "./sdk-context";
 import { AppShell } from "./shell/AppShell";
-import { HomePage } from "./pages/HomePage";
+import { HomeOrOnboarding } from "./pages/HomeOrOnboarding";
 import { EditorPage } from "./pages/EditorPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { AuditPage } from "./pages/AuditPage";
@@ -22,7 +22,11 @@ const router = createBrowserRouter([
       </ExtensionProvider>
     ),
     children: [
-      { index: true, element: <HomePage /> },
+      // Phase 7 codex carry-over I: cold-start onboarding redirect.
+      // `HomeOrOnboarding` reads the configured endpoint URL and the
+      // installed enriched schema; when both are empty it redirects
+      // to `/onboarding`. Otherwise it renders `HomePage`.
+      { index: true, element: <HomeOrOnboarding /> },
       { path: "editor", element: <EditorPage /> },
       { path: "library", element: <LibraryPage /> },
       { path: "audit", element: <AuditPage /> },
