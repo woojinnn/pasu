@@ -14,8 +14,6 @@
 
 use std::str::FromStr as _;
 
-use abi_resolver::InMemoryDecoderRegistry;
-use mappers::{EmptyTokenRegistry, InMemoryMapperRegistry};
 use policy_engine::action::dex::{SwapAction, SwapMode};
 use policy_engine::action::misc::{UnwrapAction, WrapAction};
 use policy_engine::action::{
@@ -23,7 +21,7 @@ use policy_engine::action::{
     AssetRefWithAmountConstraint, Category, DecimalString,
 };
 
-use crate::CallContext;
+use crate::{EmptyTokenRegistry, MapContext};
 
 use super::simulate;
 
@@ -104,24 +102,24 @@ fn swap_env(token_in: AssetRef, token_out: AssetRef, recipient: Address) -> Acti
     }
 }
 
-/// Build a CallContext with the user paying msg.value (or zero). The
-/// registries are empty stubs — simulator never queries them.
+/// Build a MapContext with the user paying msg.value (or zero). Simulator
+/// only reads from/to/value_wei, so chain_id is a dummy and the token
+/// registry is the empty stub.
 fn run(envelopes: Vec<ActionEnvelope>, msg_value: &str) -> Vec<ActionEnvelope> {
     let user = addr(USER);
     let router = addr(ROUTER);
     let value = dec(msg_value);
     let tr = EmptyTokenRegistry;
-    let dr = InMemoryDecoderRegistry::empty();
-    let mr = InMemoryMapperRegistry::empty();
-    let ctx = CallContext {
+    let ctx = MapContext {
         chain_id: 1,
         from: &user,
         to: &router,
         value_wei: &value,
         block_timestamp: None,
         token_registry: &tr,
-        decoder_registry: &dr,
-        mapper_registry: &mr,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     simulate(envelopes, &ctx)
 }

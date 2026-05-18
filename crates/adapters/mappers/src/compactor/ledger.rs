@@ -13,18 +13,18 @@ use alloy_primitives::{I256, U256};
 use policy_engine::action::Address;
 
 use super::effect::{ActorRef, AmountSpec, Asset, Effect};
-use crate::CallContext;
+use crate::MapContext;
 
 /// Concrete actor identity (after [`ActorRef`] resolution against ctx).
 /// Same `(kind, address)` pair always hashes to the same bucket key.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(in crate::multi_router) struct Actor {
-    pub(in crate::multi_router) kind: ActorKind,
-    pub(in crate::multi_router) address: Address,
+pub(in crate::compactor) struct Actor {
+    pub(in crate::compactor) kind: ActorKind,
+    pub(in crate::compactor) address: Address,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(in crate::multi_router) enum ActorKind {
+pub(in crate::compactor) enum ActorKind {
     /// Wallet owner — `ctx.from`.
     User,
     /// Router contract receiving the outer `execute(...)` — `ctx.to`.
@@ -35,7 +35,7 @@ pub(in crate::multi_router) enum ActorKind {
 
 /// How precisely the `net` value in a bucket is known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::multi_router) enum Constraint {
+pub(in crate::compactor) enum Constraint {
     /// Net is exactly `value`.
     Exact,
     /// Net is **at least** `value` (real value could be larger).
@@ -49,30 +49,30 @@ pub(in crate::multi_router) enum Constraint {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(in crate::multi_router) struct Bucket {
-    pub(in crate::multi_router) net: I256,
-    pub(in crate::multi_router) constraint: Constraint,
+pub(in crate::compactor) struct Bucket {
+    pub(in crate::compactor) net: I256,
+    pub(in crate::compactor) constraint: Constraint,
 }
 
 impl Bucket {
-    pub(in crate::multi_router) const ZERO: Self = Self {
+    pub(in crate::compactor) const ZERO: Self = Self {
         net: I256::ZERO,
         constraint: Constraint::Exact,
     };
 }
 
 #[derive(Debug, Default)]
-pub(in crate::multi_router) struct Ledger {
+pub(in crate::compactor) struct Ledger {
     entries: HashMap<(Actor, Asset), Bucket>,
 }
 
 impl Ledger {
-    pub(in crate::multi_router) fn new() -> Self {
+    pub(in crate::compactor) fn new() -> Self {
         Self::default()
     }
 
     /// Apply a single `Effect`, resolving actor refs against `ctx`.
-    pub(in crate::multi_router) fn apply(&mut self, effect: Effect, ctx: &CallContext<'_>) {
+    pub(in crate::compactor) fn apply(&mut self, effect: Effect, ctx: &MapContext<'_>) {
         match effect {
             Effect::Move {
                 from,
@@ -127,7 +127,7 @@ impl Ledger {
     /// the swap payer is — if the router already holds the input asset
     /// (a prior wrap/transfer left it there) the swap consumes from the
     /// router, otherwise it consumes from the user.
-    pub(in crate::multi_router) fn balance(&self, actor: &Actor, asset: &Asset) -> Bucket {
+    pub(in crate::compactor) fn balance(&self, actor: &Actor, asset: &Asset) -> Bucket {
         self.entries
             .get(&(actor.clone(), asset.clone()))
             .copied()
@@ -136,17 +136,14 @@ impl Ledger {
 
     /// Resolve a symbolic `ActorRef` to its concrete `Actor` against `ctx`.
     /// Exposed so `simulate` can run resolution before reading balances.
-    pub(in crate::multi_router) fn resolve_actor(
-        actor_ref: ActorRef,
-        ctx: &CallContext<'_>,
-    ) -> Actor {
+    pub(in crate::compactor) fn resolve_actor(actor_ref: ActorRef, ctx: &MapContext<'_>) -> Actor {
         resolve(actor_ref, ctx)
     }
 
     /// Pull every non-zero bucket belonging to the wallet user, sorted by
     /// asset for deterministic iteration. Used by `interpret` to derive
     /// the user-visible intent.
-    pub(in crate::multi_router) fn user_delta(&self, user: &Address) -> Vec<(Asset, Bucket)> {
+    pub(in crate::compactor) fn user_delta(&self, user: &Address) -> Vec<(Asset, Bucket)> {
         let mut out: Vec<_> = self
             .entries
             .iter()
@@ -160,7 +157,7 @@ impl Ledger {
     }
 }
 
-fn resolve(actor_ref: ActorRef, ctx: &CallContext<'_>) -> Actor {
+fn resolve(actor_ref: ActorRef, ctx: &MapContext<'_>) -> Actor {
     match actor_ref {
         ActorRef::User => Actor {
             kind: ActorKind::User,
@@ -233,9 +230,9 @@ fn asset_sort_key(a: &Asset) -> (u8, Vec<u8>) {
 mod tests {
     use std::str::FromStr as _;
 
-    use abi_resolver::InMemoryDecoderRegistry;
-    use mappers::{EmptyTokenRegistry, InMemoryMapperRegistry};
     use policy_engine::action::{Address, DecimalString};
+
+    use crate::EmptyTokenRegistry;
 
     use super::*;
 
@@ -246,26 +243,25 @@ mod tests {
         DecimalString::from_str(s).unwrap()
     }
 
-    /// Build a CallContext with the in-memory registries. The actual decode
-    /// path doesn't run — we only need ctx.from / ctx.to / ctx.value_wei
-    /// for ledger.resolve(). Most fields are never touched.
+    /// Build a MapContext for ledger tests. The simulator only reads
+    /// ctx.from / ctx.to / ctx.value_wei, so chain_id and block_timestamp are
+    /// dummies and the token registry is the empty stub.
     fn ctx<'a>(
         from: &'a Address,
         to: &'a Address,
         value: &'a DecimalString,
         token_registry: &'a EmptyTokenRegistry,
-        decoder_registry: &'a InMemoryDecoderRegistry,
-        mapper_registry: &'a InMemoryMapperRegistry,
-    ) -> CallContext<'a> {
-        CallContext {
+    ) -> MapContext<'a> {
+        MapContext {
             chain_id: 1,
             from,
             to,
             value_wei: value,
             block_timestamp: None,
             token_registry,
-            decoder_registry,
-            mapper_registry,
+            parent_calldata: None,
+            depth: 0,
+            resolver: None,
         }
     }
 
@@ -276,9 +272,8 @@ mod tests {
         let ext = addr("0x3333333333333333333333333333333333333333");
         let value = dec("0");
         let tr = EmptyTokenRegistry;
-        let dr = InMemoryDecoderRegistry::empty();
-        let mr = InMemoryMapperRegistry::empty();
-        let c = ctx(&user, &router, &value, &tr, &dr, &mr);
+
+        let c = ctx(&user, &router, &value, &tr);
 
         let mut ledger = Ledger::new();
         ledger.apply(
@@ -307,9 +302,8 @@ mod tests {
         let router = addr("0x2222222222222222222222222222222222222222");
         let value = dec("0");
         let tr = EmptyTokenRegistry;
-        let dr = InMemoryDecoderRegistry::empty();
-        let mr = InMemoryMapperRegistry::empty();
-        let c = ctx(&user, &router, &value, &tr, &dr, &mr);
+
+        let c = ctx(&user, &router, &value, &tr);
 
         let mut ledger = Ledger::new();
         ledger.apply(
@@ -334,9 +328,8 @@ mod tests {
         let router = addr("0x2222222222222222222222222222222222222222");
         let value = dec("0");
         let tr = EmptyTokenRegistry;
-        let dr = InMemoryDecoderRegistry::empty();
-        let mr = InMemoryMapperRegistry::empty();
-        let c = ctx(&user, &router, &value, &tr, &dr, &mr);
+
+        let c = ctx(&user, &router, &value, &tr);
 
         let mut ledger = Ledger::new();
         // First a +AtLeast (received)

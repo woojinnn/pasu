@@ -6,7 +6,6 @@ license.workspace = true
 description = "Routes raw EVM RPC requests to sign-resolver or abi-resolver based on method type."
 
 [dependencies]
-call-adapter = { workspace = true }
 mappers = { workspace = true }
 sign-resolver = { workspace = true }
 policy-engine = { workspace = true }
@@ -17,6 +16,10 @@ anyhow = { workspace = true }
 hex = { workspace = true }
 alloy-primitives = { workspace = true }
 tracing = "0.1"
+
+[dev-dependencies]
+alloy-dyn-abi = { workspace = true }
+alloy-json-abi = "0.8"
 
 [features]
 # `sqlite` enables the Sourcify SQLite dump tier in the fallback decoding path

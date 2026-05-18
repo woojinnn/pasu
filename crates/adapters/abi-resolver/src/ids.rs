@@ -80,3 +80,23 @@ pub const WETH_WITHDRAW_DECODER_ID: &str = "weth/withdraw";
 
 pub const WETH_DEPOSIT_SELECTOR: [u8; 4] = [0xd0, 0xe3, 0x0d, 0xb0];
 pub const WETH_WITHDRAW_SELECTOR: [u8; 4] = [0x2e, 0x1a, 0x7d, 0x4d];
+
+// ── Universal Router (synthetic decoder ids for opcodes that have no direct
+//    on-chain selector — they live inside UR's `execute(commands, inputs)`
+//    opcode stream). Splitter populates `SubCall.decoded.decoder_id` with one
+//    of these; downstream mappers in `mappers/protocols/universal_router/`
+//    key on the same strings.
+// ───────────────────────────────────────────────────────────────────────────
+pub const UR_WRAP_ETH_DECODER_ID: &str = "uniswap-ur/WRAP_ETH";
+pub const UR_UNWRAP_WETH_DECODER_ID: &str = "uniswap-ur/UNWRAP_WETH";
+pub const UR_SWEEP_DECODER_ID: &str = "uniswap-ur/SWEEP";
+pub const UR_TRANSFER_DECODER_ID: &str = "uniswap-ur/TRANSFER";
+pub const UR_V2_SWAP_EXACT_IN_DECODER_ID: &str = "uniswap-ur/V2_SWAP_EXACT_IN";
+pub const UR_V2_SWAP_EXACT_OUT_DECODER_ID: &str = "uniswap-ur/V2_SWAP_EXACT_OUT";
+pub const UR_V3_SWAP_EXACT_IN_DECODER_ID: &str = "uniswap-ur/V3_SWAP_EXACT_IN";
+pub const UR_V3_SWAP_EXACT_OUT_DECODER_ID: &str = "uniswap-ur/V3_SWAP_EXACT_OUT";
+/// V4_SWAP is *itself* an opcode stream. The splitter pre-decodes the
+/// outer `(bytes actions, bytes[] params)` wrapper and tags it with this
+/// decoder id; the matching mapper re-dispatches the inner V4 action stream
+/// (against `V4_ROUTER_TABLE`) and runs the TAKE-recipient patch pass.
+pub const UR_V4_SWAP_DECODER_ID: &str = "uniswap-ur/V4_SWAP";

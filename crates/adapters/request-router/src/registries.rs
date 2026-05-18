@@ -18,13 +18,20 @@ use abi_resolver::ids::{
     SWAP_EXACT_TOKENS_FOR_TOKENS_FOT_DECODER_ID, SWAP_TOKENS_FOR_EXACT_ETH_DECODER_ID,
     SWAP_TOKENS_FOR_EXACT_TOKENS_DECODER_ID,
 };
+use abi_resolver::ids::{
+    UR_SWEEP_DECODER_ID, UR_TRANSFER_DECODER_ID, UR_UNWRAP_WETH_DECODER_ID,
+    UR_V2_SWAP_EXACT_IN_DECODER_ID, UR_V2_SWAP_EXACT_OUT_DECODER_ID,
+    UR_V3_SWAP_EXACT_IN_DECODER_ID, UR_V3_SWAP_EXACT_OUT_DECODER_ID, UR_V4_SWAP_DECODER_ID,
+    UR_WRAP_ETH_DECODER_ID,
+};
 use abi_resolver::ids::{WETH_DEPOSIT_DECODER_ID, WETH_WITHDRAW_DECODER_ID};
 use abi_resolver::openchain::{OpenchainIndex, SignatureCandidate};
 use abi_resolver::resolver::Resolver;
 use abi_resolver::sourcify::SourcifyIndex;
+use abi_resolver::splitter::universal_router::UniversalRouterSplitter;
 use abi_resolver::DecoderId;
 use abi_resolver::InMemoryDecoderRegistry;
-use call_adapter::{InMemoryCallAdapterRegistry, MultiRouterCallAdapter, WethWithdrawCallAdapter};
+use abi_resolver::InMemorySplitterRegistry;
 use mappers::protocols::erc20::{
     Erc20ApproveMapper, Erc20TransferFromMapper, Erc20TransferMapper, SetApprovalForAllMapper,
 };
@@ -39,6 +46,11 @@ use mappers::protocols::uniswap_v2::{
 };
 use mappers::protocols::uniswap_v3::{
     UniswapV3ExactOutputMapper, UniswapV3ExactOutputSingleMapper, UniswapV3Mapper,
+};
+use mappers::protocols::universal_router::{
+    UrSweepMapper, UrTransferMapper, UrUnwrapWethMapper, UrV2SwapExactInMapper,
+    UrV2SwapExactOutMapper, UrV3SwapExactInMapper, UrV3SwapExactOutMapper, UrV4SwapMapper,
+    UrWrapEthMapper,
 };
 use mappers::protocols::weth::{WethDepositMapper, WethWithdrawMapper};
 use mappers::{InMemoryMapperRegistry, MapperMatchKey};
@@ -185,12 +197,15 @@ fn build_fallback_resolver() -> Resolver {
 pub struct DefaultRegistries {
     pub decoders: Arc<InMemoryDecoderRegistry>,
     pub mappers: Arc<InMemoryMapperRegistry>,
-    pub call_adapters: Arc<InMemoryCallAdapterRegistry>,
     pub sign_adapters: Arc<InMemorySignAdapterRegistry>,
-    /// Legacy `Resolver` used as the fallback decode tier when no per-function
-    /// `Decoder` matches in `route_request`. The bridge module converts its
-    /// `decode::DecodedCall` output to the new shape so existing mappers can
-    /// consume it unchanged.
+    /// Splitter registry for multi-call routers (Universal Router today).
+    /// `route_call` consults this first; when a splitter matches, the request
+    /// becomes a `Vec<SubCall>` flowing through the unified mapper pipeline +
+    /// compactor.
+    pub splitters: Arc<InMemorySplitterRegistry>,
+    /// `Resolver` used as the fallback decode tier when no splitter matches.
+    /// The bridge module converts its `decode::DecodedCall` output to the new
+    /// shape so existing mappers consume it unchanged.
     pub resolver: Arc<Resolver>,
 }
 
@@ -341,17 +356,64 @@ impl DefaultRegistries {
                     },
                     Arc::new(Sr02ExactOutputMapper::new()),
                 )
-                .build(),
-        );
-        // Only the Universal Router needs a dedicated `CallAdapter` because its
-        // `execute()` calldata wraps an opcode stream that goes beyond plain
-        // ABI decoding. Every other selector falls through to the Sourcify
-        // fallback path which lowers via `bridge` → `MapperRegistry`.
-        let call_adapters = Arc::new(
-            InMemoryCallAdapterRegistry::builder()
-                .register(Arc::new(MultiRouterCallAdapter::uniswap_ur()))
-                .register(Arc::new(MultiRouterCallAdapter::pancake_ur()))
-                .register(Arc::new(WethWithdrawCallAdapter::new()))
+                // Universal Router opcode mappers — consume SubCalls produced
+                // by `UniversalRouterSplitter` whose `decoded.decoder_id` is
+                // one of the synthetic `uniswap-ur/*` ids declared in
+                // `abi_resolver::ids`.
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_WRAP_ETH_DECODER_ID),
+                    },
+                    Arc::new(UrWrapEthMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_UNWRAP_WETH_DECODER_ID),
+                    },
+                    Arc::new(UrUnwrapWethMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_SWEEP_DECODER_ID),
+                    },
+                    Arc::new(UrSweepMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_TRANSFER_DECODER_ID),
+                    },
+                    Arc::new(UrTransferMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_V2_SWAP_EXACT_IN_DECODER_ID),
+                    },
+                    Arc::new(UrV2SwapExactInMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_V2_SWAP_EXACT_OUT_DECODER_ID),
+                    },
+                    Arc::new(UrV2SwapExactOutMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_V3_SWAP_EXACT_IN_DECODER_ID),
+                    },
+                    Arc::new(UrV3SwapExactInMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_V3_SWAP_EXACT_OUT_DECODER_ID),
+                    },
+                    Arc::new(UrV3SwapExactOutMapper::new()),
+                )
+                .register(
+                    MapperMatchKey {
+                        decoder_id: DecoderId::new(UR_V4_SWAP_DECODER_ID),
+                    },
+                    Arc::new(UrV4SwapMapper::new()),
+                )
                 .build(),
         );
         let sign_adapters = Arc::new(
@@ -361,13 +423,25 @@ impl DefaultRegistries {
                 .build(),
         );
 
+        // Splitter registry — multi-call routers (Universal Router family).
+        // The sole entry point for UR calldata now that the legacy
+        // CallAdapter has been removed. Plain WETH9.withdraw(uint256) and
+        // every other direct contract call flows through Tier 1 (Sourcify
+        // fallback) instead.
+        let splitters = Arc::new(
+            InMemorySplitterRegistry::builder()
+                .register(Arc::new(UniversalRouterSplitter::uniswap_ur()))
+                .register(Arc::new(UniversalRouterSplitter::pancake_ur()))
+                .build(),
+        );
+
         let resolver = Arc::new(build_fallback_resolver());
 
         Self {
             decoders,
             mappers,
-            call_adapters,
             sign_adapters,
+            splitters,
             resolver,
         }
     }
