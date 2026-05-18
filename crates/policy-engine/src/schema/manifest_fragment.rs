@@ -26,7 +26,11 @@ const CEDAR_RESERVED: &[&str] = &[
     "is",
 ];
 
-const PARAM_SELECTOR_ROOTS: &[&str] = &["$.root", "$.action", "$.context"];
+// Spec §"Manifest validation rules" lists `$.root`, `$.action`, `$.context`.
+// The runtime selector resolver in `policy_rpc/selector.rs` also accepts
+// `$.params`, and the existing planning tests rely on that. Keeping the
+// validator aligned with the runtime so future manifests stay installable.
+const PARAM_SELECTOR_ROOTS: &[&str] = &["$.root", "$.action", "$.context", "$.params"];
 
 /// Render the `<Action>CustomContext` Cedar type for `action` from `manifest`.
 ///
@@ -173,7 +177,7 @@ fn validate_param_selector(
         return Ok(());
     }
     Err(PolicyRpcError::InvalidManifest(format!(
-        "requirement `{requirement_id}` param `{param_name}` selector `{s}` must start with one of $.root, $.action, $.context"
+        "requirement `{requirement_id}` param `{param_name}` selector `{s}` must start with one of $.root, $.action, $.context, $.params"
     )))
 }
 
@@ -379,7 +383,12 @@ mod tests {
 
     #[test]
     fn rule9_param_selector_known_roots_allowed() {
-        for root in ["$.root.chain_id", "$.action.foo", "$.context.bar"] {
+        for root in [
+            "$.root.chain_id",
+            "$.action.foo",
+            "$.context.bar",
+            "$.params.origin",
+        ] {
             let mut m = manifest_with_one_output();
             m.requires[0]
                 .params
