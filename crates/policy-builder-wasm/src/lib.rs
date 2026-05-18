@@ -98,6 +98,7 @@ pub fn list_actions() -> String {
 ///       "parentPath": "totalInputUsd",
 ///       "parentOptional": true,
 ///       "label": "Total input USD",
+///       "isCustom": true,
 ///       "operators": [
 ///         { "id": "gt", "label": ">", "arity": "one" },
 ///         …
@@ -107,6 +108,13 @@ pub fn list_actions() -> String {
 ///   ]
 /// }
 /// ```
+///
+/// `isCustom: true` means the field lives under the optional
+/// `context.custom` record (a manifest-enriched extension); `false` means it
+/// lives directly under `context` (a calldata-derived base field). The
+/// compiler emits `context.custom.<path>` and the appropriate guard cluster
+/// (`context has custom && context.custom has <parent>`) automatically — UIs
+/// should use the flag for visual grouping rather than rewriting paths.
 #[wasm_bindgen]
 #[must_use]
 pub fn get_action_schema_json(action: String) -> String {
@@ -249,6 +257,12 @@ struct FieldDto {
     parent_optional: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     label: Option<String>,
+    /// `true` when the field lives under `context.custom.<path>` (a
+    /// manifest-enriched extension), `false` for base calldata fields under
+    /// `context.<path>`. UIs use this to group/style custom fields
+    /// distinctly without re-deriving the split from the cedarschema.
+    #[serde(rename = "isCustom")]
+    is_custom: bool,
     operators: Vec<OperatorDto>,
 }
 
@@ -285,6 +299,7 @@ fn field_to_dto(spec: &FieldSpec) -> FieldDto {
         parent_path: spec.parent_path.clone(),
         parent_optional: spec.parent_optional,
         label: spec.label.clone(),
+        is_custom: spec.is_custom,
         operators,
     }
 }
