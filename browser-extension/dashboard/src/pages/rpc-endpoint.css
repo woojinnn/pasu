@@ -1,0 +1,89 @@
+/* RPC endpoint settings — Phase 7.4. */
+
+.rpc-endpoint {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  max-width: 640px;
+}
+
+.rpc-endpoint header h1 {
+  font-size: 1.25rem;
+  margin: 0 0 0.25rem;
+}
+
+.rpc-endpoint header p {
+  color: var(--color-fg-muted, #555);
+  margin: 0;
+}
+
+.rpc-endpoint-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rpc-endpoint-field label {
+  font-weight: 600;
+}
+
+.rpc-endpoint-field input {
+  padding: 0.5rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 4px;
+}
+
+.rpc-endpoint-error {
+  color: var(--color-danger, #b00020);
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.rpc-endpoint-ok {
+  color: var(--color-success, #1e7f3a);
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.rpc-endpoint-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rpc-endpoint-actions button {
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+}
+
+.rpc-ping-ok {
+  background: rgba(30, 127, 58, 0.08);
+  border-left: 3px solid var(--color-success, #1e7f3a);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.rpc-ping-fail {
+  background: rgba(176, 0, 32, 0.08);
+  border-left: 3px solid var(--color-danger, #b00020);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.rpc-endpoint-danger {
+  border-top: 1px solid var(--color-border, #ccc);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.rpc-endpoint-danger button {
+  padding: 0.45rem 0.9rem;
+}
+
+.rpc-endpoint-hint {
+  font-size: 0.8rem;
+  color: var(--color-fg-muted, #777);
+  margin: 0.35rem 0 0;
+}

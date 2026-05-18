@@ -210,6 +210,13 @@ export interface ExtensionClient {
   getEnrichedSchema(): Promise<EnrichedSchemaOutput>;
   /** Ping the configured policy-rpc endpoint's `/v1/healthz` URL. */
   pingRpcEndpoint(): Promise<PingResult>;
+  /**
+   * Set the policy-rpc endpoint URL on the SW storage layer. Pass `null`
+   * to clear. The SW also validates the scheme; the dashboard rejects
+   * non-`http(s)` schemes client-side before invoking this, but we keep
+   * the SDK signature permissive so unit tests can exercise the SW path.
+   */
+  setEndpointUrl(url: string | null): Promise<{ url: string | null }>;
   /** Read the base alias table the engine ships with. */
   getAliasTable(): Promise<{ entries: AliasTableEntry[] }>;
   /** Ids of managed policies awaiting v0 → v1 migration. */
@@ -388,6 +395,11 @@ export function createExtensionClient(
       request<EnrichedSchemaOutput>({ type: "manifest:get-enriched-schema" }),
     pingRpcEndpoint: () =>
       request<PingResult>({ type: "manifest:ping" }),
+    setEndpointUrl: (url) =>
+      request<{ url: string | null }>({
+        type: "manifest:set-endpoint-url",
+        url,
+      }),
     getAliasTable: () =>
       request<{ entries: AliasTableEntry[] }>({
         type: "manifest:alias-table",
