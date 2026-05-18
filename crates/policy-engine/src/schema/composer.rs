@@ -10,12 +10,15 @@ use std::collections::BTreeMap;
 /// Compose the bundled base cedarschemas with manifest-derived custom context
 /// fragments.
 ///
+/// Every action's base cedarschema is expected to declare the empty
+/// `type <Action>CustomContext = {};` stub that this composer overwrites with
+/// the manifest fragment. Missing stubs are rejected with
+/// [`PolicyRpcError::Schema`] (see [`compose_enriched_with_base`]).
+///
 /// # Errors
 ///
 /// Returns an error when any manifest fails the validation rules of
 /// [`manifest_to_cedarschema`].
-// TODO(phase-2): callers will use this once the shipped cedarschemas declare
-//   the empty `<Action>CustomContext = {};` stub for every registered action.
 pub fn compose_enriched(
     manifests: &BTreeMap<String, PolicyManifest>,
 ) -> Result<EnrichedSchema, PolicyRpcError> {
