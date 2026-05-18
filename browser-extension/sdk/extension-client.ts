@@ -101,6 +101,57 @@ export type Response<T> =
   | { ok: true; data: T }
   | { ok: false; error: { kind: string; message: string } };
 
+// Phase 6 / Task 6.5: manifest-driven cedarschema SDK surface.
+//
+// Mirrors `PolicyManifest` on the WASM side. Lives in the SDK so the
+// dashboard can construct manifest objects without importing types from
+// the extension workspace.
+export interface PolicyManifest {
+  id: string;
+  schema_version: number;
+  requires: unknown[];
+  context_extensions?: Record<string, Record<string, string>>;
+}
+
+export interface PreviewManifestOutput {
+  customTypes: { name: string; fields: unknown[] }[];
+  enrichedSchemaText: string;
+  diff: { added: unknown[]; removed: unknown[]; changed: unknown[] };
+  schemaHash: string;
+}
+
+export interface EnrichedSchemaOutput {
+  schema_text: string;
+  schema_hash: string;
+  added_fields: unknown[];
+  customContexts: Record<string, unknown[]>;
+  schemaHash: string;
+}
+
+export interface AliasTableEntry {
+  name: string;
+  kind: "scalar" | "record";
+  cedarSpelling: string;
+}
+
+export interface PingResult {
+  reachable: boolean;
+  url: string | null;
+  status?: number;
+  message?: string;
+}
+
+export interface ManifestPutResult {
+  enrichedSchemaHash: string;
+  addedCustomFields: Record<string, unknown[]>;
+}
+
+export interface MigrationRewriteResult {
+  id: string;
+  rewritten: string;
+  applied: boolean;
+}
+
 export interface ExtensionClient {
   ping(): Promise<{ version: number }>;
   getCatalog(): Promise<Catalog>;
@@ -125,6 +176,42 @@ export interface ExtensionClient {
   getAuditLog(opts?: AuditQuery): Promise<AuditEntry[]>;
   /** Subscribe to extension-side change broadcasts. Returns an unsubscribe fn. */
   onChange(cb: (keys: string[]) => void): () => void;
+
+  // ── Phase 6 / Task 6.5: manifest-driven cedarschema surface ────────────
+  /**
+   * Compose the enriched cedarschema for one action's manifest without
+   * installing it. Returns the per-action custom fields, the generated
+   * cedarschema text, a diff against any currently-installed action,
+   * and a `schemaHash` for the previewed schema.
+   */
+  previewManifest(
+    action: string,
+    manifest: PolicyManifest,
+  ): Promise<PreviewManifestOutput>;
+  /**
+   * Install a manifest for `action` into the engine. The full map is
+   * replaced atomically — other actions stay as-is.
+   */
+  putManifest(
+    action: string,
+    manifest: PolicyManifest,
+  ): Promise<ManifestPutResult>;
+  /** Read back one stored manifest (or `null` when absent). */
+  getManifest(action: string): Promise<{ manifest: PolicyManifest | null }>;
+  /** Read back the currently-installed enriched cedarschema. */
+  getEnrichedSchema(): Promise<EnrichedSchemaOutput>;
+  /** Ping the configured policy-rpc endpoint's `/v1/healthz` URL. */
+  pingRpcEndpoint(): Promise<PingResult>;
+  /** Read the base alias table the engine ships with. */
+  getAliasTable(): Promise<{ entries: AliasTableEntry[] }>;
+  /** Ids of managed policies awaiting v0 → v1 migration. */
+  listMigrationPending(): Promise<{ ids: string[] }>;
+  /** Rewrite a managed policy from `context.<x>` to `context.custom.<x>`. */
+  rewritePolicyToCustom(args: {
+    id: string;
+    text: string;
+    knownFields: readonly string[];
+  }): Promise<MigrationRewriteResult>;
 }
 
 export interface ClientOptions {
@@ -260,5 +347,41 @@ export function createExtensionClient(
         changeListeners.delete(cb);
       };
     },
+
+    // ── Phase 6 / Task 6.5: manifest CRUD + schema preview + migration ───
+    previewManifest: (action, manifest) =>
+      request<PreviewManifestOutput>({
+        type: "manifest:preview",
+        action,
+        manifest,
+      }),
+    putManifest: (action, manifest) =>
+      request<ManifestPutResult>({
+        type: "manifest:put",
+        action,
+        manifest,
+      }),
+    getManifest: (action) =>
+      request<{ manifest: PolicyManifest | null }>({
+        type: "manifest:get",
+        action,
+      }),
+    getEnrichedSchema: () =>
+      request<EnrichedSchemaOutput>({ type: "manifest:get-enriched-schema" }),
+    pingRpcEndpoint: () =>
+      request<PingResult>({ type: "manifest:ping" }),
+    getAliasTable: () =>
+      request<{ entries: AliasTableEntry[] }>({
+        type: "manifest:alias-table",
+      }),
+    listMigrationPending: () =>
+      request<{ ids: string[] }>({ type: "migration:list" }),
+    rewritePolicyToCustom: ({ id, text, knownFields }) =>
+      request<MigrationRewriteResult>({
+        type: "migration:rewrite",
+        id,
+        text,
+        knownFields,
+      }),
   };
 }

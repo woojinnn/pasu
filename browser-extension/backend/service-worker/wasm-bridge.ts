@@ -17,6 +17,9 @@ interface WasmExports {
   evaluate_policy_rpc_json(input_json: string): string;
   plan_policy_rpc_json(input_json: string): string;
   route_request_json(input_json: string): string;
+  preview_custom_schema_json(input_json: string): string;
+  preview_installed_schema_json(): string;
+  get_alias_table_json(): string;
 }
 
 /**
@@ -194,6 +197,66 @@ export async function planPolicyRpc(
     diagnostics: plan.diagnostics,
   });
   return plan;
+}
+
+export interface PreviewCustomSchemaOutput {
+  customTypes: { name: string; fields: unknown[] }[];
+  enrichedSchemaText: string;
+  diff: { added: unknown[]; removed: unknown[]; changed: unknown[] };
+  schemaHash: string;
+}
+
+export interface PreviewInstalledSchemaOutput {
+  schema_text: string;
+  schema_hash: string;
+  added_fields: unknown[];
+  customContexts: Record<string, unknown[]>;
+  schemaHash: string;
+}
+
+export interface AliasTableEntry {
+  name: string;
+  kind: "scalar" | "record";
+  cedarSpelling: string;
+}
+
+/**
+ * Preview the enriched cedarschema produced by a single action's
+ * manifest (Phase 6 / D14). Returns the full custom-context list, the
+ * generated cedarschema text, a diff against any currently-installed
+ * action, and a hash of the previewed schema.
+ */
+export async function previewCustomSchema(input: {
+  action: string;
+  manifest: unknown;
+}): Promise<PreviewCustomSchemaOutput> {
+  const exports = await load();
+  return unwrap<PreviewCustomSchemaOutput>(
+    exports.preview_custom_schema_json(JSON.stringify(input)),
+  );
+}
+
+/**
+ * Read back the currently-installed enriched cedarschema + per-action
+ * custom-context fields. Used by the dashboard schema viewer to show
+ * users what their installed manifests have added on top of the base
+ * cedarschema.
+ */
+export async function previewInstalledSchema(): Promise<PreviewInstalledSchemaOutput> {
+  const exports = await load();
+  return unwrap<PreviewInstalledSchemaOutput>(
+    exports.preview_installed_schema_json(),
+  );
+}
+
+/**
+ * Return the base alias table — the set of cedarschema types and
+ * records that ship with the engine and that manifest authors can
+ * reference in their `outputs[].type` fields.
+ */
+export async function getAliasTable(): Promise<{ entries: AliasTableEntry[] }> {
+  const exports = await load();
+  return unwrap<{ entries: AliasTableEntry[] }>(exports.get_alias_table_json());
 }
 
 export async function evaluatePolicyRpc(

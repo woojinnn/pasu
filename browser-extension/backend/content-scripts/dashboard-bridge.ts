@@ -80,6 +80,13 @@ const WATCHED_KEYS = new Set([
   // to refresh on the fly. Storage layer trims to AUDIT_MAX (100), so the
   // change events fire at most once per decision and the payload stays small.
   "requests:audit",
+  // Phase 6 / Task 6.5: manifest store + migration queue. The dashboard
+  // manifest editor and migration banner subscribe so the UI mirrors
+  // installs from other tabs and the popup.
+  "rpc:manifests",
+  "rpc:endpointUrl",
+  "rpc:enrichedSchemaHash",
+  "migration:pending",
 ]);
 
 Browser.storage.onChanged.addListener((changes, areaName) => {
