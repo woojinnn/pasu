@@ -64,6 +64,49 @@ function emptyOutput(): OutputDraft {
   return { field: "", type: "", from: "", required: false };
 }
 
+// Per-field validation for the form draft (carry-over L). The Save
+// button is disabled until `valid` is true; individual reasons are
+// surfaced inline next to each offending field via the `errors` map.
+interface DraftValidation {
+  valid: boolean;
+  manifestIdErr: string | null;
+  // requirementErrs[i] = error for the i-th requirement row.
+  requirementErrs: Array<{
+    idErr: string | null;
+    methodErr: string | null;
+    needsOutputs: boolean;
+    outputErrs: Array<{ fieldErr: string | null; typeErr: string | null }>;
+  }>;
+}
+
+export function validateDraft(draft: ManifestDraft): DraftValidation {
+  const manifestIdErr = draft.id.trim() === "" ? "Manifest id is required" : null;
+  const requirementErrs = draft.requires.map((r) => {
+    const idErr = r.id.trim() === "" ? "Requirement id is required" : null;
+    const methodErr = r.method.trim() === "" ? "Method is required" : null;
+    // A required (non-optional) requirement must declare at least one
+    // output — otherwise it contributes nothing to context.custom and
+    // can't actually fail closed.
+    const nonEmptyOutputs = r.outputs.filter((o) => o.field.trim() !== "");
+    const needsOutputs = !r.optional && nonEmptyOutputs.length === 0;
+    const outputErrs = r.outputs.map((o) => ({
+      fieldErr: o.field.trim() === "" ? "Field name is required" : null,
+      typeErr: o.type.trim() === "" ? "Type is required" : null,
+    }));
+    return { idErr, methodErr, needsOutputs, outputErrs };
+  });
+  const valid =
+    manifestIdErr === null &&
+    requirementErrs.every(
+      (e) =>
+        e.idErr === null &&
+        e.methodErr === null &&
+        !e.needsOutputs &&
+        e.outputErrs.every((o) => o.fieldErr === null && o.typeErr === null),
+    );
+  return { valid, manifestIdErr, requirementErrs };
+}
+
 // Convert the form draft to the wire `PolicyManifest`. `params` becomes a
 // k→selector record per requirement. We strip empty rows so the user can
 // keep blank scaffolding rows in the UI without polluting the manifest.
@@ -213,6 +256,11 @@ export function ManifestEditor(): JSX.Element {
     }
   }, [client, action, draft]);
 
+  // Phase 7 codex carry-over L: validate before enabling Save.
+  // `Preview` stays clickable while invalid — the user is allowed to
+  // probe the server-side validator without committing.
+  const validation = useMemo(() => validateDraft(draft), [draft]);
+
   const aliasOptions = useMemo(
     () =>
       aliasEntries.map((e) => ({
@@ -289,9 +337,28 @@ export function ManifestEditor(): JSX.Element {
         <button type="button" onClick={onPreview} disabled={busy !== null}>
           Preview
         </button>
-        <button type="button" onClick={onSave} disabled={busy !== null}>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={busy !== null || !validation.valid}
+          title={
+            validation.valid
+              ? undefined
+              : "Resolve the highlighted fields before saving."
+          }
+          aria-disabled={busy !== null || !validation.valid}
+        >
           Save
         </button>
+        {!validation.valid ? (
+          <span
+            className="manifest-validation-hint"
+            data-testid="manifest-validation-hint"
+            role="note"
+          >
+            {validation.manifestIdErr ?? "Some requirements are incomplete."}
+          </span>
+        ) : null}
       </footer>
 
       {err ? (

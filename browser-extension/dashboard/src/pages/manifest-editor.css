@@ -153,3 +153,21 @@
   color: #060;
   font-size: 0.85rem;
 }
+
+/* Carry-over L: inline validation cues for Save button. */
+.manifest-validation-hint {
+  font-size: 0.85rem;
+  color: #b76e00;
+  align-self: center;
+}
+
+.manifest-field-err {
+  font-size: 0.75rem;
+  color: #b00020;
+  margin-top: 0.15rem;
+}
+
+.manifest-field-err::before {
+  content: "⚠ ";
+}
+
