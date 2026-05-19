@@ -686,6 +686,7 @@ mod tests {
     /// composed enriched schema becomes non-deterministic.
     #[test]
     fn render_type_text_is_stable_under_output_order_permutation() {
+        use super::super::composer::compose_enriched_with_base;
         let req_with_outputs = |outputs: Vec<ContextProjection>| Requirement {
             id: "req-multi".into(),
             when: RequirementWhen {
@@ -735,7 +736,6 @@ mod tests {
         // so the composer's per-action sort can't repair this. Pin it
         // here by composing both manifests against the same base stub
         // and comparing schema_hash.
-        use super::super::composer::compose_enriched_with_base;
         let base = String::from("type SwapCustomContext = {};\n");
         let manifests_ab = BTreeMap::from([("swap".to_owned(), m_ab)]);
         let manifests_ba = BTreeMap::from([("swap".to_owned(), m_ba)]);
