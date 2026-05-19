@@ -37,8 +37,10 @@ use policy_engine::action::lending::{
     RepayAction, RepayKind,
 };
 use policy_engine::action::misc::{
-    ClaimRewardsAction, PermitAction, PermitKind, SourceRef, TransferAction, UnwrapAction,
-    VoteAction, VoteSupport, WrapAction,
+    ClaimRewardsAction, GaugeVoteAction, GaugeVoteKind, LockCreateAction, LockIncreaseAction,
+    LockIncreaseKind, LockManageAction, LockManageKind, LpStakeAction, LpUnstakeAction,
+    PermitAction, PermitKind, SourceRef, TransferAction, UnwrapAction, VoteAction, VoteSupport,
+    WrapAction,
 };
 use policy_engine::action::staking::{ClaimUnstakeAction, StakeAction, TicketRef};
 use policy_engine::action::{
@@ -131,6 +133,13 @@ pub fn execute_with_args(
         ("staking", "claim_unstake") => Ok(build_claim_unstake_envelope(&tree)?),
         ("misc", "claim_rewards") => Ok(build_claim_rewards_envelope(&tree)?),
         ("misc", "vote") => Ok(build_vote_envelope(&tree)?),
+        // Phase 8 — Aerodrome ve(3,3) builders (gauge vote / LP stake / locks).
+        ("misc", "gauge_vote") => Ok(build_gauge_vote_envelope(&tree)?),
+        ("misc", "lp_stake") => Ok(build_lp_stake_envelope(&tree)?),
+        ("misc", "lp_unstake") => Ok(build_lp_unstake_envelope(&tree)?),
+        ("misc", "lock_create") => Ok(build_lock_create_envelope(&tree)?),
+        ("misc", "lock_increase") => Ok(build_lock_increase_envelope(&tree)?),
+        ("misc", "lock_manage") => Ok(build_lock_manage_envelope(&tree)?),
         (c, a) => Err(MapperError::Unsupported(format!("single_emit/{c}/{a}"))),
     }
 }
@@ -1801,6 +1810,409 @@ fn parse_validity_source(source: &str) -> Option<ValiditySource> {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// JSON tree → GaugeVote / LpStake / LpUnstake / LockCreate / LockIncrease /
+// LockManage (Phase 8 — Aerodrome ve(3,3))
+// ───────────────────────────────────────────────────────────────────────────
+
+fn build_gauge_vote_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let voter = read_address(tree, "voter")?;
+    let token_id = read_decimal(tree, "tokenId")?;
+    let pools = read_address_array(tree, "pools")?;
+    let weights = read_decimal_array(tree, "weights")?;
+    let kind = read_optional_enum::<GaugeVoteKind>(tree, "kind")?;
+    let validity = read_validity(tree)?;
+
+    // Length consistency — pools and weights must match (parallel arrays).
+    if pools.len() != weights.len() {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "gauge_vote: pools.len()={} != weights.len()={}",
+            pools.len(),
+            weights.len()
+        )));
+    }
+
+    // Kind-shape enforcement (Round 7 P1 #4):
+    //   kind=reset / kind=poke → pools and weights must both be empty.
+    // Aerodrome `Voter.reset(tokenId)` and `.poke(tokenId)` take no pool /
+    // weight payload; emitting non-empty arrays under those kinds would
+    // indicate an adapter mis-classification (e.g. routing a vote() call to
+    // the reset opcode by mistake).
+    if let Some(k @ (GaugeVoteKind::Reset | GaugeVoteKind::Poke)) = kind {
+        if !pools.is_empty() || !weights.is_empty() {
+            let kind_name = match k {
+                GaugeVoteKind::Reset => "reset",
+                GaugeVoteKind::Poke => "poke",
+                GaugeVoteKind::Vote => unreachable!("matched on Reset|Poke"),
+            };
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "gauge_vote kind={} requires empty pools and weights (got pools.len()={}, weights.len()={})",
+                kind_name,
+                pools.len(),
+                weights.len()
+            )));
+        }
+    }
+
+    let action = GaugeVoteAction {
+        voter,
+        token_id,
+        pools,
+        weights,
+        kind,
+        validity,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::GaugeVote(action),
+    })
+}
+
+fn build_lp_stake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let gauge = read_address(tree, "gauge")?;
+    let lp_token = read_asset_inline(tree, "lpToken")?;
+    let amount = read_amount_inline(tree, "amount")?
+        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let recipient = read_address(tree, "recipient")?;
+    let action = LpStakeAction {
+        gauge,
+        lp_token,
+        amount,
+        recipient,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::LpStake(action),
+    })
+}
+
+fn build_lp_unstake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let gauge = read_address(tree, "gauge")?;
+    let lp_token = read_asset_inline(tree, "lpToken")?;
+    let amount = read_amount_inline(tree, "amount")?
+        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let recipient = read_address(tree, "recipient")?;
+    let action = LpUnstakeAction {
+        gauge,
+        lp_token,
+        amount,
+        recipient,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::LpUnstake(action),
+    })
+}
+
+fn build_lock_create_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let voting_escrow = read_address(tree, "votingEscrow")?;
+    let asset = read_asset_inline(tree, "asset")?;
+    let amount = read_amount_inline(tree, "amount")?
+        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let lock_duration_sec = read_decimal(tree, "lockDurationSec")?;
+    let recipient = read_address(tree, "recipient")?;
+    let action = LockCreateAction {
+        voting_escrow,
+        asset,
+        amount,
+        lock_duration_sec,
+        recipient,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::LockCreate(action),
+    })
+}
+
+fn build_lock_increase_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let voting_escrow = read_address(tree, "votingEscrow")?;
+    let token_id = read_decimal(tree, "tokenId")?;
+    let kind: LockIncreaseKind = read_optional_enum(tree, "kind")?
+        .ok_or_else(|| MapperError::MissingArgument("kind".to_owned()))?;
+    let additional_amount = read_amount_inline(tree, "additionalAmount")?;
+    let new_lock_duration_sec = read_optional_decimal(tree, "newLockDurationSec")?;
+
+    // Kind-required-field enforcement (Round 7 P1 #2):
+    //   kind=amount       → additionalAmount must be present
+    //   kind=unlock_time  → newLockDurationSec must be present
+    // Without this an adapter typo would silently produce an envelope with
+    // the wrong discriminator, and Cedar policies that branch on `kind`
+    // would evaluate against a half-populated context.
+    match kind {
+        LockIncreaseKind::Amount => {
+            if additional_amount.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_increase kind=amount requires additionalAmount"
+                )));
+            }
+        }
+        LockIncreaseKind::UnlockTime => {
+            if new_lock_duration_sec.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_increase kind=unlock_time requires newLockDurationSec"
+                )));
+            }
+        }
+    }
+
+    let action = LockIncreaseAction {
+        voting_escrow,
+        token_id,
+        kind,
+        additional_amount,
+        new_lock_duration_sec,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::LockIncrease(action),
+    })
+}
+
+fn build_lock_manage_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let voting_escrow = read_address(tree, "votingEscrow")?;
+    let kind: LockManageKind = read_optional_enum(tree, "kind")?
+        .ok_or_else(|| MapperError::MissingArgument("kind".to_owned()))?;
+    let from_token_id = read_decimal(tree, "fromTokenId")?;
+    let to_token_id = read_optional_decimal(tree, "toTokenId")?;
+    let split_ratio = read_optional_decimal(tree, "splitRatio")?;
+
+    // Kind-required-field enforcement (Round 7 P1 #3):
+    //   kind=merge → toTokenId must be present (destination of the merge)
+    //   kind=split → splitRatio must be present (fraction of source consumed)
+    match kind {
+        LockManageKind::Merge => {
+            if to_token_id.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_manage kind=merge requires toTokenId"
+                )));
+            }
+        }
+        LockManageKind::Split => {
+            if split_ratio.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_manage kind=split requires splitRatio"
+                )));
+            }
+        }
+    }
+
+    let action = LockManageAction {
+        voting_escrow,
+        kind,
+        from_token_id,
+        to_token_id,
+        split_ratio,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::LockManage(action),
+    })
+}
+
+/// Read an optional bare `AssetRef` from `tree.<field>`. Returns `None` when
+/// the field is missing or JSON null. Compared to [`read_asset_inline`] which
+/// is required.
+fn read_optional_asset_inline(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<AssetRef>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let asset = read_asset_inline(tree, field)?;
+    // Capture the optional `tokenId` if the manifest set one (mirrors
+    // [`read_nft_asset`] — used by Slipstream NFPM collect).
+    let mut asset = asset;
+    if let Some(object) = raw.as_object() {
+        if let Some(token_id) = object.get("tokenId") {
+            match token_id {
+                serde_json::Value::String(s) => {
+                    asset.token_id = Some(DecimalString::from_str(s).map_err(|m| {
+                        MapperError::Internal(anyhow::anyhow!("{field}.tokenId {s:?}: {m}"))
+                    })?);
+                }
+                serde_json::Value::Null => {}
+                other => {
+                    return Err(MapperError::Internal(anyhow::anyhow!(
+                        "{field}.tokenId: expected string, got {other}"
+                    )));
+                }
+            }
+        }
+    }
+    Ok(Some(asset))
+}
+
+/// Read `Option<Vec<AssetRef>>` from `tree.<field>`. Each element is a bare
+/// `AssetRef { kind, address }` (no `asset` wrapper, matching how the bundle
+/// emits `rewardTokens[N].kind` + `rewardTokens[N].address`).
+///
+/// Returns `Ok(None)` if the field is missing or JSON null. Returns
+/// `Ok(Some(vec))` (which may be empty) when the field is present.
+fn read_optional_asset_inline_array(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<Vec<AssetRef>>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (index, entry) in array.iter().enumerate() {
+        if entry.is_null() {
+            // `set_nested` auto-pads arrays with nulls when manifest writes
+            // a sparse index — reject such gaps loudly rather than silently
+            // dropping the slot.
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: unexpected null (sparse array)"
+            )));
+        }
+        // Build a one-element synthetic tree so we can reuse the bare-asset
+        // reader. The synthetic key is "_" to avoid shadowing.
+        let synthetic = serde_json::json!({ "_": entry.clone() });
+        let asset = read_asset_inline(&synthetic, "_").map_err(|err| match err {
+            MapperError::MissingArgument(_) => MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: missing required asset field"
+            )),
+            MapperError::Internal(e) => {
+                MapperError::Internal(anyhow::anyhow!("{field}[{index}]: {e}"))
+            }
+            other => other,
+        })?;
+        result.push(asset);
+    }
+    Ok(Some(result))
+}
+
+/// Read `Option<Vec<AmountConstraint>>` from `tree.<field>`. Each element is
+/// a bare `{ kind, value }` object. Returns `Ok(None)` when the field is
+/// missing or JSON null.
+fn read_optional_amount_constraint_array(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<Vec<AmountConstraint>>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (index, entry) in array.iter().enumerate() {
+        if entry.is_null() {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: unexpected null (sparse array)"
+            )));
+        }
+        let synthetic = serde_json::json!({ "_": entry.clone() });
+        let amount = read_amount_inline(&synthetic, "_")?
+            .ok_or_else(|| MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: amount_inline returned None"
+            )))?;
+        result.push(amount);
+    }
+    Ok(Some(result))
+}
+
+/// Read a required `DecimalString` from `tree.<field>`. Accepts JSON strings
+/// only (large-integer decimals are not safe to round-trip through JSON
+/// numbers).
+fn read_decimal(tree: &serde_json::Value, field: &str) -> Result<DecimalString, MapperError> {
+    let raw = required_string(tree, field).map_err(|_| missing_field("$", field))?;
+    DecimalString::from_str(raw)
+        .map_err(|message| MapperError::Internal(anyhow::anyhow!("{field} {raw:?}: {message}")))
+}
+
+/// Read a JSON array of `Address` values from `tree.<field>`. Returns an empty
+/// `Vec` if the field is missing or JSON null (matches the Solidly "reset"
+/// case where `pools` arrives as an empty array). Returns `Err` if the field
+/// exists but is not an array, or contains non-string / invalid elements.
+fn read_address_array(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Vec<Address>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(Vec::new());
+    };
+    if raw.is_null() {
+        return Ok(Vec::new());
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (index, entry) in array.iter().enumerate() {
+        let s = entry.as_str().ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: expected string address, got {entry}"
+            ))
+        })?;
+        let addr = Address::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}[{index}] {s:?}: {m}"))
+        })?;
+        result.push(addr);
+    }
+    Ok(result)
+}
+
+/// Read a JSON array of `DecimalString` values from `tree.<field>`. Returns an
+/// empty `Vec` if the field is missing or JSON null.
+fn read_decimal_array(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Vec<DecimalString>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(Vec::new());
+    };
+    if raw.is_null() {
+        return Ok(Vec::new());
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (index, entry) in array.iter().enumerate() {
+        let s = entry.as_str().ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: expected decimal string, got {entry}"
+            ))
+        })?;
+        let value = DecimalString::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}[{index}] {s:?}: {m}"))
+        })?;
+        result.push(value);
+    }
+    Ok(result)
+}
+
+/// Read an optional enum field (deserializable from JSON via serde). Returns
+/// `Ok(None)` if the field is missing or JSON null.
+fn read_optional_enum<T: serde::de::DeserializeOwned>(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<T>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    serde_json::from_value(raw.clone())
+        .map(Some)
+        .map_err(|e| MapperError::Internal(anyhow::anyhow!("{field}: enum deserialize failed: {e}")))
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // JSON helpers
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -1895,6 +2307,27 @@ mod tests {
     }
 
     #[test]
+    fn set_nested_supports_array_index_suffix() {
+        // `inputTokens[0].asset.kind` + `inputTokens[1].asset.kind` should
+        // materialise as a 2-element JSON array. This is the bundle pattern
+        // used by Uniswap V2/V3 + Aerodrome Slipstream NPM mint manifests.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "inputTokens[0].asset.kind", json!("erc20")).unwrap();
+        set_nested(&mut root, "inputTokens[0].asset.address", json!("0xaa")).unwrap();
+        set_nested(&mut root, "inputTokens[1].asset.kind", json!("erc20")).unwrap();
+        set_nested(&mut root, "inputTokens[1].asset.address", json!("0xbb")).unwrap();
+        assert_eq!(
+            root,
+            json!({
+                "inputTokens": [
+                    { "asset": { "kind": "erc20", "address": "0xaa" } },
+                    { "asset": { "kind": "erc20", "address": "0xbb" } }
+                ]
+            })
+        );
+    }
+
+    #[test]
     fn set_nested_supports_out_of_order_array_writes() {
         // Writing index 2 before index 0 / 1 must pad with `Null`s that get
         // populated later. The final tree must reflect all three writes.
@@ -1917,6 +2350,86 @@ mod tests {
         let mut root = serde_json::Value::Object(serde_json::Map::new());
         let err = set_nested(&mut root, "xs[0", json!(1)).unwrap_err();
         assert!(err.to_string().contains("unterminated"));
+    }
+
+    #[test]
+    fn set_nested_supports_single_index_array() {
+        // The Aerodrome voter/claimBribes pattern: only `rewardTokens[0].*`
+        // is set — the result should be a 1-element array, not an object.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "rewardTokens[0].kind", json!("erc20")).unwrap();
+        set_nested(&mut root, "rewardTokens[0].address", json!("0xabcdef")).unwrap();
+        assert_eq!(
+            root,
+            json!({
+                "rewardTokens": [
+                    { "kind": "erc20", "address": "0xabcdef" }
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn set_nested_supports_sparse_index_with_null_padding() {
+        // If a manifest writes `[2]` before `[0]`, the intervening slots
+        // become JSON null. The downstream array reader is responsible for
+        // rejecting these holes.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "rewardTokens[2].kind", json!("erc20")).unwrap();
+        assert_eq!(
+            root,
+            json!({
+                "rewardTokens": [null, null, { "kind": "erc20" }]
+            })
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_segment_starting_with_bracket() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "[0].kind", json!("erc20")).unwrap_err();
+        // phase7 (Curve) impl reports "empty bareword before '['" — same
+        // semantic as phase8's "starts with '['".
+        assert!(
+            err.to_string().contains("empty bareword"),
+            "expected empty-bareword error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_unbalanced_bracket() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "inputs[0", json!(1)).unwrap_err();
+        // phase7 reports "unterminated '['"; phase8 wording was "missing closing".
+        assert!(
+            err.to_string().contains("unterminated"),
+            "expected unterminated-[ error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_empty_index() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "inputs[]", json!(1)).unwrap_err();
+        // phase7 surfaces the underlying integer-parse error verbatim:
+        // "cannot parse integer from empty string". Same root cause as
+        // phase8's "empty index" wording.
+        assert!(
+            err.to_string().contains("empty string"),
+            "expected parse-from-empty-string error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_non_numeric_index() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "inputs[abc]", json!(1)).unwrap_err();
+        // phase7 surfaces "invalid digit found in string" verbatim. Same
+        // root cause as phase8's "not a non-negative integer" wording.
+        assert!(
+            err.to_string().contains("invalid digit"),
+            "expected invalid-digit error, got: {err}"
+        );
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -2438,6 +2951,492 @@ mod tests {
         );
     }
 
+    // ───────────────────────────────────────────────────────────────────────
+    // Phase 8 — Aerodrome ve(3,3) builders (gauge_vote / lp_stake /
+    // lp_unstake / lock_create / lock_increase / lock_manage)
+    // ───────────────────────────────────────────────────────────────────────
+
+    fn aero_voter() -> &'static str {
+        "0x16613524e02ad97edfef371bc883f2f5d6c480a5"
+    }
+
+    fn aero_voting_escrow() -> &'static str {
+        "0xfaf8fd17d9840595845582fcb047df13f006787d"
+    }
+
+    fn aero_lp_token() -> serde_json::Value {
+        json!({
+            "kind": "erc20",
+            "address": "0x0b25c51637c43decd6cc1c1e3da4395f74dfdb98"
+        })
+    }
+
+    fn aero_asset() -> serde_json::Value {
+        // AERO ERC20 on Base.
+        json!({
+            "kind": "erc20",
+            "address": "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+        })
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_minimal() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "1",
+            "pools": ["0x0000000000000000000000000000000000000001"],
+            "weights": ["100"]
+        });
+        let envelope = build_gauge_vote_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.category, Category::Misc);
+        assert_eq!(envelope.action.kind(), "gauge_vote");
+        let Action::GaugeVote(action) = envelope.action else {
+            panic!("expected Action::GaugeVote");
+        };
+        assert_eq!(action.pools.len(), 1);
+        assert_eq!(action.weights.len(), 1);
+        assert_eq!(action.token_id.to_string(), "1");
+        assert!(action.kind.is_none());
+        assert!(action.validity.is_none());
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_reset_empty_pools() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "1",
+            "pools": [],
+            "weights": [],
+            "kind": "reset"
+        });
+        let envelope = build_gauge_vote_envelope(&tree).expect("build OK");
+        let Action::GaugeVote(action) = envelope.action else {
+            panic!("expected Action::GaugeVote");
+        };
+        assert_eq!(action.pools.len(), 0);
+        assert_eq!(action.weights.len(), 0);
+        assert_eq!(action.kind, Some(GaugeVoteKind::Reset));
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_pools_weights_length_mismatch_errors() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "1",
+            "pools": ["0x0000000000000000000000000000000000000001"],
+            "weights": []
+        });
+        let err = build_gauge_vote_envelope(&tree).unwrap_err();
+        assert!(
+            err.to_string().contains("pools.len()=1 != weights.len()=0"),
+            "expected length mismatch error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_with_validity() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "42",
+            "pools": [
+                "0x0000000000000000000000000000000000000001",
+                "0x0000000000000000000000000000000000000002"
+            ],
+            "weights": ["50", "50"],
+            "kind": "vote",
+            "validity": validity_object()
+        });
+        let envelope = build_gauge_vote_envelope(&tree).expect("build OK");
+        let Action::GaugeVote(action) = envelope.action else {
+            panic!("expected Action::GaugeVote");
+        };
+        assert_eq!(action.pools.len(), 2);
+        assert_eq!(action.kind, Some(GaugeVoteKind::Vote));
+        assert!(action.validity.is_some());
+    }
+
+    #[test]
+    fn build_lp_stake_envelope_minimal() {
+        let tree = json!({
+            "gauge": "0x1111111111111111111111111111111111111111",
+            "lpToken": aero_lp_token(),
+            "amount": { "kind": "exact", "value": "1000000000000000000" },
+            "recipient": "0x3333333333333333333333333333333333333333"
+        });
+        let envelope = build_lp_stake_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.category, Category::Misc);
+        assert_eq!(envelope.action.kind(), "lp_stake");
+        let Action::LpStake(action) = envelope.action else {
+            panic!("expected Action::LpStake");
+        };
+        assert_eq!(
+            action.gauge.to_string(),
+            "0x1111111111111111111111111111111111111111"
+        );
+        assert_eq!(action.lp_token.kind, AssetKind::Erc20);
+        assert_eq!(action.amount.kind, AmountKind::Exact);
+        assert_eq!(
+            action.amount.value.as_ref().map(ToString::to_string),
+            Some("1000000000000000000".to_owned())
+        );
+    }
+
+    #[test]
+    fn build_lp_stake_envelope_missing_amount_errors() {
+        let tree = json!({
+            "gauge": "0x1111111111111111111111111111111111111111",
+            "lpToken": aero_lp_token(),
+            "recipient": "0x3333333333333333333333333333333333333333"
+        });
+        let err = build_lp_stake_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "amount"),
+            other => panic!("expected MissingArgument(\"amount\"), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_lp_unstake_envelope_minimal() {
+        let tree = json!({
+            "gauge": "0x1111111111111111111111111111111111111111",
+            "lpToken": aero_lp_token(),
+            "amount": { "kind": "exact", "value": "500000000000000000" },
+            "recipient": "0x3333333333333333333333333333333333333333"
+        });
+        let envelope = build_lp_unstake_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.action.kind(), "lp_unstake");
+        let Action::LpUnstake(action) = envelope.action else {
+            panic!("expected Action::LpUnstake");
+        };
+        assert_eq!(action.amount.kind, AmountKind::Exact);
+        assert_eq!(
+            action.amount.value.as_ref().map(ToString::to_string),
+            Some("500000000000000000".to_owned())
+        );
+        assert_eq!(
+            action.recipient.to_string(),
+            "0x3333333333333333333333333333333333333333"
+        );
+    }
+
+    #[test]
+    fn build_lp_unstake_envelope_missing_gauge_errors() {
+        let tree = json!({
+            "lpToken": aero_lp_token(),
+            "amount": { "kind": "exact", "value": "1" },
+            "recipient": "0x3333333333333333333333333333333333333333"
+        });
+        let err = build_lp_unstake_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "$.gauge"),
+            other => panic!("expected MissingArgument, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_lock_create_envelope_minimal() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "asset": aero_asset(),
+            "amount": { "kind": "exact", "value": "1000000000000000000" },
+            "lockDurationSec": "126144000",
+            "recipient": "0x3333333333333333333333333333333333333333"
+        });
+        let envelope = build_lock_create_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.category, Category::Misc);
+        assert_eq!(envelope.action.kind(), "lock_create");
+        let Action::LockCreate(action) = envelope.action else {
+            panic!("expected Action::LockCreate");
+        };
+        assert_eq!(action.voting_escrow.to_string(), aero_voting_escrow());
+        assert_eq!(action.asset.kind, AssetKind::Erc20);
+        assert_eq!(action.lock_duration_sec.to_string(), "126144000");
+    }
+
+    #[test]
+    fn build_lock_create_envelope_missing_duration_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "asset": aero_asset(),
+            "amount": { "kind": "exact", "value": "1" },
+            "recipient": "0x3333333333333333333333333333333333333333"
+        });
+        let err = build_lock_create_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "$.lockDurationSec"),
+            other => panic!("expected MissingArgument, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_lock_increase_envelope_amount_kind() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "tokenId": "42",
+            "kind": "amount",
+            "additionalAmount": { "kind": "exact", "value": "500000000000000000" }
+        });
+        let envelope = build_lock_increase_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.action.kind(), "lock_increase");
+        let Action::LockIncrease(action) = envelope.action else {
+            panic!("expected Action::LockIncrease");
+        };
+        assert_eq!(action.kind, LockIncreaseKind::Amount);
+        assert_eq!(action.token_id.to_string(), "42");
+        let additional = action
+            .additional_amount
+            .as_ref()
+            .expect("amount kind requires additionalAmount");
+        assert_eq!(additional.kind, AmountKind::Exact);
+        assert!(action.new_lock_duration_sec.is_none());
+    }
+
+    #[test]
+    fn build_lock_increase_envelope_unlock_time_kind() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "tokenId": "42",
+            "kind": "unlock_time",
+            "newLockDurationSec": "126144000"
+        });
+        let envelope = build_lock_increase_envelope(&tree).expect("build OK");
+        let Action::LockIncrease(action) = envelope.action else {
+            panic!("expected Action::LockIncrease");
+        };
+        assert_eq!(action.kind, LockIncreaseKind::UnlockTime);
+        assert!(action.additional_amount.is_none());
+        assert_eq!(
+            action.new_lock_duration_sec.as_ref().map(ToString::to_string),
+            Some("126144000".to_owned())
+        );
+    }
+
+    #[test]
+    fn build_lock_increase_envelope_missing_kind_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "tokenId": "42",
+            "additionalAmount": { "kind": "exact", "value": "1" }
+        });
+        let err = build_lock_increase_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "kind"),
+            other => panic!("expected MissingArgument(\"kind\"), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_lock_manage_envelope_merge() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "kind": "merge",
+            "fromTokenId": "1",
+            "toTokenId": "2"
+        });
+        let envelope = build_lock_manage_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.category, Category::Misc);
+        assert_eq!(envelope.action.kind(), "lock_manage");
+        let Action::LockManage(action) = envelope.action else {
+            panic!("expected Action::LockManage");
+        };
+        assert_eq!(action.kind, LockManageKind::Merge);
+        assert_eq!(action.from_token_id.to_string(), "1");
+        assert_eq!(
+            action.to_token_id.as_ref().map(ToString::to_string),
+            Some("2".to_owned())
+        );
+        assert!(action.split_ratio.is_none());
+    }
+
+    #[test]
+    fn build_lock_manage_envelope_split() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "kind": "split",
+            "fromTokenId": "1",
+            "splitRatio": "500000000000000000"
+        });
+        let envelope = build_lock_manage_envelope(&tree).expect("build OK");
+        let Action::LockManage(action) = envelope.action else {
+            panic!("expected Action::LockManage");
+        };
+        assert_eq!(action.kind, LockManageKind::Split);
+        assert!(action.to_token_id.is_none());
+        assert_eq!(
+            action.split_ratio.as_ref().map(ToString::to_string),
+            Some("500000000000000000".to_owned())
+        );
+    }
+
+    #[test]
+    fn build_lock_manage_envelope_missing_kind_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "fromTokenId": "1"
+        });
+        let err = build_lock_manage_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "kind"),
+            other => panic!("expected MissingArgument(\"kind\"), got {other:?}"),
+        }
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Phase 8 Round 5 fix — claim_rewards builder (Aerodrome voter, gauge,
+    // Slipstream NPM collect)
+    // ───────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_claim_rewards_envelope_minimal() {
+        let tree = json!({
+            "from": "0x1111111111111111111111111111111111111111",
+            "recipient": "0x2222222222222222222222222222222222222222"
+        });
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.category, Category::Misc);
+        assert_eq!(envelope.action.kind(), "claim_rewards");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        assert!(action.source.is_none());
+        assert!(action.nft.is_none());
+        assert!(action.token_id.is_none());
+        assert!(action.reward_tokens.is_none());
+        assert!(action.max_amounts.is_none());
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_full() {
+        // Mirrors what set_nested produces for the Aerodrome voter/claimBribes
+        // bundle: source.{address,label} merge into a SourceRef, and
+        // rewardTokens[0].{kind,address} merges into a single-element array.
+        let tree = json!({
+            "source": {
+                "address": "0x3333333333333333333333333333333333333333",
+                "label": "Aerodrome Voter"
+            },
+            "nft": {
+                "kind": "erc721",
+                "address": "0x4444444444444444444444444444444444444444"
+            },
+            "tokenId": "42",
+            "from": "0x1111111111111111111111111111111111111111",
+            "recipient": "0x2222222222222222222222222222222222222222",
+            "rewardTokens": [
+                { "kind": "erc20", "address": "0x5555555555555555555555555555555555555555" }
+            ]
+        });
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        let source = action.source.as_ref().expect("source present");
+        assert_eq!(
+            source.address.as_ref().map(ToString::to_string),
+            Some("0x3333333333333333333333333333333333333333".to_owned())
+        );
+        assert_eq!(source.label.as_deref(), Some("Aerodrome Voter"));
+        let nft = action.nft.as_ref().expect("nft present");
+        assert_eq!(nft.kind, AssetKind::Erc721);
+        assert_eq!(action.token_id.as_ref().map(ToString::to_string), Some("42".to_owned()));
+        let rewards = action.reward_tokens.as_ref().expect("rewardTokens present");
+        assert_eq!(rewards.len(), 1);
+        assert_eq!(rewards[0].kind, AssetKind::Erc20);
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_via_set_nested_paths() {
+        // End-to-end: a fields-tree built via [`set_nested`] from the
+        // Aerodrome voter/claimBribes manifest's dot-paths should feed
+        // straight into the builder. This pins the `[N]` indexing contract
+        // between manifest evaluation and the builder.
+        let mut tree = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut tree, "source.address", json!("0x16613524e02ad97edfef371bc883f2f5d6c480a5")).unwrap();
+        set_nested(&mut tree, "source.label", json!("Aerodrome Voter (Bribes)")).unwrap();
+        set_nested(&mut tree, "tokenId", json!("42")).unwrap();
+        set_nested(&mut tree, "from", json!("0x1111111111111111111111111111111111111111")).unwrap();
+        set_nested(&mut tree, "recipient", json!("0x1111111111111111111111111111111111111111")).unwrap();
+        set_nested(&mut tree, "rewardTokens[0].kind", json!("erc20")).unwrap();
+        set_nested(&mut tree, "rewardTokens[0].address", json!("0x940181a94a35a4569e4529a3cdfb74e38fd98631")).unwrap();
+
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        assert_eq!(action.source.as_ref().and_then(|s| s.label.as_deref()), Some("Aerodrome Voter (Bribes)"));
+        let rewards = action.reward_tokens.as_ref().expect("rewardTokens present");
+        assert_eq!(rewards.len(), 1);
+        assert_eq!(
+            rewards[0].address.as_ref().map(ToString::to_string),
+            Some("0x940181a94a35a4569e4529a3cdfb74e38fd98631".to_owned())
+        );
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_missing_from_errors() {
+        let tree = json!({
+            "recipient": "0x2222222222222222222222222222222222222222"
+        });
+        let err = build_claim_rewards_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "$.from"),
+            other => panic!("expected MissingArgument(\"$.from\"), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_missing_recipient_errors() {
+        let tree = json!({
+            "from": "0x1111111111111111111111111111111111111111"
+        });
+        let err = build_claim_rewards_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "$.recipient"),
+            other => panic!("expected MissingArgument(\"$.recipient\"), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn read_optional_source_ref_returns_none_when_both_fields_null() {
+        // A bundle that emits neither source.address nor source.label leaves
+        // `source` absent — the helper must NOT manufacture an empty SourceRef.
+        let tree = json!({});
+        let result = read_optional_source_ref(&tree, "source").expect("OK");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn read_optional_asset_inline_array_rejects_sparse_null() {
+        let tree = json!({ "rewardTokens": [null, { "kind": "erc20" }] });
+        let err = read_optional_asset_inline_array(&tree, "rewardTokens").unwrap_err();
+        assert!(
+            err.to_string().contains("unexpected null"),
+            "expected sparse-array error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn read_address_array_missing_returns_empty() {
+        let tree = json!({});
+        let result = read_address_array(&tree, "pools").expect("OK");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn read_address_array_rejects_non_string_element() {
+        let tree = json!({ "pools": [42] });
+        let err = read_address_array(&tree, "pools").unwrap_err();
+        assert!(err.to_string().contains("expected string address"));
+    }
+
+    #[test]
+    fn read_optional_enum_null_returns_none() {
+        let tree = json!({ "kind": null });
+        let result: Option<GaugeVoteKind> =
+            read_optional_enum(&tree, "kind").expect("OK");
+        assert!(result.is_none());
+    }
+
     #[test]
     fn permit2_transfer_from_batch_with_empty_array_yields_error() {
         // If `transferDetails == []`, the manifest's `$.args.transferDetails[0][...]`
@@ -2712,5 +3711,111 @@ mod tests {
         ));
         assert_eq!(action.voting_power.unwrap().to_string(), "10000");
         assert!(action.validity.is_none());
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Round 7 P1 fixes — kind-required-field enforcement for builders that
+    // accept multiple sub-kinds. Each kind has its own required field set,
+    // and the builder must reject an adapter that pairs a kind discriminator
+    // with the wrong payload (silent mis-classification would otherwise
+    // produce an envelope Cedar policies cannot evaluate correctly).
+    // ───────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_lock_increase_envelope_amount_kind_missing_additional_amount_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "tokenId": "42",
+            "kind": "amount"
+            // additionalAmount intentionally omitted
+        });
+        let err = build_lock_increase_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=amount requires additionalAmount"),
+            "expected lock_increase kind=amount enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_lock_increase_envelope_unlock_time_kind_missing_duration_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "tokenId": "42",
+            "kind": "unlock_time"
+            // newLockDurationSec intentionally omitted
+        });
+        let err = build_lock_increase_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=unlock_time requires newLockDurationSec"),
+            "expected lock_increase kind=unlock_time enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_lock_manage_envelope_merge_missing_to_token_id_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "kind": "merge",
+            "fromTokenId": "1"
+            // toTokenId intentionally omitted
+        });
+        let err = build_lock_manage_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=merge requires toTokenId"),
+            "expected lock_manage kind=merge enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_lock_manage_envelope_split_missing_split_ratio_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "kind": "split",
+            "fromTokenId": "1"
+            // splitRatio intentionally omitted
+        });
+        let err = build_lock_manage_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=split requires splitRatio"),
+            "expected lock_manage kind=split enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_reset_with_non_empty_pools_errors() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "1",
+            "pools": ["0x0000000000000000000000000000000000000001"],
+            "weights": ["100"],
+            "kind": "reset"
+        });
+        let err = build_gauge_vote_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=reset requires empty pools and weights"),
+            "expected gauge_vote kind=reset enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_poke_with_non_empty_weights_errors() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "1",
+            "pools": ["0x0000000000000000000000000000000000000001"],
+            "weights": ["50"],
+            "kind": "poke"
+        });
+        let err = build_gauge_vote_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=poke requires empty pools and weights"),
+            "expected gauge_vote kind=poke enforcement error, got: {msg}"
+        );
     }
 }

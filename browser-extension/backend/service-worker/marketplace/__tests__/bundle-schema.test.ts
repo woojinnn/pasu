@@ -261,6 +261,41 @@ describe("parseBundle — error paths", () => {
     ).toThrow(/max 4 args/);
   });
 
+  it("accepts unfold_slipstream_path as a BuiltinFn (Phase 8)", () => {
+    expect(() =>
+      parseBundle({
+        type: "adapter_function",
+        id: "aerodrome/slipstream/exactInput@1.0.0",
+        publisher: "aerodrome.eth",
+        match: { chain_ids: [8453], to: [], selector: "0x12345678" },
+        abi_fragment: { function_name: "exactInput", abi: {} },
+        emit: {
+          strategy: "single_emit",
+          category: "dex",
+          action: "swap",
+          fields: {
+            "inputToken.asset.address": {
+              fn: "unfold_slipstream_path",
+              args: [
+                { from: "$.args.params.path" },
+                { literal: "first_token" },
+              ],
+            },
+            "extension.aerodrome.tick_spacing": {
+              fn: "unfold_slipstream_path",
+              args: [
+                { from: "$.args.params.path" },
+                { literal: "tick_spacing_at_hop" },
+                { literal: 0 },
+              ],
+            },
+          },
+        },
+        requires: { imperative: [], host_capabilities: [], extension: ">=0.1.0" },
+      }),
+    ).not.toThrow();
+  });
+
   it("rejects unknown BuiltinFn", () => {
     expect(() =>
       parseBundle({

@@ -301,6 +301,12 @@ pub enum BuiltinFn {
     /// mislabelled inputs and outputs whenever the user passed any
     /// `(i, j) != (0, 1)`.
     SelectFromLiteralArray,
+    /// `unfold_slipstream_path(bytes, select [, hop_index])`. Phase 8
+    /// (Aerodrome CL). Slipstream packed path encodes a **signed**
+    /// `int24 tickSpacing` between tokens instead of Uniswap V3's
+    /// `uint24 fee` — sign-extension applied on decode. Backend lives in
+    /// `declarative::builtin_fn::unfold_slipstream_path`.
+    UnfoldSlipstreamPath,
 }
 
 // ---------------------------------------------------------------------------

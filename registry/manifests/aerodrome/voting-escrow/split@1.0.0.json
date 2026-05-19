@@ -1,0 +1,38 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/voting-escrow/split@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
+    "selector": "0x4b19becc"
+  },
+  "abi_fragment": {
+    "function_name": "split",
+    "abi": {
+      "name": "split",
+      "type": "function",
+      "inputs": [
+        { "name": "tokenId", "type": "uint256" },
+        { "name": "ratios",  "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "lock_manage",
+    "fields": {
+      "votingEscrow": { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
+      "kind":         { "literal": "split" },
+      "fromTokenId":  { "from":    "$.args.tokenId" },
+      "splitRatio":   { "from":    "$.args.ratios" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

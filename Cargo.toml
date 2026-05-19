@@ -1,3 +1,10 @@
+# Optimize wasm-pack release WASM artifact for size. LTO + 1 codegen unit
+# recovers ~150-300 KB on the merged build (Phase 7 + 12 + 8) which
+# otherwise is ~30 KB over the plan §9 6 MiB target.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+
 [workspace]
 resolver = "2"
 members = [

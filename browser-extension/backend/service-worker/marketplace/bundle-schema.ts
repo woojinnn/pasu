@@ -110,7 +110,9 @@ export type BuiltinFn =
   // coins[i]/coins[j] resolver. The old bundles hardcoded `coins[0]` /
   // `coins[1]`, which silently mislabelled inputs/outputs whenever the
   // caller passed `(i, j) != (0, 1)`.
-  | "select_from_literal_array";
+  | "select_from_literal_array"
+  // Phase 8 — Aerodrome Slipstream CL packed path decoder (int24 tickSpacing)
+  | "unfold_slipstream_path";
 
 const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "select_address",
@@ -128,6 +130,7 @@ const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "unfold_v3_path",
   "curve_route_last_token",
   "select_from_literal_array",
+  "unfold_slipstream_path",
 ]);
 
 // ----- EmitRule strategies -----

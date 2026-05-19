@@ -1,0 +1,17 @@
+type GaugeVoteContext = {
+  voter: String,
+  tokenId: String,
+  pools: Set<String>,
+  weights: Set<String>,
+  weightsSum: String,
+  kind: String,
+
+  validity?: Validity,
+  validityDeltaSec?: Long,
+};
+
+action "gauge_vote" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: GaugeVoteContext,
+};

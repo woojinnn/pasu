@@ -1,0 +1,13 @@
+type LockIncreaseContext = {
+  votingEscrow: String,
+  tokenId: String,
+  kind: String,
+  additionalAmount?: AmountConstraint,
+  newLockDurationSec?: String,
+};
+
+action "lock_increase" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: LockIncreaseContext,
+};

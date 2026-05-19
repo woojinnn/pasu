@@ -1,0 +1,57 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/slipstream/exactInputSingle@1.0.0",
+  "publisher": "aerodrome.eth",
+  "match": {
+    "chain_ids": [8453],
+    "to": ["0x698Cb2b6dd822994581fEa6eA4Fc755d1363A92F"],
+    "selector": "0xa026383e"
+  },
+  "abi_fragment": {
+    "function_name": "exactInputSingle",
+    "abi": {
+      "name": "exactInputSingle",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "tokenIn",           "type": "address" },
+            { "name": "tokenOut",          "type": "address" },
+            { "name": "tickSpacing",       "type": "int24"   },
+            { "name": "recipient",         "type": "address" },
+            { "name": "deadline",          "type": "uint256" },
+            { "name": "amountIn",          "type": "uint256" },
+            { "name": "amountOutMinimum",  "type": "uint256" },
+            { "name": "sqrtPriceLimitX96", "type": "uint160" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "inputToken.asset.kind":     { "literal": "erc20" },
+      "inputToken.asset.address":  { "from": "$.args.params[0]" },
+      "inputToken.amount.kind":    { "literal": "exact" },
+      "inputToken.amount.value":   { "from": "$.args.params[5]" },
+      "outputToken.asset.kind":    { "literal": "erc20" },
+      "outputToken.asset.address": { "from": "$.args.params[1]" },
+      "outputToken.amount.kind":   { "literal": "min" },
+      "outputToken.amount.value":  { "from": "$.args.params[6]" },
+      "recipient":                 { "from": "$.args.params[3]" },
+      "validity.expiresAt":        { "from": "$.args.params[4]" },
+      "validity.source":           { "literal": "tx-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

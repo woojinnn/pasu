@@ -1,0 +1,109 @@
+{
+  "matched": true,
+  "bundle_id": "aerodrome/slipstream-npm/decreaseLiquidity@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-npm/decreaseLiquidity@1.0.0.json",
+  "bundle_sha256": "0x8758346908b35fb8a6f57090617d7ff5155ff2909eae3e6f6f39746e3b665919",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "aerodrome/slipstream-npm/decreaseLiquidity@1.0.0",
+    "publisher": "aerodrome.eth",
+    "match": {
+      "chain_ids": [
+        8453
+      ],
+      "to": [
+        "0xe1f8cd9AC4e4A65F54f38a5CdAfCA44f6dD68b53"
+      ],
+      "selector": "0x0c49ccbe"
+    },
+    "abi_fragment": {
+      "function_name": "decreaseLiquidity",
+      "abi": {
+        "name": "decreaseLiquidity",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "params",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "tokenId",
+                "type": "uint256"
+              },
+              {
+                "name": "liquidity",
+                "type": "uint128"
+              },
+              {
+                "name": "amount0Min",
+                "type": "uint256"
+              },
+              {
+                "name": "amount1Min",
+                "type": "uint256"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "decrease_liquidity",
+      "fields": {
+        "nft.kind": {
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "literal": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53"
+        },
+        "nft.tokenId": {
+          "from": "$.args.params[0]"
+        },
+        "liquidityDelta.kind": {
+          "literal": "exact"
+        },
+        "liquidityDelta.value": {
+          "from": "$.args.params[1]"
+        },
+        "outputTokens[0].asset.kind": {
+          "literal": "erc20"
+        },
+        "outputTokens[0].amount.kind": {
+          "literal": "min"
+        },
+        "outputTokens[0].amount.value": {
+          "from": "$.args.params[2]"
+        },
+        "outputTokens[1].asset.kind": {
+          "literal": "erc20"
+        },
+        "outputTokens[1].amount.kind": {
+          "literal": "min"
+        },
+        "outputTokens[1].amount.value": {
+          "from": "$.args.params[3]"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.params[4]"
+        },
+        "validity.source": {
+          "literal": "tx-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

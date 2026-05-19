@@ -1,0 +1,39 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/voting-escrow/increaseAmount@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
+    "selector": "0xb2383e55"
+  },
+  "abi_fragment": {
+    "function_name": "increaseAmount",
+    "abi": {
+      "name": "increaseAmount",
+      "type": "function",
+      "inputs": [
+        { "name": "tokenId", "type": "uint256" },
+        { "name": "value",   "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "lock_increase",
+    "fields": {
+      "votingEscrow":           { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
+      "tokenId":                { "from":    "$.args.tokenId" },
+      "kind":                   { "literal": "amount" },
+      "additionalAmount.kind":  { "literal": "exact" },
+      "additionalAmount.value": { "from":    "$.args.value" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

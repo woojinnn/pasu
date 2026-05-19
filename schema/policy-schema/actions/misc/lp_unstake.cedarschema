@@ -1,0 +1,12 @@
+type LpUnstakeContext = {
+  gauge: String,
+  lpToken: AssetRef,
+  amount: AmountConstraint,
+  recipient: String,
+};
+
+action "lp_unstake" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: LpUnstakeContext,
+};

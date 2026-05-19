@@ -1,0 +1,45 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/gauge/getReward@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": [
+      "0x4F09bAb2f0E15e2A078A227FE1537665F55b8360",
+      "0x519BBD1Dd8C6A94C46080E24f316c14Ee758C025",
+      "0xeca7Ff920E7162334634c721133F3183B83B0323",
+      "0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC",
+      "0x96a24aB830D4ec8b1F6f04Ceac104F1A3b211a01"
+    ],
+    "selector": "0xc00007b0"
+  },
+  "abi_fragment": {
+    "function_name": "getReward",
+    "abi": {
+      "name": "getReward",
+      "type": "function",
+      "inputs": [
+        { "name": "account", "type": "address" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "claim_rewards",
+    "fields": {
+      "source.address":          { "from": "$.tx.to" },
+      "source.label":            { "literal": "Aerodrome Gauge" },
+      "from":                    { "from": "$.args.account" },
+      "recipient":               { "from": "$.args.account" },
+      "rewardTokens[0].kind":    { "literal": "erc20" },
+      "rewardTokens[0].address": { "literal": "0x940181a94A35A4569E4529A3CDfB74e38FD98631" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

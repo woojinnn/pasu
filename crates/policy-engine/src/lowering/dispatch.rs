@@ -97,7 +97,7 @@ pub fn try_policy_request_from_envelope(
         // lending — Phase 12.5 added crvUSD Controller bundles whose action
         // envelopes (Borrow / Repay / Liquidate) silently fell through to
         // `Ok(None)` before this arm landed, producing an empty verdict list
-        // and aggregating to `Pass` (the silent fail-open Round 8 audit
+        // and aggregating to `Pass` (the silent fail-open Phase 12.7 audit
         // P0-1).
         Action::Borrow(action) => action.build(&ctx).map(Some),
         Action::Repay(action) => action.build(&ctx).map(Some),
@@ -112,6 +112,19 @@ pub fn try_policy_request_from_envelope(
         // `Action::"vote"` or `Action::"claim_rewards"` would never see the
         // matching PolicyRequest and would silently aggregate to `Pass`.
         Action::Vote(action) => action.build(&ctx).map(Some),
+        // misc — Aerodrome ve(3,3) variants (gauge vote / LP stake / locks).
+        // Phase 8 added 6 new Action variants whose missing dispatch arm
+        // would silently aggregate to `Pass` (Phase 8 Round 7 P0 #1 equiv).
+        Action::GaugeVote(action) => action.build(&ctx).map(Some),
+        Action::LpStake(action) => action.build(&ctx).map(Some),
+        Action::LpUnstake(action) => action.build(&ctx).map(Some),
+        Action::LockCreate(action) => action.build(&ctx).map(Some),
+        Action::LockIncrease(action) => action.build(&ctx).map(Some),
+        Action::LockManage(action) => action.build(&ctx).map(Some),
+        // misc — reward claims (Curve Gauge claim_rewards + Aerodrome Voter
+        // claimFees/Bribes + Slipstream NPM collect). Without this arm
+        // ClaimRewards envelopes lower to Ok(None), which fail-opens past
+        // the dispatcher (Curve Phase 12.7 P0-1 + Aerodrome Round 7 P0 #1).
         Action::ClaimRewards(action) => action.build(&ctx).map(Some),
         _ => Ok(None),
     }

@@ -1,0 +1,13 @@
+type LockCreateContext = {
+  votingEscrow: String,
+  asset: AssetRef,
+  amount: AmountConstraint,
+  lockDurationSec: String,
+  recipient: String,
+};
+
+action "lock_create" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: LockCreateContext,
+};
