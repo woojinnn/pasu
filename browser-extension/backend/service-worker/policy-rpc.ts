@@ -107,6 +107,7 @@ async function postPolicyRpc(
       status: response.status,
       durationMs: Date.now() - startedAtMs,
       resultCount: body.results.length,
+      results: body.results,
     });
     return body;
   } catch (err) {

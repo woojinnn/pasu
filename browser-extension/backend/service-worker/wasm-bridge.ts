@@ -193,7 +193,7 @@ export async function planPolicyRpc(
     manifestSetHash: plan.manifest_set_hash,
     schemaHash: plan.schema_hash,
     envelopeCount: plan.envelopes.length,
-    calls: plan.calls.map((c) => ({ id: c.id, method: c.method })),
+    calls: plan.calls.map((c) => ({ id: c.id, method: c.method, params: c.params })),
     diagnostics: plan.diagnostics,
   });
   return plan;
