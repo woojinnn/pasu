@@ -285,6 +285,12 @@ pub enum BuiltinFn {
     /// `unfold_v3_path(bytes, select)`. Backend:
     /// `subdecode/protocols/uniswap_v3.rs::decode_v3_path`. Phase 3.
     UnfoldV3Path,
+    /// `unfold_slipstream_path(bytes, select [, hop_index])`. Phase 8
+    /// (Aerodrome CL). Slipstream packed path encodes a **signed**
+    /// `int24 tickSpacing` between tokens instead of Uniswap V3's
+    /// `uint24 fee` — sign-extension applied on decode. Backend lives in
+    /// `declarative::builtin_fn::unfold_slipstream_path`.
+    UnfoldSlipstreamPath,
 }
 
 // ---------------------------------------------------------------------------

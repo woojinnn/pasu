@@ -103,7 +103,8 @@ export type BuiltinFn =
   | "now"
   // §5.3.2 Tier-B backed
   | "unfold_packed"
-  | "unfold_v3_path";
+  | "unfold_v3_path"
+  | "unfold_slipstream_path";
 
 const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "select_address",
@@ -119,6 +120,7 @@ const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "now",
   "unfold_packed",
   "unfold_v3_path",
+  "unfold_slipstream_path",
 ]);
 
 // ----- EmitRule strategies -----

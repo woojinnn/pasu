@@ -145,6 +145,33 @@ fn evaluate_transform(
             builtin_fn::unfold_v3_path(&bytes_value, select)
                 .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
         }
+        BuiltinFn::UnfoldSlipstreamPath => {
+            // Phase 8 (Aerodrome CL) — args[0] = bytes, args[1] = select,
+            // args[2] (optional) = hop_index for `tick_spacing_at_hop`.
+            if !(2..=3).contains(&args.len()) {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "unfold_slipstream_path expects 2 or 3 args, got {}",
+                    args.len()
+                )));
+            }
+            let bytes_value = evaluate(ctx, args_json, &args[0])?;
+            let select_value = evaluate(ctx, args_json, &args[1])?;
+            let select = select_value.as_str().ok_or_else(|| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "unfold_slipstream_path: select must be string literal, got {select_value}"
+                ))
+            })?;
+            let extra_value = if args.len() == 3 {
+                Some(evaluate(ctx, args_json, &args[2])?)
+            } else {
+                None
+            };
+            // Slipstream returns JSON string for token addresses, JSON
+            // number (signed i64) for tick spacings. Downstream
+            // `single_emit` field builders coerce per-field.
+            builtin_fn::unfold_slipstream_path(&bytes_value, select, extra_value.as_ref())
+                .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
+        }
         other => Err(MapperError::Unsupported(format!("builtin_fn/{other:?}"))),
     }
 }
