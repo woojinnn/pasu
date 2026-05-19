@@ -48,6 +48,22 @@ pub const RULE_ID_SELF_ARRAY_BYTES_LAST_ARG: &str = "self_array_bytes_last_arg";
 /// tripped (vs. e.g. a generic ABI-decode error).
 pub const MAX_MULTICALL_CHILDREN: usize = 64;
 
+/// Absolute upper bound on recursion depth, independent of any per-bundle
+/// `max_depth`. Spec §5.1 caps `max_depth` at 5; this constant gives the
+/// interpreter a defence-in-depth guard that holds even if a host wires up a
+/// non-conformant `MapContext` (e.g. by re-entering `multicall::execute` from
+/// a custom `ChildResolver` that does not honour `max_depth`). Treat the
+/// inequality `child_ctx.depth > MAX_GLOBAL_DEPTH` as a hard fail-closed
+/// signal — exceeding it always returns [`MapperError::Internal`] without
+/// invoking the resolver, so an attacker-shaped cycle cannot grow CPU /
+/// stack use linearly with the inner `bytes[]` array.
+///
+/// The value 5 matches the upper bound of spec §5.1 `max_depth ∈ 1..=5`,
+/// with a safety margin handled per call by the per-bundle `max_depth`
+/// (typically 2-3 for the Uniswap NFPM, SR02 and Multicall3 bundles in
+/// `registry/manifests/`).
+pub const MAX_GLOBAL_DEPTH: u8 = 5;
+
 /// Execute a `multicall_recurse` rule against the given decoded outer call.
 ///
 /// Returns the flattened envelopes emitted by the inner steps, or an error if
@@ -73,6 +89,19 @@ pub fn execute(
     if recurse_rule_id != RULE_ID_SELF_ARRAY_BYTES_LAST_ARG {
         return Err(MapperError::Unsupported(format!(
             "multicall_recurse/{recurse_rule_id}"
+        )));
+    }
+
+    // Defence in depth — even if a host wires a custom ChildResolver that
+    // re-enters multicall::execute past the per-bundle `max_depth`, this gate
+    // ensures recursion cannot cross `MAX_GLOBAL_DEPTH`. Spec §5.1 caps
+    // `max_depth` at 5; we use the same value as the absolute hard ceiling.
+    if ctx.depth >= MAX_GLOBAL_DEPTH {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "multicall_recurse rejected: ctx.depth {} >= MAX_GLOBAL_DEPTH {} \
+             (absolute cycle guard, independent of per-bundle max_depth)",
+            ctx.depth,
+            MAX_GLOBAL_DEPTH
         )));
     }
 
@@ -514,5 +543,266 @@ mod tests {
     #[allow(dead_code)]
     fn _refcell_marker() {
         let _ = RefCell::new(0);
+    }
+
+    #[test]
+    fn multicall_recurse_exceeds_max_global_depth_errors() {
+        // Even if the per-bundle `max_depth` says recursion is allowed
+        // (max_depth=255 here), the absolute MAX_GLOBAL_DEPTH guard MUST trip
+        // when `ctx.depth >= MAX_GLOBAL_DEPTH`. The resolver must not be
+        // invoked in that case.
+        let decoded = multicall_decoded(vec![DecodedValue::Bytes(vec![
+            0x12, 0x34, 0x56, 0x78, 0xaa, 0xaa, 0xaa, 0xaa,
+        ])]);
+        let resolver = RecordingResolver::new(vec![Ok(vec![fake_envelope("1")])]);
+
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to = Address::from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        // ctx.depth == MAX_GLOBAL_DEPTH (5) — the absolute guard must reject
+        // even before we reach the per-bundle max_depth gate.
+        let ctx = ctx_with_resolver(&resolver, &registry, &from, &to, &value, MAX_GLOBAL_DEPTH);
+
+        // Use a huge per-bundle max_depth so we are NOT tripping the per-bundle
+        // gate; the only thing that can reject this is the global guard.
+        let rule_with_high_max = EmitRule::MulticallRecurse {
+            recurse_rule_id: RULE_ID_SELF_ARRAY_BYTES_LAST_ARG.into(),
+            max_depth: u8::MAX,
+        };
+
+        let err = execute(&ctx, &decoded, &rule_with_high_max).unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("MAX_GLOBAL_DEPTH"),
+            "expected MAX_GLOBAL_DEPTH error, got: {message}"
+        );
+        // The resolver MUST NOT have been invoked.
+        assert!(
+            resolver.calls().is_empty(),
+            "resolver invoked after global guard trip"
+        );
+    }
+
+    // -----------------------------------------------------------------
+    // T-TEST-MULTICALL edge cases (Phase 7 T-B4 — WasmChildResolver +
+    // MAX_GLOBAL_DEPTH cycle guard). Each test exercises a specific
+    // adversarial / boundary shape the interpreter must handle without
+    // panicking, allocating unbounded work, or silently dropping calls.
+    // -----------------------------------------------------------------
+
+    /// `outer multicall(bytes[]) → inner single call (no nested multicall)`.
+    /// ctx.depth=0 (top level) and the single child resolves at depth=1 with
+    /// a normal envelope. This is the happy-path boundary at the lowest
+    /// recursion depth — proves the interpreter does not require any prior
+    /// recursion frames to function. (#1)
+    #[test]
+    fn multicall_recurse_depth_0_succeeds() {
+        let inner: Vec<u8> = vec![0xab, 0xcd, 0xef, 0x01, 0x42, 0x42, 0x42, 0x42];
+        let decoded = multicall_decoded(vec![DecodedValue::Bytes(inner.clone())]);
+        let resolver = RecordingResolver::new(vec![Ok(vec![fake_envelope("777")])]);
+
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to = Address::from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = ctx_with_resolver(&resolver, &registry, &from, &to, &value, 0);
+
+        let envelopes = execute(&ctx, &decoded, &rule(3)).unwrap();
+        assert_eq!(envelopes.len(), 1);
+        let calls = resolver.calls();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].depth, 1, "first-level child runs at depth 1");
+        assert_eq!(calls[0].calldata, inner);
+    }
+
+    /// `ctx.depth == MAX_GLOBAL_DEPTH (5)` with `max_depth=u8::MAX` MUST trip
+    /// the absolute guard before the resolver is invoked. Defence-in-depth
+    /// even if a malformed bundle were to bypass the per-bundle max_depth
+    /// gate. (#2)
+    #[test]
+    fn multicall_recurse_depth_5_at_global_cap_errors() {
+        let decoded = multicall_decoded(vec![DecodedValue::Bytes(vec![
+            0xde, 0xad, 0xbe, 0xef, 0x00, 0x00, 0x00, 0x00,
+        ])]);
+        let resolver = RecordingResolver::new(vec![Ok(vec![fake_envelope("1")])]);
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to = Address::from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = ctx_with_resolver(&resolver, &registry, &from, &to, &value, MAX_GLOBAL_DEPTH);
+        let high_rule = EmitRule::MulticallRecurse {
+            recurse_rule_id: RULE_ID_SELF_ARRAY_BYTES_LAST_ARG.into(),
+            max_depth: u8::MAX,
+        };
+
+        let err = execute(&ctx, &decoded, &high_rule).unwrap_err();
+        assert!(err.to_string().contains("MAX_GLOBAL_DEPTH"));
+        assert!(resolver.calls().is_empty(), "resolver invoked past global cap");
+    }
+
+    /// Cycle: A.multicall calls B.multicall calls A.multicall ... A custom
+    /// `ChildResolver` re-enters `multicall::execute` for the same shape, so
+    /// each recursion strictly increments `ctx.depth`. The MAX_GLOBAL_DEPTH
+    /// cap amortises the cycle — the chain MUST terminate (with an error)
+    /// rather than infinite-loop. We rely on `depth` monotonicity; address
+    /// identity is irrelevant. (#3)
+    #[test]
+    fn multicall_recurse_cycle_a_b_a_detected() {
+        // Resolver that, on every call, re-invokes `multicall::execute` with
+        // the SAME shape so depth grows by 1 per hop. The outer test starts
+        // at depth 0 — the chain MUST terminate at MAX_GLOBAL_DEPTH (5).
+        struct CyclingResolver {
+            hops: std::sync::atomic::AtomicUsize,
+        }
+        impl ChildResolver for CyclingResolver {
+            fn resolve_child(
+                &self,
+                _child: &CallMatchKey,
+                ctx: &MapContext<'_>,
+                _child_calldata: &[u8],
+            ) -> Result<Vec<ActionEnvelope>, MapperError> {
+                self.hops.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                // Re-enter with the same bytes — depth from `ctx` is already
+                // incremented. Use the same self-shaped multicall payload.
+                let decoded = multicall_decoded(vec![DecodedValue::Bytes(vec![
+                    0x11, 0x22, 0x33, 0x44, 0xff, 0xff, 0xff, 0xff,
+                ])]);
+                let rule_inner = EmitRule::MulticallRecurse {
+                    recurse_rule_id: RULE_ID_SELF_ARRAY_BYTES_LAST_ARG.into(),
+                    max_depth: u8::MAX,
+                };
+                execute(ctx, &decoded, &rule_inner)
+            }
+        }
+
+        let resolver = CyclingResolver {
+            hops: std::sync::atomic::AtomicUsize::new(0),
+        };
+        let decoded = multicall_decoded(vec![DecodedValue::Bytes(vec![
+            0x11, 0x22, 0x33, 0x44, 0xff, 0xff, 0xff, 0xff,
+        ])]);
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to_a = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = MapContext {
+            chain_id: 1,
+            from: &from,
+            to: &to_a,
+            value_wei: &value,
+            block_timestamp: None,
+            token_registry: &registry,
+            parent_calldata: None,
+            depth: 0,
+            resolver: Some(&resolver),
+        };
+        let outer_rule = EmitRule::MulticallRecurse {
+            recurse_rule_id: RULE_ID_SELF_ARRAY_BYTES_LAST_ARG.into(),
+            max_depth: u8::MAX,
+        };
+
+        let err = execute(&ctx, &decoded, &outer_rule).unwrap_err();
+        assert!(
+            err.to_string().contains("MAX_GLOBAL_DEPTH"),
+            "cycle MUST be cut by MAX_GLOBAL_DEPTH, got: {err}"
+        );
+        // 0 → 1 → 2 → 3 → 4 → reject at depth 5. Five hops total.
+        let hops = resolver.hops.load(std::sync::atomic::Ordering::SeqCst);
+        assert!(hops <= MAX_GLOBAL_DEPTH as usize, "hops {hops} > cap");
+    }
+
+    /// `children = []` (empty `bytes[]`) is a degenerate but valid outer
+    /// multicall — the interpreter MUST return 0 envelopes without invoking
+    /// the resolver. (#4)
+    #[test]
+    fn multicall_recurse_empty_bytes_array_yields_no_envelopes() {
+        let decoded = multicall_decoded(vec![]);
+        let resolver = RecordingResolver::new(vec![]);
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to = Address::from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = ctx_with_resolver(&resolver, &registry, &from, &to, &value, 0);
+
+        let envelopes = execute(&ctx, &decoded, &rule(3)).unwrap();
+        assert!(envelopes.is_empty());
+        assert!(resolver.calls().is_empty(), "no calls on empty children");
+    }
+
+    /// Child calldata < 4 bytes can carry no selector. The interpreter MUST
+    /// reject before invoking the resolver — surfaced as `MapperError::Internal`
+    /// with a "shorter than 4 bytes" message. (#5)
+    #[test]
+    fn multicall_recurse_malformed_selector_in_child_errors() {
+        let decoded = multicall_decoded(vec![DecodedValue::Bytes(vec![0xab, 0xcd, 0xef])]);
+        let resolver = RecordingResolver::new(vec![]);
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to = Address::from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = ctx_with_resolver(&resolver, &registry, &from, &to, &value, 0);
+
+        let err = execute(&ctx, &decoded, &rule(3)).unwrap_err();
+        assert!(matches!(&err, MapperError::Internal(_)));
+        assert!(err.to_string().contains("shorter than 4 bytes"));
+        assert!(resolver.calls().is_empty());
+    }
+
+    /// Child (chain, to, selector) not present in the bridge. The
+    /// `WasmChildResolver` decision (T-B4) surfaces this as a
+    /// `MapperError::Internal("WasmChildResolver: no declarative mapper
+    /// bridged for ...")`. The interpreter MUST propagate this verbatim
+    /// instead of silently dropping the child. (#6)
+    #[test]
+    fn multicall_recurse_unknown_child_key_returns_empty() {
+        let decoded = multicall_decoded(vec![DecodedValue::Bytes(vec![
+            0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x00,
+        ])]);
+        // Resolver mirrors WasmChildResolver's "no bridged mapper" decision:
+        // returns Err, NOT an empty Ok vec. The interpreter MUST surface it.
+        let resolver = RecordingResolver::new(vec![Err(MapperError::Internal(anyhow::anyhow!(
+            "WasmChildResolver: no declarative mapper bridged for chain_id=1 to=... selector=0xcafebabe"
+        )))]);
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to = Address::from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = ctx_with_resolver(&resolver, &registry, &from, &to, &value, 0);
+
+        let err = execute(&ctx, &decoded, &rule(3)).unwrap_err();
+        assert!(err.to_string().contains("no declarative mapper bridged"));
+        // The resolver WAS consulted (this is a "bridge miss", not a guard
+        // trip) — confirms the interpreter delegates lookup to the host.
+        assert_eq!(resolver.calls().len(), 1);
+    }
+
+    /// Mixed children `[valid_mint, malformed_3byte, valid_burn]`. The
+    /// interpreter processes children in order and fails fast on the first
+    /// malformed entry — the second `valid_burn` is NEVER dispatched. (#7)
+    #[test]
+    fn multicall_recurse_mixed_valid_invalid_children() {
+        let valid_mint = vec![0x88, 0x31, 0x64, 0x5d, 0xaa, 0xaa, 0xaa, 0xaa];
+        let malformed = vec![0x12, 0x34]; // < 4 bytes
+        let valid_burn = vec![0xfc, 0x6f, 0x78, 0x65, 0xbb, 0xbb, 0xbb, 0xbb];
+        let decoded = multicall_decoded(vec![
+            DecodedValue::Bytes(valid_mint.clone()),
+            DecodedValue::Bytes(malformed.clone()),
+            DecodedValue::Bytes(valid_burn.clone()),
+        ]);
+        // Responses popped from the back — first call consumes the LAST.
+        let resolver = RecordingResolver::new(vec![Ok(vec![fake_envelope("99")])]);
+        let registry = EmptyTokenRegistry;
+        let from = Address::from_str("0x000000000000000000000000000000000000aaaa").unwrap();
+        let to = Address::from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88").unwrap();
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = ctx_with_resolver(&resolver, &registry, &from, &to, &value, 0);
+
+        let err = execute(&ctx, &decoded, &rule(3)).unwrap_err();
+        assert!(err.to_string().contains("shorter than 4 bytes"));
+        // 1st child dispatched; 2nd fails before resolver invoked; 3rd never reached.
+        let calls = resolver.calls();
+        assert_eq!(calls.len(), 1, "only the first valid child reached resolver");
+        assert_eq!(calls[0].calldata, valid_mint);
     }
 }

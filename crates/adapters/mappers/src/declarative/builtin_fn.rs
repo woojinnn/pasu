@@ -38,8 +38,12 @@ pub enum FnError {
     /// V3 packed path failed structural validation (length not `20 + 23*N`).
     #[error("unfold_v3_path: {error}")]
     PathDecode { error: PathDecodeError },
-    /// `select` literal was neither `"first_token"` nor `"last_token"`.
-    #[error("unfold_v3_path: unknown select {0:?} (allowed: first_token, last_token)")]
+    /// `select` literal was not one of the four supported modes
+    /// (`first_token`, `last_token`, `first_fee`, `last_fee`).
+    #[error(
+        "unfold_v3_path: unknown select {0:?} \
+         (allowed: first_token, last_token, first_fee, last_fee)"
+    )]
     UnknownSelect(String),
     /// `select` argument was not a JSON string.
     #[error("unfold_v3_path: select must be a string literal, got {0}")]
@@ -73,12 +77,19 @@ pub fn select_address(arr: &serde_json::Value, idx: i64) -> Result<Address, FnEr
     })
 }
 
-/// `unfold_v3_path(bytes: Bytes, select: "first_token" | "last_token") -> AddressRef`
+/// `unfold_v3_path(bytes: Bytes, select) -> AddressRef | u32`
 /// (spec §5.3.2 — TierBBackedFn).
 ///
 /// Backend wraps [`abi_resolver::subdecode::protocols::uniswap_v3::decode_v3_path`].
 /// The packed-path format is `[token0(20B)][fee0(3B)][token1(20B)][fee1(3B)] ...`,
-/// so `first_token` and `last_token` correspond to the swap path endpoints.
+/// so token-endpoint and fee-endpoint selectors map directly onto the decoded
+/// `(Vec<Address>, Vec<u32>)`.
+///
+/// Supported `select` modes:
+///   * `"first_token"` / `"last_token"` — return JSON string containing the
+///     lowercase `0x..` address (Phase 3).
+///   * `"first_fee"` / `"last_fee"` — return JSON number with the uint24 fee
+///     (Phase 7B / T-B3, e.g. `500` for the 0.05% tier).
 ///
 /// `bytes_value` accepts either:
 ///   * JSON string `"0x.."` (the canonical encoding produced by
@@ -90,29 +101,48 @@ pub fn select_address(arr: &serde_json::Value, idx: i64) -> Result<Address, FnEr
 pub fn unfold_v3_path(
     bytes_value: &serde_json::Value,
     select: &str,
-) -> Result<Address, FnError> {
+) -> Result<serde_json::Value, FnError> {
     let bytes = json_value_to_bytes(bytes_value)?;
-    let (tokens, _fees) = decode_v3_path(&bytes).map_err(|error| FnError::PathDecode { error })?;
+    let (tokens, fees) = decode_v3_path(&bytes).map_err(|error| FnError::PathDecode { error })?;
 
-    let alloy_addr = match select {
-        "first_token" => tokens
-            .first()
-            .copied()
-            .expect("decode_v3_path guarantees tokens.len() >= 2 on success"),
-        "last_token" => tokens
-            .last()
-            .copied()
-            .expect("decode_v3_path guarantees tokens.len() >= 2 on success"),
-        other => return Err(FnError::UnknownSelect(other.to_owned())),
-    };
+    match select {
+        "first_token" => {
+            let alloy_addr = *tokens
+                .first()
+                .expect("decode_v3_path guarantees tokens.len() >= 2 on success");
+            Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
+        }
+        "last_token" => {
+            let alloy_addr = *tokens
+                .last()
+                .expect("decode_v3_path guarantees tokens.len() >= 2 on success");
+            Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
+        }
+        "first_fee" => {
+            let fee = *fees
+                .first()
+                .expect("decode_v3_path guarantees fees.len() >= 1 on success");
+            Ok(serde_json::Value::Number(serde_json::Number::from(fee)))
+        }
+        "last_fee" => {
+            let fee = *fees
+                .last()
+                .expect("decode_v3_path guarantees fees.len() >= 1 on success");
+            Ok(serde_json::Value::Number(serde_json::Number::from(fee)))
+        }
+        other => Err(FnError::UnknownSelect(other.to_owned())),
+    }
+}
 
-    // `alloy_primitives::Address` → `policy_engine::action::Address` via the
-    // same `0x..` hex round-trip used elsewhere in the codebase.
+/// `alloy_primitives::Address` → lowercase `0x..` string, validated against
+/// the project's [`Address`] hex regex.
+fn address_to_json(alloy_addr: alloy_primitives::Address) -> Result<String, FnError> {
     let hex_repr = format!("0x{}", hex::encode(alloy_addr.0));
-    Address::from_str(&hex_repr).map_err(|message| FnError::InvalidAddress {
-        value: hex_repr,
+    let address = Address::from_str(&hex_repr).map_err(|message| FnError::InvalidAddress {
+        value: hex_repr.clone(),
         message,
-    })
+    })?;
+    Ok(address.to_string())
 }
 
 /// Coerce a JSON value into raw bytes — accepting either the `"0x.."` hex
@@ -244,20 +274,20 @@ mod tests {
 
     #[test]
     fn unfold_v3_path_first_token_single_hop() {
-        let address = unfold_v3_path(&json!(SINGLE_HOP_PATH_HEX), "first_token").unwrap();
+        let value = unfold_v3_path(&json!(SINGLE_HOP_PATH_HEX), "first_token").unwrap();
         // WETH (lowercased — policy_engine::action::Address normalises).
         assert_eq!(
-            address.to_string().to_lowercase(),
+            value.as_str().unwrap(),
             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
         );
     }
 
     #[test]
     fn unfold_v3_path_last_token_single_hop() {
-        let address = unfold_v3_path(&json!(SINGLE_HOP_PATH_HEX), "last_token").unwrap();
+        let value = unfold_v3_path(&json!(SINGLE_HOP_PATH_HEX), "last_token").unwrap();
         // USDC
         assert_eq!(
-            address.to_string().to_lowercase(),
+            value.as_str().unwrap(),
             "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
         );
     }
@@ -268,11 +298,11 @@ mod tests {
         let last = unfold_v3_path(&json!(TWO_HOP_PATH_HEX), "last_token").unwrap();
         // First = WETH, last = USDT (third token in the chain).
         assert_eq!(
-            first.to_string().to_lowercase(),
+            first.as_str().unwrap(),
             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
         );
         assert_eq!(
-            last.to_string().to_lowercase(),
+            last.as_str().unwrap(),
             "0xdac17f958d2ee523a2206206994597c13d831ec7"
         );
     }
@@ -285,9 +315,42 @@ mod tests {
             serde_json::Value::Array(raw.iter().map(|b| json!(*b)).collect());
         let first = unfold_v3_path(&array_json, "first_token").unwrap();
         assert_eq!(
-            first.to_string().to_lowercase(),
+            first.as_str().unwrap(),
             "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
         );
+    }
+
+    // ── unfold_v3_path: fee modes (Phase 7B / T-B3) ─────────────────────
+
+    /// Two-hop path `USDT --0x0001f4(500)--> USDC --0x000bb8(3000)--> WETH`.
+    /// 66 bytes (20 + 3 + 20 + 3 + 20).
+    const FEE_TWO_HOP_PATH_HEX: &str = concat!(
+        "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "0001f4",
+        "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "000bb8",
+        "C02aaa39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    );
+
+    #[test]
+    fn unfold_v3_path_first_fee_returns_500_for_two_hop() {
+        let value = unfold_v3_path(&json!(FEE_TWO_HOP_PATH_HEX), "first_fee").unwrap();
+        assert_eq!(value, json!(500));
+    }
+
+    #[test]
+    fn unfold_v3_path_last_fee_returns_3000() {
+        let value = unfold_v3_path(&json!(FEE_TWO_HOP_PATH_HEX), "last_fee").unwrap();
+        assert_eq!(value, json!(3000));
+    }
+
+    #[test]
+    fn unfold_v3_path_single_hop_first_fee_equals_last_fee() {
+        let first = unfold_v3_path(&json!(SINGLE_HOP_PATH_HEX), "first_fee").unwrap();
+        let last = unfold_v3_path(&json!(SINGLE_HOP_PATH_HEX), "last_fee").unwrap();
+        // Both endpoints coincide on a one-hop path — the fee is 3000.
+        assert_eq!(first, json!(3000));
+        assert_eq!(last, json!(3000));
     }
 
     #[test]

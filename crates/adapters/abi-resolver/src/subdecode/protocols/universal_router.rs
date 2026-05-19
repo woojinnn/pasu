@@ -238,9 +238,12 @@ const ENTRIES: &[OpcodeEntry] = &[
         name: "V4_SWAP",
         // Top-level shape is a 2-tuple `(bytes actions, bytes[] params)` —
         // the inner `actions` byte stream and per-action `params[i]` are
-        // dispatched by the V4Router opcode table (Actions.sol), which is
-        // not yet wired up here. Decoding the outer pair still gives the
-        // user a peek at the action byte string and parameter sub-blobs.
+        // dispatched by the V4Router opcode table (Actions.sol). The
+        // declarative `opcode_stream_dispatch` layer wires that inner
+        // dispatch via `extract_actions_and_params` + `V4_ROUTER_TABLE`
+        // (cross-table recursion, mirror of EXECUTE_SUB_PLAN's self-
+        // recursion). Decoding the outer pair gives the user the action
+        // byte string and per-action parameter sub-blobs.
         input_signatures: &["(bytes actions, bytes[] params)"],
         input_json_abi: None,
     },
@@ -249,19 +252,23 @@ const ENTRIES: &[OpcodeEntry] = &[
         name: "V3_POSITION_MANAGER_PERMIT",
         // Input is a complete calldata for the V3 NonfungiblePositionManager
         // (selector + ABI args), `address(V3_POSITION_MANAGER).call(inputs)`
-        // upstream. Decoding it cleanly needs recursive sub-decoding through
-        // the resolver against the NPM ABI — out of PR3 scope.
-        input_signatures: &[],
-            input_json_abi: None,
-},
+        // upstream. The outer envelope is a single `bytes data` blob — the
+        // declarative `execute_position_manager_step` layer pulls the inner
+        // calldata back out, looks up the per-chain V3 NPM address, and
+        // dispatches through `ctx.resolver` (mirror of the V4_SWAP cross-table
+        // dispatch in [`opcode_stream::execute_v4_swap_step`]).
+        input_signatures: &["(bytes data)"],
+        input_json_abi: None,
+    },
     OpcodeEntry {
         opcode: 0x12,
         name: "V3_POSITION_MANAGER_CALL",
-        // Same as 0x11: input IS NPM calldata, not a tuple. Recurse via
-        // resolver in a follow-up PR.
-        input_signatures: &[],
-            input_json_abi: None,
-},
+        // Same shape as 0x11: input IS a single `bytes` blob carrying NPM
+        // calldata. Recursive dispatch is handled by the declarative
+        // `execute_position_manager_step`.
+        input_signatures: &["(bytes data)"],
+        input_json_abi: None,
+    },
     OpcodeEntry {
         opcode: 0x13,
         name: "V4_INITIALIZE_POOL",
@@ -274,12 +281,12 @@ const ENTRIES: &[OpcodeEntry] = &[
         opcode: 0x14,
         name: "V4_POSITION_MANAGER_CALL",
         // Input is a complete calldata for V4 PositionManager
-        // (selector + args), forwarded via `.call(inputs)` upstream. Decoding
-        // requires recursive sub-decoding through the resolver — same reason
-        // as 0x11 / 0x12.
-        input_signatures: &[],
-            input_json_abi: None,
-},
+        // (selector + args), forwarded via `.call(inputs)` upstream. Same
+        // recursive-dispatch flow as 0x11 / 0x12; the per-chain V4 PM address
+        // is supplied by [`v4_position_manager_address`].
+        input_signatures: &["(bytes data)"],
+        input_json_abi: None,
+    },
     OpcodeEntry {
         opcode: 0x21,
         name: "EXECUTE_SUB_PLAN",
@@ -395,6 +402,80 @@ const UNISWAP_UR_ADDRESSES: &[(u64, Address)] = &[
             *b"\x10\x95\x69\x2a\x62\x37\xd8\x3c\x6a\x72\xf3\xf5\xef\xed\xb9\xa6\x70\xc4\x92\x23",
         ),
     ), // UniversalRouterV2
+    // Avalanche
+    (
+        43114,
+        Address::new(
+            *b"\x4d\xae\x2f\x93\x9a\xcf\x50\x40\x8e\x13\xd5\x85\x34\xff\x8c\x27\x76\xd4\x52\x65",
+        ),
+    ), // UniversalRouterV1_2_V2Support
+    // BNB Chain
+    (
+        56,
+        Address::new(
+            *b"\x4d\xae\x2f\x93\x9a\xcf\x50\x40\x8e\x13\xd5\x85\x34\xff\x8c\x27\x76\xd4\x52\x65",
+        ),
+    ), // UniversalRouterV1_2_V2Support (shared CREATE2 with Avalanche)
+    (
+        56,
+        Address::new(
+            *b"\x19\x06\xc1\xd6\x72\xb8\x8c\xd1\xb9\xac\x75\x93\x30\x1c\xa9\x90\xf9\x4e\xae\x07",
+        ),
+    ), // UniversalRouterV2
+    // Blast
+    (
+        81457,
+        Address::new(
+            *b"\x64\x37\x70\xe2\x79\xd5\xd0\x73\x3f\x21\xd6\xdc\x03\xa8\xef\xba\xbf\x32\x55\xb4",
+        ),
+    ), // UniversalRouterV1_2_V2Support
+    (
+        81457,
+        Address::new(
+            *b"\xea\xbb\xcb\x3e\x8e\x41\x53\x06\x20\x7e\xf5\x14\xf6\x60\xa3\xf8\x20\x02\x5b\xe3",
+        ),
+    ), // UniversalRouterV2
+    // Celo
+    (
+        42220,
+        Address::new(
+            *b"\x64\x37\x70\xe2\x79\xd5\xd0\x73\x3f\x21\xd6\xdc\x03\xa8\xef\xba\xbf\x32\x55\xb4",
+        ),
+    ), // UniversalRouterV1_2_V2Support (shared CREATE2 with Blast)
+    // Ink
+    (
+        57073,
+        Address::new(
+            *b"\x11\x29\x08\xda\xc8\x6e\x20\xe7\x24\x1b\x09\x27\x47\x9e\xa3\xbf\x93\x5d\x1f\xa0",
+        ),
+    ), // UniversalRouterV2
+    // Unichain
+    (
+        130,
+        Address::new(
+            *b"\xef\x74\x0b\xf2\x3a\xca\xe2\x6f\x64\x92\xb1\x0d\xe6\x45\xd6\xb9\x8d\xc8\xea\xf3",
+        ),
+    ), // UniversalRouterV2
+    // World Chain
+    (
+        480,
+        Address::new(
+            *b"\x7a\x25\x0d\x56\x30\xb4\xcf\x53\x97\x39\xdf\x2c\x5d\xac\xb4\xc6\x59\xf2\x48\x8d",
+        ),
+    ), // UniversalRouterV1_2_V2Support
+    (
+        480,
+        Address::new(
+            *b"\x8a\xc7\xbe\xe9\x93\xbb\x44\xda\xb5\x64\xea\x4b\xc9\xea\x67\xbf\x9e\xb5\xe7\x43",
+        ),
+    ), // UniversalRouterV2
+    // Zora
+    (
+        7777777,
+        Address::new(
+            *b"\x33\x15\xef\x7c\xa2\x8d\xb7\x4a\xba\xdc\x6c\x44\x57\x0e\xfd\xf0\x6b\x04\xb0\x20",
+        ),
+    ), // UniversalRouterV2
 ];
 
 /// Returns true when `(chain_id, target)` matches a known Uniswap Universal
@@ -413,17 +494,105 @@ pub fn uniswap_universal_router_deployments() -> impl Iterator<Item = (u64, Addr
     UNISWAP_UR_ADDRESSES.iter().copied()
 }
 
-/// Per-chain Uniswap V3 NonfungiblePositionManager addresses. The same
-/// contract is `CREATE2`-deployed at the same address on most EVM chains
-/// (mainnet/arbitrum/optimism/polygon/base/etc.) but the address registry
-/// stays explicit so we don't blindly recurse against unknown chains.
+/// Per-chain Uniswap V3 NonfungiblePositionManager addresses. The base CREATE2
+/// deployment (`0xC36442b4a4522E871399CD717aBDD847Ab11FE88`) is shared by
+/// mainnet, Optimism, Arbitrum and Polygon. Other chains have their own
+/// distinct NFPM addresses (Base, BNB, Avalanche, Blast, Celo, Zora, Ink,
+/// Unichain, World Chain). The address registry is explicit so we don't
+/// blindly recurse against unknown chains.
+///
+/// Source: https://github.com/Uniswap/contracts/tree/main/deployments
+/// (`v3NFTPositionManager` field per chain).
 const V3_NPM_ADDRESSES: &[(u64, Address)] = &[
-    // Ethereum mainnet, Polygon, Arbitrum, Optimism, Base — all share this
-    // CREATE2 address.
+    // Ethereum mainnet — CREATE2-shared with Optimism/Arbitrum/Polygon.
     (
         1,
         Address::new(
             *b"\xc3\x64\x42\xb4\xa4\x52\x2e\x87\x13\x99\xcd\x71\x7a\xbd\xd8\x47\xab\x11\xfe\x88",
+        ),
+    ),
+    // Optimism — same CREATE2 address.
+    (
+        10,
+        Address::new(
+            *b"\xc3\x64\x42\xb4\xa4\x52\x2e\x87\x13\x99\xcd\x71\x7a\xbd\xd8\x47\xab\x11\xfe\x88",
+        ),
+    ),
+    // Polygon — same CREATE2 address.
+    (
+        137,
+        Address::new(
+            *b"\xc3\x64\x42\xb4\xa4\x52\x2e\x87\x13\x99\xcd\x71\x7a\xbd\xd8\x47\xab\x11\xfe\x88",
+        ),
+    ),
+    // Arbitrum One — same CREATE2 address.
+    (
+        42161,
+        Address::new(
+            *b"\xc3\x64\x42\xb4\xa4\x52\x2e\x87\x13\x99\xcd\x71\x7a\xbd\xd8\x47\xab\x11\xfe\x88",
+        ),
+    ),
+    // Base — distinct deployment.
+    (
+        8453,
+        Address::new(
+            *b"\x03\xa5\x20\xb3\x2c\x04\xbf\x3b\xee\xf7\xbe\xb7\x2e\x91\x9c\xf8\x22\xed\x34\xf1",
+        ),
+    ),
+    // BNB Chain — distinct deployment.
+    (
+        56,
+        Address::new(
+            *b"\x7b\x8a\x01\xb3\x9d\x58\x27\x8b\x5d\xe7\xe4\x8c\x84\x49\xc9\xf4\xf5\x17\x06\x13",
+        ),
+    ),
+    // Avalanche C-Chain — distinct deployment.
+    (
+        43114,
+        Address::new(
+            *b"\x65\x5c\x40\x6e\xbf\xa1\x4e\xe2\x00\x62\x50\x92\x5e\x54\xec\x43\xad\x18\x4f\x8b",
+        ),
+    ),
+    // Blast — distinct deployment.
+    (
+        81457,
+        Address::new(
+            *b"\xb2\x18\xe4\xf7\xcf\x05\x33\xd4\x69\x6f\xdf\xc4\x19\xa0\x02\x3d\x33\x34\x5f\x28",
+        ),
+    ),
+    // Celo — distinct deployment.
+    (
+        42220,
+        Address::new(
+            *b"\x3d\x79\xed\xaa\xbc\x0e\xab\x6f\x08\xed\x88\x5c\x05\xfc\x0b\x01\x42\x90\xd9\x5a",
+        ),
+    ),
+    // Zora — distinct deployment.
+    (
+        7777777,
+        Address::new(
+            *b"\xbc\x91\xe8\xdf\xa3\xff\x18\xde\x43\x85\x33\x72\xa3\xd7\xdf\xe5\x85\x13\x7d\x78",
+        ),
+    ),
+    // Ink — distinct deployment.
+    (
+        57073,
+        Address::new(
+            *b"\xc0\x83\x6e\x5b\x05\x8b\xbe\x22\xae\x22\x66\xe1\xac\x48\x8a\x1a\x0f\xd8\xdc\xe8",
+        ),
+    ),
+    // Unichain — distinct deployment.
+    (
+        130,
+        Address::new(
+            *b"\x94\x3e\x6e\x07\xa7\xe8\xe7\x91\xda\xfc\x44\x08\x3e\x54\x04\x1d\x74\x3c\x46\xe9",
+        ),
+    ),
+    // World Chain — distinct deployment.
+    (
+        480,
+        Address::new(
+            *b"\xec\x12\xa9\xf9\xa0\x9f\x50\x55\x06\x86\x36\x37\x66\xcc\x15\x3d\x03\xc2\x7b\x5e",
         ),
     ),
 ];
@@ -563,6 +732,13 @@ mod tests {
 
     #[test]
     fn opcodes_without_schema_keep_label() {
+        // 0x10 (V4_SWAP) and 0x21 (EXECUTE_SUB_PLAN) both have a registered
+        // `(bytes, bytes[])` schema. Feeding a 1-byte malformed `inputs[i]`
+        // exercises the AbiDecode failure path: Tier B keeps the opcode name
+        // but reports `args = None`. T-B1.3 added a `(bytes data)` schema for
+        // 0x11/0x12/0x14 so they now decode cleanly given a well-formed blob;
+        // this test deliberately uses opcodes that still surface as decode
+        // failures so the label-only fallback remains exercised.
         let commands = vec![0x10, 0x21]; // V4_SWAP, EXECUTE_SUB_PLAN
         let inputs = vec![vec![0x00], vec![0x01]];
         let steps = dispatch(&commands, &inputs, &UNISWAP_UR_TABLE);
@@ -570,5 +746,224 @@ mod tests {
         assert_eq!(steps[1].name, "EXECUTE_SUB_PLAN");
         assert!(steps[0].args.is_none());
         assert!(steps[1].args.is_none());
+    }
+
+    /// After T-B1.3, `0x11 V3_POSITION_MANAGER_PERMIT`,
+    /// `0x12 V3_POSITION_MANAGER_CALL`, and `0x14 V4_POSITION_MANAGER_CALL`
+    /// each carry a single `(bytes data)` arg. A well-formed input MUST
+    /// decode cleanly and yield `args.len() == 1` with the inner blob.
+    #[test]
+    fn position_manager_opcodes_decode_bytes_data() {
+        // Synthetic NPM calldata: 4-byte selector + 32-byte zero-padded arg.
+        let inner_calldata: Vec<u8> = {
+            let mut v = vec![0x12, 0x34, 0x56, 0x78];
+            v.extend_from_slice(&[0u8; 32]);
+            v
+        };
+        let input = {
+            // ABI-encode `(bytes data)` for the inner calldata.
+            let func = Function::parse("step(bytes)").unwrap();
+            let values = vec![DynSolValue::Bytes(inner_calldata.clone())];
+            let raw = func.abi_encode_input(&values).unwrap();
+            raw[4..].to_vec()
+        };
+
+        for opcode in [0x11u8, 0x12, 0x14] {
+            let steps =
+                dispatch(&[opcode], &[input.clone()], &UNISWAP_UR_TABLE);
+            assert_eq!(steps.len(), 1, "opcode {opcode:#04x}");
+            let args = steps[0]
+                .args
+                .as_ref()
+                .expect("position manager opcode must ABI-decode `(bytes data)`");
+            assert_eq!(args.len(), 1);
+            assert_eq!(args[0].name, "data");
+            let alloy_dyn_abi::DynSolValue::Bytes(inner) = &args[0].value else {
+                panic!("expected Bytes, got {:?}", args[0].value);
+            };
+            assert_eq!(inner, &inner_calldata);
+        }
+    }
+
+    /// Cross-check that every Uniswap deploy-addresses entry added in T-B1.1
+    /// (Avalanche / BNB / Blast / Celo / Ink / Unichain / World Chain / Zora)
+    /// is recognised by `is_uniswap_universal_router`. Byte literals are
+    /// re-derived from the published hex strings here so any one-byte typo in
+    /// `UNISWAP_UR_ADDRESSES` is caught at compile or test time.
+    #[test]
+    fn is_uniswap_universal_router_recognizes_extended_deployments() {
+        let extended: &[(u64, [u8; 20])] = &[
+            // Avalanche — UniversalRouterV1_2_V2Support
+            (
+                43114,
+                *b"\x4d\xae\x2f\x93\x9a\xcf\x50\x40\x8e\x13\xd5\x85\x34\xff\x8c\x27\x76\xd4\x52\x65",
+            ),
+            // BNB Chain — UniversalRouterV1_2_V2Support (shared CREATE2 with Avalanche)
+            (
+                56,
+                *b"\x4d\xae\x2f\x93\x9a\xcf\x50\x40\x8e\x13\xd5\x85\x34\xff\x8c\x27\x76\xd4\x52\x65",
+            ),
+            // BNB Chain — UniversalRouterV2
+            (
+                56,
+                *b"\x19\x06\xc1\xd6\x72\xb8\x8c\xd1\xb9\xac\x75\x93\x30\x1c\xa9\x90\xf9\x4e\xae\x07",
+            ),
+            // Blast — UniversalRouterV1_2_V2Support
+            (
+                81457,
+                *b"\x64\x37\x70\xe2\x79\xd5\xd0\x73\x3f\x21\xd6\xdc\x03\xa8\xef\xba\xbf\x32\x55\xb4",
+            ),
+            // Blast — UniversalRouterV2
+            (
+                81457,
+                *b"\xea\xbb\xcb\x3e\x8e\x41\x53\x06\x20\x7e\xf5\x14\xf6\x60\xa3\xf8\x20\x02\x5b\xe3",
+            ),
+            // Celo — UniversalRouterV1_2_V2Support (shared CREATE2 with Blast)
+            (
+                42220,
+                *b"\x64\x37\x70\xe2\x79\xd5\xd0\x73\x3f\x21\xd6\xdc\x03\xa8\xef\xba\xbf\x32\x55\xb4",
+            ),
+            // Ink — UniversalRouterV2
+            (
+                57073,
+                *b"\x11\x29\x08\xda\xc8\x6e\x20\xe7\x24\x1b\x09\x27\x47\x9e\xa3\xbf\x93\x5d\x1f\xa0",
+            ),
+            // Unichain — UniversalRouterV2
+            (
+                130,
+                *b"\xef\x74\x0b\xf2\x3a\xca\xe2\x6f\x64\x92\xb1\x0d\xe6\x45\xd6\xb9\x8d\xc8\xea\xf3",
+            ),
+            // World Chain — UniversalRouterV1_2_V2Support
+            (
+                480,
+                *b"\x7a\x25\x0d\x56\x30\xb4\xcf\x53\x97\x39\xdf\x2c\x5d\xac\xb4\xc6\x59\xf2\x48\x8d",
+            ),
+            // World Chain — UniversalRouterV2
+            (
+                480,
+                *b"\x8a\xc7\xbe\xe9\x93\xbb\x44\xda\xb5\x64\xea\x4b\xc9\xea\x67\xbf\x9e\xb5\xe7\x43",
+            ),
+            // Zora — UniversalRouterV2
+            (
+                7777777,
+                *b"\x33\x15\xef\x7c\xa2\x8d\xb7\x4a\xba\xdc\x6c\x44\x57\x0e\xfd\xf0\x6b\x04\xb0\x20",
+            ),
+        ];
+        assert_eq!(extended.len(), 11, "T-B1.1 expects exactly 11 new entries");
+        for (chain_id, raw) in extended.iter().copied() {
+            let addr = Address::from(raw);
+            assert!(
+                is_uniswap_universal_router(chain_id, &addr),
+                "chain {chain_id} address {addr:?} not recognised",
+            );
+        }
+    }
+
+    /// Sanity-check the total deployment count after T-B1.1: the original
+    /// 10 entries (mainnet 2 + Base 2 + Optimism 2 + Arbitrum 2 + Polygon 2)
+    /// plus 11 new ones = 21.
+    #[test]
+    fn uniswap_universal_router_deployments_count() {
+        let total = uniswap_universal_router_deployments().count();
+        assert_eq!(total, 21, "expected 10 baseline + 11 T-B1.1 entries");
+    }
+
+    /// F-P0.2: cross-check that every V3 NonfungiblePositionManager entry
+    /// added in this fix is recognized by `v3_position_manager_address`. The
+    /// table was previously mainnet-only, leaving the other 12 UR-supported
+    /// chains with `None` and faulting `0x11` / `0x12` recursion.
+    ///
+    /// Source: https://github.com/Uniswap/contracts/tree/main/deployments
+    /// (`v3NFTPositionManager` field per chain).
+    #[test]
+    fn v3_position_manager_address_recognizes_create2_shared_chains() {
+        // mainnet/Optimism/Arbitrum/Polygon all share the same CREATE2 NFPM.
+        let create2_addr: [u8; 20] =
+            *b"\xc3\x64\x42\xb4\xa4\x52\x2e\x87\x13\x99\xcd\x71\x7a\xbd\xd8\x47\xab\x11\xfe\x88";
+        for chain_id in [1u64, 10, 137, 42161] {
+            let resolved = v3_position_manager_address(chain_id);
+            assert_eq!(
+                resolved,
+                Some(Address::from(create2_addr)),
+                "chain {chain_id} should map to CREATE2-shared NFPM address",
+            );
+        }
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_base() {
+        let expected: [u8; 20] =
+            *b"\x03\xa5\x20\xb3\x2c\x04\xbf\x3b\xee\xf7\xbe\xb7\x2e\x91\x9c\xf8\x22\xed\x34\xf1";
+        assert_eq!(v3_position_manager_address(8453), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_bnb() {
+        let expected: [u8; 20] =
+            *b"\x7b\x8a\x01\xb3\x9d\x58\x27\x8b\x5d\xe7\xe4\x8c\x84\x49\xc9\xf4\xf5\x17\x06\x13";
+        assert_eq!(v3_position_manager_address(56), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_avalanche() {
+        let expected: [u8; 20] =
+            *b"\x65\x5c\x40\x6e\xbf\xa1\x4e\xe2\x00\x62\x50\x92\x5e\x54\xec\x43\xad\x18\x4f\x8b";
+        assert_eq!(v3_position_manager_address(43114), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_blast() {
+        let expected: [u8; 20] =
+            *b"\xb2\x18\xe4\xf7\xcf\x05\x33\xd4\x69\x6f\xdf\xc4\x19\xa0\x02\x3d\x33\x34\x5f\x28";
+        assert_eq!(v3_position_manager_address(81457), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_celo() {
+        let expected: [u8; 20] =
+            *b"\x3d\x79\xed\xaa\xbc\x0e\xab\x6f\x08\xed\x88\x5c\x05\xfc\x0b\x01\x42\x90\xd9\x5a";
+        assert_eq!(v3_position_manager_address(42220), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_zora() {
+        let expected: [u8; 20] =
+            *b"\xbc\x91\xe8\xdf\xa3\xff\x18\xde\x43\x85\x33\x72\xa3\xd7\xdf\xe5\x85\x13\x7d\x78";
+        assert_eq!(v3_position_manager_address(7777777), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_ink() {
+        let expected: [u8; 20] =
+            *b"\xc0\x83\x6e\x5b\x05\x8b\xbe\x22\xae\x22\x66\xe1\xac\x48\x8a\x1a\x0f\xd8\xdc\xe8";
+        assert_eq!(v3_position_manager_address(57073), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_unichain() {
+        let expected: [u8; 20] =
+            *b"\x94\x3e\x6e\x07\xa7\xe8\xe7\x91\xda\xfc\x44\x08\x3e\x54\x04\x1d\x74\x3c\x46\xe9";
+        assert_eq!(v3_position_manager_address(130), Some(Address::from(expected)));
+    }
+
+    #[test]
+    fn v3_position_manager_address_recognizes_world_chain() {
+        let expected: [u8; 20] =
+            *b"\xec\x12\xa9\xf9\xa0\x9f\x50\x55\x06\x86\x36\x37\x66\xcc\x15\x3d\x03\xc2\x7b\x5e";
+        assert_eq!(v3_position_manager_address(480), Some(Address::from(expected)));
+    }
+
+    /// F-P0.2: ensure unknown chains still return `None` so we don't blindly
+    /// recurse against untrusted targets.
+    #[test]
+    fn v3_position_manager_address_rejects_unknown_chain() {
+        // Picked arbitrary chain ids that are NOT in the V3 NFPM allow-list.
+        for chain_id in [0u64, 5, 100, 11_111] {
+            assert_eq!(
+                v3_position_manager_address(chain_id),
+                None,
+                "chain {chain_id} should not map to any V3 NFPM",
+            );
+        }
     }
 }

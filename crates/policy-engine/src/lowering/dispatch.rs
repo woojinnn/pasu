@@ -88,9 +88,13 @@ pub fn try_policy_request_from_envelope(
         Action::DecreaseLiquidity(action) => action.build(&ctx).map(Some),
         Action::Donate(action) => action.build(&ctx).map(Some),
         Action::InitializePool(action) => action.build(&ctx).map(Some),
-        // TODO: lending / misc / restaking / staking lowering not yet implemented —
-        // current phase only supports DEX actions. See schema/policy-schema/actions/<category>/
-        // for the cedar schemas already defined for these actions.
+        // misc — added so PERMIT2_PERMIT / TRANSFER / WRAP_ETH / UNWRAP_WETH
+        // envelopes lower into PolicyRequest. lending / restaking / staking
+        // lowering remain TODO.
+        Action::Permit(action) => action.build(&ctx).map(Some),
+        Action::Transfer(action) => action.build(&ctx).map(Some),
+        Action::Wrap(action) => action.build(&ctx).map(Some),
+        Action::Unwrap(action) => action.build(&ctx).map(Some),
         _ => Ok(None),
     }
 }

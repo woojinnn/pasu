@@ -92,7 +92,7 @@ pub fn evaluate(
             // separate fields entry. We only validate it parses if present.
             let _ = kind;
 
-            evaluate_json_path(args_json, from).cloned()
+            evaluate_json_path(_ctx, args_json, from)
         }
 
         ValueExpr::Transform { function, args } => evaluate_transform(_ctx, args_json, *function, args),
@@ -138,9 +138,12 @@ fn evaluate_transform(
                     "unfold_v3_path: select must be string literal, got {select_value}"
                 ))
             })?;
-            let address = builtin_fn::unfold_v3_path(&bytes_value, select)
-                .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))?;
-            Ok(serde_json::Value::String(address.to_string()))
+            // Phase 7B (T-B3) — `unfold_v3_path` returns either a JSON
+            // string (addresses) or a JSON number (fees) depending on
+            // `select`. The interpreter is agnostic to the return shape;
+            // downstream `single_emit` field builders coerce per-field.
+            builtin_fn::unfold_v3_path(&bytes_value, select)
+                .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
         }
         other => Err(MapperError::Unsupported(format!("builtin_fn/{other:?}"))),
     }
@@ -151,6 +154,13 @@ fn evaluate_transform(
 ///   * `$.args.<name>[<idx>]`
 ///   * `$.args.<name>[<idx>][<idx>]...` (chained indices, Phase 5 — needed for
 ///     UR `PERMIT2_PERMIT.permitSingle[0][0]` style nested tuple access)
+///   * `$.tx.<field>` — host tx metadata (Phase 7B): `value_wei`, `from`,
+///     `to`, `chain_id`, `block_timestamp`. All synthesized as JSON strings
+///     (decimal for numeric, lowercase `0x..` for addresses) to mirror the
+///     `decoded_value_to_json` encoding.
+///   * `$.context.<field>` — host recursion handles (Phase 7B):
+///     `parent_calldata` (hex `0x..`), `depth` (decimal string). None values
+///     materialize as empty string so policies can detect them explicitly.
 ///
 /// We intentionally avoid pulling in a full JSONPath library. Each fixture's
 /// queries reduce to "look up a named arg, then optionally index into nested
@@ -158,16 +168,53 @@ fn evaluate_transform(
 /// — call sites that need named-field access through a tuple should rely on
 /// the Tier B JSON ABI bridge to expose top-level args, or use numeric tuple
 /// indices.
-fn evaluate_json_path<'a>(
+fn evaluate_json_path(
+    ctx: &MapContext<'_>,
+    args_json: &serde_json::Value,
+    path: &str,
+) -> Result<serde_json::Value, MapperError> {
+    // Strip the `$.` root marker and identify which root (`args` / `tx` /
+    // `context`) the path targets. Each root has its own walker — `args`
+    // delegates to the recursive JSON walker, `tx` / `context` resolve a
+    // single field from `MapContext`.
+    let body = path.strip_prefix("$.").ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!(
+            "JsonPath must start with \"$.\", got {path:?}"
+        ))
+    })?;
+
+    let (root, rest) = match body.find('.') {
+        Some(dot) => (&body[..dot], &body[dot + 1..]),
+        None => (body, ""),
+    };
+
+    match root {
+        "args" => {
+            if rest.is_empty() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "JsonPath {path:?}: $.args requires a field name"
+                )));
+            }
+            walk_args(args_json, rest, path).cloned()
+        }
+        "tx" => evaluate_tx_field(ctx, rest, path),
+        "context" => evaluate_context_field(ctx, rest, path),
+        other => Err(MapperError::Internal(anyhow::anyhow!(
+            "JsonPath {path:?}: unknown root segment {other:?} (allowed: args, tx, context)"
+        ))),
+    }
+}
+
+/// Walk a chain of `name[idx][idx]...` segments under the `$.args` root.
+///
+/// Returns a borrowed reference into `args_json` so the caller can decide
+/// whether to clone. Indices may be negative (counted from the array end);
+/// out-of-range indices yield [`MapperError::Internal`].
+fn walk_args<'a>(
     args_json: &'a serde_json::Value,
+    rest: &str,
     path: &str,
 ) -> Result<&'a serde_json::Value, MapperError> {
-    let rest = path
-        .strip_prefix("$.args.")
-        .ok_or_else(|| MapperError::Internal(anyhow::anyhow!(
-            "Phase 1A JsonPath must start with \"$.args.\", got {path:?}"
-        )))?;
-
     // Split off the leading name from any chain of `[idx]` suffixes.
     let (name, mut remainder) = match rest.find('[') {
         Some(open) => (&rest[..open], &rest[open..]),
@@ -242,6 +289,85 @@ fn evaluate_json_path<'a>(
     }
 
     Ok(value)
+}
+
+/// Resolve a `$.tx.<field>` JsonPath against the host [`MapContext`].
+///
+/// All values are encoded as JSON strings — decimal for `uint`-typed fields,
+/// lowercase `0x..` for addresses — matching how `decoded_value_to_json`
+/// encodes argument primitives. `block_timestamp` is `Option<u64>`; a missing
+/// timestamp materializes as `""` so a policy can detect "no host clock" via
+/// a string-equality check rather than a typed null.
+fn evaluate_tx_field(
+    ctx: &MapContext<'_>,
+    rest: &str,
+    path: &str,
+) -> Result<serde_json::Value, MapperError> {
+    // Phase 7B does not expose nested tx fields, so reject any `[..]` index
+    // or `tx.x.y` chain. Future extensions can replace this with a walker.
+    if rest.is_empty() {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "JsonPath {path:?}: $.tx requires a field name"
+        )));
+    }
+    if rest.contains('.') || rest.contains('[') {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "JsonPath {path:?}: $.tx fields do not support nested access"
+        )));
+    }
+
+    match rest {
+        "value_wei" => Ok(serde_json::Value::String(ctx.value_wei.to_string())),
+        "from" => Ok(serde_json::Value::String(ctx.from.to_string())),
+        "to" => Ok(serde_json::Value::String(ctx.to.to_string())),
+        "chain_id" => Ok(serde_json::Value::String(ctx.chain_id.to_string())),
+        "block_timestamp" => Ok(serde_json::Value::String(
+            ctx.block_timestamp
+                .map(|t| t.to_string())
+                .unwrap_or_default(),
+        )),
+        other => Err(MapperError::Internal(anyhow::anyhow!(
+            "JsonPath {path:?}: unknown $.tx field {other:?} \
+             (allowed: value_wei, from, to, chain_id, block_timestamp)"
+        ))),
+    }
+}
+
+/// Resolve a `$.context.<field>` JsonPath against the host [`MapContext`].
+///
+/// Mirrors [`evaluate_tx_field`] but for recursion-specific handles
+/// introduced in Phase 4 (`parent_calldata`, `depth`). `parent_calldata`
+/// is `None` at the top level — we surface that as the empty string so
+/// the same encoding choice as `block_timestamp` applies (callers can
+/// branch on `== ""`).
+fn evaluate_context_field(
+    ctx: &MapContext<'_>,
+    rest: &str,
+    path: &str,
+) -> Result<serde_json::Value, MapperError> {
+    if rest.is_empty() {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "JsonPath {path:?}: $.context requires a field name"
+        )));
+    }
+    if rest.contains('.') || rest.contains('[') {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "JsonPath {path:?}: $.context fields do not support nested access"
+        )));
+    }
+
+    match rest {
+        "parent_calldata" => Ok(serde_json::Value::String(
+            ctx.parent_calldata
+                .map(|bytes| format!("0x{}", hex::encode(bytes)))
+                .unwrap_or_default(),
+        )),
+        "depth" => Ok(serde_json::Value::String(ctx.depth.to_string())),
+        other => Err(MapperError::Internal(anyhow::anyhow!(
+            "JsonPath {path:?}: unknown $.context field {other:?} \
+             (allowed: parent_calldata, depth)"
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -430,5 +556,164 @@ mod tests {
             evaluate_with(&decoded, &expr),
             json!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
         );
+    }
+
+    // ── $.tx.* / $.context.* JsonPath (Phase 7B / T-B3) ──────────────────
+    //
+    // Each test builds a `MapContext` with a specific field value, feeds an
+    // empty `args_json`, and asserts the JSON encoding matches the
+    // documented contract (decimal strings for u64, lowercase hex for
+    // addresses, `0x..` hex for byte slices, `""` for None).
+
+    fn empty_args() -> serde_json::Value {
+        serde_json::Value::Object(serde_json::Map::new())
+    }
+
+    fn eval_path_with_ctx<'a>(ctx: &MapContext<'a>, path: &str) -> serde_json::Value {
+        let expr: ValueExpr = serde_json::from_value(json!({ "from": path })).unwrap();
+        evaluate(ctx, &empty_args(), &expr).unwrap()
+    }
+
+    #[test]
+    fn evaluate_tx_value_wei_returns_decimal_string() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value =
+            policy_engine::action::DecimalString::from_str("1000000000000000000").unwrap();
+        let registry = EmptyTokenRegistry;
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        assert_eq!(
+            eval_path_with_ctx(&ctx, "$.tx.value_wei"),
+            json!("1000000000000000000")
+        );
+    }
+
+    #[test]
+    fn evaluate_tx_from_returns_lowercase_address() {
+        let from = Address::from_str("0xAaBbCcDdEeFf00112233445566778899aAbBcCdD").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        // `Address::from_str` lowercases on parse, so the JSON encoding must
+        // also be lowercase regardless of the input casing.
+        assert_eq!(
+            eval_path_with_ctx(&ctx, "$.tx.from"),
+            json!("0xaabbccddeeff00112233445566778899aabbccdd")
+        );
+    }
+
+    #[test]
+    fn evaluate_tx_to_returns_lowercase_address() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        assert_eq!(
+            eval_path_with_ctx(&ctx, "$.tx.to"),
+            json!("0x1111111111111111111111111111111111111111")
+        );
+    }
+
+    #[test]
+    fn evaluate_tx_chain_id_returns_u64_string() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        assert_eq!(eval_path_with_ctx(&ctx, "$.tx.chain_id"), json!("1"));
+    }
+
+    #[test]
+    fn evaluate_tx_block_timestamp_returns_decimal_string() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        // dummy_ctx pins block_timestamp = Some(1_700_000_000).
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        assert_eq!(
+            eval_path_with_ctx(&ctx, "$.tx.block_timestamp"),
+            json!("1700000000")
+        );
+    }
+
+    #[test]
+    fn evaluate_tx_block_timestamp_none_returns_empty_string() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        let mut ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        ctx.block_timestamp = None;
+        assert_eq!(eval_path_with_ctx(&ctx, "$.tx.block_timestamp"), json!(""));
+    }
+
+    #[test]
+    fn evaluate_context_depth_returns_u8_string() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        // depth defaults to 0 in `dummy_ctx`.
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        assert_eq!(eval_path_with_ctx(&ctx, "$.context.depth"), json!("0"));
+    }
+
+    #[test]
+    fn evaluate_context_parent_calldata_hex_encoded() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        let mut ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        let parent_bytes: &[u8] = &[0xab, 0xcd];
+        ctx.parent_calldata = Some(parent_bytes);
+        assert_eq!(
+            eval_path_with_ctx(&ctx, "$.context.parent_calldata"),
+            json!("0xabcd")
+        );
+    }
+
+    #[test]
+    fn evaluate_context_parent_calldata_none_returns_empty_string() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        // dummy_ctx leaves parent_calldata=None.
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        assert_eq!(
+            eval_path_with_ctx(&ctx, "$.context.parent_calldata"),
+            json!("")
+        );
+    }
+
+    #[test]
+    fn evaluate_unknown_tx_field_errors() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        let expr: ValueExpr = serde_json::from_value(json!({ "from": "$.tx.nope" })).unwrap();
+        let err = evaluate(&ctx, &empty_args(), &expr).unwrap_err();
+        assert!(matches!(err, MapperError::Internal(_)), "got {err:?}");
+    }
+
+    #[test]
+    fn evaluate_unknown_root_errors() {
+        let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
+        let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("0").unwrap();
+        let registry = EmptyTokenRegistry;
+        let ctx = dummy_ctx(1, &from, &to, &value, &registry);
+        // `$.host.x` is intentionally rejected — only `args`, `tx`, `context`
+        // are wired in Phase 7B.
+        let expr: ValueExpr = serde_json::from_value(json!({ "from": "$.host.x" })).unwrap();
+        let err = evaluate(&ctx, &empty_args(), &expr).unwrap_err();
+        assert!(matches!(err, MapperError::Internal(_)), "got {err:?}");
     }
 }

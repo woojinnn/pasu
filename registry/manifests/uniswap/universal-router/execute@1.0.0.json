@@ -3,7 +3,7 @@
   "id": "uniswap/universal-router/execute@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1, 8453, 10, 42161, 137],
+    "chain_ids": [1, 8453, 10, 42161, 137, 43114, 81457, 56, 42220, 57073, 130, 480, 7777777],
     "to": [
       "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
       "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
@@ -13,7 +13,16 @@
       "0x5E325eDA8064b456f4781070C0738d849c824258",
       "0xA51afAFe0263b40EdaEf0Df8781eA9aa03E381a3",
       "0xec7BE89e9d109e7e3Fec59c222CF297125FEFda2",
-      "0x1095692A6237d83C6a72F3F5eFEdb9A670C49223"
+      "0x1095692A6237d83C6a72F3F5EfedB9A670c49223",
+      "0x4Dae2f939ACf50408e13d58534Ff8c2776d45265",
+      "0x643770E279d5D0733F21d6DC03A8efbABf3255B4",
+      "0xeabbcb3e8e415306207ef514f660a3f820025be3",
+      "0x1906c1d672b88cd1b9ac7593301ca990f94eae07",
+      "0x112908dac86e20e7241b0927479ea3bf935d1fa0",
+      "0xef740bf23acae26f6492b10de645d6b98dc8eaf3",
+      "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      "0x8ac7bee993bb44dab564ea4bc9ea67bf9eb5e743",
+      "0x3315ef7ca28db74abadc6c44570efdf06b04b020"
     ],
     "selector": "0x3593564c"
   },
@@ -87,6 +96,24 @@
           "token.amount.value":      { "from": "$.args.amount" },
           "from":                    { "from": "$.args.recipient" },
           "recipient":               { "from": "$.args.recipient" }
+        }
+      },
+      "0x03": {
+        "name": "PERMIT2_PERMIT_BATCH",
+        "category": "misc",
+        "action": "permit",
+        "fields": {
+          "permitKind":            { "literal": "permit2_batch" },
+          "token.kind":            { "literal": "erc20" },
+          "token.address":         { "from": "$.args.permitBatch[0][0][0]" },
+          "owner":                 { "from": "$.tx.from" },
+          "spender":               { "from": "$.args.permitBatch[1]" },
+          "amount.kind":           { "literal": "max" },
+          "amount.value":          { "from": "$.args.permitBatch[0][0][1]" },
+          "validity.expiresAt":    { "from": "$.args.permitBatch[0][0][2]" },
+          "validity.source":       { "literal": "grant-expiration" },
+          "signatureValidity.expiresAt": { "from": "$.args.permitBatch[2]" },
+          "signatureValidity.source":    { "literal": "signature-deadline" }
         }
       },
       "0x04": {
@@ -189,7 +216,7 @@
           "permitKind":            { "literal": "permit2_single" },
           "token.kind":            { "literal": "erc20" },
           "token.address":         { "from": "$.args.permitSingle[0][0]" },
-          "owner":                 { "from": "$.args.permitSingle[0][0]" },
+          "owner":                 { "from": "$.tx.from" },
           "spender":               { "from": "$.args.permitSingle[1]" },
           "amount.kind":           { "literal": "max" },
           "amount.value":          { "from": "$.args.permitSingle[0][1]" },
@@ -225,6 +252,35 @@
           "nativeAsset.amount.kind":    { "literal": "min" },
           "nativeAsset.amount.value":   { "from": "$.args.amountMin" },
           "recipient":                  { "from": "$.args.recipient" }
+        }
+      },
+      "0x0d": {
+        "name": "PERMIT2_TRANSFER_FROM_BATCH",
+        "category": "misc",
+        "action": "transfer",
+        "fields": {
+          "token.asset.kind":     { "literal": "erc20" },
+          "token.asset.address":  { "from": "$.args.transferDetails[0][3]" },
+          "token.amount.kind":    { "literal": "exact" },
+          "token.amount.value":   { "from": "$.args.transferDetails[0][2]" },
+          "from":                 { "from": "$.args.transferDetails[0][0]" },
+          "recipient":            { "from": "$.args.transferDetails[0][1]" }
+        }
+      },
+      "0x13": {
+        "name": "V4_INITIALIZE_POOL",
+        "category": "dex",
+        "action": "initialize_pool",
+        "fields": {
+          "pool.address":         { "from": "$.args.poolKey[0]" },
+          "token0.kind":          { "literal": "erc20" },
+          "token0.address":       { "from": "$.args.poolKey[0]" },
+          "token1.kind":          { "literal": "erc20" },
+          "token1.address":       { "from": "$.args.poolKey[1]" },
+          "feeBps":               { "from": "$.args.poolKey[2]" },
+          "tickSpacing":          { "from": "$.args.poolKey[3]" },
+          "hooks":                { "from": "$.args.poolKey[4]" },
+          "sqrtPriceX96":         { "from": "$.args.sqrtPriceX96" }
         }
       }
     }

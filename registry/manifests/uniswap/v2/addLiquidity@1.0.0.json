@@ -3,7 +3,7 @@
   "id": "uniswap/v2/addLiquidity@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1],
+    "chain_ids": [1, 8453, 10, 42161, 137],
     "to": ["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],
     "selector": "0xe8e33700"
   },

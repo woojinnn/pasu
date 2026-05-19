@@ -54,6 +54,13 @@ pub enum PermitKind {
     Permit2Single,
     /// Permit2 one-shot transfer authorization.
     Permit2Transfer,
+    /// Permit2 batched allowance grant (`PermitBatch` — multi-token in a single
+    /// signature). Carries the same risk profile as `Permit2Single`
+    /// (allowance + spender + signature deadline) but applies across a list
+    /// of tokens. In the PoC the mapper layer collapses the batch down to
+    /// `details[0]` so the schema can keep a single `token` slot; full
+    /// fan-out is a follow-up.
+    Permit2Batch,
 }
 
 /// Governance power type for split-power tokens.

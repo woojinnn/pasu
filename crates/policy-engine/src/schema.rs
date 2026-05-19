@@ -25,6 +25,20 @@ const DEX_REMOVE_LIQUIDITY_SCHEMA: &str =
 const DEX_SWAP_SCHEMA: &str =
     include_str!("../../../schema/policy-schema/actions/DEX/swap.cedarschema");
 
+// misc/ — Permit / Transfer / Wrap / Unwrap action schemas. 사용자 정책
+// `Action::"permit"|"transfer"|"wrap"|"unwrap"` 를 install 시 알아보도록
+// base schema 에 합쳐서 join. (확장 API 의 cedarschema file 은 이미
+// browser-extension 빌드 의 copy-default-policies.js 가 합쳐 쓰지만,
+// `base_schema_text()` 의 cargo test 측 wiring 만 누락되어 있었음.)
+const MISC_PERMIT_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/misc/permit.cedarschema");
+const MISC_TRANSFER_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/misc/transfer.cedarschema");
+const MISC_WRAP_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/misc/wrap.cedarschema");
+const MISC_UNWRAP_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/misc/unwrap.cedarschema");
+
 /// Composes the shipped core and action Cedar schemas.
 #[derive(Debug, Default, Clone)]
 pub struct PolicySchemaComposer {
@@ -143,6 +157,10 @@ fn base_schema_text() -> String {
         DEX_MINT_LIQUIDITY_NFT_SCHEMA,
         DEX_REMOVE_LIQUIDITY_SCHEMA,
         DEX_SWAP_SCHEMA,
+        MISC_PERMIT_SCHEMA,
+        MISC_TRANSFER_SCHEMA,
+        MISC_WRAP_SCHEMA,
+        MISC_UNWRAP_SCHEMA,
     ]
     .join("\n")
 }

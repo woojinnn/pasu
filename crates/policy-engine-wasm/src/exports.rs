@@ -1364,6 +1364,341 @@ mod tests_policy_rpc {
         assert_eq!(parsed["data"]["kind"], "pass", "{parsed}");
     }
 
+    /// Step 1 verify — `no-zero-min-output` 정책 의 trigger 정합성. T1 manual
+    /// e2e 에서 UR Base button 이 `amountOutMin=0` 인데 verdict="pass" 한
+    /// 원인 점검. envelope 의 `outputToken.amount.{kind:"min", value:"0"}` 가
+    /// 정책 의 `forbid` 조건 과 정확 매칭 — fail (deny) 이어야 정상.
+    #[test]
+    fn evaluate_with_envelopes_json_v2_swap_triggers_no_zero_min_output() {
+        let install_output = install_policies_json(
+            json!({
+                "schema_text": "",
+                "manifests": [],
+                "policy_set": [{
+                    "id": "bundle::no-zero-min-output",
+                    "text": include_str!(
+                        "../../../policy-examples/swap/no-zero-min-output.cedar"
+                    )
+                }]
+            })
+            .to_string(),
+        );
+        let installed: Value = serde_json::from_str(&install_output).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        // V2 swap with amountOutMin=0 — same shape the declarative path emits
+        // for UR.execute V2_SWAP_EXACT_IN with amountOutMin=0 (T1 button #3).
+        let envelope = json!({
+            "category": "dex",
+            "action": "swap",
+            "fields": {
+                "swapMode": "exact_in",
+                "inputToken": {
+                    "asset": {
+                        "kind": "erc20",
+                        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                        "symbol": "WETH",
+                        "decimals": 18
+                    },
+                    "amount": { "kind": "exact", "value": "1000000000000000000" }
+                },
+                "outputToken": {
+                    "asset": {
+                        "kind": "erc20",
+                        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                        "symbol": "USDC",
+                        "decimals": 6
+                    },
+                    "amount": { "kind": "min", "value": "0" }
+                },
+                "recipient": "0x2222222222222222222222222222222222222222"
+            }
+        });
+
+        let output = evaluate_with_envelopes_json(
+            json!({
+                "envelopes": [envelope],
+                "from": "0x1111111111111111111111111111111111111111",
+                "to": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+                "value_wei": "0",
+                "chain_id": 1u64,
+                "block_timestamp": 1_700_000_000u64,
+                "manifests": [],
+                "rpc_response": { "request_id": "decl-eval-nozmin", "results": [] }
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["kind"], "fail",
+            "verdict should be fail when amountOutMin=0 with no-zero-min-output policy: {parsed}"
+        );
+        let matched = parsed["data"]["matched"]
+            .as_array()
+            .expect("matched array");
+        assert!(
+            matched
+                .iter()
+                .any(|m| m["policy_id"].as_str().is_some_and(|id| id.contains("no-zero-min-output"))),
+            "expected no-zero-min-output policy to fire, got {parsed}"
+        );
+    }
+
+    /// 신규 사용자 정책 fixture — Step 4 (회귀 test 확장) 의 일부.
+    /// 7 정책 의 deny case 가 declarative envelope wire 에서 trigger 되는지 검증.
+    fn install_user_policy_only(policy_id: &str, policy_text: &str) {
+        let install_output = install_policies_json(
+            json!({
+                "schema_text": "",
+                "manifests": [],
+                "policy_set": [{
+                    "id": format!("bundle::{policy_id}"),
+                    "text": policy_text
+                }]
+            })
+            .to_string(),
+        );
+        let installed: Value = serde_json::from_str(&install_output).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+    }
+
+    /// 본 helper 의 `expected_kind` = "fail" (severity="deny") 또는 "warn"
+    /// (severity="warn"). 정책 의 trigger 자체 는 verify, verdict 의
+    /// outcome kind 는 정책 의 severity 따라 분리.
+    fn assert_envelope_trigger(envelope: Value, expected_policy_id: &str, expected_kind: &str) {
+        let output = evaluate_with_envelopes_json(
+            json!({
+                "envelopes": [envelope],
+                "from": "0x1111111111111111111111111111111111111111",
+                "to": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+                "value_wei": "0",
+                "chain_id": 1u64,
+                "block_timestamp": 1_700_000_000u64,
+                "manifests": [],
+                "rpc_response": { "request_id": "decl-eval-user", "results": [] }
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["kind"], expected_kind,
+            "verdict should be {expected_kind} with {expected_policy_id}: {parsed}"
+        );
+        let matched = parsed["data"]["matched"]
+            .as_array()
+            .expect("matched array");
+        assert!(
+            matched.iter().any(|m| m["policy_id"]
+                .as_str()
+                .is_some_and(|id| id.contains(expected_policy_id))),
+            "expected {expected_policy_id} to fire, got {parsed}"
+        );
+    }
+
+    #[test]
+    fn user_policy_swap_short_deadline_deny() {
+        install_user_policy_only(
+            "swap-short-deadline",
+            include_str!("../../../policy-examples/swap/swap-short-deadline.cedar"),
+        );
+        // validity.expiresAt = block_timestamp + 30  → validityDeltaSec=30 → trigger
+        let envelope = json!({
+            "category": "dex",
+            "action": "swap",
+            "fields": {
+                "swapMode": "exact_in",
+                "inputToken": {
+                    "asset": { "kind": "erc20", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "symbol": "WETH", "decimals": 18 },
+                    "amount": { "kind": "exact", "value": "1000000000000000000" }
+                },
+                "outputToken": {
+                    "asset": { "kind": "erc20", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "symbol": "USDC", "decimals": 6 },
+                    "amount": { "kind": "min", "value": "1" }
+                },
+                "recipient": "0x2222222222222222222222222222222222222222",
+                "validity": { "expiresAt": "1700000030", "source": "tx-deadline" }
+            }
+        });
+        assert_envelope_trigger(envelope, "swap-short-deadline", "warn");
+    }
+
+    #[test]
+    fn user_policy_swap_long_deadline_deny() {
+        install_user_policy_only(
+            "swap-long-deadline",
+            include_str!("../../../policy-examples/swap/swap-long-deadline.cedar"),
+        );
+        // validity.expiresAt = block_timestamp + 86400 → validityDeltaSec=86400 > 3600
+        let envelope = json!({
+            "category": "dex",
+            "action": "swap",
+            "fields": {
+                "swapMode": "exact_in",
+                "inputToken": {
+                    "asset": { "kind": "erc20", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "symbol": "WETH", "decimals": 18 },
+                    "amount": { "kind": "exact", "value": "1000000000000000000" }
+                },
+                "outputToken": {
+                    "asset": { "kind": "erc20", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "symbol": "USDC", "decimals": 6 },
+                    "amount": { "kind": "min", "value": "1" }
+                },
+                "recipient": "0x2222222222222222222222222222222222222222",
+                "validity": { "expiresAt": "1700086400", "source": "tx-deadline" }
+            }
+        });
+        assert_envelope_trigger(envelope, "swap-long-deadline", "warn");
+    }
+
+    #[test]
+    fn user_policy_permit_max_amount_deny() {
+        install_user_policy_only(
+            "permit-max-amount",
+            include_str!("../../../policy-examples/permit/permit-max-amount.cedar"),
+        );
+        // amount.value = 2^160 - 1 (Permit2 max uint160) → trigger
+        let envelope = json!({
+            "category": "misc",
+            "action": "permit",
+            "fields": {
+                "permitKind": "permit2_single",
+                "token": { "kind": "erc20", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "symbol": "WETH", "decimals": 18 },
+                "owner": "0x1111111111111111111111111111111111111111",
+                "spender": "0x3333333333333333333333333333333333333333",
+                "amount": { "kind": "max", "value": "1461501637330902918203684832716283019655932542975" },
+                "validity": { "expiresAt": "1700003600", "source": "grant-expiration" },
+                "signatureValidity": { "expiresAt": "1700001800", "source": "signature-deadline" }
+            }
+        });
+        assert_envelope_trigger(envelope, "permit-max-amount", "fail");
+    }
+
+    #[test]
+    fn user_policy_transfer_suspicious_recipient_deny() {
+        install_user_policy_only(
+            "transfer-suspicious-recipient",
+            include_str!("../../../policy-examples/transfer/transfer-suspicious-recipient.cedar"),
+        );
+        // recipient = 0x000...dead → trigger (정책 의 multi-OR 중 하나)
+        let envelope = json!({
+            "category": "misc",
+            "action": "transfer",
+            "fields": {
+                "token": {
+                    "asset": { "kind": "erc20", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "symbol": "WETH", "decimals": 18 },
+                    "amount": { "kind": "exact", "value": "1000000000000000000" }
+                },
+                "from": "0x1111111111111111111111111111111111111111",
+                "recipient": "0x000000000000000000000000000000000000dead"
+            }
+        });
+        assert_envelope_trigger(envelope, "transfer-suspicious-recipient", "fail");
+    }
+
+    #[test]
+    fn user_policy_transfer_large_amount_exact_deny() {
+        install_user_policy_only(
+            "transfer-large-amount-exact",
+            include_str!("../../../policy-examples/transfer/transfer-large-amount-exact.cedar"),
+        );
+        // token.amount.value = "1000000000000000000000" (1000 ETH wei) → trigger
+        let envelope = json!({
+            "category": "misc",
+            "action": "transfer",
+            "fields": {
+                "token": {
+                    "asset": { "kind": "erc20", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "symbol": "WETH", "decimals": 18 },
+                    "amount": { "kind": "exact", "value": "1000000000000000000000" }
+                },
+                "from": "0x1111111111111111111111111111111111111111",
+                "recipient": "0x2222222222222222222222222222222222222222"
+            }
+        });
+        assert_envelope_trigger(envelope, "transfer-large-amount-exact", "warn");
+    }
+
+    #[test]
+    fn user_policy_wrap_large_amount_exact_deny() {
+        install_user_policy_only(
+            "wrap-large-amount-exact",
+            include_str!("../../../policy-examples/transfer/wrap-large-amount-exact.cedar"),
+        );
+        // nativeAsset.amount.value = "100000000000000000000" (100 ETH wei) → trigger
+        let envelope = json!({
+            "category": "misc",
+            "action": "wrap",
+            "fields": {
+                "nativeAsset": {
+                    "asset": { "kind": "native" },
+                    "amount": { "kind": "min", "value": "100000000000000000000" }
+                },
+                "wrappedAsset": {
+                    "asset": { "kind": "erc20", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "symbol": "WETH", "decimals": 18 },
+                    "amount": { "kind": "min", "value": "100000000000000000000" }
+                },
+                "recipient": "0x2222222222222222222222222222222222222222"
+            }
+        });
+        assert_envelope_trigger(envelope, "wrap-large-amount-exact", "warn");
+    }
+
+    #[test]
+    fn user_policy_protocol_blocklist_example_deny() {
+        install_user_policy_only(
+            "protocol-blocklist-example",
+            include_str!("../../../policy-examples/protocol/protocol-blocklist-example.cedar"),
+        );
+        // resource = Protocol::"0x000000000000000000000000000000000000dead" → trigger
+        // Protocol uid = tx 의 `to` address — assert_envelope_fails_with_policy 의
+        // default to=0x7a25... 가 아니라 0x000...dead 를 직접 사용 위해 custom invoke.
+        let envelope = json!({
+            "category": "dex",
+            "action": "swap",
+            "fields": {
+                "swapMode": "exact_in",
+                "inputToken": {
+                    "asset": { "kind": "erc20", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "symbol": "WETH", "decimals": 18 },
+                    "amount": { "kind": "exact", "value": "1" }
+                },
+                "outputToken": {
+                    "asset": { "kind": "erc20", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "symbol": "USDC", "decimals": 6 },
+                    "amount": { "kind": "min", "value": "1" }
+                },
+                "recipient": "0x2222222222222222222222222222222222222222"
+            }
+        });
+        let output = evaluate_with_envelopes_json(
+            json!({
+                "envelopes": [envelope],
+                "from": "0x1111111111111111111111111111111111111111",
+                "to": "0x000000000000000000000000000000000000dead",
+                "value_wei": "0",
+                "chain_id": 1u64,
+                "block_timestamp": 1_700_000_000u64,
+                "manifests": [],
+                "rpc_response": { "request_id": "decl-eval-protocol", "results": [] }
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["kind"], "fail",
+            "verdict should be fail for protocol-blocklist: {parsed}"
+        );
+        let matched = parsed["data"]["matched"]
+            .as_array()
+            .expect("matched array");
+        assert!(
+            matched.iter().any(|m| m["policy_id"]
+                .as_str()
+                .is_some_and(|id| id.contains("protocol-blocklist-example"))),
+            "expected protocol-blocklist-example to fire, got {parsed}"
+        );
+    }
+
     #[test]
     fn evaluate_with_envelopes_json_fails_closed_on_manifest_mismatch() {
         // Install with one manifest set, then call evaluate with a different
