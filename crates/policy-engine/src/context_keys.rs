@@ -166,3 +166,11 @@ pub const TO_TOKEN_ID: &str = "toTokenId";
 pub const SPLIT_RATIO: &str = "splitRatio";
 /// Asset reference for lock_create.
 pub const ASSET_FIELD: &str = "asset";
+
+// ── claim_rewards context fields ──
+/// Reward source contract address (Cedar `sourceAddress` — required).
+pub const SOURCE_ADDRESS: &str = "sourceAddress";
+/// Human-readable reward source label (Cedar `sourceLabel?`).
+pub const SOURCE_LABEL: &str = "sourceLabel";
+/// Reward token + amount set (Cedar `rewards?` — `Set<AssetRefWithAmountConstraint>`).
+pub const REWARDS: &str = "rewards";

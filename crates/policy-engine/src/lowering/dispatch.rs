@@ -102,6 +102,10 @@ pub fn try_policy_request_from_envelope(
         Action::LockCreate(action) => action.build(&ctx).map(Some),
         Action::LockIncrease(action) => action.build(&ctx).map(Some),
         Action::LockManage(action) => action.build(&ctx).map(Some),
+        // misc — Aerodrome reward claims (voter / gauge bribes / Slipstream
+        // NPM collect). Without this arm ClaimRewards envelopes lower to
+        // Ok(None), which fail-opens past the dispatcher (Round 7 P0 #1).
+        Action::ClaimRewards(action) => action.build(&ctx).map(Some),
         _ => Ok(None),
     }
 }

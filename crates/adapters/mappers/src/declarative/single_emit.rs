@@ -1139,6 +1139,28 @@ fn build_gauge_vote_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope,
         )));
     }
 
+    // Kind-shape enforcement (Round 7 P1 #4):
+    //   kind=reset / kind=poke → pools and weights must both be empty.
+    // Aerodrome `Voter.reset(tokenId)` and `.poke(tokenId)` take no pool /
+    // weight payload; emitting non-empty arrays under those kinds would
+    // indicate an adapter mis-classification (e.g. routing a vote() call to
+    // the reset opcode by mistake).
+    if let Some(k @ (GaugeVoteKind::Reset | GaugeVoteKind::Poke)) = kind {
+        if !pools.is_empty() || !weights.is_empty() {
+            let kind_name = match k {
+                GaugeVoteKind::Reset => "reset",
+                GaugeVoteKind::Poke => "poke",
+                GaugeVoteKind::Vote => unreachable!("matched on Reset|Poke"),
+            };
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "gauge_vote kind={} requires empty pools and weights (got pools.len()={}, weights.len()={})",
+                kind_name,
+                pools.len(),
+                weights.len()
+            )));
+        }
+    }
+
     let action = GaugeVoteAction {
         voter,
         token_id,
@@ -1216,6 +1238,30 @@ fn build_lock_increase_envelope(tree: &serde_json::Value) -> Result<ActionEnvelo
         .ok_or_else(|| MapperError::MissingArgument("kind".to_owned()))?;
     let additional_amount = read_amount_inline(tree, "additionalAmount")?;
     let new_lock_duration_sec = read_optional_decimal(tree, "newLockDurationSec")?;
+
+    // Kind-required-field enforcement (Round 7 P1 #2):
+    //   kind=amount       → additionalAmount must be present
+    //   kind=unlock_time  → newLockDurationSec must be present
+    // Without this an adapter typo would silently produce an envelope with
+    // the wrong discriminator, and Cedar policies that branch on `kind`
+    // would evaluate against a half-populated context.
+    match kind {
+        LockIncreaseKind::Amount => {
+            if additional_amount.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_increase kind=amount requires additionalAmount"
+                )));
+            }
+        }
+        LockIncreaseKind::UnlockTime => {
+            if new_lock_duration_sec.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_increase kind=unlock_time requires newLockDurationSec"
+                )));
+            }
+        }
+    }
+
     let action = LockIncreaseAction {
         voting_escrow,
         token_id,
@@ -1236,6 +1282,27 @@ fn build_lock_manage_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope
     let from_token_id = read_decimal(tree, "fromTokenId")?;
     let to_token_id = read_optional_decimal(tree, "toTokenId")?;
     let split_ratio = read_optional_decimal(tree, "splitRatio")?;
+
+    // Kind-required-field enforcement (Round 7 P1 #3):
+    //   kind=merge → toTokenId must be present (destination of the merge)
+    //   kind=split → splitRatio must be present (fraction of source consumed)
+    match kind {
+        LockManageKind::Merge => {
+            if to_token_id.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_manage kind=merge requires toTokenId"
+                )));
+            }
+        }
+        LockManageKind::Split => {
+            if split_ratio.is_none() {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "lock_manage kind=split requires splitRatio"
+                )));
+            }
+        }
+    }
+
     let action = LockManageAction {
         voting_escrow,
         kind,
@@ -2707,5 +2774,111 @@ mod tests {
             }
             other => panic!("expected MissingArgument(\"token\"), got {other:?}"),
         }
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Round 7 P1 fixes — kind-required-field enforcement for builders that
+    // accept multiple sub-kinds. Each kind has its own required field set,
+    // and the builder must reject an adapter that pairs a kind discriminator
+    // with the wrong payload (silent mis-classification would otherwise
+    // produce an envelope Cedar policies cannot evaluate correctly).
+    // ───────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_lock_increase_envelope_amount_kind_missing_additional_amount_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "tokenId": "42",
+            "kind": "amount"
+            // additionalAmount intentionally omitted
+        });
+        let err = build_lock_increase_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=amount requires additionalAmount"),
+            "expected lock_increase kind=amount enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_lock_increase_envelope_unlock_time_kind_missing_duration_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "tokenId": "42",
+            "kind": "unlock_time"
+            // newLockDurationSec intentionally omitted
+        });
+        let err = build_lock_increase_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=unlock_time requires newLockDurationSec"),
+            "expected lock_increase kind=unlock_time enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_lock_manage_envelope_merge_missing_to_token_id_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "kind": "merge",
+            "fromTokenId": "1"
+            // toTokenId intentionally omitted
+        });
+        let err = build_lock_manage_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=merge requires toTokenId"),
+            "expected lock_manage kind=merge enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_lock_manage_envelope_split_missing_split_ratio_errors() {
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "kind": "split",
+            "fromTokenId": "1"
+            // splitRatio intentionally omitted
+        });
+        let err = build_lock_manage_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=split requires splitRatio"),
+            "expected lock_manage kind=split enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_reset_with_non_empty_pools_errors() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "1",
+            "pools": ["0x0000000000000000000000000000000000000001"],
+            "weights": ["100"],
+            "kind": "reset"
+        });
+        let err = build_gauge_vote_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=reset requires empty pools and weights"),
+            "expected gauge_vote kind=reset enforcement error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_gauge_vote_envelope_poke_with_non_empty_weights_errors() {
+        let tree = json!({
+            "voter": aero_voter(),
+            "tokenId": "1",
+            "pools": ["0x0000000000000000000000000000000000000001"],
+            "weights": ["50"],
+            "kind": "poke"
+        });
+        let err = build_gauge_vote_envelope(&tree).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("kind=poke requires empty pools and weights"),
+            "expected gauge_vote kind=poke enforcement error, got: {msg}"
+        );
     }
 }
