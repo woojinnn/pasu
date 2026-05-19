@@ -75,8 +75,13 @@ pub fn decode_with_function(
         });
     }
 
+    // `validate=false` so dapp-appended trailing metadata bytes (Uniswap/1inch
+    // frontend attribution tags, etc.) don't trip alloy's strict reserialization
+    // check. The EVM contract itself ignores trailing bytes after the selector's
+    // declared inputs; we follow the same convention. ABI argument extraction
+    // remains exact — strict mode only gates trailing-byte reject.
     let values = function
-        .abi_decode_input(&calldata[4..], true)
+        .abi_decode_input(&calldata[4..], false)
         .map_err(|e| DecodeError::AbiDecode(e.to_string()))?;
 
     if values.len() != function.inputs.len() {

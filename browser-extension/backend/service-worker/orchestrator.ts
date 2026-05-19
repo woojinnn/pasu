@@ -204,11 +204,14 @@ function logDecision(message: Message, verdict: VerdictDto): void {
   };
 
   if (isTransaction(message)) {
+    const data = message.data.transaction.data;
     console.info("[Scopeball] tx", {
       ...common,
       chainId: message.data.chainId,
       to: message.data.transaction.to,
-      data: message.data.transaction.data?.slice(0, 18),
+      selector: data?.slice(0, 10),
+      dataLen: data?.length,
+      data,
     });
     return;
   }

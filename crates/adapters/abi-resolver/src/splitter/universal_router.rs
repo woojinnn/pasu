@@ -145,14 +145,17 @@ impl UniversalRouterSplitter {
             .expect("checked length above ≥ 4 bytes");
         let payload = &calldata[4..];
         match selector {
+            // `validate=false`: Uniswap's frontend appends attribution metadata
+            // bytes after the standard ABI region. The EVM contract ignores them;
+            // we do too. Strict mode would reject the calldata outright.
             EXECUTE_SELECTOR => {
-                let call = executeCall::abi_decode_raw(payload, true)
+                let call = executeCall::abi_decode_raw(payload, false)
                     .map_err(|e| SplitError::OuterDecode(format!("execute: {e}")))?;
                 let inputs: Vec<Vec<u8>> = call.inputs.iter().map(|b| b.to_vec()).collect();
                 Ok((call.commands.to_vec(), inputs))
             }
             EXECUTE_DEADLINE_SELECTOR => {
-                let call = executeWithDeadlineCall::abi_decode_raw(payload, true)
+                let call = executeWithDeadlineCall::abi_decode_raw(payload, false)
                     .map_err(|e| SplitError::OuterDecode(format!("executeWithDeadline: {e}")))?;
                 let inputs: Vec<Vec<u8>> = call.inputs.iter().map(|b| b.to_vec()).collect();
                 Ok((call.commands.to_vec(), inputs))

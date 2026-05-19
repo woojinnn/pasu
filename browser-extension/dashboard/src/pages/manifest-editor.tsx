@@ -110,7 +110,7 @@ export function validateDraft(draft: ManifestDraft): DraftValidation {
 // Convert the form draft to the wire `PolicyManifest`. `params` becomes a
 // k→selector record per requirement. We strip empty rows so the user can
 // keep blank scaffolding rows in the UI without polluting the manifest.
-function draftToManifest(draft: ManifestDraft): PolicyManifest {
+function draftToManifest(draft: ManifestDraft, action: string): PolicyManifest {
   return {
     id: draft.id,
     schema_version: 1,
@@ -121,12 +121,14 @@ function draftToManifest(draft: ManifestDraft): PolicyManifest {
       }
       return {
         id: r.id,
+        when: { action },
         method: r.method,
         optional: r.optional,
         params,
         outputs: r.outputs
           .filter((o) => o.field)
           .map((o) => ({
+            kind: "context",
             field: o.field,
             type: o.type,
             from: o.from,
@@ -217,7 +219,7 @@ export function ManifestEditor(): JSX.Element {
     setErr(null);
     setInfo(null);
     try {
-      const output = await client.previewManifest(action, draftToManifest(draft));
+      const output = await client.previewManifest(action, draftToManifest(draft, action));
       // Phase 7 codex carry-over J: stash the preview output in
       // `sessionStorage` so SchemaViewer can render it as a "draft
       // preview" overlay instead of just re-fetching the
@@ -247,7 +249,7 @@ export function ManifestEditor(): JSX.Element {
     setErr(null);
     setInfo(null);
     try {
-      const result = await client.putManifest(action, draftToManifest(draft));
+      const result = await client.putManifest(action, draftToManifest(draft, action));
       setInfo(`Installed. enrichedSchemaHash=${result.enrichedSchemaHash}`);
     } catch (e) {
       setErr(extractErr(e));
