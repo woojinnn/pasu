@@ -1,0 +1,66 @@
+{
+  "matched": true,
+  "bundle_id": "curve/gauge-controller/voteForGaugeWeights@1.0.0",
+  "manifest_path": "manifests/curve/gauge-controller/voteForGaugeWeights@1.0.0.json",
+  "bundle_sha256": "0xd3979a03808adf42d5fac432b07e75c25667eeeea0b3ce08c4d477cc2fe57338",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/gauge-controller/voteForGaugeWeights@1.0.0",
+    "publisher": "curve.fi",
+    "match": {
+      "chain_ids": [
+        1
+      ],
+      "to": [
+        "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb"
+      ],
+      "selector": "0xd7136328"
+    },
+    "abi_fragment": {
+      "function_name": "vote_for_gauge_weights",
+      "abi": {
+        "name": "vote_for_gauge_weights",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "_gauge_addr",
+            "type": "address"
+          },
+          {
+            "name": "_user_weight",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "vote",
+      "fields": {
+        "governance": {
+          "from": "$.args._gauge_addr"
+        },
+        "governanceLabel": {
+          "literal": "Curve GaugeController"
+        },
+        "proposalId": {
+          "literal": "0"
+        },
+        "support": {
+          "literal": "for"
+        },
+        "votingPower": {
+          "from": "$.args._user_weight"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "host_capabilities": [
+        "host:token_metadata"
+      ],
+      "extension": ">=0.1.0"
+    }
+  }
+}

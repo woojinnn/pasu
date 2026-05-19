@@ -19,6 +19,7 @@
 //!   - 향후:    `EnumTaggedDispatch` (Balancer V2 등)
 
 pub mod builtin_fn;
+pub mod enum_tagged;
 pub mod eval;
 pub mod mapper;
 pub mod multicall;

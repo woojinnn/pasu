@@ -22,7 +22,8 @@
       "0xef740bf23acae26f6492b10de645d6b98dc8eaf3",
       "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
       "0x8ac7bee993bb44dab564ea4bc9ea67bf9eb5e743",
-      "0x3315ef7ca28db74abadc6c44570efdf06b04b020"
+      "0x3315ef7ca28db74abadc6c44570efdf06b04b020",
+      "0x4c82d1FBfe28C977cbB58D8C7Ff8FCf9F70A2cca"
     ],
     "selector": "0x3593564c"
   },
@@ -235,6 +236,7 @@
           "nativeAsset.amount.kind":    { "literal": "min" },
           "nativeAsset.amount.value":   { "from": "$.args.amountMin" },
           "wrappedAsset.asset.kind":    { "literal": "erc20" },
+          "wrappedAsset.asset.address": { "literal": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" },
           "wrappedAsset.amount.kind":   { "literal": "min" },
           "wrappedAsset.amount.value":  { "from": "$.args.amountMin" },
           "recipient":                  { "from": "$.args.recipient" }
@@ -246,6 +248,7 @@
         "action": "unwrap",
         "fields": {
           "wrappedAsset.asset.kind":    { "literal": "erc20" },
+          "wrappedAsset.asset.address": { "literal": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" },
           "wrappedAsset.amount.kind":   { "literal": "min" },
           "wrappedAsset.amount.value":  { "from": "$.args.amountMin" },
           "nativeAsset.asset.kind":     { "literal": "native" },

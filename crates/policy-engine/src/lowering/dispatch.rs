@@ -89,12 +89,30 @@ pub fn try_policy_request_from_envelope(
         Action::Donate(action) => action.build(&ctx).map(Some),
         Action::InitializePool(action) => action.build(&ctx).map(Some),
         // misc — added so PERMIT2_PERMIT / TRANSFER / WRAP_ETH / UNWRAP_WETH
-        // envelopes lower into PolicyRequest. lending / restaking / staking
-        // lowering remain TODO.
+        // envelopes lower into PolicyRequest.
         Action::Permit(action) => action.build(&ctx).map(Some),
         Action::Transfer(action) => action.build(&ctx).map(Some),
         Action::Wrap(action) => action.build(&ctx).map(Some),
         Action::Unwrap(action) => action.build(&ctx).map(Some),
+        // lending — Phase 12.5 added crvUSD Controller bundles whose action
+        // envelopes (Borrow / Repay / Liquidate) silently fell through to
+        // `Ok(None)` before this arm landed, producing an empty verdict list
+        // and aggregating to `Pass` (the silent fail-open Round 8 audit
+        // P0-1).
+        Action::Borrow(action) => action.build(&ctx).map(Some),
+        Action::Repay(action) => action.build(&ctx).map(Some),
+        Action::Liquidate(action) => action.build(&ctx).map(Some),
+        // staking — Phase 12.6 added veCRV / Gauge bundles whose Stake /
+        // ClaimUnstake envelopes also silently fell through. Same fail-open
+        // class as lending above.
+        Action::Stake(action) => action.build(&ctx).map(Some),
+        Action::ClaimUnstake(action) => action.build(&ctx).map(Some),
+        // misc — governance + reward claims (GaugeController / Gauge
+        // claim_rewards). Without lowering, a forbid policy on
+        // `Action::"vote"` or `Action::"claim_rewards"` would never see the
+        // matching PolicyRequest and would silently aggregate to `Pass`.
+        Action::Vote(action) => action.build(&ctx).map(Some),
+        Action::ClaimRewards(action) => action.build(&ctx).map(Some),
         _ => Ok(None),
     }
 }

@@ -1,0 +1,72 @@
+{
+  "matched": true,
+  "bundle_id": "curve/vecrv/createLock@1.0.0",
+  "manifest_path": "manifests/curve/vecrv/createLock@1.0.0.json",
+  "bundle_sha256": "0x6613c7060b7778158903b42e3210df042d899ce7f27c29ce868350cf63923f27",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/vecrv/createLock@1.0.0",
+    "publisher": "curve.fi",
+    "match": {
+      "chain_ids": [
+        1
+      ],
+      "to": [
+        "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
+      ],
+      "selector": "0x65fc3873"
+    },
+    "abi_fragment": {
+      "function_name": "create_lock",
+      "abi": {
+        "name": "create_lock",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "_value",
+            "type": "uint256"
+          },
+          {
+            "name": "_unlock_time",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "staking",
+      "action": "stake",
+      "fields": {
+        "tokenIn.kind": {
+          "literal": "erc20"
+        },
+        "tokenIn.address": {
+          "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        },
+        "receiptToken.kind": {
+          "literal": "erc20"
+        },
+        "receiptToken.address": {
+          "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
+        },
+        "amountIn.kind": {
+          "literal": "exact"
+        },
+        "amountIn.value": {
+          "from": "$.args._value"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "host_capabilities": [
+        "host:token_metadata"
+      ],
+      "extension": ">=0.1.0"
+    }
+  }
+}

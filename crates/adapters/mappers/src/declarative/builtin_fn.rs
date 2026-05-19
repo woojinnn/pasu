@@ -48,6 +48,23 @@ pub enum FnError {
     /// `select` argument was not a JSON string.
     #[error("unfold_v3_path: select must be a string literal, got {0}")]
     SelectNotString(serde_json::Value),
+
+    // ── curve_route_last_token (Phase 12.3) ──────────────────────────────
+    /// Argument shape was not what the built-in expected (e.g. expected
+    /// `address[]`, got scalar). Used by `curve_route_last_token`.
+    #[error("type mismatch: expected {expected}, got {got}")]
+    TypeMismatch {
+        expected: &'static str,
+        got: serde_json::Value,
+    },
+    /// Fixed-size array length disagreement. Used by `curve_route_last_token`,
+    /// which requires exactly 11 slots.
+    #[error("length mismatch: expected {expected}, got {got}")]
+    LengthMismatch { expected: usize, got: usize },
+    /// `curve_route_last_token` found an all-zero route (every even-index
+    /// slot was `address(0)`), so no output token could be resolved.
+    #[error("curve_route_last_token: route is empty (all token slots zero)")]
+    EmptyRoute,
 }
 
 /// `select_address(arr: address[], idx: i64) -> AddressRef` (spec §5.3.1).
@@ -175,6 +192,119 @@ fn json_value_to_bytes(value: &serde_json::Value) -> Result<Vec<u8>, FnError> {
             message: format!("expected hex string or array, got {other}"),
         }),
     }
+}
+
+/// `curve_route_last_token(route: address[11]) -> AddressRef` — Phase 12.3
+/// (Curve Router NG output-token resolver).
+///
+/// Curve Router NG `exchange(...)` encodes a 1-to-5-hop swap path as a fixed-
+/// size `address[11]` array zero-padded for unused slots:
+///   * `route[0]` — input token
+///   * `route[2k]` (k = 1..=5) — intermediate / output token of hop k
+///   * `route[2k-1]` (k = 1..=5) — pool address of hop k
+///   * unused trailing slots = `address(0)`
+///
+/// The output token is therefore the *last non-zero address at an even index*.
+/// We scan idx 0/2/4/6/8/10 in order and remember the most recent non-zero
+/// element; `address(0)` slots are skipped.
+///
+/// Errors:
+///   * [`FnError::TypeMismatch`] — argument is not a JSON array (or any
+///     element is not a JSON string).
+///   * [`FnError::LengthMismatch`] — array length is not exactly 11.
+///   * [`FnError::EmptyRoute`] — every even-index slot is `address(0)`.
+///
+/// Source: `curvefi/curve-router-ng @ master / contracts/Router.vy::exchange`.
+pub fn curve_route_last_token(
+    route_value: &serde_json::Value,
+) -> Result<serde_json::Value, FnError> {
+    let arr = route_value.as_array().ok_or_else(|| FnError::TypeMismatch {
+        expected: "array",
+        got: route_value.clone(),
+    })?;
+
+    if arr.len() != 11 {
+        return Err(FnError::LengthMismatch {
+            expected: 11,
+            got: arr.len(),
+        });
+    }
+
+    // Curve Router NG `_route` encodes token slots at even indices (0, 2, 4,
+    // 6, 8, 10). The last non-zero entry is the output token.
+    let mut last_token: Option<&serde_json::Value> = None;
+    for i in (0..arr.len()).step_by(2) {
+        let entry = &arr[i];
+        let addr_str = entry.as_str().ok_or_else(|| FnError::TypeMismatch {
+            expected: "address string",
+            got: entry.clone(),
+        })?;
+        if !is_zero_address(addr_str) {
+            last_token = Some(entry);
+        }
+    }
+
+    last_token.cloned().ok_or(FnError::EmptyRoute)
+}
+
+/// Case-insensitive comparison against the canonical zero address. Bundles
+/// MAY emit either lowercase or EIP-55 mixed-case `0x0...0` — both should
+/// resolve to "padded slot".
+fn is_zero_address(addr: &str) -> bool {
+    addr.eq_ignore_ascii_case("0x0000000000000000000000000000000000000000")
+}
+
+/// `select_from_literal_array(array, idx) -> Value` — Phase 12.7 P0-2.
+///
+/// Pick an element from a bundle-embedded literal array (typically a Curve
+/// pool `coins[]`) by a caller-supplied integer index. Used by V1 / V2 / NG
+/// `exchange` + `remove_liquidity_one_coin` bundles to resolve `coins[i]` /
+/// `coins[j]` instead of hardcoding the first/second token of the pool —
+/// the old bundles silently mislabelled inputs and outputs whenever the
+/// user passed any `(i, j) != (0, 1)` (P0-2 audit finding).
+///
+/// `idx` semantics mirror [`select_address`]:
+///   * `idx >= 0` — pick `array[idx]`.
+///   * `idx <  0` — pick `array[array.len() + idx]` (e.g. `-1` = last).
+///
+/// `idx_value` may be supplied as a JSON integer, JSON string of a signed
+/// decimal integer, or a JSON object wrapper (interpreted via `as_i64`).
+/// Curve `exchange` accepts `int128` i/j values which serialize as either
+/// `Number` (when the decoder produces small values) or `String` (when the
+/// value is large or hex-formatted); both paths are accepted.
+///
+/// Errors:
+///   * [`FnError::TypeMismatch`] — `array_value` is not a JSON array.
+///   * [`FnError::TypeMismatch`] — `idx_value` cannot be coerced to `i64`.
+///   * [`FnError::IndexOutOfBounds`] — resolved index is outside
+///     `0..array.len()`.
+pub fn select_from_literal_array(
+    array_value: &serde_json::Value,
+    idx_value: &serde_json::Value,
+) -> Result<serde_json::Value, FnError> {
+    let arr = array_value.as_array().ok_or_else(|| FnError::TypeMismatch {
+        expected: "array",
+        got: array_value.clone(),
+    })?;
+    let idx = coerce_to_i64(idx_value).ok_or_else(|| FnError::TypeMismatch {
+        expected: "integer index",
+        got: idx_value.clone(),
+    })?;
+    let resolved = resolve_index(idx, arr.len())?;
+    Ok(arr[resolved].clone())
+}
+
+/// Accept `idx_value` as any of: JSON integer, JSON decimal string
+/// (`"3"`, `"-1"`), or anything else `as_i64` recognises. Returns `None`
+/// when the value cannot be reduced to a signed 64-bit integer.
+fn coerce_to_i64(value: &serde_json::Value) -> Option<i64> {
+    if let Some(n) = value.as_i64() {
+        return Some(n);
+    }
+    if let Some(u) = value.as_u64() {
+        return i64::try_from(u).ok();
+    }
+    value.as_str().and_then(|s| s.parse::<i64>().ok())
 }
 
 fn resolve_index(idx: i64, len: usize) -> Result<usize, FnError> {
@@ -371,5 +501,202 @@ mod tests {
     fn unfold_v3_path_non_bytes_errors() {
         let err = unfold_v3_path(&json!(42), "first_token").unwrap_err();
         assert!(matches!(err, FnError::BytesShape { .. }));
+    }
+}
+
+#[cfg(test)]
+mod tests_curve_route_last_token {
+    use super::*;
+    use serde_json::json;
+
+    /// 1-hop route: `_route = [USDC, 3pool, USDT, 0×8]`. Output token = idx 2
+    /// (USDT). idx 3..=10 are zero-padded.
+    #[test]
+    fn one_hop_route_returns_idx_2() {
+        let route = json!([
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // [0] USDC
+            "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7", // [1] 3pool
+            "0xdac17f958d2ee523a2206206994597c13d831ec7", // [2] USDT
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        );
+    }
+
+    /// 5-hop route: every even idx (0/2/4/6/8/10) has a token, every odd idx
+    /// has a pool. Output token = idx 10.
+    #[test]
+    fn five_hop_route_returns_idx_10() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1", // [0] input
+            "0x1111111111111111111111111111111111111111", // [1] pool1
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2", // [2] mid1
+            "0x2222222222222222222222222222222222222222", // [3] pool2
+            "0xcccccccccccccccccccccccccccccccccccccccc", // [4] mid2
+            "0x3333333333333333333333333333333333333333", // [5] pool3
+            "0xdddddddddddddddddddddddddddddddddddddddd", // [6] mid3
+            "0x4444444444444444444444444444444444444444", // [7] pool4
+            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // [8] mid4
+            "0x5555555555555555555555555555555555555555", // [9] pool5
+            "0xfffffffffffffffffffffffffffffffffffffff5", // [10] output
+        ]);
+        let result = curve_route_last_token(&route).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            "0xfffffffffffffffffffffffffffffffffffffff5"
+        );
+    }
+
+    /// All-zero route → EmptyRoute. This shouldn't happen in real calldata
+    /// (Router NG `exchange` requires at least one hop) but the resolver
+    /// must fail closed.
+    #[test]
+    fn empty_route_returns_error() {
+        let route = json!([
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let err = curve_route_last_token(&route).unwrap_err();
+        assert!(matches!(err, FnError::EmptyRoute));
+    }
+
+    /// Length validation — Curve Router NG always passes exactly 11 slots.
+    /// Any other length is a calldata corruption (or wrong decoder).
+    #[test]
+    fn wrong_length_returns_error() {
+        let route = json!([
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let err = curve_route_last_token(&route).unwrap_err();
+        assert!(matches!(
+            err,
+            FnError::LengthMismatch {
+                expected: 11,
+                got: 2
+            }
+        ));
+    }
+
+    /// Argument-type validation — non-array values surface as TypeMismatch
+    /// (vs panic-on-cast).
+    #[test]
+    fn non_array_returns_error() {
+        let err = curve_route_last_token(&json!("0xdead")).unwrap_err();
+        assert!(matches!(err, FnError::TypeMismatch { expected: "array", .. }));
+    }
+}
+
+#[cfg(test)]
+mod tests_select_from_literal_array {
+    use super::*;
+    use serde_json::json;
+
+    fn coins() -> serde_json::Value {
+        // Curve 3pool coins: DAI / USDC / USDT.
+        json!([
+            "0x6b175474e89094c44da98b954eedeac495271d0f",
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        ])
+    }
+
+    #[test]
+    fn idx_zero_returns_first_coin_dai() {
+        let value = select_from_literal_array(&coins(), &json!(0)).unwrap();
+        assert_eq!(
+            value.as_str().unwrap(),
+            "0x6b175474e89094c44da98b954eedeac495271d0f"
+        );
+    }
+
+    #[test]
+    fn idx_two_returns_usdt() {
+        // P0-2 anchor — the previous bundles hardcoded coins[0] / coins[1],
+        // so a tx with `i = 2` would mislabel the input token as DAI.
+        let value = select_from_literal_array(&coins(), &json!(2)).unwrap();
+        assert_eq!(
+            value.as_str().unwrap(),
+            "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        );
+    }
+
+    #[test]
+    fn idx_neg_one_returns_last() {
+        let value = select_from_literal_array(&coins(), &json!(-1)).unwrap();
+        assert_eq!(
+            value.as_str().unwrap(),
+            "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        );
+    }
+
+    #[test]
+    fn idx_decimal_string_is_accepted() {
+        // Curve int128 i/j values can serialize through the decoder as
+        // strings — make sure both paths produce the same lookup.
+        let value = select_from_literal_array(&coins(), &json!("1")).unwrap();
+        assert_eq!(
+            value.as_str().unwrap(),
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        );
+    }
+
+    #[test]
+    fn idx_negative_decimal_string_is_accepted() {
+        let value = select_from_literal_array(&coins(), &json!("-1")).unwrap();
+        assert_eq!(
+            value.as_str().unwrap(),
+            "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        );
+    }
+
+    #[test]
+    fn out_of_bounds_positive_errors() {
+        let err = select_from_literal_array(&coins(), &json!(5)).unwrap_err();
+        assert!(matches!(err, FnError::IndexOutOfBounds { .. }));
+    }
+
+    #[test]
+    fn out_of_bounds_negative_errors() {
+        let err = select_from_literal_array(&coins(), &json!(-4)).unwrap_err();
+        assert!(matches!(err, FnError::IndexOutOfBounds { .. }));
+    }
+
+    #[test]
+    fn non_array_input_errors() {
+        let err =
+            select_from_literal_array(&json!("0xdeadbeef"), &json!(0)).unwrap_err();
+        assert!(matches!(err, FnError::TypeMismatch { expected: "array", .. }));
+    }
+
+    #[test]
+    fn non_integer_index_errors() {
+        let err = select_from_literal_array(&coins(), &json!("not-a-number")).unwrap_err();
+        assert!(matches!(
+            err,
+            FnError::TypeMismatch {
+                expected: "integer index",
+                ..
+            }
+        ));
     }
 }

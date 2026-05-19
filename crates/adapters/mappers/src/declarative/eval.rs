@@ -145,6 +145,38 @@ fn evaluate_transform(
             builtin_fn::unfold_v3_path(&bytes_value, select)
                 .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
         }
+        BuiltinFn::CurveRouteLastToken => {
+            // Phase 12.3 — Curve Router NG output-token resolver.
+            // 1 arg: `route: address[11]` (passed via `{ "from":
+            // "$.args._route" }`). Returns a JSON string (lowercased
+            // `0x..` address), shape-compatible with `single_emit`
+            // `.asset.address` consumers.
+            if args.len() != 1 {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "curve_route_last_token expects 1 arg, got {}",
+                    args.len()
+                )));
+            }
+            let route_value = evaluate(ctx, args_json, &args[0])?;
+            builtin_fn::curve_route_last_token(&route_value)
+                .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
+        }
+        BuiltinFn::SelectFromLiteralArray => {
+            // Phase 12.7 (P0-2) — pick `coins[i]` / `coins[j]` from a
+            // pool-hardcoded literal array. 2 args: array (typically a
+            // `{ "literal": [...] }` of token addresses) + int index
+            // (typically `{ "from": "$.args.i" }`).
+            if args.len() != 2 {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "select_from_literal_array expects 2 args, got {}",
+                    args.len()
+                )));
+            }
+            let array_value = evaluate(ctx, args_json, &args[0])?;
+            let idx_value = evaluate(ctx, args_json, &args[1])?;
+            builtin_fn::select_from_literal_array(&array_value, &idx_value)
+                .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
+        }
         other => Err(MapperError::Unsupported(format!("builtin_fn/{other:?}"))),
     }
 }

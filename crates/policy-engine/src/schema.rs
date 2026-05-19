@@ -38,6 +38,25 @@ const MISC_WRAP_SCHEMA: &str =
     include_str!("../../../schema/policy-schema/actions/misc/wrap.cedarschema");
 const MISC_UNWRAP_SCHEMA: &str =
     include_str!("../../../schema/policy-schema/actions/misc/unwrap.cedarschema");
+// Round 8 P0-1 — lending/staking/governance lowering rolled out in
+// Phase 12.5-12.7. `base_schema_text()` must include every action whose
+// lowering produces a `PolicyRequest`; otherwise `PolicyEngineBuilder`
+// rejects user-authored `forbid (..., action == Action::"borrow", ...)`
+// with "unrecognized action" and the engine refuses to build.
+const LENDING_BORROW_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/lending/borrow.cedarschema");
+const LENDING_REPAY_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/lending/repay.cedarschema");
+const LENDING_LIQUIDATE_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/lending/liquidate.cedarschema");
+const STAKING_STAKE_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/staking/stake.cedarschema");
+const STAKING_CLAIM_UNSTAKE_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/staking/claim_unstake.cedarschema");
+const MISC_VOTE_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/misc/vote.cedarschema");
+const MISC_CLAIM_REWARDS_SCHEMA: &str =
+    include_str!("../../../schema/policy-schema/actions/misc/claim_rewards.cedarschema");
 
 /// Composes the shipped core and action Cedar schemas.
 #[derive(Debug, Default, Clone)]
@@ -161,6 +180,13 @@ fn base_schema_text() -> String {
         MISC_TRANSFER_SCHEMA,
         MISC_WRAP_SCHEMA,
         MISC_UNWRAP_SCHEMA,
+        LENDING_BORROW_SCHEMA,
+        LENDING_REPAY_SCHEMA,
+        LENDING_LIQUIDATE_SCHEMA,
+        STAKING_STAKE_SCHEMA,
+        STAKING_CLAIM_UNSTAKE_SCHEMA,
+        MISC_VOTE_SCHEMA,
+        MISC_CLAIM_REWARDS_SCHEMA,
     ]
     .join("\n")
 }

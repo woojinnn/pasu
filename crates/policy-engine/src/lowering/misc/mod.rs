@@ -10,9 +10,11 @@ use crate::lowering::common::asset::asset_ref_with_amount_json;
 use crate::lowering::LoweringError;
 use serde_json::Value;
 
+pub(crate) mod claim_rewards;
 pub(crate) mod permit;
 pub(crate) mod transfer;
 pub(crate) mod unwrap;
+pub(crate) mod vote;
 pub(crate) mod wrap;
 
 pub(crate) fn asset_with_amount_json(

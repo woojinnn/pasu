@@ -17,9 +17,9 @@ use sha2::{Digest, Sha256};
 /// `f64::NAN`) would hash to the same `sha256:...` digest, letting an
 /// engine that installed manifest set A silently accept results for set B.
 ///
-/// PolicyManifest itself only carries serde-friendly types (`String`,
+/// `PolicyManifest` itself only carries serde-friendly types (`String`,
 /// `u64`, `Vec`, `BTreeMap<String, String>`, and pre-validated
-/// `serde_json::Value` payloads from build_index / install). A failure
+/// `serde_json::Value` payloads from `build_index` / install). A failure
 /// here therefore signals an implementation bug or an installer that let
 /// a malformed `Value` slip through. We prefix the error path with a
 /// well-known sentinel that cannot collide with any legitimate manifest

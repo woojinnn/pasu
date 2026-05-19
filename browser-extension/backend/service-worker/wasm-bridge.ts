@@ -389,9 +389,22 @@ export async function evaluateWithEnvelopes(
 ): Promise<VerdictDto> {
   const exports = await load();
   const startedAtMs = Date.now();
-  const raw = unwrap<unknown>(
-    exports.evaluate_with_envelopes_json(JSON.stringify(input)),
-  );
+  const inputJson = JSON.stringify(input);
+  // MCP debug: dump WASM input + raw response when matched contains
+  // __engine::invalid_input_json to surface the underlying serde error.
+  const rawResponseStr = exports.evaluate_with_envelopes_json(inputJson);
+  if (rawResponseStr.includes("invalid_input_json")) {
+    console.warn("[Scopeball-MCP-debug] evaluate input (full):", inputJson);
+    console.warn(
+      "[Scopeball-MCP-debug] evaluate raw response (full):",
+      rawResponseStr,
+    );
+    console.warn(
+      "[Scopeball-MCP-debug] envelopes detail:",
+      JSON.parse(JSON.stringify(input.envelopes)),
+    );
+  }
+  const raw = unwrap<unknown>(rawResponseStr);
   const verdict = parseVerdict(raw);
   console.debug("[Scopeball] wasm.evaluate-with-envelopes", {
     chainId: input.chain_id,

@@ -32,9 +32,15 @@ use policy_engine::action::dex::{
     IncreaseLiquidityAction, InitializePoolAction, MintLiquidityNftAction, PoolRef,
     RemoveLiquidityAction, RemoveLiquidityExitMode, SwapAction, SwapMode, TickRange,
 };
-use policy_engine::action::misc::{
-    PermitAction, PermitKind, TransferAction, UnwrapAction, WrapAction,
+use policy_engine::action::lending::{
+    AmountMode, BorrowAction, LiquidateAction, LiquidateMode, LiquidationKind, MarketRef,
+    RepayAction, RepayKind,
 };
+use policy_engine::action::misc::{
+    ClaimRewardsAction, PermitAction, PermitKind, SourceRef, TransferAction, UnwrapAction,
+    VoteAction, VoteSupport, WrapAction,
+};
+use policy_engine::action::staking::{ClaimUnstakeAction, StakeAction, TicketRef};
 use policy_engine::action::{
     Action, ActionEnvelope, Address, AmountConstraint, AmountKind, AssetKind, AssetRef,
     AssetRefWithAmountConstraint, Category, DecimalString, Hex, Validity, ValiditySource,
@@ -79,7 +85,28 @@ pub fn execute(
     };
 
     let args_json = args_to_json(decoded);
-    let tree = build_field_tree(ctx, &args_json, fields)?;
+    execute_with_args(ctx, &args_json, category, action, fields)
+}
+
+/// Execute a `single_emit`-style emission against a pre-built `args_json`
+/// (Phase 12.0).
+///
+/// Phase 12.0 introduces `enum_tagged_dispatch`, where per-variant emit rules
+/// reuse the same field-tree logic as `single_emit` but the `args_json` is
+/// derived from a sub-decoded enum payload, not the outer [`DecodedCall`].
+/// Sharing this helper avoids duplicating the (a) build_field_tree + (b)
+/// per-category arm match.
+///
+/// `args_json` must already encode each named argument as a top-level field
+/// (the same shape [`super::eval::args_to_json`] produces).
+pub fn execute_with_args(
+    ctx: &MapContext<'_>,
+    args_json: &serde_json::Value,
+    category: &str,
+    action: &str,
+    fields: &BTreeMap<String, ValueExpr>,
+) -> Result<ActionEnvelope, MapperError> {
+    let tree = build_field_tree(ctx, args_json, fields)?;
 
     match (category, action) {
         ("dex", "swap") => Ok(build_swap_envelope(&tree)?),
@@ -94,6 +121,16 @@ pub fn execute(
         ("dex", "decrease_liquidity") => Ok(build_decrease_liquidity_envelope(&tree)?),
         ("dex", "burn_liquidity_nft") => Ok(build_burn_liquidity_nft_envelope(&tree)?),
         ("dex", "initialize_pool") => Ok(build_initialize_pool_envelope(&tree)?),
+        // Phase 12.5 — lending builders for crvUSD Controller (LLAMMA).
+        ("lending", "borrow") => Ok(build_borrow_envelope(&tree)?),
+        ("lending", "repay") => Ok(build_repay_envelope(&tree)?),
+        ("lending", "liquidate") => Ok(build_liquidate_envelope(&tree)?),
+        // Phase 12.6 — staking / claim / vote builders for veCRV + Gauge +
+        // GaugeController.
+        ("staking", "stake") => Ok(build_stake_envelope(&tree)?),
+        ("staking", "claim_unstake") => Ok(build_claim_unstake_envelope(&tree)?),
+        ("misc", "claim_rewards") => Ok(build_claim_rewards_envelope(&tree)?),
+        ("misc", "vote") => Ok(build_vote_envelope(&tree)?),
         (c, a) => Err(MapperError::Unsupported(format!("single_emit/{c}/{a}"))),
     }
 }
@@ -112,46 +149,168 @@ fn build_field_tree(
     Ok(root)
 }
 
+/// One step in a parsed field-path: an object key, then an optional sequence
+/// of numeric array indices.
+///
+/// For `inputTokens[0].asset.kind` this parses to three steps:
+///   * `Step { key: "inputTokens", indices: [0] }`
+///   * `Step { key: "asset",       indices: []  }`
+///   * `Step { key: "kind",        indices: []  }`
+///
+/// And for a hypothetical `swap_params[0][1]` two-dimensional index it parses
+/// to a single step `Step { key: "swap_params", indices: [0, 1] }`.
+#[derive(Debug)]
+struct PathStep<'a> {
+    key: &'a str,
+    indices: Vec<usize>,
+}
+
+/// Parse one dot-segment like `"inputTokens[0]"` or `"swap_params[0][1]"`.
+///
+/// Returns `Err` if the segment has unbalanced / non-numeric brackets, or an
+/// empty bareword.
+fn parse_path_segment<'a>(segment: &'a str, full_path: &str) -> Result<PathStep<'a>, MapperError> {
+    // Fast path — no `[` means the whole segment is the key.
+    let Some(bracket_start) = segment.find('[') else {
+        if segment.is_empty() {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: empty segment"
+            )));
+        }
+        return Ok(PathStep { key: segment, indices: vec![] });
+    };
+    let key = &segment[..bracket_start];
+    if key.is_empty() {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "field path {full_path:?}: empty bareword before '['"
+        )));
+    }
+    let mut indices = Vec::new();
+    let mut remainder = &segment[bracket_start..];
+    while !remainder.is_empty() {
+        // Each iteration consumes exactly `[<digits>]`.
+        if !remainder.starts_with('[') {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: unexpected char {remainder:?} after bracket"
+            )));
+        }
+        let close = remainder.find(']').ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: unterminated '['"
+            ))
+        })?;
+        let idx_str = &remainder[1..close];
+        let idx = idx_str.parse::<usize>().map_err(|e| {
+            MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: bracket index {idx_str:?}: {e}"
+            ))
+        })?;
+        indices.push(idx);
+        remainder = &remainder[close + 1..];
+    }
+    Ok(PathStep { key, indices })
+}
+
 /// `set_nested(root, "a.b.c", v)` mutates `root` so `root.a.b.c == v`.
 ///
-/// Each path segment must be a non-empty bareword (no array indexing). The
-/// function refuses to overwrite a non-object intermediate (which would
-/// indicate two fields disagreeing about the type of a parent).
+/// Bracket-array indices are supported for any number of dimensions:
+///   * `inputTokens[0].asset.kind = "erc20"` → `inputTokens` becomes a
+///     JSON array, indices grow on demand and gaps are filled with
+///     `serde_json::Value::Null`. Out-of-order writes are fine — index `2`
+///     can be assigned before index `1`.
+///
+/// The function refuses to overwrite a non-object / non-array intermediate
+/// (which would indicate two fields disagreeing about the type of a parent).
 fn set_nested(
     root: &mut serde_json::Value,
     path: &str,
     value: serde_json::Value,
 ) -> Result<(), MapperError> {
-    let segments: Vec<&str> = path.split('.').collect();
-    if segments.iter().any(|s| s.is_empty()) {
-        return Err(MapperError::Internal(anyhow::anyhow!(
-            "field path {path:?} contains empty segment"
-        )));
-    }
-    if segments.is_empty() {
+    if path.is_empty() {
         return Err(MapperError::Internal(anyhow::anyhow!(
             "field path is empty"
         )));
     }
+    let raw_segments: Vec<&str> = path.split('.').collect();
+    let mut steps = Vec::with_capacity(raw_segments.len());
+    for segment in raw_segments {
+        steps.push(parse_path_segment(segment, path)?);
+    }
 
     let mut cursor = root;
-    for (index, segment) in segments.iter().enumerate() {
-        let is_last = index == segments.len() - 1;
+    let total_steps = steps.len();
+    for (step_idx, step) in steps.iter().enumerate() {
+        let is_last_step = step_idx + 1 == total_steps;
+        let total_indices = step.indices.len();
+
+        // 1) Descend the object key.
         let map = cursor.as_object_mut().ok_or_else(|| {
             MapperError::Internal(anyhow::anyhow!(
-                "field path {path:?}: ancestor at segment {} is not an object",
-                index
+                "field path {path:?}: ancestor at step {step_idx} is not an object"
             ))
         })?;
-        if is_last {
-            map.insert((*segment).to_owned(), value);
-            return Ok(());
+        let key_target_is_array = total_indices > 0;
+        let entry = map
+            .entry(step.key.to_owned())
+            .or_insert_with(|| {
+                if key_target_is_array {
+                    serde_json::Value::Array(Vec::new())
+                } else if is_last_step {
+                    // Will be overwritten below.
+                    serde_json::Value::Null
+                } else {
+                    serde_json::Value::Object(serde_json::Map::new())
+                }
+            });
+
+        // No indices → simple object descent (or assignment at last step).
+        if !key_target_is_array {
+            if is_last_step {
+                *entry = value;
+                return Ok(());
+            }
+            cursor = entry;
+            continue;
         }
-        cursor = map
-            .entry((*segment).to_owned())
-            .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+
+        // 2) For each index in `step.indices`, descend into the array, growing
+        //    it as needed. At the last (step, index) pair, assign `value`.
+        let mut array_cursor = entry;
+        for (idx_pos, &idx) in step.indices.iter().enumerate() {
+            let is_last_index = idx_pos + 1 == total_indices;
+            let array = array_cursor.as_array_mut().ok_or_else(|| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "field path {path:?}: expected array at {}{}",
+                    step.key,
+                    step.indices[..=idx_pos]
+                        .iter()
+                        .map(|i| format!("[{i}]"))
+                        .collect::<String>()
+                ))
+            })?;
+            while array.len() <= idx {
+                array.push(serde_json::Value::Null);
+            }
+            if is_last_index && is_last_step {
+                array[idx] = value;
+                return Ok(());
+            }
+            // Need to descend further. If the slot is Null, materialise it as
+            // either the next-dimensional array, or an object (for the
+            // following segment's dot-key descent).
+            if matches!(array[idx], serde_json::Value::Null) {
+                array[idx] = if is_last_index {
+                    serde_json::Value::Object(serde_json::Map::new())
+                } else {
+                    serde_json::Value::Array(Vec::new())
+                };
+            }
+            array_cursor = &mut array[idx];
+        }
+        // After consuming all indices of this step, move to next step.
+        cursor = array_cursor;
     }
-    unreachable!("loop returns on the last segment");
+    unreachable!("loop returns on the last step's last index");
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -508,6 +667,659 @@ fn build_initialize_pool_envelope(
         category: Category::Dex,
         action: Action::InitializePool(action),
     })
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase 12.5 — Lending builders (crvUSD Controller / Aave / Morpho)
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Build a [`BorrowAction`] envelope from the field tree (Phase 12.5).
+///
+/// Schema reference: `crates/policy-engine/src/action/lending/borrow.rs`.
+/// crvUSD `create_loan(uint256 collateral, uint256 debt, uint256 N)` /
+/// `borrow_more(uint256 collateral, uint256 debt)` map here — both are
+/// **collateral deposit + debt mint** atomic intents. The PoC bundle hardcodes
+/// the controller's collateral asset (per-controller) but the schema records
+/// only the borrowed asset (debt token, `crvUSD`); the collateral side enters
+/// the schema as a separate `Supply` (out of scope here) or remains implicit.
+///
+/// Required fields (FieldPath):
+///   * `asset.kind` / `.address` — borrowed asset (debt token, e.g. crvUSD)
+///   * `amount.kind` / `.value` — debt amount minted
+///   * `recipient` — debtor receiving the borrowed assets (`$.tx.from`)
+///   * `onBehalf` — debt position owner (`$.tx.from`)
+///
+/// Optional fields:
+///   * `market.address` / `.label` / `.id` — `MarketRef` for the Controller
+///   * `amountMode` — `"assets"` or `"shares"` (defaults to `None`)
+///   * `validity` — present when the bundle exposes `validity.expiresAt` +
+///     `.source` (Curve has no native deadline; default `None`).
+fn build_borrow_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let market = read_optional_market_ref(tree, "market")?;
+    let asset = read_asset_inline(tree, "asset")?;
+    let amount = read_amount_inline(tree, "amount")?
+        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let amount_mode = read_optional_amount_mode(tree, "amountMode")?;
+    let recipient = read_address(tree, "recipient")?;
+    let on_behalf = read_address(tree, "onBehalf")?;
+    let validity = read_validity(tree)?;
+
+    let action = BorrowAction {
+        market,
+        asset,
+        amount,
+        amount_mode,
+        recipient,
+        on_behalf,
+        validity,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Lending,
+        action: Action::Borrow(action),
+    })
+}
+
+/// Build a [`RepayAction`] envelope from the field tree (Phase 12.5).
+///
+/// Schema reference: `crates/policy-engine/src/action/lending/repay.rs`.
+/// crvUSD `repay(uint256 _d_debt, address _for, uint256 max_active_band, bool use_eth)`
+/// maps here. The first arg is the repay amount in debt-token units; the
+/// second is the position owner (`onBehalf`).
+///
+/// Required fields:
+///   * `asset.kind` / `.address` — repayment asset (e.g. crvUSD)
+///   * `amount.kind` / `.value` — repayment amount
+///   * `onBehalf` — debt position owner (`$.args._for`)
+///   * `repayKind` — `"debt_asset"` (Curve) or `"atoken_direct"` (Aave only)
+///
+/// Optional fields:
+///   * `market` — `MarketRef` for the Controller
+///   * `amountMode`
+///   * `validity`
+fn build_repay_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let market = read_optional_market_ref(tree, "market")?;
+    let asset = read_asset_inline(tree, "asset")?;
+    let amount = read_amount_inline(tree, "amount")?
+        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let amount_mode = read_optional_amount_mode(tree, "amountMode")?;
+    let on_behalf = read_address(tree, "onBehalf")?;
+    let repay_kind_str = required_string(tree, "repayKind")
+        .map_err(|_| missing_field("$", "repayKind"))?;
+    let repay_kind = parse_repay_kind(repay_kind_str).ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!(
+            "repayKind {repay_kind_str:?} not recognised"
+        ))
+    })?;
+    let validity = read_validity(tree)?;
+
+    let action = RepayAction {
+        market,
+        asset,
+        amount,
+        amount_mode,
+        on_behalf,
+        repay_kind,
+        validity,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Lending,
+        action: Action::Repay(action),
+    })
+}
+
+/// Build a [`LiquidateAction`] envelope from the field tree (Phase 12.5).
+///
+/// Schema reference: `crates/policy-engine/src/action/lending/liquidate.rs`.
+/// crvUSD `liquidate(address user, uint256 min_x)` / `self_liquidate(uint256 min_x)`
+/// both end here. For `self_liquidate` the bundle resolves `borrower` to
+/// `$.tx.from`; for `liquidate` it resolves to `$.args.user`. `min_x` is the
+/// minimum debt-token received (Curve-specific) — recorded as
+/// `seizedCollateralAmount` to keep the schema generic.
+///
+/// Required fields:
+///   * `borrower` — position being liquidated
+///   * `debtAsset.kind` / `.address` — debt asset (e.g. crvUSD)
+///   * `liquidationKind` — `"pool_share"` (Curve), `"protocol_absorb"`,
+///     `"socializable"`, `"single_asset"`
+///
+/// Optional fields:
+///   * `market` — `MarketRef` for the Controller
+///   * `collateralAsset.kind` / `.address`
+///   * `debtToCover.kind` / `.value`
+///   * `seizedCollateralAmount.kind` / `.value`
+///   * `liquidateMode` — `"single_step"` / `"seize"` / `"repay"`
+///   * `recipient` — assets seized destination
+///   * `receiveAToken` — Aave-specific; ignored on Curve
+fn build_liquidate_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let market = read_optional_market_ref(tree, "market")?;
+    let borrower = read_address(tree, "borrower")?;
+    let collateral_asset = match tree.get("collateralAsset") {
+        Some(serde_json::Value::Null) | None => None,
+        Some(_) => Some(read_asset_inline(tree, "collateralAsset")?),
+    };
+    let debt_asset = read_asset_inline(tree, "debtAsset")?;
+    let debt_to_cover = read_amount_inline(tree, "debtToCover")?;
+    let seized_collateral_amount = read_amount_inline(tree, "seizedCollateralAmount")?;
+    let liquidation_kind_str = required_string(tree, "liquidationKind")
+        .map_err(|_| missing_field("$", "liquidationKind"))?;
+    let liquidation_kind = parse_liquidation_kind(liquidation_kind_str).ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!(
+            "liquidationKind {liquidation_kind_str:?} not recognised"
+        ))
+    })?;
+    let liquidate_mode = match tree.get("liquidateMode") {
+        Some(serde_json::Value::Null) | None => None,
+        Some(serde_json::Value::String(s)) => Some(parse_liquidate_mode(s).ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "liquidateMode {s:?} not recognised"
+            ))
+        })?),
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "liquidateMode: expected string, got {other}"
+            )));
+        }
+    };
+    let recipient = read_optional_address(tree, "recipient")?;
+    let receive_a_token = match tree.get("receiveAToken") {
+        Some(serde_json::Value::Bool(b)) => Some(*b),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "receiveAToken: expected bool, got {other}"
+            )));
+        }
+    };
+
+    let action = LiquidateAction {
+        market,
+        borrower,
+        collateral_asset,
+        debt_asset,
+        debt_to_cover,
+        seized_collateral_amount,
+        liquidation_kind,
+        liquidate_mode,
+        recipient,
+        receive_a_token,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Lending,
+        action: Action::Liquidate(action),
+    })
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase 12.6 — Staking / Claim / Vote builders
+//
+// `("staking", "stake")` covers veCRV `create_lock` / `increase_amount` /
+// `increase_unlock_time` (CRV → veCRV) and Gauge `deposit(uint256)` (LP →
+// gauge receipt).
+//
+// `("staking", "claim_unstake")` covers veCRV `withdraw()` (post lock expiry)
+// and Gauge `withdraw(uint256)`.
+//
+// `("misc", "claim_rewards")` covers Gauge `claim_rewards()` /
+// `claim_rewards(address)`.
+//
+// `("misc", "vote")` covers GaugeController
+// `vote_for_gauge_weights(address _gauge_addr, uint256 _user_weight)`.
+// The mapping shoehorns Curve's per-gauge weighting into the protocol-agnostic
+// `VoteAction` schema: `governance` = `_gauge_addr` (the target being weighted),
+// `votingPower` = `_user_weight` (basis points, 0-10000), and the bundle
+// hardcodes `support` = `"for"` since Curve has no support-direction concept
+// at the gauge level. `proposalId` is the literal `"0"`.
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Build a [`StakeAction`] envelope from the field tree (Phase 12.6).
+///
+/// Schema reference: `crates/policy-engine/src/action/staking/stake.rs`.
+///
+/// Required fields:
+///   * `tokenIn.kind` / `.address` — token being staked (e.g. CRV for veCRV,
+///     LP token for Gauge)
+///   * `receiptToken.kind` / `.address` — receipt issued by the stake
+///     (`veCRV` / gauge receipt token)
+///   * `amountIn.kind` / `.value` — staked amount (`$.args._value` for veCRV,
+///     `$.args._value`-style for Gauge)
+///   * `recipient` — receipt token recipient (`$.tx.from`)
+///
+/// Optional fields:
+///   * `amountOut.kind` / `.value` — expected receipt amount (almost never
+///     known at static-analysis time)
+fn build_stake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let token_in = read_asset_inline(tree, "tokenIn")?;
+    let receipt_token = read_asset_inline(tree, "receiptToken")?;
+    let amount_in = read_amount_inline(tree, "amountIn")?
+        .ok_or_else(|| MapperError::MissingArgument("amountIn".to_owned()))?;
+    let amount_out = read_amount_inline(tree, "amountOut")?;
+    let recipient = read_address(tree, "recipient")?;
+
+    let action = StakeAction {
+        token_in,
+        receipt_token,
+        amount_in,
+        amount_out,
+        recipient,
+    };
+    Ok(ActionEnvelope {
+        category: Category::LiquidStaking,
+        action: Action::Stake(action),
+    })
+}
+
+/// Build a [`ClaimUnstakeAction`] envelope from the field tree (Phase 12.6).
+///
+/// Schema reference: `crates/policy-engine/src/action/staking/claim_unstake.rs`.
+///
+/// Required fields:
+///   * `tokenOut.kind` / `.address` — token being claimed (the original CRV
+///     for veCRV.withdraw, the LP token for Gauge.withdraw)
+///   * `recipient` — claim recipient (`$.tx.from`)
+///   * `ticket` — `TicketRef { nft?, tokenId?, id? }`; Curve has no ticket
+///     concept so the bundle emits the empty object `{}`.
+///
+/// Optional fields:
+///   * `amountOut.kind` / `.value` — claim amount (Gauge: explicit;
+///     veCRV.withdraw: full balance, unknown at static time)
+fn build_claim_unstake_envelope(
+    tree: &serde_json::Value,
+) -> Result<ActionEnvelope, MapperError> {
+    let token_out = read_asset_inline(tree, "tokenOut")?;
+    let amount_out = read_amount_inline(tree, "amountOut")?;
+    let ticket = read_ticket_ref(tree, "ticket")?;
+    let recipient = read_address(tree, "recipient")?;
+
+    let action = ClaimUnstakeAction {
+        token_out,
+        amount_out,
+        ticket,
+        recipient,
+    };
+    Ok(ActionEnvelope {
+        category: Category::LiquidStaking,
+        action: Action::ClaimUnstake(action),
+    })
+}
+
+/// Build a [`ClaimRewardsAction`] envelope from the field tree (Phase 12.6).
+///
+/// Schema reference: `crates/policy-engine/src/action/misc/claim_rewards.rs`.
+///
+/// Required fields:
+///   * `from` — account whose rewards are claimed (`$.tx.from`)
+///   * `recipient` — recipient of claimed assets
+///
+/// Optional fields:
+///   * `source.address` / `.label` — `SourceRef` for the Gauge / Voter
+///     contract
+///   * `nft.kind` / `.address` — position NFT (Aerodrome `claim_*`)
+///   * `tokenId` — NFT id
+///   * `rewardTokens[i].kind` / `.address` — reward token list
+///   * `maxAmounts[i].kind` / `.value` — corresponding max claim amounts
+fn build_claim_rewards_envelope(
+    tree: &serde_json::Value,
+) -> Result<ActionEnvelope, MapperError> {
+    let source = read_optional_source_ref(tree, "source")?;
+    let nft = match tree.get("nft") {
+        Some(serde_json::Value::Null) | None => None,
+        Some(_) => Some(read_asset_inline(tree, "nft")?),
+    };
+    let token_id = match tree.get("tokenId") {
+        Some(serde_json::Value::String(s)) => Some(DecimalString::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("tokenId {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "tokenId: expected decimal string, got {other}"
+            )));
+        }
+    };
+    let from = read_address(tree, "from")?;
+    let recipient = read_address(tree, "recipient")?;
+    let reward_tokens = read_optional_asset_list(tree, "rewardTokens")?;
+    let max_amounts = read_optional_amount_list(tree, "maxAmounts")?;
+
+    let action = ClaimRewardsAction {
+        source,
+        nft,
+        token_id,
+        from,
+        recipient,
+        reward_tokens,
+        max_amounts,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::ClaimRewards(action),
+    })
+}
+
+/// Build a [`VoteAction`] envelope from the field tree (Phase 12.6).
+///
+/// Schema reference: `crates/policy-engine/src/action/misc/vote.rs`.
+/// Curve `vote_for_gauge_weights(address _gauge_addr, uint256 _user_weight)`
+/// is shoehorned into the protocol-agnostic VoteAction by mapping `_gauge_addr`
+/// to `governance` (the per-gauge target being weighted) and `_user_weight`
+/// (basis points 0-10000) to `votingPower`. `support` defaults to `"for"` since
+/// Curve has no support-direction at the gauge layer.
+///
+/// Required fields:
+///   * `governance` — target being weighted (`$.args._gauge_addr` for Curve)
+///   * `proposalId` — proposal id; Curve has none, bundle hardcodes `"0"`
+///   * `support` — `"for"` / `"against"` / `"abstain"`
+///
+/// Optional fields:
+///   * `governanceLabel`
+///   * `reason`
+///   * `votingPower` — vote weight (`$.args._user_weight` for Curve)
+///   * `validity`
+fn build_vote_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let governance = read_address(tree, "governance")?;
+    let governance_label = match tree.get("governanceLabel") {
+        Some(serde_json::Value::String(s)) => Some(s.clone()),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "governanceLabel: expected string, got {other}"
+            )));
+        }
+    };
+    let proposal_id_str = required_string(tree, "proposalId")
+        .map_err(|_| missing_field("$", "proposalId"))?;
+    let proposal_id = DecimalString::from_str(proposal_id_str).map_err(|m| {
+        MapperError::Internal(anyhow::anyhow!("proposalId {proposal_id_str:?}: {m}"))
+    })?;
+    let support_str = required_string(tree, "support")
+        .map_err(|_| missing_field("$", "support"))?;
+    let support = parse_vote_support(support_str).ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!(
+            "support {support_str:?} not recognised"
+        ))
+    })?;
+    let reason = match tree.get("reason") {
+        Some(serde_json::Value::String(s)) => Some(s.clone()),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "reason: expected string, got {other}"
+            )));
+        }
+    };
+    let voting_power = read_optional_decimal(tree, "votingPower")?;
+    let validity = read_validity(tree)?;
+
+    let action = VoteAction {
+        governance,
+        governance_label,
+        proposal_id,
+        support,
+        reason,
+        voting_power,
+        validity,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::Vote(action),
+    })
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase 12.5 / 12.6 helpers
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Read an optional [`MarketRef`] from `tree.<field>`. Accepts JSON null or a
+/// missing key as `None`. The object must have at least one of `address`,
+/// `id`, `label`.
+fn read_optional_market_ref(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<MarketRef>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let object = raw.as_object().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected object, got {raw}"))
+    })?;
+    let address = match object.get("address") {
+        Some(serde_json::Value::String(s)) => Some(Address::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}.address {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.address: expected string, got {other}"
+            )));
+        }
+    };
+    let id = match object.get("id") {
+        Some(serde_json::Value::String(s)) => Some(Hex::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}.id {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.id: expected string, got {other}"
+            )));
+        }
+    };
+    let label = match object.get("label") {
+        Some(serde_json::Value::String(s)) => Some(s.clone()),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.label: expected string, got {other}"
+            )));
+        }
+    };
+    Ok(Some(MarketRef { address, id, label }))
+}
+
+/// Read an optional [`SourceRef`] from `tree.<field>`.
+fn read_optional_source_ref(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<SourceRef>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let object = raw.as_object().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected object, got {raw}"))
+    })?;
+    let address = match object.get("address") {
+        Some(serde_json::Value::String(s)) => Some(Address::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}.address {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.address: expected string, got {other}"
+            )));
+        }
+    };
+    let label = match object.get("label") {
+        Some(serde_json::Value::String(s)) => Some(s.clone()),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.label: expected string, got {other}"
+            )));
+        }
+    };
+    Ok(Some(SourceRef { address, label }))
+}
+
+/// Read a [`TicketRef`] from `tree.<field>`. All sub-fields are optional, so an
+/// empty object yields a `TicketRef { nft: None, token_id: None, id: None }`.
+/// Missing/null parent yields the same empty ref so callers don't need to
+/// pre-check.
+fn read_ticket_ref(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<TicketRef, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(TicketRef { nft: None, token_id: None, id: None });
+    };
+    if raw.is_null() {
+        return Ok(TicketRef { nft: None, token_id: None, id: None });
+    }
+    let object = raw.as_object().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected object, got {raw}"))
+    })?;
+    let nft = match object.get("nft") {
+        Some(serde_json::Value::Null) | None => None,
+        Some(_) => Some(read_asset_inline(raw, "nft")?),
+    };
+    let token_id = match object.get("tokenId") {
+        Some(serde_json::Value::String(s)) => Some(DecimalString::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}.tokenId {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.tokenId: expected decimal string, got {other}"
+            )));
+        }
+    };
+    let id = match object.get("id") {
+        Some(serde_json::Value::String(s)) => Some(Hex::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}.id {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.id: expected string, got {other}"
+            )));
+        }
+    };
+    Ok(TicketRef { nft, token_id, id })
+}
+
+/// Read an `Option<Vec<AssetRef>>` from `tree.<field>`. Each array element
+/// must be an inline-asset object (`{ kind, address?, tokenId?, ... }`).
+fn read_optional_asset_list(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<Vec<AssetRef>>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (idx, entry) in array.iter().enumerate() {
+        let parent_key = format!("{field}[{idx}]");
+        // Build a transient single-key object so we can reuse `read_asset_inline`.
+        let mut wrapper = serde_json::Map::new();
+        wrapper.insert(parent_key.clone(), entry.clone());
+        let wrapper_value = serde_json::Value::Object(wrapper);
+        let asset = read_asset_inline(&wrapper_value, &parent_key)?;
+        result.push(asset);
+    }
+    Ok(Some(result))
+}
+
+/// Read an `Option<Vec<AmountConstraint>>` from `tree.<field>`. Each array
+/// element must be an inline-amount object (`{ kind, value? }`).
+fn read_optional_amount_list(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<Vec<AmountConstraint>>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (idx, entry) in array.iter().enumerate() {
+        let parent_key = format!("{field}[{idx}]");
+        let mut wrapper = serde_json::Map::new();
+        wrapper.insert(parent_key.clone(), entry.clone());
+        let wrapper_value = serde_json::Value::Object(wrapper);
+        let amount = read_amount_inline(&wrapper_value, &parent_key)?
+            .ok_or_else(|| missing_field(&parent_key, "kind"))?;
+        result.push(amount);
+    }
+    Ok(Some(result))
+}
+
+/// Read an optional `AmountMode` enum from `tree.<field>`.
+fn read_optional_amount_mode(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<AmountMode>, MapperError> {
+    match tree.get(field) {
+        Some(serde_json::Value::String(s)) => parse_amount_mode(s)
+            .map(Some)
+            .ok_or_else(|| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "{field} {s:?} not recognised"
+                ))
+            }),
+        Some(serde_json::Value::Null) | None => Ok(None),
+        Some(other) => Err(MapperError::Internal(anyhow::anyhow!(
+            "{field}: expected string, got {other}"
+        ))),
+    }
+}
+
+fn parse_amount_mode(s: &str) -> Option<AmountMode> {
+    match s {
+        "assets" => Some(AmountMode::Assets),
+        "shares" => Some(AmountMode::Shares),
+        _ => None,
+    }
+}
+
+fn parse_repay_kind(s: &str) -> Option<RepayKind> {
+    match s {
+        "debt_asset" => Some(RepayKind::DebtAsset),
+        "atoken_direct" => Some(RepayKind::AtokenDirect),
+        _ => None,
+    }
+}
+
+fn parse_liquidation_kind(s: &str) -> Option<LiquidationKind> {
+    match s {
+        "pool_share" => Some(LiquidationKind::PoolShare),
+        "protocol_absorb" => Some(LiquidationKind::ProtocolAbsorb),
+        "socializable" => Some(LiquidationKind::Socializable),
+        "single_asset" => Some(LiquidationKind::SingleAsset),
+        _ => None,
+    }
+}
+
+fn parse_liquidate_mode(s: &str) -> Option<LiquidateMode> {
+    match s {
+        "single_step" => Some(LiquidateMode::SingleStep),
+        "seize" => Some(LiquidateMode::Seize),
+        "repay" => Some(LiquidateMode::Repay),
+        _ => None,
+    }
+}
+
+fn parse_vote_support(s: &str) -> Option<VoteSupport> {
+    match s {
+        "for" => Some(VoteSupport::For),
+        "against" => Some(VoteSupport::Against),
+        "abstain" => Some(VoteSupport::Abstain),
+        _ => None,
+    }
 }
 
 /// Read an `Option<i32>` from `tree.<field>`. Returns `None` if missing or
@@ -1047,6 +1859,64 @@ mod tests {
         let mut root = serde_json::Value::Object(serde_json::Map::new());
         let err = set_nested(&mut root, "a..c", json!(1)).unwrap_err();
         assert!(err.to_string().contains("empty segment"));
+    }
+
+    #[test]
+    fn set_nested_builds_bracket_array_path() {
+        // Phase 12.4 — Curve / Uniswap V2 liquidity bundles use
+        // `inputTokens[0].asset.kind` notation. The interpreter must
+        // synthesise a JSON array under `inputTokens` and merge subsequent
+        // index writes into the same array.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "inputTokens[0].asset.kind", json!("erc20")).unwrap();
+        set_nested(
+            &mut root,
+            "inputTokens[0].asset.address",
+            json!("0xaaaa"),
+        )
+        .unwrap();
+        set_nested(&mut root, "inputTokens[1].asset.kind", json!("erc20")).unwrap();
+        set_nested(
+            &mut root,
+            "inputTokens[2].asset.address",
+            json!("0xbbbb"),
+        )
+        .unwrap();
+        assert_eq!(
+            root,
+            json!({
+                "inputTokens": [
+                    { "asset": { "kind": "erc20", "address": "0xaaaa" } },
+                    { "asset": { "kind": "erc20" } },
+                    { "asset": { "address": "0xbbbb" } }
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn set_nested_supports_out_of_order_array_writes() {
+        // Writing index 2 before index 0 / 1 must pad with `Null`s that get
+        // populated later. The final tree must reflect all three writes.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "xs[2]", json!("c")).unwrap();
+        set_nested(&mut root, "xs[0]", json!("a")).unwrap();
+        set_nested(&mut root, "xs[1]", json!("b")).unwrap();
+        assert_eq!(root, json!({ "xs": ["a", "b", "c"] }));
+    }
+
+    #[test]
+    fn set_nested_rejects_non_numeric_bracket() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "xs[abc]", json!(1)).unwrap_err();
+        assert!(err.to_string().contains("bracket index"));
+    }
+
+    #[test]
+    fn set_nested_rejects_unterminated_bracket() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "xs[0", json!(1)).unwrap_err();
+        assert!(err.to_string().contains("unterminated"));
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -1592,5 +2462,255 @@ mod tests {
             }
             other => panic!("expected MissingArgument(\"token\"), got {other:?}"),
         }
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Phase 12.5 — Lending builders unit tests
+    //
+    // Minimal happy-path assertions for each new builder. End-to-end mapper
+    // wiring tests live in `mapper.rs` (read JSON fixture → decoded args →
+    // envelope assertions).
+    // ───────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_borrow_envelope_from_args() {
+        let tree = json!({
+            "market": {
+                "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+                "label": "Curve crvUSD wstETH Controller"
+            },
+            "asset": {
+                "kind": "erc20",
+                "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+            },
+            "amount": { "kind": "exact", "value": "1000000000000000000000" },
+            "recipient": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "onBehalf":  "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        });
+        let envelope = build_borrow_envelope(&tree).unwrap();
+        assert_eq!(envelope.category, Category::Lending);
+        let Action::Borrow(action) = envelope.action else {
+            panic!("expected Borrow, got something else");
+        };
+        let market = action.market.expect("market present");
+        assert_eq!(
+            market.address.unwrap().to_string(),
+            "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+        );
+        assert_eq!(market.label.as_deref(), Some("Curve crvUSD wstETH Controller"));
+        assert_eq!(action.asset.kind, AssetKind::Erc20);
+        assert_eq!(
+            action.asset.address.unwrap().to_string(),
+            "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+        );
+        assert_eq!(action.amount.kind, AmountKind::Exact);
+        assert_eq!(
+            action.amount.value.unwrap().to_string(),
+            "1000000000000000000000"
+        );
+        assert_eq!(
+            action.recipient.to_string(),
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        assert_eq!(
+            action.on_behalf.to_string(),
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        assert!(action.validity.is_none());
+        assert!(action.amount_mode.is_none());
+    }
+
+    #[test]
+    fn build_repay_envelope_from_args() {
+        let tree = json!({
+            "market": {
+                "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+            },
+            "asset": {
+                "kind": "erc20",
+                "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+            },
+            "amount": { "kind": "exact", "value": "500000000000000000000" },
+            "onBehalf": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "repayKind": "debt_asset"
+        });
+        let envelope = build_repay_envelope(&tree).unwrap();
+        assert_eq!(envelope.category, Category::Lending);
+        let Action::Repay(action) = envelope.action else {
+            panic!("expected Repay, got something else");
+        };
+        assert_eq!(action.asset.kind, AssetKind::Erc20);
+        assert_eq!(action.amount.kind, AmountKind::Exact);
+        assert_eq!(
+            action.amount.value.unwrap().to_string(),
+            "500000000000000000000"
+        );
+        assert!(matches!(
+            action.repay_kind,
+            policy_engine::action::lending::RepayKind::DebtAsset
+        ));
+        assert!(action.validity.is_none());
+    }
+
+    #[test]
+    fn build_liquidate_envelope_from_args() {
+        let tree = json!({
+            "market": {
+                "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+            },
+            "borrower": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "debtAsset": {
+                "kind": "erc20",
+                "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+            },
+            "liquidationKind": "pool_share"
+        });
+        let envelope = build_liquidate_envelope(&tree).unwrap();
+        assert_eq!(envelope.category, Category::Lending);
+        let Action::Liquidate(action) = envelope.action else {
+            panic!("expected Liquidate, got something else");
+        };
+        assert_eq!(
+            action.borrower.to_string(),
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        );
+        assert!(action.collateral_asset.is_none());
+        assert_eq!(action.debt_asset.kind, AssetKind::Erc20);
+        assert!(matches!(
+            action.liquidation_kind,
+            policy_engine::action::lending::LiquidationKind::PoolShare
+        ));
+        assert!(action.recipient.is_none());
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Phase 12.6 — Staking / Claim / Vote builders unit tests
+    // ───────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_stake_envelope_from_args() {
+        let tree = json!({
+            "tokenIn": {
+                "kind": "erc20",
+                "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+            },
+            "receiptToken": {
+                "kind": "erc20",
+                "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
+            },
+            "amountIn": { "kind": "exact", "value": "1000000000000000000000" },
+            "recipient": "0xcccccccccccccccccccccccccccccccccccccccc"
+        });
+        let envelope = build_stake_envelope(&tree).unwrap();
+        assert_eq!(envelope.category, Category::LiquidStaking);
+        let Action::Stake(action) = envelope.action else {
+            panic!("expected Stake, got something else");
+        };
+        assert_eq!(action.token_in.kind, AssetKind::Erc20);
+        assert_eq!(
+            action.token_in.address.unwrap().to_string(),
+            "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        );
+        assert_eq!(
+            action.receipt_token.address.unwrap().to_string(),
+            "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
+        );
+        assert_eq!(action.amount_in.kind, AmountKind::Exact);
+        assert!(action.amount_out.is_none());
+    }
+
+    #[test]
+    fn build_claim_unstake_envelope_from_args() {
+        let tree = json!({
+            "tokenOut": {
+                "kind": "erc20",
+                "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+            },
+            "ticket": {},
+            "recipient": "0xcccccccccccccccccccccccccccccccccccccccc"
+        });
+        let envelope = build_claim_unstake_envelope(&tree).unwrap();
+        assert_eq!(envelope.category, Category::LiquidStaking);
+        let Action::ClaimUnstake(action) = envelope.action else {
+            panic!("expected ClaimUnstake, got something else");
+        };
+        assert_eq!(action.token_out.kind, AssetKind::Erc20);
+        assert!(action.amount_out.is_none());
+        assert!(action.ticket.nft.is_none());
+        assert!(action.ticket.token_id.is_none());
+        assert!(action.ticket.id.is_none());
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_from_args_minimal() {
+        let tree = json!({
+            "from": "0xcccccccccccccccccccccccccccccccccccccccc",
+            "recipient": "0xcccccccccccccccccccccccccccccccccccccccc"
+        });
+        let envelope = build_claim_rewards_envelope(&tree).unwrap();
+        assert_eq!(envelope.category, Category::Misc);
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected ClaimRewards");
+        };
+        assert!(action.source.is_none());
+        assert!(action.reward_tokens.is_none());
+        assert!(action.max_amounts.is_none());
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_from_args_with_source() {
+        let tree = json!({
+            "source": {
+                "address": "0xbfcf63294ad7105dea65aa58f8ae5be2d9d0952a",
+                "label": "Curve stETH Gauge"
+            },
+            "from": "0xcccccccccccccccccccccccccccccccccccccccc",
+            "recipient": "0xcccccccccccccccccccccccccccccccccccccccc",
+            "rewardTokens": [
+                {
+                    "kind": "erc20",
+                    "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+                }
+            ]
+        });
+        let envelope = build_claim_rewards_envelope(&tree).unwrap();
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected ClaimRewards");
+        };
+        let source = action.source.expect("source present");
+        assert_eq!(
+            source.address.unwrap().to_string(),
+            "0xbfcf63294ad7105dea65aa58f8ae5be2d9d0952a"
+        );
+        assert_eq!(source.label.as_deref(), Some("Curve stETH Gauge"));
+        let reward_tokens = action.reward_tokens.expect("reward tokens present");
+        assert_eq!(reward_tokens.len(), 1);
+        assert_eq!(reward_tokens[0].kind, AssetKind::Erc20);
+    }
+
+    #[test]
+    fn build_vote_envelope_from_args() {
+        let tree = json!({
+            "governance": "0xbfcf63294ad7105dea65aa58f8ae5be2d9d0952a",
+            "proposalId": "0",
+            "support": "for",
+            "votingPower": "10000"
+        });
+        let envelope = build_vote_envelope(&tree).unwrap();
+        assert_eq!(envelope.category, Category::Misc);
+        let Action::Vote(action) = envelope.action else {
+            panic!("expected Vote, got something else");
+        };
+        assert_eq!(
+            action.governance.to_string(),
+            "0xbfcf63294ad7105dea65aa58f8ae5be2d9d0952a"
+        );
+        assert_eq!(action.proposal_id.to_string(), "0");
+        assert!(matches!(
+            action.support,
+            policy_engine::action::misc::VoteSupport::For
+        ));
+        assert_eq!(action.voting_power.unwrap().to_string(), "10000");
+        assert!(action.validity.is_none());
     }
 }

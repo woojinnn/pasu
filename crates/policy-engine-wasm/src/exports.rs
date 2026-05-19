@@ -19,6 +19,20 @@ use policy_engine::{ActionAddress, ActionEnvelope, DecimalString};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
+// 사용자 디버깅용 console.log binding — evaluate_envelopes_inner 에서
+// PolicyRequest 의 정확한 JSON 형태를 SW console 에 노출하기 위함.
+// `#[cfg(target_arch = "wasm32")]` gating — cargo test 환경 의 panic
+// ("cannot call wasm-bindgen imported functions on non-wasm targets") 회피.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn console_log_str(s: &str);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn console_log_str(_: &str) {}
+
 pub struct EngineState {
     pub policies: PolicyEngine,
     pub manifest_set_hash: String,
@@ -682,6 +696,7 @@ fn evaluate_envelopes_inner(
 
     let mut policy_envelopes = Vec::new();
     let mut requests = Vec::new();
+    let mut synthetic_verdicts: Vec<Verdict> = Vec::new();
     for (envelope_index, envelope) in envelopes.iter().enumerate() {
         // Round 5 audit (P0) — `policy_request_from_envelope` historically
         // collapsed every lowering failure into `None`, which downstream
@@ -689,10 +704,16 @@ fn evaluate_envelopes_inner(
         // calldata would therefore vanish from policy evaluation and
         // produce a default `Pass` verdict (fail-open). Switching to
         // `try_policy_request_from_envelope` keeps lowering errors
-        // visible so we can fail-closed (`__engine::lowering_failed`),
-        // while still allowing intentional `Ok(None)` skips for action
-        // variants the current Phase has not lowered yet (e.g. Wrap /
-        // Permit — see `dispatch.rs` for the explicit skip list).
+        // visible so we can fail-closed (`__engine::lowering_failed`).
+        //
+        // Round 8 audit (P0-1) — `Ok(None)` (action variant has no lowering
+        // yet) used to silently `continue`, so when every envelope was
+        // unmapped `evaluate_requests` aggregated an empty list to `Pass`.
+        // That made an entire crvUSD / veCRV / Gauge tx route around any
+        // forbid policy. Defense-in-depth: synthesize a `Warn` verdict with
+        // an `__engine::action_not_lowered::<kind>` MatchedPolicy so the
+        // host wallet at least surfaces the gap rather than rubber-stamping
+        // the request.
         match try_policy_request_from_envelope(
             envelope,
             &from,
@@ -706,9 +727,17 @@ fn evaluate_envelopes_inner(
                 requests.push(request);
             }
             Ok(None) => {
-                // Intentional skip — action category not yet lowered.
-                // Logged so the orchestrator audit picks it up without
-                // failing the request.
+                let kind = envelope.action.kind();
+                let policy_id = format!("__engine::action_not_lowered::{kind}");
+                console_log_str(&format!(
+                    "[Scopeball] envelope[{envelope_index}] action {kind} has no lowering — emitting synthetic Warn"
+                ));
+                synthetic_verdicts.push(Verdict::Warn(vec![MatchedPolicy {
+                    policy_id: policy_id.clone(),
+                    reason: Some(policy_id),
+                    severity: Severity::Warn,
+                    origin: PolicyRequestOrigin::Action,
+                }]));
                 continue;
             }
             Err(error) => {
@@ -726,6 +755,16 @@ fn evaluate_envelopes_inner(
     apply_rpc_results_with_indices(&mut requests, &policy_envelopes, manifests, rpc_response)
         .map_err(|error| EngineErrorDto::new("projection_failed", error.to_string()))?;
 
+    // 사용자 디버깅용 — Cedar 평가 직전 의 final PolicyRequest 의 정확한 JSON 형태 출력.
+    // 본 출력 으로 사용자 가 SW console 에서 entities + context attribute 의 실제 값 확인 가능.
+    for (idx, request) in requests.iter().enumerate() {
+        let request_json = serde_json::to_string(request)
+            .unwrap_or_else(|error| format!("<serialize fail: {error}>"));
+        console_log_str(&format!(
+            "[Scopeball] policy_request[{idx}]: {request_json}"
+        ));
+    }
+
     STATE.with(|state| {
         let state = state.borrow();
         let state = state.as_ref().ok_or_else(not_installed_error)?;
@@ -741,14 +780,20 @@ fn evaluate_envelopes_inner(
                 "installed policies were built with a different schema",
             ));
         }
-        state
+        let policy_verdict = state
             .policies
             .evaluate_requests(
                 requests
                     .iter()
                     .map(|request| (request, PolicyRequestOrigin::Action)),
             )
-            .map_err(|error| EngineErrorDto::new("policy", error.to_string()))
+            .map_err(|error| EngineErrorDto::new("policy", error.to_string()))?;
+        // Round 8 audit (P0-1) — aggregate the synthetic `Warn` verdicts
+        // produced for unmapped action variants into the final verdict so
+        // they cannot vanish on the way back to the host.
+        let mut combined = synthetic_verdicts;
+        combined.push(policy_verdict);
+        Ok(Verdict::aggregate(combined))
     })
 }
 

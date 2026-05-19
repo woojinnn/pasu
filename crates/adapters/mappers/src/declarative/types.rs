@@ -285,6 +285,22 @@ pub enum BuiltinFn {
     /// `unfold_v3_path(bytes, select)`. Backend:
     /// `subdecode/protocols/uniswap_v3.rs::decode_v3_path`. Phase 3.
     UnfoldV3Path,
+    /// `curve_route_last_token(route: address[11]) -> AddressRef` — Curve
+    /// Router NG output-token resolver. Picks the last non-zero address from
+    /// the even indices (0, 2, 4, 6, 8, 10) of an 11-slot zero-padded route
+    /// array. Backend: [`super::builtin_fn::curve_route_last_token`]. Phase 12.3.
+    CurveRouteLastToken,
+    /// `select_from_literal_array(array, idx) -> Value` — pick an element
+    /// from a bundle-embedded literal array (typically pool `coins[]`) by a
+    /// caller-supplied i/j index. Backend:
+    /// [`super::builtin_fn::select_from_literal_array`]. Phase 12.7 (P0-2).
+    ///
+    /// Used by Curve V1/V2/NG `exchange` + `remove_liquidity_one_coin`
+    /// bundles to resolve `coins[i]` / `coins[j]` instead of hardcoding the
+    /// first/second token of the pool — the previous bundles silently
+    /// mislabelled inputs and outputs whenever the user passed any
+    /// `(i, j) != (0, 1)`.
+    SelectFromLiteralArray,
 }
 
 // ---------------------------------------------------------------------------

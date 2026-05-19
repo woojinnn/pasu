@@ -103,7 +103,14 @@ export type BuiltinFn =
   | "now"
   // §5.3.2 Tier-B backed
   | "unfold_packed"
-  | "unfold_v3_path";
+  | "unfold_v3_path"
+  // Phase 12.3 — Curve Router NG output-token resolver
+  | "curve_route_last_token"
+  // Phase 12.7 (P0-2) — Curve V1/V2/NG `exchange` + `remove_liquidity_one_coin`
+  // coins[i]/coins[j] resolver. The old bundles hardcoded `coins[0]` /
+  // `coins[1]`, which silently mislabelled inputs/outputs whenever the
+  // caller passed `(i, j) != (0, 1)`.
+  | "select_from_literal_array";
 
 const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "select_address",
@@ -119,6 +126,8 @@ const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "now",
   "unfold_packed",
   "unfold_v3_path",
+  "curve_route_last_token",
+  "select_from_literal_array",
 ]);
 
 // ----- EmitRule strategies -----

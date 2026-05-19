@@ -1,0 +1,109 @@
+{
+  "matched": true,
+  "bundle_id": "curve/stableswap/steth/exchange-v1@1.0.0",
+  "manifest_path": "manifests/curve/stableswap/steth/exchange-v1@1.0.0.json",
+  "bundle_sha256": "0x86a253d59cec6db8fcadd8c64107ad70696d2647800ea8e28ef2826a16ebb45c",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/stableswap/steth/exchange-v1@1.0.0",
+    "publisher": "curve.fi",
+    "match": {
+      "chain_ids": [
+        1
+      ],
+      "to": [
+        "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022"
+      ],
+      "selector": "0x3df02124"
+    },
+    "abi_fragment": {
+      "function_name": "exchange",
+      "abi": {
+        "name": "exchange",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "i",
+            "type": "int128"
+          },
+          {
+            "name": "j",
+            "type": "int128"
+          },
+          {
+            "name": "dx",
+            "type": "uint256"
+          },
+          {
+            "name": "min_dy",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "fn": "select_from_literal_array",
+          "args": [
+            {
+              "literal": [
+                "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+              ]
+            },
+            {
+              "from": "$.args.i"
+            }
+          ]
+        },
+        "inputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args.dx"
+        },
+        "outputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "outputToken.asset.address": {
+          "fn": "select_from_literal_array",
+          "args": [
+            {
+              "literal": [
+                "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+              ]
+            },
+            {
+              "from": "$.args.j"
+            }
+          ]
+        },
+        "outputToken.amount.kind": {
+          "literal": "min"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args.min_dy"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "host_capabilities": [
+        "host:token_metadata"
+      ],
+      "extension": ">=0.1.0"
+    }
+  }
+}
