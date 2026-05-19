@@ -33,9 +33,9 @@ use policy_engine::action::dex::{
     RemoveLiquidityAction, RemoveLiquidityExitMode, SwapAction, SwapMode, TickRange,
 };
 use policy_engine::action::misc::{
-    GaugeVoteAction, GaugeVoteKind, LockCreateAction, LockIncreaseAction, LockIncreaseKind,
-    LockManageAction, LockManageKind, LpStakeAction, LpUnstakeAction, PermitAction, PermitKind,
-    TransferAction, UnwrapAction, WrapAction,
+    ClaimRewardsAction, GaugeVoteAction, GaugeVoteKind, LockCreateAction, LockIncreaseAction,
+    LockIncreaseKind, LockManageAction, LockManageKind, LpStakeAction, LpUnstakeAction,
+    PermitAction, PermitKind, SourceRef, TransferAction, UnwrapAction, WrapAction,
 };
 use policy_engine::action::{
     Action, ActionEnvelope, Address, AmountConstraint, AmountKind, AssetKind, AssetRef,
@@ -102,6 +102,7 @@ pub fn execute(
         ("misc", "lock_create") => Ok(build_lock_create_envelope(&tree)?),
         ("misc", "lock_increase") => Ok(build_lock_increase_envelope(&tree)?),
         ("misc", "lock_manage") => Ok(build_lock_manage_envelope(&tree)?),
+        ("misc", "claim_rewards") => Ok(build_claim_rewards_envelope(&tree)?),
         (c, a) => Err(MapperError::Unsupported(format!("single_emit/{c}/{a}"))),
     }
 }
@@ -122,9 +123,14 @@ fn build_field_tree(
 
 /// `set_nested(root, "a.b.c", v)` mutates `root` so `root.a.b.c == v`.
 ///
-/// Each path segment must be a non-empty bareword (no array indexing). The
-/// function refuses to overwrite a non-object intermediate (which would
-/// indicate two fields disagreeing about the type of a parent).
+/// Path segments are split on `.`. Each segment is either:
+///   * a bareword key — descends into `Value::Object`
+///   * a bareword followed by `[N]` array index suffixes (e.g. `inputs[0]`
+///     or `nested[0][2]`) — descends into `Value::Array`, auto-growing the
+///     array with `null` placeholders when `N` exceeds current length.
+///
+/// The function refuses to overwrite a non-object/non-array intermediate
+/// (which would indicate two fields disagreeing about the type of a parent).
 fn set_nested(
     root: &mut serde_json::Value,
     path: &str,
@@ -142,24 +148,139 @@ fn set_nested(
         )));
     }
 
-    let mut cursor = root;
-    for (index, segment) in segments.iter().enumerate() {
-        let is_last = index == segments.len() - 1;
-        let map = cursor.as_object_mut().ok_or_else(|| {
+    // Parse each dot-separated segment into a `(name, [indices])` pair so
+    // `inputTokens[0]` becomes `("inputTokens", [0])`. Plain `name` becomes
+    // `("name", [])`. The full path is thus a stream of object/array hops.
+    let parsed: Vec<(String, Vec<usize>)> = segments
+        .iter()
+        .map(|seg| parse_segment(seg, path))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Each segment produces 1 object step (the bareword name) followed by 0
+    // or more array steps (the `[N]` suffixes). The "last step" — where the
+    // value actually lands — is the final index of the final segment. We
+    // track step kind so we know whether to dive into an object or array.
+    enum Step<'a> {
+        Object(&'a str),
+        Array(usize),
+    }
+    let mut steps: Vec<Step<'_>> = Vec::new();
+    for (name, indices) in &parsed {
+        steps.push(Step::Object(name));
+        for idx in indices {
+            steps.push(Step::Array(*idx));
+        }
+    }
+
+    let last = steps.len() - 1;
+    let mut cursor: &mut serde_json::Value = root;
+    for (i, step) in steps.iter().enumerate() {
+        let is_last = i == last;
+        let next_is_array = !is_last && matches!(steps[i + 1], Step::Array(_));
+        let placeholder = || {
+            if next_is_array {
+                serde_json::Value::Array(Vec::new())
+            } else {
+                serde_json::Value::Object(serde_json::Map::new())
+            }
+        };
+
+        match step {
+            Step::Object(name) => {
+                let map = cursor.as_object_mut().ok_or_else(|| {
+                    MapperError::Internal(anyhow::anyhow!(
+                        "field path {path:?}: ancestor at step {} is not an object",
+                        i
+                    ))
+                })?;
+                if is_last {
+                    map.insert((*name).to_owned(), value);
+                    return Ok(());
+                }
+                cursor = map.entry((*name).to_owned()).or_insert_with(placeholder);
+            }
+            Step::Array(idx) => {
+                let arr = cursor.as_array_mut().ok_or_else(|| {
+                    MapperError::Internal(anyhow::anyhow!(
+                        "field path {path:?}: ancestor at step {} is not an array",
+                        i
+                    ))
+                })?;
+                // Auto-grow with null placeholders if a later index lands
+                // first (e.g. `inputs[1]` set before `inputs[0]`).
+                while arr.len() <= *idx {
+                    arr.push(serde_json::Value::Null);
+                }
+                if is_last {
+                    arr[*idx] = value;
+                    return Ok(());
+                }
+                // If the existing element is `null` we must turn it into the
+                // correct container before descending into it; otherwise the
+                // caller's prior writes would be overwritten.
+                if arr[*idx].is_null() {
+                    arr[*idx] = placeholder();
+                }
+                cursor = &mut arr[*idx];
+            }
+        }
+    }
+    unreachable!("loop returns on the last step");
+}
+
+/// Parse a single dot-segment into its bareword name and zero or more `[N]`
+/// indices, e.g. `"inputTokens[0]"` -> `("inputTokens", [0])`.
+fn parse_segment(segment: &str, full_path: &str) -> Result<(String, Vec<usize>), MapperError> {
+    let bytes = segment.as_bytes();
+    let bracket_start = match bytes.iter().position(|&b| b == b'[') {
+        Some(pos) => pos,
+        None => {
+            // No brackets — pure bareword. Reject stray `]` to keep things
+            // strict (catches typos like `foo]bar`).
+            if segment.contains(']') {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "field path {full_path:?}: unbalanced ']' in segment {segment:?}"
+                )));
+            }
+            return Ok((segment.to_owned(), Vec::new()));
+        }
+    };
+
+    if bracket_start == 0 {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "field path {full_path:?}: segment {segment:?} starts with '['"
+        )));
+    }
+    let name = segment[..bracket_start].to_owned();
+    let mut remainder = &segment[bracket_start..];
+    let mut indices = Vec::new();
+    while !remainder.is_empty() {
+        // Expect `[<digits>]<rest>`.
+        if !remainder.starts_with('[') {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: segment {segment:?} has trailing chars after ']'"
+            )));
+        }
+        let close = remainder.find(']').ok_or_else(|| {
             MapperError::Internal(anyhow::anyhow!(
-                "field path {path:?}: ancestor at segment {} is not an object",
-                index
+                "field path {full_path:?}: segment {segment:?} missing closing ']'"
             ))
         })?;
-        if is_last {
-            map.insert((*segment).to_owned(), value);
-            return Ok(());
+        let idx_str = &remainder[1..close];
+        if idx_str.is_empty() {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: segment {segment:?} has empty index"
+            )));
         }
-        cursor = map
-            .entry((*segment).to_owned())
-            .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+        let idx: usize = idx_str.parse().map_err(|_| {
+            MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: segment {segment:?} index {idx_str:?} is not a non-negative integer"
+            ))
+        })?;
+        indices.push(idx);
+        remainder = &remainder[close + 1..];
     }
-    unreachable!("loop returns on the last segment");
+    Ok((name, indices))
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -1128,6 +1249,193 @@ fn build_lock_manage_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope
     })
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// JSON tree → ClaimRewardsAction (Phase 8 — Aerodrome voter/gauge/slipstream
+// NPM collect)
+// ───────────────────────────────────────────────────────────────────────────
+
+fn build_claim_rewards_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let source = read_optional_source_ref(tree, "source")?;
+    let nft = read_optional_asset_inline(tree, "nft")?;
+    let token_id = read_optional_decimal(tree, "tokenId")?;
+    let from = read_address(tree, "from")?;
+    let recipient = read_address(tree, "recipient")?;
+    let reward_tokens = read_optional_asset_inline_array(tree, "rewardTokens")?;
+    let max_amounts = read_optional_amount_constraint_array(tree, "maxAmounts")?;
+
+    let action = ClaimRewardsAction {
+        source,
+        nft,
+        token_id,
+        from,
+        recipient,
+        reward_tokens,
+        max_amounts,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::ClaimRewards(action),
+    })
+}
+
+/// Read an optional `SourceRef` from `tree.<field>`. The bundle's field-paths
+/// `source.address` + `source.label` merge via [`set_nested`] into a single
+/// `source: { address, label }` object — this helper rehydrates it.
+fn read_optional_source_ref(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<SourceRef>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let object = raw.as_object().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected object, got {raw}"))
+    })?;
+    let address = match object.get("address") {
+        Some(serde_json::Value::String(s)) => Some(Address::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("{field}.address {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.address: expected string, got {other}"
+            )));
+        }
+    };
+    let label = match object.get("label") {
+        Some(serde_json::Value::String(s)) => Some(s.clone()),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.label: expected string, got {other}"
+            )));
+        }
+    };
+    if address.is_none() && label.is_none() {
+        return Ok(None);
+    }
+    Ok(Some(SourceRef { address, label }))
+}
+
+/// Read an optional bare `AssetRef` from `tree.<field>`. Returns `None` when
+/// the field is missing or JSON null. Compared to [`read_asset_inline`] which
+/// is required.
+fn read_optional_asset_inline(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<AssetRef>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let asset = read_asset_inline(tree, field)?;
+    // Capture the optional `tokenId` if the manifest set one (mirrors
+    // [`read_nft_asset`] — used by Slipstream NFPM collect).
+    let mut asset = asset;
+    if let Some(object) = raw.as_object() {
+        if let Some(token_id) = object.get("tokenId") {
+            match token_id {
+                serde_json::Value::String(s) => {
+                    asset.token_id = Some(DecimalString::from_str(s).map_err(|m| {
+                        MapperError::Internal(anyhow::anyhow!("{field}.tokenId {s:?}: {m}"))
+                    })?);
+                }
+                serde_json::Value::Null => {}
+                other => {
+                    return Err(MapperError::Internal(anyhow::anyhow!(
+                        "{field}.tokenId: expected string, got {other}"
+                    )));
+                }
+            }
+        }
+    }
+    Ok(Some(asset))
+}
+
+/// Read `Option<Vec<AssetRef>>` from `tree.<field>`. Each element is a bare
+/// `AssetRef { kind, address }` (no `asset` wrapper, matching how the bundle
+/// emits `rewardTokens[N].kind` + `rewardTokens[N].address`).
+///
+/// Returns `Ok(None)` if the field is missing or JSON null. Returns
+/// `Ok(Some(vec))` (which may be empty) when the field is present.
+fn read_optional_asset_inline_array(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<Vec<AssetRef>>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (index, entry) in array.iter().enumerate() {
+        if entry.is_null() {
+            // `set_nested` auto-pads arrays with nulls when manifest writes
+            // a sparse index — reject such gaps loudly rather than silently
+            // dropping the slot.
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: unexpected null (sparse array)"
+            )));
+        }
+        // Build a one-element synthetic tree so we can reuse the bare-asset
+        // reader. The synthetic key is "_" to avoid shadowing.
+        let synthetic = serde_json::json!({ "_": entry.clone() });
+        let asset = read_asset_inline(&synthetic, "_").map_err(|err| match err {
+            MapperError::MissingArgument(_) => MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: missing required asset field"
+            )),
+            MapperError::Internal(e) => {
+                MapperError::Internal(anyhow::anyhow!("{field}[{index}]: {e}"))
+            }
+            other => other,
+        })?;
+        result.push(asset);
+    }
+    Ok(Some(result))
+}
+
+/// Read `Option<Vec<AmountConstraint>>` from `tree.<field>`. Each element is
+/// a bare `{ kind, value }` object. Returns `Ok(None)` when the field is
+/// missing or JSON null.
+fn read_optional_amount_constraint_array(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<Vec<AmountConstraint>>, MapperError> {
+    let Some(raw) = tree.get(field) else {
+        return Ok(None);
+    };
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let array = raw.as_array().ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!("{field}: expected array, got {raw}"))
+    })?;
+    let mut result = Vec::with_capacity(array.len());
+    for (index, entry) in array.iter().enumerate() {
+        if entry.is_null() {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: unexpected null (sparse array)"
+            )));
+        }
+        let synthetic = serde_json::json!({ "_": entry.clone() });
+        let amount = read_amount_inline(&synthetic, "_")?
+            .ok_or_else(|| MapperError::Internal(anyhow::anyhow!(
+                "{field}[{index}]: amount_inline returned None"
+            )))?;
+        result.push(amount);
+    }
+    Ok(Some(result))
+}
+
 /// Read a required `DecimalString` from `tree.<field>`. Accepts JSON strings
 /// only (large-integer decimals are not safe to round-trip through JSON
 /// numbers).
@@ -1275,6 +1583,99 @@ mod tests {
         let mut root = serde_json::Value::Object(serde_json::Map::new());
         let err = set_nested(&mut root, "a..c", json!(1)).unwrap_err();
         assert!(err.to_string().contains("empty segment"));
+    }
+
+    #[test]
+    fn set_nested_supports_array_index_suffix() {
+        // `inputTokens[0].asset.kind` + `inputTokens[1].asset.kind` should
+        // materialise as a 2-element JSON array. This is the bundle pattern
+        // used by Uniswap V2/V3 + Aerodrome Slipstream NPM mint manifests.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "inputTokens[0].asset.kind", json!("erc20")).unwrap();
+        set_nested(&mut root, "inputTokens[0].asset.address", json!("0xaa")).unwrap();
+        set_nested(&mut root, "inputTokens[1].asset.kind", json!("erc20")).unwrap();
+        set_nested(&mut root, "inputTokens[1].asset.address", json!("0xbb")).unwrap();
+        assert_eq!(
+            root,
+            json!({
+                "inputTokens": [
+                    { "asset": { "kind": "erc20", "address": "0xaa" } },
+                    { "asset": { "kind": "erc20", "address": "0xbb" } }
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn set_nested_supports_single_index_array() {
+        // The Aerodrome voter/claimBribes pattern: only `rewardTokens[0].*`
+        // is set — the result should be a 1-element array, not an object.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "rewardTokens[0].kind", json!("erc20")).unwrap();
+        set_nested(&mut root, "rewardTokens[0].address", json!("0xabcdef")).unwrap();
+        assert_eq!(
+            root,
+            json!({
+                "rewardTokens": [
+                    { "kind": "erc20", "address": "0xabcdef" }
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn set_nested_supports_sparse_index_with_null_padding() {
+        // If a manifest writes `[2]` before `[0]`, the intervening slots
+        // become JSON null. The downstream array reader is responsible for
+        // rejecting these holes.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "rewardTokens[2].kind", json!("erc20")).unwrap();
+        assert_eq!(
+            root,
+            json!({
+                "rewardTokens": [null, null, { "kind": "erc20" }]
+            })
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_segment_starting_with_bracket() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "[0].kind", json!("erc20")).unwrap_err();
+        assert!(
+            err.to_string().contains("starts with '['"),
+            "expected starts-with-[ error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_unbalanced_bracket() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "inputs[0", json!(1)).unwrap_err();
+        assert!(
+            err.to_string().contains("missing closing"),
+            "expected missing-] error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_empty_index() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "inputs[]", json!(1)).unwrap_err();
+        assert!(
+            err.to_string().contains("empty index"),
+            "expected empty-index error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn set_nested_rejects_non_numeric_index() {
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "inputs[abc]", json!(1)).unwrap_err();
+        assert!(
+            err.to_string().contains("not a non-negative integer"),
+            "expected integer-parse error, got: {err}"
+        );
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -2124,6 +2525,140 @@ mod tests {
             MapperError::MissingArgument(name) => assert_eq!(name, "kind"),
             other => panic!("expected MissingArgument(\"kind\"), got {other:?}"),
         }
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Phase 8 Round 5 fix — claim_rewards builder (Aerodrome voter, gauge,
+    // Slipstream NPM collect)
+    // ───────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_claim_rewards_envelope_minimal() {
+        let tree = json!({
+            "from": "0x1111111111111111111111111111111111111111",
+            "recipient": "0x2222222222222222222222222222222222222222"
+        });
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        assert_eq!(envelope.category, Category::Misc);
+        assert_eq!(envelope.action.kind(), "claim_rewards");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        assert!(action.source.is_none());
+        assert!(action.nft.is_none());
+        assert!(action.token_id.is_none());
+        assert!(action.reward_tokens.is_none());
+        assert!(action.max_amounts.is_none());
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_full() {
+        // Mirrors what set_nested produces for the Aerodrome voter/claimBribes
+        // bundle: source.{address,label} merge into a SourceRef, and
+        // rewardTokens[0].{kind,address} merges into a single-element array.
+        let tree = json!({
+            "source": {
+                "address": "0x3333333333333333333333333333333333333333",
+                "label": "Aerodrome Voter"
+            },
+            "nft": {
+                "kind": "erc721",
+                "address": "0x4444444444444444444444444444444444444444"
+            },
+            "tokenId": "42",
+            "from": "0x1111111111111111111111111111111111111111",
+            "recipient": "0x2222222222222222222222222222222222222222",
+            "rewardTokens": [
+                { "kind": "erc20", "address": "0x5555555555555555555555555555555555555555" }
+            ]
+        });
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        let source = action.source.as_ref().expect("source present");
+        assert_eq!(
+            source.address.as_ref().map(ToString::to_string),
+            Some("0x3333333333333333333333333333333333333333".to_owned())
+        );
+        assert_eq!(source.label.as_deref(), Some("Aerodrome Voter"));
+        let nft = action.nft.as_ref().expect("nft present");
+        assert_eq!(nft.kind, AssetKind::Erc721);
+        assert_eq!(action.token_id.as_ref().map(ToString::to_string), Some("42".to_owned()));
+        let rewards = action.reward_tokens.as_ref().expect("rewardTokens present");
+        assert_eq!(rewards.len(), 1);
+        assert_eq!(rewards[0].kind, AssetKind::Erc20);
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_via_set_nested_paths() {
+        // End-to-end: a fields-tree built via [`set_nested`] from the
+        // Aerodrome voter/claimBribes manifest's dot-paths should feed
+        // straight into the builder. This pins the `[N]` indexing contract
+        // between manifest evaluation and the builder.
+        let mut tree = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut tree, "source.address", json!("0x16613524e02ad97edfef371bc883f2f5d6c480a5")).unwrap();
+        set_nested(&mut tree, "source.label", json!("Aerodrome Voter (Bribes)")).unwrap();
+        set_nested(&mut tree, "tokenId", json!("42")).unwrap();
+        set_nested(&mut tree, "from", json!("0x1111111111111111111111111111111111111111")).unwrap();
+        set_nested(&mut tree, "recipient", json!("0x1111111111111111111111111111111111111111")).unwrap();
+        set_nested(&mut tree, "rewardTokens[0].kind", json!("erc20")).unwrap();
+        set_nested(&mut tree, "rewardTokens[0].address", json!("0x940181a94a35a4569e4529a3cdfb74e38fd98631")).unwrap();
+
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        assert_eq!(action.source.as_ref().and_then(|s| s.label.as_deref()), Some("Aerodrome Voter (Bribes)"));
+        let rewards = action.reward_tokens.as_ref().expect("rewardTokens present");
+        assert_eq!(rewards.len(), 1);
+        assert_eq!(
+            rewards[0].address.as_ref().map(ToString::to_string),
+            Some("0x940181a94a35a4569e4529a3cdfb74e38fd98631".to_owned())
+        );
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_missing_from_errors() {
+        let tree = json!({
+            "recipient": "0x2222222222222222222222222222222222222222"
+        });
+        let err = build_claim_rewards_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "$.from"),
+            other => panic!("expected MissingArgument(\"$.from\"), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_missing_recipient_errors() {
+        let tree = json!({
+            "from": "0x1111111111111111111111111111111111111111"
+        });
+        let err = build_claim_rewards_envelope(&tree).unwrap_err();
+        match err {
+            MapperError::MissingArgument(name) => assert_eq!(name, "$.recipient"),
+            other => panic!("expected MissingArgument(\"$.recipient\"), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn read_optional_source_ref_returns_none_when_both_fields_null() {
+        // A bundle that emits neither source.address nor source.label leaves
+        // `source` absent — the helper must NOT manufacture an empty SourceRef.
+        let tree = json!({});
+        let result = read_optional_source_ref(&tree, "source").expect("OK");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn read_optional_asset_inline_array_rejects_sparse_null() {
+        let tree = json!({ "rewardTokens": [null, { "kind": "erc20" }] });
+        let err = read_optional_asset_inline_array(&tree, "rewardTokens").unwrap_err();
+        assert!(
+            err.to_string().contains("unexpected null"),
+            "expected sparse-array error, got: {err}"
+        );
     }
 
     #[test]

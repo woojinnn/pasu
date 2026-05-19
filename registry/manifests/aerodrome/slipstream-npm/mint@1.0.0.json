@@ -40,6 +40,7 @@
     "action": "mint_liquidity_nft",
     "fields": {
       "pool.address":                       { "literal": "0x0000000000000000000000000000000000000000" },
+      "feeBps":                             { "literal": 0 },
       "tickRange.lower":                    { "from": "$.args.params[3]" },
       "tickRange.upper":                    { "from": "$.args.params[4]" },
       "inputTokens[0].asset.kind":          { "literal": "erc20" },
