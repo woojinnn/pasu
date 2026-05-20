@@ -25,8 +25,9 @@ use mappers::token_registry::EmptyTokenRegistry;
 use policy_engine::action::{Address, DecimalString};
 use policy_engine::ActionEnvelope;
 
-const UR_BUNDLE_JSON: &str =
-    include_str!("../tests/fixtures/uniswap-ur-execute.json");
+const UR_BUNDLE_JSON: &str = include_str!(
+    "../../../../registry/manifests/uniswap/universal-router/execute@1.0.0.json"
+);
 
 /// UR `V4_SWAP` opcode (after `UNISWAP_UR_MASK`).
 const OPCODE_V4_SWAP: u8 = 0x10;

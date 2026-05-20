@@ -750,8 +750,9 @@ mod tests {
     use super::super::types::AdapterFunctionBundle;
     use super::*;
 
-    const UR_BUNDLE_JSON: &str =
-        include_str!("../../tests/fixtures/uniswap-ur-execute.json");
+    const UR_BUNDLE_JSON: &str = include_str!(
+        "../../../../../registry/manifests/uniswap/universal-router/execute@1.0.0.json"
+    );
 
     fn build_ctx<'a>(
         registry: &'a EmptyTokenRegistry,

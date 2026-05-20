@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/universal-router/execute@1.0.0",
   "manifest_path": "manifests/uniswap/universal-router/execute@1.0.0.json",
-  "bundle_sha256": "0x56c8cd1214f83fcc0396a163e269eaef0c480ff74faee6c3ecb1a128f3e205ce",
+  "bundle_sha256": "0xf101f4085f5658e50dd1d845075b5720fc9e36464ec344e5c06eb0dc044a7dc2",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/universal-router/execute@1.0.0",
@@ -192,7 +192,7 @@
               "from": "$.args.amount"
             },
             "from": {
-              "from": "$.args.recipient"
+              "from": "$.tx.from"
             },
             "recipient": {
               "from": "$.args.recipient"
@@ -257,7 +257,7 @@
               "from": "$.args.amountMin"
             },
             "from": {
-              "from": "$.args.recipient"
+              "from": "$.tx.to"
             },
             "recipient": {
               "from": "$.args.recipient"
@@ -282,7 +282,7 @@
               "from": "$.args.value"
             },
             "from": {
-              "from": "$.args.recipient"
+              "from": "$.tx.to"
             },
             "recipient": {
               "from": "$.args.recipient"
@@ -307,7 +307,7 @@
               "from": "$.args.bips"
             },
             "from": {
-              "from": "$.args.recipient"
+              "from": "$.tx.to"
             },
             "recipient": {
               "from": "$.args.recipient"
@@ -332,7 +332,7 @@
               "from": "$.args.portion"
             },
             "from": {
-              "from": "$.args.recipient"
+              "from": "$.tx.to"
             },
             "recipient": {
               "from": "$.args.recipient"

@@ -95,7 +95,7 @@
           "token.asset.address":     { "from": "$.args.token" },
           "token.amount.kind":       { "literal": "exact" },
           "token.amount.value":      { "from": "$.args.amount" },
-          "from":                    { "from": "$.args.recipient" },
+          "from":                    { "from": "$.tx.from" },
           "recipient":               { "from": "$.args.recipient" }
         }
       },
@@ -126,7 +126,7 @@
           "token.asset.address":     { "from": "$.args.token" },
           "token.amount.kind":       { "literal": "min" },
           "token.amount.value":      { "from": "$.args.amountMin" },
-          "from":                    { "from": "$.args.recipient" },
+          "from":                    { "from": "$.tx.to" },
           "recipient":               { "from": "$.args.recipient" }
         }
       },
@@ -139,7 +139,7 @@
           "token.asset.address":     { "from": "$.args.token" },
           "token.amount.kind":       { "literal": "exact" },
           "token.amount.value":      { "from": "$.args.value" },
-          "from":                    { "from": "$.args.recipient" },
+          "from":                    { "from": "$.tx.to" },
           "recipient":               { "from": "$.args.recipient" }
         }
       },
@@ -152,7 +152,7 @@
           "token.asset.address":     { "from": "$.args.token" },
           "token.amount.kind":       { "literal": "portion" },
           "token.amount.value":      { "from": "$.args.bips" },
-          "from":                    { "from": "$.args.recipient" },
+          "from":                    { "from": "$.tx.to" },
           "recipient":               { "from": "$.args.recipient" }
         }
       },
@@ -165,7 +165,7 @@
           "token.asset.address":     { "from": "$.args.token" },
           "token.amount.kind":       { "literal": "portion" },
           "token.amount.value":      { "from": "$.args.portion" },
-          "from":                    { "from": "$.args.recipient" },
+          "from":                    { "from": "$.tx.to" },
           "recipient":               { "from": "$.args.recipient" }
         }
       },
