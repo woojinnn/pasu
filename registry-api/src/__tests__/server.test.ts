@@ -1,0 +1,166 @@
+import type { AddressInfo } from "node:net";
+import { afterEach, describe, expect, it } from "vitest";
+import { createRegistryApiServer } from "../server";
+import type { ObjectReader, ObjectResult } from "../gcs-client";
+
+const CALLKEY_PATH =
+  "/index/by-callkey/1__0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2__0x38ed1739.json";
+const TOKEN_PATH = "/tokens/1/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.json";
+
+function fakeReader(
+  objects: Record<string, string>,
+): ObjectReader & { reads: string[] } {
+  const reads: string[] = [];
+  return {
+    reads,
+    async read(name: string): Promise<ObjectResult> {
+      reads.push(name);
+      const body = objects[name];
+      if (body === undefined) return { kind: "not_found" };
+      return {
+        kind: "found",
+        body: Buffer.from(body),
+        contentType: "application/json; charset=utf-8",
+      };
+    },
+  };
+}
+
+const baseConfig = {
+  host: "127.0.0.1",
+  port: 0,
+  bucketName: "test-bucket",
+  cacheMaxEntries: 64,
+  cacheTtlMs: 10000,
+  cacheNegativeTtlMs: 10000,
+  cacheControlValue: "public, max-age=300",
+  rateLimitBurst: 1000,
+  rateLimitRefillPerSec: 1000,
+  rateLimitMaxIps: 1000,
+};
+
+describe("registry-api HTTP server", () => {
+  const started: ReturnType<typeof createRegistryApiServer>[] = [];
+
+  async function start(reader: ObjectReader, config = baseConfig) {
+    const s = createRegistryApiServer({ reader, config });
+    await new Promise<void>((r) => s.listen(0, "127.0.0.1", r));
+    started.push(s);
+    return `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
+  }
+
+  afterEach(async () => {
+    await Promise.all(
+      started
+        .splice(0)
+        .map((s) => new Promise<void>((res) => s.close(() => res()))),
+    );
+  });
+
+  it("returns health status", async () => {
+    const url = await start(fakeReader({}));
+    expect((await fetch(`${url}/health`)).status).toBe(200);
+  });
+
+  it("proxies a callkey object (200 + headers)", async () => {
+    const url = await start(
+      fakeReader({
+        "index/by-callkey/1__0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2__0x38ed1739.json":
+          '{"matched":true}',
+      }),
+    );
+    const res = await fetch(`${url}${CALLKEY_PATH}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("public, max-age=300");
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+  });
+
+  it("passes a GCS miss through as a real HTTP 404", async () => {
+    const url = await start(fakeReader({}));
+    expect((await fetch(`${url}${CALLKEY_PATH}`)).status).toBe(404);
+  });
+
+  it("serves a repeated request from the cache (one GCS read)", async () => {
+    const reader = fakeReader({
+      "index/by-callkey/1__0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2__0x38ed1739.json":
+        "{}",
+    });
+    const url = await start(reader);
+    await fetch(`${url}${CALLKEY_PATH}`);
+    await fetch(`${url}${CALLKEY_PATH}`);
+    expect(reader.reads).toHaveLength(1);
+  });
+
+  it("rejects path traversal with 404 and no GCS read", async () => {
+    const reader = fakeReader({});
+    const url = await start(reader);
+    const res = await fetch(
+      `${url}/index/by-callkey/..%2f..%2fmanifests%2fx.json`,
+    );
+    expect(res.status).toBe(404);
+    expect(reader.reads).toHaveLength(0);
+  });
+
+  it("rejects a non-GET with 405", async () => {
+    const url = await start(fakeReader({}));
+    expect(
+      (await fetch(`${url}${CALLKEY_PATH}`, { method: "POST" })).status,
+    ).toBe(405);
+  });
+
+  it("answers a CORS preflight with 204", async () => {
+    const url = await start(fakeReader({}));
+    const res = await fetch(`${url}${CALLKEY_PATH}`, { method: "OPTIONS" });
+    expect(res.status).toBe(204);
+    expect(res.headers.get("access-control-allow-methods")).toContain("GET");
+  });
+
+  it("returns 502 on a GCS upstream error", async () => {
+    const url = await start({
+      async read() {
+        return { kind: "upstream_error", message: "boom" };
+      },
+    });
+    expect((await fetch(`${url}${CALLKEY_PATH}`)).status).toBe(502);
+  });
+
+  it("returns 429 when the per-IP rate limit is exceeded", async () => {
+    const url = await start(
+      fakeReader({
+        "index/by-callkey/1__0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2__0x38ed1739.json":
+          "{}",
+      }),
+      { ...baseConfig, rateLimitBurst: 2, rateLimitRefillPerSec: 0 },
+    );
+    const codes = [
+      (await fetch(`${url}${CALLKEY_PATH}`)).status,
+      (await fetch(`${url}${CALLKEY_PATH}`)).status,
+      (await fetch(`${url}${CALLKEY_PATH}`)).status,
+    ];
+    expect(codes).toEqual([200, 200, 429]);
+  });
+
+  it("records recent requests for /debug/recent", async () => {
+    const url = await start(
+      fakeReader({
+        "index/by-callkey/1__0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2__0x38ed1739.json":
+          "{}",
+      }),
+    );
+    await fetch(`${url}${CALLKEY_PATH}`);
+    const body = (await (await fetch(`${url}/debug/recent`)).json()) as {
+      entries: unknown[];
+    };
+    expect(body.entries.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("proxies a token object", async () => {
+    const url = await start(
+      fakeReader({
+        "tokens/1/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.json":
+          '{"kind":"erc20"}',
+      }),
+    );
+    expect((await fetch(`${url}${TOKEN_PATH}`)).status).toBe(200);
+  });
+});
