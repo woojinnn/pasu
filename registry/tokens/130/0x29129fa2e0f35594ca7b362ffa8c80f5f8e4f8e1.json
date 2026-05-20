@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x29129fa2e0f35594ca7b362ffa8c80f5f8e4f8e1",
+  "symbol": "C98",
+  "decimals": 18,
+  "name": "Coin98"
+}

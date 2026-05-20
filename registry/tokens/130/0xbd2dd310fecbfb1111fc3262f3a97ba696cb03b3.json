@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xbd2dd310fecbfb1111fc3262f3a97ba696cb03b3",
+  "symbol": "SLP",
+  "decimals": 0,
+  "name": "Smooth Love Potion"
+}

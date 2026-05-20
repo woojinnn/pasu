@@ -1,22 +1,17 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/gauge/withdraw@1.0.0",
-  "manifest_path": "manifests/aerodrome/gauge/withdraw@1.0.0.json",
-  "bundle_sha256": "0xb6fdfcb4279d0ea9b179ba5e253e9f4aeed1fd33be47c94e8cec016d9ec026f9",
+  "bundle_id": "aerodrome/slipstream-gauge/withdraw@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-gauge/withdraw@1.0.0.json",
+  "bundle_sha256": "0xc7625ccd1951c376af74cad22d53e00705ace95ee069b27fa2b9ae5e0fb25b78",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/gauge/withdraw@1.0.0",
-    "publisher": "aerodrome.finance",
+    "id": "aerodrome/slipstream-gauge/withdraw@1.0.0",
+    "publisher": "aerodrome.eth",
     "match": {
       "chain_ids": [
         8453
       ],
       "to": [
-        "0x4F09bAb2f0E15e2A078A227FE1537665F55b8360",
-        "0x519BBD1Dd8C6A94C46080E24f316c14Ee758C025",
-        "0xeca7Ff920E7162334634c721133F3183B83B0323",
-        "0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC",
-        "0x96a24aB830D4ec8b1F6f04Ceac104F1A3b211a01",
         "0xFd73Ab1100a60Ba64686ef9dcdE36d0209773f6a",
         "0x319e23D38d8ee58783Ff5331507b808709bd00b0",
         "0xdE8FF0D3e8ab225110B088a250b546015C567E27",
@@ -31,7 +26,9 @@
         "0xF5550F8F0331B8CAA165046667f4E6628E9E3Aac",
         "0xC6B4fe83Fb284bDdE1f1d19F0B5beB31011B280A",
         "0x41b2126661C673C2beDd208cC72E85DC51a5320a",
-        "0x6399ed6725cC163D019aA64FF55b22149D7179A8"
+        "0x6399ed6725cC163D019aA64FF55b22149D7179A8",
+        "0xfCfEE5f453728BaA5ffDA151f25A0e53B8C5A01C",
+        "0xBd85D45f1636fCEB2359d9Dcf839f12b3cF5AF3F"
       ],
       "selector": "0x2e1a7d4d"
     },
@@ -42,7 +39,7 @@
         "type": "function",
         "inputs": [
           {
-            "name": "amount",
+            "name": "tokenId",
             "type": "uint256"
           }
         ]
@@ -57,16 +54,19 @@
           "from": "$.tx.to"
         },
         "lpToken.kind": {
-          "literal": "erc20"
+          "literal": "erc721"
         },
         "lpToken.address": {
-          "from": "$.tx.to"
+          "literal": "0x827922686190790b37229fd06084350E74485b72"
+        },
+        "lpToken.tokenId": {
+          "from": "$.args.tokenId"
         },
         "amount.kind": {
           "literal": "exact"
         },
         "amount.value": {
-          "from": "$.args.amount"
+          "literal": "1"
         },
         "recipient": {
           "from": "$.tx.from"

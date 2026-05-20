@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x7083609fce4d1d8dc0c979aab8c869ea2c873402",
+  "symbol": "DOT",
+  "decimals": 18,
+  "name": "Polkadot Token"
+}

@@ -1,0 +1,46 @@
+{
+  "matched": true,
+  "bundle_id": "aerodrome/slipstream-npm/multicall@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-npm/multicall@1.0.0.json",
+  "bundle_sha256": "0xd6d2999890be823523b6cd4d64b75efea99d5dd4187bd093d35abd8151117843",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "aerodrome/slipstream-npm/multicall@1.0.0",
+    "publisher": "aerodrome.eth",
+    "match": {
+      "chain_ids": [
+        8453
+      ],
+      "to": [
+        "0x827922686190790b37229fd06084350E74485b72"
+      ],
+      "selector": "0xac9650d8"
+    },
+    "abi_fragment": {
+      "function_name": "multicall",
+      "abi": {
+        "name": "multicall",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "data",
+            "type": "bytes[]"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "multicall_recurse",
+      "recurse_rule_id": "self_array_bytes_last_arg",
+      "max_depth": 3
+    },
+    "requires": {
+      "imperative": [
+        "multicall-recurse@^1.0"
+      ],
+      "adapter_capabilities": [],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x6feb262feb0f775b5312d2e009923f7f58ae423e",
+  "symbol": "OGN",
+  "decimals": 18,
+  "name": "Origin Protocol"
+}

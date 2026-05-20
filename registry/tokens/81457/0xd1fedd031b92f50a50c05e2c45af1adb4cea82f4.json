@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0xd1fedd031b92f50a50c05e2c45af1adb4cea82f4",
+  "symbol": "BLADE",
+  "decimals": 18,
+  "name": "Bladeswap"
+}

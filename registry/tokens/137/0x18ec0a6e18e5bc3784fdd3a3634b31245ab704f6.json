@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x18ec0a6e18e5bc3784fdd3a3634b31245ab704f6",
+  "symbol": "EURe",
+  "decimals": 18,
+  "name": "Monerium EUR emoney"
+}

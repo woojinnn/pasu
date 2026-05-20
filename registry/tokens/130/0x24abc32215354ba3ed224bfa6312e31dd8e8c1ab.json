@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x24abc32215354ba3ed224bfa6312e31dd8e8c1ab",
+  "symbol": "ELA",
+  "decimals": 18,
+  "name": "Elastos"
+}

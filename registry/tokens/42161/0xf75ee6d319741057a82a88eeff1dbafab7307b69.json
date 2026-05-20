@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xf75ee6d319741057a82a88eeff1dbafab7307b69",
+  "symbol": "KRL",
+  "decimals": 18,
+  "name": "KRYLL"
+}

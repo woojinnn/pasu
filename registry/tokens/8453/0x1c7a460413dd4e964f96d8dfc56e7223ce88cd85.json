@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x1c7a460413dd4e964f96d8dfc56e7223ce88cd85",
+  "symbol": "SEAM",
+  "decimals": 18,
+  "name": "Seamlesss"
+}

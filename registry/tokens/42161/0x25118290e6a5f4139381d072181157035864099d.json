@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x25118290e6a5f4139381d072181157035864099d",
+  "symbol": "RAIN",
+  "decimals": 18,
+  "name": "RAIN"
+}

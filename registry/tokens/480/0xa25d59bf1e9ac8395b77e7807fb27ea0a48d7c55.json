@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0xa25d59bf1e9ac8395b77e7807fb27ea0a48d7c55",
+  "symbol": "TSN",
+  "decimals": 18,
+  "name": "TSN"
+}

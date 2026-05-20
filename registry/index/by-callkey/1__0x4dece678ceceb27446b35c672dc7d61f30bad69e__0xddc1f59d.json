@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap-ng/crvusd-usdc/exchange-ng@1.0.0",
   "manifest_path": "manifests/curve/stableswap-ng/crvusd-usdc/exchange-ng@1.0.0.json",
-  "bundle_sha256": "0xd0b4819ee8597256f95dc0bf7a511d6a850378fa45202452b82f83a32c98ce02",
+  "bundle_sha256": "0x244624e3005e20485d084cf9c8ef9cdb0c701483ed7bd5afe37447cbc6bd71b4",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap-ng/crvusd-usdc/exchange-ng@1.0.0",
@@ -50,6 +50,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "erc20"
         },

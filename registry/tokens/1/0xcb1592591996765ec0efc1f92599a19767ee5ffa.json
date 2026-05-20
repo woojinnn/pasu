@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xcb1592591996765ec0efc1f92599a19767ee5ffa",
+  "symbol": "BIO",
+  "decimals": 18,
+  "name": "BIO"
+}

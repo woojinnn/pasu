@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xcf7c45ccc1327ac1e9cb9e098898c59402727794",
+  "symbol": "MXC",
+  "decimals": 18,
+  "name": "MXC"
+}

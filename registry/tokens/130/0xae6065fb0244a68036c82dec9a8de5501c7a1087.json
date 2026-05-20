@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xae6065fb0244a68036c82dec9a8de5501c7a1087",
+  "symbol": "MONA",
+  "decimals": 18,
+  "name": "Monavale"
+}

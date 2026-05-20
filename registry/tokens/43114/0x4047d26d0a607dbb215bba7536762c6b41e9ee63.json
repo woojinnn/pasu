@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x4047d26d0a607dbb215bba7536762c6b41e9ee63",
+  "symbol": "HOTEMIN",
+  "decimals": 18,
+  "name": "Hot Emin Summer"
+}

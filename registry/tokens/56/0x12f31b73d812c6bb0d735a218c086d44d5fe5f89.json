@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x12f31b73d812c6bb0d735a218c086d44d5fe5f89",
+  "symbol": "EURA",
+  "decimals": 18,
+  "name": "EURA (previously agEUR)"
+}

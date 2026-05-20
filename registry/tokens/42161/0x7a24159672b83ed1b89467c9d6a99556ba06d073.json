@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x7a24159672b83ed1b89467c9d6a99556ba06d073",
+  "symbol": "BNT",
+  "decimals": 18,
+  "name": "Bancor Network Token"
+}

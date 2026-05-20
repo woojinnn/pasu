@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x2206cdcc9b94ff7db7a9eabec77b5ce430258681",
+  "symbol": "KUJI",
+  "decimals": 6,
+  "name": "Kujira"
+}

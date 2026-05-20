@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x51c065005b11e4bb1d9ea7831d45f65e0fbb7351",
+  "symbol": "TT",
+  "decimals": 18,
+  "name": "TT"
+}

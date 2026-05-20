@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0xe2702bd97ee33c88c8f6f92da3b733608aa76f71",
+  "symbol": "NGNm",
+  "decimals": 18,
+  "name": "Mento Nigerian Naira"
+}

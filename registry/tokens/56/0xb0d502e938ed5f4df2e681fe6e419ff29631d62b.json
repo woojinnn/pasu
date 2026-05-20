@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0xb0d502e938ed5f4df2e681fe6e419ff29631d62b",
+  "symbol": "STG",
+  "decimals": 18,
+  "name": "StargateToken"
+}

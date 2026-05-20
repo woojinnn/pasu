@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0xede54d9c024ee80c85ec0a75ed2d8774c7fbac9b",
+  "symbol": "WDD",
+  "decimals": 18,
+  "name": "Drachma"
+}

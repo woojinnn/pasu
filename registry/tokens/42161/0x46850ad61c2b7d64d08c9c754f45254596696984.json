@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x46850ad61c2b7d64d08c9c754f45254596696984",
+  "symbol": "PYUSD",
+  "decimals": 6,
+  "name": "PayPal USD"
+}

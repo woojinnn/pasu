@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x4d7078ddd6ccfed2f85db5b7d3ff16828d378d48",
+  "symbol": "AI",
+  "decimals": 18,
+  "name": "Gensyn"
+}

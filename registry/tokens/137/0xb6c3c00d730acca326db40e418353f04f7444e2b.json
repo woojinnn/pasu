@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xb6c3c00d730acca326db40e418353f04f7444e2b",
+  "symbol": "fcc",
+  "decimals": 18,
+  "name": "first choice coin"
+}

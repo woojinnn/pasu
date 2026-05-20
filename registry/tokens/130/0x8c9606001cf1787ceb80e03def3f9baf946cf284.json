@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x8c9606001cf1787ceb80e03def3f9baf946cf284",
+  "symbol": "RGT",
+  "decimals": 18,
+  "name": "Rari Governance Token"
+}

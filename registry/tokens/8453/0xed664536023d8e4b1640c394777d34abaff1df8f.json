@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xed664536023d8e4b1640c394777d34abaff1df8f",
+  "symbol": "POD",
+  "decimals": 18,
+  "name": "Dolphin"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x7fa9549791efc9030e1ed3f25d18014163806758",
+  "symbol": "ENJ",
+  "decimals": 18,
+  "name": "Enjin Coin"
+}

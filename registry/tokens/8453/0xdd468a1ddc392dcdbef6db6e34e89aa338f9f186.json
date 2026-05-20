@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xdd468a1ddc392dcdbef6db6e34e89aa338f9f186",
+  "symbol": "MUSD",
+  "decimals": 18,
+  "name": "Mezo USD"
+}

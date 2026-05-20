@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x2a87dd1e1f849ed88c18565afda98e2eeec73780",
+  "symbol": "ALI",
+  "decimals": 18,
+  "name": "Alethea Artificial Liquid Intelligence"
+}

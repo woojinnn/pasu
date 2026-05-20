@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xec37cdfc9a692b3ccd5c85696d14aaa31e75d6ac",
+  "symbol": "PDA",
+  "decimals": 18,
+  "name": "PlayDapp"
+}

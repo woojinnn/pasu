@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x54fa9210ccb765639b7fd532f25bcb1060d60f8b",
+  "symbol": "AEVO",
+  "decimals": 18,
+  "name": "Aevo"
+}

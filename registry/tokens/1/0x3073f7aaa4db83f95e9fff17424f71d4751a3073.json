@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x3073f7aaa4db83f95e9fff17424f71d4751a3073",
+  "symbol": "MOVE",
+  "decimals": 8,
+  "name": "Movement"
+}

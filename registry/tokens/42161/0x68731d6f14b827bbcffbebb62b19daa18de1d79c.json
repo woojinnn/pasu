@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x68731d6f14b827bbcffbebb62b19daa18de1d79c",
+  "symbol": "IDOS",
+  "decimals": 18,
+  "name": "idOS Token"
+}

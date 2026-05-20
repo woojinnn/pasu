@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xc9df967627121d67bc120fadb291c3ba5800ab2d",
+  "symbol": "FWD",
+  "decimals": 18,
+  "name": "Rewind Protocol token"
+}

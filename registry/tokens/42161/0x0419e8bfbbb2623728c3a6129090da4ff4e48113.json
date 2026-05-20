@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x0419e8bfbbb2623728c3a6129090da4ff4e48113",
+  "symbol": "TEL",
+  "decimals": 2,
+  "name": "Telcoin"
+}

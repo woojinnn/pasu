@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x5cc70a9df8e293affb14dfca1e7f851418a4b40d",
+  "symbol": "ARB",
+  "decimals": 18,
+  "name": "Arbitrum"
+}

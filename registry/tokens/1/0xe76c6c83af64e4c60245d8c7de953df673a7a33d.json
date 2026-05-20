@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xe76c6c83af64e4c60245d8c7de953df673a7a33d",
+  "symbol": "RAIL",
+  "decimals": 18,
+  "name": "Rail"
+}

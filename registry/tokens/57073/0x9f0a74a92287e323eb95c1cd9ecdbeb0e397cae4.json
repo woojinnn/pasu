@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0x9f0a74a92287e323eb95c1cd9ecdbeb0e397cae4",
+  "symbol": "wrsETH",
+  "decimals": 18,
+  "name": "rsETHWrapper"
+}

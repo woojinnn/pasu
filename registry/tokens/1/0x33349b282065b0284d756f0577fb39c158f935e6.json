@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x33349b282065b0284d756f0577fb39c158f935e6",
+  "symbol": "MPL",
+  "decimals": 18,
+  "name": "Maple"
+}

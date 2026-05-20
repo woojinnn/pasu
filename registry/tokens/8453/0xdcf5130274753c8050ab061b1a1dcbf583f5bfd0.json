@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xdcf5130274753c8050ab061b1a1dcbf583f5bfd0",
+  "symbol": "VCNT",
+  "decimals": 18,
+  "name": "ViciCoin"
+}

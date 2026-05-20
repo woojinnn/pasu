@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x6ea4babf46afc7895ee20594b86fdcf74526c3ec",
+  "symbol": "OC",
+  "decimals": 18,
+  "name": "OxChange"
+}

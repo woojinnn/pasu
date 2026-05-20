@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x31a71801291774d267615f74b3a44fceb560fac9",
+  "symbol": "GALA",
+  "decimals": 8,
+  "name": "GALA"
+}

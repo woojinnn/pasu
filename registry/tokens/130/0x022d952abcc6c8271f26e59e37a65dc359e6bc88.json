@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x022d952abcc6c8271f26e59e37a65dc359e6bc88",
+  "symbol": "SNX",
+  "decimals": 18,
+  "name": "Synthetix Network Token"
+}

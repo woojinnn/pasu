@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xa2a36541c5a54bd2815985418105091b4d4782d5",
+  "symbol": "POND",
+  "decimals": 18,
+  "name": "Marlin"
+}

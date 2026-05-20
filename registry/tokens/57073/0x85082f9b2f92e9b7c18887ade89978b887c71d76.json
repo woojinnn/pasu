@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0x85082f9b2f92e9b7c18887ade89978b887c71d76",
+  "symbol": "KRAQU",
+  "decimals": 18,
+  "name": "KRAQU"
+}

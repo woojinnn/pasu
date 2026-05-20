@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+  "symbol": "VVV",
+  "decimals": 18,
+  "name": "Venice Token"
+}

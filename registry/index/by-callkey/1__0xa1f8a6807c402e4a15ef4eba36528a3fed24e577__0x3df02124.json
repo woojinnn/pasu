@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap/frxeth/exchange-v1@1.0.0",
   "manifest_path": "manifests/curve/stableswap/frxeth/exchange-v1@1.0.0.json",
-  "bundle_sha256": "0x0981fb5fea076cd63dc8d58663b062a1307e48915608429d1f9a197b49465aff",
+  "bundle_sha256": "0xdd443cc50ce6aa41465d22606e0aab0def6edfc9031e61039aeadf2a4ae7c8be",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap/frxeth/exchange-v1@1.0.0",
@@ -47,6 +47,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "erc20"
         },

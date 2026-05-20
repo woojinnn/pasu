@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x0763fdccf1ae541a5961815c0872a8c5bc6de4d7",
+  "symbol": "SUKU",
+  "decimals": 18,
+  "name": "SUKU"
+}

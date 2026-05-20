@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xfab550568c688d5d8a52c7d794cb93edc26ec0ec",
+  "symbol": "axlUSDC",
+  "decimals": 6,
+  "name": "Axelar Wrapped USDC"
+}

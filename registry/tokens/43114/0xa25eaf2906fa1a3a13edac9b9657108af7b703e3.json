@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xa25eaf2906fa1a3a13edac9b9657108af7b703e3",
+  "symbol": "stAVAX",
+  "decimals": 18,
+  "name": "Hypha Staked AVAX"
+}

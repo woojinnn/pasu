@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xcb17c9db87b595717c857a08468793f5bab6445f",
+  "symbol": "cbLTC",
+  "decimals": 8,
+  "name": "Coinbase Wrapped LTC"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x3e5a19c91266ad8ce2477b91585d1856b84062df",
+  "symbol": "A8",
+  "decimals": 18,
+  "name": "Ancient8"
+}

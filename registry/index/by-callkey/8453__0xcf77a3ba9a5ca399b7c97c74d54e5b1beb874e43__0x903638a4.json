@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/v2/swapExactETHForTokens@1.0.0",
   "manifest_path": "manifests/aerodrome/v2/swapExactETHForTokens@1.0.0.json",
-  "bundle_sha256": "0x2cf3e5d84b41e5cb77520f1226899eee4630087a50738ed59d4781d390d6737e",
+  "bundle_sha256": "0x73dcd6b0b6185ef05efa77bc9987c55ff72be2d69c538533e2bc33657e84250b",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/v2/swapExactETHForTokens@1.0.0",
@@ -65,6 +65,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "native"
         },

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc3de830ea07524a0761646a6a4e4be0e114a3c83",
+  "symbol": "UNI",
+  "decimals": 18,
+  "name": "Uniswap"
+}

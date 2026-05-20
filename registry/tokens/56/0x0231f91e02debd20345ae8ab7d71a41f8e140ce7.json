@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x0231f91e02debd20345ae8ab7d71a41f8e140ce7",
+  "symbol": "bwJUP",
+  "decimals": 18,
+  "name": "BSC Wrapped Jupiter"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x764933fbad8f5d04ccd088602096655c2ed9879f",
+  "symbol": "AI",
+  "decimals": 18,
+  "name": "Any Inu"
+}

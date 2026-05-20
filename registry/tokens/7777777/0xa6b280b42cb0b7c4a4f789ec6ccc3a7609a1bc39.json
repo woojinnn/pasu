@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 7777777,
+  "address": "0xa6b280b42cb0b7c4a4f789ec6ccc3a7609a1bc39",
+  "symbol": "ENJOY",
+  "decimals": 18,
+  "name": "Enjoy"
+}

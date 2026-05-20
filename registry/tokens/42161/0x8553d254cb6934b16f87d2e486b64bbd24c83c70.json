@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x8553d254cb6934b16f87d2e486b64bbd24c83c70",
+  "symbol": "FARM",
+  "decimals": 18,
+  "name": "Harvest Finance"
+}

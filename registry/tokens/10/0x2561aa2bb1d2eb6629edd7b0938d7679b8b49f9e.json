@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x2561aa2bb1d2eb6629edd7b0938d7679b8b49f9e",
+  "symbol": "OCEAN",
+  "decimals": 18,
+  "name": "Ocean Protocol"
+}

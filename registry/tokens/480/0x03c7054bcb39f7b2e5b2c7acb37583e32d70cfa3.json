@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x03c7054bcb39f7b2e5b2c7acb37583e32d70cfa3",
+  "symbol": "WBTC",
+  "decimals": 8,
+  "name": "Wrapped BTC"
+}

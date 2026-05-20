@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x35e6a59f786d9266c7961ea28c7b768b33959cbb",
+  "symbol": "PEPE",
+  "decimals": 18,
+  "name": "Pepe"
+}

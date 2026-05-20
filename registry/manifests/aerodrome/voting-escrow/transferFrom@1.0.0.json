@@ -1,0 +1,42 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/voting-escrow/transferFrom@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
+    "selector": "0x23b872dd"
+  },
+  "abi_fragment": {
+    "function_name": "transferFrom",
+    "abi": {
+      "name": "transferFrom",
+      "type": "function",
+      "inputs": [
+        { "name": "from",    "type": "address" },
+        { "name": "to",      "type": "address" },
+        { "name": "tokenId", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind":          { "literal": "erc721" },
+      "token.asset.address":       { "from": "$.tx.to" },
+      "token.asset.tokenId":       { "from": "$.args.tokenId" },
+      "token.amount.kind":         { "literal": "exact" },
+      "token.amount.value":        { "literal": "1" },
+      "from":                      { "from": "$.args.from" },
+      "recipient":                 { "from": "$.args.to" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

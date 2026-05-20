@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x432d38f83a50ec77c409d086e97448794cf76dcf",
+  "symbol": "HERESY",
+  "decimals": 18,
+  "name": "Heresy"
+}

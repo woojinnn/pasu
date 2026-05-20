@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xab787774bdf01fc22410165ffabf76e0e0ebc94f",
+  "symbol": "PiX",
+  "decimals": 18,
+  "name": "PiX"
+}

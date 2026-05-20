@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x2cfc85d8e48f8eab294be644d9e25c3030863003",
+  "symbol": "WLD",
+  "decimals": 18,
+  "name": "Worldcoin"
+}

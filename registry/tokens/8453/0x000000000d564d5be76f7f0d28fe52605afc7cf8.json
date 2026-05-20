@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x000000000d564d5be76f7f0d28fe52605afc7cf8",
+  "symbol": "flETH",
+  "decimals": 18,
+  "name": "flETH"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x289ba1701c2f088cf0faf8b3705246331cb8a839",
+  "symbol": "LPT",
+  "decimals": 18,
+  "name": "Livepeer"
+}

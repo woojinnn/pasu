@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xfaba6f8e4a5e8ab82f62fe7c39859fa577269be3",
+  "symbol": "ONDO",
+  "decimals": 18,
+  "name": "Ondo"
+}

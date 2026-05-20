@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x1868ad31531a7ddf2a684212f5d9f82f1e0080c5",
+  "symbol": "PAPI",
+  "decimals": 18,
+  "name": "PAPi COiN"
+}

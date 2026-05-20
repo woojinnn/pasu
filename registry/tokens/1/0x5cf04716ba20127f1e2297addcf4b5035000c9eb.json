@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x5cf04716ba20127f1e2297addcf4b5035000c9eb",
+  "symbol": "NKN",
+  "decimals": 18,
+  "name": "NKN"
+}

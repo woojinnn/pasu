@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x35c458ad1e3e68d2717c8349b985384be85a01ed",
+  "symbol": "CVC",
+  "decimals": 8,
+  "name": "Civic"
+}

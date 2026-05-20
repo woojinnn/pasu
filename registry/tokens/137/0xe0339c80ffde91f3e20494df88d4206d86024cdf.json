@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xe0339c80ffde91f3e20494df88d4206d86024cdf",
+  "symbol": "ELON",
+  "decimals": 18,
+  "name": "Dogelon (PoS)"
+}

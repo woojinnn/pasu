@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xd417144312dbf50465b1c641d016962017ef6240",
+  "symbol": "CQT",
+  "decimals": 18,
+  "name": "Covalent"
+}

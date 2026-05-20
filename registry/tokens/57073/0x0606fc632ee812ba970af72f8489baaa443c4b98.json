@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0x0606fc632ee812ba970af72f8489baaa443c4b98",
+  "symbol": "ANITA",
+  "decimals": 18,
+  "name": "ANITA"
+}

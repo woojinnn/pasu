@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xf7e17ba61973bcdb61f471efb989e47d13bd565d",
+  "symbol": "BITCOIN",
+  "decimals": 8,
+  "name": "HarryPotterObamaSonic10Inu"
+}

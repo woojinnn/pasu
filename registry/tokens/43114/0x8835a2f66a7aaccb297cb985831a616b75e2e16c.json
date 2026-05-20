@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x8835a2f66a7aaccb297cb985831a616b75e2e16c",
+  "symbol": "EUROP",
+  "decimals": 6,
+  "name": "EUR\u00d8P"
+}

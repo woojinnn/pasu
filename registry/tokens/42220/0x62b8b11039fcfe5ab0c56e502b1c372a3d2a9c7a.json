@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
+  "symbol": "G$",
+  "decimals": 18,
+  "name": "GoodDollar"
+}

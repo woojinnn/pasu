@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xa8c25fdc09763a176353cc6a76882e05b4905fae",
+  "symbol": "FLOKI",
+  "decimals": 9,
+  "name": "FLOKI"
+}

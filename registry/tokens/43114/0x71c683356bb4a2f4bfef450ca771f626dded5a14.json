@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x71c683356bb4a2f4bfef450ca771f626dded5a14",
+  "symbol": "wSAC",
+  "decimals": 7,
+  "name": "wrapped SANUSCOIN"
+}

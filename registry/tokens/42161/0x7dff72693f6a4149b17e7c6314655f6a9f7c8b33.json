@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x7dff72693f6a4149b17e7c6314655f6a9f7c8b33",
+  "symbol": "GHO",
+  "decimals": 18,
+  "name": "Gho Token"
+}

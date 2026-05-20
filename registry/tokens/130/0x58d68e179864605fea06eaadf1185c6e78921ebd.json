@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x58d68e179864605fea06eaadf1185c6e78921ebd",
+  "symbol": "MOG",
+  "decimals": 18,
+  "name": "Mog Coin"
+}

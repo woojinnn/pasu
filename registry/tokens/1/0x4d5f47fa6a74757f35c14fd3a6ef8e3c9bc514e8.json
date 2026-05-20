@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x4d5f47fa6a74757f35c14fd3a6ef8e3c9bc514e8",
+  "symbol": "aEthWETH",
+  "decimals": 18,
+  "name": "Aave Ethereum WETH"
+}

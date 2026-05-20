@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xaca92e438df0b2401ff60da7e4337b687a2435da",
+  "symbol": "mUSD",
+  "decimals": 6,
+  "name": "MetaMask USD"
+}

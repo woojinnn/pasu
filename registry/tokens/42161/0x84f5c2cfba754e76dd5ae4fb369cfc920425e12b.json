@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x84f5c2cfba754e76dd5ae4fb369cfc920425e12b",
+  "symbol": "CTX",
+  "decimals": 18,
+  "name": "Cryptex Finance"
+}

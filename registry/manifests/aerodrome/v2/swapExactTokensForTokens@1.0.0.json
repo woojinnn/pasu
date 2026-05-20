@@ -35,6 +35,7 @@
     "category": "dex",
     "action": "swap",
     "fields": {
+      "swapMode":                  { "literal": "exact_in" },
       "inputToken.asset.kind":     { "literal": "erc20" },
       "inputToken.asset.address":  { "from": "$.args.routes[0][0]" },
       "inputToken.amount.kind":    { "literal": "exact" },

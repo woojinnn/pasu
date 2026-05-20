@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x6008f5bad83742fdbff5aac55e3c51b65a8a8d9c",
+  "symbol": "CELO",
+  "decimals": 18,
+  "name": "Celo native asset (Wormhole)"
+}

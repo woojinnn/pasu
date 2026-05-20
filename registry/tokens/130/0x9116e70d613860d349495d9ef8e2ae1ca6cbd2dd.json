@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x9116e70d613860d349495d9ef8e2ae1ca6cbd2dd",
+  "symbol": "ENA",
+  "decimals": 18,
+  "name": "Ethena"
+}

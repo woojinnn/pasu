@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xb08d8becab1bf76a9ce3d2d5fa946f65ec1d3e83",
+  "symbol": "GS",
+  "decimals": 18,
+  "name": "GammaSwap"
+}

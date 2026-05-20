@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x8d60fb5886497851aac8c5195006ecf07647ba0d",
+  "symbol": "W3GG",
+  "decimals": 18,
+  "name": "W3GG Token"
+}

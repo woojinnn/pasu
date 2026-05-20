@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0x2e1ac42aef8dc9fb4c661d017273e93ba82d3d0e",
+  "symbol": "IAGENT",
+  "decimals": 18,
+  "name": "InkyAgent"
+}

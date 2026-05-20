@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0x73e0c0d45e048d25fc26fa3159b0aa04bfa4db98",
+  "symbol": "KBTC",
+  "decimals": 8,
+  "name": "Kraken Wrapped BTC"
+}

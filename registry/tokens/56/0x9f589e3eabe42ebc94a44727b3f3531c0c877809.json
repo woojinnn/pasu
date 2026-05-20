@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x9f589e3eabe42ebc94a44727b3f3531c0c877809",
+  "symbol": "TKO",
+  "decimals": 18,
+  "name": "Tokocrypto Token"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xe7dcd50836d0a28c959c72d72122fedb8e245a6c",
+  "symbol": "ALEPH",
+  "decimals": 18,
+  "name": "Aleph im"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xe88998fb579266628af6a03e3821d5983e5d0089",
+  "symbol": "AXS",
+  "decimals": 18,
+  "name": "Axie Infinity"
+}

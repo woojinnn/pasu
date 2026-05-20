@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x6380f3d0c1412a80eb00f49064da30749db991de",
+  "symbol": "PORTAL",
+  "decimals": 18,
+  "name": "Portal"
+}

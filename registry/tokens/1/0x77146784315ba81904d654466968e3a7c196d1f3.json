@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x77146784315ba81904d654466968e3a7c196d1f3",
+  "symbol": "TREE",
+  "decimals": 18,
+  "name": "Treehouse Token"
+}

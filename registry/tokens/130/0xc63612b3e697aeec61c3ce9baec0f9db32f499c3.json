@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xc63612b3e697aeec61c3ce9baec0f9db32f499c3",
+  "symbol": "COTI",
+  "decimals": 18,
+  "name": "COTI"
+}

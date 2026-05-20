@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xbdad8e37a9600f0a35976fe61608a4c89d598610",
+  "symbol": "DYP",
+  "decimals": 18,
+  "name": "DeFi Yield Protocol"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x2b591e99afe9f32eaa6214f7b7629768c40eeb39",
+  "symbol": "HEX",
+  "decimals": 8,
+  "name": "HEX"
+}

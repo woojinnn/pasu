@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x19782d3dc4701ceeedcd90f0993f0a9126ed89d0",
+  "symbol": "REN",
+  "decimals": 18,
+  "name": "Republic Token"
+}

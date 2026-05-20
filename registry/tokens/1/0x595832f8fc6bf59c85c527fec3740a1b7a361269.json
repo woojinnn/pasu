@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x595832f8fc6bf59c85c527fec3740a1b7a361269",
+  "symbol": "POWR",
+  "decimals": 6,
+  "name": "Power Ledger"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x88a269df8fe7f53e590c561954c52fccc8ec0cfb",
+  "symbol": "NST",
+  "decimals": 18,
+  "name": "Ninja Squad Token"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x5947bb275c521040051d82396192181b413227a3",
+  "symbol": "LINK.e",
+  "decimals": 18,
+  "name": "Chainlink Token"
+}

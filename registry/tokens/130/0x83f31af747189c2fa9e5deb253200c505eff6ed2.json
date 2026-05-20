@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x83f31af747189c2fa9e5deb253200c505eff6ed2",
+  "symbol": "ZEC",
+  "decimals": 18,
+  "name": "Zcash"
+}

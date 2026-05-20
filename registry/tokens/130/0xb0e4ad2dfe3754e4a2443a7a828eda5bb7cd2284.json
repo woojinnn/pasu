@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xb0e4ad2dfe3754e4a2443a7a828eda5bb7cd2284",
+  "symbol": "KNC",
+  "decimals": 18,
+  "name": "Kyber Network Crystal"
+}

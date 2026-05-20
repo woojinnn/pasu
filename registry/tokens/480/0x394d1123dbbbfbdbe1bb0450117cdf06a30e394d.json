@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x394d1123dbbbfbdbe1bb0450117cdf06a30e394d",
+  "symbol": "WLD Pi",
+  "decimals": 18,
+  "name": "WLD Pi"
+}

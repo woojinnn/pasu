@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x078d782b760474a361dda0af3839290b0ef57ad6",
+  "symbol": "USDC",
+  "decimals": 6,
+  "name": "USDCoin"
+}

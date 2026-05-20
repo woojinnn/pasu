@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x259c1c2ed264402b5ed2f02bc7dc25a15c680c18",
+  "symbol": "RING",
+  "decimals": 18,
+  "name": "OneRing"
+}

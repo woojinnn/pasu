@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x26e9dbe75aed331e41272bece932ff1b48926ca9",
+  "symbol": "p33",
+  "decimals": 18,
+  "name": "Pharaoh Liquid Staking Token"
+}

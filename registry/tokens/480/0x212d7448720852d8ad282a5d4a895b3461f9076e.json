@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x212d7448720852d8ad282a5d4a895b3461f9076e",
+  "symbol": "TIME",
+  "decimals": 18,
+  "name": "TIME"
+}

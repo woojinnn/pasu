@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x6e6f6d696e61decd6605bd4a57836c5db6923340",
+  "symbol": "NOM",
+  "decimals": 18,
+  "name": "Nomina"
+}

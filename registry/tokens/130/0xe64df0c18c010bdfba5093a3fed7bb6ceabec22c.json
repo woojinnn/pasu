@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xe64df0c18c010bdfba5093a3fed7bb6ceabec22c",
+  "symbol": "AGS",
+  "decimals": 18,
+  "name": "AGS Unichain"
+}

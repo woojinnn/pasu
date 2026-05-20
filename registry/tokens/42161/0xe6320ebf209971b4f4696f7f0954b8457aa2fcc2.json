@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xe6320ebf209971b4f4696f7f0954b8457aa2fcc2",
+  "symbol": "STORJ",
+  "decimals": 8,
+  "name": "Storj Token"
+}

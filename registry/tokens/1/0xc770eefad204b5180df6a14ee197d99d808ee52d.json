@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xc770eefad204b5180df6a14ee197d99d808ee52d",
+  "symbol": "FOX",
+  "decimals": 18,
+  "name": "ShapeShift FOX Token"
+}

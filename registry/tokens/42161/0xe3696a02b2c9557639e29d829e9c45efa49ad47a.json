@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xe3696a02b2c9557639e29d829e9c45efa49ad47a",
+  "symbol": "DNT",
+  "decimals": 18,
+  "name": "district0x"
+}

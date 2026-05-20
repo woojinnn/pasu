@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xb86a08ec917eef9f835ac2b26c3a506c06364a49",
+  "symbol": "WAMPL",
+  "decimals": 18,
+  "name": "Wrapped Ampleforth"
+}

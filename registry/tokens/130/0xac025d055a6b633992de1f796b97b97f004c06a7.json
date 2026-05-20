@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xac025d055a6b633992de1f796b97b97f004c06a7",
+  "symbol": "USDR",
+  "decimals": 6,
+  "name": "StablR USD"
+}

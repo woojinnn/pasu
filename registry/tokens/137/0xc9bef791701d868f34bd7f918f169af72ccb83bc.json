@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xc9bef791701d868f34bd7f918f169af72ccb83bc",
+  "symbol": "JZT",
+  "decimals": 18,
+  "name": "Jztcoin"
+}

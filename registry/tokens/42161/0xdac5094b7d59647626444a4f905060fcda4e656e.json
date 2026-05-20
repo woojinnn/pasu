@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xdac5094b7d59647626444a4f905060fcda4e656e",
+  "symbol": "ARKM",
+  "decimals": 18,
+  "name": "Arkham"
+}

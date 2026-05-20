@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x481cb2c560fc3351833b582b92b965626fd8803c",
+  "symbol": "G",
+  "decimals": 18,
+  "name": "Gravity"
+}

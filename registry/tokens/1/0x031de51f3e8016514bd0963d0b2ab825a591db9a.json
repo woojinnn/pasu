@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x031de51f3e8016514bd0963d0b2ab825a591db9a",
+  "symbol": "ESP",
+  "decimals": 18,
+  "name": "Espresso"
+}

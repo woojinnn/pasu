@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x88548808840220390dd9e19eefafa442e8e75041",
+  "symbol": "Vollar",
+  "decimals": 8,
+  "name": "VDDS"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x406c8db506653d882295875f633bec0beb921c2a",
+  "symbol": "BIT",
+  "decimals": 18,
+  "name": "BitDAO"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x92aa03137385f18539301349dcfc9ebc923ffb10",
+  "symbol": "SKYAI",
+  "decimals": 18,
+  "name": "SKYAI"
+}

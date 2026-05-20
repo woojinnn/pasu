@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x3bf668fe1ec79a84ca8481cead5dbb30d61cc685",
+  "symbol": "TELEBTC",
+  "decimals": 8,
+  "name": "teleBTC"
+}

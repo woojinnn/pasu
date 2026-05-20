@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x82a98121eaf30b0e135b08d4208c837cdc306503",
+  "symbol": "POLS",
+  "decimals": 18,
+  "name": "Polkastarter"
+}

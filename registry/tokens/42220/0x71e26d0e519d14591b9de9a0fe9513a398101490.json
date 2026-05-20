@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0x71e26d0e519d14591b9de9a0fe9513a398101490",
+  "symbol": "UBE",
+  "decimals": 18,
+  "name": "Ubeswap"
+}

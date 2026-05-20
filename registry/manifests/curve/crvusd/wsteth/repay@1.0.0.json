@@ -5,7 +5,7 @@
   "match": {
     "chain_ids": [1],
     "to": ["0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"],
-    "selector": "0x79a5f4dc"
+    "selector": "0x37671f93"
   },
   "abi_fragment": {
     "function_name": "repay",
@@ -15,7 +15,7 @@
       "inputs": [
         { "name": "_d_debt",          "type": "uint256" },
         { "name": "_for",             "type": "address" },
-        { "name": "max_active_band",  "type": "uint256" },
+        { "name": "max_active_band",  "type": "int256"  },
         { "name": "use_eth",          "type": "bool"    }
       ]
     }

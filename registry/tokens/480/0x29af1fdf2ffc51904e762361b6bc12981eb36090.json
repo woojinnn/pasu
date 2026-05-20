@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x29af1fdf2ffc51904e762361b6bc12981eb36090",
+  "symbol": "CIS",
+  "decimals": 18,
+  "name": "CIS"
+}

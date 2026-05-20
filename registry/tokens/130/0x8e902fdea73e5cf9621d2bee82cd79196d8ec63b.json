@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x8e902fdea73e5cf9621d2bee82cd79196d8ec63b",
+  "symbol": "TRB",
+  "decimals": 18,
+  "name": "Tellor"
+}

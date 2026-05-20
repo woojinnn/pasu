@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x1201209f55634bddb67034efe4e8aa4d1b7b482c",
+  "symbol": "L3",
+  "decimals": 18,
+  "name": "Layer3"
+}

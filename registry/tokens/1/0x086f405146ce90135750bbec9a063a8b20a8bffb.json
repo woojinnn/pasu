@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x086f405146ce90135750bbec9a063a8b20a8bffb",
+  "symbol": "BREV",
+  "decimals": 18,
+  "name": "Brevis"
+}

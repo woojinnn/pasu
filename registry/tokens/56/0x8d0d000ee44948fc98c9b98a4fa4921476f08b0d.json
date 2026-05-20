@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d",
+  "symbol": "USD1",
+  "decimals": 18,
+  "name": "World Liberty Financial USD"
+}

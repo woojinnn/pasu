@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x00bac91fd8f5b4a0dc03c8021139b76f6549ee7e",
+  "symbol": "KAIO",
+  "decimals": 18,
+  "name": "KAIO"
+}

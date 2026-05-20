@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x85eee30c52b0b379b046fb0f85f4f3dc3009afec",
+  "symbol": "KEEP",
+  "decimals": 18,
+  "name": "Keep Network"
+}

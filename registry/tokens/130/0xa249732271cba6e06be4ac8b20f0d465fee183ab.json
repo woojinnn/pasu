@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xa249732271cba6e06be4ac8b20f0d465fee183ab",
+  "symbol": "ATH",
+  "decimals": 18,
+  "name": "Aethir Token"
+}

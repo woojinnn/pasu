@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x0bf519071b02f22c17e7ed5f4002ee1911f46729",
+  "symbol": "NMR",
+  "decimals": 18,
+  "name": "Numeraire"
+}

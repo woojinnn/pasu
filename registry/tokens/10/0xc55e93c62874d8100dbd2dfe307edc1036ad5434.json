@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0xc55e93c62874d8100dbd2dfe307edc1036ad5434",
+  "symbol": "mooBIFI",
+  "decimals": 18,
+  "name": "Moo BIFI"
+}

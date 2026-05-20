@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xe5ecb192f1ae5839ed49886f36dfa670f9500824",
+  "symbol": "BEAM",
+  "decimals": 18,
+  "name": "Beam"
+}

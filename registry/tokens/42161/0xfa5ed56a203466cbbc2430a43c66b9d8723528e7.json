@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xfa5ed56a203466cbbc2430a43c66b9d8723528e7",
+  "symbol": "agEUR",
+  "decimals": 18,
+  "name": "agEur"
+}

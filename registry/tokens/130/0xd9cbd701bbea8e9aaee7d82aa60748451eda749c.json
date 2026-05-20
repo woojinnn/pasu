@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xd9cbd701bbea8e9aaee7d82aa60748451eda749c",
+  "symbol": "TIME",
+  "decimals": 8,
+  "name": "ChronoTech"
+}

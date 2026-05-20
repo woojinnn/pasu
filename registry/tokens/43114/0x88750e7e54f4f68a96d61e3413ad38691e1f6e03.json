@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x88750e7e54f4f68a96d61e3413ad38691e1f6e03",
+  "symbol": "hotemin",
+  "decimals": 18,
+  "name": "Hotemin Official"
+}

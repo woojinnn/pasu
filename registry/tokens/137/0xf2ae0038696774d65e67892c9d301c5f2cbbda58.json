@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xf2ae0038696774d65e67892c9d301c5f2cbbda58",
+  "symbol": "CXO",
+  "decimals": 18,
+  "name": "CargoX Token (PoS)"
+}

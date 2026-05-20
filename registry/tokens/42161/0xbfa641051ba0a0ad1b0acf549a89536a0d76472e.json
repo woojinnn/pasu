@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xbfa641051ba0a0ad1b0acf549a89536a0d76472e",
+  "symbol": "BADGER",
+  "decimals": 18,
+  "name": "Badger DAO"
+}

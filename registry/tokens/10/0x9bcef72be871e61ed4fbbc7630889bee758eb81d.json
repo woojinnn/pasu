@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x9bcef72be871e61ed4fbbc7630889bee758eb81d",
+  "symbol": "rETH",
+  "decimals": 18,
+  "name": "Rocket Pool ETH"
+}

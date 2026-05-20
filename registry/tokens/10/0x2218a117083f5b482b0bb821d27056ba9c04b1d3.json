@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x2218a117083f5b482b0bb821d27056ba9c04b1d3",
+  "symbol": "sDAI",
+  "decimals": 18,
+  "name": "Savings Dai"
+}

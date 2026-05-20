@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x1c6789f30e7e335c2eca2c75ec193adbf0087ea5",
+  "symbol": "CVX",
+  "decimals": 18,
+  "name": "Convex Finance"
+}

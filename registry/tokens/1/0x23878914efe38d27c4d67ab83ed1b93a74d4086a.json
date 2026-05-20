@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x23878914efe38d27c4d67ab83ed1b93a74d4086a",
+  "symbol": "aEthUSDT",
+  "decimals": 6,
+  "name": "Aave Ethereum USDT"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x30117e4bc17d7b044194b76a38365c53b72f7d49",
+  "symbol": "GWEI",
+  "decimals": 18,
+  "name": "ETHGas"
+}

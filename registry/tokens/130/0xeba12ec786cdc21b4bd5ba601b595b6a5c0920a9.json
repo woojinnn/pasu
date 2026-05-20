@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xeba12ec786cdc21b4bd5ba601b595b6a5c0920a9",
+  "symbol": "GUSD",
+  "decimals": 2,
+  "name": "Gemini Dollar"
+}

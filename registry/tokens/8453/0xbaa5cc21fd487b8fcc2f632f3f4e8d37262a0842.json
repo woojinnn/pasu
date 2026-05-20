@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xbaa5cc21fd487b8fcc2f632f3f4e8d37262a0842",
+  "symbol": "MORPHO",
+  "decimals": 18,
+  "name": "Morpho Token"
+}

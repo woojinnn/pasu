@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x68727e573d21a49c767c3c86a92d9f24bd933c99",
+  "symbol": "eMXN",
+  "decimals": 6,
+  "name": "Telcoin MXN"
+}

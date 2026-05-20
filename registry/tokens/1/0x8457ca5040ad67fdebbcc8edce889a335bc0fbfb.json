@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x8457ca5040ad67fdebbcc8edce889a335bc0fbfb",
+  "symbol": "ALT",
+  "decimals": 18,
+  "name": "AltLayer"
+}

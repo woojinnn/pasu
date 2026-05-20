@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x4b5c23cac08a567ecf0c1ffca8372a45a5d33743",
+  "symbol": "FARM",
+  "decimals": 18,
+  "name": "FARM Reward Token"
+}

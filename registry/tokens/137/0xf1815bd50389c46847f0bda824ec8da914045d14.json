@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xf1815bd50389c46847f0bda824ec8da914045d14",
+  "symbol": "XAUt0",
+  "decimals": 6,
+  "name": "Tether Gold"
+}

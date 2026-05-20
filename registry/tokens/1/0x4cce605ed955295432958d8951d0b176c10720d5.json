@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x4cce605ed955295432958d8951d0b176c10720d5",
+  "symbol": "AUDD",
+  "decimals": 6,
+  "name": "AUDD"
+}

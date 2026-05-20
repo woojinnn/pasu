@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0x32bcb803f696c99eb263d60a05cafd8689026575",
+  "symbol": "KRAKMASK",
+  "decimals": 18,
+  "name": "Krak Mask"
+}

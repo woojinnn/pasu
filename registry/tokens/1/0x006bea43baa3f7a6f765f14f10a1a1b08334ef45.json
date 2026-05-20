@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x006bea43baa3f7a6f765f14f10a1a1b08334ef45",
+  "symbol": "STX",
+  "decimals": 18,
+  "name": "Stox"
+}

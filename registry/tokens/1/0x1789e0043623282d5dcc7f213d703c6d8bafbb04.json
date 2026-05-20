@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x1789e0043623282d5dcc7f213d703c6d8bafbb04",
+  "symbol": "LINEA",
+  "decimals": 18,
+  "name": "Linea"
+}

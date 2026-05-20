@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xe72b141df173b999ae7c1adcbf60cc9833ce56a8",
+  "symbol": "ETH+",
+  "decimals": 18,
+  "name": "ETHPlus"
+}

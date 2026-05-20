@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x6ddbbce7858d276678fc2b36123fd60547b88954",
+  "symbol": "Zeta",
+  "decimals": 18,
+  "name": "Zetachain"
+}

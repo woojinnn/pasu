@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x306cb44390b77410fcc414d9457e946cc0c053d0",
+  "symbol": "MODO",
+  "decimals": 18,
+  "name": "MODO Token"
+}

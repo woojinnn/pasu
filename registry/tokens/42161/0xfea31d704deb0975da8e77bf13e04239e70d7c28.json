@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xfea31d704deb0975da8e77bf13e04239e70d7c28",
+  "symbol": "ENS",
+  "decimals": 18,
+  "name": "Ethereum Name Service"
+}

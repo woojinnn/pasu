@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x18aaa7115705e8be94bffebde57af9bfc265b998",
+  "symbol": "AUDIO",
+  "decimals": 18,
+  "name": "Audius"
+}

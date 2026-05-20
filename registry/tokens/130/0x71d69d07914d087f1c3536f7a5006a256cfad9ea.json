@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x71d69d07914d087f1c3536f7a5006a256cfad9ea",
+  "symbol": "MTL",
+  "decimals": 8,
+  "name": "Metal"
+}

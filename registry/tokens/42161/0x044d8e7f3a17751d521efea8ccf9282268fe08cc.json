@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x044d8e7f3a17751d521efea8ccf9282268fe08cc",
+  "symbol": "POL",
+  "decimals": 18,
+  "name": "Polygon Ecosystem Token"
+}

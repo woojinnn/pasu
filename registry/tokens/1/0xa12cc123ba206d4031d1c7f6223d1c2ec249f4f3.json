@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xa12cc123ba206d4031d1c7f6223d1c2ec249f4f3",
+  "symbol": "ZAMA",
+  "decimals": 18,
+  "name": "Zama"
+}

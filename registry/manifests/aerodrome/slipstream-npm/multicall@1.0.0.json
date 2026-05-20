@@ -4,7 +4,7 @@
   "publisher": "aerodrome.eth",
   "match": {
     "chain_ids": [8453],
-    "to": ["0xe1f8cd9AC4e4A65F54f38a5CdAfCA44f6dD68b53"],
+    "to": ["0x827922686190790b37229fd06084350E74485b72"],
     "selector": "0xac9650d8"
   },
   "abi_fragment": {

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x27f6c8289550fce67f6b50bed1f519966afe5287",
+  "symbol": "tGBP",
+  "decimals": 18,
+  "name": "tGBP"
+}

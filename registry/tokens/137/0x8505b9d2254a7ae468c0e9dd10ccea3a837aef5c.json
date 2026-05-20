@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x8505b9d2254a7ae468c0e9dd10ccea3a837aef5c",
+  "symbol": "COMP",
+  "decimals": 18,
+  "name": "Compound"
+}

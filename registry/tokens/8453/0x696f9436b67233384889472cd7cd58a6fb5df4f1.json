@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x696f9436b67233384889472cd7cd58a6fb5df4f1",
+  "symbol": "AVNT",
+  "decimals": 18,
+  "name": "Avantis"
+}

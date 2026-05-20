@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0xee571697998ec64e32b57d754d700c4dda2f2a0e",
+  "symbol": "UNI",
+  "decimals": 18,
+  "name": "Uniswap (Celo native bridge)"
+}

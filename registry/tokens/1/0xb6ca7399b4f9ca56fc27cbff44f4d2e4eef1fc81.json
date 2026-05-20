@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xb6ca7399b4f9ca56fc27cbff44f4d2e4eef1fc81",
+  "symbol": "MUSE",
+  "decimals": 18,
+  "name": "Muse DAO"
+}

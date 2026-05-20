@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xfdd22ce6d1f66bc0ec89b20bf16ccb6670f55a5a",
+  "symbol": "thBILL",
+  "decimals": 6,
+  "name": "thBILL"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x833f307ac507d47309fd8cdd1f835bef8d702a93",
+  "symbol": "REVV",
+  "decimals": 18,
+  "name": "REVV"
+}

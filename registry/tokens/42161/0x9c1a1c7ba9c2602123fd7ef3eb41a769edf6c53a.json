@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x9c1a1c7ba9c2602123fd7ef3eb41a769edf6c53a",
+  "symbol": "MNT",
+  "decimals": 18,
+  "name": "Mantle"
+}

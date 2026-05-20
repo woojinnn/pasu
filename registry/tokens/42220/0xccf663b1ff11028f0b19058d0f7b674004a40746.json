@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0xccf663b1ff11028f0b19058d0f7b674004a40746",
+  "symbol": "GBPm",
+  "decimals": 18,
+  "name": "Mento British Pound"
+}

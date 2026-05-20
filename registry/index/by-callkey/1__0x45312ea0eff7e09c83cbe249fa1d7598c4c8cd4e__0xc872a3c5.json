@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/router-ng/exchange@1.0.0",
   "manifest_path": "manifests/curve/router-ng/exchange@1.0.0.json",
-  "bundle_sha256": "0x45111ed14cfb008e8b080cf4527befa10215572e38951d47e4480b932bf36190",
+  "bundle_sha256": "0x7bc6415d5e8d7dd58728880a026f32818cc7f5928062b624b556f3e4a1c9cb8c",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/router-ng/exchange@1.0.0",
@@ -54,6 +54,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "erc20"
         },

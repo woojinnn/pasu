@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/cryptoswap/tricrypto2/exchange-v2@1.0.0",
   "manifest_path": "manifests/curve/cryptoswap/tricrypto2/exchange-v2@1.0.0.json",
-  "bundle_sha256": "0xbc1c9ff3dcbd592f8d07eeaed113e14cc188f0445d3142b30b77e688346e6349",
+  "bundle_sha256": "0x6e76ab0438fce5456751bd344b5d06985431d23954bc694614ab25c5800bc04d",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/cryptoswap/tricrypto2/exchange-v2@1.0.0",
@@ -51,6 +51,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "erc20"
         },

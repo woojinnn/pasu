@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x6c28f8cab28121ed757edb36201511aa18cdd187",
+  "symbol": "WFB",
+  "decimals": 8,
+  "name": "Wrapped FB"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xe018c7a3d175fb0fe15d70da2c874d3ca16313ec",
+  "symbol": "STG",
+  "decimals": 18,
+  "name": "Stargate Finance"
+}

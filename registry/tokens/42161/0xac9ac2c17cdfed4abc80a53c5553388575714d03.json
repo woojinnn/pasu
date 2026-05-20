@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xac9ac2c17cdfed4abc80a53c5553388575714d03",
+  "symbol": "ATA",
+  "decimals": 18,
+  "name": "Automata"
+}

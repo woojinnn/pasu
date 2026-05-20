@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x741bd193b6b40f8703d2e116fd1965421f290f58",
+  "symbol": "evaUSDC",
+  "decimals": 6,
+  "name": "evaUSDC"
+}

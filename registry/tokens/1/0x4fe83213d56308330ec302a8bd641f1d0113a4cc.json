@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x4fe83213d56308330ec302a8bd641f1d0113a4cc",
+  "symbol": "NU",
+  "decimals": 18,
+  "name": "NuCypher"
+}

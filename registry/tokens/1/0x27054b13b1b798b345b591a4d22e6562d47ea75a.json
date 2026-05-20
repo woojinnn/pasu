@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x27054b13b1b798b345b591a4d22e6562d47ea75a",
+  "symbol": "AST",
+  "decimals": 4,
+  "name": "AirSwap"
+}

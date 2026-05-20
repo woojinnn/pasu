@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x7ad899b7c793743fde692d982f190f443f88c889",
+  "symbol": "RLY",
+  "decimals": 18,
+  "name": "Rally"
+}

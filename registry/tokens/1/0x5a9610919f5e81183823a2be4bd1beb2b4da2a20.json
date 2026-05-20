@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x5a9610919f5e81183823a2be4bd1beb2b4da2a20",
+  "symbol": "APR",
+  "decimals": 18,
+  "name": "aPriori"
+}

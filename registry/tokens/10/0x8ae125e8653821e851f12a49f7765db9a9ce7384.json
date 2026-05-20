@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x8ae125e8653821e851f12a49f7765db9a9ce7384",
+  "symbol": "DOLA",
+  "decimals": 18,
+  "name": "Dola USD Stablecoin"
+}

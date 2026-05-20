@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap/3pool/exchange-v1@1.0.0",
   "manifest_path": "manifests/curve/stableswap/3pool/exchange-v1@1.0.0.json",
-  "bundle_sha256": "0x5320aaca7e5ca0661df10d6280c87174a329c660499fde22592d6b0ba92b1b36",
+  "bundle_sha256": "0x75a2722f06488a648b9e0a9df2951a35ad4730088fe430efc8c42188eafd4297",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap/3pool/exchange-v1@1.0.0",
@@ -46,6 +46,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "erc20"
         },

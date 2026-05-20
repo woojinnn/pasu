@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x5441619a9754aee0665c939743cf7611abb6f6c7",
+  "symbol": "PLU",
+  "decimals": 18,
+  "name": "Pluton"
+}

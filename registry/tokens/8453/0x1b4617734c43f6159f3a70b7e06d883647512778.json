@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x1b4617734c43f6159f3a70b7e06d883647512778",
+  "symbol": "AWE",
+  "decimals": 18,
+  "name": "AWE Network"
+}

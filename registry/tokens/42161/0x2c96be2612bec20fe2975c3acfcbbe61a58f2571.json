@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x2c96be2612bec20fe2975c3acfcbbe61a58f2571",
+  "symbol": "SWELL",
+  "decimals": 18,
+  "name": "Swell"
+}

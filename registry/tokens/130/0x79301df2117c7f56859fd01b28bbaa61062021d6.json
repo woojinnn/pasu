@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x79301df2117c7f56859fd01b28bbaa61062021d6",
+  "symbol": "FXS",
+  "decimals": 18,
+  "name": "Frax Share"
+}

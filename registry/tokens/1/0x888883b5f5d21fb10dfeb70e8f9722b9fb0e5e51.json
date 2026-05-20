@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x888883b5f5d21fb10dfeb70e8f9722b9fb0e5e51",
+  "symbol": "EUROP",
+  "decimals": 6,
+  "name": "Schuman EUR P"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x09f705405677970e509d606348d4635d2332c72e",
+  "symbol": "STRK",
+  "decimals": 18,
+  "name": "Starknet"
+}
