@@ -95,14 +95,5 @@
         }
       ]
     }
-  ],
-  "context_extensions": {
-    "burn_liquidity_nft": {
-      "totalInputUsd": "UsdValuation",
-      "totalMinOutputUsd": "UsdValuation",
-      "effectiveRateVsOracleBps": "Long",
-      "nftOwnerIsActor": "Bool",
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

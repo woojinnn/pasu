@@ -2,9 +2,10 @@ type UnwrapContext = {
   wrappedAsset: AssetRefWithAmountConstraint,
   nativeAsset: AssetRefWithAmountConstraint,
   recipient: String,
-
-  totalUsd?: UsdValuation,
+  custom?: UnwrapCustomContext,
 };
+
+type UnwrapCustomContext = {};
 
 action "unwrap" appliesTo {
   principal: Wallet,

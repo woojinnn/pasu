@@ -49,7 +49,7 @@ impl Mapper for UrTransferMapper {
         let recipient = map_recipient(ctx, find_address(decoded, "recipient")?);
         let value = decimal_from_uint(find_uint(decoded, "value")?);
 
-        let asset = token_asset_ref(&token);
+        let asset = token_asset_ref(ctx, &token);
         let action = TransferAction {
             token: asset_with_amount(
                 asset,

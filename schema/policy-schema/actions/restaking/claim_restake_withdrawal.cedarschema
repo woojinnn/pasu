@@ -3,9 +3,10 @@ type ClaimRestakeWithdrawalContext = {
   amountOut?: AmountConstraint,
 
   recipient: String,
-
-  totalOutputUsd?: UsdValuation,
+  custom?: ClaimRestakeWithdrawalCustomContext,
 };
+
+type ClaimRestakeWithdrawalCustomContext = {};
 
 action "claim_restake_withdrawal" appliesTo {
   principal: Wallet,

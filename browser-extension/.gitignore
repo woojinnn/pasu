@@ -14,3 +14,4 @@ pkg/
 backend/wasm/
 public/wasm/
 public/default-policies/
+public/default-manifests/

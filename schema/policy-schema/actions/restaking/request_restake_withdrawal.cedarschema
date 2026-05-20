@@ -8,9 +8,10 @@ type RequestRestakeWithdrawalContext = {
   strategy?: Pool,
 
   recipient: String,
-
-  totalInputUsd?: UsdValuation,
+  custom?: RequestRestakeWithdrawalCustomContext,
 };
+
+type RequestRestakeWithdrawalCustomContext = {};
 
 action "request_restake_withdrawal" appliesTo {
   principal: Wallet,

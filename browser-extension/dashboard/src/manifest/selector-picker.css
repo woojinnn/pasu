@@ -1,0 +1,80 @@
+.selector-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.selector-picker-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border, #d6d6d6);
+  border-radius: 4px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+.selector-picker-tree {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 4px;
+  background: var(--surface-muted, #fafafa);
+}
+
+.selector-picker-tree > li {
+  padding: 0.25rem 0.4rem;
+}
+
+.selector-root {
+  background: none;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--accent, #2a7);
+}
+.selector-root:hover {
+  background: var(--surface-hover, #eef);
+}
+
+.selector-picker-children {
+  list-style: none;
+  margin: 0.25rem 0 0.25rem 1rem;
+  padding: 0;
+}
+
+.selector-leaf {
+  background: none;
+  border: none;
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--ink, #222);
+  text-align: left;
+  display: block;
+  width: 100%;
+}
+.selector-leaf:hover {
+  background: var(--surface-hover, #eef);
+}
+
+.selector-fallback {
+  padding: 0.3rem 0.5rem;
+}
+.selector-fallback label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted, #666);
+}
+.selector-fallback input {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border, #d6d6d6);
+  border-radius: 4px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}

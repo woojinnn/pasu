@@ -1,0 +1,99 @@
+/* Scopeball design tokens — see Scopeball v2.2 spec §7. */
+
+:root {
+  /* Frog Green primary ramp (§7-2) */
+  --green-50: #f4f8eb;
+  --green-100: #deecc4;
+  --green-200: #c1dd92;
+  --green-400: #90c03c;
+  --green-600: #5d7c27;
+  --green-800: #394c18;
+  --green-900: #24300f;
+
+  /* Eye Gold (Warn) */
+  --gold-50: #fdf5e7;
+  --gold-100: #f9e1b7;
+  --gold-400: #efa830;
+  --gold-600: #ae710c;
+  --gold-800: #6b4607;
+
+  /* Blush Coral (Fail) */
+  --coral-50: #faecea;
+  --coral-100: #f0c8c1;
+  --coral-400: #e49c90;
+  --coral-600: #c2442f;
+  --coral-800: #772a1d;
+
+  /* Neutrals (§7-3) */
+  --surface-primary: #ffffff;
+  --surface-secondary: #f4f8eb;
+  --text-primary: #24300f;
+  --text-secondary: #5d7c27;
+  --text-tertiary: #6b8a5c;
+
+  /* Radius (§7-5) */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 36px;
+  --radius-pill: 999px;
+
+  /* Shadow (§7-6) — green tone, never neutral grey. */
+  --shadow-card:
+    0 30px 60px -20px rgba(83, 144, 67, 0.28),
+    0 10px 22px -8px rgba(83, 144, 67, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  --shadow-subtle: 0 4px 12px -4px rgba(83, 144, 67, 0.12);
+  --shadow-popover: 0 12px 32px -8px rgba(83, 144, 67, 0.22);
+
+  /* Spacing (§7-8) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Apple SD Gothic Neo",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    #f6fbf3 0%,
+    #e3f1d6 100%
+  );
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-weight: 500;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+button:active {
+  transform: scale(0.98);
+}

@@ -96,14 +96,5 @@
         }
       ]
     }
-  ],
-  "context_extensions": {
-    "add_liquidity": {
-      "totalInputUsd": "UsdValuation",
-      "totalMinOutputUsd": "UsdValuation",
-      "effectiveRateVsOracleBps": "Long",
-      "totalInputFractionOfPortfolioBps": "Long",
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

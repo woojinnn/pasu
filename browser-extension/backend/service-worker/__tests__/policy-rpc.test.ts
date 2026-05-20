@@ -11,7 +11,7 @@ vi.mock("../wasm-bridge", () => ({
   evaluatePolicyRpc: mocks.evaluatePolicyRpc,
 }));
 
-import { evaluateWithPolicyRpc } from "../policy-rpc";
+import { evaluateWithPolicyRpc, formatAuditMatched } from "../policy-rpc";
 
 function txMessage(): Message {
   return {
@@ -170,6 +170,55 @@ describe("policy-rpc coordinator", () => {
       manifests: [],
     });
     expect(result.verdict).toEqual(verdict);
+  });
+
+  // D9 surfacing: when WASM returns a `Verdict::Fail` whose first
+  // matched entry has `policy_id == "__system__"`, the audit-log
+  // matched-policies list must carry that id verbatim (not remap it to
+  // `__engine::projection_failed` or strip it). The dashboard reads
+  // this list to render the system-failure verdict as a first-class
+  // event.
+  it("formatAuditMatched preserves __system__ policy id + reason for D9 verdicts", () => {
+    const verdict = {
+      kind: "fail" as const,
+      matched: [
+        {
+          policy_id: "__system__",
+          reason:
+            "rpc-unavailable: user/max-input-usd-100::0::swap-total-input-usd",
+          severity: "deny" as const,
+          origin: "action" as const,
+        },
+      ],
+    };
+    const matched = formatAuditMatched(verdict);
+    expect(matched[0].id).toBe("__system__");
+    expect(matched[0].severity).toBe("deny");
+    expect(matched[0].reason).toMatch(/^rpc-unavailable:/);
+  });
+
+  it("formatAuditMatched omits reason for ordinary policy matches", () => {
+    const verdict = {
+      kind: "fail" as const,
+      matched: [
+        {
+          policy_id: "bundle::max-input-usd-100",
+          reason: "too much USD",
+          severity: "deny" as const,
+          origin: "action" as const,
+        },
+      ],
+    };
+    const matched = formatAuditMatched(verdict);
+    expect(matched[0].id).toBe("bundle::max-input-usd-100");
+    // Ordinary verdicts drop `reason` to keep the audit-log payload
+    // small. The dashboard already has the policy id; it can pull the
+    // reason on demand from the catalog.
+    expect("reason" in matched[0]).toBe(false);
+  });
+
+  it("formatAuditMatched returns [] for pass verdicts", () => {
+    expect(formatAuditMatched({ kind: "pass" as const })).toEqual([]);
   });
 
   it("rejects malformed RPC responses before WASM evaluation", async () => {

@@ -59,12 +59,5 @@
         }
       ]
     }
-  ],
-  "context_extensions": {
-    "donate": {
-      "totalInputUsd": "UsdValuation",
-      "totalInputFractionOfPortfolioBps": "Long",
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

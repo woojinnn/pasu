@@ -11,7 +11,7 @@
     "dev:firefox": "yarn prepare:defaults && yarn prepare:wasm && cross-env TARGET_BROWSER=firefox webpack --config webpack/webpack.dev.js --watch",
     "build:chrome": "yarn prepare:defaults && yarn prepare:wasm && cross-env TARGET_BROWSER=chrome webpack --config webpack/webpack.prod.js",
     "build:firefox": "yarn prepare:defaults && yarn prepare:wasm && cross-env TARGET_BROWSER=firefox webpack --config webpack/webpack.prod.js",
-    "prepare:defaults": "node scripts/copy-default-policies.js",
+    "prepare:defaults": "node scripts/copy-default-policies.js && node scripts/copy-default-manifests.js",
     "prepare:wasm": "../scripts/wasm-build.sh",
     "build": "run-s build:chrome build:firefox",
     "zip:chrome": "web-ext build -s dist/chrome -a dist -n chrome.zip -o",
@@ -36,6 +36,8 @@
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10",
+    "@testing-library/react": "^16",
     "@types/chrome": "^0.0.268",
     "@types/object-hash": "^3.0.6",
     "@types/webextension-polyfill": "^0.10.7",

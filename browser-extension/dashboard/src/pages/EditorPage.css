@@ -1,0 +1,117 @@
+.editor-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  flex: 1;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.editor-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.editor-hydrate-note {
+  background: var(--gold-50);
+  border: 1px solid var(--gold-100);
+  color: var(--gold-800);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.editor-hydrate-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--gold-800);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 6px;
+  font-family: inherit;
+}
+.editor-hydrate-dismiss:hover {
+  opacity: 0.7;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-canvas {
+  background: var(--surface-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.editor-canvas-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-top: 1px solid var(--green-100);
+  padding-top: var(--space-4);
+  margin-top: auto;
+}
+
+.editor-save {
+  background: var(--green-400);
+  color: #ffffff;
+  border: none;
+  padding: 12px 22px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+}
+.editor-save:hover {
+  background: var(--green-600);
+}
+.editor-save:disabled {
+  background: var(--green-200);
+  cursor: not-allowed;
+}
+
+.editor-save-msg {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+}
+.editor-save-msg.ok {
+  background: var(--green-100);
+  color: var(--green-800);
+}
+.editor-save-msg.err {
+  background: var(--coral-100);
+  color: var(--coral-600);
+}
+
+.editor-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (max-width: 1023px) {
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+}

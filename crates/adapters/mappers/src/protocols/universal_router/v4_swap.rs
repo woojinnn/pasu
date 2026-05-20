@@ -255,11 +255,11 @@ fn build_swap_envelope(
         action: Action::Swap(SwapAction {
             swap_mode: mode,
             input_token: asset_with_amount(
-                token_asset_ref(token_in),
+                token_asset_ref(ctx, token_in),
                 swap_amount_constraint(input_kind, input_amt),
             ),
             output_token: asset_with_amount(
-                token_asset_ref(token_out),
+                token_asset_ref(ctx, token_out),
                 swap_amount_constraint(output_kind, output_amt),
             ),
             // Default recipient — patched in Pass 2 from TAKE if present.

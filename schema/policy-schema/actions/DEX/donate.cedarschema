@@ -8,9 +8,10 @@ type DonateContext = {
   isDynamicFee?: Bool,
   hookDataLen?: Long,
   hookDataSelector?: String,
-
-  hookLabel?: String,
+  custom?: DonateCustomContext,
 };
+
+type DonateCustomContext = {};
 
 action "donate" appliesTo {
   principal: Wallet,

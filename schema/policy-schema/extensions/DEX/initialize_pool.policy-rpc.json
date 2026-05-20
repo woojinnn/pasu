@@ -20,10 +20,5 @@
         }
       ]
     }
-  ],
-  "context_extensions": {
-    "initialize_pool": {
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

@@ -407,8 +407,36 @@ vi.doMock("../../wasm-bridge", () => ({
   EngineError: orchestratorMocks.MockEngineError,
   evaluateWithEnvelopes: orchestratorMocks.evaluateWithEnvelopes,
 }));
+// `../../policy-rpc` exposes both `evaluateWithPolicyRpc` (static verdict
+// path) and `formatAuditMatched` (D9 — projects a VerdictDto into the
+// audit-log matched-policies list). The orchestrator imports BOTH, so the
+// mock must provide both. `formatAuditMatched` is a pure projection with no
+// side effects — we mirror the real implementation (policy-rpc.ts:156) so
+// the audit-row assertions (`matchedPolicies` shaped `{ id, severity }`)
+// observe identical behaviour to production.
+const SYSTEM_POLICY_ID = "__system__";
 vi.mock("../../policy-rpc", () => ({
   evaluateWithPolicyRpc: orchestratorMocks.evaluateWithPolicyRpc,
+  SYSTEM_POLICY_ID,
+  formatAuditMatched: (verdict: {
+    matched?: Array<{
+      policy_id: string;
+      severity: string;
+      reason?: string;
+    }>;
+  }) => {
+    if (!verdict.matched) return [];
+    return verdict.matched.map((m) => {
+      const base: { id: string; severity: string; reason?: string } = {
+        id: m.policy_id,
+        severity: m.severity,
+      };
+      if (m.policy_id === SYSTEM_POLICY_ID && typeof m.reason === "string") {
+        base.reason = m.reason;
+      }
+      return base;
+    });
+  },
 }));
 // `../../marketplace/declarative-route` is imported directly in Group A to
 // exercise `enrichEnvelopeAssets`, but the orchestrator (loaded inside

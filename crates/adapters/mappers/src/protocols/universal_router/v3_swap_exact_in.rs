@@ -57,11 +57,11 @@ impl Mapper for UrV3SwapExactInMapper {
         let action = SwapAction {
             swap_mode: SwapMode::ExactIn,
             input_token: asset_with_amount(
-                token_asset_ref(&path.token_in),
+                token_asset_ref(ctx, &path.token_in),
                 swap_amount_constraint(AmountKind::Exact, amount_in),
             ),
             output_token: asset_with_amount(
-                token_asset_ref(&path.token_out),
+                token_asset_ref(ctx, &path.token_out),
                 swap_amount_constraint(AmountKind::Min, amount_out_min),
             ),
             recipient,

@@ -78,13 +78,5 @@
         }
       ]
     }
-  ],
-  "context_extensions": {
-    "mint_liquidity_nft": {
-      "totalInputUsd": "UsdValuation",
-      "totalInputFractionOfPortfolioBps": "Long",
-      "effectiveRateVsOracleBps": "Long",
-      "windowStats": "WindowStats"
-    }
-  }
+  ]
 }

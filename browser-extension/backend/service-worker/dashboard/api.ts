@@ -11,6 +11,7 @@ import {
   getCatalog,
   getEnabledIds,
 } from "../policy-selection";
+import { auditRead, type AuditEntry } from "../storage";
 import {
   DASHBOARD_ID_PREFIX,
   type ManagedPolicy,
@@ -18,6 +19,12 @@ import {
   listManaged,
   upsertManaged,
 } from "./storage";
+
+// Hard ceiling for audit-log responses so a wedged dashboard can't pull
+// the entire ring buffer in one shot. The underlying buffer is capped at
+// AUDIT_MAX (100) so this is mostly defensive.
+const AUDIT_DEFAULT_LIMIT = 100;
+const AUDIT_MAX_LIMIT = 200;
 
 const RULE_KEYWORD_RE = /\b(forbid|permit)\s*\(/;
 
@@ -42,7 +49,14 @@ export type DashboardRequest =
       manifests?: readonly unknown[];
     }
   | { type: "dashboard:delete"; id: string }
-  | { type: "dashboard:set-enabled-ids"; ids: string[] };
+  | { type: "dashboard:set-enabled-ids"; ids: string[] }
+  | {
+      type: "dashboard:get-audit-log";
+      opts?: {
+        limit?: number;
+        since?: number;
+      };
+    };
 
 export type DashboardResponse<T = unknown> =
   | { ok: true; data: T }
@@ -241,6 +255,22 @@ export async function handleDashboardRequest(
         if (!result.ok) return { ok: false, error: result.error };
         const catalog = await getCatalog();
         return { ok: true, data: { catalog } };
+      }
+
+      case "dashboard:get-audit-log": {
+        const raw = await auditRead();
+        const opts = req.opts ?? {};
+        let entries: AuditEntry[] = raw;
+        if (typeof opts.since === "number") {
+          entries = entries.filter((e) => e.decidedAtMs >= opts.since!);
+        }
+        // Most-recent-first; storage appends so reverse() gives newest first.
+        entries = [...entries].reverse();
+        const requested =
+          typeof opts.limit === "number" && opts.limit > 0
+            ? Math.min(opts.limit, AUDIT_MAX_LIMIT)
+            : AUDIT_DEFAULT_LIMIT;
+        return { ok: true, data: entries.slice(0, requested) };
       }
 
       default: {

@@ -1,16 +1,15 @@
 type VoteContext = {
   governance: String,
-  governanceLabel?: String,
 
   proposalId: String,
   support: String,
   reason?: String,
 
-  votingPower?: String,
-
   validity?: Validity,
-  validityDeltaSec?: Long,
+  custom?: VoteCustomContext,
 };
+
+type VoteCustomContext = {};
 
 action "vote" appliesTo {
   principal: Wallet,

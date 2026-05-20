@@ -3,9 +3,10 @@ type ClaimUnstakeContext = {
   amountOut?: AmountConstraint,
 
   recipient: String,
-
-  totalOutputUsd?: UsdValuation,
+  custom?: ClaimUnstakeCustomContext,
 };
+
+type ClaimUnstakeCustomContext = {};
 
 action "claim_unstake" appliesTo {
   principal: Wallet,

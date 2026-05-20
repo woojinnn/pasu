@@ -104,6 +104,22 @@ jobs:
       - working-directory: browser-extension
         run: yarn build:firefox
 
+      - working-directory: browser-extension/dashboard
+        name: Dashboard prepare wasm (policy-engine + policy-builder)
+        run: yarn prepare:wasm
+
+      - working-directory: browser-extension/dashboard
+        name: Dashboard build (tsc --noEmit + vite build)
+        run: yarn build
+
+      - name: Upload dashboard dist (PR build artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: scopeball-dashboard-${{ github.sha }}
+          path: browser-extension/dashboard/dist
+          if-no-files-found: error
+          retention-days: 14
+
       - working-directory: browser-extension
         name: Package extension zips
         run: yarn zip

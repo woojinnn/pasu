@@ -67,16 +67,21 @@ pub(super) fn wrapped_weth(ctx: &MapContext<'_>) -> AssetRef {
 /// `AssetRef` for a token referenced by address inside a UR opcode (SWEEP,
 /// TRANSFER, swap path entries). UR's `0x00…00` is the native-asset
 /// sentinel; anything else is an ERC-20.
-pub(super) fn token_asset_ref(addr: &Address) -> AssetRef {
+pub(super) fn token_asset_ref(ctx: &MapContext<'_>, addr: &Address) -> AssetRef {
     if is_zero_address(addr) {
         native_eth()
     } else {
+        // Look up well-known token metadata so downstream consumers (e.g.
+        // policy-rpc oracle.usd_value) see the token's decimals. Missing
+        // decimals make USD valuation reject the call with
+        // "asset.decimals must be a safe integer".
+        let meta = ctx.token_registry.lookup(ctx.chain_id, addr);
         AssetRef {
             kind: AssetKind::Erc20,
             address: Some(addr.clone()),
             token_id: None,
-            symbol: None,
-            decimals: None,
+            symbol: meta.as_ref().map(|m| m.symbol.clone()),
+            decimals: meta.map(|m| m.decimals),
         }
     }
 }

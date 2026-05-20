@@ -4,14 +4,10 @@ type DecreaseLiquidityContext = {
   outputTokens: Set<AssetRefWithAmountConstraint>,
   recipient?: String,
   validity?: Validity,
-
-  totalInputUsd?: UsdValuation,
-  totalMinOutputUsd?: UsdValuation,
-  effectiveRateVsOracleBps?: Long,
-  nftOwnerIsActor?: Bool,
-  recipientIsContract?: Bool,
-  windowStats?: WindowStats,
+  custom?: DecreaseLiquidityCustomContext,
 };
+
+type DecreaseLiquidityCustomContext = {};
 
 action "decrease_liquidity" appliesTo {
   principal: Wallet,

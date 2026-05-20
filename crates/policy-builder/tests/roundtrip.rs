@@ -74,6 +74,12 @@ fn decimal_with_optional_parent_installs() {
         ],
     };
     let text = compile(&rule, &swap::schema()).expect("compile");
+    // totalInputUsd is a custom (manifest-enriched) field. The bundled
+    // schema's SwapCustomContext is `{}`, so the only access path Cedar can
+    // type-check is via `context has custom && context.custom has X` — both
+    // guards short-circuit on an absent attribute, so the policy parses and
+    // installs even though the value comparison can never fire under the
+    // empty custom shape.
     let result = PolicyEngineBuilder::new().add_text(text.clone()).build();
     assert!(
         result.is_ok(),

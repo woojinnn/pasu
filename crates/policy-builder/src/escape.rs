@@ -26,6 +26,9 @@ pub enum EscapeError {
     /// `.`, and 1–4 fractional digits.
     #[error("invalid decimal literal: {0}")]
     InvalidDecimal(String),
+    /// `unescape_string` received a literal whose escape sequences don't parse.
+    #[error("invalid string literal escape: {0}")]
+    InvalidEscape(String),
 }
 
 /// Emit a Cedar string literal: `"…"` with `\\` and `"` escaped.
@@ -40,6 +43,23 @@ pub fn escape_string(value: &str) -> String {
     // The grammar overlap with Cedar string literals is exact for the
     // characters we ever emit (ASCII + escapes).
     serde_json::to_string(value).expect("string serialization is infallible")
+}
+
+/// Decode the inner content of a Cedar/JSON string literal.
+///
+/// `inner` is the run of characters between the surrounding `"…"`; this
+/// function reapplies the quotes and parses via `serde_json` so escapes
+/// like `\"`, `\\`, `\n`, `\uXXXX` all round-trip exactly the way
+/// [`escape_string`] writes them.
+///
+/// # Errors
+///
+/// Returns [`EscapeError::InvalidEscape`] when the literal contains an
+/// escape sequence that JSON's grammar doesn't accept.
+pub fn unescape_string(inner: &str) -> Result<String, EscapeError> {
+    let wrapped = format!("\"{inner}\"");
+    serde_json::from_str::<String>(&wrapped)
+        .map_err(|_| EscapeError::InvalidEscape(inner.to_string()))
 }
 
 /// Emit an unquoted Cedar `Long` literal after validating range.

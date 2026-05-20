@@ -118,7 +118,20 @@ function bundleSelector(bundle: AdapterFunctionBundle): string {
   // The bundle's `match.selector` is the canonical lookup key; we
   // recompute it here so a mismatch between the abi and the match
   // selector trips a test (sanity guard).
-  const sig = toFunctionSelector(bundle.abi_fragment.abi as unknown as AbiFunction);
+  //
+  // The bundle ABI fragment carries only `{ name, type, inputs }` — no
+  // `outputs` (a function selector depends solely on name + input types).
+  // abitype 1.0.0's `formatAbiItem`, reached via `toFunctionSelector`,
+  // unconditionally reads `abiItem.outputs.length`, so we normalise a
+  // missing `outputs` to `[]` before handing the fragment to viem. This
+  // does not affect the computed selector — production's
+  // `decodeFunctionData` path tolerates the absent field on its own.
+  const fn = bundle.abi_fragment.abi as unknown as AbiFunction;
+  const normalised: AbiFunction = {
+    ...fn,
+    outputs: fn.outputs ?? [],
+  };
+  const sig = toFunctionSelector(normalised);
   return sig.toLowerCase();
 }
 

@@ -51,7 +51,7 @@ impl Mapper for UrSweepMapper {
         let recipient = map_recipient(ctx, find_address(decoded, "recipient")?);
         let amount_min = decimal_from_uint(find_uint(decoded, "amountMin")?);
 
-        let asset = token_asset_ref(&token);
+        let asset = token_asset_ref(ctx, &token);
         let action = TransferAction {
             token: asset_with_amount(
                 asset,

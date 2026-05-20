@@ -8,12 +8,10 @@ type RestakeContext = {
   strategy?: Pool,
 
   recipient: String,
-
-  totalInputUsd?: UsdValuation,
-  totalInputFractionOfPortfolioBps?: Long,
-  allowancesCoverInputs?: Bool,
-  windowStats?: WindowStats,
+  custom?: RestakeCustomContext,
 };
+
+type RestakeCustomContext = {};
 
 action "restake" appliesTo {
   principal: Wallet,

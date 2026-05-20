@@ -5,6 +5,12 @@ import {
   isDashboardRequest,
 } from "./dashboard/api";
 import { ensureSeedBundlesInstalled } from "./marketplace/declarative-adapter-loader";
+import {
+  handleManifestRequest,
+  isManifestRequest,
+} from "./manifests/handlers";
+import { hydrateManifests } from "./manifests/hydrate";
+import { detectPendingMigrations } from "./manifests/migration-detector";
 import { decideMessage } from "./orchestrator";
 import {
   ensureDefaultPoliciesInstalled,
@@ -21,20 +27,83 @@ const WALLET_ACTION_TYPES = new Set<string>([
 
 console.log("Scopeball SW alive at", new Date().toISOString());
 
-// Cold-start prewarm: kick off WASM module load + default policy install
-// the moment the SW boots so the first dApp request doesn't pay the 4.77MB
-// compile cost inside the 3s lifecycle budget. Best-effort; failures are
-// logged and the first decideMessage call retries.
+// SW boot sequence (Phase 6, carry-over G):
 //
-// `ensureSeedBundlesInstalled` runs after the policy install resolves
-// because both call into the same WASM module; sequencing them keeps the
-// init() singleton's first caller from racing the second. Failures here
-// don't abort policy install — the decideMessage path retries.
-void ensureDefaultPoliciesInstalled()
-  .then(() => ensureSeedBundlesInstalled())
-  .catch((err) => {
+// `ensureDefaultPoliciesInstalled()` and `hydrateManifests()` both end up
+// calling `wasmInstallPolicies(...)` under the hood. Firing them in
+// parallel created a last-writer-wins race — whichever install completed
+// second would clobber the WASM engine state, leaving storage and the
+// engine out of sync. We serialize them here: defaults first (they prime
+// the engine in the common cold-start path), then declarative seed
+// bundles, then hydrate stored manifests on top.
+//
+// Both stages stay best-effort: failures are logged so the engine still
+// serves the legacy `policies-loader` install path on the first
+// `decideMessage` retry. We do NOT block the runtime listeners below on
+// this promise — they should be installed synchronously so the SW can
+// queue messages while warmup is in flight.
+void bootSequence().catch((err) => {
+  console.warn("[Scopeball] boot sequence failed:", err);
+});
+
+async function bootSequence(): Promise<void> {
+  // Fix R: run the migration detector BEFORE the install passes. The
+  // detector strips v0 policy ids out of `policy-selection:enabled-ids`
+  // and snapshots their prior enabled-state into
+  // `migration:original-enabled`. If we ran the install first the
+  // enriched-schema validation would reject every v0 policy and the
+  // whole `installFiltered` call would error — orchestrator's reject
+  // path would then fire on every request until the user opened the
+  // dashboard and clicked Rewrite. By detecting + disabling first we
+  // keep the rest of the enabled set installable and the engine green.
+  //
+  // Idempotent: re-running after a manual rewrite never appends
+  // already-cleared ids and preserves the first-detection snapshot.
+  try {
+    await detectPendingMigrations();
+  } catch (err) {
+    console.warn("[Scopeball] migration auto-detect failed:", err);
+  }
+
+  // Cold-start prewarm: kick off WASM module load + default policy
+  // install so the first dApp request doesn't pay the 4.77MB compile
+  // cost inside the 3s lifecycle budget. We await this before hydrating
+  // manifests — otherwise the two install paths would race on the
+  // shared WASM engine state.
+  try {
+    await ensureDefaultPoliciesInstalled();
+  } catch (err) {
     console.warn("[Scopeball] cold-start prewarm failed:", err);
-  });
+  }
+
+  // Phase 7 marketplace seed: install declarative adapter bundles
+  // (shipped with the extension) into the WASM engine. Sequenced after
+  // `ensureDefaultPoliciesInstalled` because both call into the same
+  // WASM module — sequencing keeps the init() singleton's first caller
+  // from racing the second. Failures here don't abort manifest hydration
+  // — the decideMessage path retries.
+  try {
+    await ensureSeedBundlesInstalled();
+  } catch (err) {
+    console.warn("[Scopeball] seed bundle install failed:", err);
+  }
+
+  // Phase 6 / Task 6.3: hydrate the manifest-driven schema on SW boot.
+  //
+  // Two paths share the same atomic-install plumbing:
+  // 1. Prod cold-start restore — if storage already has manifests (the
+  //    user installed them via the dashboard in a previous lifetime),
+  //    push them back into WASM so the engine starts up with the right
+  //    schema.
+  // 2. Dev seeding — when `NODE_ENV !== "production"`, `devSeed()` fills
+  //    in any missing default actions from `public/default-manifests/`.
+  //    Prod builds short-circuit inside `devSeed`.
+  try {
+    await hydrateManifests();
+  } catch (err) {
+    console.warn("[Scopeball] manifest hydration failed:", err);
+  }
+}
 
 Browser.runtime.onConnect.addListener((port) => {
   if (port.name !== Identifier.CONTENT_SCRIPT) return;
@@ -131,6 +200,19 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "dashboard_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    // Phase 6 / Task 6.5: manifest CRUD, schema preview, migration.
+    if (isManifestRequest(req)) {
+      void handleManifestRequest(req)
+        .then((response) => sendResponse(response))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "manifest_failed", message: String(err) },
           }),
         );
       return true;

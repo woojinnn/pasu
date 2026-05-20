@@ -2181,6 +2181,7 @@ name = "policy-builder"
 version = "0.1.0"
 dependencies = [
  "policy-engine",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",
@@ -2220,6 +2221,7 @@ dependencies = [
  "policy-engine",
  "request-router",
  "serde_json",
+ "walkdir",
 ]
 
 [[package]]

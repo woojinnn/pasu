@@ -7,9 +7,10 @@ type SignAuthorizationContext = {
   amount?: AmountConstraint,
   nonce?: String,
   validity: Validity,
-
-  authorizedIsContract?: Bool,
+  custom?: SignAuthorizationCustomContext,
 };
+
+type SignAuthorizationCustomContext = {};
 
 action "sign_authorization" appliesTo {
   principal: Wallet,

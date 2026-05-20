@@ -31,6 +31,10 @@ interface WasmExports {
   // Skips the route → plan stages so the declarative pipeline can drive
   // verdicts directly from its post-processed envelopes.
   evaluate_with_envelopes_json(input_json: string): string;
+  // origin/main — manifest-driven schema preview + alias table.
+  preview_custom_schema_json(input_json: string): string;
+  preview_installed_schema_json(): string;
+  get_alias_table_json(): string;
 }
 
 /**
@@ -181,13 +185,60 @@ function unwrap<T>(json: string): T {
   throw new EngineError(parsed.error.kind, parsed.error.message);
 }
 
+/**
+ * Result envelope from the manifest-map install path (Phase 5/6).
+ *
+ * Present when the caller passes `manifests` as a `{ [action]: manifest }`
+ * map — the WASM install path then composes the enriched schema and
+ * returns these fields. Absent when the caller passes the legacy
+ * `Vec<PolicyManifest>` shape (the install path skips `compose_enriched`
+ * and returns a `null` data envelope).
+ */
+export interface InstallPoliciesOutput {
+  enrichedSchemaHash: string;
+  addedCustomFields: Record<string, unknown[]>;
+}
+
+/**
+ * Install Cedar policies into the WASM engine.
+ *
+ * **Phase 6 / carry-over E:** `manifests` accepts both the legacy
+ * `Vec<PolicyManifest>` (array) and the new `{ [action]: manifest }`
+ * map shape. They are NOT equivalent:
+ *
+ * - Map shape → composes the enriched schema and the returned object
+ *   carries `enrichedSchemaHash` + `addedCustomFields`. **All new
+ *   Phase-6 callers (the manifest store, atomic-install, dev-seed,
+ *   dashboard SDK) must use this shape.**
+ * - Array shape → legacy, preserves the pre-Phase-5 install. Returns
+ *   `null` for the install output. Only the legacy
+ *   `policies-loader.ts` aggregator still uses it.
+ *
+ * Returns `null` when WASM returned the legacy null envelope, otherwise
+ * the populated [`InstallPoliciesOutput`].
+ */
 export async function installPolicies(input: {
   schema_text: string;
   policy_set: { id: string; text: string }[];
-  manifests?: readonly unknown[];
-}): Promise<void> {
+  manifests?: readonly unknown[] | Record<string, unknown>;
+}): Promise<InstallPoliciesOutput | null> {
   const exports = await load();
-  unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
+  const raw = unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
+  if (raw === null || raw === undefined) return null;
+  if (
+    typeof raw === "object" &&
+    typeof (raw as { enrichedSchemaHash?: unknown }).enrichedSchemaHash === "string"
+  ) {
+    const r = raw as {
+      enrichedSchemaHash: string;
+      addedCustomFields?: Record<string, unknown[]>;
+    };
+    return {
+      enrichedSchemaHash: r.enrichedSchemaHash,
+      addedCustomFields: r.addedCustomFields ?? {},
+    };
+  }
+  return null;
 }
 
 /**
@@ -247,7 +298,7 @@ export async function planPolicyRpc(
     manifestSetHash: plan.manifest_set_hash,
     schemaHash: plan.schema_hash,
     envelopeCount: plan.envelopes.length,
-    calls: plan.calls.map((c) => ({ id: c.id, method: c.method })),
+    calls: plan.calls.map((c) => ({ id: c.id, method: c.method, params: c.params })),
     diagnostics: plan.diagnostics,
   });
   return plan;
@@ -271,6 +322,43 @@ export async function installDeclarativeBundle(
   );
 }
 
+export interface PreviewCustomSchemaOutput {
+  customTypes: { name: string; fields: unknown[] }[];
+  enrichedSchemaText: string;
+  diff: { added: unknown[]; removed: unknown[]; changed: unknown[] };
+  schemaHash: string;
+}
+
+export interface PreviewInstalledSchemaOutput {
+  schema_text: string;
+  schema_hash: string;
+  added_fields: unknown[];
+  customContexts: Record<string, unknown[]>;
+  schemaHash: string;
+}
+
+export interface AliasTableEntry {
+  name: string;
+  kind: "scalar" | "record";
+  cedarSpelling: string;
+}
+
+/**
+ * Preview the enriched cedarschema produced by a single action's
+ * manifest (Phase 6 / D14). Returns the full custom-context list, the
+ * generated cedarschema text, a diff against any currently-installed
+ * action, and a hash of the previewed schema.
+ */
+export async function previewCustomSchema(input: {
+  action: string;
+  manifest: unknown;
+}): Promise<PreviewCustomSchemaOutput> {
+  const exports = await load();
+  return unwrap<PreviewCustomSchemaOutput>(
+    exports.preview_custom_schema_json(JSON.stringify(input)),
+  );
+}
+
 /**
  * Phase 1B — run an installed declarative mapper against a decoded call.
  *
@@ -286,6 +374,19 @@ export async function declarativeMap(
   const exports = await load();
   return unwrap<DeclarativeLookupResult>(
     exports.declarative_lookup_json(JSON.stringify(input)),
+  );
+}
+
+/**
+ * Read back the currently-installed enriched cedarschema + per-action
+ * custom-context fields. Used by the dashboard schema viewer to show
+ * users what their installed manifests have added on top of the base
+ * cedarschema.
+ */
+export async function previewInstalledSchema(): Promise<PreviewInstalledSchemaOutput> {
+  const exports = await load();
+  return unwrap<PreviewInstalledSchemaOutput>(
+    exports.preview_installed_schema_json(),
   );
 }
 
@@ -313,6 +414,16 @@ export async function declarativeRouteRequest(
   return unwrap<DeclarativeRouteRequestResult>(
     exports.declarative_route_request_json(JSON.stringify(input)),
   );
+}
+
+/**
+ * Return the base alias table — the set of cedarschema types and
+ * records that ship with the engine and that manifest authors can
+ * reference in their `outputs[].type` fields.
+ */
+export async function getAliasTable(): Promise<{ entries: AliasTableEntry[] }> {
+  const exports = await load();
+  return unwrap<{ entries: AliasTableEntry[] }>(exports.get_alias_table_json());
 }
 
 export async function evaluatePolicyRpc(

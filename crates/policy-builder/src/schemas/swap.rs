@@ -1,9 +1,17 @@
 //! `swap` action schema.
 //!
-//! Mirrors the `SwapContext` declared in `schema/policy-schema/actions/DEX/swap.cedarschema`.
+//! Mirrors the v1 `SwapContext` declared in
+//! `schema/policy-schema/actions/DEX/swap.cedarschema` plus the manifest-driven
+//! `SwapCustomContext` extension shape exemplified by
+//! `schema/policy-schema/extensions/DEX/swap.policy-rpc.json`.
+//!
 //! Composite record fields (`inputToken`, `outputToken`, `totalInputUsd`,
 //! `validity`, `windowStats`) are flattened into dotted leaf paths so each
 //! addressable comparison gets its own [`FieldSpec`].
+//!
+//! Each field is tagged `is_custom = true` when it is manifest-enriched and
+//! lives under `context.custom`, and `false` when it is calldata-derived and
+//! lives directly under `context`. The generator and parser key off this flag.
 
 use crate::types::{ActionSchema, CedarType, FieldSpec};
 use std::collections::BTreeMap;
@@ -14,7 +22,9 @@ use std::collections::BTreeMap;
 pub fn schema() -> ActionSchema {
     let mut fields = BTreeMap::new();
 
-    // ── required top-level leaves ─────────────────────────────────────────
+    // ─── BASE FIELDS (calldata-derived, addressed as `context.<path>`) ────
+
+    // Required top-level leaves.
     insert(
         &mut fields,
         FieldSpec {
@@ -24,6 +34,7 @@ pub fn schema() -> ActionSchema {
             parent_path: None,
             parent_optional: false,
             label: Some("Swap mode".into()),
+            is_custom: false,
         },
     );
     insert(
@@ -35,10 +46,11 @@ pub fn schema() -> ActionSchema {
             parent_path: None,
             parent_optional: false,
             label: Some("Recipient address".into()),
+            is_custom: false,
         },
     );
 
-    // ── inputToken / outputToken (required AssetRefWithAmountConstraint) ───
+    // inputToken / outputToken (required AssetRefWithAmountConstraint).
     for (parent, parent_label) in [
         ("inputToken", "Input token"),
         ("outputToken", "Output token"),
@@ -46,9 +58,50 @@ pub fn schema() -> ActionSchema {
         insert_asset_with_amount(&mut fields, parent, parent_label);
     }
 
-    // ── optional Long top-level leaves ────────────────────────────────────
+    // feeBps (optional Long, base — declared inline in SwapContext).
+    insert(
+        &mut fields,
+        FieldSpec {
+            path: "feeBps".into(),
+            cedar_type: CedarType::Long,
+            optional: true,
+            parent_path: None,
+            parent_optional: false,
+            label: Some("Fee (bps)".into()),
+            is_custom: false,
+        },
+    );
+
+    // validity (optional Validity record, required inner leaves) — base.
+    insert(
+        &mut fields,
+        FieldSpec {
+            path: "validity.expiresAt".into(),
+            cedar_type: CedarType::String,
+            optional: false,
+            parent_path: Some("validity".into()),
+            parent_optional: true,
+            label: Some("Expires at".into()),
+            is_custom: false,
+        },
+    );
+    insert(
+        &mut fields,
+        FieldSpec {
+            path: "validity.source".into(),
+            cedar_type: CedarType::String,
+            optional: false,
+            parent_path: Some("validity".into()),
+            parent_optional: true,
+            label: Some("Validity source".into()),
+            is_custom: false,
+        },
+    );
+
+    // ─── CUSTOM FIELDS (enrichment, addressed as `context.custom.<path>`) ─
+
+    // Optional Long enrichment leaves (top-level under SwapCustomContext).
     for (path, label) in [
-        ("feeBps", "Fee (bps)"),
         ("effectiveRateVsOracleBps", "Effective rate vs oracle (bps)"),
         (
             "totalInputFractionOfPortfolioBps",
@@ -65,11 +118,12 @@ pub fn schema() -> ActionSchema {
                 parent_path: None,
                 parent_optional: false,
                 label: Some(label.into()),
+                is_custom: true,
             },
         );
     }
 
-    // ── optional Bool top-level leaf ──────────────────────────────────────
+    // Optional Bool enrichment leaf.
     insert(
         &mut fields,
         FieldSpec {
@@ -79,36 +133,13 @@ pub fn schema() -> ActionSchema {
             parent_path: None,
             parent_optional: false,
             label: Some("Recipient is contract".into()),
+            is_custom: true,
         },
     );
 
-    // ── validity (optional Validity record, required inner leaves) ────────
-    insert(
-        &mut fields,
-        FieldSpec {
-            path: "validity.expiresAt".into(),
-            cedar_type: CedarType::String,
-            optional: false,
-            parent_path: Some("validity".into()),
-            parent_optional: true,
-            label: Some("Expires at".into()),
-        },
-    );
-    insert(
-        &mut fields,
-        FieldSpec {
-            path: "validity.source".into(),
-            cedar_type: CedarType::String,
-            optional: false,
-            parent_path: Some("validity".into()),
-            parent_optional: true,
-            label: Some("Validity source".into()),
-        },
-    );
-
-    // ── USD valuations (optional record, four required inner leaves) ──────
-    // UsdValuation is declared in core.cedarschema with required leaves
-    // `value`, `asOfTs`, `staleSec`, `sources`. Each is addressable
+    // USD valuations (optional UsdValuation records, four required inner
+    // leaves each). UsdValuation is declared in core.cedarschema with required
+    // leaves `value`, `asOfTs`, `staleSec`, `sources`. Each is addressable
     // independently once the parent `has` guard fires.
     for (parent, parent_label) in [
         ("totalInputUsd", "Total input USD"),
@@ -123,6 +154,7 @@ pub fn schema() -> ActionSchema {
                 parent_path: Some(parent.into()),
                 parent_optional: true,
                 label: Some(parent_label.into()),
+                is_custom: true,
             },
         );
         insert(
@@ -134,6 +166,7 @@ pub fn schema() -> ActionSchema {
                 parent_path: Some(parent.into()),
                 parent_optional: true,
                 label: Some(format!("{parent_label} staleness (sec)")),
+                is_custom: true,
             },
         );
         insert(
@@ -145,6 +178,7 @@ pub fn schema() -> ActionSchema {
                 parent_path: Some(parent.into()),
                 parent_optional: true,
                 label: Some(format!("{parent_label} oracle timestamp")),
+                is_custom: true,
             },
         );
         insert(
@@ -156,11 +190,12 @@ pub fn schema() -> ActionSchema {
                 parent_path: Some(parent.into()),
                 parent_optional: true,
                 label: Some(format!("{parent_label} oracle sources")),
+                is_custom: true,
             },
         );
     }
 
-    // ── windowStats (optional WindowStats record, optional inner leaves) ───
+    // windowStats (optional WindowStats record, optional inner leaves).
     insert(
         &mut fields,
         FieldSpec {
@@ -170,6 +205,7 @@ pub fn schema() -> ActionSchema {
             parent_path: Some("windowStats".into()),
             parent_optional: true,
             label: Some("24h swap volume USD".into()),
+            is_custom: true,
         },
     );
     insert(
@@ -181,6 +217,7 @@ pub fn schema() -> ActionSchema {
             parent_path: Some("windowStats".into()),
             parent_optional: true,
             label: Some("24h swap count".into()),
+            is_custom: true,
         },
     );
 
@@ -214,6 +251,7 @@ fn insert_asset_with_amount(
                 parent_path: Some(asset_parent.clone()),
                 parent_optional: false,
                 label: Some(format!("{parent_label} {label}")),
+                is_custom: false,
             },
         );
     }
@@ -228,6 +266,7 @@ fn insert_asset_with_amount(
             parent_path: Some(amount_parent.clone()),
             parent_optional: false,
             label: Some(format!("{parent_label} amount kind")),
+            is_custom: false,
         },
     );
     insert(
@@ -239,6 +278,7 @@ fn insert_asset_with_amount(
             parent_path: Some(amount_parent),
             parent_optional: false,
             label: Some(format!("{parent_label} amount value")),
+            is_custom: false,
         },
     );
 }
@@ -288,5 +328,49 @@ mod tests {
         let f = s.fields.get("totalInputUsd.value").unwrap();
         assert_eq!(f.parent_path.as_deref(), Some("totalInputUsd"));
         assert!(f.parent_optional);
+    }
+
+    #[test]
+    fn base_field_is_not_custom() {
+        let s = schema();
+        // Calldata-derived fields live under context.<path>, not context.custom.
+        for path in [
+            "swapMode",
+            "recipient",
+            "feeBps",
+            "inputToken.asset.address",
+            "outputToken.amount.value",
+            "validity.expiresAt",
+        ] {
+            let f = s
+                .fields
+                .get(path)
+                .unwrap_or_else(|| panic!("missing {path}"));
+            assert!(!f.is_custom, "expected base (not custom) for {path}");
+        }
+    }
+
+    #[test]
+    fn enrichment_fields_are_custom() {
+        let s = schema();
+        // Manifest-contributed fields live under context.custom.<path>.
+        for path in [
+            "totalInputUsd.value",
+            "totalInputUsd.staleSec",
+            "totalInputUsd.sources",
+            "totalMinOutputUsd.value",
+            "validityDeltaSec",
+            "effectiveRateVsOracleBps",
+            "totalInputFractionOfPortfolioBps",
+            "recipientIsContract",
+            "windowStats.swapCount24h",
+            "windowStats.swapVolumeUsd24h",
+        ] {
+            let f = s
+                .fields
+                .get(path)
+                .unwrap_or_else(|| panic!("missing {path}"));
+            assert!(f.is_custom, "expected custom for {path}");
+        }
     }
 }

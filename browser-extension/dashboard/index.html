@@ -1,29 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scopeball Dashboard</title>
-    <style>
-      body {
-        font: 14px/1.5 system-ui, sans-serif;
-        padding: 2em;
-        max-width: 760px;
-        margin: 0 auto;
-      }
-      code { background: #f3f3f3; padding: 0.1em 0.4em; border-radius: 3px; }
-      #status { font-weight: 600; }
-      .ok { color: #197a1f; }
-      .err { color: #b00020; }
-    </style>
+    <title>Scopeball — Dashboard</title>
   </head>
   <body>
-    <h1>Scopeball Dashboard</h1>
-    <p id="status">connecting…</p>
-    <p>
-      Scaffold only. The SDK client is exposed as <code>window.c</code>
-      so you can poke it from DevTools. Replace this with your real UI.
-    </p>
-    <script type="module" src="/src/main.ts"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

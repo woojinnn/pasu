@@ -20,6 +20,7 @@ pub use declarative_exports::{
     declarative_install_json, declarative_lookup_json, declarative_route_request_json,
 };
 pub use exports::{
-    evaluate_policy_rpc_json, evaluate_with_envelopes_json, install_policies_json,
-    plan_policy_rpc_json, preview_installed_schema_json, preview_schema_json, route_request_json,
+    evaluate_policy_rpc_json, evaluate_with_envelopes_json, get_alias_table_json,
+    install_policies_json, plan_policy_rpc_json, preview_custom_schema_json,
+    preview_installed_schema_json, preview_schema_json, route_request_json,
 };

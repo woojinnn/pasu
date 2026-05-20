@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use policy_engine::policy_rpc::{PolicyManifest, PolicyRpcCall, PolicyRpcResponse, RootInput};
+use policy_engine::schema::CustomFieldSource;
 use policy_engine::ActionEnvelope;
 
 #[derive(Debug, Serialize)]
@@ -54,8 +55,69 @@ pub struct InstallPoliciesInputDto {
     #[serde(default)]
     pub schema_text: String,
     pub policy_set: Vec<PolicyEntryDto>,
+    /// Phase 5: accept either the legacy `Vec<PolicyManifest>` shape or the
+    /// new `{ [action]: PolicyManifest }` map. The map shape triggers the
+    /// `compose_enriched` install path; the vec shape keeps the legacy
+    /// behaviour for callers that have not migrated yet.
     #[serde(default)]
-    pub manifests: Vec<PolicyManifest>,
+    pub manifests: ManifestsInputDto,
+}
+
+/// Wire shape for `install_policies_json` `manifests`.
+///
+/// **Phase 6 / D5 carry-over:** the two variants are NOT equivalent.
+///
+/// - [`ManifestsInputDto::Map`] (new, preferred) drives the
+///   `compose_enriched` install path and produces an
+///   [`InstallPoliciesOutputDto`] in the success envelope with
+///   `enrichedSchemaHash` + per-action `addedCustomFields`.
+/// - [`ManifestsInputDto::List`] (legacy) preserves the historical
+///   `Vec<PolicyManifest>` install. It returns a `null` data envelope and
+///   does **not** populate the enriched schema fields — callers that read
+///   `enrichedSchemaHash` will silently see `undefined`.
+///
+/// **New Phase 6+ callers (browser-extension service worker manifest store,
+/// dashboard SDK, anything that reads `enrichedSchemaHash`) MUST use the
+/// Map shape.** The List shape exists only for the legacy
+/// `policies-loader.ts` aggregator path and pre-Phase-5 plan/eval test
+/// fixtures; it should not grow new consumers.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum ManifestsInputDto {
+    /// New, preferred shape: per-action map.
+    ///
+    /// Triggers `compose_enriched` and returns a populated
+    /// [`InstallPoliciesOutputDto`] in the success envelope.
+    Map(std::collections::BTreeMap<String, PolicyManifest>),
+    /// Legacy shape: flat list. Skips `compose_enriched` and returns a
+    /// null `data` envelope. Do NOT use this shape from new code.
+    List(Vec<PolicyManifest>),
+}
+
+impl Default for ManifestsInputDto {
+    fn default() -> Self {
+        Self::List(Vec::new())
+    }
+}
+
+impl ManifestsInputDto {
+    /// Flatten to a `Vec<PolicyManifest>` for the legacy validators that take a slice.
+    #[must_use]
+    pub fn as_vec(&self) -> Vec<PolicyManifest> {
+        match self {
+            Self::Map(map) => map.values().cloned().collect(),
+            Self::List(list) => list.clone(),
+        }
+    }
+
+    /// Return the map shape when the caller used it; otherwise `None`.
+    #[must_use]
+    pub fn as_map(&self) -> Option<&std::collections::BTreeMap<String, PolicyManifest>> {
+        match self {
+            Self::Map(m) => Some(m),
+            Self::List(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -255,6 +317,126 @@ pub struct DeclarativeRouteRequestInputDto {
 pub struct DeclarativeRouteRequestResultDto {
     pub envelopes: Vec<policy_engine::ActionEnvelope>,
     pub decoder_id: String,
+}
+
+/// One entry in the base alias table surfaced through `get_alias_table_json`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AliasEntryDto {
+    /// Manifest-facing alias name.
+    pub name: String,
+    /// `"scalar"` or `"record"`.
+    pub kind: String,
+    /// Cedar source spelling.
+    pub cedar_spelling: String,
+}
+
+/// `get_alias_table_json` success payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct AliasTableOutput {
+    /// Alias entries.
+    pub entries: Vec<AliasEntryDto>,
+}
+
+/// `preview_custom_schema_json` input shape: a single `{action, manifest}` pair.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PreviewCustomSchemaInputDto {
+    /// Target action (snake_case).
+    pub action: String,
+    /// Manifest contributing the action's custom context fields.
+    pub manifest: PolicyManifest,
+}
+
+/// One entry in `preview_custom_schema_json` `customTypes` array.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomTypeDto {
+    /// Action name (`snake_case`).
+    pub name: String,
+    /// Fields contributed by the manifest for this action.
+    pub fields: Vec<CustomFieldSource>,
+}
+
+/// One side of the `D14` per-action diff.
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomSchemaDiffDto {
+    /// Fields present in the previewed manifest but missing from the
+    /// currently-installed enriched schema for the action.
+    pub added: Vec<CustomFieldSource>,
+    /// Fields present in the installed schema but absent from the preview.
+    pub removed: Vec<CustomFieldSource>,
+    /// Fields whose name matches but whose `cedar_type` differs.
+    pub changed: Vec<CustomFieldChangeDto>,
+}
+
+/// A single changed-field entry: the same `field` with two different types.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomFieldChangeDto {
+    /// Field name shared by both sides.
+    pub field: String,
+    /// Cedar type currently installed for the action (or empty on first install).
+    pub installed_cedar_type: String,
+    /// Cedar type the previewed manifest would produce.
+    pub preview_cedar_type: String,
+}
+
+/// `install_policies_json` success payload (Phase 5 extension).
+///
+/// Returned only when the caller provided the new `manifests` map shape. The
+/// legacy list-shaped install path keeps emitting `null` `data`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallPoliciesOutputDto {
+    /// SHA-256 of the enriched cedarschema text.
+    pub enriched_schema_hash: String,
+    /// Per-action manifest-contributed fields keyed by `snake_case` action name.
+    pub added_custom_fields: std::collections::BTreeMap<String, Vec<CustomFieldSource>>,
+}
+
+/// `preview_installed_schema_json` success payload (Phase 5 extension).
+///
+/// Keeps the legacy snake-case fields (`schema_text`, `schema_hash`,
+/// `added_fields`) and additionally surfaces `customContexts` and
+/// `schemaHash` (camelCase) when the installed schema was produced via the
+/// manifests-map install path.
+#[derive(Debug, Clone, Serialize)]
+pub struct PreviewInstalledSchemaOutputDto {
+    /// Final Cedar schema text.
+    pub schema_text: String,
+    /// SHA-256 of `schema_text` (snake-case alias of `schemaHash`).
+    pub schema_hash: String,
+    /// Legacy added-context-field summary.
+    pub added_fields: Vec<policy_engine::schema::AddedContextField>,
+    /// Per-action custom-context fields contributed by manifests (camelCase).
+    #[serde(rename = "customContexts")]
+    pub custom_contexts: std::collections::BTreeMap<String, Vec<CustomFieldSource>>,
+    /// SHA-256 of the manifest-derived enriched cedarschema only.
+    ///
+    /// Equals `schema_hash` when no extra adapter fragment was concatenated.
+    /// When the caller passed a non-empty `schema_text` to
+    /// `install_policies_json`, the legacy `schema_hash` covers
+    /// `enriched_text + "\n" + extra_schema_text` while this field still
+    /// hashes only `enriched_text`. Phase 7's `/schema` viewer renders
+    /// `enrichedSchemaText`, so the camelCase field is the one to display.
+    #[serde(rename = "schemaHash")]
+    pub schema_hash_camel: String,
+}
+
+/// `preview_custom_schema_json` success payload.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewCustomSchemaOutputDto {
+    /// Per-action custom types contributed by the previewed manifest.
+    pub custom_types: Vec<CustomTypeDto>,
+    /// Full enriched cedarschema text after merging the previewed manifest
+    /// with the bundled base.
+    pub enriched_schema_text: String,
+    /// Per-action `D14` diff against the currently-installed enriched schema.
+    pub diff: CustomSchemaDiffDto,
+    /// SHA-256 of `enriched_schema_text`.
+    pub schema_hash: String,
 }
 
 #[cfg(test)]

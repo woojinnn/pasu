@@ -17,6 +17,10 @@ pub(crate) fn validity_json(validity: &Validity) -> Value {
     Value::Object(out)
 }
 
+// Phase 2 left this helper in place for prospective use; manifest-driven
+// enrichment now derives `validityDeltaSec` from a `clock.validity_delta_sec`
+// RPC call instead of from the host's block_timestamp.
+#[allow(dead_code)]
 pub(crate) fn validity_delta_sec(validity: &Validity, block_timestamp: u64) -> Option<i64> {
     let expires_at = validity.expires_at.to_string().parse::<i64>().ok()?;
     if expires_at < 0 {

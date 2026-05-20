@@ -8,6 +8,7 @@ import {
   ensureDefaultPoliciesInstalled,
   getActivePolicyRpcManifests,
 } from "./policies-loader";
+import { getAllManifests } from "./manifests/store";
 import {
   auditAppend,
   pendingDelete,
@@ -15,7 +16,11 @@ import {
   type PendingRequest,
 } from "./storage";
 import { EngineError, evaluateWithEnvelopes } from "./wasm-bridge";
-import { evaluateWithPolicyRpc, type PolicyRpcAuditMeta } from "./policy-rpc";
+import {
+  evaluateWithPolicyRpc,
+  formatAuditMatched,
+  type PolicyRpcAuditMeta,
+} from "./policy-rpc";
 import type { VerdictDto } from "./wasm-bridge.types";
 import {
   isTransaction,
@@ -226,11 +231,10 @@ async function appendAudit(
     type,
     bypassed: "bypassed" in message.data && !!message.data.bypassed,
     verdict: verdict.kind,
-    matchedPolicies:
-      verdict.matched?.map((m) => ({
-        id: m.policy_id,
-        severity: m.severity,
-      })) ?? [],
+    // D9: route through `formatAuditMatched` so a `__system__` match
+    // keeps its policy id + reason. The dashboard reads this list as a
+    // first-class verdict.
+    matchedPolicies: formatAuditMatched(verdict),
     ...(policyRpc ? { policyRpc } : {}),
     ...(declarative ? { declarative } : {}),
     ...(verdictSource ? { verdictSource } : {}),
@@ -253,11 +257,14 @@ function logDecision(message: Message, verdict: VerdictDto): void {
   };
 
   if (isTransaction(message)) {
+    const data = message.data.transaction.data;
     console.info("[Scopeball] tx", {
       ...common,
       chainId: message.data.chainId,
       to: message.data.transaction.to,
-      data: message.data.transaction.data?.slice(0, 18),
+      selector: data?.slice(0, 10),
+      dataLen: data?.length,
+      data,
     });
     return;
   }
@@ -402,9 +409,22 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
     }
   }
 
-  const result = await evaluateWithPolicyRpc(message, {
-    manifests: getActivePolicyRpcManifests(),
-  });
+  // Phase 7 codex carry-over H: at evaluate-time the orchestrator MUST
+  // use the same manifest set the WASM engine was last installed with.
+  // The post-Phase-6 source of truth is `manifests/store.ts` (the Map
+  // shape); `atomicInstall` and `hydrateManifests` both push that Map
+  // through `install_policies_json`. Forwarding the legacy
+  // `getActivePolicyRpcManifests()` Vec (built from the embedded
+  // `manifest`/`manifests` fields on default-policy JSONs) hashed
+  // differently from the Map values and surfaced as a silent
+  // `manifest_hash_mismatch` in WASM. We prefer the Map; if it's empty
+  // we fall back to the legacy Vec so SW boots before any user-driven
+  // install path runs still work end-to-end (default-policies-only).
+  const mapManifests = Object.values(await getAllManifests()) as unknown[];
+  const manifests =
+    mapManifests.length > 0 ? mapManifests : getActivePolicyRpcManifests();
+
+  const result = await evaluateWithPolicyRpc(message, { manifests });
   console.info("[Scopeball] declarative-verdict", {
     requestId: message.requestId,
     verdictSource: "static",
@@ -570,8 +590,8 @@ async function openVerdictWindow(
     await Browser.windows.create({
       url,
       type: "popup",
-      width: 520,
-      height: 480,
+      width: 480,
+      height: 640,
       focused: true,
     });
   } catch {
@@ -607,8 +627,8 @@ async function openVerdictWindowAndAwait(
     win = await Browser.windows.create({
       url,
       type: "popup",
-      width: 520,
-      height: 480,
+      width: 480,
+      height: 640,
       focused: true,
     });
   } catch {

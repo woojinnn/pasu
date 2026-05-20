@@ -1,128 +1,201 @@
 :root {
+  /* Frog Green primary ramp (§7-2) */
+  --green-50: #f4f8eb;
+  --green-100: #deecc4;
+  --green-200: #c1dd92;
+  --green-400: #90c03c;
+  --green-600: #5d7c27;
+  --green-800: #394c18;
+  --green-900: #24300f;
+
+  /* Eye Gold (Warn) */
+  --gold-50: #fdf5e7;
+  --gold-100: #f9e1b7;
+  --gold-400: #efa830;
+  --gold-600: #ae710c;
+  --gold-800: #6b4607;
+
+  /* Blush Coral (Fail) */
+  --coral-50: #faecea;
+  --coral-100: #f0c8c1;
+  --coral-400: #e49c90;
+  --coral-600: #c2442f;
+  --coral-800: #772a1d;
+
+  /* Neutrals (§7-3) */
+  --surface-primary: #ffffff;
+  --surface-secondary: #f4f8eb;
+  --text-primary: #24300f;
+  --text-secondary: #5d7c27;
+  --text-tertiary: #6b8a5c;
+
+  /* Radius (§7-5) */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* Green-tone shadow (§7-6) */
+  --shadow-subtle: 0 4px 12px -4px rgba(83, 144, 67, 0.12);
+
   font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
+    -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Apple SD Gothic Neo",
     sans-serif;
-  color-scheme: light dark;
-  --bg: #0c0c10;
-  --fg: #e9e9ee;
-  --card: #16161d;
-  --muted: #8b8b95;
-  --pass: #2ecc71;
-  --warn: #f1c40f;
-  --fail: #e74c3c;
+  color: var(--text-primary);
 }
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
 }
+
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  box-sizing: border-box;
+  padding: 24px 24px 20px;
+  gap: 16px;
 }
+
+/* Verdict banner — Warn=gold, Fail=coral per §7-4 */
 .banner {
-  font-size: 12px;
-  text-transform: uppercase;
+  align-self: center;
+  font-size: 11px;
   letter-spacing: 0.08em;
-  font-weight: 700;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 12px;
-  display: inline-block;
-  align-self: flex-start;
-}
-.banner.fail {
-  background: var(--fail);
-  color: #fff;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
 }
 .banner.warn {
-  background: var(--warn);
-  color: #0c0c10;
+  background: var(--gold-100);
+  color: var(--gold-800);
 }
+.banner.fail {
+  background: var(--coral-100);
+  color: var(--coral-600);
+}
+
 h1 {
   font-size: 20px;
-  margin: 0 0 4px 0;
+  margin: 0;
   font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+  color: var(--text-primary);
 }
+
 .host {
-  color: var(--muted);
-  font-size: 13px;
-  margin-bottom: 16px;
-  font-family: ui-monospace, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 0;
 }
+
+/* Matched policies — green-toned shadow per §7-6 */
 .matched {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-top: 4px;
   overflow-y: auto;
+  padding-right: 4px;
 }
+
 .match {
-  background: var(--card);
-  border-radius: 8px;
-  padding: 12px;
-  border-left: 3px solid var(--muted);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-subtle);
+  border-left: 3px solid var(--text-tertiary);
 }
 .match.deny {
-  border-left-color: var(--fail);
+  border-left-color: var(--coral-600);
+  background: var(--coral-50);
 }
 .match.warn {
-  border-left-color: var(--warn);
+  border-left-color: var(--gold-600);
+  background: var(--gold-50);
 }
+
 .match-id {
-  font-family: ui-monospace, monospace;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
 }
+
 .match-reason {
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
+  color: var(--text-primary);
 }
+
 .match-meta {
   font-size: 11px;
-  color: var(--muted);
-  margin-top: 6px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-weight: 500;
 }
+
+.empty {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 16px 0;
+}
+
 footer {
-  margin-top: 16px;
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: stretch;
+  margin-top: 4px;
 }
+
 button {
-  padding: 9px 18px;
-  border-radius: 6px;
+  flex: 1;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
   font-size: 14px;
   cursor: pointer;
   border: 1px solid transparent;
   font-weight: 500;
+  font-family: inherit;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
 }
+button:active {
+  transform: scale(0.98);
+}
+
 .btn-cancel {
-  background: #2c2c34;
-  color: var(--fg);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  border-color: var(--green-200);
 }
 .btn-cancel:hover {
-  background: #3a3a44;
+  background: var(--green-100);
 }
+
+/* Trust and proceed — bordered, not filled, so it doesn't read as
+   "primary approve". Warn-styled per §7-4. */
 .btn-approve {
-  background: var(--warn);
-  color: #0c0c10;
+  background: var(--gold-50);
+  color: var(--gold-800);
+  border-color: var(--gold-600);
   font-weight: 600;
 }
 .btn-approve:hover {
-  filter: brightness(1.1);
-}
-.empty {
-  font-size: 13px;
-  color: var(--muted);
-  font-style: italic;
+  background: var(--gold-100);
 }

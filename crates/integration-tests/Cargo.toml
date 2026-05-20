@@ -14,3 +14,4 @@ serde_json.workspace = true
 alloy-primitives.workspace = true
 mappers.workspace = true
 request-router.workspace = true
+walkdir = "2"

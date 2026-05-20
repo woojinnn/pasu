@@ -8,6 +8,7 @@
 //!
 //! Entry points:
 //! - [`compile`] — `PolicyRule` -> Cedar text.
+//! - [`parse_cedar`] — Cedar text -> `PolicyRule` (narrow subset; Phase 2).
 //! - [`mod@validate`] — check a rule against its action schema without emitting.
 //! - [`schemas::registry`] — built-in action schemas (swap today, more later).
 
@@ -19,12 +20,14 @@
 pub mod escape;
 pub mod generator;
 pub mod operators;
+pub mod parser;
 pub mod schemas;
 pub mod types;
 pub mod validate;
 
 pub use generator::{compile, CompileError};
 pub use operators::{Operator, OperatorArity};
+pub use parser::{parse_cedar, ParseError};
 pub use schemas::registry;
 pub use types::{
     ActionSchema, CedarType, FieldSpec, PolicyRule, Predicate, PredicateValue, Severity,

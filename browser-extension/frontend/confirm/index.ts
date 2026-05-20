@@ -80,7 +80,7 @@ function render(): void {
 
   const banner = el("div", {
     class: `banner ${verdict.kind}`,
-    text: isFail ? "Blocked" : "Warning",
+    text: isFail ? "Fail" : "Warn",
   });
   const heading = el("h1", {
     text: isFail

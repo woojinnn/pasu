@@ -6,13 +6,10 @@ type SupplyContext = {
   recipient: String,
   from?: String,
   validity?: Validity,
-
-  totalInputUsd?: UsdValuation,
-  totalInputFractionOfPortfolioBps?: Long,
-  allowancesCoverInputs?: Bool,
-  hasUnlimitedAllowance?: Bool,
-  recipientIsContract?: Bool,
+  custom?: SupplyCustomContext,
 };
+
+type SupplyCustomContext = {};
 
 action "supply" appliesTo {
   principal: Wallet,

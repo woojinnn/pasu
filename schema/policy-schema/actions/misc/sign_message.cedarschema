@@ -6,12 +6,11 @@ type SignMessageContext = {
   primaryType: String,
   nowTs: Long,
 
-  domainLabel?: String,
-  primaryTypeLabel?: String,
-  verifyingContractKnown?: Bool,
-
   messageDigest: String,
+  custom?: SignMessageCustomContext,
 };
+
+type SignMessageCustomContext = {};
 
 action "sign_message" appliesTo {
   principal: Wallet,
