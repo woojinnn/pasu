@@ -19,28 +19,48 @@ interface EditorLocationState {
 const INITIAL_ACTION = "swap";
 
 const INITIAL_RULE: PolicyRule = {
-  id: `dashboard::${INITIAL_ACTION}/newrule(0)`,
+  id: `dashboard::${INITIAL_ACTION}/newrule(1)`,
   action: INITIAL_ACTION,
   severity: "deny",
   reason: "describe why this should be blocked",
   predicates: [],
 };
 
-// Pick `dashboard::<action>/newrule(0)` as the default. On collision stack
-// another `(0)` until unique — option-C as a pure stack: `newrule(0)` →
-// `newrule(0)(0)` → `newrule(0)(0)(0)`. `(0)` is a rename-me placeholder;
-// the auto-disambiguation deliberately looks generated rather than masking
-// itself as a meaningful numbered series.
+// Default id at load time is `newrule(count+1)`, where `count` is the
+// number of `newrule(\d+)`-shaped entries already in the library for this
+// action. So a fresh library opens with `newrule(1)`, the next save sees
+// `newrule(2)`, etc. If that slot happens to be taken (gaps from manual
+// renames, races), we hand off to the same save-time disambiguator the
+// user-typed collision path uses.
 function pickDefaultRuleId(
   managed: readonly ManagedPolicy[],
   action: string,
 ): string {
+  const numberedRe = new RegExp(
+    `^dashboard::${escapeRegex(action)}/newrule\\(\\d+\\)$`,
+  );
+  const count = managed.filter((p) => numberedRe.test(p.id)).length;
+  const base = `dashboard::${action}/newrule(${count + 1})`;
+  return disambiguateId(base, managed);
+}
+
+// If `id` is already taken, append `(N)` with N counting up from 0 until
+// the result is free. So `newrule(1)` collides → `newrule(1)(0)`; if that
+// is also taken → `newrule(1)(1)`. The base string never changes — only
+// the trailing `(N)` suffix grows.
+function disambiguateId(
+  id: string,
+  managed: readonly ManagedPolicy[],
+): string {
   const used = new Set(managed.map((p) => p.id));
-  let id = `dashboard::${action}/newrule(0)`;
-  while (used.has(id)) {
-    id = `${id}(0)`;
-  }
-  return id;
+  if (!used.has(id)) return id;
+  let n = 0;
+  while (used.has(`${id}(${n})`)) n++;
+  return `${id}(${n})`;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Extracts the `<action>` segment of `dashboard::<action>/<rest>`, or null
@@ -90,6 +110,12 @@ export function EditorPage() {
   // either by hydrating from Library or by stamping a fresh default. Used so
   // the default-id effect doesn't clobber a user's later edit to the field.
   const idSettledRef = useRef(false);
+  // True when the current form was loaded from an existing library policy
+  // (Library → Edit). Save in that mode is an update and must be allowed
+  // to overwrite the same id; the save-time disambiguator only kicks in
+  // for fresh-create flows so a user editing `newrule(1)` doesn't
+  // accidentally fork it into `newrule(1)(0)`.
+  const hydratedFromExistingRef = useRef(false);
 
   // Stamp `dashboard::newrule(N)` as the default once `managed` has loaded
   // (and we're not hydrating an existing policy). Library size seeds N; the
@@ -142,6 +168,9 @@ export function EditorPage() {
           }). Code 모드로 표시 중.`,
         );
       }
+      // Mark this session as an update of an existing library entry so the
+      // save path overwrites rather than auto-disambiguating into a fork.
+      hydratedFromExistingRef.current = true;
       // Clear router state so a reload doesn't re-hydrate stale data.
       navigate(location.pathname, { replace: true, state: null });
     })();
@@ -219,18 +248,30 @@ export function EditorPage() {
         setLastCompiledRule(rule);
       }
 
+      // Only auto-disambiguate on fresh-create flows. A Library → Edit
+      // session is an update of an existing row, so we must let the same
+      // id flow through unchanged or the user's edits silently fork into a
+      // new policy.
+      const currentManaged = managed ?? [];
+      const idToSave = hydratedFromExistingRef.current
+        ? rule.id
+        : disambiguateId(rule.id, currentManaged);
+
       const result = await client.putRaw({
-        id: rule.id,
+        id: idToSave,
         text: textToSave,
       });
+      const renamedNote =
+        idToSave !== rule.id ? ` (renamed to '${idToSave}')` : "";
       setSaveMsg({
         kind: "ok",
-        text: `Saved · catalog: ${result.catalog.enabled.length} enabled / ${result.catalog.policies.length} total`,
+        text: `Saved${renamedNote} · catalog: ${result.catalog.enabled.length} enabled / ${result.catalog.policies.length} total`,
       });
       // Reset the form so the next default id re-stamps once `managed`
       // refreshes — otherwise the field stays at the just-saved id and a
       // second click would target the same row (the original bug).
       idSettledRef.current = false;
+      hydratedFromExistingRef.current = false;
       setRule(INITIAL_RULE);
       setCedarText(PLACEHOLDER_CEDAR);
       setLastCompiledRule(null);
