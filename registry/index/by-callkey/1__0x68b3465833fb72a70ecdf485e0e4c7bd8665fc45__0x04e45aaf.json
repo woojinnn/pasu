@@ -1,11 +1,11 @@
 {
   "matched": true,
-  "bundle_id": "swap-router-02/exactInputSingle@1.0.0",
-  "manifest_path": "manifests/swap-router-02/exactInputSingle@1.0.0.json",
-  "bundle_sha256": "0x0d089c5c1fe1b652e0ebe1d5f5113f68b4f872f6f3ee1e62615a9dc68988aca0",
+  "bundle_id": "uniswap/swap-router-02/exactInputSingle@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/exactInputSingle@1.0.0.json",
+  "bundle_sha256": "0x57f9a6fd02080c7e0710d4c5d9105e8831d2c7d2f9c98c750fbdcf0edad685f5",
   "bundle": {
     "type": "adapter_function",
-    "id": "swap-router-02/exactInputSingle@1.0.0",
+    "id": "uniswap/swap-router-02/exactInputSingle@1.0.0",
     "publisher": "uniswap.eth",
     "match": {
       "chain_ids": [
@@ -68,6 +68,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "erc20"
         },

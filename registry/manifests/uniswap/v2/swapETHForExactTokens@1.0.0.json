@@ -26,6 +26,7 @@
     "category": "dex",
     "action": "swap",
     "fields": {
+      "swapMode":                  { "literal": "exact_out" },
       "inputToken.asset.kind":     { "literal": "native" },
       "inputToken.amount.kind":    { "literal": "max" },
       "outputToken.asset.kind":    { "literal": "erc20" },

@@ -32,6 +32,7 @@
     "category": "dex",
     "action": "swap",
     "fields": {
+      "swapMode":                  { "literal": "exact_in" },
       "inputToken.asset.kind":     { "literal": "erc20" },
       "inputToken.asset.address":  { "fn": "unfold_v3_path",
                                      "args": [{ "from": "$.args.path" },

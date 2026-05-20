@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/exactInputSingle@1.0.0",
   "manifest_path": "manifests/uniswap/v3/exactInputSingle@1.0.0.json",
-  "bundle_sha256": "0xa879caede41c9a68246eec11349a5576a219958bdb92775227855be297571e7d",
+  "bundle_sha256": "0xcf98c2c141a9313d0089ebd36f114eb862bc6a69f73218d2f92916ef7e7fe290",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/exactInputSingle@1.0.0",
@@ -72,6 +72,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "erc20"
         },

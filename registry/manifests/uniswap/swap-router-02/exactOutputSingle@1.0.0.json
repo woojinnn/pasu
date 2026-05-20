@@ -1,6 +1,6 @@
 {
   "type": "adapter_function",
-  "id": "swap-router-02/exactOutputSingle@1.0.0",
+  "id": "uniswap/swap-router-02/exactOutputSingle@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
     "chain_ids": [1, 8453, 10, 42161, 137],
@@ -34,6 +34,7 @@
     "category": "dex",
     "action": "swap",
     "fields": {
+      "swapMode":                  { "literal": "exact_out" },
       "inputToken.asset.kind":     { "literal": "erc20" },
       "inputToken.asset.address":  { "from": "$.args.tokenIn" },
       "inputToken.amount.kind":    { "literal": "max" },

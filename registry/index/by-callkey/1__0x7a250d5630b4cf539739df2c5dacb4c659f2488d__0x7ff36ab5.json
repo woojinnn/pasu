@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/swapExactETHForTokens@1.0.0",
   "manifest_path": "manifests/uniswap/v2/swapExactETHForTokens@1.0.0.json",
-  "bundle_sha256": "0x9c54a0397e87a7c964a5bbb9fc6f533bfa7276fa9c4f3dcc2bbdf9761fed1416",
+  "bundle_sha256": "0xaed70e5a235f66719c5221b555f9a2af92dd5db6827cd761d6989e9a490a8007",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/swapExactETHForTokens@1.0.0",
@@ -47,6 +47,9 @@
       "category": "dex",
       "action": "swap",
       "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
         "inputToken.asset.kind": {
           "literal": "native"
         },
