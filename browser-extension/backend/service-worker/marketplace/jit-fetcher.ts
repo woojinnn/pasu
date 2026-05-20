@@ -33,6 +33,7 @@ import {
   serializeKey,
   type NegativeReason,
 } from "./negative-cache";
+import { adapterCache } from "./adapter-cache";
 
 /**
  * Output of `resolveAdapter`. Either a ready-to-use adapter (Layer 1 hit
@@ -40,7 +41,7 @@ import {
  * Cedar evaluation on.
  */
 export type AdapterOrVerdict =
-  | { kind: "adapter"; adapter: MountResult; source: "layer1" | "jit" }
+  | { kind: "adapter"; adapter: MountResult; source: "layer1" | "layer2" | "jit" }
   | { kind: "verdict"; verdict: "no_adapter"; reason: NegativeReason };
 
 export interface ResolveAdapterOptions {
@@ -82,6 +83,18 @@ export async function resolveAdapter(
     return { kind: "verdict", verdict: "no_adapter", reason: neg.reason };
   }
 
+  // Layer 2 — persistent chrome.storage cache (survives SW restart).
+  const cached = await adapterCache.get(key);
+  if (cached) {
+    try {
+      const adapter = await installBundle(cached.bundle, cached.bundle_sha256);
+      return { kind: "adapter", adapter, source: "layer2" };
+    } catch {
+      // 손상된 캐시 entry (sha mismatch 등) — drop 하고 Layer 3 로 fall-through.
+      await adapterCache.delete(key);
+    }
+  }
+
   // Layer 3 — JIT. Dedupe so concurrent callers share one fetch.
   const k = serializeKey(key);
   const existing = inflight.get(k);
@@ -118,7 +131,7 @@ async function doJitFetch(
     const result = await byCallKey(key, options.registry);
     // 200 OK with matched: true — install + mount.
     const adapter = await installBundle(result.bundle, result.bundle_sha256);
-    // Layer 2 prefetch is intentionally deferred (Phase 4+).
+    await adapterCache.put(key, result.bundle, result.bundle_sha256);
     return { kind: "adapter", adapter, source: "jit" };
   } catch (e) {
     return classifyAndCache(key, e);

@@ -19,6 +19,9 @@ import path from "node:path";
 const mocks = vi.hoisted(() => ({
   installDeclarativeBundle: vi.fn(),
   getURL: vi.fn((p: string) => `chrome-extension://scopeball/${p}`),
+  adapterCacheGet: vi.fn<() => Promise<null>>().mockResolvedValue(null),
+  adapterCachePut: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  adapterCacheDelete: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }));
 
 vi.mock("webextension-polyfill", () => ({
@@ -27,6 +30,14 @@ vi.mock("webextension-polyfill", () => ({
 
 vi.mock("../wasm-bridge", () => ({
   installDeclarativeBundle: mocks.installDeclarativeBundle,
+}));
+
+vi.mock("../marketplace/adapter-cache", () => ({
+  adapterCache: {
+    get: mocks.adapterCacheGet,
+    put: mocks.adapterCachePut,
+    delete: mocks.adapterCacheDelete,
+  },
 }));
 
 import {
@@ -256,6 +267,12 @@ describe("resolveAdapter", () => {
     const p2 = resolveAdapter(FIXTURE_KEY, {
       registry: { fetchImpl: fetchMock },
     });
+
+    // Layer 2 cache.get() is async — flush the resolved Promise microtasks
+    // so both calls advance past the cache check and p1 registers the
+    // inflight entry + calls fetchMock before we invoke resolveFetch.
+    await Promise.resolve();
+    await Promise.resolve();
 
     resolveFetch(
       new Response(JSON.stringify(indexResponse()), { status: 200 }),

@@ -56,7 +56,7 @@ interface DecisionOptions {
  */
 export interface DeclarativeAuditMeta {
   outcome: DeclarativeRouteOutcome["kind"]; // "hit" | "miss" | "fault"
-  source?: "layer1" | "jit";
+  source?: "layer1" | "layer2" | "jit";
   decoder_id?: string;
   bundle_id?: string;
   envelope_count?: number;

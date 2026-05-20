@@ -53,7 +53,7 @@ export interface DeclarativeRouteHit {
   /** Bundle id (`<path>@<version>`) for audit telemetry. */
   bundleId: string;
   /** Where the bundle came from — kept for audit telemetry. */
-  source: "layer1" | "jit";
+  source: "layer1" | "layer2" | "jit";
 }
 
 export type DeclarativeRouteOutcome =
