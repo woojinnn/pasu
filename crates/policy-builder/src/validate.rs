@@ -355,7 +355,12 @@ mod tests {
 
     #[test]
     fn empty_multi_operand_rejected() {
-        let schema = swap::schema();
+        // Uses a legacy custom field (`totalInputUsd.sources` is SetOfString)
+        // because empty-operand-list errors are most visible on multi-arity
+        // operators, and SetOfString is the canonical such type. The base
+        // schema doesn't carry a SetOfString field — the legacy-custom
+        // fixture restores `totalInputUsd.*` for this scenario.
+        let schema = swap::schema_with_legacy_custom();
         let rule = base_rule(vec![Predicate {
             field: "totalInputUsd.sources".into(),
             op: "containsAny".into(),

@@ -123,7 +123,30 @@ async function dispatchCalls(
   }
 
   const remotePlan: PolicyRpcPlanDto = { ...plan, calls: remoteCalls };
-  const remoteResponse = await postPolicyRpc(policyRpcUrl, remotePlan);
+  // Fail-open on transport failure: when the policy-rpc daemon is down,
+  // synthesise empty error results for each remote call instead of
+  // throwing. Manifests mark their calls `optional: true`, so the engine
+  // already handles missing enrichment by leaving the corresponding
+  // context fields undefined and letting `context has X` guards short-
+  // circuit. Throwing here would convert "no enrichment server" into
+  // `__engine::unexpected` deny on every transaction.
+  let remoteResponse: PolicyRpcResponseDto;
+  try {
+    remoteResponse = await postPolicyRpc(policyRpcUrl, remotePlan);
+  } catch (err) {
+    console.warn(
+      "[Scopeball] policy-rpc unreachable, treating remote calls as missing",
+      { requestId: plan.request_id, callCount: remoteCalls.length, err },
+    );
+    remoteResponse = {
+      request_id: plan.request_id,
+      results: remoteCalls.map((call) => ({
+        id: call.id,
+        ok: false,
+        error: { code: "rpc_unreachable", message: String(err) },
+      })),
+    };
+  }
   return {
     request_id: plan.request_id,
     results: [...localResults, ...remoteResponse.results],

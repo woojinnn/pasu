@@ -58,6 +58,16 @@ function renderEditor(
     previewManifest: vi.fn(async () => mkPreviewResult()),
     putManifest: vi.fn(async () => mkPutResult()),
     getManifest: vi.fn(async () => ({ manifest: null })),
+    // Phase 8: editor now reads the bundled starter pack on mount to
+    // decide whether to show the "Install starter pack" affordance.
+    // Default to `null` (no bundle) so existing assertions keep
+    // matching; tests that exercise the starter-pack UI override this.
+    getBundledManifest: vi.fn(async () => ({ manifest: null })),
+    // Phase 8.5: catalog drives method/param/output dropdowns. Default
+    // to empty so the editor falls back to free-text mode and the
+    // legacy assertions continue to pass; targeted tests below pass a
+    // populated catalog to exercise the dropdown behaviour.
+    getMethodCatalog: vi.fn(async () => ({ methods: {} })),
     getAliasTable: vi.fn(async () => fakeAliasTable()),
     ...overrides,
   } as unknown as ExtensionClient;
@@ -249,6 +259,116 @@ describe("ManifestEditor", () => {
       expect(preview.hasAttribute("disabled")).toBe(false);
       fireEvent.click(preview);
       await waitFor(() => expect(previewManifest).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  describe("Phase 8.5 catalog-driven dropdowns", () => {
+    function fakeCatalog() {
+      return {
+        methods: {
+          "oracle.usd_value": {
+            name: "oracle.usd_value",
+            description: "Convert a token amount to USD",
+            params: {
+              chain_id: {
+                type: "Long" as const,
+                required: true,
+                defaultSelector: "$.root.chain_id",
+              },
+              asset: {
+                type: "AssetRef" as const,
+                required: true,
+                defaultSelector: "$.action.inputToken.asset",
+              },
+              amount: {
+                type: "String" as const,
+                required: true,
+                defaultSelector: "$.action.inputToken.amount.value",
+              },
+              source: {
+                type: "String" as const,
+                required: false,
+                enum_: ["coingecko"],
+                default: "coingecko",
+              },
+            },
+            returns: { kind: "record" as const, type: "UsdValuation" as const },
+            origin: "bundled" as const,
+          },
+        },
+      };
+    }
+
+    it("renders method as a <select> when the catalog is populated", async () => {
+      const { client } = renderEditor("swap", {
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      fireEvent.click(screen.getByText(/Add requirement/i));
+
+      // The method input should now be a select, not a text input.
+      const method = screen.getByLabelText(/requirement method/i);
+      expect(method.tagName).toBe("SELECT");
+      // Catalog entry appears as an option.
+      expect(screen.getByRole("option", { name: /oracle\.usd_value/i })).toBeTruthy();
+    });
+
+    it("selecting a method auto-populates locked params + primary output", async () => {
+      const { client } = renderEditor("swap", {
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      fireEvent.click(screen.getByText(/Add requirement/i));
+
+      // Pick the catalog method.
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+
+      // All four params from the catalog are now present, with default
+      // selectors prefilled. We assert two for brevity — the rest follow
+      // the same code path.
+      expect(screen.getByText("chain_id")).toBeTruthy();
+      expect(screen.getByDisplayValue("$.root.chain_id")).toBeTruthy();
+      expect(screen.getByText(/source/i)).toBeTruthy();
+      // The primary output is auto-created with the method's return type.
+      // The locked type chip says "UsdValuation (record)".
+      expect(screen.getByLabelText(/output type \(locked/i)).toBeTruthy();
+    });
+
+    it("enum_-constrained param renders as a dropdown (not a selector picker)", async () => {
+      const { client } = renderEditor("swap", {
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      fireEvent.click(screen.getByText(/Add requirement/i));
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+
+      // `source` param is `enum_: ["coingecko"]` — render must use a
+      // <select> with that single value as the only option, not a
+      // free-text input or a selector picker.
+      const enumSelects = screen
+        .getAllByLabelText(/param value/i)
+        .filter((el) => el.tagName === "SELECT");
+      expect(enumSelects.length).toBeGreaterThan(0);
+      expect(
+        screen.getByRole("option", { name: /coingecko/i }),
+      ).toBeTruthy();
+    });
+
+    it("falls back to free-text method input when the catalog is empty", async () => {
+      const { client } = renderEditor("swap", {
+        // Default mock already returns {methods: {}}, but be explicit
+        // so the test reads top-to-bottom.
+        getMethodCatalog: vi.fn(async () => ({ methods: {} })),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      fireEvent.click(screen.getByText(/Add requirement/i));
+
+      const method = screen.getByLabelText(/requirement method/i);
+      expect(method.tagName).toBe("INPUT");
     });
   });
 });

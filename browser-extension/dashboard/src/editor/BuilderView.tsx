@@ -3,12 +3,15 @@ import {
   compileRule,
   fetchActions,
   fetchActionSchema,
+  type OverlayField,
 } from "../policy/builder-wasm";
+import { loadOverlay } from "../policy/manifest-overlay";
 import type {
   ActionSchemaDto,
   PolicyRule,
   Predicate,
 } from "../policy/types";
+import { useExtension } from "../sdk-context";
 import { PredicateRow } from "./PredicateRow";
 import "./BuilderView.css";
 
@@ -29,10 +32,17 @@ export function BuilderView({
   onRuleChange,
   onCedarChange,
 }: BuilderViewProps) {
+  const { client } = useExtension();
   const [actions, setActions] = useState<string[]>([]);
   const [schema, setSchema] = useState<ActionSchemaDto | null>(null);
   const [schemaErr, setSchemaErr] = useState<string | null>(null);
   const [compileError, setCompileError] = useState<string | null>(null);
+  // We keep the overlay alongside the schema so the compile path can use
+  // the SAME overlay the picker rendered against. If they drift (e.g.
+  // user adds a manifest field, picks it, then a sibling tab clears
+  // chrome.storage between schema fetch and compile click), the compile
+  // would dead-end with `unknown_field`. Holding state here pins them.
+  const [overlay, setOverlay] = useState<readonly OverlayField[]>([]);
 
   useEffect(() => {
     void fetchActions().then(setActions);
@@ -41,10 +51,29 @@ export function BuilderView({
   // Pull the action schema whenever the user picks a different action.
   // Operators per field come back in this same call so we never need a
   // parallel client-side operator table.
+  //
+  // Manifest-installed custom fields (those the user added via the
+  // `/manifests/<action>` editor) live only in the engine's enriched
+  // schema, not the bundled static schema. We pull `customContexts` from
+  // `getEnrichedSchema()` and pass scalar entries the static schema
+  // doesn't already cover as an overlay so they surface in the picker
+  // alongside the bundled custom fields.
+  //
+  // Best-effort: if `getEnrichedSchema()` fails (e.g. no manifests
+  // installed yet, transport error) we fall back to the static schema.
+  // The builder must always render — overlay is an enhancement, not a
+  // hard requirement.
   useEffect(() => {
     let cancelled = false;
     setSchemaErr(null);
-    void fetchActionSchema(rule.action).then((res) => {
+    void (async () => {
+      const loaded = (await loadOverlay(client, rule.action)) ?? [];
+      if (cancelled) return;
+      setOverlay(loaded);
+      const res = await fetchActionSchema(
+        rule.action,
+        loaded.length > 0 ? loaded : undefined,
+      );
       if (cancelled) return;
       if (res.schema) {
         setSchema(res.schema);
@@ -52,11 +81,11 @@ export function BuilderView({
         setSchema(null);
         setSchemaErr(res.error?.message ?? "schema lookup failed");
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
-  }, [rule.action]);
+  }, [rule.action, client]);
 
   const handleField = <K extends keyof PolicyRule>(
     key: K,
@@ -126,7 +155,13 @@ export function BuilderView({
     // compile latency window could silently associate fresh text with a
     // mutated rule.
     const snapshot = rule;
-    const { cedarText, error } = await compileRule(snapshot);
+    // Pass the overlay so a rule built against an overlay field doesn't
+    // dead-end with `unknown_field` — the schema and compile paths must
+    // see the same field set.
+    const { cedarText, error } = await compileRule(
+      snapshot,
+      overlay.length > 0 ? overlay : undefined,
+    );
     if (cedarText) onCedarChange(cedarText, snapshot);
     else setCompileError(error?.message ?? "compile failed");
   };
@@ -184,7 +219,7 @@ export function BuilderView({
         <input
           type="text"
           value={rule.reason}
-          placeholder="사용자에게 표시될 설명"
+          placeholder="describe why this should be blocked"
           onChange={(e) => handleField("reason", e.target.value)}
         />
       </Field>
@@ -272,3 +307,4 @@ function stripIdPrefix(id: string, action: string): string {
   if (id.startsWith(dashboardPrefix)) return id.slice(dashboardPrefix.length);
   return id;
 }
+

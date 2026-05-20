@@ -4,6 +4,10 @@ import { useExtension } from "../sdk-context";
 import type { ManagedPolicy } from "@scopeball/sdk";
 import type { PolicyRule } from "../policy/types";
 import { compileRule, parseCedar } from "../policy/builder-wasm";
+import {
+  loadInstalledManifest,
+  loadOverlay,
+} from "../policy/manifest-overlay";
 import { ModeToggle, type EditorMode } from "../editor/ModeToggle";
 import { BuilderView } from "../editor/BuilderView";
 import { CodeView } from "../editor/CodeView";
@@ -22,7 +26,7 @@ const INITIAL_RULE: PolicyRule = {
   id: `dashboard::${INITIAL_ACTION}/newrule(1)`,
   action: INITIAL_ACTION,
   severity: "deny",
-  reason: "describe why this should be blocked",
+  reason: "",
   predicates: [],
 };
 
@@ -229,6 +233,15 @@ export function EditorPage() {
     setSaving(true);
     setSaveMsg(null);
     try {
+      // Load the manifest-derived overlay once and reuse it for both the
+      // compile recheck and the putRaw call. Without the overlay,
+      // record-typed custom fields (e.g. `totalInputUsd.value`) wouldn't
+      // resolve and the recompile would dead-end with `unknown_field` —
+      // matching what the Builder picker rendered against requires the
+      // same overlay here.
+      const overlay = await loadOverlay(client, rule.action);
+      const manifest = await loadInstalledManifest(client, rule.action);
+
       // Belt-and-braces: even though `canSave` requires a fresh compile in
       // Builder mode, recompile here from the *current* rule before sending
       // it to the SDK. This catches edge cases where the rule diverged
@@ -237,7 +250,7 @@ export function EditorPage() {
       // Code mode keeps the user-edited text verbatim.
       let textToSave = cedarText;
       if (mode === "builder") {
-        const { cedarText: fresh, error } = await compileRule(rule);
+        const { cedarText: fresh, error } = await compileRule(rule, overlay);
         if (!fresh) {
           throw new Error(
             error?.message ?? "Cedar 컴파일 실패 — 조건을 확인하세요",
@@ -260,6 +273,7 @@ export function EditorPage() {
       const result = await client.putRaw({
         id: idToSave,
         text: textToSave,
+        ...(manifest !== undefined ? { manifest } : {}),
       });
       const renamedNote =
         idToSave !== rule.id ? ` (renamed to '${idToSave}')` : "";

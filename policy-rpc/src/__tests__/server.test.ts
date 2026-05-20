@@ -60,22 +60,46 @@ describe("policy-rpc HTTP server", () => {
     await expect(response.json()).resolves.toEqual({ ok: true });
   });
 
-  it("lists registered methods", async () => {
+  it("lists registered methods (legacy name list)", async () => {
+    // Phase 8.5: the endpoint now also returns the full `catalog`
+    // field, but the legacy `methods: [...]` array stays for clients
+    // (and tests) that only need the names.
     const response = await fetch(`${baseUrl}/v1/methods`);
+    const body = (await response.json()) as { methods: string[] };
 
-    await expect(response.json()).resolves.toEqual({
-      methods: [
-        "approval.allowance",
-        "approval.cover_inputs",
-        "clock.now",
-        "oracle.effective_rate_bps",
-        "oracle.usd_value",
-        "portfolio.balance",
-        "portfolio.input_fraction_bps",
-        "stat_window.snapshot",
-        "stat_window.swap_stats",
-      ],
-    });
+    expect(body.methods).toEqual([
+      "approval.allowance",
+      "approval.cover_inputs",
+      "clock.now",
+      "oracle.effective_rate_bps",
+      "oracle.usd_value",
+      "portfolio.balance",
+      "portfolio.input_fraction_bps",
+      "stat_window.snapshot",
+      "stat_window.swap_stats",
+    ]);
+  });
+
+  it("exposes the full method catalog with params + returns metadata", async () => {
+    const response = await fetch(`${baseUrl}/v1/methods`);
+    const body = (await response.json()) as {
+      catalog: { methods: Record<string, unknown> };
+    };
+    const entry = body.catalog.methods["oracle.usd_value"] as {
+      name: string;
+      params: Record<string, { type: string; enum_?: string[] }>;
+      returns: { kind: string; type: string };
+      origin: string;
+    };
+    expect(entry.name).toBe("oracle.usd_value");
+    expect(entry.returns).toEqual({ kind: "record", type: "UsdValuation" });
+    // `source` is the enum that drives the manifest editor's
+    // source-dropdown — without this assertion, accidentally dropping
+    // the catalog wiring would silently disable the discovery feature.
+    expect(entry.params.source).toBeDefined();
+    expect(entry.params.source.type).toBe("String");
+    expect(entry.params.source.enum_).toContain("coingecko");
+    expect(entry.origin).toBe("bundled");
   });
 
   it("executes host-capability mock methods in one batch", async () => {

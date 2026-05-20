@@ -78,3 +78,145 @@
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.8rem;
 }
+
+/* Phase 8.5 — nested $.action/$.context subtree drill-down. The
+ * chevron toggles children independently of the "pick this node as a
+ * whole record" affordance, so users can either click `inputToken.asset`
+ * to select the full AssetRef, or click ▸ to drill into its leaves.
+ */
+.selector-subtree-node {
+  padding: 0;
+}
+.selector-subtree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+.selector-chevron {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted, #888);
+  width: 1.2rem;
+  text-align: center;
+}
+.selector-chevron:hover {
+  color: var(--ink, #222);
+}
+.selector-chevron-spacer {
+  display: inline-block;
+  width: 1.2rem;
+}
+.selector-subtree-children {
+  margin-left: 1rem;
+  border-left: 1px dotted var(--border, #d6d6d6);
+  padding-left: 0.3rem;
+}
+
+/* Phase 8.5 / PR 4 — type-filtered flat list. Replaces the drill-down
+ * tree when the slot declares a `requiredType`. The list is short by
+ * design (typically 1-5 paths) so a flat view is clearer than nested.
+ */
+.selector-picker-typed {
+  gap: 0.3rem;
+}
+.selector-typed-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 4px;
+  background: var(--surface-muted, #fafafa);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.selector-typed-list > li {
+  padding: 0;
+}
+.selector-typed-option {
+  background: none;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--ink, #222);
+  text-align: left;
+  display: block;
+  width: 100%;
+  border-radius: 0;
+}
+.selector-typed-option:hover {
+  background: var(--surface-hover, #eef);
+}
+.selector-typed-option-active {
+  background: var(--surface-active, #dde7ff);
+  font-weight: 600;
+}
+.selector-typed-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted, #666);
+}
+.selector-typed-hint code {
+  background: var(--surface-muted, #f0f0f0);
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+/* Input row with chevron toggle on the right. Keeps the input full-
+ * width while reserving a compact, unambiguous click target for
+ * show/hide. */
+.selector-typed-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+.selector-typed-input-row .selector-picker-input {
+  flex: 1 1 auto;
+}
+.selector-typed-toggle {
+  flex: 0 0 auto;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border, #d6d6d6);
+  border-radius: 4px;
+  background: var(--surface-muted, #fafafa);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ink, #222);
+}
+.selector-typed-toggle:hover {
+  background: var(--surface-hover, #eef);
+}
+
+/* Bool literal picker — replaces the typed list for `Bool` params on
+ * actions whose calldata has no Bool path. */
+.selector-picker-bool {
+  gap: 0.3rem;
+}
+.selector-bool-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+.selector-bool-option {
+  flex: 1 1 50%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #d6d6d6);
+  border-radius: 4px;
+  background: var(--surface-muted, #fafafa);
+  cursor: pointer;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--ink, #222);
+}
+.selector-bool-option:hover {
+  background: var(--surface-hover, #eef);
+}
+.selector-bool-option-active {
+  background: var(--surface-active, #dde7ff);
+  border-color: var(--accent, #2a7);
+  font-weight: 600;
+}

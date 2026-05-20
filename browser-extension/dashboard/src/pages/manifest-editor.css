@@ -171,3 +171,63 @@
   content: "⚠ ";
 }
 
+/* Phase 8.5 — catalog-driven editor visual affordances. */
+.manifest-method-description {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+  color: #555;
+  font-style: italic;
+}
+.manifest-param-key-locked {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background: #f4f4f4;
+  border-radius: 4px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: #333;
+  min-width: 7rem;
+}
+.output-row-type-locked {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.55rem;
+  background: #f4f4f4;
+  border: 1px solid var(--surface-border, #d0d0d0);
+  border-radius: 4px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: #333;
+  cursor: not-allowed;
+}
+
+/* Phase 8 — starter-pack import affordance, shown only when the
+ * editor's requirements list is empty AND a bundled starter manifest
+ * exists for this action. Replaces the previous auto-seed flow with
+ * a user-driven import so the loaded set is visible before Save.
+ */
+.manifest-starter-pack {
+  border: 1px solid var(--surface-border, #d0d0d0);
+  background: var(--surface-muted, #f8fafc);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.manifest-starter-pack p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.manifest-starter-pack-install {
+  align-self: flex-start;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.manifest-starter-pack-install:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+

@@ -152,12 +152,17 @@ pub fn schema() -> ActionSchema {
         },
     );
 
-    // ─── CUSTOM FIELDS (enrichment, addressed as `context.custom.<path>`) ─
-
-    // Token-native normalized amount (Long with implicit 10⁻⁹ scale). The
-    // manifest rescales raw on-chain amount so users write "0.5" / "100" /
-    // "0.00003" — the same number they see on a DEX UI — regardless of the
-    // token's decimals.
+    // Token-native normalized amounts (Long with implicit 10⁻⁹ scale).
+    // Promoted to BASE in Phase 8: the engine computes these directly from
+    // `inputToken.amount.value` + `inputToken.asset.decimals` during the
+    // lowering step (see `policy-engine::lowering::dex::swap::nano_amount`).
+    // They no longer go through `context.custom.*` and no longer require
+    // a manifest enrichment to populate them — a user can't break amount
+    // policies by editing the manifest.
+    //
+    // Users still type "0.5" / "100" / "0.00003" — the same number a DEX
+    // UI shows — and `scale: Some(9)` makes the compiler emit the matching
+    // Long literal (`500000000` / `…`).
     for (path, label) in [
         ("inputAmountNano", "Input amount (token-native)"),
         ("outputAmountNano", "Output amount (token-native)"),
@@ -171,7 +176,7 @@ pub fn schema() -> ActionSchema {
                 parent_path: None,
                 parent_optional: false,
                 label: Some(label.into()),
-                is_custom: true,
+                is_custom: false,
                 allowed_values: None,
                 scale: Some(AMOUNT_NANO_SCALE),
                 pattern: None,
@@ -179,150 +184,30 @@ pub fn schema() -> ActionSchema {
         );
     }
 
-    // Optional Long enrichment leaves (top-level under SwapCustomContext).
-    for (path, label) in [
-        ("effectiveRateVsOracleBps", "Effective rate vs oracle (bps)"),
-        (
-            "totalInputFractionOfPortfolioBps",
-            "Input fraction of portfolio (bps)",
-        ),
-        ("validityDeltaSec", "Validity delta (sec)"),
-    ] {
-        insert(
-            &mut fields,
-            FieldSpec {
-                path: path.into(),
-                cedar_type: CedarType::Long,
-                optional: true,
-                parent_path: None,
-                parent_optional: false,
-                label: Some(label.into()),
-                is_custom: true,
-                allowed_values: None,
-                scale: None,
-                pattern: None,
-            },
-        );
-    }
-
-    // Optional Bool enrichment leaf.
-    insert(
-        &mut fields,
-        FieldSpec {
-            path: "recipientIsContract".into(),
-            cedar_type: CedarType::Bool,
-            optional: true,
-            parent_path: None,
-            parent_optional: false,
-            label: Some("Recipient is contract".into()),
-            is_custom: true,
-            allowed_values: None,
-            scale: None,
-            pattern: None,
-        },
-    );
-
-    // USD valuations (optional UsdValuation records, four required inner
-    // leaves each). UsdValuation is declared in core.cedarschema with required
-    // leaves `value`, `asOfTs`, `staleSec`, `sources`. Each is addressable
-    // independently once the parent `has` guard fires.
-    for (parent, parent_label) in [
-        ("totalInputUsd", "Total input USD"),
-        ("totalMinOutputUsd", "Total min-output USD"),
-    ] {
-        insert(
-            &mut fields,
-            FieldSpec {
-                path: format!("{parent}.value"),
-                cedar_type: CedarType::Decimal,
-                optional: false,
-                parent_path: Some(parent.into()),
-                parent_optional: true,
-                label: Some(parent_label.into()),
-                is_custom: true,
-                allowed_values: None,
-                scale: None,
-                pattern: None,
-            },
-        );
-        insert(
-            &mut fields,
-            FieldSpec {
-                path: format!("{parent}.staleSec"),
-                cedar_type: CedarType::Long,
-                optional: false,
-                parent_path: Some(parent.into()),
-                parent_optional: true,
-                label: Some(format!("{parent_label} staleness (sec)")),
-                is_custom: true,
-                allowed_values: None,
-                scale: None,
-                pattern: None,
-            },
-        );
-        insert(
-            &mut fields,
-            FieldSpec {
-                path: format!("{parent}.asOfTs"),
-                cedar_type: CedarType::Long,
-                optional: false,
-                parent_path: Some(parent.into()),
-                parent_optional: true,
-                label: Some(format!("{parent_label} oracle timestamp")),
-                is_custom: true,
-                allowed_values: None,
-                scale: None,
-                pattern: None,
-            },
-        );
-        insert(
-            &mut fields,
-            FieldSpec {
-                path: format!("{parent}.sources"),
-                cedar_type: CedarType::SetOfString,
-                optional: false,
-                parent_path: Some(parent.into()),
-                parent_optional: true,
-                label: Some(format!("{parent_label} oracle sources")),
-                is_custom: true,
-                allowed_values: None,
-                scale: None,
-                pattern: None,
-            },
-        );
-    }
-
-    // windowStats (optional WindowStats record, optional inner leaves).
-    insert(
-        &mut fields,
-        FieldSpec {
-            path: "windowStats.swapVolumeUsd24h".into(),
-            cedar_type: CedarType::Decimal,
-            optional: true,
-            parent_path: Some("windowStats".into()),
-            parent_optional: true,
-            label: Some("24h swap volume USD".into()),
-            is_custom: true,
-            allowed_values: None,
-            scale: None,
-            pattern: None,
-        },
-    );
-    insert(
-        &mut fields,
-        FieldSpec {
-            path: "windowStats.swapCount24h".into(),
-            cedar_type: CedarType::Long,
-            optional: true,
-            parent_path: Some("windowStats".into()),
-            parent_optional: true,
-            label: Some("24h swap count".into()),
-            is_custom: true,
-            allowed_values: None,
-            scale: None,
-            pattern: None,
-        },
-    );
+    // ─── CUSTOM FIELDS — REMOVED in Phase 8 ───────────────────────────────
+    //
+    // Previously this section declared seven hand-coded manifest-enriched
+    // fields (`effectiveRateVsOracleBps`, `totalInputUsd.*`, `windowStats.*`,
+    // etc.) that mirrored the bundled `swap.policy-rpc.json`. The mirror
+    // was a maintenance trap: editing one without the other silently broke
+    // the builder/runtime contract.
+    //
+    // The new architecture splits the world cleanly:
+    //   - `swap.rs` (this file) declares ONLY base fields the engine
+    //     populates from calldata. No knowledge of any manifest needed.
+    //   - Manifest-installed custom fields surface via the WASM overlay
+    //     path (`get_action_schema_with_overlay_json` + friends) — both
+    //     scalar outputs (`Long`, `Bool`, …) and record outputs
+    //     (`UsdValuation`, `WindowStats`, …) are supported by the
+    //     `aliases::record_leaves` table.
+    //
+    // So users who install the bundled starter manifest (or write their
+    // own) see the same predicate picker entries the old hardcoded list
+    // produced, but the builder picks them up dynamically from the
+    // engine's enriched schema instead of from this Rust source.
+    //
+    // `SwapCustomContext` itself stays declared in `swap.cedarschema` as
+    // an empty record; manifests extend it at install time.
 
     ActionSchema {
         action: "swap".into(),
@@ -330,6 +215,103 @@ pub fn schema() -> ActionSchema {
         resource_type: "Protocol".into(),
         fields,
     }
+}
+
+/// Test-only helper that returns the `swap` schema augmented with the
+/// legacy hand-coded custom fields that lived in this file before Phase 8.
+///
+/// Production code MUST NOT use this — at runtime those fields come from
+/// the WASM overlay path (`get_action_schema_with_overlay_json`) which
+/// pulls them from the engine's enriched schema. The helper exists only
+/// so generator/parser/validator tests keep their original fixtures
+/// without re-implementing manifest-style enrichment in every test.
+///
+/// The added fields mirror what `extensions/DEX/swap.policy-rpc.json`
+/// declares as outputs, expanded through `aliases::record_leaves` for
+/// the record-typed ones (`UsdValuation`, `WindowStats`).
+#[cfg(test)]
+#[must_use]
+pub fn schema_with_legacy_custom() -> ActionSchema {
+    let mut s = schema();
+    let custom = legacy_custom_fields();
+    for spec in custom {
+        s.fields.insert(spec.path.clone(), spec);
+    }
+    s
+}
+
+#[cfg(test)]
+fn legacy_custom_fields() -> Vec<FieldSpec> {
+    use crate::aliases::record_leaves;
+    let mut out = Vec::new();
+
+    // Top-level scalar customs.
+    for (path, ty, label) in [
+        (
+            "effectiveRateVsOracleBps",
+            CedarType::Long,
+            "Effective rate vs oracle (bps)",
+        ),
+        (
+            "totalInputFractionOfPortfolioBps",
+            CedarType::Long,
+            "Input fraction of portfolio (bps)",
+        ),
+        ("validityDeltaSec", CedarType::Long, "Validity delta (sec)"),
+        (
+            "recipientIsContract",
+            CedarType::Bool,
+            "Recipient is contract",
+        ),
+    ] {
+        out.push(FieldSpec {
+            path: path.to_owned(),
+            cedar_type: ty,
+            optional: true,
+            parent_path: None,
+            parent_optional: false,
+            label: Some(label.to_owned()),
+            is_custom: true,
+            allowed_values: None,
+            scale: None,
+            pattern: None,
+        });
+    }
+
+    // Record customs: expand `UsdValuation`/`WindowStats` via the alias
+    // leaf table so the test fixture mirrors what the overlay path
+    // produces at runtime.
+    for parent in ["totalInputUsd", "totalMinOutputUsd"] {
+        for leaf in record_leaves("UsdValuation").expect("known alias") {
+            out.push(FieldSpec {
+                path: format!("{parent}.{}", leaf.name),
+                cedar_type: leaf.cedar_type,
+                optional: leaf.optional,
+                parent_path: Some(parent.to_owned()),
+                parent_optional: true,
+                label: None,
+                is_custom: true,
+                allowed_values: None,
+                scale: None,
+                pattern: None,
+            });
+        }
+    }
+    for leaf in record_leaves("WindowStats").expect("known alias") {
+        out.push(FieldSpec {
+            path: format!("windowStats.{}", leaf.name),
+            cedar_type: leaf.cedar_type,
+            optional: leaf.optional,
+            parent_path: Some("windowStats".to_owned()),
+            parent_optional: true,
+            label: None,
+            is_custom: true,
+            allowed_values: None,
+            scale: None,
+            pattern: None,
+        });
+    }
+    out
 }
 
 fn insert_asset_with_amount(
@@ -403,6 +385,32 @@ fn insert_asset_with_amount(
     );
 }
 
+/// Composite (intermediate) paths inside `$.action.*` that resolve to a
+/// known Cedar record alias. Used by the manifest editor's type-aware
+/// selector picker (Phase 8.5 / PR 4) so when a method param declares
+/// `type: "AssetRef"`, the picker can offer just these two paths
+/// (`inputToken.asset`, `outputToken.asset`) instead of every String
+/// leaf under them.
+///
+/// Per-action and hand-coded because the leaves alone don't tell the
+/// builder which alias their parent matches — Cedar lets you name two
+/// different records with the same leaf shape, and the alias choice
+/// is a schema-author decision. swap's mapping comes straight from
+/// `core.cedarschema`'s `type SwapContext = { inputToken:
+/// AssetRefWithAmountConstraint, ... }`.
+#[must_use]
+pub fn record_paths() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("inputToken", "AssetRefWithAmountConstraint"),
+        ("inputToken.asset", "AssetRef"),
+        ("inputToken.amount", "AmountConstraint"),
+        ("outputToken", "AssetRefWithAmountConstraint"),
+        ("outputToken.asset", "AssetRef"),
+        ("outputToken.amount", "AmountConstraint"),
+        ("validity", "Validity"),
+    ]
+}
+
 fn insert(map: &mut BTreeMap<String, FieldSpec>, spec: FieldSpec) {
     map.insert(spec.path.clone(), spec);
 }
@@ -413,7 +421,12 @@ mod tests {
 
     #[test]
     fn schema_includes_required_and_nested_fields() {
-        let s = schema();
+        // Post-Phase-8: this test still covers the legacy union (base +
+        // formerly-bundled custom) via the test fixture, since both still
+        // appear in the runtime view of the schema once overlay merges
+        // them in. Asserts the path table the builder UI ends up with
+        // is complete.
+        let s = schema_with_legacy_custom();
         assert_eq!(s.action, "swap");
         assert!(s.fields.contains_key("swapMode"));
         assert!(s.fields.contains_key("inputToken.asset.address"));
@@ -444,7 +457,12 @@ mod tests {
 
     #[test]
     fn usd_valuation_parent_is_optional() {
-        let s = schema();
+        // UsdValuation leaves carry `parent_optional = true` so the
+        // generator emits `context.custom has totalInputUsd` before any
+        // `.value`/`.staleSec`/etc. access. The overlay-driven path
+        // (mirrored by `schema_with_legacy_custom`) maintains the same
+        // contract record-by-record via `aliases::record_leaves`.
+        let s = schema_with_legacy_custom();
         let f = s.fields.get("totalInputUsd.value").unwrap();
         assert_eq!(f.parent_path.as_deref(), Some("totalInputUsd"));
         assert!(f.parent_optional);
@@ -471,7 +489,14 @@ mod tests {
 
     #[test]
     fn enrichment_fields_are_custom() {
-        let s = schema();
+        // Phase 8: these fields no longer live in the static `schema()` —
+        // they're populated at runtime by the WASM overlay path from the
+        // engine's enriched schema. The test fixture replays that path
+        // so the contract (`is_custom = true` + `parent_optional` chain)
+        // is still exercised. `inputAmountNano` / `outputAmountNano` were
+        // promoted to BASE and are covered separately by
+        // `nano_amount_fields_are_base_scaled_longs`.
+        let s = schema_with_legacy_custom();
         for path in [
             "totalInputUsd.value",
             "totalInputUsd.staleSec",
@@ -483,8 +508,6 @@ mod tests {
             "recipientIsContract",
             "windowStats.swapCount24h",
             "windowStats.swapVolumeUsd24h",
-            "inputAmountNano",
-            "outputAmountNano",
         ] {
             let f = s
                 .fields
@@ -551,7 +574,7 @@ mod tests {
 
     #[test]
     fn free_form_fields_have_no_enum() {
-        let s = schema();
+        let s = schema_with_legacy_custom();
         for path in [
             "recipient",
             "feeBps",
@@ -569,7 +592,12 @@ mod tests {
     }
 
     #[test]
-    fn nano_amount_fields_are_scaled_longs() {
+    fn nano_amount_fields_are_base_scaled_longs() {
+        // Phase 8: engine-computed (lowering step), no manifest dependency.
+        // `is_custom == false` flips the compile-emit path to `context.<x>`
+        // and the optional `has` guard checks `context has <x>` instead of
+        // `context.custom has <x>`. Scale stays so the literal rescale at
+        // compile time still mirrors the engine-side computation.
         let s = schema();
         for path in ["inputAmountNano", "outputAmountNano"] {
             let f = s
@@ -577,15 +605,16 @@ mod tests {
                 .get(path)
                 .unwrap_or_else(|| panic!("missing {path}"));
             assert!(matches!(f.cedar_type, CedarType::Long));
-            assert!(f.is_custom);
+            assert!(!f.is_custom, "{path} is base (engine-computed) post Phase 8");
             assert_eq!(f.scale, Some(AMOUNT_NANO_SCALE));
-            assert!(f.optional, "manifest enrichment is optional");
+            assert!(f.optional, "amount value or decimals may be absent");
+            assert!(f.parent_path.is_none());
         }
     }
 
     #[test]
     fn non_scaled_fields_have_none_scale() {
-        let s = schema();
+        let s = schema_with_legacy_custom();
         for path in [
             "swapMode",
             "feeBps",
@@ -633,7 +662,7 @@ mod tests {
 
     #[test]
     fn fields_without_pattern_constraint_are_none() {
-        let s = schema();
+        let s = schema_with_legacy_custom();
         for path in [
             "swapMode",       // enum, but no regex
             "feeBps",         // numeric, not a String pattern

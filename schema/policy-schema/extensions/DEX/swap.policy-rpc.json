@@ -141,44 +141,6 @@
         }
       ],
       "optional": true
-    },
-    {
-      "id": "swap-input-amount-nano",
-      "when": { "action": "swap" },
-      "method": "token.normalize_to_nano",
-      "params": {
-        "amount": "$.action.inputToken.amount.value",
-        "decimals": "$.action.inputToken.asset.decimals"
-      },
-      "outputs": [
-        {
-          "kind": "context",
-          "field": "inputAmountNano",
-          "type": "Long",
-          "from": "$.result.nano",
-          "required": false
-        }
-      ],
-      "optional": true
-    },
-    {
-      "id": "swap-output-amount-nano",
-      "when": { "action": "swap" },
-      "method": "token.normalize_to_nano",
-      "params": {
-        "amount": "$.action.outputToken.amount.value",
-        "decimals": "$.action.outputToken.asset.decimals"
-      },
-      "outputs": [
-        {
-          "kind": "context",
-          "field": "outputAmountNano",
-          "type": "Long",
-          "from": "$.result.nano",
-          "required": false
-        }
-      ],
-      "optional": true
     }
   ]
 }

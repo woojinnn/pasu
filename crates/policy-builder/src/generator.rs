@@ -287,7 +287,7 @@ mod tests {
                 value: PredicateValue::Single("60".into()),
             },
         ]);
-        let out = compile(&rule, &swap::schema()).unwrap();
+        let out = compile(&rule, &swap::schema_with_legacy_custom()).unwrap();
         assert_eq!(
             out.matches("context has custom").count(),
             1,
@@ -318,7 +318,7 @@ mod tests {
                 value: PredicateValue::Single("50.00".into()),
             },
         ]);
-        let out = compile(&rule, &swap::schema()).unwrap();
+        let out = compile(&rule, &swap::schema_with_legacy_custom()).unwrap();
         // Single context-has-custom narrows the type; parent guards anchor
         // under context.custom.
         assert_eq!(out.matches("context has custom").count(), 1);
@@ -333,7 +333,7 @@ mod tests {
             op: "containsAny".into(),
             value: PredicateValue::Multi(vec!["chainlink".into(), "pyth".into()]),
         }]);
-        let out = compile(&rule, &swap::schema()).unwrap();
+        let out = compile(&rule, &swap::schema_with_legacy_custom()).unwrap();
         assert!(out.contains(
             r#"context.custom.totalInputUsd.sources.containsAny(["chainlink", "pyth"])"#
         ));
@@ -349,7 +349,7 @@ mod tests {
             op: "lte".into(),
             value: PredicateValue::Single("0".into()),
         }]);
-        let out = compile(&rule, &swap::schema()).unwrap();
+        let out = compile(&rule, &swap::schema_with_legacy_custom()).unwrap();
         assert!(out.contains("context has custom"), "got:\n{out}");
         assert!(
             out.contains("context.custom has validityDeltaSec"),
@@ -389,7 +389,7 @@ mod tests {
                 value: PredicateValue::Single("100.00".into()),
             },
         ]);
-        let out = compile(&rule, &swap::schema()).unwrap();
+        let out = compile(&rule, &swap::schema_with_legacy_custom()).unwrap();
         assert!(out.contains("context has feeBps"));
         assert!(out.contains("context has custom"));
         assert!(out.contains("context.custom has totalInputUsd"));
@@ -411,8 +411,9 @@ mod tests {
     fn nano_amount_field_scales_decimal_input_to_long() {
         // The whole point of the scale field: user writes "0.00003" (the
         // value they see on a DEX UI), Cedar gets the matching i64 literal
-        // after a 10^9 rescale that the manifest mirrors on the context
-        // side. Inequality emit path must work end-to-end.
+        // after a 10^9 rescale that the engine's lowering step mirrors on
+        // the context side. Phase 8 promoted these to BASE so they no
+        // longer carry the `context.custom.*` prefix.
         let rule = rule_with(vec![Predicate {
             field: "inputAmountNano".into(),
             op: "gt".into(),
@@ -420,12 +421,15 @@ mod tests {
         }]);
         let out = compile(&rule, &swap::schema()).unwrap();
         assert!(
-            out.contains("context.custom.inputAmountNano > 30000"),
-            "expected scaled literal, got:\n{out}"
+            out.contains("context.inputAmountNano > 30000"),
+            "expected scaled literal under base context, got:\n{out}"
         );
-        // The `has` guard cluster still fires for the optional custom field.
-        assert!(out.contains("context has custom"));
-        assert!(out.contains("context has custom"));
+        // The optional-leaf guard fires (`context has inputAmountNano`),
+        // but the custom prefix MUST NOT appear — that's the regression
+        // bait for accidentally re-flipping `is_custom` to true.
+        assert!(out.contains("context has inputAmountNano"));
+        assert!(!out.contains("context has custom"));
+        assert!(!out.contains("context.custom"));
     }
 
     #[test]
@@ -438,7 +442,7 @@ mod tests {
         }]);
         let out = compile(&rule, &swap::schema()).unwrap();
         assert!(
-            out.contains("context.custom.outputAmountNano >= 1000000000"),
+            out.contains("context.outputAmountNano >= 1000000000"),
             "got:\n{out}"
         );
     }

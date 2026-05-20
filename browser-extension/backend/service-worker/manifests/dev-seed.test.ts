@@ -24,6 +24,9 @@ const mocks = vi.hoisted(() => {
           }),
         },
       },
+      runtime: {
+        getURL: (p: string) => `chrome-extension://test/${p}`,
+      },
     },
   };
 });
@@ -37,6 +40,12 @@ function manifest(id: string): store.PolicyManifest {
   return { id, schema_version: 1, requires: [], context_extensions: {} };
 }
 
+// Phase 8 contract: `devSeed` only seeds the dev policy-rpc endpoint
+// when nothing is configured yet. The previous bundled-manifest auto-
+// install was removed because it tied every user's storage to the
+// shipped defaults in a way that silently broke on edits. Bundled
+// manifests now come in via the manifest editor's explicit "Install
+// starter pack" button (see Step 6).
 describe("devSeed", () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
@@ -50,88 +59,42 @@ describe("devSeed", () => {
     process.env.NODE_ENV = originalNodeEnv;
   });
 
-  it("seeds missing actions in dev build", async () => {
-    const fetchDefaults = vi.fn(async () => ({ swap: manifest("default::swap") }));
-    const wasmInstall = vi.fn(async () => ({
-      enrichedSchemaHash: "sha256:zz",
-      addedCustomFields: { swap: [] },
+  it("never installs a bundled manifest into storage", async () => {
+    // The `fetchDefaults` and `wasmInstall` arguments are accepted for
+    // backwards-compatible call sites but MUST NOT be invoked — this is
+    // the regression bait for accidentally re-enabling auto-seed.
+    const fetchDefaults = vi.fn(async () => ({
+      swap: manifest("default::swap"),
     }));
-
-    await devSeed({ fetchDefaults, wasmInstall });
-
-    expect(fetchDefaults).toHaveBeenCalledTimes(1);
-    expect(wasmInstall).toHaveBeenCalledTimes(1);
-    expect((await store.getManifest("swap"))!.id).toBe("default::swap");
-    expect(await store.getHash()).toBe("sha256:zz");
-  });
-
-  it("does not seed in prod build", async () => {
-    process.env.NODE_ENV = "production";
-    const fetchDefaults = vi.fn();
     const wasmInstall = vi.fn();
-
     await devSeed({ fetchDefaults, wasmInstall });
-
     expect(fetchDefaults).not.toHaveBeenCalled();
     expect(wasmInstall).not.toHaveBeenCalled();
     expect(await store.getAllManifests()).toEqual({});
   });
 
-  it("does not overwrite manifests already in storage", async () => {
+  it("preserves any manifest already in storage", async () => {
+    // Pre-existing user content stays untouched.
     await store.putManifestRaw("swap", manifest("user::swap-existing"));
-
-    const fetchDefaults = vi.fn(async () => ({
-      swap: manifest("default::swap"),
-      borrow: manifest("default::borrow"),
-    }));
-    const wasmInstall = vi.fn(async () => ({
-      enrichedSchemaHash: "sha256:zz",
-      addedCustomFields: {},
-    }));
-
-    await devSeed({ fetchDefaults, wasmInstall });
-
+    await devSeed({});
     const all = await store.getAllManifests();
-    // Existing user `swap` preserved, missing `borrow` filled in.
     expect(all.swap.id).toBe("user::swap-existing");
-    expect(all.borrow.id).toBe("default::borrow");
   });
 
-  it("is a no-op when every default action already has a manifest", async () => {
-    await store.putManifestRaw("swap", manifest("user::swap"));
-
-    const fetchDefaults = vi.fn(async () => ({ swap: manifest("default::swap") }));
-    const wasmInstall = vi.fn();
-
-    await devSeed({ fetchDefaults, wasmInstall });
-
-    expect(wasmInstall).not.toHaveBeenCalled();
-    expect((await store.getManifest("swap"))!.id).toBe("user::swap");
-  });
-
-  it("sets a default endpoint URL when none is configured", async () => {
-    const fetchDefaults = vi.fn(async () => ({ swap: manifest("default::swap") }));
-    const wasmInstall = vi.fn(async () => ({
-      enrichedSchemaHash: "sha256:zz",
-      addedCustomFields: {},
-    }));
-
-    await devSeed({ fetchDefaults, wasmInstall });
-
+  it("sets the dev endpoint when none is configured", async () => {
+    await devSeed({});
     expect(await store.getEndpointUrl()).toBe("http://localhost:8787");
   });
 
   it("does not overwrite an existing endpoint URL", async () => {
     await store.setEndpointUrl("http://custom.example:9999");
-
-    const fetchDefaults = vi.fn(async () => ({ swap: manifest("default::swap") }));
-    const wasmInstall = vi.fn(async () => ({
-      enrichedSchemaHash: "sha256:zz",
-      addedCustomFields: {},
-    }));
-
-    await devSeed({ fetchDefaults, wasmInstall });
-
+    await devSeed({});
     expect(await store.getEndpointUrl()).toBe("http://custom.example:9999");
+  });
+
+  it("is a no-op in prod builds", async () => {
+    process.env.NODE_ENV = "production";
+    await devSeed({});
+    expect(await store.getEndpointUrl()).toBeNull();
   });
 });

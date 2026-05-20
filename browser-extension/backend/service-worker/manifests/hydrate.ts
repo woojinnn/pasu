@@ -100,7 +100,7 @@ export async function hydrateManifests(
   // In prod this short-circuits inside `devSeed`.
   await deps.devSeed({
     fetchDefaults: deps.fetchDefaults,
-    wasmInstall: async (manifests) => {
+    wasmInstall: async (manifests: Record<string, PolicyManifest>) => {
       // dev-seed runs AFTER cold-start restore, so the engine already
       // holds the enabled policy set from the call above. Re-read it
       // (cheap; reads storage) so we don't clobber a freshly-enabled

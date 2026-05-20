@@ -24,7 +24,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-PORT="${WEB_SERVER_PORT:-8080}"
+PORT="${WEB_SERVER_PORT:-8081}"
 LOG_FILE="target/dashboard.log"
 PID_FILE="target/dashboard.pid"
 URL="http://localhost:${PORT}"
