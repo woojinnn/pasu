@@ -16,10 +16,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+type AdapterCacheEntryLike = {
+  bundle: unknown;
+  bundle_sha256: string;
+  fetchedAtMs: number;
+};
+
 const mocks = vi.hoisted(() => ({
   installDeclarativeBundle: vi.fn(),
   getURL: vi.fn((p: string) => `chrome-extension://scopeball/${p}`),
-  adapterCacheGet: vi.fn<() => Promise<null>>().mockResolvedValue(null),
+  adapterCacheGet: vi
+    .fn<() => Promise<AdapterCacheEntryLike | null>>()
+    .mockResolvedValue(null),
   adapterCachePut: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
   adapterCacheDelete: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }));
@@ -307,5 +315,98 @@ describe("resolveAdapter", () => {
       registry: { fetchImpl: fetchMock },
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  // --- Layer 2 (adapter-cache) integration tests ---
+  // Note: TTL expiry is internal to adapter-cache.ts and already covered in
+  // adapter-cache.test.ts. At the resolveAdapter level an expired entry means
+  // adapterCacheGet → null → Layer 3, which the existing cache-miss tests cover.
+
+  it("Layer 2: JIT fetch writes to adapter-cache on success", async () => {
+    const { bundle, bundle_sha256: bundleSha256 } = indexResponse();
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(indexResponse()), { status: 200 }),
+    );
+    mocks.installDeclarativeBundle.mockResolvedValueOnce({
+      decoder_id: "declarative.uniswap/v2/swapExactTokensForTokens",
+      bundle_id: "uniswap/v2/swapExactTokensForTokens@1.0.0",
+    });
+
+    const result = await resolveAdapter(FIXTURE_KEY, {
+      registry: { fetchImpl: fetchMock },
+    });
+
+    expect(result.kind).toBe("adapter");
+    if (result.kind === "adapter") {
+      expect(result.source).toBe("jit");
+    }
+    // doJitFetch must have called adapterCache.put once with the fetched bundle + sha256.
+    expect(mocks.adapterCachePut).toHaveBeenCalledTimes(1);
+    expect(mocks.adapterCachePut).toHaveBeenCalledWith(
+      FIXTURE_KEY,
+      bundle,
+      bundleSha256,
+    );
+  });
+
+  it("Layer 2 hit: returns adapter from cache without touching registry", async () => {
+    const { bundle, bundle_sha256: bundleSha256 } = indexResponse();
+    // Seed the Layer 2 cache with a valid entry (matching bundle + sha256).
+    mocks.adapterCacheGet.mockResolvedValueOnce({
+      bundle,
+      bundle_sha256: bundleSha256,
+      fetchedAtMs: Date.now(),
+    });
+    mocks.installDeclarativeBundle.mockResolvedValueOnce({
+      decoder_id: "declarative.uniswap/v2/swapExactTokensForTokens",
+      bundle_id: "uniswap/v2/swapExactTokensForTokens@1.0.0",
+    });
+
+    const result = await resolveAdapter(FIXTURE_KEY, {
+      registry: { fetchImpl: fetchMock },
+    });
+
+    expect(result.kind).toBe("adapter");
+    if (result.kind === "adapter") {
+      expect(result.source).toBe("layer2");
+    }
+    // Layer 3 fetch must NOT have been triggered.
+    expect(fetchMock).not.toHaveBeenCalled();
+    // A cache hit must NOT re-write the cache entry.
+    expect(mocks.adapterCachePut).not.toHaveBeenCalled();
+  });
+
+  it("Layer 2 corrupted entry (sha mismatch): deletes entry then falls through to Layer 3", async () => {
+    const { bundle } = indexResponse();
+    // Corrupt the sha256 so installBundle throws bundle_hash_mismatch.
+    const corruptSha256 = "0x" + "cc".repeat(32);
+    mocks.adapterCacheGet.mockResolvedValueOnce({
+      bundle,
+      bundle_sha256: corruptSha256,
+      fetchedAtMs: Date.now(),
+    });
+    // Layer 3 fetch returns a good response.
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(indexResponse()), { status: 200 }),
+    );
+    mocks.installDeclarativeBundle.mockResolvedValue({
+      decoder_id: "declarative.uniswap/v2/swapExactTokensForTokens",
+      bundle_id: "uniswap/v2/swapExactTokensForTokens@1.0.0",
+    });
+
+    const result = await resolveAdapter(FIXTURE_KEY, {
+      registry: { fetchImpl: fetchMock },
+    });
+
+    // Corrupted entry must be evicted.
+    expect(mocks.adapterCacheDelete).toHaveBeenCalledTimes(1);
+    expect(mocks.adapterCacheDelete).toHaveBeenCalledWith(FIXTURE_KEY);
+    // Fall-through to Layer 3: fetch must have been called.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Final result comes from JIT path.
+    expect(result.kind).toBe("adapter");
+    if (result.kind === "adapter") {
+      expect(result.source).toBe("jit");
+    }
   });
 });
