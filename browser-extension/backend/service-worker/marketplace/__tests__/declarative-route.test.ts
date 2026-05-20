@@ -146,13 +146,9 @@ describe("tryDeclarativeRoute", () => {
     expect(arg.to.toLowerCase()).toBe(V2_ROUTER);
     expect(arg.selector).toBe("0x38ed1739");
     expect(arg.ctx.block_timestamp).toBe(1_700_000_000);
-    // Confirms the decoded payload reached the engine — five top-level args
-    // (the V2 swap signature) with the decoded amountIn value.
-    expect(arg.decoded.args).toHaveLength(5);
-    expect(arg.decoded.args[0]).toMatchObject({
-      name: "amountIn",
-      value: { kind: "uint", value: "200000000" },
-    });
+    // Confirms the raw calldata is forwarded to the WASM entry — decode
+    // correctness is now owned by Rust (abi-resolver decode_with_json_abi).
+    expect(arg.calldata).toBe(calldata);
   });
 
   it("downgrades engine 'no_declarative_mapper' to a miss outcome", async () => {
@@ -193,8 +189,11 @@ describe("tryDeclarativeRoute", () => {
 
   it("surfaces decode failures as faults", async () => {
     mocks.resolveAdapter.mockResolvedValueOnce(adapterHit());
-    // Mismatching selector — the bundle ABI declares 0x38ed1739, here we
-    // hand calldata for an unknown function.
+    // WASM rejects because calldata cannot be decoded against the bundle ABI.
+    // The TS layer is gone; decode failures now originate in WASM.
+    mocks.declarativeRouteRequest.mockRejectedValueOnce(
+      new mocks.MockEngineError("decode_failed", "calldata decode failed"),
+    );
     const outcome = await tryDeclarativeRoute({
       chainId: 1,
       from: "0x" + "1".repeat(40),
@@ -205,6 +204,6 @@ describe("tryDeclarativeRoute", () => {
     if (outcome.kind === "fault") {
       expect(outcome.reason).toBe("decode_failed");
     }
-    expect(mocks.declarativeRouteRequest).not.toHaveBeenCalled();
+    expect(mocks.declarativeRouteRequest).toHaveBeenCalledOnce();
   });
 });

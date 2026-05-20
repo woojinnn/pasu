@@ -316,18 +316,14 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.value.source).toBe("layer1");
     expect(outcome.value.envelopes).toHaveLength(1);
 
-    // Confirm the bundle ABI flow actually reached the engine: 5
-    // top-level args (the V2 swap signature, with the tuple[] in slot
-    // 2), and the first arg is the decoded amountIn.
+    // Confirm the route input reached the WASM entry: chain_id, to, selector,
+    // and the raw calldata. Decode correctness is now owned by Rust
+    // (abi-resolver decode_with_json_abi).
     const engineInput = mocks.declarativeRouteRequest.mock.calls[0][0];
     expect(engineInput.chain_id).toBe(BASE_CHAIN_ID);
     expect(engineInput.to.toLowerCase()).toBe(router);
     expect(engineInput.selector).toBe(sel);
-    expect(engineInput.decoded.args).toHaveLength(5);
-    expect(engineInput.decoded.args[0]).toMatchObject({
-      name: "amountIn",
-      value: { kind: "uint", value: "1000000000000000000" },
-    });
+    expect(engineInput.calldata).toBe(calldata);
   });
 
   // ── Scenario 2: V2 swap multi-hop (routes length 3) ─────────────────────
@@ -387,19 +383,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.kind).toBe("hit");
     if (outcome.kind !== "hit") return;
     expect(outcome.value.source).toBe("jit");
-
-    // The decoded `routes` argument must reach the engine intact with
-    // all three entries.
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    const routesArg = decoded.args[2];
-    expect(routesArg.abi_type).toBe("tuple[]");
-    expect(routesArg.value.kind).toBe("array");
-    expect(routesArg.value.value).toHaveLength(3);
-    // First route from = BASE_AERO, last route to = BASE_USDC
-    const firstRouteFrom = routesArg.value.value[0].value[0];
-    const lastRouteTo = routesArg.value.value[2].value[1];
-    expect(firstRouteFrom).toEqual({ kind: "address", value: BASE_AERO });
-    expect(lastRouteTo).toEqual({ kind: "address", value: BASE_USDC });
   });
 
   // ── Scenario 3: V2 addLiquidity stable=true ─────────────────────────────
@@ -466,14 +449,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     );
     expect(outcome.value.envelopes).toHaveLength(1);
 
-    // The `stable` boolean (arg index 2) must reach the engine as
-    // {kind: "bool", value: true}.
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args[2]).toMatchObject({
-      name: "stable",
-      abi_type: "bool",
-      value: { kind: "bool", value: true },
-    });
+    // The selector is forwarded to the WASM entry unchanged.
     expect(mocks.declarativeRouteRequest.mock.calls[0][0].selector).toBe(sel);
   });
 
@@ -546,17 +522,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     );
     expect(outcome.value.envelopes).toHaveLength(1);
 
-    // 7-arg ABI — token + stable bool + 3×uint256 + recipient + deadline.
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args).toHaveLength(7);
-    expect(decoded.args[0]).toMatchObject({
-      name: "token",
-      value: { kind: "address", value: BASE_AERO },
-    });
-    expect(decoded.args[1]).toMatchObject({
-      name: "stable",
-      value: { kind: "bool", value: false },
-    });
   });
 
   // ── Scenario 5: Slipstream exactInput (packed path) ─────────────────────
@@ -613,26 +578,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.value.decoderId).toBe(
       "declarative.aerodrome/slipstream/exactInput",
     );
-
-    // Tuple flattening: viem returns the single named tuple `params`
-    // as 5 top-level args (path, recipient, deadline, amountIn,
-    // amountOutMinimum).
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args).toHaveLength(5);
-    expect(decoded.args.map((a: { name: string }) => a.name)).toEqual([
-      "path",
-      "recipient",
-      "deadline",
-      "amountIn",
-      "amountOutMinimum",
-    ]);
-    expect(decoded.args[0]).toMatchObject({
-      abi_type: "bytes",
-      value: { kind: "bytes" },
-    });
-    // The packed path bytes must round-trip intact (viem lowercases hex
-    // strings).
-    expect(decoded.args[0].value.value).toBe(packedPath.toLowerCase());
 
     // Enrichment ran on the AERO + USDC AssetRefs.
     const envelope = outcome.value.envelopes[0] as {
@@ -700,25 +645,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
       "declarative.aerodrome/slipstream/exactInputSingle",
     );
 
-    // tuple flattening — 8 top-level args (tokenIn, tokenOut,
-    // tickSpacing, recipient, deadline, amountIn, amountOutMinimum,
-    // sqrtPriceLimitX96).
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args).toHaveLength(8);
-    // tickSpacing at numeric idx 2 — Slipstream uses int24 here.
-    expect(decoded.args[2]).toMatchObject({
-      name: "tickSpacing",
-      abi_type: "int24",
-      value: { kind: "int", value: "200" },
-    });
-    expect(decoded.args[0]).toMatchObject({
-      name: "tokenIn",
-      value: { kind: "address", value: BASE_AERO },
-    });
-    expect(decoded.args[1]).toMatchObject({
-      name: "tokenOut",
-      value: { kind: "address", value: BASE_USDC },
-    });
   });
 
   // ── Scenario 7: Voter.vote (normal weights) ─────────────────────────────
@@ -769,20 +695,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.value.decoderId).toBe("declarative.aerodrome/voter/vote");
     expect(outcome.value.envelopes).toHaveLength(1);
 
-    // weights array reaches the engine intact for downstream Cedar
-    // policy evaluation (forbid-zero-weight-sum reads this list).
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args[2].abi_type).toBe("uint256[]");
-    expect(decoded.args[2].value.kind).toBe("array");
-    expect(decoded.args[2].value.value).toHaveLength(2);
-    expect(decoded.args[2].value.value[0]).toEqual({
-      kind: "uint",
-      value: "60",
-    });
-    expect(decoded.args[2].value.value[1]).toEqual({
-      kind: "uint",
-      value: "40",
-    });
   });
 
   // ── Scenario 8: Voter.vote (weights=[0] — mapping succeeds, Cedar later) ─
@@ -842,13 +754,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     if (outcome.kind !== "hit") return;
     expect(outcome.value.envelopes).toHaveLength(1);
 
-    // weights[0] = 0 reached the engine. (Cedar policy
-    // `forbid-zero-weight-sum` would forbid in evaluateWithEnvelopes.)
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args[2].value.value[0]).toEqual({
-      kind: "uint",
-      value: "0",
-    });
   });
 
   // ── Scenario 9: VotingEscrow.createLock ────────────────────────────────
@@ -897,15 +802,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
       "declarative.aerodrome/voting-escrow/createLock",
     );
     expect(outcome.value.envelopes).toHaveLength(1);
-
-    // lockDuration arrives at the engine intact, ready for the
-    // `lock_create` builder to project as `lockDurationSec`.
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args).toHaveLength(2);
-    expect(decoded.args[1]).toMatchObject({
-      name: "lockDuration",
-      value: { kind: "uint", value: "126144000" },
-    });
 
     // The mapper emitted `lockDurationSec` on the envelope; the enricher
     // should leave it alone (it's a string, not an AssetRef).
@@ -1037,13 +933,6 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     });
     expect(envelope.fields.gauge).toBe(gauge);
 
-    // Single-arg ABI — amount only.
-    const decoded = mocks.declarativeRouteRequest.mock.calls[0][0].decoded;
-    expect(decoded.args).toHaveLength(1);
-    expect(decoded.args[0]).toMatchObject({
-      name: "amount",
-      value: { kind: "uint", value: "1000000000000000000" },
-    });
   });
 
   // ── Scenario 12: Unknown selector → miss ───────────────────────────────
