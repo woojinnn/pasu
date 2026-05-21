@@ -19,13 +19,14 @@
 //!   * **L4 lower**  — does `policy_request_from_envelope` return `Some` for
 //!                     every envelope (`None` would mean a fail-open lowering)?
 //!
-//! Two tests:
+//! Three tests:
 //!   * [`harness_self_check`] — strict; unit-verifies the harness components.
-//!   * [`corpus_verification`] — lenient; walks all 42 corpus entries, prints a
-//!     verdict table (`cargo test -- --nocapture`), and asserts only that the
-//!     harness processed every entry without panicking. Discovered routing /
-//!     decoding gaps are *reported*, not turned into test failures — finding
-//!     them is the point of this harness.
+//!   * [`corpus_verification`] — strict on L0/L1/L2/L4; walks all 42 corpus
+//!     entries, prints a verdict table (`cargo test -- --nocapture`), and
+//!     asserts every `expect == "pass"` tx fully routes/decodes/maps/lowers.
+//!   * [`fixed_findings_f2_f5_regression`] — strict; locks the L3 envelope
+//!     corrections for `VERIFICATION_UNISWAP_REALTX.md` findings F2~F5 (native
+//!     sentinel, UR recipient sentinel, V2 ETH-input amount, V4 outputTokens).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -817,4 +818,155 @@ fn first_failed_stage(verdict: &TxVerdict) -> &'static str {
         None => "L4 lower (not reached)",
         Some(_) => "none",
     }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Test C — fixed_findings_f2_f5_regression (strict).
+//
+// Permanent regression guard for `VERIFICATION_UNISWAP_REALTX.md` findings
+// F2~F5. `corpus_verification` asserts L0/L1/L2/L4 but treats L3 (envelope
+// semantics) as human-judged; this test locks the four L3 corrections so a
+// future mapper / manifest change that re-introduces a bug fails CI here.
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Canonical zero address — the UR (`Constants.ETH`) / V4 (`CurrencyLibrary`)
+/// native-asset sentinel.
+const ZERO_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
+
+/// Recursively assert no asset object in `v` is an ERC-20 at the zero address
+/// (F2 — `0x0` is the native sentinel; it must surface as `native`).
+fn assert_no_erc20_at_zero(v: &serde_json::Value, tx_hash: &str) {
+    match v {
+        serde_json::Value::Object(map) => {
+            if map.get("kind").and_then(serde_json::Value::as_str) == Some("erc20") {
+                let address = map
+                    .get("address")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default();
+                assert!(
+                    !address.eq_ignore_ascii_case(ZERO_ADDRESS),
+                    "F2 regression — tx {tx_hash}: an erc20 asset is at the zero address \
+                     (native ETH must be labelled `native`, not `erc20 @ 0x0`)",
+                );
+            }
+            for value in map.values() {
+                assert_no_erc20_at_zero(value, tx_hash);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                assert_no_erc20_at_zero(item, tx_hash);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Recursively collect every `amount` object beside a native `asset`
+/// (`{ "asset": { "kind": "native" }, "amount": { … } }`) — F4.
+fn collect_native_amounts(v: &serde_json::Value, out: &mut Vec<serde_json::Value>) {
+    match v {
+        serde_json::Value::Object(map) => {
+            if let (Some(asset), Some(amount)) = (map.get("asset"), map.get("amount")) {
+                if asset.get("kind").and_then(serde_json::Value::as_str) == Some("native") {
+                    out.push(amount.clone());
+                }
+            }
+            for value in map.values() {
+                collect_native_amounts(value, out);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                collect_native_amounts(item, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn fixed_findings_f2_f5_regression() {
+    let corpus = load_corpus();
+
+    // Envelopes of the first corpus tx whose `intent` contains `needle`,
+    // serialised to JSON for structural assertions.
+    let envelopes_of = |needle: &str| -> serde_json::Value {
+        let tx = corpus
+            .transactions
+            .iter()
+            .find(|t| t.intent.contains(needle))
+            .unwrap_or_else(|| panic!("corpus: no tx with intent containing {needle:?}"));
+        match evaluate(tx).map {
+            Some(Ok(envelopes)) => {
+                serde_json::to_value(&envelopes).expect("envelopes serialise to JSON")
+            }
+            other => panic!("{needle}: L2 map produced no envelopes ({other:?})"),
+        }
+    };
+
+    // ── F2 + F3 — corpus-wide invariants over all 42 transactions ──────────
+    // F2: no envelope labels native ETH (`0x0`) as `erc20`.
+    // F3: no envelope recipient is an unresolved UR/V4 action sentinel.
+    let f3_sentinels = [
+        "0x0000000000000000000000000000000000000001", // ACTION_MSG_SENDER
+        "0x0000000000000000000000000000000000000002", // ACTION_ADDRESS_THIS
+    ];
+    for tx in &corpus.transactions {
+        let Some(Ok(envelopes)) = evaluate(tx).map else {
+            continue; // MISS / fault — no envelopes (excluded tx); skip.
+        };
+        let json = serde_json::to_value(&envelopes).expect("envelopes serialise");
+        assert_no_erc20_at_zero(&json, &tx.tx_hash);
+
+        let flat = serde_json::to_string(&envelopes).expect("envelopes serialise");
+        for sentinel in f3_sentinels {
+            assert!(
+                !flat.contains(&format!("\"recipient\":\"{sentinel}\"")),
+                "F3 regression — tx {} emits an unresolved recipient sentinel {sentinel}",
+                tx.tx_hash,
+            );
+        }
+    }
+
+    // ── F4 — V2 ETH-input native input carries an amount value ─────────────
+    // `swapExactETHForTokens` / `addLiquidityETH` fund their native input from
+    // `msg.value`; the emit must source `amount.value` from `$.tx.value_wei`.
+    for needle in ["swapExactETHForTokens", "addLiquidityETH"] {
+        let envelopes = envelopes_of(needle);
+        let mut native_amounts = Vec::new();
+        collect_native_amounts(&envelopes, &mut native_amounts);
+        assert!(
+            !native_amounts.is_empty(),
+            "F4 {needle}: expected a native input asset in the envelope",
+        );
+        for amount in &native_amounts {
+            let value = amount.get("value").and_then(serde_json::Value::as_str);
+            assert!(
+                matches!(value, Some(v) if !v.is_empty()),
+                "F4 regression — {needle}: native amount has no value \
+                 (msg.value must flow into `amount.value`): {amount}",
+            );
+        }
+    }
+
+    // ── F5 — V4 decrease_liquidity surfaces its withdrawn outputs ──────────
+    let envelopes = envelopes_of("modifyLiquidities(bytes,uint256)");
+    let decrease = envelopes
+        .as_array()
+        .expect("envelopes is a JSON array")
+        .iter()
+        .find(|e| {
+            e.get("action").and_then(serde_json::Value::as_str) == Some("decrease_liquidity")
+        })
+        .expect("F5: corpus modifyLiquidities tx must produce a decrease_liquidity envelope");
+    let outputs = decrease
+        .pointer("/fields/outputTokens")
+        .and_then(serde_json::Value::as_array)
+        .expect("F5: decrease_liquidity envelope must carry an outputTokens array");
+    assert!(
+        !outputs.is_empty(),
+        "F5 regression — decrease_liquidity.outputTokens is empty \
+         (TAKE / TAKE_PAIR withdrawn tokens must be attached)",
+    );
 }
