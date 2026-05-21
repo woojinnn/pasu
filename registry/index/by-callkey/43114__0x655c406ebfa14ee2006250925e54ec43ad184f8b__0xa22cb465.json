@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/setApprovalForAll-avalanche@1.0.0",
   "manifest_path": "manifests/uniswap/v3/setApprovalForAll-avalanche@1.0.0.json",
-  "bundle_sha256": "0x4516a119eb00d55e0a89b6c8f5127f4217397f74aaf869eb3830b7b3cd8e1583",
+  "bundle_sha256": "0xa75990762e8357e37656306d882ea764039ed1d9c78b5158ef874106825d5289",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/setApprovalForAll-avalanche@1.0.0",
@@ -43,6 +43,9 @@
         },
         "collection.address": {
           "from": "$.tx.to"
+        },
+        "collection.tokenId": {
+          "literal": "0"
         },
         "operator": {
           "from": "$.args.operator"

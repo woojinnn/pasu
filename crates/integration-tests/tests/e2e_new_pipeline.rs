@@ -191,10 +191,42 @@ fn e2e_swap_v2_fails_under_blanket_forbid() {
 }
 
 #[test]
-fn e2e_approve_action_is_unsupported_for_now() {
-    let request = policy_request_from_fixture("erc20_approve.json");
+fn e2e_approve_action_lowers_and_forbid_denies() {
+    // Phase 7B — a plain ERC-20 `approve(address,uint256)` tx decodes via the
+    // static `protocols/erc20/approve.rs` mapper into an `Action::Approve`
+    // envelope. Before the `dispatch.rs` arm landed this lowered to
+    // `Ok(None)` — an empty verdict list silently aggregating to `Pass`
+    // (plan §0 finding 1: ScopeBall was silent-passing ERC-20 `approve` on
+    // the static path). The envelope must now lower into a Cedar request
+    // and a `forbid` policy on `Action::"approve"` must fire.
+    let request = policy_request_from_fixture("erc20_approve.json")
+        .expect("erc20 approve should lower into a PolicyRequest");
 
-    assert!(request.is_none());
+    assert!(
+        request.action.contains("approve"),
+        "expected request.action to contain \"approve\", got {:?}",
+        request.action
+    );
+
+    let verdict = install_policies_and_evaluate(
+        &[(
+            "test/forbid-approve",
+            r#"forbid (principal, action == Action::"approve", resource);"#,
+        )],
+        &request,
+    );
+
+    match verdict {
+        Verdict::Fail(matched) => {
+            assert!(
+                matched
+                    .iter()
+                    .any(|policy| policy.policy_id.contains("forbid")),
+                "expected a forbid policy to fire, got {matched:?}"
+            );
+        }
+        other => panic!("expected Verdict::Fail, got {other:?}"),
+    }
 }
 
 #[test]

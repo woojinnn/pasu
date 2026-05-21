@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/setApprovalForAll-celo@1.0.0",
   "manifest_path": "manifests/uniswap/v3/setApprovalForAll-celo@1.0.0.json",
-  "bundle_sha256": "0xe79475bef48bc4d853a1568f459183d8071dafae6a02416937f5b1151bc6ca6f",
+  "bundle_sha256": "0x8d4dcdf082b649235520e796bbf24dfd0d870f4117276a5eca1a8eccfc7423c6",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/setApprovalForAll-celo@1.0.0",
@@ -43,6 +43,9 @@
         },
         "collection.address": {
           "from": "$.tx.to"
+        },
+        "collection.tokenId": {
+          "literal": "0"
         },
         "operator": {
           "from": "$.args.operator"

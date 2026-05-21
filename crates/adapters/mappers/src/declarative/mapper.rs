@@ -15,6 +15,7 @@ use policy_engine::ActionEnvelope;
 
 use crate::mapper::{MapContext, Mapper, MapperError, MapperId};
 
+use super::array_emit;
 use super::enum_tagged;
 use super::multicall;
 use super::opcode_stream;
@@ -95,6 +96,23 @@ impl Mapper for DeclarativeMapper {
                 enum_tagged::execute(ctx, decoded, &self.bundle.emit)
             }
             EmitRule::MulticallRecurse { .. } => multicall::execute(ctx, decoded, &self.bundle.emit),
+            EmitRule::ArrayEmit {
+                category,
+                action,
+                array_path,
+                max_elements,
+                parallel_paths,
+                fields,
+            } => array_emit::execute(
+                ctx,
+                decoded,
+                category,
+                action,
+                array_path,
+                *max_elements,
+                parallel_paths,
+                fields,
+            ),
         }
     }
 }

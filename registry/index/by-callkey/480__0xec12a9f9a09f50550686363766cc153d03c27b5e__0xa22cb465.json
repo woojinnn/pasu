@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/setApprovalForAll-worldchain@1.0.0",
   "manifest_path": "manifests/uniswap/v3/setApprovalForAll-worldchain@1.0.0.json",
-  "bundle_sha256": "0x7d80173f2b7cc9707853a298915c76eb1c726ed5639d691a6d36f12dd6319dd6",
+  "bundle_sha256": "0x2d4d639e03f1cda8d47b3456b9cb6b50304814e0c4332e5d5e9a182cf4d7baf6",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/setApprovalForAll-worldchain@1.0.0",
@@ -43,6 +43,9 @@
         },
         "collection.address": {
           "from": "$.tx.to"
+        },
+        "collection.tokenId": {
+          "literal": "0"
         },
         "operator": {
           "from": "$.args.operator"

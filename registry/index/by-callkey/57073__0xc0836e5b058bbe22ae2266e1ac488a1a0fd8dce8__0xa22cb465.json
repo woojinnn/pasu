@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/setApprovalForAll-ink@1.0.0",
   "manifest_path": "manifests/uniswap/v3/setApprovalForAll-ink@1.0.0.json",
-  "bundle_sha256": "0x7820b3c2e875fb6c2a0f6f22d9e489d77b6501a6d97fc97fb3d71bc0bd9a4495",
+  "bundle_sha256": "0x85c15b7ca7da7171854ecc15f44d04f55c9a1e6de6a7d8f083e47097bf39fb90",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/setApprovalForAll-ink@1.0.0",
@@ -43,6 +43,9 @@
         },
         "collection.address": {
           "from": "$.tx.to"
+        },
+        "collection.tokenId": {
+          "literal": "0"
         },
         "operator": {
           "from": "$.args.operator"

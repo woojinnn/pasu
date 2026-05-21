@@ -48,7 +48,8 @@ use abi_resolver::subdecode::protocols::universal_router::{
     UNISWAP_UR_ALLOW_REVERT, UNISWAP_UR_MASK, UNISWAP_UR_TABLE,
 };
 use abi_resolver::subdecode::protocols::v4_router::{
-    extract_actions_and_params, V4_ROUTER_TABLE,
+    extract_actions_and_params, extract_modify_liquidities_actions_and_params, V4_ROUTER_MASK,
+    V4_ROUTER_TABLE,
 };
 use abi_resolver::{CallMatchKey, DecodedCall, DecoderId};
 use alloy_dyn_abi::DynSolValue;
@@ -57,13 +58,26 @@ use policy_engine::ActionEnvelope;
 use std::collections::BTreeMap;
 
 use crate::mapper::{MapContext, MapperError};
+use crate::protocols::universal_router::build_v4_swap_envelopes;
 
 use super::single_emit;
 use super::types::{EmitRule, PerOpcodeEmit, UnknownOpcodePolicy, ValueExpr};
 
-/// Dispatcher id supported by the Phase 5 PoC. Matches the value bundles
-/// declare under `emit.dispatcher_id`.
+/// Dispatcher id for the Uniswap Universal Router `execute(commands, inputs)`
+/// opcode stream. Matches the value bundles declare under
+/// `emit.dispatcher_id`.
 pub const DISPATCHER_ID_UNIVERSAL_ROUTER: &str = "universal_router";
+
+/// Dispatcher id for the Uniswap V4 PositionManager `modifyLiquidities` /
+/// `modifyLiquiditiesWithoutUnlock` entrypoints (Phase 7B, TB-3). Their
+/// payload is a `(bytes actions, bytes[] params)` pair dispatched against the
+/// V4 `Actions` table ([`V4_ROUTER_TABLE`]) — the *same* opcode set the UR
+/// `V4_SWAP` inner stream uses, but reached via a standalone selector rather
+/// than nested inside UR's `execute`. A bundle targeting `modifyLiquidities`
+/// declares this dispatcher id under `emit.dispatcher_id` together with
+/// `mask = "0xff"` / `allow_revert_bit = "0x00"` (the V4 `Actions` byte has no
+/// allow-revert flag, unlike UR command bytes).
+pub const DISPATCHER_ID_V4_POSITION_MANAGER: &str = "v4_position_manager";
 
 /// Maximum nesting depth allowed for `EXECUTE_SUB_PLAN` (0x21) recursion and
 /// `V4_SWAP` (0x10) cross-table recursion.
@@ -131,12 +145,54 @@ pub fn execute(
         }
     };
 
-    if dispatcher_id != DISPATCHER_ID_UNIVERSAL_ROUTER {
-        return Err(MapperError::Unsupported(format!(
-            "opcode_stream_dispatch/{dispatcher_id}"
-        )));
-    }
+    // Bridge from the new-pipeline `DecodedCall` back to the legacy form Tier B
+    // exposes. The two share field semantics but use different value enums
+    // (DecodedValue ↔ DynSolValue) — we need the legacy view here because
+    // `extract_commands_and_inputs` /
+    // `extract_modify_liquidities_actions_and_params` and the `OpcodeTable`
+    // schemas were defined against `crate::decode::DecodedCall`.
+    let legacy_decoded = to_legacy_decoded(decoded)?;
 
+    match dispatcher_id {
+        DISPATCHER_ID_UNIVERSAL_ROUTER => execute_universal_router(
+            ctx,
+            decoded,
+            &legacy_decoded,
+            mask,
+            allow_revert_bit,
+            per_opcode_emit,
+            unknown_opcode_policy,
+        ),
+        DISPATCHER_ID_V4_POSITION_MANAGER => execute_v4_position_manager(
+            ctx,
+            &legacy_decoded,
+            mask,
+            allow_revert_bit,
+            per_opcode_emit,
+            unknown_opcode_policy,
+        ),
+        other => Err(MapperError::Unsupported(format!(
+            "opcode_stream_dispatch/{other}"
+        ))),
+    }
+}
+
+/// Universal Router dispatch path — `execute(bytes commands, bytes[] inputs)`
+/// against [`UNISWAP_UR_TABLE`].
+///
+/// This is the pre-Phase-7B `execute` body verbatim, lifted into its own
+/// function so the new `v4_position_manager` dispatcher branch could be added
+/// without disturbing the UR path's behaviour.
+#[allow(clippy::too_many_arguments)]
+fn execute_universal_router(
+    ctx: &MapContext<'_>,
+    decoded: &DecodedCall,
+    legacy_decoded: &abi_resolver::decode::DecodedCall,
+    mask: &str,
+    allow_revert_bit: &str,
+    per_opcode_emit: &BTreeMap<String, PerOpcodeEmit>,
+    unknown_opcode_policy: UnknownOpcodePolicy,
+) -> Result<Vec<ActionEnvelope>, MapperError> {
     // Bundle's declared mask / allow_revert_bit must agree with Tier B's
     // UNISWAP_UR_TABLE — otherwise the per-opcode keys we're about to look up
     // are computed against a different bit layout than Tier B dispatched
@@ -156,13 +212,7 @@ pub fn execute(
         )));
     }
 
-    // Bridge from the new-pipeline `DecodedCall` back to the legacy form Tier B
-    // exposes. The two share field semantics but use different value enums
-    // (DecodedValue ↔ DynSolValue) — we need the legacy view here because
-    // `extract_commands_and_inputs` and the `OpcodeTable` schemas were defined
-    // against `crate::decode::DecodedCall`.
-    let legacy_decoded = to_legacy_decoded(decoded)?;
-    let (commands, inputs) = extract_commands_and_inputs(&legacy_decoded).ok_or_else(|| {
+    let (commands, inputs) = extract_commands_and_inputs(legacy_decoded).ok_or_else(|| {
         MapperError::Internal(anyhow::anyhow!(
             "opcode_stream_dispatch: outer args do not match (bytes commands, bytes[] inputs) \
              — got function_signature {:?}",
@@ -172,6 +222,152 @@ pub fn execute(
 
     let steps = tier_b_opcode_stream::dispatch(&commands, &inputs, &UNISWAP_UR_TABLE);
     dispatch_steps(ctx, &steps, per_opcode_emit, unknown_opcode_policy)
+}
+
+/// Uniswap V4 PositionManager dispatch path — `modifyLiquidities(bytes,
+/// uint256)` / `modifyLiquiditiesWithoutUnlock(bytes,bytes[])` against the V4
+/// `Actions` table ([`V4_ROUTER_TABLE`]).
+///
+/// Unlike the UR path this is *not* nested inside an `execute(...)` opcode
+/// stream — `modifyLiquidities` is a standalone selector whose payload
+/// resolves (across both overloads) to a `(bytes actions, bytes[] params)`
+/// pair via Tier B's [`extract_modify_liquidities_actions_and_params`]. The
+/// inner action stream is then dispatched against `V4_ROUTER_TABLE` and each
+/// step is emitted via the bundle's `per_opcode_emit` map.
+///
+/// The V4 `Actions` byte carries no allow-revert flag (`mask = 0xff`,
+/// `allow_revert_bit = 0`), so the bundle's declared values are checked
+/// against `V4_ROUTER_TABLE` rather than the UR table. The V4 PM action set
+/// (0x00–0x18) contains no self-recursive / cross-table opcode, so this path
+/// does not reuse `dispatch_steps`' UR-specific 0x10/0x11/0x12/0x14/0x21
+/// branches — those opcode values mean entirely different V4 actions
+/// (`TAKE_PORTION`, `TAKE_PAIR`, `CLOSE_CURRENCY`, `SWEEP`) and must not be
+/// re-dispatched. `dispatch_v4_pm_steps` walks the steps directly.
+fn execute_v4_position_manager(
+    ctx: &MapContext<'_>,
+    legacy_decoded: &abi_resolver::decode::DecodedCall,
+    mask: &str,
+    allow_revert_bit: &str,
+    per_opcode_emit: &BTreeMap<String, PerOpcodeEmit>,
+    unknown_opcode_policy: UnknownOpcodePolicy,
+) -> Result<Vec<ActionEnvelope>, MapperError> {
+    // Bundle's declared mask / allow_revert_bit must agree with Tier B's
+    // V4_ROUTER_TABLE (mask 0xff, allow_revert_bit 0) — a mismatch means the
+    // per-opcode keys would be computed against the wrong bit layout.
+    let bundle_mask = parse_hex_byte(mask, "mask")?;
+    let bundle_allow_revert_bit = parse_hex_byte(allow_revert_bit, "allow_revert_bit")?;
+    if bundle_mask != V4_ROUTER_MASK {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "bundle mask {bundle_mask:#04x} disagrees with Tier B V4_ROUTER_TABLE mask {V4_ROUTER_MASK:#04x}"
+        )));
+    }
+    if bundle_allow_revert_bit != V4_ROUTER_TABLE.allow_revert_bit {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "bundle allow_revert_bit {bundle_allow_revert_bit:#04x} disagrees with Tier B \
+             V4_ROUTER_TABLE allow_revert_bit {:#04x}",
+            V4_ROUTER_TABLE.allow_revert_bit
+        )));
+    }
+
+    let (actions, params) = extract_modify_liquidities_actions_and_params(legacy_decoded)
+        .ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "opcode_stream_dispatch/v4_position_manager: outer args do not match \
+                 modifyLiquidities(bytes,uint256) or modifyLiquiditiesWithoutUnlock(bytes,bytes[]) \
+                 — got function_signature {:?}",
+                legacy_decoded.signature
+            ))
+        })?;
+
+    let steps = tier_b_opcode_stream::dispatch(&actions, &params, &V4_ROUTER_TABLE);
+    dispatch_v4_pm_steps(ctx, &steps, per_opcode_emit, unknown_opcode_policy)
+}
+
+/// Walk a V4 PositionManager `Actions` step list and emit envelopes via the
+/// bundle's `per_opcode_emit` map.
+///
+/// This is the V4-PM counterpart of [`dispatch_steps`]. It deliberately omits
+/// every UR-specific recursion branch (`EXECUTE_SUB_PLAN`, `V4_SWAP`, V3/V4
+/// `POSITION_MANAGER_*`) because the V4 `Actions` opcode space (0x00–0x18)
+/// has no recursive action — the byte values UR uses for those (0x10/0x11/
+/// 0x12/0x14/0x21) are plain V4 actions here. Each step is bridged to a
+/// synthetic `DecodedCall` and run through `single_emit`, identical to the
+/// per-opcode tail of `dispatch_steps`.
+fn dispatch_v4_pm_steps(
+    ctx: &MapContext<'_>,
+    steps: &[DecodedStep],
+    per_opcode_emit: &BTreeMap<String, PerOpcodeEmit>,
+    unknown_opcode_policy: UnknownOpcodePolicy,
+) -> Result<Vec<ActionEnvelope>, MapperError> {
+    let mut envelopes = Vec::new();
+    for step in steps {
+        let key = format!("0x{:02x}", step.opcode);
+        let Some(rule) = per_opcode_emit.get(&key) else {
+            match unknown_opcode_policy {
+                UnknownOpcodePolicy::Deny => {
+                    return Err(MapperError::Internal(anyhow::anyhow!(
+                        "opcode_stream_dispatch/v4_position_manager: opcode {key} (step index {}, \
+                         Tier B name {:?}) has no per_opcode_emit entry and \
+                         unknown_opcode_policy=deny",
+                        step.index,
+                        step.name
+                    )));
+                }
+                UnknownOpcodePolicy::Warn => {
+                    eprintln!(
+                        "[opcode_stream_dispatch/v4_position_manager] warn: opcode {key} (step \
+                         index {}, Tier B name {:?}) has no per_opcode_emit entry — skipping \
+                         (policy=warn)",
+                        step.index, step.name
+                    );
+                    continue;
+                }
+                UnknownOpcodePolicy::IgnoreStep => continue,
+            }
+        };
+
+        // Skip steps Tier B couldn't ABI-decode — surface as an error rather
+        // than silently dropping so authors notice the schema mismatch.
+        let step_args = step.args.clone().ok_or_else(|| {
+            MapperError::Internal(anyhow::anyhow!(
+                "opcode_stream_dispatch/v4_position_manager: opcode {key} (step index {}, Tier B \
+                 name {:?}) has no decoded args — Tier B error: {:?}",
+                step.index,
+                step.name,
+                step.error
+            ))
+        })?;
+
+        let inner_args = step_args
+            .into_iter()
+            .map(convert_arg)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "opcode_stream_dispatch/v4_position_manager: opcode {key} step args bridge \
+                     failed: {error}"
+                ))
+            })?;
+        let step_decoded = DecodedCall {
+            decoder_id: DecoderId::new(format!("opcode_stream::{}", step.name)),
+            function_signature: format!("{}({})", step.name, inner_args_signature(&inner_args)),
+            args: inner_args,
+            nested: Vec::new(),
+        };
+
+        let inner_rule = per_opcode_rule_to_single_emit(rule);
+        let envelope = single_emit::execute(ctx, &step_decoded, &inner_rule).map_err(|error| {
+            MapperError::Internal(anyhow::anyhow!(
+                "opcode_stream_dispatch/v4_position_manager: opcode {key} (step index {}, Tier B \
+                 name {:?}) emit failed: {error}",
+                step.index,
+                step.name
+            ))
+        })?;
+        envelopes.push(envelope);
+    }
+
+    Ok(envelopes)
 }
 
 /// Walk a [`DecodedStep`] slice (top-level or sub-plan) and emit envelopes.
@@ -374,15 +570,16 @@ fn execute_sub_plan_step(
 /// 0x21 is *self-recursion* (same table re-entered), 0x10 is *cross-table*
 /// (UR → V4 routers).
 ///
-/// PoC scope (option D): the V4 inner step list is decoded so the dispatch
-/// wire-up is exercised end-to-end, but no envelopes are emitted from V4
-/// inner actions in this phase. Per-action envelope construction (e.g.
-/// SWAP_EXACT_IN_SINGLE → `Swap` action with hook context) is deferred to
-/// T-B6, where the V4 PositionManager builders are added. As a result this
-/// function always returns an empty `Vec<ActionEnvelope>` on success and
-/// the bundle's `per_opcode_emit` is not consulted here. We still bound the
-/// recursion depth so a maliciously deep `EXECUTE_SUB_PLAN` chain ending in
-/// a V4_SWAP cannot bypass `MAX_SUB_PLAN_DEPTH`.
+/// Phase 7B (TB-2): the dispatched V4 action step list is handed to the
+/// shared [`build_v4_swap_envelopes`] two-pass builder — the same builder the
+/// imperative UR V4_SWAP mapper (`protocols::universal_router::v4_swap`) uses.
+/// It emits one `Action::Swap` envelope per V4 swap action and patches each
+/// recipient from the trailing `TAKE` action (V4 swap params carry no
+/// recipient — output is staged as a flash-accounting delta and `TAKE` drains
+/// it). A V4_SWAP block with no swap actions (e.g. a settle/take-only stream)
+/// emits zero envelopes — a clean result, not a fault. The recursion depth is
+/// still bounded so a maliciously deep `EXECUTE_SUB_PLAN` chain ending in a
+/// V4_SWAP cannot bypass `MAX_SUB_PLAN_DEPTH`.
 fn execute_v4_swap_step(
     ctx: &MapContext<'_>,
     step: &DecodedStep,
@@ -415,20 +612,12 @@ fn execute_v4_swap_step(
         ))
     })?;
 
-    // Dispatch the inner action stream against the V4 router table. We
-    // collect the resulting step list to drive future V4 envelope builders
-    // (T-B6); for now we just verify the dispatch doesn't fault and surface
-    // the count via the discard below.
-    let _inner_steps = tier_b_opcode_stream::dispatch(&actions, &params, &V4_ROUTER_TABLE);
-
-    // Option D: V4 inner actions do not emit envelopes in this phase. The
-    // V4 action → envelope builders (Swap with hook context, position
-    // mutations, etc.) are scoped to T-B6. Returning an empty vec keeps the
-    // outer UR step iteration moving without spurious side-effects, and
-    // future activation only needs to swap this return for a per-V4-opcode
-    // emit loop (with a child `MapContext` carrying depth+1 if any V4 action
-    // ever recurses further).
-    Ok(Vec::new())
+    // Dispatch the inner action stream against the V4 router table, then run
+    // the shared two-pass swap-envelope builder. A malformed swap action's
+    // params surface as a `MapperError` so the orchestrator falls back to the
+    // static path rather than silently dropping a swap.
+    let inner_steps = tier_b_opcode_stream::dispatch(&actions, &params, &V4_ROUTER_TABLE);
+    build_v4_swap_envelopes(ctx, &inner_steps)
 }
 
 /// Handle a single V3/V4 PositionManager opcode step — cross-target recursive
@@ -1374,12 +1563,10 @@ mod tests {
 
     /// End-to-end: an outer UR call carrying a single `V4_SWAP` whose inner
     /// stream is a single V4 `SWAP_EXACT_IN_SINGLE` MUST execute without
-    /// raising and — per the PoC's option D — emit zero envelopes. The
-    /// cross-table dispatch is exercised (Tier B can ABI-decode the inner
-    /// 0x06 against `V4_ROUTER_TABLE`) but envelope construction for V4
-    /// actions is deferred to T-B6.
+    /// raising and — since Phase 7B (TB-2) — emit exactly one `Action::Swap`
+    /// envelope via the shared two-pass V4 swap builder.
     #[test]
-    fn v4_swap_inner_dispatch_yields_inner_steps_recognized() {
+    fn v4_swap_inner_dispatch_emits_swap_envelope() {
         let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
 
         let v4_inner = encode_v4_swap_exact_in_single_input(
@@ -1408,12 +1595,15 @@ mod tests {
         let ctx = build_ctx(&registry, &from, &to, &value);
 
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
-        // Option D: V4 inner actions are decoded but no envelopes are
-        // emitted in this phase.
-        assert!(
-            envelopes.is_empty(),
-            "V4_SWAP must emit no envelopes under option D, got {envelopes:?}"
-        );
+        // TB-2: the single V4 SWAP_EXACT_IN_SINGLE action emits one Swap
+        // envelope. No TAKE in the stream → recipient defaults to ctx.from.
+        assert_eq!(envelopes.len(), 1, "V4_SWAP must emit one Swap envelope");
+        let Action::Swap(s) = &envelopes[0].action else {
+            panic!("expected Swap, got {:?}", envelopes[0].action);
+        };
+        assert_eq!(envelopes[0].category, Category::Dex);
+        assert_eq!(s.swap_mode, SwapMode::ExactIn);
+        assert_eq!(s.recipient, from, "no TAKE → recipient defaults to ctx.from");
 
         // Sanity: dispatching the same inner stream directly against
         // V4_ROUTER_TABLE must produce one recognized step (i.e. the
@@ -1953,11 +2143,11 @@ mod tests {
     /// V3_POSITION_MANAGER_CALL]`. Expected envelope tally:
     ///
     ///   * `0x00` → one Swap envelope via per_opcode_emit
-    ///   * `0x10` → zero envelopes (PoC option D — V4 inner decoded but no
-    ///     emission)
+    ///   * `0x10` → one Swap envelope via the V4 swap builder (TB-2 — the
+    ///     V4 inner stream is a single SWAP_EXACT_IN_SINGLE)
     ///   * `0x12` → resolver-stub return; we wire a `CapturingResolver` that
     ///     returns one transfer-shaped envelope so the outer flatten produces
-    ///     2 envelopes total.
+    ///     3 envelopes total.
     ///
     /// Together this exercises the three handler branches in `dispatch_steps`
     /// (V4_SWAP, V3/V4 PM, per_opcode_emit) in a single end-to-end pass.
@@ -1997,7 +2187,7 @@ mod tests {
         // action content is irrelevant — we only assert the outer flatten
         // preserves the resolver-side count. We use a `Transfer` envelope so
         // the order-of-flatten assertion below can match on `Action::Transfer`
-        // without ambiguity vs the V3_SWAP_EXACT_IN-emitted `Action::Swap`.
+        // without ambiguity vs the swap-emitted `Action::Swap`.
         let resolver_envelope = synthetic_transfer_envelope();
         let resolver = CapturingResolver::new(vec![Ok(vec![resolver_envelope])]);
 
@@ -2010,18 +2200,22 @@ mod tests {
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
         assert_eq!(
             envelopes.len(),
-            2,
-            "expected 2 envelopes (1 V3 swap + 1 V3 PM resolver), got {envelopes:?}"
+            3,
+            "expected 3 envelopes (1 V3 swap + 1 V4 swap + 1 V3 PM resolver), got {envelopes:?}"
         );
-        // Order MUST follow command stream — V3 swap first, V3 PM resolver
-        // last (V4_SWAP slot is skipped).
+        // Order MUST follow command stream — V3 swap, then V4 swap, then
+        // V3 PM resolver.
         assert!(
             matches!(envelopes[0].action, Action::Swap(_)),
             "envelopes[0] MUST be Swap from V3_SWAP_EXACT_IN"
         );
         assert!(
-            matches!(envelopes[1].action, Action::Transfer(_)),
-            "envelopes[1] MUST be Transfer from PM resolver"
+            matches!(envelopes[1].action, Action::Swap(_)),
+            "envelopes[1] MUST be Swap from V4_SWAP"
+        );
+        assert!(
+            matches!(envelopes[2].action, Action::Transfer(_)),
+            "envelopes[2] MUST be Transfer from PM resolver"
         );
 
         // Resolver invoked exactly once for 0x12.
@@ -2217,6 +2411,457 @@ mod tests {
         assert!(
             resolver.calls().is_empty(),
             "resolver invoked despite short-calldata guard"
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TB-2 — UR V4_SWAP envelope emission (declarative path).
+    // The legacy imperative V4_SWAP mapper's two-pass builder is now shared;
+    // `execute_v4_swap_step` emits envelopes instead of `Ok(Vec::new())`.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// Encode a V4 `TAKE` (0x0e) params blob —
+    /// `(address currency, address recipient, uint256 amount)`.
+    fn encode_v4_take_input(
+        currency: alloy_primitives::Address,
+        recipient: alloy_primitives::Address,
+        amount: u128,
+    ) -> Vec<u8> {
+        let func = Function::parse("step(address,address,uint256)").unwrap();
+        let raw = func
+            .abi_encode_input(&[
+                DynSolValue::Address(currency),
+                DynSolValue::Address(recipient),
+                DynSolValue::Uint(U256::from(amount), 256),
+            ])
+            .unwrap();
+        raw[4..].to_vec()
+    }
+
+    /// Encode a V4 `SETTLE` (0x0b) params blob —
+    /// `(address currency, uint256 amount, bool payerIsUser)`.
+    fn encode_v4_settle_input(
+        currency: alloy_primitives::Address,
+        amount: u128,
+        payer_is_user: bool,
+    ) -> Vec<u8> {
+        let func = Function::parse("step(address,uint256,bool)").unwrap();
+        let raw = func
+            .abi_encode_input(&[
+                DynSolValue::Address(currency),
+                DynSolValue::Uint(U256::from(amount), 256),
+                DynSolValue::Bool(payer_is_user),
+            ])
+            .unwrap();
+        raw[4..].to_vec()
+    }
+
+    /// TB-2: a `V4_SWAP` whose inner stream is `[SWAP_EXACT_IN_SINGLE, TAKE]`
+    /// emits one Swap envelope whose recipient is patched from the TAKE step
+    /// (V4 swap params carry no recipient).
+    #[test]
+    fn v4_swap_with_take_patches_swap_recipient() {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+
+        let take_dest = alloy_primitives::Address::from_str(
+            "0x5555555555555555555555555555555555555555",
+        )
+        .unwrap();
+        let v4_swap = encode_v4_swap_input(
+            vec![0x06, 0x0e],
+            vec![
+                encode_v4_swap_exact_in_single_input(
+                    token_in(),
+                    token_out(),
+                    3_000,
+                    60,
+                    alloy_primitives::Address::ZERO,
+                    true,
+                    1_000_000,
+                    900_000,
+                    vec![],
+                ),
+                encode_v4_take_input(token_out(), take_dest, 900_000),
+            ],
+        );
+
+        let decoded = ur_execute_decoded(
+            DecoderId::new("declarative.uniswap/universal-router/execute"),
+            vec![OPCODE_V4_SWAP],
+            vec![v4_swap],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
+        assert_eq!(envelopes.len(), 1, "expected one V4 Swap envelope");
+        let Action::Swap(s) = &envelopes[0].action else {
+            panic!("expected Swap, got {:?}", envelopes[0].action);
+        };
+        assert_eq!(s.swap_mode, SwapMode::ExactIn);
+        assert_eq!(
+            s.recipient.to_string(),
+            format!("0x{}", hex::encode(take_dest)),
+            "recipient must be patched from the TAKE step"
+        );
+    }
+
+    /// TB-2: a `V4_SWAP` carrying only settle/take actions (no swap action)
+    /// emits zero envelopes — a clean "no swap intent" result, not a fault.
+    #[test]
+    fn v4_swap_settle_take_only_yields_zero_envelopes() {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+
+        let dest = alloy_primitives::Address::from_str(
+            "0x6666666666666666666666666666666666666666",
+        )
+        .unwrap();
+        let v4_swap = encode_v4_swap_input(
+            vec![0x0b, 0x0e],
+            vec![
+                encode_v4_settle_input(token_in(), 1_000_000, true),
+                encode_v4_take_input(token_out(), dest, 900_000),
+            ],
+        );
+
+        let decoded = ur_execute_decoded(
+            DecoderId::new("declarative.uniswap/universal-router/execute"),
+            vec![OPCODE_V4_SWAP],
+            vec![v4_swap],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
+        assert!(
+            envelopes.is_empty(),
+            "settle/take-only V4_SWAP must emit no envelopes, got {envelopes:?}"
+        );
+    }
+
+    /// TB-2: a `V4_SWAP` with a `SWAP_EXACT_OUT_SINGLE` action emits an
+    /// ExactOut Swap envelope (mode plumbed through the shared builder).
+    #[test]
+    fn v4_swap_exact_out_single_emits_exact_out() {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+
+        let v4_swap = encode_v4_swap_input(
+            vec![0x08],
+            vec![encode_v4_swap_exact_in_single_input(
+                token_in(),
+                token_out(),
+                3_000,
+                60,
+                alloy_primitives::Address::ZERO,
+                false,
+                500_000,
+                600_000,
+                vec![],
+            )],
+        );
+
+        let decoded = ur_execute_decoded(
+            DecoderId::new("declarative.uniswap/universal-router/execute"),
+            vec![OPCODE_V4_SWAP],
+            vec![v4_swap],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
+        assert_eq!(envelopes.len(), 1);
+        let Action::Swap(s) = &envelopes[0].action else {
+            panic!("expected Swap");
+        };
+        assert_eq!(s.swap_mode, SwapMode::ExactOut);
+        assert_eq!(s.input_token.amount.kind, AmountKind::Max);
+        assert_eq!(s.output_token.amount.kind, AmountKind::Exact);
+    }
+
+    /// TB-2: a `V4_SWAP` whose swap action's params blob is malformed (here
+    /// a 1-byte input that cannot ABI-decode) surfaces a `MapperError` so the
+    /// orchestrator falls back to the static path — it is NOT silently
+    /// dropped as a 0-envelope hit.
+    #[test]
+    fn v4_swap_malformed_swap_action_faults() {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+
+        // Inner action 0x06 SWAP_EXACT_IN_SINGLE but a 1-byte params blob.
+        let v4_swap = encode_v4_swap_input(vec![0x06], vec![vec![0x00]]);
+
+        let decoded = ur_execute_decoded(
+            DecoderId::new("declarative.uniswap/universal-router/execute"),
+            vec![OPCODE_V4_SWAP],
+            vec![v4_swap],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let err = super::execute(&ctx, &decoded, &bundle.emit).unwrap_err();
+        // The V4 swap builder raises ArgumentMismatch for a swap action it
+        // cannot decode; `dispatch_steps` propagates it as-is.
+        assert!(
+            matches!(err, MapperError::ArgumentMismatch { .. }),
+            "expected ArgumentMismatch from malformed V4 swap action, got {err:?}"
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TB-3 — `v4_position_manager` dispatcher_id branch.
+    // `opcode_stream::execute` now recognises a second dispatcher_id for V4
+    // PositionManager `modifyLiquidities`, dispatching its `(actions,
+    // params)` payload against `V4_ROUTER_TABLE`.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// Synthetic V4 PositionManager bundle for the `v4_position_manager`
+    /// dispatcher. Maps V4 action `0x01 DECREASE_LIQUIDITY` to a
+    /// `("dex","decrease_liquidity")` single_emit rule. Lives inline (not in
+    /// `registry/`) so the test does not depend on the Tier A manifest work
+    /// (TB-A). `mask`/`allow_revert_bit` match `V4_ROUTER_TABLE` (0xff / 0x00).
+    const V4_PM_BUNDLE_JSON: &str = r#"{
+      "type": "adapter_function",
+      "id": "test/v4-position-manager/modifyLiquidities@1.0.0",
+      "publisher": "test.eth",
+      "match": {
+        "chain_ids": [1],
+        "to": ["0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e"],
+        "selector": "0xdd46508f"
+      },
+      "abi_fragment": {
+        "function_name": "modifyLiquidities",
+        "abi": { "name": "modifyLiquidities", "type": "function", "inputs": [
+          { "name": "unlockData", "type": "bytes" },
+          { "name": "deadline", "type": "uint256" }
+        ]}
+      },
+      "emit": {
+        "strategy": "opcode_stream_dispatch",
+        "dispatcher_id": "v4_position_manager",
+        "mask": "0xff",
+        "allow_revert_bit": "0x00",
+        "unknown_opcode_policy": "ignore_step",
+        "per_opcode_emit": {
+          "0x01": {
+            "name": "DECREASE_LIQUIDITY",
+            "category": "dex",
+            "action": "decrease_liquidity",
+            "fields": {
+              "nft.kind": { "literal": "erc721" },
+              "nft.address": { "literal": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e" },
+              "nft.tokenId": { "from": "$.args.tokenId" },
+              "liquidityDelta.kind": { "literal": "exact" },
+              "liquidityDelta.value": { "from": "$.args.liquidity" },
+              "outputTokens": { "literal": [] }
+            }
+          }
+        }
+      },
+      "requires": { "imperative": [], "adapter_capabilities": [],
+                    "host_capabilities": [], "extension": ">=0.1.0" }
+    }"#;
+
+    /// Encode a V4 `DECREASE_LIQUIDITY` (0x01) params blob — flat
+    /// `(uint256 tokenId, uint256 liquidity, uint128 amount0Min,
+    /// uint128 amount1Min, bytes hookData)`.
+    fn encode_v4_decrease_liquidity_input(
+        token_id: u128,
+        liquidity: u128,
+    ) -> Vec<u8> {
+        let func = Function::parse("step(uint256,uint256,uint128,uint128,bytes)").unwrap();
+        let raw = func
+            .abi_encode_input(&[
+                DynSolValue::Uint(U256::from(token_id), 256),
+                DynSolValue::Uint(U256::from(liquidity), 256),
+                DynSolValue::Uint(U256::from(0u8), 128),
+                DynSolValue::Uint(U256::from(0u8), 128),
+                DynSolValue::Bytes(vec![]),
+            ])
+            .unwrap();
+        raw[4..].to_vec()
+    }
+
+    /// Build a `modifyLiquidities(bytes unlockData, uint256 deadline)`
+    /// `DecodedCall`. `unlockData = abi.encode(bytes actions, bytes[] params)`.
+    fn v4_pm_modify_liquidities_decoded(actions: Vec<u8>, params: Vec<Vec<u8>>) -> DecodedCall {
+        let unlock = Function::parse("step(bytes,bytes[])")
+            .unwrap()
+            .abi_encode_input(&[
+                DynSolValue::Bytes(actions),
+                DynSolValue::Array(params.into_iter().map(DynSolValue::Bytes).collect()),
+            ])
+            .unwrap();
+        DecodedCall {
+            decoder_id: DecoderId::new("declarative.test/v4-position-manager/modifyLiquidities"),
+            function_signature: "modifyLiquidities(bytes,uint256)".into(),
+            args: vec![
+                DecodedArg {
+                    name: "unlockData".into(),
+                    abi_type: "bytes".into(),
+                    value: DecodedValue::Bytes(unlock[4..].to_vec()),
+                },
+                DecodedArg {
+                    name: "deadline".into(),
+                    abi_type: "uint256".into(),
+                    value: DecodedValue::Uint(U256::from(9_999_999_999_u64)),
+                },
+            ],
+            nested: vec![],
+        }
+    }
+
+    /// TB-3: the `v4_position_manager` dispatcher decodes a `modifyLiquidities`
+    /// call's `(actions, params)` payload against `V4_ROUTER_TABLE` and emits
+    /// one envelope per recognised action.
+    #[test]
+    fn v4_pm_dispatcher_emits_envelope_per_action() {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
+
+        let decoded = v4_pm_modify_liquidities_decoded(
+            vec![0x01],
+            vec![encode_v4_decrease_liquidity_input(42, 1_000_000)],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
+        assert_eq!(envelopes.len(), 1, "one DECREASE_LIQUIDITY action → one envelope");
+        assert!(
+            matches!(envelopes[0].action, Action::DecreaseLiquidity(_)),
+            "expected DecreaseLiquidity, got {:?}",
+            envelopes[0].action
+        );
+    }
+
+    /// TB-3: an empty V4 PM action stream yields zero envelopes.
+    #[test]
+    fn v4_pm_dispatcher_empty_action_stream_yields_no_envelopes() {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
+
+        let decoded = v4_pm_modify_liquidities_decoded(vec![], vec![]);
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
+        assert!(envelopes.is_empty(), "empty action stream → no envelopes");
+    }
+
+    /// TB-3: a V4 PM action not in `per_opcode_emit` is skipped under
+    /// `ignore_step` policy (here `0x0b SETTLE` against a bundle that only
+    /// maps `0x01`).
+    #[test]
+    fn v4_pm_dispatcher_unknown_action_ignored() {
+        let bundle: AdapterFunctionBundle = serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
+
+        // 0x0b SETTLE has no per_opcode_emit entry in V4_PM_BUNDLE_JSON; the
+        // 0x01 DECREASE_LIQUIDITY does. The ignore_step policy skips 0x0b.
+        let decoded = v4_pm_modify_liquidities_decoded(
+            vec![0x0b, 0x01],
+            vec![
+                encode_v4_settle_input(token_in(), 1_000, true),
+                encode_v4_decrease_liquidity_input(7, 500),
+            ],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
+        assert_eq!(envelopes.len(), 1, "only the mapped 0x01 action emits");
+        assert!(matches!(envelopes[0].action, Action::DecreaseLiquidity(_)));
+    }
+
+    /// TB-3: a V4 PM bundle declaring the wrong `mask` (UR's 0x7f instead of
+    /// V4's 0xff) is rejected — the per-opcode keys would otherwise be
+    /// computed against the wrong bit layout.
+    #[test]
+    fn v4_pm_dispatcher_wrong_mask_errors() {
+        let mut bundle: AdapterFunctionBundle =
+            serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
+        if let EmitRule::OpcodeStreamDispatch { mask, .. } = &mut bundle.emit {
+            *mask = "0x7f".to_owned();
+        } else {
+            panic!("V4_PM_BUNDLE_JSON emit must be OpcodeStreamDispatch");
+        }
+
+        let decoded = v4_pm_modify_liquidities_decoded(
+            vec![0x01],
+            vec![encode_v4_decrease_liquidity_input(1, 1)],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let err = super::execute(&ctx, &decoded, &bundle.emit).unwrap_err();
+        let MapperError::Internal(inner) = &err else {
+            panic!("expected MapperError::Internal, got {err:?}");
+        };
+        assert!(
+            inner.to_string().contains("V4_ROUTER_TABLE mask"),
+            "expected V4 mask-mismatch error, got: {inner}"
+        );
+    }
+
+    /// TB-3: an unrecognised `dispatcher_id` still surfaces
+    /// `MapperError::Unsupported` (the third match arm) — neither the UR nor
+    /// the V4 PM path swallows it.
+    #[test]
+    fn unknown_dispatcher_id_is_unsupported() {
+        let mut bundle: AdapterFunctionBundle =
+            serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
+        if let EmitRule::OpcodeStreamDispatch { dispatcher_id, .. } = &mut bundle.emit {
+            *dispatcher_id = "pancake_infinity".to_owned();
+        } else {
+            panic!("V4_PM_BUNDLE_JSON emit must be OpcodeStreamDispatch");
+        }
+
+        let decoded = v4_pm_modify_liquidities_decoded(
+            vec![0x01],
+            vec![encode_v4_decrease_liquidity_input(1, 1)],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let err = super::execute(&ctx, &decoded, &bundle.emit).unwrap_err();
+        let MapperError::Unsupported(detail) = &err else {
+            panic!("expected MapperError::Unsupported, got {err:?}");
+        };
+        assert!(
+            detail.contains("pancake_infinity"),
+            "expected dispatcher id in detail, got: {detail}"
         );
     }
 }

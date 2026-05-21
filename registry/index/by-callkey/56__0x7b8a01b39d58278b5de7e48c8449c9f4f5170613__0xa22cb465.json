@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/setApprovalForAll-bnb@1.0.0",
   "manifest_path": "manifests/uniswap/v3/setApprovalForAll-bnb@1.0.0.json",
-  "bundle_sha256": "0xb52aabba0eada04c8140b9c87b083afb5ab1f48c2fd078c47508bdfcb0c0517e",
+  "bundle_sha256": "0xf1c4fa24621e2f62603f8f0092c42c6165d711212d2b9e3e51ace357aab2283e",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/setApprovalForAll-bnb@1.0.0",
@@ -43,6 +43,9 @@
         },
         "collection.address": {
           "from": "$.tx.to"
+        },
+        "collection.tokenId": {
+          "literal": "0"
         },
         "operator": {
           "from": "$.args.operator"

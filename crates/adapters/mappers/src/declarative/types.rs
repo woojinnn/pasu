@@ -158,6 +158,33 @@ pub enum EmitRule {
         recurse_rule_id: String,
         max_depth: u8,
     },
+
+    /// Array fan-out — one ABI tuple-array argument → N ActionEnvelopes,
+    /// one per element. Phase 7B (Permit2 batch overloads). Generalises
+    /// `single_emit`: the field tree is built once per array element with a
+    /// synthetic `element` arg bound to the current row.
+    ArrayEmit {
+        category: String,
+        action: String,
+        /// `JsonPath` to the tuple-array argument, e.g. `"$.args.transferDetails"`
+        /// or `"$.args.permitBatch[0]"` (the `PermitDetails[]` inside `PermitBatch`).
+        array_path: String,
+        /// Hard cap on element count (`DoS` guard). 1..=64.
+        max_elements: u8,
+        /// Optional parallel arrays — synchronised index. Maps a synthetic
+        /// arg name → `JsonPath` of another array of equal length. Element i of
+        /// `array_path` is bound to `element`; element i of each parallel
+        /// array is bound to its key name. Used by Permit2
+        /// `permitTransferFrom(batch)` where `TokenPermissions[]` and
+        /// `SignatureTransferDetails[]` are index-aligned.
+        #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+        parallel_paths: BTreeMap<String, String>,
+        /// Per-element field map. `$.args.element[...]` resolves to the
+        /// current `array_path` element; `$.args.<parallelKey>[...]` to the
+        /// matching parallel element; `$.args.*`/`$.tx.*`/`$.context.*` to
+        /// the outer call.
+        fields: BTreeMap<String, ValueExpr>,
+    },
 }
 
 /// Per-opcode emit rule (inside `OpcodeStreamDispatch.per_opcode_emit`).
@@ -427,10 +454,11 @@ mod tests {
         assert_eq!(bundle, bundle2);
     }
 
-    /// All 4 strategies must parse — even though only `SingleEmit` is wired
+    /// All 5 strategies must parse — even though only `SingleEmit` is wired
     /// for execution in Phase 1. Confirms the dispatch tag works in serde.
+    /// Phase 7B added `array_emit` as the fifth variant.
     #[test]
-    fn all_four_strategies_parse() {
+    fn all_five_strategies_parse() {
         let cases = [
             (
                 r#"{"strategy":"single_emit","category":"x","action":"y","fields":{}}"#,
@@ -448,6 +476,10 @@ mod tests {
                 r#"{"strategy":"multicall_recurse","recurse_rule_id":"self_array_bytes_last_arg","max_depth":3}"#,
                 "multicall_recurse",
             ),
+            (
+                r#"{"strategy":"array_emit","category":"misc","action":"permit","array_path":"$.args.transferDetails","max_elements":64,"fields":{}}"#,
+                "array_emit",
+            ),
         ];
 
         for (json, label) in cases {
@@ -458,6 +490,57 @@ mod tests {
                 .unwrap_or_else(|e| panic!("{label} round-trip failed: {e}"));
             assert_eq!(parsed, reparsed, "{label} round-trip mismatch");
         }
+    }
+
+    /// `array_emit` parses with the right field shapes. `parallel_paths` is
+    /// `#[serde(default)]` so an omitted key yields an empty map; supplying
+    /// it round-trips. Phase 7B.
+    #[test]
+    fn array_emit_strategy_parses() {
+        // parallel_paths omitted → defaults to empty.
+        let no_parallel: EmitRule = serde_json::from_str(
+            r#"{"strategy":"array_emit","category":"misc","action":"transfer","array_path":"$.args.transferDetails","max_elements":32,"fields":{"from":{"from":"$.args.element[0]"}}}"#,
+        )
+        .expect("array_emit (no parallel) parses");
+        match &no_parallel {
+            EmitRule::ArrayEmit {
+                category,
+                action,
+                array_path,
+                max_elements,
+                parallel_paths,
+                fields,
+            } => {
+                assert_eq!(category, "misc");
+                assert_eq!(action, "transfer");
+                assert_eq!(array_path, "$.args.transferDetails");
+                assert_eq!(*max_elements, 32);
+                assert!(parallel_paths.is_empty());
+                assert_eq!(fields.len(), 1);
+            }
+            other => panic!("expected ArrayEmit, got {other:?}"),
+        }
+
+        // parallel_paths present → captured.
+        let with_parallel: EmitRule = serde_json::from_str(
+            r#"{"strategy":"array_emit","category":"misc","action":"permit","array_path":"$.args.permit[0]","max_elements":64,"parallel_paths":{"td":"$.args.transferDetails"},"fields":{}}"#,
+        )
+        .expect("array_emit (parallel) parses");
+        match &with_parallel {
+            EmitRule::ArrayEmit { parallel_paths, .. } => {
+                assert_eq!(
+                    parallel_paths.get("td").map(String::as_str),
+                    Some("$.args.transferDetails")
+                );
+            }
+            other => panic!("expected ArrayEmit, got {other:?}"),
+        }
+
+        // Round-trip: re-serialize then re-parse must equal.
+        let reserialized = serde_json::to_string(&with_parallel).expect("serializes");
+        let reparsed: EmitRule =
+            serde_json::from_str(&reserialized).expect("round-trip parses");
+        assert_eq!(with_parallel, reparsed);
     }
 
     /// ValueExpr untagged dispatch — each shape parses to the right variant.

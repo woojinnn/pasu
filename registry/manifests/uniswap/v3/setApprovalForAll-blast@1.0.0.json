@@ -39,6 +39,9 @@
       "collection.address": {
         "from": "$.tx.to"
       },
+      "collection.tokenId": {
+        "literal": "0"
+      },
       "operator": {
         "from": "$.args.operator"
       },

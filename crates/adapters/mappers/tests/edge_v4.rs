@@ -252,9 +252,9 @@ impl ChildResolver for CapturingResolver {
 // ─────────────────────────────────────────────────────────────────────────
 
 /// 1) `v4_swap_with_empty_actions_yields_no_envelopes` — outer `[0x10]`
-/// + actions = empty Bytes + params = empty Bytes\[\] MUST complete cleanly
-/// under option D (V4 inner-action envelope builders are scoped to T-B6;
-/// in Phase 7 V4_SWAP returns Ok(Vec::new()) regardless of inner shape).
+/// + actions = empty Bytes + params = empty Bytes\[\] MUST complete cleanly.
+/// An empty V4 action stream has no swap action, so the TB-2 swap builder
+/// returns zero envelopes — a clean result, not a fault.
 #[test]
 fn v4_swap_with_empty_actions_yields_no_envelopes() {
     let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
@@ -270,7 +270,7 @@ fn v4_swap_with_empty_actions_yields_no_envelopes() {
     let envelopes = decl_opcode_stream::execute(&ctx, &decoded, &bundle.emit).unwrap();
     assert!(
         envelopes.is_empty(),
-        "empty V4_SWAP must emit no envelopes (option D), got {envelopes:?}"
+        "empty V4_SWAP action stream has no swap → no envelopes, got {envelopes:?}"
     );
 }
 
@@ -278,12 +278,12 @@ fn v4_swap_with_empty_actions_yields_no_envelopes() {
 /// + params length 2. The outer `extract_actions_and_params` still succeeds
 /// (it just hands the raw pair to Tier B), and Tier B's `dispatch` tolerates
 /// length mismatch by feeding empty bytes to the missing index — producing a
-/// per-step decode error rather than panicking. The outer
-/// `decl_opcode_stream::execute` returns Ok([]) under option D while the
-/// inner step list carries `StepDecodeError::AbiDecode` / `NoSchema` markers
-/// for the under-fed indices. The "error" the spec mentions is per-step
-/// (visible via direct Tier B dispatch), not a `MapperError` on the outer
-/// call — this test pins both contracts at once.
+/// per-step decode error rather than panicking. The action stream here is
+/// settle/take-only (no swap action), so the TB-2 swap builder returns
+/// `Ok([])` while the inner step list carries `StepDecodeError::AbiDecode` /
+/// `NoSchema` markers for the under-fed indices. The "error" the spec
+/// mentions is per-step (visible via direct Tier B dispatch), not a
+/// `MapperError` on the outer call — this test pins both contracts at once.
 #[test]
 fn v4_swap_malformed_params_length_mismatch_errors() {
     let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
@@ -315,11 +315,12 @@ fn v4_swap_malformed_params_length_mismatch_errors() {
     let value = DecimalString::from_str("0").unwrap();
     let ctx = build_ctx(&registry, &from, &to, &value);
 
-    // Outer call MUST NOT fault — option D returns Ok([]).
+    // Outer call MUST NOT fault — a settle/take-only stream has no swap
+    // action, so the TB-2 swap builder returns Ok([]).
     let envelopes = decl_opcode_stream::execute(&ctx, &decoded, &bundle.emit).unwrap();
     assert!(
         envelopes.is_empty(),
-        "length-mismatch V4_SWAP must still return Ok([]) (option D), got {envelopes:?}"
+        "length-mismatch settle/take-only V4_SWAP returns Ok([]), got {envelopes:?}"
     );
 
     // Sanity: directly dispatching the same inner stream against
@@ -338,9 +339,10 @@ fn v4_swap_malformed_params_length_mismatch_errors() {
 /// `V4_ROUTER_TABLE` (0x00..=0x18, 25 entries) appears as an inner action.
 /// Label-only entries (`DONATE` 0x0a, `MINT_6909` 0x17, `BURN_6909` 0x18)
 /// carry empty params; entries with a schema get minimal ABI-encoded blobs.
-/// The outer call MUST return Ok([]) per option D and Tier B's direct
-/// dispatch MUST produce 25 inner steps with no `UNKNOWN` names — proving
-/// the table covers 0x00..=0x18 contiguously.
+/// The outer call MUST emit one Swap envelope per swap action (4 total —
+/// 0x06/0x07/0x08/0x09) and Tier B's direct dispatch MUST produce 25 inner
+/// steps with no `UNKNOWN` names — proving the table covers 0x00..=0x18
+/// contiguously.
 #[test]
 fn v4_swap_all_25_actions_decode_succeeds() {
     let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
@@ -459,6 +461,23 @@ fn v4_swap_all_25_actions_decode_succeeds() {
         1,
         vec![],
     );
+    // V4 multi-hop swap params — `(currency, PathKey[], amountA, amountB)`,
+    // the mainnet (pre-#497) shape. One PathKey hop token_in → token_out.
+    let swap_multi = encode_step_input(
+        "((address,(address,uint24,int24,address,bytes)[],uint128,uint128))",
+        &[DynSolValue::Tuple(vec![
+            DynSolValue::Address(token_in()),
+            DynSolValue::Array(vec![DynSolValue::Tuple(vec![
+                DynSolValue::Address(token_out()),
+                DynSolValue::Uint(U256::from(3000u64), 24),
+                DynSolValue::Int(I256::try_from(60i32).unwrap(), 24),
+                DynSolValue::Address(alloy_primitives::Address::ZERO),
+                DynSolValue::Bytes(vec![]),
+            ])]),
+            DynSolValue::Uint(U256::from(1u64), 128),
+            DynSolValue::Uint(U256::from(1u64), 128),
+        ])],
+    );
 
     // 25 actions, one per V4_ROUTER_TABLE entry. Label-only entries
     // (0x0a DONATE, 0x17 MINT_6909, 0x18 BURN_6909) carry empty params.
@@ -471,9 +490,9 @@ fn v4_swap_all_25_actions_decode_succeeds() {
         inc_from_deltas,        // 0x04 INCREASE_LIQUIDITY_FROM_DELTAS
         mint_from_deltas,       // 0x05 MINT_POSITION_FROM_DELTAS
         swap_single.clone(),    // 0x06 SWAP_EXACT_IN_SINGLE
-        swap_single.clone(),    // 0x07 SWAP_EXACT_IN (placeholder)
-        swap_single.clone(),    // 0x08 SWAP_EXACT_OUT_SINGLE
-        swap_single,            // 0x09 SWAP_EXACT_OUT (placeholder)
+        swap_multi.clone(),     // 0x07 SWAP_EXACT_IN
+        swap_single,            // 0x08 SWAP_EXACT_OUT_SINGLE
+        swap_multi,             // 0x09 SWAP_EXACT_OUT
         vec![],                 // 0x0a DONATE (label-only)
         addr_uint_bool,         // 0x0b SETTLE
         addr_uint.clone(),      // 0x0c SETTLE_ALL
@@ -502,12 +521,25 @@ fn v4_swap_all_25_actions_decode_succeeds() {
     let value = DecimalString::from_str("0").unwrap();
     let ctx = build_ctx(&registry, &from, &to, &value);
 
-    // Option D: outer returns Ok([]) regardless of inner action count.
+    // TB-2: the 4 swap actions (0x06/0x07/0x08/0x09) each emit one Swap
+    // envelope via the shared V4 swap builder; the 21 non-swap actions
+    // (liquidity / settle / take / wrap / label-only) emit nothing. There is
+    // no TAKE-derived recipient because the stream's 0x0e TAKE comes after
+    // the swaps — but all swap envelopes are still produced.
     let envelopes = decl_opcode_stream::execute(&ctx, &decoded, &bundle.emit).unwrap();
-    assert!(
-        envelopes.is_empty(),
-        "all-25-action V4_SWAP must emit 0 envelopes (option D), got {envelopes:?}"
+    assert_eq!(
+        envelopes.len(),
+        4,
+        "all-25-action V4_SWAP must emit 4 Swap envelopes (one per swap action), \
+         got {envelopes:?}"
     );
+    for env in &envelopes {
+        assert!(
+            matches!(env.action, policy_engine::action::envelope::Action::Swap(_)),
+            "every emitted envelope must be a Swap, got {:?}",
+            env.action
+        );
+    }
 
     // Sanity: Tier B dispatch produces exactly 25 inner steps and every
     // opcode is recognised (no `UNKNOWN` name) — proves the table covers
@@ -565,7 +597,8 @@ fn v4_swap_at_max_depth_3_succeeds() {
 /// 5) `v4_swap_at_depth_2_succeeds` — outer `[0x21]` wrapping a leaf
 /// `[0x10]` places the V4_SWAP entry at depth 2. With
 /// `MAX_SUB_PLAN_DEPTH = 3` the guard fires only when `ctx.depth >= 3`, so
-/// depth 2 MUST succeed and option D yields 0 envelopes.
+/// depth 2 MUST succeed. Since TB-2 the inner SWAP_EXACT_IN_SINGLE emits one
+/// Swap envelope (rather than the pre-TB-2 0-envelope option-D behaviour).
 #[test]
 fn v4_swap_at_depth_2_succeeds() {
     let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
@@ -592,18 +625,24 @@ fn v4_swap_at_depth_2_succeeds() {
     let ctx = build_ctx(&registry, &from, &to, &value);
 
     let envelopes = decl_opcode_stream::execute(&ctx, &decoded, &bundle.emit).unwrap();
+    assert_eq!(
+        envelopes.len(),
+        1,
+        "V4_SWAP at depth 2 must succeed and emit one Swap envelope, got {envelopes:?}"
+    );
     assert!(
-        envelopes.is_empty(),
-        "V4_SWAP at depth 2 must succeed with 0 envelopes (option D), got {envelopes:?}"
+        matches!(envelopes[0].action, policy_engine::action::envelope::Action::Swap(_)),
+        "expected Swap, got {:?}",
+        envelopes[0].action
     );
 }
 
 /// 6) `v4_swap_unknown_inner_opcode_with_warn_policy_skips` — the inner V4
 /// action stream contains `0xFF` (not in `V4_ROUTER_TABLE`). Tier B
 /// produces a `DecodedStep { name: "UNKNOWN", error: Some(UnknownOpcode),
-/// args: None }` for it; the declarative `execute_v4_swap_step` discards
-/// the inner step list under option D — so an unknown V4 inner opcode
-/// MUST NOT fault the outer call.
+/// args: None }` for it; the TB-2 swap builder ignores any non-swap step
+/// (`UNKNOWN` included) — so an unknown V4 inner opcode that is not a swap
+/// action MUST NOT fault the outer call and emits no envelope.
 ///
 /// The bundle's `unknown_opcode_policy = warn` applies to the OUTER UR
 /// `per_opcode_emit` map only — V4 inner actions do not consult that map.
@@ -645,7 +684,7 @@ fn v4_swap_unknown_inner_opcode_with_warn_policy_skips() {
     let envelopes = decl_opcode_stream::execute(&ctx, &decoded, &bundle.emit).unwrap();
     assert!(
         envelopes.is_empty(),
-        "V4_SWAP with unknown inner opcode must complete cleanly (option D), got {envelopes:?}"
+        "V4_SWAP with non-swap unknown inner opcode emits no envelopes, got {envelopes:?}"
     );
 
     // Sanity: direct V4 dispatch confirms 0xFF surfaces as UnknownOpcode.

@@ -1,0 +1,71 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/swap-router-02/sweepToken@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      1,
+      10,
+      137,
+      42161
+    ],
+    "to": [
+      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+    ],
+    "selector": "0xdf2ab5bb"
+  },
+  "abi_fragment": {
+    "function_name": "sweepToken",
+    "abi": {
+      "name": "sweepToken",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "name": "amountMinimum",
+          "type": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind": {
+        "literal": "erc20"
+      },
+      "token.asset.address": {
+        "from": "$.args.token"
+      },
+      "token.amount.kind": {
+        "literal": "min"
+      },
+      "token.amount.value": {
+        "from": "$.args.amountMinimum"
+      },
+      "from": {
+        "from": "$.tx.to"
+      },
+      "recipient": {
+        "from": "$.args.recipient"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

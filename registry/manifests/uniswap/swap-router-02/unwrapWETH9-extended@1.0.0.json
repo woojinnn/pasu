@@ -1,0 +1,63 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/swap-router-02/unwrapWETH9-extended@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      1,
+      10,
+      137,
+      42161
+    ],
+    "to": [
+      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+    ],
+    "selector": "0x49616997"
+  },
+  "abi_fragment": {
+    "function_name": "unwrapWETH9",
+    "abi": {
+      "name": "unwrapWETH9",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "amountMinimum",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "unwrap",
+    "fields": {
+      "wrappedAsset.asset.kind": {
+        "literal": "erc20"
+      },
+      "wrappedAsset.amount.kind": {
+        "literal": "exact"
+      },
+      "nativeAsset.asset.kind": {
+        "literal": "native"
+      },
+      "nativeAsset.amount.kind": {
+        "literal": "min"
+      },
+      "nativeAsset.amount.value": {
+        "from": "$.args.amountMinimum"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -139,7 +139,8 @@ export type EmitRule =
   | SingleEmit
   | OpcodeStreamDispatch
   | EnumTaggedDispatch
-  | MulticallRecurse;
+  | MulticallRecurse
+  | ArrayEmit;
 
 export interface SingleEmit {
   strategy: "single_emit";
@@ -192,6 +193,29 @@ export interface MulticallRecurse {
   max_depth: number;
 }
 
+/**
+ * Array fan-out — one ABI tuple-array argument → N ActionEnvelopes, one per
+ * element (Phase 7B, Permit2 batch overloads). Generalises `single_emit`:
+ * the field tree is built once per array element with a synthetic `element`
+ * arg (and optional `parallel_paths` rows) bound to the current index.
+ */
+export interface ArrayEmit {
+  strategy: "array_emit";
+  category: string;
+  action: string;
+  /** JsonPath to the tuple-array argument (must start with "$."). */
+  array_path: string;
+  /** Hard cap on element count (DoS guard). 1..=64. */
+  max_elements: number;
+  /**
+   * Optional parallel arrays — synthetic arg name → JsonPath of another
+   * array of equal length, index-synchronised with `array_path`.
+   */
+  parallel_paths?: Record<string, string>;
+  /** Per-element field map. */
+  fields: Record<string, ValueExpr>;
+}
+
 // ----- Top-level -----
 
 export interface AdapterFunctionBundle {
@@ -216,6 +240,13 @@ const HEX_U8_RE = /^0x[0-9a-fA-F]{1,2}$/;
 // and let the bridge normalise downstream.
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const MAX_TRANSFORM_ARGS = 4; // per BNF "max_4"
+// Phase 7B — `array_emit` JsonPaths (`array_path` + each `parallel_paths`
+// value) must be rooted at `$.` like every other DSL path; this matches the
+// Rust `eval::evaluate_json_path` contract which strips the `$.` prefix.
+const JSONPATH_PREFIX = "$.";
+// `array_emit.max_elements` ceiling — mirrors the Rust
+// `array_emit::MAX_ARRAY_ELEMENTS` defence-in-depth cap (= 64).
+const MAX_ARRAY_ELEMENTS = 64;
 
 export class BundleParseError extends Error {
   constructor(message: string) {
@@ -487,6 +518,61 @@ function parseEmitRule(v: unknown, path: string): EmitRule {
         ),
         max_depth: maxDepth,
       };
+    }
+
+    case "array_emit": {
+      const arrayPath = reqString(obj.array_path, `${path}.array_path`);
+      if (!arrayPath.startsWith(JSONPATH_PREFIX)) {
+        throw new BundleParseError(
+          `${path}.array_path: expected JsonPath starting with "${JSONPATH_PREFIX}", got "${arrayPath}"`,
+        );
+      }
+      const maxElements = obj.max_elements;
+      if (
+        typeof maxElements !== "number" ||
+        !Number.isInteger(maxElements) ||
+        maxElements < 1 ||
+        maxElements > MAX_ARRAY_ELEMENTS
+      ) {
+        throw new BundleParseError(
+          `${path}.max_elements: expected integer in [1, ${MAX_ARRAY_ELEMENTS}]`,
+        );
+      }
+      // `parallel_paths` is optional — a plain string→JsonPath map. Each
+      // value must be a "$." rooted path; the empty/omitted case is allowed.
+      let parallelPaths: Record<string, string> | undefined;
+      if ("parallel_paths" in obj) {
+        const rawParallel = reqObj(
+          obj.parallel_paths,
+          `${path}.parallel_paths`,
+        );
+        const parsed: Record<string, string> = {};
+        for (const [k, raw] of Object.entries(rawParallel)) {
+          const parallelPath = reqString(
+            raw,
+            `${path}.parallel_paths.${k}`,
+          );
+          if (!parallelPath.startsWith(JSONPATH_PREFIX)) {
+            throw new BundleParseError(
+              `${path}.parallel_paths.${k}: expected JsonPath starting with "${JSONPATH_PREFIX}", got "${parallelPath}"`,
+            );
+          }
+          parsed[k] = parallelPath;
+        }
+        parallelPaths = parsed;
+      }
+      const arrayEmit: ArrayEmit = {
+        strategy: "array_emit",
+        category: reqString(obj.category, `${path}.category`),
+        action: reqString(obj.action, `${path}.action`),
+        array_path: arrayPath,
+        max_elements: maxElements,
+        fields: parseFields(obj.fields, `${path}.fields`),
+      };
+      if (parallelPaths !== undefined) {
+        arrayEmit.parallel_paths = parallelPaths;
+      }
+      return arrayEmit;
     }
 
     default:

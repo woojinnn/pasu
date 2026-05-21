@@ -16,9 +16,10 @@
  *   - scripts/uniswap-deployments.json
  *       Phase 1 (protocol-researcher) 산출 per-chain 배포 주소 matrix.
  *       { "<routerKey>": { "<chainId>": "<address>" }, ... }
- *   - manifests/uniswap/{v2,v3,swap-router-02,permit2}/*.json
+ *   - manifests/uniswap/{v2,v3,v4,swap-router-02,permit2}/*.json
  *       기존 manifest = template. emit / abi_fragment / requires 는 그대로 복제,
- *       match 만 per-address 로 재작성.
+ *       match 만 per-address 로 재작성. v3/ 는 V3 SwapRouter+NFPM, v4/ 는
+ *       V4 PositionManager+PoolManager 가 혼재 — match.to[0] 으로 판별.
  *
  * 출력:
  *   - 각 함수마다 주소 group 별 manifest. canonical group(전역 최소 chainId 를 포함하는
@@ -69,6 +70,17 @@ const V3_DISCRIMINATOR: Record<string, string> = {
   "0xc36442b4a4522e871399cd717abdd847ab11fe88": "v3-nfpm",
 };
 
+/**
+ * v4/ 디렉토리는 V4 PositionManager + V4 PoolManager manifest 가 혼재한다.
+ * v3/ 의 V3_DISCRIMINATOR 와 동일 패턴 — 원본 manifest 의 match.to[0]
+ * (chain 1 mainnet 주소)로 어느 컨트랙트인지 판별한다. split 후 재실행하면
+ * to 가 비-mainnet 주소라 여기서 매치 실패 → 즉시 abort (멱등 가드).
+ */
+const V4_DISCRIMINATOR: Record<string, string> = {
+  "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e": "v4-pm",
+  "0x000000000004444c5dc75cb358380d2e3de08a90": "v4-pool-manager",
+};
+
 /** 디렉토리 → matrix router key. universal-router 는 의도적으로 제외. */
 const DIR_ROUTER: Record<string, string> = {
   v2: "v2-router02",
@@ -76,7 +88,7 @@ const DIR_ROUTER: Record<string, string> = {
   permit2: "permit2",
 };
 
-const PROCESS_DIRS = ["v2", "v3", "swap-router-02", "permit2"] as const;
+const PROCESS_DIRS = ["v2", "v3", "v4", "swap-router-02", "permit2"] as const;
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 
 interface Manifest {
@@ -137,6 +149,15 @@ function main(): void {
         if (!routerKey) {
           fail(
             `${dir}/${fname}: match.to[0]=${to0} 가 V3 SwapRouter/NFPM 판별 주소가 아님 ` +
+              `— 비-멱등 재실행 의심. 'git checkout manifests/uniswap/' 후 재실행하세요.`,
+          );
+        }
+      } else if (dir === "v4") {
+        const to0 = (manifest.match?.to?.[0] ?? "").toLowerCase();
+        routerKey = V4_DISCRIMINATOR[to0];
+        if (!routerKey) {
+          fail(
+            `${dir}/${fname}: match.to[0]=${to0} 가 V4 PositionManager/PoolManager 판별 주소가 아님 ` +
               `— 비-멱등 재실행 의심. 'git checkout manifests/uniswap/' 후 재실행하세요.`,
           );
         }
