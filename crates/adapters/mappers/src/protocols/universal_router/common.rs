@@ -19,7 +19,11 @@ const ACTION_MSG_SENDER: &str = "0x0000000000000000000000000000000000000001";
 const ACTION_ADDRESS_THIS: &str = "0x0000000000000000000000000000000000000002";
 
 /// Resolve a recipient address through the UR sentinel table.
-pub(super) fn map_recipient(ctx: &MapContext<'_>, raw: Address) -> Address {
+///
+/// `pub(crate)` (not `pub(super)`) so the declarative DSL builtin
+/// `BuiltinFn::MapRecipient` (`declarative::eval`) can reuse this single
+/// sentinel table — see `VERIFICATION_UNISWAP_REALTX` finding F3.
+pub(crate) fn map_recipient(ctx: &MapContext<'_>, raw: Address) -> Address {
     let text = raw.to_string();
     if text == ACTION_MSG_SENDER {
         ctx.from.clone()

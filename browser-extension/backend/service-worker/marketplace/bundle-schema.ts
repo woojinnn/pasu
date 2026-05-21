@@ -112,7 +112,9 @@ export type BuiltinFn =
   // caller passed `(i, j) != (0, 1)`.
   | "select_from_literal_array"
   // Phase 8 — Aerodrome Slipstream CL packed path decoder (int24 tickSpacing)
-  | "unfold_slipstream_path";
+  | "unfold_slipstream_path"
+  // F3 — UR/V4 action recipient sentinel resolver (0x..01 → from, 0x..02 → to)
+  | "map_recipient";
 
 const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "select_address",
@@ -131,6 +133,7 @@ const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "curve_route_last_token",
   "select_from_literal_array",
   "unfold_slipstream_path",
+  "map_recipient",
 ]);
 
 // ----- EmitRule strategies -----

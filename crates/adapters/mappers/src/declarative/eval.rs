@@ -13,6 +13,8 @@
 //!     traversal, `Literal` blending, and `builtin_fn::select_address` can all
 //!     share one representation.
 
+use std::str::FromStr as _;
+
 use abi_resolver::{DecodedCall, DecodedValue};
 use alloy_primitives::{I256, U256};
 
@@ -203,6 +205,31 @@ fn evaluate_transform(
             // `single_emit` field builders coerce per-field.
             builtin_fn::unfold_slipstream_path(&bytes_value, select, extra_value.as_ref())
                 .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
+        }
+        BuiltinFn::MapRecipient => {
+            // Phase F3 — resolve a UR/V4 action recipient sentinel
+            // (`0x..01` → ctx.from, `0x..02` → ctx.to). 1 arg: the raw
+            // recipient address, typically `{ "from": "$.args.recipient" }`.
+            if args.len() != 1 {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "map_recipient expects 1 arg, got {}",
+                    args.len()
+                )));
+            }
+            let raw = evaluate(ctx, args_json, &args[0])?;
+            let addr_str = raw.as_str().ok_or_else(|| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "map_recipient: arg must be an address string, got {raw}"
+                ))
+            })?;
+            let addr = policy_engine::action::Address::from_str(addr_str).map_err(|message| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "map_recipient: invalid address {addr_str:?}: {message}"
+                ))
+            })?;
+            let mapped =
+                crate::protocols::universal_router::common::map_recipient(ctx, addr);
+            Ok(serde_json::Value::String(mapped.to_string()))
         }
         other => Err(MapperError::Unsupported(format!("builtin_fn/{other:?}"))),
     }

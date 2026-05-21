@@ -15,7 +15,7 @@
 //! `UNWRAP_WETH`. The other UR opcodes (V2/V3/V4 swap, SWEEP, TRANSFER,
 //! PERMIT2_*) land in subsequent phases.
 
-mod common;
+pub(crate) mod common;
 pub mod sweep;
 pub mod transfer;
 pub mod unwrap_weth;

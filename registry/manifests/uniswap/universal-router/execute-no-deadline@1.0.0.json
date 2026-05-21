@@ -121,7 +121,12 @@
             "from": "$.args.amountOutMin"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -171,7 +176,12 @@
             "from": "$.args.amountOut"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -196,7 +206,12 @@
             "from": "$.tx.from"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -261,7 +276,12 @@
             "from": "$.tx.to"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -286,7 +306,12 @@
             "from": "$.tx.to"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -311,7 +336,12 @@
             "from": "$.tx.to"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -336,7 +366,12 @@
             "from": "$.tx.to"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -386,7 +421,12 @@
             "from": "$.args.amountOutMin"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -436,7 +476,12 @@
             "from": "$.args.amountOut"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -507,7 +552,12 @@
             "from": "$.args.amountMin"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -538,7 +588,12 @@
             "from": "$.args.amountMin"
           },
           "recipient": {
-            "from": "$.args.recipient"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.recipient"
+              }
+            ]
           }
         }
       },
@@ -563,7 +618,12 @@
             "from": "$.args.transferDetails[0][0]"
           },
           "recipient": {
-            "from": "$.args.transferDetails[0][1]"
+            "fn": "map_recipient",
+            "args": [
+              {
+                "from": "$.args.transferDetails[0][1]"
+              }
+            ]
           }
         }
       },

@@ -334,6 +334,13 @@ pub enum BuiltinFn {
     /// `uint24 fee` — sign-extension applied on decode. Backend lives in
     /// `declarative::builtin_fn::unfold_slipstream_path`.
     UnfoldSlipstreamPath,
+    /// `map_recipient(addr) -> Address` — resolve a Uniswap action recipient
+    /// sentinel: `0x..01` (`MSG_SENDER`) → `ctx.from`, `0x..02`
+    /// (`ADDRESS_THIS`) → `ctx.to`; any other address passes through.
+    /// TierB-backed — wraps `protocols::universal_router::common::map_recipient`.
+    /// `VERIFICATION_UNISWAP_REALTX` finding F3 — UR opcode recipients were
+    /// emitted as raw sentinel literals on the declarative path.
+    MapRecipient,
 }
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/universal-router/execute@1.0.0",
   "manifest_path": "manifests/uniswap/universal-router/execute@1.0.0.json",
-  "bundle_sha256": "0x51af377509b2519b471b467c84e993dc075e06e715cea1fc01132c8389065617",
+  "bundle_sha256": "0x8cbcf074885dc1476bbb997b4685e434676552dea0315ffb85c8d13e00c488f1",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/universal-router/execute@1.0.0",
@@ -130,7 +130,12 @@
               "from": "$.args.amountOutMin"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -180,7 +185,12 @@
               "from": "$.args.amountOut"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -205,7 +215,12 @@
               "from": "$.tx.from"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -270,7 +285,12 @@
               "from": "$.tx.to"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -295,7 +315,12 @@
               "from": "$.tx.to"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -320,7 +345,12 @@
               "from": "$.tx.to"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -345,7 +375,12 @@
               "from": "$.tx.to"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -395,7 +430,12 @@
               "from": "$.args.amountOutMin"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -445,7 +485,12 @@
               "from": "$.args.amountOut"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -516,7 +561,12 @@
               "from": "$.args.amountMin"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -547,7 +597,12 @@
               "from": "$.args.amountMin"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -572,7 +627,12 @@
               "from": "$.args.transferDetails[0][0]"
             },
             "recipient": {
-              "from": "$.args.transferDetails[0][1]"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.transferDetails[0][1]"
+                }
+              ]
             }
           }
         },
