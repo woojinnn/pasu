@@ -24,6 +24,8 @@
     "fields": {
       "tokenOut.kind":    { "literal": "erc20" },
       "tokenOut.address": { "literal": "0x06325440d014e39736583c165c2963ba99faf14e" },
+      "amountOut.kind":   { "literal": "exact" },
+      "amountOut.value":  { "from": "$.args._value" },
       "recipient":        { "from": "$.tx.from" }
     }
   },

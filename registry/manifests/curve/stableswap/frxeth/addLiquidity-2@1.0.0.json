@@ -33,6 +33,7 @@
       "inputTokens[1].amount.kind":    { "literal": "max" },
       "inputTokens[1].amount.value":   { "from": "$.args.amounts[1]" },
       "outputLp.asset.kind":           { "literal": "erc20" },
+      "outputLp.asset.address":        { "literal": "0xf43211935c781d5ca1a41d2041f397b8a7366c7a" },
       "outputLp.amount.kind":          { "literal": "min" },
       "outputLp.amount.value":         { "from": "$.args.min_mint_amount" },
       "recipient":                     { "from": "$.tx.from" }

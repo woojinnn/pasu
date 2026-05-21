@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap/frxeth/removeLiquidity-2@1.0.0",
   "manifest_path": "manifests/curve/stableswap/frxeth/removeLiquidity-2@1.0.0.json",
-  "bundle_sha256": "0x4ba2e4055313861f6c97ab6f6257268e12d9406b327b3ad62513a98e29655620",
+  "bundle_sha256": "0xad33dc9c852ba1f61b6146924add5c464c4de411f52039d1a432f4b8fb896983",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap/frxeth/removeLiquidity-2@1.0.0",
@@ -46,6 +46,9 @@
         },
         "inputLp.asset.kind": {
           "literal": "erc20"
+        },
+        "inputLp.asset.address": {
+          "literal": "0xf43211935c781d5ca1a41d2041f397b8a7366c7a"
         },
         "inputLp.amount.kind": {
           "literal": "exact"

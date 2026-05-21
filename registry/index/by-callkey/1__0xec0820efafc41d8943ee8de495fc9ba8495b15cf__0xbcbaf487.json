@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/crvusd/sfrxeth/liquidate@1.0.0",
   "manifest_path": "manifests/curve/crvusd/sfrxeth/liquidate@1.0.0.json",
-  "bundle_sha256": "0xb2ffd4440819c199e4ead59054d3c84e191d3eb2c0154be6ee7af0f0742aca0c",
+  "bundle_sha256": "0x7c9749193c9e6fb9d62b0cd57d39f8430dc4bbba33ebec091a1ccbb571181e75",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/crvusd/sfrxeth/liquidate@1.0.0",
@@ -59,10 +59,10 @@
         "debtAsset.address": {
           "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
         },
-        "seizedCollateralAmount.kind": {
+        "debtToCover.kind": {
           "literal": "min"
         },
-        "seizedCollateralAmount.value": {
+        "debtToCover.value": {
           "from": "$.args.min_x"
         },
         "liquidationKind": {

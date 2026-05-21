@@ -34,8 +34,8 @@
       "collateralAsset.address":    { "literal": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" },
       "debtAsset.kind":             { "literal": "erc20" },
       "debtAsset.address":          { "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
-      "seizedCollateralAmount.kind":  { "literal": "min" },
-      "seizedCollateralAmount.value": { "from": "$.args.min_x" },
+      "debtToCover.kind":  { "literal": "min" },
+      "debtToCover.value": { "from": "$.args.min_x" },
       "liquidationKind":            { "literal": "pool_share" }
     }
   },

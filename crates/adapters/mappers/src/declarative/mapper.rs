@@ -1819,15 +1819,19 @@ mod tests {
         assert_eq!(action.debt_asset.address.as_ref(), Some(&curve_crvusd()));
         let market = action.market.as_ref().expect("market present");
         assert_eq!(market.address.as_ref(), Some(&curve_crvusd_wsteth_controller()));
-        let min_collateral = action
-            .seized_collateral_amount
+        // P1-1 — Curve `liquidate`'s `min_x` is the minimum *debt asset*
+        // (crvUSD) the liquidator receives, not collateral seized. It maps to
+        // `debtToCover` (kind=min); `seizedCollateralAmount` stays unset.
+        let min_debt = action
+            .debt_to_cover
             .as_ref()
-            .expect("seizedCollateralAmount present");
-        assert_eq!(min_collateral.kind, AmountKind::Min);
+            .expect("debtToCover present");
+        assert_eq!(min_debt.kind, AmountKind::Min);
         assert_eq!(
-            min_collateral.value.as_ref().map(|v| v.to_string()),
+            min_debt.value.as_ref().map(|v| v.to_string()),
             Some("1000000000000000000".to_owned())
         );
+        assert!(action.seized_collateral_amount.is_none());
     }
 
     // ──────────────────────────────────────────────────────────────────────

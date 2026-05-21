@@ -17,6 +17,7 @@ use abi_resolver::subdecode::enum_tagged::{dispatch as engine_dispatch, EnumTabl
 use abi_resolver::subdecode::protocols::balancer_v2::{
     BALANCER_V2_EXIT_KIND_STABLE, BALANCER_V2_EXIT_KIND_WEIGHTED, BALANCER_V2_JOIN_KIND,
 };
+use abi_resolver::subdecode::protocols::curve::CURVE_ROUTER_NG_SWAP_TYPES;
 use abi_resolver::{DecodedCall, DecodedValue};
 use alloy_dyn_abi::DynSolValue;
 use policy_engine::ActionEnvelope;
@@ -84,20 +85,15 @@ pub fn execute(
 
 /// Map a `dispatcher_id` to its static [`EnumTable`].
 ///
-/// Phase 12.0 wires three Balancer V2 tables. The Curve Router NG entry is an
-/// intentional stub — Phase 12.1 will land
-/// `subdecode/protocols/curve.rs::CURVE_ROUTER_NG_SWAP_TYPES` and Phase 12.3
-/// will swap this arm to the real lookup.
+/// Phase 12.0 wired three Balancer V2 tables; Phase 13 (P2-5) wires the Curve
+/// Router NG per-hop `swap_type` table — `CURVE_ROUTER_NG_SWAP_TYPES` is
+/// defined + unit-tested in `subdecode/protocols/curve.rs`.
 fn lookup_dispatcher_table(dispatcher_id: &str) -> Result<&'static EnumTable, MapperError> {
     match dispatcher_id {
         "balancer_v2_join" => Ok(&BALANCER_V2_JOIN_KIND),
         "balancer_v2_exit_weighted" => Ok(&BALANCER_V2_EXIT_KIND_WEIGHTED),
         "balancer_v2_exit_stable" => Ok(&BALANCER_V2_EXIT_KIND_STABLE),
-        "curve_router_ng_swap_types" => Err(MapperError::Unsupported(
-            "enum_tagged_dispatch/curve_router_ng_swap_types: \
-             pending Phase 12.1 (subdecode/protocols/curve.rs)"
-                .into(),
-        )),
+        "curve_router_ng_swap_types" => Ok(&CURVE_ROUTER_NG_SWAP_TYPES),
         other => Err(MapperError::Unsupported(format!(
             "enum_tagged dispatcher_id {other:?} not wired"
         ))),
@@ -497,5 +493,19 @@ mod tests {
             }
             other => panic!("expected Unsupported, got {other:?}"),
         }
+    }
+
+    /// Phase 13 P2-5 — the Curve Router NG dispatcher resolves to the real
+    /// `CURVE_ROUTER_NG_SWAP_TYPES` table (previously an `Unsupported` stub).
+    #[test]
+    fn curve_router_ng_dispatcher_is_wired() {
+        let table = lookup_dispatcher_table("curve_router_ng_swap_types")
+            .expect("curve_router_ng_swap_types must be wired");
+        assert_eq!(table.name, "Curve Router NG swap_type");
+        // swap_type = 8 (WRAPPED_ASSET_CONVERT) decodes via the generic engine.
+        let payload = encode_payload("(uint256)", vec![DynSolValue::Uint(U256::from(8u64), 256)]);
+        let decoded = engine_dispatch(&payload, table).expect("kind 8 dispatches");
+        assert_eq!(decoded.kind, 8);
+        assert_eq!(decoded.kind_name, "WRAPPED_ASSET_CONVERT");
     }
 }

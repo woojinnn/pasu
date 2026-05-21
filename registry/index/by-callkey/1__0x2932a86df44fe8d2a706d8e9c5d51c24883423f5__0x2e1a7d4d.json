@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/gauge/frxeth/withdraw@1.0.0",
   "manifest_path": "manifests/curve/gauge/frxeth/withdraw@1.0.0.json",
-  "bundle_sha256": "0x650d95f8ce26585d4c08ebc93cea0d5e8654607a60590d1726f8fdf18078016e",
+  "bundle_sha256": "0x03f2362261a0c6c87325069ec05b6cb70c0bcd85f5d27596f2c9d2f86ad9c4cd",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/gauge/frxeth/withdraw@1.0.0",
@@ -39,6 +39,12 @@
         },
         "tokenOut.address": {
           "literal": "0xf43211935c781d5ca1a41d2041f397b8a7366c7a"
+        },
+        "amountOut.kind": {
+          "literal": "exact"
+        },
+        "amountOut.value": {
+          "from": "$.args._value"
         },
         "recipient": {
           "from": "$.tx.from"

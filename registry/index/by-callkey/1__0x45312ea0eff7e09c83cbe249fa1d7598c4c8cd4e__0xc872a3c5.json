@@ -1,11 +1,11 @@
 {
   "matched": true,
-  "bundle_id": "curve/router-ng/exchange@1.0.0",
-  "manifest_path": "manifests/curve/router-ng/exchange@1.0.0.json",
-  "bundle_sha256": "0x7bc6415d5e8d7dd58728880a026f32818cc7f5928062b624b556f3e4a1c9cb8c",
+  "bundle_id": "curve/router-ng/exchange-ethereum@1.0.0",
+  "manifest_path": "manifests/curve/router-ng/exchange-ethereum@1.0.0.json",
+  "bundle_sha256": "0x4c7de35ebd6de1b024dff1fc4d5f1f655d1fbe755061d1a295f3fa9e81a1b563",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/router-ng/exchange@1.0.0",
+    "id": "curve/router-ng/exchange-ethereum@1.0.0",
     "publisher": "curve.fi",
     "match": {
       "chain_ids": [
