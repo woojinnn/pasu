@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0",
   "manifest_path": "manifests/uniswap/v2/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0.json",
-  "bundle_sha256": "0x86f8eb424e43945d24639ac9a2f4e920dda1df76a6df39c8ce0061742fea5b6f",
+  "bundle_sha256": "0x51824f6a23b87342a0480e5334ccb66a7e6ee0fd9dd83fdd94864b9209b0ab12",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0",
@@ -55,6 +55,9 @@
         },
         "inputToken.amount.kind": {
           "literal": "exact"
+        },
+        "inputToken.amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputToken.asset.kind": {
           "literal": "erc20"

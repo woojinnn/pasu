@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/swapETHForExactTokens-worldchain@1.0.0",
   "manifest_path": "manifests/uniswap/v2/swapETHForExactTokens-worldchain@1.0.0.json",
-  "bundle_sha256": "0xc5af5228b3609e9061f9a6519c36e3f2305032e6bdb06c2970571db57d9439a0",
+  "bundle_sha256": "0x66c01b0b5b101f833b35481e6f5164757188f91927d7d56932ff318986154d3a",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/swapETHForExactTokens-worldchain@1.0.0",
@@ -55,6 +55,9 @@
         },
         "inputToken.amount.kind": {
           "literal": "max"
+        },
+        "inputToken.amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputToken.asset.kind": {
           "literal": "erc20"

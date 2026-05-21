@@ -51,6 +51,9 @@
       "inputToken.amount.kind": {
         "literal": "exact"
       },
+      "inputToken.amount.value": {
+        "from": "$.tx.value_wei"
+      },
       "outputToken.asset.kind": {
         "literal": "erc20"
       },

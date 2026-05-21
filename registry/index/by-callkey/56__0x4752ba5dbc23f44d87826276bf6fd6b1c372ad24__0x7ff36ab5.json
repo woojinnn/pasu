@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/swapExactETHForTokens-bnb@1.0.0",
   "manifest_path": "manifests/uniswap/v2/swapExactETHForTokens-bnb@1.0.0.json",
-  "bundle_sha256": "0x0dc869d6f9f2e20b488498aedf50346b40fe6f8021bcd324a9718a746942b9b3",
+  "bundle_sha256": "0x48719a63274b77d93b38ec74320c469c07c7a6f2c1449e77d146038746125757",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/swapExactETHForTokens-bnb@1.0.0",
@@ -57,6 +57,9 @@
         },
         "inputToken.amount.kind": {
           "literal": "exact"
+        },
+        "inputToken.amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputToken.asset.kind": {
           "literal": "erc20"

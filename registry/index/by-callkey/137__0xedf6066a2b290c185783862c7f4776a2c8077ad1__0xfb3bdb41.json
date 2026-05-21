@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/swapETHForExactTokens-polygon@1.0.0",
   "manifest_path": "manifests/uniswap/v2/swapETHForExactTokens-polygon@1.0.0.json",
-  "bundle_sha256": "0xd2be9599da661e711a58ba27e2c66d90d1422fce819f45a8ab08b678754ff17f",
+  "bundle_sha256": "0x28eff6e896a074e74dd13e63d30884fa8720d7bee20fd5b22fbe2e427eceda91",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/swapETHForExactTokens-polygon@1.0.0",
@@ -55,6 +55,9 @@
         },
         "inputToken.amount.kind": {
           "literal": "max"
+        },
+        "inputToken.amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputToken.asset.kind": {
           "literal": "erc20"

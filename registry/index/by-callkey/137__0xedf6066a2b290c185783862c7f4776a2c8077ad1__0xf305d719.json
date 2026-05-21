@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/addLiquidityETH-polygon@1.0.0",
   "manifest_path": "manifests/uniswap/v2/addLiquidityETH-polygon@1.0.0.json",
-  "bundle_sha256": "0x71871b4c3636b2448a77eb666ea27fdd4877e6f365ab3426c8b4814dd090dba3",
+  "bundle_sha256": "0x68f5aada883a7b19e0ff8549bb3f4573f2d02dab82cbe4b9218d4933db43e4fb",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/addLiquidityETH-polygon@1.0.0",
@@ -75,6 +75,9 @@
         },
         "inputTokens[1].amount.kind": {
           "literal": "max"
+        },
+        "inputTokens[1].amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputLp.asset.kind": {
           "literal": "erc20"

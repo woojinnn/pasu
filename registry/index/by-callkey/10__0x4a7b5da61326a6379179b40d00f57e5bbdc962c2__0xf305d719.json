@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/addLiquidityETH-optimism@1.0.0",
   "manifest_path": "manifests/uniswap/v2/addLiquidityETH-optimism@1.0.0.json",
-  "bundle_sha256": "0x706808de651938978e4ade314a080c0070caaf532e2360448a0ca75aa95c508b",
+  "bundle_sha256": "0x82d05d35cac758a96f583db19794e9fa2ef2ce2850b152942a48e2bf23af9478",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/addLiquidityETH-optimism@1.0.0",
@@ -75,6 +75,9 @@
         },
         "inputTokens[1].amount.kind": {
           "literal": "max"
+        },
+        "inputTokens[1].amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputLp.asset.kind": {
           "literal": "erc20"

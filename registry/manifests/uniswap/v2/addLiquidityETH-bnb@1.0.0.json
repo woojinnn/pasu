@@ -73,6 +73,9 @@
       "inputTokens[1].amount.kind": {
         "literal": "max"
       },
+      "inputTokens[1].amount.value": {
+        "from": "$.tx.value_wei"
+      },
       "outputLp.asset.kind": {
         "literal": "erc20"
       },

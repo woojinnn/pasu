@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v2/swapETHForExactTokens-optimism@1.0.0",
   "manifest_path": "manifests/uniswap/v2/swapETHForExactTokens-optimism@1.0.0.json",
-  "bundle_sha256": "0xc5880353b63874d0f676a28b6e9e8612d1dc65981634c885763919dd7060308b",
+  "bundle_sha256": "0x2ef515142f761e191aef7b1608f0633180a866534f4f30db2ee5eff2e9d5d852",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/swapETHForExactTokens-optimism@1.0.0",
@@ -55,6 +55,9 @@
         },
         "inputToken.amount.kind": {
           "literal": "max"
+        },
+        "inputToken.amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputToken.asset.kind": {
           "literal": "erc20"
