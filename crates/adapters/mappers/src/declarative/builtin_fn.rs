@@ -74,6 +74,39 @@ pub enum FnError {
     /// `tick_spacing_at_hop` was called without a numeric `hop_index` arg.
     #[error("unfold_slipstream_path: tick_spacing_at_hop requires i64 hop_index arg")]
     SlipstreamHopIndexMissing,
+
+    // ── unfold_velo_v2_path (Phase 2 — Aerodrome UR V2_SWAP) ─────────────
+    /// Velo / Uni V2 packed path failed the minimum-length check. The
+    /// path must hold at least two 20-byte tokens (`len >= 40`); anything
+    /// shorter cannot yield both a first and a last token.
+    #[error("unfold_velo_v2_path: {message}")]
+    VeloV2PathDecode { message: String },
+    /// `select` literal was not one of the two supported modes
+    /// (`first_token`, `last_token`).
+    #[error(
+        "unfold_velo_v2_path: unknown select {0:?} \
+         (allowed: first_token, last_token)"
+    )]
+    VeloV2UnknownSelect(String),
+
+    // ── path-decoder contract violation (AUDIT_PHASE8 #13) ───────────────
+    /// A packed-path decoder reported success yet returned an empty
+    /// `tokens` / `fees` / `tick_spacings` collection — i.e. the decoder's
+    /// "≥ 2 tokens, ≥ 1 fee/tick on success" contract was not upheld.
+    ///
+    /// In practice the decoders' length validation makes this unreachable,
+    /// but the endpoint selectors (`first_token` / `last_fee` / …) must not
+    /// `.expect()` on that invariant: a contract regression would otherwise
+    /// panic the WASM module instead of surfacing as an `Err` verdict.
+    #[error("{builtin}: decoder returned empty {collection} despite reporting success")]
+    PathDecoderContract {
+        /// Built-in that observed the violation
+        /// (`unfold_v3_path` / `unfold_slipstream_path`).
+        builtin: &'static str,
+        /// Which collection was unexpectedly empty
+        /// (`tokens` / `fees` / `tick_spacings`).
+        collection: &'static str,
+    },
 }
 
 /// `select_address(arr: address[], idx: i64) -> AddressRef` (spec §5.3.1).
@@ -131,29 +164,36 @@ pub fn unfold_v3_path(
     let bytes = json_value_to_bytes(bytes_value)?;
     let (tokens, fees) = decode_v3_path(&bytes).map_err(|error| FnError::PathDecode { error })?;
 
+    // `decode_v3_path` contracts `tokens.len() >= 2` / `fees.len() >= 1` on
+    // success; if a regression breaks that, surface an `Err` verdict rather
+    // than panicking the WASM module (AUDIT_PHASE8 #13).
     match select {
         "first_token" => {
-            let alloy_addr = *tokens
-                .first()
-                .expect("decode_v3_path guarantees tokens.len() >= 2 on success");
+            let alloy_addr = *tokens.first().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_v3_path",
+                collection: "tokens",
+            })?;
             Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
         }
         "last_token" => {
-            let alloy_addr = *tokens
-                .last()
-                .expect("decode_v3_path guarantees tokens.len() >= 2 on success");
+            let alloy_addr = *tokens.last().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_v3_path",
+                collection: "tokens",
+            })?;
             Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
         }
         "first_fee" => {
-            let fee = *fees
-                .first()
-                .expect("decode_v3_path guarantees fees.len() >= 1 on success");
+            let fee = *fees.first().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_v3_path",
+                collection: "fees",
+            })?;
             Ok(serde_json::Value::Number(serde_json::Number::from(fee)))
         }
         "last_fee" => {
-            let fee = *fees
-                .last()
-                .expect("decode_v3_path guarantees fees.len() >= 1 on success");
+            let fee = *fees.last().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_v3_path",
+                collection: "fees",
+            })?;
             Ok(serde_json::Value::Number(serde_json::Number::from(fee)))
         }
         other => Err(FnError::UnknownSelect(other.to_owned())),
@@ -187,23 +227,32 @@ pub fn unfold_slipstream_path(
 ) -> Result<serde_json::Value, FnError> {
     let bytes = json_value_to_bytes(bytes_value)?;
     let (tokens, tick_spacings) = decode_slipstream_path(&bytes)?;
+    // `decode_slipstream_path` contracts `tokens.len() >= 2` /
+    // `tick_spacings.len() >= 1` on success; on a contract regression surface
+    // an `Err` verdict rather than panicking the WASM module — the new
+    // Aerodrome UR CL-swap path reaches this code (AUDIT_PHASE8 #13).
     match select {
         "first_token" => {
-            let alloy_addr = *tokens
-                .first()
-                .expect("decode_slipstream_path guarantees tokens.len() >= 2 on success");
+            let alloy_addr = *tokens.first().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_slipstream_path",
+                collection: "tokens",
+            })?;
             Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
         }
         "last_token" => {
-            let alloy_addr = *tokens
-                .last()
-                .expect("decode_slipstream_path guarantees tokens.len() >= 2 on success");
+            let alloy_addr = *tokens.last().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_slipstream_path",
+                collection: "tokens",
+            })?;
             Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
         }
         "first_tick_spacing" => {
             let ts = *tick_spacings
                 .first()
-                .expect("decode_slipstream_path guarantees tick_spacings.len() >= 1 on success");
+                .ok_or(FnError::PathDecoderContract {
+                    builtin: "unfold_slipstream_path",
+                    collection: "tick_spacings",
+                })?;
             Ok(serde_json::Value::Number(serde_json::Number::from(
                 i64::from(ts),
             )))
@@ -211,7 +260,10 @@ pub fn unfold_slipstream_path(
         "last_tick_spacing" => {
             let ts = *tick_spacings
                 .last()
-                .expect("decode_slipstream_path guarantees tick_spacings.len() >= 1 on success");
+                .ok_or(FnError::PathDecoderContract {
+                    builtin: "unfold_slipstream_path",
+                    collection: "tick_spacings",
+                })?;
             Ok(serde_json::Value::Number(serde_json::Number::from(
                 i64::from(ts),
             )))
@@ -288,6 +340,75 @@ fn decode_slipstream_path(
     }
 
     Ok((tokens, tick_spacings))
+}
+
+/// `unfold_velo_v2_path(bytes: Bytes, select) -> AddressRef`
+/// (Phase 2 — Aerodrome Universal Router `V2_SWAP`, opcodes `0x08`/`0x09`).
+///
+/// The Aerodrome UR `main` build encodes the V2 swap path as a packed
+/// `bytes` blob of 20-byte token addresses. The stride between tokens
+/// depends on the per-command `isUni` flag (research
+/// `docs/AERODROME_UR_RESEARCH.md` §3.1):
+///
+/// ```text
+/// UniV2  (isUni = true):  token(20) ++ token(20) ++ …          len = 20*N,    N >= 2
+/// VeloV2 (isUni = false): token(20) ++ stable(1) ++ token(20) ++ stable(1) ++ … ++ token(20)
+///                                                              len = 20 + 21*N
+/// ```
+///
+/// Both layouts share an invariant: the path always **starts and ends
+/// on a 20-byte token**. The first token is therefore `path[0..20]` and
+/// the last token is `path[len-20..len]` regardless of `isUni` or the
+/// stride — this built-in never has to parse the `stable` byte.
+///
+/// `bytes_value` accepts either:
+///   * JSON string `"0x.."` (the canonical encoding produced by
+///     [`super::eval::decoded_value_to_json`] for `DecodedValue::Bytes`).
+///   * JSON array of integers — each element must be in `0..=255`.
+///
+/// Supported `select` modes:
+///   * `"first_token"` — JSON string of the lowercase `0x..` address at
+///     `path[0..20]`.
+///   * `"last_token"` — JSON string of the lowercase `0x..` address at
+///     `path[len-20..len]`.
+///
+/// Errors:
+///   * [`FnError::BytesShape`] — `bytes_value` is neither a hex string
+///     nor a `u8` array.
+///   * [`FnError::VeloV2PathDecode`] — `bytes.len() < 40`, i.e. the path
+///     cannot hold both a first and a last token.
+///   * [`FnError::VeloV2UnknownSelect`] — `select` is not `first_token`
+///     or `last_token`.
+///
+/// Never panics — every failure path is an `Err`.
+pub fn unfold_velo_v2_path(
+    bytes_value: &serde_json::Value,
+    select: &str,
+) -> Result<serde_json::Value, FnError> {
+    const ADDR_SIZE: usize = 20;
+    /// Two 20-byte tokens — the shortest path that has both endpoints.
+    const MIN_LEN: usize = ADDR_SIZE * 2;
+
+    let bytes = json_value_to_bytes(bytes_value)?;
+    if bytes.len() < MIN_LEN {
+        return Err(FnError::VeloV2PathDecode {
+            message: format!(
+                "path too short: {} bytes \
+                 (must be >= {MIN_LEN} to hold a first and last token)",
+                bytes.len()
+            ),
+        });
+    }
+
+    // `bytes.len() >= 40` makes both slices exactly 20 bytes wide and
+    // in-bounds, so neither the index nor `Address::from_slice` panics.
+    let token_slice = match select {
+        "first_token" => &bytes[0..ADDR_SIZE],
+        "last_token" => &bytes[bytes.len() - ADDR_SIZE..],
+        other => return Err(FnError::VeloV2UnknownSelect(other.to_owned())),
+    };
+    let alloy_addr = alloy_primitives::Address::from_slice(token_slice);
+    Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
 }
 
 /// `alloy_primitives::Address` → lowercase `0x..` string, validated against
@@ -630,6 +751,58 @@ mod tests {
         assert!(matches!(err, FnError::PathDecode { .. }));
     }
 
+    // ── AUDIT_PHASE8 #13 — malformed path is an `Err`, never a panic ─────
+    // `unfold_v3_path` used to `.expect()` on the decoder's "≥ 2 tokens / ≥ 1
+    // fee" contract. A panic inside the WASM module would abort the whole
+    // evaluation instead of producing a verdict. These tests reach every
+    // endpoint selector with structurally malformed input — the `#[test]`
+    // harness treats any panic as a failure, so `unwrap_err()` succeeding is
+    // itself the proof that no `.expect()` fires.
+
+    #[test]
+    fn unfold_v3_path_malformed_does_not_panic_for_any_select() {
+        // 19 bytes — shorter than even a single bare token address.
+        let malformed = format!("0x{}", "ab".repeat(19));
+        for select in ["first_token", "last_token", "first_fee", "last_fee"] {
+            let err = unfold_v3_path(&json!(malformed), select).unwrap_err();
+            // Length validation rejects this before the endpoint selector —
+            // the point is it is an `Err`, not an `.expect()` panic.
+            assert!(
+                matches!(err, FnError::PathDecode { .. }),
+                "select {select:?}: expected PathDecode, got {err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn unfold_v3_path_empty_bytes_does_not_panic() {
+        // Zero-length path — the most degenerate malformed input.
+        let err = unfold_v3_path(&json!("0x"), "last_fee").unwrap_err();
+        assert!(matches!(err, FnError::PathDecode { .. }));
+    }
+
+    #[test]
+    fn unfold_v3_path_well_formed_still_byte_identical_after_fix() {
+        // Regression — the `.expect()` → `.ok_or()?` swap must not change
+        // the success path. Endpoints of the canonical two-hop fixture.
+        assert_eq!(
+            unfold_v3_path(&json!(TWO_HOP_PATH_HEX), "first_token").unwrap(),
+            json!("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+        );
+        assert_eq!(
+            unfold_v3_path(&json!(TWO_HOP_PATH_HEX), "last_token").unwrap(),
+            json!("0xdac17f958d2ee523a2206206994597c13d831ec7"),
+        );
+        assert_eq!(
+            unfold_v3_path(&json!(FEE_TWO_HOP_PATH_HEX), "first_fee").unwrap(),
+            json!(500),
+        );
+        assert_eq!(
+            unfold_v3_path(&json!(FEE_TWO_HOP_PATH_HEX), "last_fee").unwrap(),
+            json!(3000),
+        );
+    }
+
     #[test]
     fn unfold_v3_path_unknown_select_errors() {
         let err = unfold_v3_path(&json!(SINGLE_HOP_PATH_HEX), "middle_token").unwrap_err();
@@ -789,6 +962,227 @@ mod tests {
         let v = serde_json::Value::String(SLIP_SINGLE_HOP_HEX.to_owned());
         let err = unfold_slipstream_path(&v, "tick_spacing_at_hop", None).unwrap_err();
         assert!(matches!(err, FnError::SlipstreamHopIndexMissing));
+    }
+
+    // ── AUDIT_PHASE8 #13 — malformed Slipstream path is `Err`, not panic ─
+    // The new Aerodrome Universal Router CL-swap rule routes packed paths
+    // through `unfold_slipstream_path`, so a malformed path from a UR
+    // command stream must surface as a verdict — not an `.expect()` panic
+    // that aborts WASM evaluation. As with the V3 case, any panic fails the
+    // `#[test]` harness, so a successful `unwrap_err()` is the proof.
+
+    #[test]
+    fn unfold_slipstream_path_malformed_does_not_panic_for_any_select() {
+        // 30 bytes — too short for one full pool (need >= 43).
+        let bytes: Vec<u8> = vec![0xCD; 30];
+        let v = serde_json::Value::Array(bytes.iter().map(|b| json!(*b)).collect());
+        for select in [
+            "first_token",
+            "last_token",
+            "first_tick_spacing",
+            "last_tick_spacing",
+        ] {
+            let err = unfold_slipstream_path(&v, select, None).unwrap_err();
+            assert!(
+                matches!(err, FnError::SlipstreamPathDecode { .. }),
+                "select {select:?}: expected SlipstreamPathDecode, got {err:?}"
+            );
+        }
+        // `tick_spacing_at_hop` (3-arg form) must also fail closed.
+        let err =
+            unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(0))).unwrap_err();
+        assert!(matches!(err, FnError::SlipstreamPathDecode { .. }));
+    }
+
+    #[test]
+    fn unfold_slipstream_path_empty_bytes_does_not_panic() {
+        // Zero-length path — the most degenerate malformed input.
+        let v = serde_json::Value::Array(vec![]);
+        let err = unfold_slipstream_path(&v, "last_token", None).unwrap_err();
+        assert!(matches!(err, FnError::SlipstreamPathDecode { .. }));
+    }
+
+    #[test]
+    fn unfold_slipstream_path_well_formed_still_byte_identical_after_fix() {
+        // Regression — the `.expect()` → `.ok_or()?` swap must leave the
+        // success path unchanged. Two-hop fixture, every endpoint selector.
+        let two_hop = concat!(
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01",
+            "000032", // ts = 50
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02",
+            "000064", // ts = 100
+            "cccccccccccccccccccccccccccccccccccccc03",
+        );
+        let v = serde_json::Value::String(two_hop.to_owned());
+        assert_eq!(
+            unfold_slipstream_path(&v, "first_token", None).unwrap(),
+            json!("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01"),
+        );
+        assert_eq!(
+            unfold_slipstream_path(&v, "last_token", None).unwrap(),
+            json!("0xcccccccccccccccccccccccccccccccccccccc03"),
+        );
+        assert_eq!(
+            unfold_slipstream_path(&v, "first_tick_spacing", None).unwrap(),
+            json!(50),
+        );
+        assert_eq!(
+            unfold_slipstream_path(&v, "last_tick_spacing", None).unwrap(),
+            json!(100),
+        );
+    }
+
+    // ── unfold_velo_v2_path (Phase 2 — Aerodrome UR V2_SWAP) ─────────────
+    //
+    // Aerodrome UR `main` V2_SWAP packs the path two ways depending on the
+    // per-command `isUni` flag (docs/AERODROME_UR_RESEARCH.md §3.1):
+    //   * UniV2  layout — `token(20) ++ token(20) ++ …`              len = 20*N
+    //   * VeloV2 layout — `token(20) ++ stable(1) ++ token(20) ++ …`  len = 20 + 21*N
+    // The built-in only ever reads `path[0..20]` / `path[len-20..len]`,
+    // which are tokens in both layouts — the stable byte is never parsed.
+
+    /// UniV2 layout, 2 tokens — `0xaa…01 ++ 0xbb…02`. Length 40 (`20*2`).
+    const VELO_UNI_2TOKEN_HEX: &str = concat!(
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02",
+    );
+
+    /// UniV2 layout, 3 tokens — `0xaa…01 ++ 0xbb…02 ++ 0xcc…03`.
+    /// Length 60 (`20*3`).
+    const VELO_UNI_3TOKEN_HEX: &str = concat!(
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02",
+        "cccccccccccccccccccccccccccccccccccccc03",
+    );
+
+    /// VeloV2 layout, N=1 — `token ++ stable ++ token`. The `stable`
+    /// byte is `0x01`; length 41 (`20 + 21*1`).
+    const VELO_VELO_N1_HEX: &str = concat!(
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01",
+        "01", // stable flag — never parsed by unfold_velo_v2_path
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02",
+    );
+
+    /// VeloV2 layout, N=2 — `token ++ stable ++ token ++ stable ++ token`.
+    /// Stable bytes `0x00` / `0x01`; length 62 (`20 + 21*2`).
+    const VELO_VELO_N2_HEX: &str = concat!(
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01",
+        "00", // stable flag (hop 1)
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02",
+        "01", // stable flag (hop 2)
+        "cccccccccccccccccccccccccccccccccccccc03",
+    );
+
+    const VELO_TOKEN_A: &str = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01";
+    const VELO_TOKEN_B: &str = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02";
+    const VELO_TOKEN_C: &str = "0xcccccccccccccccccccccccccccccccccccccc03";
+
+    #[test]
+    fn unfold_velo_v2_path_first_token() {
+        // First token = path[0..20] = token A — identical across both the
+        // UniV2 (20*N) and VeloV2 (20 + 21*N) strides.
+        for hex in [
+            VELO_UNI_2TOKEN_HEX,
+            VELO_UNI_3TOKEN_HEX,
+            VELO_VELO_N1_HEX,
+            VELO_VELO_N2_HEX,
+        ] {
+            let first = unfold_velo_v2_path(&json!(hex), "first_token").unwrap();
+            assert_eq!(
+                first.as_str().unwrap(),
+                VELO_TOKEN_A,
+                "first_token mismatch for {hex}"
+            );
+        }
+    }
+
+    #[test]
+    fn unfold_velo_v2_path_last_token() {
+        // Last token = path[len-20..len]. UniV2 2-token + VeloV2 N=1 end on
+        // token B; UniV2 3-token + VeloV2 N=2 end on token C.
+        let cases = [
+            (VELO_UNI_2TOKEN_HEX, VELO_TOKEN_B),
+            (VELO_VELO_N1_HEX, VELO_TOKEN_B),
+            (VELO_UNI_3TOKEN_HEX, VELO_TOKEN_C),
+            (VELO_VELO_N2_HEX, VELO_TOKEN_C),
+        ];
+        for (hex, expected) in cases {
+            let last = unfold_velo_v2_path(&json!(hex), "last_token").unwrap();
+            assert_eq!(
+                last.as_str().unwrap(),
+                expected,
+                "last_token mismatch for {hex}"
+            );
+        }
+    }
+
+    #[test]
+    fn unfold_velo_v2_path_accepts_array_of_u8() {
+        // The `bytes` argument may also arrive as a JSON array of octets
+        // (mirrors `unfold_v3_path` / `unfold_slipstream_path`).
+        let raw = hex::decode(VELO_VELO_N1_HEX.strip_prefix("0x").unwrap()).unwrap();
+        let array_json =
+            serde_json::Value::Array(raw.iter().map(|b| json!(*b)).collect());
+        let first = unfold_velo_v2_path(&array_json, "first_token").unwrap();
+        let last = unfold_velo_v2_path(&array_json, "last_token").unwrap();
+        assert_eq!(first.as_str().unwrap(), VELO_TOKEN_A);
+        assert_eq!(last.as_str().unwrap(), VELO_TOKEN_B);
+    }
+
+    #[test]
+    fn unfold_velo_v2_path_too_short_errs() {
+        // 39 bytes — one byte short of two full tokens. Must be an `Err`,
+        // never an `.expect()` panic (the `#[test]` harness fails on any
+        // panic, so a successful `unwrap_err()` is itself the proof).
+        let short_hex = format!("0x{}", "11".repeat(39));
+        for select in ["first_token", "last_token"] {
+            let err = unfold_velo_v2_path(&json!(short_hex), select).unwrap_err();
+            assert!(
+                matches!(err, FnError::VeloV2PathDecode { .. }),
+                "select {select:?}: expected VeloV2PathDecode, got {err:?}"
+            );
+        }
+        // Zero-length path — the most degenerate malformed input.
+        let err = unfold_velo_v2_path(&json!("0x"), "first_token").unwrap_err();
+        assert!(matches!(err, FnError::VeloV2PathDecode { .. }));
+        // Empty u8 array — same degenerate case via the array branch.
+        let err =
+            unfold_velo_v2_path(&serde_json::Value::Array(vec![]), "last_token")
+                .unwrap_err();
+        assert!(matches!(err, FnError::VeloV2PathDecode { .. }));
+    }
+
+    #[test]
+    fn unfold_velo_v2_path_unknown_select_errs() {
+        // A well-formed (40-byte) path with an unsupported `select` must
+        // fail closed with `VeloV2UnknownSelect` — no fee modes exist here.
+        let err =
+            unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "first_fee").unwrap_err();
+        assert!(matches!(err, FnError::VeloV2UnknownSelect(_)));
+        let err = unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "middle_token")
+            .unwrap_err();
+        assert!(matches!(err, FnError::VeloV2UnknownSelect(_)));
+    }
+
+    #[test]
+    fn unfold_velo_v2_path_non_bytes_errs() {
+        // A non-string / non-array `bytes` argument is a `BytesShape` error
+        // (shared with `unfold_v3_path`), surfaced before any length check.
+        let err = unfold_velo_v2_path(&json!(42), "first_token").unwrap_err();
+        assert!(matches!(err, FnError::BytesShape { .. }));
+    }
+
+    #[test]
+    fn unfold_velo_v2_path_exactly_min_len_two_tokens() {
+        // Boundary — exactly 40 bytes (the minimum). first == token A,
+        // last == token B, and the two endpoints must not coincide.
+        let first =
+            unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "first_token").unwrap();
+        let last =
+            unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "last_token").unwrap();
+        assert_eq!(first.as_str().unwrap(), VELO_TOKEN_A);
+        assert_eq!(last.as_str().unwrap(), VELO_TOKEN_B);
+        assert_ne!(first, last);
     }
 }
 

@@ -204,6 +204,30 @@ fn evaluate_transform(
             builtin_fn::unfold_slipstream_path(&bytes_value, select, extra_value.as_ref())
                 .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
         }
+        BuiltinFn::UnfoldVeloV2Path => {
+            // Phase 2 (Aerodrome UR V2_SWAP) — args[0] = packed V2 path
+            // bytes, args[1] = select literal (`first_token` /
+            // `last_token`). The path's first/last 20 bytes are always a
+            // token address regardless of the UniV2 vs VeloV2 stable-byte
+            // stride, so the built-in returns a JSON string (lowercase
+            // `0x..` address). Downstream `single_emit` `.asset.address`
+            // consumers take the string as-is.
+            if args.len() != 2 {
+                return Err(MapperError::Internal(anyhow::anyhow!(
+                    "unfold_velo_v2_path expects 2 args, got {}",
+                    args.len()
+                )));
+            }
+            let bytes_value = evaluate(ctx, args_json, &args[0])?;
+            let select_value = evaluate(ctx, args_json, &args[1])?;
+            let select = select_value.as_str().ok_or_else(|| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "unfold_velo_v2_path: select must be string literal, got {select_value}"
+                ))
+            })?;
+            builtin_fn::unfold_velo_v2_path(&bytes_value, select)
+                .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
+        }
         other => Err(MapperError::Unsupported(format!("builtin_fn/{other:?}"))),
     }
 }

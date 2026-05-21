@@ -158,6 +158,18 @@ fn build_field_tree(
     Ok(root)
 }
 
+/// Upper bound on a single `[N]` array index in a field path.
+///
+/// `set_nested` grows the target JSON array on demand, padding intervening
+/// slots with `Null` (see [`set_nested`] docs). A bundle that writes a huge
+/// index (`field[1000000000]`) would therefore force a multi-gigabyte
+/// null-padded array — an OOM / DoS. Registry SHA-256 verification gates
+/// *which* bundles run, but this cap is a defense-in-depth limit on what any
+/// (even verified) bundle can ask the interpreter to allocate. 64 comfortably
+/// exceeds every real intent shape (longest observed: a handful of
+/// `rewardTokens[k]` / `inputTokens[k]` slots).
+const MAX_FIELD_ARRAY_INDEX: usize = 64;
+
 /// One step in a parsed field-path: an object key, then an optional sequence
 /// of numeric array indices.
 ///
@@ -214,6 +226,15 @@ fn parse_path_segment<'a>(segment: &'a str, full_path: &str) -> Result<PathStep<
                 "field path {full_path:?}: bracket index {idx_str:?}: {e}"
             ))
         })?;
+        // Defense-in-depth: a giant index would null-pad the array up to that
+        // length (see `MAX_FIELD_ARRAY_INDEX`). Reject before `set_nested`
+        // ever allocates.
+        if idx > MAX_FIELD_ARRAY_INDEX {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "field path {full_path:?}: bracket index {idx} exceeds \
+                 maximum {MAX_FIELD_ARRAY_INDEX}"
+            )));
+        }
         indices.push(idx);
         remainder = &remainder[close + 1..];
     }
@@ -2429,6 +2450,67 @@ mod tests {
         assert!(
             err.to_string().contains("invalid digit"),
             "expected invalid-digit error, got: {err}"
+        );
+    }
+
+    // ── AUDIT_PHASE8 #8 — `[N]` array-index DoS bound ────────────────────
+    // `set_nested` null-pads arrays up to the written index, so a giant
+    // index would OOM. `parse_path_segment` must reject `N > 64`.
+
+    #[test]
+    fn set_nested_rejects_giant_array_index() {
+        // `field[1000000000]` would null-pad a billion-element array.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "xs[1000000000]", json!(1)).unwrap_err();
+        assert!(
+            err.to_string().contains("exceeds maximum"),
+            "expected exceeds-maximum error, got: {err}"
+        );
+        // No allocation happened — root is untouched.
+        assert_eq!(root, json!({}));
+    }
+
+    #[test]
+    fn set_nested_rejects_index_just_over_max() {
+        // 65 = MAX_FIELD_ARRAY_INDEX + 1 — first rejected value.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "xs[65]", json!(1)).unwrap_err();
+        assert!(
+            err.to_string().contains("exceeds maximum"),
+            "expected exceeds-maximum error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn set_nested_accepts_boundary_array_index() {
+        // 64 = MAX_FIELD_ARRAY_INDEX — the largest accepted index. The array
+        // is null-padded to length 65 (indices 0..=64).
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "xs[64]", json!("ok")).unwrap();
+        let arr = root["xs"].as_array().unwrap();
+        assert_eq!(arr.len(), 65);
+        assert_eq!(arr[64], json!("ok"));
+        assert_eq!(arr[0], json!(null));
+    }
+
+    #[test]
+    fn set_nested_accepts_small_index_after_cap_added() {
+        // Regression — ordinary small indices still work unchanged.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        set_nested(&mut root, "xs[0]", json!("a")).unwrap();
+        set_nested(&mut root, "xs[1]", json!("b")).unwrap();
+        assert_eq!(root, json!({ "xs": ["a", "b"] }));
+    }
+
+    #[test]
+    fn set_nested_rejects_giant_index_in_multi_dimensional_path() {
+        // The cap applies to every `[N]` in a multi-index segment, not just
+        // the first.
+        let mut root = serde_json::Value::Object(serde_json::Map::new());
+        let err = set_nested(&mut root, "xs[0][999999]", json!(1)).unwrap_err();
+        assert!(
+            err.to_string().contains("exceeds maximum"),
+            "expected exceeds-maximum error, got: {err}"
         );
     }
 

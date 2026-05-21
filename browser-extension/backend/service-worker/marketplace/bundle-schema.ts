@@ -112,7 +112,12 @@ export type BuiltinFn =
   // caller passed `(i, j) != (0, 1)`.
   | "select_from_literal_array"
   // Phase 8 — Aerodrome Slipstream CL packed path decoder (int24 tickSpacing)
-  | "unfold_slipstream_path";
+  | "unfold_slipstream_path"
+  // Phase 2 — Aerodrome Universal Router `V2_SWAP` packed-path endpoint
+  // resolver. Extracts the first / last 20-byte token from a packed V2
+  // path; the endpoints are invariant across the UniV2 (`20*N`) and
+  // VeloV2 (`20 + 21*N`, 1-byte `stable` flag) layouts.
+  | "unfold_velo_v2_path";
 
 const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "select_address",
@@ -131,6 +136,7 @@ const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
   "curve_route_last_token",
   "select_from_literal_array",
   "unfold_slipstream_path",
+  "unfold_velo_v2_path",
 ]);
 
 // ----- EmitRule strategies -----

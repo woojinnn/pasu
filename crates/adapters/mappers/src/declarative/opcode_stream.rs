@@ -43,9 +43,10 @@ use std::str::FromStr as _;
 use abi_resolver::bridge::convert_arg;
 use abi_resolver::subdecode::opcode_stream as tier_b_opcode_stream;
 use abi_resolver::subdecode::opcode_stream::DecodedStep;
+use abi_resolver::subdecode::protocols::aerodrome_ur::AERODROME_UR_MAIN_TABLE;
 use abi_resolver::subdecode::protocols::universal_router::{
     extract_commands_and_inputs, v3_position_manager_address, v4_position_manager_address,
-    UNISWAP_UR_ALLOW_REVERT, UNISWAP_UR_MASK, UNISWAP_UR_TABLE,
+    UNISWAP_UR_TABLE,
 };
 use abi_resolver::subdecode::protocols::v4_router::{
     extract_actions_and_params, V4_ROUTER_TABLE,
@@ -61,9 +62,15 @@ use crate::mapper::{MapContext, MapperError};
 use super::single_emit;
 use super::types::{EmitRule, PerOpcodeEmit, UnknownOpcodePolicy, ValueExpr};
 
-/// Dispatcher id supported by the Phase 5 PoC. Matches the value bundles
+/// Dispatcher id for the Uniswap Universal Router. Matches the value bundles
 /// declare under `emit.dispatcher_id`.
 pub const DISPATCHER_ID_UNIVERSAL_ROUTER: &str = "universal_router";
+
+/// Dispatcher id for the Aerodrome / Velodrome `main`-lineage Universal
+/// Router. Same `execute(bytes,bytes[],uint256)` entrypoint as Uniswap UR but
+/// a distinct opcode table (`mask 0x3f`) — see
+/// [`AERODROME_UR_MAIN_TABLE`].
+pub const DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER: &str = "aerodrome_universal_router";
 
 /// Maximum nesting depth allowed for `EXECUTE_SUB_PLAN` (0x21) recursion and
 /// `V4_SWAP` (0x10) cross-table recursion.
@@ -98,6 +105,89 @@ const OPCODE_V3_POSITION_MANAGER_CALL: u8 = 0x12;
 /// the inner calldata targets the per-chain V4 PositionManager.
 const OPCODE_V4_POSITION_MANAGER_CALL: u8 = 0x14;
 
+/// The opcodes a dispatcher treats as recursion entrypoints (sub-plan / V4
+/// cross-table / cross-target PositionManager). Carried per-dispatcher because
+/// each router lays its recursion opcodes out at different byte values.
+///
+/// All five fields name a masked opcode in the dispatcher's own
+/// [`tier_b_opcode_stream::OpcodeTable`]. A dispatcher without recursion
+/// special-casing (a flat opcode set) uses `DispatcherConfig::recursion =
+/// None` instead, which routes every opcode through the plain
+/// `per_opcode_emit` path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RecursionOpcodes {
+    /// `EXECUTE_SUB_PLAN` — re-enters the same table (self-recursion).
+    execute_sub_plan: u8,
+    /// `V4_SWAP` — dispatches the inner stream against the V4 router table
+    /// (cross-table recursion).
+    v4_swap: u8,
+    /// `V3_POSITION_MANAGER_PERMIT` — inner calldata targets the per-chain V3
+    /// NonfungiblePositionManager (cross-target recursion).
+    v3_position_manager_permit: u8,
+    /// `V3_POSITION_MANAGER_CALL` — same shape as the permit opcode.
+    v3_position_manager_call: u8,
+    /// `V4_POSITION_MANAGER_CALL` — inner calldata targets the per-chain V4
+    /// PositionManager.
+    v4_position_manager_call: u8,
+}
+
+/// One opcode-stream dispatcher: the bundle-declared `dispatcher_id`, the Tier
+/// B [`tier_b_opcode_stream::OpcodeTable`] its command bytes decode against,
+/// and (optionally) the recursion opcode layout for routers that nest.
+///
+/// Adding a dispatcher is a data change — append a [`DispatcherConfig`] to
+/// [`DISPATCHERS`] — not a control-flow change. `execute` /
+/// `dispatch_steps` thread the resolved `&DispatcherConfig` through and never
+/// branch on `id`.
+#[derive(Debug, Clone, Copy)]
+struct DispatcherConfig {
+    /// Value bundles declare under `emit.dispatcher_id`.
+    id: &'static str,
+    /// Tier B opcode table the command bytes dispatch against. Its `mask` /
+    /// `allow_revert_bit` are the single source of truth checked against the
+    /// bundle's declared values in `execute`.
+    table: &'static tier_b_opcode_stream::OpcodeTable,
+    /// Recursion opcode layout, or `None` for a flat opcode set with no
+    /// recursion special-casing — every opcode then routes through
+    /// `per_opcode_emit`.
+    recursion: Option<RecursionOpcodes>,
+}
+
+/// Every opcode-stream dispatcher the declarative interpreter supports.
+///
+/// `universal_router` (Uniswap UR) carries the full recursion layout;
+/// `aerodrome_universal_router` (Aerodrome / Velodrome `main`-lineage UR) is a
+/// flat opcode set — its bundle maps each opcode directly through
+/// `per_opcode_emit`, and opcodes Tier B's table knows but the bundle omits
+/// (e.g. `0x10` V4_SWAP, `0x21` EXECUTE_SUB_PLAN) follow the bundle's
+/// `unknown_opcode_policy` (a deliberate graceful degrade — Aerodrome
+/// recursion handlers are a follow-up, not wired here).
+const DISPATCHERS: &[DispatcherConfig] = &[
+    DispatcherConfig {
+        id: DISPATCHER_ID_UNIVERSAL_ROUTER,
+        table: &UNISWAP_UR_TABLE,
+        recursion: Some(RecursionOpcodes {
+            execute_sub_plan: OPCODE_EXECUTE_SUB_PLAN,
+            v4_swap: OPCODE_V4_SWAP,
+            v3_position_manager_permit: OPCODE_V3_POSITION_MANAGER_PERMIT,
+            v3_position_manager_call: OPCODE_V3_POSITION_MANAGER_CALL,
+            v4_position_manager_call: OPCODE_V4_POSITION_MANAGER_CALL,
+        }),
+    },
+    DispatcherConfig {
+        id: DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER,
+        table: &AERODROME_UR_MAIN_TABLE,
+        recursion: None,
+    },
+];
+
+/// Resolve a bundle-declared `dispatcher_id` to its [`DispatcherConfig`].
+/// Linear scan — [`DISPATCHERS`] holds a handful of entries. Returns `None`
+/// for an unrecognised id; `execute` maps that to `MapperError::Unsupported`.
+fn resolve_dispatcher(id: &str) -> Option<&'static DispatcherConfig> {
+    DISPATCHERS.iter().find(|d| d.id == id)
+}
+
 /// Execute an `opcode_stream_dispatch` rule against `decoded`.
 ///
 /// Returns the flattened envelopes the per-opcode rules emit, or an error if
@@ -131,28 +221,33 @@ pub fn execute(
         }
     };
 
-    if dispatcher_id != DISPATCHER_ID_UNIVERSAL_ROUTER {
-        return Err(MapperError::Unsupported(format!(
-            "opcode_stream_dispatch/{dispatcher_id}"
-        )));
-    }
+    // Resolve the dispatcher by id. An unrecognised id surfaces
+    // `MapperError::Unsupported` with the same `opcode_stream_dispatch/<id>`
+    // shape the pre-generalisation hard-coded check produced.
+    let cfg = resolve_dispatcher(dispatcher_id).ok_or_else(|| {
+        MapperError::Unsupported(format!("opcode_stream_dispatch/{dispatcher_id}"))
+    })?;
 
-    // Bundle's declared mask / allow_revert_bit must agree with Tier B's
-    // UNISWAP_UR_TABLE — otherwise the per-opcode keys we're about to look up
-    // are computed against a different bit layout than Tier B dispatched
-    // against. Detecting this here points authors at a bundle bug rather than
-    // surfacing as silent unknown-opcode misses.
+    // Bundle's declared mask / allow_revert_bit must agree with the
+    // dispatcher's Tier B table — otherwise the per-opcode keys we're about to
+    // look up are computed against a different bit layout than Tier B
+    // dispatched against. Detecting this here points authors at a bundle bug
+    // rather than surfacing as silent unknown-opcode misses.
     let bundle_mask = parse_hex_byte(mask, "mask")?;
     let bundle_allow_revert_bit = parse_hex_byte(allow_revert_bit, "allow_revert_bit")?;
-    if bundle_mask != UNISWAP_UR_MASK {
+    if bundle_mask != cfg.table.mask {
         return Err(MapperError::Internal(anyhow::anyhow!(
-            "bundle mask {bundle_mask:#04x} disagrees with Tier B UNISWAP_UR_TABLE mask {UNISWAP_UR_MASK:#04x}"
+            "bundle mask {bundle_mask:#04x} disagrees with Tier B {} table mask {:#04x}",
+            cfg.id,
+            cfg.table.mask
         )));
     }
-    if bundle_allow_revert_bit != UNISWAP_UR_ALLOW_REVERT {
+    if bundle_allow_revert_bit != cfg.table.allow_revert_bit {
         return Err(MapperError::Internal(anyhow::anyhow!(
             "bundle allow_revert_bit {bundle_allow_revert_bit:#04x} disagrees with Tier B \
-             UNISWAP_UR_TABLE allow_revert_bit {UNISWAP_UR_ALLOW_REVERT:#04x}"
+             {} table allow_revert_bit {:#04x}",
+            cfg.id,
+            cfg.table.allow_revert_bit
         )));
     }
 
@@ -170,8 +265,8 @@ pub fn execute(
         ))
     })?;
 
-    let steps = tier_b_opcode_stream::dispatch(&commands, &inputs, &UNISWAP_UR_TABLE);
-    dispatch_steps(ctx, &steps, per_opcode_emit, unknown_opcode_policy)
+    let steps = tier_b_opcode_stream::dispatch(&commands, &inputs, cfg.table);
+    dispatch_steps(ctx, cfg, &steps, per_opcode_emit, unknown_opcode_policy)
 }
 
 /// Walk a [`DecodedStep`] slice (top-level or sub-plan) and emit envelopes.
@@ -183,53 +278,63 @@ pub fn execute(
 /// inline loop.
 fn dispatch_steps(
     ctx: &MapContext<'_>,
+    cfg: &'static DispatcherConfig,
     steps: &[DecodedStep],
     per_opcode_emit: &BTreeMap<String, PerOpcodeEmit>,
     unknown_opcode_policy: UnknownOpcodePolicy,
 ) -> Result<Vec<ActionEnvelope>, MapperError> {
     let mut envelopes = Vec::new();
     for step in steps {
-        // `EXECUTE_SUB_PLAN` (0x21) carries `(bytes commands, bytes[] inputs)`
-        // with the same shape as the outer entrypoint — re-dispatch the inner
-        // pair through the same opcode table so nested swap / wrap / sweep
-        // steps reach their per-opcode rules. Depth-bounded via `MapContext`.
-        if step.opcode == OPCODE_EXECUTE_SUB_PLAN {
-            let sub_envelopes =
-                execute_sub_plan_step(ctx, step, per_opcode_emit, unknown_opcode_policy)?;
-            envelopes.extend(sub_envelopes);
-            continue;
-        }
+        // Recursion special-casing only applies to dispatchers that declare a
+        // recursion opcode layout. A flat dispatcher (`cfg.recursion == None`,
+        // e.g. `aerodrome_universal_router`) skips this entire block — every
+        // opcode then falls through to the `per_opcode_emit` path below, and
+        // recursion-shaped opcodes the bundle omits follow
+        // `unknown_opcode_policy`. This is the anti-misfire guard: a non-UR
+        // dispatcher must never reach a UR-specific recursion handler.
+        if let Some(rec) = cfg.recursion.as_ref() {
+            // `EXECUTE_SUB_PLAN` carries `(bytes commands, bytes[] inputs)`
+            // with the same shape as the outer entrypoint — re-dispatch the
+            // inner pair through the same opcode table so nested swap / wrap /
+            // sweep steps reach their per-opcode rules. Depth-bounded via
+            // `MapContext`.
+            if step.opcode == rec.execute_sub_plan {
+                let sub_envelopes =
+                    execute_sub_plan_step(ctx, cfg, step, per_opcode_emit, unknown_opcode_policy)?;
+                envelopes.extend(sub_envelopes);
+                continue;
+            }
 
-        // `V4_SWAP` (0x10) carries `(bytes actions, bytes[] params)` — the
-        // inner stream is dispatched through V4_ROUTER_TABLE (a different
-        // table than UR's), so this is cross-table recursion rather than the
-        // self-recursion EXECUTE_SUB_PLAN performs. Depth-bounded by the same
-        // `MAX_SUB_PLAN_DEPTH` cap. Per the PoC scope (option D), the V4
-        // inner step list is decoded but no envelopes are emitted — the V4
-        // action → envelope mapping is a follow-up (T-B6, V4 PM builders).
-        if step.opcode == OPCODE_V4_SWAP {
-            let v4_envelopes = execute_v4_swap_step(ctx, step)?;
-            envelopes.extend(v4_envelopes);
-            continue;
-        }
+            // `V4_SWAP` carries `(bytes actions, bytes[] params)` — the inner
+            // stream is dispatched through V4_ROUTER_TABLE (a different table
+            // than UR's), so this is cross-table recursion rather than the
+            // self-recursion EXECUTE_SUB_PLAN performs. Depth-bounded by the
+            // same `MAX_SUB_PLAN_DEPTH` cap. Per the PoC scope (option D), the
+            // V4 inner step list is decoded but no envelopes are emitted — the
+            // V4 action → envelope mapping is a follow-up (T-B6, V4 PM
+            // builders).
+            if step.opcode == rec.v4_swap {
+                let v4_envelopes = execute_v4_swap_step(ctx, step)?;
+                envelopes.extend(v4_envelopes);
+                continue;
+            }
 
-        // `V3_POSITION_MANAGER_PERMIT` (0x11), `V3_POSITION_MANAGER_CALL`
-        // (0x12), and `V4_POSITION_MANAGER_CALL` (0x14) each carry a single
-        // `(bytes data)` arg — the complete calldata for the per-chain NPM /
-        // V4 PM. Dispatch this calldata back through `ctx.resolver` (cross-
-        // target recursion: the inner call goes to a different contract than
-        // the parent UR). Depth-bounded by the same `MAX_SUB_PLAN_DEPTH` cap;
-        // the per-chain address lookup uses Tier B's
-        // `v3_position_manager_address` / `v4_position_manager_address`.
-        if matches!(
-            step.opcode,
-            OPCODE_V3_POSITION_MANAGER_PERMIT
-                | OPCODE_V3_POSITION_MANAGER_CALL
-                | OPCODE_V4_POSITION_MANAGER_CALL
-        ) {
-            let pm_envelopes = execute_position_manager_step(ctx, step)?;
-            envelopes.extend(pm_envelopes);
-            continue;
+            // `V3_POSITION_MANAGER_PERMIT`, `V3_POSITION_MANAGER_CALL`, and
+            // `V4_POSITION_MANAGER_CALL` each carry a single `(bytes data)`
+            // arg — the complete calldata for the per-chain NPM / V4 PM.
+            // Dispatch this calldata back through `ctx.resolver` (cross-target
+            // recursion: the inner call goes to a different contract than the
+            // parent UR). Depth-bounded by the same `MAX_SUB_PLAN_DEPTH` cap;
+            // the per-chain address lookup uses Tier B's
+            // `v3_position_manager_address` / `v4_position_manager_address`.
+            if step.opcode == rec.v3_position_manager_permit
+                || step.opcode == rec.v3_position_manager_call
+                || step.opcode == rec.v4_position_manager_call
+            {
+                let pm_envelopes = execute_position_manager_step(ctx, step)?;
+                envelopes.extend(pm_envelopes);
+                continue;
+            }
         }
 
         let key = format!("0x{:02x}", step.opcode);
@@ -316,6 +421,7 @@ fn dispatch_steps(
 /// follows the same warn / deny / ignore semantics as the outer steps).
 fn execute_sub_plan_step(
     ctx: &MapContext<'_>,
+    cfg: &'static DispatcherConfig,
     step: &DecodedStep,
     per_opcode_emit: &BTreeMap<String, PerOpcodeEmit>,
     unknown_opcode_policy: UnknownOpcodePolicy,
@@ -353,14 +459,20 @@ fn execute_sub_plan_step(
     })?;
 
     let inner_steps =
-        tier_b_opcode_stream::dispatch(&inner_commands, &inner_inputs, &UNISWAP_UR_TABLE);
+        tier_b_opcode_stream::dispatch(&inner_commands, &inner_inputs, cfg.table);
 
     // `MapContext::child` requires `parent_calldata: &[u8]` borrowed for the
     // child context's lifetime. The inner commands bytes serve that role —
     // they're the calldata-equivalent for the recursive level. Keeping them
     // bound in this stack frame ensures the borrow outlives `child_ctx`.
     let child_ctx = ctx.child(ctx.to, &inner_commands);
-    dispatch_steps(&child_ctx, &inner_steps, per_opcode_emit, unknown_opcode_policy)
+    dispatch_steps(
+        &child_ctx,
+        cfg,
+        &inner_steps,
+        per_opcode_emit,
+        unknown_opcode_policy,
+    )
 }
 
 /// Handle a single `V4_SWAP` (0x10) step — cross-table recursive dispatch.
@@ -2217,6 +2329,232 @@ mod tests {
         assert!(
             resolver.calls().is_empty(),
             "resolver invoked despite short-calldata guard"
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Phase 2 B1 — multi-dispatcher generalisation (Aerodrome UR)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// Override the bundle's `dispatcher_id` and `mask` in-place. The UR
+    /// fixture declares the Uniswap dispatcher (`universal_router`, mask
+    /// `0x7f`); the Aerodrome-dispatcher tests reuse the same fixture with
+    /// these two fields swapped.
+    fn override_dispatcher(bundle: &mut AdapterFunctionBundle, id: &str, mask: &str) {
+        if let EmitRule::OpcodeStreamDispatch {
+            dispatcher_id,
+            mask: mask_field,
+            ..
+        } = &mut bundle.emit
+        {
+            *dispatcher_id = id.to_owned();
+            *mask_field = mask.to_owned();
+        } else {
+            panic!("bundle.emit must be OpcodeStreamDispatch for UR fixture");
+        }
+    }
+
+    /// Retarget the UR fixture's `0x0b` WRAP_ETH rule from the Uniswap UR
+    /// table's arg name (`amountMin`) to the Aerodrome UR table's
+    /// (`amount`). The two routers expose WRAP_ETH with the same arity but
+    /// different field names — `(address recipient, uint256 amountMin)` vs
+    /// `(address recipient, uint256 amount)` — so a faithful Aerodrome rule
+    /// references `$.args.amount`. Applied only by the dispatch-routing test;
+    /// the real Aerodrome bundle (Phase 3 A1) will ship this directly.
+    fn retarget_wrap_eth_amount_field(bundle: &mut AdapterFunctionBundle) {
+        let EmitRule::OpcodeStreamDispatch {
+            per_opcode_emit, ..
+        } = &mut bundle.emit
+        else {
+            panic!("bundle.emit must be OpcodeStreamDispatch for UR fixture");
+        };
+        let wrap = per_opcode_emit
+            .get_mut("0x0b")
+            .expect("UR fixture must declare a 0x0b WRAP_ETH rule");
+        for field in ["nativeAsset.amount.value", "wrappedAsset.amount.value"] {
+            if let Some(ValueExpr::FromArg { from, .. }) = wrap.fields.get_mut(field) {
+                *from = "$.args.amount".to_owned();
+            } else {
+                panic!("0x0b rule field `{field}` must be a FromArg expr");
+            }
+        }
+    }
+
+    /// `resolve_dispatcher` returns the Uniswap UR config for the
+    /// `universal_router` id, and that config carries a recursion layout
+    /// (UR nests via EXECUTE_SUB_PLAN / V4_SWAP / PM opcodes).
+    #[test]
+    fn resolve_dispatcher_returns_universal_router_config() {
+        let cfg =
+            resolve_dispatcher(DISPATCHER_ID_UNIVERSAL_ROUTER).expect("universal_router must resolve");
+        assert_eq!(cfg.id, DISPATCHER_ID_UNIVERSAL_ROUTER);
+        assert!(
+            cfg.recursion.is_some(),
+            "Uniswap UR config MUST carry a recursion opcode layout"
+        );
+        // Sanity: the recursion opcodes match the module constants.
+        let rec = cfg.recursion.as_ref().unwrap();
+        assert_eq!(rec.execute_sub_plan, OPCODE_EXECUTE_SUB_PLAN);
+        assert_eq!(rec.v4_swap, OPCODE_V4_SWAP);
+        assert_eq!(rec.v3_position_manager_permit, OPCODE_V3_POSITION_MANAGER_PERMIT);
+        assert_eq!(rec.v3_position_manager_call, OPCODE_V3_POSITION_MANAGER_CALL);
+        assert_eq!(rec.v4_position_manager_call, OPCODE_V4_POSITION_MANAGER_CALL);
+    }
+
+    /// `resolve_dispatcher` returns the Aerodrome UR config for the
+    /// `aerodrome_universal_router` id; that config is a flat opcode set
+    /// (`recursion == None`) and points at `AERODROME_UR_MAIN_TABLE`.
+    #[test]
+    fn resolve_dispatcher_returns_aerodrome_config() {
+        let cfg = resolve_dispatcher(DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER)
+            .expect("aerodrome_universal_router must resolve");
+        assert_eq!(cfg.id, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER);
+        assert!(
+            cfg.recursion.is_none(),
+            "Aerodrome UR config MUST be a flat opcode set (no recursion special-casing)"
+        );
+        // The config's table MUST be the exact `AERODROME_UR_MAIN_TABLE`
+        // static — not a copy — so Tier B's mask / opcode set is the single
+        // source of truth.
+        assert!(
+            std::ptr::eq(cfg.table, &AERODROME_UR_MAIN_TABLE),
+            "Aerodrome config table MUST be the AERODROME_UR_MAIN_TABLE static"
+        );
+    }
+
+    /// An unrecognised `dispatcher_id` resolves to `None` — `execute` maps
+    /// that to `MapperError::Unsupported`.
+    #[test]
+    fn resolve_dispatcher_unknown_id_returns_none() {
+        assert!(
+            resolve_dispatcher("nonexistent_router").is_none(),
+            "an unknown dispatcher_id MUST resolve to None"
+        );
+    }
+
+    /// An `aerodrome_universal_router` bundle (mask `0x3f`) carrying a single
+    /// `WRAP_ETH` (0x0b) opcode dispatches through `AERODROME_UR_MAIN_TABLE`
+    /// and emits one wrap envelope. The UR fixture is reused with the
+    /// dispatcher / mask swapped and the `0x0b` rule retargeted to the
+    /// Aerodrome WRAP_ETH arg name (`amount` vs Uniswap's `amountMin`) — what
+    /// this test pins is that the Aerodrome dispatcher routes opcode decoding
+    /// through `AERODROME_UR_MAIN_TABLE` (mask `0x3f`), not Uniswap's table.
+    #[test]
+    fn aerodrome_dispatch_routes_to_aerodrome_table() {
+        let mut bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+        override_dispatcher(&mut bundle, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER, "0x3f");
+        retarget_wrap_eth_amount_field(&mut bundle);
+
+        let wrap_input = encode_wrap_eth_input(recipient_addr(), 1_000_000);
+        let decoded = ur_execute_decoded(
+            DecoderId::new("declarative.aerodrome/universal-router/execute"),
+            vec![0x0b],
+            vec![wrap_input],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
+        assert_eq!(
+            envelopes.len(),
+            1,
+            "Aerodrome WRAP_ETH MUST yield exactly one envelope, got {envelopes:?}"
+        );
+        assert_eq!(envelopes[0].category, Category::Misc);
+        assert!(
+            matches!(envelopes[0].action, Action::Wrap(_)),
+            "envelope MUST be Wrap, got {:?}",
+            envelopes[0].action
+        );
+    }
+
+    /// An `aerodrome_universal_router` bundle that declares the wrong mask
+    /// (`0x7f` — Uniswap's value, not Aerodrome's `0x3f`) MUST surface
+    /// `MapperError::Internal`: the bundle's declared mask is checked against
+    /// the resolved dispatcher's Tier B table, and `AERODROME_UR_MAIN_TABLE`
+    /// uses `0x3f`.
+    #[test]
+    fn aerodrome_mask_mismatch_errors() {
+        let mut bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+        // Aerodrome dispatcher but Uniswap's 0x7f mask — a bundle-author bug.
+        override_dispatcher(&mut bundle, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER, "0x7f");
+
+        let wrap_input = encode_wrap_eth_input(recipient_addr(), 1_000_000);
+        let decoded = ur_execute_decoded(
+            DecoderId::new("declarative.aerodrome/universal-router/execute"),
+            vec![0x0b],
+            vec![wrap_input],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let err = super::execute(&ctx, &decoded, &bundle.emit).unwrap_err();
+        let MapperError::Internal(inner) = &err else {
+            panic!("expected MapperError::Internal, got {err:?}");
+        };
+        let msg = inner.to_string();
+        assert!(
+            msg.contains("disagrees"),
+            "expected mask-disagreement error, got: {msg}"
+        );
+        // The dispatcher id MUST appear so the author sees which table the
+        // bundle's mask was checked against.
+        assert!(
+            msg.contains(DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER),
+            "expected aerodrome dispatcher id in error, got: {msg}"
+        );
+    }
+
+    /// Anti-misfire guard: on the Aerodrome dispatcher (which has no recursion
+    /// layout), opcode `0x21` MUST NOT reach the EXECUTE_SUB_PLAN recursion
+    /// handler — it falls through to the plain `per_opcode_emit` path. The UR
+    /// fixture has no `0x21` per-opcode rule, so with
+    /// `unknown_opcode_policy=deny` the dispatch errors out with the
+    /// unknown-opcode message naming `0x21`. Had `0x21` been routed to the
+    /// recursion handler instead, the error would name EXECUTE_SUB_PLAN's
+    /// arg-extraction failure — never `unknown_opcode_policy=deny`.
+    #[test]
+    fn aerodrome_no_recursion_special_casing() {
+        let mut bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+        override_dispatcher(&mut bundle, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER, "0x3f");
+        override_unknown_opcode_policy(&mut bundle, UnknownOpcodePolicy::Deny);
+
+        // 0x21 is EXECUTE_SUB_PLAN in both tables; empty inputs[0] is fine —
+        // the unknown-opcode lookup fires before any arg decoding.
+        let decoded = ur_execute_decoded(
+            DecoderId::new("declarative.aerodrome/universal-router/execute"),
+            vec![0x21],
+            vec![vec![]],
+        );
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let err = super::execute(&ctx, &decoded, &bundle.emit).unwrap_err();
+        let MapperError::Internal(inner) = &err else {
+            panic!("expected MapperError::Internal, got {err:?}");
+        };
+        let msg = inner.to_string();
+        // Decisive: the deny-policy message proves 0x21 took the
+        // per_opcode_emit path, NOT the recursion handler.
+        assert!(
+            msg.contains("unknown_opcode_policy=deny"),
+            "expected unknown-opcode deny error (0x21 via per_opcode_emit path), got: {msg}"
+        );
+        assert!(
+            msg.contains("0x21"),
+            "expected masked opcode 0x21 in error, got: {msg}"
         );
     }
 }

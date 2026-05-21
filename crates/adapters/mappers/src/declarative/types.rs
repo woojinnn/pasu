@@ -307,6 +307,18 @@ pub enum BuiltinFn {
     /// `uint24 fee` — sign-extension applied on decode. Backend lives in
     /// `declarative::builtin_fn::unfold_slipstream_path`.
     UnfoldSlipstreamPath,
+    /// `unfold_velo_v2_path(bytes, select)`. Phase 2 (Aerodrome
+    /// Universal Router `V2_SWAP` — opcodes `0x08` / `0x09`). The UR
+    /// `main` build packs the V2 swap path as 20-byte `token` segments
+    /// whose stride depends on an `isUni` flag: the UniV2 layout is
+    /// `token ++ token ++ …` (`len = 20*N`), the VeloV2 layout
+    /// interleaves a 1-byte `stable` flag (`len = 20 + 21*N`). Both
+    /// layouts are invariant at the endpoints — the path always starts
+    /// and ends on a 20-byte token — so this built-in extracts
+    /// `path[0..20]` / `path[len-20..len]` without parsing the stable
+    /// byte or the stride. `select ∈ {first_token, last_token}`.
+    /// Backend lives in `declarative::builtin_fn::unfold_velo_v2_path`.
+    UnfoldVeloV2Path,
 }
 
 // ---------------------------------------------------------------------------
@@ -490,6 +502,37 @@ mod tests {
                 assert_eq!(args.len(), 2);
             }
             _ => panic!("expected Transform"),
+        }
+    }
+
+    /// Phase 2 (B3) — the wire string `"unfold_velo_v2_path"` must
+    /// deserialize to [`BuiltinFn::UnfoldVeloV2Path`]. This proves serde's
+    /// `snake_case` rename rule renders the `V2` segment as `v2` (digits
+    /// stay attached to the preceding letter), so a Phase 3 Tier A bundle
+    /// `{ "fn": "unfold_velo_v2_path", ... }` parses correctly. Also
+    /// round-trips back to the same wire string.
+    #[test]
+    fn builtin_fn_unfold_velo_v2_path_serde_roundtrip() {
+        let parsed: BuiltinFn =
+            serde_json::from_str(r#""unfold_velo_v2_path""#).expect("parses");
+        assert_eq!(parsed, BuiltinFn::UnfoldVeloV2Path);
+
+        let serialized = serde_json::to_string(&BuiltinFn::UnfoldVeloV2Path)
+            .expect("serializes");
+        assert_eq!(serialized, r#""unfold_velo_v2_path""#);
+
+        // Embedded in a `Transform` ValueExpr — the shape a Phase 3 bundle
+        // uses: `{"fn":"unfold_velo_v2_path","args":[{from},{literal}]}`.
+        let transform: ValueExpr = serde_json::from_str(
+            r#"{"fn":"unfold_velo_v2_path","args":[{"from":"$.args.path"},{"literal":"first_token"}]}"#,
+        )
+        .expect("transform parses");
+        match transform {
+            ValueExpr::Transform { function, args } => {
+                assert_eq!(function, BuiltinFn::UnfoldVeloV2Path);
+                assert_eq!(args.len(), 2);
+            }
+            other => panic!("expected Transform, got {other:?}"),
         }
     }
 }
