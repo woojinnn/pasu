@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/vecrv/createLock@1.0.0",
   "manifest_path": "manifests/curve/vecrv/createLock@1.0.0.json",
-  "bundle_sha256": "0x6613c7060b7778158903b42e3210df042d899ce7f27c29ce868350cf63923f27",
+  "bundle_sha256": "0x3a4ad8393ee4bae8c0bdc07b66718e8fb085010e3ce516d4359249f52517b6a3",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/vecrv/createLock@1.0.0",
@@ -35,26 +35,26 @@
     },
     "emit": {
       "strategy": "single_emit",
-      "category": "staking",
-      "action": "stake",
+      "category": "misc",
+      "action": "lock_create",
       "fields": {
-        "tokenIn.kind": {
-          "literal": "erc20"
-        },
-        "tokenIn.address": {
-          "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52"
-        },
-        "receiptToken.kind": {
-          "literal": "erc20"
-        },
-        "receiptToken.address": {
+        "votingEscrow": {
           "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
         },
-        "amountIn.kind": {
+        "asset.kind": {
+          "literal": "erc20"
+        },
+        "asset.address": {
+          "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        },
+        "amount.kind": {
           "literal": "exact"
         },
-        "amountIn.value": {
+        "amount.value": {
           "from": "$.args._value"
+        },
+        "unlockTime": {
+          "from": "$.args._unlock_time"
         },
         "recipient": {
           "from": "$.tx.from"

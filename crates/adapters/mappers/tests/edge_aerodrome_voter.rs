@@ -278,7 +278,7 @@ fn vote_with_single_pool() {
     let action = unwrap_gauge_vote(&envelopes);
 
     assert_eq!(action.voter, aero_voter());
-    assert_eq!(action.token_id.to_string(), "1");
+    assert_eq!(action.token_id.as_ref().unwrap().to_string(), "1");
     assert_eq!(action.pools.len(), 1);
     assert_eq!(action.weights.len(), 1);
     assert_eq!(action.pools[0], pool_usdc_eth());
@@ -403,7 +403,7 @@ fn reset_emits_empty_pools_and_weights() {
     let action = unwrap_gauge_vote(&envelopes);
 
     assert_eq!(action.voter, aero_voter());
-    assert_eq!(action.token_id.to_string(), "99");
+    assert_eq!(action.token_id.as_ref().unwrap().to_string(), "99");
     assert!(action.pools.is_empty(), "reset must emit empty pools");
     assert!(action.weights.is_empty(), "reset must emit empty weights");
     assert_eq!(action.kind, Some(GaugeVoteKind::Reset));
@@ -425,7 +425,7 @@ fn poke_emits_empty_pools_with_poke_kind() {
     let envelopes = mapper.map(&ctx.map_ctx(), &call).expect("poke maps");
     let action = unwrap_gauge_vote(&envelopes);
 
-    assert_eq!(action.token_id.to_string(), "42");
+    assert_eq!(action.token_id.as_ref().unwrap().to_string(), "42");
     assert!(action.pools.is_empty());
     assert!(action.weights.is_empty());
     assert_eq!(action.kind, Some(GaugeVoteKind::Poke));

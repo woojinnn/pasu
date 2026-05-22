@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap-ng/crvusd-usdc/removeLiquidityOneCoin-ng@1.0.0",
   "manifest_path": "manifests/curve/stableswap-ng/crvusd-usdc/removeLiquidityOneCoin-ng@1.0.0.json",
-  "bundle_sha256": "0xaee78cafc433fb5cccd757e22229762328140d2d1f424ce7c6401f70f12f6594",
+  "bundle_sha256": "0x46f6baa9ae8fceb43974f88b8fb6337109cbaa101bc129933b46d42b496f0ef0",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap-ng/crvusd-usdc/removeLiquidityOneCoin-ng@1.0.0",
@@ -14,7 +14,7 @@
       "to": [
         "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"
       ],
-      "selector": "0x081579a5"
+      "selector": "0x1a4d01d2"
     },
     "abi_fragment": {
       "function_name": "remove_liquidity_one_coin",
@@ -33,10 +33,6 @@
           {
             "name": "_min_received",
             "type": "uint256"
-          },
-          {
-            "name": "_receiver",
-            "type": "address"
           }
         ]
       }
@@ -72,8 +68,8 @@
           "args": [
             {
               "literal": [
-                "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
-                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
               ]
             },
             {
@@ -88,7 +84,7 @@
           "from": "$.args._min_received"
         },
         "recipient": {
-          "from": "$.args._receiver"
+          "from": "$.tx.from"
         }
       }
     },

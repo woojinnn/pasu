@@ -27,7 +27,9 @@ const fn gauge_vote_kind_str(kind: &GaugeVoteKind) -> &'static str {
 fn context(action: &GaugeVoteAction) -> Result<Value, LoweringError> {
     let mut context = Map::new();
     context.insert(VOTER.into(), Value::from(action.voter.to_string()));
-    context.insert(TOKEN_ID.into(), Value::from(action.token_id.to_string()));
+    if let Some(token_id) = &action.token_id {
+        context.insert(TOKEN_ID.into(), Value::from(token_id.to_string()));
+    }
 
     let pools = action
         .pools

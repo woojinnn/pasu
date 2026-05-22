@@ -21,13 +21,12 @@
   "emit": {
     "strategy": "single_emit",
     "category": "misc",
-    "action": "vote",
+    "action": "gauge_vote",
     "fields": {
-      "governance":        { "from": "$.args._gauge_addr" },
-      "governanceLabel":   { "literal": "Curve GaugeController" },
-      "proposalId":        { "literal": "0" },
-      "support":           { "literal": "for" },
-      "votingPower":       { "from": "$.args._user_weight" }
+      "voter":      { "literal": "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb" },
+      "pools[0]":   { "from": "$.args._gauge_addr" },
+      "weights[0]": { "from": "$.args._user_weight" },
+      "kind":       { "literal": "vote" }
     }
   },
   "requires": {

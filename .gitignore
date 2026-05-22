@@ -37,3 +37,8 @@ browser-extension/backend/wasm/
 browser-extension/dashboard/src/wasm/
 browser-extension/dashboard/public/wasm/
 browser-extension/public/wasm/
+
+# Markdown docs, research + audit notes — only README.md stays tracked.
+*.md
+!README.md
+/docs/

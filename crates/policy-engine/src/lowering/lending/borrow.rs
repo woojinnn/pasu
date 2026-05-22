@@ -13,6 +13,8 @@ const MARKET: &str = "market";
 const AMOUNT_MODE: &str = "amountMode";
 const ON_BEHALF: &str = "onBehalf";
 const VALIDITY: &str = "validity";
+const COLLATERAL_ASSET: &str = "collateralAsset";
+const COLLATERAL_AMOUNT: &str = "collateralAmount";
 
 impl Lower for BorrowAction {
     fn build(&self, ctx: &LoweringCtx<'_>) -> Result<PolicyRequest, LoweringError> {
@@ -27,6 +29,12 @@ fn context(action: &BorrowAction, ctx: &LoweringCtx<'_>) -> Result<Value, Loweri
     }
     context.insert(ASSET.into(), asset_ref_json(&action.asset)?);
     context.insert(AMOUNT.into(), amount_constraint_json(&action.amount));
+    if let Some(collateral_asset) = &action.collateral_asset {
+        context.insert(COLLATERAL_ASSET.into(), asset_ref_json(collateral_asset)?);
+    }
+    if let Some(collateral_amount) = &action.collateral_amount {
+        context.insert(COLLATERAL_AMOUNT.into(), amount_constraint_json(collateral_amount));
+    }
     if let Some(mode) = &action.amount_mode {
         context.insert(AMOUNT_MODE.into(), Value::from(amount_mode_str(mode)));
     }

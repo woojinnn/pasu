@@ -5,7 +5,7 @@
   "match": {
     "chain_ids": [1],
     "to": ["0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"],
-    "selector": "0x0c3e4b54"
+    "selector": "0x0b4c7e4d"
   },
   "abi_fragment": {
     "function_name": "add_liquidity",
@@ -14,8 +14,7 @@
       "type": "function",
       "inputs": [
         { "name": "_amounts",         "type": "uint256[2]" },
-        { "name": "_min_mint_amount", "type": "uint256"    },
-        { "name": "_receiver",        "type": "address"    }
+        { "name": "_min_mint_amount", "type": "uint256"    }
       ]
     }
   },
@@ -26,9 +25,9 @@
     "fields": {
       "pool.address":              { "literal": "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4" },
       "inputTokens[0].asset.kind":    { "literal": "erc20" },
-      "inputTokens[0].asset.address": { "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
+      "inputTokens[0].asset.address": { "literal": "0xdac17f958d2ee523a2206206994597c13d831ec7" },
       "inputTokens[1].asset.kind":    { "literal": "erc20" },
-      "inputTokens[1].asset.address": { "literal": "0xdac17f958d2ee523a2206206994597c13d831ec7" },
+      "inputTokens[1].asset.address": { "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
       "inputTokens[0].amount.kind":   { "literal": "max" },
       "inputTokens[0].amount.value":  { "from": "$.args._amounts[0]" },
       "inputTokens[1].amount.kind":   { "literal": "max" },
@@ -37,7 +36,7 @@
       "outputLp.asset.address":       { "literal": "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4" },
       "outputLp.amount.kind":         { "literal": "min" },
       "outputLp.amount.value":        { "from": "$.args._min_mint_amount" },
-      "recipient":                    { "from": "$.args._receiver" }
+      "recipient":                    { "from": "$.tx.from" }
     }
   },
   "requires": {

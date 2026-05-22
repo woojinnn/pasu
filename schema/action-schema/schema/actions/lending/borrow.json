@@ -43,6 +43,16 @@
       "description": "debt position 소유자 (default = root.from). Aave 의 onBehalfOf — variableDebtToken mint 대상. Morpho 의 onBehalf. msg.sender != onBehalf 시 사전 credit delegation (Aave) 또는 authorization (Morpho) 의무 — phishing 1차 신호 (`Action::borrow && onBehalf != root.from && delegatee not in whitelist → deny` 권장)."
     },
 
+    "collateralAsset": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "차입과 동일 호출에서 예치되는 담보 자산. crvUSD Controller 의 create_loan / borrow_more 는 차입(debt) 과 함께 담보를 pull 함 — onBehalf 의 담보 이동을 정책이 검사할 수 있게 매핑. Aave / Compound / Morpho 의 borrow 는 담보를 받지 않으므로 생략."
+    },
+
+    "collateralAmount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "예치 담보 양. collateralAsset 과 병행 (둘 다 있거나 둘 다 없음). kind=exact 일반적. crvUSD borrow_more 처럼 담보 추가 없이 차입만 할 때는 value=0."
+    },
+
     "validity": {
       "$ref": "../../common/_common.json#/$defs/Validity",
       "description": "deadline (optional). Aave / Morpho 의 borrow 함수 자체 deadline 부재 — 일반 생략."

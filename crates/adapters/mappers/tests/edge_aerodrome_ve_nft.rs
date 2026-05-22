@@ -354,7 +354,7 @@ fn create_lock_at_max_duration_succeeds() {
         action.amount.value.as_ref().map(ToString::to_string),
         Some("1000000000000000000000".to_owned())
     );
-    assert_eq!(action.lock_duration_sec.to_string(), "126144000");
+    assert_eq!(action.lock_duration_sec.as_ref().unwrap().to_string(), "126144000");
     // createLock binds recipient = $.tx.from.
     assert_eq!(action.recipient, tx_from());
 }
@@ -378,7 +378,7 @@ fn create_lock_zero_duration_emits_envelope() {
         .expect("zero-duration createLock must still emit (observability-only)");
     assert_eq!(envelopes.len(), 1);
     let action = unwrap_lock_create(&envelopes[0]);
-    assert_eq!(action.lock_duration_sec.to_string(), "0");
+    assert_eq!(action.lock_duration_sec.as_ref().unwrap().to_string(), "0");
     assert_eq!(
         action.amount.value.as_ref().map(ToString::to_string),
         Some("1".to_owned())
@@ -409,7 +409,7 @@ fn create_lock_for_recipient_overrides_sender() {
     // recipient comes from $.args.to, NOT $.tx.from.
     assert_eq!(action.recipient, explicit_recipient());
     assert_ne!(action.recipient, ctx.from);
-    assert_eq!(action.lock_duration_sec.to_string(), "31536000");
+    assert_eq!(action.lock_duration_sec.as_ref().unwrap().to_string(), "31536000");
 }
 
 /// **T4: increaseAmount → `LockIncreaseKind::Amount`** — the bundle literal

@@ -13,8 +13,14 @@ pub struct LockCreateAction {
     pub asset: AssetRef,
     /// Lock amount.
     pub amount: AmountConstraint,
-    /// Lock duration in seconds.
-    pub lock_duration_sec: DecimalString,
+    /// Lock duration in seconds (relative). Aerodrome `createLock(value, lockDuration)`.
+    /// Mutually exclusive with `unlock_time` — exactly one is present.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lock_duration_sec: Option<DecimalString>,
+    /// Absolute unlock timestamp (epoch seconds). Curve veCRV
+    /// `create_lock(_value, _unlock_time)`. Mutually exclusive with `lock_duration_sec`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unlock_time: Option<DecimalString>,
     /// Recipient of the veNFT (default = tx sender, override via createLockFor).
     pub recipient: Address,
 }

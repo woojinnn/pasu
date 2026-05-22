@@ -1845,9 +1845,27 @@ mod tests {
     const CURVE_GAUGE_CONTROLLER_VOTE_BUNDLE: &str =
         include_str!("../../tests/fixtures/curve-gauge-controller-vote.json");
 
+    // Phase 13 — Minter / FeeDistributor (CRV reward / fee claiming).
+    const CURVE_MINTER_MINT_BUNDLE: &str =
+        include_str!("../../tests/fixtures/curve-minter-mint.json");
+    const CURVE_MINTER_MINT_FOR_BUNDLE: &str =
+        include_str!("../../tests/fixtures/curve-minter-mint-for.json");
+    const CURVE_FEEDISTRIBUTOR_CRVUSD_CLAIM_BUNDLE: &str =
+        include_str!("../../tests/fixtures/curve-feedistributor-crvusd-claim.json");
+
     /// CRV mainnet (`0xD533...cd52`).
     fn curve_crv_token() -> Address {
         Address::from_str("0xd533a949740bb3306d119cc777fa900ba034cd52").unwrap()
+    }
+
+    /// Curve Minter mainnet (`0xd061...fce0`).
+    fn curve_minter() -> Address {
+        Address::from_str("0xd061d61a4d941c39e5453435b6345dc261c2fce0").unwrap()
+    }
+
+    /// Curve FeeDistributor (crvUSD) mainnet (`0xd16d...7914`).
+    fn curve_feedistributor_crvusd() -> Address {
+        Address::from_str("0xd16d5ec345dd86fb63c6a9c43c517210f1027914").unwrap()
     }
 
     /// veCRV mainnet (`0x5f3b...e2a2`).
@@ -1993,5 +2011,148 @@ mod tests {
             Some("10000".to_owned())
         );
         assert!(action.validity.is_none());
+    }
+
+    #[test]
+    fn declarative_curve_minter_mint() {
+        // mint(address gauge_addr) — ClaimRewards. `from`/`recipient` resolve
+        // from $.tx.from; the CRV reward token is a bundle literal. The
+        // `gauge_addr` arg is decoded but not surfaced into the envelope.
+        let bundle: AdapterFunctionBundle =
+            serde_json::from_str(CURVE_MINTER_MINT_BUNDLE).unwrap();
+        let mapper = DeclarativeMapper::new(bundle);
+        let decoded = DecodedCall {
+            decoder_id: mapper.declarative_decoder_id(),
+            function_signature: "mint(address)".into(),
+            args: vec![DecodedArg {
+                name: "gauge_addr".into(),
+                abi_type: "address".into(),
+                value: DecodedValue::Address(curve_3pool_gauge()),
+            }],
+            nested: vec![],
+        };
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+
+        assert_eq!(envelope.category, Category::Misc);
+        let Action::ClaimRewards(action) = &envelope.action else {
+            panic!("expected ClaimRewards action, got {:?}", envelope.action);
+        };
+        assert_eq!(action.from, from);
+        assert_eq!(action.recipient, from);
+        let source = action.source.as_ref().expect("source present");
+        assert_eq!(source.address.as_ref(), Some(&curve_minter()));
+        assert_eq!(source.label.as_deref(), Some("Curve Minter"));
+        let reward_tokens = action
+            .reward_tokens
+            .as_ref()
+            .expect("reward_tokens present");
+        assert_eq!(reward_tokens.len(), 1);
+        assert_eq!(reward_tokens[0].kind, AssetKind::Erc20);
+        assert_eq!(reward_tokens[0].address, Some(curve_crv_token()));
+    }
+
+    #[test]
+    fn declarative_curve_minter_mint_for() {
+        // mint_for(address gauge_addr, address _for) — ClaimRewards. The
+        // bundle resolves both `from` and `recipient` from $.args._for, so a
+        // `_for` distinct from the tx sender must win over $.tx.from.
+        let bundle: AdapterFunctionBundle =
+            serde_json::from_str(CURVE_MINTER_MINT_FOR_BUNDLE).unwrap();
+        let mapper = DeclarativeMapper::new(bundle);
+        let from = dummy_addr(0xAA);
+        let for_addr = dummy_addr(0xCC);
+        // Sanity: `_for` differs from the tx sender, so the assertions below
+        // genuinely exercise $.args._for resolution.
+        assert_ne!(for_addr, from);
+        let decoded = DecodedCall {
+            decoder_id: mapper.declarative_decoder_id(),
+            function_signature: "mint_for(address,address)".into(),
+            args: vec![
+                DecodedArg {
+                    name: "gauge_addr".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(curve_3pool_gauge()),
+                },
+                DecodedArg {
+                    name: "_for".into(),
+                    abi_type: "address".into(),
+                    value: DecodedValue::Address(for_addr.clone()),
+                },
+            ],
+            nested: vec![],
+        };
+
+        let registry = EmptyTokenRegistry;
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+
+        assert_eq!(envelope.category, Category::Misc);
+        let Action::ClaimRewards(action) = &envelope.action else {
+            panic!("expected ClaimRewards action, got {:?}", envelope.action);
+        };
+        // KEY: both `from` and `recipient` come from $.args._for, not $.tx.from.
+        assert_eq!(action.from, for_addr);
+        assert_eq!(action.recipient, for_addr);
+        let source = action.source.as_ref().expect("source present");
+        assert_eq!(source.address.as_ref(), Some(&curve_minter()));
+        assert_eq!(source.label.as_deref(), Some("Curve Minter"));
+        let reward_tokens = action
+            .reward_tokens
+            .as_ref()
+            .expect("reward_tokens present");
+        assert_eq!(reward_tokens.len(), 1);
+        assert_eq!(reward_tokens[0].kind, AssetKind::Erc20);
+        assert_eq!(reward_tokens[0].address, Some(curve_crv_token()));
+    }
+
+    #[test]
+    fn declarative_curve_feedistributor_crvusd_claim() {
+        // claim() — no args, ClaimRewards. `from`/`recipient` resolve from
+        // $.tx.from; the crvUSD fee token is a bundle literal. Source records
+        // the crvUSD FeeDistributor address.
+        let bundle: AdapterFunctionBundle =
+            serde_json::from_str(CURVE_FEEDISTRIBUTOR_CRVUSD_CLAIM_BUNDLE).unwrap();
+        let mapper = DeclarativeMapper::new(bundle);
+        let decoded = DecodedCall {
+            decoder_id: mapper.declarative_decoder_id(),
+            function_signature: "claim()".into(),
+            args: vec![],
+            nested: vec![],
+        };
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+
+        assert_eq!(envelope.category, Category::Misc);
+        let Action::ClaimRewards(action) = &envelope.action else {
+            panic!("expected ClaimRewards action, got {:?}", envelope.action);
+        };
+        assert_eq!(action.from, from);
+        assert_eq!(action.recipient, from);
+        let source = action.source.as_ref().expect("source present");
+        assert_eq!(source.address.as_ref(), Some(&curve_feedistributor_crvusd()));
+        assert_eq!(
+            source.label.as_deref(),
+            Some("Curve FeeDistributor (crvUSD)")
+        );
+        let reward_tokens = action
+            .reward_tokens
+            .as_ref()
+            .expect("reward_tokens present");
+        assert_eq!(reward_tokens.len(), 1);
+        assert_eq!(reward_tokens[0].kind, AssetKind::Erc20);
+        assert_eq!(reward_tokens[0].address, Some(curve_crvusd()));
     }
 }

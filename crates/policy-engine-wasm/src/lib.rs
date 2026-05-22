@@ -8,6 +8,10 @@ mod declarative_exports;
 mod dto;
 mod exports;
 
+/// Part 5 — Curve real-transaction coverage verification harness (test-only).
+#[cfg(test)]
+mod curve_realtx_tests;
+
 use wasm_bindgen::prelude::*;
 
 /// Module init: forward Rust panics to the JS console.

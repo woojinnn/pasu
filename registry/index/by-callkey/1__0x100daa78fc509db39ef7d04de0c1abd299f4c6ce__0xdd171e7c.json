@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/crvusd/wsteth/borrowMore@1.0.0",
   "manifest_path": "manifests/curve/crvusd/wsteth/borrowMore@1.0.0.json",
-  "bundle_sha256": "0xab07dda95fa70e5fa97bc3e3ece72de059f819f6422470265453adacd064c639",
+  "bundle_sha256": "0x29db1c5e682d0b58b6e28b985663a89a10df4e0f838d8ee211faf60e11ba02b3",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/crvusd/wsteth/borrowMore@1.0.0",
@@ -55,6 +55,18 @@
         },
         "amount.value": {
           "from": "$.args.debt"
+        },
+        "collateralAsset.kind": {
+          "literal": "erc20"
+        },
+        "collateralAsset.address": {
+          "literal": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        "collateralAmount.kind": {
+          "literal": "exact"
+        },
+        "collateralAmount.value": {
+          "from": "$.args.collateral"
         },
         "recipient": {
           "from": "$.tx.from"

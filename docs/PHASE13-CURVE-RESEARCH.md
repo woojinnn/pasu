@@ -279,6 +279,8 @@ bundle `curve/crvusd/wsteth/selfLiquidate@1.0.0.json` 은 `self_liquidate(uint25
 
 > **구현 권고**: `selfLiquidate@1.0.0.json` bundle 은 **삭제** 하거나, "self-liquidate" 의도를 `liquidate` (`0xbcbaf487`) bundle 에 흡수해야 한다 (actor = self 케이스). 현 상태로 두면 callkey index 에 실제로 매칭될 calldata 가 영원히 없는 dead bundle 이다 (registry 오염). 15개 wstETH bundle 중 14개만 유효.
 
+> **✅ 2026-05-21 해소 (R1-F1)** — 3 market (wstETH/sfrxETH/WBTC) Controller 전수 재검증: `cast code` bytecode 에 `0x6cdb5a2a` 부재 (sanity: `0x23cfed03`·`0xbcbaf487`·`0x3ecdb828` 존재 / `0xdeadbeef` 부재 — grep 신뢰 재확인). `cast call 0x6cdb5a2a` 는 bogus selector 와 **byte 단위 동일**하게 `execution reverted, data: "0x"` 반환 — Controller 가 미존재 selector 에 revert 하므로 revert-probe 는 present/absent 를 구분 못 한다. (작업 중간 plan 의 revert-probe "PRESENT" 판정은 이 false-positive 였음 — 본 §4.1 의 grep 판정이 옳다.) → `crvusd/{wsteth,sfrxeth,wbtc}/selfLiquidate@1.0.0.json` 3 bundle + callkey 삭제. self-liquidation 은 `liquidate@1.0.0.json` (`borrower`←`$.args.user`) 가 이미 커버 — 커버리지 손실 없음.
+
 ### 4.2 P2-1 — `repay` 의 `_max_active_band` parameter 타입
 
 **확정: `int256`.**

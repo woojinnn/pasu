@@ -1,0 +1,66 @@
+{
+  "matched": true,
+  "bundle_id": "curve/minter/mint@1.0.0",
+  "manifest_path": "manifests/curve/minter/mint@1.0.0.json",
+  "bundle_sha256": "0xc9268b8d7dd778ad141e876580a98b52cdc2b482ab732e1415d334ba63fa4b34",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/minter/mint@1.0.0",
+    "publisher": "curve.fi",
+    "match": {
+      "chain_ids": [
+        1
+      ],
+      "to": [
+        "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
+      ],
+      "selector": "0x6a627842"
+    },
+    "abi_fragment": {
+      "function_name": "mint",
+      "abi": {
+        "name": "mint",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "gauge_addr",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "claim_rewards",
+      "fields": {
+        "source.address": {
+          "literal": "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
+        },
+        "source.label": {
+          "literal": "Curve Minter"
+        },
+        "from": {
+          "from": "$.tx.from"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        },
+        "rewardTokens[0].kind": {
+          "literal": "erc20"
+        },
+        "rewardTokens[0].address": {
+          "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

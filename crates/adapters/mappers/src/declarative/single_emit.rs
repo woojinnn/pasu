@@ -712,12 +712,16 @@ fn build_borrow_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, Map
     let recipient = read_address(tree, "recipient")?;
     let on_behalf = read_address(tree, "onBehalf")?;
     let validity = read_validity(tree)?;
+    let collateral_asset = read_optional_asset_inline(tree, "collateralAsset")?;
+    let collateral_amount = read_amount_inline(tree, "collateralAmount")?;
 
     let action = BorrowAction {
         market,
         asset,
         amount,
         amount_mode,
+        collateral_asset,
+        collateral_amount,
         recipient,
         on_behalf,
         validity,
@@ -779,11 +783,11 @@ fn build_repay_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, Mapp
 /// Build a [`LiquidateAction`] envelope from the field tree (Phase 12.5).
 ///
 /// Schema reference: `crates/policy-engine/src/action/lending/liquidate.rs`.
-/// crvUSD `liquidate(address user, uint256 min_x)` / `self_liquidate(uint256 min_x)`
-/// both end here. For `self_liquidate` the bundle resolves `borrower` to
-/// `$.tx.from`; for `liquidate` it resolves to `$.args.user`. `min_x` is the
-/// minimum debt-token received (Curve-specific) — recorded as
-/// `seizedCollateralAmount` to keep the schema generic.
+/// crvUSD `liquidate(address user, uint256 min_x)` ends here — the bundle
+/// resolves `borrower` to `$.args.user`. `min_x` is the minimum debt asset
+/// (crvUSD) the liquidator receives — recorded as `debtToCover` (kind `min`).
+/// (Self-liquidation uses the same `liquidate` entrypoint with `user` set to
+/// `msg.sender`; Curve has no separate `self_liquidate` function.)
 ///
 /// Required fields:
 ///   * `borrower` — position being liquidated
@@ -1816,7 +1820,7 @@ fn parse_validity_source(source: &str) -> Option<ValiditySource> {
 
 fn build_gauge_vote_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
     let voter = read_address(tree, "voter")?;
-    let token_id = read_decimal(tree, "tokenId")?;
+    let token_id = read_optional_decimal(tree, "tokenId")?;
     let pools = read_address_array(tree, "pools")?;
     let weights = read_decimal_array(tree, "weights")?;
     let kind = read_optional_enum::<GaugeVoteKind>(tree, "kind")?;
@@ -1908,13 +1912,33 @@ fn build_lock_create_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope
     let asset = read_asset_inline(tree, "asset")?;
     let amount = read_amount_inline(tree, "amount")?
         .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
-    let lock_duration_sec = read_decimal(tree, "lockDurationSec")?;
+    let lock_duration_sec = read_optional_decimal(tree, "lockDurationSec")?;
+    let unlock_time = read_optional_decimal(tree, "unlockTime")?;
     let recipient = read_address(tree, "recipient")?;
+
+    // XOR — exactly one of relative duration / absolute unlock time.
+    // Aerodrome `createLock(value, lockDuration)` emits `lockDurationSec`;
+    // Curve veCRV `create_lock(_value, _unlock_time)` emits `unlockTime`.
+    match (&lock_duration_sec, &unlock_time) {
+        (Some(_), None) | (None, Some(_)) => {}
+        (Some(_), Some(_)) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "lock_create: lockDurationSec and unlockTime are mutually exclusive"
+            )))
+        }
+        (None, None) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "lock_create: one of lockDurationSec / unlockTime is required"
+            )))
+        }
+    }
+
     let action = LockCreateAction {
         voting_escrow,
         asset,
         amount,
         lock_duration_sec,
+        unlock_time,
         recipient,
     };
     Ok(ActionEnvelope {
@@ -2995,7 +3019,7 @@ mod tests {
         };
         assert_eq!(action.pools.len(), 1);
         assert_eq!(action.weights.len(), 1);
-        assert_eq!(action.token_id.to_string(), "1");
+        assert_eq!(action.token_id.as_ref().unwrap().to_string(), "1");
         assert!(action.kind.is_none());
         assert!(action.validity.is_none());
     }
@@ -3150,11 +3174,13 @@ mod tests {
         };
         assert_eq!(action.voting_escrow.to_string(), aero_voting_escrow());
         assert_eq!(action.asset.kind, AssetKind::Erc20);
-        assert_eq!(action.lock_duration_sec.to_string(), "126144000");
+        assert_eq!(action.lock_duration_sec.as_ref().unwrap().to_string(), "126144000");
     }
 
     #[test]
-    fn build_lock_create_envelope_missing_duration_errors() {
+    fn build_lock_create_envelope_missing_both_errors() {
+        // F7 — lock_create requires exactly one of lockDurationSec / unlockTime.
+        // Neither present → XOR error.
         let tree = json!({
             "votingEscrow": aero_voting_escrow(),
             "asset": aero_asset(),
@@ -3163,9 +3189,34 @@ mod tests {
         });
         let err = build_lock_create_envelope(&tree).unwrap_err();
         match err {
-            MapperError::MissingArgument(name) => assert_eq!(name, "$.lockDurationSec"),
-            other => panic!("expected MissingArgument, got {other:?}"),
+            MapperError::Internal(e) => assert!(
+                e.to_string().contains("one of lockDurationSec / unlockTime"),
+                "unexpected error: {e}"
+            ),
+            other => panic!("expected Internal XOR error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn build_lock_create_envelope_unlock_time_only() {
+        // F7 — Curve veCRV path: absolute unlockTime, no relative lockDurationSec.
+        let tree = json!({
+            "votingEscrow": aero_voting_escrow(),
+            "asset": aero_asset(),
+            "amount": { "kind": "exact", "value": "1" },
+            "unlockTime": "1905548203",
+            "recipient": "0x3333333333333333333333333333333333333333"
+        });
+        let envelope =
+            build_lock_create_envelope(&tree).expect("unlockTime-only build OK");
+        let Action::LockCreate(action) = envelope.action else {
+            panic!("expected Action::LockCreate");
+        };
+        assert!(action.lock_duration_sec.is_none());
+        assert_eq!(
+            action.unlock_time.as_ref().unwrap().to_string(),
+            "1905548203"
+        );
     }
 
     #[test]
@@ -3517,6 +3568,48 @@ mod tests {
         );
         assert!(action.validity.is_none());
         assert!(action.amount_mode.is_none());
+        // F6 — borrow-only tree (no collateral fields) leaves both `None`.
+        assert!(action.collateral_asset.is_none());
+        assert!(action.collateral_amount.is_none());
+    }
+
+    /// F6 — `create_loan` / `borrow_more` style tree carries a collateral leg.
+    #[test]
+    fn build_borrow_envelope_with_collateral() {
+        let tree = json!({
+            "market": {
+                "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+                "label": "Curve crvUSD wstETH Controller"
+            },
+            "asset": {
+                "kind": "erc20",
+                "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+            },
+            "amount": { "kind": "exact", "value": "6000000000000000000000" },
+            "collateralAsset": {
+                "kind": "erc20",
+                "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+            },
+            "collateralAmount": { "kind": "exact", "value": "4130013979725197349" },
+            "recipient": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "onBehalf":  "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        });
+        let envelope = build_borrow_envelope(&tree).unwrap();
+        let Action::Borrow(action) = envelope.action else {
+            panic!("expected Borrow, got something else");
+        };
+        let collateral_asset = action.collateral_asset.expect("collateral asset present");
+        assert_eq!(collateral_asset.kind, AssetKind::Erc20);
+        assert_eq!(
+            collateral_asset.address.unwrap().to_string(),
+            "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        );
+        let collateral_amount = action.collateral_amount.expect("collateral amount present");
+        assert_eq!(collateral_amount.kind, AmountKind::Exact);
+        assert_eq!(
+            collateral_amount.value.unwrap().to_string(),
+            "4130013979725197349"
+        );
     }
 
     #[test]

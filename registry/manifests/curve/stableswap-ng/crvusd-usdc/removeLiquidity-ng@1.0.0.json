@@ -5,7 +5,7 @@
   "match": {
     "chain_ids": [1],
     "to": ["0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"],
-    "selector": "0x3eb1719f"
+    "selector": "0x5b36389c"
   },
   "abi_fragment": {
     "function_name": "remove_liquidity",
@@ -14,8 +14,7 @@
       "type": "function",
       "inputs": [
         { "name": "_burn_amount", "type": "uint256"    },
-        { "name": "_min_amounts", "type": "uint256[2]" },
-        { "name": "_receiver",    "type": "address"    }
+        { "name": "_min_amounts", "type": "uint256[2]" }
       ]
     }
   },
@@ -31,14 +30,14 @@
       "inputLp.amount.kind":           { "literal": "exact" },
       "inputLp.amount.value":          { "from": "$.args._burn_amount" },
       "outputTokens[0].asset.kind":    { "literal": "erc20" },
-      "outputTokens[0].asset.address": { "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
+      "outputTokens[0].asset.address": { "literal": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
       "outputTokens[1].asset.kind":    { "literal": "erc20" },
-      "outputTokens[1].asset.address": { "literal": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
+      "outputTokens[1].asset.address": { "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
       "outputTokens[0].amount.kind":   { "literal": "min" },
       "outputTokens[0].amount.value":  { "from": "$.args._min_amounts[0]" },
       "outputTokens[1].amount.kind":   { "literal": "min" },
       "outputTokens[1].amount.value":  { "from": "$.args._min_amounts[1]" },
-      "recipient":                     { "from": "$.args._receiver" }
+      "recipient":                     { "from": "$.tx.from" }
     }
   },
   "requires": {

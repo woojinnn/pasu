@@ -440,3 +440,19 @@ User-approved for a follow-up phase; require policy-engine core Cedar schema cha
 
 Post-remediation: `cd registry && npm run build` → 706 callkey, 0 error. cargo `--workspace`
 840/0/6 (unchanged — remediation is registry-JSON only). Phase gate (P0 = 0) holds.
+
+---
+
+## 2026-05-21 후속 — `selfLiquidate` phantom 삭제 (R1-F1, post-Phase-13 gap 분석)
+
+A.2 / P1-1 이 `debtToCover` re-map 을 적용한 liquidate-family bundle 집합에는 `selfLiquidate`
+3개가 포함돼 있었다. 후속 검증 (`docs/PHASE13-CURVE-RESEARCH.md §4.1` + 2026-05-21 재확인)
+결과 `self_liquidate(uint256)` (`0x6cdb5a2a`) 는 배포된 3 crvUSD Controller (wstETH/sfrxETH/
+WBTC) 전수에 **부재** — `cast code` bytecode grep (sanity 통과) + `cast call` 이 bogus selector
+와 byte 동일하게 `execution reverted, data: "0x"`. 작업 중간 plan 의 revert-probe "PRESENT"
+판정은 false-positive (Controller 가 미존재 selector 에 revert → revert ≠ presence).
+
+→ `crvusd/{wsteth,sfrxeth,wbtc}/selfLiquidate@1.0.0.json` 3 bundle + callkey 삭제.
+self-liquidation 은 `liquidate@1.0.0.json` (`borrower`←`$.args.user`, `user`=`msg.sender`
+케이스) 가 이미 커버 — 커버리지 손실 없음. registry: 706 → **703 callkey**, curve manifest
+113 → **110**. P1-1 `debtToCover` 적용 대상 liquidate-family 12 → **9 bundle**.
