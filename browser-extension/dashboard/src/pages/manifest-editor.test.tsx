@@ -20,6 +20,25 @@ import type {
   PreviewManifestOutput,
   ManifestPutResult,
 } from "@scopeball/sdk";
+
+// Mock the WASM bridge so the editor's typed-paths fetch + selector
+// picker's schema fetch don't try to load the real WASM module under
+// happy-dom. Each test can override `mocks.fetchTypedPaths` to feed
+// the param-validator a specific path set.
+const mocks = vi.hoisted(() => ({
+  fetchActionSchema: vi.fn(async () => ({
+    schema: { action: "swap", principalType: "Wallet", resourceType: "Protocol", fields: [] },
+  })),
+  fetchTypedPaths: vi.fn(async () => ({
+    paths: { action: "swap", scalars: [], records: [] },
+  })),
+}));
+
+vi.mock("../policy/builder-wasm", () => ({
+  fetchActionSchema: mocks.fetchActionSchema,
+  fetchTypedPaths: mocks.fetchTypedPaths,
+}));
+
 import { ManifestEditor } from "./manifest-editor";
 import { TestSdkProvider } from "../testing/test-sdk-provider";
 
@@ -370,6 +389,269 @@ describe("ManifestEditor", () => {
 
       const method = screen.getByLabelText(/requirement method/i);
       expect(method.tagName).toBe("INPUT");
+    });
+  });
+
+  /**
+   * Param-value Save gate: a `$.selector` that doesn't resolve to a
+   * valid typed-path for the param's declared type must block Save
+   * AND surface an inline error. Without this, users could ship
+   * manifests with selectors like `$.action.inputToken.amount.khhh`
+   * that look right but fail at install/runtime.
+   */
+  describe("Param-value Save gate", () => {
+    function fakeCatalog() {
+      return {
+        methods: {
+          "oracle.usd_value": {
+            name: "oracle.usd_value",
+            description: "Convert a token amount to USD",
+            params: {
+              chain_id: { type: "Long" as const, required: true },
+              asset: { type: "AssetRef" as const, required: true },
+              amount: { type: "String" as const, required: true },
+            },
+            returns: { kind: "record" as const, type: "UsdValuation" as const },
+            origin: "bundled" as const,
+          },
+        },
+      };
+    }
+
+    function setTypedPaths() {
+      mocks.fetchTypedPaths.mockResolvedValueOnce({
+        paths: {
+          action: "swap",
+          scalars: [
+            { path: "$.root.chain_id", cedarType: "long" },
+            { path: "$.action.inputToken.amount.value", cedarType: "string" },
+          ],
+          records: [
+            { path: "$.action.inputToken.asset", cedarAlias: "AssetRef" },
+          ],
+        },
+      });
+    }
+
+    it("blocks Save and shows an inline error when a $.selector is unknown", async () => {
+      setTypedPaths();
+      const putManifest = vi.fn(async () => mkPutResult());
+      const { client } = renderEditor("swap", {
+        putManifest,
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      await waitFor(() => expect(mocks.fetchTypedPaths).toHaveBeenCalled());
+
+      // Compose a valid-shaped row first so only the bad selector
+      // blocks Save (manifest id set, requirement id set, method set,
+      // optional ticked to bypass the outputs requirement).
+      fireEvent.change(screen.getByLabelText(/manifest id/i), {
+        target: { value: "user.swap.v1" },
+      });
+      fireEvent.click(screen.getByText(/Add requirement/i));
+      fireEvent.change(screen.getByLabelText(/requirement id/i), {
+        target: { value: "oracle-usd" },
+      });
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+      fireEvent.click(screen.getByLabelText(/requirement optional/i));
+
+      // Type a malformed selector into the `amount` (String) picker.
+      // Each catalog param renders one SelectorPicker (label="Selector
+      // path"). The order is chain_id, asset, amount — index 2 is the
+      // String-typed `amount` slot.
+      const pickers = screen
+        .getAllByLabelText(/selector path/i)
+        .filter((el) => el.tagName === "INPUT");
+      fireEvent.change(pickers[2], {
+        target: { value: "$.action.inputToken.amount.khhh" },
+      });
+
+      // Inline error shows up under the bad param, Save disabled. The
+      // other two required params (chain_id, asset) are still empty so
+      // their own "Required" errors also render — we only assert that
+      // the unknown-selector message is among them.
+      await waitFor(() => {
+        const errs = screen.getAllByTestId("manifest-param-err");
+        expect(
+          errs.some((e) =>
+            /khhh.*not a valid String selector/i.test(e.textContent ?? ""),
+          ),
+        ).toBe(true);
+      });
+      const save = screen.getByRole("button", { name: /^Save$/ });
+      expect(save.hasAttribute("disabled")).toBe(true);
+      fireEvent.click(save);
+      expect(putManifest).not.toHaveBeenCalled();
+    });
+
+    it("blocks Save when a required catalog param is left empty", async () => {
+      setTypedPaths();
+      const { client } = renderEditor("swap", {
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      await waitFor(() => expect(mocks.fetchTypedPaths).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByLabelText(/manifest id/i), {
+        target: { value: "user.swap.v1" },
+      });
+      fireEvent.click(screen.getByText(/Add requirement/i));
+      fireEvent.change(screen.getByLabelText(/requirement id/i), {
+        target: { value: "oracle-usd" },
+      });
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+      fireEvent.click(screen.getByLabelText(/requirement optional/i));
+
+      // PaperEdit removed the auto-defaultSelector prefill — the row
+      // arrives with empty values, so a required-param error should
+      // appear for every required slot (3) without any keystroke.
+      await waitFor(() =>
+        expect(screen.getAllByTestId("manifest-param-err").length).toBe(3),
+      );
+      const save = screen.getByRole("button", { name: /^Save$/ });
+      expect(save.hasAttribute("disabled")).toBe(true);
+    });
+
+    it("accepts $.context.* and $.params.* as overrides (daemon does final check)", async () => {
+      // The typed-paths fixture from `get_typed_paths_for_action_json`
+      // intentionally omits $.context.* (the lowered Cedar context can
+      // carry engine-computed fields like inputAmountNano that don't
+      // live on the envelope). Validating against typed-paths would
+      // produce a false-positive for legitimate selectors like
+      // `$.context.inputAmountNano`. The validator must accept these
+      // and let the daemon do the final check.
+      setTypedPaths();
+      const putManifest = vi.fn(async () => mkPutResult());
+      const { client } = renderEditor("swap", {
+        putManifest,
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      await waitFor(() => expect(mocks.fetchTypedPaths).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByLabelText(/manifest id/i), {
+        target: { value: "user.swap.v1" },
+      });
+      fireEvent.click(screen.getByText(/Add requirement/i));
+      fireEvent.change(screen.getByLabelText(/requirement id/i), {
+        target: { value: "oracle-usd" },
+      });
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+      fireEvent.click(screen.getByLabelText(/requirement optional/i));
+
+      const pickers = screen
+        .getAllByLabelText(/selector path/i)
+        .filter((el) => el.tagName === "INPUT");
+      // chain_id (Long): use $.context.inputAmountNano which is Long
+      // and lives ONLY in the lowered context (not envelope.fields), so
+      // it's absent from typed-paths but valid at runtime.
+      fireEvent.change(pickers[0], {
+        target: { value: "$.context.inputAmountNano" },
+      });
+      // asset (AssetRef): $.params.* — daemon resolves at call time.
+      fireEvent.change(pickers[1], {
+        target: { value: "$.params.asset" },
+      });
+      // amount (String): $.context.recipient is a string field on the
+      // lowered context.
+      fireEvent.change(pickers[2], {
+        target: { value: "$.context.recipient" },
+      });
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("manifest-param-err")).toBeNull(),
+      );
+      expect(
+        screen.getByRole("button", { name: /^Save$/ }).hasAttribute("disabled"),
+      ).toBe(false);
+    });
+
+    it("rejects unknown selector roots like $.foo.bar", async () => {
+      setTypedPaths();
+      const { client } = renderEditor("swap", {
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      await waitFor(() => expect(mocks.fetchTypedPaths).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByLabelText(/manifest id/i), {
+        target: { value: "user.swap.v1" },
+      });
+      fireEvent.click(screen.getByText(/Add requirement/i));
+      fireEvent.change(screen.getByLabelText(/requirement id/i), {
+        target: { value: "oracle-usd" },
+      });
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+      fireEvent.click(screen.getByLabelText(/requirement optional/i));
+
+      const pickers = screen
+        .getAllByLabelText(/selector path/i)
+        .filter((el) => el.tagName === "INPUT");
+      fireEvent.change(pickers[2], {
+        target: { value: "$.foo.bar" },
+      });
+
+      await waitFor(() => {
+        const errs = screen.getAllByTestId("manifest-param-err");
+        expect(
+          errs.some((e) =>
+            /Unknown selector root '\$\.foo'/.test(e.textContent ?? ""),
+          ),
+        ).toBe(true);
+      });
+    });
+
+    it("accepts a valid $.selector that matches the param's typed-path list", async () => {
+      setTypedPaths();
+      const putManifest = vi.fn(async () => mkPutResult());
+      const { client } = renderEditor("swap", {
+        putManifest,
+        getMethodCatalog: vi.fn(async () => fakeCatalog()),
+      });
+      await waitFor(() => expect(client.getMethodCatalog).toHaveBeenCalled());
+      await waitFor(() => expect(mocks.fetchTypedPaths).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByLabelText(/manifest id/i), {
+        target: { value: "user.swap.v1" },
+      });
+      fireEvent.click(screen.getByText(/Add requirement/i));
+      fireEvent.change(screen.getByLabelText(/requirement id/i), {
+        target: { value: "oracle-usd" },
+      });
+      fireEvent.change(screen.getByLabelText(/requirement method/i), {
+        target: { value: "oracle.usd_value" },
+      });
+      fireEvent.click(screen.getByLabelText(/requirement optional/i));
+
+      // Fill each required param with a valid path from the typed-paths
+      // fixture (chain_id, asset, amount in that order).
+      const pickers = screen
+        .getAllByLabelText(/selector path/i)
+        .filter((el) => el.tagName === "INPUT");
+      fireEvent.change(pickers[0], { target: { value: "$.root.chain_id" } });
+      fireEvent.change(pickers[1], {
+        target: { value: "$.action.inputToken.asset" },
+      });
+      fireEvent.change(pickers[2], {
+        target: { value: "$.action.inputToken.amount.value" },
+      });
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("manifest-param-err")).toBeNull(),
+      );
+      const save = screen.getByRole("button", { name: /^Save$/ });
+      expect(save.hasAttribute("disabled")).toBe(false);
+      fireEvent.click(save);
+      await waitFor(() => expect(putManifest).toHaveBeenCalledTimes(1));
     });
   });
 });

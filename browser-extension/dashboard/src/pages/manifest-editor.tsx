@@ -30,7 +30,11 @@ import type {
 } from "@scopeball/sdk";
 import { useExtension } from "../sdk-context";
 import { OutputRow, type OutputDraft } from "../manifest/output-row";
-import { SelectorPicker } from "../manifest/selector-picker";
+import {
+  SelectorPicker,
+  filterTypedPaths,
+} from "../manifest/selector-picker";
+import { fetchTypedPaths, type TypedPaths } from "../policy/builder-wasm";
 import "./manifest-editor.css";
 
 interface ParamRow {
@@ -81,11 +85,97 @@ interface DraftValidation {
     idErr: string | null;
     methodErr: string | null;
     needsOutputs: boolean;
+    // paramErrs[j] = error for the j-th param of this requirement.
+    // `null` when valid. Populated only when `methodCatalog` declares
+    // a spec for that param — catalog-less rows can't be validated and
+    // fall through as `null` (legacy permissive behaviour).
+    paramErrs: Array<string | null>;
     outputErrs: Array<{ fieldErr: string | null; typeErr: string | null }>;
   }>;
 }
 
-export function validateDraft(draft: ManifestDraft): DraftValidation {
+/**
+ * Validate a single param value against its catalog spec + the
+ * action's typed-path table. Returns `null` when valid (or when we
+ * lack the data to validate).
+ *
+ * Rules:
+ * - empty + required → "Required"
+ * - enum_-constrained → value must be in the enum
+ * - `$.action.*` / `$.root.*` selector → must appear in
+ *   `filterTypedPaths(typedPaths, spec.type)` when that list is
+ *   non-empty. These two roots have authoritative typed-path lists
+ *   from `get_typed_paths_for_action_json`, so a missing entry means
+ *   the path genuinely doesn't exist (typo, removed field).
+ *   (An empty matching list means the action has NO path of this type
+ *   — we accept any `$.action`/`$.root` selector as a manual override
+ *   to match the picker's empty-state input forgiveness.)
+ * - `$.context.*` / `$.result.*` / `$.params.*` selector → accepted as
+ *   override. The Rust typed-paths fixture intentionally omits these
+ *   roots (the lowered context can carry computed fields like
+ *   `inputAmountNano` that don't live on the envelope; result/params
+ *   shapes are runtime-defined). Daemon does the final check.
+ * - unknown `$.foo.…` root → rejected.
+ * - non-`$.` Bool literal → must be exactly `"true"` or `"false"`
+ * - other non-`$.` literals → pass through (server-side validates)
+ *
+ * `typedPaths === null` (still loading or fetch failed) makes selector
+ * validation a no-op so the user isn't blocked by a transient cache miss.
+ */
+export function validateParamValue(
+  rawValue: string,
+  spec: MethodParamSpec | undefined,
+  typedPaths: TypedPaths | null,
+): string | null {
+  const value = rawValue.trim();
+  if (value === "") {
+    return spec?.required === true ? "Required" : null;
+  }
+  if (!spec) return null;
+
+  if (spec.enum_ && spec.enum_.length > 0) {
+    if (!(spec.enum_ as readonly string[]).includes(value)) {
+      return `Must be one of: ${spec.enum_.join(", ")}`;
+    }
+    return null;
+  }
+
+  if (value.startsWith("$.")) {
+    const root = value.split(".", 2)[1] ?? "";
+    // Roots with authoritative typed-path lists — strict check.
+    if (root === "action" || root === "root") {
+      if (!typedPaths) return null;
+      const matching = filterTypedPaths(typedPaths, spec.type);
+      if (matching.length === 0) return null;
+      if (!matching.includes(value)) {
+        return `'${value}' is not a valid ${spec.type} selector for this action`;
+      }
+      return null;
+    }
+    // Roots whose shape isn't enumerated client-side — defer to daemon.
+    if (
+      root === "context" ||
+      root === "result" ||
+      root === "params"
+    ) {
+      return null;
+    }
+    return `Unknown selector root '$.${root}'`;
+  }
+
+  if (spec.type === "Bool") {
+    if (value !== "true" && value !== "false") {
+      return "Must be true, false, or a $.selector";
+    }
+  }
+  return null;
+}
+
+export function validateDraft(
+  draft: ManifestDraft,
+  methodCatalog: MethodCatalog | null = null,
+  typedPaths: TypedPaths | null = null,
+): DraftValidation {
   const manifestIdErr = draft.id.trim() === "" ? "Manifest id is required" : null;
   const requirementErrs = draft.requires.map((r) => {
     const idErr = r.id.trim() === "" ? "Requirement id is required" : null;
@@ -95,11 +185,15 @@ export function validateDraft(draft: ManifestDraft): DraftValidation {
     // can't actually fail closed.
     const nonEmptyOutputs = r.outputs.filter((o) => o.field.trim() !== "");
     const needsOutputs = !r.optional && nonEmptyOutputs.length === 0;
+    const methodEntry = methodCatalog?.methods?.[r.method];
+    const paramErrs = r.params.map((p) =>
+      validateParamValue(p.selector, methodEntry?.params?.[p.key], typedPaths),
+    );
     const outputErrs = r.outputs.map((o) => ({
       fieldErr: o.field.trim() === "" ? "Field name is required" : null,
       typeErr: o.type.trim() === "" ? "Type is required" : null,
     }));
-    return { idErr, methodErr, needsOutputs, outputErrs };
+    return { idErr, methodErr, needsOutputs, paramErrs, outputErrs };
   });
   const valid =
     manifestIdErr === null &&
@@ -108,6 +202,7 @@ export function validateDraft(draft: ManifestDraft): DraftValidation {
         e.idErr === null &&
         e.methodErr === null &&
         !e.needsOutputs &&
+        e.paramErrs.every((p) => p === null) &&
         e.outputErrs.every((o) => o.fieldErr === null && o.typeErr === null),
     );
   return { valid, manifestIdErr, requirementErrs };
@@ -253,6 +348,12 @@ export function ManifestEditor(): JSX.Element {
   const [methodCatalog, setMethodCatalog] = useState<MethodCatalog | null>(
     null,
   );
+  // Per-action typed-path table — drives the Save-time check that
+  // every `$.selector` actually resolves under this action's schema.
+  // `null` while loading; an empty `{scalars: [], records: []}` payload
+  // (action has no typed paths at all) is a valid loaded state and the
+  // validator treats it the same as "no truth source, accept anything".
+  const [typedPaths, setTypedPaths] = useState<TypedPaths | null>(null);
 
   // Load alias table + existing manifest + bundled starter-pack manifest
   // + method catalog on mount. None of these block first paint — the
@@ -282,6 +383,26 @@ export function ManifestEditor(): JSX.Element {
       cancelled = true;
     };
   }, [client, action]);
+
+  // Fetch the action's typed-path table separately — it lives behind a
+  // WASM call and only the param-validator needs it, so we keep it off
+  // the critical-path Promise.all above. A failure leaves `typedPaths`
+  // as `null` and the validator becomes a no-op (legacy permissive).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchTypedPaths(action);
+        if (cancelled) return;
+        if (res.paths) setTypedPaths(res.paths);
+      } catch (e) {
+        console.warn("[ManifestEditor] typed-paths load failed:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [action]);
 
   const onPreview = useCallback(async () => {
     setBusy("preview");
@@ -360,7 +481,10 @@ export function ManifestEditor(): JSX.Element {
   // Phase 7 codex carry-over L: validate before enabling Save.
   // `Preview` stays clickable while invalid — the user is allowed to
   // probe the server-side validator without committing.
-  const validation = useMemo(() => validateDraft(draft), [draft]);
+  const validation = useMemo(
+    () => validateDraft(draft, methodCatalog, typedPaths),
+    [draft, methodCatalog, typedPaths],
+  );
 
   const aliasOptions = useMemo(
     () =>
@@ -439,6 +563,7 @@ export function ManifestEditor(): JSX.Element {
             value={r}
             aliasOptions={aliasOptions}
             methodCatalog={methodCatalog}
+            paramErrs={validation.requirementErrs[ri]?.paramErrs ?? []}
             onChange={(next) =>
               setDraft({
                 ...draft,
@@ -511,13 +636,23 @@ interface RequiresEditorProps {
    *     mode. Better than blanking the editor and stranding the user.
    */
   methodCatalog: MethodCatalog | null;
+  /** Per-param validation error from `validateDraft`. Aligned 1:1 with
+   * `value.params`. `null` slot = valid (or no spec to validate against). */
+  paramErrs: ReadonlyArray<string | null>;
   onChange: (next: RequiresRow) => void;
   onRemove: () => void;
 }
 
 function RequiresEditor(props: RequiresEditorProps): JSX.Element {
-  const { action, value, aliasOptions, methodCatalog, onChange, onRemove } =
-    props;
+  const {
+    action,
+    value,
+    aliasOptions,
+    methodCatalog,
+    paramErrs,
+    onChange,
+    onRemove,
+  } = props;
   const methodEntry: MethodCatalogEntry | undefined =
     methodCatalog?.methods?.[value.method];
   // Catalog-aware mode kicks in when (1) the catalog loaded with at
@@ -631,6 +766,7 @@ function RequiresEditor(props: RequiresEditorProps): JSX.Element {
         <summary>Params ({value.params.length})</summary>
         {value.params.map((p, i) => {
           const spec = methodEntry?.params?.[p.key];
+          const paramErr = paramErrs[i] ?? null;
           return (
             <div key={i} className="manifest-param-row">
               {isCatalogMethod ? (
@@ -725,6 +861,15 @@ function RequiresEditor(props: RequiresEditorProps): JSX.Element {
                   ×
                 </button>
               )}
+              {paramErr ? (
+                <span
+                  className="manifest-param-err"
+                  data-testid="manifest-param-err"
+                  role="alert"
+                >
+                  {paramErr}
+                </span>
+              ) : null}
             </div>
           );
         })}

@@ -1,5 +1,11 @@
 import { useMemo } from "react";
 import type { FieldDto, OperatorDto, Predicate } from "../policy/types";
+import { normalizeDecimalForDisplay } from "../policy/normalize-decimal";
+import { normalizeLongForDisplay } from "../policy/normalize-long";
+import {
+  isEvmAddressField,
+  normalizeAddressForDisplay,
+} from "../policy/normalize-address";
 import "./PredicateRow.css";
 
 interface PredicateRowProps {
@@ -476,6 +482,12 @@ function ValueInput({
     );
   }
   const text = typeof value === "string" ? value : "";
+  // Per-type display normalizers fire on blur — keystroke-time would
+  // eat in-progress input (typing `1.` would snap to `1.0`, prepending
+  // `0x` mid-paste, etc.). All three families share the same lift:
+  // strip near-miss shapes (`100.0` → `100`, `1` → `1.0`, `abc…` → `0xabc…`)
+  // so the user sees the canonical form before Compile.
+  const normalizeForBlur = pickOneArityNormalizer(field);
   return (
     <input
       className="pr-value"
@@ -483,8 +495,48 @@ function ValueInput({
       placeholder={placeholder}
       value={text}
       onChange={(e) => onChange(e.target.value)}
+      onBlur={
+        normalizeForBlur
+          ? (e) => {
+              const normalized = normalizeForBlur(e.target.value);
+              if (normalized !== e.target.value) onChange(normalized);
+            }
+          : undefined
+      }
     />
   );
+}
+
+/**
+ * Decide which display normalizer (if any) the single-operand input
+ * should run on blur, based on the field's Cedar type and pattern.
+ *   - decimal type            → integer ↔ fractional shape lift
+ *   - long type               → drop `.0+` fractional zeros
+ *   - EVM address pattern     → prepend `0x`, fold uppercase prefix
+ *   - other (incl. scaled
+ *     long, generic string)   → no normalization (raw value passed
+ *                              through as-is; downstream validators
+ *                              report on the user's literal text)
+ *
+ * Returns `undefined` to mean "don't attach an onBlur handler at all"
+ * so React doesn't pay the listener cost on every keystroke for
+ * fields that wouldn't benefit.
+ */
+function pickOneArityNormalizer(
+  field: FieldDto | undefined,
+): ((raw: string) => string) | undefined {
+  if (!field) return undefined;
+  if (field.type === "decimal") return normalizeDecimalForDisplay;
+  // Scaled longs (e.g. `inputAmountNano`) already accept decimal
+  // shapes via `scale_decimal_to_long` — skip the integer normalizer
+  // so the user keeps fractional precision.
+  if (field.type === "long" && (field.scale === undefined || field.scale === null)) {
+    return normalizeLongForDisplay;
+  }
+  if (field.type === "string" && isEvmAddressField(field.pattern)) {
+    return normalizeAddressForDisplay;
+  }
+  return undefined;
 }
 
 /// Format hint shown as the `<input>` placeholder. Disappears on focus,

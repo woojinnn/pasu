@@ -10,7 +10,10 @@
 //!
 //! [`Predicate`]: crate::types::Predicate
 
-use crate::escape::{escape_decimal, escape_long, escape_string, EscapeError};
+use crate::escape::{
+    escape_decimal, escape_long, escape_string, normalize_decimal_input, normalize_long_input,
+    EscapeError,
+};
 use crate::types::{CedarType, PredicateValue};
 use thiserror::Error;
 
@@ -160,7 +163,12 @@ fn emit_long_cmp(
 ) -> impl Fn(&str, &PredicateValue) -> Result<String, EmitError> {
     move |left, value| {
         let raw = one_operand(op, value)?;
-        let rendered = escape_long(raw).map_err(|e| bad_operand(op, e))?;
+        // Coerce fractional-zero shapes (`"1.0"`, `"100.00"`) so users
+        // who copy-paste integers from DEX UIs aren't told their Long
+        // input is invalid. Non-zero fractional digits still fail —
+        // we never silently round.
+        let normalized = normalize_long_input(raw).map_err(|e| bad_operand(op, e))?;
+        let rendered = escape_long(&normalized).map_err(|e| bad_operand(op, e))?;
         Ok(format!("{left} {symbol} {rendered}"))
     }
 }
@@ -298,7 +306,13 @@ fn emit_decimal_method(
 ) -> impl Fn(&str, &PredicateValue) -> Result<String, EmitError> {
     move |left, value| {
         let raw = one_operand(op, value)?;
-        let rendered = escape_decimal(raw).map_err(|e| bad_operand(op, e))?;
+        // Coerce UI-friendly shapes (`"1"`, `".5"`, `"1."`) into Cedar's
+        // strict `<digits>.<frac>` form before validating. Without this,
+        // the user has to remember to type the trailing `.0` themselves —
+        // a footgun for any field typed as `decimal` (USD valuations,
+        // ratios, etc.).
+        let normalized = normalize_decimal_input(raw).map_err(|e| bad_operand(op, e))?;
+        let rendered = escape_decimal(&normalized).map_err(|e| bad_operand(op, e))?;
         Ok(format!("{left}.{method}({rendered})"))
     }
 }
@@ -391,9 +405,15 @@ const SET_STRING_OPS: &[Operator] = &[
 ];
 
 // Set<Long>
+//
+// All three Set<Long> emitters share the same fractional-zero
+// tolerance Long comparison gained above — keeps `"1, 2.0, 3"` from
+// failing on the middle element when the user's source UI rendered
+// integers with a trailing `.0`.
 fn emit_set_long_contains(left: &str, v: &PredicateValue) -> Result<String, EmitError> {
     let raw = one_operand("contains", v)?;
-    let rendered = escape_long(raw).map_err(|e| bad_operand("contains", e))?;
+    let normalized = normalize_long_input(raw).map_err(|e| bad_operand("contains", e))?;
+    let rendered = escape_long(&normalized).map_err(|e| bad_operand("contains", e))?;
     Ok(format!("{left}.contains({rendered})"))
 }
 
@@ -401,7 +421,8 @@ fn emit_set_long_contains_any(left: &str, v: &PredicateValue) -> Result<String, 
     let xs = many_operands("containsAny", v)?;
     let mut rendered_parts = Vec::with_capacity(xs.len());
     for x in xs {
-        rendered_parts.push(escape_long(x).map_err(|e| bad_operand("containsAny", e))?);
+        let normalized = normalize_long_input(x).map_err(|e| bad_operand("containsAny", e))?;
+        rendered_parts.push(escape_long(&normalized).map_err(|e| bad_operand("containsAny", e))?);
     }
     Ok(format!(
         "{left}.containsAny([{}])",
@@ -413,7 +434,8 @@ fn emit_set_long_contains_all(left: &str, v: &PredicateValue) -> Result<String, 
     let xs = many_operands("containsAll", v)?;
     let mut rendered_parts = Vec::with_capacity(xs.len());
     for x in xs {
-        rendered_parts.push(escape_long(x).map_err(|e| bad_operand("containsAll", e))?);
+        let normalized = normalize_long_input(x).map_err(|e| bad_operand("containsAll", e))?;
+        rendered_parts.push(escape_long(&normalized).map_err(|e| bad_operand("containsAll", e))?);
     }
     Ok(format!(
         "{left}.containsAll([{}])",
@@ -472,6 +494,50 @@ mod tests {
             out,
             r#"context.custom.totalInputUsd.value.greaterThan(decimal("100.00"))"#
         );
+    }
+
+    #[test]
+    fn decimal_gt_accepts_integer_input_via_normalization() {
+        // Previously a user typing `1` into a decimal field hit
+        // "invalid decimal literal: 1" because Cedar's `decimal()`
+        // parser demands a fractional part. The normalizer in
+        // `emit_decimal_method` now coerces `1` → `1.0` so the same
+        // input compiles to the same literal as if the user had typed
+        // `1.0` explicitly.
+        let op = find(CedarType::Decimal, "gt").unwrap();
+        let out = op
+            .emit(
+                "context.custom.totalInputUsd.value",
+                &PredicateValue::Single("1".into()),
+            )
+            .unwrap();
+        assert_eq!(
+            out,
+            r#"context.custom.totalInputUsd.value.greaterThan(decimal("1.0"))"#
+        );
+
+        // Other loose UI shapes the normalizer covers — make sure they
+        // all reach the same operator emission path without erroring.
+        for (raw, expected_literal) in [
+            (".5", "0.5"),
+            ("1.", "1.0"),
+            ("-1", "-1.0"),
+            ("-.25", "-0.25"),
+        ] {
+            let emitted = op
+                .emit(
+                    "context.custom.totalInputUsd.value",
+                    &PredicateValue::Single(raw.into()),
+                )
+                .unwrap();
+            assert_eq!(
+                emitted,
+                format!(
+                    r#"context.custom.totalInputUsd.value.greaterThan(decimal("{expected_literal}"))"#
+                ),
+                "raw={raw}"
+            );
+        }
     }
 
     #[test]
@@ -549,5 +615,40 @@ mod tests {
             .emit("context.x", &PredicateValue::Single("abc".into()))
             .unwrap_err();
         assert!(matches!(err, EmitError::BadOperand { .. }));
+    }
+
+    #[test]
+    fn long_gt_accepts_fractional_zero_via_normalization() {
+        // Mirror of the decimal fix: `100.0` should compile the same
+        // as `100`. Without normalization the user gets "invalid Long
+        // literal: 100.0" — a confusing error for a value that's
+        // semantically an integer.
+        let op = find(CedarType::Long, "gt").unwrap();
+        let out = op
+            .emit("context.feeBps", &PredicateValue::Single("100.0".into()))
+            .unwrap();
+        assert_eq!(out, "context.feeBps > 100");
+
+        // Non-zero fraction must still fail — silent rounding would
+        // be worse than a clear error.
+        let err = op
+            .emit("context.feeBps", &PredicateValue::Single("100.5".into()))
+            .unwrap_err();
+        assert!(matches!(err, EmitError::BadOperand { .. }));
+    }
+
+    #[test]
+    fn set_long_contains_normalizes_each_element() {
+        // Every operand in the set goes through the same normalizer,
+        // so `"1, 2.0, 3"` from a UI that adds trailing `.0` on
+        // integers compiles cleanly.
+        let op = find(CedarType::SetOfLong, "containsAny").unwrap();
+        let out = op
+            .emit(
+                "context.allowedFeeBps",
+                &PredicateValue::Multi(vec!["1".into(), "2.0".into(), "3".into()]),
+            )
+            .unwrap();
+        assert_eq!(out, "context.allowedFeeBps.containsAny([1, 2, 3])");
     }
 }

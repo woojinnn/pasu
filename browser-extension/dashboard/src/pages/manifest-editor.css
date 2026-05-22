@@ -171,6 +171,18 @@
   content: "⚠ ";
 }
 
+/* Per-param save-time validation error (PR: invalid selector blocks save).
+   Spans the full grid row so it sits under the picker instead of
+   squeezing into the trailing `auto` column with the remove button. */
+.manifest-param-err {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  color: #b00020;
+}
+.manifest-param-err::before {
+  content: "⚠ ";
+}
+
 /* Phase 8.5 — catalog-driven editor visual affordances. */
 .manifest-method-description {
   margin: 0.25rem 0 0.5rem;

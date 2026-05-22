@@ -1042,6 +1042,41 @@ mod overlay_tests {
     }
 
     #[test]
+    fn compile_with_overlay_decimal_field_accepts_integer_value() {
+        // Regression: the `Input value (USD)` field is `decimal`-typed.
+        // A user typing `1` (no fractional part) used to dead-end with
+        // "predicate 0: operand for gt: invalid decimal literal: 1"
+        // because Cedar's `decimal()` parser is strict. The emit-path
+        // normalizer (`escape::normalize_decimal_input`) now coerces
+        // `1` → `1.0` before validating, so the same compile that
+        // worked with `1.0` also works with `1`.
+        let input = serde_json::json!({
+            "action": "swap",
+            "rule": {
+                "id": "user/usd-cap",
+                "action": "swap",
+                "severity": "deny",
+                "reason": "USD too high",
+                "predicates": [{
+                    "field": "totalInputUsd.value",
+                    "op": "gt",
+                    "value": "1"
+                }]
+            },
+            "overlay": [{ "field": "totalInputUsd", "cedarType": "UsdValuation" }]
+        })
+        .to_string();
+        let out = call_compile_overlay(&input);
+        assert_eq!(out["ok"], Value::Bool(true), "got: {out:?}");
+        let cedar_text = out["data"]["cedar_text"].as_str().unwrap();
+        assert!(
+            cedar_text
+                .contains(r#"context.custom.totalInputUsd.value.greaterThan(decimal("1.0"))"#),
+            "expected normalized decimal literal 1.0, got:\n{cedar_text}"
+        );
+    }
+
+    #[test]
     fn compile_with_overlay_action_mismatch_rejected() {
         // Defence-in-depth: if the wrapper accidentally puts a different
         // action on the envelope than the rule carries, we'd compile

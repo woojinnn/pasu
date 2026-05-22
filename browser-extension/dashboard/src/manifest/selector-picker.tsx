@@ -112,7 +112,7 @@ function buildPathTree(fields: ReadonlyArray<FieldDto>): PathTreeNode {
  * picker shows an explanatory empty state rather than silently
  * degrading to the untyped tree.
  */
-function filterTypedPaths(
+export function filterTypedPaths(
   paths: TypedPaths,
   requiredType: string,
 ): string[] {

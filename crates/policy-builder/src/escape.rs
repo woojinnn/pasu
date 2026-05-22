@@ -75,6 +75,52 @@ pub fn escape_long(value: &str) -> Result<String, EscapeError> {
         .map_err(|_| EscapeError::InvalidLong(value.to_string()))
 }
 
+/// Coerce a UI integer input into the strict form `escape_long`
+/// accepts. Tolerates a fractional part of all-zeros (`"1.0"`,
+/// `"100.00"`, `"-1.0"`) since users naturally copy-paste those from
+/// DEX UIs and explorers — strips the fractional zeros and emits the
+/// integer. Rejects any non-zero fractional digit (`"1.5"`) so we
+/// never silently round.
+///
+/// # Errors
+///
+/// Returns [`EscapeError::InvalidLong`] when the input has a non-zero
+/// fractional part, non-digit characters, multiple `.`, or any shape
+/// that can't be coerced to an integer by trimming trailing `.0+`.
+#[must_use]
+pub fn normalize_long_input(value: &str) -> Result<String, EscapeError> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(EscapeError::InvalidLong(value.to_string()));
+    }
+    let (sign, rest) = match trimmed.as_bytes()[0] {
+        b'-' => ("-", &trimmed[1..]),
+        b'+' => ("", &trimmed[1..]),
+        _ => ("", trimmed),
+    };
+    if rest.is_empty() {
+        return Err(EscapeError::InvalidLong(value.to_string()));
+    }
+    let mut parts = rest.splitn(3, '.');
+    let int_part = parts.next().unwrap_or("");
+    let frac_part = parts.next().unwrap_or("");
+    if parts.next().is_some() {
+        return Err(EscapeError::InvalidLong(value.to_string()));
+    }
+    if int_part.is_empty() || !int_part.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(EscapeError::InvalidLong(value.to_string()));
+    }
+    if !frac_part.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(EscapeError::InvalidLong(value.to_string()));
+    }
+    // The fractional part must be all-zeros — anything else would mean
+    // silently rounding the user's input.
+    if frac_part.bytes().any(|b| b != b'0') {
+        return Err(EscapeError::InvalidLong(value.to_string()));
+    }
+    Ok(format!("{sign}{int_part}"))
+}
+
 /// Inverse of [`scale_decimal_to_long`]. Given an integer literal and a
 /// scale, reinsert the decimal point so a Long policy literal can be
 /// pretty-printed back as the human-facing value the user originally typed.
@@ -238,6 +284,63 @@ pub fn escape_decimal(value: &str) -> Result<String, EscapeError> {
     Ok(format!("decimal({})", escape_string(trimmed)))
 }
 
+/// Coerce a user-friendly decimal-shaped string into the strict
+/// `[-]?<digits>.<1..=4 digits>` form Cedar's `decimal()` parser
+/// accepts. Lets callers pass `"1"` / `".5"` / `"1."` / `"-1"` — the
+/// shapes a UI text input naturally produces — instead of forcing
+/// every entry point to remember Cedar's literal grammar.
+///
+/// Returns the input unchanged when it already has a fractional part,
+/// even with trailing zeros (`"1.50"` stays `"1.50"`) — the
+/// `escape_decimal` validator decides whether the shape is acceptable.
+///
+/// # Errors
+///
+/// Returns [`EscapeError::InvalidDecimal`] for empty input, multiple
+/// `.`, non-digit characters, or any other shape that can't be coerced
+/// to Cedar's accepted form by appending/prepending a `0`.
+#[must_use]
+pub fn normalize_decimal_input(value: &str) -> Result<String, EscapeError> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(EscapeError::InvalidDecimal(value.to_string()));
+    }
+    let (sign, rest) = match trimmed.as_bytes()[0] {
+        b'-' => ("-", &trimmed[1..]),
+        b'+' => ("", &trimmed[1..]),
+        _ => ("", trimmed),
+    };
+    if rest.is_empty() || rest.contains(' ') {
+        return Err(EscapeError::InvalidDecimal(value.to_string()));
+    }
+    // Split on `.` once; more than one dot is invalid.
+    let mut parts = rest.splitn(3, '.');
+    let int_part_raw = parts.next().unwrap_or("");
+    let frac_part_raw = parts.next();
+    if parts.next().is_some() {
+        return Err(EscapeError::InvalidDecimal(value.to_string()));
+    }
+    let int_part_normalized = if int_part_raw.is_empty() {
+        "0"
+    } else {
+        int_part_raw
+    };
+    let frac_part_normalized = match frac_part_raw {
+        None => "0",
+        Some("") => "0",
+        Some(f) => f,
+    };
+    if !int_part_normalized.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(EscapeError::InvalidDecimal(value.to_string()));
+    }
+    if !frac_part_normalized.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(EscapeError::InvalidDecimal(value.to_string()));
+    }
+    Ok(format!(
+        "{sign}{int_part_normalized}.{frac_part_normalized}"
+    ))
+}
+
 fn is_valid_decimal_lex(s: &str) -> bool {
     let bytes = s.as_bytes();
     let mut i = 0;
@@ -305,6 +408,85 @@ mod tests {
         assert!(escape_decimal("1.").is_err()); // no frac digits
         assert!(escape_decimal("1.12345").is_err()); // too many frac digits
         assert!(escape_decimal("1.5abc").is_err()); // trailing junk
+    }
+
+    #[test]
+    fn normalize_decimal_input_coerces_loose_shapes() {
+        // Integers get a `.0` so Cedar's parser accepts them.
+        assert_eq!(normalize_decimal_input("1").unwrap(), "1.0");
+        assert_eq!(normalize_decimal_input("100").unwrap(), "100.0");
+        assert_eq!(normalize_decimal_input("-1").unwrap(), "-1.0");
+        assert_eq!(normalize_decimal_input("+5").unwrap(), "5.0");
+        // Already-decimal stays decimal (trailing zeros preserved — the
+        // caller's strict validator decides if 1..=4 digits is OK).
+        assert_eq!(normalize_decimal_input("1.5").unwrap(), "1.5");
+        assert_eq!(normalize_decimal_input("1.50").unwrap(), "1.50");
+        assert_eq!(normalize_decimal_input("-0.25").unwrap(), "-0.25");
+        // Missing fractional digits ("1.") fills in with "0".
+        assert_eq!(normalize_decimal_input("1.").unwrap(), "1.0");
+        // Missing integer part (".5") prepends "0".
+        assert_eq!(normalize_decimal_input(".5").unwrap(), "0.5");
+        assert_eq!(normalize_decimal_input("-.5").unwrap(), "-0.5");
+        // Whitespace is trimmed.
+        assert_eq!(normalize_decimal_input("  42 ").unwrap(), "42.0");
+    }
+
+    #[test]
+    fn normalize_decimal_input_rejects_broken_shapes() {
+        assert!(normalize_decimal_input("").is_err());
+        assert!(normalize_decimal_input("   ").is_err());
+        assert!(normalize_decimal_input("-").is_err());
+        assert!(normalize_decimal_input("abc").is_err());
+        assert!(normalize_decimal_input("1.2.3").is_err()); // multi-dot
+        assert!(normalize_decimal_input("1 5").is_err()); // internal space
+        assert!(normalize_decimal_input("1.5a").is_err());
+    }
+
+    #[test]
+    fn normalize_long_input_accepts_fractional_zero() {
+        // Common copy-paste artifact: explorers / DEX UIs render
+        // integers with a trailing `.0` (`100.0`, `-1.0`). The
+        // normalizer strips them; the downstream `escape_long` then
+        // succeeds. Non-zero fractional digits still fail — we don't
+        // silently round.
+        assert_eq!(normalize_long_input("1").unwrap(), "1");
+        assert_eq!(normalize_long_input("1.0").unwrap(), "1");
+        assert_eq!(normalize_long_input("100.00").unwrap(), "100");
+        assert_eq!(normalize_long_input("-1").unwrap(), "-1");
+        assert_eq!(normalize_long_input("-1.0").unwrap(), "-1");
+        assert_eq!(normalize_long_input("+5").unwrap(), "5");
+        assert_eq!(normalize_long_input("  42 ").unwrap(), "42");
+        assert_eq!(normalize_long_input("0").unwrap(), "0");
+        assert_eq!(normalize_long_input("0.0").unwrap(), "0");
+    }
+
+    #[test]
+    fn normalize_long_input_rejects_non_zero_fraction_and_garbage() {
+        // Silent rounding would be a footgun, so we reject any
+        // non-zero fractional digit.
+        assert!(normalize_long_input("1.5").is_err());
+        assert!(normalize_long_input("100.01").is_err());
+        assert!(normalize_long_input("-0.5").is_err());
+
+        // Generic garbage stays rejected.
+        assert!(normalize_long_input("").is_err());
+        assert!(normalize_long_input("   ").is_err());
+        assert!(normalize_long_input("abc").is_err());
+        assert!(normalize_long_input("1.0.0").is_err());
+        assert!(normalize_long_input("1.5a").is_err());
+        assert!(normalize_long_input(".5").is_err()); // no int part
+        assert!(normalize_long_input("-").is_err());
+    }
+
+    #[test]
+    fn escape_decimal_after_normalize_round_trip() {
+        // Confirms the post-Phase fix: `escape_decimal(normalize("1"))`
+        // produces the same Cedar literal as `escape_decimal("1.0")`.
+        let normalized = normalize_decimal_input("1").unwrap();
+        assert_eq!(
+            escape_decimal(&normalized).unwrap(),
+            escape_decimal("1.0").unwrap(),
+        );
     }
 
     #[test]
