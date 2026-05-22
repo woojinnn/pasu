@@ -1,0 +1,46 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/nfpm-multicall-base@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/nfpm-multicall-base@1.0.0.json",
+  "bundle_sha256": "0xa2fcfa67a0963dcead2b1a001cf95f8d655387b3f2cb92e06d3bb34e1663e721",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/nfpm-multicall-base@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        8453
+      ],
+      "to": [
+        "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+      ],
+      "selector": "0xac9650d8"
+    },
+    "abi_fragment": {
+      "function_name": "multicall",
+      "abi": {
+        "name": "multicall",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "data",
+            "type": "bytes[]"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "multicall_recurse",
+      "recurse_rule_id": "self_array_bytes_last_arg",
+      "max_depth": 3
+    },
+    "requires": {
+      "imperative": [
+        "multicall-recurse@^1.0"
+      ],
+      "adapter_capabilities": [],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

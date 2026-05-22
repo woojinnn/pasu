@@ -1,0 +1,82 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/createAndInitializePoolIfNecessary-avalanche@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/createAndInitializePoolIfNecessary-avalanche@1.0.0.json",
+  "bundle_sha256": "0x7c3ed81dfa26b9b72539577952d4758f646ae5af92e53c6e1329b552d7a93eaf",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/createAndInitializePoolIfNecessary-avalanche@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        43114
+      ],
+      "to": [
+        "0x655C406EBFa14EE2006250925e54ec43AD184f8B"
+      ],
+      "selector": "0x13ead562"
+    },
+    "abi_fragment": {
+      "function_name": "createAndInitializePoolIfNecessary",
+      "abi": {
+        "name": "createAndInitializePoolIfNecessary",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "token0",
+            "type": "address"
+          },
+          {
+            "name": "token1",
+            "type": "address"
+          },
+          {
+            "name": "fee",
+            "type": "uint24"
+          },
+          {
+            "name": "sqrtPriceX96",
+            "type": "uint160"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "initialize_pool",
+      "fields": {
+        "pool.address": {
+          "literal": "0x0000000000000000000000000000000000000000"
+        },
+        "token0.kind": {
+          "literal": "erc20"
+        },
+        "token0.address": {
+          "from": "$.args.token0"
+        },
+        "token1.kind": {
+          "literal": "erc20"
+        },
+        "token1.address": {
+          "from": "$.args.token1"
+        },
+        "feeBps": {
+          "from": "$.args.fee"
+        },
+        "sqrtPriceX96": {
+          "from": "$.args.sqrtPriceX96"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/exactOutputSingle-unichain@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/exactOutputSingle-unichain@1.0.0.json",
+  "bundle_sha256": "0x6ee42d67be941c0f8de31267d64afc517dbfa382a3bc15d27f5ba95e40e6bc3e",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/exactOutputSingle-unichain@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        130
+      ],
+      "to": [
+        "0x73855d06DE49d0fe4A9c42636Ba96c62da12FF9C"
+      ],
+      "selector": "0x5023b4df"
+    },
+    "abi_fragment": {
+      "function_name": "exactOutputSingle",
+      "abi": {
+        "name": "exactOutputSingle",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "params",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "tokenIn",
+                "type": "address"
+              },
+              {
+                "name": "tokenOut",
+                "type": "address"
+              },
+              {
+                "name": "fee",
+                "type": "uint24"
+              },
+              {
+                "name": "recipient",
+                "type": "address"
+              },
+              {
+                "name": "amountOut",
+                "type": "uint256"
+              },
+              {
+                "name": "amountInMaximum",
+                "type": "uint256"
+              },
+              {
+                "name": "sqrtPriceLimitX96",
+                "type": "uint160"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "swapMode": {
+          "literal": "exact_out"
+        },
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "from": "$.args.tokenIn"
+        },
+        "inputToken.amount.kind": {
+          "literal": "max"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args.amountInMaximum"
+        },
+        "outputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "outputToken.asset.address": {
+          "from": "$.args.tokenOut"
+        },
+        "outputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args.amountOut"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

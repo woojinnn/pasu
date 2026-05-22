@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/permit2/permit@1.0.0",
   "manifest_path": "manifests/uniswap/permit2/permit@1.0.0.json",
-  "bundle_sha256": "0xaa30d87a69ed4fc1fa59273fd489b1c1b95a8aeb01885de455e912a22ca3daca",
+  "bundle_sha256": "0xda00f216640b0b7bd06c486feb017085ecd11142417e18a00741f6114611b95a",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/permit2/permit@1.0.0",
@@ -10,10 +10,18 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
+        56,
+        130,
+        137,
+        480,
+        8453,
         42161,
-        137
+        42220,
+        43114,
+        57073,
+        81457,
+        7777777
       ],
       "to": [
         "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -85,28 +93,28 @@
           "literal": "erc20"
         },
         "token.address": {
-          "from": "$.args.permitSingle.details.token"
+          "from": "$.args.permitSingle[0][0]"
         },
         "owner": {
           "from": "$.args.owner"
         },
         "spender": {
-          "from": "$.args.permitSingle.spender"
+          "from": "$.args.permitSingle[1]"
         },
         "amount.kind": {
           "literal": "max"
         },
         "amount.value": {
-          "from": "$.args.permitSingle.details.amount"
+          "from": "$.args.permitSingle[0][1]"
         },
         "validity.expiresAt": {
-          "from": "$.args.permitSingle.details.expiration"
+          "from": "$.args.permitSingle[0][2]"
         },
         "validity.source": {
           "literal": "grant-expiration"
         },
         "signatureValidity.expiresAt": {
-          "from": "$.args.permitSingle.sigDeadline"
+          "from": "$.args.permitSingle[2]"
         },
         "signatureValidity.source": {
           "literal": "signature-deadline"

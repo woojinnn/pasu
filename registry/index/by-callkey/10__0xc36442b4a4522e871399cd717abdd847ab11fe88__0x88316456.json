@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/mint@1.0.0",
   "manifest_path": "manifests/uniswap/v3/mint@1.0.0.json",
-  "bundle_sha256": "0xc44f81c308693010cfe389f552adc8a31208df2eeb053fbe50b485a1119e46f8",
+  "bundle_sha256": "0x25c1a8404a362f21c3969284e2888eec8029838f414521af54361692d9a36d0e",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/mint@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"

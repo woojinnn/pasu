@@ -15,7 +15,7 @@
 //! `UNWRAP_WETH`. The other UR opcodes (V2/V3/V4 swap, SWEEP, TRANSFER,
 //! PERMIT2_*) land in subsequent phases.
 
-mod common;
+pub(crate) mod common;
 pub mod sweep;
 pub mod transfer;
 pub mod unwrap_weth;
@@ -24,6 +24,7 @@ pub mod v2_swap_exact_out;
 pub mod v3_swap_exact_in;
 pub mod v3_swap_exact_out;
 pub mod v4_swap;
+pub mod v4_swap_builder;
 pub mod wrap_eth;
 
 #[cfg(test)]
@@ -53,6 +54,7 @@ pub use v3_swap_exact_out::{
     UR_V3_SWAP_EXACT_OUT_MAPPER_ID,
 };
 pub use v4_swap::{v4_swap_mapper_arc, v4_swap_mapper_key, UrV4SwapMapper, UR_V4_SWAP_MAPPER_ID};
+pub use v4_swap_builder::build_v4_swap_envelopes;
 pub use wrap_eth::{
     wrap_eth_mapper_arc, wrap_eth_mapper_key, UrWrapEthMapper, UR_WRAP_ETH_MAPPER_ID,
 };

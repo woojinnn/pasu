@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/permit2/transferFrom@1.0.0",
   "manifest_path": "manifests/uniswap/permit2/transferFrom@1.0.0.json",
-  "bundle_sha256": "0x718772bf91d7015f744738631d5c302c11938bd0664d29e3eab5ecd2240fe152",
+  "bundle_sha256": "0x872994ee1d92c53830b3f224f984b9a1cae93ac5b926c04c6025776fb6bd634a",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/permit2/transferFrom@1.0.0",
@@ -10,10 +10,18 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
+        56,
+        130,
+        137,
+        480,
+        8453,
         42161,
-        137
+        42220,
+        43114,
+        57073,
+        81457,
+        7777777
       ],
       "to": [
         "0x000000000022D473030F116dDEE9F6B43aC78BA3"

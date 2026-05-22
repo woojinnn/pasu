@@ -1,0 +1,105 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v2/swapExactTokensForETHSupportingFeeOnTransferTokens-worldchain@1.0.0",
+  "manifest_path": "manifests/uniswap/v2/swapExactTokensForETHSupportingFeeOnTransferTokens-worldchain@1.0.0.json",
+  "bundle_sha256": "0x0668a7f597b4f99c4a07549f99e0e0dad452c81df9c4d55dd25cfdb9d95c8e72",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v2/swapExactTokensForETHSupportingFeeOnTransferTokens-worldchain@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        480
+      ],
+      "to": [
+        "0x541aB7c31A119441eF3575F6973277DE0eF460bd"
+      ],
+      "selector": "0x791ac947"
+    },
+    "abi_fragment": {
+      "function_name": "swapExactTokensForETHSupportingFeeOnTransferTokens",
+      "abi": {
+        "name": "swapExactTokensForETHSupportingFeeOnTransferTokens",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "amountIn",
+            "type": "uint256"
+          },
+          {
+            "name": "amountOutMin",
+            "type": "uint256"
+          },
+          {
+            "name": "path",
+            "type": "address[]"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "fn": "select_address",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": 0
+            }
+          ]
+        },
+        "inputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args.amountIn"
+        },
+        "outputToken.asset.kind": {
+          "literal": "native"
+        },
+        "outputToken.amount.kind": {
+          "literal": "min"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args.amountOutMin"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "tx-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

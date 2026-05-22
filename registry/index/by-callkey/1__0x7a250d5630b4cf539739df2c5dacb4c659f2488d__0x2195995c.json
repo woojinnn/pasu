@@ -2,18 +2,14 @@
   "matched": true,
   "bundle_id": "uniswap/v2/removeLiquidityWithPermit@1.0.0",
   "manifest_path": "manifests/uniswap/v2/removeLiquidityWithPermit@1.0.0.json",
-  "bundle_sha256": "0xa1c779efe33fb12f5db5ea7c52b0aa10ba10b8c825dc38999f02d1be87844e6b",
+  "bundle_sha256": "0xd7ea0a5764788bf77b20cc54556c5222c0538c60e4c826046488280dac7a17e5",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/removeLiquidityWithPermit@1.0.0",
     "publisher": "uniswap.eth",
     "match": {
       "chain_ids": [
-        1,
-        8453,
-        10,
-        42161,
-        137
+        1
       ],
       "to": [
         "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"

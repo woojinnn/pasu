@@ -1,0 +1,74 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/sweepToken-base@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/sweepToken-base@1.0.0.json",
+  "bundle_sha256": "0x37aa77468b9878c79fee6759e298370dda1ab85c9987b1a79f92d76d4a81eff4",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/sweepToken-base@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        8453
+      ],
+      "to": [
+        "0x2626664c2603336E57B271c5C0b26F421741e481"
+      ],
+      "selector": "0xdf2ab5bb"
+    },
+    "abi_fragment": {
+      "function_name": "sweepToken",
+      "abi": {
+        "name": "sweepToken",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "amountMinimum",
+            "type": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "transfer",
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc20"
+        },
+        "token.asset.address": {
+          "from": "$.args.token"
+        },
+        "token.amount.kind": {
+          "literal": "min"
+        },
+        "token.amount.value": {
+          "from": "$.args.amountMinimum"
+        },
+        "from": {
+          "from": "$.tx.to"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

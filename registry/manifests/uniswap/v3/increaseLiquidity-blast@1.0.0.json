@@ -1,0 +1,101 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/v3/increaseLiquidity-blast@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      81457
+    ],
+    "to": [
+      "0xB218e4f7cF0533d4696fDfC419A0023D33345F28"
+    ],
+    "selector": "0x219f5d17"
+  },
+  "abi_fragment": {
+    "function_name": "increaseLiquidity",
+    "abi": {
+      "name": "increaseLiquidity",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "tokenId",
+              "type": "uint256"
+            },
+            {
+              "name": "amount0Desired",
+              "type": "uint256"
+            },
+            {
+              "name": "amount1Desired",
+              "type": "uint256"
+            },
+            {
+              "name": "amount0Min",
+              "type": "uint256"
+            },
+            {
+              "name": "amount1Min",
+              "type": "uint256"
+            },
+            {
+              "name": "deadline",
+              "type": "uint256"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "increase_liquidity",
+    "fields": {
+      "nft.kind": {
+        "literal": "erc721"
+      },
+      "nft.address": {
+        "literal": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+      },
+      "nft.tokenId": {
+        "from": "$.args.tokenId"
+      },
+      "inputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[0].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[0].amount.value": {
+        "from": "$.args.amount0Desired"
+      },
+      "inputTokens[1].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[1].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[1].amount.value": {
+        "from": "$.args.amount1Desired"
+      },
+      "validity.expiresAt": {
+        "from": "$.args.deadline"
+      },
+      "validity.source": {
+        "literal": "tx-deadline"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -223,9 +223,11 @@ fn claim_rewards_lowers_and_forbid_denies() {
 #[test]
 fn supply_envelope_still_returns_none() {
     // Defense-in-depth: variants we did NOT add to dispatch (Supply,
-    // Withdraw, Approve, FlashLoan, …) must still return `Ok(None)` so
+    // Withdraw, FlashLoan, Delegate, …) must still return `Ok(None)` so
     // the wasm export can synthesize a `__engine::action_not_lowered`
     // Warn verdict for them rather than silently passing.
+    // (Phase 7B added `Approve` / `SetApprovalForAll` lowering, so those
+    // are no longer in the unlowered set.)
     let envelope = json!({
         "category": "lending",
         "action": "supply",
@@ -252,4 +254,56 @@ fn supply_envelope_still_returns_none() {
         request.is_none(),
         "supply has no lowering yet — must return None so exports.rs can emit Warn"
     );
+}
+
+// ── Phase 7B — approve / set_approval_for_all dispatch + forbid ───────────
+//
+// `protocols/erc20/approve.rs` and `set_approval_for_all.rs` static mappers
+// emit `Action::Approve` / `Action::SetApprovalForAll`, and the Phase 7B
+// `single_emit` arms emit them on the declarative path. Before the matching
+// `dispatch.rs` arms landed, both fell through to `Ok(None)` — an empty
+// verdict list aggregating to `Pass`. These regressions prove the envelopes
+// now lower into a Cedar request AND that a `forbid` policy fires.
+
+#[test]
+fn approve_lowers_and_forbid_denies() {
+    let envelope = json!({
+        "category": "misc",
+        "action": "approve",
+        "fields": {
+            "token": erc20("USDC"),
+            "spender": address(0x40),
+            "amount": amount("max", "1461501637330902918203684832716283019655932542975"),
+            "approvalKind": "permit2",
+            "validity": {
+                "expiresAt": "1700000900",
+                "source": "grant-expiration"
+            }
+        }
+    });
+    let request = lower(envelope, "approve");
+    assert_forbid_denies("approve", &request);
+}
+
+#[test]
+fn set_approval_for_all_lowers_and_forbid_denies() {
+    // `collection.tokenId` is the collection-wide placeholder `"0"` — the
+    // `AssetRef` deserializer requires a `tokenId` for `erc721` assets even
+    // though `setApprovalForAll` is not scoped to a single token id.
+    let envelope = json!({
+        "category": "misc",
+        "action": "set_approval_for_all",
+        "fields": {
+            "collection": {
+                "kind": "erc721",
+                "address": address(0x11),
+                "tokenId": "0",
+                "symbol": "UNI-V3-POS"
+            },
+            "operator": address(0x41),
+            "approved": true
+        }
+    });
+    let request = lower(envelope, "set_approval_for_all");
+    assert_forbid_denies("set_approval_for_all", &request);
 }

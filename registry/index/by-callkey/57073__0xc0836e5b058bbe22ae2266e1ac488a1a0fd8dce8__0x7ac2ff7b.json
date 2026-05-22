@@ -1,0 +1,92 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/permit-ink@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/permit-ink@1.0.0.json",
+  "bundle_sha256": "0x187ceebaeb4e3954d8d6380194ada304067e3ea515e7e008b94d74981ef46652",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/permit-ink@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        57073
+      ],
+      "to": [
+        "0xC0836E5B058BBE22ae2266e1AC488A1A0fD8DCE8"
+      ],
+      "selector": "0x7ac2ff7b"
+    },
+    "abi_fragment": {
+      "function_name": "permit",
+      "abi": {
+        "name": "permit",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "permit",
+      "fields": {
+        "permitKind": {
+          "literal": "erc721_permit"
+        },
+        "token.kind": {
+          "literal": "erc721"
+        },
+        "token.address": {
+          "from": "$.tx.to"
+        },
+        "token.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "owner": {
+          "from": "$.tx.from"
+        },
+        "spender": {
+          "from": "$.args.spender"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "signature-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

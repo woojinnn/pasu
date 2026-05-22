@@ -3,8 +3,15 @@
   "id": "uniswap/v3/setApprovalForAll@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1, 8453, 10, 42161, 137],
-    "to": ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+    "chain_ids": [
+      1,
+      10,
+      137,
+      42161
+    ],
+    "to": [
+      "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+    ],
     "selector": "0xa22cb465"
   },
   "abi_fragment": {
@@ -13,8 +20,14 @@
       "name": "setApprovalForAll",
       "type": "function",
       "inputs": [
-        { "name": "operator", "type": "address" },
-        { "name": "approved", "type": "bool"    }
+        {
+          "name": "operator",
+          "type": "address"
+        },
+        {
+          "name": "approved",
+          "type": "bool"
+        }
       ]
     }
   },
@@ -23,15 +36,28 @@
     "category": "misc",
     "action": "set_approval_for_all",
     "fields": {
-      "collection.kind":           { "literal": "erc721" },
-      "collection.address":        { "from": "$.tx.to" },
-      "operator":                  { "from": "$.args.operator" },
-      "approved":                  { "from": "$.args.approved" }
+      "collection.kind": {
+        "literal": "erc721"
+      },
+      "collection.address": {
+        "from": "$.tx.to"
+      },
+      "collection.tokenId": {
+        "literal": "0"
+      },
+      "operator": {
+        "from": "$.args.operator"
+      },
+      "approved": {
+        "from": "$.args.approved"
+      }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

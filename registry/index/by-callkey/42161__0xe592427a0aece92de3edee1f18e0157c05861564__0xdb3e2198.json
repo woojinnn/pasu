@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/exactOutputSingle@1.0.0",
   "manifest_path": "manifests/uniswap/v3/exactOutputSingle@1.0.0.json",
-  "bundle_sha256": "0xb65749d2bbee3400c6163913713b11c7215d639ec4ca2ed504f246eb6995067d",
+  "bundle_sha256": "0x37619eb3fbe32f587b7b344458bd61f7663e94ba1ae0cc3d2f1ba7e3f64a91cc",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/exactOutputSingle@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0xE592427A0AEce92De3Edee1F18E0157C05861564"

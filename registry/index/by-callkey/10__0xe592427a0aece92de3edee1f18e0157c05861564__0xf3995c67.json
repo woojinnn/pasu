@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/selfPermit@1.0.0",
   "manifest_path": "manifests/uniswap/v3/selfPermit@1.0.0.json",
-  "bundle_sha256": "0xf03b6dc41cb6643ad4744bd6e9087e94c7a2fd1d3b375bcad7e93ddda31361d1",
+  "bundle_sha256": "0xb80db507fccb811202e5a9f72b0ae91f01bf0f9f4a0d91577b72110832913814",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/selfPermit@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0xE592427A0AEce92De3Edee1F18E0157C05861564"

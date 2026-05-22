@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/burn@1.0.0",
   "manifest_path": "manifests/uniswap/v3/burn@1.0.0.json",
-  "bundle_sha256": "0xf29ea356fda73d85956e31b580a9f161da64735d675ca1e5fd3d134841de60a1",
+  "bundle_sha256": "0x8d444b7488c0cb5dfa7fb8b508f6109adbcd7e7ae23446269bdc7d66ae34382f",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/burn@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"

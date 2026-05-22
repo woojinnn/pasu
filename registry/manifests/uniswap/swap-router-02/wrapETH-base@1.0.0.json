@@ -1,0 +1,64 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/swap-router-02/wrapETH-base@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      8453
+    ],
+    "to": [
+      "0x2626664c2603336E57B271c5C0b26F421741e481"
+    ],
+    "selector": "0x1c58db4f"
+  },
+  "abi_fragment": {
+    "function_name": "wrapETH",
+    "abi": {
+      "name": "wrapETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "wrap",
+    "fields": {
+      "nativeAsset.asset.kind": {
+        "literal": "native"
+      },
+      "nativeAsset.amount.kind": {
+        "literal": "exact"
+      },
+      "nativeAsset.amount.value": {
+        "from": "$.args.value"
+      },
+      "wrappedAsset.asset.kind": {
+        "literal": "erc20"
+      },
+      "wrappedAsset.amount.kind": {
+        "literal": "exact"
+      },
+      "wrappedAsset.amount.value": {
+        "from": "$.args.value"
+      },
+      "recipient": {
+        "from": "$.tx.to"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

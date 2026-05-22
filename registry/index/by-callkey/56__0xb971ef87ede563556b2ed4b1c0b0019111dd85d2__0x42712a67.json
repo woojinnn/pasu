@@ -1,0 +1,106 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/swapTokensForExactTokens-bnb@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/swapTokensForExactTokens-bnb@1.0.0.json",
+  "bundle_sha256": "0xbaa3b14cacf687098d72c73f2dbc84de6fa1ec49df8b32dd1c9c7d1379169f0c",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/swapTokensForExactTokens-bnb@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        56
+      ],
+      "to": [
+        "0xB971eF87ede563556b2ED4b1C0b0019111Dd85d2"
+      ],
+      "selector": "0x42712a67"
+    },
+    "abi_fragment": {
+      "function_name": "swapTokensForExactTokens",
+      "abi": {
+        "name": "swapTokensForExactTokens",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "amountOut",
+            "type": "uint256"
+          },
+          {
+            "name": "amountInMax",
+            "type": "uint256"
+          },
+          {
+            "name": "path",
+            "type": "address[]"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "swapMode": {
+          "literal": "exact_out"
+        },
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "fn": "select_address",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": 0
+            }
+          ]
+        },
+        "inputToken.amount.kind": {
+          "literal": "max"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args.amountInMax"
+        },
+        "outputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "outputToken.asset.address": {
+          "fn": "select_address",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": -1
+            }
+          ]
+        },
+        "outputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args.amountOut"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

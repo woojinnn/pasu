@@ -1,0 +1,70 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/wrapETH-avalanche@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/wrapETH-avalanche@1.0.0.json",
+  "bundle_sha256": "0xd43a9c15b29031833dfeaf18e3712b04e7833b3de6e9d510684d17adc6e92c7c",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/wrapETH-avalanche@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        43114
+      ],
+      "to": [
+        "0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE"
+      ],
+      "selector": "0x1c58db4f"
+    },
+    "abi_fragment": {
+      "function_name": "wrapETH",
+      "abi": {
+        "name": "wrapETH",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "wrap",
+      "fields": {
+        "nativeAsset.asset.kind": {
+          "literal": "native"
+        },
+        "nativeAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "nativeAsset.amount.value": {
+          "from": "$.args.value"
+        },
+        "wrappedAsset.asset.kind": {
+          "literal": "erc20"
+        },
+        "wrappedAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "wrappedAsset.amount.value": {
+          "from": "$.args.value"
+        },
+        "recipient": {
+          "from": "$.tx.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

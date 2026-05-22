@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/swap-router-02/swapExactTokensForTokens@1.0.0",
   "manifest_path": "manifests/uniswap/swap-router-02/swapExactTokensForTokens@1.0.0.json",
-  "bundle_sha256": "0xbc59cc29504a8d67b40907b1bd0434814ea712c70f91e28789a43036b850f143",
+  "bundle_sha256": "0xf0e6b2caf3c2446aec131ab46595477a2b42d004b9fbeabbfcd3045d7f3e7cf4",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/swap-router-02/swapExactTokensForTokens@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"

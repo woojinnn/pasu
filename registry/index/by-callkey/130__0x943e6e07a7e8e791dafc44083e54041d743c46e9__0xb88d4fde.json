@@ -1,0 +1,81 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/safeTransferFromWithData-unichain@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/safeTransferFromWithData-unichain@1.0.0.json",
+  "bundle_sha256": "0x5cb3f00d002f34932bd340e589bccdf812c0d261c9225e82e1a97eb8635b77a4",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/safeTransferFromWithData-unichain@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        130
+      ],
+      "to": [
+        "0x943e6e07a7E8E791dAFC44083e54041D743C46E9"
+      ],
+      "selector": "0xb88d4fde"
+    },
+    "abi_fragment": {
+      "function_name": "safeTransferFrom",
+      "abi": {
+        "name": "safeTransferFrom",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "transfer",
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc721"
+        },
+        "token.asset.address": {
+          "from": "$.tx.to"
+        },
+        "token.asset.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "token.amount.kind": {
+          "literal": "exact"
+        },
+        "token.amount.value": {
+          "literal": "1"
+        },
+        "from": {
+          "from": "$.args.from"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

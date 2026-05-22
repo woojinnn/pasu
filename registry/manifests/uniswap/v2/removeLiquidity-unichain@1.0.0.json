@@ -1,0 +1,114 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/v2/removeLiquidity-unichain@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      130
+    ],
+    "to": [
+      "0x284F11109359a7e1306C3e447ef14D38400063FF"
+    ],
+    "selector": "0xbaa2abde"
+  },
+  "abi_fragment": {
+    "function_name": "removeLiquidity",
+    "abi": {
+      "name": "removeLiquidity",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "tokenA",
+          "type": "address"
+        },
+        {
+          "name": "tokenB",
+          "type": "address"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint256"
+        },
+        {
+          "name": "amountAMin",
+          "type": "uint256"
+        },
+        {
+          "name": "amountBMin",
+          "type": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "remove_liquidity",
+    "fields": {
+      "exitMode": {
+        "literal": "proportional"
+      },
+      "pool.address": {
+        "literal": "0x0000000000000000000000000000000000000000"
+      },
+      "inputLp.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputLp.amount.kind": {
+        "literal": "exact"
+      },
+      "inputLp.amount.value": {
+        "from": "$.args.liquidity"
+      },
+      "outputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "outputTokens[0].asset.address": {
+        "from": "$.args.tokenA"
+      },
+      "outputTokens[0].amount.kind": {
+        "literal": "min"
+      },
+      "outputTokens[0].amount.value": {
+        "from": "$.args.amountAMin"
+      },
+      "outputTokens[1].asset.kind": {
+        "literal": "erc20"
+      },
+      "outputTokens[1].asset.address": {
+        "from": "$.args.tokenB"
+      },
+      "outputTokens[1].amount.kind": {
+        "literal": "min"
+      },
+      "outputTokens[1].amount.value": {
+        "from": "$.args.amountBMin"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      },
+      "validity.expiresAt": {
+        "from": "$.args.deadline"
+      },
+      "validity.source": {
+        "literal": "tx-deadline"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

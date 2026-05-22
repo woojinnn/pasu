@@ -62,7 +62,7 @@ const fn swap_mode_str(mode: &SwapMode) -> &'static str {
 #[cfg(test)]
 mod tests {
     use crate::action::dex::{SwapAction, SwapMode};
-    use crate::action::misc::{ApprovalKind, ApproveAction};
+    use crate::action::misc::DelegateAction;
     use crate::action::{
         Action, AmountConstraint, AmountKind, AssetRefWithAmountConstraint, Category,
     };
@@ -166,15 +166,19 @@ mod tests {
 
     #[test]
     fn non_dex_action_returns_none() {
+        // `Delegate` has no lowering arm (it hits the dispatcher's `_ =>
+        // Ok(None)` catch-all), so the dispatcher must return `None`.
+        // Phase 7B note: `Approve` / `SetApprovalForAll` used to fill this
+        // role but are now lowered, so this regression uses `Delegate`.
         let envelope = crate::action::ActionEnvelope {
             category: Category::Misc,
-            action: Action::Approve(ApproveAction {
-                token: erc20("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6),
-                spender: address("0x2222222222222222222222222222222222222222"),
-                spender_label: None,
-                amount: amount(AmountKind::Exact, "1000"),
-                approval_kind: ApprovalKind::Erc20,
-                current_allowance: None,
+            action: Action::Delegate(DelegateAction {
+                token: erc20("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "GOV", 18),
+                delegatee: address("0x2222222222222222222222222222222222222222"),
+                delegatee_label: None,
+                current_delegate: None,
+                voting_power: None,
+                power_type: None,
                 validity: None,
             }),
         };

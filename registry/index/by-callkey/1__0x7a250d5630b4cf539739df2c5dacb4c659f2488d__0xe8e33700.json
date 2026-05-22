@@ -2,18 +2,14 @@
   "matched": true,
   "bundle_id": "uniswap/v2/addLiquidity@1.0.0",
   "manifest_path": "manifests/uniswap/v2/addLiquidity@1.0.0.json",
-  "bundle_sha256": "0x90f3037005eb55b9d41c5bb2a7ff2babde4d8ccb2464f3b92a69fb90c248cdec",
+  "bundle_sha256": "0x8948bf0329291769e02c2d4713d8710169feb7c8a222dbc7066c40a41a049e29",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/addLiquidity@1.0.0",
     "publisher": "uniswap.eth",
     "match": {
       "chain_ids": [
-        1,
-        8453,
-        10,
-        42161,
-        137
+        1
       ],
       "to": [
         "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"

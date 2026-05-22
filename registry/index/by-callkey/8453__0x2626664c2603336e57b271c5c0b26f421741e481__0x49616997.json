@@ -1,0 +1,66 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/unwrapWETH9-extended-base@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/unwrapWETH9-extended-base@1.0.0.json",
+  "bundle_sha256": "0xf1066d5419099ffa3b97132d855203730a112718e549b43005f27c9d0b536190",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/unwrapWETH9-extended-base@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        8453
+      ],
+      "to": [
+        "0x2626664c2603336E57B271c5C0b26F421741e481"
+      ],
+      "selector": "0x49616997"
+    },
+    "abi_fragment": {
+      "function_name": "unwrapWETH9",
+      "abi": {
+        "name": "unwrapWETH9",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "amountMinimum",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "unwrap",
+      "fields": {
+        "wrappedAsset.asset.kind": {
+          "literal": "erc20"
+        },
+        "wrappedAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "nativeAsset.asset.kind": {
+          "literal": "native"
+        },
+        "nativeAsset.amount.kind": {
+          "literal": "min"
+        },
+        "nativeAsset.amount.value": {
+          "from": "$.args.amountMinimum"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

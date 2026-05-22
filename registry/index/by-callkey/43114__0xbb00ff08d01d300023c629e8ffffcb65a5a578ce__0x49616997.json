@@ -1,0 +1,66 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/unwrapWETH9-extended-avalanche@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/unwrapWETH9-extended-avalanche@1.0.0.json",
+  "bundle_sha256": "0x5c38e5d8a9555becf14549c6352066e2b319cacbd6363e32e8296e317cef2bd7",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/unwrapWETH9-extended-avalanche@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        43114
+      ],
+      "to": [
+        "0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE"
+      ],
+      "selector": "0x49616997"
+    },
+    "abi_fragment": {
+      "function_name": "unwrapWETH9",
+      "abi": {
+        "name": "unwrapWETH9",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "amountMinimum",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "unwrap",
+      "fields": {
+        "wrappedAsset.asset.kind": {
+          "literal": "erc20"
+        },
+        "wrappedAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "nativeAsset.asset.kind": {
+          "literal": "native"
+        },
+        "nativeAsset.amount.kind": {
+          "literal": "min"
+        },
+        "nativeAsset.amount.value": {
+          "from": "$.args.amountMinimum"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

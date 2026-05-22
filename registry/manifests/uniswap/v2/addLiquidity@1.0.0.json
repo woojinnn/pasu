@@ -3,8 +3,12 @@
   "id": "uniswap/v2/addLiquidity@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1, 8453, 10, 42161, 137],
-    "to": ["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],
+    "chain_ids": [
+      1
+    ],
+    "to": [
+      "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+    ],
     "selector": "0xe8e33700"
   },
   "abi_fragment": {
@@ -13,14 +17,38 @@
       "name": "addLiquidity",
       "type": "function",
       "inputs": [
-        { "name": "tokenA",         "type": "address" },
-        { "name": "tokenB",         "type": "address" },
-        { "name": "amountADesired", "type": "uint256" },
-        { "name": "amountBDesired", "type": "uint256" },
-        { "name": "amountAMin",     "type": "uint256" },
-        { "name": "amountBMin",     "type": "uint256" },
-        { "name": "to",             "type": "address" },
-        { "name": "deadline",       "type": "uint256" }
+        {
+          "name": "tokenA",
+          "type": "address"
+        },
+        {
+          "name": "tokenB",
+          "type": "address"
+        },
+        {
+          "name": "amountADesired",
+          "type": "uint256"
+        },
+        {
+          "name": "amountBDesired",
+          "type": "uint256"
+        },
+        {
+          "name": "amountAMin",
+          "type": "uint256"
+        },
+        {
+          "name": "amountBMin",
+          "type": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256"
+        }
       ]
     }
   },
@@ -29,25 +57,55 @@
     "category": "dex",
     "action": "add_liquidity",
     "fields": {
-      "pool.address":                       { "literal": "0x0000000000000000000000000000000000000000" },
-      "inputTokens[0].asset.kind":          { "literal": "erc20" },
-      "inputTokens[0].asset.address":       { "from": "$.args.tokenA" },
-      "inputTokens[0].amount.kind":         { "literal": "max" },
-      "inputTokens[0].amount.value":        { "from": "$.args.amountADesired" },
-      "inputTokens[1].asset.kind":          { "literal": "erc20" },
-      "inputTokens[1].asset.address":       { "from": "$.args.tokenB" },
-      "inputTokens[1].amount.kind":         { "literal": "max" },
-      "inputTokens[1].amount.value":        { "from": "$.args.amountBDesired" },
-      "outputLp.asset.kind":                { "literal": "erc20" },
-      "outputLp.amount.kind":               { "literal": "min" },
-      "recipient":                          { "from": "$.args.to" },
-      "validity.expiresAt":                 { "from": "$.args.deadline" },
-      "validity.source":                    { "literal": "tx-deadline" }
+      "pool.address": {
+        "literal": "0x0000000000000000000000000000000000000000"
+      },
+      "inputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[0].asset.address": {
+        "from": "$.args.tokenA"
+      },
+      "inputTokens[0].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[0].amount.value": {
+        "from": "$.args.amountADesired"
+      },
+      "inputTokens[1].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[1].asset.address": {
+        "from": "$.args.tokenB"
+      },
+      "inputTokens[1].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[1].amount.value": {
+        "from": "$.args.amountBDesired"
+      },
+      "outputLp.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputLp.amount.kind": {
+        "literal": "min"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      },
+      "validity.expiresAt": {
+        "from": "$.args.deadline"
+      },
+      "validity.source": {
+        "literal": "tx-deadline"
+      }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

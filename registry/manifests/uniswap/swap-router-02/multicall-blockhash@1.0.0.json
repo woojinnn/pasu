@@ -1,0 +1,47 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/swap-router-02/multicall-blockhash@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      1,
+      10,
+      137,
+      42161
+    ],
+    "to": [
+      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+    ],
+    "selector": "0x1f0464d1"
+  },
+  "abi_fragment": {
+    "function_name": "multicall",
+    "abi": {
+      "name": "multicall",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "previousBlockhash",
+          "type": "bytes32"
+        },
+        {
+          "name": "data",
+          "type": "bytes[]"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "multicall_recurse",
+    "recurse_rule_id": "self_array_bytes_last_arg",
+    "max_depth": 3
+  },
+  "requires": {
+    "imperative": [
+      "multicall-recurse@^1.0"
+    ],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

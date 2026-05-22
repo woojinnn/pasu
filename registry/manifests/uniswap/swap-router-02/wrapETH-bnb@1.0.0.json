@@ -1,0 +1,64 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/swap-router-02/wrapETH-bnb@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      56
+    ],
+    "to": [
+      "0xB971eF87ede563556b2ED4b1C0b0019111Dd85d2"
+    ],
+    "selector": "0x1c58db4f"
+  },
+  "abi_fragment": {
+    "function_name": "wrapETH",
+    "abi": {
+      "name": "wrapETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "wrap",
+    "fields": {
+      "nativeAsset.asset.kind": {
+        "literal": "native"
+      },
+      "nativeAsset.amount.kind": {
+        "literal": "exact"
+      },
+      "nativeAsset.amount.value": {
+        "from": "$.args.value"
+      },
+      "wrappedAsset.asset.kind": {
+        "literal": "erc20"
+      },
+      "wrappedAsset.amount.kind": {
+        "literal": "exact"
+      },
+      "wrappedAsset.amount.value": {
+        "from": "$.args.value"
+      },
+      "recipient": {
+        "from": "$.tx.to"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/safeTransferFrom@1.0.0",
   "manifest_path": "manifests/uniswap/v3/safeTransferFrom@1.0.0.json",
-  "bundle_sha256": "0xfd82eb3932bbf2bbd4e3f0f96c35188e586fc8fcc52f4d03bbe96dad57e3ff30",
+  "bundle_sha256": "0xcd0e4a14a36a9ddb8a31d93fd430700372bed1708a1d3c052d05cf64be42beae",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/safeTransferFrom@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"

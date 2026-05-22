@@ -1,0 +1,106 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/swap-router-02/exactOutput-unichain@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      130
+    ],
+    "to": [
+      "0x73855d06DE49d0fe4A9c42636Ba96c62da12FF9C"
+    ],
+    "selector": "0x09b81346"
+  },
+  "abi_fragment": {
+    "function_name": "exactOutput",
+    "abi": {
+      "name": "exactOutput",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "path",
+              "type": "bytes"
+            },
+            {
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "name": "amountOut",
+              "type": "uint256"
+            },
+            {
+              "name": "amountInMaximum",
+              "type": "uint256"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": {
+        "literal": "exact_out"
+      },
+      "inputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputToken.asset.address": {
+        "fn": "unfold_v3_path",
+        "args": [
+          {
+            "from": "$.args.path"
+          },
+          {
+            "literal": "last_token"
+          }
+        ]
+      },
+      "inputToken.amount.kind": {
+        "literal": "max"
+      },
+      "inputToken.amount.value": {
+        "from": "$.args.amountInMaximum"
+      },
+      "outputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputToken.asset.address": {
+        "fn": "unfold_v3_path",
+        "args": [
+          {
+            "from": "$.args.path"
+          },
+          {
+            "literal": "first_token"
+          }
+        ]
+      },
+      "outputToken.amount.kind": {
+        "literal": "exact"
+      },
+      "outputToken.amount.value": {
+        "from": "$.args.amountOut"
+      },
+      "recipient": {
+        "from": "$.args.recipient"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

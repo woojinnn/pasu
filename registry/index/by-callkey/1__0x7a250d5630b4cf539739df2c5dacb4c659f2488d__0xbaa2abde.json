@@ -2,18 +2,14 @@
   "matched": true,
   "bundle_id": "uniswap/v2/removeLiquidity@1.0.0",
   "manifest_path": "manifests/uniswap/v2/removeLiquidity@1.0.0.json",
-  "bundle_sha256": "0x46fd79e7cba9a27db8e635e84dcf822306a2136b3cec201cc6c27c040ec0ace4",
+  "bundle_sha256": "0x819af09de414b887ad9e0de73d71fed71b8f6464083d82d57dcd61de4ed0d2cb",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/removeLiquidity@1.0.0",
     "publisher": "uniswap.eth",
     "match": {
       "chain_ids": [
-        1,
-        8453,
-        10,
-        42161,
-        137
+        1
       ],
       "to": [
         "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"

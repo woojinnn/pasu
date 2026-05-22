@@ -3,8 +3,15 @@
   "id": "uniswap/v3/unwrapWETH9@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1, 8453, 10, 42161, 137],
-    "to": ["0xE592427A0AEce92De3Edee1F18E0157C05861564"],
+    "chain_ids": [
+      1,
+      10,
+      137,
+      42161
+    ],
+    "to": [
+      "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+    ],
     "selector": "0x49404b7c"
   },
   "abi_fragment": {
@@ -13,8 +20,14 @@
       "name": "unwrapWETH9",
       "type": "function",
       "inputs": [
-        { "name": "amountMinimum", "type": "uint256" },
-        { "name": "recipient",     "type": "address" }
+        {
+          "name": "amountMinimum",
+          "type": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address"
+        }
       ]
     }
   },
@@ -23,17 +36,31 @@
     "category": "misc",
     "action": "unwrap",
     "fields": {
-      "wrappedAsset.asset.kind":   { "literal": "erc20" },
-      "wrappedAsset.amount.kind":  { "literal": "exact" },
-      "nativeAsset.asset.kind":    { "literal": "native" },
-      "nativeAsset.amount.kind":   { "literal": "min" },
-      "nativeAsset.amount.value":  { "from": "$.args.amountMinimum" },
-      "recipient":                 { "from": "$.args.recipient" }
+      "wrappedAsset.asset.kind": {
+        "literal": "erc20"
+      },
+      "wrappedAsset.amount.kind": {
+        "literal": "exact"
+      },
+      "nativeAsset.asset.kind": {
+        "literal": "native"
+      },
+      "nativeAsset.amount.kind": {
+        "literal": "min"
+      },
+      "nativeAsset.amount.value": {
+        "from": "$.args.amountMinimum"
+      },
+      "recipient": {
+        "from": "$.args.recipient"
+      }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

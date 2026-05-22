@@ -37,10 +37,10 @@ use policy_engine::action::lending::{
     RepayAction, RepayKind,
 };
 use policy_engine::action::misc::{
-    ClaimRewardsAction, GaugeVoteAction, GaugeVoteKind, LockCreateAction, LockIncreaseAction,
-    LockIncreaseKind, LockManageAction, LockManageKind, LpStakeAction, LpUnstakeAction,
-    PermitAction, PermitKind, SourceRef, TransferAction, UnwrapAction, VoteAction, VoteSupport,
-    WrapAction,
+    ApprovalKind, ApproveAction, ClaimRewardsAction, GaugeVoteAction, GaugeVoteKind,
+    LockCreateAction, LockIncreaseAction, LockIncreaseKind, LockManageAction, LockManageKind,
+    LpStakeAction, LpUnstakeAction, PermitAction, PermitKind, SetApprovalForAllAction, SourceRef,
+    TransferAction, UnwrapAction, VoteAction, VoteSupport, WrapAction,
 };
 use policy_engine::action::staking::{ClaimUnstakeAction, StakeAction, TicketRef};
 use policy_engine::action::{
@@ -116,6 +116,9 @@ pub fn execute_with_args(
         ("misc", "unwrap") => Ok(build_unwrap_envelope(&tree)?),
         ("misc", "transfer") => Ok(build_transfer_envelope(&tree)?),
         ("misc", "permit") => Ok(build_permit_envelope(&tree)?),
+        // Phase 7B — Permit2 `approve` + ERC-721/NFPM `setApprovalForAll`.
+        ("misc", "approve") => Ok(build_approve_envelope(&tree)?),
+        ("misc", "set_approval_for_all") => Ok(build_set_approval_for_all_envelope(&tree)?),
         ("dex", "add_liquidity") => Ok(build_add_liquidity_envelope(&tree)?),
         ("dex", "remove_liquidity") => Ok(build_remove_liquidity_envelope(&tree)?),
         ("dex", "mint_liquidity_nft") => Ok(build_mint_liquidity_nft_envelope(&tree)?),
@@ -456,6 +459,23 @@ fn build_permit_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, Map
         }
     };
     let amount = read_amount_inline(tree, "amount")?;
+    // Phase 7B — Permit2 `permitTransferFrom` / `permitWitnessTransferFrom`
+    // (ISignatureTransfer) carries a one-shot transfer destination
+    // (`recipient`) + requested amount (`requestedAmount`) alongside the
+    // permit. Absent for `eip2612` / `permit2_single` / `permit2_batch`
+    // manifests (those omit the fields → `None`, preserving prior behaviour).
+    let recipient = match tree.get("recipient") {
+        Some(serde_json::Value::String(s)) => Some(Address::from_str(s).map_err(|m| {
+            MapperError::Internal(anyhow::anyhow!("recipient {s:?}: {m}"))
+        })?),
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "recipient: expected string, got {other}"
+            )));
+        }
+    };
+    let requested_amount = read_amount_inline(tree, "requestedAmount")?;
     let validity = read_validity(tree)?
         .ok_or_else(|| MapperError::MissingArgument("validity".to_owned()))?;
     let signature_validity = read_signature_validity(tree)?;
@@ -465,9 +485,9 @@ fn build_permit_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, Map
         token,
         owner,
         spender,
-        recipient: None,
+        recipient,
         amount,
-        requested_amount: None,
+        requested_amount,
         operator: None,
         approved: None,
         validity,
@@ -477,6 +497,151 @@ fn build_permit_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, Map
         category: Category::Misc,
         action: Action::Permit(action),
     })
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// JSON tree → ApproveAction / SetApprovalForAllAction (Phase 7B)
+//
+// `("misc", "approve")` covers Permit2 `approve(token, spender, amount,
+// expiration)` (selector 0x87517c45) and any ERC-20 `approve` whose manifest
+// emits the `approve` action. `approvalKind` is a literal in the manifest
+// (`"erc20"` / `"erc20_increase"` / `"erc20_decrease"` / `"permit2"`).
+//
+// `("misc", "set_approval_for_all")` covers ERC-721 / Uniswap V3 NFPM
+// `setApprovalForAll(operator, approved)`. Both arms exist so that a Cedar
+// `forbid` policy on `Action::"approve"` / `Action::"set_approval_for_all"`
+// observes a matching PolicyRequest instead of fail-opening to `Pass`.
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Build an [`ApproveAction`] envelope from the field tree (Phase 7B).
+///
+/// Schema reference: `crates/policy-engine/src/action/misc/approve.rs`.
+///
+/// Required fields:
+///   * `token.kind` / `.address` — token whose allowance is granted
+///   * `spender` — address receiving the allowance
+///   * `amount.kind` / `.value` — approved amount
+///   * `approvalKind` — `"erc20"` / `"erc20_increase"` / `"erc20_decrease"` /
+///     `"permit2"`
+///
+/// Optional fields:
+///   * `spenderLabel` — human-readable spender name
+///   * `currentAllowance` — pre-action allowance (decimal string)
+///   * `validity.expiresAt` / `.source` — Permit2 `expiration` window
+fn build_approve_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
+    let token = read_asset_inline(tree, "token")?;
+    let spender = read_address(tree, "spender")?;
+    let spender_label = read_optional_string(tree, "spenderLabel")?;
+    let amount = read_amount_inline(tree, "amount")?
+        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let approval_kind_str = required_string(tree, "approvalKind")
+        .map_err(|_| missing_field("$", "approvalKind"))?;
+    let approval_kind = parse_approval_kind(approval_kind_str).ok_or_else(|| {
+        MapperError::Internal(anyhow::anyhow!(
+            "approvalKind {approval_kind_str:?} not recognised"
+        ))
+    })?;
+    let current_allowance = read_optional_decimal(tree, "currentAllowance")?;
+    let validity = read_validity(tree)?;
+
+    let action = ApproveAction {
+        token,
+        spender,
+        spender_label,
+        amount,
+        approval_kind,
+        current_allowance,
+        validity,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::Approve(action),
+    })
+}
+
+fn parse_approval_kind(kind: &str) -> Option<ApprovalKind> {
+    match kind {
+        "erc20" => Some(ApprovalKind::Erc20),
+        "erc20_increase" => Some(ApprovalKind::Erc20Increase),
+        "erc20_decrease" => Some(ApprovalKind::Erc20Decrease),
+        "permit2" => Some(ApprovalKind::Permit2),
+        _ => None,
+    }
+}
+
+/// Build a [`SetApprovalForAllAction`] envelope from the field tree (Phase 7B).
+///
+/// Schema reference: `crates/policy-engine/src/action/misc/set_approval_for_all.rs`.
+///
+/// Required fields:
+///   * `collection.kind` / `.address` — NFT collection whose operator
+///     approval changes (typically `kind = "erc721"`)
+///   * `operator` — address gaining or losing collection-wide approval
+///   * `approved` — boolean toggle
+///
+/// Optional fields:
+///   * `operatorLabel` — human-readable operator name
+///   * `previouslyApproved` — prior approval state
+fn build_set_approval_for_all_envelope(
+    tree: &serde_json::Value,
+) -> Result<ActionEnvelope, MapperError> {
+    let collection = read_asset_inline(tree, "collection")?;
+    let operator = read_address(tree, "operator")?;
+    let operator_label = read_optional_string(tree, "operatorLabel")?;
+    let approved = read_bool(tree, "approved")?;
+    let previously_approved = read_optional_bool(tree, "previouslyApproved")?;
+
+    let action = SetApprovalForAllAction {
+        collection,
+        operator,
+        operator_label,
+        approved,
+        previously_approved,
+    };
+    Ok(ActionEnvelope {
+        category: Category::Misc,
+        action: Action::SetApprovalForAll(action),
+    })
+}
+
+/// Read a required `bool` from `tree.<field>`.
+fn read_bool(tree: &serde_json::Value, field: &str) -> Result<bool, MapperError> {
+    match tree.get(field) {
+        Some(serde_json::Value::Bool(b)) => Ok(*b),
+        Some(other) => Err(MapperError::Internal(anyhow::anyhow!(
+            "{field}: expected bool, got {other}"
+        ))),
+        None => Err(MapperError::MissingArgument(field.to_owned())),
+    }
+}
+
+/// Read an `Option<bool>` from `tree.<field>`. Missing or JSON null → `None`.
+fn read_optional_bool(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<bool>, MapperError> {
+    match tree.get(field) {
+        Some(serde_json::Value::Bool(b)) => Ok(Some(*b)),
+        Some(serde_json::Value::Null) | None => Ok(None),
+        Some(other) => Err(MapperError::Internal(anyhow::anyhow!(
+            "{field}: expected bool, got {other}"
+        ))),
+    }
+}
+
+/// Read an `Option<String>` from `tree.<field>`. Missing or JSON null →
+/// `None`. Used for the optional `spenderLabel` / `operatorLabel` fields.
+fn read_optional_string(
+    tree: &serde_json::Value,
+    field: &str,
+) -> Result<Option<String>, MapperError> {
+    match tree.get(field) {
+        Some(serde_json::Value::String(s)) => Ok(Some(s.clone())),
+        Some(serde_json::Value::Null) | None => Ok(None),
+        Some(other) => Err(MapperError::Internal(anyhow::anyhow!(
+            "{field}: expected string, got {other}"
+        ))),
+    }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -1680,13 +1845,13 @@ fn read_asset_inline(tree: &serde_json::Value, field: &str) -> Result<AssetRef, 
              bundle emits a token the evaluate stage cannot deserialize"
         )));
     }
-    Ok(AssetRef {
+    Ok(normalize_native_sentinel(AssetRef {
         kind,
         address,
         token_id: None,
         symbol: None,
         decimals: None,
-    })
+    }))
 }
 
 fn read_asset(token: &serde_json::Value, parent: &str) -> Result<AssetRef, MapperError> {
@@ -1724,13 +1889,13 @@ fn read_asset(token: &serde_json::Value, parent: &str) -> Result<AssetRef, Mappe
              bundle emits a token the evaluate stage cannot deserialize"
         )));
     }
-    Ok(AssetRef {
+    Ok(normalize_native_sentinel(AssetRef {
         kind,
         address,
         token_id: None,
         symbol: None,
         decimals: None,
-    })
+    }))
 }
 
 fn parse_asset_kind(kind: &str) -> Option<AssetKind> {
@@ -1741,6 +1906,35 @@ fn parse_asset_kind(kind: &str) -> Option<AssetKind> {
         "native" => Some(AssetKind::Native),
         "unknown" => Some(AssetKind::Unknown),
         _ => None,
+    }
+}
+
+/// Rewrite an ERC-20 `AssetRef` at the zero address to `native`.
+///
+/// An ERC-20 token at `address(0)` is never a real token — Uniswap's
+/// Universal Router (`Constants.ETH`) and V4 (`CurrencyLibrary`) both use
+/// `address(0)` as the native-asset sentinel. A declarative bundle that
+/// hardcodes `asset.kind = "erc20"` therefore mislabels native ETH whenever
+/// the token address resolves to `0x0` (`VERIFICATION_UNISWAP_REALTX` finding
+/// F2 — UR `TRANSFER`, V4 `initialize` / `MINT_POSITION`). The static UR path
+/// already applies this `0x0 -> native` rule via
+/// `protocols::universal_router::common::token_asset_ref`; the declarative
+/// builder is the only emit path that lacked it, so the fix lives in the two
+/// shared asset readers (`read_asset` / `read_asset_inline`).
+fn normalize_native_sentinel(asset: AssetRef) -> AssetRef {
+    const ZERO_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
+    let is_zero_address = matches!(
+        asset.address.as_ref(),
+        Some(addr) if addr.to_string().eq_ignore_ascii_case(ZERO_ADDRESS)
+    );
+    if asset.kind == AssetKind::Erc20 && is_zero_address {
+        AssetRef {
+            kind: AssetKind::Native,
+            address: None,
+            ..asset
+        }
+    } else {
+        asset
     }
 }
 
@@ -4025,6 +4219,150 @@ mod tests {
         assert!(
             msg.contains("kind=poke requires empty pools and weights"),
             "expected gauge_vote kind=poke enforcement error, got: {msg}"
+        );
+    }
+
+    // ── Phase 7B — approve / set_approval_for_all builders ────────────────
+
+    /// Permit2 `approve` field tree → `ApproveAction` with `approval_kind =
+    /// Permit2` and a `grant-expiration` validity window.
+    #[test]
+    fn build_approve_envelope_permit2() {
+        let tree = json!({
+            "token": { "kind": "erc20", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
+            "spender": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+            "amount": { "kind": "max", "value": "1461501637330902918203684832716283019655932542975" },
+            "approvalKind": "permit2",
+            "validity": { "expiresAt": "1700000000", "source": "grant-expiration" }
+        });
+        let envelope = build_approve_envelope(&tree).expect("approve builds");
+        assert_eq!(envelope.category, Category::Misc);
+        let Action::Approve(action) = &envelope.action else {
+            panic!("expected Approve, got {:?}", envelope.action);
+        };
+        assert_eq!(action.approval_kind, ApprovalKind::Permit2);
+        assert_eq!(action.token.kind, AssetKind::Erc20);
+        assert_eq!(action.amount.kind, AmountKind::Max);
+        assert_eq!(
+            action.spender.to_string(),
+            "0x000000000022d473030f116ddee9f6b43ac78ba3"
+        );
+        let validity = action.validity.as_ref().expect("validity present");
+        assert_eq!(validity.source, ValiditySource::GrantExpiration);
+        assert_eq!(validity.expires_at.to_string(), "1700000000");
+    }
+
+    /// Minimal ERC-20 `approve` — no validity, no optional label/allowance.
+    #[test]
+    fn build_approve_envelope_erc20_minimal() {
+        let tree = json!({
+            "token": { "kind": "erc20", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
+            "spender": "0x1111111111111111111111111111111111111111",
+            "amount": { "kind": "exact", "value": "1000000" },
+            "approvalKind": "erc20"
+        });
+        let envelope = build_approve_envelope(&tree).expect("approve builds");
+        let Action::Approve(action) = &envelope.action else {
+            panic!("expected Approve, got {:?}", envelope.action);
+        };
+        assert_eq!(action.approval_kind, ApprovalKind::Erc20);
+        assert_eq!(action.amount.kind, AmountKind::Exact);
+        assert_eq!(
+            action.amount.value.as_ref().map(ToString::to_string),
+            Some("1000000".to_owned())
+        );
+        assert!(action.validity.is_none());
+        assert!(action.spender_label.is_none());
+        assert!(action.current_allowance.is_none());
+    }
+
+    /// An unrecognised `approvalKind` literal is a hard error — the builder
+    /// must not silently coerce it.
+    #[test]
+    fn build_approve_envelope_rejects_bad_kind() {
+        let tree = json!({
+            "token": { "kind": "erc20", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
+            "spender": "0x1111111111111111111111111111111111111111",
+            "amount": { "kind": "exact", "value": "1" },
+            "approvalKind": "bogus_kind"
+        });
+        let err = build_approve_envelope(&tree).unwrap_err();
+        assert!(
+            err.to_string().contains("approvalKind")
+                && err.to_string().contains("not recognised"),
+            "unexpected error: {err}"
+        );
+    }
+
+    /// `approve` with a missing `amount` field is rejected (the schema field
+    /// is required even though the underlying reader is optional).
+    #[test]
+    fn build_approve_envelope_rejects_missing_amount() {
+        let tree = json!({
+            "token": { "kind": "erc20", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
+            "spender": "0x1111111111111111111111111111111111111111",
+            "approvalKind": "erc20"
+        });
+        let err = build_approve_envelope(&tree).unwrap_err();
+        assert!(
+            matches!(err, MapperError::MissingArgument(ref f) if f == "amount"),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    /// ERC-721 / NFPM `setApprovalForAll` field tree → `SetApprovalForAllAction`.
+    #[test]
+    fn build_set_approval_for_all_envelope_grant() {
+        let tree = json!({
+            "collection": { "kind": "erc721", "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88" },
+            "operator": "0x2222222222222222222222222222222222222222",
+            "approved": true
+        });
+        let envelope =
+            build_set_approval_for_all_envelope(&tree).expect("set_approval_for_all builds");
+        assert_eq!(envelope.category, Category::Misc);
+        let Action::SetApprovalForAll(action) = &envelope.action else {
+            panic!("expected SetApprovalForAll, got {:?}", envelope.action);
+        };
+        assert_eq!(action.collection.kind, AssetKind::Erc721);
+        assert!(action.approved);
+        assert_eq!(
+            action.operator.to_string(),
+            "0x2222222222222222222222222222222222222222"
+        );
+        assert!(action.operator_label.is_none());
+        assert!(action.previously_approved.is_none());
+    }
+
+    /// `setApprovalForAll` revocation — `approved: false` round-trips.
+    #[test]
+    fn build_set_approval_for_all_envelope_revoke() {
+        let tree = json!({
+            "collection": { "kind": "erc721", "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88" },
+            "operator": "0x2222222222222222222222222222222222222222",
+            "approved": false
+        });
+        let envelope =
+            build_set_approval_for_all_envelope(&tree).expect("set_approval_for_all builds");
+        let Action::SetApprovalForAll(action) = &envelope.action else {
+            panic!("expected SetApprovalForAll, got {:?}", envelope.action);
+        };
+        assert!(!action.approved);
+    }
+
+    /// A non-boolean `approved` is a hard error — never coerced.
+    #[test]
+    fn build_set_approval_for_all_envelope_rejects_non_bool_approved() {
+        let tree = json!({
+            "collection": { "kind": "erc721", "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88" },
+            "operator": "0x2222222222222222222222222222222222222222",
+            "approved": "true"
+        });
+        let err = build_set_approval_for_all_envelope(&tree).unwrap_err();
+        assert!(
+            err.to_string().contains("approved")
+                && err.to_string().contains("expected bool"),
+            "unexpected error: {err}"
         );
     }
 }

@@ -94,6 +94,18 @@ pub fn try_policy_request_from_envelope(
         Action::Transfer(action) => action.build(&ctx).map(Some),
         Action::Wrap(action) => action.build(&ctx).map(Some),
         Action::Unwrap(action) => action.build(&ctx).map(Some),
+        // misc — Phase 7B added the `approve` + `set_approval_for_all`
+        // single_emit builders (Permit2 `approve`, ERC-721/NFPM
+        // `setApprovalForAll`). Without these arms a forbid policy on
+        // `Action::"approve"` / `Action::"set_approval_for_all"` would never
+        // see the matching PolicyRequest and would silently aggregate to
+        // `Pass` — the same fail-open class as Curve Phase 12.7 P0-1 and
+        // Aerodrome Round 7 P0 #1. The static `protocols/erc20` mappers
+        // already emit these variants, so the gap also closed an existing
+        // ERC-20 `approve` / `setApprovalForAll` silent-pass on the static
+        // path.
+        Action::Approve(action) => action.build(&ctx).map(Some),
+        Action::SetApprovalForAll(action) => action.build(&ctx).map(Some),
         // lending — Phase 12.5 added crvUSD Controller bundles whose action
         // envelopes (Borrow / Repay / Liquidate) silently fell through to
         // `Ok(None)` before this arm landed, producing an empty verdict list

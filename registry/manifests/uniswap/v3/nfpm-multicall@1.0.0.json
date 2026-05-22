@@ -3,8 +3,15 @@
   "id": "uniswap/v3/nfpm-multicall@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1, 8453, 10, 42161, 137],
-    "to": ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+    "chain_ids": [
+      1,
+      10,
+      137,
+      42161
+    ],
+    "to": [
+      "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+    ],
     "selector": "0xac9650d8"
   },
   "abi_fragment": {
@@ -13,7 +20,10 @@
       "name": "multicall",
       "type": "function",
       "inputs": [
-        { "name": "data", "type": "bytes[]" }
+        {
+          "name": "data",
+          "type": "bytes[]"
+        }
       ]
     }
   },
@@ -23,7 +33,9 @@
     "max_depth": 3
   },
   "requires": {
-    "imperative": ["multicall-recurse@^1.0"],
+    "imperative": [
+      "multicall-recurse@^1.0"
+    ],
     "adapter_capabilities": [],
     "host_capabilities": [],
     "extension": ">=0.1.0"

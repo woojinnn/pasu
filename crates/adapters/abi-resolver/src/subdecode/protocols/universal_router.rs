@@ -460,9 +460,11 @@ const UNISWAP_UR_ADDRESSES: &[(u64, Address)] = &[
     (
         480,
         Address::new(
-            *b"\x7a\x25\x0d\x56\x30\xb4\xcf\x53\x97\x39\xdf\x2c\x5d\xac\xb4\xc6\x59\xf2\x48\x8d",
+            *b"\x03\xc4\xf6\xb5\x57\x33\xcd\xf3\xca\xa0\x7c\x01\xe5\xb8\x3d\xde\xe3\x38\x1f\x60",
         ),
-    ), // UniversalRouterV1_2_V2Support
+    ), // UniversalRouter — corrected: prior value 0x7a250d56…488D was the
+       // Ethereum mainnet UniswapV2Router02 address, not a World Chain UR.
+       // Source: Uniswap/contracts deployments/480.md.
     (
         480,
         Address::new(
@@ -598,7 +600,11 @@ const V3_NPM_ADDRESSES: &[(u64, Address)] = &[
 ];
 
 /// Per-chain Uniswap V4 PositionManager addresses (different per chain — V4
-/// is fresh-deployed without CREATE2 colocation).
+/// is fresh-deployed without CREATE2 colocation). Covers the 13 UR-supported
+/// chains.
+///
+/// Source: https://github.com/Uniswap/contracts/tree/main/deployments/json
+/// (`PositionManager` field per chain `<chainId>.json`).
 const V4_PM_ADDRESSES: &[(u64, Address)] = &[
     // Ethereum mainnet
     (
@@ -642,6 +648,162 @@ const V4_PM_ADDRESSES: &[(u64, Address)] = &[
             *b"\x4a\xd2\xf4\xcc\xa2\x68\x2c\xbb\x5b\x95\x0d\x66\x0d\xd4\x58\xa1\xd3\xf1\xba\xad",
         ),
     ),
+    // BNB Chain
+    (
+        56,
+        Address::new(
+            *b"\x7a\x4a\x5c\x91\x9a\xe2\x54\x1a\xed\x11\x04\x1a\x1a\xee\xe6\x8f\x12\x87\xf9\x5b",
+        ),
+    ),
+    // Celo
+    (
+        42220,
+        Address::new(
+            *b"\xf7\x96\x5f\x39\x81\xe4\xd5\xbc\x38\x3b\xfb\xcb\x61\x50\x17\x63\xe9\x06\x8c\xa9",
+        ),
+    ),
+    // Avalanche C-Chain
+    (
+        43114,
+        Address::new(
+            *b"\xb7\x4b\x1f\x14\xd2\x75\x4a\xcf\xcb\xbe\x1a\x22\x10\x23\xa5\xcf\x50\xab\x8a\xcd",
+        ),
+    ),
+    // Ink
+    (
+        57073,
+        Address::new(
+            *b"\x1b\x35\xd1\x3a\x2e\x25\x28\xf1\x92\x63\x7f\x14\xb0\x5f\x0d\xc0\xe7\xde\xb5\x66",
+        ),
+    ),
+    // Unichain
+    (
+        130,
+        Address::new(
+            *b"\x45\x29\xa0\x1c\x7a\x04\x10\x16\x7c\x57\x40\xc4\x87\xa8\xde\x60\x23\x26\x17\xbf",
+        ),
+    ),
+    // World Chain
+    (
+        480,
+        Address::new(
+            *b"\xc5\x85\xe0\xf5\x04\x61\x3b\x5f\xbf\x87\x4f\x21\xaf\x14\xc6\x52\x60\xfb\x41\xfa",
+        ),
+    ),
+    // Zora
+    (
+        7777777,
+        Address::new(
+            *b"\xf6\x6c\x7b\x99\xe2\x04\x0f\x0d\x9b\x32\x6b\x3b\x7c\x15\x2e\x96\x63\x54\x3d\x63",
+        ),
+    ),
+];
+
+/// Per-chain Uniswap V4 **PoolManager** addresses — the singleton flash-
+/// accounting contract that owns all V4 pools. Distinct from the
+/// PositionManager ([`V4_PM_ADDRESSES`]); used to fill `pool.address` for
+/// `initialize_pool` / `donate` envelopes and the UR `V4_INITIALIZE_POOL`
+/// opcode. Covers the 13 UR-supported chains.
+///
+/// V4 is fresh-deployed without CREATE2 colocation, so addresses differ per
+/// chain — except Arbitrum One (42161) and Ink (57073) which share a CREATE2
+/// address (`0x360e68fa…fb32`), and Unichain (130) whose address uses a
+/// `0x1f984000…0004` vanity prefix.
+///
+/// Source: https://github.com/Uniswap/contracts/tree/main/deployments/json
+/// (`PoolManager` field per chain `<chainId>.json`).
+const V4_POOL_MANAGER_ADDRESSES: &[(u64, Address)] = &[
+    // Ethereum mainnet
+    (
+        1,
+        Address::new(
+            *b"\x00\x00\x00\x00\x00\x04\x44\x4c\x5d\xc7\x5c\xb3\x58\x38\x0d\x2e\x3d\xe0\x8a\x90",
+        ),
+    ),
+    // Base
+    (
+        8453,
+        Address::new(
+            *b"\x49\x85\x81\xff\x71\x89\x22\xc3\xf8\xe6\xa2\x44\x95\x6a\xf0\x99\xb2\x65\x2b\x2b",
+        ),
+    ),
+    // Optimism
+    (
+        10,
+        Address::new(
+            *b"\x9a\x13\xf9\x8c\xb9\x87\x69\x4c\x9f\x08\x6b\x1f\x5e\xb9\x90\xee\xa8\x26\x4e\xc3",
+        ),
+    ),
+    // Arbitrum One
+    (
+        42161,
+        Address::new(
+            *b"\x36\x0e\x68\xfa\xcc\xca\x8c\xa4\x95\xc1\xb7\x59\xfd\x9e\xee\x46\x6d\xb9\xfb\x32",
+        ),
+    ),
+    // Polygon
+    (
+        137,
+        Address::new(
+            *b"\x67\x36\x67\x82\x80\x58\x70\x06\x01\x51\x38\x3f\x4b\xbf\xf9\xda\xb5\x3e\x5c\xd6",
+        ),
+    ),
+    // Avalanche C-Chain
+    (
+        43114,
+        Address::new(
+            *b"\x06\x38\x0c\x0e\x09\x12\x31\x2b\x51\x50\x36\x4b\x9d\xc4\x54\x2b\xa0\xdb\xbc\x85",
+        ),
+    ),
+    // Blast
+    (
+        81457,
+        Address::new(
+            *b"\x16\x31\x55\x91\x98\xa9\xe4\x74\x03\x34\x33\xb2\x95\x8d\xab\xc1\x35\xab\x64\x46",
+        ),
+    ),
+    // BNB Chain
+    (
+        56,
+        Address::new(
+            *b"\x28\xe2\xea\x09\x08\x77\xbf\x75\x74\x05\x58\xf6\xbf\xb3\x6a\x5f\xfe\xe9\xe9\xdf",
+        ),
+    ),
+    // Celo
+    (
+        42220,
+        Address::new(
+            *b"\x28\x8d\xc8\x41\xa5\x2f\xca\x27\x07\xc6\x94\x7b\x3a\x77\x7c\x5e\x56\xcd\x87\xbc",
+        ),
+    ),
+    // Ink (CREATE2-shared with Arbitrum One)
+    (
+        57073,
+        Address::new(
+            *b"\x36\x0e\x68\xfa\xcc\xca\x8c\xa4\x95\xc1\xb7\x59\xfd\x9e\xee\x46\x6d\xb9\xfb\x32",
+        ),
+    ),
+    // Unichain
+    (
+        130,
+        Address::new(
+            *b"\x1f\x98\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04",
+        ),
+    ),
+    // World Chain
+    (
+        480,
+        Address::new(
+            *b"\xb1\x86\x0d\x52\x91\x82\xac\x3b\xc1\xf5\x1f\xa2\xab\xd5\x66\x62\xb7\xd1\x3f\x33",
+        ),
+    ),
+    // Zora
+    (
+        7777777,
+        Address::new(
+            *b"\x05\x75\x33\x8e\x4c\x17\x00\x6a\xe1\x81\xb4\x79\x00\xa8\x44\x04\x24\x7c\xa3\x0f",
+        ),
+    ),
 ];
 
 /// Look up the V3 NonfungiblePositionManager address for `chain_id`.
@@ -657,6 +819,17 @@ pub fn v3_position_manager_address(chain_id: u64) -> Option<Address> {
 #[must_use]
 pub fn v4_position_manager_address(chain_id: u64) -> Option<Address> {
     V4_PM_ADDRESSES
+        .iter()
+        .find(|(chain, _)| *chain == chain_id)
+        .map(|(_, addr)| *addr)
+}
+
+/// Look up the V4 PoolManager (singleton flash-accounting contract) address
+/// for `chain_id`. Returns `None` for chains without a known V4 deployment so
+/// callers don't fabricate a `pool.address` for an untrusted chain.
+#[must_use]
+pub fn v4_pool_manager_address(chain_id: u64) -> Option<Address> {
+    V4_POOL_MANAGER_ADDRESSES
         .iter()
         .find(|(chain, _)| *chain == chain_id)
         .map(|(_, addr)| *addr)
@@ -833,10 +1006,10 @@ mod tests {
                 130,
                 *b"\xef\x74\x0b\xf2\x3a\xca\xe2\x6f\x64\x92\xb1\x0d\xe6\x45\xd6\xb9\x8d\xc8\xea\xf3",
             ),
-            // World Chain — UniversalRouterV1_2_V2Support
+            // World Chain — UniversalRouter (corrected; deployments/480.md)
             (
                 480,
-                *b"\x7a\x25\x0d\x56\x30\xb4\xcf\x53\x97\x39\xdf\x2c\x5d\xac\xb4\xc6\x59\xf2\x48\x8d",
+                *b"\x03\xc4\xf6\xb5\x57\x33\xcd\xf3\xca\xa0\x7c\x01\xe5\xb8\x3d\xde\xe3\x38\x1f\x60",
             ),
             // World Chain — UniversalRouterV2
             (
@@ -963,6 +1136,181 @@ mod tests {
                 v3_position_manager_address(chain_id),
                 None,
                 "chain {chain_id} should not map to any V3 NFPM",
+            );
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TB-4 — V4 PositionManager / PoolManager 13-chain address tables.
+    // Byte literals are re-derived from the published hex strings here so a
+    // one-byte typo in the address tables is caught at compile / test time.
+    // Source: Uniswap/contracts deployments/json/<chainId>.json.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// TB-4: every V4 PositionManager entry resolves. The table was 6-chain
+    /// (mainnet/Optimism/Polygon/Arbitrum/Base/Blast) before TB-4; the 7 new
+    /// entries are asserted explicitly so a regression is attributed here.
+    #[test]
+    fn v4_position_manager_address_covers_thirteen_chains() {
+        let expected: &[(u64, [u8; 20])] = &[
+            // pre-TB-4 baseline 6.
+            (
+                1,
+                *b"\xbd\x21\x65\x13\xd7\x4c\x8c\xf1\x4c\xf4\x74\x7e\x6a\xaa\x64\x20\xff\x64\xee\x9e",
+            ),
+            (
+                10,
+                *b"\x3c\x3e\xa4\xb5\x7a\x46\x24\x1e\x54\x61\x0e\x5f\x02\x2e\x5c\x45\x85\x9a\x10\x17",
+            ),
+            (
+                137,
+                *b"\x1e\xc2\xeb\xf4\xf3\x7e\x73\x63\xfd\xfe\x35\x51\x60\x24\x25\xaf\x0b\x3c\xee\xf9",
+            ),
+            (
+                42161,
+                *b"\xd8\x8f\x38\xf9\x30\xb7\x95\x2f\x2d\xb2\x43\x2c\xb0\x02\xe7\xab\xbf\x3d\xd8\x69",
+            ),
+            (
+                8453,
+                *b"\x7c\x5f\x5a\x4b\xbd\x8f\xd6\x31\x84\x57\x75\x25\x32\x61\x23\xb5\x19\x42\x9b\xdc",
+            ),
+            (
+                81457,
+                *b"\x4a\xd2\xf4\xcc\xa2\x68\x2c\xbb\x5b\x95\x0d\x66\x0d\xd4\x58\xa1\xd3\xf1\xba\xad",
+            ),
+            // TB-4 new 7.
+            (
+                56,
+                *b"\x7a\x4a\x5c\x91\x9a\xe2\x54\x1a\xed\x11\x04\x1a\x1a\xee\xe6\x8f\x12\x87\xf9\x5b",
+            ),
+            (
+                42220,
+                *b"\xf7\x96\x5f\x39\x81\xe4\xd5\xbc\x38\x3b\xfb\xcb\x61\x50\x17\x63\xe9\x06\x8c\xa9",
+            ),
+            (
+                43114,
+                *b"\xb7\x4b\x1f\x14\xd2\x75\x4a\xcf\xcb\xbe\x1a\x22\x10\x23\xa5\xcf\x50\xab\x8a\xcd",
+            ),
+            (
+                57073,
+                *b"\x1b\x35\xd1\x3a\x2e\x25\x28\xf1\x92\x63\x7f\x14\xb0\x5f\x0d\xc0\xe7\xde\xb5\x66",
+            ),
+            (
+                130,
+                *b"\x45\x29\xa0\x1c\x7a\x04\x10\x16\x7c\x57\x40\xc4\x87\xa8\xde\x60\x23\x26\x17\xbf",
+            ),
+            (
+                480,
+                *b"\xc5\x85\xe0\xf5\x04\x61\x3b\x5f\xbf\x87\x4f\x21\xaf\x14\xc6\x52\x60\xfb\x41\xfa",
+            ),
+            (
+                7777777,
+                *b"\xf6\x6c\x7b\x99\xe2\x04\x0f\x0d\x9b\x32\x6b\x3b\x7c\x15\x2e\x96\x63\x54\x3d\x63",
+            ),
+        ];
+        assert_eq!(expected.len(), 13, "TB-4 expects all 13 chains covered");
+        for (chain_id, raw) in expected.iter().copied() {
+            assert_eq!(
+                v4_position_manager_address(chain_id),
+                Some(Address::from(raw)),
+                "chain {chain_id} V4 PositionManager address mismatch",
+            );
+        }
+    }
+
+    /// TB-4: every V4 PoolManager entry resolves. The table is brand-new in
+    /// TB-4 — all 13 chains asserted.
+    #[test]
+    fn v4_pool_manager_address_covers_thirteen_chains() {
+        let expected: &[(u64, [u8; 20])] = &[
+            (
+                1,
+                *b"\x00\x00\x00\x00\x00\x04\x44\x4c\x5d\xc7\x5c\xb3\x58\x38\x0d\x2e\x3d\xe0\x8a\x90",
+            ),
+            (
+                8453,
+                *b"\x49\x85\x81\xff\x71\x89\x22\xc3\xf8\xe6\xa2\x44\x95\x6a\xf0\x99\xb2\x65\x2b\x2b",
+            ),
+            (
+                10,
+                *b"\x9a\x13\xf9\x8c\xb9\x87\x69\x4c\x9f\x08\x6b\x1f\x5e\xb9\x90\xee\xa8\x26\x4e\xc3",
+            ),
+            (
+                42161,
+                *b"\x36\x0e\x68\xfa\xcc\xca\x8c\xa4\x95\xc1\xb7\x59\xfd\x9e\xee\x46\x6d\xb9\xfb\x32",
+            ),
+            (
+                137,
+                *b"\x67\x36\x67\x82\x80\x58\x70\x06\x01\x51\x38\x3f\x4b\xbf\xf9\xda\xb5\x3e\x5c\xd6",
+            ),
+            (
+                43114,
+                *b"\x06\x38\x0c\x0e\x09\x12\x31\x2b\x51\x50\x36\x4b\x9d\xc4\x54\x2b\xa0\xdb\xbc\x85",
+            ),
+            (
+                81457,
+                *b"\x16\x31\x55\x91\x98\xa9\xe4\x74\x03\x34\x33\xb2\x95\x8d\xab\xc1\x35\xab\x64\x46",
+            ),
+            (
+                56,
+                *b"\x28\xe2\xea\x09\x08\x77\xbf\x75\x74\x05\x58\xf6\xbf\xb3\x6a\x5f\xfe\xe9\xe9\xdf",
+            ),
+            (
+                42220,
+                *b"\x28\x8d\xc8\x41\xa5\x2f\xca\x27\x07\xc6\x94\x7b\x3a\x77\x7c\x5e\x56\xcd\x87\xbc",
+            ),
+            (
+                57073,
+                *b"\x36\x0e\x68\xfa\xcc\xca\x8c\xa4\x95\xc1\xb7\x59\xfd\x9e\xee\x46\x6d\xb9\xfb\x32",
+            ),
+            (
+                130,
+                *b"\x1f\x98\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04",
+            ),
+            (
+                480,
+                *b"\xb1\x86\x0d\x52\x91\x82\xac\x3b\xc1\xf5\x1f\xa2\xab\xd5\x66\x62\xb7\xd1\x3f\x33",
+            ),
+            (
+                7777777,
+                *b"\x05\x75\x33\x8e\x4c\x17\x00\x6a\xe1\x81\xb4\x79\x00\xa8\x44\x04\x24\x7c\xa3\x0f",
+            ),
+        ];
+        assert_eq!(expected.len(), 13, "TB-4 expects all 13 chains covered");
+        for (chain_id, raw) in expected.iter().copied() {
+            assert_eq!(
+                v4_pool_manager_address(chain_id),
+                Some(Address::from(raw)),
+                "chain {chain_id} V4 PoolManager address mismatch",
+            );
+        }
+    }
+
+    /// TB-4: Arbitrum One (42161) and Ink (57073) share the same CREATE2 V4
+    /// PoolManager address. This colocation is intentional — assert it so a
+    /// future table edit that diverges them is flagged.
+    #[test]
+    fn v4_pool_manager_address_arbitrum_ink_share_create2() {
+        let shared: [u8; 20] =
+            *b"\x36\x0e\x68\xfa\xcc\xca\x8c\xa4\x95\xc1\xb7\x59\xfd\x9e\xee\x46\x6d\xb9\xfb\x32";
+        assert_eq!(v4_pool_manager_address(42161), Some(Address::from(shared)));
+        assert_eq!(v4_pool_manager_address(57073), Some(Address::from(shared)));
+    }
+
+    /// TB-4: unknown chains return `None` for both V4 tables so callers never
+    /// fabricate an address for an untrusted chain.
+    #[test]
+    fn v4_address_tables_reject_unknown_chain() {
+        for chain_id in [0u64, 5, 100, 11_111, 999_999] {
+            assert_eq!(
+                v4_position_manager_address(chain_id),
+                None,
+                "chain {chain_id} should not map to any V4 PositionManager",
+            );
+            assert_eq!(
+                v4_pool_manager_address(chain_id),
+                None,
+                "chain {chain_id} should not map to any V4 PoolManager",
             );
         }
     }

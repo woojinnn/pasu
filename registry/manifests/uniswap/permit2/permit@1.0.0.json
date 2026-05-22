@@ -3,8 +3,24 @@
   "id": "uniswap/permit2/permit@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1, 8453, 10, 42161, 137],
-    "to": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"],
+    "chain_ids": [
+      1,
+      10,
+      56,
+      130,
+      137,
+      480,
+      8453,
+      42161,
+      42220,
+      43114,
+      57073,
+      81457,
+      7777777
+    ],
+    "to": [
+      "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    ],
     "selector": "0x2b67b570"
   },
   "abi_fragment": {
@@ -13,7 +29,10 @@
       "name": "permit",
       "type": "function",
       "inputs": [
-        { "name": "owner", "type": "address" },
+        {
+          "name": "owner",
+          "type": "address"
+        },
         {
           "name": "permitSingle",
           "type": "tuple",
@@ -22,17 +41,38 @@
               "name": "details",
               "type": "tuple",
               "components": [
-                { "name": "token",      "type": "address" },
-                { "name": "amount",     "type": "uint160" },
-                { "name": "expiration", "type": "uint48"  },
-                { "name": "nonce",      "type": "uint48"  }
+                {
+                  "name": "token",
+                  "type": "address"
+                },
+                {
+                  "name": "amount",
+                  "type": "uint160"
+                },
+                {
+                  "name": "expiration",
+                  "type": "uint48"
+                },
+                {
+                  "name": "nonce",
+                  "type": "uint48"
+                }
               ]
             },
-            { "name": "spender",     "type": "address" },
-            { "name": "sigDeadline", "type": "uint256" }
+            {
+              "name": "spender",
+              "type": "address"
+            },
+            {
+              "name": "sigDeadline",
+              "type": "uint256"
+            }
           ]
         },
-        { "name": "signature", "type": "bytes" }
+        {
+          "name": "signature",
+          "type": "bytes"
+        }
       ]
     }
   },
@@ -41,22 +81,46 @@
     "category": "misc",
     "action": "permit",
     "fields": {
-      "permitKind":                     { "literal": "permit2_single" },
-      "token.kind":                     { "literal": "erc20" },
-      "token.address":                  { "from": "$.args.permitSingle.details.token" },
-      "owner":                          { "from": "$.args.owner" },
-      "spender":                        { "from": "$.args.permitSingle.spender" },
-      "amount.kind":                    { "literal": "max" },
-      "amount.value":                   { "from": "$.args.permitSingle.details.amount" },
-      "validity.expiresAt":             { "from": "$.args.permitSingle.details.expiration" },
-      "validity.source":                { "literal": "grant-expiration" },
-      "signatureValidity.expiresAt":    { "from": "$.args.permitSingle.sigDeadline" },
-      "signatureValidity.source":       { "literal": "signature-deadline" }
+      "permitKind": {
+        "literal": "permit2_single"
+      },
+      "token.kind": {
+        "literal": "erc20"
+      },
+      "token.address": {
+        "from": "$.args.permitSingle[0][0]"
+      },
+      "owner": {
+        "from": "$.args.owner"
+      },
+      "spender": {
+        "from": "$.args.permitSingle[1]"
+      },
+      "amount.kind": {
+        "literal": "max"
+      },
+      "amount.value": {
+        "from": "$.args.permitSingle[0][1]"
+      },
+      "validity.expiresAt": {
+        "from": "$.args.permitSingle[0][2]"
+      },
+      "validity.source": {
+        "literal": "grant-expiration"
+      },
+      "signatureValidity.expiresAt": {
+        "from": "$.args.permitSingle[2]"
+      },
+      "signatureValidity.source": {
+        "literal": "signature-deadline"
+      }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

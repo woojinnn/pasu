@@ -3,8 +3,24 @@
   "id": "uniswap/permit2/transferFrom@1.0.0",
   "publisher": "uniswap.eth",
   "match": {
-    "chain_ids": [1, 8453, 10, 42161, 137],
-    "to": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"],
+    "chain_ids": [
+      1,
+      10,
+      56,
+      130,
+      137,
+      480,
+      8453,
+      42161,
+      42220,
+      43114,
+      57073,
+      81457,
+      7777777
+    ],
+    "to": [
+      "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    ],
     "selector": "0x36c78516"
   },
   "abi_fragment": {
@@ -13,10 +29,22 @@
       "name": "transferFrom",
       "type": "function",
       "inputs": [
-        { "name": "from",   "type": "address" },
-        { "name": "to",     "type": "address" },
-        { "name": "amount", "type": "uint160" },
-        { "name": "token",  "type": "address" }
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint160"
+        },
+        {
+          "name": "token",
+          "type": "address"
+        }
       ]
     }
   },
@@ -25,17 +53,31 @@
     "category": "misc",
     "action": "transfer",
     "fields": {
-      "token.asset.kind":          { "literal": "erc20" },
-      "token.asset.address":       { "from": "$.args.token" },
-      "token.amount.kind":         { "literal": "exact" },
-      "token.amount.value":        { "from": "$.args.amount" },
-      "from":                      { "from": "$.args.from" },
-      "recipient":                 { "from": "$.args.to" }
+      "token.asset.kind": {
+        "literal": "erc20"
+      },
+      "token.asset.address": {
+        "from": "$.args.token"
+      },
+      "token.amount.kind": {
+        "literal": "exact"
+      },
+      "token.amount.value": {
+        "from": "$.args.amount"
+      },
+      "from": {
+        "from": "$.args.from"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

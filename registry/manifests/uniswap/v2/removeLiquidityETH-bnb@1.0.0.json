@@ -1,0 +1,109 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/v2/removeLiquidityETH-bnb@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      56,
+      8453,
+      42161
+    ],
+    "to": [
+      "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"
+    ],
+    "selector": "0x02751cec"
+  },
+  "abi_fragment": {
+    "function_name": "removeLiquidityETH",
+    "abi": {
+      "name": "removeLiquidityETH",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint256"
+        },
+        {
+          "name": "amountTokenMin",
+          "type": "uint256"
+        },
+        {
+          "name": "amountETHMin",
+          "type": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "remove_liquidity",
+    "fields": {
+      "exitMode": {
+        "literal": "proportional"
+      },
+      "pool.address": {
+        "literal": "0x0000000000000000000000000000000000000000"
+      },
+      "inputLp.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputLp.amount.kind": {
+        "literal": "exact"
+      },
+      "inputLp.amount.value": {
+        "from": "$.args.liquidity"
+      },
+      "outputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "outputTokens[0].asset.address": {
+        "from": "$.args.token"
+      },
+      "outputTokens[0].amount.kind": {
+        "literal": "min"
+      },
+      "outputTokens[0].amount.value": {
+        "from": "$.args.amountTokenMin"
+      },
+      "outputTokens[1].asset.kind": {
+        "literal": "native"
+      },
+      "outputTokens[1].amount.kind": {
+        "literal": "min"
+      },
+      "outputTokens[1].amount.value": {
+        "from": "$.args.amountETHMin"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      },
+      "validity.expiresAt": {
+        "from": "$.args.deadline"
+      },
+      "validity.source": {
+        "literal": "tx-deadline"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

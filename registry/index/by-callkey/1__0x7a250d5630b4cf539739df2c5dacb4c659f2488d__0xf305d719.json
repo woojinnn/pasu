@@ -2,18 +2,14 @@
   "matched": true,
   "bundle_id": "uniswap/v2/addLiquidityETH@1.0.0",
   "manifest_path": "manifests/uniswap/v2/addLiquidityETH@1.0.0.json",
-  "bundle_sha256": "0xaddb9e64c24e7a15789a6ce929aa2ad86486f35b9334c6dabaea26765a7184c1",
+  "bundle_sha256": "0x3e769b66f342e3608d6836f0beb402404f9f0a890e269bb21b5bc06c2ccee33f",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/addLiquidityETH@1.0.0",
     "publisher": "uniswap.eth",
     "match": {
       "chain_ids": [
-        1,
-        8453,
-        10,
-        42161,
-        137
+        1
       ],
       "to": [
         "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
@@ -79,6 +75,9 @@
         },
         "inputTokens[1].amount.kind": {
           "literal": "max"
+        },
+        "inputTokens[1].amount.value": {
+          "from": "$.tx.value_wei"
         },
         "outputLp.asset.kind": {
           "literal": "erc20"

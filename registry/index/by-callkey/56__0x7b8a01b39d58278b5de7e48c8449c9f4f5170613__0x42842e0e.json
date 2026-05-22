@@ -1,0 +1,77 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/safeTransferFrom-bnb@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/safeTransferFrom-bnb@1.0.0.json",
+  "bundle_sha256": "0x682706634fca5da918af2329c9d1687d07744635f64c0626088462eaff206180",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/safeTransferFrom-bnb@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        56
+      ],
+      "to": [
+        "0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613"
+      ],
+      "selector": "0x42842e0e"
+    },
+    "abi_fragment": {
+      "function_name": "safeTransferFrom",
+      "abi": {
+        "name": "safeTransferFrom",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "transfer",
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc721"
+        },
+        "token.asset.address": {
+          "from": "$.tx.to"
+        },
+        "token.asset.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "token.amount.kind": {
+          "literal": "exact"
+        },
+        "token.amount.value": {
+          "literal": "1"
+        },
+        "from": {
+          "from": "$.args.from"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

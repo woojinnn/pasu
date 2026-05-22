@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/increaseLiquidity@1.0.0",
   "manifest_path": "manifests/uniswap/v3/increaseLiquidity@1.0.0.json",
-  "bundle_sha256": "0x68a3d3cb39a794f1dbf37be9860059a72f6f6a4c588c3060a40dd2965d03e9b4",
+  "bundle_sha256": "0xd308c2fff4160e712ae9a58660b7318788c9b8ec9f24d72534e29e76b7e1e623",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/increaseLiquidity@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"

@@ -2,18 +2,14 @@
   "matched": true,
   "bundle_id": "uniswap/v2/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0",
   "manifest_path": "manifests/uniswap/v2/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0.json",
-  "bundle_sha256": "0x0f6c9db14cca71c378472eb96e3235d30584da9f3f462e16b41203345514a8c9",
+  "bundle_sha256": "0x25297401598c558229b05cc9e31b4458d1e6b999e9c9535f172e0a991c5cdd7b",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v2/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0",
     "publisher": "uniswap.eth",
     "match": {
       "chain_ids": [
-        1,
-        8453,
-        10,
-        42161,
-        137
+        1
       ],
       "to": [
         "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"

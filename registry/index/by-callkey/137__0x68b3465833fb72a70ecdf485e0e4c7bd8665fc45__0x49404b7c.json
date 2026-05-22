@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/swap-router-02/unwrapWETH9@1.0.0",
   "manifest_path": "manifests/uniswap/swap-router-02/unwrapWETH9@1.0.0.json",
-  "bundle_sha256": "0xb11b86d239682f34fe76059779173865588a0dba2bfd0bb302ebf72dd217bfdc",
+  "bundle_sha256": "0x37a9cf3d9606e7c755ec14de348066b568d09351b85fb55fd78914fc80864bc6",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/swap-router-02/unwrapWETH9@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"

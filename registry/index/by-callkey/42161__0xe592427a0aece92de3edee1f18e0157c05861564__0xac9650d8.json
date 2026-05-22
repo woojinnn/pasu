@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/multicall@1.0.0",
   "manifest_path": "manifests/uniswap/v3/multicall@1.0.0.json",
-  "bundle_sha256": "0x7f0ae425a0b08ff4f97335bb61e69fd223d3d27fcbf96c3db158c62c8a25dbd7",
+  "bundle_sha256": "0x67ba959ff1bf673f8cbf1d65f3e1fa44622db395ca24b04c74ab213bde358197",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/multicall@1.0.0",
@@ -10,10 +10,9 @@
     "match": {
       "chain_ids": [
         1,
-        8453,
         10,
-        42161,
-        137
+        137,
+        42161
       ],
       "to": [
         "0xE592427A0AEce92De3Edee1F18E0157C05861564"
