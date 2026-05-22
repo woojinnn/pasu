@@ -108,13 +108,16 @@ pub static CURVE_ROUTER_NG_SWAP_TYPES: EnumTable = EnumTable {
 // Curve Router NG addresses per chain
 // ---------------------------------------------------------------------------
 //
-// Source (verbatim): `curvefi/curve-router-ng/README.md @ master`.
-// Mainnet entry = v1.2.0 deployment (current active per README); v1.1
-// deployment `0x16C6521Dff6baB339122a0FE25a9116693265353` 는 prior version
-// (etherscan verified) — 본 PoC 는 README 의 current 만 채택.
+// Source: `curvefi/curve-router-ng/README.md` @ commit
+// `1014d3691bd9df935dc06fc5988484b0614d1fd5` — 14 chain. Mainnet = v1.2.0, 그
+// 외 = v1.1.0. Fraxtal(252)/zkSync(324)/Mantle(5000)/X-Layer(196) 는 v1.0 으로
+// `exchange` 의 `_swap_params` 가 `uint256[4][5]` 변종 (selector `0xaad348a2`);
+// 나머지 10 chain 은 `uint256[5][5]` (selector `0xc872a3c5`) — Phase 13 검증.
+// 본 table 은 (chain_id, address) 만 보유 — ABI 변종 구분은 Tier A bundle 의
+// `match.selector` 책임.
 
-/// Curve Router NG addresses per chain. Verified via
-/// `curvefi/curve-router-ng/README.md @ master`.
+/// Curve Router NG addresses per chain (14 chain). Verified via
+/// `curvefi/curve-router-ng/README.md` @ `1014d369` + on-chain `version()`.
 pub const CURVE_ROUTER_NG_ADDRESSES: &[(u64, Address)] = &[
     // Ethereum mainnet (v1.2.0)
     (
@@ -175,6 +178,16 @@ pub const CURVE_ROUTER_NG_ADDRESSES: &[(u64, Address)] = &[
     (
         5000,
         Address::new(*b"\x4f\x37\xA9\xd1\x77\x47\x04\x99\xA2\xdD\x08\x46\x21\x02\x0b\x02\x3f\xcf\xfc\x1F"),
+    ),
+    // Kava (Phase 13 — README 14-chain reconcile; uint256[5][5] 변종)
+    (
+        2222,
+        Address::new(*b"\x0D\xCD\xED\x35\x45\xD5\x65\xbA\x3B\x19\xE6\x83\x43\x13\x81\x00\x72\x45\xd9\x83"),
+    ),
+    // X-Layer (Phase 13 — README 14-chain reconcile; uint256[4][5] 변종)
+    (
+        196,
+        Address::new(*b"\xBF\xab\x8e\xbc\x83\x6E\x1c\x4D\x81\x83\x77\x98\xFC\x07\x6D\x21\x9C\x9a\x18\x55"),
     ),
 ];
 
@@ -350,6 +363,28 @@ mod tests {
         assert_eq!(
             format!("{:#x}", wsteth.collateral_token).to_lowercase(),
             "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        );
+    }
+
+    #[test]
+    fn curve_router_ng_table_covers_14_chains() {
+        // Phase 13 — README @ 1014d369 lists 14 Router NG deployments.
+        assert_eq!(CURVE_ROUTER_NG_ADDRESSES.len(), 14);
+        let lookup = |chain: u64| {
+            CURVE_ROUTER_NG_ADDRESSES
+                .iter()
+                .find(|(c, _)| *c == chain)
+                .map(|(_, a)| format!("{a:#x}").to_lowercase())
+        };
+        // Kava (2222) shares the multi-chain CREATE2 address with OP/Gnosis/etc.
+        assert_eq!(
+            lookup(2222).as_deref(),
+            Some("0x0dcded3545d565ba3b19e683431381007245d983")
+        );
+        // X-Layer (196) — distinct deployment.
+        assert_eq!(
+            lookup(196).as_deref(),
+            Some("0xbfab8ebc836e1c4d81837798fc076d219c9a1855")
         );
     }
 }

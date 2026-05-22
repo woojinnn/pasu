@@ -26,6 +26,7 @@
       "exitMode":                       { "literal": "exact_out" },
       "pool.address":                   { "literal": "0xa1f8a6807c402e4a15ef4eba36528a3fed24e577" },
       "inputLp.asset.kind":             { "literal": "erc20" },
+      "inputLp.asset.address":          { "literal": "0xf43211935c781d5ca1a41d2041f397b8a7366c7a" },
       "inputLp.amount.kind":            { "literal": "max" },
       "inputLp.amount.value":           { "from": "$.args.max_burn_amount" },
       "outputTokens[0].asset.kind":     { "literal": "native" },

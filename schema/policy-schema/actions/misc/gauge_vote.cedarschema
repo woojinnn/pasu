@@ -1,6 +1,6 @@
 type GaugeVoteContext = {
   voter: String,
-  tokenId: String,
+  tokenId?: String,
   pools: Set<String>,
   weights: Set<String>,
   weightsSum: String,

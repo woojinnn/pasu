@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap-ng/crvusd-usdc/exchange-ng@1.0.0",
   "manifest_path": "manifests/curve/stableswap-ng/crvusd-usdc/exchange-ng@1.0.0.json",
-  "bundle_sha256": "0x244624e3005e20485d084cf9c8ef9cdb0c701483ed7bd5afe37447cbc6bd71b4",
+  "bundle_sha256": "0x06937aa93fefb8d27c4aa754d4242a825a6edeb18cf20d64a4d8cdd5f59387c8",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap-ng/crvusd-usdc/exchange-ng@1.0.0",
@@ -61,8 +61,8 @@
           "args": [
             {
               "literal": [
-                "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
-                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
               ]
             },
             {
@@ -84,8 +84,8 @@
           "args": [
             {
               "literal": [
-                "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
-                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
               ]
             },
             {

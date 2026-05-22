@@ -454,27 +454,33 @@ fn json_value_to_bytes(value: &serde_json::Value) -> Result<Vec<u8>, FnError> {
     }
 }
 
-/// `curve_route_last_token(route: address[11]) -> AddressRef` — Phase 12.3
-/// (Curve Router NG output-token resolver).
+/// `curve_route_last_token(route: address[11]) -> AddressRef` — Phase 12.3,
+/// fixed Phase 13 P1-5 (Curve Router NG output-token resolver).
 ///
 /// Curve Router NG `exchange(...)` encodes a 1-to-5-hop swap path as a fixed-
-/// size `address[11]` array zero-padded for unused slots:
-///   * `route[0]` — input token
-///   * `route[2k]` (k = 1..=5) — intermediate / output token of hop k
-///   * `route[2k-1]` (k = 1..=5) — pool address of hop k
+/// size `address[11]` array — interleaved token / pool slots:
+///   * `route[2i]`   (i = 0..=5) — token slot (0 = input, 2..10 = hop outputs)
+///   * `route[2i+1]` (i = 0..=4) — pool address of hop i
 ///   * unused trailing slots = `address(0)`
 ///
-/// The output token is therefore the *last non-zero address at an even index*.
-/// We scan idx 0/2/4/6/8/10 in order and remember the most recent non-zero
-/// element; `address(0)` slots are skipped.
+/// `Router.vy::exchange` runs hop `i` and then **breaks** as soon as the next
+/// hop's pool slot is `address(0)` (`if _route[i*2+3] == empty(address): break`).
+/// Equivalently, hop `i` executes only while its own pool `route[2i+1]` is
+/// non-zero. The swap output token is `route[2k+2]` of the last executed hop
+/// `k` — it is **NOT** the last non-zero even slot: a token sitting *after* the
+/// first zero pool is never reached on-chain. Returning it (the pre-Phase-13
+/// behaviour) let calldata append a fake output token past a zero pool and have
+/// the envelope assert an output the swap never produces (audit P1-5).
 ///
 /// Errors:
-///   * [`FnError::TypeMismatch`] — argument is not a JSON array (or any
-///     element is not a JSON string).
+///   * [`FnError::TypeMismatch`] — argument is not a JSON array (or a read
+///     slot is not a JSON string).
 ///   * [`FnError::LengthMismatch`] — array length is not exactly 11.
-///   * [`FnError::EmptyRoute`] — every even-index slot is `address(0)`.
+///   * [`FnError::EmptyRoute`] — no executable hop (`route[1]` is zero) or the
+///     resolved output token slot is itself `address(0)` (degenerate route).
 ///
-/// Source: `curvefi/curve-router-ng @ master / contracts/Router.vy::exchange`.
+/// Source: `curvefi/curve-router-ng` @ `1014d369` / `contracts/Router.vy::exchange`
+/// (`for i in range(5)` + break on `_route[i*2+3] == empty(address)`).
 pub fn curve_route_last_token(
     route_value: &serde_json::Value,
 ) -> Result<serde_json::Value, FnError> {
@@ -490,21 +496,32 @@ pub fn curve_route_last_token(
         });
     }
 
-    // Curve Router NG `_route` encodes token slots at even indices (0, 2, 4,
-    // 6, 8, 10). The last non-zero entry is the output token.
-    let mut last_token: Option<&serde_json::Value> = None;
-    for i in (0..arr.len()).step_by(2) {
-        let entry = &arr[i];
-        let addr_str = entry.as_str().ok_or_else(|| FnError::TypeMismatch {
+    // Read slot `idx` as an address string, surfacing non-strings as TypeMismatch.
+    fn addr_str(arr: &[serde_json::Value], idx: usize) -> Result<&str, FnError> {
+        arr[idx].as_str().ok_or_else(|| FnError::TypeMismatch {
             expected: "address string",
-            got: entry.clone(),
-        })?;
-        if !is_zero_address(addr_str) {
-            last_token = Some(entry);
-        }
+            got: arr[idx].clone(),
+        })
     }
 
-    last_token.cloned().ok_or(FnError::EmptyRoute)
+    // hop i: input = route[2i], pool = route[2i+1], output = route[2i+2].
+    // Mirror Router.vy's early-break — hop i runs only while its pool slot is
+    // non-zero; the output token is the last executed hop's output slot.
+    let mut last_output_idx = 0usize;
+    for i in 0..5 {
+        if is_zero_address(addr_str(arr, 2 * i + 1)?) {
+            break;
+        }
+        last_output_idx = 2 * i + 2;
+    }
+
+    // `last_output_idx == 0` → route[1] (pool of hop 0) is zero → no executable
+    // hop. A zero output token slot is an equally degenerate route. Fail closed.
+    if last_output_idx == 0 || is_zero_address(addr_str(arr, last_output_idx)?) {
+        return Err(FnError::EmptyRoute);
+    }
+
+    Ok(arr[last_output_idx].clone())
 }
 
 /// Case-insensitive comparison against the canonical zero address. Bundles
@@ -1285,6 +1302,55 @@ mod tests_curve_route_last_token {
     fn non_array_returns_error() {
         let err = curve_route_last_token(&json!("0xdead")).unwrap_err();
         assert!(matches!(err, FnError::TypeMismatch { expected: "array", .. }));
+    }
+
+    /// P1-5 regression — a zero pool slot mid-route terminates the swap.
+    /// `_route = [A, P0, B, 0x0(pool1), MID, P2, D, 0x0×4]`: on-chain the swap
+    /// runs hop 0 only (A->B) and stops because pool1 is zero. The output is B
+    /// (idx 2), NOT D — the pre-fix scan returned the last non-zero even slot
+    /// (D) and let calldata assert an unreachable output token.
+    #[test]
+    fn gap_route_stops_at_first_zero_pool() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1", // [0] input A
+            "0x1111111111111111111111111111111111111111", // [1] pool0
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2", // [2] output B
+            "0x0000000000000000000000000000000000000000", // [3] pool1 = ZERO -> break
+            "0xcccccccccccccccccccccccccccccccccccccccc", // [4] MID (unreachable)
+            "0x2222222222222222222222222222222222222222", // [5] pool2
+            "0xdddddddddddddddddddddddddddddddddddddddd", // [6] D (unreachable)
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2"
+        );
+    }
+
+    /// Fail-closed — if the resolved output token slot is itself `address(0)`
+    /// (hop 0 has a pool but its output slot is zero), surface EmptyRoute
+    /// instead of emitting a zero-address output token into the envelope.
+    #[test]
+    fn zero_output_token_returns_error() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1", // [0] input
+            "0x1111111111111111111111111111111111111111", // [1] pool0
+            "0x0000000000000000000000000000000000000000", // [2] output = ZERO
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let err = curve_route_last_token(&route).unwrap_err();
+        assert!(matches!(err, FnError::EmptyRoute));
     }
 }
 

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/gauge/steth/withdraw@1.0.0",
   "manifest_path": "manifests/curve/gauge/steth/withdraw@1.0.0.json",
-  "bundle_sha256": "0x1095e211ada965e14f7a42ce02f215ab625a3644623a20ff24f2cc6c76095a40",
+  "bundle_sha256": "0xcc4314e1577e876f0d8e4f22d2a6fec00215cefa48e025ddddc4cb5cc57cee50",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/gauge/steth/withdraw@1.0.0",
@@ -39,6 +39,12 @@
         },
         "tokenOut.address": {
           "literal": "0x06325440d014e39736583c165c2963ba99faf14e"
+        },
+        "amountOut.kind": {
+          "literal": "exact"
+        },
+        "amountOut.value": {
+          "from": "$.args._value"
         },
         "recipient": {
           "from": "$.tx.from"

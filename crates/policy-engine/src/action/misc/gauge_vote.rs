@@ -10,8 +10,10 @@ use crate::action::common::{Address, DecimalString, Validity};
 pub struct GaugeVoteAction {
     /// Voter contract address.
     pub voter: Address,
-    /// veNFT (Aerodrome veAERO / Velodrome veVELO) token ID.
-    pub token_id: DecimalString,
+    /// veNFT token ID (Aerodrome veAERO / Velodrome veVELO). `None` for
+    /// account-bound voting escrows — Curve veCRV has no per-position NFT.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_id: Option<DecimalString>,
     /// Gauge pool addresses receiving emission weights. Empty array = reset.
     pub pools: Vec<Address>,
     /// Vote weights (parallel to `pools`).

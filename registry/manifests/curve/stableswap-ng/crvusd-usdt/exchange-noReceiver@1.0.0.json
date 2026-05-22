@@ -31,8 +31,8 @@
         "fn": "select_from_literal_array",
         "args": [
           { "literal": [
-            "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
-            "0xdac17f958d2ee523a2206206994597c13d831ec7"
+            "0xdac17f958d2ee523a2206206994597c13d831ec7",
+            "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
           ] },
           { "from": "$.args.i" }
         ]
@@ -44,8 +44,8 @@
         "fn": "select_from_literal_array",
         "args": [
           { "literal": [
-            "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
-            "0xdac17f958d2ee523a2206206994597c13d831ec7"
+            "0xdac17f958d2ee523a2206206994597c13d831ec7",
+            "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
           ] },
           { "from": "$.args.j" }
         ]

@@ -29,6 +29,10 @@
       "asset.address":    { "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
       "amount.kind":      { "literal": "exact" },
       "amount.value":     { "from": "$.args.debt" },
+      "collateralAsset.kind":    { "literal": "erc20" },
+      "collateralAsset.address": { "literal": "0xac3e018457b222d93114458476f3e3416abbe38f" },
+      "collateralAmount.kind":   { "literal": "exact" },
+      "collateralAmount.value":  { "from": "$.args.collateral" },
       "recipient":        { "from": "$.tx.from" },
       "onBehalf":         { "from": "$.tx.from" }
     }

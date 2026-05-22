@@ -1,25 +1,25 @@
 {
   "matched": true,
-  "bundle_id": "curve/stableswap-ng/crvusd-usdc/removeLiquidity-ng@1.0.0",
-  "manifest_path": "manifests/curve/stableswap-ng/crvusd-usdc/removeLiquidity-ng@1.0.0.json",
-  "bundle_sha256": "0xb797572b262543da5b698dbbb396945e04a6ee0e6f6c7b0e9a807c9f3d98049b",
+  "bundle_id": "curve/stableswap-ng/crvusd-usdt/removeLiquidityOneCoin-ng@1.0.0",
+  "manifest_path": "manifests/curve/stableswap-ng/crvusd-usdt/removeLiquidityOneCoin-ng@1.0.0.json",
+  "bundle_sha256": "0xa577947070b690b53f650efb9df33e1cde643064d24195c3b42418d9d52f4b6b",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/stableswap-ng/crvusd-usdc/removeLiquidity-ng@1.0.0",
+    "id": "curve/stableswap-ng/crvusd-usdt/removeLiquidityOneCoin-ng@1.0.0",
     "publisher": "curve.fi",
     "match": {
       "chain_ids": [
         1
       ],
       "to": [
-        "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"
+        "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
       ],
-      "selector": "0x3eb1719f"
+      "selector": "0x1a4d01d2"
     },
     "abi_fragment": {
-      "function_name": "remove_liquidity",
+      "function_name": "remove_liquidity_one_coin",
       "abi": {
-        "name": "remove_liquidity",
+        "name": "remove_liquidity_one_coin",
         "type": "function",
         "inputs": [
           {
@@ -27,12 +27,12 @@
             "type": "uint256"
           },
           {
-            "name": "_min_amounts",
-            "type": "uint256[2]"
+            "name": "i",
+            "type": "int128"
           },
           {
-            "name": "_receiver",
-            "type": "address"
+            "name": "_min_received",
+            "type": "uint256"
           }
         ]
       }
@@ -43,16 +43,16 @@
       "action": "remove_liquidity",
       "fields": {
         "exitMode": {
-          "literal": "proportional"
+          "literal": "single_asset"
         },
         "pool.address": {
-          "literal": "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"
+          "literal": "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
         },
         "inputLp.asset.kind": {
           "literal": "erc20"
         },
         "inputLp.asset.address": {
-          "literal": "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"
+          "literal": "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
         },
         "inputLp.amount.kind": {
           "literal": "exact"
@@ -64,28 +64,27 @@
           "literal": "erc20"
         },
         "outputTokens[0].asset.address": {
-          "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
-        },
-        "outputTokens[1].asset.kind": {
-          "literal": "erc20"
-        },
-        "outputTokens[1].asset.address": {
-          "literal": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+          "fn": "select_from_literal_array",
+          "args": [
+            {
+              "literal": [
+                "0xdac17f958d2ee523a2206206994597c13d831ec7",
+                "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+              ]
+            },
+            {
+              "from": "$.args.i"
+            }
+          ]
         },
         "outputTokens[0].amount.kind": {
           "literal": "min"
         },
         "outputTokens[0].amount.value": {
-          "from": "$.args._min_amounts[0]"
-        },
-        "outputTokens[1].amount.kind": {
-          "literal": "min"
-        },
-        "outputTokens[1].amount.value": {
-          "from": "$.args._min_amounts[1]"
+          "from": "$.args._min_received"
         },
         "recipient": {
-          "from": "$.args._receiver"
+          "from": "$.tx.from"
         }
       }
     },

@@ -5,6 +5,8 @@ type BorrowContext = {
   amountMode?: String,
   recipient: String,
   onBehalf: String,
+  collateralAsset?: AssetRef,
+  collateralAmount?: AmountConstraint,
   validity?: Validity,
   custom?: BorrowCustomContext,
 };

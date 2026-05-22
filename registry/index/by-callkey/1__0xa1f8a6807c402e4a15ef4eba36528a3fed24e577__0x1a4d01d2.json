@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap/frxeth/removeLiquidityOneCoin@1.0.0",
   "manifest_path": "manifests/curve/stableswap/frxeth/removeLiquidityOneCoin@1.0.0.json",
-  "bundle_sha256": "0x5e0671c60c7e0c0afffa28de57974b9975875257b3d525b08acd88683a6acf00",
+  "bundle_sha256": "0x9054675270510af4bd524be07ae4526b9736f9c2238db95497971982df757c48",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap/frxeth/removeLiquidityOneCoin@1.0.0",
@@ -50,6 +50,9 @@
         },
         "inputLp.asset.kind": {
           "literal": "erc20"
+        },
+        "inputLp.asset.address": {
+          "literal": "0xf43211935c781d5ca1a41d2041f397b8a7366c7a"
         },
         "inputLp.amount.kind": {
           "literal": "exact"

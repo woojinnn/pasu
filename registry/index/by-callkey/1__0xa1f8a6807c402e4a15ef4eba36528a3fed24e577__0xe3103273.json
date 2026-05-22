@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap/frxeth/removeLiquidityImbalance-2@1.0.0",
   "manifest_path": "manifests/curve/stableswap/frxeth/removeLiquidityImbalance-2@1.0.0.json",
-  "bundle_sha256": "0x34fafee92adec7085b0189896ef12bf8491da1e0e4618587eb84f8e3e3334f89",
+  "bundle_sha256": "0x0e9197f1daa0446a4935f1185592afc07b353e89a7fff8e5d6d2f0573024e654",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap/frxeth/removeLiquidityImbalance-2@1.0.0",
@@ -46,6 +46,9 @@
         },
         "inputLp.asset.kind": {
           "literal": "erc20"
+        },
+        "inputLp.asset.address": {
+          "literal": "0xf43211935c781d5ca1a41d2041f397b8a7366c7a"
         },
         "inputLp.amount.kind": {
           "literal": "max"

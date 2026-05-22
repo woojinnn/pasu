@@ -20,6 +20,15 @@ pub struct BorrowAction {
     /// Amount dimension, when explicitly known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amount_mode: Option<AmountMode>,
+    /// Collateral asset deposited in the same call. crvUSD `create_loan` /
+    /// `borrow_more` pull collateral alongside the borrow. `None` for
+    /// borrow-only flows (Aave / Compound / Morpho borrow takes no collateral).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub collateral_asset: Option<AssetRef>,
+    /// Collateral amount deposited. Parallel to `collateral_asset` — both
+    /// present or both absent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub collateral_amount: Option<AmountConstraint>,
     /// Account receiving borrowed assets.
     pub recipient: Address,
     /// Debt position owner.

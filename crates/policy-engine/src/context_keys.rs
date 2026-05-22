@@ -154,6 +154,9 @@ pub const WEIGHTS: &str = "weights";
 pub const WEIGHTS_SUM: &str = "weightsSum";
 /// Lock duration in seconds for create / increaseUnlockTime.
 pub const LOCK_DURATION_SEC: &str = "lockDurationSec";
+/// Absolute unlock timestamp (epoch seconds) for lock_create — Curve veCRV
+/// `create_lock` passes `_unlock_time` directly (not a relative duration).
+pub const UNLOCK_TIME: &str = "unlockTime";
 /// Additional amount field for lock_increase (amount kind).
 pub const ADDITIONAL_AMOUNT: &str = "additionalAmount";
 /// New lock duration for lock_increase (unlock_time kind).

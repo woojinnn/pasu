@@ -6,5 +6,5 @@ forbid (
   action == Action::"lock_create",
   resource
 ) when {
-  context.lockDurationSec == "0"
+  context has lockDurationSec && context.lockDurationSec == "0"
 };

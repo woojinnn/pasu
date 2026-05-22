@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/crvusd/wsteth/createLoanExtended@1.0.0",
   "manifest_path": "manifests/curve/crvusd/wsteth/createLoanExtended@1.0.0.json",
-  "bundle_sha256": "0x3c4e524c16b169dd21b2f3cd41a2ee886e8da4bf2d124685169e4978be2ecd22",
+  "bundle_sha256": "0x9b8d3175c4b039a3ffb237a47f69f410948e0848654a78bf079a5a73eaaf5d6f",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/crvusd/wsteth/createLoanExtended@1.0.0",
@@ -67,6 +67,18 @@
         },
         "amount.value": {
           "from": "$.args.debt"
+        },
+        "collateralAsset.kind": {
+          "literal": "erc20"
+        },
+        "collateralAsset.address": {
+          "literal": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        "collateralAmount.kind": {
+          "literal": "exact"
+        },
+        "collateralAmount.value": {
+          "from": "$.args.collateral"
         },
         "recipient": {
           "from": "$.tx.from"
