@@ -3,6 +3,10 @@ import {
   type CoinGeckoClientOptions,
 } from "../coingecko-client.js";
 import {
+  ChainlinkClient,
+  type ChainlinkClientOptions,
+} from "../chainlink-client.js";
+import {
   RpcMethodError,
   type JsonValue,
   type NowMs,
@@ -52,8 +56,9 @@ export const oracleUsdValueCatalog: MethodCatalogEntry = {
     source: {
       type: "String",
       required: false,
-      description: "Which price source to query. Defaults to `coingecko`.",
-      enum_: ["coingecko"],
+      description:
+        "Which price source to query. `coingecko` is HTTP-based and works out of the box; `chainlink` reads on-chain feeds and needs POLICY_RPC_CHAIN_RPCS configured per chain.",
+      enum_: ["coingecko", "chainlink"],
       default: "coingecko",
     },
   },
@@ -78,9 +83,23 @@ interface PriceSourceClient {
 export interface OracleUsdValueMethodOptions extends CoinGeckoClientOptions {
   client?: CoinGeckoClient;
   /**
-   * Inject custom source clients (e.g. for tests, or to wire a real
-   * Chainlink client once we ship one). Anything declared here merges
-   * over the default `{ coingecko: <CoinGeckoClient> }` map.
+   * Programmatic Chainlink client override (tests + embedders). When
+   * absent we construct one with env-var-derived RPC URL config, so
+   * production daemons just set `POLICY_RPC_CHAIN_RPCS` and Chainlink
+   * routes through automatically.
+   */
+  chainlinkClient?: ChainlinkClient;
+  /**
+   * Forwarded to the auto-constructed `ChainlinkClient` when
+   * `chainlinkClient` isn't supplied. Tests use this to inject a fake
+   * `fetch` or a programmatic RPC URL map without first wiring env.
+   */
+  chainlinkOptions?: ChainlinkClientOptions;
+  /**
+   * Inject custom source clients on top of the bundled
+   * `{ coingecko, chainlink }` map. Used by tests; also the seam
+   * sidecar / plugin extensions would target if they wanted to add a
+   * new source to this method (vs. shipping a sibling method).
    */
   sources?: Record<string, PriceSourceClient>;
 }
@@ -91,12 +110,15 @@ export function createOracleUsdValueMethod(
   options: OracleUsdValueMethodOptions = {},
 ): OracleUsdValueMethod {
   const coingecko = options.client ?? new CoinGeckoClient(options);
-  // `sources` is the dispatch table. Default-includes CoinGecko so
-  // pre-source-param manifests (which never set `params.source`) keep
-  // routing to the same client they always did. Tests / future code
-  // override or extend by passing `options.sources`.
+  const chainlink =
+    options.chainlinkClient ?? new ChainlinkClient(options.chainlinkOptions);
+  // `sources` is the dispatch table. Default-includes CoinGecko +
+  // Chainlink so manifests choosing either work out of the box (subject
+  // to per-chain config for Chainlink). `options.sources` extends or
+  // overrides for tests / sidecar-style additions.
   const sources: Record<string, PriceSourceClient> = {
     coingecko,
+    chainlink,
     ...(options.sources ?? {}),
   };
   const nowMs = options.nowMs ?? Date.now;

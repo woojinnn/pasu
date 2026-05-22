@@ -49,9 +49,10 @@ export async function startPolicyRpcServerWithDiscovery(
     process.env.POLICY_RPC_SIDECARS ?? "./policy-rpc-sidecars.json";
   const sidecars = await readSidecarConfigFile(sidecarConfigPath);
 
+  const pluginsDir = process.env.POLICY_RPC_PLUGINS_DIR;
   const { server, pluginEntries, sidecarEntries } = await bootstrapPolicyRpcServer({
     ...options,
-    plugins: { dir: process.env.POLICY_RPC_PLUGINS_DIR },
+    plugins: pluginsDir ? { dir: pluginsDir } : {},
     sidecars: { sidecars },
   });
 

@@ -53,7 +53,7 @@ export interface PolicyRpcResponse {
  * The lockstep is by design — drift would let manifests reference a
  * source the daemon can't actually serve.
  */
-export type OracleUsdValueSource = "coingecko";
+export type OracleUsdValueSource = "coingecko" | "chainlink";
 
 export interface OracleUsdValueParams {
   chain_id: number;

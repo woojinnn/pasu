@@ -42,7 +42,7 @@ export function parseOracleUsdValueParams(value: unknown) {
 
 /** Accepted price sources. Adding one means updating both this list,
  * `OracleUsdValueSource` in types.ts, and the method's catalog enum. */
-const ORACLE_USD_VALUE_SOURCES = ["coingecko"] as const;
+const ORACLE_USD_VALUE_SOURCES = ["coingecko", "chainlink"] as const;
 
 function parseOracleUsdValueParamsInner(value: unknown) {
   const params = expectRecord(value, "oracle.usd_value params");
