@@ -8,6 +8,18 @@
 
 pub mod swap;
 
+/// Build-time enum lookups extracted from `schema/action-schema/**/*.json`.
+///
+/// `build.rs` walks the upstream JSON Schema files, resolves `$ref` against
+/// the common `$defs`, and renders `action_field_enum(action, path)` —
+/// a `match` that returns the declared closed-set enum (or `None`). Action
+/// schema modules call this from their `FieldSpec::allowed_values` so the
+/// JSON remains the single source of truth; a hand-written list and the
+/// JSON cannot drift.
+pub mod generated {
+    include!(concat!(env!("OUT_DIR"), "/generated_action_constraints.rs"));
+}
+
 use crate::types::ActionSchema;
 use std::collections::BTreeMap;
 

@@ -128,6 +128,7 @@ async function decideInner(
   message: Message,
   options: DecisionOptions,
 ): Promise<DecisionResult> {
+  logIncoming(message);
   const pending: PendingRequest = {
     requestId: message.requestId,
     hostname: message.data.hostname,
@@ -197,10 +198,29 @@ async function decideInner(
       err instanceof EngineError && err.kind === "route_failed"
         ? console.warn
         : console.error;
+    // Surface `to`/`chainId`/`selector` so `route_failed` logs let us
+    // tell at a glance whether the unknown router was a new UR deployment,
+    // an off-chain settlement contract, or a different chain entirely.
+    const txCtx = isTransaction(message)
+      ? {
+          to: message.data.transaction.to,
+          chainId: message.data.chainId,
+          selector:
+            typeof message.data.transaction.data === "string"
+              ? message.data.transaction.data.slice(0, 10)
+              : undefined,
+          dataLen:
+            typeof message.data.transaction.data === "string"
+              ? message.data.transaction.data.length
+              : undefined,
+          data: message.data.transaction.data,
+        }
+      : undefined;
     logAt("[Scopeball] decideMessage threw", {
       requestId: message.requestId,
       hostname: message.data.hostname,
       type: pending.type,
+      ...(txCtx ?? {}),
       ...errInfo,
       err,
     });
@@ -240,6 +260,49 @@ async function appendAudit(
     ...(verdictSource ? { verdictSource } : {}),
     decidedAtMs: Date.now(),
   });
+}
+
+function logIncoming(message: Message): void {
+  const common = {
+    requestId: message.requestId,
+    hostname: message.data.hostname,
+    bypassed: "bypassed" in message.data && !!message.data.bypassed,
+  };
+
+  if (isTransaction(message)) {
+    const data = message.data.transaction.data;
+    console.info("[Scopeball] tx.incoming", {
+      ...common,
+      chainId: message.data.chainId,
+      to: message.data.transaction.to,
+      from: message.data.transaction.from,
+      value: message.data.transaction.value,
+      selector: typeof data === "string" ? data.slice(0, 10) : undefined,
+      dataLen: typeof data === "string" ? data.length : undefined,
+      data,
+    });
+    return;
+  }
+
+  if (isTypedSignature(message)) {
+    console.info("[Scopeball] typed-sig.incoming", {
+      ...common,
+      chainId: message.data.chainId,
+      address: message.data.address,
+      primaryType: (message.data.typedData as { primaryType?: string })
+        ?.primaryType,
+      typedData: message.data.typedData,
+    });
+    return;
+  }
+
+  if (isUntypedSignature(message)) {
+    console.info("[Scopeball] personal-sign.incoming", {
+      ...common,
+      messageLen: message.data.message.length,
+      message: message.data.message,
+    });
+  }
 }
 
 function logDecision(message: Message, verdict: VerdictDto): void {
@@ -594,8 +657,14 @@ async function openVerdictWindow(
       height: 640,
       focused: true,
     });
-  } catch {
-    /* user closed, popup blocked, etc. — best-effort UI */
+  } catch (err) {
+    console.error("[Scopeball] openVerdictWindow failed", {
+      requestId,
+      hostname,
+      verdict: verdict.kind,
+      urlLength: url.length,
+      err,
+    });
   }
 }
 

@@ -17,6 +17,7 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 
+pub mod aliases;
 pub mod escape;
 pub mod generator;
 pub mod operators;

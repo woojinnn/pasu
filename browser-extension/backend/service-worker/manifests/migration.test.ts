@@ -37,6 +37,7 @@ import {
   getOriginalEnabled,
   listPending,
   rewritePolicyText,
+  rewritePolicyTextCustomToBase,
   setOriginalEnabled,
   setPending,
 } from "./migration";
@@ -93,6 +94,70 @@ describe("rewritePolicyText", () => {
       when { context.custom has totalInputUsd && context.custom.totalInputUsd.value > 100 };`;
     const after = rewritePolicyText(before, ["totalInputUsd"]);
     expect(after).toBe(before);
+  });
+});
+
+describe("rewritePolicyTextCustomToBase (Phase 8 inverse rewrite)", () => {
+  // Promotes inputAmountNano/outputAmountNano back to the base context
+  // shape so policies authored before Phase 8 keep installing once the
+  // bundled cedarschema drops them from `SwapCustomContext`.
+
+  it("strips context.custom prefix from named fields and rewrites the has-guard", () => {
+    const before = `forbid (principal, action == Action::"swap", resource)
+      when { context has custom && context.custom has inputAmountNano && context.custom.inputAmountNano > 30000 };`;
+    const after = rewritePolicyTextCustomToBase(before, ["inputAmountNano"]);
+    expect(after).toContain("context has inputAmountNano");
+    expect(after).toContain("context.inputAmountNano > 30000");
+    expect(after).not.toContain("context.custom.inputAmountNano");
+    expect(after).not.toContain("context.custom has inputAmountNano");
+  });
+
+  it("drops the umbrella `context has custom` guard when no custom refs remain", () => {
+    // Single-field policy: after the rewrite there are zero
+    // `context.custom.*` references, so the umbrella guard is dead
+    // weight — the v8 schema doesn't even need to narrow `custom`.
+    const before = `forbid (principal, action == Action::"swap", resource)
+      when { context has custom && context.custom has inputAmountNano && context.custom.inputAmountNano > 30000 };`;
+    const after = rewritePolicyTextCustomToBase(before, ["inputAmountNano"]);
+    expect(after).not.toContain("context has custom");
+  });
+
+  it("keeps the umbrella guard when OTHER custom fields are still referenced", () => {
+    // Mixed policy: only inputAmountNano migrates back to base; the
+    // remaining custom ref still needs the umbrella guard so type
+    // narrowing works.
+    const before = `forbid (principal, action == Action::"swap", resource)
+      when { context has custom && context.custom has inputAmountNano && context.custom has totalInputUsd && context.custom.inputAmountNano > 30000 && context.custom.totalInputUsd.value > 100 };`;
+    const after = rewritePolicyTextCustomToBase(before, ["inputAmountNano"]);
+    expect(after).toContain("context.inputAmountNano > 30000");
+    expect(after).toContain("context.custom.totalInputUsd.value > 100");
+    expect(after).toContain("context has custom");
+  });
+
+  it("is idempotent on policies already on the new shape", () => {
+    const before = `forbid (principal, action == Action::"swap", resource)
+      when { context has inputAmountNano && context.inputAmountNano > 30000 };`;
+    const after = rewritePolicyTextCustomToBase(before, ["inputAmountNano"]);
+    expect(after).toBe(before);
+  });
+
+  it("never touches identifiers outside the supplied field list", () => {
+    const before = `forbid (principal, action == Action::"swap", resource)
+      when { context has custom && context.custom has someOtherField && context.custom.someOtherField > 1 };`;
+    const after = rewritePolicyTextCustomToBase(before, ["inputAmountNano"]);
+    expect(after).toBe(before);
+  });
+
+  it("handles both amount-nano fields together", () => {
+    const before = `forbid (principal, action == Action::"swap", resource)
+      when { context has custom && context.custom has inputAmountNano && context.custom has outputAmountNano && context.custom.inputAmountNano > 30000 && context.custom.outputAmountNano > 100 };`;
+    const after = rewritePolicyTextCustomToBase(before, [
+      "inputAmountNano",
+      "outputAmountNano",
+    ]);
+    expect(after).toContain("context.inputAmountNano > 30000");
+    expect(after).toContain("context.outputAmountNano > 100");
+    expect(after).not.toContain("context.custom");
   });
 });
 

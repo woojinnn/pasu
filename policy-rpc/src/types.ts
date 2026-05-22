@@ -43,11 +43,29 @@ export interface PolicyRpcResponse {
   results: RpcResult[];
 }
 
+/**
+ * Whitelist of price-source identifiers `oracle.usd_value` accepts.
+ * Mirrored in the method's catalog entry (`enum_`) and in the daemon's
+ * source dispatcher. Adding a new source here means:
+ *   1. Add a client class beside `CoinGeckoClient`.
+ *   2. Register it in `createOracleUsdValueMethod`'s `sources` map.
+ *   3. Add the string to this union AND to `oracleUsdValueCatalog.params.source.enum_`.
+ * The lockstep is by design — drift would let manifests reference a
+ * source the daemon can't actually serve.
+ */
+export type OracleUsdValueSource = "coingecko" | "chainlink";
+
 export interface OracleUsdValueParams {
   chain_id: number;
   address: string;
   amount: string;
   decimals: number;
+  /**
+   * Caller-requested price source. Defaults to `"coingecko"` when the
+   * manifest omits the field, so existing manifests written before the
+   * source param landed keep working without edit.
+   */
+  source: OracleUsdValueSource;
 }
 
 export interface UsdValuation extends JsonObject {

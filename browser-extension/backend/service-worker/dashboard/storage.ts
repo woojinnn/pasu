@@ -8,7 +8,7 @@ import type { RenderedPolicyEntry } from "../marketplace/storage";
 // can't drive the SW into quota errors. Beyond those caps the writer rejects.
 const KEY = "dashboard:policies";
 export const DASHBOARD_ID_PREFIX = "dashboard::";
-export const DASHBOARD_ID_RE = /^dashboard::[A-Za-z0-9_./-]{1,128}$/;
+export const DASHBOARD_ID_RE = /^dashboard::[A-Za-z0-9_./()-]{1,128}$/;
 export const MAX_TEXT_BYTES = 32_768;
 export const MAX_ENTRIES = 200;
 

@@ -172,13 +172,28 @@
 
 .audit-policy {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   background: var(--surface-primary);
   border: 1px solid var(--green-100);
   border-radius: var(--radius-pill);
   padding: 4px 10px;
   font-size: 12px;
+}
+
+.audit-policy-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.audit-policy-reason {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .audit-policy.is-owned {
   cursor: pointer;

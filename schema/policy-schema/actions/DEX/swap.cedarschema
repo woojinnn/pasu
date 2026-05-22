@@ -5,6 +5,14 @@ type SwapContext = {
   recipient: String,
   validity?: Validity,
   feeBps?: Long,
+  // Token-native normalized amounts: raw on-chain `amount.value` rescaled
+  // by `10^(9 − asset.decimals)` so policies compare in the same unit
+  // regardless of the token's decimals. Promoted to base context (no
+  // longer manifest-driven) so the host engine can populate them
+  // directly from calldata without depending on any user manifest
+  // requirement that could be edited away.
+  inputAmountNano?: Long,
+  outputAmountNano?: Long,
   custom?: SwapCustomContext,
 };
 

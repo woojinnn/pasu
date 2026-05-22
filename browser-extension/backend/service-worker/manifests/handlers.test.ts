@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const localStore = new Map<string, unknown>();
@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => {
     loadCurrentEnabledPolicySet: vi.fn(async () => [] as { id: string; text: string }[]),
     reinstallAllPolicies: vi.fn(async (_ids: string[]) => undefined),
     browser: {
+      runtime: {
+        getURL: (p: string) => `chrome-extension://test/${p}`,
+      },
       storage: {
         local: {
           get: vi.fn(async (key: string | string[]) => {
@@ -187,6 +190,138 @@ describe("handleManifestRequest", () => {
     expect(mocks.previewCustomSchema).toHaveBeenCalledWith({
       action: "swap",
       manifest: emptyManifest("user::swap"),
+    });
+  });
+
+  describe("manifest:get-method-catalog (Phase 8.5 hybrid discovery)", () => {
+    const originalFetch = globalThis.fetch;
+    beforeEach(() => {
+      mocks.localStore.clear();
+      vi.clearAllMocks();
+    });
+
+    afterAll(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("merges bundled catalog with dynamic catalog from daemon", async () => {
+      // Endpoint URL is set → handler will try to fetch from daemon too.
+      await store.setEndpointUrl("http://localhost:8787");
+
+      // Mock fetch: bundled catalog has `oracle.usd_value`; daemon
+      // adds `risk.score` AND a newer version of `oracle.usd_value`
+      // (with `origin: "bundled"` still — daemon's catalog wins).
+      globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+        const u = typeof url === "string" ? url : url.toString();
+        if (u.includes("method-catalog.json")) {
+          return new Response(
+            JSON.stringify({
+              methods: {
+                "oracle.usd_value": {
+                  name: "oracle.usd_value",
+                  params: {},
+                  returns: { kind: "record", type: "UsdValuation" },
+                  origin: "bundled",
+                  description: "OLD bundled desc",
+                },
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        if (u.endsWith("/v1/methods")) {
+          return new Response(
+            JSON.stringify({
+              methods: ["oracle.usd_value", "risk.score"],
+              catalog: {
+                methods: {
+                  "oracle.usd_value": {
+                    name: "oracle.usd_value",
+                    params: {},
+                    returns: { kind: "record", type: "UsdValuation" },
+                    origin: "bundled",
+                    description: "NEW daemon desc",
+                  },
+                  "risk.score": {
+                    name: "risk.score",
+                    params: {},
+                    returns: {
+                      kind: "scalar",
+                      type: "Long",
+                      from: "$.result.value",
+                    },
+                    origin: "plugin",
+                  },
+                },
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response("not found", { status: 404 });
+      }) as unknown as typeof fetch;
+
+      const r = await handleManifestRequest({
+        type: "manifest:get-method-catalog",
+      });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const cat = r.data as { methods: Record<string, { description?: string; origin: string }> };
+      // Both methods present.
+      expect(Object.keys(cat.methods).sort()).toEqual([
+        "oracle.usd_value",
+        "risk.score",
+      ]);
+      // Daemon overrides bundled — description is the NEW one.
+      expect(cat.methods["oracle.usd_value"].description).toBe("NEW daemon desc");
+      // Plugin entry passes through with its origin tag intact.
+      expect(cat.methods["risk.score"].origin).toBe("plugin");
+    });
+
+    it("returns bundled-only when no endpoint URL is configured", async () => {
+      // No setEndpointUrl call → endpointUrl is null → daemon fetch skipped.
+      globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+        const u = typeof url === "string" ? url : url.toString();
+        if (u.includes("method-catalog.json")) {
+          return new Response(
+            JSON.stringify({
+              methods: {
+                "oracle.usd_value": {
+                  name: "oracle.usd_value",
+                  params: {},
+                  returns: { kind: "record", type: "UsdValuation" },
+                  origin: "bundled",
+                },
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response("not found", { status: 404 });
+      }) as unknown as typeof fetch;
+
+      const r = await handleManifestRequest({
+        type: "manifest:get-method-catalog",
+      });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const cat = r.data as { methods: Record<string, unknown> };
+      expect(Object.keys(cat.methods)).toEqual(["oracle.usd_value"]);
+    });
+
+    it("returns empty catalog when both bundled and dynamic fail", async () => {
+      await store.setEndpointUrl("http://localhost:8787");
+      globalThis.fetch = vi.fn(async () => {
+        throw new Error("network down");
+      }) as unknown as typeof fetch;
+
+      const r = await handleManifestRequest({
+        type: "manifest:get-method-catalog",
+      });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const cat = r.data as { methods: Record<string, unknown> };
+      expect(cat.methods).toEqual({});
     });
   });
 

@@ -5,10 +5,10 @@
   "type": "module",
   "description": "Reference policy-rpc server for policy-engine remote facts",
   "scripts": {
-    "build": "../extension/node_modules/.bin/tsc -p tsconfig.json",
-    "test": "../extension/node_modules/.bin/vitest run",
-    "test:watch": "../extension/node_modules/.bin/vitest",
-    "typecheck": "../extension/node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "build": "../browser-extension/node_modules/.bin/tsc -p tsconfig.json",
+    "test": "../browser-extension/node_modules/.bin/vitest run",
+    "test:watch": "../browser-extension/node_modules/.bin/vitest",
+    "typecheck": "../browser-extension/node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "start": "node --enable-source-maps dist/index.js"
   },
   "engines": {

@@ -1,6 +1,17 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
 import { LogStore, type RecentCallLog } from "./log-store.js";
+import type { SidecarConfig } from "./methods/catalog.js";
+import {
+  loadPluginEntries,
+  type LoadedPluginEntry,
+  type PluginLoaderOptions,
+} from "./methods/plugin-loader.js";
+import {
+  loadSidecarEntries,
+  type LoadedSidecarEntry,
+  type SidecarLoaderOptions,
+} from "./methods/sidecar-loader.js";
 import {
   createMethodRegistry,
   type MethodRegistry,
@@ -13,6 +24,89 @@ export interface PolicyRpcServerOptions extends MethodRegistryOptions {
   logStore?: LogStore;
   registry?: MethodRegistry;
   maxBodyBytes?: number;
+}
+
+/**
+ * Async bootstrap helper that wires plugin + sidecar discovery into a
+ * fresh `PolicyRpcServer`. Use this in production entry points (e.g.
+ * `index.ts`) so the server boots with the full method set discovered
+ * from filesystem and configured sidecar URLs.
+ *
+ * Sync constructor `createPolicyRpcServer` is preserved for callers
+ * (notably tests) that already build their own registry or don't need
+ * external method discovery.
+ */
+export async function bootstrapPolicyRpcServer(
+  options: PolicyRpcServerOptions & {
+    plugins?: PluginLoaderOptions;
+    sidecars?: SidecarLoaderOptions;
+  } = {},
+): Promise<{
+  server: Server;
+  pluginEntries: readonly LoadedPluginEntry[];
+  sidecarEntries: readonly LoadedSidecarEntry[];
+}> {
+  const pluginEntries =
+    options.pluginEntries ??
+    (await loadPluginEntries(options.plugins ?? {}));
+  const sidecarEntries =
+    options.sidecarEntries ??
+    (await loadSidecarEntries(options.sidecars ?? {}));
+  const server = createPolicyRpcServer({
+    ...options,
+    pluginEntries,
+    sidecarEntries,
+  });
+  return { server, pluginEntries, sidecarEntries };
+}
+
+/**
+ * Read a sidecar configuration JSON file from disk. Returns `[]` when
+ * the file is absent or malformed (warn-on-error). Used by entrypoint
+ * code so operators can declare sidecars via a config file rather than
+ * stuffing them into env vars.
+ */
+export async function readSidecarConfigFile(
+  path: string,
+  warn: (message: string, ...args: unknown[]) => void = console.warn,
+): Promise<SidecarConfig[]> {
+  const { readFile } = await import("node:fs/promises");
+  let raw: string;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    // ENOENT is a normal case (no sidecars configured) — quiet.
+    if ((error as { code?: string }).code !== "ENOENT") {
+      warn(
+        `[policy-rpc] sidecar config read failed at ${path}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    return [];
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    warn(
+      `[policy-rpc] sidecar config at ${path} is not valid JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return [];
+  }
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    !Array.isArray((parsed as { sidecars?: unknown }).sidecars)
+  ) {
+    warn(
+      `[policy-rpc] sidecar config at ${path} must shape { "sidecars": [...] }`,
+    );
+    return [];
+  }
+  return (parsed as { sidecars: SidecarConfig[] }).sidecars;
 }
 
 const defaultMaxBodyBytes = 1_000_000;
@@ -58,7 +152,15 @@ async function routeRequest(input: RouteRequestInput): Promise<void> {
   }
 
   if (method === "GET" && url.pathname === "/v1/methods") {
-    writeJson(input.response, 200, { methods: input.registry.listMethods() });
+    // Phase 8.5: this endpoint returns the FULL method catalog (params,
+    // returns, origin) — the dashboard's manifest editor consumes it to
+    // drive its method/param/output dropdowns. The legacy `{ methods:
+    // [...] }` shape is preserved alongside the new `catalog` field so
+    // older clients that only read the name list keep working.
+    writeJson(input.response, 200, {
+      methods: input.registry.listMethods(),
+      catalog: input.registry.catalog(),
+    });
     return;
   }
 

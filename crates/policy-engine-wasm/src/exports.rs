@@ -182,10 +182,15 @@ fn matched_to_dto(matched: &MatchedPolicy) -> MatchedPolicyDto {
 }
 
 fn engine_error_verdict(error: EngineErrorDto) -> VerdictDto {
-    let reason = format!("__engine::{}", error.kind);
+    let policy_id = format!("__engine::{}", error.kind);
+    let reason = if error.message.is_empty() {
+        policy_id.clone()
+    } else {
+        error.message
+    };
     VerdictDto::Fail {
         matched: vec![MatchedPolicyDto {
-            policy_id: reason.clone(),
+            policy_id,
             reason: Some(reason),
             severity: "deny".to_string(),
             origin: "engine_error".to_string(),

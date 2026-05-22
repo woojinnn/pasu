@@ -558,8 +558,14 @@ mod tests {
         }
     }
 
+    /// All parser round-trip tests pre-Phase-8 covered both base + the
+    /// hand-coded custom fields. Post-Phase-8 those custom fields come
+    /// from the runtime overlay path, so we use the test fixture that
+    /// re-adds them — otherwise compile would reject the predicate
+    /// before parse_cedar ever runs. Tests on base-only fields still
+    /// work because the fixture is a superset.
     fn roundtrip(rule: &PolicyRule) -> PolicyRule {
-        let text = compile(rule, &swap::schema()).unwrap();
+        let text = compile(rule, &swap::schema_with_legacy_custom()).unwrap();
         parse_cedar(&text).unwrap_or_else(|e| panic!("parse failed for:\n{text}\n— err: {e}"))
     }
 
@@ -754,7 +760,7 @@ mod tests {
             "/../../policy-rpc/examples/policies/swap/max-input-usd-100.cedar"
         ));
         let parsed = parse_cedar(example).unwrap();
-        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        let reemitted = compile(&parsed, &swap::schema_with_legacy_custom()).unwrap();
         assert_eq!(
             normalize_cedar(&reemitted),
             normalize_cedar(example),
@@ -769,7 +775,7 @@ mod tests {
             "/../../policy-rpc/examples/policies/swap/expired-deadline.cedar"
         ));
         let parsed = parse_cedar(example).unwrap();
-        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        let reemitted = compile(&parsed, &swap::schema_with_legacy_custom()).unwrap();
         assert_eq!(normalize_cedar(&reemitted), normalize_cedar(example));
     }
 
@@ -781,7 +787,7 @@ mod tests {
             "/../../policy-rpc/examples/policies/swap/max-fee-bps-100.cedar"
         ));
         let parsed = parse_cedar(example).unwrap();
-        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        let reemitted = compile(&parsed, &swap::schema_with_legacy_custom()).unwrap();
         assert_eq!(normalize_cedar(&reemitted), normalize_cedar(example));
     }
 
@@ -810,7 +816,7 @@ mod tests {
         let parsed = parse_cedar(v0).expect("v0 input must parse");
         assert_eq!(parsed.predicates.len(), 1);
         assert_eq!(parsed.predicates[0].field, "totalInputUsd.value");
-        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        let reemitted = compile(&parsed, &swap::schema_with_legacy_custom()).unwrap();
         assert!(
             reemitted.contains("context has custom"),
             "v0 → v1 migration must emit context-has-custom guard, got:\n{reemitted}"
@@ -834,7 +840,7 @@ mod tests {
             "/../../policy-rpc/examples/policies/swap/max-input-usd-3.cedar"
         ));
         let parsed = parse_cedar(example).unwrap();
-        let reemitted = compile(&parsed, &swap::schema()).unwrap();
+        let reemitted = compile(&parsed, &swap::schema_with_legacy_custom()).unwrap();
         assert_eq!(normalize_cedar(&reemitted), normalize_cedar(example));
     }
 

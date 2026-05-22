@@ -9,8 +9,35 @@ Reference TypeScript server for policy-specific remote facts.
 - `POST /v1/rpc`
 - `GET /debug/recent`
 
-`oracle.usd_value` resolves a CoinGecko token USD price and computes a
-`UsdValuation` result with bigint-safe scaled decimal math.
+`oracle.usd_value` resolves a token USD price and computes a
+`UsdValuation` result with bigint-safe scaled decimal math. Two
+sources are wired:
+
+- `coingecko` (default) — HTTP. Works with no extra config.
+- `chainlink` — reads on-chain AggregatorV3 feeds via `eth_call`. The
+  bundled feed table covers ETH/BTC/USDC/USDT/DAI on Ethereum mainnet
+  plus wrapped-native on Optimism / Arbitrum / Base / Polygon (extend
+  by editing `CHAINLINK_FEEDS` in `src/chainlink-client.ts`). RPC
+  endpoints fall through three layers:
+
+  1. **User-supplied via env** —
+     `POLICY_RPC_CHAIN_RPCS='{"1":"https://eth-mainnet.alchemy.com/v2/<key>"}'`.
+     Accepts a single URL string or `string[]` per chain; multiple
+     entries are tried in order with automatic failover.
+  2. **Bundled public RPC defaults** — when the env doesn't cover a
+     chain, the client falls back to a curated list of 3-4 public
+     endpoints per chain (llamarpc / publicnode / ankr / chain
+     foundation). Production traffic should still use a private
+     provider — public endpoints have aggressive rate limits and no
+     SLA.
+  3. **Strict mode** — set `POLICY_RPC_DISABLE_PUBLIC_RPCS=1` to skip
+     the bundled defaults entirely. Chains without env-supplied URLs
+     return `unsupported_chain` instead of leaking traffic to public
+     endpoints. Use this in production when policy requires all RPC
+     traffic stay within a specific provider.
+
+  Per-request timeout is 10s; failed endpoints fall over to the next
+  in the list. Tokens without a feed entry return `not_found`.
 
 The reference server also exposes v1 mock methods for host-capability-shaped
 facts while the backing services are still being designed:

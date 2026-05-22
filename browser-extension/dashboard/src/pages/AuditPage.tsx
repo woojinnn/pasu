@@ -213,10 +213,15 @@ function AuditCard({
                 tabIndex={owned ? 0 : undefined}
                 title={owned ? "Editor에서 열기" : "이 정책은 대시보드 외부에서 관리"}
               >
-                <span className="audit-policy-id">{m.id}</span>
-                <span className={`audit-policy-sev sev-${m.severity}`}>
-                  {m.severity}
-                </span>
+                <div className="audit-policy-head">
+                  <span className="audit-policy-id">{m.id}</span>
+                  <span className={`audit-policy-sev sev-${m.severity}`}>
+                    {m.severity}
+                  </span>
+                </div>
+                {m.reason ? (
+                  <div className="audit-policy-reason">{m.reason}</div>
+                ) : null}
               </li>
             );
           })}

@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Structured rule -> Cedar policy text compiler. Schema-driven; used by the policy editor UI."
+build = "build.rs"
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
@@ -13,4 +14,7 @@ regex = "1"
 
 [dev-dependencies]
 policy-engine.workspace = true
+serde_json.workspace = true
+
+[build-dependencies]
 serde_json.workspace = true

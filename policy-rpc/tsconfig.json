@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
-    "typeRoots": ["../extension/node_modules/@types"],
+    "typeRoots": ["../browser-extension/node_modules/@types"],
     "rootDir": "src",
     "outDir": "dist"
   },
