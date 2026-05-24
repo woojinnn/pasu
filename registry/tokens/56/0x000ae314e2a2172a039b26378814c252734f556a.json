@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x000ae314e2a2172a039b26378814c252734f556a",
+  "symbol": "ASTER",
+  "decimals": 18,
+  "name": "Aster"
+}

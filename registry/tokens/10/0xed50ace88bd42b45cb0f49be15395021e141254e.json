@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0xed50ace88bd42b45cb0f49be15395021e141254e",
+  "symbol": "BTRST",
+  "decimals": 18,
+  "name": "Braintrust"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0xf4c8e32eadec4bfe97e0f595add0f4450a863a11",
+  "symbol": "THE",
+  "decimals": 18,
+  "name": "THENA"
+}

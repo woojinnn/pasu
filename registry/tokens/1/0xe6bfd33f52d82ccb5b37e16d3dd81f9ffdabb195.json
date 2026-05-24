@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xe6bfd33f52d82ccb5b37e16d3dd81f9ffdabb195",
+  "symbol": "SXT",
+  "decimals": 18,
+  "name": "Space and Time"
+}

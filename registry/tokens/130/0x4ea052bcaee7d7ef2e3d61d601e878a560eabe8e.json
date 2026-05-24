@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x4ea052bcaee7d7ef2e3d61d601e878a560eabe8e",
+  "symbol": "IDEX",
+  "decimals": 18,
+  "name": "IDEX"
+}

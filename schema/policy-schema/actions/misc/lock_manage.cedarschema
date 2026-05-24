@@ -1,0 +1,13 @@
+type LockManageContext = {
+  votingEscrow: String,
+  kind: String,
+  fromTokenId: String,
+  toTokenId?: String,
+  splitRatio?: String,
+};
+
+action "lock_manage" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: LockManageContext,
+};

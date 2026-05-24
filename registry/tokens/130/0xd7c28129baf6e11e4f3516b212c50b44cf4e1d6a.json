@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xd7c28129baf6e11e4f3516b212c50b44cf4e1d6a",
+  "symbol": "TINY",
+  "decimals": 18,
+  "name": "tinyass unicorns"
+}

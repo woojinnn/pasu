@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x8c7879bf25d678d9949f305857bd4437d74132b9",
+  "symbol": "FRAX",
+  "decimals": 18,
+  "name": "Frax"
+}

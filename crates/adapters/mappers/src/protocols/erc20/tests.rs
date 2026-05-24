@@ -119,6 +119,9 @@ fn unlimited_approve_maps_to_unlimited_kind() {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     let spender = Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
     let decoded = build_approve_decoded(spender.clone(), alloy_primitives::U256::MAX);
@@ -149,6 +152,9 @@ fn exact_approve_maps_to_exact_amount() {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     let spender = Address::from_str("0x2222222222222222222222222222222222222222").unwrap();
     let decoded = build_approve_decoded(spender, alloy_primitives::U256::from(123_456_789_u64));
@@ -177,6 +183,9 @@ fn transfer_maps_to_exact_transfer_action() {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     let recipient = Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
     let decoded = build_transfer_decoded(
@@ -216,6 +225,9 @@ fn transfer_from_maps_to_transfer_envelope() {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     let owner = Address::from_str("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap();
     let recipient = Address::from_str("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb").unwrap();
@@ -259,6 +271,9 @@ fn set_approval_for_all_maps_to_set_approval_for_all_envelope() {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     let operator = Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
     let decoded = build_set_approval_for_all_decoded(operator.clone(), true);

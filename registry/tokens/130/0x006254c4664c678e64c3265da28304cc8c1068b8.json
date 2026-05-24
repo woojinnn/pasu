@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x006254c4664c678e64c3265da28304cc8c1068b8",
+  "symbol": "QRDO",
+  "decimals": 8,
+  "name": "Qredo"
+}

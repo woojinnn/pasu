@@ -70,6 +70,44 @@ pub struct FieldSpec {
     /// the `context.custom.<path>` prefix.
     #[serde(default)]
     pub is_custom: bool,
+    /// Closed-set string enum constraint mirrored from the action-schema JSON
+    /// (`"enum": [...]`). When `Some`, only these literal values are accepted
+    /// as operands for this field; `None` means the field is free-form within
+    /// its `cedar_type`. Enforced by [`crate::validate::validate`] for every
+    /// operator arity. Cedar emit is unaffected — bad values are rejected
+    /// before reaching the generator, so the emitted policy never contains a
+    /// literal outside the declared set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allowed_values: Option<Vec<String>>,
+    /// Implicit decimal-point exponent for `Long` fields whose runtime value
+    /// has already been rescaled by the manifest enrichment. When `Some(n)`,
+    /// the policy builder accepts user input as a decimal string and emits
+    /// `value × 10^n` as the Long literal — `0.00003` with `scale = 9`
+    /// becomes the Cedar literal `30000`. The runtime field is plain `Long`;
+    /// the scale only affects compile-time literal rendering and back-parse
+    /// pretty-printing.
+    ///
+    /// Used by token-native amount fields (`inputAmountNano`,
+    /// `outputAmountNano`) so policies read in the same units a user sees on
+    /// a DEX UI (`0.5 ETH`, `100 USDC`) regardless of the token's on-chain
+    /// `decimals`. Cedar emit stays inside i64; the typical scale `9`
+    /// (Gwei-style) preserves 9 fractional digits and ~9.2 × 10⁹ max
+    /// magnitude — sufficient for any practical token amount.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<u8>,
+    /// Regex the operand string must match, mirrored from the upstream
+    /// action-schema JSON's `"pattern"` (e.g. the EVM address shape
+    /// `^0x[0-9a-fA-F]{40}$` from `_common.json#/$defs/Address`). When
+    /// `Some`, [`crate::validate::validate`] compiles and applies the regex
+    /// to every operand of every arity; failures surface as
+    /// `PatternMismatch` so a typo'd address (`"0x52"`, `"WETH"`, etc.)
+    /// gets caught at compile time instead of producing a syntactically
+    /// valid Cedar policy that silently never matches at runtime.
+    ///
+    /// Cedar emit is unaffected — only well-shaped values reach the
+    /// generator. Free-form fields leave this as `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
 }
 
 /// Schema for one action keyword.

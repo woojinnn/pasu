@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x45bda7ba10dac525a86dbeab3135701a66024f2f",
+  "symbol": "SHPING",
+  "decimals": 18,
+  "name": "Shping"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x925206b8a707096ed26ae47c84747fe0bb734f59",
+  "symbol": "WBT",
+  "decimals": 8,
+  "name": "WhiteBIT Coin"
+}

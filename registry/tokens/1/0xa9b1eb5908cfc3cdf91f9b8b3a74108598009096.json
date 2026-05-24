@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xa9b1eb5908cfc3cdf91f9b8b3a74108598009096",
+  "symbol": "AUCTION",
+  "decimals": 18,
+  "name": "Bounce"
+}

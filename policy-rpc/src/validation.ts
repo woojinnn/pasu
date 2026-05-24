@@ -40,6 +40,10 @@ export function parseOracleUsdValueParams(value: unknown) {
   }
 }
 
+/** Accepted price sources. Adding one means updating both this list,
+ * `OracleUsdValueSource` in types.ts, and the method's catalog enum. */
+const ORACLE_USD_VALUE_SOURCES = ["coingecko", "chainlink"] as const;
+
 function parseOracleUsdValueParamsInner(value: unknown) {
   const params = expectRecord(value, "oracle.usd_value params");
   const chainId = expectInteger(params.chain_id, "chain_id");
@@ -56,12 +60,42 @@ function parseOracleUsdValueParamsInner(value: unknown) {
     throw new RpcMethodError("invalid_params", "decimals must be between 0 and 255");
   }
 
+  // Optional with default — keeps pre-source-param manifests working.
+  // When present, MUST match the whitelist; we reject unknown sources
+  // up front so the caller gets a clear error instead of a generic
+  // upstream failure deeper in the dispatcher.
+  const source =
+    params.source === undefined
+      ? "coingecko"
+      : expectEnum(
+          params.source,
+          "source",
+          ORACLE_USD_VALUE_SOURCES as readonly string[],
+        );
+
   return {
     chain_id: chainId,
     address,
     amount,
     decimals,
+    source: source as (typeof ORACLE_USD_VALUE_SOURCES)[number],
   };
+}
+
+function expectEnum(
+  value: unknown,
+  field: string,
+  allowed: readonly string[],
+): string {
+  if (typeof value !== "string") {
+    throw new ValidationError(`${field} must be a string`);
+  }
+  if (!allowed.includes(value)) {
+    throw new ValidationError(
+      `${field} must be one of [${allowed.join(", ")}] (got: ${value})`,
+    );
+  }
+  return value;
 }
 
 function parseAssetParams(

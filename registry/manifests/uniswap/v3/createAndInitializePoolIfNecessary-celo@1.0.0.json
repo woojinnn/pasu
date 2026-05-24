@@ -1,0 +1,76 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/v3/createAndInitializePoolIfNecessary-celo@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      42220
+    ],
+    "to": [
+      "0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A"
+    ],
+    "selector": "0x13ead562"
+  },
+  "abi_fragment": {
+    "function_name": "createAndInitializePoolIfNecessary",
+    "abi": {
+      "name": "createAndInitializePoolIfNecessary",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "token0",
+          "type": "address"
+        },
+        {
+          "name": "token1",
+          "type": "address"
+        },
+        {
+          "name": "fee",
+          "type": "uint24"
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "initialize_pool",
+    "fields": {
+      "pool.address": {
+        "literal": "0x0000000000000000000000000000000000000000"
+      },
+      "token0.kind": {
+        "literal": "erc20"
+      },
+      "token0.address": {
+        "from": "$.args.token0"
+      },
+      "token1.kind": {
+        "literal": "erc20"
+      },
+      "token1.address": {
+        "from": "$.args.token1"
+      },
+      "feeBps": {
+        "from": "$.args.fee"
+      },
+      "sqrtPriceX96": {
+        "from": "$.args.sqrtPriceX96"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

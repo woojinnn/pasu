@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x0c06ccf38114ddfc35e07427b9424adcca9f44f8",
+  "symbol": "EURe",
+  "decimals": 18,
+  "name": "Monerium EURe"
+}

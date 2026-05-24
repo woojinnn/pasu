@@ -117,6 +117,9 @@ fn run(envelopes: Vec<ActionEnvelope>, msg_value: &str) -> Vec<ActionEnvelope> {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &tr,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     simulate(envelopes, &ctx)
 }

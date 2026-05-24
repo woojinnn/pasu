@@ -1,0 +1,60 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/burn-blast@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/burn-blast@1.0.0.json",
+  "bundle_sha256": "0x4023a3de1ed0cf643b4a7ce5d5b37a77120d55ca97f3fa188567be432bb5a91e",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/burn-blast@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        81457
+      ],
+      "to": [
+        "0xB218e4f7cF0533d4696fDfC419A0023D33345F28"
+      ],
+      "selector": "0x42966c68"
+    },
+    "abi_fragment": {
+      "function_name": "burn",
+      "abi": {
+        "name": "burn",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "burn_liquidity_nft",
+      "fields": {
+        "nft.kind": {
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "literal": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        },
+        "nft.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "burnKind": {
+          "literal": "empty_only"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

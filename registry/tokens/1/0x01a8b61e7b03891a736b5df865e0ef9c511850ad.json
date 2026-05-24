@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x01a8b61e7b03891a736b5df865e0ef9c511850ad",
+  "symbol": "syBTC",
+  "decimals": 8,
+  "name": "syBTC"
+}

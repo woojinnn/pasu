@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x662015ec830df08c0fc45896fab726542e8ac09e",
+  "symbol": "SNT",
+  "decimals": 18,
+  "name": "Status"
+}

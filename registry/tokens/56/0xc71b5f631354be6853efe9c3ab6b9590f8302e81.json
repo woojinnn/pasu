@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0xc71b5f631354be6853efe9c3ab6b9590f8302e81",
+  "symbol": "ZK",
+  "decimals": 18,
+  "name": "Polyhedra Network"
+}

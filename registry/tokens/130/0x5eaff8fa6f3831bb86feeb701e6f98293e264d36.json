@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x5eaff8fa6f3831bb86feeb701e6f98293e264d36",
+  "symbol": "UPI",
+  "decimals": 18,
+  "name": "Pawtocol"
+}

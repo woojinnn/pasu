@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xa53887f7e7c1bf5010b8627f1c1ba94fe7a5d6e0",
+  "symbol": "RNBW",
+  "decimals": 18,
+  "name": "Rainbow"
+}

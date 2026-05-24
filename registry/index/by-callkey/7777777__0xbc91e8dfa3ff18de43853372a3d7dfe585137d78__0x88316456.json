@@ -1,0 +1,139 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/mint-zora@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/mint-zora@1.0.0.json",
+  "bundle_sha256": "0xdb112277c504d2b7c615f5db7164d84dbd2ae168a28e7f96278882997b27b443",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/mint-zora@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        7777777
+      ],
+      "to": [
+        "0xbC91e8DfA3fF18De43853372A3d7dfe585137D78"
+      ],
+      "selector": "0x88316456"
+    },
+    "abi_fragment": {
+      "function_name": "mint",
+      "abi": {
+        "name": "mint",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "params",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "token0",
+                "type": "address"
+              },
+              {
+                "name": "token1",
+                "type": "address"
+              },
+              {
+                "name": "fee",
+                "type": "uint24"
+              },
+              {
+                "name": "tickLower",
+                "type": "int24"
+              },
+              {
+                "name": "tickUpper",
+                "type": "int24"
+              },
+              {
+                "name": "amount0Desired",
+                "type": "uint256"
+              },
+              {
+                "name": "amount1Desired",
+                "type": "uint256"
+              },
+              {
+                "name": "amount0Min",
+                "type": "uint256"
+              },
+              {
+                "name": "amount1Min",
+                "type": "uint256"
+              },
+              {
+                "name": "recipient",
+                "type": "address"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "mint_liquidity_nft",
+      "fields": {
+        "pool.address": {
+          "literal": "0x0000000000000000000000000000000000000000"
+        },
+        "feeBps": {
+          "from": "$.args.fee"
+        },
+        "tickRange.lower": {
+          "from": "$.args.tickLower"
+        },
+        "tickRange.upper": {
+          "from": "$.args.tickUpper"
+        },
+        "inputTokens[0].asset.kind": {
+          "literal": "erc20"
+        },
+        "inputTokens[0].asset.address": {
+          "from": "$.args.token0"
+        },
+        "inputTokens[0].amount.kind": {
+          "literal": "max"
+        },
+        "inputTokens[0].amount.value": {
+          "from": "$.args.amount0Desired"
+        },
+        "inputTokens[1].asset.kind": {
+          "literal": "erc20"
+        },
+        "inputTokens[1].asset.address": {
+          "from": "$.args.token1"
+        },
+        "inputTokens[1].amount.kind": {
+          "literal": "max"
+        },
+        "inputTokens[1].amount.value": {
+          "from": "$.args.amount1Desired"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "tx-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

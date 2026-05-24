@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+  "symbol": "WBNB",
+  "decimals": 18,
+  "name": "Wrapped BNB"
+}

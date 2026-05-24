@@ -97,6 +97,18 @@ pub enum Action {
     RequestRestakeWithdrawal(crate::action::restaking::RequestRestakeWithdrawalAction),
     /// Claim a completed restaking withdrawal.
     ClaimRestakeWithdrawal(crate::action::restaking::ClaimRestakeWithdrawalAction),
+    /// Cast a Solidly-style emission gauge vote (Aerodrome Voter.vote).
+    GaugeVote(crate::action::misc::GaugeVoteAction),
+    /// Stake LP token in a gauge (Aerodrome Gauge.deposit).
+    LpStake(crate::action::misc::LpStakeAction),
+    /// Unstake LP token from a gauge (Aerodrome Gauge.withdraw).
+    LpUnstake(crate::action::misc::LpUnstakeAction),
+    /// Create a voting-escrow lock (Aerodrome VotingEscrow.createLock).
+    LockCreate(crate::action::misc::LockCreateAction),
+    /// Modify a voting-escrow lock (Aerodrome VotingEscrow.increaseAmount / .increaseUnlockTime).
+    LockIncrease(crate::action::misc::LockIncreaseAction),
+    /// Merge or split voting-escrow positions (Aerodrome VotingEscrow.merge / .split).
+    LockManage(crate::action::misc::LockManageAction),
 }
 
 impl Action {
@@ -138,6 +150,12 @@ impl Action {
             Self::Restake(_) => "restake",
             Self::RequestRestakeWithdrawal(_) => "request_restake_withdrawal",
             Self::ClaimRestakeWithdrawal(_) => "claim_restake_withdrawal",
+            Self::GaugeVote(_) => "gauge_vote",
+            Self::LpStake(_) => "lp_stake",
+            Self::LpUnstake(_) => "lp_unstake",
+            Self::LockCreate(_) => "lock_create",
+            Self::LockIncrease(_) => "lock_increase",
+            Self::LockManage(_) => "lock_manage",
         }
     }
 
@@ -178,7 +196,13 @@ impl Action {
             | Self::ClaimRewards(_)
             | Self::SignMessage(_)
             | Self::Delegate(_)
-            | Self::Vote(_) => Category::Misc,
+            | Self::Vote(_)
+            | Self::GaugeVote(_)
+            | Self::LpStake(_)
+            | Self::LpUnstake(_)
+            | Self::LockCreate(_)
+            | Self::LockIncrease(_)
+            | Self::LockManage(_) => Category::Misc,
         }
     }
 }
@@ -412,6 +436,36 @@ mod tests {
                 ),
                 "claim_restake_withdrawal",
                 Category::Restaking,
+            ),
+            (
+                action("gauge_vote", gauge_vote_fields()),
+                "gauge_vote",
+                Category::Misc,
+            ),
+            (
+                action("lp_stake", lp_stake_fields()),
+                "lp_stake",
+                Category::Misc,
+            ),
+            (
+                action("lp_unstake", lp_unstake_fields()),
+                "lp_unstake",
+                Category::Misc,
+            ),
+            (
+                action("lock_create", lock_create_fields()),
+                "lock_create",
+                Category::Misc,
+            ),
+            (
+                action("lock_increase", lock_increase_fields()),
+                "lock_increase",
+                Category::Misc,
+            ),
+            (
+                action("lock_manage", lock_manage_fields()),
+                "lock_manage",
+                Category::Misc,
             ),
         ]
     }
@@ -799,6 +853,61 @@ mod tests {
             "tokenOut": native("ETH"),
             "ticket": {},
             "recipient": address(0x30)
+        })
+    }
+
+    fn gauge_vote_fields() -> Value {
+        json!({
+            "voter": address(0x90),
+            "tokenId": "1",
+            "pools": [address(0x01), address(0x02)],
+            "weights": ["50", "50"]
+        })
+    }
+
+    fn lp_stake_fields() -> Value {
+        json!({
+            "gauge": address(0x90),
+            "lpToken": erc20("LP"),
+            "amount": amount("exact", "1000"),
+            "recipient": address(0x30)
+        })
+    }
+
+    fn lp_unstake_fields() -> Value {
+        json!({
+            "gauge": address(0x90),
+            "lpToken": erc20("LP"),
+            "amount": amount("exact", "1000"),
+            "recipient": address(0x30)
+        })
+    }
+
+    fn lock_create_fields() -> Value {
+        json!({
+            "votingEscrow": address(0x91),
+            "asset": erc20("AERO"),
+            "amount": amount("exact", "1000000000000000000"),
+            "lockDurationSec": "126144000",
+            "recipient": address(0x30)
+        })
+    }
+
+    fn lock_increase_fields() -> Value {
+        json!({
+            "votingEscrow": address(0x91),
+            "tokenId": "42",
+            "kind": "amount",
+            "additionalAmount": amount("exact", "500000000000000000")
+        })
+    }
+
+    fn lock_manage_fields() -> Value {
+        json!({
+            "votingEscrow": address(0x91),
+            "kind": "merge",
+            "fromTokenId": "1",
+            "toTokenId": "2"
         })
     }
 }

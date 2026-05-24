@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xfc98e825a2264d890f9a1e68ed50e1526abccacd",
+  "symbol": "MCO2",
+  "decimals": 18,
+  "name": "Moss Carbon Credit"
+}

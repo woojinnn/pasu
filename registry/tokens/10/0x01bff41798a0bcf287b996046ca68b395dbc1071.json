@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x01bff41798a0bcf287b996046ca68b395dbc1071",
+  "symbol": "USD\u20ae0",
+  "decimals": 6,
+  "name": "USD\u20ae0"
+}

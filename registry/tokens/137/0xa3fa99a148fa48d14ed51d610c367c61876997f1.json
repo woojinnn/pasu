@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xa3fa99a148fa48d14ed51d610c367c61876997f1",
+  "symbol": "miMATIC",
+  "decimals": 18,
+  "name": "miMATIC"
+}

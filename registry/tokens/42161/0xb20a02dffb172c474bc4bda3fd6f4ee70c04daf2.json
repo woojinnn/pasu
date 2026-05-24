@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xb20a02dffb172c474bc4bda3fd6f4ee70c04daf2",
+  "symbol": "MIM",
+  "decimals": 18,
+  "name": "Magic Internet Money"
+}

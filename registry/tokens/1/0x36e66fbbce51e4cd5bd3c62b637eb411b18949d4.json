@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x36e66fbbce51e4cd5bd3c62b637eb411b18949d4",
+  "symbol": "OMNI",
+  "decimals": 18,
+  "name": "Omni Network"
+}

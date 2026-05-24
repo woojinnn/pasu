@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xacfb898cff266e53278cc0124fc2c7c94c8cb9a5",
+  "symbol": "NOCHILL",
+  "decimals": 18,
+  "name": "AVAX HAS NO CHILL"
+}

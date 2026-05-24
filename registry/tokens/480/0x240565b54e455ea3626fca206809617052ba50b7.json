@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x240565b54e455ea3626fca206809617052ba50b7",
+  "symbol": "LZX",
+  "decimals": 18,
+  "name": "LizardX"
+}

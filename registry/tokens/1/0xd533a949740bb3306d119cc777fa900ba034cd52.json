@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xd533a949740bb3306d119cc777fa900ba034cd52",
+  "symbol": "CRV",
+  "decimals": 18,
+  "name": "Curve DAO Token"
+}

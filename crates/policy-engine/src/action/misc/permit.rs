@@ -79,21 +79,27 @@ impl PermitAction {
 
         if matches!(
             raw.permit_kind,
-            PermitKind::Eip2612 | PermitKind::Permit2Single | PermitKind::Permit2Transfer
+            PermitKind::Eip2612
+                | PermitKind::Permit2Single
+                | PermitKind::Permit2Transfer
+                | PermitKind::Permit2Batch
         ) && raw.amount.is_none()
         {
             return Err(
-                "amount is required for eip2612, permit2_single, and permit2_transfer permits",
+                "amount is required for eip2612, permit2_single, permit2_batch, and permit2_transfer permits",
             );
         }
 
         if matches!(
             raw.permit_kind,
-            PermitKind::Eip2612 | PermitKind::Permit2Single | PermitKind::Erc721Permit
+            PermitKind::Eip2612
+                | PermitKind::Permit2Single
+                | PermitKind::Permit2Batch
+                | PermitKind::Erc721Permit
         ) && raw.spender.is_none()
         {
             return Err(
-                "spender is required for eip2612, permit2_single, and erc721_permit permits",
+                "spender is required for eip2612, permit2_single, permit2_batch, and erc721_permit permits",
             );
         }
 
@@ -107,9 +113,14 @@ impl PermitAction {
             }
         }
 
-        if matches!(raw.permit_kind, PermitKind::Permit2Single) && raw.signature_validity.is_none()
+        if matches!(
+            raw.permit_kind,
+            PermitKind::Permit2Single | PermitKind::Permit2Batch
+        ) && raw.signature_validity.is_none()
         {
-            return Err("signatureValidity is required for permit2_single permits");
+            return Err(
+                "signatureValidity is required for permit2_single and permit2_batch permits",
+            );
         }
 
         if matches!(raw.permit_kind, PermitKind::Erc721Permit) && raw.token.token_id.is_none() {
@@ -177,6 +188,60 @@ mod tests {
             "requestedAmount": amount("exact", "900"),
             "validity": validity("signature-deadline")
         }));
+    }
+
+    #[test]
+    fn test_permit_action_serde_roundtrip_permit2_batch() {
+        // Permit2Batch follows the same shape as Permit2Single: requires
+        // owner, amount, spender, signatureValidity. The mapper layer
+        // collapses the on-chain `details[]` array down to a single token
+        // (`details[0]`) so the schema can keep a single `token` slot.
+        assert_json_roundtrip::<PermitAction>(json!({
+            "permitKind": "permit2_batch",
+            "token": erc20("USDC"),
+            "owner": address(0x52),
+            "spender": address(0x53),
+            "amount": amount("max", "1000"),
+            "validity": validity("grant-expiration"),
+            "signatureValidity": validity("signature-deadline")
+        }));
+    }
+
+    #[test]
+    fn test_permit_action_permit2_batch_requires_signature_validity() {
+        // Mirror of Permit2Single's signatureValidity invariant — Permit2Batch
+        // also carries a separate sigDeadline distinct from grant expiration,
+        // and policies key off the two windows independently.
+        let raw = json!({
+            "permitKind": "permit2_batch",
+            "token": erc20("USDC"),
+            "owner": address(0x52),
+            "spender": address(0x53),
+            "amount": amount("max", "1000"),
+            "validity": validity("grant-expiration")
+        });
+        let err = serde_json::from_value::<PermitAction>(raw).unwrap_err();
+        assert!(
+            err.to_string().contains("signatureValidity is required"),
+            "expected signatureValidity validation, got {err}"
+        );
+    }
+
+    #[test]
+    fn test_permit_action_permit2_batch_requires_spender() {
+        let raw = json!({
+            "permitKind": "permit2_batch",
+            "token": erc20("USDC"),
+            "owner": address(0x52),
+            "amount": amount("max", "1000"),
+            "validity": validity("grant-expiration"),
+            "signatureValidity": validity("signature-deadline")
+        });
+        let err = serde_json::from_value::<PermitAction>(raw).unwrap_err();
+        assert!(
+            err.to_string().contains("spender is required"),
+            "expected spender validation, got {err}"
+        );
     }
 
     #[test]

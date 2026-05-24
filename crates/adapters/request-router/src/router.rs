@@ -140,6 +140,9 @@ fn run_subcalls_pipeline(
             value_wei: &sub.value_wei,
             block_timestamp: ctx.block_timestamp,
             token_registry: ctx.token_registry,
+            parent_calldata: None,
+            depth: 0,
+            resolver: None,
         };
         match sub.decoded {
             Some(decoded) => {
@@ -208,6 +211,9 @@ fn compact_ctx<'a>(
         value_wei,
         block_timestamp: ctx.block_timestamp,
         token_registry: ctx.token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     }
 }
 
@@ -253,6 +259,9 @@ fn route_call_fallback(
         value_wei: value,
         block_timestamp: ctx.block_timestamp,
         token_registry: ctx.token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
 
     mapper

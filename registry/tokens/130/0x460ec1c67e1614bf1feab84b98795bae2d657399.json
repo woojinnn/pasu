@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x460ec1c67e1614bf1feab84b98795bae2d657399",
+  "symbol": "MC",
+  "decimals": 18,
+  "name": "Merit Circle"
+}

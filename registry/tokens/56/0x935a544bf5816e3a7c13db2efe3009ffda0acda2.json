@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x935a544bf5816e3a7c13db2efe3009ffda0acda2",
+  "symbol": "BLZ",
+  "decimals": 18,
+  "name": "Bluzelle Token"
+}

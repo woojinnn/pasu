@@ -56,6 +56,8 @@ describe("dashboard/storage", () => {
   it("DASHBOARD_ID_RE matches well-formed ids and rejects bad ones", () => {
     expect(DASHBOARD_ID_RE.test("dashboard::user/forbid-permits")).toBe(true);
     expect(DASHBOARD_ID_RE.test("dashboard::a")).toBe(true);
+    expect(DASHBOARD_ID_RE.test("dashboard::newrule(0)")).toBe(true);
+    expect(DASHBOARD_ID_RE.test("dashboard::newrule(42)")).toBe(true);
     expect(DASHBOARD_ID_RE.test("user/forbid-permits")).toBe(false);
     expect(DASHBOARD_ID_RE.test("dashboard::")).toBe(false);
     expect(DASHBOARD_ID_RE.test("dashboard::foo bar")).toBe(false);

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x63706e401c06ac8513145b7687a14804d17f814b",
+  "symbol": "AAVE",
+  "decimals": 18,
+  "name": "Aave Token"
+}

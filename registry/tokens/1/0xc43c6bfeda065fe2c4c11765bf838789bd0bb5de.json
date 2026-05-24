@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xc43c6bfeda065fe2c4c11765bf838789bd0bb5de",
+  "symbol": "RED",
+  "decimals": 18,
+  "name": "Redstone"
+}

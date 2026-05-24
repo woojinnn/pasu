@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x6f769e65c14ebd1f68817f5f1dcdb61cfa2d6f7e",
+  "symbol": "ARPA",
+  "decimals": 18,
+  "name": "ARPA Token"
+}

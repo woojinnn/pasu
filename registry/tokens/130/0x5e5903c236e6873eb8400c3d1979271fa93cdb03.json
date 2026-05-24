@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x5e5903c236e6873eb8400c3d1979271fa93cdb03",
+  "symbol": "ERN",
+  "decimals": 18,
+  "name": "Ethernity Chain"
+}

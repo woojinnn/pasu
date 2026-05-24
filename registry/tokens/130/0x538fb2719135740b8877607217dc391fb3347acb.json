@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x538fb2719135740b8877607217dc391fb3347acb",
+  "symbol": "RLC",
+  "decimals": 9,
+  "name": "iExec RLC"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x9c9e5fd8bbc25984b178fdce6117defa39d2db39",
+  "symbol": "BUSD",
+  "decimals": 18,
+  "name": "Binance USD"
+}

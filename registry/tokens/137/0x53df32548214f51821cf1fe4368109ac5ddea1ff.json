@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x53df32548214f51821cf1fe4368109ac5ddea1ff",
+  "symbol": "SPONGE",
+  "decimals": 18,
+  "name": "Sponge"
+}

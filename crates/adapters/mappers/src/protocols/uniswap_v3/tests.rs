@@ -127,6 +127,9 @@ fn ctx<'a>(
         value_wei,
         block_timestamp: Some(1_700_000_000),
         token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     }
 }
 

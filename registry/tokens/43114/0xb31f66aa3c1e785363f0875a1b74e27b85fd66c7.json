@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",
+  "symbol": "WAVAX",
+  "decimals": 18,
+  "name": "Wrapped AVAX"
+}

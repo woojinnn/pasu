@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0xfe8b128ba8c78aabc59d4c64cee7ff28e9379921",
+  "symbol": "BAL",
+  "decimals": 18,
+  "name": "Balancer"
+}

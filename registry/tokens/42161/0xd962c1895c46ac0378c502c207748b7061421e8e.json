@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xd962c1895c46ac0378c502c207748b7061421e8e",
+  "symbol": "OMG",
+  "decimals": 18,
+  "name": "OMG Network"
+}

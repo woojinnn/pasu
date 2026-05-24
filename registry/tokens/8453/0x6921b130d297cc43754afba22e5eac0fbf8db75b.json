@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x6921b130d297cc43754afba22e5eac0fbf8db75b",
+  "symbol": "doginme",
+  "decimals": 18,
+  "name": "doginme"
+}

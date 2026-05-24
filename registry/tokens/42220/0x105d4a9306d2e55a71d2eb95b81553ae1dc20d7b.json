@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0x105d4a9306d2e55a71d2eb95b81553ae1dc20d7b",
+  "symbol": "PHPm",
+  "decimals": 18,
+  "name": "Mento Philippine Peso"
+}

@@ -1,0 +1,73 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v3/approve-bnb@1.0.0",
+  "manifest_path": "manifests/uniswap/v3/approve-bnb@1.0.0.json",
+  "bundle_sha256": "0xb0165bb53cfee4beba69a971e76d711e23f812e1eb2f3e1b1c02ba1a1dd20f82",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/v3/approve-bnb@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        56
+      ],
+      "to": [
+        "0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613"
+      ],
+      "selector": "0x095ea7b3"
+    },
+    "abi_fragment": {
+      "function_name": "approve",
+      "abi": {
+        "name": "approve",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "approve",
+      "fields": {
+        "token.kind": {
+          "literal": "erc721"
+        },
+        "token.address": {
+          "from": "$.tx.to"
+        },
+        "token.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "spender": {
+          "from": "$.args.to"
+        },
+        "amount.kind": {
+          "literal": "exact"
+        },
+        "amount.value": {
+          "literal": "1"
+        },
+        "approvalKind": {
+          "literal": "erc20"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

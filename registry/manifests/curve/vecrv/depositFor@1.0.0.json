@@ -1,0 +1,40 @@
+{
+  "type": "adapter_function",
+  "id": "curve/vecrv/depositFor@1.0.0",
+  "publisher": "curve.fi",
+  "match": {
+    "chain_ids": [1],
+    "to": ["0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"],
+    "selector": "0x3a46273e"
+  },
+  "abi_fragment": {
+    "function_name": "deposit_for",
+    "abi": {
+      "name": "deposit_for",
+      "type": "function",
+      "inputs": [
+        { "name": "_addr",  "type": "address" },
+        { "name": "_value", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "staking",
+    "action": "stake",
+    "fields": {
+      "tokenIn.kind":         { "literal": "erc20" },
+      "tokenIn.address":      { "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
+      "receiptToken.kind":    { "literal": "erc20" },
+      "receiptToken.address": { "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
+      "amountIn.kind":        { "literal": "exact" },
+      "amountIn.value":       { "from": "$.args._value" },
+      "recipient":            { "from": "$.args._addr" }
+    }
+  },
+  "requires": {
+    "imperative":        [],
+    "host_capabilities": ["host:token_metadata"],
+    "extension":         ">=0.1.0"
+  }
+}

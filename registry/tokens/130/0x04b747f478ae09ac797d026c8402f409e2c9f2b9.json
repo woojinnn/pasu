@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x04b747f478ae09ac797d026c8402f409e2c9f2b9",
+  "symbol": "GLM",
+  "decimals": 18,
+  "name": "Golem"
+}

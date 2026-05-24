@@ -9,13 +9,29 @@ use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
 /// Build deterministic manifest-set hash.
+///
+/// Round 6 audit (P1) — the previous fallback collapsed every
+/// `serde_json::to_vec` failure into `error.to_string()`. That created a
+/// hash collision class: two structurally different manifest sets that
+/// share the same serialisation error (e.g. both contain an unrepresentable
+/// `f64::NAN`) would hash to the same `sha256:...` digest, letting an
+/// engine that installed manifest set A silently accept results for set B.
+///
+/// `PolicyManifest` itself only carries serde-friendly types (`String`,
+/// `u64`, `Vec`, `BTreeMap<String, String>`, and pre-validated
+/// `serde_json::Value` payloads from `build_index` / install). A failure
+/// here therefore signals an implementation bug or an installer that let
+/// a malformed `Value` slip through. We prefix the error path with a
+/// well-known sentinel that cannot collide with any legitimate manifest
+/// JSON (which always starts with `[`) so a poisoned input still hashes
+/// uniquely.
 #[must_use]
 pub fn manifest_set_hash(manifests: &[PolicyManifest]) -> String {
     let mut canonical = manifests.to_vec();
     canonical.sort_by(|left, right| left.id.cmp(&right.id));
     let json = match serde_json::to_vec(&canonical) {
         Ok(json) => json,
-        Err(error) => error.to_string().into_bytes(),
+        Err(error) => format!("__manifest_serialize_failed__:{error}").into_bytes(),
     };
     let digest = Sha256::digest(json);
     format!("sha256:{digest:x}")

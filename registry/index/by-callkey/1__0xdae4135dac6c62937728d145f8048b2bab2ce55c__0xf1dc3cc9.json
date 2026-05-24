@@ -1,0 +1,100 @@
+{
+  "matched": true,
+  "bundle_id": "curve/cryptoswap/3pros/removeLiquidityOneCoin-v2@1.0.0",
+  "manifest_path": "manifests/curve/cryptoswap/3pros/removeLiquidityOneCoin-v2@1.0.0.json",
+  "bundle_sha256": "0x1ac2a649e7f330fddeeda886aa040af805963d3dcb39907c7e1061150004fb8f",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/cryptoswap/3pros/removeLiquidityOneCoin-v2@1.0.0",
+    "publisher": "curve.fi",
+    "match": {
+      "chain_ids": [
+        1
+      ],
+      "to": [
+        "0xdae4135dac6c62937728d145f8048b2bab2ce55c"
+      ],
+      "selector": "0xf1dc3cc9"
+    },
+    "abi_fragment": {
+      "function_name": "remove_liquidity_one_coin",
+      "abi": {
+        "name": "remove_liquidity_one_coin",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "token_amount",
+            "type": "uint256"
+          },
+          {
+            "name": "i",
+            "type": "uint256"
+          },
+          {
+            "name": "min_amount",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "remove_liquidity",
+      "fields": {
+        "exitMode": {
+          "literal": "single_asset"
+        },
+        "pool.address": {
+          "literal": "0xdae4135dac6c62937728d145f8048b2bab2ce55c"
+        },
+        "inputLp.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputLp.asset.address": {
+          "literal": "0xdae4135dac6c62937728d145f8048b2bab2ce55c"
+        },
+        "inputLp.amount.kind": {
+          "literal": "exact"
+        },
+        "inputLp.amount.value": {
+          "from": "$.args.token_amount"
+        },
+        "outputTokens[0].asset.kind": {
+          "literal": "erc20"
+        },
+        "outputTokens[0].asset.address": {
+          "fn": "select_from_literal_array",
+          "args": [
+            {
+              "literal": [
+                "0xbe1936a67f503e0eaf2434b0cf9f4e3d7100008a",
+                "0xdac17f958d2ee523a2206206994597c13d831ec7",
+                "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+              ]
+            },
+            {
+              "from": "$.args.i"
+            }
+          ]
+        },
+        "outputTokens[0].amount.kind": {
+          "literal": "min"
+        },
+        "outputTokens[0].amount.value": {
+          "from": "$.args.min_amount"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "host_capabilities": [
+        "host:token_metadata"
+      ],
+      "extension": ">=0.1.0"
+    }
+  }
+}

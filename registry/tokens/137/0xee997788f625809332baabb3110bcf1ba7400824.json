@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xee997788f625809332baabb3110bcf1ba7400824",
+  "symbol": "FELY",
+  "decimals": 18,
+  "name": "Felysyum"
+}

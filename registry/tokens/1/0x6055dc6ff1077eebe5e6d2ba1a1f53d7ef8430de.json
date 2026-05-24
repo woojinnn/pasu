@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x6055dc6ff1077eebe5e6d2ba1a1f53d7ef8430de",
+  "symbol": "ES",
+  "decimals": 6,
+  "name": "Eclipse"
+}

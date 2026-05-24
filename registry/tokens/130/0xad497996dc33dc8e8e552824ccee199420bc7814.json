@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xad497996dc33dc8e8e552824ccee199420bc7814",
+  "symbol": "tBTC",
+  "decimals": 18,
+  "name": "tBTC"
+}

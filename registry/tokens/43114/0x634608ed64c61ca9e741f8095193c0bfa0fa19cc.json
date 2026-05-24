@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x634608ed64c61ca9e741f8095193c0bfa0fa19cc",
+  "symbol": "SOL",
+  "decimals": 18,
+  "name": "Solana"
+}

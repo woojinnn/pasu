@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0xd15cee1deafbad6c0b3fd7489677cc102b141464",
+  "symbol": "COVAL",
+  "decimals": 8,
+  "name": "Circuits of Value V2"
+}

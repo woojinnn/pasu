@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x102d758f688a4c1c5a80b116bd945d4455460282",
+  "symbol": "USDT0",
+  "decimals": 6,
+  "name": "Stargate USDT0 (Bridged)"
+}

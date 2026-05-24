@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xb1110919016846972056ab995054d65560d5f05e",
+  "symbol": "BILL",
+  "decimals": 18,
+  "name": "Billions"
+}

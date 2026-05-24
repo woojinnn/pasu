@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x12bb890508c125661e03b09ec06e404bc9289040",
+  "symbol": "RACA",
+  "decimals": 18,
+  "name": "Radio Caca V2"
+}

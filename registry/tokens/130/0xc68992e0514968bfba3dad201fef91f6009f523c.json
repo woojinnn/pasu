@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xc68992e0514968bfba3dad201fef91f6009f523c",
+  "symbol": "LOOM",
+  "decimals": 18,
+  "name": "Loom Network"
+}

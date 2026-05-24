@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x7b9b94aebe5e2039531af8e31045f377ecd9a39a",
+  "symbol": "MULTI",
+  "decimals": 18,
+  "name": "Multichain"
+}

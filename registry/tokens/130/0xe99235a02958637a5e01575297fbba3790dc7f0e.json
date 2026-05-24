@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xe99235a02958637a5e01575297fbba3790dc7f0e",
+  "symbol": "FTM",
+  "decimals": 18,
+  "name": "Fantom"
+}

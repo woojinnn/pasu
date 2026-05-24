@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x5944d2728d5fea7d1f4aa4958e3aebb3ccfec7d5",
+  "symbol": "PERP",
+  "decimals": 18,
+  "name": "Perpetual Protocol"
+}

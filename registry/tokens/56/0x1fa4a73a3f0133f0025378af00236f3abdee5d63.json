@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x1fa4a73a3f0133f0025378af00236f3abdee5d63",
+  "symbol": "NEAR",
+  "decimals": 18,
+  "name": "NEAR Protocol"
+}

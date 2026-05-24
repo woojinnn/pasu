@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9a26f5433671751c3276a065f57e5a02d2817973",
+  "symbol": "KEYCAT",
+  "decimals": 18,
+  "name": "Keyboard Cat"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x502865ecdd2a2929aa9418297be7d3c4a7bd5ac6",
+  "symbol": "TONE",
+  "decimals": 18,
+  "name": "TE FOOD"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x1bfc5d35bf0f7b9e15dc24c78b8c02dbc1e95447",
+  "symbol": "ANKR",
+  "decimals": 18,
+  "name": "Ankr"
+}

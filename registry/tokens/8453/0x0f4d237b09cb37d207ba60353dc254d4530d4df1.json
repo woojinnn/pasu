@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x0f4d237b09cb37d207ba60353dc254d4530d4df1",
+  "symbol": "GRT",
+  "decimals": 18,
+  "name": "The Graph"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x81908bbaad3f6fc74093540ab2e9b749bb62aa0d",
+  "symbol": "XVS",
+  "decimals": 18,
+  "name": "Venus XVS"
+}

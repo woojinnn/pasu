@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xbfae6fecd8124ba33cbb2180aab0fe4c03914a5a",
+  "symbol": "TRIBE",
+  "decimals": 18,
+  "name": "Tribe"
+}

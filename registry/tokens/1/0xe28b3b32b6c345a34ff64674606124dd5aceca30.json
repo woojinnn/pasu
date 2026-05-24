@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xe28b3b32b6c345a34ff64674606124dd5aceca30",
+  "symbol": "INJ",
+  "decimals": 18,
+  "name": "Injective"
+}

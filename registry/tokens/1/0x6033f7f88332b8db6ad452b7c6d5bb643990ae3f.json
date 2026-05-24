@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x6033f7f88332b8db6ad452b7c6d5bb643990ae3f",
+  "symbol": "LSK",
+  "decimals": 18,
+  "name": "Lisk"
+}

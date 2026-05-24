@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x4f9b7dedd8865871df65c5d26b1c2dd537267878",
+  "symbol": "SKL",
+  "decimals": 18,
+  "name": "SKALE"
+}

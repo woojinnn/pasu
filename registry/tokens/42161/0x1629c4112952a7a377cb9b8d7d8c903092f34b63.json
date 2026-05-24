@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x1629c4112952a7a377cb9b8d7d8c903092f34b63",
+  "symbol": "SD",
+  "decimals": 18,
+  "name": "Stader"
+}

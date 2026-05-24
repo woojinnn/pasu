@@ -4,7 +4,9 @@
 //! shape. They depend only on `alloy_primitives` (and `thiserror` for errors);
 //! callers with richer error types should map errors at their boundary.
 
+pub mod aerodrome_ur;
 pub mod balancer_v2;
+pub mod curve;
 pub mod pancake_infinity;
 pub mod pancake_ur;
 pub mod safe_multisend;

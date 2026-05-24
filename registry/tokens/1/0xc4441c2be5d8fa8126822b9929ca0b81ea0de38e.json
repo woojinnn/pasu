@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xc4441c2be5d8fa8126822b9929ca0b81ea0de38e",
+  "symbol": "USUAL",
+  "decimals": 18,
+  "name": "USUAL"
+}

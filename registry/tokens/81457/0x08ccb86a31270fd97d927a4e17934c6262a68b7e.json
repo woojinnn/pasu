@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x08ccb86a31270fd97d927a4e17934c6262a68b7e",
+  "symbol": "SQUAD",
+  "decimals": 18,
+  "name": "SquadSwap"
+}

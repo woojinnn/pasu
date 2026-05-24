@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x7251d204c2e867b31096d5c7091298239b3a6a0f",
+  "symbol": "sUSD",
+  "decimals": 18,
+  "name": "Synth sUSD"
+}

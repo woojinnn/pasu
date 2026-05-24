@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xa5afe7646f07d2c41aa82bb6ae09e99e121e39b7",
+  "symbol": "INDEX",
+  "decimals": 18,
+  "name": "Index Cooperative"
+}

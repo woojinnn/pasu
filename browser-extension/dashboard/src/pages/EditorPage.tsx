@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useExtension } from "../sdk-context";
+import type { ManagedPolicy } from "@scopeball/sdk";
 import type { PolicyRule } from "../policy/types";
-import { parseCedar } from "../policy/builder-wasm";
+import { compileRule, parseCedar } from "../policy/builder-wasm";
+import {
+  loadInstalledManifest,
+  loadOverlay,
+} from "../policy/manifest-overlay";
 import { ModeToggle, type EditorMode } from "../editor/ModeToggle";
 import { BuilderView } from "../editor/BuilderView";
 import { CodeView } from "../editor/CodeView";
@@ -15,13 +20,60 @@ interface EditorLocationState {
   text?: string;
 }
 
+const INITIAL_ACTION = "swap";
+
 const INITIAL_RULE: PolicyRule = {
-  id: "dashboard::my/new-rule",
-  action: "swap",
+  id: `dashboard::${INITIAL_ACTION}/newrule(1)`,
+  action: INITIAL_ACTION,
   severity: "deny",
-  reason: "describe why this should be blocked",
+  reason: "",
   predicates: [],
 };
+
+// Default id at load time is `newrule(count+1)`, where `count` is the
+// number of `newrule(\d+)`-shaped entries already in the library for this
+// action. So a fresh library opens with `newrule(1)`, the next save sees
+// `newrule(2)`, etc. If that slot happens to be taken (gaps from manual
+// renames, races), we hand off to the same save-time disambiguator the
+// user-typed collision path uses.
+function pickDefaultRuleId(
+  managed: readonly ManagedPolicy[],
+  action: string,
+): string {
+  const numberedRe = new RegExp(
+    `^dashboard::${escapeRegex(action)}/newrule\\(\\d+\\)$`,
+  );
+  const count = managed.filter((p) => numberedRe.test(p.id)).length;
+  const base = `dashboard::${action}/newrule(${count + 1})`;
+  return disambiguateId(base, managed);
+}
+
+// If `id` is already taken, append `(N)` with N counting up from 0 until
+// the result is free. So `newrule(1)` collides → `newrule(1)(0)`; if that
+// is also taken → `newrule(1)(1)`. The base string never changes — only
+// the trailing `(N)` suffix grows.
+function disambiguateId(
+  id: string,
+  managed: readonly ManagedPolicy[],
+): string {
+  const used = new Set(managed.map((p) => p.id));
+  if (!used.has(id)) return id;
+  let n = 0;
+  while (used.has(`${id}(${n})`)) n++;
+  return `${id}(${n})`;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Extracts the `<action>` segment of `dashboard::<action>/<rest>`, or null
+// if the id doesn't follow that shape. Used to compare against `rule.action`
+// at save time and warn on mismatch.
+function actionSegmentOf(id: string): string | null {
+  const m = id.match(/^dashboard::([^/]+)\//);
+  return m ? m[1] : null;
+}
 
 const PLACEHOLDER_CEDAR = `// Compile a rule from Builder mode to see Cedar text here.
 // The Code view is read-only until you opt in via the warning modal.`;
@@ -31,7 +83,8 @@ const PLACEHOLDER_CEDAR = `// Compile a rule from Builder mode to see Cedar text
 type Pending =
   | { kind: "none" }
   | { kind: "enable-code-edit" }
-  | { kind: "switch-mode"; target: EditorMode };
+  | { kind: "switch-mode"; target: EditorMode }
+  | { kind: "save-action-mismatch"; idAction: string; ruleAction: string };
 
 export function EditorPage() {
   const { client, refresh, managed } = useExtension();
@@ -42,6 +95,13 @@ export function EditorPage() {
   const [cedarText, setCedarText] = useState<string>(PLACEHOLDER_CEDAR);
   const [codeEditable, setCodeEditable] = useState(false);
   const [codeDirty, setCodeDirty] = useState(false);
+  // Snapshot of the exact rule that produced the current `cedarText`. Set
+  // by the Builder compile callback and used by `builderDirty` to gate
+  // the save button when the user edits a predicate without re-compiling.
+  // Reset to `null` after a successful save / fresh form, so the canonical
+  // "no compile yet" state is identifiable.
+  const [lastCompiledRule, setLastCompiledRule] =
+    useState<PolicyRule | null>(null);
   const [pending, setPending] = useState<Pending>({ kind: "none" });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<
@@ -50,6 +110,33 @@ export function EditorPage() {
     | null
   >(null);
   const [hydrateNote, setHydrateNote] = useState<string | null>(null);
+  // Tracks whether we've already settled the rule id on this editor mount —
+  // either by hydrating from Library or by stamping a fresh default. Used so
+  // the default-id effect doesn't clobber a user's later edit to the field.
+  const idSettledRef = useRef(false);
+  // True when the current form was loaded from an existing library policy
+  // (Library → Edit). Save in that mode is an update and must be allowed
+  // to overwrite the same id; the save-time disambiguator only kicks in
+  // for fresh-create flows so a user editing `newrule(1)` doesn't
+  // accidentally fork it into `newrule(1)(0)`.
+  const hydratedFromExistingRef = useRef(false);
+
+  // Stamp `dashboard::newrule(N)` as the default once `managed` has loaded
+  // (and we're not hydrating an existing policy). Library size seeds N; the
+  // pick function bumps past any collision (option C).
+  useEffect(() => {
+    if (idSettledRef.current) return;
+    if (managed === null) return;
+    const hasHydrationState = Boolean(
+      (location.state as EditorLocationState | null)?.text,
+    );
+    if (hasHydrationState) {
+      idSettledRef.current = true;
+      return;
+    }
+    setRule((r) => ({ ...r, id: pickDefaultRuleId(managed, r.action) }));
+    idSettledRef.current = true;
+  }, [managed, location.state]);
 
   // Hydrate from Library → Edit handoff. parse_cedar succeeds when the
   // policy fits the PolicyRule subset (forbid + AND-of-leaf-predicates) —
@@ -65,10 +152,17 @@ export function EditorPage() {
       setCedarText(state.text!);
       if (parsed) {
         setRule(parsed);
+        // The hydrated text is exactly what `parsed` would compile to (the
+        // engine round-trips through parse_cedar), so seed the snapshot to
+        // `parsed`. Without this seed, opening a saved rule and immediately
+        // clicking save would be blocked by `builderDirty` even though the
+        // rule is unchanged.
+        setLastCompiledRule(parsed);
         setMode("builder");
         setHydrateNote(`'${state.id ?? parsed.id}' Builder 모드로 로드됨.`);
       } else {
         setRule((r) => ({ ...r, id: state.id ?? r.id }));
+        setLastCompiledRule(null);
         setMode("code");
         setCodeEditable(true);
         setCodeDirty(false);
@@ -78,6 +172,9 @@ export function EditorPage() {
           }). Code 모드로 표시 중.`,
         );
       }
+      // Mark this session as an update of an existing library entry so the
+      // save path overwrites rather than auto-disambiguating into a fork.
+      hydratedFromExistingRef.current = true;
       // Clear router state so a reload doesn't re-hydrate stale data.
       navigate(location.pathname, { replace: true, state: null });
     })();
@@ -103,8 +200,12 @@ export function EditorPage() {
     }
   };
 
-  const handleBuilderCompile = (compiled: string) => {
+  const handleBuilderCompile = (compiled: string, compiledRule: PolicyRule) => {
     setCedarText(compiled);
+    // Pair the emitted Cedar with the exact rule snapshot it was produced
+    // from — `builderDirty` below compares this against the live `rule` to
+    // know whether the user has edited anything since the last compile.
+    setLastCompiledRule(compiledRule);
     setCodeEditable(false);
     setCodeDirty(false);
     setSaveMsg(null);
@@ -120,23 +221,78 @@ export function EditorPage() {
       setCodeEditable(true);
     } else if (pending.kind === "switch-mode") {
       applyModeSwitch(pending.target);
+    } else if (pending.kind === "save-action-mismatch") {
+      setPending({ kind: "none" });
+      void performSave();
+      return;
     }
     setPending({ kind: "none" });
   };
 
-  const handleSave = async () => {
+  const performSave = async () => {
     setSaving(true);
     setSaveMsg(null);
     try {
+      // Load the manifest-derived overlay once and reuse it for both the
+      // compile recheck and the putRaw call. Without the overlay,
+      // record-typed custom fields (e.g. `totalInputUsd.value`) wouldn't
+      // resolve and the recompile would dead-end with `unknown_field` —
+      // matching what the Builder picker rendered against requires the
+      // same overlay here.
+      const overlay = await loadOverlay(client, rule.action);
+      const manifest = await loadInstalledManifest(client, rule.action);
+
+      // Belt-and-braces: even though `canSave` requires a fresh compile in
+      // Builder mode, recompile here from the *current* rule before sending
+      // it to the SDK. This catches edge cases where the rule diverged
+      // between render and click (race-y state batching, etc.) and ensures
+      // the persisted text always matches the rule shape the user sees.
+      // Code mode keeps the user-edited text verbatim.
+      let textToSave = cedarText;
+      if (mode === "builder") {
+        const { cedarText: fresh, error } = await compileRule(rule, overlay);
+        if (!fresh) {
+          throw new Error(
+            error?.message ?? "Cedar 컴파일 실패 — 조건을 확인하세요",
+          );
+        }
+        textToSave = fresh;
+        setCedarText(fresh);
+        setLastCompiledRule(rule);
+      }
+
+      // Only auto-disambiguate on fresh-create flows. A Library → Edit
+      // session is an update of an existing row, so we must let the same
+      // id flow through unchanged or the user's edits silently fork into a
+      // new policy.
+      const currentManaged = managed ?? [];
+      const idToSave = hydratedFromExistingRef.current
+        ? rule.id
+        : disambiguateId(rule.id, currentManaged);
+
       const result = await client.putRaw({
-        id: rule.id,
-        text: cedarText,
+        id: idToSave,
+        text: textToSave,
+        ...(manifest !== undefined ? { manifest } : {}),
       });
+      const renamedNote =
+        idToSave !== rule.id ? ` (renamed to '${idToSave}')` : "";
       setSaveMsg({
         kind: "ok",
-        text: `Saved · catalog: ${result.catalog.enabled.length} enabled / ${result.catalog.policies.length} total`,
+        text: `Saved${renamedNote} · catalog: ${result.catalog.enabled.length} enabled / ${result.catalog.policies.length} total`,
       });
-      void refresh();
+      // Reset the form so the next default id re-stamps once `managed`
+      // refreshes — otherwise the field stays at the just-saved id and a
+      // second click would target the same row (the original bug).
+      idSettledRef.current = false;
+      hydratedFromExistingRef.current = false;
+      setRule(INITIAL_RULE);
+      setCedarText(PLACEHOLDER_CEDAR);
+      setLastCompiledRule(null);
+      setMode("builder");
+      setCodeEditable(false);
+      setCodeDirty(false);
+      await refresh();
     } catch (e) {
       setSaveMsg({
         kind: "err",
@@ -147,11 +303,40 @@ export function EditorPage() {
     }
   };
 
+  const handleSave = async () => {
+    // Soft guard: if the id carries a `dashboard::<action>/...` prefix that
+    // disagrees with the currently-selected action, surface a modal so the
+    // user can either fix the id or knowingly proceed (e.g. they renamed
+    // the action mid-edit but want to keep the old id).
+    const idAction = actionSegmentOf(rule.id);
+    if (idAction !== null && idAction !== rule.action) {
+      setPending({
+        kind: "save-action-mismatch",
+        idAction,
+        ruleAction: rule.action,
+      });
+      return;
+    }
+    await performSave();
+  };
+
+  // Builder mode dirty: the user has edited the rule since the last compile
+  // (or has never compiled at all in this session). `JSON.stringify` is a
+  // sufficient deep-equal for PolicyRule because every leaf is plain JSON
+  // (string / array / null) — no functions, no class instances, no map order
+  // ambiguity. Comparing fresh-vs-cached strings is microseconds even on
+  // rules with dozens of predicates.
+  const builderDirty =
+    mode === "builder" &&
+    (lastCompiledRule === null ||
+      JSON.stringify(rule) !== JSON.stringify(lastCompiledRule));
+
   const canSave =
     rule.id.startsWith("dashboard::") &&
     rule.id.length > "dashboard::".length &&
     cedarText.length > 0 &&
-    cedarText !== PLACEHOLDER_CEDAR;
+    cedarText !== PLACEHOLDER_CEDAR &&
+    !builderDirty;
 
   return (
     <div className="editor-page">
@@ -194,9 +379,22 @@ export function EditorPage() {
               className="editor-save"
               disabled={!canSave || saving}
               onClick={() => void handleSave()}
+              title={
+                builderDirty
+                  ? "조건이 변경됐습니다. Cedar로 컴파일을 먼저 누르세요."
+                  : undefined
+              }
             >
               {saving ? "저장 중..." : "정책 저장 (SDK putRaw)"}
             </button>
+            {builderDirty &&
+            cedarText.length > 0 &&
+            cedarText !== PLACEHOLDER_CEDAR ? (
+              <div className="editor-save-msg dirty">
+                조건이 마지막 컴파일 이후 변경됐습니다 — Cedar로 컴파일을
+                다시 누르세요.
+              </div>
+            ) : null}
             {saveMsg ? (
               <div className={`editor-save-msg ${saveMsg.kind}`}>
                 {saveMsg.text}
@@ -240,6 +438,20 @@ export function EditorPage() {
         body="현재 Code 모드에서 직접 편집한 내용은 폐기되고 가장 최근 Builder 컴파일 결과로 돌아갑니다."
         confirmLabel="이동 (편집 폐기)"
         cancelLabel="Code 모드 유지"
+        onConfirm={handleConfirmPending}
+        onCancel={() => setPending({ kind: "none" })}
+      />
+
+      <WarningModal
+        open={pending.kind === "save-action-mismatch"}
+        title="ID와 Action이 일치하지 않습니다"
+        body={
+          pending.kind === "save-action-mismatch"
+            ? `ID 앞부분은 '${pending.idAction}' 인데 현재 Action은 '${pending.ruleAction}' 입니다. 그대로 저장하면 카탈로그 필터링이 의도와 다르게 동작할 수 있습니다.`
+            : ""
+        }
+        confirmLabel="그대로 저장"
+        cancelLabel="ID 수정"
         onConfirm={handleConfirmPending}
         onCancel={() => setPending({ kind: "none" })}
       />

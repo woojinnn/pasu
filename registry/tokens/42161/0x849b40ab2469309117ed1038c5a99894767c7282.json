@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x849b40ab2469309117ed1038c5a99894767c7282",
+  "symbol": "FIS",
+  "decimals": 18,
+  "name": "Stafi"
+}

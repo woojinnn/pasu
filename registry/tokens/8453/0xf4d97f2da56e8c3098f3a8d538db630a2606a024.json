@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf4d97f2da56e8c3098f3a8d538db630a2606a024",
+  "symbol": "DIEM",
+  "decimals": 18,
+  "name": "Diem"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0x8148dfc26ee049a9b83ab3e2ed8595de64a1511e",
+  "symbol": "DOG",
+  "decimals": 18,
+  "name": "DOG (INK)"
+}

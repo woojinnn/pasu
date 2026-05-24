@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x93b346b6bc2548da6a1e7d98e9a421b42541425b",
+  "symbol": "LUSD",
+  "decimals": 18,
+  "name": "Liquity USD"
+}

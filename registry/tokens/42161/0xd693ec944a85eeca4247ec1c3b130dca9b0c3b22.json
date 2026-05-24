@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xd693ec944a85eeca4247ec1c3b130dca9b0c3b22",
+  "symbol": "UMA",
+  "decimals": 18,
+  "name": "UMA Voting Token v1"
+}

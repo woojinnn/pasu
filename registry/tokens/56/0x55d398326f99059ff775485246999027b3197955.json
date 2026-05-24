@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x55d398326f99059ff775485246999027b3197955",
+  "symbol": "USDT",
+  "decimals": 18,
+  "name": "Tether USD"
+}

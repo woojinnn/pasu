@@ -1,0 +1,109 @@
+{
+  "type": "adapter_function",
+  "id": "curve/stableswap-ng/frxeth-ng/exchange-ng@1.0.0",
+  "publisher": "curve.fi",
+  "match": {
+    "chain_ids": [
+      1
+    ],
+    "to": [
+      "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
+    ],
+    "selector": "0xddc1f59d"
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "i",
+          "type": "int128"
+        },
+        {
+          "name": "j",
+          "type": "int128"
+        },
+        {
+          "name": "_dx",
+          "type": "uint256"
+        },
+        {
+          "name": "_min_dy",
+          "type": "uint256"
+        },
+        {
+          "name": "_receiver",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": {
+        "literal": "exact_in"
+      },
+      "inputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputToken.asset.address": {
+        "fn": "select_from_literal_array",
+        "args": [
+          {
+            "literal": [
+              "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+              "0x5e8422345238f34275888049021821e8e08caa1f"
+            ]
+          },
+          {
+            "from": "$.args.i"
+          }
+        ]
+      },
+      "inputToken.amount.kind": {
+        "literal": "exact"
+      },
+      "inputToken.amount.value": {
+        "from": "$.args._dx"
+      },
+      "outputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputToken.asset.address": {
+        "fn": "select_from_literal_array",
+        "args": [
+          {
+            "literal": [
+              "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+              "0x5e8422345238f34275888049021821e8e08caa1f"
+            ]
+          },
+          {
+            "from": "$.args.j"
+          }
+        ]
+      },
+      "outputToken.amount.kind": {
+        "literal": "min"
+      },
+      "outputToken.amount.value": {
+        "from": "$.args._min_dy"
+      },
+      "recipient": {
+        "from": "$.args._receiver"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "host_capabilities": [
+      "host:token_metadata"
+    ],
+    "extension": ">=0.1.0"
+  }
+}

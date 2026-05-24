@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x37058c4b45fdfc8953fb453da4d6d83670ecdf9d",
+  "symbol": "EV",
+  "decimals": 18,
+  "name": "Everything"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xe8a0078aa52ac7e93ae43818ddd64591e025bb6f",
+  "symbol": "RARE",
+  "decimals": 18,
+  "name": "SuperRare"
+}

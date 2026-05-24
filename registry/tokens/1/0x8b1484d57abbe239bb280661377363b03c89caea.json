@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x8b1484d57abbe239bb280661377363b03c89caea",
+  "symbol": "ADI",
+  "decimals": 18,
+  "name": "ADI"
+}

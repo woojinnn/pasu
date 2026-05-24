@@ -47,6 +47,9 @@ fn wrap_action_built_from_deposit() {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
 
     let envelopes = WethDepositMapper::new()
@@ -86,6 +89,9 @@ fn unwrap_action_built_from_withdraw() {
         value_wei: &value,
         block_timestamp: None,
         token_registry: &token_registry,
+        parent_calldata: None,
+        depth: 0,
+        resolver: None,
     };
     let wad = U256::from(500_000_000_000_000_000_u64);
 

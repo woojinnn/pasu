@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x6491c05a82219b8d1479057361ff1654749b876b",
+  "symbol": "USDS",
+  "decimals": 18,
+  "name": "USDS Stablecoin"
+}

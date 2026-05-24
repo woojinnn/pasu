@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xd7eb7348ba44c5a2f9f1d1d3534623230c7bee3f",
+  "symbol": "LRDS",
+  "decimals": 18,
+  "name": "BLOCKLORDS"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x714db550b574b3e927af3d93e26127d15721d4c2",
+  "symbol": "GMT",
+  "decimals": 8,
+  "name": "GreenMetaverseToken"
+}

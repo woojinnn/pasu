@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0xd83e3d560ba6f05094d9d8b3eb8aaea571d1864e",
+  "symbol": "WHYPE",
+  "decimals": 18,
+  "name": "Wrapped HYPE"
+}

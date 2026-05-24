@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x000000daa580e54635a043d2773f2c698593836a",
+  "symbol": "OHNO",
+  "decimals": 18,
+  "name": "Oh No"
+}

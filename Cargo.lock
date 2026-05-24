@@ -2216,10 +2216,14 @@ dependencies = [
 name = "policy-engine-integration-tests"
 version = "0.1.0"
 dependencies = [
+ "abi-resolver",
  "alloy-primitives",
+ "anyhow",
+ "hex",
  "mappers",
  "policy-engine",
  "request-router",
+ "serde",
  "serde_json",
  "walkdir",
 ]
@@ -2228,9 +2232,13 @@ dependencies = [
 name = "policy-engine-wasm"
 version = "0.1.0"
 dependencies = [
+ "abi-resolver",
+ "alloy-dyn-abi",
  "alloy-primitives",
+ "anyhow",
  "console_error_panic_hook",
  "getrandom 0.2.17",
+ "hex",
  "js-sys",
  "mappers",
  "policy-engine",

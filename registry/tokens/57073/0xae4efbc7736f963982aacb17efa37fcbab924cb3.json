@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0xae4efbc7736f963982aacb17efa37fcbab924cb3",
+  "symbol": "SOLVBTC",
+  "decimals": 18,
+  "name": "Solv Protocol BTC"
+}

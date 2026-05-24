@@ -124,7 +124,11 @@ fn flatten_tuple_arg(arg: LegacyArg) -> Result<Vec<DecodedArg>, BridgeError> {
     Ok(out)
 }
 
-fn convert_arg(legacy: LegacyArg) -> Result<DecodedArg, BridgeError> {
+/// Convert a single legacy `decode::DecodedArg` (the form Tier B
+/// `subdecode::opcode_stream::dispatch` emits) into a new-pipeline
+/// [`DecodedArg`]. Wraps [`convert_value`] for the value field while preserving
+/// the argument's `name` and `sol_type`.
+pub fn convert_arg(legacy: LegacyArg) -> Result<DecodedArg, BridgeError> {
     Ok(DecodedArg {
         name: legacy.name,
         abi_type: legacy.sol_type,
@@ -132,7 +136,11 @@ fn convert_arg(legacy: LegacyArg) -> Result<DecodedArg, BridgeError> {
     })
 }
 
-fn convert_value(value: DynSolValue) -> Result<DecodedValue, BridgeError> {
+/// Convert a single `alloy_dyn_abi::DynSolValue` into the policy-engine /
+/// mapper-pipeline [`DecodedValue`]. Exposed for callers (e.g. the declarative
+/// Phase 5 opcode-stream dispatcher) that consume Tier B `subdecode` output —
+/// which carries `DynSolValue` — and need to feed it into the new pipeline.
+pub fn convert_value(value: DynSolValue) -> Result<DecodedValue, BridgeError> {
     Ok(match value {
         DynSolValue::Address(addr) => DecodedValue::Address(address_to_policy(addr)?),
         DynSolValue::Uint(v, _) => DecodedValue::Uint(v),
@@ -219,6 +227,70 @@ pub fn decoder_id_for_selector(selector: [u8; 4]) -> Option<&'static str> {
     }
 }
 
+/// Decode raw `calldata` against a JSON ABI `Function` value (as carried in a
+/// declarative bundle's `abi_fragment.abi`) and convert the result to the new
+/// `decoder::DecodedCall` shape ready for `Mapper::map`.
+///
+/// `abi_json` is the raw JSON value taken from `AdapterFunctionBundle.abi_fragment.abi`
+/// (alloy parses it via `alloy_json_abi::Function::deserialize`). `selector` is
+/// the 4-byte selector taken from the first 4 bytes of `calldata`, used to
+/// look up a known `decoder_id`. When the selector is unknown the function
+/// returns a synthetic `fallback/0x<selector>` decoder id — callers that
+/// dispatch declarative bundles by their own `(chain, to, selector)` bridge
+/// can override the resulting `decoder_id` with the canonical declarative
+/// one.
+///
+/// Used by the WASM-side `ChildResolver` impl to decode each inner
+/// `multicall(bytes[])` sub-call against the bundle the parent bridge resolved.
+///
+/// # Errors
+///
+/// Returns [`DecodeWithJsonAbiError`] when the JSON ABI is malformed, the
+/// calldata is malformed (short, selector mismatch, ABI decode failure), or
+/// the legacy-to-new conversion fails.
+pub fn decode_with_json_abi(
+    abi_json: &serde_json::Value,
+    calldata: &[u8],
+) -> Result<DecodedCall, DecodeWithJsonAbiError> {
+    // `alloy_json_abi::Function` requires `outputs`. Declarative bundle
+    // `abi_fragment.abi` payloads (as shipped in `registry/manifests/`) omit
+    // it because outputs are irrelevant to calldata decoding. Inject a
+    // default empty `outputs` and `stateMutability` so the deserialiser
+    // accepts the payload as-is.
+    let mut patched = abi_json.clone();
+    if let serde_json::Value::Object(ref mut obj) = patched {
+        obj.entry("outputs")
+            .or_insert_with(|| serde_json::Value::Array(vec![]));
+        obj.entry("stateMutability")
+            .or_insert_with(|| serde_json::Value::String("nonpayable".into()));
+    }
+    let function: alloy_json_abi::Function = serde_json::from_value(patched)
+        .map_err(|error| DecodeWithJsonAbiError::InvalidAbi(error.to_string()))?;
+    let legacy = crate::decode::decode_with_function(&function, calldata)
+        .map_err(|error| DecodeWithJsonAbiError::Decode(error.to_string()))?;
+
+    if calldata.len() < 4 {
+        return Err(DecodeWithJsonAbiError::Decode(
+            "calldata too short for selector".into(),
+        ));
+    }
+    let mut selector = [0u8; 4];
+    selector.copy_from_slice(&calldata[..4]);
+
+    convert_legacy_call(legacy, selector)
+        .map_err(|error| DecodeWithJsonAbiError::Convert(error.to_string()))
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum DecodeWithJsonAbiError {
+    #[error("invalid abi json: {0}")]
+    InvalidAbi(String),
+    #[error("calldata decode failed: {0}")]
+    Decode(String),
+    #[error("bridge conversion failed: {0}")]
+    Convert(String),
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum BridgeError {
     #[error("address format: {0}")]
@@ -300,5 +372,90 @@ mod tests {
         };
         let converted = convert_legacy_call(legacy, [0xde, 0xad, 0xbe, 0xef]).unwrap();
         assert_eq!(converted.decoder_id.as_str(), "fallback/0xdeadbeef");
+    }
+
+    #[test]
+    fn decode_with_json_abi_decodes_approve_calldata() {
+        // approve(address,uint256) — JSON ABI form mirroring an
+        // `abi_fragment.abi` payload in a declarative bundle.
+        let abi = serde_json::json!({
+            "name": "approve",
+            "type": "function",
+            "inputs": [
+                { "name": "spender", "type": "address" },
+                { "name": "amount",  "type": "uint256" }
+            ]
+        });
+
+        // selector for approve(address,uint256) = 0x095ea7b3
+        let mut calldata = vec![0x09, 0x5e, 0xa7, 0xb3];
+        let mut spender_word = [0u8; 32];
+        spender_word[12..].copy_from_slice(&[0x11; 20]);
+        calldata.extend_from_slice(&spender_word);
+        let amount_bytes: [u8; 32] = U256::from(42u64).to_be_bytes();
+        calldata.extend_from_slice(&amount_bytes);
+
+        let decoded = decode_with_json_abi(&abi, &calldata).unwrap();
+        assert_eq!(decoded.decoder_id.as_str(), ERC20_APPROVE_DECODER_ID);
+        assert_eq!(decoded.args.len(), 2);
+        assert_eq!(decoded.args[0].name, "spender");
+        assert_eq!(decoded.args[1].name, "amount");
+    }
+
+    #[test]
+    fn decode_with_json_abi_surfaces_invalid_abi_error() {
+        // Plain string is not an object → cannot be deserialised as a
+        // `Function`. The helper auto-injects `outputs`/`stateMutability`
+        // when the value IS an object (matching real bundle payloads), but
+        // a non-object value still surfaces an InvalidAbi error.
+        let abi = serde_json::Value::String("not an abi".into());
+        let calldata = vec![0xde, 0xad, 0xbe, 0xef];
+        let err = decode_with_json_abi(&abi, &calldata).unwrap_err();
+        assert!(
+            matches!(err, DecodeWithJsonAbiError::InvalidAbi(_)),
+            "expected InvalidAbi, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn decode_with_json_abi_accepts_bundle_shaped_abi_without_outputs() {
+        // Real bundle abi_fragment.abi payloads (registry/manifests/*) omit
+        // `outputs` and `stateMutability`. The helper must auto-inject defaults
+        // and still decode the calldata.
+        let abi = serde_json::json!({
+            "name": "burn",
+            "type": "function",
+            "inputs": [
+                { "name": "tokenId", "type": "uint256" }
+            ]
+        });
+        // selector for burn(uint256) = 0x42966c68
+        let mut calldata = vec![0x42, 0x96, 0x6c, 0x68];
+        let token_id: [u8; 32] = U256::from(42u64).to_be_bytes();
+        calldata.extend_from_slice(&token_id);
+
+        let decoded = decode_with_json_abi(&abi, &calldata).unwrap();
+        assert_eq!(decoded.args.len(), 1);
+        assert_eq!(decoded.args[0].name, "tokenId");
+    }
+
+    #[test]
+    fn decode_with_json_abi_surfaces_selector_mismatch() {
+        let abi = serde_json::json!({
+            "name": "approve",
+            "type": "function",
+            "inputs": [
+                { "name": "spender", "type": "address" },
+                { "name": "amount",  "type": "uint256" }
+            ]
+        });
+        // Selector 0xdeadbeef does not match approve's 0x095ea7b3.
+        let mut calldata = vec![0xde, 0xad, 0xbe, 0xef];
+        calldata.extend_from_slice(&[0u8; 64]);
+        let err = decode_with_json_abi(&abi, &calldata).unwrap_err();
+        assert!(
+            matches!(err, DecodeWithJsonAbiError::Decode(_)),
+            "expected Decode, got {err:?}"
+        );
     }
 }

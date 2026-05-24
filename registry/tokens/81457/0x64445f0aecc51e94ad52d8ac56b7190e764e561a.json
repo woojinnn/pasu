@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x64445f0aecc51e94ad52d8ac56b7190e764e561a",
+  "symbol": "WFRAX",
+  "decimals": 18,
+  "name": "Wrapped Frax"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xa0b73e1ff0b80914ab6fe0444e65848c4c34450b",
+  "symbol": "CRO",
+  "decimals": 8,
+  "name": "Cronos"
+}

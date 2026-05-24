@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x5ab3d4c385b400f3abb49e80de2faf6a88a7b691",
+  "symbol": "FLOCK",
+  "decimals": 18,
+  "name": "Flock"
+}

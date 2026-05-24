@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x228bec415ade4b61d7caf0adf8c91eac587ba369",
+  "symbol": "TRIA",
+  "decimals": 18,
+  "name": "Tria"
+}

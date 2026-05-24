@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xf7d9281e8e363584973f946201b82ba72c965d27",
+  "symbol": "yyAVAX",
+  "decimals": 18,
+  "name": "YieldYak gAVAX"
+}

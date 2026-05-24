@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0xc018380f5964b05450dac3958b962ea8920f0e9e",
+  "symbol": "TOMATO",
+  "decimals": 18,
+  "name": "TOMATO"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x3a8b787f78d775aecfeea15706d4221b40f345ab",
+  "symbol": "CELR",
+  "decimals": 18,
+  "name": "Celer Network"
+}

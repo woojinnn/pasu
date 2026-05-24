@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x6a92b1e99de09f71cd96bc91f934826d96b8b26e",
+  "symbol": "AS",
+  "decimals": 9,
+  "name": "AS Token"
+}

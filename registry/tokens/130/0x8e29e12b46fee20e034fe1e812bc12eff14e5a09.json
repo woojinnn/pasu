@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x8e29e12b46fee20e034fe1e812bc12eff14e5a09",
+  "symbol": "CXT",
+  "decimals": 18,
+  "name": "Covalent X Token"
+}

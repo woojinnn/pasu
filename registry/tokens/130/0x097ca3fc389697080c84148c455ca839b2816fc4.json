@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x097ca3fc389697080c84148c455ca839b2816fc4",
+  "symbol": "REP",
+  "decimals": 18,
+  "name": "Reputation Augur v1"
+}

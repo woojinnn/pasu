@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xd125443f38a69d776177c2b9c041f462936f8218",
+  "symbol": "FBX",
+  "decimals": 18,
+  "name": "FireBotToken"
+}

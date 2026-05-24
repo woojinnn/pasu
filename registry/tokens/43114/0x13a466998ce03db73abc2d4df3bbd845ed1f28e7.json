@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x13a466998ce03db73abc2d4df3bbd845ed1f28e7",
+  "symbol": "PHAR",
+  "decimals": 18,
+  "name": "Pharaoh"
+}

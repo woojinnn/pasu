@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x6319f47719b6713b1624c1b3a8e2dbf15b5d03fe",
+  "symbol": "EUL",
+  "decimals": 18,
+  "name": "Euler"
+}

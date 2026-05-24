@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x428c2b7fa7a7821891fb529bae4d80a71d5c61a8",
+  "symbol": "JAM",
+  "decimals": 18,
+  "name": "Geojam"
+}

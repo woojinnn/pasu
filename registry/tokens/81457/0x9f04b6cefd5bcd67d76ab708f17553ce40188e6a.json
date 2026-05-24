@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x9f04b6cefd5bcd67d76ab708f17553ce40188e6a",
+  "symbol": "IBEX",
+  "decimals": 18,
+  "name": "Impermax"
+}

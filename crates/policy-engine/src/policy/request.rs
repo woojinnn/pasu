@@ -1,5 +1,6 @@
 //! Cedar evaluation input shape.
 
+use serde::Serialize;
 use serde_json::Value as JsonValue;
 
 /// Self-contained Cedar evaluation input.
@@ -7,7 +8,7 @@ use serde_json::Value as JsonValue;
 /// Action-adapter-driven lowering produces this from a transaction; the
 /// policy engine consumes it. The request can be serialized, logged,
 /// replayed, and built by hand in tests.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PolicyRequest {
     /// Cedar `EntityUid` for the principal — e.g., `Wallet::"0xUser"`.
     pub principal: String,

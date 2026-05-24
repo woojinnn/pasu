@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x44f49ff0da2498bcb1d3dc7c0f999578f67fd8c6",
+  "symbol": "CORN",
+  "decimals": 18,
+  "name": "Corn"
+}

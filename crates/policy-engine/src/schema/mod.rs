@@ -66,6 +66,18 @@ const MISC_CLAIM_REWARDS_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/misc/claim_rewards.cedarschema");
 const MISC_DELEGATE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/misc/delegate.cedarschema");
+const MISC_GAUGE_VOTE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/gauge_vote.cedarschema");
+const MISC_LOCK_CREATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/lock_create.cedarschema");
+const MISC_LOCK_INCREASE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/lock_increase.cedarschema");
+const MISC_LOCK_MANAGE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/lock_manage.cedarschema");
+const MISC_LP_STAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/lp_stake.cedarschema");
+const MISC_LP_UNSTAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/misc/lp_unstake.cedarschema");
 const MISC_PERMIT_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/misc/permit.cedarschema");
 const MISC_SET_APPROVAL_FOR_ALL_SCHEMA: &str =
@@ -232,6 +244,12 @@ pub(crate) fn base_schema_text() -> String {
         MISC_APPROVE_SCHEMA,
         MISC_CLAIM_REWARDS_SCHEMA,
         MISC_DELEGATE_SCHEMA,
+        MISC_GAUGE_VOTE_SCHEMA,
+        MISC_LOCK_CREATE_SCHEMA,
+        MISC_LOCK_INCREASE_SCHEMA,
+        MISC_LOCK_MANAGE_SCHEMA,
+        MISC_LP_STAKE_SCHEMA,
+        MISC_LP_UNSTAKE_SCHEMA,
         MISC_PERMIT_SCHEMA,
         MISC_SET_APPROVAL_FOR_ALL_SCHEMA,
         MISC_SIGN_MESSAGE_SCHEMA,

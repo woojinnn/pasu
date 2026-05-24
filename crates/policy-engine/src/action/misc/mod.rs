@@ -7,6 +7,12 @@ use crate::action::common::{Address, Hex};
 mod approve;
 mod claim_rewards;
 mod delegate;
+mod gauge_vote;
+mod lock_create;
+mod lock_increase;
+mod lock_manage;
+mod lp_stake;
+mod lp_unstake;
 mod permit;
 mod set_approval_for_all;
 mod sign_message;
@@ -18,6 +24,12 @@ mod wrap;
 pub use approve::ApproveAction;
 pub use claim_rewards::ClaimRewardsAction;
 pub use delegate::DelegateAction;
+pub use gauge_vote::{GaugeVoteAction, GaugeVoteKind};
+pub use lock_create::LockCreateAction;
+pub use lock_increase::{LockIncreaseAction, LockIncreaseKind};
+pub use lock_manage::{LockManageAction, LockManageKind};
+pub use lp_stake::LpStakeAction;
+pub use lp_unstake::LpUnstakeAction;
 pub use permit::PermitAction;
 pub use set_approval_for_all::SetApprovalForAllAction;
 pub use sign_message::SignMessageAction;
@@ -54,6 +66,13 @@ pub enum PermitKind {
     Permit2Single,
     /// Permit2 one-shot transfer authorization.
     Permit2Transfer,
+    /// Permit2 batched allowance grant (`PermitBatch` — multi-token in a single
+    /// signature). Carries the same risk profile as `Permit2Single`
+    /// (allowance + spender + signature deadline) but applies across a list
+    /// of tokens. In the `PoC` the mapper layer collapses the batch down to
+    /// `details[0]` so the schema can keep a single `token` slot; full
+    /// fan-out is a follow-up.
+    Permit2Batch,
 }
 
 /// Governance power type for split-power tokens.

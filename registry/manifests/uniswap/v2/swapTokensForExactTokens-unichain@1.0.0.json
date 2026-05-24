@@ -1,0 +1,110 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/v2/swapTokensForExactTokens-unichain@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      130
+    ],
+    "to": [
+      "0x284F11109359a7e1306C3e447ef14D38400063FF"
+    ],
+    "selector": "0x8803dbee"
+  },
+  "abi_fragment": {
+    "function_name": "swapTokensForExactTokens",
+    "abi": {
+      "name": "swapTokensForExactTokens",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "amountOut",
+          "type": "uint256"
+        },
+        {
+          "name": "amountInMax",
+          "type": "uint256"
+        },
+        {
+          "name": "path",
+          "type": "address[]"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": {
+        "literal": "exact_out"
+      },
+      "inputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputToken.asset.address": {
+        "fn": "select_address",
+        "args": [
+          {
+            "from": "$.args.path"
+          },
+          {
+            "literal": 0
+          }
+        ]
+      },
+      "inputToken.amount.kind": {
+        "literal": "max"
+      },
+      "inputToken.amount.value": {
+        "from": "$.args.amountInMax"
+      },
+      "outputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputToken.asset.address": {
+        "fn": "select_address",
+        "args": [
+          {
+            "from": "$.args.path"
+          },
+          {
+            "literal": -1
+          }
+        ]
+      },
+      "outputToken.amount.kind": {
+        "literal": "exact"
+      },
+      "outputToken.amount.value": {
+        "from": "$.args.amountOut"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      },
+      "validity.expiresAt": {
+        "from": "$.args.deadline"
+      },
+      "validity.source": {
+        "literal": "tx-deadline"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

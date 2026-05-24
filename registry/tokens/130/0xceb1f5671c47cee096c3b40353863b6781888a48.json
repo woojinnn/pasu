@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xceb1f5671c47cee096c3b40353863b6781888a48",
+  "symbol": "SYN",
+  "decimals": 18,
+  "name": "Synapse"
+}

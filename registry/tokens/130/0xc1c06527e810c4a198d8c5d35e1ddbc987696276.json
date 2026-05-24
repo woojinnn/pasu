@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xc1c06527e810c4a198d8c5d35e1ddbc987696276",
+  "symbol": "Neiro",
+  "decimals": 9,
+  "name": "Neiro"
+}

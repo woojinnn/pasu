@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xf57d49646621f563b0b905afc8336923ac569ec5",
+  "symbol": "NEX",
+  "decimals": 18,
+  "name": "Nexus"
+}

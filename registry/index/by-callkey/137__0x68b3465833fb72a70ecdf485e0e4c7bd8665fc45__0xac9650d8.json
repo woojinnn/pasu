@@ -1,0 +1,49 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/multicall-bytes@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/multicall-bytes@1.0.0.json",
+  "bundle_sha256": "0x46856e20637550b98cede36c7b3d4b2f5dbbce0cc7eaf329fa15a2fb7bd0feef",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/multicall-bytes@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        1,
+        10,
+        137,
+        42161
+      ],
+      "to": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ],
+      "selector": "0xac9650d8"
+    },
+    "abi_fragment": {
+      "function_name": "multicall",
+      "abi": {
+        "name": "multicall",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "data",
+            "type": "bytes[]"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "multicall_recurse",
+      "recurse_rule_id": "self_array_bytes_last_arg",
+      "max_depth": 3
+    },
+    "requires": {
+      "imperative": [
+        "multicall-recurse@^1.0"
+      ],
+      "adapter_capabilities": [],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xfe6b19286885a4f7f55adad09c3cd1f906d2478f",
+  "symbol": "SOL",
+  "decimals": 9,
+  "name": "SOL Wormhole "
+}

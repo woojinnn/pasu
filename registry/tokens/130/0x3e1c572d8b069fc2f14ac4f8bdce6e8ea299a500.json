@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x3e1c572d8b069fc2f14ac4f8bdce6e8ea299a500",
+  "symbol": "ADX",
+  "decimals": 18,
+  "name": "Ambire AdEx"
+}

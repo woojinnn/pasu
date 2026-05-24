@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x15261eeb999ed3c3ae3c5319e0035940dc06a12f",
+  "symbol": "XCN",
+  "decimals": 18,
+  "name": "Chain"
+}

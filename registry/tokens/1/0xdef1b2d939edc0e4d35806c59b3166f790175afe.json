@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xdef1b2d939edc0e4d35806c59b3166f790175afe",
+  "symbol": "INX",
+  "decimals": 18,
+  "name": "Infinex"
+}

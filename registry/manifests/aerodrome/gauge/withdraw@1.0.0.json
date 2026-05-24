@@ -1,0 +1,45 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/gauge/withdraw@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": [
+      "0x4F09bAb2f0E15e2A078A227FE1537665F55b8360",
+      "0x519BBD1Dd8C6A94C46080E24f316c14Ee758C025",
+      "0xeca7Ff920E7162334634c721133F3183B83B0323",
+      "0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC",
+      "0x96a24aB830D4ec8b1F6f04Ceac104F1A3b211a01"
+    ],
+    "selector": "0x2e1a7d4d"
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "inputs": [
+        { "name": "amount", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "lp_unstake",
+    "fields": {
+      "gauge":           { "from": "$.tx.to" },
+      "lpToken.kind":    { "literal": "erc20" },
+      "lpToken.address": { "from": "$.tx.to" },
+      "amount.kind":     { "literal": "exact" },
+      "amount.value":    { "from": "$.args.amount" },
+      "recipient":       { "from": "$.tx.from" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

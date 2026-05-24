@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xfc87d55bc8bf441abfc24d04b2068a8f77bcfcc0",
+  "symbol": "MON",
+  "decimals": 18,
+  "name": "MON"
+}

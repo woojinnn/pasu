@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x46d0ce7de6247b0a95f67b43b589b4041bae7fbe",
+  "symbol": "LRC",
+  "decimals": 18,
+  "name": "LoopringCoin V2"
+}

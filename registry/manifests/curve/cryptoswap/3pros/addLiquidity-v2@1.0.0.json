@@ -1,0 +1,99 @@
+{
+  "type": "adapter_function",
+  "id": "curve/cryptoswap/3pros/addLiquidity-v2@1.0.0",
+  "publisher": "curve.fi",
+  "match": {
+    "chain_ids": [
+      1
+    ],
+    "to": [
+      "0xdae4135dac6c62937728d145f8048b2bab2ce55c"
+    ],
+    "selector": "0x4515cef3"
+  },
+  "abi_fragment": {
+    "function_name": "add_liquidity",
+    "abi": {
+      "name": "add_liquidity",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "amounts",
+          "type": "uint256[3]"
+        },
+        {
+          "name": "min_mint_amount",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "add_liquidity",
+    "fields": {
+      "pool.address": {
+        "literal": "0xdae4135dac6c62937728d145f8048b2bab2ce55c"
+      },
+      "inputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[0].asset.address": {
+        "literal": "0xbe1936a67f503e0eaf2434b0cf9f4e3d7100008a"
+      },
+      "inputTokens[0].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[0].amount.value": {
+        "from": "$.args.amounts[0]"
+      },
+      "inputTokens[1].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[1].asset.address": {
+        "literal": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+      },
+      "inputTokens[1].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[1].amount.value": {
+        "from": "$.args.amounts[1]"
+      },
+      "inputTokens[2].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[2].asset.address": {
+        "literal": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+      },
+      "inputTokens[2].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[2].amount.value": {
+        "from": "$.args.amounts[2]"
+      },
+      "outputLp.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputLp.asset.address": {
+        "literal": "0xdae4135dac6c62937728d145f8048b2bab2ce55c"
+      },
+      "outputLp.amount.kind": {
+        "literal": "min"
+      },
+      "outputLp.amount.value": {
+        "from": "$.args.min_mint_amount"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "host_capabilities": [
+      "host:token_metadata"
+    ],
+    "extension": ">=0.1.0"
+  }
+}

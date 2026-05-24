@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xeb51d9a39ad5eef215dc0bf39a8821ff804a0f01",
+  "symbol": "LGNS",
+  "decimals": 9,
+  "name": "Longinus"
+}

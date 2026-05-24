@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x30974f73a4ac9e606ed80da928e454977ac486d2",
+  "symbol": "oXAUT",
+  "decimals": 6,
+  "name": "OpenXAUT"
+}

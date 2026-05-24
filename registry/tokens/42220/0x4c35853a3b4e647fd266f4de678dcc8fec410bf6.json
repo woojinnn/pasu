@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0x4c35853a3b4e647fd266f4de678dcc8fec410bf6",
+  "symbol": "ZARm",
+  "decimals": 18,
+  "name": "Mento South African Rand"
+}

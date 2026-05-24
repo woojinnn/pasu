@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xff20817765cb7f73d4bde2e66e067e58d11095c2",
+  "symbol": "AMP",
+  "decimals": 18,
+  "name": "Amp"
+}

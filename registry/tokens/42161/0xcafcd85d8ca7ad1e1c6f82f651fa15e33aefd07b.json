@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xcafcd85d8ca7ad1e1c6f82f651fa15e33aefd07b",
+  "symbol": "WOO",
+  "decimals": 18,
+  "name": "WOO Network"
+}

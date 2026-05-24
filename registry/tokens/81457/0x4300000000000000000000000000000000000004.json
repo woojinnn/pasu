@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x4300000000000000000000000000000000000004",
+  "symbol": "WETH",
+  "decimals": 18,
+  "name": "Wrapped Ether"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xa4eed63db85311e22df4473f87ccfc3dadcfa3e3",
+  "symbol": "RBC",
+  "decimals": 18,
+  "name": "Rubic"
+}

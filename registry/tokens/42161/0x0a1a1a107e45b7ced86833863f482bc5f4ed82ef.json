@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x0a1a1a107e45b7ced86833863f482bc5f4ed82ef",
+  "symbol": "USDai",
+  "decimals": 18,
+  "name": "USDai"
+}

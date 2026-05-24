@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xba5444409257967e5e50b113c395a766b0678c03",
+  "symbol": "hCASH",
+  "decimals": 18,
+  "name": "Hash Cash"
+}

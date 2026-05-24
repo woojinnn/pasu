@@ -259,6 +259,9 @@ mod tests {
             value_wei: value,
             block_timestamp: None,
             token_registry,
+            parent_calldata: None,
+            depth: 0,
+            resolver: None,
         }
     }
 

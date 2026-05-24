@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x56af109d597eb0a0f79ebcd0786dd88c38ea9ee7",
+  "symbol": "DREP",
+  "decimals": 18,
+  "name": "Drep"
+}

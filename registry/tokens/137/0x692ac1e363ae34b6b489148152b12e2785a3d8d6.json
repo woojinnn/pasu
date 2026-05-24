@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x692ac1e363ae34b6b489148152b12e2785a3d8d6",
+  "symbol": "TRADE",
+  "decimals": 18,
+  "name": "Polytrade (PoS)"
+}

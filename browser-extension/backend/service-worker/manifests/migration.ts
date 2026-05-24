@@ -83,6 +83,94 @@ export function rewritePolicyText(
   return out;
 }
 
+/**
+ * INVERSE of [`rewritePolicyText`] — used to migrate Phase-8 fields that
+ * were promoted FROM `context.custom.<field>` BACK to base
+ * `context.<field>`. The two fields currently in this category are
+ * `inputAmountNano` and `outputAmountNano`; the engine now populates
+ * them itself during lowering instead of via a manifest enrichment.
+ *
+ * For each named field:
+ *  1. Every `context.custom.<field>` becomes `context.<field>`.
+ *  2. The old `context.custom has <field>` (and the umbrella `context has
+ *     custom` when no other custom field is referenced) becomes
+ *     `context has <field>` — the v8 cedarschema declares the field as
+ *     base-optional.
+ *
+ * Idempotent: a policy already using the new layout is returned
+ * unchanged. The umbrella `context has custom` guard is preserved when
+ * OTHER custom fields are still referenced in the same `when` block
+ * (we only drop it when our amount-nano rewrite removes the last custom
+ * reference).
+ *
+ * UI integration is deferred — the v0→v1 banner machinery (Fix O) can
+ * register a parallel pending-list for these ids once we have a real
+ * use case. The helper is exported now so policies installed before
+ * Phase 8 keep working through a one-line dashboard upgrade later.
+ */
+export function rewritePolicyTextCustomToBase(
+  text: string,
+  knownFields: readonly string[],
+): string {
+  let out = text;
+  let dropped_any_custom_guard = false;
+
+  for (const field of knownFields) {
+    if (!isAsciiIdent(field)) continue;
+
+    // Strip `.custom.<field>` references back to `.<field>`. Tight regex
+    // — only the exact custom-prefix shape, never partial matches that
+    // would corrupt unrelated identifiers (`customer`, `customX.field`…).
+    const customRef = new RegExp(
+      `(^|[^.\\w])context\\.custom\\.${field}(?![\\w])`,
+      "g",
+    );
+    if (!customRef.test(out)) continue;
+    customRef.lastIndex = 0;
+    out = out.replace(customRef, (_m, prefix: string) => {
+      return `${prefix}context.${field}`;
+    });
+
+    // Replace the nested has-guard with the base-level one. We keep one
+    // copy when multiple guards collapsed onto the same field name (the
+    // `&&` join is preserved by the replace).
+    const hasGuard = new RegExp(
+      `context\\.custom has ${field}(?!\\w)`,
+      "g",
+    );
+    out = out.replace(hasGuard, `context has ${field}`);
+
+    dropped_any_custom_guard = true;
+  }
+
+  if (dropped_any_custom_guard) {
+    out = dropUmbrellaCustomGuardIfUnused(out);
+  }
+  return out;
+}
+
+/**
+ * Remove the `context has custom &&` guard from each `when { ... }` body
+ * that no longer references any `context.custom.*` field. The rewrite
+ * pass above doesn't track this per-body, so we re-scan after — cheap
+ * because `when` bodies are short.
+ */
+function dropUmbrellaCustomGuardIfUnused(text: string): string {
+  return text.replace(/when\s*\{([\s\S]*?)\}/g, (whole, bodyRaw: string) => {
+    const body = String(bodyRaw);
+    if (body.includes("context.custom.")) return whole;
+    // Drop variants:
+    //   `context has custom && `
+    //   `&& context has custom`
+    //   stand-alone `context has custom` (no other clauses left)
+    let next = body
+      .replace(/\bcontext has custom\b\s*&&\s*/g, "")
+      .replace(/\s*&&\s*\bcontext has custom\b/g, "")
+      .replace(/\bcontext has custom\b/g, "");
+    return whole.replace(body, next);
+  });
+}
+
 function isAsciiIdent(s: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(s);
 }

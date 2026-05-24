@@ -103,6 +103,15 @@
   background: var(--coral-100);
   color: var(--coral-600);
 }
+/* Builder-dirty notice: rule changed since last compile. Amber / warning,
+ * not destructive — the user just needs to click "Cedar로 컴파일" once
+ * more. Reusing the gold/coral palette would conflict with success/error,
+ * so a distinct soft-orange tone keeps the three states visually separate. */
+.editor-save-msg.dirty {
+  background: var(--gold-100, #fff4d6);
+  color: var(--gold-800, #8a6800);
+  border: 1px solid var(--gold-200, #ffd97a);
+}
 
 .editor-side {
   display: flex;

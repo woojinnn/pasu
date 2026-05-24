@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x4507cef57c46789ef8d1a19ea45f4216bae2b528",
+  "symbol": "TOKEN",
+  "decimals": 9,
+  "name": "TokenFi"
+}

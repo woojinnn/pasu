@@ -1,0 +1,74 @@
+{
+  "matched": true,
+  "bundle_id": "aerodrome/gauge/depositTo@1.0.0",
+  "manifest_path": "manifests/aerodrome/gauge/depositTo@1.0.0.json",
+  "bundle_sha256": "0x0c1b975eddb2bd874edb2a628010eabb145d904d5dfb1f8f60177292a54def28",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "aerodrome/gauge/depositTo@1.0.0",
+    "publisher": "aerodrome.finance",
+    "match": {
+      "chain_ids": [
+        8453
+      ],
+      "to": [
+        "0x4F09bAb2f0E15e2A078A227FE1537665F55b8360",
+        "0x519BBD1Dd8C6A94C46080E24f316c14Ee758C025",
+        "0xeca7Ff920E7162334634c721133F3183B83B0323",
+        "0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC",
+        "0x96a24aB830D4ec8b1F6f04Ceac104F1A3b211a01"
+      ],
+      "selector": "0x6e553f65"
+    },
+    "abi_fragment": {
+      "function_name": "deposit",
+      "abi": {
+        "name": "deposit",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "lp_stake",
+      "fields": {
+        "gauge": {
+          "from": "$.tx.to"
+        },
+        "lpToken.kind": {
+          "literal": "erc20"
+        },
+        "lpToken.address": {
+          "from": "$.tx.to"
+        },
+        "amount.kind": {
+          "literal": "exact"
+        },
+        "amount.value": {
+          "from": "$.args.amount"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

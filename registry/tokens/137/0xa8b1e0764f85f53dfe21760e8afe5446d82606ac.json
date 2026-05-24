@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xa8b1e0764f85f53dfe21760e8afe5446d82606ac",
+  "symbol": "BAND",
+  "decimals": 18,
+  "name": "Band Protocol"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x67fa2887914fa3729e9eed7630294fe124f417a0",
+  "symbol": "YIELD",
+  "decimals": 18,
+  "name": "Crypto Valleys Yield Token"
+}

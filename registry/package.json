@@ -1,0 +1,17 @@
+{
+  "name": "scopeball-registry",
+  "version": "0.1.0",
+  "description": "ScopeBall Adapter Marketplace registry — static file host (PoC)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsx scripts/build-index.ts",
+    "verify-addresses": "tsx scripts/audit-addresses.ts",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "canonicalize": "^2.0.0",
+    "tsx": "^4.0.0"
+  }
+}

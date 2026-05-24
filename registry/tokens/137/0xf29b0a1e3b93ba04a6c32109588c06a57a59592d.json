@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xf29b0a1e3b93ba04a6c32109588c06a57a59592d",
+  "symbol": "UBX",
+  "decimals": 6,
+  "name": "UBX"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x56a3ba04e95d34268a19b2a4474dc979babdaf76",
+  "symbol": "SENT",
+  "decimals": 18,
+  "name": "Sentient"
+}

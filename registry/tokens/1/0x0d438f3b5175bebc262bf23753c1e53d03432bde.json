@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x0d438f3b5175bebc262bf23753c1e53d03432bde",
+  "symbol": "wNXM",
+  "decimals": 18,
+  "name": "Wrapped NXM"
+}

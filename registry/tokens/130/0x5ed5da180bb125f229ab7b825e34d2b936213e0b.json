@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x5ed5da180bb125f229ab7b825e34d2b936213e0b",
+  "symbol": "TOKE",
+  "decimals": 18,
+  "name": "Tokemak"
+}

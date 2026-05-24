@@ -10,8 +10,22 @@ function checkMethod(item: any, method: string): boolean {
 }
 
 function forwardBypassed(data: any): void {
-  const port = Browser.runtime.connect({ name: Identifier.CONTENT_SCRIPT });
-  sendToPortAndDisregard(port, data);
+  // `Browser.runtime.connect` throws "Extension context invalidated" when the
+  // extension was reloaded but this page kept its stale runtime ID. Without
+  // a catch the throw bubbles up and the MetaMask message handler dies
+  // silently — every subsequent transaction passes through with no policy
+  // evaluation, a fail-open bypass of the entire engine. Catch loudly so
+  // the dApp console shows a clear "reload this tab" hint instead.
+  try {
+    const port = Browser.runtime.connect({ name: Identifier.CONTENT_SCRIPT });
+    sendToPortAndDisregard(port, data);
+  } catch (err) {
+    console.error(
+      "[Scopeball] cannot reach service worker (extension reloaded?) — " +
+        "policy evaluation skipped. Reload this tab.",
+      err,
+    );
+  }
 }
 
 function checkMetaMaskBypass(messageData: any): void {

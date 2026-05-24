@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0xe4d62e62013eaf065fa3f0316384f88559c80889",
+  "symbol": "LIFE",
+  "decimals": 18,
+  "name": "LIFE"
+}

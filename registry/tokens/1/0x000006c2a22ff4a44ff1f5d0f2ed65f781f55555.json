@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x000006c2a22ff4a44ff1f5d0f2ed65f781f55555",
+  "symbol": "ZKC",
+  "decimals": 18,
+  "name": "Boundless"
+}

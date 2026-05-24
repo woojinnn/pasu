@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x553d3d295e0f695b9228246232edf400ed3560b5",
+  "symbol": "PAXG",
+  "decimals": 18,
+  "name": "Paxos Gold (PoS)"
+}

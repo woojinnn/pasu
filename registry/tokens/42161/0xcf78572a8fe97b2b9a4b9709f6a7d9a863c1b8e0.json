@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xcf78572a8fe97b2b9a4b9709f6a7d9a863c1b8e0",
+  "symbol": "RARI",
+  "decimals": 18,
+  "name": "Rarible"
+}

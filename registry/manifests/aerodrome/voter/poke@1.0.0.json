@@ -1,0 +1,38 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/voter/poke@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"],
+    "selector": "0x32145f90"
+  },
+  "abi_fragment": {
+    "function_name": "poke",
+    "abi": {
+      "name": "poke",
+      "type": "function",
+      "inputs": [
+        { "name": "tokenId", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "gauge_vote",
+    "fields": {
+      "voter":   { "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5" },
+      "tokenId": { "from":    "$.args.tokenId" },
+      "pools":   { "literal": [] },
+      "weights": { "literal": [] },
+      "kind":    { "literal": "poke" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

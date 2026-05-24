@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x624e2e7fdc8903165f64891672267ab0fcb98831",
+  "symbol": "SOSO",
+  "decimals": 18,
+  "name": "SoSoValue"
+}

@@ -1,0 +1,38 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/voting-escrow/merge@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
+    "selector": "0xd1c2babb"
+  },
+  "abi_fragment": {
+    "function_name": "merge",
+    "abi": {
+      "name": "merge",
+      "type": "function",
+      "inputs": [
+        { "name": "from", "type": "uint256" },
+        { "name": "to",   "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "lock_manage",
+    "fields": {
+      "votingEscrow": { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
+      "kind":         { "literal": "merge" },
+      "fromTokenId":  { "from":    "$.args.from" },
+      "toTokenId":    { "from":    "$.args.to" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

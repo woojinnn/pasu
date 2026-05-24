@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xf125d03aa14e6544a2fe147aa997c6722d27300e",
+  "symbol": "T3",
+  "decimals": 18,
+  "name": "T3"
+}

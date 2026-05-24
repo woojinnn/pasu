@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xca642467c6ebe58c13cb4a7091317f34e17ac05e",
+  "symbol": "DIA",
+  "decimals": 18,
+  "name": "DIA"
+}

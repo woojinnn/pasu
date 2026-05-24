@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x1f16e03c1a5908818f47f6ee7bb16690b40d0671",
+  "symbol": "RECALL",
+  "decimals": 18,
+  "name": "Recall Network"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x3be7cb2e9413ef8f42b4a202a0114eb59b64e227",
+  "symbol": "DEXT",
+  "decimals": 18,
+  "name": "DexTools"
+}

@@ -91,6 +91,10 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
+      - working-directory: browser-extension/dashboard
+        name: Dashboard prepare wasm (policy-engine + policy-builder)
+        run: yarn prepare:wasm
+
       - working-directory: browser-extension
         run: yarn typecheck
 
@@ -100,13 +104,13 @@ jobs:
 
       - working-directory: browser-extension
         run: yarn build:chrome
+        env:
+          SCOPEBALL_ALLOW_INSECURE_REGISTRY: '1'
 
       - working-directory: browser-extension
         run: yarn build:firefox
-
-      - working-directory: browser-extension/dashboard
-        name: Dashboard prepare wasm (policy-engine + policy-builder)
-        run: yarn prepare:wasm
+        env:
+          SCOPEBALL_ALLOW_INSECURE_REGISTRY: '1'
 
       - working-directory: browser-extension/dashboard
         name: Dashboard build (tsc --noEmit + vite build)

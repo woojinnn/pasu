@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0xd57f2e190c11cffc667aa5ad026cd4c8de0772a7",
+  "symbol": "SUI",
+  "decimals": 18,
+  "name": "Binance-Peg Sui"
+}

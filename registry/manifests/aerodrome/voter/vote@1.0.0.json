@@ -1,0 +1,40 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/voter/vote@1.0.0",
+  "publisher": "aerodrome.finance",
+  "match": {
+    "chain_ids": [8453],
+    "to": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"],
+    "selector": "0x7ac09bf7"
+  },
+  "abi_fragment": {
+    "function_name": "vote",
+    "abi": {
+      "name": "vote",
+      "type": "function",
+      "inputs": [
+        { "name": "tokenId", "type": "uint256"   },
+        { "name": "pools",   "type": "address[]" },
+        { "name": "weights", "type": "uint256[]" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "gauge_vote",
+    "fields": {
+      "voter":   { "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5" },
+      "tokenId": { "from":    "$.args.tokenId" },
+      "pools":   { "from":    "$.args.pools" },
+      "weights": { "from":    "$.args.weights" },
+      "kind":    { "literal": "vote" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

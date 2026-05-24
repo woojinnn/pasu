@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x5a7facb970d094b6c7ff1df0ea68d99e6e73cbff",
+  "symbol": "weETH",
+  "decimals": 18,
+  "name": "Wrapped eETH"
+}

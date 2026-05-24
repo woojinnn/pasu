@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xe9225a870b54f8fba42c8188d211271f0408a30b",
+  "symbol": "UNFI",
+  "decimals": 18,
+  "name": "Unifi Protocol DAO"
+}

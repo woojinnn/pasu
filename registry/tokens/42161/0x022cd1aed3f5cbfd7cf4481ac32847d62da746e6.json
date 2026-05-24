@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x022cd1aed3f5cbfd7cf4481ac32847d62da746e6",
+  "symbol": "VIRTUAL",
+  "decimals": 18,
+  "name": "Virtuals Protocol"
+}

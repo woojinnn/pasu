@@ -1,0 +1,92 @@
+{
+  "matched": true,
+  "bundle_id": "aerodrome/slipstream-npm/permit@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-npm/permit@1.0.0.json",
+  "bundle_sha256": "0x0b6ad1e0b3b58e2799a487e40197eab97d9fb02b1965261b804d64edf2c29818",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "aerodrome/slipstream-npm/permit@1.0.0",
+    "publisher": "aerodrome.eth",
+    "match": {
+      "chain_ids": [
+        8453
+      ],
+      "to": [
+        "0x827922686190790b37229fd06084350E74485b72"
+      ],
+      "selector": "0x7ac2ff7b"
+    },
+    "abi_fragment": {
+      "function_name": "permit",
+      "abi": {
+        "name": "permit",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "permit",
+      "fields": {
+        "permitKind": {
+          "literal": "erc721_permit"
+        },
+        "token.kind": {
+          "literal": "erc721"
+        },
+        "token.address": {
+          "from": "$.tx.to"
+        },
+        "token.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "owner": {
+          "from": "$.tx.from"
+        },
+        "spender": {
+          "from": "$.args.spender"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "signature-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

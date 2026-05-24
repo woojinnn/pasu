@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x656104f2028bbfd7144c8f71fa15daaa8c34a28b",
+  "symbol": "HFT",
+  "decimals": 18,
+  "name": "Hashflow"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+  "symbol": "BRETT",
+  "decimals": 18,
+  "name": "Brett"
+}

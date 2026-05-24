@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0xd221812de1bd094f35587ee8e174b07b6167d9af",
+  "symbol": "WETH",
+  "decimals": 18,
+  "name": "Wrapped Ether (Celo native brid"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xa61f74247455a40b01b0559ff6274441fafa22a3",
+  "symbol": "MGP",
+  "decimals": 18,
+  "name": "Magpie Token"
+}

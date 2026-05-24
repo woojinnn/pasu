@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9b5e262cf9bb04869ab40b19af91d2dc85761722",
+  "symbol": "NOCK",
+  "decimals": 16,
+  "name": "Nock"
+}

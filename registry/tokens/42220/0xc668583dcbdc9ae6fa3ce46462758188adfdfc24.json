@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42220,
+  "address": "0xc668583dcbdc9ae6fa3ce46462758188adfdfc24",
+  "symbol": "stCELO",
+  "decimals": 18,
+  "name": "Staked CELO"
+}

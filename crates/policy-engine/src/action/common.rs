@@ -443,6 +443,22 @@ mod tests {
     }
 
     #[test]
+    fn test_asset_ref_deserialize_unknown_without_address_ok() {
+        // `unknown` is the schema's representation for an asset whose
+        // identity cannot be resolved statically (e.g. an LP token whose
+        // address is a CREATE2 result absent from calldata). It must
+        // deserialize without an address — declarative bundles emit it for
+        // such assets so the evaluate stage does not fail-closed.
+        let json = r#"{"kind":"unknown"}"#;
+
+        let asset = serde_json::from_str::<AssetRef>(json).unwrap();
+
+        assert_eq!(asset.kind, AssetKind::Unknown);
+        assert_eq!(asset.address, None);
+        assert_eq!(asset.token_id, None);
+    }
+
+    #[test]
     fn test_asset_ref_with_amount_constraint_serde_roundtrip() {
         let constrained = AssetRefWithAmountConstraint {
             asset: AssetRef {

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xb58e61c3098d85632df34eecfb899a1ed80921cb",
+  "symbol": "ZCHF",
+  "decimals": 18,
+  "name": "Frankencoin"
+}

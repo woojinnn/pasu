@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xf8740269f121327d03ff77bed03a9a3258880821",
+  "symbol": "ETHFI",
+  "decimals": 18,
+  "name": "Ether.fi"
+}

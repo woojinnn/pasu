@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x2a22868610610199d43fe93a16661473a9f86f1e",
+  "symbol": "USDG",
+  "decimals": 6,
+  "name": "Global Dollar"
+}

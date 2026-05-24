@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xe911a809f87490406ab34fad701aabca88e30b45",
+  "symbol": "ARPA",
+  "decimals": 18,
+  "name": "ARPA Chain"
+}

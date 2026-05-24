@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xbbe97f3522101e5b6976cbf77376047097ba837f",
+  "symbol": "BONK",
+  "decimals": 5,
+  "name": "BONK"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x172370d5cd63279efa6d502dab29171933a610af",
+  "symbol": "CRV",
+  "decimals": 18,
+  "name": "CRV (PoS)"
+}

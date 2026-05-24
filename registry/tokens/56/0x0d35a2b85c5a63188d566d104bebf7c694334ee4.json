@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x0d35a2b85c5a63188d566d104bebf7c694334ee4",
+  "symbol": "BUPI",
+  "decimals": 18,
+  "name": "Pawtocol Network UPI Token"
+}

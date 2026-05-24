@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xaa71306d5356e0ad648e8229c41c21df0e8f3a4e",
+  "symbol": "SDX",
+  "decimals": 18,
+  "name": "Stakefundex"
+}

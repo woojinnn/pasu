@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0xa260e12d2b924cb899ae80bb58123ac3fee1e2f0",
+  "symbol": "HOOK",
+  "decimals": 18,
+  "name": "Hook Token"
+}

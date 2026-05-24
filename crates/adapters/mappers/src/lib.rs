@@ -24,6 +24,7 @@
 //! ```
 
 pub mod compactor;
+pub mod declarative;
 pub mod in_memory_mapper_registry;
 pub mod mapper;
 pub mod protocols;
@@ -31,5 +32,7 @@ pub mod token_registry;
 
 pub use compactor::simulate;
 pub use in_memory_mapper_registry::{InMemoryMapperRegistry, InMemoryMapperRegistryBuilder};
-pub use mapper::{MapContext, Mapper, MapperError, MapperId, MapperMatchKey, MapperRegistry};
+pub use mapper::{
+    ChildResolver, MapContext, Mapper, MapperError, MapperId, MapperMatchKey, MapperRegistry,
+};
 pub use token_registry::{EmptyTokenRegistry, TokenMetadata, TokenRegistry};

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x47c337bd5b9344a6f3d6f58c474d9d8cd419d8ca",
+  "symbol": "DACKIE",
+  "decimals": 18,
+  "name": "Dackie Token"
+}

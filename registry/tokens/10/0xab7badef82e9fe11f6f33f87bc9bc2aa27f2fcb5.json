@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0xab7badef82e9fe11f6f33f87bc9bc2aa27f2fcb5",
+  "symbol": "MKR",
+  "decimals": 18,
+  "name": "Maker"
+}

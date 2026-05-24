@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xda5e1988097297dcdc1f90d4dfe7909e847cbef6",
+  "symbol": "WLFI",
+  "decimals": 18,
+  "name": "World Liberty Financial"
+}

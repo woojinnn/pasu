@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xf17e65822b568b3903685a7c9f496cf7656cc6c2",
+  "symbol": "BICO",
+  "decimals": 18,
+  "name": "Biconomy"
+}

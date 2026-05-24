@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 57073,
+  "address": "0xd95b9a5fa7c2708fd4fe0e07e59bde1ef35b194a",
+  "symbol": "BEAST",
+  "decimals": 18,
+  "name": "Kraken Mascot"
+}

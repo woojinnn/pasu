@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd7468c14ae76c3fc308aeadc223d5d1f71d3c171",
+  "symbol": "LCX",
+  "decimals": 18,
+  "name": "LCX"
+}

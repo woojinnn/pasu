@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xeb55fab1c23ec0aa5024ee593a12edcd031ecd9b",
+  "symbol": "WHEREMALEK",
+  "decimals": 18,
+  "name": "Where Is Malek"
+}

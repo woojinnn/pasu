@@ -1,4 +1,9 @@
 import Browser from "webextension-polyfill";
+import { ensureSeedBundlesInstalled } from "./marketplace/declarative-adapter-loader";
+import {
+  tryDeclarativeRoute,
+  type DeclarativeRouteOutcome,
+} from "./marketplace/declarative-route";
 import {
   ensureDefaultPoliciesInstalled,
   getActivePolicyRpcManifests,
@@ -10,7 +15,7 @@ import {
   pendingPut,
   type PendingRequest,
 } from "./storage";
-import { EngineError } from "./wasm-bridge";
+import { EngineError, evaluateWithEnvelopes } from "./wasm-bridge";
 import {
   evaluateWithPolicyRpc,
   formatAuditMatched,
@@ -38,9 +43,42 @@ interface DecisionOptions {
   onAwaitingUser?: () => void;
 }
 
+/**
+ * Phase 6 — audit telemetry capturing the declarative pipeline's contribution
+ * to a single decision. Surfaced in the audit log so we can tell which
+ * marketplace bundle handled (or failed to handle) a given tx.
+ *
+ * Phase 7F update: when `outcome === "hit"` AND `envelope_count > 0`, the
+ * declarative path now drives the Cedar verdict via
+ * `evaluate_with_envelopes_json` (Phase 7A). The static `evaluateWithPolicyRpc`
+ * remains the fallback for miss/fault outcomes and the legacy ground truth
+ * for cases the declarative path does not yet cover.
+ */
+export interface DeclarativeAuditMeta {
+  outcome: DeclarativeRouteOutcome["kind"]; // "hit" | "miss" | "fault"
+  source?: "layer1" | "layer2" | "jit";
+  decoder_id?: string;
+  bundle_id?: string;
+  envelope_count?: number;
+  reason?: string;
+}
+
+/**
+ * Phase 7F — which Cedar pipeline produced the final verdict.
+ *
+ * `"declarative"` ⇒ envelopes from the declarative router were fed to
+ *   `evaluate_with_envelopes_json` (Phase 7A WASM entry).
+ * `"static"` ⇒ verdict came from the legacy `evaluateWithPolicyRpc` path,
+ *   either because the declarative path missed/faulted, the message is a
+ *   typed signature, or the declarative path produced zero envelopes.
+ */
+export type VerdictSource = "declarative" | "static";
+
 interface LifecycleResult {
   verdict: VerdictDto;
+  verdictSource: VerdictSource;
   policyRpc?: PolicyRpcAuditMeta;
+  declarative?: DeclarativeAuditMeta;
 }
 
 /**
@@ -77,6 +115,10 @@ export async function decideMessage(
   options: DecisionOptions = {},
 ): Promise<DecisionResult> {
   await ensureDefaultPoliciesInstalled();
+  // Phase 1B — mount declarative adapter seed bundles after the policy
+  // engine is warm. `ensureSeedBundlesInstalled` is idempotent within a
+  // single SW lifetime; subsequent calls return the cached promise.
+  await ensureSeedBundlesInstalled();
   return withActorLock(inferActor(message), () =>
     decideInner(message, options),
   );
@@ -86,6 +128,7 @@ async function decideInner(
   message: Message,
   options: DecisionOptions,
 ): Promise<DecisionResult> {
+  logIncoming(message);
   const pending: PendingRequest = {
     requestId: message.requestId,
     hostname: message.data.hostname,
@@ -100,7 +143,7 @@ async function decideInner(
     const { result: lifecycle } = await withTimeout(
       runLifecycle(message),
       HARD_TIMEOUT_MS,
-      { verdict: buildTimeoutVerdict() },
+      { verdict: buildTimeoutVerdict(), verdictSource: "static" as const },
     );
     const { verdict } = lifecycle;
 
@@ -126,7 +169,14 @@ async function decideInner(
       );
     }
 
-    await appendAudit(message, pending.type, verdict, lifecycle.policyRpc);
+    await appendAudit(
+      message,
+      pending.type,
+      verdict,
+      lifecycle.verdictSource,
+      lifecycle.policyRpc,
+      lifecycle.declarative,
+    );
     return { ok, verdict };
   } catch (err) {
     const errInfo =
@@ -148,10 +198,29 @@ async function decideInner(
       err instanceof EngineError && err.kind === "route_failed"
         ? console.warn
         : console.error;
+    // Surface `to`/`chainId`/`selector` so `route_failed` logs let us
+    // tell at a glance whether the unknown router was a new UR deployment,
+    // an off-chain settlement contract, or a different chain entirely.
+    const txCtx = isTransaction(message)
+      ? {
+          to: message.data.transaction.to,
+          chainId: message.data.chainId,
+          selector:
+            typeof message.data.transaction.data === "string"
+              ? message.data.transaction.data.slice(0, 10)
+              : undefined,
+          dataLen:
+            typeof message.data.transaction.data === "string"
+              ? message.data.transaction.data.length
+              : undefined,
+          data: message.data.transaction.data,
+        }
+      : undefined;
     logAt("[Scopeball] decideMessage threw", {
       requestId: message.requestId,
       hostname: message.data.hostname,
       type: pending.type,
+      ...(txCtx ?? {}),
       ...errInfo,
       err,
     });
@@ -171,7 +240,9 @@ async function appendAudit(
   message: Message,
   type: PendingRequest["type"],
   verdict: VerdictDto,
+  verdictSource?: VerdictSource,
   policyRpc?: PolicyRpcAuditMeta,
+  declarative?: DeclarativeAuditMeta,
 ): Promise<void> {
   logDecision(message, verdict);
   await auditAppend({
@@ -185,8 +256,53 @@ async function appendAudit(
     // first-class verdict.
     matchedPolicies: formatAuditMatched(verdict),
     ...(policyRpc ? { policyRpc } : {}),
+    ...(declarative ? { declarative } : {}),
+    ...(verdictSource ? { verdictSource } : {}),
     decidedAtMs: Date.now(),
   });
+}
+
+function logIncoming(message: Message): void {
+  const common = {
+    requestId: message.requestId,
+    hostname: message.data.hostname,
+    bypassed: "bypassed" in message.data && !!message.data.bypassed,
+  };
+
+  if (isTransaction(message)) {
+    const data = message.data.transaction.data;
+    console.info("[Scopeball] tx.incoming", {
+      ...common,
+      chainId: message.data.chainId,
+      to: message.data.transaction.to,
+      from: message.data.transaction.from,
+      value: message.data.transaction.value,
+      selector: typeof data === "string" ? data.slice(0, 10) : undefined,
+      dataLen: typeof data === "string" ? data.length : undefined,
+      data,
+    });
+    return;
+  }
+
+  if (isTypedSignature(message)) {
+    console.info("[Scopeball] typed-sig.incoming", {
+      ...common,
+      chainId: message.data.chainId,
+      address: message.data.address,
+      primaryType: (message.data.typedData as { primaryType?: string })
+        ?.primaryType,
+      typedData: message.data.typedData,
+    });
+    return;
+  }
+
+  if (isUntypedSignature(message)) {
+    console.info("[Scopeball] personal-sign.incoming", {
+      ...common,
+      messageLen: message.data.message.length,
+      message: message.data.message,
+    });
+  }
 }
 
 function logDecision(message: Message, verdict: VerdictDto): void {
@@ -236,7 +352,124 @@ function logDecision(message: Message, verdict: VerdictDto): void {
 
 async function runLifecycle(message: Message): Promise<LifecycleResult> {
   if (isUntypedSignature(message)) {
-    return { verdict: unsupportedUntypedSignatureVerdict() };
+    return {
+      verdict: unsupportedUntypedSignatureVerdict(),
+      verdictSource: "static",
+    };
+  }
+
+  // Phase 6 → Phase 7F — declarative path is now a verdict driver, not
+  // observability-only. For transactions we hand off
+  // `(chainId, to, calldata)` to the marketplace router. A hit with one or
+  // more enriched envelopes lets us run `evaluate_with_envelopes_json`
+  // directly, skipping `plan_policy_rpc_json` and the RPC enrichment hop.
+  //
+  // The static `evaluateWithPolicyRpc` remains the fallback for miss/fault
+  // outcomes, hit-with-zero-envelopes edges, and any unexpected throw
+  // inside `tryDeclarativeRoute`. We deliberately fence both call sites in
+  // try/catch so a glitch (registry server down, malformed bundle, race)
+  // cannot block a verdict.
+  let declarativeMeta: DeclarativeAuditMeta | undefined;
+  let declarativeHit: {
+    envelopes: Record<string, unknown>[];
+    decoderId: string;
+  } | undefined;
+  if (isTransaction(message)) {
+    try {
+      const outcome = await tryDeclarativeRoute({
+        chainId: message.data.chainId,
+        from: message.data.transaction.from ?? "0x" + "0".repeat(40),
+        to: message.data.transaction.to ?? "0x" + "0".repeat(40),
+        valueWei: txValueToWeiDecimal(message.data.transaction.value),
+        calldataHex: message.data.transaction.data,
+      });
+      declarativeMeta = auditFromDeclarativeOutcome(outcome);
+      console.info("[Scopeball] declarative-route", {
+        requestId: message.requestId,
+        chainId: message.data.chainId,
+        outcome: outcome.kind,
+        ...(outcome.kind === "hit"
+          ? {
+              decoderId: outcome.value.decoderId,
+              bundleId: outcome.value.bundleId,
+              source: outcome.value.source,
+              envelopeCount: outcome.value.envelopes.length,
+            }
+          : outcome.kind === "miss"
+            ? { reason: outcome.reason }
+            : { reason: outcome.reason }),
+      });
+      if (outcome.kind === "hit" && outcome.value.envelopes.length > 0) {
+        declarativeHit = {
+          envelopes: outcome.value.envelopes,
+          decoderId: outcome.value.decoderId,
+        };
+      }
+    } catch (err) {
+      // tryDeclarativeRoute already classifies known errors. Anything
+      // reaching here is truly unexpected — log and continue with the
+      // static path.
+      console.warn("[Scopeball] declarative-route threw", {
+        requestId: message.requestId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      declarativeMeta = { outcome: "fault", reason: "unexpected" };
+    }
+  }
+
+  // Declarative verdict path — only taken when the declarative router
+  // returned a hit with ≥1 enriched envelope AND the message is a
+  // transaction. Failures here fall through to the static path so a flaky
+  // WASM call does NOT take out a tx whose static path would have passed.
+  if (declarativeHit && isTransaction(message)) {
+    try {
+      const verdict = await evaluateWithEnvelopes({
+        envelopes: declarativeHit.envelopes,
+        from: message.data.transaction.from ?? "0x" + "0".repeat(40),
+        to: message.data.transaction.to ?? "0x" + "0".repeat(40),
+        value_wei: txValueToWeiDecimal(message.data.transaction.value),
+        chain_id: message.data.chainId,
+        block_timestamp: Math.floor(Date.now() / 1000),
+        manifests: getActivePolicyRpcManifests(),
+        // Phase 7F MVP: declarative verdict path runs without RPC
+        // enrichment. Manifests that declare `requires` are NOT yet
+        // wired through this path — when they exist the WASM will fail
+        // closed via `__engine::projection_failed`, which is the
+        // desired conservative behaviour until 7G/7H wire policy-rpc
+        // results into the declarative branch.
+        rpc_response: {
+          request_id: message.requestId,
+          results: [],
+        },
+      });
+      console.info("[Scopeball] declarative-verdict", {
+        requestId: message.requestId,
+        verdictSource: "declarative",
+        verdict: verdict.kind,
+        envelopeCount: declarativeHit.envelopes.length,
+        decoderId: declarativeHit.decoderId,
+        matched:
+          verdict.matched?.map((m) => ({
+            id: m.policy_id,
+            severity: m.severity,
+          })) ?? [],
+      });
+      return {
+        verdict,
+        verdictSource: "declarative",
+        ...(declarativeMeta ? { declarative: declarativeMeta } : {}),
+      };
+    } catch (err) {
+      // evaluateWithEnvelopes threw — most likely an EngineError on the
+      // installed_manifest_hash_mismatch path. Log and fall through to
+      // the static path so we don't lose a verdict.
+      console.warn("[Scopeball] declarative-verdict threw", {
+        requestId: message.requestId,
+        decoderId: declarativeHit.decoderId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      // Fall through to static path below.
+    }
   }
 
   // Phase 7 codex carry-over H: at evaluate-time the orchestrator MUST
@@ -255,7 +488,60 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
     mapManifests.length > 0 ? mapManifests : getActivePolicyRpcManifests();
 
   const result = await evaluateWithPolicyRpc(message, { manifests });
-  return { verdict: result.verdict, policyRpc: result.audit };
+  console.info("[Scopeball] declarative-verdict", {
+    requestId: message.requestId,
+    verdictSource: "static",
+    verdict: result.verdict.kind,
+    matched:
+      result.verdict.matched?.map((m) => ({
+        id: m.policy_id,
+        severity: m.severity,
+      })) ?? [],
+  });
+  return {
+    verdict: result.verdict,
+    verdictSource: "static",
+    policyRpc: result.audit,
+    ...(declarativeMeta ? { declarative: declarativeMeta } : {}),
+  };
+}
+
+function auditFromDeclarativeOutcome(
+  outcome: DeclarativeRouteOutcome,
+): DeclarativeAuditMeta {
+  if (outcome.kind === "hit") {
+    return {
+      outcome: "hit",
+      source: outcome.value.source,
+      decoder_id: outcome.value.decoderId,
+      bundle_id: outcome.value.bundleId,
+      envelope_count: outcome.value.envelopes.length,
+    };
+  }
+  if (outcome.kind === "miss") {
+    return { outcome: "miss", reason: outcome.reason };
+  }
+  return { outcome: "fault", reason: outcome.reason };
+}
+
+/**
+ * Convert a `0x…` hex wei value (the wallet RPC convention) to a base-10
+ * decimal string the engine expects in `ctx.value_wei`. Empty / undefined
+ * defaults to "0".
+ */
+function txValueToWeiDecimal(value: string | undefined): string {
+  if (!value) return "0";
+  if (value.startsWith("0x") || value.startsWith("0X")) {
+    const hex = value.slice(2);
+    if (hex.length === 0) return "0";
+    try {
+      return BigInt("0x" + hex).toString(10);
+    } catch {
+      return "0";
+    }
+  }
+  // Already decimal (uncommon for wallet RPC but tolerated).
+  return value;
 }
 
 function inferActor(message: Message): string | undefined {
@@ -371,8 +657,14 @@ async function openVerdictWindow(
       height: 640,
       focused: true,
     });
-  } catch {
-    /* user closed, popup blocked, etc. — best-effort UI */
+  } catch (err) {
+    console.error("[Scopeball] openVerdictWindow failed", {
+      requestId,
+      hostname,
+      verdict: verdict.kind,
+      urlLength: url.length,
+      err,
+    });
   }
 }
 

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x747e42eb0591547a0ab429b3627816208c734ea7",
+  "symbol": "T",
+  "decimals": 18,
+  "name": "Threshold Network"
+}

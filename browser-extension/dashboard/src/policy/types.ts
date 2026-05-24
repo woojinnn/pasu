@@ -76,6 +76,33 @@ export interface FieldDto {
    * policy-builder-wasm.
    */
   isCustom?: boolean;
+  /**
+   * Closed-set string enum mirrored from the upstream action-schema JSON
+   * (`"enum": [...]`). When present the UI should render a `<select>`
+   * (arity=one) or multi-select (arity=many) of these literals instead of
+   * a free-form text input — values outside this set are rejected by the
+   * WASM validator with kind `"disallowed_value"`. Omitted for free-form
+   * fields.
+   */
+  allowedValues?: string[];
+  /**
+   * Implicit `10^scale` exponent for Long fields whose context value is
+   * pre-rescaled by the manifest (token-native amount fields use scale 9).
+   * When present, the user enters a decimal-shaped string (e.g. `0.5`,
+   * `100`, `0.00003`) and the WASM compiler emits `value × 10^scale` as
+   * the Long literal in Cedar. Used to drive placeholder hints and accept
+   * fractional input for fields the JSON wire shape declares as Long.
+   */
+  scale?: number;
+  /**
+   * Regex the operand string must match, mirrored from the upstream
+   * action-schema JSON's `"pattern"` keyword (e.g. EVM address shape
+   * `^0x[0-9a-fA-F]{40}$`). The WASM validator rejects out-of-shape
+   * input as `kind: "pattern_mismatch"`. UIs can use this for live form
+   * feedback — e.g. a red border on the value input when the user's
+   * typed value doesn't match, so they notice before clicking compile.
+   */
+  pattern?: string;
   operators: OperatorDto[];
 }
 

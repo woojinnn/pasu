@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xd649b9ad2104418b5b032a5899fbcd54a9a46c68",
+  "symbol": "TLM",
+  "decimals": 4,
+  "name": "Alien Worlds"
+}

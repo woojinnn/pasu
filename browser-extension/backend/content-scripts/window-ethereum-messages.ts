@@ -32,8 +32,19 @@ stream.on("data", async (message: Message) => {
   let port: Browser.Runtime.Port;
   try {
     port = Browser.runtime.connect({ name: Identifier.CONTENT_SCRIPT });
-  } catch {
-    stream.write({ requestId: message.requestId, data: true });
+  } catch (err) {
+    // Fail-CLOSED: if we cannot reach the service worker (extension reloaded,
+    // SW terminated mid-call, etc.) we have no evaluation result, so we must
+    // not approve. The timeout path in `sendToPortAndAwaitResponse` already
+    // resolves `false`; this branch must match. Pairing the deny with a
+    // loud console.error so the user can see why their tx didn't go through
+    // and knows to reload the tab.
+    console.error(
+      "[Scopeball] cannot reach service worker (extension reloaded?) — " +
+        "transaction blocked. Reload this tab to restore policy evaluation.",
+      err,
+    );
+    stream.write({ requestId: message.requestId, data: false });
     return;
   }
   const data: Message["data"] = {

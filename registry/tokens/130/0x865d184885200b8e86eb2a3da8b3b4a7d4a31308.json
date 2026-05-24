@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x865d184885200b8e86eb2a3da8b3b4a7d4a31308",
+  "symbol": "ANT",
+  "decimals": 18,
+  "name": "Aragon"
+}

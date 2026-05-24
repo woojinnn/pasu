@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xc27e7325a6bea1fcc06de7941473f5279bfd1182",
+  "symbol": "GAL",
+  "decimals": 18,
+  "name": "Galxe"
+}

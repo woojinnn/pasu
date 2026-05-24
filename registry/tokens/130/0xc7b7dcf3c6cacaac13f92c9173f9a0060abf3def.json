@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xc7b7dcf3c6cacaac13f92c9173f9a0060abf3def",
+  "symbol": "PRQ",
+  "decimals": 18,
+  "name": "PARSIQ"
+}

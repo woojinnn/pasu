@@ -133,3 +133,47 @@ pub const EXTN_FN: &str = "fn";
 pub const EXTN_ARG: &str = "arg";
 /// Cedar Decimal extension function name.
 pub const EXTN_DECIMAL: &str = "decimal";
+
+// ── Aerodrome / Velodrome ve(3,3) context fields ──
+/// Solidly-style Voter contract address.
+pub const VOTER: &str = "voter";
+/// Solidly-style `VotingEscrow` contract address.
+pub const VOTING_ESCROW: &str = "votingEscrow";
+/// Gauge / staking contract address.
+pub const GAUGE: &str = "gauge";
+/// LP token reference for gauge stake/unstake actions.
+pub const LP_TOKEN: &str = "lpToken";
+/// Subkind discriminator (e.g. `gauge_vote` / `lock_increase` / `lock_manage`).
+pub const KIND: &str = "kind";
+/// Gauge pool addresses for emission vote.
+pub const POOLS: &str = "pools";
+/// Per-pool vote weights for emission vote.
+pub const WEIGHTS: &str = "weights";
+/// Sum of vote weights (derived). Exposed verbatim to Cedar policies; the
+/// default forbid-zero-weight-sum policy references `context.weightsSum`.
+pub const WEIGHTS_SUM: &str = "weightsSum";
+/// Lock duration in seconds for create / increaseUnlockTime.
+pub const LOCK_DURATION_SEC: &str = "lockDurationSec";
+/// Absolute unlock timestamp (epoch seconds) for `lock_create` — Curve veCRV
+/// `create_lock` passes `_unlock_time` directly (not a relative duration).
+pub const UNLOCK_TIME: &str = "unlockTime";
+/// Additional amount field for `lock_increase` (amount kind).
+pub const ADDITIONAL_AMOUNT: &str = "additionalAmount";
+/// New lock duration for `lock_increase` (`unlock_time` kind).
+pub const NEW_LOCK_DURATION_SEC: &str = "newLockDurationSec";
+/// Source veNFT token id for `lock_manage`.
+pub const FROM_TOKEN_ID: &str = "fromTokenId";
+/// Destination veNFT token id for `lock_manage` (merge target).
+pub const TO_TOKEN_ID: &str = "toTokenId";
+/// Split ratio for `lock_manage` (split kind).
+pub const SPLIT_RATIO: &str = "splitRatio";
+/// Asset reference for `lock_create`.
+pub const ASSET_FIELD: &str = "asset";
+
+// ── claim_rewards context fields ──
+/// Reward source contract address (Cedar `sourceAddress` — required).
+pub const SOURCE_ADDRESS: &str = "sourceAddress";
+/// Human-readable reward source label (Cedar `sourceLabel?`).
+pub const SOURCE_LABEL: &str = "sourceLabel";
+/// Reward token + amount set (Cedar `rewards?` — `Set<AssetRefWithAmountConstraint>`).
+pub const REWARDS: &str = "rewards";

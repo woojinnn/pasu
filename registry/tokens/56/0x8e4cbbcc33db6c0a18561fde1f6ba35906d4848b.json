@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x8e4cbbcc33db6c0a18561fde1f6ba35906d4848b",
+  "symbol": "MEZO",
+  "decimals": 18,
+  "name": "MEZO"
+}

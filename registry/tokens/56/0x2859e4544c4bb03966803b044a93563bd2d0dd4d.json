@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x2859e4544c4bb03966803b044a93563bd2d0dd4d",
+  "symbol": "SHIB",
+  "decimals": 18,
+  "name": "SHIBA INU"
+}

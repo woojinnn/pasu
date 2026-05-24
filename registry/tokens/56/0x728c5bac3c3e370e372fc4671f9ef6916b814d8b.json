@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x728c5bac3c3e370e372fc4671f9ef6916b814d8b",
+  "symbol": "UNFI",
+  "decimals": 18,
+  "name": "UNFI"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x4667cf53c4edf659e402b733bea42b18b68dd74c",
+  "symbol": "DPI",
+  "decimals": 18,
+  "name": "DeFi Pulse Index"
+}

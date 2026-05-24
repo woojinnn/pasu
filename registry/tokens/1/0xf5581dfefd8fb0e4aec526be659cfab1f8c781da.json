@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xf5581dfefd8fb0e4aec526be659cfab1f8c781da",
+  "symbol": "HOPR",
+  "decimals": 18,
+  "name": "HOPR Token"
+}

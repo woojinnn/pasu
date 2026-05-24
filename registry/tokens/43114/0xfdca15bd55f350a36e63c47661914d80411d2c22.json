@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xfdca15bd55f350a36e63c47661914d80411d2c22",
+  "symbol": "TAO",
+  "decimals": 18,
+  "name": "Bittensor"
+}

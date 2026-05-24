@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x8f0528ce5ef7b51152a59745befdd91d97091d2f",
+  "symbol": "ALPACA",
+  "decimals": 18,
+  "name": "AlpacaToken"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x71ab77b7dbb4fa7e017bc15090b2163221420282",
+  "symbol": "HIGH",
+  "decimals": 18,
+  "name": "Highstreet"
+}

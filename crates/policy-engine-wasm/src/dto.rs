@@ -178,10 +178,168 @@ pub struct EvaluatePolicyRpcInputDto {
     pub manifests: Vec<PolicyManifest>,
 }
 
+/// Input for `evaluate_with_envelopes_json`.
+///
+/// Bypasses the route → plan stages by accepting envelopes that the caller
+/// (e.g. the declarative pipeline in the orchestrator) has already produced.
+/// `manifests` must match the manifests installed via `install_policies_json`
+/// — the WASM enforces the same `manifest_set_hash` and `schema_hash`
+/// equality as `evaluate_policy_rpc_json`.
+///
+/// `rpc_response` carries `policy-rpc` results when manifests declare any
+/// `requires`; pass `{ "request_id": "...", "results": [] }` for pipelines
+/// that do not need RPC enrichment (e.g. permit-only policies).
+#[derive(Debug, Clone, Deserialize)]
+pub struct EvaluateWithEnvelopesInputDto {
+    pub envelopes: Vec<ActionEnvelope>,
+    pub from: String,
+    pub to: String,
+    pub value_wei: String,
+    pub chain_id: u64,
+    #[serde(default)]
+    pub block_timestamp: u64,
+    #[serde(default)]
+    pub manifests: Vec<PolicyManifest>,
+    pub rpc_response: PolicyRpcResponse,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct PreviewSchemaInputDto {
     #[serde(default)]
     pub manifests: Vec<PolicyManifest>,
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Declarative mapper boundary (Phase 1A)
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Result returned by `declarative_install_json` on success.
+#[derive(Debug, Clone, Serialize)]
+pub struct DeclarativeInstallResultDto {
+    /// Decoder id derived from the bundle (`declarative.<bundle.id-without-version>`).
+    pub decoder_id: String,
+    /// Echoes back the bundle's full id (including `@version`) for client
+    /// indexing.
+    pub bundle_id: String,
+}
+
+/// Input for `declarative_lookup_json`.
+///
+/// Phase 1A keeps this self-contained — it carries the decoder selection key
+/// and a JSON-friendly `DecodedCall`. Bridge integration (selector → decoder)
+/// is left for Phase 1B / Phase 2.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeclarativeLookupInputDto {
+    /// Bundle's declarative decoder id (e.g.
+    /// `"declarative.uniswap/v2/swapExactTokensForTokens"`).
+    pub decoder_id: String,
+    pub ctx: DeclarativeCtxDto,
+    pub decoded: DecodedCallDto,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeclarativeCtxDto {
+    pub chain_id: u64,
+    pub from: String,
+    pub to: String,
+    #[serde(default)]
+    pub value_wei: Option<String>,
+    #[serde(default)]
+    pub block_timestamp: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DecodedCallDto {
+    pub decoder_id: String,
+    pub function_signature: String,
+    #[serde(default)]
+    pub args: Vec<DecodedArgDto>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DecodedArgDto {
+    pub name: String,
+    pub abi_type: String,
+    pub value: DecodedValueDto,
+}
+
+/// Tagged DTO for the calldata-decoder's value tree.
+///
+/// `kind` discriminates the variant. `value` payloads:
+///   * `address`  — `"0x" + 40 hex` string.
+///   * `uint`     — base-10 decimal string (lossless for `uint256`).
+///   * `int`      — signed decimal string.
+///   * `bool`     — boolean.
+///   * `bytes`    — `"0x" + hex` string.
+///   * `string`   — string.
+///   * `array`    — array of `DecodedValueDto`.
+///   * `tuple`    — array of `DecodedValueDto`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
+pub enum DecodedValueDto {
+    Address(String),
+    Uint(String),
+    Int(String),
+    Bool(bool),
+    Bytes(String),
+    String(String),
+    Array(Vec<DecodedValueDto>),
+    Tuple(Vec<DecodedValueDto>),
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase 6 — orchestrator route entry
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Input for `declarative_route_request_json`.
+///
+/// `(chain_id, to, selector)` form the callkey for the bridge lookup. `ctx`
+/// and `calldata` are the per-tx execution context and the raw calldata the
+/// WASM decodes internally against the bridge-resolved bundle's
+/// `abi_fragment.abi` (same pattern as `WasmChildResolver::resolve_child`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeclarativeRouteRequestInputDto {
+    pub chain_id: u64,
+    /// "0x" + 40 hex. Case-insensitive — the bridge normalises to lowercase.
+    pub to: String,
+    /// "0x" + 8 hex. Case-insensitive — same as `to`.
+    pub selector: String,
+    pub ctx: DeclarativeCtxDto,
+    /// Raw "0x"-prefixed calldata. WASM decodes it against the
+    /// bridge-resolved bundle's abi_fragment.
+    pub calldata: String,
+}
+
+/// Result returned by `declarative_route_request_json` on success.
+/// `decoder_id` lets the caller correlate the envelopes with the bundle the
+/// bridge resolved (useful for audit / telemetry).
+#[derive(Debug, Clone, Serialize)]
+pub struct DeclarativeRouteRequestResultDto {
+    pub envelopes: Vec<policy_engine::ActionEnvelope>,
+    pub decoder_id: String,
+}
+
+/// One child callkey produced by `declarative_plan_children_json`.
+///
+/// `to` echoes the outer request `to` — `self_array_bytes_last_arg` is a
+/// self-multicall, so a child's `to` equals the outer `to`. `selector` is the
+/// first 4 bytes of the child calldata as `"0x" + 8 hex`.
+#[derive(Debug, Clone, Serialize)]
+pub struct DeclarativeChildCallKeyDto {
+    pub chain_id: u64,
+    pub to: String,
+    pub selector: String,
+}
+
+/// Result of `declarative_plan_children_json`.
+///
+/// `children` is empty when the outer bundle is not `multicall_recurse` (or no
+/// bundle is mounted for the callkey) — the caller then skips the prefetch
+/// pass. `decoder_id` echoes the outer bundle's declarative decoder id.
+#[derive(Debug, Clone, Serialize)]
+pub struct DeclarativePlanChildrenResultDto {
+    pub children: Vec<DeclarativeChildCallKeyDto>,
+    pub decoder_id: String,
 }
 
 /// One entry in the base alias table surfaced through `get_alias_table_json`.

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x50753cfaf86c094925bf976f218d043f8791e408",
+  "symbol": "EURR",
+  "decimals": 6,
+  "name": "StablR Euro"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x7f9a7db853ca816b9a138aee3380ef34c437dee0",
+  "symbol": "GTC",
+  "decimals": 18,
+  "name": "Gitcoin"
+}

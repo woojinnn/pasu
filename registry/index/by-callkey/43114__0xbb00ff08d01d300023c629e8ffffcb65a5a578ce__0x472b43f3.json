@@ -1,0 +1,106 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/swap-router-02/swapExactTokensForTokens-avalanche@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/swapExactTokensForTokens-avalanche@1.0.0.json",
+  "bundle_sha256": "0x70214b8d889ea8057f2a7b3bb2d5899fe110882b77cf7bc9a12d08c8c88aa0fc",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/swap-router-02/swapExactTokensForTokens-avalanche@1.0.0",
+    "publisher": "uniswap.eth",
+    "match": {
+      "chain_ids": [
+        43114
+      ],
+      "to": [
+        "0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE"
+      ],
+      "selector": "0x472b43f3"
+    },
+    "abi_fragment": {
+      "function_name": "swapExactTokensForTokens",
+      "abi": {
+        "name": "swapExactTokensForTokens",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "amountIn",
+            "type": "uint256"
+          },
+          {
+            "name": "amountOutMin",
+            "type": "uint256"
+          },
+          {
+            "name": "path",
+            "type": "address[]"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "fn": "select_address",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": 0
+            }
+          ]
+        },
+        "inputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args.amountIn"
+        },
+        "outputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "outputToken.asset.address": {
+          "fn": "select_address",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": -1
+            }
+          ]
+        },
+        "outputToken.amount.kind": {
+          "literal": "min"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args.amountOutMin"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

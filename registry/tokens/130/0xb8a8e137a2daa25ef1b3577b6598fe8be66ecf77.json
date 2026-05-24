@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0xb8a8e137a2daa25ef1b3577b6598fe8be66ecf77",
+  "symbol": "ACH",
+  "decimals": 8,
+  "name": "Alchemy Pay"
+}

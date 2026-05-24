@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 10,
+  "address": "0x10398abc267496e49106b07dd6be13364d10dc71",
+  "symbol": "HAI",
+  "decimals": 18,
+  "name": "HAI Index Token"
+}

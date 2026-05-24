@@ -1,4 +1,5 @@
 use crate::action::dex::{SwapAction, SwapMode};
+use crate::action::AssetRefWithAmountConstraint;
 use crate::context_keys::{FEE_BPS, RECIPIENT};
 use crate::lowering::dex::asset_with_amount_json;
 use crate::lowering::LoweringError;
@@ -15,6 +16,16 @@ const SWAP_MODE: &str = "swapMode";
 const INPUT_TOKEN: &str = "inputToken";
 const OUTPUT_TOKEN: &str = "outputToken";
 const VALIDITY: &str = "validity";
+const FEE_BPS_KEY: &str = FEE_BPS;
+const INPUT_AMOUNT_NANO: &str = "inputAmountNano";
+const OUTPUT_AMOUNT_NANO: &str = "outputAmountNano";
+
+/// Decimal-point exponent every token-native amount field shares. Raw on-chain
+/// `amount.value` is rescaled by `10^(NANO_SCALE − decimals)` so all tokens
+/// land in the same Gwei-style unit (`1 token = 10^9`) regardless of their
+/// native `decimals`. Matches the policy-builder side's `scale = 9` so a
+/// user typing `> 0.5` ends up comparing against `> 500000000` here.
+const NANO_SCALE: u32 = 9;
 
 impl Lower for SwapAction {
     fn build(&self, ctx: &LoweringCtx<'_>) -> Result<PolicyRequest, LoweringError> {
@@ -42,12 +53,47 @@ fn context(swap: &SwapAction) -> Result<Value, LoweringError> {
         context.insert(VALIDITY.into(), validity_json(validity));
     }
     if let Some(fee_bps) = swap.fee_bps {
-        context.insert(FEE_BPS.into(), cedar_long_u64(u64::from(fee_bps)));
+        context.insert(FEE_BPS_KEY.into(), cedar_long_u64(u64::from(fee_bps)));
+    }
+
+    // Engine-computed nano normalization: any token-native amount policy
+    // that used to depend on the manifest's `token.normalize_to_nano`
+    // requirement now reads this base field instead. We compute
+    // best-effort — when `amount.value` is absent (e.g. an `unlimited`
+    // constraint), or `asset.decimals` is missing, or the rescaled value
+    // exceeds `i64::MAX`, the field stays absent and the policy's
+    // `has` guard fail-opens it. Better to leave it undefined than to
+    // emit a deceptively-clamped Long.
+    if let Some(nano) = nano_amount(&swap.input_token) {
+        context.insert(INPUT_AMOUNT_NANO.into(), Value::from(nano));
+    }
+    if let Some(nano) = nano_amount(&swap.output_token) {
+        context.insert(OUTPUT_AMOUNT_NANO.into(), Value::from(nano));
     }
     // Post-Phase-2: `validityDeltaSec` is manifest-driven enrichment produced
     // by `clock.validity_delta_sec`, no longer derived from `block_timestamp`
     // host-side.
     Ok(Value::Object(context))
+}
+
+/// Compute the nano-scaled amount for one side of the swap.
+///
+/// Returns `None` when the field can't be populated reliably (missing
+/// amount value, missing decimals, or overflow during the rescale). The
+/// engine then omits the key so the policy's `has` guard reports its
+/// absence — same fail-open semantics every other optional field
+/// already uses.
+fn nano_amount(token: &AssetRefWithAmountConstraint) -> Option<i64> {
+    let amount_str = token.amount.value.as_ref()?;
+    let decimals = token.asset.decimals?;
+    let wei: u128 = amount_str.to_string().parse().ok()?;
+    let scale: u32 = u32::from(decimals);
+    let nano: u128 = if scale >= NANO_SCALE {
+        wei.checked_div(10u128.checked_pow(scale - NANO_SCALE)?)?
+    } else {
+        wei.checked_mul(10u128.checked_pow(NANO_SCALE - scale)?)?
+    };
+    i64::try_from(nano).ok()
 }
 
 const fn swap_mode_str(mode: &SwapMode) -> &'static str {
@@ -62,7 +108,7 @@ const fn swap_mode_str(mode: &SwapMode) -> &'static str {
 #[cfg(test)]
 mod tests {
     use crate::action::dex::{SwapAction, SwapMode};
-    use crate::action::misc::{ApprovalKind, ApproveAction};
+    use crate::action::misc::DelegateAction;
     use crate::action::{
         Action, AmountConstraint, AmountKind, AssetRefWithAmountConstraint, Category,
     };
@@ -166,15 +212,19 @@ mod tests {
 
     #[test]
     fn non_dex_action_returns_none() {
+        // `Delegate` has no lowering arm (it hits the dispatcher's `_ =>
+        // Ok(None)` catch-all), so the dispatcher must return `None`.
+        // Phase 7B note: `Approve` / `SetApprovalForAll` used to fill this
+        // role but are now lowered, so this regression uses `Delegate`.
         let envelope = crate::action::ActionEnvelope {
             category: Category::Misc,
-            action: Action::Approve(ApproveAction {
-                token: erc20("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6),
-                spender: address("0x2222222222222222222222222222222222222222"),
-                spender_label: None,
-                amount: amount(AmountKind::Exact, "1000"),
-                approval_kind: ApprovalKind::Erc20,
-                current_allowance: None,
+            action: Action::Delegate(DelegateAction {
+                token: erc20("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "GOV", 18),
+                delegatee: address("0x2222222222222222222222222222222222222222"),
+                delegatee_label: None,
+                current_delegate: None,
+                voting_power: None,
+                power_type: None,
                 validity: None,
             }),
         };

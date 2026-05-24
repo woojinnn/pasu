@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x17f3afe72caa6b9090801b60607918b6d2fa7cdc",
+  "symbol": "BIGTIME",
+  "decimals": 18,
+  "name": "Big Time"
+}

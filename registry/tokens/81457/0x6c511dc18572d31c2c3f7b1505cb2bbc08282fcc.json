@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0x6c511dc18572d31c2c3f7b1505cb2bbc08282fcc",
+  "symbol": "AIPO",
+  "decimals": 18,
+  "name": "Aipocalypto"
+}

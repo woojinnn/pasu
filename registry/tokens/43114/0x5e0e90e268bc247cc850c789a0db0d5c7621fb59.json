@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0x5e0e90e268bc247cc850c789a0db0d5c7621fb59",
+  "symbol": "NXPC",
+  "decimals": 18,
+  "name": "NXPC"
+}

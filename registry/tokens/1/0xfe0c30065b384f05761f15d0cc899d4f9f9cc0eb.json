@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xfe0c30065b384f05761f15d0cc899d4f9f9cc0eb",
+  "symbol": "ETHFI",
+  "decimals": 18,
+  "name": "ether.fi governance token"
+}

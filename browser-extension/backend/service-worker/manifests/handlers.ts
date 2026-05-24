@@ -16,6 +16,7 @@ import {
   previewCustomSchema,
   previewInstalledSchema,
 } from "../wasm-bridge";
+import { fetchBundledDefaultManifests } from "./dev-seed";
 import {
   loadCurrentEnabledPolicySet,
   reinstallAllPolicies,
@@ -39,6 +40,8 @@ export type ManifestRequest =
   | { type: "manifest:preview"; action: string; manifest: unknown }
   | { type: "manifest:put"; action: string; manifest: store.PolicyManifest }
   | { type: "manifest:get"; action: string }
+  | { type: "manifest:get-bundled"; action: string }
+  | { type: "manifest:get-method-catalog" }
   | { type: "manifest:get-enriched-schema" }
   | { type: "manifest:ping" }
   | { type: "manifest:alias-table" }
@@ -118,6 +121,79 @@ async function installWith(
   return atomicInstall(next, { wasmInstall: callWasmInstallMap });
 }
 
+/**
+ * Hybrid method catalog discovery for the manifest editor.
+ *
+ * Reads the bundled `method-catalog.json` and merges any catalog the
+ * configured policy-rpc daemon exposes over `GET /v1/methods`. The
+ * dynamic catalog wins on key collision so:
+ *  - A newer daemon catalog (post-extension-build update) surfaces
+ *    correctly.
+ *  - Plugin and sidecar methods added at daemon startup show up
+ *    alongside the bundled set.
+ *  - Existing bundled-only callers never break: empty merge is a
+ *    no-op.
+ *
+ * Returns `{ methods: {} }` on total failure (bundle missing AND
+ * daemon unreachable) so the manifest editor degrades to free-text
+ * mode instead of crashing.
+ */
+async function fetchHybridMethodCatalog(): Promise<{
+  methods: Record<string, unknown>;
+}> {
+  const Browser = (await import("webextension-polyfill")).default;
+  let bundled: { methods: Record<string, unknown> } = { methods: {} };
+
+  // 1) Bundled catalog from extension assets.
+  try {
+    const url = Browser.runtime.getURL("method-catalog.json");
+    const response = await fetch(url);
+    if (response.ok) {
+      const raw = (await response.json()) as { methods?: Record<string, unknown> };
+      if (raw && raw.methods && typeof raw.methods === "object") {
+        bundled = { methods: raw.methods };
+      }
+    }
+  } catch {
+    // No bundled catalog (release build skipped copy, dev forgot to run
+    // copy-method-catalog.js, etc.) — proceed with empty so the daemon
+    // catalog can still seed the UI.
+  }
+
+  // 2) Optional dynamic catalog from the configured daemon.
+  let dynamic: { methods: Record<string, unknown> } = { methods: {} };
+  const endpointUrl = await store.getEndpointUrl();
+  if (endpointUrl) {
+    try {
+      const url = `${endpointUrl.replace(/\/+$/, "")}/v1/methods`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const raw = (await response.json()) as {
+          catalog?: { methods?: Record<string, unknown> };
+          methods?: Record<string, unknown> | string[];
+        };
+        // Newer daemon shape: `{ methods: [...], catalog: { methods: {...} } }`.
+        // Older daemon shape (pre-Phase-8.5): `{ methods: [...] }` — no
+        // catalog map, treat as empty.
+        if (raw.catalog && raw.catalog.methods && typeof raw.catalog.methods === "object") {
+          dynamic = { methods: raw.catalog.methods };
+        } else if (
+          raw.methods &&
+          typeof raw.methods === "object" &&
+          !Array.isArray(raw.methods)
+        ) {
+          dynamic = { methods: raw.methods };
+        }
+      }
+    } catch {
+      // Daemon down / network error — silent, dashboard already exposes
+      // a separate "endpoint health" indicator (manifest:ping).
+    }
+  }
+
+  return { methods: { ...bundled.methods, ...dynamic.methods } };
+}
+
 async function pingEndpoint(): Promise<ManifestResponse> {
   const url = await store.getEndpointUrl();
   if (!url) {
@@ -172,6 +248,33 @@ export async function handleManifestRequest(
           ok: true,
           data: { manifest: await store.getManifest(req.action) },
         };
+      }
+
+      case "manifest:get-bundled": {
+        // Reads from the static asset bundle (`public/default-manifests/`)
+        // rather than chrome.storage — the bundled set is the "starter
+        // pack" we ship in the extension binary, never user state. The
+        // helper returns `{}` when no bundle was copied for this build,
+        // in which case there's no starter pack for the caller to install.
+        const bundled = await fetchBundledDefaultManifests();
+        return {
+          ok: true,
+          data: { manifest: bundled[req.action] ?? null },
+        };
+      }
+
+      case "manifest:get-method-catalog": {
+        // Hybrid catalog discovery (Phase 8.5):
+        //   1. Bundled `method-catalog.json` from extension assets — always
+        //      available, ships with the extension build.
+        //   2. Optional dynamic `GET /v1/methods` from the configured
+        //      policy-rpc daemon. When present, its entries OVERRIDE
+        //      the bundled set on key collision — that's how a daemon
+        //      built from newer source than the extension surfaces its
+        //      latest catalog without an extension reinstall, and how
+        //      plugin/sidecar methods reach the dashboard's editor.
+        const catalog = await fetchHybridMethodCatalog();
+        return { ok: true, data: catalog };
       }
 
       case "manifest:get-enriched-schema": {

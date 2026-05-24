@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x2565ae0385659badcada1031db704442e1b69982",
+  "symbol": "ASM",
+  "decimals": 18,
+  "name": "Assemble Protocol"
+}

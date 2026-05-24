@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 480,
+  "address": "0x337e7456b420bd3481e7fa61fa9850343d610d34",
+  "symbol": "wMXN",
+  "decimals": 18,
+  "name": "Peso Mexicano"
+}

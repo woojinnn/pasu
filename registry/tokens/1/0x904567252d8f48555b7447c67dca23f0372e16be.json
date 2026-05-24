@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x904567252d8f48555b7447c67dca23f0372e16be",
+  "symbol": "KITE",
+  "decimals": 18,
+  "name": "Kite"
+}

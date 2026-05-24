@@ -1,0 +1,63 @@
+{
+  "matched": true,
+  "bundle_id": "curve/gauge-controller/voteForGaugeWeights@1.0.0",
+  "manifest_path": "manifests/curve/gauge-controller/voteForGaugeWeights@1.0.0.json",
+  "bundle_sha256": "0xa1b64d6e0d555a250de1c49f1a99e38cbeb0a1d74bc6a6f322c0c6dae2da99a2",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/gauge-controller/voteForGaugeWeights@1.0.0",
+    "publisher": "curve.fi",
+    "match": {
+      "chain_ids": [
+        1
+      ],
+      "to": [
+        "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb"
+      ],
+      "selector": "0xd7136328"
+    },
+    "abi_fragment": {
+      "function_name": "vote_for_gauge_weights",
+      "abi": {
+        "name": "vote_for_gauge_weights",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "_gauge_addr",
+            "type": "address"
+          },
+          {
+            "name": "_user_weight",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "gauge_vote",
+      "fields": {
+        "voter": {
+          "literal": "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb"
+        },
+        "pools[0]": {
+          "from": "$.args._gauge_addr"
+        },
+        "weights[0]": {
+          "from": "$.args._user_weight"
+        },
+        "kind": {
+          "literal": "vote"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "host_capabilities": [
+        "host:token_metadata"
+      ],
+      "extension": ">=0.1.0"
+    }
+  }
+}

@@ -1,16 +1,27 @@
-//! Uniswap V4 router opcode table (opcode-dispatched, nested under UR's V4_SWAP).
+//! Uniswap V4 action opcode table — shared by the V4Router (nested under
+//! UR's `V4_SWAP`) and the V4 PositionManager (`modifyLiquidities`).
 //!
 //! When the Universal Router executes opcode `0x10 V4_SWAP`, the inner
 //! `inputs[i]` is a `(bytes actions, bytes[] params)` pair driven by V4
-//! periphery's [`Actions.sol`] library. This module provides the action
-//! table for the **router** path (swaps + delta settlement); position-
-//! management actions (used by V4 PositionManager, not V4_SWAP) are
-//! recognised by name but kept label-only so the table doubles as a
-//! reference for that follow-up wiring.
+//! periphery's [`Actions.sol`] library. The V4 PositionManager's
+//! `modifyLiquidities` / `modifyLiquiditiesWithoutUnlock` entrypoints carry
+//! the same `(bytes actions, bytes[] params)` shape against the same opcode
+//! set, so this single table backs both dispatch paths.
+//!
+//! Coverage: every opcode `0x00`–`0x18` is registered with a decode schema
+//! where the upstream action set defines one. The PositionManager liquidity
+//! actions `0x00`–`0x05` carry a JSON ABI (`*_LIQUIDITY_JSON` /
+//! `*_POSITION*_JSON` below) rather than being label-only — their `params`
+//! blobs are flat `abi.encode(...)` of the listed fields. The swap actions
+//! `0x06`–`0x09` and the settle/take actions `0x0b`–`0x16` carry Solidity
+//! tuple signatures. Only the actions upstream marks unsupported in both the
+//! router and the PositionManager (`0x0a DONATE`, `0x17`/`0x18` ERC-6909)
+//! are kept label-only.
 //!
 //! Source: `Uniswap/v4-periphery @ main`:
 //! - `src/libraries/Actions.sol` — opcode constants
-//! - `src/V4Router.sol::_handleAction` — input ABI shapes
+//! - `src/V4Router.sol::_handleAction` — router input ABI shapes
+//! - `src/PositionManager.sol::_handleAction` — PositionManager input shapes
 //! - `src/interfaces/IV4Router.sol` — `ExactInput*Params` / `ExactOutput*Params`
 //! - `src/libraries/PathKey.sol` — `PathKey` struct
 //!

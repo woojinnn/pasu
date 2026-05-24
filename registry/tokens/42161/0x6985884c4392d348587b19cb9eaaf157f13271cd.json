@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x6985884c4392d348587b19cb9eaaf157f13271cd",
+  "symbol": "ZRO",
+  "decimals": 18,
+  "name": "LayerZero"
+}

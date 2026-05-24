@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 56,
+  "address": "0x23ce9e926048273ef83be0a3a8ba9cb6d45cd978",
+  "symbol": "DAR",
+  "decimals": 6,
+  "name": "Dalarnia"
+}

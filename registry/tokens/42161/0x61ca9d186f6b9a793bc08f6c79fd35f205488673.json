@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x61ca9d186f6b9a793bc08f6c79fd35f205488673",
+  "symbol": "ILV",
+  "decimals": 18,
+  "name": "Illuvium"
+}

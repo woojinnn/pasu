@@ -3,19 +3,28 @@ import {
   compileRule,
   fetchActions,
   fetchActionSchema,
+  type OverlayField,
 } from "../policy/builder-wasm";
+import { loadOverlay } from "../policy/manifest-overlay";
 import type {
   ActionSchemaDto,
   PolicyRule,
   Predicate,
 } from "../policy/types";
+import { useExtension } from "../sdk-context";
 import { PredicateRow } from "./PredicateRow";
 import "./BuilderView.css";
 
 interface BuilderViewProps {
   rule: PolicyRule;
   onRuleChange: (rule: PolicyRule) => void;
-  onCedarChange: (cedarText: string) => void;
+  /**
+   * Fired when the user successfully compiles the current rule. `cedarText`
+   * is the emitted Cedar string; `compiledRule` is the exact `PolicyRule`
+   * snapshot the compile ran against so the caller can detect later edits
+   * (`rule !== compiledRule`) and disable save until a re-compile.
+   */
+  onCedarChange: (cedarText: string, compiledRule: PolicyRule) => void;
 }
 
 export function BuilderView({
@@ -23,10 +32,17 @@ export function BuilderView({
   onRuleChange,
   onCedarChange,
 }: BuilderViewProps) {
+  const { client } = useExtension();
   const [actions, setActions] = useState<string[]>([]);
   const [schema, setSchema] = useState<ActionSchemaDto | null>(null);
   const [schemaErr, setSchemaErr] = useState<string | null>(null);
   const [compileError, setCompileError] = useState<string | null>(null);
+  // We keep the overlay alongside the schema so the compile path can use
+  // the SAME overlay the picker rendered against. If they drift (e.g.
+  // user adds a manifest field, picks it, then a sibling tab clears
+  // chrome.storage between schema fetch and compile click), the compile
+  // would dead-end with `unknown_field`. Holding state here pins them.
+  const [overlay, setOverlay] = useState<readonly OverlayField[]>([]);
 
   useEffect(() => {
     void fetchActions().then(setActions);
@@ -35,10 +51,29 @@ export function BuilderView({
   // Pull the action schema whenever the user picks a different action.
   // Operators per field come back in this same call so we never need a
   // parallel client-side operator table.
+  //
+  // Manifest-installed custom fields (those the user added via the
+  // `/manifests/<action>` editor) live only in the engine's enriched
+  // schema, not the bundled static schema. We pull `customContexts` from
+  // `getEnrichedSchema()` and pass scalar entries the static schema
+  // doesn't already cover as an overlay so they surface in the picker
+  // alongside the bundled custom fields.
+  //
+  // Best-effort: if `getEnrichedSchema()` fails (e.g. no manifests
+  // installed yet, transport error) we fall back to the static schema.
+  // The builder must always render — overlay is an enhancement, not a
+  // hard requirement.
   useEffect(() => {
     let cancelled = false;
     setSchemaErr(null);
-    void fetchActionSchema(rule.action).then((res) => {
+    void (async () => {
+      const loaded = (await loadOverlay(client, rule.action)) ?? [];
+      if (cancelled) return;
+      setOverlay(loaded);
+      const res = await fetchActionSchema(
+        rule.action,
+        loaded.length > 0 ? loaded : undefined,
+      );
       if (cancelled) return;
       if (res.schema) {
         setSchema(res.schema);
@@ -46,17 +81,40 @@ export function BuilderView({
         setSchema(null);
         setSchemaErr(res.error?.message ?? "schema lookup failed");
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
-  }, [rule.action]);
+  }, [rule.action, client]);
 
   const handleField = <K extends keyof PolicyRule>(
     key: K,
     value: PolicyRule[K],
   ) => {
     onRuleChange({ ...rule, [key]: value });
+  };
+
+  // The id stores `dashboard::<action>/<suffix>` internally so the catalog
+  // can keep the same `<source>::<action>/<name>` namespacing as bundled
+  // defaults. The user only types the `<suffix>` half; these helpers split
+  // and recompose around that boundary.
+  const idSuffix = stripIdPrefix(rule.id, rule.action);
+  const composeId = (action: string, suffix: string): string =>
+    `dashboard::${action}/${suffix}`;
+
+  const handleIdSuffixChange = (suffix: string) => {
+    onRuleChange({ ...rule, id: composeId(rule.action, suffix) });
+  };
+
+  // Action change keeps the user-visible suffix but swaps the namespace so
+  // id ↔ action stay in lockstep — no save-time mismatch can be triggered
+  // from the builder.
+  const handleActionChange = (nextAction: string) => {
+    onRuleChange({
+      ...rule,
+      action: nextAction,
+      id: composeId(nextAction, idSuffix),
+    });
   };
 
   const handlePredicateChange = (idx: number, next: Predicate) => {
@@ -91,8 +149,20 @@ export function BuilderView({
 
   const handleCompile = async () => {
     setCompileError(null);
-    const { cedarText, error } = await compileRule(rule);
-    if (cedarText) onCedarChange(cedarText);
+    // Capture the snapshot the compile ran against so the caller can pair
+    // the resulting Cedar text with the exact rule shape that produced it.
+    // Without the snapshot, a parallel edit during the (small but non-zero)
+    // compile latency window could silently associate fresh text with a
+    // mutated rule.
+    const snapshot = rule;
+    // Pass the overlay so a rule built against an overlay field doesn't
+    // dead-end with `unknown_field` — the schema and compile paths must
+    // see the same field set.
+    const { cedarText, error } = await compileRule(
+      snapshot,
+      overlay.length > 0 ? overlay : undefined,
+    );
+    if (cedarText) onCedarChange(cedarText, snapshot);
     else setCompileError(error?.message ?? "compile failed");
   };
 
@@ -107,16 +177,16 @@ export function BuilderView({
         <Field label="ID">
           <input
             type="text"
-            value={rule.id}
-            placeholder="dashboard::my/rule"
-            onChange={(e) => handleField("id", e.target.value)}
+            value={idSuffix}
+            placeholder="newrule(0)"
+            onChange={(e) => handleIdSuffixChange(e.target.value)}
           />
         </Field>
         <Field label="Action">
           {actions.length > 0 ? (
             <select
               value={rule.action}
-              onChange={(e) => handleField("action", e.target.value)}
+              onChange={(e) => handleActionChange(e.target.value)}
             >
               {actions.map((a) => (
                 <option key={a} value={a}>
@@ -128,7 +198,7 @@ export function BuilderView({
             <input
               type="text"
               value={rule.action}
-              onChange={(e) => handleField("action", e.target.value)}
+              onChange={(e) => handleActionChange(e.target.value)}
             />
           )}
         </Field>
@@ -149,7 +219,7 @@ export function BuilderView({
         <input
           type="text"
           value={rule.reason}
-          placeholder="사용자에게 표시될 설명"
+          placeholder="describe why this should be blocked"
           onChange={(e) => handleField("reason", e.target.value)}
         />
       </Field>
@@ -225,3 +295,16 @@ function Field({
     </label>
   );
 }
+
+// Peel off whichever prefix this id actually carries so the user input
+// stays the bare suffix. Prefers the current-action prefix; falls back to
+// `dashboard::` alone for hydrated ids whose stored action segment doesn't
+// match the dropdown (e.g. legacy `dashboard::my/foo` policies).
+function stripIdPrefix(id: string, action: string): string {
+  const actionPrefix = `dashboard::${action}/`;
+  if (id.startsWith(actionPrefix)) return id.slice(actionPrefix.length);
+  const dashboardPrefix = "dashboard::";
+  if (id.startsWith(dashboardPrefix)) return id.slice(dashboardPrefix.length);
+  return id;
+}
+

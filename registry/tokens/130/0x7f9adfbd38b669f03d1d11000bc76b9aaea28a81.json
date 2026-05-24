@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x7f9adfbd38b669f03d1d11000bc76b9aaea28a81",
+  "symbol": "XVELO",
+  "decimals": 18,
+  "name": "Superchain Velodrome"
+}

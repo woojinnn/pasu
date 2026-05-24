@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x781cc305fcbfe7cde376c9ef5469d5a7e5cab8b2",
+  "symbol": "JUP",
+  "decimals": 18,
+  "name": "Jupiter"
+}

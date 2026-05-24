@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0xb582dc28968c725d2868130752afa0c13ebf9b1a",
+  "symbol": "BEPE",
+  "decimals": 18,
+  "name": "Blast Pepe"
+}

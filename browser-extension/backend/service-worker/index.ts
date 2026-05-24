@@ -4,6 +4,7 @@ import {
   handleDashboardRequest,
   isDashboardRequest,
 } from "./dashboard/api";
+import { ensureSeedBundlesInstalled } from "./marketplace/declarative-adapter-loader";
 import {
   handleManifestRequest,
   isManifestRequest,
@@ -33,8 +34,8 @@ console.log("Scopeball SW alive at", new Date().toISOString());
 // parallel created a last-writer-wins race — whichever install completed
 // second would clobber the WASM engine state, leaving storage and the
 // engine out of sync. We serialize them here: defaults first (they prime
-// the engine in the common cold-start path), then hydrate stored
-// manifests on top.
+// the engine in the common cold-start path), then declarative seed
+// bundles, then hydrate stored manifests on top.
 //
 // Both stages stay best-effort: failures are logged so the engine still
 // serves the legacy `policies-loader` install path on the first
@@ -73,6 +74,18 @@ async function bootSequence(): Promise<void> {
     await ensureDefaultPoliciesInstalled();
   } catch (err) {
     console.warn("[Scopeball] cold-start prewarm failed:", err);
+  }
+
+  // Phase 7 marketplace seed: install declarative adapter bundles
+  // (shipped with the extension) into the WASM engine. Sequenced after
+  // `ensureDefaultPoliciesInstalled` because both call into the same
+  // WASM module — sequencing keeps the init() singleton's first caller
+  // from racing the second. Failures here don't abort manifest hydration
+  // — the decideMessage path retries.
+  try {
+    await ensureSeedBundlesInstalled();
+  } catch (err) {
+    console.warn("[Scopeball] seed bundle install failed:", err);
   }
 
   // Phase 6 / Task 6.3: hydrate the manifest-driven schema on SW boot.

@@ -1,0 +1,100 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/swap-router-02/swapTokensForExactTokens-celo@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      42220
+    ],
+    "to": [
+      "0x5615CDAb10dc425a742d643d949a7F474C01abc4"
+    ],
+    "selector": "0x42712a67"
+  },
+  "abi_fragment": {
+    "function_name": "swapTokensForExactTokens",
+    "abi": {
+      "name": "swapTokensForExactTokens",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "amountOut",
+          "type": "uint256"
+        },
+        {
+          "name": "amountInMax",
+          "type": "uint256"
+        },
+        {
+          "name": "path",
+          "type": "address[]"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": {
+        "literal": "exact_out"
+      },
+      "inputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputToken.asset.address": {
+        "fn": "select_address",
+        "args": [
+          {
+            "from": "$.args.path"
+          },
+          {
+            "literal": 0
+          }
+        ]
+      },
+      "inputToken.amount.kind": {
+        "literal": "max"
+      },
+      "inputToken.amount.value": {
+        "from": "$.args.amountInMax"
+      },
+      "outputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputToken.asset.address": {
+        "fn": "select_address",
+        "args": [
+          {
+            "from": "$.args.path"
+          },
+          {
+            "literal": -1
+          }
+        ]
+      },
+      "outputToken.amount.kind": {
+        "literal": "exact"
+      },
+      "outputToken.amount.value": {
+        "from": "$.args.amountOut"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

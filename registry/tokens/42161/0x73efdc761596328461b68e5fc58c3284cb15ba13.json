@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x73efdc761596328461b68e5fc58c3284cb15ba13",
+  "symbol": "PLUME",
+  "decimals": 18,
+  "name": "Plume"
+}

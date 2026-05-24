@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8b7dde054be9d180c1be7fae0874697374a49832",
+  "symbol": "PROS",
+  "decimals": 18,
+  "name": "Wrapped PROS"
+}

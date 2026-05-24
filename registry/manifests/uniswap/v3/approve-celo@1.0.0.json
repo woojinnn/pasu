@@ -1,0 +1,67 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/v3/approve-celo@1.0.0",
+  "publisher": "uniswap.eth",
+  "match": {
+    "chain_ids": [
+      42220
+    ],
+    "to": [
+      "0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A"
+    ],
+    "selector": "0x095ea7b3"
+  },
+  "abi_fragment": {
+    "function_name": "approve",
+    "abi": {
+      "name": "approve",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "approve",
+    "fields": {
+      "token.kind": {
+        "literal": "erc721"
+      },
+      "token.address": {
+        "from": "$.tx.to"
+      },
+      "token.tokenId": {
+        "from": "$.args.tokenId"
+      },
+      "spender": {
+        "from": "$.args.to"
+      },
+      "amount.kind": {
+        "literal": "exact"
+      },
+      "amount.value": {
+        "literal": "1"
+      },
+      "approvalKind": {
+        "literal": "erc20"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

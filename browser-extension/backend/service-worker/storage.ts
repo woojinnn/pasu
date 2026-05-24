@@ -27,6 +27,26 @@ export interface AuditEntry {
     call_ids: string[];
     methods: string[];
   };
+  /**
+   * Phase 6 — declarative adapter pipeline audit, only present for
+   * transactions (the only message type the declarative path runs for).
+   * See `orchestrator.ts::DeclarativeAuditMeta` for the contract.
+   */
+  declarative?: {
+    outcome: "hit" | "miss" | "fault";
+    source?: "layer1" | "layer2" | "jit";
+    decoder_id?: string;
+    bundle_id?: string;
+    envelope_count?: number;
+    reason?: string;
+  };
+  /**
+   * Phase 7F — which Cedar pipeline produced the verdict.
+   * `"declarative"` ⇒ `evaluate_with_envelopes_json` (Phase 7A).
+   * `"static"` ⇒ legacy `evaluateWithPolicyRpc` path.
+   * Absent on engine-error short-circuits (where we have no signal).
+   */
+  verdictSource?: "declarative" | "static";
   decidedAtMs: number;
 }
 

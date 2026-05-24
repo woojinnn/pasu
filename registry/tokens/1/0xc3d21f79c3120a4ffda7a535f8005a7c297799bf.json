@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xc3d21f79c3120a4ffda7a535f8005a7c297799bf",
+  "symbol": "TERM",
+  "decimals": 18,
+  "name": "Term Finance"
+}

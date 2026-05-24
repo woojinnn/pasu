@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x1ac70c9e29bc19640e64d938dd8d6a46dbae6f2e",
+  "symbol": "TRAC",
+  "decimals": 18,
+  "name": "OriginTrail"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x397e34aff8bfc8ec14aa78f378074f6d8e3e7d06",
+  "symbol": "MEME",
+  "decimals": 18,
+  "name": "Memecoin"
+}

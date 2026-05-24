@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x3c45038f4807c5bb72f6bc72c2a2b9c012155e49",
+  "symbol": "RAD",
+  "decimals": 18,
+  "name": "Radicle"
+}

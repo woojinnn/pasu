@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0xc221b7e65ffc80de234bbb6667abdd46593d34f0",
+  "symbol": "WCFG",
+  "decimals": 18,
+  "name": "Wrapped Centrifuge"
+}

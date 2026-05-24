@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
+  "symbol": "USDbC",
+  "decimals": 6,
+  "name": "USD Base Coin"
+}

@@ -21,10 +21,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { AliasTableEntry, PolicyManifest } from "@scopeball/sdk";
+import type {
+  AliasTableEntry,
+  MethodCatalog,
+  MethodCatalogEntry,
+  MethodParamSpec,
+  PolicyManifest,
+} from "@scopeball/sdk";
 import { useExtension } from "../sdk-context";
 import { OutputRow, type OutputDraft } from "../manifest/output-row";
-import { SelectorPicker } from "../manifest/selector-picker";
+import {
+  SelectorPicker,
+  filterTypedPaths,
+} from "../manifest/selector-picker";
+import { fetchTypedPaths, type TypedPaths } from "../policy/builder-wasm";
 import "./manifest-editor.css";
 
 interface ParamRow {
@@ -75,11 +85,97 @@ interface DraftValidation {
     idErr: string | null;
     methodErr: string | null;
     needsOutputs: boolean;
+    // paramErrs[j] = error for the j-th param of this requirement.
+    // `null` when valid. Populated only when `methodCatalog` declares
+    // a spec for that param — catalog-less rows can't be validated and
+    // fall through as `null` (legacy permissive behaviour).
+    paramErrs: Array<string | null>;
     outputErrs: Array<{ fieldErr: string | null; typeErr: string | null }>;
   }>;
 }
 
-export function validateDraft(draft: ManifestDraft): DraftValidation {
+/**
+ * Validate a single param value against its catalog spec + the
+ * action's typed-path table. Returns `null` when valid (or when we
+ * lack the data to validate).
+ *
+ * Rules:
+ * - empty + required → "Required"
+ * - enum_-constrained → value must be in the enum
+ * - `$.action.*` / `$.root.*` selector → must appear in
+ *   `filterTypedPaths(typedPaths, spec.type)` when that list is
+ *   non-empty. These two roots have authoritative typed-path lists
+ *   from `get_typed_paths_for_action_json`, so a missing entry means
+ *   the path genuinely doesn't exist (typo, removed field).
+ *   (An empty matching list means the action has NO path of this type
+ *   — we accept any `$.action`/`$.root` selector as a manual override
+ *   to match the picker's empty-state input forgiveness.)
+ * - `$.context.*` / `$.result.*` / `$.params.*` selector → accepted as
+ *   override. The Rust typed-paths fixture intentionally omits these
+ *   roots (the lowered context can carry computed fields like
+ *   `inputAmountNano` that don't live on the envelope; result/params
+ *   shapes are runtime-defined). Daemon does the final check.
+ * - unknown `$.foo.…` root → rejected.
+ * - non-`$.` Bool literal → must be exactly `"true"` or `"false"`
+ * - other non-`$.` literals → pass through (server-side validates)
+ *
+ * `typedPaths === null` (still loading or fetch failed) makes selector
+ * validation a no-op so the user isn't blocked by a transient cache miss.
+ */
+export function validateParamValue(
+  rawValue: string,
+  spec: MethodParamSpec | undefined,
+  typedPaths: TypedPaths | null,
+): string | null {
+  const value = rawValue.trim();
+  if (value === "") {
+    return spec?.required === true ? "Required" : null;
+  }
+  if (!spec) return null;
+
+  if (spec.enum_ && spec.enum_.length > 0) {
+    if (!(spec.enum_ as readonly string[]).includes(value)) {
+      return `Must be one of: ${spec.enum_.join(", ")}`;
+    }
+    return null;
+  }
+
+  if (value.startsWith("$.")) {
+    const root = value.split(".", 2)[1] ?? "";
+    // Roots with authoritative typed-path lists — strict check.
+    if (root === "action" || root === "root") {
+      if (!typedPaths) return null;
+      const matching = filterTypedPaths(typedPaths, spec.type);
+      if (matching.length === 0) return null;
+      if (!matching.includes(value)) {
+        return `'${value}' is not a valid ${spec.type} selector for this action`;
+      }
+      return null;
+    }
+    // Roots whose shape isn't enumerated client-side — defer to daemon.
+    if (
+      root === "context" ||
+      root === "result" ||
+      root === "params"
+    ) {
+      return null;
+    }
+    return `Unknown selector root '$.${root}'`;
+  }
+
+  if (spec.type === "Bool") {
+    if (value !== "true" && value !== "false") {
+      return "Must be true, false, or a $.selector";
+    }
+  }
+  return null;
+}
+
+export function validateDraft(
+  draft: ManifestDraft,
+  methodCatalog: MethodCatalog | null = null,
+  typedPaths: TypedPaths | null = null,
+): DraftValidation {
   const manifestIdErr = draft.id.trim() === "" ? "Manifest id is required" : null;
   const requirementErrs = draft.requires.map((r) => {
     const idErr = r.id.trim() === "" ? "Requirement id is required" : null;
@@ -89,11 +185,15 @@ export function validateDraft(draft: ManifestDraft): DraftValidation {
     // can't actually fail closed.
     const nonEmptyOutputs = r.outputs.filter((o) => o.field.trim() !== "");
     const needsOutputs = !r.optional && nonEmptyOutputs.length === 0;
+    const methodEntry = methodCatalog?.methods?.[r.method];
+    const paramErrs = r.params.map((p) =>
+      validateParamValue(p.selector, methodEntry?.params?.[p.key], typedPaths),
+    );
     const outputErrs = r.outputs.map((o) => ({
       fieldErr: o.field.trim() === "" ? "Field name is required" : null,
       typeErr: o.type.trim() === "" ? "Type is required" : null,
     }));
-    return { idErr, methodErr, needsOutputs, outputErrs };
+    return { idErr, methodErr, needsOutputs, paramErrs, outputErrs };
   });
   const valid =
     manifestIdErr === null &&
@@ -102,6 +202,7 @@ export function validateDraft(draft: ManifestDraft): DraftValidation {
         e.idErr === null &&
         e.methodErr === null &&
         !e.needsOutputs &&
+        e.paramErrs.every((p) => p === null) &&
         e.outputErrs.every((o) => o.fieldErr === null && o.typeErr === null),
     );
   return { valid, manifestIdErr, requirementErrs };
@@ -110,14 +211,31 @@ export function validateDraft(draft: ManifestDraft): DraftValidation {
 // Convert the form draft to the wire `PolicyManifest`. `params` becomes a
 // k→selector record per requirement. We strip empty rows so the user can
 // keep blank scaffolding rows in the UI without polluting the manifest.
-function draftToManifest(draft: ManifestDraft, action: string): PolicyManifest {
+//
+// The draft stores every param value as a string (that's what the
+// SelectorPicker emits). The wire shape, however, accepts any JSON
+// value — so when the catalog declares a Bool param and the user
+// picked the literal `true`/`false`, we serialise as a JSON boolean
+// (not the string `"true"`) so the daemon's substitution layer
+// doesn't reject it. Selectors (paths starting with `$.`) and
+// non-Bool values pass through as-is. `methodCatalog` is consulted
+// per-param to decide which branch to take; absent catalog means
+// every value goes out as a string (legacy behaviour preserved for
+// catalog-less rows).
+function draftToManifest(
+  draft: ManifestDraft,
+  action: string,
+  methodCatalog: MethodCatalog | null,
+): PolicyManifest {
   return {
     id: draft.id,
     schema_version: 1,
     requires: draft.requires.map((r) => {
-      const params: Record<string, string> = {};
+      const methodEntry = methodCatalog?.methods?.[r.method];
+      const params: Record<string, unknown> = {};
       for (const p of r.params) {
-        if (p.key) params[p.key] = p.selector;
+        if (!p.key) continue;
+        params[p.key] = serializeParamValue(p.selector, methodEntry?.params?.[p.key]);
       }
       return {
         id: r.id,
@@ -137,6 +255,31 @@ function draftToManifest(draft: ManifestDraft, action: string): PolicyManifest {
       };
     }),
   };
+}
+
+/**
+ * Promote a draft param value (always a string) to its wire-shape JSON
+ * type. Today this only matters for Bool literals — selectors and
+ * other types stay as strings because the daemon resolves them
+ * downstream. Bool literals MUST become JSON booleans so
+ * `optionalBoolean()` on the daemon side accepts them.
+ *
+ * A value that starts with `$.` is treated as a selector regardless
+ * of catalog type — we never coerce a path expression, only literals.
+ */
+function serializeParamValue(
+  raw: string,
+  spec: MethodParamSpec | undefined,
+): unknown {
+  if (raw.startsWith("$.")) return raw;
+  if (spec?.type === "Bool") {
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+    // Anything else (empty, typo) goes through as string and the
+    // daemon validator surfaces the error — better than silently
+    // dropping the value.
+  }
+  return raw;
 }
 
 // Reverse — used when an existing manifest is loaded from storage so the
@@ -184,25 +327,52 @@ export function ManifestEditor(): JSX.Element {
 
   const [draft, setDraft] = useState<ManifestDraft>(emptyDraft);
   const [aliasEntries, setAliasEntries] = useState<AliasTableEntry[]>([]);
-  const [busy, setBusy] = useState<null | "preview" | "save">(null);
+  const [busy, setBusy] = useState<null | "preview" | "save" | "starter">(
+    null,
+  );
   const [err, setErr] = useState<{ kind: string; message: string } | null>(
     null,
   );
   const [info, setInfo] = useState<string | null>(null);
+  // `null`: not yet checked (or no starter pack ships for this action).
+  // `PolicyManifest`: a bundled manifest is available — render the
+  // "Install starter pack" affordance.
+  const [bundledStarter, setBundledStarter] = useState<PolicyManifest | null>(
+    null,
+  );
+  // Catalog drives every dropdown in this editor (Phase 8.5). `null`
+  // means "not loaded yet" — children render in legacy free-text mode
+  // until it lands. `{methods: {}}` means "loaded but empty", in which
+  // case we also fall back to free-text mode rather than blanking the
+  // method dropdown.
+  const [methodCatalog, setMethodCatalog] = useState<MethodCatalog | null>(
+    null,
+  );
+  // Per-action typed-path table — drives the Save-time check that
+  // every `$.selector` actually resolves under this action's schema.
+  // `null` while loading; an empty `{scalars: [], records: []}` payload
+  // (action has no typed paths at all) is a valid loaded state and the
+  // validator treats it the same as "no truth source, accept anything".
+  const [typedPaths, setTypedPaths] = useState<TypedPaths | null>(null);
 
-  // Load alias table + existing manifest on mount. Alias table is pure;
-  // the manifest may be null (fresh action).
+  // Load alias table + existing manifest + bundled starter-pack manifest
+  // + method catalog on mount. None of these block first paint — the
+  // editor renders in degraded modes until they land.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [aliases, { manifest }] = await Promise.all([
+        const [aliases, stored, bundled, catalog] = await Promise.all([
           client.getAliasTable(),
           client.getManifest(action),
+          client.getBundledManifest(action),
+          client.getMethodCatalog(),
         ]);
         if (cancelled) return;
         setAliasEntries(aliases.entries);
-        if (manifest) setDraft(manifestToDraft(manifest));
+        if (stored.manifest) setDraft(manifestToDraft(stored.manifest));
+        setBundledStarter(bundled.manifest);
+        setMethodCatalog(catalog);
       } catch (e) {
         // Loading is non-fatal — the user can still author from scratch.
         // We log so the error isn't completely silent for devs.
@@ -214,12 +384,32 @@ export function ManifestEditor(): JSX.Element {
     };
   }, [client, action]);
 
+  // Fetch the action's typed-path table separately — it lives behind a
+  // WASM call and only the param-validator needs it, so we keep it off
+  // the critical-path Promise.all above. A failure leaves `typedPaths`
+  // as `null` and the validator becomes a no-op (legacy permissive).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchTypedPaths(action);
+        if (cancelled) return;
+        if (res.paths) setTypedPaths(res.paths);
+      } catch (e) {
+        console.warn("[ManifestEditor] typed-paths load failed:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [action]);
+
   const onPreview = useCallback(async () => {
     setBusy("preview");
     setErr(null);
     setInfo(null);
     try {
-      const output = await client.previewManifest(action, draftToManifest(draft, action));
+      const output = await client.previewManifest(action, draftToManifest(draft, action, methodCatalog));
       // Phase 7 codex carry-over J: stash the preview output in
       // `sessionStorage` so SchemaViewer can render it as a "draft
       // preview" overlay instead of just re-fetching the
@@ -242,26 +432,59 @@ export function ManifestEditor(): JSX.Element {
     } finally {
       setBusy(null);
     }
-  }, [client, action, draft, navigate]);
+  }, [client, action, draft, methodCatalog, navigate]);
 
   const onSave = useCallback(async () => {
     setBusy("save");
     setErr(null);
     setInfo(null);
     try {
-      const result = await client.putManifest(action, draftToManifest(draft, action));
+      const result = await client.putManifest(action, draftToManifest(draft, action, methodCatalog));
       setInfo(`Installed. enrichedSchemaHash=${result.enrichedSchemaHash}`);
     } catch (e) {
       setErr(extractErr(e));
     } finally {
       setBusy(null);
     }
-  }, [client, action, draft]);
+  }, [client, action, draft, methodCatalog]);
+
+  /**
+   * Pull the bundled starter-pack manifest into the editor draft.
+   *
+   * Phase 8 swap of behaviour: the SW used to auto-seed this on first
+   * boot, which silently tied every user's storage to the shipped set
+   * and broke when bundled enrichments changed. The user now imports
+   * explicitly — they see what's loaded and can edit before saving.
+   *
+   * We REPLACE rather than merge: the starter pack is a coherent
+   * "default config" snapshot, not a set of independent additions, and
+   * merging would let stale partial state pollute the result. If the
+   * user has unsaved work, they can cancel via the confirm dialog.
+   */
+  const onInstallStarterPack = useCallback(() => {
+    if (!bundledStarter) return;
+    const hasExistingContent =
+      draft.id !== "" || draft.requires.length > 0;
+    if (hasExistingContent) {
+      const ok = window.confirm(
+        "기존에 작성 중인 매니페스트가 starter pack으로 대체됩니다. 계속할까요?",
+      );
+      if (!ok) return;
+    }
+    setDraft(manifestToDraft(bundledStarter));
+    setErr(null);
+    setInfo(
+      "Starter pack을 불러왔습니다. 검토 후 Save를 눌러 설치하세요.",
+    );
+  }, [bundledStarter, draft]);
 
   // Phase 7 codex carry-over L: validate before enabling Save.
   // `Preview` stays clickable while invalid — the user is allowed to
   // probe the server-side validator without committing.
-  const validation = useMemo(() => validateDraft(draft), [draft]);
+  const validation = useMemo(
+    () => validateDraft(draft, methodCatalog, typedPaths),
+    [draft, methodCatalog, typedPaths],
+  );
 
   const aliasOptions = useMemo(
     () =>
@@ -291,6 +514,26 @@ export function ManifestEditor(): JSX.Element {
         </label>
       </header>
 
+      {bundledStarter && draft.requires.length === 0 ? (
+        <section className="manifest-starter-pack">
+          <p>
+            이 action(<code>{action}</code>)에 대한 권장 enrichment 모음
+            (<strong>{bundledStarter.requires.length}개</strong>)이 익스텐션에
+            번들되어 있습니다. 가져온 뒤 검토하고 Save하면 설치됩니다.
+          </p>
+          <button
+            type="button"
+            className="manifest-starter-pack-install"
+            onClick={onInstallStarterPack}
+            disabled={busy !== null}
+          >
+            Install starter pack ({bundledStarter.requires.length}{" "}
+            requirement
+            {bundledStarter.requires.length === 1 ? "" : "s"})
+          </button>
+        </section>
+      ) : null}
+
       <section className="manifest-requires">
         <div className="manifest-requires-head">
           <h2>Requirements</h2>
@@ -319,6 +562,8 @@ export function ManifestEditor(): JSX.Element {
             action={action}
             value={r}
             aliasOptions={aliasOptions}
+            methodCatalog={methodCatalog}
+            paramErrs={validation.requirementErrs[ri]?.paramErrs ?? []}
             onChange={(next) =>
               setDraft({
                 ...draft,
@@ -381,12 +626,69 @@ interface RequiresEditorProps {
     kind: "scalar" | "record";
     cedarSpelling: string;
   }>;
+  /**
+   * Hybrid catalog (bundled + daemon-dynamic). `null` during initial
+   * mount, after which one of two paths render:
+   *   - Catalog present → `Method` is a `<select>`, params auto-populate
+   *     and lock to catalog keys, outputs lock type/from to the
+   *     method's `returns`.
+   *   - Catalog empty (no daemon, no bundle) → fall back to free-text
+   *     mode. Better than blanking the editor and stranding the user.
+   */
+  methodCatalog: MethodCatalog | null;
+  /** Per-param validation error from `validateDraft`. Aligned 1:1 with
+   * `value.params`. `null` slot = valid (or no spec to validate against). */
+  paramErrs: ReadonlyArray<string | null>;
   onChange: (next: RequiresRow) => void;
   onRemove: () => void;
 }
 
 function RequiresEditor(props: RequiresEditorProps): JSX.Element {
-  const { action, value, aliasOptions, onChange, onRemove } = props;
+  const {
+    action,
+    value,
+    aliasOptions,
+    methodCatalog,
+    paramErrs,
+    onChange,
+    onRemove,
+  } = props;
+  const methodEntry: MethodCatalogEntry | undefined =
+    methodCatalog?.methods?.[value.method];
+  // Catalog-aware mode kicks in when (1) the catalog loaded with at
+  // least one method, AND (2) the currently-selected method is in it.
+  // A method NOT in the catalog (legacy manifest, custom typed-in
+  // name, etc.) falls back to free-text so the user isn't stranded.
+  const hasCatalog =
+    methodCatalog !== null &&
+    Object.keys(methodCatalog.methods ?? {}).length > 0;
+  const isCatalogMethod = methodEntry !== undefined;
+
+  /**
+   * Switching the method swaps the whole row's params/outputs to the
+   * shape the new method declares. Without this, leftover keys from
+   * the previous method would still serialise into the saved manifest
+   * and the daemon would reject them as `invalid_params`.
+   *
+   * Preserves the row's `id`, `optional` flag (those are independent
+   * of method choice). Uses each param's `defaultSelector` and each
+   * method's `returns` to pre-fill sensible values.
+   */
+  const handleMethodChange = (nextMethod: string) => {
+    const nextEntry = methodCatalog?.methods?.[nextMethod];
+    if (!nextEntry) {
+      // Unknown method — keep params/outputs as-is so a typed legacy
+      // name doesn't lose the user's existing wiring.
+      onChange({ ...value, method: nextMethod });
+      return;
+    }
+    onChange({
+      ...value,
+      method: nextMethod,
+      params: paramsFromCatalog(nextEntry),
+      outputs: outputsFromCatalog(nextEntry),
+    });
+  };
 
   return (
     <div className="manifest-requires-row">
@@ -403,13 +705,37 @@ function RequiresEditor(props: RequiresEditorProps): JSX.Element {
         </label>
         <label>
           Method
-          <input
-            type="text"
-            aria-label="requirement method"
-            value={value.method}
-            onChange={(e) => onChange({ ...value, method: e.target.value })}
-            placeholder="oracle.usd_value"
-          />
+          {hasCatalog ? (
+            <select
+              aria-label="requirement method"
+              value={value.method}
+              onChange={(e) => handleMethodChange(e.target.value)}
+            >
+              {/* Empty option lets the user "unset" and triggers the
+                  unknown-method fallback path on subsequent picks. */}
+              {value.method === "" || !isCatalogMethod ? (
+                <option value={value.method}>
+                  {value.method === ""
+                    ? "— select method —"
+                    : `${value.method} (legacy / not in catalog)`}
+                </option>
+              ) : null}
+              {Object.entries(methodCatalog!.methods).map(([name, entry]) => (
+                <option key={name} value={name}>
+                  {name}
+                  {entry.origin !== "bundled" ? ` (${entry.origin})` : ""}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              aria-label="requirement method"
+              value={value.method}
+              onChange={(e) => onChange({ ...value, method: e.target.value })}
+              placeholder="oracle.usd_value"
+            />
+          )}
         </label>
         <label className="manifest-requires-optional">
           <input
@@ -432,62 +758,134 @@ function RequiresEditor(props: RequiresEditorProps): JSX.Element {
         </button>
       </div>
 
-      <details className="manifest-params">
+      {methodEntry?.description ? (
+        <p className="manifest-method-description">{methodEntry.description}</p>
+      ) : null}
+
+      <details className="manifest-params" open={isCatalogMethod}>
         <summary>Params ({value.params.length})</summary>
-        {value.params.map((p, i) => (
-          <div key={i} className="manifest-param-row">
-            <input
-              type="text"
-              aria-label="param key"
-              value={p.key}
-              onChange={(e) =>
-                onChange({
-                  ...value,
-                  params: value.params.map((x, j) =>
-                    j === i ? { ...x, key: e.target.value } : x,
-                  ),
-                })
-              }
-              placeholder="param key"
-            />
-            <SelectorPicker
-              mode="params"
-              action={action}
-              value={p.selector}
-              onChange={(next) =>
-                onChange({
-                  ...value,
-                  params: value.params.map((x, j) =>
-                    j === i ? { ...x, selector: next } : x,
-                  ),
-                })
-              }
-            />
-            <button
-              type="button"
-              aria-label="remove param"
-              onClick={() =>
-                onChange({
-                  ...value,
-                  params: value.params.filter((_, j) => j !== i),
-                })
-              }
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() =>
-            onChange({
-              ...value,
-              params: [...value.params, { key: "", selector: "" }],
-            })
-          }
-        >
-          + Add param
-        </button>
+        {value.params.map((p, i) => {
+          const spec = methodEntry?.params?.[p.key];
+          const paramErr = paramErrs[i] ?? null;
+          return (
+            <div key={i} className="manifest-param-row">
+              {isCatalogMethod ? (
+                <span
+                  className="manifest-param-key-locked"
+                  title={spec?.description ?? p.key}
+                >
+                  {p.key}
+                  {spec?.required === false ? " (optional)" : ""}
+                </span>
+              ) : (
+                <input
+                  type="text"
+                  aria-label="param key"
+                  value={p.key}
+                  onChange={(e) =>
+                    onChange({
+                      ...value,
+                      params: value.params.map((x, j) =>
+                        j === i ? { ...x, key: e.target.value } : x,
+                      ),
+                    })
+                  }
+                  placeholder="param key"
+                />
+              )}
+              {spec?.enum_ && spec.enum_.length > 0 ? (
+                // Closed-set enum (e.g. `source: "coingecko" | …`) —
+                // render as <select> so users can't typo a value the
+                // daemon will reject.
+                <select
+                  aria-label="param value"
+                  value={p.selector}
+                  onChange={(e) =>
+                    onChange({
+                      ...value,
+                      params: value.params.map((x, j) =>
+                        j === i ? { ...x, selector: e.target.value } : x,
+                      ),
+                    })
+                  }
+                >
+                  {p.selector === "" ||
+                  !(spec.enum_ as readonly string[]).includes(p.selector) ? (
+                    <option value={p.selector}>
+                      {p.selector === ""
+                        ? "— select —"
+                        : `${p.selector} (not in enum)`}
+                    </option>
+                  ) : null}
+                  {spec.enum_.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <SelectorPicker
+                  mode="params"
+                  action={action}
+                  /* PR 4: when the catalog declared the param's type,
+                     pass it down so the picker can offer a flat list of
+                     compatible paths instead of every $.action.* leaf.
+                     Without this, a user could wire `amount` (String)
+                     to `$.root.chain_id` (Long) and the daemon would
+                     only reject at install/runtime. */
+                  requiredType={spec?.type}
+                  value={p.selector}
+                  onChange={(next) =>
+                    onChange({
+                      ...value,
+                      params: value.params.map((x, j) =>
+                        j === i ? { ...x, selector: next } : x,
+                      ),
+                    })
+                  }
+                />
+              )}
+              {/* Catalog mode locks the param set — no remove button
+                  for declared keys; legacy/free-text mode keeps it. */}
+              {isCatalogMethod ? null : (
+                <button
+                  type="button"
+                  aria-label="remove param"
+                  onClick={() =>
+                    onChange({
+                      ...value,
+                      params: value.params.filter((_, j) => j !== i),
+                    })
+                  }
+                >
+                  ×
+                </button>
+              )}
+              {paramErr ? (
+                <span
+                  className="manifest-param-err"
+                  data-testid="manifest-param-err"
+                  role="alert"
+                >
+                  {paramErr}
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
+        {isCatalogMethod ? null : (
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                ...value,
+                params: [...value.params, { key: "", selector: "" }],
+              })
+            }
+          >
+            + Add param
+          </button>
+        )}
       </details>
 
       <details className="manifest-outputs" open>
@@ -498,6 +896,12 @@ function RequiresEditor(props: RequiresEditorProps): JSX.Element {
             action={action}
             value={o}
             aliasOptions={aliasOptions}
+            // For catalog methods, the first output is "primary" —
+            // pre-filled from the method's `returns`; we pass the
+            // method entry so OutputRow knows which type/from slot
+            // to lock vs let the user freely edit.
+            lockedMethod={isCatalogMethod ? methodEntry : undefined}
+            isPrimaryOutput={i === 0}
             onChange={(next) =>
               onChange({
                 ...value,
@@ -525,6 +929,57 @@ function RequiresEditor(props: RequiresEditorProps): JSX.Element {
         </button>
       </details>
     </div>
+  );
+}
+
+/**
+ * Build the params list from a catalog entry. Each param key gets a
+ * row scaffolded with the declared key but an EMPTY value — the user
+ * picks the selector (or literal) for every param themselves, so the
+ * editor never silently commits a guess the user didn't make.
+ *
+ * Required params come first to match the catalog's declared order;
+ * optional ones (currently only `source` on `oracle.usd_value`) come
+ * after so they sit at the bottom of the list.
+ */
+function paramsFromCatalog(entry: MethodCatalogEntry): ParamRow[] {
+  const keys = Object.keys(entry.params);
+  return keys.map<ParamRow>((key) => ({ key, selector: "" }));
+}
+
+/**
+ * Build the initial outputs list for a catalog entry. We always
+ * create exactly one output row aligned with the method's `returns`
+ * — the user can add more later via `+ Add output` (e.g. to extract
+ * a sub-leaf of a record return into its own scalar slot).
+ */
+function outputsFromCatalog(entry: MethodCatalogEntry): OutputDraft[] {
+  return [
+    {
+      field: defaultFieldName(entry),
+      type: entry.returns.type,
+      from: entry.returns.kind === "record" ? "$.result" : entry.returns.from,
+      required: false,
+    },
+  ];
+}
+
+/**
+ * Guess a starter `outputs[].field` name from the method name. E.g.
+ * `oracle.usd_value` → `oracleUsdValue` (camelCase). User edits this
+ * to whatever fits their domain (`totalInputUsd`, `swapValueUsd`,
+ * etc.) before saving. We pick a name rather than leaving blank so
+ * the row reads as wiring-on-arrival.
+ */
+function defaultFieldName(entry: MethodCatalogEntry): string {
+  const parts = entry.name.split(/[.\-_]/g).filter(Boolean);
+  if (parts.length === 0) return "value";
+  return (
+    parts[0] +
+    parts
+      .slice(1)
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join("")
   );
 }
 

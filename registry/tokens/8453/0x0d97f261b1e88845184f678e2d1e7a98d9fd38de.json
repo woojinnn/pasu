@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0x0d97f261b1e88845184f678e2d1e7a98d9fd38de",
+  "symbol": "TYBG",
+  "decimals": 18,
+  "name": "Base God"
+}

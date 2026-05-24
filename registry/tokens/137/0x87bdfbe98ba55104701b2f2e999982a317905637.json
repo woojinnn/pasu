@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0x87bdfbe98ba55104701b2f2e999982a317905637",
+  "symbol": "CNKT+",
+  "decimals": 18,
+  "name": "Coinnekt+"
+}

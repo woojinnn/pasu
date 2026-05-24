@@ -4,9 +4,200 @@ import {
   type NowMs,
 } from "../types.js";
 import { isRecord } from "../validation.js";
+import type { MethodCatalogEntry } from "./catalog.js";
 
 const MAX_UINT256 =
   "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+
+// ── Catalog entries ────────────────────────────────────────────────
+//
+// One `MethodCatalogEntry` per public method, exported next to its
+// factory. The registry collects them; the dashboard's manifest editor
+// consumes them via `GET /v1/methods` to drive its dropdowns.
+//
+// `defaultSelector` values track the canonical "swap" wiring because
+// that's the bundled starter pack's reference shape. Authors targeting
+// other actions (transfer, approve) edit after picking the method —
+// the catalog is best-effort here, not strict.
+
+export const clockNowCatalog: MethodCatalogEntry = {
+  name: "clock.now",
+  description: "Current Unix timestamp (seconds) from the daemon's clock.",
+  params: {},
+  returns: { kind: "scalar", type: "Long", from: "$.result.nowTs" },
+  origin: "bundled",
+};
+
+export const approvalAllowanceCatalog: MethodCatalogEntry = {
+  name: "approval.allowance",
+  description:
+    "Inspect a token allowance: surfaces raw value, unlimited-allowance flag, and coverage of a requested amount.",
+  params: {
+    allowance: {
+      type: "String",
+      required: false,
+      description: "Current allowance (uint256 string). Defaults to 0 when omitted.",
+    },
+    requested_amount: {
+      type: "String",
+      required: false,
+      description: "Amount being requested by the transaction (uint256 string).",
+    },
+  },
+  // Returns a multi-field record. Output editor pulls out the scalar
+  // leaves explicitly via $.result.<field>; there's no Cedar alias
+  // for the whole shape so we mark it `scalar` from the umbrella
+  // result with the most policy-relevant field as default.
+  returns: { kind: "scalar", type: "Bool", from: "$.result.coversRequestedAmount" },
+  origin: "bundled",
+};
+
+export const approvalCoverInputsCatalog: MethodCatalogEntry = {
+  name: "approval.cover_inputs",
+  description: "Whether the token allowance covers the requested input amount.",
+  params: {
+    allowances_cover_inputs: {
+      type: "Bool",
+      required: false,
+      description: "Caller-supplied override; takes precedence when present.",
+    },
+    allowance: {
+      type: "String",
+      required: false,
+      description: "Current allowance (uint256 string).",
+    },
+    requested_amount: {
+      type: "String",
+      required: false,
+      description: "Amount being requested by the transaction.",
+    },
+  },
+  returns: { kind: "scalar", type: "Bool", from: "$.result.allowancesCoverInputs" },
+  origin: "bundled",
+};
+
+export const oracleEffectiveRateBpsCatalog: MethodCatalogEntry = {
+  name: "oracle.effective_rate_bps",
+  description:
+    "Effective rate of a swap vs the oracle's mid-market price, expressed in basis points (negative = unfavourable).",
+  params: {
+    chain_id: {
+      type: "Long",
+      required: true,
+      defaultSelector: "$.root.chain_id",
+    },
+    token_in: {
+      type: "AssetRef",
+      required: true,
+      defaultSelector: "$.action.inputToken.asset",
+    },
+    amount_in: {
+      type: "String",
+      required: true,
+      defaultSelector: "$.action.inputToken.amount.value",
+    },
+    token_out: {
+      type: "AssetRef",
+      required: true,
+      defaultSelector: "$.action.outputToken.asset",
+    },
+    amount_out: {
+      type: "String",
+      required: true,
+      defaultSelector: "$.action.outputToken.amount.value",
+    },
+  },
+  returns: { kind: "scalar", type: "Long", from: "$.result.bps" },
+  origin: "bundled",
+};
+
+export const portfolioBalanceCatalog: MethodCatalogEntry = {
+  name: "portfolio.balance",
+  description: "Wallet balance of a specific token.",
+  params: {
+    chain_id: {
+      type: "Long",
+      required: true,
+      defaultSelector: "$.root.chain_id",
+    },
+    owner: {
+      type: "String",
+      required: true,
+      defaultSelector: "$.root.from",
+    },
+    asset: {
+      type: "AssetRef",
+      required: true,
+      defaultSelector: "$.action.inputToken.asset",
+    },
+  },
+  returns: { kind: "scalar", type: "String", from: "$.result.balance" },
+  origin: "bundled",
+};
+
+export const portfolioInputFractionBpsCatalog: MethodCatalogEntry = {
+  name: "portfolio.input_fraction_bps",
+  description:
+    "Fraction of the wallet's portfolio (denominated in the input asset) the transaction is spending, in basis points.",
+  params: {
+    chain_id: {
+      type: "Long",
+      required: true,
+      defaultSelector: "$.root.chain_id",
+    },
+    owner: {
+      type: "String",
+      required: true,
+      defaultSelector: "$.root.from",
+    },
+    asset: {
+      type: "AssetRef",
+      required: true,
+      defaultSelector: "$.action.inputToken.asset",
+    },
+    amount: {
+      type: "String",
+      required: true,
+      defaultSelector: "$.action.inputToken.amount.value",
+    },
+  },
+  returns: { kind: "scalar", type: "Long", from: "$.result.bps" },
+  origin: "bundled",
+};
+
+export const statWindowSnapshotCatalog: MethodCatalogEntry = {
+  name: "stat_window.snapshot",
+  description: "Rolling-window snapshot of recent on-chain activity for the wallet.",
+  params: {
+    owner: {
+      type: "String",
+      required: true,
+      defaultSelector: "$.root.from",
+    },
+  },
+  returns: { kind: "record", type: "WindowStats" },
+  origin: "bundled",
+};
+
+export const statWindowSwapStatsCatalog: MethodCatalogEntry = {
+  name: "stat_window.swap_stats",
+  description: "Per-action stats over a sliding 24h window (volume + count).",
+  params: {
+    owner: {
+      type: "String",
+      required: true,
+      defaultSelector: "$.root.from",
+    },
+    action: {
+      type: "String",
+      required: true,
+      description: "Action keyword (e.g. \"swap\").",
+      defaultSelector: "swap",
+    },
+  },
+  returns: { kind: "record", type: "WindowStats" },
+  origin: "bundled",
+};
 
 export function createClockNowMethod(nowMs: NowMs = Date.now) {
   return async (rawParams: unknown): Promise<JsonObject> => {

@@ -128,11 +128,30 @@ export interface PreviewManifestOutput {
   schemaHash: string;
 }
 
+/**
+ * One manifest-contributed custom-context field, as returned by
+ * `preview_installed_schema_json`. Field names are snake_case because the
+ * engine's `CustomFieldSource` derives serde defaults without renaming.
+ *
+ * UIs typically care about `field` + `cedar_type`; the `source_*` columns
+ * are provenance breadcrumbs (which requirement / RPC method introduced
+ * the field), useful for debugging mismatches between the installed
+ * manifest map and the visible schema.
+ */
+export interface CustomContextField {
+  field: string;
+  cedar_type: string;
+  source_requirement_id: string;
+  source_method: string;
+  source_from: string;
+  requirement_optional: boolean;
+}
+
 export interface EnrichedSchemaOutput {
   schema_text: string;
   schema_hash: string;
   added_fields: unknown[];
-  customContexts: Record<string, unknown[]>;
+  customContexts: Record<string, CustomContextField[]>;
   schemaHash: string;
 }
 
@@ -186,6 +205,90 @@ export const V0_KNOWN_FIELDS: readonly string[] = [
   "recipientIsContract",
 ];
 
+// ── Method catalog (Phase 8.5) ────────────────────────────────────
+//
+// The dashboard's manifest editor reads the catalog to drive its
+// method/param/output dropdowns. Two discovery paths:
+//   1. Static bundle — `method-catalog.json` shipped in the
+//      extension assets, fetched via `Browser.runtime.getURL`.
+//   2. Dynamic from the configured policy-rpc daemon — `GET /v1/methods`,
+//      which may add plugin/sidecar methods on top of the bundled set.
+// `client.getMethodCatalog()` returns the merged view (dynamic wins on
+// conflicts so a daemon that updates its bundled methods through a
+// newer version still surfaces correctly).
+
+/** Cedar-aligned type spellings the catalog declares for params/returns. */
+export type CatalogScalarType =
+  | "Long"
+  | "String"
+  | "Bool"
+  | "decimal"
+  | "Set<String>";
+
+export type CatalogRecordType =
+  | "UsdValuation"
+  | "WindowStats"
+  | "Validity"
+  | "AssetRef"
+  | "AmountConstraint"
+  | "AssetRefWithAmountConstraint"
+  | "TickRange"
+  | "Pool";
+
+export type CatalogType = CatalogScalarType | CatalogRecordType;
+
+export interface MethodParamSpec {
+  type: CatalogType;
+  required: boolean;
+  description?: string;
+  defaultSelector?: string;
+  enum_?: readonly string[];
+  default?: string | number | boolean;
+}
+
+export type MethodReturnSpec =
+  | { kind: "record"; type: CatalogRecordType }
+  | { kind: "scalar"; type: CatalogScalarType; from: string };
+
+export interface MethodCatalogEntry {
+  name: string;
+  description?: string;
+  params: Record<string, MethodParamSpec>;
+  returns: MethodReturnSpec;
+  /**
+   * `bundled` — shipped with the daemon binary.
+   * `plugin`  — loaded from the daemon's `plugins/` dir (X-2).
+   * `sidecar` — discovered via HTTP from a configured external daemon (X-1).
+   * UI uses this to badge entries distinctly.
+   */
+  origin: "bundled" | "plugin" | "sidecar";
+}
+
+export interface MethodCatalog {
+  methods: Record<string, MethodCatalogEntry>;
+}
+
+/**
+ * Fields that moved FROM the optional `context.custom.<field>` extension
+ * back DOWN to the base `context.<field>` shape during Phase 8. The
+ * engine populates them itself during calldata lowering instead of via
+ * a manifest enrichment — see
+ * `policy-engine/src/lowering/dex/swap.rs::nano_amount`.
+ *
+ * Policies authored before Phase 8 may reference these under the old
+ * `context.custom.*` path. Both shapes parse via the policy-builder
+ * parser (the schema lookup canonicalizes the path on either side), but
+ * the OLD STRING TEXT installed in the engine will fail strict cedar
+ * schema validation after a re-install because `SwapCustomContext` no
+ * longer carries these fields. A future banner can use
+ * `migration::rewritePolicyTextCustomToBase` with this list to fix the
+ * installed text.
+ */
+export const V1_TO_V2_AMOUNT_FIELDS: readonly string[] = [
+  "inputAmountNano",
+  "outputAmountNano",
+];
+
 export interface ExtensionClient {
   ping(): Promise<{ version: number }>;
   getCatalog(): Promise<Catalog>;
@@ -232,6 +335,30 @@ export interface ExtensionClient {
   ): Promise<ManifestPutResult>;
   /** Read back one stored manifest (or `null` when absent). */
   getManifest(action: string): Promise<{ manifest: PolicyManifest | null }>;
+  /**
+   * Fetch the bundled "starter pack" manifest for `action` from the
+   * extension's static assets (`public/default-manifests/`). Phase 8
+   * stopped auto-seeding these into storage on first boot — the
+   * `/manifests/<action>` page now uses this method to power the
+   * "Install starter pack" button (explicit user opt-in).
+   *
+   * Returns `null` when no starter pack ships for the action (e.g. a
+   * release build that didn't run `copy-default-manifests.js`).
+   */
+  getBundledManifest(
+    action: string,
+  ): Promise<{ manifest: PolicyManifest | null }>;
+  /**
+   * Hybrid catalog discovery (Phase 8.5):
+   *   1. Read the bundled `method-catalog.json` from extension assets.
+   *   2. If a policy-rpc endpoint URL is configured, fetch its
+   *      `GET /v1/methods` and merge — dynamic wins on key conflicts.
+   * Used by the manifest editor to drive method/param/output dropdowns.
+   *
+   * Returns an empty catalog (`{ methods: {} }`) on total failure so
+   * the UI degrades gracefully (free-text mode) instead of crashing.
+   */
+  getMethodCatalog(): Promise<MethodCatalog>;
   /** Read back the currently-installed enriched cedarschema. */
   getEnrichedSchema(): Promise<EnrichedSchemaOutput>;
   /** Ping the configured policy-rpc endpoint's `/v1/healthz` URL. */
@@ -417,6 +544,13 @@ export function createExtensionClient(
         type: "manifest:get",
         action,
       }),
+    getBundledManifest: (action) =>
+      request<{ manifest: PolicyManifest | null }>({
+        type: "manifest:get-bundled",
+        action,
+      }),
+    getMethodCatalog: () =>
+      request<MethodCatalog>({ type: "manifest:get-method-catalog" }),
     getEnrichedSchema: () =>
       request<EnrichedSchemaOutput>({ type: "manifest:get-enriched-schema" }),
     pingRpcEndpoint: () =>

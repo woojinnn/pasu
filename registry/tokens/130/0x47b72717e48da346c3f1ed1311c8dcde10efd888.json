@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 130,
+  "address": "0x47b72717e48da346c3f1ed1311c8dcde10efd888",
+  "symbol": "SAFE",
+  "decimals": 18,
+  "name": "Safe"
+}

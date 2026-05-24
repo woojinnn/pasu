@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 137,
+  "address": "0xac0f66379a6d7801d7726d5a943356a172549adb",
+  "symbol": "GEOD",
+  "decimals": 18,
+  "name": "Geodnet Token"
+}

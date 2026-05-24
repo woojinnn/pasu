@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 81457,
+  "address": "0xb9dfcd4cf589bb8090569cb52fac1b88dbe4981f",
+  "symbol": "BAG",
+  "decimals": 18,
+  "name": "Bag"
+}

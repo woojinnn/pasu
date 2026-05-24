@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 43114,
+  "address": "0xcd94a87696fac69edae3a70fe5725307ae1c43f6",
+  "symbol": "BLACK",
+  "decimals": 18,
+  "name": "BLACKHOLE"
+}

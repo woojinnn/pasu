@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc049a8e43a9ec1a72c6348bbba4085810e5842e1",
+  "symbol": "SLX",
+  "decimals": 18,
+  "name": "Solstice"
+}

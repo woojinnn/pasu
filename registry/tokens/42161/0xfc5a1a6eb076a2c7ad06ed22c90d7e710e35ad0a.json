@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0xfc5a1a6eb076a2c7ad06ed22c90d7e710e35ad0a",
+  "symbol": "GMX",
+  "decimals": 18,
+  "name": "GMX"
+}

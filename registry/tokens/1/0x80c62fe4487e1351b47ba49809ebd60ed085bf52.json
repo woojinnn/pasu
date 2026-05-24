@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 1,
+  "address": "0x80c62fe4487e1351b47ba49809ebd60ed085bf52",
+  "symbol": "CLV",
+  "decimals": 18,
+  "name": "Clover Finance"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "erc20",
+  "chainId": 42161,
+  "address": "0x3a1429d50e0cbbc45c997af600541fe1cc3d2923",
+  "symbol": "FORT",
+  "decimals": 18,
+  "name": "Forta"
+}

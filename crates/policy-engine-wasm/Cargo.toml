@@ -5,16 +5,27 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+# Force wasm-opt -Oz (size-optimal) + --strip-debug for production release
+# builds. Plan §9 NEVER guardrail: WASM size > 6 MiB. After merging Phase
+# 7 + Phase 8 + Phase 12 (Curve) the artifact grew to 6.02 MiB even with
+# -Oz alone — --strip-debug recovers the ~30 KB budget. No effect on
+# Cargo profile.release — only the wasm-pack post-processing step.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--strip-debug", "--enable-bulk-memory", "--enable-mutable-globals"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 alloy-primitives.workspace = true
+abi-resolver.workspace = true
 policy-engine.workspace = true
 request-router.workspace = true
 mappers.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+anyhow = "1"
+hex = "0.4"
 wasm-bindgen.workspace = true
 js-sys.workspace = true
 console_error_panic_hook.workspace = true
@@ -25,3 +36,4 @@ getrandom.workspace = true
 
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
+alloy-dyn-abi.workspace = true
