@@ -36,7 +36,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('webextension-polyfill', () => ({ default: mocks.browser }));
-vi.mock('@background/marketplace/storage', () => ({
+vi.mock('@background/adapter-loader/storage', () => ({
   listInstalled: mocks.listInstalled,
 }));
 vi.mock('@background/dashboard/storage', () => ({

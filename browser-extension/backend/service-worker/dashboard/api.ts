@@ -2,8 +2,8 @@ import {
   type ParamsSchema,
   type ParamValues,
   validateParams,
-} from "../marketplace/params-validator";
-import { renderAndVerify } from "../marketplace/template-renderer";
+} from "../adapter-loader/params-validator";
+import { renderAndVerify } from "../adapter-loader/template-renderer";
 import { reinstallAllPolicies } from "../policies-loader";
 import {
   applyEnabledIds,

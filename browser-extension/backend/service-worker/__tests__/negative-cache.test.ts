@@ -10,7 +10,7 @@ import {
   __resetNegativeCacheForTest,
   negativeCache,
   serializeKey,
-} from "../marketplace/negative-cache";
+} from "../adapter-loader/negative-cache";
 import type { CallMatchKey } from "../registry/client";
 
 const KEY: CallMatchKey = {

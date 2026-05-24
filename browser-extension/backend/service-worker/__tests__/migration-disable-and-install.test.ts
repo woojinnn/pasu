@@ -57,7 +57,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("webextension-polyfill", () => ({ default: mocks.browser }));
 vi.mock("../wasm-bridge", () => ({ installPolicies: mocks.installPolicies }));
-vi.mock("../marketplace/storage", () => ({
+vi.mock("../adapter-loader/storage", () => ({
   aggregatedPolicySet: vi.fn(async () => []),
   listInstalled: vi.fn(async () => []),
 }));

@@ -1,7 +1,7 @@
 /**
  * Phase 2B — `installBundle` pipeline.
  *
- * Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §7.3:869-887.
+ * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §7.3:869-887.
  *
  * Pipeline (demo-stage integrity layer):
  *   1. Shape validation — `parseBundle` (Phase 0 hand-written validator)
@@ -77,7 +77,7 @@ function formatDetails(
 }
 
 /**
- * Compute the canonical-JSON SHA-256 used by the marketplace. Exported for
+ * Compute the canonical-JSON SHA-256 used by the adapter-loader. Exported for
  * the jit-fetcher and the test harness — both need to round-trip an
  * in-memory bundle through the same hash function the registry's
  * `build-index.ts` uses.

@@ -5,7 +5,7 @@ ScopeBall private adapter-registry 앞단의 **caching authenticated reverse-pro
 계정 권한으로 읽어 익스텐션에 중계한다. 익스텐션은 이 서비스 URL 을
 `REGISTRY_BASE_URL` 로 가리킨다.
 
-Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §6.
+Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §6.
 
 ## Endpoints
 

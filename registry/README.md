@@ -1,6 +1,6 @@
-# ScopeBall Adapter Marketplace Registry (PoC)
+# ScopeBall Adapter Loader Registry (PoC)
 
-ScopeBall 의 Adapter Function Bundle 을 호스팅하는 정적 파일 레지스트리. PoC 단계는 단일 endpoint + HTTPS + 정적 JSON 으로 시작 (spec [§6](../../ADAPTER_MARKETPLACE_ARCHITECTURE.md#6-registry-—-데모-단순-구현)).
+ScopeBall 의 Adapter Function Bundle 을 호스팅하는 정적 파일 레지스트리. PoC 단계는 단일 endpoint + HTTPS + 정적 JSON 으로 시작 (spec [§6](../../ADAPTER_LOADER_ARCHITECTURE.md#6-registry-—-데모-단순-구현)).
 
 ## 디렉토리 트리
 
@@ -57,7 +57,7 @@ Client (browser-extension) 는 다음 패턴으로 GET:
 GET http://localhost:8000/index/by-callkey/<chain_id>__<lowercased_to>__<lowercased_selector>.json
 ```
 
-* 200 → JSON body 의 `bundle` field 사용 (inlined). `bundle_sha256` 로 client 측 무결성 검증 (spec [§7.3](../../ADAPTER_MARKETPLACE_ARCHITECTURE.md#73-코드-흐름-typescript-pseudo))
+* 200 → JSON body 의 `bundle` field 사용 (inlined). `bundle_sha256` 로 client 측 무결성 검증 (spec [§7.3](../../ADAPTER_LOADER_ARCHITECTURE.md#73-코드-흐름-typescript-pseudo))
 * 404 → registry 에 entry 없음. negative cache 5분 (`reason="no_publisher"`)
 
 ## spec §6.1 의 API endpoint 와의 mapping

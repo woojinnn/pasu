@@ -1,7 +1,7 @@
 import Browser from 'webextension-polyfill';
 import { parsePolicyMeta, type Severity } from '@lib/policy-meta';
 import { listManaged } from './dashboard/storage';
-import { listInstalled } from './marketplace/storage';
+import { listInstalled } from './adapter-loader/storage';
 
 const ENABLED_KEY = 'policy-selection:enabled-ids';
 const APPLIED_KEY = 'policy-selection:applied-ids';

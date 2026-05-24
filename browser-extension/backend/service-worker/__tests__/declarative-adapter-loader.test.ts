@@ -33,7 +33,7 @@ import {
   DeclarativeAdapterLoadError,
   ensureSeedBundlesInstalled,
   mountDeclarativeBundle,
-} from "../marketplace/declarative-adapter-loader";
+} from "../adapter-loader/declarative-adapter-loader";
 
 const FIXTURE_PATH = path.resolve(
   __dirname,

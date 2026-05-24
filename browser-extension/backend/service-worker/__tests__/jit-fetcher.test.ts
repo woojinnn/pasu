@@ -40,7 +40,7 @@ vi.mock("../wasm-bridge", () => ({
   installDeclarativeBundle: mocks.installDeclarativeBundle,
 }));
 
-vi.mock("../marketplace/adapter-cache", () => ({
+vi.mock("../adapter-loader/adapter-cache", () => ({
   adapterCache: {
     get: mocks.adapterCacheGet,
     put: mocks.adapterCachePut,
@@ -52,15 +52,15 @@ import {
   __resetJitFetcherForTest,
   prefetchChildAdapters,
   resolveAdapter,
-} from "../marketplace/jit-fetcher";
+} from "../adapter-loader/jit-fetcher";
 import {
   __resetNegativeCacheForTest,
   negativeCache,
-} from "../marketplace/negative-cache";
+} from "../adapter-loader/negative-cache";
 import {
   __resetSeedBundlesForTest,
   mountDeclarativeBundle,
-} from "../marketplace/declarative-adapter-loader";
+} from "../adapter-loader/declarative-adapter-loader";
 import type { CallMatchKey } from "../registry/client";
 
 const FIXTURE_PATH = path.resolve(

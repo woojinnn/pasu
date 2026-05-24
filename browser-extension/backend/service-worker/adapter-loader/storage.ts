@@ -1,7 +1,7 @@
 import Browser from "webextension-polyfill";
 import type { ParamValues } from "./params-validator";
 
-const KEY = "marketplace:bundles";
+const KEY = "adapter-loader:bundles";
 
 export interface RenderedPolicyEntry {
   id: string;

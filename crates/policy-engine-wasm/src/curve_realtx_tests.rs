@@ -52,6 +52,13 @@ fn install_dir(p: &Path, count: &mut usize) {
     entries.sort();
     for path in entries {
         if path.is_dir() {
+            // `_template/` dir 은 R1.1 의 generator 가 사용하는 placeholder
+            // template 보관용 — install 대상 아님 (__POOL__/__CHAIN_ID__ 가
+            // bundle schema 에서 invalid). build-index.ts + audit-addresses.ts
+            // 도 동일 skip rule.
+            if path.file_name().and_then(|n| n.to_str()) == Some("_template") {
+                continue;
+            }
             install_dir(&path, count);
         } else if path.extension().and_then(|e| e.to_str()) == Some("json") {
             let bundle = std::fs::read_to_string(&path).unwrap();

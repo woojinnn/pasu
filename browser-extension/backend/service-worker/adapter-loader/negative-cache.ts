@@ -1,7 +1,7 @@
 /**
  * Phase 2B — In-memory negative cache.
  *
- * Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §7.3:824-866 and §7.4 row
+ * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §7.3:824-866 and §7.4 row
  * "JIT retry 정책".
  *
  * Why memoise misses? Without a negative cache, every call to a known-bad
@@ -98,7 +98,7 @@ class InMemoryNegativeCache implements NegativeCache {
 
 /**
  * Process-singleton instance. The Service Worker boots a single
- * marketplace stack, so a module-level singleton is exactly the right
+ * adapter-loader stack, so a module-level singleton is exactly the right
  * granularity. Tests can call `.clear()` to reset between cases — the
  * `__resetNegativeCacheForTest` helper formalises that.
  */

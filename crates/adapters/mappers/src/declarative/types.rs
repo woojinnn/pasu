@@ -1,4 +1,4 @@
-//! Bundle JSON types — 1:1 with ADAPTER_MARKETPLACE_ARCHITECTURE.md §4.1, §5.1.
+//! Bundle JSON types — 1:1 with ADAPTER_LOADER_ARCHITECTURE.md §4.1, §5.1.
 //!
 //! Phase 0 scope: serde-able structs/enums only. No interpreter, no Mapper impl.
 //! These types are wire format definitions that future phases (1, 4, 5, ...)

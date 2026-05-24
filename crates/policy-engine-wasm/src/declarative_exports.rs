@@ -211,7 +211,7 @@ impl ChildResolver for WasmChildResolver {
 /// Install (or replace) a declarative adapter bundle.
 ///
 /// Input JSON shape: the full bundle as per
-/// `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §4.1 (see
+/// `ADAPTER_LOADER_ARCHITECTURE.md` §4.1 (see
 /// `crates/adapters/mappers/tests/fixtures/uniswap-v2-swap-exact-tokens.json`).
 ///
 /// Output:

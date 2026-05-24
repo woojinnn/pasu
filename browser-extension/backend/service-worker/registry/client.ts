@@ -1,7 +1,7 @@
 /**
  * Phase 2B — Registry HTTP client.
  *
- * Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §6.1 (index URL pattern) and
+ * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §6.1 (index URL pattern) and
  * §7.3 (JIT fetch flow).
  *
  * Responsibilities:
@@ -18,7 +18,7 @@
  *   - Mirror / OHTTP routing (§7.4 future row).
  *   - Layer 2 prefetch — Phase 4+.
  */
-import type { AdapterFunctionBundle } from "../marketplace/bundle-schema";
+import type { AdapterFunctionBundle } from "../adapter-loader/bundle-schema";
 
 /** Input to `byCallKey` — mirrors the Rust `CallMatchKey`. */
 export interface CallMatchKey {

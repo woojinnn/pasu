@@ -145,7 +145,7 @@ vi.mock("../policy-rpc", () => ({
 // Phase 6 — orchestrator calls `tryDeclarativeRoute` on every transaction.
 // We stub it to a fast "no_selector" miss so tests that don't care about
 // the declarative path don't have to mock the WASM bridge + JIT fetcher.
-vi.mock("../marketplace/declarative-route", () => ({
+vi.mock("../adapter-loader/declarative-route", () => ({
   tryDeclarativeRoute: mocks.tryDeclarativeRoute,
 }));
 

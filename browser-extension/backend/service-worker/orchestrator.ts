@@ -1,9 +1,9 @@
 import Browser from "webextension-polyfill";
-import { ensureSeedBundlesInstalled } from "./marketplace/declarative-adapter-loader";
+import { ensureSeedBundlesInstalled } from "./adapter-loader/declarative-adapter-loader";
 import {
   tryDeclarativeRoute,
   type DeclarativeRouteOutcome,
-} from "./marketplace/declarative-route";
+} from "./adapter-loader/declarative-route";
 import {
   ensureDefaultPoliciesInstalled,
   getActivePolicyRpcManifests,
@@ -46,7 +46,7 @@ interface DecisionOptions {
 /**
  * Phase 6 — audit telemetry capturing the declarative pipeline's contribution
  * to a single decision. Surfaced in the audit log so we can tell which
- * marketplace bundle handled (or failed to handle) a given tx.
+ * adapter-loader bundle handled (or failed to handle) a given tx.
  *
  * Phase 7F update: when `outcome === "hit"` AND `envelope_count > 0`, the
  * declarative path now drives the Cedar verdict via
@@ -360,7 +360,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
 
   // Phase 6 → Phase 7F — declarative path is now a verdict driver, not
   // observability-only. For transactions we hand off
-  // `(chainId, to, calldata)` to the marketplace router. A hit with one or
+  // `(chainId, to, calldata)` to the adapter-loader router. A hit with one or
   // more enriched envelopes lets us run `evaluate_with_envelopes_json`
   // directly, skipping `plan_policy_rpc_json` and the RPC enrichment hop.
   //

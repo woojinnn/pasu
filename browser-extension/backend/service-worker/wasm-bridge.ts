@@ -116,7 +116,7 @@ export interface DeclarativeRouteRequestInput {
  * Result of a successful `declarative_route_request_json` call. `decoder_id`
  * is the bundle id the bridge resolved (`declarative.<path>`); the
  * orchestrator surfaces it in audit telemetry so we can tell which
- * marketplace adapter handled a given tx.
+ * adapter loader handled a given tx.
  */
 export interface DeclarativeRouteRequestResult {
   envelopes: Record<string, unknown>[];
@@ -323,7 +323,7 @@ export async function planPolicyRpc(
 
 /**
  * Phase 1B — install a declarative adapter bundle into the engine. The
- * bundle JSON must conform to `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §4.1; the
+ * bundle JSON must conform to `ADAPTER_LOADER_ARCHITECTURE.md` §4.1; the
  * engine returns the `declarative.<path>` decoder id keyed off the bundle.
  *
  * Re-installing the same bundle is idempotent on the engine side — the

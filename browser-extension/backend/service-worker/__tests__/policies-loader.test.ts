@@ -32,7 +32,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("webextension-polyfill", () => ({ default: mocks.browser }));
 vi.mock("../wasm-bridge", () => ({ installPolicies: mocks.installPolicies }));
-vi.mock("../marketplace/storage", () => ({
+vi.mock("../adapter-loader/storage", () => ({
   aggregatedPolicySet: mocks.aggregatedPolicySet,
   listInstalled: vi.fn(async () => []),
 }));
@@ -212,7 +212,7 @@ describe("policies-loader (filtered install)", () => {
     expect(ids).toEqual(["acme::v1/guard", "default::dex/a"]);
   });
 
-  it("ensureDefaultPoliciesInstalled also filters marketplace contributions", async () => {
+  it("ensureDefaultPoliciesInstalled also filters adapter-loader contributions", async () => {
     mocks.localStore.set("policy-selection:enabled-ids", ["acme::v1/guard"]);
     mocks.aggregatedPolicySet.mockResolvedValue([
       {

@@ -30,8 +30,8 @@ import {
   canonicalSha256,
   InstallError,
   installBundle,
-} from "../marketplace/installBundle";
-import { __resetSeedBundlesForTest } from "../marketplace/declarative-adapter-loader";
+} from "../adapter-loader/installBundle";
+import { __resetSeedBundlesForTest } from "../adapter-loader/declarative-adapter-loader";
 
 const FIXTURE_PATH = path.resolve(
   __dirname,

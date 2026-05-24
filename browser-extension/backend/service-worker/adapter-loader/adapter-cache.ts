@@ -1,5 +1,5 @@
 /**
- * Layer 2 — persistent adapter bundle cache (ADAPTER_MARKETPLACE §7).
+ * Layer 2 — persistent adapter bundle cache (ADAPTER_LOADER §7).
  *
  * Layer 1 (mountedByCallKey + WASM DECLARATIVE_STATE) 은 in-memory 라 SW
  * 종료(~30s idle) 시 소멸. Layer 2 는 JIT fetch 한 bundle 을

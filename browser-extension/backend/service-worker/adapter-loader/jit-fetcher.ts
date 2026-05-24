@@ -1,7 +1,7 @@
 /**
  * Phase 2B — Just-In-Time adapter resolver.
  *
- * Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §7 (3-layer loading) and
+ * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §7 (3-layer loading) and
  * §7.3 (`resolveAdapter` / `doJitFetch` pseudocode).
  *
  * Lookup order:

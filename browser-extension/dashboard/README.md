@@ -28,7 +28,7 @@ import { createExtensionClient } from "@scopeball/sdk";
 
 const c = createExtensionClient();
 await c.ping();                                  // handshake → { version: 1 }
-await c.getCatalog();                            // defaults ∪ marketplace ∪ dashboard
+await c.getCatalog();                            // defaults ∪ adapter-loader ∪ dashboard
 await c.listManaged();                           // dashboard:: policies only
 await c.putRaw({ id: "dashboard::my/rule", text: "..." });
 await c.putTemplate({ id, templateText, paramsSchema, paramValues });

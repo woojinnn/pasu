@@ -56,7 +56,7 @@
  * Production code (declarative-route.ts, token-client.ts, orchestrator.ts,
  * policy-set.json) is NOT modified. All boundaries are mocked at the test
  * fence — vitest mocks for `wasm-bridge`, `jit-fetcher`, `policy-rpc`,
- * `policies-loader`, `storage`, `marketplace/declarative-route`, and
+ * `policies-loader`, `storage`, `adapter-loader/declarative-route`, and
  * `webextension-polyfill`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -282,7 +282,7 @@ describe("enrichEnvelopeAssets edge cases", () => {
 // ─── Groups B + C: orchestrator-driven verdictSource + Cedar verdict ──────
 //
 // These tests need the orchestrator wiring — separate `describe` block so
-// the `vi.mock` graph reaches `../orchestrator` instead of the marketplace
+// the `vi.mock` graph reaches `../orchestrator` instead of the adapter-loader
 // router boundaries.
 
 const orchestratorMocks = vi.hoisted(() => {
@@ -438,13 +438,13 @@ vi.mock("../../policy-rpc", () => ({
     });
   },
 }));
-// `../../marketplace/declarative-route` is imported directly in Group A to
+// `../../adapter-loader/declarative-route` is imported directly in Group A to
 // exercise `enrichEnvelopeAssets`, but the orchestrator (loaded inside
 // Group B+C) needs `tryDeclarativeRoute` mocked. We use `importOriginal` to
 // preserve the real `enrichEnvelopeAssets` while overriding the route entry.
-vi.mock("../../marketplace/declarative-route", async (importOriginal) => {
+vi.mock("../../adapter-loader/declarative-route", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("../../marketplace/declarative-route")>();
+    await importOriginal<typeof import("../../adapter-loader/declarative-route")>();
   return {
     ...actual,
     tryDeclarativeRoute: orchestratorMocks.tryDeclarativeRoute,

@@ -1,7 +1,7 @@
 /**
  * Phase 7D — Token metadata registry client.
  *
- * Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §8 (`host:token_metadata`
+ * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §8 (`host:token_metadata`
  * enrichment) and §7 (3-layer loading), reused for the
  * `host:token_metadata` enrichment path.
  *
@@ -24,7 +24,7 @@
  * Out of scope (per Phase 7D PoC):
  *   - HMAC-SHA256 key obfuscation (§7.5) — raw keys for now.
  *   - True `indexedDB` (use `Browser.storage.local` like the rest of the
- *     marketplace stack — quota fits the 4-token PoC comfortably).
+ *     adapter-loader stack — quota fits the 4-token PoC comfortably).
  *   - sha256 integrity verification — token metadata is small and the
  *     registry is trusted; integrity_failed remains a slot in case we
  *     add it later.
@@ -201,7 +201,7 @@ class TokenRegistryClientImpl implements TokenRegistryClient {
 
   /**
    * Check + sweep the negative cache. Lazy expiry pattern matches
-   * `marketplace/negative-cache.ts`.
+   * `adapter-loader/negative-cache.ts`.
    */
   private negativeGet(key: string): NegativeCacheEntry | null {
     const entry = this.negative.get(key);

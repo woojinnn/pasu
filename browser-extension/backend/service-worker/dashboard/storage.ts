@@ -1,6 +1,6 @@
 import Browser from "webextension-polyfill";
-import type { ParamsSchema, ParamValues } from "../marketplace/params-validator";
-import type { RenderedPolicyEntry } from "../marketplace/storage";
+import type { ParamsSchema, ParamValues } from "../adapter-loader/params-validator";
+import type { RenderedPolicyEntry } from "../adapter-loader/storage";
 
 // chrome.storage.local quota is 5–10 MB depending on the browser, but per-item
 // 'large data' performance falls off a cliff well before that. Cap individual
@@ -87,8 +87,8 @@ export async function deleteManaged(id: string): Promise<void> {
 }
 
 /** Loader-facing projection. Mirrors the shape that
- *  marketplace `aggregatedPolicySet` returns so `policies-loader` can union
- *  defaults ∪ marketplace ∪ dashboard with one filter pass. */
+ *  adapter-loader `aggregatedPolicySet` returns so `policies-loader` can union
+ *  defaults ∪ adapter-loader ∪ dashboard with one filter pass. */
 export async function aggregatedManagedPolicySet(): Promise<
   RenderedPolicyEntry[]
 > {

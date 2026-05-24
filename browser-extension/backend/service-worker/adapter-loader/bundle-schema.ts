@@ -1,7 +1,7 @@
 /**
- * Adapter Function Bundle JSON schema (Tier A — Adapter Marketplace).
+ * Adapter Function Bundle JSON schema (Tier A — Adapter Loader).
  *
- * Spec: ADAPTER_MARKETPLACE_ARCHITECTURE.md §4.1, §5.1 (BNF), §5.3.
+ * Spec: ADAPTER_LOADER_ARCHITECTURE.md §4.1, §5.1 (BNF), §5.3.
  *
  * Phase 0 scope:
  *   - TypeScript types matching the spec 1:1
@@ -12,7 +12,7 @@
  *     reject unsupported strategies with clear errors instead of opaque
  *     JSON errors.
  *
- * Implementation note: the existing marketplace files
+ * Implementation note: the existing adapter-loader files
  * (`bundle-validator.ts`, `params-validator.ts`) use plain TypeScript +
  * hand-written validators rather than zod. We follow the same convention
  * for consistency (zod is not in the dependency tree).

@@ -159,7 +159,7 @@ vi.mock("../policies-loader", () => ({
   loadCurrentEnabledPolicySet: vi.fn(async () => []),
   reinstallAllPolicies: vi.fn(async () => undefined),
 }));
-vi.mock("../marketplace/storage", () => ({
+vi.mock("../adapter-loader/storage", () => ({
   aggregatedPolicySet: mocks.aggregatedPolicySet,
   listInstalled: mocks.listInstalled,
 }));

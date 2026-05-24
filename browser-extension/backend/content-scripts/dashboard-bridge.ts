@@ -73,7 +73,7 @@ async function forward(
 // fan out to the page.
 const WATCHED_KEYS = new Set([
   "dashboard:policies",
-  "marketplace:bundles",
+  "adapter-loader:bundles",
   "policy-selection:enabled-ids",
   "policy-selection:applied-ids",
   // Audit log appends on every verdict — dashboard's AuditPage uses this

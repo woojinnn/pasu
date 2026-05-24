@@ -1,7 +1,7 @@
 /**
  * Phase 1B — declarative adapter loader.
  *
- * Spec: `ADAPTER_MARKETPLACE_ARCHITECTURE.md` §5.5 (TS bridge) and §7
+ * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §5.5 (TS bridge) and §7
  * (3-layer loading). The loader is the single mount point onto the WASM
  * engine for declarative bundles:
  *

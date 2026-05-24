@@ -4,12 +4,13 @@ import {
   handleDashboardRequest,
   isDashboardRequest,
 } from "./dashboard/api";
-import { ensureSeedBundlesInstalled } from "./marketplace/declarative-adapter-loader";
+import { ensureSeedBundlesInstalled } from "./adapter-loader/declarative-adapter-loader";
 import {
   handleManifestRequest,
   isManifestRequest,
 } from "./manifests/handlers";
 import { hydrateManifests } from "./manifests/hydrate";
+import { migrateAdapterLoaderStorageKey } from "./manifests/adapter-loader-storage-migration";
 import { detectPendingMigrations } from "./manifests/migration-detector";
 import { decideMessage } from "./orchestrator";
 import {
@@ -65,6 +66,22 @@ async function bootSequence(): Promise<void> {
     console.warn("[Scopeball] migration auto-detect failed:", err);
   }
 
+  // Adapter-loader storage key migration (one-time, idempotent).
+  //
+  // The `marketplace/` directory was renamed to `adapter-loader/` —
+  // chrome.storage key `"marketplace:bundles"` (installed adapter bundle
+  // cache) also moved to `"adapter-loader:bundles"`. Runs after the
+  // policy-level migration detector and before any install path so the
+  // bundle storage is at the new key when downstream code reads it. The
+  // migration touches chrome.storage only (no WASM dependency), so its
+  // placement is purely about ordering with other migrations.
+  try {
+    await migrateAdapterLoaderStorageKey();
+  } catch (err) {
+    console.warn("[Scopeball] adapter-loader storage migration failed:", err);
+    // Non-fatal — first JIT fetch will populate the new key anyway.
+  }
+
   // Cold-start prewarm: kick off WASM module load + default policy
   // install so the first dApp request doesn't pay the 4.77MB compile
   // cost inside the 3s lifecycle budget. We await this before hydrating
@@ -76,7 +93,7 @@ async function bootSequence(): Promise<void> {
     console.warn("[Scopeball] cold-start prewarm failed:", err);
   }
 
-  // Phase 7 marketplace seed: install declarative adapter bundles
+  // Phase 7 adapter-loader seed: install declarative adapter bundles
   // (shipped with the extension) into the WASM engine. Sequenced after
   // `ensureDefaultPoliciesInstalled` because both call into the same
   // WASM module — sequencing keeps the init() singleton's first caller
