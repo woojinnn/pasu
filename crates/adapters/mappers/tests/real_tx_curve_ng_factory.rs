@@ -74,8 +74,8 @@ fn ng_factory_bundles_parse_count_131_and_templates_not_indexed() {
         assert!(dir.is_dir(), "pool-type dir missing: {dir:?}");
         let mut type_count = 0usize;
         walk_bundle_files(&dir, &mut |path| {
-            let raw = std::fs::read_to_string(path)
-                .unwrap_or_else(|e| panic!("read {path:?}: {e}"));
+            let raw =
+                std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));
             let bundle: AdapterFunctionBundle = serde_json::from_str(&raw).unwrap_or_else(|e| {
                 panic!("parse failed {path:?}: {e}\n--- raw ---\n{raw}\n--- end ---")
             });
@@ -98,9 +98,15 @@ fn ng_factory_bundles_parse_count_131_and_templates_not_indexed() {
     ];
     for (k, want) in expected_per_type {
         let got = per_type.get(k).copied().unwrap_or(0);
-        assert_eq!(got, want, "pool-type `{k}`: got {got} manifests, want {want}");
+        assert_eq!(
+            got, want,
+            "pool-type `{k}`: got {got} manifests, want {want}"
+        );
     }
-    assert_eq!(total, 131, "total NG-factory manifests = {total}, expected 131");
+    assert_eq!(
+        total, 131,
+        "total NG-factory manifests = {total}, expected 131"
+    );
 
     // -- Part 2: assert build-index.ts skip rule for _template/ holds --
     // Every template has placeholder pool 0x1111…1111. Its callkey would be
@@ -108,11 +114,26 @@ fn ng_factory_bundles_parse_count_131_and_templates_not_indexed() {
     // such callkeys must exist in the live index.
     let template_selectors = [
         // stableswap-ng-factory 6
-        "0xddc1f59d", "0xafb43012", "0xa7256d09", "0x2969e04a", "0x4a6e32c6", "0x081579a5",
+        "0xddc1f59d",
+        "0xafb43012",
+        "0xa7256d09",
+        "0x2969e04a",
+        "0x4a6e32c6",
+        "0x081579a5",
         // twocrypto 6
-        "0xa64833a0", "0x767691e7", "0x0c3e4b54", "0x3eb1719f", "0x0fbcee6e", "0xb2f9173e",
+        "0xa64833a0",
+        "0x767691e7",
+        "0x0c3e4b54",
+        "0x3eb1719f",
+        "0x0fbcee6e",
+        "0xb2f9173e",
         // factory-crypto 6
-        "0x5b41b908", "0x394747c5", "0xce7d6503", "0x0b4c7e4d", "0x5b36389c", "0xf1dc3cc9",
+        "0x5b41b908",
+        "0x394747c5",
+        "0xce7d6503",
+        "0x0b4c7e4d",
+        "0x5b36389c",
+        "0xf1dc3cc9",
     ];
     let placeholder_pool = "0x1111111111111111111111111111111111111111";
     for sel in template_selectors {
@@ -239,8 +260,7 @@ fn callkey_index_routes_to_factory_crypto_pool() {
 
 fn read_bundle_raw(rel: &str) -> serde_json::Value {
     let path = registry_root().join(rel);
-    let raw = std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("read {path:?}: {e}"));
+    let raw = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));
     serde_json::from_str(&raw).unwrap_or_else(|e| panic!("parse {path:?}: {e}"))
 }
 
@@ -251,7 +271,11 @@ fn coin_array_from_swap_bundle(bundle: &serde_json::Value) -> Vec<String> {
     let lit = &fields["inputToken.asset.address"]["args"][0]["literal"];
     let arr = lit.as_array().expect("inputToken coin literal is array");
     arr.iter()
-        .map(|v| v.as_str().expect("coin literal entry is string").to_lowercase())
+        .map(|v| {
+            v.as_str()
+                .expect("coin literal entry is string")
+                .to_lowercase()
+        })
         .collect()
 }
 
@@ -270,9 +294,19 @@ fn coin_substitution_stableswap_ng_factory_rlusd_usdc() {
         "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC (coins(0))
         "0x8292bb45bf1ee4d140127049757c2e0ff06317ed", // RLUSD (coins(1))
     ];
-    assert_eq!(coins.len(), expected.len(), "expected {} coins, got {}", expected.len(), coins.len());
+    assert_eq!(
+        coins.len(),
+        expected.len(),
+        "expected {} coins, got {}",
+        expected.len(),
+        coins.len()
+    );
     for (i, want) in expected.iter().enumerate() {
-        assert_eq!(coins[i], *want, "coin[{i}] — got {} want {}", coins[i], want);
+        assert_eq!(
+            coins[i], *want,
+            "coin[{i}] — got {} want {}",
+            coins[i], want
+        );
     }
     // Pool address sanity — match.to must be the real pool, no placeholder leftover.
     assert_eq!(
@@ -288,9 +322,8 @@ fn coin_substitution_twocrypto_yb_wbtc() {
     // YB WBTC twocrypto-NG pool — chain 1 — coins:
     //   [0]=crvUSD 0xf939e0a03fb07f59a73314e73794be0e57ac1b4e,
     //   [1]=WBTC   0x2260fac5e5542a773aa44fbcfedf7c193bc2c599.
-    let bundle = read_bundle_raw(
-        "manifests/curve/twocrypto/yb-wbtc/exchange-twocrypto-receiver@1.0.0.json",
-    );
+    let bundle =
+        read_bundle_raw("manifests/curve/twocrypto/yb-wbtc/exchange-twocrypto-receiver@1.0.0.json");
     let coins = coin_array_from_swap_bundle(&bundle);
     let expected = [
         "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
@@ -298,7 +331,11 @@ fn coin_substitution_twocrypto_yb_wbtc() {
     ];
     assert_eq!(coins.len(), expected.len());
     for (i, want) in expected.iter().enumerate() {
-        assert_eq!(coins[i], *want, "coin[{i}] — got {} want {}", coins[i], want);
+        assert_eq!(
+            coins[i], *want,
+            "coin[{i}] — got {} want {}",
+            coins[i], want
+        );
     }
     assert_eq!(
         bundle["match"]["to"][0].as_str(),
@@ -337,7 +374,11 @@ fn coin_substitution_factory_crypto_cbeth_weth() {
     ];
     assert_eq!(coins.len(), expected.len());
     for (i, want) in expected.iter().enumerate() {
-        assert_eq!(coins[i], *want, "coin[{i}] — got {} want {}", coins[i], want);
+        assert_eq!(
+            coins[i], *want,
+            "coin[{i}] — got {} want {}",
+            coins[i], want
+        );
     }
     assert_eq!(bundle["match"]["chain_ids"][0], 8453);
     assert_eq!(
