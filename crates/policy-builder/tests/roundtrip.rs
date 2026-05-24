@@ -124,9 +124,7 @@ fn token_address_membership_installs() {
             // Synthetic but well-formed: 40 hex chars after the 0x prefix.
             // The pattern check (^0x[0-9a-fA-F]{40}$) is on by default
             // now, so the literal must be valid hex to compile.
-            value: PredicateValue::Multi(vec![
-                "0xdeadbeef0000000000000000000000000000dead".into(),
-            ]),
+            value: PredicateValue::Multi(vec!["0xdeadbeef0000000000000000000000000000dead".into()]),
         }],
     };
     let text = compile(&rule, &swap::schema()).expect("compile");

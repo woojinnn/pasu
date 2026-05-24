@@ -29,8 +29,7 @@
     "action": "lp_stake",
     "fields": {
       "gauge":           { "from": "$.tx.to" },
-      "lpToken.kind":    { "literal": "erc20" },
-      "lpToken.address": { "from": "$.tx.to" },
+      "lpToken.kind":    { "literal": "unknown" },
       "amount.kind":     { "literal": "exact" },
       "amount.value":    { "from": "$.args.amount" },
       "recipient":       { "from": "$.tx.from" }

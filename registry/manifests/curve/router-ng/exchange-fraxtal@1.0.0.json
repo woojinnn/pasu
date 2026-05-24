@@ -39,7 +39,10 @@
       "outputToken.asset.kind":    { "literal": "erc20" },
       "outputToken.asset.address": {
         "fn": "curve_route_last_token",
-        "args": [{ "from": "$.args._route" }]
+        "args": [
+          { "from": "$.args._route" },
+          { "from": "$.args._swap_params" }
+        ]
       },
       "outputToken.amount.kind":   { "literal": "min" },
       "outputToken.amount.value":  { "from": "$.args._expected" },

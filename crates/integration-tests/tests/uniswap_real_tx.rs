@@ -11,22 +11,22 @@
 //!
 //! Verification matrix, evaluated per transaction:
 //!
-//!   * **L0 route**  — does `registry/index/by-callkey/<callkey>.json` exist?
-//!   * **L1 decode** — does `decode_with_json_abi(bundle.abi, calldata)` succeed?
-//!   * **L2 map**    — does `DeclarativeMapper::map` yield ≥ 1 `ActionEnvelope`?
-//!   * **L3**        — semantic correctness; **human-judged** — the harness only
-//!                     serialises the envelopes to JSON, it does not auto-grade.
-//!   * **L4 lower**  — does `policy_request_from_envelope` return `Some` for
-//!                     every envelope (`None` would mean a fail-open lowering)?
+//! * **L0 route**  — does `registry/index/by-callkey/<callkey>.json` exist?
+//! * **L1 decode** — does `decode_with_json_abi(bundle.abi, calldata)` succeed?
+//! * **L2 map**    — does `DeclarativeMapper::map` yield ≥ 1 `ActionEnvelope`?
+//! * **L3**        — semantic correctness; **human-judged** — the harness only
+//!   serialises the envelopes to JSON, it does not auto-grade.
+//! * **L4 lower**  — does `policy_request_from_envelope` return `Some` for
+//!   every envelope (`None` would mean a fail-open lowering)?
 //!
 //! Three tests:
-//!   * [`harness_self_check`] — strict; unit-verifies the harness components.
-//!   * [`corpus_verification`] — strict on L0/L1/L2/L4; walks all 42 corpus
-//!     entries, prints a verdict table (`cargo test -- --nocapture`), and
-//!     asserts every `expect == "pass"` tx fully routes/decodes/maps/lowers.
-//!   * [`fixed_findings_f2_f5_regression`] — strict; locks the L3 envelope
-//!     corrections for `VERIFICATION_UNISWAP_REALTX.md` findings F2~F5 (native
-//!     sentinel, UR recipient sentinel, V2 ETH-input amount, V4 outputTokens).
+//! * [`harness_self_check`] — strict; unit-verifies the harness components.
+//! * [`corpus_verification`] — strict on L0/L1/L2/L4; walks all 42 corpus
+//!   entries, prints a verdict table (`cargo test -- --nocapture`), and
+//!   asserts every `expect == "pass"` tx fully routes/decodes/maps/lowers.
+//! * [`fixed_findings_f2_f5_regression`] — strict; locks the L3 envelope
+//!   corrections for `VERIFICATION_UNISWAP_REALTX.md` findings F2~F5 (native
+//!   sentinel, UR recipient sentinel, V2 ETH-input amount, V4 outputTokens).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -116,10 +116,9 @@ fn resolve_callkey(
     if !path.exists() {
         return Ok(None);
     }
-    let bytes = fs::read(&path)
-        .map_err(|e| format!("read {}: {e}", path.display()))?;
-    let entry: CallKeyIndexEntry = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("parse {}: {e}", path.display()))?;
+    let bytes = fs::read(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let entry: CallKeyIndexEntry =
+        serde_json::from_slice(&bytes).map_err(|e| format!("parse {}: {e}", path.display()))?;
     Ok(Some(entry))
 }
 
@@ -530,7 +529,10 @@ fn harness_self_check() {
     let entry = resolve_callkey(1, v2_router, &v2_swap_selector)
         .expect("V2 swap callkey file must parse")
         .expect("V2 swap callkey file must exist");
-    assert_eq!(entry.bundle.match_.selector.to_ascii_lowercase(), "0x38ed1739");
+    assert_eq!(
+        entry.bundle.match_.selector.to_ascii_lowercase(),
+        "0x38ed1739"
+    );
     assert_eq!(strategy_label(&entry.bundle), "single_emit");
 
     // (3) corpus.json parses and has 42 entries.
@@ -616,7 +618,10 @@ fn corpus_verification() {
 
     println!();
     println!("════════════════════════════════════════════════════════════════════════");
-    println!(" uniswap_real_tx — declarative (Tier A) corpus verification — {} tx", corpus.transactions.len());
+    println!(
+        " uniswap_real_tx — declarative (Tier A) corpus verification — {} tx",
+        corpus.transactions.len()
+    );
     println!("════════════════════════════════════════════════════════════════════════");
 
     for tx in &corpus.transactions {
@@ -740,9 +745,7 @@ fn corpus_verification() {
     println!(" Family summary — full pass / partial / miss");
     println!("════════════════════════════════════════════════════════════════════════");
     for (family, [pass, partial, miss]) in &family_summary {
-        println!(
-            "  {family:<18}  pass={pass:<3} partial={partial:<3} miss={miss}"
-        );
+        println!("  {family:<18}  pass={pass:<3} partial={partial:<3} miss={miss}");
     }
     let total_pass: usize = family_summary.values().map(|s| s[0]).sum();
     let total_partial: usize = family_summary.values().map(|s| s[1]).sum();
@@ -770,7 +773,10 @@ fn corpus_verification() {
     // ── expect=="excluded" outcomes ────────────────────────────────────────
     println!();
     println!("────────────────────────────────────────────────────────────────────────");
-    println!(" expect==\"excluded\" transactions ({}):", excluded_outcomes.len());
+    println!(
+        " expect==\"excluded\" transactions ({}):",
+        excluded_outcomes.len()
+    );
     for line in &excluded_outcomes {
         println!("{line}");
     }
@@ -956,9 +962,7 @@ fn fixed_findings_f2_f5_regression() {
         .as_array()
         .expect("envelopes is a JSON array")
         .iter()
-        .find(|e| {
-            e.get("action").and_then(serde_json::Value::as_str) == Some("decrease_liquidity")
-        })
+        .find(|e| e.get("action").and_then(serde_json::Value::as_str) == Some("decrease_liquidity"))
         .expect("F5: corpus modifyLiquidities tx must produce a decrease_liquidity envelope");
     let outputs = decrease
         .pointer("/fields/outputTokens")

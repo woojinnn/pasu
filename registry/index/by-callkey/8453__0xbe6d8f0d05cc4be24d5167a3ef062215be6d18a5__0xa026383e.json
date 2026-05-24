@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/slipstream/exactInputSingle@1.0.0",
   "manifest_path": "manifests/aerodrome/slipstream/exactInputSingle@1.0.0.json",
-  "bundle_sha256": "0x1290f1c76fce4d4ee208824ec2619a359e5406f8a0a5e27ad29c6d01f706d7a7",
+  "bundle_sha256": "0x73dd4f8aad54e430686ffa69d863af05c3656af0ad99c3426e4ab0d8ec8018e5",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/slipstream/exactInputSingle@1.0.0",
@@ -75,31 +75,31 @@
           "literal": "erc20"
         },
         "inputToken.asset.address": {
-          "from": "$.args.params[0]"
+          "from": "$.args.tokenIn"
         },
         "inputToken.amount.kind": {
           "literal": "exact"
         },
         "inputToken.amount.value": {
-          "from": "$.args.params[5]"
+          "from": "$.args.amountIn"
         },
         "outputToken.asset.kind": {
           "literal": "erc20"
         },
         "outputToken.asset.address": {
-          "from": "$.args.params[1]"
+          "from": "$.args.tokenOut"
         },
         "outputToken.amount.kind": {
           "literal": "min"
         },
         "outputToken.amount.value": {
-          "from": "$.args.params[6]"
+          "from": "$.args.amountOutMinimum"
         },
         "recipient": {
-          "from": "$.args.params[3]"
+          "from": "$.args.recipient"
         },
         "validity.expiresAt": {
-          "from": "$.args.params[4]"
+          "from": "$.args.deadline"
         },
         "validity.source": {
           "literal": "tx-deadline"

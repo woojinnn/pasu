@@ -23,7 +23,10 @@ impl Lower for VoteAction {
 
 fn context(action: &VoteAction, ctx: &LoweringCtx<'_>) -> Value {
     let mut context = Map::new();
-    context.insert(GOVERNANCE.into(), Value::from(action.governance.to_string()));
+    context.insert(
+        GOVERNANCE.into(),
+        Value::from(action.governance.to_string()),
+    );
     if let Some(label) = &action.governance_label {
         context.insert(GOVERNANCE_LABEL.into(), Value::from(label.as_str()));
     }
@@ -31,7 +34,10 @@ fn context(action: &VoteAction, ctx: &LoweringCtx<'_>) -> Value {
         PROPOSAL_ID.into(),
         Value::from(action.proposal_id.to_string()),
     );
-    context.insert(SUPPORT.into(), Value::from(vote_support_str(&action.support)));
+    context.insert(
+        SUPPORT.into(),
+        Value::from(vote_support_str(&action.support)),
+    );
     if let Some(reason) = &action.reason {
         context.insert(REASON.into(), Value::from(reason.as_str()));
     }

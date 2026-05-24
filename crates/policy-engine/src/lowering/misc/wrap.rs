@@ -18,8 +18,14 @@ impl Lower for WrapAction {
 
 fn context(w: &WrapAction) -> Result<Value, LoweringError> {
     let mut context = Map::new();
-    context.insert(NATIVE_ASSET.into(), asset_with_amount_json(&w.native_asset)?);
-    context.insert(WRAPPED_ASSET.into(), asset_with_amount_json(&w.wrapped_asset)?);
+    context.insert(
+        NATIVE_ASSET.into(),
+        asset_with_amount_json(&w.native_asset)?,
+    );
+    context.insert(
+        WRAPPED_ASSET.into(),
+        asset_with_amount_json(&w.wrapped_asset)?,
+    );
     context.insert(RECIPIENT.into(), Value::from(w.recipient.to_string()));
     Ok(Value::Object(context))
 }

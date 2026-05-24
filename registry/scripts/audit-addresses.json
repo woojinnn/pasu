@@ -1,10 +1,10 @@
 {
-  "audited_at": "2026-05-22T08:43:46.913Z",
+  "audited_at": "2026-05-24T05:23:36.632Z",
   "registry_root": "/Users/jhy/Desktop/ScopeBall/scopeball/registry",
-  "total_manifests": 907,
-  "total_pairs": 183,
+  "total_manifests": 1043,
+  "total_pairs": 205,
   "summary": {
-    "present": 183,
+    "present": 205,
     "bogus": 0,
     "unknown": 0
   },
@@ -37,6 +37,22 @@
         "manifests/uniswap/permit2/permitWitnessTransferFrom@1.0.0.json",
         "manifests/uniswap/permit2/transferFrom-batch@1.0.0.json",
         "manifests/uniswap/permit2/transferFrom@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0x00836fe54625be242bcfa286207795405ca4fd10",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:3ecc31b5b7e91a79f626326cbac3ddf68ac65d40f1bb94a70537bbf6c545e0ba",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/spark-susds-usdt/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-susds-usdt/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-susds-usdt/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-susds-usdt/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-susds-usdt/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-susds-usdt/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
       ]
     },
     {
@@ -81,6 +97,22 @@
     },
     {
       "chain_id": 1,
+      "address": "0x13e12bb0e6a2f1a3d6901a59a9d585e89a6243e1",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:0e5f438a989daf39860b1799cf54512e7d2410be2419e064ac3e82f3bb6907b1",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/crvusd-frxusd/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/crvusd-frxusd/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/crvusd-frxusd/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/crvusd-frxusd/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/crvusd-frxusd/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/crvusd-frxusd/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
       "address": "0x182b723a58739a9c974cfdb385ceadb237453c28",
       "status": "present",
       "code_len": 13120,
@@ -92,6 +124,22 @@
         "manifests/curve/gauge/steth/deposit-for@1.0.0.json",
         "manifests/curve/gauge/steth/deposit@1.0.0.json",
         "manifests/curve/gauge/steth/withdraw@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0x1d9008edfea355905ba5668417a227d46962f4dd",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:c4d9b046239c44825040a755926c110ded2dce57112ae21d976933fa79a09858",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/apxusd-usdc/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/apxusd-usdc/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/apxusd-usdc/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/apxusd-usdc/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/apxusd-usdc/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/apxusd-usdc/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
       ]
     },
     {
@@ -154,6 +202,38 @@
     },
     {
       "chain_id": 1,
+      "address": "0x3211c6cbef1429da3d0d58494938299c92ad5860",
+      "status": "present",
+      "code_len": 45,
+      "code_hash": "sha256:187fdbe2c11919481d56fa9175813fd60b23e9360116717ed5a3e5ec3fc7fb34",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/factory-crypto/stg-usdc/addLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/stg-usdc/exchange-fc-noEth@1.0.0.json",
+        "manifests/curve/factory-crypto/stg-usdc/exchange-fc-receiver@1.0.0.json",
+        "manifests/curve/factory-crypto/stg-usdc/exchange-fc-useEth@1.0.0.json",
+        "manifests/curve/factory-crypto/stg-usdc/removeLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/stg-usdc/removeLiquidityOneCoin-fc-base@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0x383e6b4437b59fff47b619cba855ca29342a8559",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:c7fc4c7f4798511fa149d7c1a63d24f84eb395a56180d7bed956156c05f0b546",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/pyusd-usdc/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/pyusd-usdc/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/pyusd-usdc/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/pyusd-usdc/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/pyusd-usdc/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/pyusd-usdc/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
       "address": "0x390f3595bca2df7d23783dfd126427cceb997bf4",
       "status": "present",
       "code_len": 45,
@@ -190,6 +270,22 @@
       "manifests": [
         "manifests/curve/router-ng/exchange-5arg-ethereum@1.0.0.json",
         "manifests/curve/router-ng/exchange-ethereum@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0x47d5e1679fe5f0d9f0a657c6715924e33ce05093",
+      "status": "present",
+      "code_len": 45,
+      "code_hash": "sha256:187fdbe2c11919481d56fa9175813fd60b23e9360116717ed5a3e5ec3fc7fb34",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/factory-crypto/frxeth-cvx/addLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/frxeth-cvx/exchange-fc-noEth@1.0.0.json",
+        "manifests/curve/factory-crypto/frxeth-cvx/exchange-fc-receiver@1.0.0.json",
+        "manifests/curve/factory-crypto/frxeth-cvx/exchange-fc-useEth@1.0.0.json",
+        "manifests/curve/factory-crypto/frxeth-cvx/removeLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/frxeth-cvx/removeLiquidityOneCoin-fc-base@1.0.0.json"
       ]
     },
     {
@@ -246,6 +342,22 @@
         "manifests/curve/cryptoswap/crvusdethcrv/exchange-v2@1.0.0.json",
         "manifests/curve/cryptoswap/crvusdethcrv/removeLiquidity-v2@1.0.0.json",
         "manifests/curve/cryptoswap/crvusdethcrv/removeLiquidityOneCoin-v2@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0x5dc1bf6f1e983c0b21efb003c105133736fa0743",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:65e7c30bed09c4b4c4c42772fb1d9a8a417518e0d8d4d3f1edbd4e42b2ef7bfd",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/frax-usde/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/frax-usde/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/frax-usde/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/frax-usde/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/frax-usde/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/frax-usde/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
       ]
     },
     {
@@ -311,6 +423,38 @@
     },
     {
       "chain_id": 1,
+      "address": "0x6e5492f8ea2370844ee098a56dd88e1717e4a9c2",
+      "status": "present",
+      "code_len": 23613,
+      "code_hash": "sha256:38aac400b52f0288738f5c11e37284bf0455f8548627ff2602f5cd0cb11fd9bb",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/twocrypto/yb-weth/addLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-weth/exchange-received-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-weth/exchange-twocrypto-receiver@1.0.0.json",
+        "manifests/curve/twocrypto/yb-weth/removeLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-weth/removeLiquidityFixedOut-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-weth/removeLiquidityOneCoin-twocrypto-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0x744793b5110f6ca9cc7cdfe1ce16677c3eb192ef",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:db18ae0a999d7494ce4ab5e52573666d8f3d1967f29cec3d6435475cb7641955",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/dola-susde/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/dola-susde/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/dola-susde/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/dola-susde/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/dola-susde/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/dola-susde/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
       "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
       "status": "present",
       "code_len": 21943,
@@ -350,6 +494,22 @@
         "manifests/curve/cryptoswap/tricryptousdc/exchange-v2@1.0.0.json",
         "manifests/curve/cryptoswap/tricryptousdc/removeLiquidity-v2@1.0.0.json",
         "manifests/curve/cryptoswap/tricryptousdc/removeLiquidityOneCoin-v2@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0x83f24023d15d835a213df24fd309c47dab5beb32",
+      "status": "present",
+      "code_len": 23655,
+      "code_hash": "sha256:683b075958cfaa0dd44ee72192ccf17e7f81082625e0483df8ee1c96eaccd324",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/twocrypto/yb-cbbtc/addLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-cbbtc/exchange-received-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-cbbtc/exchange-twocrypto-receiver@1.0.0.json",
+        "manifests/curve/twocrypto/yb-cbbtc/removeLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-cbbtc/removeLiquidityFixedOut-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-cbbtc/removeLiquidityOneCoin-twocrypto-recipient@1.0.0.json"
       ]
     },
     {
@@ -409,6 +569,22 @@
       "manifests": [
         "manifests/curve/feedistributor/3crv/claim@1.0.0.json",
         "manifests/curve/feedistributor/3crv/claimFor@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:b7763a52a3024f2e22615cba5570fd3dbb557a8c962112d65542795648b5f557",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/spark-pyusd-usds/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-pyusd-usds/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-pyusd-usds/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-pyusd-usds/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-pyusd-usds/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/spark-pyusd-usds/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
       ]
     },
     {
@@ -482,6 +658,38 @@
     },
     {
       "chain_id": 1,
+      "address": "0xc15f285679a1ef2d25f53d4cbd0265e1d02f2a92",
+      "status": "present",
+      "code_len": 45,
+      "code_hash": "sha256:187fdbe2c11919481d56fa9175813fd60b23e9360116717ed5a3e5ec3fc7fb34",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/factory-crypto/fxn-eth/addLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/fxn-eth/exchange-fc-noEth@1.0.0.json",
+        "manifests/curve/factory-crypto/fxn-eth/exchange-fc-receiver@1.0.0.json",
+        "manifests/curve/factory-crypto/fxn-eth/exchange-fc-useEth@1.0.0.json",
+        "manifests/curve/factory-crypto/fxn-eth/removeLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/fxn-eth/removeLiquidityOneCoin-fc-base@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0xc2921134073151490193ac7369313c8e0b08e1e7",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:85437cd886966c01db1bdd4b25a644b463cba0b11677af127b4dd6ac2c6bc799",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/usdtb-usdc/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdtb-usdc/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdtb-usdc/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdtb-usdc/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdtb-usdc/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdtb-usdc/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
       "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
       "status": "present",
       "code_len": 24384,
@@ -505,6 +713,38 @@
         "manifests/uniswap/v3/safeTransferFromWithData@1.0.0.json",
         "manifests/uniswap/v3/setApprovalForAll@1.0.0.json",
         "manifests/uniswap/v3/transferFrom@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0xcc7d5785ad5755b6164e21495e07adb0ff11c2a8",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:ed62de2ffef3150ffb595cfb2e785fe3ee24fabc80fd917beb147e58fe89c86c",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/oeth-weth-ng/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/oeth-weth-ng/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/oeth-weth-ng/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/oeth-weth-ng/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/oeth-weth-ng/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/oeth-weth-ng/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0xd001ae433f254283fece51d4acce8c53263aa186",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:d7060819abd095a820c68bc9f8197a06926190e94ca0a79c0959531f05aab5e6",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/rlusd-usdc/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/rlusd-usdc/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/rlusd-usdc/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/rlusd-usdc/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/rlusd-usdc/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/rlusd-usdc/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
       ]
     },
     {
@@ -557,6 +797,22 @@
       "manifests": [
         "manifests/uniswap/universal-router/execute-no-deadline@1.0.0.json",
         "manifests/uniswap/universal-router/execute@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0xd9ff8396554a0d18b2cfbec53e1979b7ecce8373",
+      "status": "present",
+      "code_len": 23655,
+      "code_hash": "sha256:687bbc38f88f9b232c4e49e4e339b79f8298663748dbc4746e66c72dcbdd6ec4",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/twocrypto/yb-wbtc/addLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-wbtc/exchange-received-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-wbtc/exchange-twocrypto-receiver@1.0.0.json",
+        "manifests/curve/twocrypto/yb-wbtc/removeLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-wbtc/removeLiquidityFixedOut-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-wbtc/removeLiquidityOneCoin-twocrypto-recipient@1.0.0.json"
       ]
     },
     {
@@ -632,6 +888,22 @@
     },
     {
       "chain_id": 1,
+      "address": "0xe79c1c7e24755574438a26d5e062ad2626c04662",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:6920efa759bebd44c469c96e51943b94096d07d941c1d295ca2989ebbd28d148",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/ausd-usdc/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/ausd-usdc/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/ausd-usdc/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/ausd-usdc/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/ausd-usdc/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/ausd-usdc/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
       "address": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
       "status": "present",
       "code_len": 22533,
@@ -652,6 +924,38 @@
         "manifests/curve/crvusd/sfrxeth/repay-3arg@1.0.0.json",
         "manifests/curve/crvusd/sfrxeth/repay@1.0.0.json",
         "manifests/curve/crvusd/sfrxeth/repayExtended@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0xf1f435b05d255a5dbde37333c0f61da6f69c6127",
+      "status": "present",
+      "code_len": 23655,
+      "code_hash": "sha256:d5f862a54f3287f3c42c21b6d7df9faf124244398fd629587b5b74dd211ada38",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/twocrypto/yb-tbtc/addLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-tbtc/exchange-received-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-tbtc/exchange-twocrypto-receiver@1.0.0.json",
+        "manifests/curve/twocrypto/yb-tbtc/removeLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/yb-tbtc/removeLiquidityFixedOut-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/yb-tbtc/removeLiquidityOneCoin-twocrypto-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 1,
+      "address": "0xf4d0cf32908b2c7f1021339c43df0f77f06896d7",
+      "status": "present",
+      "code_len": 23635,
+      "code_hash": "sha256:8d6a389175f603b4a623d464507c708bd0929b4048833ed5ffd538fc63da0b18",
+      "rpc": "https://ethereum-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/usdc-usdat/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdc-usdat/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdc-usdat/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdc-usdat/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdc-usdat/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/usdc-usdat/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
       ]
     },
     {
@@ -1735,6 +2039,22 @@
     },
     {
       "chain_id": 8453,
+      "address": "0x11c1fbd4b3de66bc0565779b35171a6cf3e71f59",
+      "status": "present",
+      "code_len": 45,
+      "code_hash": "sha256:a1531ae8c93bd155e0cd9c22115678d3b58c8ea5388c6466ee91f26a5294f43d",
+      "rpc": "https://base-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/factory-crypto/cbeth-weth/addLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/cbeth-weth/exchange-fc-noEth@1.0.0.json",
+        "manifests/curve/factory-crypto/cbeth-weth/exchange-fc-receiver@1.0.0.json",
+        "manifests/curve/factory-crypto/cbeth-weth/exchange-fc-useEth@1.0.0.json",
+        "manifests/curve/factory-crypto/cbeth-weth/removeLiquidity-fc-base@1.0.0.json",
+        "manifests/curve/factory-crypto/cbeth-weth/removeLiquidityOneCoin-fc-base@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 8453,
       "address": "0x16613524e02ad97edfef371bc883f2f5d6c480a5",
       "status": "present",
       "code_len": 16912,
@@ -1744,9 +2064,11 @@
         "manifests/aerodrome/voter/claimBribes@1.0.0.json",
         "manifests/aerodrome/voter/claimFees@1.0.0.json",
         "manifests/aerodrome/voter/claimRewards@1.0.0.json",
+        "manifests/aerodrome/voter/depositManaged@1.0.0.json",
         "manifests/aerodrome/voter/poke@1.0.0.json",
         "manifests/aerodrome/voter/reset@1.0.0.json",
-        "manifests/aerodrome/voter/vote@1.0.0.json"
+        "manifests/aerodrome/voter/vote@1.0.0.json",
+        "manifests/aerodrome/voter/withdrawManaged@1.0.0.json"
       ]
     },
     {
@@ -1832,6 +2154,22 @@
         "manifests/aerodrome/slipstream-gauge/deposit@1.0.0.json",
         "manifests/aerodrome/slipstream-gauge/getReward@1.0.0.json",
         "manifests/aerodrome/slipstream-gauge/withdraw@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 8453,
+      "address": "0x302a94e3c28c290eaf2a4605fc52e11eb915f378",
+      "status": "present",
+      "code_len": 24049,
+      "code_hash": "sha256:f7f92bbaa51c8f35269cf61ba7094c015577365447090e434f4d20d55417c4d1",
+      "rpc": "https://base-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/stableswap-ng-factory/superoethb-weth/addLiquidity-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/superoethb-weth/exchange-ng-receiver@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/superoethb-weth/exchange-received-ng@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/superoethb-weth/removeLiquidity-ng-recipient-claim@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/superoethb-weth/removeLiquidityImbalance-ng-dyn-recipient@1.0.0.json",
+        "manifests/curve/stableswap-ng-factory/superoethb-weth/removeLiquidityOneCoin-ng-recipient@1.0.0.json"
       ]
     },
     {
@@ -2064,6 +2402,21 @@
     },
     {
       "chain_id": 8453,
+      "address": "0xba0c274085a078d19c46f2d902698a841cbfb289",
+      "status": "present",
+      "code_len": 18355,
+      "code_hash": "sha256:ea79648eaaea3257418bd7bb613f992474b5880eaed1d13e8d5c579f7abe2a93",
+      "rpc": "https://base-rpc.publicnode.com",
+      "manifests": [
+        "manifests/curve/twocrypto/lcap-eusd/addLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/lcap-eusd/exchange-received-twocrypto@1.0.0.json",
+        "manifests/curve/twocrypto/lcap-eusd/exchange-twocrypto-receiver@1.0.0.json",
+        "manifests/curve/twocrypto/lcap-eusd/removeLiquidity-twocrypto-recipient@1.0.0.json",
+        "manifests/curve/twocrypto/lcap-eusd/removeLiquidityOneCoin-twocrypto-recipient@1.0.0.json"
+      ]
+    },
+    {
+      "chain_id": 8453,
       "address": "0xbd85d45f1636fceb2359d9dcf839f12b3cf5af3f",
       "status": "present",
       "code_len": 45,
@@ -2099,6 +2452,7 @@
       "code_hash": "sha256:439fca78caeba49b21f1956c51eab98bdd3adadfefc000335e8c30851ad3e501",
       "rpc": "https://base-rpc.publicnode.com",
       "manifests": [
+        "manifests/aerodrome/universal-router/execute-no-deadline@1.0.0.json",
         "manifests/aerodrome/universal-router/execute@1.0.0.json"
       ]
     },
@@ -2123,6 +2477,7 @@
       "code_hash": "sha256:3c1f739f23155b573a72f50363f0163d1528e463949bf8aec22f0c3bf0b0fda5",
       "rpc": "https://base-rpc.publicnode.com",
       "manifests": [
+        "manifests/aerodrome/universal-router/execute-no-deadline@1.0.0.json",
         "manifests/aerodrome/universal-router/execute@1.0.0.json"
       ]
     },
@@ -2213,11 +2568,13 @@
         "manifests/aerodrome/voting-escrow/depositFor@1.0.0.json",
         "manifests/aerodrome/voting-escrow/increaseAmount@1.0.0.json",
         "manifests/aerodrome/voting-escrow/increaseUnlockTime@1.0.0.json",
+        "manifests/aerodrome/voting-escrow/lockPermanent@1.0.0.json",
         "manifests/aerodrome/voting-escrow/merge@1.0.0.json",
         "manifests/aerodrome/voting-escrow/safeTransferFrom@1.0.0.json",
         "manifests/aerodrome/voting-escrow/safeTransferFromWithData@1.0.0.json",
         "manifests/aerodrome/voting-escrow/split@1.0.0.json",
         "manifests/aerodrome/voting-escrow/transferFrom@1.0.0.json",
+        "manifests/aerodrome/voting-escrow/unlockPermanent@1.0.0.json",
         "manifests/aerodrome/voting-escrow/withdraw@1.0.0.json"
       ]
     },

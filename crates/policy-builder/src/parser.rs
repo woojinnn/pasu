@@ -562,7 +562,7 @@ mod tests {
     /// hand-coded custom fields. Post-Phase-8 those custom fields come
     /// from the runtime overlay path, so we use the test fixture that
     /// re-adds them — otherwise compile would reject the predicate
-    /// before parse_cedar ever runs. Tests on base-only fields still
+    /// before `parse_cedar` ever runs. Tests on base-only fields still
     /// work because the fixture is a superset.
     fn roundtrip(rule: &PolicyRule) -> PolicyRule {
         let text = compile(rule, &swap::schema_with_legacy_custom()).unwrap();

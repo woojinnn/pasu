@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/router-ng/exchange-ethereum@1.0.0",
   "manifest_path": "manifests/curve/router-ng/exchange-ethereum@1.0.0.json",
-  "bundle_sha256": "0x4c7de35ebd6de1b024dff1fc4d5f1f655d1fbe755061d1a295f3fa9e81a1b563",
+  "bundle_sha256": "0x2736df0c5d2738375d318927d36ab2ded9c2ed80f3961db5d9bf76d33396dd78",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/router-ng/exchange-ethereum@1.0.0",
@@ -85,6 +85,9 @@
           "args": [
             {
               "from": "$.args._route"
+            },
+            {
+              "from": "$.args._swap_params"
             }
           ]
         },

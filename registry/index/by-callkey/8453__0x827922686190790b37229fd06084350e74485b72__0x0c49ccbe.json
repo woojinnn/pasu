@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/slipstream-npm/decreaseLiquidity@1.0.0",
   "manifest_path": "manifests/aerodrome/slipstream-npm/decreaseLiquidity@1.0.0.json",
-  "bundle_sha256": "0xd46789b47252c8c6ac9cd5d5682c7e19839345074e871f0c60e6fcc92a392121",
+  "bundle_sha256": "0xa41d122fad781685b6d882b8990518db5f7056f8f5423284c4e454603fd6453e",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/slipstream-npm/decreaseLiquidity@1.0.0",
@@ -63,13 +63,13 @@
           "literal": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53"
         },
         "nft.tokenId": {
-          "from": "$.args.params[0]"
+          "from": "$.args.tokenId"
         },
         "liquidityDelta.kind": {
           "literal": "exact"
         },
         "liquidityDelta.value": {
-          "from": "$.args.params[1]"
+          "from": "$.args.liquidity"
         },
         "outputTokens[0].asset.kind": {
           "literal": "unknown"
@@ -78,7 +78,7 @@
           "literal": "min"
         },
         "outputTokens[0].amount.value": {
-          "from": "$.args.params[2]"
+          "from": "$.args.amount0Min"
         },
         "outputTokens[1].asset.kind": {
           "literal": "unknown"
@@ -87,10 +87,10 @@
           "literal": "min"
         },
         "outputTokens[1].amount.value": {
-          "from": "$.args.params[3]"
+          "from": "$.args.amount1Min"
         },
         "validity.expiresAt": {
-          "from": "$.args.params[4]"
+          "from": "$.args.deadline"
         },
         "validity.source": {
           "literal": "tx-deadline"

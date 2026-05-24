@@ -48,10 +48,7 @@ fn context(action: &LiquidateAction) -> Result<Value, LoweringError> {
         Value::from(liquidation_kind_str(&action.liquidation_kind)),
     );
     if let Some(mode) = &action.liquidate_mode {
-        context.insert(
-            LIQUIDATE_MODE.into(),
-            Value::from(liquidate_mode_str(mode)),
-        );
+        context.insert(LIQUIDATE_MODE.into(), Value::from(liquidate_mode_str(mode)));
     }
     if let Some(recipient) = &action.recipient {
         context.insert(RECIPIENT.into(), Value::from(recipient.to_string()));

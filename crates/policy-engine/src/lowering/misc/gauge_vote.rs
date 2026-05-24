@@ -12,11 +12,11 @@ const VALIDITY: &str = "validity";
 
 impl Lower for GaugeVoteAction {
     fn build(&self, ctx: &LoweringCtx<'_>) -> Result<PolicyRequest, LoweringError> {
-        Ok(ctx.request(ACTION_ID, context(self)?))
+        Ok(ctx.request(ACTION_ID, context(self)))
     }
 }
 
-const fn gauge_vote_kind_str(kind: &GaugeVoteKind) -> &'static str {
+const fn gauge_vote_kind_str(kind: GaugeVoteKind) -> &'static str {
     match kind {
         GaugeVoteKind::Vote => "vote",
         GaugeVoteKind::Reset => "reset",
@@ -24,7 +24,7 @@ const fn gauge_vote_kind_str(kind: &GaugeVoteKind) -> &'static str {
     }
 }
 
-fn context(action: &GaugeVoteAction) -> Result<Value, LoweringError> {
+fn context(action: &GaugeVoteAction) -> Value {
     let mut context = Map::new();
     context.insert(VOTER.into(), Value::from(action.voter.to_string()));
     if let Some(token_id) = &action.token_id {
@@ -55,15 +55,12 @@ fn context(action: &GaugeVoteAction) -> Result<Value, LoweringError> {
     }
     context.insert(WEIGHTS_SUM.into(), Value::from(sum.to_string()));
 
-    let kind = action
-        .kind
-        .as_ref()
-        .map_or("vote", gauge_vote_kind_str);
+    let kind = action.kind.map_or("vote", gauge_vote_kind_str);
     context.insert(KIND.into(), Value::from(kind));
 
     if let Some(validity) = &action.validity {
         context.insert(VALIDITY.into(), validity_json(validity));
     }
 
-    Ok(Value::Object(context))
+    Value::Object(context)
 }

@@ -899,7 +899,11 @@ mod overlay_tests {
         assert_eq!(added["optional"], Value::Bool(true));
         // Long operators (gt/lt/…) come through the same operators_for path
         // the static fields use, so the UI gets matching dropdowns.
-        assert!(added["operators"].as_array().unwrap().iter().any(|o| o["id"] == "gt"));
+        assert!(added["operators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|o| o["id"] == "gt"));
     }
 
     #[test]
@@ -987,8 +991,7 @@ mod overlay_tests {
 
     #[test]
     fn empty_overlay_matches_plain_schema_fetch() {
-        let plain: Value =
-            serde_json::from_str(&get_action_schema_json("swap".into())).unwrap();
+        let plain: Value = serde_json::from_str(&get_action_schema_json("swap".into())).unwrap();
         let overlaid = call_overlay(r#"{"action":"swap","overlay":[]}"#);
         assert_eq!(plain["data"], overlaid["data"]);
     }
@@ -1114,8 +1117,7 @@ mod overlay_tests {
                 "value": "100"
             }]
         });
-        let plain: Value =
-            serde_json::from_str(&compile_policy_json(rule.to_string())).unwrap();
+        let plain: Value = serde_json::from_str(&compile_policy_json(rule.to_string())).unwrap();
         let overlay_in = serde_json::json!({
             "action": "swap",
             "rule": rule,
@@ -1196,22 +1198,13 @@ mod overlay_tests {
                 )
             })
             .collect();
-        assert_eq!(
-            by_path.get("$.action.inputToken.asset"),
-            Some(&"AssetRef"),
-        );
-        assert_eq!(
-            by_path.get("$.action.outputToken.asset"),
-            Some(&"AssetRef"),
-        );
+        assert_eq!(by_path.get("$.action.inputToken.asset"), Some(&"AssetRef"),);
+        assert_eq!(by_path.get("$.action.outputToken.asset"), Some(&"AssetRef"),);
         assert_eq!(
             by_path.get("$.action.inputToken"),
             Some(&"AssetRefWithAmountConstraint"),
         );
-        assert_eq!(
-            by_path.get("$.action.validity"),
-            Some(&"Validity"),
-        );
+        assert_eq!(by_path.get("$.action.validity"), Some(&"Validity"),);
     }
 
     #[test]

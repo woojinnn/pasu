@@ -463,8 +463,8 @@ const UNISWAP_UR_ADDRESSES: &[(u64, Address)] = &[
             *b"\x03\xc4\xf6\xb5\x57\x33\xcd\xf3\xca\xa0\x7c\x01\xe5\xb8\x3d\xde\xe3\x38\x1f\x60",
         ),
     ), // UniversalRouter — corrected: prior value 0x7a250d56…488D was the
-       // Ethereum mainnet UniswapV2Router02 address, not a World Chain UR.
-       // Source: Uniswap/contracts deployments/480.md.
+    // Ethereum mainnet UniswapV2Router02 address, not a World Chain UR.
+    // Source: Uniswap/contracts deployments/480.md.
     (
         480,
         Address::new(
@@ -942,8 +942,7 @@ mod tests {
         };
 
         for opcode in [0x11u8, 0x12, 0x14] {
-            let steps =
-                dispatch(&[opcode], &[input.clone()], &UNISWAP_UR_TABLE);
+            let steps = dispatch(&[opcode], std::slice::from_ref(&input), &UNISWAP_UR_TABLE);
             assert_eq!(steps.len(), 1, "opcode {opcode:#04x}");
             let args = steps[0]
                 .args
@@ -1067,63 +1066,90 @@ mod tests {
     fn v3_position_manager_address_recognizes_base() {
         let expected: [u8; 20] =
             *b"\x03\xa5\x20\xb3\x2c\x04\xbf\x3b\xee\xf7\xbe\xb7\x2e\x91\x9c\xf8\x22\xed\x34\xf1";
-        assert_eq!(v3_position_manager_address(8453), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(8453),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_bnb() {
         let expected: [u8; 20] =
             *b"\x7b\x8a\x01\xb3\x9d\x58\x27\x8b\x5d\xe7\xe4\x8c\x84\x49\xc9\xf4\xf5\x17\x06\x13";
-        assert_eq!(v3_position_manager_address(56), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(56),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_avalanche() {
         let expected: [u8; 20] =
             *b"\x65\x5c\x40\x6e\xbf\xa1\x4e\xe2\x00\x62\x50\x92\x5e\x54\xec\x43\xad\x18\x4f\x8b";
-        assert_eq!(v3_position_manager_address(43114), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(43114),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_blast() {
         let expected: [u8; 20] =
             *b"\xb2\x18\xe4\xf7\xcf\x05\x33\xd4\x69\x6f\xdf\xc4\x19\xa0\x02\x3d\x33\x34\x5f\x28";
-        assert_eq!(v3_position_manager_address(81457), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(81457),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_celo() {
         let expected: [u8; 20] =
             *b"\x3d\x79\xed\xaa\xbc\x0e\xab\x6f\x08\xed\x88\x5c\x05\xfc\x0b\x01\x42\x90\xd9\x5a";
-        assert_eq!(v3_position_manager_address(42220), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(42220),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_zora() {
         let expected: [u8; 20] =
             *b"\xbc\x91\xe8\xdf\xa3\xff\x18\xde\x43\x85\x33\x72\xa3\xd7\xdf\xe5\x85\x13\x7d\x78";
-        assert_eq!(v3_position_manager_address(7777777), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(7777777),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_ink() {
         let expected: [u8; 20] =
             *b"\xc0\x83\x6e\x5b\x05\x8b\xbe\x22\xae\x22\x66\xe1\xac\x48\x8a\x1a\x0f\xd8\xdc\xe8";
-        assert_eq!(v3_position_manager_address(57073), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(57073),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_unichain() {
         let expected: [u8; 20] =
             *b"\x94\x3e\x6e\x07\xa7\xe8\xe7\x91\xda\xfc\x44\x08\x3e\x54\x04\x1d\x74\x3c\x46\xe9";
-        assert_eq!(v3_position_manager_address(130), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(130),
+            Some(Address::from(expected))
+        );
     }
 
     #[test]
     fn v3_position_manager_address_recognizes_world_chain() {
         let expected: [u8; 20] =
             *b"\xec\x12\xa9\xf9\xa0\x9f\x50\x55\x06\x86\x36\x37\x66\xcc\x15\x3d\x03\xc2\x7b\x5e";
-        assert_eq!(v3_position_manager_address(480), Some(Address::from(expected)));
+        assert_eq!(
+            v3_position_manager_address(480),
+            Some(Address::from(expected))
+        );
     }
 
     /// F-P0.2: ensure unknown chains still return `None` so we don't blindly

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/collect-bnb@1.0.0",
   "manifest_path": "manifests/uniswap/v3/collect-bnb@1.0.0.json",
-  "bundle_sha256": "0x8e9ef2921201914ca7d2d2159ab1e639dc61bc4e4543d7a87a1e23e9c556f903",
+  "bundle_sha256": "0x9d07e5efa7bb03748472f1ddcfb826de336b00ce370f485b8b6124bdd5a1c20d",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/collect-bnb@1.0.0",
@@ -56,13 +56,7 @@
           "from": "$.tx.to"
         },
         "nft.kind": {
-          "literal": "erc721"
-        },
-        "nft.address": {
-          "from": "$.tx.to"
-        },
-        "nft.tokenId": {
-          "from": "$.args.tokenId"
+          "literal": "unknown"
         },
         "tokenId": {
           "from": "$.args.tokenId"

@@ -27,9 +27,7 @@ use alloy_primitives::U256;
 use mappers::declarative::{types::AdapterFunctionBundle, DeclarativeMapper};
 use mappers::mapper::{MapContext, Mapper, MapperError};
 use mappers::EmptyTokenRegistry;
-use policy_engine::action::misc::{
-    ClaimRewardsAction, GaugeVoteAction, GaugeVoteKind, SourceRef,
-};
+use policy_engine::action::misc::{ClaimRewardsAction, GaugeVoteAction, GaugeVoteKind, SourceRef};
 use policy_engine::action::{Action, Address, AssetKind, DecimalString};
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -66,7 +64,8 @@ fn pool_usdc_eth() -> Address {
 }
 
 fn pool(label: u8) -> Address {
-    Address::from_str(&format!("0x{}{}", "0".repeat(38), format!("{label:02x}"))).unwrap()
+    let suffix = format!("{label:02x}");
+    Address::from_str(&format!("0x{}{}", "0".repeat(38), suffix)).unwrap()
 }
 
 fn user() -> Address {
@@ -156,16 +155,12 @@ fn make_vote_call(
             DecodedArg {
                 name: "pools".into(),
                 abi_type: "address[]".into(),
-                value: DecodedValue::Array(
-                    pools.into_iter().map(DecodedValue::Address).collect(),
-                ),
+                value: DecodedValue::Array(pools.into_iter().map(DecodedValue::Address).collect()),
             },
             DecodedArg {
                 name: "weights".into(),
                 abi_type: "uint256[]".into(),
-                value: DecodedValue::Array(
-                    weights.into_iter().map(DecodedValue::Uint).collect(),
-                ),
+                value: DecodedValue::Array(weights.into_iter().map(DecodedValue::Uint).collect()),
             },
         ],
         nested: vec![],
@@ -230,13 +225,17 @@ fn make_claim_fees_call(
 // ───────────────────────────────────────────────────────────────────────────
 
 fn load_mapper(bundle_json: &str) -> DeclarativeMapper {
-    let bundle: AdapterFunctionBundle =
-        serde_json::from_str(bundle_json).expect("bundle parses");
+    let bundle: AdapterFunctionBundle = serde_json::from_str(bundle_json).expect("bundle parses");
     DeclarativeMapper::new(bundle)
 }
 
 fn unwrap_gauge_vote(envelopes: &[policy_engine::ActionEnvelope]) -> &GaugeVoteAction {
-    assert_eq!(envelopes.len(), 1, "single envelope expected, got {}", envelopes.len());
+    assert_eq!(
+        envelopes.len(),
+        1,
+        "single envelope expected, got {}",
+        envelopes.len()
+    );
     match &envelopes[0].action {
         Action::GaugeVote(a) => a,
         other => panic!("expected Action::GaugeVote, got {other:?}"),
@@ -244,7 +243,12 @@ fn unwrap_gauge_vote(envelopes: &[policy_engine::ActionEnvelope]) -> &GaugeVoteA
 }
 
 fn unwrap_claim_rewards(envelopes: &[policy_engine::ActionEnvelope]) -> &ClaimRewardsAction {
-    assert_eq!(envelopes.len(), 1, "single envelope expected, got {}", envelopes.len());
+    assert_eq!(
+        envelopes.len(),
+        1,
+        "single envelope expected, got {}",
+        envelopes.len()
+    );
     match &envelopes[0].action {
         Action::ClaimRewards(a) => a,
         other => panic!("expected Action::ClaimRewards, got {other:?}"),
@@ -346,7 +350,9 @@ fn vote_weight_max_uint256_round_trips() {
         vec![U256::MAX],
     );
 
-    let envelopes = mapper.map(&ctx.map_ctx(), &call).expect("max-weight vote maps");
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &call)
+        .expect("max-weight vote maps");
     let action = unwrap_gauge_vote(&envelopes);
 
     let expected_max =
@@ -378,7 +384,9 @@ fn vote_weight_zero_with_kind_vote_maps_pass() {
         vec![U256::ZERO],
     );
 
-    let envelopes = mapper.map(&ctx.map_ctx(), &call).expect("zero-weight vote maps");
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &call)
+        .expect("zero-weight vote maps");
     let action = unwrap_gauge_vote(&envelopes);
 
     assert_eq!(action.weights.len(), 1);
@@ -510,7 +518,10 @@ fn claim_fees_emits_first_token_only_with_source() {
     assert_eq!(action.recipient, user());
 
     // tokenId from calldata.
-    assert_eq!(action.token_id.as_ref().map(ToString::to_string), Some("1".to_owned()));
+    assert_eq!(
+        action.token_id.as_ref().map(ToString::to_string),
+        Some("1".to_owned())
+    );
 
     // rewardTokens — only the **first** of `tokens[0][0]` is captured
     // (USDC), reflecting the Round 4.4 single-emit fan-out 한계.

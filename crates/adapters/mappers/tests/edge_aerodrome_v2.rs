@@ -31,11 +31,11 @@ use alloy_primitives::U256;
 use mappers::declarative::{types::AdapterFunctionBundle, DeclarativeMapper};
 use mappers::mapper::{MapContext, Mapper};
 use mappers::EmptyTokenRegistry;
+use policy_engine::action::dex::RemoveLiquidityExitMode;
 use policy_engine::action::dex::SwapMode;
 use policy_engine::action::{
     Action, ActionEnvelope, Address, AmountKind, AssetKind, DecimalString,
 };
-use policy_engine::action::dex::RemoveLiquidityExitMode;
 use policy_engine::{policy_request_from_envelope, PolicyEngineBuilder, Verdict};
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -44,15 +44,12 @@ use policy_engine::{policy_request_from_envelope, PolicyEngineBuilder, Verdict};
 // drift between fixture and production.
 // ───────────────────────────────────────────────────────────────────────────
 
-const AERO_SWAP_EXACT_TOKENS_FOR_TOKENS: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/v2/swapExactTokensForTokens@1.0.0.json"
-);
-const AERO_SWAP_EXACT_ETH_FOR_TOKENS: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/v2/swapExactETHForTokens@1.0.0.json"
-);
-const AERO_ADD_LIQUIDITY: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/v2/addLiquidity@1.0.0.json"
-);
+const AERO_SWAP_EXACT_TOKENS_FOR_TOKENS: &str =
+    include_str!("../../../../registry/manifests/aerodrome/v2/swapExactTokensForTokens@1.0.0.json");
+const AERO_SWAP_EXACT_ETH_FOR_TOKENS: &str =
+    include_str!("../../../../registry/manifests/aerodrome/v2/swapExactETHForTokens@1.0.0.json");
+const AERO_ADD_LIQUIDITY: &str =
+    include_str!("../../../../registry/manifests/aerodrome/v2/addLiquidity@1.0.0.json");
 const AERO_REMOVE_LIQUIDITY_ETH_FOT: &str = include_str!(
     "../../../../registry/manifests/aerodrome/v2/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0.json"
 );
@@ -260,7 +257,8 @@ fn aerodrome_add_liquidity_decoded(
     DecodedCall {
         decoder_id,
         function_signature:
-            "addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256)".into(),
+            "addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256)"
+                .into(),
         args: vec![
             DecodedArg {
                 name: "tokenA".into(),
@@ -417,7 +415,10 @@ fn aerodrome_swap_single_hop_route_resolves_endpoints() {
     assert_eq!(action.output_token.asset.kind, AssetKind::Erc20);
     assert_eq!(action.output_token.asset.address, Some(usdt()));
     assert_eq!(action.recipient, recipient());
-    assert_eq!(action.fee_bps, None, "Aerodrome bundle does not bind fee_bps");
+    assert_eq!(
+        action.fee_bps, None,
+        "Aerodrome bundle does not bind fee_bps"
+    );
 }
 
 /// **T2: multi-hop Route (length 2)**.

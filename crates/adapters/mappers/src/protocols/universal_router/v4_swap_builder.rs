@@ -527,8 +527,14 @@ mod tests {
     #[test]
     fn swap_without_take_defaults_recipient_to_ctx_from() {
         let actions = vec![0x06];
-        let inputs =
-            vec![encode_swap_single_input(token_a(), token_b(), 3_000, true, 1, 1)];
+        let inputs = vec![encode_swap_single_input(
+            token_a(),
+            token_b(),
+            3_000,
+            true,
+            1,
+            1,
+        )];
         let steps = dispatch_opcodes(&actions, &inputs, &V4_ROUTER_TABLE);
 
         let registry = EmptyTokenRegistry;
@@ -563,7 +569,10 @@ mod tests {
         let ctx = build_ctx(&registry, &from, &to, &value);
 
         let envelopes = build_v4_swap_envelopes(&ctx, &steps).unwrap();
-        assert!(envelopes.is_empty(), "settle/take-only must emit no swap envelopes");
+        assert!(
+            envelopes.is_empty(),
+            "settle/take-only must emit no swap envelopes"
+        );
     }
 
     /// `SWAP_EXACT_OUT_SINGLE` (0x08) yields an ExactOut swap envelope.

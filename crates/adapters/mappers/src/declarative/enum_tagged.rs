@@ -145,9 +145,7 @@ fn extract_tag_bytes(decoded: &DecodedCall, tag_path: &str) -> Result<Vec<u8>, M
 /// convert each value through `abi_resolver::bridge::convert_value` and then
 /// reuse the same JSON encoder so the resulting object is byte-identical to
 /// what `args_to_json` would produce for an equivalent outer call.
-fn enum_args_to_json(
-    args: &[abi_resolver::decode::DecodedArg],
-) -> Result<Value, MapperError> {
+fn enum_args_to_json(args: &[abi_resolver::decode::DecodedArg]) -> Result<Value, MapperError> {
     let mut obj = serde_json::Map::with_capacity(args.len());
     for arg in args {
         let decoded_value = convert_dyn_sol_value(&arg.value)?;
@@ -166,21 +164,17 @@ fn convert_dyn_sol_value(value: &DynSolValue) -> Result<DecodedValue, MapperErro
     Ok(match value {
         DynSolValue::Address(addr) => {
             let hex = format!("0x{}", hex::encode(addr.0));
-            DecodedValue::Address(
-                policy_engine::action::Address::from_str(&hex).map_err(|e| {
-                    MapperError::Internal(anyhow::anyhow!(
-                        "enum_tagged_dispatch: invalid address {hex}: {e}"
-                    ))
-                })?,
-            )
+            DecodedValue::Address(policy_engine::action::Address::from_str(&hex).map_err(|e| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "enum_tagged_dispatch: invalid address {hex}: {e}"
+                ))
+            })?)
         }
         DynSolValue::Uint(v, _) => DecodedValue::Uint(*v),
         DynSolValue::Int(v, _) => DecodedValue::Int(*v),
         DynSolValue::Bool(b) => DecodedValue::Bool(*b),
         DynSolValue::Bytes(b) => DecodedValue::Bytes(b.clone()),
-        DynSolValue::FixedBytes(word, len) => {
-            DecodedValue::Bytes(word.as_slice()[..*len].to_vec())
-        }
+        DynSolValue::FixedBytes(word, len) => DecodedValue::Bytes(word.as_slice()[..*len].to_vec()),
         DynSolValue::String(s) => DecodedValue::String(s.clone()),
         DynSolValue::Array(items) | DynSolValue::FixedArray(items) => DecodedValue::Array(
             items
@@ -246,8 +240,8 @@ mod tests {
     fn decoded_with_user_data(user_data: Vec<u8>) -> DecodedCall {
         DecodedCall {
             decoder_id: DecoderId::new("test/balancer-v2/joinPool"),
-            function_signature: "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))"
-                .into(),
+            function_signature:
+                "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))".into(),
             args: vec![DecodedArg {
                 name: "userData".into(),
                 abi_type: "bytes".into(),

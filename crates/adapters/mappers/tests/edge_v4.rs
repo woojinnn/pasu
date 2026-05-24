@@ -9,6 +9,8 @@
 //!
 //! Production code is unchanged — this file only adds test coverage.
 
+#![allow(clippy::doc_lazy_continuation, clippy::doc_overindented_list_items)]
+
 use std::str::FromStr as _;
 use std::sync::Mutex;
 
@@ -25,9 +27,8 @@ use mappers::token_registry::EmptyTokenRegistry;
 use policy_engine::action::{Address, DecimalString};
 use policy_engine::ActionEnvelope;
 
-const UR_BUNDLE_JSON: &str = include_str!(
-    "../../../../registry/manifests/uniswap/universal-router/execute@1.0.0.json"
-);
+const UR_BUNDLE_JSON: &str =
+    include_str!("../../../../registry/manifests/uniswap/universal-router/execute@1.0.0.json");
 
 /// UR `V4_SWAP` opcode (after `UNISWAP_UR_MASK`).
 const OPCODE_V4_SWAP: u8 = 0x10;
@@ -59,7 +60,8 @@ fn recipient_addr() -> alloy_primitives::Address {
 }
 
 fn dummy_addr(label: u8) -> Address {
-    Address::from_str(&format!("0x{}{}", "0".repeat(38), format!("{label:02x}"))).unwrap()
+    let suffix = format!("{label:02x}");
+    Address::from_str(&format!("0x{}{}", "0".repeat(38), suffix)).unwrap()
 }
 
 /// V4 PM mainnet address — matches Tier B's `V4_PM_ADDRESSES` chain_id=1 entry.
@@ -83,10 +85,7 @@ fn encode_v4_swap_input(inner_actions: Vec<u8>, inner_params: Vec<Vec<u8>>) -> V
     )
 }
 
-fn encode_execute_sub_plan_input(
-    inner_commands: Vec<u8>,
-    inner_inputs: Vec<Vec<u8>>,
-) -> Vec<u8> {
+fn encode_execute_sub_plan_input(inner_commands: Vec<u8>, inner_inputs: Vec<Vec<u8>>) -> Vec<u8> {
     encode_step_input(
         "(bytes,bytes[])",
         &[
@@ -102,6 +101,7 @@ fn encode_position_manager_step_input(inner_calldata: Vec<u8>) -> Vec<u8> {
 
 /// Encode a V4 router `SWAP_EXACT_IN_SINGLE` (0x06) action params in the
 /// pre-#497 (mainnet-deployed, no `minHopPriceX36`) shape.
+#[allow(clippy::too_many_arguments)]
 fn encode_v4_swap_exact_in_single_params(
     currency0: alloy_primitives::Address,
     currency1: alloy_primitives::Address,
@@ -148,9 +148,7 @@ fn ur_execute_decoded(commands: Vec<u8>, inputs: Vec<Vec<u8>>) -> DecodedCall {
             DecodedArg {
                 name: "inputs".into(),
                 abi_type: "bytes[]".into(),
-                value: DecodedValue::Array(
-                    inputs.into_iter().map(DecodedValue::Bytes).collect(),
-                ),
+                value: DecodedValue::Array(inputs.into_iter().map(DecodedValue::Bytes).collect()),
             },
             DecodedArg {
                 name: "deadline".into(),
@@ -386,10 +384,7 @@ fn v4_swap_all_25_actions_decode_succeeds() {
         ],
     );
     let single_addr = encode_step_input("(address)", &[DynSolValue::Address(token_in())]);
-    let single_uint = encode_step_input(
-        "(uint256)",
-        &[DynSolValue::Uint(U256::from(1u64), 256)],
-    );
+    let single_uint = encode_step_input("(uint256)", &[DynSolValue::Uint(U256::from(1u64), 256)]);
     // Liquidity flat: (uint256, uint256, uint128, uint128, bytes)
     let inc_dec_liq = encode_step_input(
         "(uint256,uint256,uint128,uint128,bytes)",
@@ -545,7 +540,11 @@ fn v4_swap_all_25_actions_decode_succeeds() {
     // opcode is recognised (no `UNKNOWN` name) — proves the table covers
     // 0x00..=0x18 contiguously without holes.
     let inner = tier_b_opcode_stream::dispatch(&actions, &params, &V4_ROUTER_TABLE);
-    assert_eq!(inner.len(), 25, "Tier B must produce one step per action byte");
+    assert_eq!(
+        inner.len(),
+        25,
+        "Tier B must produce one step per action byte"
+    );
     for (i, step) in inner.iter().enumerate() {
         assert_ne!(
             step.name, "UNKNOWN",
@@ -631,7 +630,10 @@ fn v4_swap_at_depth_2_succeeds() {
         "V4_SWAP at depth 2 must succeed and emit one Swap envelope, got {envelopes:?}"
     );
     assert!(
-        matches!(envelopes[0].action, policy_engine::action::envelope::Action::Swap(_)),
+        matches!(
+            envelopes[0].action,
+            policy_engine::action::envelope::Action::Swap(_)
+        ),
         "expected Swap, got {:?}",
         envelopes[0].action
     );
@@ -667,7 +669,10 @@ fn v4_swap_unknown_inner_opcode_with_warn_policy_skips() {
             "bundle unknown_opcode_policy must be Warn, got {s}"
         );
     } else {
-        panic!("UR bundle must be OpcodeStreamDispatch, got {:?}", bundle.emit);
+        panic!(
+            "UR bundle must be OpcodeStreamDispatch, got {:?}",
+            bundle.emit
+        );
     }
 
     // Inner V4 action 0xFF is not in V4_ROUTER_TABLE (only 0x00..=0x18

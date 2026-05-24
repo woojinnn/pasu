@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/gauge/deposit@1.0.0",
   "manifest_path": "manifests/aerodrome/gauge/deposit@1.0.0.json",
-  "bundle_sha256": "0x375a88c3b676985d2ebdf3746a30905b1f9113b4340e411213f070595fa19565",
+  "bundle_sha256": "0xe290544e400b6ecbd958f5d5232fccfc902ffcbcdd7902e2dd23227c2777ad71",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/gauge/deposit@1.0.0",
@@ -42,10 +42,7 @@
           "from": "$.tx.to"
         },
         "lpToken.kind": {
-          "literal": "erc20"
-        },
-        "lpToken.address": {
-          "from": "$.tx.to"
+          "literal": "unknown"
         },
         "amount.kind": {
           "literal": "exact"

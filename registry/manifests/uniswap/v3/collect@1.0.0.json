@@ -54,13 +54,7 @@
         "from": "$.tx.to"
       },
       "nft.kind": {
-        "literal": "erc721"
-      },
-      "nft.address": {
-        "from": "$.tx.to"
-      },
-      "nft.tokenId": {
-        "from": "$.args.tokenId"
+        "literal": "unknown"
       },
       "tokenId": {
         "from": "$.args.tokenId"

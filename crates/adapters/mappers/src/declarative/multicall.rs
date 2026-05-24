@@ -156,8 +156,7 @@ pub fn execute(
             )));
         }
 
-        let child_envelopes =
-            resolver.resolve_child(&child_key, &child_ctx, child_calldata)?;
+        let child_envelopes = resolver.resolve_child(&child_key, &child_ctx, child_calldata)?;
         envelopes.extend(child_envelopes);
     }
 
@@ -265,13 +264,11 @@ mod tests {
                 had_parent: ctx.parent_calldata.is_some(),
             });
             let mut responses = self.responses.lock().unwrap();
-            responses
-                .pop()
-                .unwrap_or_else(|| {
-                    Err(MapperError::Internal(anyhow::anyhow!(
-                        "RecordingResolver exhausted"
-                    )))
-                })
+            responses.pop().unwrap_or_else(|| {
+                Err(MapperError::Internal(anyhow::anyhow!(
+                    "RecordingResolver exhausted"
+                )))
+            })
         }
     }
 
@@ -283,7 +280,10 @@ mod tests {
                 input_token: AssetRefWithAmountConstraint {
                     asset: AssetRef {
                         kind: AssetKind::Erc20,
-                        address: Some(Address::from_str("0x1111111111111111111111111111111111111111").unwrap()),
+                        address: Some(
+                            Address::from_str("0x1111111111111111111111111111111111111111")
+                                .unwrap(),
+                        ),
                         token_id: None,
                         symbol: None,
                         decimals: None,
@@ -296,7 +296,10 @@ mod tests {
                 output_token: AssetRefWithAmountConstraint {
                     asset: AssetRef {
                         kind: AssetKind::Erc20,
-                        address: Some(Address::from_str("0x2222222222222222222222222222222222222222").unwrap()),
+                        address: Some(
+                            Address::from_str("0x2222222222222222222222222222222222222222")
+                                .unwrap(),
+                        ),
                         token_id: None,
                         symbol: None,
                         decimals: None,
@@ -641,7 +644,10 @@ mod tests {
 
         let err = execute(&ctx, &decoded, &high_rule).unwrap_err();
         assert!(err.to_string().contains("MAX_GLOBAL_DEPTH"));
-        assert!(resolver.calls().is_empty(), "resolver invoked past global cap");
+        assert!(
+            resolver.calls().is_empty(),
+            "resolver invoked past global cap"
+        );
     }
 
     /// Cycle: A.multicall calls B.multicall calls A.multicall ... A custom
@@ -805,7 +811,11 @@ mod tests {
         assert!(err.to_string().contains("shorter than 4 bytes"));
         // 1st child dispatched; 2nd fails before resolver invoked; 3rd never reached.
         let calls = resolver.calls();
-        assert_eq!(calls.len(), 1, "only the first valid child reached resolver");
+        assert_eq!(
+            calls.len(),
+            1,
+            "only the first valid child reached resolver"
+        );
         assert_eq!(calls[0].calldata, valid_mint);
     }
 }

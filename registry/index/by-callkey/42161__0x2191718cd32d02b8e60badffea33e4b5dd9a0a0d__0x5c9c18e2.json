@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/router-ng/exchange-5arg-arbitrum@1.0.0",
   "manifest_path": "manifests/curve/router-ng/exchange-5arg-arbitrum@1.0.0.json",
-  "bundle_sha256": "0x4b8e0fb3928dd605ff5322753a6331b7532ac44ca311c33fc862f7cece0ba4c4",
+  "bundle_sha256": "0xbdc166aa5e90c86844550ac04a2c11a785ecca72dec464f7282a9c59d467c0f3",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/router-ng/exchange-5arg-arbitrum@1.0.0",
@@ -81,6 +81,9 @@
           "args": [
             {
               "from": "$.args._route"
+            },
+            {
+              "from": "$.args._swap_params"
             }
           ]
         },

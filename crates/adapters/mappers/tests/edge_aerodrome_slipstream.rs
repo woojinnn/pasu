@@ -50,9 +50,8 @@ use serde_json::json;
 // Loaded directly via `include_str!` (relative to this test file's location).
 // ───────────────────────────────────────────────────────────────────────────
 
-const SLIPSTREAM_EXACT_INPUT_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/slipstream/exactInput@1.0.0.json"
-);
+const SLIPSTREAM_EXACT_INPUT_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/slipstream/exactInput@1.0.0.json");
 
 // ───────────────────────────────────────────────────────────────────────────
 // Address fixtures. Slipstream addresses are dummy unique ones for unit-test
@@ -126,11 +125,11 @@ fn path_as_hex_json(path: &[u8]) -> serde_json::Value {
     serde_json::Value::String(format!("0x{}", hex::encode(path)))
 }
 
-/// Build a `DecodedCall` matching the Slipstream `exactInput` bundle layout —
-/// a single `params` arg that is a `Tuple` of (path, recipient, deadline,
-/// amountIn, amountOutMinimum). The bundle resolves fields via
-/// `$.args.params[<idx>]`, so the tuple must NOT be flattened (unlike the
-/// Uniswap V3 fixtures in `edge_v3.rs`).
+/// Build a `DecodedCall` matching the Slipstream `exactInput` bundle layout.
+/// Phase A B-1 fix — the bundle now resolves flat field names (`$.args.path`,
+/// `$.args.recipient`, `$.args.amountIn`, etc.) per Uniswap V3's flatten
+/// convention. The synthetic decoder must therefore emit one `DecodedArg` per
+/// tuple component, mirroring `decode_with_json_abi`'s single-tuple flatten.
 fn slipstream_exact_input_decoded(
     decoder_id: DecoderId,
     path_bytes: Vec<u8>,
@@ -141,17 +140,33 @@ fn slipstream_exact_input_decoded(
     DecodedCall {
         decoder_id,
         function_signature: "exactInput((bytes,address,uint256,uint256,uint256))".into(),
-        args: vec![DecodedArg {
-            name: "params".into(),
-            abi_type: "tuple".into(),
-            value: DecodedValue::Tuple(vec![
-                DecodedValue::Bytes(path_bytes),
-                DecodedValue::Address(recipient_addr),
-                DecodedValue::Uint(U256::from(9_999_999_999_u64)),
-                DecodedValue::Uint(amount_in),
-                DecodedValue::Uint(amount_out_minimum),
-            ]),
-        }],
+        args: vec![
+            DecodedArg {
+                name: "path".into(),
+                abi_type: "bytes".into(),
+                value: DecodedValue::Bytes(path_bytes),
+            },
+            DecodedArg {
+                name: "recipient".into(),
+                abi_type: "address".into(),
+                value: DecodedValue::Address(recipient_addr),
+            },
+            DecodedArg {
+                name: "deadline".into(),
+                abi_type: "uint256".into(),
+                value: DecodedValue::Uint(U256::from(9_999_999_999_u64)),
+            },
+            DecodedArg {
+                name: "amountIn".into(),
+                abi_type: "uint256".into(),
+                value: DecodedValue::Uint(amount_in),
+            },
+            DecodedArg {
+                name: "amountOutMinimum".into(),
+                abi_type: "uint256".into(),
+                value: DecodedValue::Uint(amount_out_minimum),
+            },
+        ],
         nested: vec![],
     }
 }
@@ -181,7 +196,14 @@ impl Ctx {
     }
 
     fn map_ctx(&self) -> MapContext<'_> {
-        MapContext::new(8453, &self.from, &self.to, &self.value, Some(1_700_000_000), &self.registry)
+        MapContext::new(
+            8453,
+            &self.from,
+            &self.to,
+            &self.value,
+            Some(1_700_000_000),
+            &self.registry,
+        )
     }
 }
 
@@ -193,13 +215,16 @@ impl Ctx {
 fn slipstream_single_hop_endpoints_and_tick_spacing() {
     // `(token_a, +200, token_b)` — minimum Slipstream path length (43 B).
     let path = build_slipstream_path(&[token_a(), token_b()], &[200]);
-    assert_eq!(path.len(), 43, "single-hop Slipstream path = 20 + 23 = 43 bytes");
+    assert_eq!(
+        path.len(),
+        43,
+        "single-hop Slipstream path = 20 + 23 = 43 bytes"
+    );
 
     let path_json = path_as_hex_json(&path);
     let first = unfold_slipstream_path(&path_json, "first_token", None).unwrap();
     let last = unfold_slipstream_path(&path_json, "last_token", None).unwrap();
-    let ts_first =
-        unfold_slipstream_path(&path_json, "first_tick_spacing", None).unwrap();
+    let ts_first = unfold_slipstream_path(&path_json, "first_tick_spacing", None).unwrap();
     let ts_last = unfold_slipstream_path(&path_json, "last_tick_spacing", None).unwrap();
 
     assert_eq!(first.as_str().unwrap(), token_a().to_string());
@@ -225,8 +250,7 @@ fn slipstream_three_hop_first_last_token_and_last_tick_spacing() {
     let path_json = path_as_hex_json(&path);
     let first = unfold_slipstream_path(&path_json, "first_token", None).unwrap();
     let last = unfold_slipstream_path(&path_json, "last_token", None).unwrap();
-    let ts_first =
-        unfold_slipstream_path(&path_json, "first_tick_spacing", None).unwrap();
+    let ts_first = unfold_slipstream_path(&path_json, "first_tick_spacing", None).unwrap();
     let ts_last = unfold_slipstream_path(&path_json, "last_tick_spacing", None).unwrap();
 
     assert_eq!(first.as_str().unwrap(), token_a().to_string());
@@ -244,7 +268,8 @@ fn slipstream_eight_hop_max_length_endpoints_preserved() {
     // 9 tokens for 8 hops. Intermediate tokens are unique dummy addresses.
     let intermediates: Vec<Address> = (1..=7)
         .map(|i| {
-            Address::from_str(&format!("0x{}{}", "0".repeat(38), format!("{i:02x}"))).unwrap()
+            let suffix = format!("{i:02x}");
+            Address::from_str(&format!("0x{}{}", "0".repeat(38), suffix)).unwrap()
         })
         .collect();
     let mut tokens = vec![token_a()];
@@ -266,8 +291,7 @@ fn slipstream_eight_hop_max_length_endpoints_preserved() {
     assert_eq!(last.as_str().unwrap(), token_d().to_string());
 
     // Sanity-check the first / last tick spacings traversed the full chain.
-    let ts_first =
-        unfold_slipstream_path(&path_json, "first_tick_spacing", None).unwrap();
+    let ts_first = unfold_slipstream_path(&path_json, "first_tick_spacing", None).unwrap();
     let ts_last = unfold_slipstream_path(&path_json, "last_tick_spacing", None).unwrap();
     assert_eq!(ts_first.as_i64().unwrap(), 1);
     assert_eq!(ts_last.as_i64().unwrap(), 50);
@@ -375,12 +399,9 @@ fn slipstream_tick_spacing_at_hop_positive_idx() {
     );
     let path_json = path_as_hex_json(&path);
 
-    let hop0 =
-        unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(0))).unwrap();
-    let hop1 =
-        unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(1))).unwrap();
-    let hop2 =
-        unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(2))).unwrap();
+    let hop0 = unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(0))).unwrap();
+    let hop1 = unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(1))).unwrap();
+    let hop2 = unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(2))).unwrap();
     assert_eq!(hop0.as_i64().unwrap(), 100);
     assert_eq!(hop1.as_i64().unwrap(), 200);
     assert_eq!(hop2.as_i64().unwrap(), 500);
@@ -400,12 +421,9 @@ fn slipstream_tick_spacing_at_hop_negative_idx_picks_last() {
     );
     let path_json = path_as_hex_json(&path);
 
-    let neg1 =
-        unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(-1))).unwrap();
-    let neg2 =
-        unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(-2))).unwrap();
-    let neg3 =
-        unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(-3))).unwrap();
+    let neg1 = unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(-1))).unwrap();
+    let neg2 = unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(-2))).unwrap();
+    let neg3 = unfold_slipstream_path(&path_json, "tick_spacing_at_hop", Some(&json!(-3))).unwrap();
     assert_eq!(neg1.as_i64().unwrap(), 500);
     assert_eq!(neg2.as_i64().unwrap(), 200);
     assert_eq!(neg3.as_i64().unwrap(), 100);
@@ -452,7 +470,11 @@ fn slipstream_dsl_integration_exact_input_emits_swap_with_correct_endpoints() {
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
         .expect("Slipstream exactInput maps end-to-end");
-    assert_eq!(envelopes.len(), 1, "single_emit yields exactly one envelope");
+    assert_eq!(
+        envelopes.len(),
+        1,
+        "single_emit yields exactly one envelope"
+    );
 
     let action = unwrap_swap(&envelopes[0]);
     assert_eq!(
@@ -486,10 +508,10 @@ const SLIPSTREAM_NPM_DECREASE_LIQUIDITY_BUNDLE: &str = include_str!(
     "../../../../registry/manifests/aerodrome/slipstream-npm/decreaseLiquidity@1.0.0.json"
 );
 
-/// Build a `DecodedCall` for Slipstream NPM `decreaseLiquidity`. The single
-/// `params` arg is a tuple `(tokenId, liquidity, amount0Min, amount1Min,
-/// deadline)`; the bundle resolves `$.args.params[<idx>]`, so the tuple is
-/// left un-flattened (mirrors `slipstream_exact_input_decoded`).
+/// Build a `DecodedCall` for Slipstream NPM `decreaseLiquidity`. Phase A B-1
+/// fix — the bundle now resolves flat field names (`$.args.tokenId`, etc.) per
+/// the Uniswap V3 flatten convention. Args are emitted one per tuple
+/// component, mirroring `decode_with_json_abi`'s single-tuple flatten.
 fn slipstream_npm_decrease_liquidity_decoded(
     decoder_id: DecoderId,
     token_id: U256,
@@ -500,17 +522,33 @@ fn slipstream_npm_decrease_liquidity_decoded(
     DecodedCall {
         decoder_id,
         function_signature: "decreaseLiquidity((uint256,uint128,uint256,uint256,uint256))".into(),
-        args: vec![DecodedArg {
-            name: "params".into(),
-            abi_type: "tuple".into(),
-            value: DecodedValue::Tuple(vec![
-                DecodedValue::Uint(token_id),
-                DecodedValue::Uint(liquidity),
-                DecodedValue::Uint(amount0_min),
-                DecodedValue::Uint(amount1_min),
-                DecodedValue::Uint(U256::from(1_700_000_900_u64)),
-            ]),
-        }],
+        args: vec![
+            DecodedArg {
+                name: "tokenId".into(),
+                abi_type: "uint256".into(),
+                value: DecodedValue::Uint(token_id),
+            },
+            DecodedArg {
+                name: "liquidity".into(),
+                abi_type: "uint128".into(),
+                value: DecodedValue::Uint(liquidity),
+            },
+            DecodedArg {
+                name: "amount0Min".into(),
+                abi_type: "uint256".into(),
+                value: DecodedValue::Uint(amount0_min),
+            },
+            DecodedArg {
+                name: "amount1Min".into(),
+                abi_type: "uint256".into(),
+                value: DecodedValue::Uint(amount1_min),
+            },
+            DecodedArg {
+                name: "deadline".into(),
+                abi_type: "uint256".into(),
+                value: DecodedValue::Uint(U256::from(1_700_000_900_u64)),
+            },
+        ],
         nested: vec![],
     }
 }

@@ -78,6 +78,12 @@ function walkJsonFiles(root: string): string[] {
       const p = join(cur, entry);
       const s = statSync(p);
       if (s.isDirectory()) {
+        // Skip `_template/` dirs — these hold pool-type emit-rule templates
+        // with placeholder addresses (0x1111…/0xaaaa…) consumed by
+        // `gen-curve-pools.ts` per-pool generation. They are NOT live bundles
+        // and must never be installed or indexed (placeholder addresses would
+        // create dead callkeys and tripping audit-addresses bogus gate).
+        if (entry === "_template") continue;
         stack.push(p);
       } else if (s.isFile() && entry.endsWith(".json")) {
         out.push(p);

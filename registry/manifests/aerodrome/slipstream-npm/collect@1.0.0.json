@@ -31,11 +31,10 @@
     "category": "misc",
     "action": "claim_rewards",
     "fields": {
-      "nft.kind":      { "literal": "erc721" },
-      "nft.address":   { "literal": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53" },
-      "tokenId":       { "from": "$.args.params[0]" },
+      "nft.kind":      { "literal": "unknown" },
+      "tokenId":       { "from": "$.args.tokenId" },
       "from":          { "from": "$.tx.from" },
-      "recipient":     { "from": "$.args.params[1]" }
+      "recipient":     { "from": "$.args.recipient" }
     }
   },
   "requires": {

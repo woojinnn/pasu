@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/stableswap/steth/exchange-v1@1.0.0",
   "manifest_path": "manifests/curve/stableswap/steth/exchange-v1@1.0.0.json",
-  "bundle_sha256": "0xe6da97993402d256072af773c833d96b8c93469a84cb0a5f2c5c73e4fc9fe6a4",
+  "bundle_sha256": "0xe1c4138402465fca962b0a87abc6af9d7d3bc6410d7b6a5cb395cfacc166ce83",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/stableswap/steth/exchange-v1@1.0.0",
@@ -51,21 +51,7 @@
           "literal": "exact_in"
         },
         "inputToken.asset.kind": {
-          "literal": "erc20"
-        },
-        "inputToken.asset.address": {
-          "fn": "select_from_literal_array",
-          "args": [
-            {
-              "literal": [
-                "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-                "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
-              ]
-            },
-            {
-              "from": "$.args.i"
-            }
-          ]
+          "literal": "unknown"
         },
         "inputToken.amount.kind": {
           "literal": "exact"
@@ -74,21 +60,7 @@
           "from": "$.args.dx"
         },
         "outputToken.asset.kind": {
-          "literal": "erc20"
-        },
-        "outputToken.asset.address": {
-          "fn": "select_from_literal_array",
-          "args": [
-            {
-              "literal": [
-                "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-                "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
-              ]
-            },
-            {
-              "from": "$.args.j"
-            }
-          ]
+          "literal": "unknown"
         },
         "outputToken.amount.kind": {
           "literal": "min"

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/slipstream-gauge/withdraw@1.0.0",
   "manifest_path": "manifests/aerodrome/slipstream-gauge/withdraw@1.0.0.json",
-  "bundle_sha256": "0xc7625ccd1951c376af74cad22d53e00705ace95ee069b27fa2b9ae5e0fb25b78",
+  "bundle_sha256": "0x1b1e90e6f82459f082158078bbdbd7391c700eb576f3f8b265037ab661a79188",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/slipstream-gauge/withdraw@1.0.0",
@@ -54,13 +54,7 @@
           "from": "$.tx.to"
         },
         "lpToken.kind": {
-          "literal": "erc721"
-        },
-        "lpToken.address": {
-          "literal": "0x827922686190790b37229fd06084350E74485b72"
-        },
-        "lpToken.tokenId": {
-          "from": "$.args.tokenId"
+          "literal": "unknown"
         },
         "amount.kind": {
           "literal": "exact"

@@ -27,30 +27,10 @@
     "action": "swap",
     "fields": {
       "swapMode":                  { "literal": "exact_in" },
-      "inputToken.asset.kind":     { "literal": "erc20" },
-      "inputToken.asset.address":  {
-        "fn": "select_from_literal_array",
-        "args": [
-          { "literal": [
-            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
-          ] },
-          { "from": "$.args.i" }
-        ]
-      },
+      "inputToken.asset.kind":     { "literal": "unknown" },
       "inputToken.amount.kind":    { "literal": "exact" },
       "inputToken.amount.value":   { "from": "$.args.dx" },
-      "outputToken.asset.kind":    { "literal": "erc20" },
-      "outputToken.asset.address": {
-        "fn": "select_from_literal_array",
-        "args": [
-          { "literal": [
-            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
-          ] },
-          { "from": "$.args.j" }
-        ]
-      },
+      "outputToken.asset.kind":    { "literal": "unknown" },
       "outputToken.amount.kind":   { "literal": "min" },
       "outputToken.amount.value":  { "from": "$.args.min_dy" },
       "recipient":                 { "from": "$.tx.from" }

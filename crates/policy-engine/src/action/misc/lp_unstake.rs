@@ -1,4 +1,4 @@
-//! LP token unstaking (Aerodrome Gauge.withdraw / mirror of LpStake).
+//! LP token unstaking (Aerodrome Gauge.withdraw / mirror of `LpStake`).
 
 use serde::{Deserialize, Serialize};
 

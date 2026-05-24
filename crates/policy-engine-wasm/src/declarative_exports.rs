@@ -46,9 +46,10 @@ use policy_engine::action::{Address, DecimalString};
 use wasm_bindgen::prelude::*;
 
 use crate::dto::{
-    DecodedArgDto, DecodedCallDto, DecodedValueDto, DeclarativeChildCallKeyDto,
-    DeclarativeInstallResultDto, DeclarativeLookupInputDto, DeclarativePlanChildrenResultDto,
-    DeclarativeRouteRequestInputDto, DeclarativeRouteRequestResultDto, EngineErrorDto, Envelope,
+    DeclarativeChildCallKeyDto, DeclarativeInstallResultDto, DeclarativeLookupInputDto,
+    DeclarativePlanChildrenResultDto, DeclarativeRouteRequestInputDto,
+    DeclarativeRouteRequestResultDto, DecodedArgDto, DecodedCallDto, DecodedValueDto,
+    EngineErrorDto, Envelope,
 };
 use crate::exports::check_input_size;
 
@@ -99,7 +100,11 @@ thread_local! {
 
 /// Expand `bundle.match.{chain_ids × to × selector}` into bridge entries.
 /// Existing entries for the same callkey are replaced (re-install semantics).
-fn register_bridge_entries(bundle: &AdapterFunctionBundle, decoder_id: &str, state: &mut DeclarativeState) {
+fn register_bridge_entries(
+    bundle: &AdapterFunctionBundle,
+    decoder_id: &str,
+    state: &mut DeclarativeState,
+) {
     let selector = bundle.match_.selector.to_ascii_lowercase();
     for &chain_id in &bundle.match_.chain_ids {
         for to in &bundle.match_.to {
@@ -218,20 +223,19 @@ impl ChildResolver for WasmChildResolver {
 pub fn declarative_install_json(bundle_json: String) -> String {
     let result = (|| -> Result<DeclarativeInstallResultDto, EngineErrorDto> {
         check_input_size(&bundle_json, "declarative_install_json")?;
-        let bundle: AdapterFunctionBundle = serde_json::from_str(&bundle_json).map_err(|error| {
-            EngineErrorDto::new(
-                "invalid_bundle_json",
-                format!("invalid bundle json: {error}"),
-            )
-        })?;
+        let bundle: AdapterFunctionBundle =
+            serde_json::from_str(&bundle_json).map_err(|error| {
+                EngineErrorDto::new(
+                    "invalid_bundle_json",
+                    format!("invalid bundle json: {error}"),
+                )
+            })?;
         let mapper = DeclarativeMapper::new(bundle.clone());
         let decoder_id = mapper.declarative_decoder_id().as_str().to_owned();
         let bundle_id = bundle.id.clone();
         DECLARATIVE_STATE.with(|state| {
             let mut state = state.borrow_mut();
-            state
-                .mappers
-                .insert(decoder_id.clone(), Arc::new(mapper));
+            state.mappers.insert(decoder_id.clone(), Arc::new(mapper));
             // Phase 6 — populate the bridge table so the orchestrator entry
             // (`declarative_route_request_json`) can route a raw
             // `(chain_id, to, selector)` tuple to the installed mapper
@@ -252,7 +256,7 @@ pub fn declarative_install_json(bundle_json: String) -> String {
 
 /// Run an installed declarative mapper against a JSON-described `DecodedCall`.
 ///
-/// Input JSON shape (see [`DeclarativeLookupInputDto`]):
+/// Input JSON shape (see `DeclarativeLookupInputDto`):
 /// ```json
 /// {
 ///   "decoder_id": "declarative.uniswap/v2/swapExactTokensForTokens",
@@ -289,8 +293,8 @@ pub fn declarative_lookup_json(input_json: String) -> String {
                 EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
             })?;
 
-        let mapper = DECLARATIVE_STATE
-            .with(|state| state.borrow().mappers.get(&input.decoder_id).cloned());
+        let mapper =
+            DECLARATIVE_STATE.with(|state| state.borrow().mappers.get(&input.decoder_id).cloned());
         let mapper = mapper.ok_or_else(|| {
             EngineErrorDto::new(
                 "decoder_id_not_installed",
@@ -301,19 +305,18 @@ pub fn declarative_lookup_json(input_json: String) -> String {
             )
         })?;
 
-        let from =
-            Address::from_str(&input.ctx.from).map_err(|message| {
-                EngineErrorDto::new("invalid_from", format!("invalid ctx.from: {message}"))
-            })?;
-        let to = Address::from_str(&input.ctx.to)
-            .map_err(|message| EngineErrorDto::new("invalid_to", format!("invalid ctx.to: {message}")))?;
-        let value_wei = input
-            .ctx
-            .value_wei
-            .as_deref()
-            .unwrap_or("0");
+        let from = Address::from_str(&input.ctx.from).map_err(|message| {
+            EngineErrorDto::new("invalid_from", format!("invalid ctx.from: {message}"))
+        })?;
+        let to = Address::from_str(&input.ctx.to).map_err(|message| {
+            EngineErrorDto::new("invalid_to", format!("invalid ctx.to: {message}"))
+        })?;
+        let value_wei = input.ctx.value_wei.as_deref().unwrap_or("0");
         let value = DecimalString::from_str(value_wei).map_err(|message| {
-            EngineErrorDto::new("invalid_value_wei", format!("invalid ctx.value_wei: {message}"))
+            EngineErrorDto::new(
+                "invalid_value_wei",
+                format!("invalid ctx.value_wei: {message}"),
+            )
         })?;
         let block_timestamp = input.ctx.block_timestamp;
 
@@ -363,7 +366,7 @@ pub struct DeclarativeLookupResultDto {
 /// composed with a bridge lookup; surfaced separately so the orchestrator
 /// can stay agnostic of `decoder_id` minting (the bundle owns that).
 ///
-/// Input JSON shape (see [`DeclarativeRouteRequestInputDto`]):
+/// Input JSON shape (see `DeclarativeRouteRequestInputDto`):
 /// ```json
 /// {
 ///   "chain_id": 1,
@@ -394,12 +397,9 @@ pub struct DeclarativeLookupResultDto {
 pub fn declarative_route_request_json(input_json: String) -> String {
     let result = (|| -> Result<DeclarativeRouteRequestResultDto, EngineErrorDto> {
         check_input_size(&input_json, "declarative_route_request_json")?;
-        let input: DeclarativeRouteRequestInputDto = serde_json::from_str(&input_json)
-            .map_err(|error| {
-                EngineErrorDto::new(
-                    "invalid_input_json",
-                    format!("invalid input json: {error}"),
-                )
+        let input: DeclarativeRouteRequestInputDto =
+            serde_json::from_str(&input_json).map_err(|error| {
+                EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
             })?;
 
         let key = BridgeKey {
@@ -413,16 +413,13 @@ pub fn declarative_route_request_json(input_json: String) -> String {
         // inside one borrow_mut).
         let mapper_with_id = DECLARATIVE_STATE.with(|state| {
             let state = state.borrow();
-            state
-                .bridge
-                .get(&key)
-                .and_then(|decoder_id| {
-                    state
-                        .mappers
-                        .get(decoder_id)
-                        .cloned()
-                        .map(|mapper| (decoder_id.clone(), mapper))
-                })
+            state.bridge.get(&key).and_then(|decoder_id| {
+                state
+                    .mappers
+                    .get(decoder_id)
+                    .cloned()
+                    .map(|mapper| (decoder_id.clone(), mapper))
+            })
         });
         let (decoder_id, mapper) = mapper_with_id.ok_or_else(|| {
             EngineErrorDto::new(
@@ -451,7 +448,10 @@ pub fn declarative_route_request_json(input_json: String) -> String {
 
         let calldata_hex = input.calldata.strip_prefix("0x").unwrap_or(&input.calldata);
         let calldata_bytes = hex::decode(calldata_hex).map_err(|error| {
-            EngineErrorDto::new("invalid_calldata", format!("calldata is not valid hex: {error}"))
+            EngineErrorDto::new(
+                "invalid_calldata",
+                format!("calldata is not valid hex: {error}"),
+            )
         })?;
         let abi_json = &mapper.bundle().abi_fragment.abi;
         let mut decoded = abi_resolver::bridge::decode_with_json_abi(abi_json, &calldata_bytes)
@@ -498,18 +498,18 @@ pub fn declarative_route_request_json(input_json: String) -> String {
 
 /// `multicall_recurse` child-callkey planner (child-prefetch support).
 ///
-/// The WASM-side [`WasmChildResolver`] is synchronous and can only resolve a
+/// The WASM-side `WasmChildResolver` is synchronous and can only resolve a
 /// child sub-call if the child bundle is already mounted in `DECLARATIVE_STATE`
 /// — it cannot fetch. This export lets the TS host run a fetch+install pass
 /// *before* `declarative_route_request_json`:
-///   1. TS calls this with the outer tx tuple (same input shape as
-///      `declarative_route_request_json`).
-///   2. We resolve the outer bundle via the bridge, confirm it is a
-///      `multicall_recurse` bundle, decode the outer calldata against the
-///      bundle ABI, and pull the inner `bytes[]` via `extract_self_array_bytes`.
-///   3. We return one `(chain_id, to, selector)` callkey per child.
-///   4. TS `resolveAdapter`s each child, then calls
-///      `declarative_route_request_json` — the resolver now finds every child.
+/// 1. TS calls this with the outer tx tuple (same input shape as
+///    `declarative_route_request_json`).
+/// 2. We resolve the outer bundle via the bridge, confirm it is a
+///    `multicall_recurse` bundle, decode the outer calldata against the
+///    bundle ABI, and pull the inner `bytes[]` via `extract_self_array_bytes`.
+/// 3. We return one `(chain_id, to, selector)` callkey per child.
+/// 4. TS `resolveAdapter`s each child, then calls
+///    `declarative_route_request_json` — the resolver now finds every child.
 ///
 /// Depth-1 only: NFPM children (`mint`, `refundETH`) are leaf `single_emit`
 /// functions, so one prefetch level suffices. Nested multicalls are a follow-up.
@@ -522,8 +522,8 @@ pub fn declarative_route_request_json(input_json: String) -> String {
 pub fn declarative_plan_children_json(input_json: String) -> String {
     let result = (|| -> Result<DeclarativePlanChildrenResultDto, EngineErrorDto> {
         check_input_size(&input_json, "declarative_plan_children_json")?;
-        let input: DeclarativeRouteRequestInputDto = serde_json::from_str(&input_json)
-            .map_err(|error| {
+        let input: DeclarativeRouteRequestInputDto =
+            serde_json::from_str(&input_json).map_err(|error| {
                 EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
             })?;
 
@@ -568,7 +568,10 @@ pub fn declarative_plan_children_json(input_json: String) -> String {
         // `declarative_route_request_json` / `WasmChildResolver`.
         let calldata_hex = input.calldata.strip_prefix("0x").unwrap_or(&input.calldata);
         let calldata_bytes = hex::decode(calldata_hex).map_err(|error| {
-            EngineErrorDto::new("invalid_calldata", format!("calldata is not valid hex: {error}"))
+            EngineErrorDto::new(
+                "invalid_calldata",
+                format!("calldata is not valid hex: {error}"),
+            )
         })?;
         let abi_json = &mapper.bundle().abi_fragment.abi;
         let decoded = abi_resolver::bridge::decode_with_json_abi(abi_json, &calldata_bytes)
@@ -603,7 +606,10 @@ pub fn declarative_plan_children_json(input_json: String) -> String {
             });
         }
 
-        Ok(DeclarativePlanChildrenResultDto { children, decoder_id })
+        Ok(DeclarativePlanChildrenResultDto {
+            children,
+            decoder_id,
+        })
     })();
 
     match result {
@@ -835,8 +841,7 @@ mod tests {
     /// `alloy_dyn_abi` — never hand-type dynamic ABI hex.
     fn encode_calldata(selector: &str, args: &[alloy_dyn_abi::DynSolValue]) -> String {
         let sel = hex::decode(selector.trim_start_matches("0x")).unwrap();
-        let body =
-            alloy_dyn_abi::DynSolValue::Tuple(args.to_vec()).abi_encode_params();
+        let body = alloy_dyn_abi::DynSolValue::Tuple(args.to_vec()).abi_encode_params();
         format!("0x{}{}", hex::encode(sel), hex::encode(body))
     }
 
@@ -1001,10 +1006,7 @@ mod tests {
         let out = declarative_route_request_json(input.to_string());
         let parsed: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed["ok"], true, "{parsed}");
-        assert_eq!(
-            parsed["data"]["decoder_id"],
-            "declarative.uniswap/v3/burn"
-        );
+        assert_eq!(parsed["data"]["decoder_id"], "declarative.uniswap/v3/burn");
         let envelopes = parsed["data"]["envelopes"].as_array().expect("array");
         assert_eq!(envelopes.len(), 1);
         let env = &envelopes[0];
@@ -1143,7 +1145,10 @@ mod tests {
         let burn_out = declarative_install_json(NFPM_BURN_BUNDLE_JSON.to_owned());
         let burn_parsed: Value = serde_json::from_str(&burn_out).unwrap();
         assert_eq!(burn_parsed["ok"], true, "{burn_parsed}");
-        assert_eq!(burn_parsed["data"]["decoder_id"], "declarative.uniswap/v3/burn");
+        assert_eq!(
+            burn_parsed["data"]["decoder_id"],
+            "declarative.uniswap/v3/burn"
+        );
 
         let outer_out = declarative_install_json(NFPM_MULTICALL_BUNDLE_JSON.to_owned());
         let outer_parsed: Value = serde_json::from_str(&outer_out).unwrap();

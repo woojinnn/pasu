@@ -23,10 +23,7 @@ pub enum FnError {
     #[error("select_address: index out of bounds (idx={idx}, len={len})")]
     IndexOutOfBounds { idx: i64, len: usize },
     #[error("select_address: element {idx} is not an address (value={value})")]
-    NotAddress {
-        idx: i64,
-        value: serde_json::Value,
-    },
+    NotAddress { idx: i64, value: serde_json::Value },
     #[error("select_address: invalid address {value}: {message}")]
     InvalidAddress { value: String, message: String },
 
@@ -65,6 +62,21 @@ pub enum FnError {
     /// slot was `address(0)`), so no output token could be resolved.
     #[error("curve_route_last_token: route is empty (all token slots zero)")]
     EmptyRoute,
+    /// `curve_route_last_token` resolved a per-hop `swap_type` outside the
+    /// Router NG documented range `1..=9` (Router.vy v1.2.0). Router.vy itself
+    /// fails closed on unknown swap types; the resolver mirrors that rather
+    /// than silently picking a wrong output slot.
+    #[error("curve_route_last_token: unknown swap_type {swap_type} (allowed: 1..=9)")]
+    UnknownSwapType { swap_type: i64 },
+    /// `curve_route_last_token` could not read `swap_params[i][2]`. Either the
+    /// argument was not a 2-D JSON array, an inner row was missing index `[2]`,
+    /// or the slot was not coercible to integer.
+    #[error("curve_route_last_token: swap_params shape error — {reason}")]
+    SwapParamsShape {
+        /// Static reason string ('outer must be array' / 'inner row missing
+        /// slot `[2]`' / 'inner slot not coercible to integer' / …).
+        reason: &'static str,
+    },
 
     // ── unfold_slipstream_path (Phase 8 — Aerodrome) ─────────────────────
     /// Slipstream packed path failed structural validation
@@ -213,10 +225,10 @@ pub fn unfold_v3_path(
 /// Sign-extension is required on decode (high bit of byte 0 → `0xFF` padding).
 ///
 /// Supported `select` modes:
-///   * `"first_token"` / `"last_token"` — JSON string of lowercase address
-///   * `"first_tick_spacing"` / `"last_tick_spacing"` — JSON number (i64, sign-preserved)
-///   * `"tick_spacing_at_hop"` — JSON number, requires `extra_arg` = i64 hop index
-///                                (negative idx counts from the end, like `select_address`)
+/// * `"first_token"` / `"last_token"` — JSON string of lowercase address
+/// * `"first_tick_spacing"` / `"last_tick_spacing"` — JSON number (i64, sign-preserved)
+/// * `"tick_spacing_at_hop"` — JSON number, requires `extra_arg` = i64 hop index
+///   (negative idx counts from the end, like `select_address`)
 ///
 /// `bytes_value` accepts: hex string `"0x.."` OR JSON array of u8 (same as
 /// [`unfold_v3_path`]).
@@ -247,23 +259,19 @@ pub fn unfold_slipstream_path(
             Ok(serde_json::Value::String(address_to_json(alloy_addr)?))
         }
         "first_tick_spacing" => {
-            let ts = *tick_spacings
-                .first()
-                .ok_or(FnError::PathDecoderContract {
-                    builtin: "unfold_slipstream_path",
-                    collection: "tick_spacings",
-                })?;
+            let ts = *tick_spacings.first().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_slipstream_path",
+                collection: "tick_spacings",
+            })?;
             Ok(serde_json::Value::Number(serde_json::Number::from(
                 i64::from(ts),
             )))
         }
         "last_tick_spacing" => {
-            let ts = *tick_spacings
-                .last()
-                .ok_or(FnError::PathDecoderContract {
-                    builtin: "unfold_slipstream_path",
-                    collection: "tick_spacings",
-                })?;
+            let ts = *tick_spacings.last().ok_or(FnError::PathDecoderContract {
+                builtin: "unfold_slipstream_path",
+                collection: "tick_spacings",
+            })?;
             Ok(serde_json::Value::Number(serde_json::Number::from(
                 i64::from(ts),
             )))
@@ -307,7 +315,7 @@ fn decode_slipstream_path(
             ),
         });
     }
-    if (bytes.len() - ADDR_SIZE) % NEXT_OFFSET != 0 {
+    if !(bytes.len() - ADDR_SIZE).is_multiple_of(NEXT_OFFSET) {
         return Err(FnError::SlipstreamPathDecode {
             message: format!(
                 "malformed length {}: must be 20 + 23*N for some N >= 1",
@@ -454,40 +462,78 @@ fn json_value_to_bytes(value: &serde_json::Value) -> Result<Vec<u8>, FnError> {
     }
 }
 
-/// `curve_route_last_token(route: address[11]) -> AddressRef` — Phase 12.3,
-/// fixed Phase 13 P1-5 (Curve Router NG output-token resolver).
+/// `curve_route_last_token(route: address[11], swap_params: uint256[N][5]) -> AddressRef`
+/// — Phase 12.3, P1-5 (Phase 13), F3 + F-route1.B (Phase C, V3 round).
 ///
 /// Curve Router NG `exchange(...)` encodes a 1-to-5-hop swap path as a fixed-
 /// size `address[11]` array — interleaved token / pool slots:
 ///   * `route[2i]`   (i = 0..=5) — token slot (0 = input, 2..10 = hop outputs)
-///   * `route[2i+1]` (i = 0..=4) — pool address of hop i
+///   * `route[2i+1]` (i = 0..=4) — pool / helper / vault address of hop i
 ///   * unused trailing slots = `address(0)`
 ///
 /// `Router.vy::exchange` runs hop `i` and then **breaks** as soon as the next
 /// hop's pool slot is `address(0)` (`if _route[i*2+3] == empty(address): break`).
 /// Equivalently, hop `i` executes only while its own pool `route[2i+1]` is
-/// non-zero. The swap output token is `route[2k+2]` of the last executed hop
-/// `k` — it is **NOT** the last non-zero even slot: a token sitting *after* the
-/// first zero pool is never reached on-chain. Returning it (the pre-Phase-13
-/// behaviour) let calldata append a fake output token past a zero pool and have
-/// the envelope assert an output the swap never produces (audit P1-5).
+/// non-zero.
+///
+/// Per-hop output-token resolution depends on `swap_params[i][2] = swap_type`
+/// (Router.vy v1.2.0 docstring; mirrored in
+/// `abi_resolver::subdecode::protocols::curve::CURVE_ROUTER_NG_SWAP_TYPES`):
+///
+/// * `1` `STABLESWAP_EXCHANGE`               → output = `route[2i+2]` (coin)
+/// * `2` `EXCHANGE_UNDERLYING`               → output = `route[2i+2]` (coin)
+/// * `3` `ZAP_UNDERLYING_EXCHANGE`           → output = `route[2i+2]` (coin)
+/// * `4` `COIN_TO_LP_ADD_LIQUIDITY`          → output = `route[2i+1]`
+///   (pool acts as LP token)
+/// * `5` `LENDING_UNDERLYING_TO_LP`          → output = `route[2i+1]`
+///   (pool acts as LP token)
+/// * `6` `LP_TO_COIN_REMOVE_LIQUIDITY_ONE_COIN`
+///   → output = `route[2i+2]` (coin)
+/// * `7` `LP_TO_LENDING_UNDERLYING`          → output = `route[2i+2]` (coin)
+/// * `8` `WRAPPED_ASSET_CONVERT`             → output = `route[2i+1]`
+///   (wrap-helper contract is the wrapped-asset token, e.g. wstETH wrapper *is* wstETH)
+/// * `9` `ERC4626_ASSET_SHARE`               → output = `route[2i+1]`
+///   (ERC-4626 vault is the share token)
+///
+/// Pre-fix the resolver always returned `route[2k+2]` regardless of swap_type.
+/// For swap_type=4/5/8/9 that yielded the wrong address: a sentinel (e.g.
+/// `0xeee…` for ETH in stETH→wstETH wraps) or whatever caller-supplied padding
+/// happened to sit in the trailing token slot, producing envelopes that asserted
+/// outputs the swap never actually produced. That let token-allowlist policies
+/// be silently bypassed when the user wrapped or LP-added through Router NG
+/// (BACKWARD_CURVE_V2.md §3 F3, F-route1.B).
+///
+/// `swap_params` is the same 2-D array the bundle passes via
+/// `{ "from": "$.args._swap_params" }`. Both `uint256[5][5]` (Router NG v1.1+
+/// mainnet / chain 1, 10, 56, 100, 137, 250, 8453, 42161, 43114, 2222) and
+/// `uint256[4][5]` (Router NG v1.0 — Fraxtal 252, zkSync 324, Mantle 5000,
+/// X-Layer 196) variants encode swap_type at inner index `[2]`. The function
+/// only reads `swap_params[i][2]` and ignores the rest, so it is variant-agnostic.
 ///
 /// Errors:
 ///   * [`FnError::TypeMismatch`] — argument is not a JSON array (or a read
-///     slot is not a JSON string).
-///   * [`FnError::LengthMismatch`] — array length is not exactly 11.
+///     slot is not a JSON string / integer).
+///   * [`FnError::LengthMismatch`] — `route` length is not exactly 11.
 ///   * [`FnError::EmptyRoute`] — no executable hop (`route[1]` is zero) or the
 ///     resolved output token slot is itself `address(0)` (degenerate route).
+///   * [`FnError::UnknownSwapType`] — swap_type ∉ 1..=9 for an executed hop
+///     (Router.vy fails closed; the resolver must too).
+///   * [`FnError::SwapParamsShape`] — `swap_params` is not a 2-D array, an inner
+///     hop row is missing index `[2]`, or it cannot be coerced to integer.
 ///
 /// Source: `curvefi/curve-router-ng` @ `1014d369` / `contracts/Router.vy::exchange`
-/// (`for i in range(5)` + break on `_route[i*2+3] == empty(address)`).
+/// (`for i in range(5)` + break on `_route[i*2+3] == empty(address)` +
+/// per-hop `swap_type` docstring lines 32-46 of `Router.vy`).
 pub fn curve_route_last_token(
     route_value: &serde_json::Value,
+    swap_params_value: &serde_json::Value,
 ) -> Result<serde_json::Value, FnError> {
-    let arr = route_value.as_array().ok_or_else(|| FnError::TypeMismatch {
-        expected: "array",
-        got: route_value.clone(),
-    })?;
+    let arr = route_value
+        .as_array()
+        .ok_or_else(|| FnError::TypeMismatch {
+            expected: "array",
+            got: route_value.clone(),
+        })?;
 
     if arr.len() != 11 {
         return Err(FnError::LengthMismatch {
@@ -495,6 +541,12 @@ pub fn curve_route_last_token(
             got: arr.len(),
         });
     }
+
+    let params_outer = swap_params_value
+        .as_array()
+        .ok_or_else(|| FnError::SwapParamsShape {
+            reason: "swap_params must be a JSON array (outer)",
+        })?;
 
     // Read slot `idx` as an address string, surfacing non-strings as TypeMismatch.
     fn addr_str(arr: &[serde_json::Value], idx: usize) -> Result<&str, FnError> {
@@ -504,15 +556,54 @@ pub fn curve_route_last_token(
         })
     }
 
-    // hop i: input = route[2i], pool = route[2i+1], output = route[2i+2].
+    // Read `swap_params[i][2]` as a swap_type integer. Decoders may surface
+    // `uint256` slots as a JSON Number (small values) or JSON String (large /
+    // hex-encoded values); both must be accepted, matching the convention in
+    // `select_from_literal_array` for `i`/`j` indices.
+    fn swap_type_for_hop(outer: &[serde_json::Value], i: usize) -> Result<u8, FnError> {
+        let inner = outer
+            .get(i)
+            .ok_or(FnError::SwapParamsShape {
+                reason: "swap_params is shorter than the executed hop count",
+            })?
+            .as_array()
+            .ok_or(FnError::SwapParamsShape {
+                reason: "swap_params inner row must be a JSON array",
+            })?;
+        let raw = inner.get(2).ok_or(FnError::SwapParamsShape {
+            reason: "swap_params[i] is missing the swap_type slot at index [2]",
+        })?;
+        let st = coerce_to_i64(raw).ok_or(FnError::SwapParamsShape {
+            reason: "swap_params[i][2] cannot be coerced to an integer",
+        })?;
+        // Router.vy v1.2.0 docstring documents 1..9 inclusive. Out-of-range
+        // values would cause Router.vy itself to revert at the per-hop
+        // dispatcher; mirror that here as a fail-closed error rather than
+        // silently emitting a wrong output token.
+        if !(1..=9).contains(&st) {
+            return Err(FnError::UnknownSwapType { swap_type: st });
+        }
+        Ok(st as u8)
+    }
+
+    // hop i: input = route[2i], pool = route[2i+1], swap_type = params[i][2].
     // Mirror Router.vy's early-break — hop i runs only while its pool slot is
-    // non-zero; the output token is the last executed hop's output slot.
+    // non-zero. For each executed hop, pick its output token slot per swap_type:
+    //   * 1/2/3/6/7 → `route[2i+2]` (coin output, default swap convention)
+    //   * 4/5/8/9   → `route[2i+1]` (pool/helper/vault address acts as the
+    //                                emitted asset)
     let mut last_output_idx = 0usize;
     for i in 0..5 {
         if is_zero_address(addr_str(arr, 2 * i + 1)?) {
             break;
         }
-        last_output_idx = 2 * i + 2;
+        let st = swap_type_for_hop(params_outer, i)?;
+        last_output_idx = match st {
+            1 | 2 | 3 | 6 | 7 => 2 * i + 2,
+            4 | 5 | 8 | 9 => 2 * i + 1,
+            // Unreachable — `swap_type_for_hop` already validates 1..=9.
+            _ => unreachable!("swap_type validated to 1..=9"),
+        };
     }
 
     // `last_output_idx == 0` → route[1] (pool of hop 0) is zero → no executable
@@ -559,10 +650,12 @@ pub fn select_from_literal_array(
     array_value: &serde_json::Value,
     idx_value: &serde_json::Value,
 ) -> Result<serde_json::Value, FnError> {
-    let arr = array_value.as_array().ok_or_else(|| FnError::TypeMismatch {
-        expected: "array",
-        got: array_value.clone(),
-    })?;
+    let arr = array_value
+        .as_array()
+        .ok_or_else(|| FnError::TypeMismatch {
+            expected: "array",
+            got: array_value.clone(),
+        })?;
     let idx = coerce_to_i64(idx_value).ok_or_else(|| FnError::TypeMismatch {
         expected: "integer index",
         got: idx_value.clone(),
@@ -718,8 +811,7 @@ mod tests {
     fn unfold_v3_path_accepts_array_of_u8() {
         // Same single-hop path, but supplied as a JSON array of octets.
         let raw = hex::decode(SINGLE_HOP_PATH_HEX.strip_prefix("0x").unwrap()).unwrap();
-        let array_json =
-            serde_json::Value::Array(raw.iter().map(|b| json!(*b)).collect());
+        let array_json = serde_json::Value::Array(raw.iter().map(|b| json!(*b)).collect());
         let first = unfold_v3_path(&array_json, "first_token").unwrap();
         assert_eq!(
             first.as_str().unwrap(),
@@ -914,12 +1006,9 @@ mod tests {
             "cccccccccccccccccccccccccccccccccccccc03",
         );
         let v = serde_json::Value::String(bytes_hex.to_owned());
-        let hop0 =
-            unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(0))).unwrap();
-        let hop1 =
-            unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(1))).unwrap();
-        let hop_last =
-            unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(-1))).unwrap();
+        let hop0 = unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(0))).unwrap();
+        let hop1 = unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(1))).unwrap();
+        let hop_last = unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(-1))).unwrap();
         assert_eq!(hop0.as_i64().unwrap(), 50);
         assert_eq!(hop1.as_i64().unwrap(), 100);
         assert_eq!(hop_last.as_i64().unwrap(), 100);
@@ -1006,8 +1095,7 @@ mod tests {
             );
         }
         // `tick_spacing_at_hop` (3-arg form) must also fail closed.
-        let err =
-            unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(0))).unwrap_err();
+        let err = unfold_slipstream_path(&v, "tick_spacing_at_hop", Some(&json!(0))).unwrap_err();
         assert!(matches!(err, FnError::SlipstreamPathDecode { .. }));
     }
 
@@ -1138,8 +1226,7 @@ mod tests {
         // The `bytes` argument may also arrive as a JSON array of octets
         // (mirrors `unfold_v3_path` / `unfold_slipstream_path`).
         let raw = hex::decode(VELO_VELO_N1_HEX.strip_prefix("0x").unwrap()).unwrap();
-        let array_json =
-            serde_json::Value::Array(raw.iter().map(|b| json!(*b)).collect());
+        let array_json = serde_json::Value::Array(raw.iter().map(|b| json!(*b)).collect());
         let first = unfold_velo_v2_path(&array_json, "first_token").unwrap();
         let last = unfold_velo_v2_path(&array_json, "last_token").unwrap();
         assert_eq!(first.as_str().unwrap(), VELO_TOKEN_A);
@@ -1163,9 +1250,7 @@ mod tests {
         let err = unfold_velo_v2_path(&json!("0x"), "first_token").unwrap_err();
         assert!(matches!(err, FnError::VeloV2PathDecode { .. }));
         // Empty u8 array — same degenerate case via the array branch.
-        let err =
-            unfold_velo_v2_path(&serde_json::Value::Array(vec![]), "last_token")
-                .unwrap_err();
+        let err = unfold_velo_v2_path(&serde_json::Value::Array(vec![]), "last_token").unwrap_err();
         assert!(matches!(err, FnError::VeloV2PathDecode { .. }));
     }
 
@@ -1173,11 +1258,9 @@ mod tests {
     fn unfold_velo_v2_path_unknown_select_errs() {
         // A well-formed (40-byte) path with an unsupported `select` must
         // fail closed with `VeloV2UnknownSelect` — no fee modes exist here.
-        let err =
-            unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "first_fee").unwrap_err();
+        let err = unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "first_fee").unwrap_err();
         assert!(matches!(err, FnError::VeloV2UnknownSelect(_)));
-        let err = unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "middle_token")
-            .unwrap_err();
+        let err = unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "middle_token").unwrap_err();
         assert!(matches!(err, FnError::VeloV2UnknownSelect(_)));
     }
 
@@ -1193,10 +1276,8 @@ mod tests {
     fn unfold_velo_v2_path_exactly_min_len_two_tokens() {
         // Boundary — exactly 40 bytes (the minimum). first == token A,
         // last == token B, and the two endpoints must not coincide.
-        let first =
-            unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "first_token").unwrap();
-        let last =
-            unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "last_token").unwrap();
+        let first = unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "first_token").unwrap();
+        let last = unfold_velo_v2_path(&json!(VELO_UNI_2TOKEN_HEX), "last_token").unwrap();
         assert_eq!(first.as_str().unwrap(), VELO_TOKEN_A);
         assert_eq!(last.as_str().unwrap(), VELO_TOKEN_B);
         assert_ne!(first, last);
@@ -1208,10 +1289,43 @@ mod tests_curve_route_last_token {
     use super::*;
     use serde_json::json;
 
-    /// 1-hop route: `_route = [USDC, 3pool, USDT, 0×8]`. Output token = idx 2
-    /// (USDT). idx 3..=10 are zero-padded.
+    /// Build a `swap_params: uint256[5][5]` fixture where hop 0 has
+    /// `swap_type = st` and every remaining hop is fully zero. Matches the
+    /// shape the Curve Router NG ABI passes via `$.args._swap_params` for
+    /// both the 5-arg `uint256[5][5]` and the 4-arg `uint256[4][5]` variants
+    /// (only `[i][2]` is read).
+    fn swap_params_first_hop(st: u64) -> serde_json::Value {
+        let mut hop0 = vec![json!(0u64); 5];
+        hop0[2] = json!(st);
+        json!([
+            hop0,
+            vec![json!(0u64); 5],
+            vec![json!(0u64); 5],
+            vec![json!(0u64); 5],
+            vec![json!(0u64); 5]
+        ])
+    }
+
+    /// Build a `swap_params` with per-hop `swap_type` values supplied directly.
+    /// Each inner row is 5 slots; unspecified hops fill with zeros.
+    fn swap_params_per_hop(types: &[u64]) -> serde_json::Value {
+        let mut rows: Vec<serde_json::Value> = (0..5)
+            .map(|i| {
+                let st = types.get(i).copied().unwrap_or(0);
+                let mut row = vec![json!(0u64); 5];
+                row[2] = json!(st);
+                json!(row)
+            })
+            .collect();
+        // Guarantee exactly 5 rows (per-hop max in Router NG).
+        rows.truncate(5);
+        json!(rows)
+    }
+
+    /// 1-hop swap_type=1 (STABLESWAP_EXCHANGE) route: `_route = [USDC, 3pool,
+    /// USDT, 0×8]`. Output token = idx 2 (USDT) — coin output convention.
     #[test]
-    fn one_hop_route_returns_idx_2() {
+    fn one_hop_swap_type_1_returns_idx_2() {
         let route = json!([
             "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // [0] USDC
             "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7", // [1] 3pool
@@ -1225,17 +1339,18 @@ mod tests_curve_route_last_token {
             "0x0000000000000000000000000000000000000000",
             "0x0000000000000000000000000000000000000000",
         ]);
-        let result = curve_route_last_token(&route).unwrap();
+        let result = curve_route_last_token(&route, &swap_params_first_hop(1)).unwrap();
         assert_eq!(
             result.as_str().unwrap(),
             "0xdac17f958d2ee523a2206206994597c13d831ec7"
         );
     }
 
-    /// 5-hop route: every even idx (0/2/4/6/8/10) has a token, every odd idx
-    /// has a pool. Output token = idx 10.
+    /// 5-hop swap_type=1 route: every even idx (0/2/4/6/8/10) has a token,
+    /// every odd idx has a pool. All hops are STABLESWAP_EXCHANGE → output
+    /// = idx 10 (coin convention applied at hop 4).
     #[test]
-    fn five_hop_route_returns_idx_10() {
+    fn five_hop_all_swap_type_1_returns_idx_10() {
         let route = json!([
             "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1", // [0] input
             "0x1111111111111111111111111111111111111111", // [1] pool1
@@ -1249,16 +1364,16 @@ mod tests_curve_route_last_token {
             "0x5555555555555555555555555555555555555555", // [9] pool5
             "0xfffffffffffffffffffffffffffffffffffffff5", // [10] output
         ]);
-        let result = curve_route_last_token(&route).unwrap();
+        let result =
+            curve_route_last_token(&route, &swap_params_per_hop(&[1, 1, 1, 1, 1])).unwrap();
         assert_eq!(
             result.as_str().unwrap(),
             "0xfffffffffffffffffffffffffffffffffffffff5"
         );
     }
 
-    /// All-zero route → EmptyRoute. This shouldn't happen in real calldata
-    /// (Router NG `exchange` requires at least one hop) but the resolver
-    /// must fail closed.
+    /// All-zero route → EmptyRoute. Mirrors Router.vy's `for i in range(5)` +
+    /// pool break — no hop executes, so no output token can be resolved.
     #[test]
     fn empty_route_returns_error() {
         let route = json!([
@@ -1274,7 +1389,7 @@ mod tests_curve_route_last_token {
             "0x0000000000000000000000000000000000000000",
             "0x0000000000000000000000000000000000000000",
         ]);
-        let err = curve_route_last_token(&route).unwrap_err();
+        let err = curve_route_last_token(&route, &swap_params_first_hop(1)).unwrap_err();
         assert!(matches!(err, FnError::EmptyRoute));
     }
 
@@ -1286,7 +1401,7 @@ mod tests_curve_route_last_token {
             "0x0000000000000000000000000000000000000000",
             "0x0000000000000000000000000000000000000000",
         ]);
-        let err = curve_route_last_token(&route).unwrap_err();
+        let err = curve_route_last_token(&route, &swap_params_first_hop(1)).unwrap_err();
         assert!(matches!(
             err,
             FnError::LengthMismatch {
@@ -1296,19 +1411,26 @@ mod tests_curve_route_last_token {
         ));
     }
 
-    /// Argument-type validation — non-array values surface as TypeMismatch
+    /// Argument-type validation — non-array `route` surfaces as TypeMismatch
     /// (vs panic-on-cast).
     #[test]
     fn non_array_returns_error() {
-        let err = curve_route_last_token(&json!("0xdead")).unwrap_err();
-        assert!(matches!(err, FnError::TypeMismatch { expected: "array", .. }));
+        let err = curve_route_last_token(&json!("0xdead"), &swap_params_first_hop(1)).unwrap_err();
+        assert!(matches!(
+            err,
+            FnError::TypeMismatch {
+                expected: "array",
+                ..
+            }
+        ));
     }
 
     /// P1-5 regression — a zero pool slot mid-route terminates the swap.
     /// `_route = [A, P0, B, 0x0(pool1), MID, P2, D, 0x0×4]`: on-chain the swap
     /// runs hop 0 only (A->B) and stops because pool1 is zero. The output is B
     /// (idx 2), NOT D — the pre-fix scan returned the last non-zero even slot
-    /// (D) and let calldata assert an unreachable output token.
+    /// (D) and let calldata assert an unreachable output token. With swap_type=1
+    /// hop 0 the coin-output convention picks idx 2.
     #[test]
     fn gap_route_stops_at_first_zero_pool() {
         let route = json!([
@@ -1324,7 +1446,7 @@ mod tests_curve_route_last_token {
             "0x0000000000000000000000000000000000000000",
             "0x0000000000000000000000000000000000000000",
         ]);
-        let result = curve_route_last_token(&route).unwrap();
+        let result = curve_route_last_token(&route, &swap_params_first_hop(1)).unwrap();
         assert_eq!(
             result.as_str().unwrap(),
             "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2"
@@ -1334,6 +1456,7 @@ mod tests_curve_route_last_token {
     /// Fail-closed — if the resolved output token slot is itself `address(0)`
     /// (hop 0 has a pool but its output slot is zero), surface EmptyRoute
     /// instead of emitting a zero-address output token into the envelope.
+    /// swap_type=1 still picks the coin slot at `route[2]`.
     #[test]
     fn zero_output_token_returns_error() {
         let route = json!([
@@ -1349,8 +1472,311 @@ mod tests_curve_route_last_token {
             "0x0000000000000000000000000000000000000000",
             "0x0000000000000000000000000000000000000000",
         ]);
-        let err = curve_route_last_token(&route).unwrap_err();
+        let err = curve_route_last_token(&route, &swap_params_first_hop(1)).unwrap_err();
         assert!(matches!(err, FnError::EmptyRoute));
+    }
+
+    // ── F3 + F-route1.B swap_type branch tests (Phase C V3 round) ─────────
+
+    /// **F3 root-cause regression** — stETH→wstETH wrap (Etherscan tx
+    /// `0x29bbfa2d…`, BACKWARD_CURVE_V2.md fixture #14). The on-chain
+    /// `_route = [stETH, wstETH-contract, ETH-sentinel, 0×8]` +
+    /// `_swap_params[0][2] = 8 (WRAPPED_ASSET_CONVERT)`.
+    ///
+    /// Pre-fix: the resolver returned `_route[2]` = ETH sentinel
+    /// (`0xeee…`) — silent misdecode that emitted "stETH → ETH swap" and let
+    /// token-allowlist policies be bypassed.
+    ///
+    /// Post-fix: with swap_type=8 the wrap-helper convention applies and the
+    /// resolver returns `_route[1]` = the wstETH contract itself, which IS the
+    /// wstETH token. The envelope now asserts the actual on-chain output.
+    #[test]
+    fn swap_type_8_wrapped_asset_returns_helper_slot() {
+        let stetth = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"; // stETH
+        let wsteth = "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"; // wstETH (token = wrap helper)
+        let eth_sentinel = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+        let route = json!([
+            stetth,
+            wsteth,       // [1] = wrap-helper contract = wstETH token (POST-FIX output)
+            eth_sentinel, // [2] = trailing sentinel (PRE-FIX silent-misdecode output)
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route, &swap_params_first_hop(8)).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            wsteth,
+            "swap_type=8 must resolve to route[1] (wrap-helper contract = wrapped asset token), \
+             NOT route[2] (which holds the unrelated ETH sentinel in the wrap-helper convention)"
+        );
+        assert_ne!(
+            result.as_str().unwrap(),
+            eth_sentinel,
+            "regression guard — pre-fix bug returned the ETH sentinel here"
+        );
+    }
+
+    /// **F-route1.B root-cause regression** — `swap_type=4`
+    /// (COIN_TO_LP_ADD_LIQUIDITY). Pool address itself is the LP token in
+    /// Curve convention; the trailing route slot (`route[2]`) holds an
+    /// unrelated sentinel / padding that has no semantic meaning.
+    ///
+    /// Pre-fix: the resolver returned `route[2]` regardless of swap_type,
+    /// emitting a swap envelope with the wrong output token and letting an
+    /// add_liquidity allow-rule be bypassed (`category=dex / action=swap`
+    /// while the on-chain effect was adding liquidity to a pool).
+    ///
+    /// Post-fix: `route[2i+1]` (pool address = LP token) is returned for
+    /// swap_type=4.
+    #[test]
+    fn swap_type_4_lp_add_returns_pool_slot() {
+        let coin_a = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"; // USDC
+        let pool_lp = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"; // 3pool = LP token
+        let unrelated_padding = "0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead";
+        let route = json!([
+            coin_a,
+            pool_lp,           // [1] = pool = LP token (POST-FIX output)
+            unrelated_padding, // [2] = sentinel/padding (PRE-FIX wrong output)
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route, &swap_params_first_hop(4)).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            pool_lp,
+            "swap_type=4 must resolve to route[1] (pool = LP token in Curve convention)"
+        );
+    }
+
+    /// **F-route1.B `swap_type=6` regression** —
+    /// LP_TO_COIN_REMOVE_LIQUIDITY_ONE_COIN. Output IS a coin
+    /// (the underlying received from the pool), so `route[2i+2]` is correct.
+    /// Distinct branch from swap_type=4: confirms the resolver does not lump
+    /// "anything LP-related" into the pool-slot branch.
+    #[test]
+    fn swap_type_6_lp_remove_returns_coin_slot() {
+        let lp_in = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"; // 3pool LP
+        let pool = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"; // same pool acts as router target
+        let usdt_out = "0xdac17f958d2ee523a2206206994597c13d831ec7"; // USDT (coin out)
+        let route = json!([
+            lp_in,
+            pool,
+            usdt_out, // [2] = coin output (correct for swap_type=6)
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route, &swap_params_first_hop(6)).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            usdt_out,
+            "swap_type=6 (remove_liquidity_one_coin) must resolve to route[2] (coin slot)"
+        );
+    }
+
+    /// **swap_type=9 (ERC4626_ASSET_SHARE)** — vault address IS the share
+    /// token. Same convention as swap_type=8 (route[2i+1] is the emitted
+    /// asset).
+    #[test]
+    fn swap_type_9_erc4626_returns_vault_slot() {
+        let asset = "0x6b175474e89094c44da98b954eedeac495271d0f"; // DAI
+        let vault = "0xfeeeefeeefefeeefeefeeeefeefefeeefefeefef"; // ERC4626 vault = share token
+        let route = json!([
+            asset,
+            vault,
+            "0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead", // unrelated padding
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route, &swap_params_first_hop(9)).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            vault,
+            "swap_type=9 (ERC4626) must resolve to route[1] (vault = share token)"
+        );
+    }
+
+    /// **swap_type=5 (LENDING_UNDERLYING_TO_LP)** — same convention as
+    /// swap_type=4 (pool = LP output).
+    #[test]
+    fn swap_type_5_lending_to_lp_returns_pool_slot() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1",
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2", // pool = LP token
+            "0xcccccccccccccccccccccccccccccccccccccccc", // unrelated
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route, &swap_params_first_hop(5)).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2"
+        );
+    }
+
+    /// **swap_type=7 (LP_TO_LENDING_UNDERLYING)** — same convention as
+    /// swap_type=6 (coin output at route[2i+2]).
+    #[test]
+    fn swap_type_7_lp_to_lending_returns_coin_slot() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1",
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2",
+            "0xcccccccccccccccccccccccccccccccccccccccc", // coin out
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let result = curve_route_last_token(&route, &swap_params_first_hop(7)).unwrap();
+        assert_eq!(
+            result.as_str().unwrap(),
+            "0xcccccccccccccccccccccccccccccccccccccccc"
+        );
+    }
+
+    /// **Multi-hop branch mixing** — hops 0/1/2 = swap_type=1 (coin) →
+    /// swap_type=8 (wrap) → swap_type=1 (coin). Confirms the per-hop
+    /// dispatcher resolves the last EXECUTED hop's convention, not a
+    /// uniform "first hop only" or "last hop only" rule.
+    /// Sequence: USDC --(stableswap)--> DAI --(WRAP)--> wDAI --(stableswap)--> USDT.
+    /// Final hop is swap_type=1 → output = route[6] (USDT coin).
+    #[test]
+    fn multi_hop_mixed_swap_types_uses_last_executed_hop_convention() {
+        let usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+        let stable_pool = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7";
+        let dai = "0x6b175474e89094c44da98b954eedeac495271d0f";
+        let wrapper = "0x7777777777777777777777777777777777777777";
+        let wdai = "0x8888888888888888888888888888888888888888";
+        let stable_pool_2 = "0x9999999999999999999999999999999999999999";
+        let usdt = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+        let route = json!([
+            usdc,
+            stable_pool,
+            dai,
+            wrapper,
+            wdai,
+            stable_pool_2,
+            usdt,
+            "0x0000000000000000000000000000000000000000", // pool3 = 0 → break after hop 2
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        // hop 0 = STABLESWAP_EXCHANGE (1) → route[2]
+        // hop 1 = WRAPPED_ASSET_CONVERT (8) → route[3]
+        // hop 2 = STABLESWAP_EXCHANGE (1) → route[6] = USDT  ← final
+        let result =
+            curve_route_last_token(&route, &swap_params_per_hop(&[1, 8, 1, 0, 0])).unwrap();
+        assert_eq!(result.as_str().unwrap(), usdt);
+    }
+
+    /// **Unknown swap_type** — Router.vy v1.2.0 documents 1..=9. Anything
+    /// outside that range would revert on-chain at the per-hop dispatcher.
+    /// The resolver fails closed with `UnknownSwapType` rather than silently
+    /// picking a wrong output slot.
+    #[test]
+    fn unknown_swap_type_returns_error() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1",
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2",
+            "0xcccccccccccccccccccccccccccccccccccccccc",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let err = curve_route_last_token(&route, &swap_params_first_hop(10)).unwrap_err();
+        assert!(matches!(err, FnError::UnknownSwapType { swap_type: 10 }));
+
+        let err_zero = curve_route_last_token(&route, &swap_params_first_hop(0)).unwrap_err();
+        assert!(matches!(
+            err_zero,
+            FnError::UnknownSwapType { swap_type: 0 }
+        ));
+    }
+
+    /// **Malformed swap_params** — non-array outer surfaces as
+    /// `SwapParamsShape` rather than `TypeMismatch` (the latter is reserved
+    /// for `route`), keeping the error space coherent for downstream
+    /// interpreters that may branch on the variant.
+    #[test]
+    fn swap_params_not_array_returns_shape_error() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1",
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2",
+            "0xcccccccccccccccccccccccccccccccccccccccc",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        let err = curve_route_last_token(&route, &json!("not-an-array")).unwrap_err();
+        assert!(matches!(err, FnError::SwapParamsShape { .. }));
+    }
+
+    /// **swap_params row missing slot [2]** — Router NG ABI requires
+    /// `uint256[N][5]` with N >= 3 (swap_type is at inner `[2]`). A row
+    /// shorter than 3 elements is malformed.
+    #[test]
+    fn swap_params_inner_too_short_returns_shape_error() {
+        let route = json!([
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1",
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2",
+            "0xcccccccccccccccccccccccccccccccccccccccc",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+        ]);
+        // hop 0 row has only 2 slots — missing index [2].
+        let malformed = json!([[json!(0u64), json!(0u64)]]);
+        let err = curve_route_last_token(&route, &malformed).unwrap_err();
+        assert!(matches!(err, FnError::SwapParamsShape { .. }));
     }
 }
 
@@ -1431,9 +1857,14 @@ mod tests_select_from_literal_array {
 
     #[test]
     fn non_array_input_errors() {
-        let err =
-            select_from_literal_array(&json!("0xdeadbeef"), &json!(0)).unwrap_err();
-        assert!(matches!(err, FnError::TypeMismatch { expected: "array", .. }));
+        let err = select_from_literal_array(&json!("0xdeadbeef"), &json!(0)).unwrap_err();
+        assert!(matches!(
+            err,
+            FnError::TypeMismatch {
+                expected: "array",
+                ..
+            }
+        ));
     }
 
     #[test]

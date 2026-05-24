@@ -19,16 +19,13 @@
   },
   "emit": {
     "strategy": "single_emit",
-    "category": "staking",
-    "action": "stake",
+    "category": "misc",
+    "action": "lock_increase",
     "fields": {
-      "tokenIn.kind":         { "literal": "erc20" },
-      "tokenIn.address":      { "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
-      "receiptToken.kind":    { "literal": "erc20" },
-      "receiptToken.address": { "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
-      "amountIn.kind":        { "literal": "exact" },
-      "amountIn.value":       { "literal": "0" },
-      "recipient":            { "from": "$.tx.from" }
+      "votingEscrow":       { "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
+      "tokenId":            { "literal": "0" },
+      "kind":               { "literal": "unlock_time" },
+      "newLockDurationSec": { "from":    "$.args._unlock_time" }
     }
   },
   "requires": {

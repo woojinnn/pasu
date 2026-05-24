@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/collect-avalanche@1.0.0",
   "manifest_path": "manifests/uniswap/v3/collect-avalanche@1.0.0.json",
-  "bundle_sha256": "0x2b114de65b2b1f54397a769fedb355c2c6898528440c892d62fde20a302ecd65",
+  "bundle_sha256": "0x2d917a495477c75eb6524737ccc30b17f548e914ddc433a7720dd73e59ac57b0",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/collect-avalanche@1.0.0",
@@ -56,13 +56,7 @@
           "from": "$.tx.to"
         },
         "nft.kind": {
-          "literal": "erc721"
-        },
-        "nft.address": {
-          "from": "$.tx.to"
-        },
-        "nft.tokenId": {
-          "from": "$.args.tokenId"
+          "literal": "unknown"
         },
         "tokenId": {
           "from": "$.args.tokenId"

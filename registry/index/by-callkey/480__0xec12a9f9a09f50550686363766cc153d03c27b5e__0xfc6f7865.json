@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/collect-worldchain@1.0.0",
   "manifest_path": "manifests/uniswap/v3/collect-worldchain@1.0.0.json",
-  "bundle_sha256": "0x1f3bc7b1702cb2912d9f19904c1846599722b00028fda3d2fb88a7d52c44bbc7",
+  "bundle_sha256": "0xcf013e0234f92a8c4dce7c604df989876c53b70b5aa9c62a6e271dd68050ba2c",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/collect-worldchain@1.0.0",
@@ -56,13 +56,7 @@
           "from": "$.tx.to"
         },
         "nft.kind": {
-          "literal": "erc721"
-        },
-        "nft.address": {
-          "from": "$.tx.to"
-        },
-        "nft.tokenId": {
-          "from": "$.args.tokenId"
+          "literal": "unknown"
         },
         "tokenId": {
           "from": "$.args.tokenId"

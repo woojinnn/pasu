@@ -46,12 +46,10 @@ use policy_engine::action::{
 // Bundle fixtures (the same JSONs the Rust unit tests load).
 // ───────────────────────────────────────────────────────────────────────────
 
-const V3_EXACT_INPUT_BUNDLE: &str =
-    include_str!("fixtures/uniswap-v3-exact-input.json");
+const V3_EXACT_INPUT_BUNDLE: &str = include_str!("fixtures/uniswap-v3-exact-input.json");
 const V3_EXACT_INPUT_SINGLE_BUNDLE: &str =
     include_str!("fixtures/uniswap-v3-exact-input-single.json");
-const V2_BUNDLE_JSON: &str =
-    include_str!("fixtures/uniswap-v2-swap-exact-tokens.json");
+const V2_BUNDLE_JSON: &str = include_str!("fixtures/uniswap-v2-swap-exact-tokens.json");
 
 // ───────────────────────────────────────────────────────────────────────────
 // Address fixtures — mainnet checksummed canonical addresses, lowercased
@@ -268,7 +266,9 @@ fn v3_exact_input_single_hop_yields_input_output_address() {
         U256::from(900_000_u64),
     );
 
-    let envelopes = mapper.map(&ctx.map_ctx(), &decoded).expect("V3 single hop maps");
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &decoded)
+        .expect("V3 single hop maps");
     assert_eq!(envelopes.len(), 1);
     let action = unwrap_swap(&envelopes[0]);
 
@@ -294,7 +294,10 @@ fn v3_exact_input_8_hop_max_path_succeeds() {
     // 9 tokens for 8 hops. Intermediate tokens are dummy unique addresses;
     // only the first and last matter for the assertion.
     let intermediates: Vec<Address> = (1..=7)
-        .map(|i| Address::from_str(&format!("0x{}{}", "0".repeat(38), format!("{i:02x}"))).unwrap())
+        .map(|i| {
+            let suffix = format!("{i:02x}");
+            Address::from_str(&format!("0x{}{}", "0".repeat(38), suffix)).unwrap()
+        })
         .collect();
     let mut tokens = vec![weth()];
     tokens.extend(intermediates);
@@ -314,7 +317,9 @@ fn v3_exact_input_8_hop_max_path_succeeds() {
         U256::from(1_u64),
     );
 
-    let envelopes = mapper.map(&ctx.map_ctx(), &decoded).expect("8-hop path maps");
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &decoded)
+        .expect("8-hop path maps");
     let action = unwrap_swap(&envelopes[0]);
     assert_eq!(action.input_token.asset.address, Some(weth()));
     assert_eq!(action.output_token.asset.address, Some(usdt()));
@@ -334,8 +339,7 @@ fn v3_exact_input_fee_at_hop_returns_correct_fee() {
     use serde_json::json;
 
     // 3 hops: USDT --500--> USDC --3000--> WETH --10000--> dummy_final.
-    let dummy_final =
-        Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
+    let dummy_final = Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
     let path = build_v3_path(
         &[usdt(), usdc(), weth(), dummy_final.clone()],
         &[500, 3000, 10000],
@@ -345,7 +349,11 @@ fn v3_exact_input_fee_at_hop_returns_correct_fee() {
 
     let first_fee = unfold_v3_path(&json!(path_hex), "first_fee").unwrap();
     let last_fee = unfold_v3_path(&json!(path_hex), "last_fee").unwrap();
-    assert_eq!(first_fee, json!(500), "first_fee should be the first hop fee");
+    assert_eq!(
+        first_fee,
+        json!(500),
+        "first_fee should be the first hop fee"
+    );
     assert_eq!(
         last_fee,
         json!(10000),
@@ -378,7 +386,9 @@ fn v3_exact_input_zero_amount_in_succeeds() {
         U256::ZERO,
     );
 
-    let envelopes = mapper.map(&ctx.map_ctx(), &decoded).expect("zero amountIn maps");
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &decoded)
+        .expect("zero amountIn maps");
     let action = unwrap_swap(&envelopes[0]);
     assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
     assert_eq!(
@@ -424,11 +434,14 @@ fn v3_exact_input_max_uint256_amount_in_succeeds() {
         U256::from(1_u64),
     );
 
-    let envelopes = mapper.map(&ctx.map_ctx(), &decoded).expect("max uint256 maps");
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &decoded)
+        .expect("max uint256 maps");
     let action = unwrap_swap(&envelopes[0]);
 
     // 2^256 - 1 = 1.157920892e77; assert the exact decimal string.
-    let expected_max = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+    let expected_max =
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935";
     assert_eq!(
         action
             .input_token
@@ -459,7 +472,9 @@ fn v3_exact_input_zero_recipient_succeeds() {
         U256::from(900_u64),
     );
 
-    let envelopes = mapper.map(&ctx.map_ctx(), &decoded).expect("zero recipient maps");
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &decoded)
+        .expect("zero recipient maps");
     let action = unwrap_swap(&envelopes[0]);
     assert_eq!(action.recipient, zero_address());
 }
@@ -490,8 +505,8 @@ fn v3_exact_input_negative_idx_select_last_token() {
 
     let decoded = DecodedCall {
         decoder_id: mapper.declarative_decoder_id(),
-        function_signature:
-            "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)".into(),
+        function_signature: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)"
+            .into(),
         args: vec![
             DecodedArg {
                 name: "amountIn".into(),
@@ -549,7 +564,9 @@ fn v3_exact_input_single_uses_explicit_token_fields() {
 
     let decoded = DecodedCall {
         decoder_id: mapper.declarative_decoder_id(),
-        function_signature: "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))".into(),
+        function_signature:
+            "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))"
+                .into(),
         args: vec![
             DecodedArg {
                 name: "tokenIn".into(),

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/slipstream-gauge/deposit@1.0.0",
   "manifest_path": "manifests/aerodrome/slipstream-gauge/deposit@1.0.0.json",
-  "bundle_sha256": "0x3717851c90d660549455c380114d4f3816db54356b9ed3adb7cabeb8832d9c60",
+  "bundle_sha256": "0xb4ec8be8bcf78f0ce559eaa05aa355a6130671da917df3f8b1d2f5e0cfb9f93e",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/slipstream-gauge/deposit@1.0.0",
@@ -54,13 +54,7 @@
           "from": "$.tx.to"
         },
         "lpToken.kind": {
-          "literal": "erc721"
-        },
-        "lpToken.address": {
-          "literal": "0x827922686190790b37229fd06084350E74485b72"
-        },
-        "lpToken.tokenId": {
-          "from": "$.args.tokenId"
+          "literal": "unknown"
         },
         "amount.kind": {
           "literal": "exact"

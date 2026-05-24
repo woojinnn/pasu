@@ -193,8 +193,9 @@ mod tests {
         assert!(leaves.iter().any(|l| l.name == "value"
             && matches!(l.cedar_type, CedarType::Decimal)
             && !l.optional));
-        assert!(leaves.iter().any(|l| l.name == "sources"
-            && matches!(l.cedar_type, CedarType::SetOfString)));
+        assert!(leaves
+            .iter()
+            .any(|l| l.name == "sources" && matches!(l.cedar_type, CedarType::SetOfString)));
     }
 
     #[test]

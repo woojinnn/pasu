@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/slipstream-npm/increaseLiquidity@1.0.0",
   "manifest_path": "manifests/aerodrome/slipstream-npm/increaseLiquidity@1.0.0.json",
-  "bundle_sha256": "0x0e6ffd0130b3d66b9beeaed1a93cdad4fce640ab9d3ce29a7f206f4643c1ccfa",
+  "bundle_sha256": "0x06510b414226fa41b8bd6a6c97e8edcdbea9c634e1a5b0e269d7aaeed072d3c4",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/slipstream-npm/increaseLiquidity@1.0.0",
@@ -67,7 +67,7 @@
           "literal": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53"
         },
         "nft.tokenId": {
-          "from": "$.args.params[0]"
+          "from": "$.args.tokenId"
         },
         "inputTokens[0].asset.kind": {
           "literal": "unknown"
@@ -76,7 +76,7 @@
           "literal": "max"
         },
         "inputTokens[0].amount.value": {
-          "from": "$.args.params[1]"
+          "from": "$.args.amount0Desired"
         },
         "inputTokens[1].asset.kind": {
           "literal": "unknown"
@@ -85,10 +85,10 @@
           "literal": "max"
         },
         "inputTokens[1].amount.value": {
-          "from": "$.args.params[2]"
+          "from": "$.args.amount1Desired"
         },
         "validity.expiresAt": {
-          "from": "$.args.params[5]"
+          "from": "$.args.deadline"
         },
         "validity.source": {
           "literal": "tx-deadline"

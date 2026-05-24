@@ -60,9 +60,8 @@ use policy_engine::action::{
 // Loaded directly so the tests track whatever the registry ships.
 // ───────────────────────────────────────────────────────────────────────────
 
-const AERO_UR_EXECUTE_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/universal-router/execute@1.0.0.json"
-);
+const AERO_UR_EXECUTE_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/universal-router/execute@1.0.0.json");
 
 // ───────────────────────────────────────────────────────────────────────────
 // Address fixtures. The UR opcode decoders only care about byte positions, so
@@ -171,9 +170,7 @@ fn ur_execute_decoded(
             DecodedArg {
                 name: "inputs".into(),
                 abi_type: "bytes[]".into(),
-                value: DecodedValue::Array(
-                    inputs.into_iter().map(DecodedValue::Bytes).collect(),
-                ),
+                value: DecodedValue::Array(inputs.into_iter().map(DecodedValue::Bytes).collect()),
             },
             DecodedArg {
                 name: "deadline".into(),
@@ -198,8 +195,7 @@ fn encode_swap_6tuple_input(
     payer_is_user: bool,
     is_uni: bool,
 ) -> Vec<u8> {
-    let func =
-        Function::parse("step(address,uint256,uint256,bytes,bool,bool)").unwrap();
+    let func = Function::parse("step(address,uint256,uint256,bytes,bool,bool)").unwrap();
     let values = vec![
         DynSolValue::Address(alloy_primitives::Address::from(address_bytes(
             &recipient_addr,
@@ -260,10 +256,8 @@ fn encode_permit2_permit_input(
         DynSolValue::Address(alloy_primitives::Address::from(address_bytes(&spender))),
         DynSolValue::Uint(U256::from(sig_deadline), 256),
     ]);
-    let func = Function::parse(
-        "step(((address,uint160,uint48,uint48),address,uint256),bytes)",
-    )
-    .unwrap();
+    let func =
+        Function::parse("step(((address,uint160,uint48,uint48),address,uint256),bytes)").unwrap();
     let values = vec![permit_single, DynSolValue::Bytes(signature)];
     let raw = func.abi_encode_input(&values).unwrap();
     raw[4..].to_vec()
@@ -285,6 +279,7 @@ fn encode_v4_swap_input(actions: Vec<u8>, params: Vec<Vec<u8>>) -> Vec<u8> {
 /// address recipient, address token, address bridge, uint256 amount, uint256
 /// msgFee, uint32 domain, bool payerIsUser)`. Used to exercise the
 /// warn-opcode path (the bundle omits `0x12`).
+#[allow(clippy::too_many_arguments)]
 fn encode_bridge_token_input(
     bridge_type: u8,
     recipient_addr: Address,
@@ -295,10 +290,8 @@ fn encode_bridge_token_input(
     domain: u32,
     payer_is_user: bool,
 ) -> Vec<u8> {
-    let func = Function::parse(
-        "step(uint8,address,address,address,uint256,uint256,uint32,bool)",
-    )
-    .unwrap();
+    let func =
+        Function::parse("step(uint8,address,address,address,uint256,uint256,uint32,bool)").unwrap();
     let values = vec![
         DynSolValue::Uint(U256::from(bridge_type), 8),
         DynSolValue::Address(alloy_primitives::Address::from(address_bytes(
@@ -406,11 +399,7 @@ fn aero_ur_single_v3_swap_exact_in_resolves_slipstream_endpoints() {
         false, // isUni — Velodrome CL pool
     );
 
-    let decoded = ur_execute_decoded(
-        mapper.declarative_decoder_id(),
-        vec![0x00],
-        vec![input],
-    );
+    let decoded = ur_execute_decoded(mapper.declarative_decoder_id(), vec![0x00], vec![input]);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
@@ -428,7 +417,12 @@ fn aero_ur_single_v3_swap_exact_in_resolves_slipstream_endpoints() {
     );
     assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
     assert_eq!(
-        action.input_token.amount.value.as_ref().map(ToString::to_string),
+        action
+            .input_token
+            .amount
+            .value
+            .as_ref()
+            .map(ToString::to_string),
         Some("1000000".to_owned())
     );
     assert_eq!(
@@ -438,7 +432,12 @@ fn aero_ur_single_v3_swap_exact_in_resolves_slipstream_endpoints() {
     );
     assert_eq!(action.output_token.amount.kind, AmountKind::Min);
     assert_eq!(
-        action.output_token.amount.value.as_ref().map(ToString::to_string),
+        action
+            .output_token
+            .amount
+            .value
+            .as_ref()
+            .map(ToString::to_string),
         Some("900000".to_owned())
     );
     assert_eq!(action.recipient, recipient());
@@ -470,11 +469,7 @@ fn aero_ur_v2_swap_exact_in_univ2_path_resolves_endpoints() {
         true, // isUni — UniV2 pools
     );
 
-    let decoded = ur_execute_decoded(
-        mapper.declarative_decoder_id(),
-        vec![0x08],
-        vec![input],
-    );
+    let decoded = ur_execute_decoded(mapper.declarative_decoder_id(), vec![0x08], vec![input]);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
@@ -511,11 +506,7 @@ fn aero_ur_v2_swap_exact_in_velov2_path_resolves_endpoints() {
         false, // isUni — Velodrome AMM pools
     );
 
-    let decoded = ur_execute_decoded(
-        mapper.declarative_decoder_id(),
-        vec![0x08],
-        vec![input],
-    );
+    let decoded = ur_execute_decoded(mapper.declarative_decoder_id(), vec![0x08], vec![input]);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
@@ -549,15 +540,9 @@ fn aero_ur_wrap_eth_emits_wrap_with_base_weth() {
 
     // WRAP_ETH arg name is `amount` (Tier B `AERODROME_UR_MAIN_TABLE`).
     let input = encode_wrap_eth_input(recipient(), 1_000_000_000_000_000_000); // 1e18
-    let decoded = ur_execute_decoded(
-        mapper.declarative_decoder_id(),
-        vec![0x0b],
-        vec![input],
-    );
+    let decoded = ur_execute_decoded(mapper.declarative_decoder_id(), vec![0x0b], vec![input]);
 
-    let envelopes = mapper
-        .map(&ctx.map_ctx(), &decoded)
-        .expect("WRAP_ETH maps");
+    let envelopes = mapper.map(&ctx.map_ctx(), &decoded).expect("WRAP_ETH maps");
     assert_eq!(envelopes.len(), 1);
     assert_eq!(envelopes[0].category, Category::Misc);
     let Action::Wrap(action) = &envelopes[0].action else {
@@ -571,7 +556,12 @@ fn aero_ur_wrap_eth_emits_wrap_with_base_weth() {
         "WRAP_ETH wrappedAsset must be Base WETH 0x4200…0006, not mainnet WETH"
     );
     assert_eq!(
-        action.native_asset.amount.value.as_ref().map(ToString::to_string),
+        action
+            .native_asset
+            .amount
+            .value
+            .as_ref()
+            .map(ToString::to_string),
         Some("1000000000000000000".to_owned()),
         "WRAP_ETH amount arg ($.args.amount) must flow to nativeAsset amount"
     );
@@ -585,11 +575,7 @@ fn aero_ur_unwrap_weth_emits_unwrap_with_base_weth() {
 
     // UNWRAP_WETH arg name is `amountMin` (distinct from WRAP_ETH's `amount`).
     let input = encode_unwrap_weth_input(recipient(), 500_000_000_000_000_000); // 0.5e18
-    let decoded = ur_execute_decoded(
-        mapper.declarative_decoder_id(),
-        vec![0x0c],
-        vec![input],
-    );
+    let decoded = ur_execute_decoded(mapper.declarative_decoder_id(), vec![0x0c], vec![input]);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
@@ -606,7 +592,12 @@ fn aero_ur_unwrap_weth_emits_unwrap_with_base_weth() {
     );
     assert_eq!(action.native_asset.asset.kind, AssetKind::Native);
     assert_eq!(
-        action.native_asset.amount.value.as_ref().map(ToString::to_string),
+        action
+            .native_asset
+            .amount
+            .value
+            .as_ref()
+            .map(ToString::to_string),
         Some("500000000000000000".to_owned()),
         "UNWRAP_WETH amountMin arg ($.args.amountMin) must flow to nativeAsset amount"
     );
@@ -623,19 +614,15 @@ fn aero_ur_permit2_permit_emits_permit_envelope() {
     let ctx = Ctx::new();
 
     let input = encode_permit2_permit_input(
-        token_a(),     // permitSingle.details.token
+        token_a(),            // permitSingle.details.token
         u128::from(u64::MAX), // permitSingle.details.amount (uint160-fitting)
-        1_700_009_999, // permitSingle.details.expiration
-        7,             // permitSingle.details.nonce
-        token_b(),     // permitSingle.spender
-        1_700_005_000, // permitSingle.sigDeadline
+        1_700_009_999,        // permitSingle.details.expiration
+        7,                    // permitSingle.details.nonce
+        token_b(),            // permitSingle.spender
+        1_700_005_000,        // permitSingle.sigDeadline
         vec![0xab, 0xcd, 0xef],
     );
-    let decoded = ur_execute_decoded(
-        mapper.declarative_decoder_id(),
-        vec![0x0a],
-        vec![input],
-    );
+    let decoded = ur_execute_decoded(mapper.declarative_decoder_id(), vec![0x0a], vec![input]);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
@@ -728,11 +715,7 @@ fn aero_ur_v4_swap_opcode_denied_faults_route() {
     // V4_SWAP (0x10) — a minimal `(bytes actions, bytes[] params)` blob. The
     // bundle omits 0x10, so `deny` policy must fault rather than skip.
     let v4_input = encode_v4_swap_input(vec![0x00], vec![vec![0xde, 0xad]]);
-    let decoded = ur_execute_decoded(
-        mapper.declarative_decoder_id(),
-        vec![0x10],
-        vec![v4_input],
-    );
+    let decoded = ur_execute_decoded(mapper.declarative_decoder_id(), vec![0x10], vec![v4_input]);
 
     let result = mapper.map(&ctx.map_ctx(), &decoded);
     assert!(
@@ -784,14 +767,7 @@ fn aero_ur_v3_swap_then_unmodeled_opcode_faults_route() {
     let ctx = Ctx::new();
 
     let path = build_slipstream_path(&[token_a(), token_b()], &[200]);
-    let swap_input = encode_swap_6tuple_input(
-        recipient(),
-        1_000_000,
-        900_000,
-        path,
-        true,
-        false,
-    );
+    let swap_input = encode_swap_6tuple_input(recipient(), 1_000_000, 900_000, path, true, false);
     let v4_input = encode_v4_swap_input(vec![0x00], vec![vec![0xbe, 0xef]]);
 
     let decoded = ur_execute_decoded(

@@ -4,10 +4,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::action::common::{Address, AmountConstraint, AssetRef, DecimalString};
 
+/// Voting-escrow lock creation — Aerodrome `VotingEscrow.createLock` and equivalents.
+///
+/// Equivalents include Curve veCRV. Locks `amount` of `asset` into
+/// `voting_escrow`; lock period is given as either a relative
+/// `lock_duration_sec` or an absolute `unlock_time` (mutually exclusive).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LockCreateAction {
-    /// VotingEscrow contract.
+    /// `VotingEscrow` contract.
     pub voting_escrow: Address,
     /// Asset being locked (e.g. AERO ERC20).
     pub asset: AssetRef,

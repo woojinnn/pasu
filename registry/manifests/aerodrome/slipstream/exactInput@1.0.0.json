@@ -36,19 +36,19 @@
       "inputToken.asset.kind":     { "literal": "erc20" },
       "inputToken.asset.address":  {
         "fn": "unfold_slipstream_path",
-        "args": [{ "from": "$.args.params[0]" }, { "literal": "first_token" }]
+        "args": [{ "from": "$.args.path" }, { "literal": "first_token" }]
       },
       "inputToken.amount.kind":    { "literal": "exact" },
-      "inputToken.amount.value":   { "from": "$.args.params[3]" },
+      "inputToken.amount.value":   { "from": "$.args.amountIn" },
       "outputToken.asset.kind":    { "literal": "erc20" },
       "outputToken.asset.address": {
         "fn": "unfold_slipstream_path",
-        "args": [{ "from": "$.args.params[0]" }, { "literal": "last_token" }]
+        "args": [{ "from": "$.args.path" }, { "literal": "last_token" }]
       },
       "outputToken.amount.kind":   { "literal": "min" },
-      "outputToken.amount.value":  { "from": "$.args.params[4]" },
-      "recipient":                 { "from": "$.args.params[1]" },
-      "validity.expiresAt":        { "from": "$.args.params[2]" },
+      "outputToken.amount.value":  { "from": "$.args.amountOutMinimum" },
+      "recipient":                 { "from": "$.args.recipient" },
+      "validity.expiresAt":        { "from": "$.args.deadline" },
       "validity.source":           { "literal": "tx-deadline" }
     }
   },

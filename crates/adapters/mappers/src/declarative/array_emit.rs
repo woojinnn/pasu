@@ -127,18 +127,14 @@ pub fn execute(
         }
         let per_elem_json = serde_json::Value::Object(per_elem);
 
-        let envelope = single_emit::execute_with_args(
-            ctx,
-            &per_elem_json,
-            category,
-            action,
-            fields,
-        )
-        .map_err(|e| {
-            MapperError::Internal(anyhow::anyhow!(
-                "array_emit: element #{idx} emit failed: {e}"
-            ))
-        })?;
+        let envelope =
+            single_emit::execute_with_args(ctx, &per_elem_json, category, action, fields).map_err(
+                |e| {
+                    MapperError::Internal(anyhow::anyhow!(
+                        "array_emit: element #{idx} emit failed: {e}"
+                    ))
+                },
+            )?;
         envelopes.push(envelope);
     }
     Ok(envelopes)
@@ -228,8 +224,7 @@ mod tests {
         DecodedCall {
             decoder_id: DecoderId::new("declarative.uniswap/permit2/permit-batch"),
             function_signature:
-                "permit(address,((address,uint160,uint48,uint48)[],address,uint256),bytes)"
-                    .into(),
+                "permit(address,((address,uint160,uint48,uint48)[],address,uint256),bytes)".into(),
             args: vec![
                 DecodedArg {
                     name: "owner".into(),
@@ -308,12 +303,18 @@ mod tests {
         for (i, (token, amount, expiry)) in expected.into_iter().enumerate() {
             assert_eq!(envelopes[i].category, Category::Misc);
             let Action::Permit(p) = &envelopes[i].action else {
-                panic!("element {i}: expected Permit, got {:?}", envelopes[i].action);
+                panic!(
+                    "element {i}: expected Permit, got {:?}",
+                    envelopes[i].action
+                );
             };
             assert_eq!(p.token.kind, AssetKind::Erc20);
             assert_eq!(p.token.address.as_ref(), Some(&token));
             assert_eq!(
-                p.amount.as_ref().and_then(|a| a.value.as_ref()).map(ToString::to_string),
+                p.amount
+                    .as_ref()
+                    .and_then(|a| a.value.as_ref())
+                    .map(ToString::to_string),
                 Some(amount.to_owned())
             );
             // spender / owner stay constant across the fan-out (outer args).
@@ -329,8 +330,7 @@ mod tests {
     fn transfer_from_batch_decoded(details: Vec<DecodedValue>) -> DecodedCall {
         DecodedCall {
             decoder_id: DecoderId::new("declarative.uniswap/permit2/transferFrom-batch"),
-            function_signature:
-                "transferFrom((address,address,uint160,address)[])".into(),
+            function_signature: "transferFrom((address,address,uint160,address)[])".into(),
             args: vec![DecodedArg {
                 name: "transferDetails".into(),
                 abi_type: "tuple[]".into(),

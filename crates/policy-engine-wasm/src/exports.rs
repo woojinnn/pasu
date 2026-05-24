@@ -844,8 +844,8 @@ pub fn evaluate_policy_rpc_json(input_json: String) -> String {
 pub fn evaluate_with_envelopes_json(input_json: String) -> String {
     let verdict = (|| -> Result<Verdict, EngineErrorDto> {
         check_input_size(&input_json, "evaluate_with_envelopes_json")?;
-        let input: EvaluateWithEnvelopesInputDto = serde_json::from_str(&input_json)
-            .map_err(|error| {
+        let input: EvaluateWithEnvelopesInputDto =
+            serde_json::from_str(&input_json).map_err(|error| {
                 EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
             })?;
 
@@ -1949,13 +1949,11 @@ mod tests_policy_rpc {
             parsed["data"]["kind"], "fail",
             "verdict should be fail when amountOutMin=0 with no-zero-min-output policy: {parsed}"
         );
-        let matched = parsed["data"]["matched"]
-            .as_array()
-            .expect("matched array");
+        let matched = parsed["data"]["matched"].as_array().expect("matched array");
         assert!(
-            matched
-                .iter()
-                .any(|m| m["policy_id"].as_str().is_some_and(|id| id.contains("no-zero-min-output"))),
+            matched.iter().any(|m| m["policy_id"]
+                .as_str()
+                .is_some_and(|id| id.contains("no-zero-min-output"))),
             "expected no-zero-min-output policy to fire, got {parsed}"
         );
     }
@@ -2001,9 +1999,7 @@ mod tests_policy_rpc {
             parsed["data"]["kind"], expected_kind,
             "verdict should be {expected_kind} with {expected_policy_id}: {parsed}"
         );
-        let matched = parsed["data"]["matched"]
-            .as_array()
-            .expect("matched array");
+        let matched = parsed["data"]["matched"].as_array().expect("matched array");
         assert!(
             matched.iter().any(|m| m["policy_id"]
                 .as_str()
@@ -2126,7 +2122,9 @@ mod tests_policy_rpc {
     fn user_policy_transfer_large_amount_exact_deny() {
         install_user_policy_only(
             "transfer-large-amount-exact",
-            include_str!("../../../policy-rpc/examples/policies/transfer/transfer-large-amount-exact.cedar"),
+            include_str!(
+                "../../../policy-rpc/examples/policies/transfer/transfer-large-amount-exact.cedar"
+            ),
         );
         // token.amount.value = "1000000000000000000000" (1000 ETH wei) → trigger
         let envelope = json!({
@@ -2148,7 +2146,9 @@ mod tests_policy_rpc {
     fn user_policy_wrap_large_amount_exact_deny() {
         install_user_policy_only(
             "wrap-large-amount-exact",
-            include_str!("../../../policy-rpc/examples/policies/transfer/wrap-large-amount-exact.cedar"),
+            include_str!(
+                "../../../policy-rpc/examples/policies/transfer/wrap-large-amount-exact.cedar"
+            ),
         );
         // nativeAsset.amount.value = "100000000000000000000" (100 ETH wei) → trigger
         let envelope = json!({
@@ -2173,7 +2173,9 @@ mod tests_policy_rpc {
     fn user_policy_protocol_blocklist_example_deny() {
         install_user_policy_only(
             "protocol-blocklist-example",
-            include_str!("../../../policy-rpc/examples/policies/protocol/protocol-blocklist-example.cedar"),
+            include_str!(
+                "../../../policy-rpc/examples/policies/protocol/protocol-blocklist-example.cedar"
+            ),
         );
         // resource = Protocol::"0x000000000000000000000000000000000000dead" → trigger
         // Protocol uid = tx 의 `to` address — assert_envelope_fails_with_policy 의
@@ -2213,9 +2215,7 @@ mod tests_policy_rpc {
             parsed["data"]["kind"], "fail",
             "verdict should be fail for protocol-blocklist: {parsed}"
         );
-        let matched = parsed["data"]["matched"]
-            .as_array()
-            .expect("matched array");
+        let matched = parsed["data"]["matched"].as_array().expect("matched array");
         assert!(
             matched.iter().any(|m| m["policy_id"]
                 .as_str()
@@ -2270,8 +2270,7 @@ mod tests_policy_rpc {
         assert_eq!(parsed["ok"], true, "{parsed}");
         assert_eq!(parsed["data"]["kind"], "fail", "{parsed}");
         assert_eq!(
-            parsed["data"]["matched"][0]["policy_id"],
-            "__engine::installed_manifest_hash_mismatch",
+            parsed["data"]["matched"][0]["policy_id"], "__engine::installed_manifest_hash_mismatch",
             "{parsed}"
         );
     }

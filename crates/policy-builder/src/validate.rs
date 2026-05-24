@@ -58,7 +58,7 @@ pub enum ValidationError {
         op: String,
     },
     /// Operand wasn't in the field's `allowed_values` enum set. Surfaces UI
-    /// dropdown bypass attempts (CodeView edits, programmatic input) before
+    /// dropdown bypass attempts (`CodeView` edits, programmatic input) before
     /// they reach the Cedar generator and produce a syntactically valid but
     /// semantically dead policy that silently never matches.
     #[error(
@@ -117,6 +117,7 @@ pub enum ValidationError {
 ///
 /// Returns the first [`ValidationError`] encountered. Validation is single-pass
 /// and short-circuits.
+#[allow(clippy::too_many_lines)]
 pub fn validate(rule: &PolicyRule, schema: &ActionSchema) -> Result<(), ValidationError> {
     if rule.id.trim().is_empty() {
         return Err(ValidationError::EmptyId);
@@ -445,9 +446,7 @@ mod tests {
         let rule = base_rule(vec![Predicate {
             field: "recipient".into(),
             op: "eq".into(),
-            value: PredicateValue::Single(
-                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".into(),
-            ),
+            value: PredicateValue::Single("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".into()),
         }]);
         assert!(validate(&rule, &schema).is_ok());
     }
@@ -460,9 +459,7 @@ mod tests {
         let rule = base_rule(vec![Predicate {
             field: "inputToken.asset.address".into(),
             op: "eq".into(),
-            value: PredicateValue::Single(
-                "0xA0b86991c6218b36c1D19D4a2e9Eb0cE3606eB48".into(),
-            ),
+            value: PredicateValue::Single("0xA0b86991c6218b36c1D19D4a2e9Eb0cE3606eB48".into()),
         }]);
         assert!(validate(&rule, &schema).is_ok());
     }
@@ -477,9 +474,7 @@ mod tests {
         let rule = base_rule(vec![Predicate {
             field: "recipient".into(),
             op: "eq".into(),
-            value: PredicateValue::Single(
-                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48extra".into(),
-            ),
+            value: PredicateValue::Single("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48extra".into()),
         }]);
         assert!(matches!(
             validate(&rule, &schema),

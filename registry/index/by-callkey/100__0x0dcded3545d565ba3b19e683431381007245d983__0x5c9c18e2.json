@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/router-ng/exchange-5arg@1.0.0",
   "manifest_path": "manifests/curve/router-ng/exchange-5arg@1.0.0.json",
-  "bundle_sha256": "0x363fee8e76d30812a8394feccb2a6fbdbe2d9c7bfec90a2557c15e42f75406d8",
+  "bundle_sha256": "0x43b4ff837815bf560cca73aa5bf25382c1d66ff0927d423a73ff5d19a04f0daf",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/router-ng/exchange-5arg@1.0.0",
@@ -86,6 +86,9 @@
           "args": [
             {
               "from": "$.args._route"
+            },
+            {
+              "from": "$.args._swap_params"
             }
           ]
         },

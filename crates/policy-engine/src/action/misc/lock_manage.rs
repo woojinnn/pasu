@@ -8,7 +8,7 @@ use crate::action::common::{Address, DecimalString};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LockManageAction {
-    /// VotingEscrow contract.
+    /// `VotingEscrow` contract.
     pub voting_escrow: Address,
     /// Subkind discriminator.
     pub kind: LockManageKind,

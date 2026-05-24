@@ -87,7 +87,6 @@ pub fn escape_long(value: &str) -> Result<String, EscapeError> {
 /// Returns [`EscapeError::InvalidLong`] when the input has a non-zero
 /// fractional part, non-digit characters, multiple `.`, or any shape
 /// that can't be coerced to an integer by trimming trailing `.0+`.
-#[must_use]
 pub fn normalize_long_input(value: &str) -> Result<String, EscapeError> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -168,13 +167,12 @@ pub fn unscale_long_to_decimal(value: &str, scale: u8) -> Result<String, EscapeE
     };
 
     // -0.0 is meaningless; strip the sign when the value rounds to zero.
-    let normalized_sign = if sign == "-" && int_part.trim_start_matches('0').is_empty()
-        && frac_display == "0"
-    {
-        ""
-    } else {
-        sign
-    };
+    let normalized_sign =
+        if sign == "-" && int_part.trim_start_matches('0').is_empty() && frac_display == "0" {
+            ""
+        } else {
+            sign
+        };
     Ok(format!("{normalized_sign}{int_part}.{frac_display}"))
 }
 
@@ -299,7 +297,6 @@ pub fn escape_decimal(value: &str) -> Result<String, EscapeError> {
 /// Returns [`EscapeError::InvalidDecimal`] for empty input, multiple
 /// `.`, non-digit characters, or any other shape that can't be coerced
 /// to Cedar's accepted form by appending/prepending a `0`.
-#[must_use]
 pub fn normalize_decimal_input(value: &str) -> Result<String, EscapeError> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -326,8 +323,7 @@ pub fn normalize_decimal_input(value: &str) -> Result<String, EscapeError> {
         int_part_raw
     };
     let frac_part_normalized = match frac_part_raw {
-        None => "0",
-        Some("") => "0",
+        None | Some("") => "0",
         Some(f) => f,
     };
     if !int_part_normalized.bytes().all(|b| b.is_ascii_digit()) {
@@ -549,7 +545,10 @@ mod tests {
             ("0.000000001", 9, "1", "0.000000001"),
         ] {
             let long = scale_decimal_to_long(decimal_input, scale).unwrap();
-            assert_eq!(long, expected_long, "scale_decimal_to_long({decimal_input})");
+            assert_eq!(
+                long, expected_long,
+                "scale_decimal_to_long({decimal_input})"
+            );
             let back = unscale_long_to_decimal(&long, scale).unwrap();
             assert_eq!(back, expected_back, "unscale({long})");
         }

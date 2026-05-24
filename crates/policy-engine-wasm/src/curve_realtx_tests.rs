@@ -32,10 +32,16 @@ use std::path::Path;
 /// Called per-test: `DECLARATIVE_STATE` is thread-local and each `#[test]`
 /// runs on its own thread.
 fn install_all_curve() {
-    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../registry/manifests/curve");
+    let dir = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../registry/manifests/curve"
+    );
     let mut count = 0usize;
     install_dir(Path::new(dir), &mut count);
-    assert!(count > 100, "expected >100 curve manifests, installed {count}");
+    assert!(
+        count > 100,
+        "expected >100 curve manifests, installed {count}"
+    );
 }
 
 fn install_dir(p: &Path, count: &mut usize) {
@@ -150,13 +156,15 @@ fn check_swap(s: &Sample, expect_in: &str, expect_out: &str) {
         fields["inputToken"]["asset"]["address"].as_str(),
         Some(expect_in),
         "[{}] inputToken address — expected {}",
-        s.label, expect_in
+        s.label,
+        expect_in
     );
     assert_eq!(
         fields["outputToken"]["asset"]["address"].as_str(),
         Some(expect_out),
         "[{}] outputToken address — expected {}",
-        s.label, expect_out
+        s.label,
+        expect_out
     );
 }
 
@@ -692,4 +700,3 @@ fn rt29_curve_lending_create_loan() {
         calldata: CD29,
     });
 }
-

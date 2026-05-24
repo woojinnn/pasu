@@ -92,10 +92,7 @@ mod tests {
             .expect("set_approval_for_all lowers");
 
         assert!(request.action.contains("set_approval_for_all"));
-        let obj = request
-            .context
-            .as_object()
-            .expect("context is an object");
+        let obj = request.context.as_object().expect("context is an object");
         assert!(obj.contains_key(COLLECTION), "collection key present");
         assert!(obj.contains_key(OPERATOR), "operator key present");
         assert_eq!(obj.get(APPROVED).and_then(Value::as_bool), Some(true));
@@ -112,10 +109,7 @@ mod tests {
         let request = sample_set_approval(false)
             .build(&ctx)
             .expect("set_approval_for_all lowers");
-        let obj = request
-            .context
-            .as_object()
-            .expect("context is an object");
+        let obj = request.context.as_object().expect("context is an object");
         assert_eq!(obj.get(APPROVED).and_then(Value::as_bool), Some(false));
     }
 }

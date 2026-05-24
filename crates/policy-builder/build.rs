@@ -84,10 +84,9 @@ impl FieldConstraints {
 }
 
 fn load_common_defs(path: &Path) -> BTreeMap<String, Value> {
-    let raw = fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("read {}: {}", path.display(), e));
-    let root: Value = serde_json::from_str(&raw)
-        .unwrap_or_else(|e| panic!("parse {}: {}", path.display(), e));
+    let raw = fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {}", path.display(), e));
+    let root: Value =
+        serde_json::from_str(&raw).unwrap_or_else(|e| panic!("parse {}: {}", path.display(), e));
     let defs = root
         .get("$defs")
         .and_then(Value::as_object)
@@ -120,8 +119,8 @@ fn collect_actions(
             .map(str::to_owned)
             .unwrap_or_else(|| panic!("bad file name: {}", path.display()));
 
-        let raw = fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("read {}: {}", path.display(), e));
+        let raw =
+            fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {}", path.display(), e));
         let root: Value = serde_json::from_str(&raw)
             .unwrap_or_else(|e| panic!("parse {}: {}", path.display(), e));
 
@@ -210,7 +209,12 @@ fn render_rust(entries: &BTreeMap<String, Vec<FieldConstraints>>) -> String {
          /// Schema `\"enum\"` keyword. Order matches the JSON declaration so\n\
          /// UIs render a stable dropdown.\n",
     );
-    out.push_str("pub fn action_field_enum(action: &str, path: &str) -> Option<&'static [&'static str]> {\n");
+    out.push_str(
+        "#[allow(clippy::match_same_arms, clippy::must_use_candidate, clippy::too_many_lines)]\n",
+    );
+    out.push_str(
+        "pub fn action_field_enum(action: &str, path: &str) -> Option<&'static [&'static str]> {\n",
+    );
     out.push_str("    match (action, path) {\n");
     for (action, items) in entries {
         for item in items {
@@ -240,7 +244,12 @@ fn render_rust(entries: &BTreeMap<String, Vec<FieldConstraints>>) -> String {
          /// so primitive defs like `Address` propagate their pattern to every\n\
          /// leaf that references them.\n",
     );
-    out.push_str("pub fn action_field_pattern(action: &str, path: &str) -> Option<&'static str> {\n");
+    out.push_str(
+        "#[allow(clippy::match_same_arms, clippy::must_use_candidate, clippy::too_many_lines)]\n",
+    );
+    out.push_str(
+        "pub fn action_field_pattern(action: &str, path: &str) -> Option<&'static str> {\n",
+    );
     out.push_str("    match (action, path) {\n");
     for (action, items) in entries {
         for item in items {

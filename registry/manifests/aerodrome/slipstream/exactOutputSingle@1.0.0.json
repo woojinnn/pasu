@@ -37,15 +37,15 @@
     "fields": {
       "swapMode":                  { "literal": "exact_out" },
       "inputToken.asset.kind":     { "literal": "erc20" },
-      "inputToken.asset.address":  { "from": "$.args.params[0]" },
+      "inputToken.asset.address":  { "from": "$.args.tokenIn" },
       "inputToken.amount.kind":    { "literal": "max" },
-      "inputToken.amount.value":   { "from": "$.args.params[6]" },
+      "inputToken.amount.value":   { "from": "$.args.amountInMaximum" },
       "outputToken.asset.kind":    { "literal": "erc20" },
-      "outputToken.asset.address": { "from": "$.args.params[1]" },
+      "outputToken.asset.address": { "from": "$.args.tokenOut" },
       "outputToken.amount.kind":   { "literal": "exact" },
-      "outputToken.amount.value":  { "from": "$.args.params[5]" },
-      "recipient":                 { "from": "$.args.params[3]" },
-      "validity.expiresAt":        { "from": "$.args.params[4]" },
+      "outputToken.amount.value":  { "from": "$.args.amountOut" },
+      "recipient":                 { "from": "$.args.recipient" },
+      "validity.expiresAt":        { "from": "$.args.deadline" },
       "validity.source":           { "literal": "tx-deadline" }
     }
   },

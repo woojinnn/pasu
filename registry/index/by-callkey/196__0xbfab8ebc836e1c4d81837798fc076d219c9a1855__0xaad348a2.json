@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/router-ng/exchange-xlayer@1.0.0",
   "manifest_path": "manifests/curve/router-ng/exchange-xlayer@1.0.0.json",
-  "bundle_sha256": "0x4c79f1ce077e55cd4064bbe7038bb86240309d5f44079cfaf1ed22363cd12e67",
+  "bundle_sha256": "0x54d0c6013693294c067446e451d29ba16b6be86198e8ccf8596a0ee83dcbbfcd",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/router-ng/exchange-xlayer@1.0.0",
@@ -77,6 +77,9 @@
           "args": [
             {
               "from": "$.args._route"
+            },
+            {
+              "from": "$.args._swap_params"
             }
           ]
         },

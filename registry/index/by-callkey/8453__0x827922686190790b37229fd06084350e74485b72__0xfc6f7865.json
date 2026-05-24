@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "aerodrome/slipstream-npm/collect@1.0.0",
   "manifest_path": "manifests/aerodrome/slipstream-npm/collect@1.0.0.json",
-  "bundle_sha256": "0x257ad0dcea7ca418ea92e60fadf0b1956c65c65310eb3156659f4c257d8f6714",
+  "bundle_sha256": "0x255712e9f6c7f0f7cdbda548695f799530b1aeaa5c9700adfe37650148c765d1",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/slipstream-npm/collect@1.0.0",
@@ -53,19 +53,16 @@
       "action": "claim_rewards",
       "fields": {
         "nft.kind": {
-          "literal": "erc721"
-        },
-        "nft.address": {
-          "literal": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53"
+          "literal": "unknown"
         },
         "tokenId": {
-          "from": "$.args.params[0]"
+          "from": "$.args.tokenId"
         },
         "from": {
           "from": "$.tx.from"
         },
         "recipient": {
-          "from": "$.args.params[1]"
+          "from": "$.args.recipient"
         }
       }
     },

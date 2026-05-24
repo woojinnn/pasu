@@ -119,11 +119,11 @@ mod tests {
         let request = action.build(&ctx).expect("approve lowers");
 
         assert!(request.action.contains("approve"));
-        let obj = request
-            .context
-            .as_object()
-            .expect("context is an object");
-        assert_eq!(obj.get(APPROVAL_KIND).and_then(Value::as_str), Some("permit2"));
+        let obj = request.context.as_object().expect("context is an object");
+        assert_eq!(
+            obj.get(APPROVAL_KIND).and_then(Value::as_str),
+            Some("permit2")
+        );
         assert!(obj.contains_key(TOKEN), "token key present");
         assert!(obj.contains_key(SPENDER), "spender key present");
         assert!(obj.contains_key(AMOUNT), "amount key present");
@@ -139,10 +139,7 @@ mod tests {
         let ctx = lowering_ctx(&from, &to, &value);
 
         let request = sample_approve(None).build(&ctx).expect("approve lowers");
-        let obj = request
-            .context
-            .as_object()
-            .expect("context is an object");
+        let obj = request.context.as_object().expect("context is an object");
         assert!(!obj.contains_key(VALIDITY), "validity omitted when None");
         // Required keys still present.
         assert!(obj.contains_key(TOKEN));

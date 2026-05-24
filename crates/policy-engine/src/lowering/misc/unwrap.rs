@@ -18,8 +18,14 @@ impl Lower for UnwrapAction {
 
 fn context(u: &UnwrapAction) -> Result<Value, LoweringError> {
     let mut context = Map::new();
-    context.insert(WRAPPED_ASSET.into(), asset_with_amount_json(&u.wrapped_asset)?);
-    context.insert(NATIVE_ASSET.into(), asset_with_amount_json(&u.native_asset)?);
+    context.insert(
+        WRAPPED_ASSET.into(),
+        asset_with_amount_json(&u.wrapped_asset)?,
+    );
+    context.insert(
+        NATIVE_ASSET.into(),
+        asset_with_amount_json(&u.native_asset)?,
+    );
     context.insert(RECIPIENT.into(), Value::from(u.recipient.to_string()));
     Ok(Value::Object(context))
 }

@@ -40,11 +40,13 @@ pub fn decoded_value_to_json(value: &DecodedValue) -> serde_json::Value {
         DecodedValue::Uint(value) => serde_json::Value::String(u256_to_decimal_string(*value)),
         DecodedValue::Int(value) => serde_json::Value::String(i256_to_decimal_string(*value)),
         DecodedValue::Bool(value) => serde_json::Value::Bool(*value),
-        DecodedValue::Bytes(bytes) => serde_json::Value::String(format!("0x{}", hex::encode(bytes))),
+        DecodedValue::Bytes(bytes) => {
+            serde_json::Value::String(format!("0x{}", hex::encode(bytes)))
+        }
         DecodedValue::String(string) => serde_json::Value::String(string.clone()),
-        DecodedValue::Array(values) | DecodedValue::Tuple(values) => serde_json::Value::Array(
-            values.iter().map(decoded_value_to_json).collect(),
-        ),
+        DecodedValue::Array(values) | DecodedValue::Tuple(values) => {
+            serde_json::Value::Array(values.iter().map(decoded_value_to_json).collect())
+        }
     }
 }
 
@@ -97,7 +99,9 @@ pub fn evaluate(
             evaluate_json_path(_ctx, args_json, from)
         }
 
-        ValueExpr::Transform { function, args } => evaluate_transform(_ctx, args_json, *function, args),
+        ValueExpr::Transform { function, args } => {
+            evaluate_transform(_ctx, args_json, *function, args)
+        }
     }
 }
 
@@ -148,19 +152,28 @@ fn evaluate_transform(
                 .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
         }
         BuiltinFn::CurveRouteLastToken => {
-            // Phase 12.3 — Curve Router NG output-token resolver.
-            // 1 arg: `route: address[11]` (passed via `{ "from":
-            // "$.args._route" }`). Returns a JSON string (lowercased
-            // `0x..` address), shape-compatible with `single_emit`
-            // `.asset.address` consumers.
-            if args.len() != 1 {
+            // Phase 12.3, F3 + F-route1.B Tier B fix (V3 round, Phase C).
+            // Curve Router NG output-token resolver.
+            // 2 args:
+            //   [0] `route:        address[11]`     (`$.args._route`)
+            //   [1] `swap_params:  uint256[N][5]`   (`$.args._swap_params`)
+            // Returns a JSON string (lowercased `0x..` address), shape-
+            // compatible with `single_emit` `.asset.address` consumers.
+            //
+            // Pre-fix the resolver took only `route`, which meant swap_type=4/5/8/9
+            // hops (LP_ADD / WRAPPED_ASSET_CONVERT / ERC4626_ASSET_SHARE) silently
+            // misdecoded the output asset. `swap_params` is now required so the
+            // per-hop convention (`route[2i+2]` coin vs `route[2i+1]` pool/helper/
+            // vault) can be applied correctly.
+            if args.len() != 2 {
                 return Err(MapperError::Internal(anyhow::anyhow!(
-                    "curve_route_last_token expects 1 arg, got {}",
+                    "curve_route_last_token expects 2 args (route, swap_params), got {}",
                     args.len()
                 )));
             }
             let route_value = evaluate(ctx, args_json, &args[0])?;
-            builtin_fn::curve_route_last_token(&route_value)
+            let swap_params_value = evaluate(ctx, args_json, &args[1])?;
+            builtin_fn::curve_route_last_token(&route_value, &swap_params_value)
                 .map_err(|error| MapperError::Internal(anyhow::anyhow!(error)))
         }
         BuiltinFn::SelectFromLiteralArray => {
@@ -251,8 +264,7 @@ fn evaluate_transform(
                     "map_recipient: invalid address {addr_str:?}: {message}"
                 ))
             })?;
-            let mapped =
-                crate::protocols::universal_router::common::map_recipient(ctx, addr);
+            let mapped = crate::protocols::universal_router::common::map_recipient(ctx, addr);
             Ok(serde_json::Value::String(mapped.to_string()))
         }
         other => Err(MapperError::Unsupported(format!("builtin_fn/{other:?}"))),
@@ -337,9 +349,9 @@ fn walk_args<'a>(
         )));
     }
 
-    let mut value = args_json.get(name).ok_or_else(|| {
-        MapperError::MissingArgument(format!("$.args.{name} (path: {path})"))
-    })?;
+    let mut value = args_json
+        .get(name)
+        .ok_or_else(|| MapperError::MissingArgument(format!("$.args.{name} (path: {path})")))?;
 
     // Walk the chain of [idx] segments left-to-right.
     while !remainder.is_empty() {
@@ -486,7 +498,6 @@ mod tests {
     use abi_resolver::{DecodedArg, DecoderId};
     use policy_engine::action::Address;
     use serde_json::json;
-    use std::str::FromStr as _;
 
     use crate::token_registry::EmptyTokenRegistry;
 
@@ -525,10 +536,12 @@ mod tests {
                     abi_type: "address[]".into(),
                     value: DecodedValue::Array(vec![
                         DecodedValue::Address(
-                            Address::from_str("0x1111111111111111111111111111111111111111").unwrap(),
+                            Address::from_str("0x1111111111111111111111111111111111111111")
+                                .unwrap(),
                         ),
                         DecodedValue::Address(
-                            Address::from_str("0x2222222222222222222222222222222222222222").unwrap(),
+                            Address::from_str("0x2222222222222222222222222222222222222222")
+                                .unwrap(),
                         ),
                     ]),
                 },
@@ -605,8 +618,7 @@ mod tests {
     #[test]
     fn evaluate_json_path_with_index() {
         let decoded = sample_decoded();
-        let expr: ValueExpr =
-            serde_json::from_value(json!({ "from": "$.args.path[0]" })).unwrap();
+        let expr: ValueExpr = serde_json::from_value(json!({ "from": "$.args.path[0]" })).unwrap();
         assert_eq!(
             evaluate_with(&decoded, &expr),
             json!("0x1111111111111111111111111111111111111111")
@@ -688,8 +700,7 @@ mod tests {
     fn evaluate_tx_value_wei_returns_decimal_string() {
         let from = Address::from_str("0x000000000000000000000000000000000000abcd").unwrap();
         let to = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
-        let value =
-            policy_engine::action::DecimalString::from_str("1000000000000000000").unwrap();
+        let value = policy_engine::action::DecimalString::from_str("1000000000000000000").unwrap();
         let registry = EmptyTokenRegistry;
         let ctx = dummy_ctx(1, &from, &to, &value, &registry);
         assert_eq!(

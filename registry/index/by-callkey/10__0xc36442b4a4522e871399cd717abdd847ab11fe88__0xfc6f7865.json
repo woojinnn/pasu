@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/collect@1.0.0",
   "manifest_path": "manifests/uniswap/v3/collect@1.0.0.json",
-  "bundle_sha256": "0x394f5d23be8011950a8e9e7d8bc68e8d3a9779495d5a05b4c7eded4042474f7e",
+  "bundle_sha256": "0x7b5c3b45907f2d35d09bdc162a6610b64731bd9437a76c379a779acc3430e14f",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/collect@1.0.0",
@@ -59,13 +59,7 @@
           "from": "$.tx.to"
         },
         "nft.kind": {
-          "literal": "erc721"
-        },
-        "nft.address": {
-          "from": "$.tx.to"
-        },
-        "nft.tokenId": {
-          "from": "$.args.tokenId"
+          "literal": "unknown"
         },
         "tokenId": {
           "from": "$.args.tokenId"

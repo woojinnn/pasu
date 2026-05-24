@@ -1,5 +1,6 @@
 type ClaimRewardsContext = {
   sourceAddress: String,
+  sourceLabel?: String,
 
   nft?: AssetRef,
 

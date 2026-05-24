@@ -322,17 +322,15 @@ mod tests {
     #[test]
     fn aerodrome_address_recognised() {
         // `deployment-addresses/base.json` UniversalRouter.
-        let a = Address::from_slice(
-            &hex::decode("C5b6786D7B64767D775877b0B6A319AD946B11B5").unwrap(),
-        );
+        let a =
+            Address::from_slice(&hex::decode("C5b6786D7B64767D775877b0B6A319AD946B11B5").unwrap());
         assert!(is_aerodrome_universal_router(8453, &a));
         // Same address on a different chain → not recognised.
         assert!(!is_aerodrome_universal_router(1, &a));
 
         // BaseScan-verified `main`-lineage deployment.
-        let b = Address::from_slice(
-            &hex::decode("cAF22ce31298CF2BF1D152862F80216478ad7c67").unwrap(),
-        );
+        let b =
+            Address::from_slice(&hex::decode("cAF22ce31298CF2BF1D152862F80216478ad7c67").unwrap());
         assert!(is_aerodrome_universal_router(8453, &b));
         assert!(!is_aerodrome_universal_router(10, &b));
     }

@@ -312,10 +312,17 @@ pub enum BuiltinFn {
     /// `unfold_v3_path(bytes, select)`. Backend:
     /// `subdecode/protocols/uniswap_v3.rs::decode_v3_path`. Phase 3.
     UnfoldV3Path,
-    /// `curve_route_last_token(route: address[11]) -> AddressRef` — Curve
-    /// Router NG output-token resolver. Picks the last non-zero address from
-    /// the even indices (0, 2, 4, 6, 8, 10) of an 11-slot zero-padded route
-    /// array. Backend: [`super::builtin_fn::curve_route_last_token`]. Phase 12.3.
+    /// `curve_route_last_token(route: address[11], swap_params: uint256[N][5])
+    /// -> AddressRef` — Curve Router NG output-token resolver. Mirrors
+    /// `Router.vy::exchange` per-hop semantics: hop `i` executes while
+    /// `route[2i+1] != 0`, and the emitted output token of the last executed
+    /// hop is `route[2i+2]` for coin-producing swap types (1/2/3/6/7) or
+    /// `route[2i+1]` for pool/helper/vault-producing swap types
+    /// (4 LP_ADD, 5 LENDING_TO_LP, 8 WRAPPED_ASSET_CONVERT, 9 ERC4626_ASSET_SHARE).
+    /// `swap_type` is read from `swap_params[i][2]` (both `uint256[5][5]` and
+    /// `uint256[4][5]` Router NG variants encode swap_type at inner index `[2]`).
+    /// Backend: [`super::builtin_fn::curve_route_last_token`]. Phase 12.3 +
+    /// Phase 13 P1-5 + F3 / F-route1.B Phase C (V3 round).
     CurveRouteLastToken,
     /// `select_from_literal_array(array, idx) -> Value` — pick an element
     /// from a bundle-embedded literal array (typically pool `coins[]`) by a
@@ -368,11 +375,9 @@ mod tests {
     /// the variant matching of `EmitRule` / `ValueExpr` is correct.
     #[test]
     fn roundtrip_v2_swap_bundle() {
-        let json =
-            include_str!("../../tests/fixtures/uniswap-v2-swap-exact-tokens.json");
+        let json = include_str!("../../tests/fixtures/uniswap-v2-swap-exact-tokens.json");
 
-        let bundle: AdapterFunctionBundle =
-            serde_json::from_str(json).expect("fixture parses");
+        let bundle: AdapterFunctionBundle = serde_json::from_str(json).expect("fixture parses");
 
         // Top-level identity.
         assert_eq!(bundle.bundle_type, BundleType::AdapterFunction);
@@ -457,10 +462,7 @@ mod tests {
         // requires
         assert_eq!(bundle.requires.imperative, Vec::<String>::new());
         // Phase 7B: token_metadata is now an adapter capability.
-        assert_eq!(
-            bundle.requires.adapter_capabilities,
-            vec!["token_metadata"]
-        );
+        assert_eq!(bundle.requires.adapter_capabilities, vec!["token_metadata"]);
         assert_eq!(bundle.requires.host_capabilities, Vec::<String>::new());
         assert_eq!(bundle.requires.extension, ">=0.1.0");
 
@@ -502,8 +504,8 @@ mod tests {
         ];
 
         for (json, label) in cases {
-            let parsed: EmitRule = serde_json::from_str(json)
-                .unwrap_or_else(|e| panic!("{label} did not parse: {e}"));
+            let parsed: EmitRule =
+                serde_json::from_str(json).unwrap_or_else(|e| panic!("{label} did not parse: {e}"));
             let reserialized = serde_json::to_string(&parsed).expect("serializes");
             let reparsed: EmitRule = serde_json::from_str(&reserialized)
                 .unwrap_or_else(|e| panic!("{label} round-trip failed: {e}"));
@@ -557,8 +559,7 @@ mod tests {
 
         // Round-trip: re-serialize then re-parse must equal.
         let reserialized = serde_json::to_string(&with_parallel).expect("serializes");
-        let reparsed: EmitRule =
-            serde_json::from_str(&reserialized).expect("round-trip parses");
+        let reparsed: EmitRule = serde_json::from_str(&reserialized).expect("round-trip parses");
         assert_eq!(with_parallel, reparsed);
     }
 
@@ -571,9 +572,10 @@ mod tests {
         let from_arg: ValueExpr = serde_json::from_str(r#"{"from":"$.args.x"}"#).unwrap();
         assert!(matches!(from_arg, ValueExpr::FromArg { .. }));
 
-        let from_arg_full: ValueExpr =
-            serde_json::from_str(r#"{"from":"$.args.x","via":"host:token_metadata","kind":"exact"}"#)
-                .unwrap();
+        let from_arg_full: ValueExpr = serde_json::from_str(
+            r#"{"from":"$.args.x","via":"host:token_metadata","kind":"exact"}"#,
+        )
+        .unwrap();
         match from_arg_full {
             ValueExpr::FromArg { from, via, kind } => {
                 assert_eq!(from, "$.args.x");
@@ -583,9 +585,10 @@ mod tests {
             _ => panic!("expected FromArg"),
         }
 
-        let transform: ValueExpr =
-            serde_json::from_str(r#"{"fn":"select_address","args":[{"from":"$.args.path"},{"literal":0}]}"#)
-                .unwrap();
+        let transform: ValueExpr = serde_json::from_str(
+            r#"{"fn":"select_address","args":[{"from":"$.args.path"},{"literal":0}]}"#,
+        )
+        .unwrap();
         match transform {
             ValueExpr::Transform { function, args } => {
                 assert_eq!(function, BuiltinFn::SelectAddress);
@@ -603,12 +606,10 @@ mod tests {
     /// round-trips back to the same wire string.
     #[test]
     fn builtin_fn_unfold_velo_v2_path_serde_roundtrip() {
-        let parsed: BuiltinFn =
-            serde_json::from_str(r#""unfold_velo_v2_path""#).expect("parses");
+        let parsed: BuiltinFn = serde_json::from_str(r#""unfold_velo_v2_path""#).expect("parses");
         assert_eq!(parsed, BuiltinFn::UnfoldVeloV2Path);
 
-        let serialized = serde_json::to_string(&BuiltinFn::UnfoldVeloV2Path)
-            .expect("serializes");
+        let serialized = serde_json::to_string(&BuiltinFn::UnfoldVeloV2Path).expect("serializes");
         assert_eq!(serialized, r#""unfold_velo_v2_path""#);
 
         // Embedded in a `Transform` ValueExpr — the shape a Phase 3 bundle

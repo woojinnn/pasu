@@ -110,10 +110,14 @@ pub fn try_policy_request_from_envelope(
         // envelopes (Borrow / Repay / Liquidate) silently fell through to
         // `Ok(None)` before this arm landed, producing an empty verdict list
         // and aggregating to `Pass` (the silent fail-open Phase 12.7 audit
-        // P0-1).
+        // P0-1). Phase B / F1 added `Supply` for crvUSD Controller
+        // `addCollateral` / `addCollateral-for` — without this arm the 6
+        // `crvusd/{wsteth,sfrxeth,wbtc}/addCollateral{,-for}@1.0.0` manifests
+        // silently aggregated to `Pass` (same fail-open class).
         Action::Borrow(action) => action.build(&ctx).map(Some),
         Action::Repay(action) => action.build(&ctx).map(Some),
         Action::Liquidate(action) => action.build(&ctx).map(Some),
+        Action::Supply(action) => action.build(&ctx).map(Some),
         // staking — Phase 12.6 added veCRV / Gauge bundles whose Stake /
         // ClaimUnstake envelopes also silently fell through. Same fail-open
         // class as lending above.

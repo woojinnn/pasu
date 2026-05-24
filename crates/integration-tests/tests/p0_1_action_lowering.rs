@@ -54,15 +54,9 @@ fn lower(envelope_value: Value, expected_kind: &str) -> PolicyRequest {
     let from = ActionAddress::from_str(FROM_HEX).unwrap();
     let to = ActionAddress::from_str(TO_HEX).unwrap();
     let value_wei = DecimalString::from_str("0").unwrap();
-    let request = policy_request_from_envelope(
-        &envelope,
-        &from,
-        &to,
-        &value_wei,
-        1,
-        BLOCK_TIMESTAMP,
-    )
-    .unwrap_or_else(|| panic!("envelope should lower for action {expected_kind}"));
+    let request =
+        policy_request_from_envelope(&envelope, &from, &to, &value_wei, 1, BLOCK_TIMESTAMP)
+            .unwrap_or_else(|| panic!("envelope should lower for action {expected_kind}"));
     assert!(
         request.action.contains(expected_kind),
         "expected request.action to contain {expected_kind}, got {:?}",
@@ -221,13 +215,15 @@ fn claim_rewards_lowers_and_forbid_denies() {
 }
 
 #[test]
-fn supply_envelope_still_returns_none() {
-    // Defense-in-depth: variants we did NOT add to dispatch (Supply,
-    // Withdraw, FlashLoan, Delegate, …) must still return `Ok(None)` so
-    // the wasm export can synthesize a `__engine::action_not_lowered`
-    // Warn verdict for them rather than silently passing.
-    // (Phase 7B added `Approve` / `SetApprovalForAll` lowering, so those
-    // are no longer in the unlowered set.)
+fn supply_lowers_and_forbid_denies() {
+    // Phase B / F1 — `Action::Supply` joined the dispatch arm so the
+    // 6 `crvusd/{wsteth,sfrxeth,wbtc}/addCollateral{,-for}@1.0.0`
+    // declarative bundles lower into a Cedar request. Before this fix the
+    // dispatcher silently aggregated the empty verdict list to `Pass` —
+    // the same fail-open class as Phase 7B `approve` /
+    // `set_approval_for_all` (which now lower) and the rest of this
+    // module's regressions. This assertion proves the envelope reaches
+    // the engine AND a matching forbid policy fires.
     let envelope = json!({
         "category": "lending",
         "action": "supply",
@@ -237,22 +233,41 @@ fn supply_envelope_still_returns_none() {
             "recipient": address(0x30)
         }
     });
-    let envelope: ActionEnvelope =
-        serde_json::from_value(envelope).expect("envelope deserializes");
+    let request = lower(envelope, "supply");
+    assert_forbid_denies("supply", &request);
+}
+
+#[test]
+fn unlowered_action_still_returns_none() {
+    // Defense-in-depth: variants we did NOT add to dispatch (Withdraw,
+    // FlashLoan, Delegate, SignMessage, Restake, Donate, …) must still
+    // return `Ok(None)` so the wasm export can synthesize a
+    // `__engine::action_not_lowered` Warn verdict for them rather than
+    // silently passing. Picks `Withdraw` as the canonical representative
+    // of the unlowered set — it's structurally adjacent to `Supply`
+    // (same `lending` category, mirror operation) so this test exercises
+    // the still-missing arm right next to the just-added `Supply` arm.
+    // (Phase 7B added `Approve` / `SetApprovalForAll` lowering and
+    // Phase B / F1 added `Supply`, so those are no longer in the
+    // unlowered set.)
+    let envelope = json!({
+        "category": "lending",
+        "action": "withdraw",
+        "fields": {
+            "asset": erc20("USDC"),
+            "amount": amount("exact", "1000"),
+            "recipient": address(0x30)
+        }
+    });
+    let envelope: ActionEnvelope = serde_json::from_value(envelope).expect("envelope deserializes");
     let from = ActionAddress::from_str(FROM_HEX).unwrap();
     let to = ActionAddress::from_str(TO_HEX).unwrap();
     let value_wei = DecimalString::from_str("0").unwrap();
-    let request = policy_request_from_envelope(
-        &envelope,
-        &from,
-        &to,
-        &value_wei,
-        1,
-        BLOCK_TIMESTAMP,
-    );
+    let request =
+        policy_request_from_envelope(&envelope, &from, &to, &value_wei, 1, BLOCK_TIMESTAMP);
     assert!(
         request.is_none(),
-        "supply has no lowering yet — must return None so exports.rs can emit Warn"
+        "withdraw has no lowering yet — must return None so exports.rs can emit Warn"
     );
 }
 

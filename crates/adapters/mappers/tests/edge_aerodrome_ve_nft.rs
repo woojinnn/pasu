@@ -48,24 +48,20 @@ use policy_engine::action::{
 // Bundle fixtures — loaded directly from the registry manifests (read-only).
 // ───────────────────────────────────────────────────────────────────────────
 
-const CREATE_LOCK_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/voting-escrow/createLock@1.0.0.json"
-);
-const CREATE_LOCK_FOR_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/voting-escrow/createLockFor@1.0.0.json"
-);
+const CREATE_LOCK_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/voting-escrow/createLock@1.0.0.json");
+const CREATE_LOCK_FOR_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/voting-escrow/createLockFor@1.0.0.json");
 const INCREASE_AMOUNT_BUNDLE: &str = include_str!(
     "../../../../registry/manifests/aerodrome/voting-escrow/increaseAmount@1.0.0.json"
 );
 const INCREASE_UNLOCK_TIME_BUNDLE: &str = include_str!(
     "../../../../registry/manifests/aerodrome/voting-escrow/increaseUnlockTime@1.0.0.json"
 );
-const MERGE_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/voting-escrow/merge@1.0.0.json"
-);
-const SPLIT_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/voting-escrow/split@1.0.0.json"
-);
+const MERGE_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/voting-escrow/merge@1.0.0.json");
+const SPLIT_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/voting-escrow/split@1.0.0.json");
 
 // ───────────────────────────────────────────────────────────────────────────
 // Address fixtures — Base mainnet canonical addresses.
@@ -135,11 +131,7 @@ impl Ctx {
 // hands to the declarative mapper for the matching VotingEscrow function.
 // ───────────────────────────────────────────────────────────────────────────
 
-fn create_lock_decoded(
-    decoder_id: DecoderId,
-    value: U256,
-    lock_duration: U256,
-) -> DecodedCall {
+fn create_lock_decoded(decoder_id: DecoderId, value: U256, lock_duration: U256) -> DecodedCall {
     DecodedCall {
         decoder_id,
         function_signature: "createLock(uint256,uint256)".into(),
@@ -189,11 +181,7 @@ fn create_lock_for_decoded(
     }
 }
 
-fn increase_amount_decoded(
-    decoder_id: DecoderId,
-    token_id: U256,
-    value: U256,
-) -> DecodedCall {
+fn increase_amount_decoded(decoder_id: DecoderId, token_id: U256, value: U256) -> DecodedCall {
     DecodedCall {
         decoder_id,
         function_signature: "increaseAmount(uint256,uint256)".into(),
@@ -287,9 +275,7 @@ fn load_mapper(bundle_json: &str) -> DeclarativeMapper {
     DeclarativeMapper::new(bundle)
 }
 
-fn unwrap_lock_create(
-    envelope: &ActionEnvelope,
-) -> &policy_engine::action::misc::LockCreateAction {
+fn unwrap_lock_create(envelope: &ActionEnvelope) -> &policy_engine::action::misc::LockCreateAction {
     match &envelope.action {
         Action::LockCreate(a) => a,
         other => panic!("expected Action::LockCreate, got {other:?}"),
@@ -305,9 +291,7 @@ fn unwrap_lock_increase(
     }
 }
 
-fn unwrap_lock_manage(
-    envelope: &ActionEnvelope,
-) -> &policy_engine::action::misc::LockManageAction {
+fn unwrap_lock_manage(envelope: &ActionEnvelope) -> &policy_engine::action::misc::LockManageAction {
     match &envelope.action {
         Action::LockManage(a) => a,
         other => panic!("expected Action::LockManage, got {other:?}"),
@@ -334,11 +318,7 @@ fn create_lock_at_max_duration_succeeds() {
     let value = U256::from(1_000_u64) * U256::from(10u64).pow(U256::from(18u64));
     // MAXTIME = 4 * 365 * 86400 = 126,144,000 sec (Aerodrome veAERO).
     let max_duration = U256::from(126_144_000_u64);
-    let decoded = create_lock_decoded(
-        mapper.declarative_decoder_id(),
-        value,
-        max_duration,
-    );
+    let decoded = create_lock_decoded(mapper.declarative_decoder_id(), value, max_duration);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
@@ -354,7 +334,10 @@ fn create_lock_at_max_duration_succeeds() {
         action.amount.value.as_ref().map(ToString::to_string),
         Some("1000000000000000000000".to_owned())
     );
-    assert_eq!(action.lock_duration_sec.as_ref().unwrap().to_string(), "126144000");
+    assert_eq!(
+        action.lock_duration_sec.as_ref().unwrap().to_string(),
+        "126144000"
+    );
     // createLock binds recipient = $.tx.from.
     assert_eq!(action.recipient, tx_from());
 }
@@ -409,7 +392,10 @@ fn create_lock_for_recipient_overrides_sender() {
     // recipient comes from $.args.to, NOT $.tx.from.
     assert_eq!(action.recipient, explicit_recipient());
     assert_ne!(action.recipient, ctx.from);
-    assert_eq!(action.lock_duration_sec.as_ref().unwrap().to_string(), "31536000");
+    assert_eq!(
+        action.lock_duration_sec.as_ref().unwrap().to_string(),
+        "31536000"
+    );
 }
 
 /// **T4: increaseAmount → `LockIncreaseKind::Amount`** — the bundle literal
@@ -422,11 +408,7 @@ fn increase_amount_yields_amount_kind() {
     let ctx = Ctx::new();
     let token_id = U256::from(42_u64);
     let additional = U256::from(500_u64) * U256::from(10u64).pow(U256::from(18u64));
-    let decoded = increase_amount_decoded(
-        mapper.declarative_decoder_id(),
-        token_id,
-        additional,
-    );
+    let decoded = increase_amount_decoded(mapper.declarative_decoder_id(), token_id, additional);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)
@@ -458,11 +440,8 @@ fn increase_unlock_time_yields_unlock_time_kind() {
     let ctx = Ctx::new();
     let token_id = U256::from(42_u64);
     let two_years = U256::from(63_072_000_u64);
-    let decoded = increase_unlock_time_decoded(
-        mapper.declarative_decoder_id(),
-        token_id,
-        two_years,
-    );
+    let decoded =
+        increase_unlock_time_decoded(mapper.declarative_decoder_id(), token_id, two_years);
 
     let envelopes = mapper
         .map(&ctx.map_ctx(), &decoded)

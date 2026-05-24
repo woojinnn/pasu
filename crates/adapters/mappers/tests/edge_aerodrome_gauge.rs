@@ -72,15 +72,12 @@ use policy_engine::action::{
 // Bundle fixtures — loaded straight from the registry tree.
 // ───────────────────────────────────────────────────────────────────────────
 
-const GAUGE_DEPOSIT_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/gauge/deposit@1.0.0.json"
-);
-const GAUGE_WITHDRAW_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/gauge/withdraw@1.0.0.json"
-);
-const GAUGE_GET_REWARD_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/gauge/getReward@1.0.0.json"
-);
+const GAUGE_DEPOSIT_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/gauge/deposit@1.0.0.json");
+const GAUGE_WITHDRAW_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/gauge/withdraw@1.0.0.json");
+const GAUGE_GET_REWARD_BUNDLE: &str =
+    include_str!("../../../../registry/manifests/aerodrome/gauge/getReward@1.0.0.json");
 
 // ───────────────────────────────────────────────────────────────────────────
 // Address fixtures.
@@ -213,18 +210,14 @@ fn load_get_reward_mapper() -> DeclarativeMapper {
     DeclarativeMapper::new(bundle)
 }
 
-fn unwrap_lp_stake(
-    envelope: &ActionEnvelope,
-) -> &policy_engine::action::misc::LpStakeAction {
+fn unwrap_lp_stake(envelope: &ActionEnvelope) -> &policy_engine::action::misc::LpStakeAction {
     match &envelope.action {
         Action::LpStake(s) => s,
         other => panic!("expected LpStakeAction, got {other:?}"),
     }
 }
 
-fn unwrap_lp_unstake(
-    envelope: &ActionEnvelope,
-) -> &policy_engine::action::misc::LpUnstakeAction {
+fn unwrap_lp_unstake(envelope: &ActionEnvelope) -> &policy_engine::action::misc::LpUnstakeAction {
     match &envelope.action {
         Action::LpUnstake(u) => u,
         other => panic!("expected LpUnstakeAction, got {other:?}"),
@@ -271,11 +264,14 @@ fn gauge_deposit_emits_lp_stake_envelope() {
 
     let stake = unwrap_lp_stake(&envelopes[0]);
     assert_eq!(stake.gauge, gauge_addr(), "gauge = $.tx.to");
-    assert_eq!(stake.lp_token.kind, AssetKind::Erc20);
+    // Phase D B-3 fix: lpToken.kind = "unknown" (was emitting `erc20` with
+    // `lpToken.address = $.tx.to` placeholder, which falsely implied the
+    // gauge address was the LP token. The actual LP token is un-derivable
+    // from `deposit(uint256)` calldata.)
+    assert_eq!(stake.lp_token.kind, AssetKind::Unknown);
     assert_eq!(
-        stake.lp_token.address.as_ref(),
-        Some(&gauge_addr()),
-        "lpToken.address = $.tx.to (gauge doubles as LP receipt reference)"
+        stake.lp_token.address, None,
+        "lpToken.address = None (kind:unknown carries no address)"
     );
     assert_eq!(stake.amount.kind, AmountKind::Exact);
     assert_eq!(
@@ -336,10 +332,7 @@ fn gauge_deposit_single_arg_recipient_is_tx_from() {
     let registry = EmptyTokenRegistry;
     let ctx = MapContext::new(8453, &from, &to, &value, Some(1_700_000_000), &registry);
 
-    let decoded = gauge_deposit_decoded(
-        mapper.declarative_decoder_id(),
-        U256::from(42_u64),
-    );
+    let decoded = gauge_deposit_decoded(mapper.declarative_decoder_id(), U256::from(42_u64));
 
     let envelopes = mapper.map(&ctx, &decoded).expect("deposit maps");
     let stake = unwrap_lp_stake(&envelopes[0]);
@@ -349,9 +342,10 @@ fn gauge_deposit_single_arg_recipient_is_tx_from() {
         "single-arg deposit binds recipient to $.tx.from, NOT to any \
          non-existent $.args.to"
     );
-    // gauge / lp_token are still tied to ctx.to.
+    // gauge is still tied to ctx.to.
     assert_eq!(stake.gauge, to);
-    assert_eq!(stake.lp_token.address.as_ref(), Some(&to));
+    // Phase D B-3 fix: lpToken.kind = "unknown" → address = None.
+    assert_eq!(stake.lp_token.address, None);
 }
 
 /// **T4: withdraw happy path — `amount = 500e18`**.
@@ -400,7 +394,8 @@ fn gauge_withdraw_max_uint256_amount_emits_envelope() {
         .expect("max u256 amount does not fault the builder");
     let unstake = unwrap_lp_unstake(&envelopes[0]);
 
-    let expected_max = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+    let expected_max =
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935";
     assert_eq!(unstake.amount.kind, AmountKind::Exact);
     assert_eq!(
         amount_value_string(&unstake.amount.value),
@@ -423,9 +418,10 @@ fn gauge_get_reward_emits_claim_rewards_with_account_recipient() {
     let ctx = Ctx::new();
     let account = other_lp();
 
-    let decoded =
-        gauge_get_reward_decoded(mapper.declarative_decoder_id(), account.clone());
-    let envelopes = mapper.map(&ctx.map_ctx(), &decoded).expect("getReward maps");
+    let decoded = gauge_get_reward_decoded(mapper.declarative_decoder_id(), account.clone());
+    let envelopes = mapper
+        .map(&ctx.map_ctx(), &decoded)
+        .expect("getReward maps");
     assert_eq!(envelopes.len(), 1);
 
     let claim = unwrap_claim_rewards(&envelopes[0]);
@@ -436,10 +432,7 @@ fn gauge_get_reward_emits_claim_rewards_with_account_recipient() {
         claim.from, account,
         "claim.from = $.args.account, distinct from tx.from"
     );
-    assert_eq!(
-        claim.recipient, account,
-        "claim.recipient = $.args.account"
-    );
+    assert_eq!(claim.recipient, account, "claim.recipient = $.args.account");
     assert_ne!(
         claim.from,
         caller(),

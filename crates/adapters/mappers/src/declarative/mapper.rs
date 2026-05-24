@@ -57,12 +57,7 @@ impl DeclarativeMapper {
     /// Stable across bundle version bumps.
     #[must_use]
     pub fn declarative_decoder_id(&self) -> DecoderId {
-        let path = self
-            .bundle
-            .id
-            .split('@')
-            .next()
-            .unwrap_or(&self.bundle.id);
+        let path = self.bundle.id.split('@').next().unwrap_or(&self.bundle.id);
         DecoderId::new(format!("declarative.{path}"))
     }
 }
@@ -101,7 +96,9 @@ impl Mapper for DeclarativeMapper {
             EmitRule::EnumTaggedDispatch { .. } => {
                 enum_tagged::execute(ctx, decoded, &self.bundle.emit)
             }
-            EmitRule::MulticallRecurse { .. } => multicall::execute(ctx, decoded, &self.bundle.emit),
+            EmitRule::MulticallRecurse { .. } => {
+                multicall::execute(ctx, decoded, &self.bundle.emit)
+            }
             EmitRule::ArrayEmit {
                 category,
                 action,
@@ -193,7 +190,8 @@ mod tests {
     }
 
     fn dummy_addr(label: u8) -> Address {
-        Address::from_str(&format!("0x{}{}", "0".repeat(38), format!("{label:02x}"))).unwrap()
+        let suffix = format!("{label:02x}");
+        Address::from_str(&format!("0x{}{}", "0".repeat(38), suffix)).unwrap()
     }
 
     fn build_ctx<'a>(
@@ -261,7 +259,12 @@ mod tests {
         assert_eq!(action.input_token.asset.address, Some(token_in()));
         assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.input_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .input_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000000000000000".to_owned())
         );
 
@@ -559,8 +562,7 @@ mod tests {
         DecodedCall {
             decoder_id,
             function_signature:
-                "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))"
-                    .into(),
+                "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))".into(),
             args: vec![
                 DecodedArg {
                     name: "tokenIn".into(),
@@ -621,7 +623,10 @@ mod tests {
             static_swap.input_token.asset.address,
             declarative_swap.input_token.asset.address
         );
-        assert_eq!(static_swap.input_token.amount, declarative_swap.input_token.amount);
+        assert_eq!(
+            static_swap.input_token.amount,
+            declarative_swap.input_token.amount
+        );
 
         assert_eq!(
             static_swap.output_token.asset.kind,
@@ -705,9 +710,8 @@ mod tests {
     fn declarative_equivalent_to_static_v3_exact_input_single() {
         use crate::protocols::uniswap_v3::UniswapV3Mapper;
 
-        let static_decoded = v3_exact_input_single_decoded(DecoderId::new(
-            abi_resolver::ids::UNISWAP_V3_DECODER_ID,
-        ));
+        let static_decoded =
+            v3_exact_input_single_decoded(DecoderId::new(abi_resolver::ids::UNISWAP_V3_DECODER_ID));
         let registry = EmptyTokenRegistry;
         let from = dummy_addr(0xAA);
         let to = dummy_addr(0xBB);
@@ -739,8 +743,9 @@ mod tests {
     fn declarative_equivalent_to_static_sr02_exact_input() {
         use crate::protocols::swap_router_02::Sr02ExactInputMapper;
 
-        let static_decoded =
-            sr02_exact_input_decoded(DecoderId::new(abi_resolver::ids::SR02_EXACT_INPUT_DECODER_ID));
+        let static_decoded = sr02_exact_input_decoded(DecoderId::new(
+            abi_resolver::ids::SR02_EXACT_INPUT_DECODER_ID,
+        ));
         let registry = EmptyTokenRegistry;
         let from = dummy_addr(0xAA);
         let to = dummy_addr(0xBB);
@@ -753,8 +758,7 @@ mod tests {
             .next()
             .unwrap();
 
-        let declarative_env =
-            run_declarative(SR02_EXACT_INPUT_BUNDLE, sr02_exact_input_decoded);
+        let declarative_env = run_declarative(SR02_EXACT_INPUT_BUNDLE, sr02_exact_input_decoded);
 
         let Action::Swap(s) = &static_env.action else {
             panic!("static is not swap");
@@ -913,9 +917,8 @@ mod tests {
     fn declarative_equivalent_to_static_v3_exact_output() {
         use crate::protocols::uniswap_v3::UniswapV3ExactOutputMapper;
 
-        let static_decoded = v3_exact_output_decoded(DecoderId::new(
-            abi_resolver::ids::EXACT_OUTPUT_DECODER_ID,
-        ));
+        let static_decoded =
+            v3_exact_output_decoded(DecoderId::new(abi_resolver::ids::EXACT_OUTPUT_DECODER_ID));
         let registry = EmptyTokenRegistry;
         let from = dummy_addr(0xAA);
         let to = dummy_addr(0xBB);
@@ -965,8 +968,10 @@ mod tests {
             .next()
             .unwrap();
 
-        let declarative_env =
-            run_declarative(V3_EXACT_OUTPUT_SINGLE_BUNDLE, v3_exact_output_single_decoded);
+        let declarative_env = run_declarative(
+            V3_EXACT_OUTPUT_SINGLE_BUNDLE,
+            v3_exact_output_single_decoded,
+        );
 
         let Action::Swap(s) = &static_env.action else {
             panic!("static is not swap");
@@ -1030,24 +1035,40 @@ mod tests {
         let dai = Address::from_str("0x6b175474e89094c44da98b954eedeac495271d0f").unwrap();
 
         let route_addrs: Vec<DecodedValue> = vec![
-            DecodedValue::Address(curve_input_token()),   // [0] USDC
-            DecodedValue::Address(pool_1),                // [1] pool 1
-            DecodedValue::Address(usdt),                  // [2] USDT
-            DecodedValue::Address(pool_2),                // [3] pool 2
-            DecodedValue::Address(dai),                   // [4] DAI
-            DecodedValue::Address(pool_3),                // [5] pool 3
-            DecodedValue::Address(curve_output_token()),  // [6] WBTC
-            DecodedValue::Address(curve_zero_addr()),     // [7] padded
-            DecodedValue::Address(curve_zero_addr()),     // [8] padded
-            DecodedValue::Address(curve_zero_addr()),     // [9] padded
-            DecodedValue::Address(curve_zero_addr()),     // [10] padded
+            DecodedValue::Address(curve_input_token()),  // [0] USDC
+            DecodedValue::Address(pool_1),               // [1] pool 1
+            DecodedValue::Address(usdt),                 // [2] USDT
+            DecodedValue::Address(pool_2),               // [3] pool 2
+            DecodedValue::Address(dai),                  // [4] DAI
+            DecodedValue::Address(pool_3),               // [5] pool 3
+            DecodedValue::Address(curve_output_token()), // [6] WBTC
+            DecodedValue::Address(curve_zero_addr()),    // [7] padded
+            DecodedValue::Address(curve_zero_addr()),    // [8] padded
+            DecodedValue::Address(curve_zero_addr()),    // [9] padded
+            DecodedValue::Address(curve_zero_addr()),    // [10] padded
         ];
 
-        // _swap_params is a 5x5 of uint256. All zero — the bundle does not
-        // read this field (Router NG inner swap_type is forward-spec).
+        // _swap_params is a 5x5 of uint256. Index `[i][2]` is the per-hop
+        // swap_type that `curve_route_last_token` consults (F3 + F-route1.B
+        // Phase C V3 fix). For the synthetic 3-hop test route we set hop 0/1/2
+        // to swap_type=1 (STABLESWAP_EXCHANGE — coin output at route[2i+2],
+        // matching the WBTC output expected at idx 6). hop 3/4 stay all-zero
+        // — the resolver short-circuits when pool slot `route[2i+1] == 0`
+        // before reading their swap_type.
         let zero_uint = DecodedValue::Uint(U256::ZERO);
-        let inner_row = DecodedValue::Array(vec![zero_uint; 5]);
-        let swap_params = DecodedValue::Array(vec![inner_row; 5]);
+        let make_hop_row = |swap_type: u64| {
+            let mut row = vec![zero_uint.clone(); 5];
+            row[2] = DecodedValue::Uint(U256::from(swap_type));
+            DecodedValue::Array(row)
+        };
+        let unread_zero_row = DecodedValue::Array(vec![zero_uint.clone(); 5]);
+        let swap_params = DecodedValue::Array(vec![
+            make_hop_row(1),         // hop 0 — STABLESWAP_EXCHANGE
+            make_hop_row(1),         // hop 1 — STABLESWAP_EXCHANGE
+            make_hop_row(1),         // hop 2 — STABLESWAP_EXCHANGE
+            unread_zero_row.clone(), // hop 3 — unreached (pool slot is zero)
+            unread_zero_row,         // hop 4 — unreached
+        ]);
 
         // _pools (address[5]) — all zero, also unread by the bundle.
         let pools = DecodedValue::Array(
@@ -1098,8 +1119,7 @@ mod tests {
 
     #[test]
     fn declarative_curve_router_ng_exchange_three_hop() {
-        let envelope =
-            run_declarative(CURVE_ROUTER_NG_BUNDLE, curve_router_ng_three_hop_decoded);
+        let envelope = run_declarative(CURVE_ROUTER_NG_BUNDLE, curve_router_ng_three_hop_decoded);
 
         assert_eq!(envelope.category, Category::Dex);
 
@@ -1109,23 +1129,39 @@ mod tests {
 
         // Curve Router NG semantics — exact-in, min-out, no on-chain deadline
         // field (the bundle omits validity entirely).
-        assert_eq!(action.swap_mode, policy_engine::action::dex::SwapMode::ExactIn);
+        assert_eq!(
+            action.swap_mode,
+            policy_engine::action::dex::SwapMode::ExactIn
+        );
 
         // Input = first non-zero address (idx 0) — USDC.
         assert_eq!(action.input_token.asset.kind, AssetKind::Erc20);
         assert_eq!(action.input_token.asset.address, Some(curve_input_token()));
         assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.input_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .input_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000".to_owned())
         );
 
         // Output = curve_route_last_token(_route) — last non-zero even idx (6) = WBTC.
         assert_eq!(action.output_token.asset.kind, AssetKind::Erc20);
-        assert_eq!(action.output_token.asset.address, Some(curve_output_token()));
+        assert_eq!(
+            action.output_token.asset.address,
+            Some(curve_output_token())
+        );
         assert_eq!(action.output_token.amount.kind, AmountKind::Min);
         assert_eq!(
-            action.output_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .output_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("2100".to_owned())
         );
 
@@ -1206,9 +1242,13 @@ mod tests {
     /// DecodedCall. `i` / `j` are passed as `int128` via `DecodedValue::Int`.
     /// The bundle does **not** read these args (it hardcodes input/output
     /// addresses for the PoC) — they are included for ABI shape correctness.
-    fn curve_v1_exchange_decoded(decoder_id: DecoderId, i: i64, j: i64, dx: u64, min_dy: u64)
-        -> DecodedCall
-    {
+    fn curve_v1_exchange_decoded(
+        decoder_id: DecoderId,
+        i: i64,
+        j: i64,
+        dx: u64,
+        min_dy: u64,
+    ) -> DecodedCall {
         DecodedCall {
             decoder_id,
             function_signature: "exchange(int128,int128,uint256,uint256)".into(),
@@ -1246,8 +1286,8 @@ mod tests {
         let mapper = DeclarativeMapper::new(bundle);
         let decoded = curve_v1_exchange_decoded(
             mapper.declarative_decoder_id(),
-            0, // i = DAI
-            1, // j = USDC
+            0,                             // i = DAI
+            1,                             // j = USDC
             1_000_000_000_000_000_000_u64, // 1e18 DAI (18 dp)
             900_000_u64,                   // 0.9 USDC (6 dp min_dy)
         );
@@ -1257,7 +1297,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Dex);
         let Action::Swap(action) = &envelope.action else {
@@ -1270,7 +1315,12 @@ mod tests {
         assert_eq!(action.input_token.asset.address, Some(curve_3pool_dai()));
         assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.input_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .input_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000000000000000".to_owned())
         );
         // Output = USDC (hardcoded literal in bundle).
@@ -1278,7 +1328,12 @@ mod tests {
         assert_eq!(action.output_token.asset.address, Some(curve_3pool_usdc()));
         assert_eq!(action.output_token.amount.kind, AmountKind::Min);
         assert_eq!(
-            action.output_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .output_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("900000".to_owned())
         );
         // Recipient = $.tx.from (V1 pools have no `_receiver` arg).
@@ -1322,7 +1377,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Dex);
         let Action::AddLiquidity(action) = &envelope.action else {
@@ -1338,14 +1398,22 @@ mod tests {
         assert_eq!(action.inputs[0].asset.address, Some(curve_3pool_dai()));
         assert_eq!(action.inputs[0].amount.kind, AmountKind::Max);
         assert_eq!(
-            action.inputs[0].amount.value.as_ref().map(|v| v.to_string()),
+            action.inputs[0]
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000000000000000".to_owned())
         );
         // input[1] = USDC / Max / 1e6
         assert_eq!(action.inputs[1].asset.address, Some(curve_3pool_usdc()));
         assert_eq!(action.inputs[1].amount.kind, AmountKind::Max);
         assert_eq!(
-            action.inputs[1].amount.value.as_ref().map(|v| v.to_string()),
+            action.inputs[1]
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000".to_owned())
         );
         // input[2] = USDT / Max / 1e6
@@ -1355,7 +1423,12 @@ mod tests {
         assert_eq!(action.output_lp.asset.address, Some(curve_3pool_lp()));
         assert_eq!(action.output_lp.amount.kind, AmountKind::Min);
         assert_eq!(
-            action.output_lp.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .output_lp
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1".to_owned())
         );
         // recipient = $.tx.from
@@ -1398,7 +1471,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Dex);
         let Action::RemoveLiquidity(action) = &envelope.action else {
@@ -1463,7 +1541,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Dex);
         let Action::RemoveLiquidity(action) = &envelope.action else {
@@ -1481,7 +1564,11 @@ mod tests {
         assert_eq!(action.outputs[0].asset.address, Some(curve_3pool_dai()));
         assert_eq!(action.outputs[0].amount.kind, AmountKind::Min);
         assert_eq!(
-            action.outputs[0].amount.value.as_ref().map(|v| v.to_string()),
+            action.outputs[0]
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1".to_owned())
         );
         assert_eq!(action.recipient, from);
@@ -1523,7 +1610,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Dex);
         let Action::RemoveLiquidity(action) = &envelope.action else {
@@ -1546,7 +1638,11 @@ mod tests {
         assert_eq!(action.outputs[0].asset.address, Some(curve_3pool_dai()));
         assert_eq!(action.outputs[0].amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.outputs[0].amount.value.as_ref().map(|v| v.to_string()),
+            action.outputs[0]
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("500000000000000000".to_owned())
         );
         assert_eq!(action.outputs[1].asset.address, Some(curve_3pool_usdc()));
@@ -1572,8 +1668,8 @@ mod tests {
         let mapper = DeclarativeMapper::new(bundle);
         let decoded = curve_v1_exchange_decoded(
             mapper.declarative_decoder_id(),
-            0, // i = ETH
-            1, // j = stETH
+            0,                             // i = ETH
+            1,                             // j = stETH
             1_000_000_000_000_000_000_u64, // 1 ETH
             900_000_000_000_000_000_u64,   // 0.9 stETH
         );
@@ -1583,7 +1679,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Dex);
         let Action::Swap(action) = &envelope.action else {
@@ -1597,7 +1698,12 @@ mod tests {
         );
         assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.input_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .input_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000000000000000".to_owned())
         );
         // Output = stETH (coins[1]).
@@ -1605,7 +1711,12 @@ mod tests {
         assert_eq!(action.output_token.asset.address, Some(curve_steth()));
         assert_eq!(action.output_token.amount.kind, AmountKind::Min);
         assert_eq!(
-            action.output_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .output_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("900000000000000000".to_owned())
         );
         // Recipient = $.tx.from (V1 pools have no `_receiver` arg).
@@ -1625,9 +1736,9 @@ mod tests {
         let mapper = DeclarativeMapper::new(bundle);
         let decoded = curve_v1_exchange_decoded(
             mapper.declarative_decoder_id(),
-            2, // i = USDT
-            0, // j = DAI
-            1_000_000_u64, // 1 USDT (6 dp)
+            2,                           // i = USDT
+            0,                           // j = DAI
+            1_000_000_u64,               // 1 USDT (6 dp)
             900_000_000_000_000_000_u64, // 0.9 DAI (18 dp)
         );
 
@@ -1636,14 +1747,24 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
         let Action::Swap(action) = &envelope.action else {
             panic!("expected Swap action, got {:?}", envelope.action);
         };
         // Input = USDT (coins[2]).
         assert_eq!(action.input_token.asset.address, Some(curve_3pool_usdt()));
         assert_eq!(
-            action.input_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .input_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000".to_owned())
         );
         // Output = DAI (coins[0]).
@@ -1660,8 +1781,8 @@ mod tests {
         let mapper = DeclarativeMapper::new(bundle);
         let decoded = curve_v1_exchange_decoded(
             mapper.declarative_decoder_id(),
-            1, // i = stETH
-            0, // j = ETH
+            1,                             // i = stETH
+            0,                             // j = ETH
             1_000_000_000_000_000_000_u64, // 1 stETH
             900_000_000_000_000_000_u64,   // 0.9 ETH
         );
@@ -1671,7 +1792,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
         let Action::Swap(action) = &envelope.action else {
             panic!("expected Swap action, got {:?}", envelope.action);
         };
@@ -1729,7 +1855,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Dex);
         let Action::Swap(action) = &envelope.action else {
@@ -1740,7 +1871,12 @@ mod tests {
         assert_eq!(action.input_token.asset.address, Some(curve_crvusd()));
         assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.input_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .input_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000000000000000".to_owned())
         );
         // Output = USDC.
@@ -1748,7 +1884,12 @@ mod tests {
         assert_eq!(action.output_token.asset.address, Some(curve_3pool_usdc()));
         assert_eq!(action.output_token.amount.kind, AmountKind::Min);
         assert_eq!(
-            action.output_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .output_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("900000".to_owned())
         );
         // Recipient = $.args._receiver, NOT $.tx.from.
@@ -1822,7 +1963,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Lending);
         let Action::Borrow(action) = &envelope.action else {
@@ -1838,8 +1984,14 @@ mod tests {
         );
         // Market = wstETH controller.
         let market = action.market.as_ref().expect("market present");
-        assert_eq!(market.address.as_ref(), Some(&curve_crvusd_wsteth_controller()));
-        assert_eq!(market.label.as_deref(), Some("Curve crvUSD wstETH Controller"));
+        assert_eq!(
+            market.address.as_ref(),
+            Some(&curve_crvusd_wsteth_controller())
+        );
+        assert_eq!(
+            market.label.as_deref(),
+            Some("Curve crvUSD wstETH Controller")
+        );
         // Recipient = onBehalf = $.tx.from.
         assert_eq!(action.recipient, from);
         assert_eq!(action.on_behalf, from);
@@ -1876,7 +2028,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Lending);
         let Action::Liquidate(action) = &envelope.action else {
@@ -1887,14 +2044,14 @@ mod tests {
         assert_eq!(collateral.address.as_ref(), Some(&curve_wsteth()));
         assert_eq!(action.debt_asset.address.as_ref(), Some(&curve_crvusd()));
         let market = action.market.as_ref().expect("market present");
-        assert_eq!(market.address.as_ref(), Some(&curve_crvusd_wsteth_controller()));
+        assert_eq!(
+            market.address.as_ref(),
+            Some(&curve_crvusd_wsteth_controller())
+        );
         // P1-1 — Curve `liquidate`'s `min_x` is the minimum *debt asset*
         // (crvUSD) the liquidator receives, not collateral seized. It maps to
         // `debtToCover` (kind=min); `seizedCollateralAmount` stays unset.
-        let min_debt = action
-            .debt_to_cover
-            .as_ref()
-            .expect("debtToCover present");
+        let min_debt = action.debt_to_cover.as_ref().expect("debtToCover present");
         assert_eq!(min_debt.kind, AmountKind::Min);
         assert_eq!(
             min_debt.value.as_ref().map(|v| v.to_string()),
@@ -1980,7 +2137,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::LiquidStaking);
         let Action::Stake(action) = &envelope.action else {
@@ -2017,7 +2179,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Misc);
         let Action::ClaimRewards(action) = &envelope.action else {
@@ -2062,14 +2229,22 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Misc);
         let Action::Vote(action) = &envelope.action else {
             panic!("expected Vote action, got {:?}", envelope.action);
         };
         assert_eq!(action.governance, curve_3pool_gauge());
-        assert_eq!(action.governance_label.as_deref(), Some("Curve GaugeController"));
+        assert_eq!(
+            action.governance_label.as_deref(),
+            Some("Curve GaugeController")
+        );
         assert_eq!(action.proposal_id.to_string(), "0");
         assert!(matches!(
             action.support,
@@ -2087,8 +2262,7 @@ mod tests {
         // mint(address gauge_addr) — ClaimRewards. `from`/`recipient` resolve
         // from $.tx.from; the CRV reward token is a bundle literal. The
         // `gauge_addr` arg is decoded but not surfaced into the envelope.
-        let bundle: AdapterFunctionBundle =
-            serde_json::from_str(CURVE_MINTER_MINT_BUNDLE).unwrap();
+        let bundle: AdapterFunctionBundle = serde_json::from_str(CURVE_MINTER_MINT_BUNDLE).unwrap();
         let mapper = DeclarativeMapper::new(bundle);
         let decoded = DecodedCall {
             decoder_id: mapper.declarative_decoder_id(),
@@ -2106,7 +2280,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Misc);
         let Action::ClaimRewards(action) = &envelope.action else {
@@ -2161,7 +2340,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Misc);
         let Action::ClaimRewards(action) = &envelope.action else {
@@ -2202,7 +2386,12 @@ mod tests {
         let to = dummy_addr(0xBB);
         let value = DecimalString::from_str("0").unwrap();
         let ctx = build_ctx(&registry, &from, &to, &value);
-        let envelope = mapper.map(&ctx, &decoded).unwrap().into_iter().next().unwrap();
+        let envelope = mapper
+            .map(&ctx, &decoded)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
 
         assert_eq!(envelope.category, Category::Misc);
         let Action::ClaimRewards(action) = &envelope.action else {
@@ -2211,7 +2400,10 @@ mod tests {
         assert_eq!(action.from, from);
         assert_eq!(action.recipient, from);
         let source = action.source.as_ref().expect("source present");
-        assert_eq!(source.address.as_ref(), Some(&curve_feedistributor_crvusd()));
+        assert_eq!(
+            source.address.as_ref(),
+            Some(&curve_feedistributor_crvusd())
+        );
         assert_eq!(
             source.label.as_deref(),
             Some("Curve FeeDistributor (crvUSD)")

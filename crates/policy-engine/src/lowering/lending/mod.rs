@@ -11,6 +11,7 @@ use serde_json::{Map, Value};
 pub(crate) mod borrow;
 pub(crate) mod liquidate;
 pub(crate) mod repay;
+pub(crate) mod supply;
 
 /// Render a `MarketRef` as a Cedar `Pool`-shaped sub-record.
 ///

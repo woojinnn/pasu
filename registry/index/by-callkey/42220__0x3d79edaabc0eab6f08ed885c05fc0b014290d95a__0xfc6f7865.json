@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/v3/collect-celo@1.0.0",
   "manifest_path": "manifests/uniswap/v3/collect-celo@1.0.0.json",
-  "bundle_sha256": "0x11ba5219a90ee1f4ffd6cc4d01cdd7f6c374f92887347d282aef4f90520b26bf",
+  "bundle_sha256": "0x7751726dbf63da52929c40aaa82dbd053cdeba71bcebe931628db35664bc0864",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/v3/collect-celo@1.0.0",
@@ -56,13 +56,7 @@
           "from": "$.tx.to"
         },
         "nft.kind": {
-          "literal": "erc721"
-        },
-        "nft.address": {
-          "from": "$.tx.to"
-        },
-        "nft.tokenId": {
-          "from": "$.args.tokenId"
+          "literal": "unknown"
         },
         "tokenId": {
           "from": "$.args.tokenId"

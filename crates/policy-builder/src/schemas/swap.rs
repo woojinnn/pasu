@@ -610,7 +610,10 @@ mod tests {
                 .get(path)
                 .unwrap_or_else(|| panic!("missing {path}"));
             assert!(matches!(f.cedar_type, CedarType::Long));
-            assert!(!f.is_custom, "{path} is base (engine-computed) post Phase 8");
+            assert!(
+                !f.is_custom,
+                "{path} is base (engine-computed) post Phase 8"
+            );
             assert_eq!(f.scale, Some(AMOUNT_NANO_SCALE));
             assert!(f.optional, "amount value or decimals may be absent");
             assert!(f.parent_path.is_none());
@@ -669,8 +672,8 @@ mod tests {
     fn fields_without_pattern_constraint_are_none() {
         let s = schema_with_legacy_custom();
         for path in [
-            "swapMode",       // enum, but no regex
-            "feeBps",         // numeric, not a String pattern
+            "swapMode", // enum, but no regex
+            "feeBps",   // numeric, not a String pattern
             "inputAmountNano",
             "totalInputUsd.value",
             "recipientIsContract",

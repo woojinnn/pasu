@@ -15,8 +15,8 @@
 //! 1. Pull `commands` (`bytes`) and `inputs` (`bytes[]`) from `decoded.args`
 //!    via Tier B's [`extract_commands_and_inputs`]. Both UR overloads put them
 //!    at arg index 0 and 1.
-//! 2. Dispatch through Tier B [`subdecode::opcode_stream::dispatch`] against
-//!    [`subdecode::protocols::universal_router::UNISWAP_UR_TABLE`] → one
+//! 2. Dispatch through Tier B `subdecode::opcode_stream::dispatch` against
+//!    `subdecode::protocols::universal_router::UNISWAP_UR_TABLE` → one
 //!    `DecodedStep` per command byte (opcode already masked, name resolved,
 //!    `inputs[i]` ABI-decoded against the opcode's tuple schema).
 //! 3. For each `DecodedStep`, look up the bundle's `per_opcode_emit` entry by
@@ -505,12 +505,12 @@ fn v4_step_decoded_call(step: &DecodedStep) -> Option<DecodedCall> {
 
 /// Decode a TAKE-family V4 PM step into its [`V4TakeOutput`](s). Positional
 /// arg layout per `V4_ROUTER_TABLE`:
-///   * `0x0e TAKE`         — `(currency, recipient, amount)`
-///   * `0x0f TAKE_ALL`     — `(currency, minAmount)`; recipient is the unlock
-///                            caller, mapped to `ctx.from`
-///   * `0x10 TAKE_PORTION` — `(currency, recipient, bips)`
-///   * `0x11 TAKE_PAIR`    — `(currency0, currency1, recipient)` — two outputs
-///   * `0x14 SWEEP`        — `(currency, to)`
+/// * `0x0e TAKE`         — `(currency, recipient, amount)`
+/// * `0x0f TAKE_ALL`     — `(currency, minAmount)`; recipient is the unlock
+///   caller, mapped to `ctx.from`
+/// * `0x10 TAKE_PORTION` — `(currency, recipient, bips)`
+/// * `0x11 TAKE_PAIR`    — `(currency0, currency1, recipient)` — two outputs
+/// * `0x14 SWEEP`        — `(currency, to)`
 ///
 /// `currency` runs through `token_asset_ref` (the `0x0` native sentinel
 /// becomes `native`, consistent with F2); `recipient` runs through
@@ -829,8 +829,7 @@ fn execute_sub_plan_step(
         ))
     })?;
 
-    let inner_steps =
-        tier_b_opcode_stream::dispatch(&inner_commands, &inner_inputs, cfg.table);
+    let inner_steps = tier_b_opcode_stream::dispatch(&inner_commands, &inner_inputs, cfg.table);
 
     // `MapContext::child` requires `parent_calldata: &[u8]` borrowed for the
     // child context's lifetime. The inner commands bytes serve that role —
@@ -1015,14 +1014,13 @@ fn execute_position_manager_step(
     // form so `CallMatchKey` and the child `MapContext` can borrow / hold it.
     // The string is lowercase-normalised by `Address::from_str` (see
     // `policy_engine::action::Address`).
-    let pm_addr = Address::from_str(&format!("0x{}", hex::encode(pm_alloy_addr)))
-        .map_err(|e| {
-            MapperError::Internal(anyhow::anyhow!(
-                "{} step index {}: PM address conversion failed: {e}",
-                step.name,
-                step.index
-            ))
-        })?;
+    let pm_addr = Address::from_str(&format!("0x{}", hex::encode(pm_alloy_addr))).map_err(|e| {
+        MapperError::Internal(anyhow::anyhow!(
+            "{} step index {}: PM address conversion failed: {e}",
+            step.name,
+            step.index
+        ))
+    })?;
 
     let resolver = ctx.resolver.ok_or_else(|| {
         MapperError::Internal(anyhow::anyhow!(
@@ -1060,9 +1058,7 @@ fn extract_bytes_at_field(
         .ok_or_else(|| format!("missing field `{field}`"))?;
     match &arg.value {
         DynSolValue::Bytes(b) => Ok(b.clone()),
-        other => Err(format!(
-            "field `{field}` expected Bytes, got {other:?}"
-        )),
+        other => Err(format!("field `{field}` expected Bytes, got {other:?}")),
     }
 }
 
@@ -1085,9 +1081,7 @@ fn extract_array_bytes_at_field(
     let mut out = Vec::with_capacity(items.len());
     for (i, item) in items.iter().enumerate() {
         let DynSolValue::Bytes(b) = item else {
-            return Err(format!(
-                "field `{field}[{i}]` expected Bytes, got {item:?}"
-            ));
+            return Err(format!("field `{field}[{i}]` expected Bytes, got {item:?}"));
         };
         out.push(b.clone());
     }
@@ -1250,18 +1244,15 @@ mod tests {
     }
 
     fn token_in() -> alloy_primitives::Address {
-        alloy_primitives::Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
-            .unwrap()
+        alloy_primitives::Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap()
     }
 
     fn token_out() -> alloy_primitives::Address {
-        alloy_primitives::Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
-            .unwrap()
+        alloy_primitives::Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()
     }
 
     fn recipient_addr() -> alloy_primitives::Address {
-        alloy_primitives::Address::from_str("0x4444444444444444444444444444444444444444")
-            .unwrap()
+        alloy_primitives::Address::from_str("0x4444444444444444444444444444444444444444").unwrap()
     }
 
     /// Encode the 5-tuple `(recipient, amountIn, amountOutMin, bytes path,
@@ -1277,8 +1268,7 @@ mod tests {
         path: Vec<u8>,
         payer_is_user: bool,
     ) -> Vec<u8> {
-        let func =
-            Function::parse("step(address,uint256,uint256,bytes,bool)").unwrap();
+        let func = Function::parse("step(address,uint256,uint256,bytes,bool)").unwrap();
         let values = vec![
             DynSolValue::Address(recipient),
             DynSolValue::Uint(U256::from(amount_in), 256),
@@ -1371,7 +1361,8 @@ mod tests {
     }
 
     fn dummy_addr(label: u8) -> Address {
-        Address::from_str(&format!("0x{}{}", "0".repeat(38), format!("{label:02x}"))).unwrap()
+        let suffix = format!("{label:02x}");
+        Address::from_str(&format!("0x{}{}", "0".repeat(38), suffix)).unwrap()
     }
 
     #[test]
@@ -1406,21 +1397,41 @@ mod tests {
         assert_eq!(action.swap_mode, SwapMode::ExactIn);
         assert_eq!(action.input_token.asset.kind, AssetKind::Erc20);
         assert_eq!(
-            action.input_token.asset.address.as_ref().map(|a| a.to_string()),
+            action
+                .input_token
+                .asset
+                .address
+                .as_ref()
+                .map(|a| a.to_string()),
             Some(format!("0x{}", hex::encode(token_in()))),
         );
         assert_eq!(action.input_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.input_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .input_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("1000000".to_owned())
         );
         assert_eq!(
-            action.output_token.asset.address.as_ref().map(|a| a.to_string()),
+            action
+                .output_token
+                .asset
+                .address
+                .as_ref()
+                .map(|a| a.to_string()),
             Some(format!("0x{}", hex::encode(token_out()))),
         );
         assert_eq!(action.output_token.amount.kind, AmountKind::Min);
         assert_eq!(
-            action.output_token.amount.value.as_ref().map(|v| v.to_string()),
+            action
+                .output_token
+                .amount
+                .value
+                .as_ref()
+                .map(|v| v.to_string()),
             Some("900000".to_owned())
         );
         assert_eq!(
@@ -1468,7 +1479,11 @@ mod tests {
         let ctx = build_ctx(&registry, &from, &to, &value);
 
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
-        assert_eq!(envelopes.len(), 3, "expected 3 envelopes, got {envelopes:?}");
+        assert_eq!(
+            envelopes.len(),
+            3,
+            "expected 3 envelopes, got {envelopes:?}"
+        );
 
         // Order MUST match commands order.
         assert!(matches!(envelopes[0].action, Action::Permit(_)));
@@ -1499,8 +1514,7 @@ mod tests {
         // BALANCE_CHECK_ERC20 (0x0e) is NOT in the bundle's per_opcode_emit
         // (view-only opcode with no policy-engine action analog); the bundle
         // declares unknown_opcode_policy=warn so the step is skipped.
-        let balance_check =
-            encode_balance_check_erc20_input(recipient_addr(), token_out(), 1);
+        let balance_check = encode_balance_check_erc20_input(recipient_addr(), token_out(), 1);
         let swap = encode_v3_swap_exact_in_input(
             recipient_addr(),
             1_000_000,
@@ -1550,13 +1564,8 @@ mod tests {
     fn allow_revert_high_bit_is_stripped_by_tier_b() {
         let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
         // 0x00 | 0x80 == 0x80 → opcode 0x00 (V3_SWAP_EXACT_IN) with allowRevert.
-        let input = encode_v3_swap_exact_in_input(
-            recipient_addr(),
-            1,
-            1,
-            v3_packed_path_usdc_weth(),
-            true,
-        );
+        let input =
+            encode_v3_swap_exact_in_input(recipient_addr(), 1, 1, v3_packed_path_usdc_weth(), true);
         let decoded = ur_execute_decoded(
             DecoderId::new("declarative.uniswap/universal-router/execute"),
             vec![0x80],
@@ -1575,10 +1584,7 @@ mod tests {
     }
 
     /// Encode WRAP_ETH input `(address recipient, uint256 amountMin)`.
-    fn encode_wrap_eth_input(
-        recipient: alloy_primitives::Address,
-        amount_min: u128,
-    ) -> Vec<u8> {
+    fn encode_wrap_eth_input(recipient: alloy_primitives::Address, amount_min: u128) -> Vec<u8> {
         let func = Function::parse("step(address,uint256)").unwrap();
         let values = vec![
             DynSolValue::Address(recipient),
@@ -1598,9 +1604,7 @@ mod tests {
         let func = Function::parse("step(bytes,bytes[])").unwrap();
         let values = vec![
             DynSolValue::Bytes(inner_commands),
-            DynSolValue::Array(
-                inner_inputs.into_iter().map(DynSolValue::Bytes).collect(),
-            ),
+            DynSolValue::Array(inner_inputs.into_iter().map(DynSolValue::Bytes).collect()),
         ];
         let raw = func.abi_encode_input(&values).unwrap();
         raw[4..].to_vec()
@@ -1628,7 +1632,11 @@ mod tests {
         let ctx = build_ctx(&registry, &from, &to, &value);
 
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
-        assert_eq!(envelopes.len(), 1, "expected 1 wrap envelope, got {envelopes:?}");
+        assert_eq!(
+            envelopes.len(),
+            1,
+            "expected 1 wrap envelope, got {envelopes:?}"
+        );
         // The bundle's 0x0b rule emits category=misc, action=wrap.
         assert_eq!(envelopes[0].category, Category::Misc);
         assert!(matches!(envelopes[0].action, Action::Wrap(_)));
@@ -1660,7 +1668,11 @@ mod tests {
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
         // After 2 levels of EXECUTE_SUB_PLAN unwrapping, the innermost
         // WRAP_ETH yields exactly one envelope.
-        assert_eq!(envelopes.len(), 1, "expected 1 wrap envelope at depth 2, got {envelopes:?}");
+        assert_eq!(
+            envelopes.len(),
+            1,
+            "expected 1 wrap envelope at depth 2, got {envelopes:?}"
+        );
         assert!(matches!(envelopes[0].action, Action::Wrap(_)));
     }
 
@@ -1731,10 +1743,8 @@ mod tests {
             DynSolValue::Address(spender),
             DynSolValue::Uint(U256::from(sig_deadline), 256),
         ]);
-        let func = Function::parse(
-            "step(((address,uint160,uint48,uint48),address,uint256),bytes)",
-        )
-        .unwrap();
+        let func = Function::parse("step(((address,uint160,uint48,uint48),address,uint256),bytes)")
+            .unwrap();
         let values = vec![permit_single, DynSolValue::Bytes(signature)];
         let raw = func.abi_encode_input(&values).unwrap();
         raw[4..].to_vec()
@@ -1744,16 +1754,11 @@ mod tests {
     /// Mirrors `encode_execute_sub_plan_input` — the outer shape is identical
     /// to a sub-plan, but the inner `actions` byte stream is dispatched
     /// against `V4_ROUTER_TABLE` instead of `UNISWAP_UR_TABLE`.
-    fn encode_v4_swap_input(
-        inner_actions: Vec<u8>,
-        inner_params: Vec<Vec<u8>>,
-    ) -> Vec<u8> {
+    fn encode_v4_swap_input(inner_actions: Vec<u8>, inner_params: Vec<Vec<u8>>) -> Vec<u8> {
         let func = Function::parse("step(bytes,bytes[])").unwrap();
         let values = vec![
             DynSolValue::Bytes(inner_actions),
-            DynSolValue::Array(
-                inner_params.into_iter().map(DynSolValue::Bytes).collect(),
-            ),
+            DynSolValue::Array(inner_params.into_iter().map(DynSolValue::Bytes).collect()),
         ];
         let raw = func.abi_encode_input(&values).unwrap();
         raw[4..].to_vec()
@@ -1765,6 +1770,7 @@ mod tests {
     /// The exact field values are irrelevant for the V4_SWAP wire-up test —
     /// what matters is that Tier B can ABI-decode the blob against the V4
     /// table without raising.
+    #[allow(clippy::too_many_arguments)]
     fn encode_v4_swap_exact_in_single_input(
         currency0: alloy_primitives::Address,
         currency1: alloy_primitives::Address,
@@ -1825,11 +1831,8 @@ mod tests {
 
         // Dispatch through Tier B directly so we can inspect the decoded
         // V4_SWAP step the declarative layer would receive.
-        let steps = tier_b_opcode_stream::dispatch(
-            &[OPCODE_V4_SWAP],
-            &[v4_swap],
-            &UNISWAP_UR_TABLE,
-        );
+        let steps =
+            tier_b_opcode_stream::dispatch(&[OPCODE_V4_SWAP], &[v4_swap], &UNISWAP_UR_TABLE);
         assert_eq!(steps.len(), 1);
         assert_eq!(steps[0].name, "V4_SWAP");
         let args = steps[0]
@@ -1890,7 +1893,10 @@ mod tests {
         };
         assert_eq!(envelopes[0].category, Category::Dex);
         assert_eq!(s.swap_mode, SwapMode::ExactIn);
-        assert_eq!(s.recipient, from, "no TAKE → recipient defaults to ctx.from");
+        assert_eq!(
+            s.recipient, from,
+            "no TAKE → recipient defaults to ctx.from"
+        );
 
         // Sanity: dispatching the same inner stream directly against
         // V4_ROUTER_TABLE must produce one recognized step (i.e. the
@@ -1906,11 +1912,7 @@ mod tests {
             1,
             vec![],
         );
-        let v4_steps = tier_b_opcode_stream::dispatch(
-            &[0x06],
-            &[v4_inner_check],
-            &V4_ROUTER_TABLE,
-        );
+        let v4_steps = tier_b_opcode_stream::dispatch(&[0x06], &[v4_inner_check], &V4_ROUTER_TABLE);
         assert_eq!(v4_steps.len(), 1);
         assert_eq!(v4_steps[0].name, "SWAP_EXACT_IN_SINGLE");
         assert!(
@@ -2120,7 +2122,10 @@ mod tests {
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
         // No envelopes from a stub resolver — verifying dispatch shape, not
         // downstream emission.
-        assert!(envelopes.is_empty(), "expected empty envelopes from stub, got {envelopes:?}");
+        assert!(
+            envelopes.is_empty(),
+            "expected empty envelopes from stub, got {envelopes:?}"
+        );
 
         let calls = resolver.calls();
         assert_eq!(calls.len(), 1, "resolver must be invoked exactly once");
@@ -2258,7 +2263,10 @@ mod tests {
         let ctx = build_ctx(&registry, &from, &to, &value);
 
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
-        assert!(envelopes.is_empty(), "empty commands MUST yield no envelopes");
+        assert!(
+            envelopes.is_empty(),
+            "empty commands MUST yield no envelopes"
+        );
     }
 
     /// T-TEST-UR #2: maximum-length commands. UR's dispatch loop has no
@@ -2536,15 +2544,19 @@ mod tests {
         let ctx = build_ctx(&registry, &from, &to, &value);
 
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
-        assert_eq!(envelopes.len(), 1, "depth-1 sub-plan with WRAP_ETH MUST yield 1 envelope");
+        assert_eq!(
+            envelopes.len(),
+            1,
+            "depth-1 sub-plan with WRAP_ETH MUST yield 1 envelope"
+        );
         assert!(matches!(envelopes[0].action, Action::Wrap(_)));
     }
 
     /// T-TEST-UR #9: `EXECUTE_SUB_PLAN` at the cap (depth 3). Three nested
     /// sub-plans + inner `WRAP_ETH` — innermost level executes at depth 3,
-    /// which is exactly `MAX_SUB_PLAN_DEPTH`. The guard rejects on `ctx.depth
-    /// >= MAX_SUB_PLAN_DEPTH` *entering* a sub-plan, so an entry that lands
-    /// at depth 3 succeeds (the guard fires at depth 4 entry).
+    /// which is exactly `MAX_SUB_PLAN_DEPTH`. The guard rejects on
+    /// `ctx.depth >= MAX_SUB_PLAN_DEPTH` *entering* a sub-plan, so an entry
+    /// that lands at depth 3 succeeds (the guard fires at depth 4 entry).
     #[test]
     fn ur_execute_sub_plan_at_max_depth_3_succeeds() {
         let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
@@ -2644,7 +2656,8 @@ mod tests {
                     asset: AssetRef {
                         kind: AssetKind::Erc20,
                         address: Some(
-                            Address::from_str("0x1111111111111111111111111111111111111111").unwrap(),
+                            Address::from_str("0x1111111111111111111111111111111111111111")
+                                .unwrap(),
                         ),
                         token_id: None,
                         symbol: None,
@@ -2754,8 +2767,8 @@ mod tests {
     /// (UR nests via EXECUTE_SUB_PLAN / V4_SWAP / PM opcodes).
     #[test]
     fn resolve_dispatcher_returns_universal_router_config() {
-        let cfg =
-            resolve_dispatcher(DISPATCHER_ID_UNIVERSAL_ROUTER).expect("universal_router must resolve");
+        let cfg = resolve_dispatcher(DISPATCHER_ID_UNIVERSAL_ROUTER)
+            .expect("universal_router must resolve");
         assert_eq!(cfg.id, DISPATCHER_ID_UNIVERSAL_ROUTER);
         assert!(
             cfg.recursion.is_some(),
@@ -2765,9 +2778,18 @@ mod tests {
         let rec = cfg.recursion.as_ref().unwrap();
         assert_eq!(rec.execute_sub_plan, OPCODE_EXECUTE_SUB_PLAN);
         assert_eq!(rec.v4_swap, OPCODE_V4_SWAP);
-        assert_eq!(rec.v3_position_manager_permit, OPCODE_V3_POSITION_MANAGER_PERMIT);
-        assert_eq!(rec.v3_position_manager_call, OPCODE_V3_POSITION_MANAGER_CALL);
-        assert_eq!(rec.v4_position_manager_call, OPCODE_V4_POSITION_MANAGER_CALL);
+        assert_eq!(
+            rec.v3_position_manager_permit,
+            OPCODE_V3_POSITION_MANAGER_PERMIT
+        );
+        assert_eq!(
+            rec.v3_position_manager_call,
+            OPCODE_V3_POSITION_MANAGER_CALL
+        );
+        assert_eq!(
+            rec.v4_position_manager_call,
+            OPCODE_V4_POSITION_MANAGER_CALL
+        );
     }
 
     /// `resolve_dispatcher` returns the Aerodrome UR config for the
@@ -2811,7 +2833,11 @@ mod tests {
     #[test]
     fn aerodrome_dispatch_routes_to_aerodrome_table() {
         let mut bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
-        override_dispatcher(&mut bundle, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER, "0x3f");
+        override_dispatcher(
+            &mut bundle,
+            DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER,
+            "0x3f",
+        );
         retarget_wrap_eth_amount_field(&mut bundle);
 
         let wrap_input = encode_wrap_eth_input(recipient_addr(), 1_000_000);
@@ -2850,7 +2876,11 @@ mod tests {
     fn aerodrome_mask_mismatch_errors() {
         let mut bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
         // Aerodrome dispatcher but Uniswap's 0x7f mask — a bundle-author bug.
-        override_dispatcher(&mut bundle, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER, "0x7f");
+        override_dispatcher(
+            &mut bundle,
+            DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER,
+            "0x7f",
+        );
 
         let wrap_input = encode_wrap_eth_input(recipient_addr(), 1_000_000);
         let decoded = ur_execute_decoded(
@@ -2893,7 +2923,11 @@ mod tests {
     #[test]
     fn aerodrome_no_recursion_special_casing() {
         let mut bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
-        override_dispatcher(&mut bundle, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER, "0x3f");
+        override_dispatcher(
+            &mut bundle,
+            DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER,
+            "0x3f",
+        );
         override_unknown_opcode_policy(&mut bundle, UnknownOpcodePolicy::Deny);
 
         // 0x21 is EXECUTE_SUB_PLAN in both tables; empty inputs[0] is fine —
@@ -2976,10 +3010,9 @@ mod tests {
     fn v4_swap_with_take_patches_swap_recipient() {
         let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
 
-        let take_dest = alloy_primitives::Address::from_str(
-            "0x5555555555555555555555555555555555555555",
-        )
-        .unwrap();
+        let take_dest =
+            alloy_primitives::Address::from_str("0x5555555555555555555555555555555555555555")
+                .unwrap();
         let v4_swap = encode_v4_swap_input(
             vec![0x06, 0x0e],
             vec![
@@ -3029,10 +3062,9 @@ mod tests {
     fn v4_swap_settle_take_only_yields_zero_envelopes() {
         let bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
 
-        let dest = alloy_primitives::Address::from_str(
-            "0x6666666666666666666666666666666666666666",
-        )
-        .unwrap();
+        let dest =
+            alloy_primitives::Address::from_str("0x6666666666666666666666666666666666666666")
+                .unwrap();
         let v4_swap = encode_v4_swap_input(
             vec![0x0b, 0x0e],
             vec![
@@ -3192,10 +3224,7 @@ mod tests {
     /// Encode a V4 `DECREASE_LIQUIDITY` (0x01) params blob — flat
     /// `(uint256 tokenId, uint256 liquidity, uint128 amount0Min,
     /// uint128 amount1Min, bytes hookData)`.
-    fn encode_v4_decrease_liquidity_input(
-        token_id: u128,
-        liquidity: u128,
-    ) -> Vec<u8> {
+    fn encode_v4_decrease_liquidity_input(token_id: u128, liquidity: u128) -> Vec<u8> {
         let func = Function::parse("step(uint256,uint256,uint128,uint128,bytes)").unwrap();
         let raw = func
             .abi_encode_input(&[
@@ -3257,7 +3286,11 @@ mod tests {
         let ctx = build_ctx(&registry, &from, &to, &value);
 
         let envelopes = super::execute(&ctx, &decoded, &bundle.emit).unwrap();
-        assert_eq!(envelopes.len(), 1, "one DECREASE_LIQUIDITY action → one envelope");
+        assert_eq!(
+            envelopes.len(),
+            1,
+            "one DECREASE_LIQUIDITY action → one envelope"
+        );
         assert!(
             matches!(envelopes[0].action, Action::DecreaseLiquidity(_)),
             "expected DecreaseLiquidity, got {:?}",
@@ -3315,8 +3348,7 @@ mod tests {
     /// computed against the wrong bit layout.
     #[test]
     fn v4_pm_dispatcher_wrong_mask_errors() {
-        let mut bundle: AdapterFunctionBundle =
-            serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
+        let mut bundle: AdapterFunctionBundle = serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
         if let EmitRule::OpcodeStreamDispatch { mask, .. } = &mut bundle.emit {
             *mask = "0x7f".to_owned();
         } else {
@@ -3349,8 +3381,7 @@ mod tests {
     /// the V4 PM path swallows it.
     #[test]
     fn unknown_dispatcher_id_is_unsupported() {
-        let mut bundle: AdapterFunctionBundle =
-            serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
+        let mut bundle: AdapterFunctionBundle = serde_json::from_str(V4_PM_BUNDLE_JSON).unwrap();
         if let EmitRule::OpcodeStreamDispatch { dispatcher_id, .. } = &mut bundle.emit {
             *dispatcher_id = "pancake_infinity".to_owned();
         } else {

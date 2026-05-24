@@ -134,8 +134,14 @@ function walkJsonFiles(root: string): string[] {
     for (const entry of readdirSync(cur)) {
       const p = join(cur, entry);
       const s = statSync(p);
-      if (s.isDirectory()) stack.push(p);
-      else if (s.isFile() && entry.endsWith(".json")) out.push(p);
+      if (s.isDirectory()) {
+        // Skip `_template/` dirs — pool-type emit-rule templates with
+        // placeholder addresses (0x1111…/0xaaaa…) consumed by
+        // `gen-curve-pools.ts`. These are NOT real on-chain pools and would
+        // falsely trip the bogus gate.
+        if (entry === "_template") continue;
+        stack.push(p);
+      } else if (s.isFile() && entry.endsWith(".json")) out.push(p);
     }
   }
   return out.sort();

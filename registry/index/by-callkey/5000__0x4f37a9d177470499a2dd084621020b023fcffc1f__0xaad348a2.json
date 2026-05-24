@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "curve/router-ng/exchange-mantle@1.0.0",
   "manifest_path": "manifests/curve/router-ng/exchange-mantle@1.0.0.json",
-  "bundle_sha256": "0x9b9e9184c0c662c2130d1fca8dc7cd5e59bdf25847dee2513275d7186d640fbd",
+  "bundle_sha256": "0x56aef1a705949da3b36b2028a95a82ce8ac8bebf6239cb763b2cef805e728669",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/router-ng/exchange-mantle@1.0.0",
@@ -77,6 +77,9 @@
           "args": [
             {
               "from": "$.args._route"
+            },
+            {
+              "from": "$.args._swap_params"
             }
           ]
         },

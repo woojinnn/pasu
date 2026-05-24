@@ -9,7 +9,7 @@ use crate::action::common::{Address, AmountConstraint, DecimalString};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LockIncreaseAction {
-    /// VotingEscrow contract.
+    /// `VotingEscrow` contract.
     pub voting_escrow: Address,
     /// veNFT token id being modified.
     pub token_id: DecimalString,

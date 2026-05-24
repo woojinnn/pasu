@@ -1,7 +1,7 @@
 use crate::action::lending::{AmountMode, BorrowAction};
 use crate::context_keys::{AMOUNT, ASSET, RECIPIENT, VALIDITY_DELTA_SEC};
-use crate::lowering::common::asset::{asset_ref_json, LoweringError};
 use crate::lowering::common::amount::amount_constraint_json;
+use crate::lowering::common::asset::{asset_ref_json, LoweringError};
 use crate::lowering::common::validity::{validity_delta_sec, validity_json};
 use crate::lowering::dispatch::{Lower, LoweringCtx};
 use crate::lowering::lending::market_json;
@@ -33,7 +33,10 @@ fn context(action: &BorrowAction, ctx: &LoweringCtx<'_>) -> Result<Value, Loweri
         context.insert(COLLATERAL_ASSET.into(), asset_ref_json(collateral_asset)?);
     }
     if let Some(collateral_amount) = &action.collateral_amount {
-        context.insert(COLLATERAL_AMOUNT.into(), amount_constraint_json(collateral_amount));
+        context.insert(
+            COLLATERAL_AMOUNT.into(),
+            amount_constraint_json(collateral_amount),
+        );
     }
     if let Some(mode) = &action.amount_mode {
         context.insert(AMOUNT_MODE.into(), Value::from(amount_mode_str(mode)));
