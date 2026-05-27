@@ -31,7 +31,7 @@ pub use delta::{
 pub use eval_context::{EvalContext, RequestKind, SimulationMode};
 pub use live_field::{
     AuthSpec, Confidence, DataSource, FieldRef, LiveField, OracleProvider, PendingFieldName,
-    PositionFieldName, TokenFieldName,
+    PositionFieldName, RegistryResource, TokenFieldName,
 };
 pub use pending::{
     AssetCommitment, NonceKey, OrderKind, PendingId, PendingKind, PendingLifecycle, PendingStatus,
@@ -138,5 +138,26 @@ mod smoke {
     fn state_delta_default_is_empty() {
         let d = StateDelta::default();
         assert!(d.is_empty());
+    }
+
+    #[test]
+    fn registry_api_data_source_round_trip() {
+        use std::str::FromStr;
+
+        let usdc_addr =
+            Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
+
+        let source = DataSource::RegistryApi {
+            endpoint: "http://localhost:8080".into(),
+            resource: RegistryResource::TokenMeta {
+                chain: ChainId::ethereum_mainnet(),
+                address: usdc_addr,
+            },
+            version: Some("v1".into()),
+        };
+
+        let json = serde_json::to_string(&source).unwrap();
+        let back: DataSource = serde_json::from_str(&json).unwrap();
+        assert_eq!(source, back);
     }
 }

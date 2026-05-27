@@ -12,7 +12,7 @@ pub mod source;
 pub use freshness::Confidence;
 pub use source::{
     AuthSpec, DataSource, FieldRef, OracleProvider, PendingFieldName, PositionFieldName,
-    TokenFieldName,
+    RegistryResource, TokenFieldName,
 };
 
 use crate::primitives::{Duration, Time};

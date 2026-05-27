@@ -60,8 +60,33 @@ pub enum DataSource {
         calc_id: String,
     },
 
+    /// scopeball registry 서버 — 토큰 분류, protocol 매핑, decoder 등의
+    /// 정적 메타데이터 공급자. oracle 과 달리 가격이 아니라 "이게 무엇인지"
+    /// 를 알려준다. cache 정책이 매우 길음 (24h+).
+    RegistryApi {
+        endpoint: String,
+        resource: RegistryResource,
+        /// registry schema 가 바뀔 때 pin 하기 위한 버전.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        version: Option<String>,
+    },
+
     /// 사용자가 직접 입력한 값 (e.g., manual override).
     UserSupplied,
+}
+
+/// Registry 서버에 요청할 리소스 종류.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RegistryResource {
+    /// 토큰 분류 — kind / symbol / decimals 가져옴.
+    TokenMeta { chain: ChainId, address: Address },
+    /// 컨트랙트가 어느 protocol 의 어느 component 인지.
+    ProtocolMap { chain: ChainId, address: Address },
+    /// pool 메타 — fee tier, underlyings 등.
+    PoolMeta { chain: ChainId, pool_addr: Address },
+    /// 4-byte selector → ABI / function decoder 매핑.
+    DecoderRegistry,
 }
 
 /// 다른 LiveField 를 가리키는 참조 (DerivedFrom 의 inputs 에 사용).

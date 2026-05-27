@@ -1,0 +1,61 @@
+# scopeball-sync RPC config
+#
+# 한 chain 당 N 개 provider 를 priority 순으로 정의. `${VAR}` 패턴은
+# 환경변수로 치환된다. 실제 키는 .env 파일에 두고 git 에서 제외.
+
+# ---------- failover 정책 ----------
+[failover]
+strategy = "priority"          # priority | round_robin (priority 만 구현됨)
+retry_attempts = 3
+retry_delay_ms = 200
+mark_unhealthy_after = 5
+unhealthy_cooldown_sec = 60
+
+# ---------- Ethereum mainnet ----------
+[chains."eip155:1"]
+multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+[[chains."eip155:1".providers]]
+name = "publicnode"
+kind = "public"
+url = "https://ethereum-rpc.publicnode.com"
+priority = 1
+ws = false
+
+# 향후 추가 예시 (지금은 주석)
+# [[chains."eip155:1".providers]]
+# name = "alchemy"
+# kind = "alchemy"
+# url = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"
+# priority = 2
+# ws = true
+
+# ---------- Arbitrum One ----------
+[chains."eip155:42161"]
+multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+[[chains."eip155:42161".providers]]
+name = "publicnode-arb"
+kind = "public"
+url = "https://arbitrum-one-rpc.publicnode.com"
+priority = 1
+ws = false
+
+# ---------- Base ----------
+[chains."eip155:8453"]
+multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+[[chains."eip155:8453".providers]]
+name = "publicnode-base"
+kind = "public"
+url = "https://base-rpc.publicnode.com"
+priority = 1
+ws = false
+
+# ---------- 로컬 registry 서버 (scopeball 자체 메타데이터 공급자) ----------
+# 이건 simulation-sync 가 별도로 사용하는 settings — RpcConfig 와 분리.
+# 실제 사용은 RegistryFetcher 가 자체 config 읽음.
+# [registry]
+# endpoint = "http://localhost:8080"
+# version = "v1"
+# cache_ttl_sec = 86400

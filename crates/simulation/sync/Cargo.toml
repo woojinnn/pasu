@@ -8,10 +8,22 @@ publish = false
 [dependencies]
 simulation-state = { workspace = true }
 simulation-db = { path = "../db", version = "0.1.0" }
+
+# 외부 데이터 fetch
+tokio = { workspace = true }
+reqwest = { workspace = true }
+async-trait = { workspace = true }
+
+# Config
+toml = { workspace = true }
+
+# Serde
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# Errors
 thiserror = { workspace = true }
-# async / HTTP / RPC 의존성은 실제 fetcher 구현 시 활성화:
-# tokio = { version = "1", features = ["full"] }
-# reqwest = "0.12"
-# alloy-primitives = { workspace = true }
+
+# EVM types (eth_call ABI encoding 등)
+alloy-primitives = { workspace = true }
+hex = { workspace = true }
