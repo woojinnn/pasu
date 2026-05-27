@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 10,
+  "address": "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",
+  "symbol": "USDT",
+  "decimals": 6,
+  "name": "Tether USD",
+  "source": "https://optimistic.etherscan.io/address/0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

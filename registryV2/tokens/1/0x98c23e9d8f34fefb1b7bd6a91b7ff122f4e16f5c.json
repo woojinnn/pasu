@@ -1,0 +1,21 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+  "symbol": "aEthUSDC",
+  "decimals": 6,
+  "name": "Aave Ethereum USDC",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      }
+    },
+    "rebase_form": "rebasing"
+  }
+}

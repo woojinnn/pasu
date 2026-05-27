@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 42161,
+  "address": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",
+  "symbol": "USDT",
+  "decimals": 6,
+  "name": "Tether USD",
+  "source": "https://arbiscan.io/address/0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

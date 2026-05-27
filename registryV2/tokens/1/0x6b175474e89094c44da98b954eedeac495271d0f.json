@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6b175474e89094c44da98b954eedeac495271d0f",
+  "symbol": "DAI",
+  "decimals": 18,
+  "name": "Dai Stablecoin",
+  "source": "https://docs.makerdao.com/smart-contract-modules/dai-module/dai-detailed-documentation",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

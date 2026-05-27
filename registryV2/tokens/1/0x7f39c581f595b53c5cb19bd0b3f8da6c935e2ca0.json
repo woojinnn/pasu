@@ -1,0 +1,20 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+  "symbol": "wstETH",
+  "decimals": 18,
+  "name": "Wrapped liquid staked Ether 2.0",
+  "source": "https://docs.lido.fi/contracts/wsteth",
+  "token_kind": {
+    "kind": "wrapped",
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+      }
+    },
+    "peg_kind": "rebasing"
+  }
+}

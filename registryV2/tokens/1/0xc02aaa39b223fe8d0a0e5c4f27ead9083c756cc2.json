@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "symbol": "WETH",
+  "decimals": 18,
+  "name": "Wrapped Ether",
+  "source": "https://etherscan.io/address/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "native_wrap" },
+    "peg_to": { "kind": "token", "key": { "standard": "native", "chain": "eip155:1" } }
+  }
+}

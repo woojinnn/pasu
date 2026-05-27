@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 42161,
+  "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+  "symbol": "USDC",
+  "decimals": 6,
+  "name": "USD Coin",
+  "source": "https://www.circle.com/blog/native-usdc-now-available-on-arbitrum",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

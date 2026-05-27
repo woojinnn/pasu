@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 10,
+  "address": "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+  "symbol": "USDC",
+  "decimals": 6,
+  "name": "USD Coin",
+  "source": "https://www.circle.com/blog/native-usdc-on-op-mainnet",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

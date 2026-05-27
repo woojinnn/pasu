@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+  "symbol": "USDT",
+  "decimals": 6,
+  "name": "Tether USD",
+  "source": "https://tether.to/en/transparency/",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

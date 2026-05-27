@@ -1,0 +1,21 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4d5f47fa6a74757f35c14fd3a6ef8e3c9bc514e8",
+  "symbol": "aEthWETH",
+  "decimals": 18,
+  "name": "Aave Ethereum WETH",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      }
+    },
+    "rebase_form": "rebasing"
+  }
+}

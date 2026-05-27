@@ -1,0 +1,19 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+  "symbol": "stETH",
+  "decimals": 18,
+  "name": "Liquid staked Ether 2.0",
+  "source": "https://docs.lido.fi/contracts/lido",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "lido" },
+    "underlying": {
+      "key": {
+        "standard": "native",
+        "chain": "eip155:1"
+      }
+    }
+  }
+}
