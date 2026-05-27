@@ -19,6 +19,7 @@ pub mod calc;
 pub mod error;
 pub mod fetchers;
 pub mod orchestrator;
+pub mod scheduler;
 pub mod topo;
 pub mod walker;
 
@@ -29,8 +30,6 @@ pub use fetchers::rpc::{
     BlockTag, EthCallRequest, ProviderName, RpcConfig, RpcProvider, RpcRouter,
 };
 pub use orchestrator::{Orchestrator, RefreshReport};
+pub use scheduler::{Scheduler, SchedulerConfig, TickReport, WalletStore};
 pub use topo::{DepNode, topological_sort};
 pub use walker::{FieldLocation, StaleField, WalkStats, walk_stale};
-
-// 단계적 활성화:
-// pub mod scheduler;      // ttl 기반 주기적 refresh
