@@ -206,8 +206,8 @@ mod tests {
     use super::*;
     use simulation_state::{
         Address, Balance, BaseCategory, ChainId, DataSource, Decimal, Duration, FiatCurrency,
-        LiveField, OracleProvider, PegTarget, Price, Time, TokenHolding, TokenKey, TokenKind,
-        WalletId, WalletState,
+        LiveField, OracleProvider, PegTarget, Time, TokenHolding, TokenKey, TokenKind, WalletId,
+        WalletState,
     };
     use std::str::FromStr;
 
