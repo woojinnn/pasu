@@ -19,7 +19,7 @@ use crate::batcher::{BatchKind, FetchBatch, batch_by_source};
 use crate::error::SyncError;
 use crate::fetchers::onchain::OnchainCall;
 use crate::calc::{CalcContext, CalcRegistry};
-use crate::fetchers::{ChainlinkFetcher, OnchainViewFetcher, RegistryFetcher};
+use crate::fetchers::{ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher};
 use crate::walker::{FieldLocation, WalkStats, walk_stale};
 
 /// 한 wallet refresh 결과 요약 — 디버깅 / 메트릭용.
@@ -36,9 +36,8 @@ pub struct Orchestrator {
     onchain: OnchainViewFetcher,
     chainlink: Option<ChainlinkFetcher>,
     registry: Option<RegistryFetcher>,
+    hyperliquid: Option<HyperliquidFetcher>,
     calc: CalcRegistry,
-    // 향후 추가:
-    // venue: VenueRegistry,
 }
 
 impl Orchestrator {
@@ -47,6 +46,7 @@ impl Orchestrator {
             onchain,
             chainlink: None,
             registry: None,
+            hyperliquid: None,
             calc: CalcRegistry::with_builtins(),
         }
     }
@@ -58,6 +58,11 @@ impl Orchestrator {
 
     pub fn with_registry(mut self, registry: RegistryFetcher) -> Self {
         self.registry = Some(registry);
+        self
+    }
+
+    pub fn with_hyperliquid(mut self, hl: HyperliquidFetcher) -> Self {
+        self.hyperliquid = Some(hl);
         self
     }
 
@@ -73,6 +78,7 @@ impl Orchestrator {
             onchain,
             chainlink: Some(chainlink),
             registry: Some(RegistryFetcher::new()),
+            hyperliquid: Some(HyperliquidFetcher::new()),
             calc: CalcRegistry::with_builtins(),
         }
     }
@@ -220,8 +226,31 @@ impl Orchestrator {
                 Ok((ok, fail))
             }
 
-            // Phase 8 에서 추가
-            BatchKind::Venue { .. } | BatchKind::UserSupplied => Ok((0, 0)),
+            BatchKind::Venue { endpoint } => {
+                // 지금은 Hyperliquid 만 지원 — endpoint 가 hyperliquid 면 dispatch.
+                // 향후 GMX/dYdX 추가 시 endpoint 패턴 매칭으로 분기.
+                let is_hl = endpoint.contains("hyperliquid")
+                    || endpoint == "https://api.hyperliquid.xyz/info";
+                let hl = if is_hl { self.hyperliquid.as_ref() } else { None };
+                let hl = match hl {
+                    Some(h) => h,
+                    None => return Ok((0, batch.items.len())),
+                };
+                let mut ok = 0;
+                let mut fail = 0;
+                for item in batch.items {
+                    match hl.fetch(&item.source).await {
+                        Ok(value) => {
+                            apply_value(state, &item.location, value, now);
+                            ok += 1;
+                        }
+                        Err(_) => fail += 1,
+                    }
+                }
+                Ok((ok, fail))
+            }
+
+            BatchKind::UserSupplied => Ok((0, 0)),
         }
     }
 }
