@@ -34,7 +34,7 @@ use crate::apply::Reducer;
 use crate::error::{ReducerError, ReducerResult};
 use crate::helpers;
 
-use super::uniswap_v2;
+use super::{uniswap_v2, uniswap_v3};
 
 impl Reducer for SwapAction {
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta> {
@@ -69,12 +69,10 @@ impl Reducer for SwapAction {
                     AmmVenue::UniswapV2 { .. } | AmmVenue::SushiV2 { .. } => {
                         uniswap_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
-                    // Phase 2E — V3 concentrated-liquidity math.
+                    // Phase 2E — V3 concentrated-liquidity math (simplified
+                    // active-tick closed form; see `uniswap_v3` module docs).
                     AmmVenue::UniswapV3 { .. } => {
-                        return Err(ReducerError::UnsupportedProtocol {
-                            action: "swap".into(),
-                            protocol: "uniswap_v3".into(),
-                        });
+                        uniswap_v3::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     // Phase 2F — V4 singleton + hooks.
                     AmmVenue::UniswapV4 { .. } => {
@@ -600,10 +598,14 @@ mod tests {
     // Unsupported venue surfaces UnsupportedProtocol
     // ----------------------------------------------------------------------
 
-    /// A V3 hop (concentrated liquidity) must surface as `UnsupportedProtocol
-    /// { action: "swap", protocol: "uniswap_v3" }` until Phase 2E lands.
+    /// Phase 2E activates V3 via the simplified closed-form
+    /// (active-tick, no fee, `zeroForOne`). A degenerate pool with **zero
+    /// active liquidity** must now surface as
+    /// `Invariant("uniswap_v3 … zero active liquidity")` from the V3 quote
+    /// helper — *not* `UnsupportedProtocol`, which used to be the Phase 2D
+    /// behaviour.
     #[test]
-    fn v3_hop_returns_unsupported_protocol() {
+    fn v3_hop_zero_liquidity_returns_invariant() {
         let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
         let v3 = AmmVenue::UniswapV3 {
             chain: ChainId::ethereum_mainnet(),
@@ -625,13 +627,91 @@ mod tests {
             pool_state,
         );
         let err = swap.apply(&state, &ctx()).unwrap_err();
-        match err {
-            ReducerError::UnsupportedProtocol { action, protocol } => {
-                assert_eq!(action, "swap");
-                assert_eq!(protocol, "uniswap_v3");
+        assert!(
+            matches!(&err, ReducerError::Invariant(msg) if msg.contains("zero active liquidity")),
+            "unexpected err: {err:?}"
+        );
+    }
+
+    /// Phase 2E happy path — a single V3 hop on a `price = 1` pool
+    /// (`sqrt_price_x96 = Q96 = 2^96`) with `liquidity = 1_000_000` swapping
+    /// `1_000` in. The closed form gives `L*a/(L+a) = 1e9 / 1_001_000 = 999`.
+    /// Verifies the outer-only accounting (USDC debit, WETH credit) and the
+    /// magnitude matches the `uniswap_v3` unit test exactly.
+    #[test]
+    fn v3_single_hop_happy_path_active_tick() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let v3 = AmmVenue::UniswapV3 {
+            chain: ChainId::ethereum_mainnet(),
+            pool: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
+            fee_tier_bp: 500,
+        };
+        // Q96 = 2^96
+        let q96 = U256::from(1u64) << 96;
+        let pool_state = PoolState::Concentrated {
+            sqrt_price_x96: q96,
+            tick: 0,
+            liquidity: simulation_state::primitives::U128::from(1_000_000u64),
+            ticks: vec![],
+        };
+        let swap = exact_in_swap(
+            U256::from(1_000u64),
+            U256::from(900u64), // < 999, so slippage passes
+            usdc_ref(),
+            weth_ref(),
+            v3,
+            pool_state,
+        );
+        let delta = swap.apply(&state, &ctx()).unwrap();
+        assert_eq!(delta.token_changes.len(), 2);
+        let mut saw_debit = false;
+        let mut saw_credit = false;
+        for tc in &delta.token_changes {
+            let TokenChange::BalanceDelta { key, delta: d } = tc else {
+                panic!("expected BalanceDelta, got {tc:?}");
+            };
+            if key == &usdc_ref().key {
+                assert!(d.is_negative());
+                assert_eq!(d.unsigned_abs().to_string(), "1000");
+                saw_debit = true;
+            } else if key == &weth_ref().key {
+                assert!(d.is_positive());
+                assert_eq!(d.unsigned_abs().to_string(), "999");
+                saw_credit = true;
+            } else {
+                panic!("unexpected key {key:?}");
             }
-            other => panic!("expected UnsupportedProtocol, got {other:?}"),
         }
+        assert!(saw_debit && saw_credit);
+    }
+
+    /// Phase 2E slippage breach — `min_amount_out` set above the
+    /// closed-form's `999` output produces `Invariant("swap slippage: …")`.
+    #[test]
+    fn v3_single_hop_slippage_breach() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let v3 = AmmVenue::UniswapV3 {
+            chain: ChainId::ethereum_mainnet(),
+            pool: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
+            fee_tier_bp: 500,
+        };
+        let q96 = U256::from(1u64) << 96;
+        let pool_state = PoolState::Concentrated {
+            sqrt_price_x96: q96,
+            tick: 0,
+            liquidity: simulation_state::primitives::U128::from(1_000_000u64),
+            ticks: vec![],
+        };
+        let swap = exact_in_swap(
+            U256::from(1_000u64),
+            U256::from(5_000u64), // far above the ~999 closed-form output
+            usdc_ref(),
+            weth_ref(),
+            v3,
+            pool_state,
+        );
+        let err = swap.apply(&state, &ctx()).unwrap_err();
+        assert!(matches!(err, ReducerError::Invariant(msg) if msg.contains("slippage")));
     }
 
     /// Curve hop also surfaces as `UnsupportedProtocol` with the appropriate
