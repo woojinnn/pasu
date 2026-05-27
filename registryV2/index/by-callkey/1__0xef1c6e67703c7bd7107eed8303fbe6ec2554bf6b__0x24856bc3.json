@@ -1,0 +1,622 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/universal-router/execute-v1-no-deadline@1.0.0",
+  "manifest_path": "manifests/uniswap/universal-router/execute-v1-no-deadline@1.0.0.json",
+  "bundle_sha256": "0xc5e07f551083f9a3060a75c6f9eb6fbb95aa90f4eff0b2ceb40323b055f05878",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "uniswap/universal-router/execute-v1-no-deadline@1.0.0",
+    "publisher": "uniswap.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0x24856bc3",
+      "chain_to_addresses": {
+        "1": [
+          "0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B",
+          "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD"
+        ],
+        "8453": [
+          "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
+          "0xeC8B0F7Ffe3ae75d7FfAb09429e3675bb63503e4"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "execute",
+      "abi": {
+        "name": "execute",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "commands",
+            "type": "bytes"
+          },
+          {
+            "name": "inputs",
+            "type": "bytes[]"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "opcode_stream_dispatch",
+      "dispatcher_id": "universal_router",
+      "mask": "0x7f",
+      "allow_revert_bit": "0x80",
+      "unknown_opcode_policy": "warn",
+      "per_opcode_body": {
+        "0x00": {
+          "name": "V3_SWAP_EXACT_IN",
+          "inputs_abi": "(address recipient, uint256 amountIn, uint256 amountOutMin, bytes path, bool payerIsUser)",
+          "body": {
+            "domain": "amm",
+            "amm": {
+              "action": "swap",
+              "swap": {
+                "venue": {
+                  "name": "uniswap_v3",
+                  "chain": "$chain",
+                  "pool": "$resolved.pool",
+                  "fee_tier_bp": "$resolved.fee_tier_bp"
+                },
+                "params": {
+                  "token_in": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$derived.v3_path_first_token"
+                    }
+                  },
+                  "token_out": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$derived.v3_path_last_token"
+                    }
+                  },
+                  "direction": {
+                    "kind": "exact_input",
+                    "amount_in": "$inputs.amountIn",
+                    "min_amount_out": "$inputs.amountOutMin"
+                  },
+                  "recipient": "$inputs.recipient",
+                  "slippage_bp": "$derived.slippage_bp"
+                },
+                "live_inputs": {
+                  "route": {
+                    "source": {
+                      "kind": "onchain_view",
+                      "chain": "$chain",
+                      "contract": "$resolved.pool",
+                      "function": "slot0()",
+                      "decoder_id": "uniswap_v3_slot0"
+                    },
+                    "ttl_s": 12
+                  },
+                  "expected_amount_out": {
+                    "source": {
+                      "kind": "venue_api",
+                      "endpoint": "https://api.uniswap.org/v2/quote",
+                      "parser_id": "uniswapx_quote"
+                    },
+                    "ttl_s": 6
+                  },
+                  "price_impact_bp": {
+                    "source": {
+                      "kind": "derived_from",
+                      "inputs": [
+                        {
+                          "scope": "global",
+                          "name": "uniswap_v3_pool_state"
+                        }
+                      ],
+                      "calc_id": "uniswap_v3_price_impact_bp"
+                    },
+                    "ttl_s": 12
+                  },
+                  "gas_estimate": {
+                    "source": {
+                      "kind": "oracle_feed",
+                      "provider": "pyth",
+                      "feed_id": "gas/ethereum"
+                    },
+                    "ttl_s": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "0x01": {
+          "name": "V3_SWAP_EXACT_OUT",
+          "inputs_abi": "(address recipient, uint256 amountOut, uint256 amountInMax, bytes path, bool payerIsUser)",
+          "body": {
+            "domain": "amm",
+            "amm": {
+              "action": "swap",
+              "swap": {
+                "venue": {
+                  "name": "uniswap_v3",
+                  "chain": "$chain",
+                  "pool": "$resolved.pool",
+                  "fee_tier_bp": "$resolved.fee_tier_bp"
+                },
+                "params": {
+                  "token_in": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$derived.v3_path_last_token"
+                    }
+                  },
+                  "token_out": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$derived.v3_path_first_token"
+                    }
+                  },
+                  "direction": {
+                    "kind": "exact_output",
+                    "max_amount_in": "$inputs.amountInMax",
+                    "amount_out": "$inputs.amountOut"
+                  },
+                  "recipient": "$inputs.recipient",
+                  "slippage_bp": "$derived.slippage_bp"
+                },
+                "live_inputs": {
+                  "route": {
+                    "source": {
+                      "kind": "onchain_view",
+                      "chain": "$chain",
+                      "contract": "$resolved.pool",
+                      "function": "slot0()",
+                      "decoder_id": "uniswap_v3_slot0"
+                    },
+                    "ttl_s": 12
+                  },
+                  "expected_amount_out": {
+                    "source": {
+                      "kind": "venue_api",
+                      "endpoint": "https://api.uniswap.org/v2/quote",
+                      "parser_id": "uniswapx_quote"
+                    },
+                    "ttl_s": 6
+                  },
+                  "price_impact_bp": {
+                    "source": {
+                      "kind": "derived_from",
+                      "inputs": [
+                        {
+                          "scope": "global",
+                          "name": "uniswap_v3_pool_state"
+                        }
+                      ],
+                      "calc_id": "uniswap_v3_price_impact_bp"
+                    },
+                    "ttl_s": 12
+                  },
+                  "gas_estimate": {
+                    "source": {
+                      "kind": "oracle_feed",
+                      "provider": "pyth",
+                      "feed_id": "gas/ethereum"
+                    },
+                    "ttl_s": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "0x02": {
+          "name": "PERMIT2_TRANSFER_FROM",
+          "inputs_abi": "(address token, address recipient, uint160 amount)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "erc20_transfer",
+              "erc20_transfer": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$inputs.token"
+                  }
+                },
+                "recipient": "$inputs.recipient",
+                "amount": "$inputs.amount"
+              }
+            }
+          }
+        },
+        "0x03": {
+          "name": "PERMIT2_PERMIT_BATCH",
+          "inputs_abi": "(((address,uint160,uint48,uint48)[] details, address spender, uint256 sigDeadline) permitBatch, bytes signature)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "permit2_sign_allowance",
+              "permit2_sign_allowance": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$inputs.permitBatch.details[0].token"
+                  }
+                },
+                "spender": "$inputs.permitBatch.spender",
+                "amount": "$inputs.permitBatch.details[0].amount",
+                "expires_at": "$inputs.permitBatch.details[0].expiration",
+                "sig_deadline": "$inputs.permitBatch.sigDeadline",
+                "nonce": "$inputs.permitBatch.details[0].nonce"
+              }
+            }
+          },
+          "_note": "Batch entries beyond index [0] require array_emit expansion — Phase 3F first batch emits only the lead entry; multi-entry expansion is a follow-up."
+        },
+        "0x04": {
+          "name": "SWEEP",
+          "inputs_abi": "(address token, address recipient, uint256 amountMin)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "erc20_transfer",
+              "erc20_transfer": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$inputs.token"
+                  }
+                },
+                "recipient": "$inputs.recipient",
+                "amount": "$inputs.amountMin"
+              }
+            }
+          },
+          "_note": "SWEEP semantics: transfer min(routerBalance, amountMin) to recipient. ActionBody emits amountMin as a lower-bound — actual amount resolved at simulation time."
+        },
+        "0x05": {
+          "name": "TRANSFER",
+          "inputs_abi": "(address token, address recipient, uint256 value)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "erc20_transfer",
+              "erc20_transfer": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$inputs.token"
+                  }
+                },
+                "recipient": "$inputs.recipient",
+                "amount": "$inputs.value"
+              }
+            }
+          }
+        },
+        "0x06": {
+          "name": "PAY_PORTION",
+          "inputs_abi": "(address token, address recipient, uint256 bips)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "erc20_transfer",
+              "erc20_transfer": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$inputs.token"
+                  }
+                },
+                "recipient": "$inputs.recipient",
+                "amount": "$inputs.bips"
+              }
+            }
+          },
+          "_note": "PAY_PORTION semantics: transfer (routerBalance * bips / 10000) to recipient. amount field holds bips (basis points), not an absolute token amount — sync orchestrator must resolve actual amount from routerBalance."
+        },
+        "0x08": {
+          "name": "V2_SWAP_EXACT_IN",
+          "inputs_abi": "(address recipient, uint256 amountIn, uint256 amountOutMin, address[] path, bool payerIsUser)",
+          "body": {
+            "domain": "amm",
+            "amm": {
+              "action": "swap",
+              "swap": {
+                "venue": {
+                  "name": "uniswap_v2",
+                  "chain": "$chain",
+                  "pool": "$resolved.pool",
+                  "factory": "$resolved.factory"
+                },
+                "params": {
+                  "token_in": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$inputs.path[0]"
+                    }
+                  },
+                  "token_out": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$inputs.path[-1]"
+                    }
+                  },
+                  "direction": {
+                    "kind": "exact_input",
+                    "amount_in": "$inputs.amountIn",
+                    "min_amount_out": "$inputs.amountOutMin"
+                  },
+                  "recipient": "$inputs.recipient",
+                  "slippage_bp": "$derived.slippage_bp"
+                },
+                "live_inputs": {
+                  "route": {
+                    "source": {
+                      "kind": "onchain_view",
+                      "chain": "$chain",
+                      "contract": "$resolved.pool",
+                      "function": "getReserves()",
+                      "decoder_id": "uniswap_v2_get_reserves"
+                    },
+                    "ttl_s": 12
+                  },
+                  "expected_amount_out": {
+                    "source": {
+                      "kind": "derived_from",
+                      "inputs": [
+                        {
+                          "scope": "global",
+                          "name": "uniswap_v2_pool_state"
+                        }
+                      ],
+                      "calc_id": "uniswap_v2_price_impact_bp"
+                    },
+                    "ttl_s": 12
+                  },
+                  "price_impact_bp": {
+                    "source": {
+                      "kind": "derived_from",
+                      "inputs": [
+                        {
+                          "scope": "global",
+                          "name": "uniswap_v2_pool_state"
+                        }
+                      ],
+                      "calc_id": "uniswap_v2_price_impact_bp"
+                    },
+                    "ttl_s": 12
+                  },
+                  "gas_estimate": {
+                    "source": {
+                      "kind": "oracle_feed",
+                      "provider": "pyth",
+                      "feed_id": "gas/ethereum"
+                    },
+                    "ttl_s": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "0x09": {
+          "name": "V2_SWAP_EXACT_OUT",
+          "inputs_abi": "(address recipient, uint256 amountOut, uint256 amountInMax, address[] path, bool payerIsUser)",
+          "body": {
+            "domain": "amm",
+            "amm": {
+              "action": "swap",
+              "swap": {
+                "venue": {
+                  "name": "uniswap_v2",
+                  "chain": "$chain",
+                  "pool": "$resolved.pool",
+                  "factory": "$resolved.factory"
+                },
+                "params": {
+                  "token_in": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$inputs.path[0]"
+                    }
+                  },
+                  "token_out": {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$inputs.path[-1]"
+                    }
+                  },
+                  "direction": {
+                    "kind": "exact_output",
+                    "max_amount_in": "$inputs.amountInMax",
+                    "amount_out": "$inputs.amountOut"
+                  },
+                  "recipient": "$inputs.recipient",
+                  "slippage_bp": "$derived.slippage_bp"
+                },
+                "live_inputs": {
+                  "route": {
+                    "source": {
+                      "kind": "onchain_view",
+                      "chain": "$chain",
+                      "contract": "$resolved.pool",
+                      "function": "getReserves()",
+                      "decoder_id": "uniswap_v2_get_reserves"
+                    },
+                    "ttl_s": 12
+                  },
+                  "expected_amount_out": {
+                    "source": {
+                      "kind": "derived_from",
+                      "inputs": [
+                        {
+                          "scope": "global",
+                          "name": "uniswap_v2_pool_state"
+                        }
+                      ],
+                      "calc_id": "uniswap_v2_price_impact_bp"
+                    },
+                    "ttl_s": 12
+                  },
+                  "price_impact_bp": {
+                    "source": {
+                      "kind": "derived_from",
+                      "inputs": [
+                        {
+                          "scope": "global",
+                          "name": "uniswap_v2_pool_state"
+                        }
+                      ],
+                      "calc_id": "uniswap_v2_price_impact_bp"
+                    },
+                    "ttl_s": 12
+                  },
+                  "gas_estimate": {
+                    "source": {
+                      "kind": "oracle_feed",
+                      "provider": "pyth",
+                      "feed_id": "gas/ethereum"
+                    },
+                    "ttl_s": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "0x0a": {
+          "name": "PERMIT2_PERMIT",
+          "inputs_abi": "(((address token, uint160 amount, uint48 expiration, uint48 nonce) details, address spender, uint256 sigDeadline) permitSingle, bytes signature)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "permit2_sign_allowance",
+              "permit2_sign_allowance": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$inputs.permitSingle.details.token"
+                  }
+                },
+                "spender": "$inputs.permitSingle.spender",
+                "amount": "$inputs.permitSingle.details.amount",
+                "expires_at": "$inputs.permitSingle.details.expiration",
+                "sig_deadline": "$inputs.permitSingle.sigDeadline",
+                "nonce": "$inputs.permitSingle.details.nonce"
+              }
+            }
+          }
+        },
+        "0x0b": {
+          "name": "WRAP_ETH",
+          "inputs_abi": "(address recipient, uint256 amountMin)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "erc20_transfer",
+              "erc20_transfer": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$resolved.weth"
+                  }
+                },
+                "recipient": "$inputs.recipient",
+                "amount": "$inputs.amountMin"
+              }
+            }
+          },
+          "_note": "WRAP_ETH wraps msg.value ETH to WETH and forwards to recipient. ActionBody has no native Wrap variant — modelled as Erc20Transfer of WETH (open_question: schema extension needed for native↔wrapped conversion semantics)."
+        },
+        "0x0c": {
+          "name": "UNWRAP_WETH",
+          "inputs_abi": "(address recipient, uint256 amountMin)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "erc20_transfer",
+              "erc20_transfer": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$resolved.weth"
+                  }
+                },
+                "recipient": "$inputs.recipient",
+                "amount": "$inputs.amountMin"
+              }
+            }
+          },
+          "_note": "UNWRAP_WETH unwraps router's WETH balance to ETH (recipient receives native). Same schema limitation as WRAP_ETH — see open_question on native↔wrapped semantics."
+        },
+        "0x0d": {
+          "name": "PERMIT2_TRANSFER_FROM_BATCH",
+          "inputs_abi": "((address from, address to, uint160 amount, address token)[] transferDetails)",
+          "body": {
+            "domain": "token",
+            "token": {
+              "action": "erc20_transfer",
+              "erc20_transfer": {
+                "token": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$inputs.transferDetails[0].token"
+                  }
+                },
+                "recipient": "$inputs.transferDetails[0].to",
+                "amount": "$inputs.transferDetails[0].amount"
+              }
+            }
+          },
+          "_note": "Batch transfer — Phase 3F first batch emits only the lead entry [0]. Multi-entry array_emit expansion is a follow-up (same as PERMIT2_PERMIT_BATCH 0x03)."
+        },
+        "0x0e": {
+          "name": "BALANCE_CHECK_ERC20",
+          "inputs_abi": "(address owner, address token, uint256 minBalance)",
+          "body": {
+            "domain": "unknown",
+            "unknown": {
+              "target": "$tx.to",
+              "chain": "$chain",
+              "calldata": "$inputs._raw",
+              "value": "0"
+            }
+          },
+          "_note": "Side-effect free balance assertion. Emitted as Unknown body so policy can warn/log/allow per user config. Does not affect state delta."
+        }
+      }
+    },
+    "recurse": {
+      "strategy": "commands_and_inputs_paired",
+      "commands_path": "$args.commands",
+      "inputs_path": "$args.inputs",
+      "max_depth": 3
+    },
+    "requires": {
+      "imperative": [
+        "universal-router-dispatcher@^1.0"
+      ],
+      "adapter_capabilities": [
+        "token_metadata",
+        "v2_pool_resolver",
+        "v3_pool_resolver"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}
