@@ -18,6 +18,7 @@ use simulation_state::{Confidence, LiveField, PositionKind, Price, Time, WalletS
 use crate::batcher::{BatchKind, FetchBatch, batch_by_source};
 use crate::error::SyncError;
 use crate::fetchers::onchain::OnchainCall;
+use crate::calc::{CalcContext, CalcRegistry};
 use crate::fetchers::{ChainlinkFetcher, OnchainViewFetcher, RegistryFetcher};
 use crate::walker::{FieldLocation, WalkStats, walk_stale};
 
@@ -35,9 +36,9 @@ pub struct Orchestrator {
     onchain: OnchainViewFetcher,
     chainlink: Option<ChainlinkFetcher>,
     registry: Option<RegistryFetcher>,
+    calc: CalcRegistry,
     // 향후 추가:
-    // venue:    VenueRegistry,
-    // calc:     CalcRegistry,
+    // venue: VenueRegistry,
 }
 
 impl Orchestrator {
@@ -46,6 +47,7 @@ impl Orchestrator {
             onchain,
             chainlink: None,
             registry: None,
+            calc: CalcRegistry::with_builtins(),
         }
     }
 
@@ -59,6 +61,11 @@ impl Orchestrator {
         self
     }
 
+    pub fn with_calc(mut self, calc: CalcRegistry) -> Self {
+        self.calc = calc;
+        self
+    }
+
     pub fn from_rpc_router(router: Arc<crate::RpcRouter>) -> Self {
         let onchain = OnchainViewFetcher::new(router.clone());
         let chainlink = ChainlinkFetcher::new(router);
@@ -66,6 +73,7 @@ impl Orchestrator {
             onchain,
             chainlink: Some(chainlink),
             registry: Some(RegistryFetcher::new()),
+            calc: CalcRegistry::with_builtins(),
         }
     }
 
@@ -183,10 +191,37 @@ impl Orchestrator {
                 Ok((ok, fail))
             }
 
-            // Phase 7/8 에서 점진적 추가
-            BatchKind::Venue { .. }
-            | BatchKind::Derived
-            | BatchKind::UserSupplied => Ok((0, 0)),
+            BatchKind::Derived => {
+                // 한 batch 안의 derived 필드들끼리는 서로 독립이라고 가정 (단순한
+                // 1-level 처리). 다중 layer DerivedFrom 은 호출자가 여러 번 refresh.
+                let mut ok = 0;
+                let mut fail = 0;
+                for item in batch.items {
+                    if let simulation_state::DataSource::DerivedFrom {
+                        calc_id,
+                        inputs: _,
+                    } = &item.source
+                    {
+                        let ctx = CalcContext {
+                            state,
+                            inputs: vec![], // input resolver 는 후속 — 지금은 빈 입력으로 stub
+                        };
+                        match self.calc.run(calc_id, &ctx) {
+                            Ok(value) => {
+                                apply_value(state, &item.location, value, now);
+                                ok += 1;
+                            }
+                            Err(_) => fail += 1,
+                        }
+                    } else {
+                        fail += 1;
+                    }
+                }
+                Ok((ok, fail))
+            }
+
+            // Phase 8 에서 추가
+            BatchKind::Venue { .. } | BatchKind::UserSupplied => Ok((0, 0)),
         }
     }
 }

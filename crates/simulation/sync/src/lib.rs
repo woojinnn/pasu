@@ -15,20 +15,22 @@
 //! reducer 와 달리 외부 IO 가 있으므로 native only — wasm 빌드 안 됨.
 
 pub mod batcher;
+pub mod calc;
 pub mod error;
 pub mod fetchers;
 pub mod orchestrator;
+pub mod topo;
 pub mod walker;
 
 pub use batcher::{BatchKind, FetchBatch, batch_by_source};
+pub use calc::{CalcContext, CalcFn, CalcRegistry};
 pub use error::{SyncError, SyncResult};
 pub use fetchers::rpc::{
     BlockTag, EthCallRequest, ProviderName, RpcConfig, RpcProvider, RpcRouter,
 };
 pub use orchestrator::{Orchestrator, RefreshReport};
+pub use topo::{DepNode, topological_sort};
 pub use walker::{FieldLocation, StaleField, WalkStats, walk_stale};
 
 // 단계적 활성화:
-// pub mod topo;           // DerivedFrom 위상정렬
 // pub mod scheduler;      // ttl 기반 주기적 refresh
-// pub mod calc;           // DerivedFrom 계산 함수 (HF, PnL, liq_price)
