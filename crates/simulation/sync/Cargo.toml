@@ -1,0 +1,17 @@
+[package]
+name = "simulation-sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+simulation-state = { workspace = true }
+simulation-db = { path = "../db", version = "0.1.0" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+# async / HTTP / RPC 의존성은 실제 fetcher 구현 시 활성화:
+# tokio = { version = "1", features = ["full"] }
+# reqwest = "0.12"
+# alloy-primitives = { workspace = true }

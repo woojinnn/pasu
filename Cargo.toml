@@ -19,6 +19,9 @@ members = [
     "crates/policy-builder",
     "crates/policy-builder-wasm",
     "crates/simulation/state",
+    "crates/simulation/reducer",
+    "crates/simulation/db",
+    "crates/simulation/sync",
 ]
 
 [workspace.package]
@@ -47,6 +50,9 @@ mappers = { path = "crates/adapters/mappers", version = "0.1.0" }
 request-router = { path = "crates/adapters/request-router", version = "0.1.0" }
 policy-builder = { path = "crates/policy-builder", version = "0.1.0" }
 simulation-state = { path = "crates/simulation/state", version = "0.1.0" }
+simulation-reducer = { path = "crates/simulation/reducer", version = "0.1.0" }
+simulation-db = { path = "crates/simulation/db", version = "0.1.0" }
+simulation-sync = { path = "crates/simulation/sync", version = "0.1.0" }
 
 # WASM bridge deps
 wasm-bindgen = "0.2"
