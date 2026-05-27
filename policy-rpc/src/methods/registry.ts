@@ -22,6 +22,10 @@ import {
   statWindowSwapStatsCatalog,
 } from "./mock-host-capabilities.js";
 import {
+  createScopeballEvaluateV3Method,
+  scopeballEvaluateV3Catalog,
+} from "./scopeball-evaluate-v3.js";
+import {
   RpcMethodError,
   type JsonObject,
   type PolicyRpcCall,
@@ -108,6 +112,12 @@ export function createMethodRegistry(options: MethodRegistryOptions = {}): Metho
     {
       fn: createStatWindowSwapStatsMethod() as RpcMethod,
       catalog: statWindowSwapStatsCatalog,
+    },
+    // Phase 5D — `scopeball.evaluate_v3` echo mock. Real reducer +
+    // state-sync implementation lands in Phase 6.
+    {
+      fn: createScopeballEvaluateV3Method() as RpcMethod,
+      catalog: scopeballEvaluateV3Catalog,
     },
   ];
 

@@ -75,6 +75,7 @@ describe("policy-rpc HTTP server", () => {
       "oracle.usd_value",
       "portfolio.balance",
       "portfolio.input_fraction_bps",
+      "scopeball.evaluate_v3",
       "stat_window.snapshot",
       "stat_window.swap_stats",
     ]);

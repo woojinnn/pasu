@@ -173,6 +173,29 @@
       "returns": { "kind": "scalar", "type": "Long", "from": "$.result.bps" },
       "origin": "bundled"
     },
+    "scopeball.evaluate_v3": {
+      "name": "scopeball.evaluate_v3",
+      "description": "Phase 5D mock — echo (envelopes, eval_context, wallet_id) back as policyRequest.actions with empty state_before / deltas / state_after. Real implementation arrives in Phase 6 (reducer + state sync).",
+      "params": {
+        "wallet_id": {
+          "type": "String",
+          "required": true,
+          "description": "WalletId (address + chains). Carried verbatim by the mock; Phase 6 will key state persistence off this."
+        },
+        "envelopes": {
+          "type": "String",
+          "required": true,
+          "description": "List of caller-built Action envelopes (typed PDF FSM ActionBody). The mock echoes these into policyRequest.actions."
+        },
+        "eval_context": {
+          "type": "String",
+          "required": true,
+          "description": "EvalContext (chain + clock + RequestKind + SimulationMode + envelope_index)."
+        }
+      },
+      "returns": { "kind": "record", "type": "UsdValuation" },
+      "origin": "bundled"
+    },
     "stat_window.snapshot": {
       "name": "stat_window.snapshot",
       "description": "Rolling-window snapshot of recent on-chain activity for the wallet.",
