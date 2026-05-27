@@ -2,13 +2,15 @@
   "type": "adapter_function",
   "id": "aerodrome/universal-router/execute-no-deadline@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": [
-      "0xC5b6786D7B64767D775877b0B6A319AD946B11B5",
-      "0xcAF22ce31298CF2BF1D152862F80216478ad7c67"
-    ],
-    "selector": "0x24856bc3"
+    "selector": "0x24856bc3",
+    "chain_to_addresses": {
+      "8453": [
+        "0xC5b6786D7B64767D775877b0B6A319AD946B11B5",
+        "0xcAF22ce31298CF2BF1D152862F80216478ad7c67"
+      ]
+    }
   },
   "abi_fragment": {
     "function_name": "execute",
@@ -17,7 +19,7 @@
       "type": "function",
       "inputs": [
         { "name": "commands", "type": "bytes" },
-        { "name": "inputs",   "type": "bytes[]" }
+        { "name": "inputs", "type": "bytes[]" }
       ]
     }
   },
@@ -33,19 +35,30 @@
         "category": "dex",
         "action": "swap",
         "fields": {
-          "inputToken.asset.kind":     { "literal": "erc20" },
-          "inputToken.asset.address":  { "fn": "unfold_slipstream_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "first_token" }] },
-          "inputToken.amount.kind":    { "literal": "exact" },
-          "inputToken.amount.value":   { "from": "$.args.amountIn" },
-          "outputToken.asset.kind":    { "literal": "erc20" },
-          "outputToken.asset.address": { "fn": "unfold_slipstream_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "last_token" }] },
-          "outputToken.amount.kind":   { "literal": "min" },
-          "outputToken.amount.value":  { "from": "$.args.amountOutMin" },
-          "recipient":                 { "from": "$.args.recipient" }
+          "inputToken.asset.kind": { "literal": "erc20" },
+          "inputToken.asset.address": {
+            "fn": "unfold_slipstream_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "first_token" }
+            ]
+          },
+          "inputToken.amount.kind": { "literal": "exact" },
+          "inputToken.amount.value": { "from": "$.args.amountIn" },
+          "outputToken.asset.kind": { "literal": "erc20" },
+          "outputToken.asset.address": {
+            "fn": "unfold_slipstream_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "last_token" }
+            ]
+          },
+          "outputToken.amount.kind": { "literal": "min" },
+          "outputToken.amount.value": { "from": "$.args.amountOutMin" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x01": {
@@ -53,19 +66,30 @@
         "category": "dex",
         "action": "swap",
         "fields": {
-          "inputToken.asset.kind":     { "literal": "erc20" },
-          "inputToken.asset.address":  { "fn": "unfold_slipstream_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "last_token" }] },
-          "inputToken.amount.kind":    { "literal": "max" },
-          "inputToken.amount.value":   { "from": "$.args.amountInMax" },
-          "outputToken.asset.kind":    { "literal": "erc20" },
-          "outputToken.asset.address": { "fn": "unfold_slipstream_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "first_token" }] },
-          "outputToken.amount.kind":   { "literal": "exact" },
-          "outputToken.amount.value":  { "from": "$.args.amountOut" },
-          "recipient":                 { "from": "$.args.recipient" }
+          "inputToken.asset.kind": { "literal": "erc20" },
+          "inputToken.asset.address": {
+            "fn": "unfold_slipstream_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "last_token" }
+            ]
+          },
+          "inputToken.amount.kind": { "literal": "max" },
+          "inputToken.amount.value": { "from": "$.args.amountInMax" },
+          "outputToken.asset.kind": { "literal": "erc20" },
+          "outputToken.asset.address": {
+            "fn": "unfold_slipstream_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "first_token" }
+            ]
+          },
+          "outputToken.amount.kind": { "literal": "exact" },
+          "outputToken.amount.value": { "from": "$.args.amountOut" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x02": {
@@ -73,12 +97,15 @@
         "category": "misc",
         "action": "transfer",
         "fields": {
-          "token.asset.kind":        { "literal": "erc20" },
-          "token.asset.address":     { "from": "$.args.token" },
-          "token.amount.kind":       { "literal": "exact" },
-          "token.amount.value":      { "from": "$.args.amount" },
-          "from":                    { "from": "$.tx.from" },
-          "recipient":               { "from": "$.args.recipient" }
+          "token.asset.kind": { "literal": "erc20" },
+          "token.asset.address": { "from": "$.args.token" },
+          "token.amount.kind": { "literal": "exact" },
+          "token.amount.value": { "from": "$.args.amount" },
+          "from": { "from": "$.tx.from" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x03": {
@@ -86,17 +113,17 @@
         "category": "misc",
         "action": "permit",
         "fields": {
-          "permitKind":            { "literal": "permit2_batch" },
-          "token.kind":            { "literal": "erc20" },
-          "token.address":         { "from": "$.args.permitBatch[0][0][0]" },
-          "owner":                 { "from": "$.tx.from" },
-          "spender":               { "from": "$.args.permitBatch[1]" },
-          "amount.kind":           { "literal": "max" },
-          "amount.value":          { "from": "$.args.permitBatch[0][0][1]" },
-          "validity.expiresAt":    { "from": "$.args.permitBatch[0][0][2]" },
-          "validity.source":       { "literal": "grant-expiration" },
+          "permitKind": { "literal": "permit2_batch" },
+          "token.kind": { "literal": "erc20" },
+          "token.address": { "from": "$.args.permitBatch[0][0][0]" },
+          "owner": { "from": "$.tx.from" },
+          "spender": { "from": "$.args.permitBatch[1]" },
+          "amount.kind": { "literal": "max" },
+          "amount.value": { "from": "$.args.permitBatch[0][0][1]" },
+          "validity.expiresAt": { "from": "$.args.permitBatch[0][0][2]" },
+          "validity.source": { "literal": "grant-expiration" },
           "signatureValidity.expiresAt": { "from": "$.args.permitBatch[2]" },
-          "signatureValidity.source":    { "literal": "signature-deadline" }
+          "signatureValidity.source": { "literal": "signature-deadline" }
         }
       },
       "0x04": {
@@ -104,12 +131,15 @@
         "category": "misc",
         "action": "transfer",
         "fields": {
-          "token.asset.kind":        { "literal": "erc20" },
-          "token.asset.address":     { "from": "$.args.token" },
-          "token.amount.kind":       { "literal": "min" },
-          "token.amount.value":      { "from": "$.args.amountMin" },
-          "from":                    { "from": "$.tx.to" },
-          "recipient":               { "from": "$.args.recipient" }
+          "token.asset.kind": { "literal": "erc20" },
+          "token.asset.address": { "from": "$.args.token" },
+          "token.amount.kind": { "literal": "min" },
+          "token.amount.value": { "from": "$.args.amountMin" },
+          "from": { "from": "$.tx.to" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x05": {
@@ -117,12 +147,15 @@
         "category": "misc",
         "action": "transfer",
         "fields": {
-          "token.asset.kind":        { "literal": "erc20" },
-          "token.asset.address":     { "from": "$.args.token" },
-          "token.amount.kind":       { "literal": "exact" },
-          "token.amount.value":      { "from": "$.args.value" },
-          "from":                    { "from": "$.tx.to" },
-          "recipient":               { "from": "$.args.recipient" }
+          "token.asset.kind": { "literal": "erc20" },
+          "token.asset.address": { "from": "$.args.token" },
+          "token.amount.kind": { "literal": "exact" },
+          "token.amount.value": { "from": "$.args.value" },
+          "from": { "from": "$.tx.to" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x06": {
@@ -130,12 +163,15 @@
         "category": "misc",
         "action": "transfer",
         "fields": {
-          "token.asset.kind":        { "literal": "erc20" },
-          "token.asset.address":     { "from": "$.args.token" },
-          "token.amount.kind":       { "literal": "portion" },
-          "token.amount.value":      { "from": "$.args.bips" },
-          "from":                    { "from": "$.tx.to" },
-          "recipient":               { "from": "$.args.recipient" }
+          "token.asset.kind": { "literal": "erc20" },
+          "token.asset.address": { "from": "$.args.token" },
+          "token.amount.kind": { "literal": "portion" },
+          "token.amount.value": { "from": "$.args.bips" },
+          "from": { "from": "$.tx.to" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x07": {
@@ -143,12 +179,15 @@
         "category": "misc",
         "action": "transfer",
         "fields": {
-          "token.asset.kind":        { "literal": "erc20" },
-          "token.asset.address":     { "from": "$.args.token" },
-          "token.amount.kind":       { "literal": "exact" },
-          "token.amount.value":      { "from": "$.args.value" },
-          "from":                    { "from": "$.tx.from" },
-          "recipient":               { "from": "$.args.recipient" }
+          "token.asset.kind": { "literal": "erc20" },
+          "token.asset.address": { "from": "$.args.token" },
+          "token.amount.kind": { "literal": "exact" },
+          "token.amount.value": { "from": "$.args.value" },
+          "from": { "from": "$.tx.from" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x08": {
@@ -156,19 +195,30 @@
         "category": "dex",
         "action": "swap",
         "fields": {
-          "inputToken.asset.kind":     { "literal": "erc20" },
-          "inputToken.asset.address":  { "fn": "unfold_velo_v2_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "first_token" }] },
-          "inputToken.amount.kind":    { "literal": "exact" },
-          "inputToken.amount.value":   { "from": "$.args.amountIn" },
-          "outputToken.asset.kind":    { "literal": "erc20" },
-          "outputToken.asset.address": { "fn": "unfold_velo_v2_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "last_token" }] },
-          "outputToken.amount.kind":   { "literal": "min" },
-          "outputToken.amount.value":  { "from": "$.args.amountOutMin" },
-          "recipient":                 { "from": "$.args.recipient" }
+          "inputToken.asset.kind": { "literal": "erc20" },
+          "inputToken.asset.address": {
+            "fn": "unfold_velo_v2_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "first_token" }
+            ]
+          },
+          "inputToken.amount.kind": { "literal": "exact" },
+          "inputToken.amount.value": { "from": "$.args.amountIn" },
+          "outputToken.asset.kind": { "literal": "erc20" },
+          "outputToken.asset.address": {
+            "fn": "unfold_velo_v2_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "last_token" }
+            ]
+          },
+          "outputToken.amount.kind": { "literal": "min" },
+          "outputToken.amount.value": { "from": "$.args.amountOutMin" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x09": {
@@ -176,19 +226,30 @@
         "category": "dex",
         "action": "swap",
         "fields": {
-          "inputToken.asset.kind":     { "literal": "erc20" },
-          "inputToken.asset.address":  { "fn": "unfold_velo_v2_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "first_token" }] },
-          "inputToken.amount.kind":    { "literal": "max" },
-          "inputToken.amount.value":   { "from": "$.args.amountInMax" },
-          "outputToken.asset.kind":    { "literal": "erc20" },
-          "outputToken.asset.address": { "fn": "unfold_velo_v2_path",
-                                         "args": [{ "from": "$.args.path" },
-                                                  { "literal": "last_token" }] },
-          "outputToken.amount.kind":   { "literal": "exact" },
-          "outputToken.amount.value":  { "from": "$.args.amountOut" },
-          "recipient":                 { "from": "$.args.recipient" }
+          "inputToken.asset.kind": { "literal": "erc20" },
+          "inputToken.asset.address": {
+            "fn": "unfold_velo_v2_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "first_token" }
+            ]
+          },
+          "inputToken.amount.kind": { "literal": "max" },
+          "inputToken.amount.value": { "from": "$.args.amountInMax" },
+          "outputToken.asset.kind": { "literal": "erc20" },
+          "outputToken.asset.address": {
+            "fn": "unfold_velo_v2_path",
+            "args": [
+              { "from": "$.args.path" },
+              { "literal": "last_token" }
+            ]
+          },
+          "outputToken.amount.kind": { "literal": "exact" },
+          "outputToken.amount.value": { "from": "$.args.amountOut" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x0a": {
@@ -196,17 +257,17 @@
         "category": "misc",
         "action": "permit",
         "fields": {
-          "permitKind":            { "literal": "permit2_single" },
-          "token.kind":            { "literal": "erc20" },
-          "token.address":         { "from": "$.args.permitSingle[0][0]" },
-          "owner":                 { "from": "$.tx.from" },
-          "spender":               { "from": "$.args.permitSingle[1]" },
-          "amount.kind":           { "literal": "max" },
-          "amount.value":          { "from": "$.args.permitSingle[0][1]" },
-          "validity.expiresAt":    { "from": "$.args.permitSingle[0][2]" },
-          "validity.source":       { "literal": "grant-expiration" },
+          "permitKind": { "literal": "permit2_single" },
+          "token.kind": { "literal": "erc20" },
+          "token.address": { "from": "$.args.permitSingle[0][0]" },
+          "owner": { "from": "$.tx.from" },
+          "spender": { "from": "$.args.permitSingle[1]" },
+          "amount.kind": { "literal": "max" },
+          "amount.value": { "from": "$.args.permitSingle[0][1]" },
+          "validity.expiresAt": { "from": "$.args.permitSingle[0][2]" },
+          "validity.source": { "literal": "grant-expiration" },
           "signatureValidity.expiresAt": { "from": "$.args.permitSingle[2]" },
-          "signatureValidity.source":    { "literal": "signature-deadline" }
+          "signatureValidity.source": { "literal": "signature-deadline" }
         }
       },
       "0x0b": {
@@ -214,14 +275,19 @@
         "category": "misc",
         "action": "wrap",
         "fields": {
-          "nativeAsset.asset.kind":     { "literal": "native" },
-          "nativeAsset.amount.kind":    { "literal": "min" },
-          "nativeAsset.amount.value":   { "from": "$.args.amount" },
-          "wrappedAsset.asset.kind":    { "literal": "erc20" },
-          "wrappedAsset.asset.address": { "literal": "0x4200000000000000000000000000000000000006" },
-          "wrappedAsset.amount.kind":   { "literal": "min" },
-          "wrappedAsset.amount.value":  { "from": "$.args.amount" },
-          "recipient":                  { "from": "$.args.recipient" }
+          "nativeAsset.asset.kind": { "literal": "native" },
+          "nativeAsset.amount.kind": { "literal": "min" },
+          "nativeAsset.amount.value": { "from": "$.args.amount" },
+          "wrappedAsset.asset.kind": { "literal": "erc20" },
+          "wrappedAsset.asset.address": {
+            "literal": "0x4200000000000000000000000000000000000006"
+          },
+          "wrappedAsset.amount.kind": { "literal": "min" },
+          "wrappedAsset.amount.value": { "from": "$.args.amount" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x0c": {
@@ -229,14 +295,19 @@
         "category": "misc",
         "action": "unwrap",
         "fields": {
-          "wrappedAsset.asset.kind":    { "literal": "erc20" },
-          "wrappedAsset.asset.address": { "literal": "0x4200000000000000000000000000000000000006" },
-          "wrappedAsset.amount.kind":   { "literal": "min" },
-          "wrappedAsset.amount.value":  { "from": "$.args.amountMin" },
-          "nativeAsset.asset.kind":     { "literal": "native" },
-          "nativeAsset.amount.kind":    { "literal": "min" },
-          "nativeAsset.amount.value":   { "from": "$.args.amountMin" },
-          "recipient":                  { "from": "$.args.recipient" }
+          "wrappedAsset.asset.kind": { "literal": "erc20" },
+          "wrappedAsset.asset.address": {
+            "literal": "0x4200000000000000000000000000000000000006"
+          },
+          "wrappedAsset.amount.kind": { "literal": "min" },
+          "wrappedAsset.amount.value": { "from": "$.args.amountMin" },
+          "nativeAsset.asset.kind": { "literal": "native" },
+          "nativeAsset.amount.kind": { "literal": "min" },
+          "nativeAsset.amount.value": { "from": "$.args.amountMin" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.recipient" }]
+          }
         }
       },
       "0x0d": {
@@ -244,12 +315,15 @@
         "category": "misc",
         "action": "transfer",
         "fields": {
-          "token.asset.kind":     { "literal": "erc20" },
-          "token.asset.address":  { "from": "$.args.transferDetails[0][3]" },
-          "token.amount.kind":    { "literal": "exact" },
-          "token.amount.value":   { "from": "$.args.transferDetails[0][2]" },
-          "from":                 { "from": "$.args.transferDetails[0][0]" },
-          "recipient":            { "from": "$.args.transferDetails[0][1]" }
+          "token.asset.kind": { "literal": "erc20" },
+          "token.asset.address": { "from": "$.args.transferDetails[0][3]" },
+          "token.amount.kind": { "literal": "exact" },
+          "token.amount.value": { "from": "$.args.transferDetails[0][2]" },
+          "from": { "from": "$.args.transferDetails[0][0]" },
+          "recipient": {
+            "fn": "map_recipient",
+            "args": [{ "from": "$.args.transferDetails[0][1]" }]
+          }
         }
       }
     }

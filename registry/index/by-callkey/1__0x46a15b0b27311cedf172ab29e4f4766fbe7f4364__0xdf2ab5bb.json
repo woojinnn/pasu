@@ -1,0 +1,81 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/v3-nfpm/sweepToken@1.0.0",
+  "manifest_path": "manifests/pancake/v3-nfpm/sweepToken@1.0.0.json",
+  "bundle_sha256": "0x50937f66e302aa58a2643bffe3232a098a1e7c97a9d42e69ad004da34154c9bf",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/v3-nfpm/sweepToken@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xdf2ab5bb",
+      "chain_to_addresses": {
+        "1": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "56": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "8453": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "sweepToken",
+      "abi": {
+        "name": "sweepToken",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "amountMinimum",
+            "type": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "transfer",
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc20"
+        },
+        "token.asset.address": {
+          "from": "$.args.token"
+        },
+        "token.amount.kind": {
+          "literal": "min"
+        },
+        "token.amount.value": {
+          "from": "$.args.amountMinimum"
+        },
+        "from": {
+          "from": "$.tx.to"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

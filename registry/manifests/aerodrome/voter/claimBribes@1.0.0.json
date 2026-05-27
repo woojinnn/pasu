@@ -2,20 +2,23 @@
   "type": "adapter_function",
   "id": "aerodrome/voter/claimBribes@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"],
-    "selector": "0x7715ee75"
+    "selector": "0x7715ee75",
+    "chain_to_addresses": {
+      "8453": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"]
+    }
   },
   "abi_fragment": {
     "function_name": "claimBribes",
     "abi": {
       "name": "claimBribes",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "bribes",  "type": "address[]"   },
-        { "name": "tokens",  "type": "address[][]" },
-        { "name": "tokenId", "type": "uint256"     }
+        { "name": "_bribes",  "type": "address[]"   },
+        { "name": "_tokens",  "type": "address[][]" },
+        { "name": "_tokenId", "type": "uint256"     }
       ]
     }
   },
@@ -24,18 +27,20 @@
     "category": "misc",
     "action": "claim_rewards",
     "fields": {
-      "source.address":          { "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5" },
+      "source.address":          { "from": "$.tx.to" },
       "source.label":            { "literal": "Aerodrome Voter (Bribes)" },
-      "tokenId":                 { "from":    "$.args.tokenId" },
-      "from":                    { "from":    "$.tx.from" },
-      "recipient":               { "from":    "$.tx.from" },
+      "nft.kind":                { "literal": "erc721" },
+      "nft.address":             { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
+      "tokenId":                 { "from": "$.args._tokenId" },
+      "from":                    { "from": "$.tx.from" },
+      "recipient":               { "from": "$.tx.from" },
       "rewardTokens[0].kind":    { "literal": "erc20" },
-      "rewardTokens[0].address": { "from":    "$.args.tokens[0][0]" }
+      "rewardTokens[0].address": { "from": "$.args._tokens[0][0]" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

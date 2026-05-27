@@ -1,0 +1,8 @@
+{
+  "kind": "erc721",
+  "chainId": 1,
+  "address": "0xed5af388653567af2f388e6224dc7c4b3241c544",
+  "collection_name": "Azuki",
+  "symbol": "AZUKI",
+  "source": "https://etherscan.io/address/0xED5AF388653567Af2F388E6224dC7C4b3241C544"
+}

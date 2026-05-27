@@ -1,26 +1,30 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/nfpm-multicall-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/nfpm-multicall-base@1.0.0.json",
-  "bundle_sha256": "0xa2fcfa67a0963dcead2b1a001cf95f8d655387b3f2cb92e06d3bb34e1663e721",
+  "bundle_id": "uniswap/nfpm/multicall@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/multicall@1.0.0.json",
+  "bundle_sha256": "0x91c37588195986d4d0b04e47ef298ce994b28d235a9342a46d41c3b94029be71",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/nfpm-multicall-base@1.0.0",
+    "id": "uniswap/nfpm/multicall@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
-      ],
-      "selector": "0xac9650d8"
+      "selector": "0xac9650d8",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "multicall",
       "abi": {
         "name": "multicall",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "data",

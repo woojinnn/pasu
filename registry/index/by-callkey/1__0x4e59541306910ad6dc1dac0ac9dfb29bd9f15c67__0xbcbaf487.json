@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/wbtc/liquidate@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/wbtc/liquidate@1.0.0.json",
-  "bundle_sha256": "0x0410bb67f36f242891a673c790be77d4070b98cbeb8b2efd5d295489afeb1a9e",
+  "bundle_id": "curve/crvusd-controller/wbtc/liquidate@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/wbtc/liquidate@1.0.0.json",
+  "bundle_sha256": "0x8789081e4c5e17a77eaaaa82fdf8d240e45f5c6ca8d29f1c8dd137ebe429a88e",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/wbtc/liquidate@1.0.0",
+    "id": "curve/crvusd-controller/wbtc/liquidate@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67"
-      ],
-      "selector": "0xbcbaf487"
+      "selector": "0xbcbaf487",
+      "chain_to_addresses": {
+        "1": [
+          "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "liquidate",
@@ -42,7 +42,7 @@
           "literal": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67"
         },
         "market.label": {
-          "literal": "Curve crvUSD WBTC Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "borrower": {
           "from": "$.args.user"
@@ -72,9 +72,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/v2/swapExactETHForTokens@1.0.0",
-  "manifest_path": "manifests/aerodrome/v2/swapExactETHForTokens@1.0.0.json",
-  "bundle_sha256": "0x73dcd6b0b6185ef05efa77bc9987c55ff72be2d69c538533e2bc33657e84250b",
+  "bundle_id": "aerodrome/router-v2/swapExactETHForTokens@1.0.0",
+  "manifest_path": "manifests/aerodrome/router-v2/swapExactETHForTokens@1.0.0.json",
+  "bundle_sha256": "0x5de66185bec6ba36d3b521085b6062eb4fc746963e9b1d3414f6cc87e53c875a",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/v2/swapExactETHForTokens@1.0.0",
+    "id": "aerodrome/router-v2/swapExactETHForTokens@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
-      ],
-      "selector": "0x903638a4"
+      "selector": "0x903638a4",
+      "chain_to_addresses": {
+        "8453": [
+          "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "swapExactETHForTokens",

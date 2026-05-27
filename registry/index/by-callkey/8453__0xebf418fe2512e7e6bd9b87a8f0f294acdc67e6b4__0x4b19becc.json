@@ -2,32 +2,33 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/split@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/split@1.0.0.json",
-  "bundle_sha256": "0x04322bdbc8ccbfacdeff3040a89676e661c51ca04214a86f299b04c553b61685",
+  "bundle_sha256": "0xde2a695fb9429c4f3a761b80145adee475b5e55c619815a5dbc6f96221ba0217",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/split@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0x4b19becc"
+      "selector": "0x4b19becc",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "split",
       "abi": {
         "name": "split",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenId",
+            "name": "_from",
             "type": "uint256"
           },
           {
-            "name": "ratios",
+            "name": "_amount",
             "type": "uint256"
           }
         ]
@@ -39,22 +40,24 @@
       "action": "lock_manage",
       "fields": {
         "votingEscrow": {
-          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+          "from": "$.tx.to"
         },
         "kind": {
           "literal": "split"
         },
         "fromTokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._from"
         },
         "splitRatio": {
-          "from": "$.args.ratios"
+          "from": "$.args._amount"
         }
       }
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

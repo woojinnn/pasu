@@ -1,0 +1,80 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/infinity-cl-position-manager/safeTransferFrom@1.0.0",
+  "manifest_path": "manifests/pancake/infinity-cl-position-manager/safeTransferFrom@1.0.0.json",
+  "bundle_sha256": "0x3f284ba84ad47e91c13659a044b3b8bcb04292bcdbd5dc7a2413b56fdd6a25f7",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/infinity-cl-position-manager/safeTransferFrom@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x42842e0e",
+      "chain_to_addresses": {
+        "56": [
+          "0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"
+        ],
+        "8453": [
+          "0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "safeTransferFrom",
+      "abi": {
+        "name": "safeTransferFrom",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "id",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "transfer",
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc721"
+        },
+        "token.asset.address": {
+          "from": "$.tx.to"
+        },
+        "token.asset.tokenId": {
+          "from": "$.args.id"
+        },
+        "token.amount.kind": {
+          "literal": "exact"
+        },
+        "token.amount.value": {
+          "literal": "1"
+        },
+        "from": {
+          "from": "$.args.from"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

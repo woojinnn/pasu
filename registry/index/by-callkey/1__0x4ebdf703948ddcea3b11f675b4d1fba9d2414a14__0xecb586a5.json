@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/cryptoswap/crvusdethcrv/removeLiquidity-v2@1.0.0",
-  "manifest_path": "manifests/curve/cryptoswap/crvusdethcrv/removeLiquidity-v2@1.0.0.json",
-  "bundle_sha256": "0x669631217ead0fd14515dc87e8eab29cc9dc32063d32cca4de76dc2b5880c4db",
+  "bundle_id": "curve/cryptoswap/crvusdethcrv/removeLiquidity@1.0.0",
+  "manifest_path": "manifests/curve/cryptoswap/crvusdethcrv/removeLiquidity@1.0.0.json",
+  "bundle_sha256": "0x7e319f2a69671a2544a41a1953a7c26d8e5f84d7070cbcce3e40dc830b220b7b",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/cryptoswap/crvusdethcrv/removeLiquidity-v2@1.0.0",
+    "id": "curve/cryptoswap/crvusdethcrv/removeLiquidity@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14"
-      ],
-      "selector": "0xecb586a5"
+      "selector": "0xecb586a5",
+      "chain_to_addresses": {
+        "1": [
+          "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "remove_liquidity",
@@ -62,29 +62,29 @@
         "outputTokens[0].asset.address": {
           "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
         },
-        "outputTokens[0].amount.kind": {
-          "literal": "min"
-        },
-        "outputTokens[0].amount.value": {
-          "from": "$.args.min_amounts[0]"
-        },
         "outputTokens[1].asset.kind": {
           "literal": "erc20"
         },
         "outputTokens[1].asset.address": {
           "literal": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
         },
-        "outputTokens[1].amount.kind": {
-          "literal": "min"
-        },
-        "outputTokens[1].amount.value": {
-          "from": "$.args.min_amounts[1]"
-        },
         "outputTokens[2].asset.kind": {
           "literal": "erc20"
         },
         "outputTokens[2].asset.address": {
           "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        },
+        "outputTokens[0].amount.kind": {
+          "literal": "min"
+        },
+        "outputTokens[0].amount.value": {
+          "from": "$.args.min_amounts[0]"
+        },
+        "outputTokens[1].amount.kind": {
+          "literal": "min"
+        },
+        "outputTokens[1].amount.value": {
+          "from": "$.args.min_amounts[1]"
         },
         "outputTokens[2].amount.kind": {
           "literal": "min"
@@ -99,9 +99,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

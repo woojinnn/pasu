@@ -11,6 +11,7 @@ mod gauge_vote;
 mod lock_create;
 mod lock_increase;
 mod lock_manage;
+mod lock_withdraw;
 mod lp_stake;
 mod lp_unstake;
 mod permit;
@@ -28,6 +29,7 @@ pub use gauge_vote::{GaugeVoteAction, GaugeVoteKind};
 pub use lock_create::LockCreateAction;
 pub use lock_increase::{LockIncreaseAction, LockIncreaseKind};
 pub use lock_manage::{LockManageAction, LockManageKind};
+pub use lock_withdraw::LockWithdrawAction;
 pub use lp_stake::LpStakeAction;
 pub use lp_unstake::LpUnstakeAction;
 pub use permit::PermitAction;
@@ -38,7 +40,7 @@ pub use unwrap::UnwrapAction;
 pub use vote::VoteAction;
 pub use wrap::WrapAction;
 
-/// ERC-20 approval variant.
+/// ERC-20/721 approval variant.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ApprovalKind {
@@ -50,6 +52,8 @@ pub enum ApprovalKind {
     Erc20Decrease,
     /// Uniswap Permit2 approval.
     Permit2,
+    /// ERC-721 single-token approval (NFT).
+    Erc721,
 }
 
 /// Permit signature variant.

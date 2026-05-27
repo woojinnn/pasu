@@ -2,67 +2,47 @@
   "matched": true,
   "bundle_id": "curve/vecrv/increaseAmount@1.0.0",
   "manifest_path": "manifests/curve/vecrv/increaseAmount@1.0.0.json",
-  "bundle_sha256": "0xa7aa88365cfa57b47407d55aa865d455ba929715cb18cbb99b850e7f7bee2169",
+  "bundle_sha256": "0x6c9ed73f518efb626fdbe88e1c0a712a9d1229340711ca772eda051d9c57af29",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/vecrv/increaseAmount@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
-      ],
-      "selector": "0x4957677c"
-    },
-    "abi_fragment": {
-      "function_name": "increase_amount",
-      "abi": {
-        "name": "increase_amount",
-        "type": "function",
-        "inputs": [
-          {
-            "name": "_value",
-            "type": "uint256"
-          }
+      "selector": "0x4957677c",
+      "chain_to_addresses": {
+        "1": [
+          "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
         ]
       }
     },
+    "abi_fragment": {
+      "name": "increase_amount",
+      "inputs": [
+        {
+          "name": "_value",
+          "type": "uint256"
+        }
+      ]
+    },
     "emit": {
       "strategy": "single_emit",
-      "category": "staking",
-      "action": "stake",
+      "category": "misc",
+      "action": "lock_increase",
       "fields": {
-        "tokenIn.kind": {
-          "literal": "erc20"
-        },
-        "tokenIn.address": {
-          "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52"
-        },
-        "receiptToken.kind": {
-          "literal": "erc20"
-        },
-        "receiptToken.address": {
+        "votingEscrow": {
           "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
         },
-        "amountIn.kind": {
-          "literal": "exact"
+        "kind": {
+          "literal": "amount"
         },
-        "amountIn.value": {
+        "additionalAmount.value": {
           "from": "$.args._value"
         },
-        "recipient": {
-          "from": "$.tx.from"
+        "additionalAmount.kind": {
+          "literal": "exact"
         }
       }
-    },
-    "requires": {
-      "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
-      ],
-      "extension": ">=0.1.0"
     }
   }
 }

@@ -2,31 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/permit2/permitWitnessTransferFrom@1.0.0",
   "manifest_path": "manifests/uniswap/permit2/permitWitnessTransferFrom@1.0.0.json",
-  "bundle_sha256": "0x209c7da8d35419c36357f57ee4f70bcba98b6e7a1596902a2036641f8ce244d9",
+  "bundle_sha256": "0x03631dd0b1eb0773664e246ad3147087bfd59ad143ee44adc577d4f262c5e00a",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/permit2/permitWitnessTransferFrom@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        56,
-        130,
-        137,
-        480,
-        8453,
-        42161,
-        42220,
-        43114,
-        57073,
-        81457,
-        7777777
-      ],
-      "to": [
-        "0x000000000022D473030F116dDEE9F6B43aC78BA3"
-      ],
-      "selector": "0x137c29fe"
+      "selector": "0x137c29fe",
+      "chain_to_addresses": {
+        "1": [
+          "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+        ],
+        "8453": [
+          "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permitWitnessTransferFrom",

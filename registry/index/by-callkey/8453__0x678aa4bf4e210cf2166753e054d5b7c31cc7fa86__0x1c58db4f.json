@@ -1,0 +1,76 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/smart-router/wrapETH@1.0.0",
+  "manifest_path": "manifests/pancake/smart-router/wrapETH@1.0.0.json",
+  "bundle_sha256": "0xf02952b30c6e58d3f4634b41ec141e437efd21bb7cb4d10d5e13de14c0307a29",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/smart-router/wrapETH@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x1c58db4f",
+      "chain_to_addresses": {
+        "1": [
+          "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
+        ],
+        "56": [
+          "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
+        ],
+        "8453": [
+          "0x678aa4bf4e210cf2166753e054d5b7c31cc7fa86"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "wrapETH",
+      "abi": {
+        "name": "wrapETH",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "wrap",
+      "fields": {
+        "nativeAsset.asset.kind": {
+          "literal": "native"
+        },
+        "nativeAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "nativeAsset.amount.value": {
+          "from": "$.args.value"
+        },
+        "wrappedAsset.asset.kind": {
+          "literal": "unknown"
+        },
+        "wrappedAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "wrappedAsset.amount.value": {
+          "from": "$.args.value"
+        },
+        "recipient": {
+          "from": "$.tx.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

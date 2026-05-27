@@ -1,0 +1,92 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/permit2/transferFrom-batch@1.0.0",
+  "manifest_path": "manifests/pancake/permit2/transferFrom-batch@1.0.0.json",
+  "bundle_sha256": "0xb434d6d839bf0fef8552d06791830a2506168ea38a4a01cdc5a6193ec9c29c30",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/permit2/transferFrom-batch@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x0d58b1db",
+      "chain_to_addresses": {
+        "1": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "56": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "8453": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "transferFrom",
+      "abi": {
+        "name": "transferFrom",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "transferDetails",
+            "type": "tuple[]",
+            "components": [
+              {
+                "name": "from",
+                "type": "address"
+              },
+              {
+                "name": "to",
+                "type": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint160"
+              },
+              {
+                "name": "token",
+                "type": "address"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "array_emit",
+      "category": "misc",
+      "action": "transfer",
+      "array_path": "$.args.transferDetails",
+      "max_elements": 64,
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc20"
+        },
+        "token.asset.address": {
+          "from": "$.args.element[3]"
+        },
+        "token.amount.kind": {
+          "literal": "exact"
+        },
+        "token.amount.value": {
+          "from": "$.args.element[2]"
+        },
+        "from": {
+          "from": "$.args.element[0]"
+        },
+        "recipient": {
+          "from": "$.args.element[1]"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

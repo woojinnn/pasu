@@ -1,0 +1,57 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/smart-router/multicall-blockhash@1.0.0",
+  "manifest_path": "manifests/pancake/smart-router/multicall-blockhash@1.0.0.json",
+  "bundle_sha256": "0xb12bf7fbea6e6454064b5e1fcf66c4c44a9adca06c7a36e7240767ae8d43d98c",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/smart-router/multicall-blockhash@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x1f0464d1",
+      "chain_to_addresses": {
+        "1": [
+          "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
+        ],
+        "56": [
+          "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
+        ],
+        "8453": [
+          "0x678aa4bf4e210cf2166753e054d5b7c31cc7fa86"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "multicall",
+      "abi": {
+        "name": "multicall",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "previousBlockhash",
+            "type": "bytes32"
+          },
+          {
+            "name": "data",
+            "type": "bytes[]"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "multicall_recurse",
+      "recurse_rule_id": "self_array_bytes_last_arg",
+      "max_depth": 3
+    },
+    "requires": {
+      "imperative": [
+        "multicall-recurse@^1.0"
+      ],
+      "adapter_capabilities": [],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

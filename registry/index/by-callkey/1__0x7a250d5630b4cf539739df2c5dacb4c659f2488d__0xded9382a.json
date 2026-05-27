@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v2/removeLiquidityETHWithPermit@1.0.0",
-  "manifest_path": "manifests/uniswap/v2/removeLiquidityETHWithPermit@1.0.0.json",
-  "bundle_sha256": "0xf4909456f794bca4a1804c3488b2f5b2cf4fd73d3287337484bd8f919920bfb7",
+  "bundle_id": "uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0",
+  "manifest_path": "manifests/uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0.json",
+  "bundle_sha256": "0x02b9974c9a385394ad775210c3e121a3f304a3c12a9b51ed83801d6b4019df07",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v2/removeLiquidityETHWithPermit@1.0.0",
+    "id": "uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
-      ],
-      "selector": "0xded9382a"
+      "selector": "0xded9382a",
+      "chain_to_addresses": {
+        "1": [
+          "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+        ],
+        "8453": [
+          "0x4752ba5DBc23f44D87826276BF6Fd6b1C372ad24"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "removeLiquidityETHWithPermit",

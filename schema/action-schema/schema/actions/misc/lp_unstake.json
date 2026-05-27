@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/lp_unstake.json",
+  "title": "LpUnstakeAction",
+  "description": "LP 토큰을 gauge 에서 unstake — Aerodrome Gauge.withdraw / Curve Gauge.withdraw. LpStakeAction 의 mirror. unstake 시 누적된 emission 보상 자동 회수 (Aerodrome) 또는 별도 ClaimRewardsAction (Curve). 본 Action 은 LP 토큰 회수만, 보상 회수는 별도 Action (claim_rewards) 으로 분리. 정책 'recipient == root.from' 분기.",
+
+  "type": "object",
+  "properties": {
+    "gauge": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "Gauge / staking contract 주소 (tx.to). LpStakeAction 의 gauge 와 동일 — 같은 contract."
+    },
+
+    "lpToken": {
+      "$ref": "../../common/_common.json#/$defs/AssetRefWithAmountConstraint",
+      "description": "unstake 되는 LP 토큰 + unstake 수량. asset 은 LpStake 와 동일하게 calldata 에 LP 주소 미포함 — emit 시 'asset.kind:unknown' literal placeholder. amount 는 withdraw(amount) 의 uint256 인자 (kind=exact)."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "unstake 된 LP 토큰의 destination. Aerodrome Gauge.withdraw 는 msg.sender 로 implicit. 정책 'recipient == root.from' 강력 권장."
+    }
+  },
+
+  "required": ["gauge", "lpToken", "recipient"]
+}

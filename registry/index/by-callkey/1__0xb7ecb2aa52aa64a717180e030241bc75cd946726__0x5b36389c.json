@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/stableswap-ng/2btc/removeLiquidity-ng@1.0.0",
-  "manifest_path": "manifests/curve/stableswap-ng/2btc/removeLiquidity-ng@1.0.0.json",
-  "bundle_sha256": "0xe7c3152a59b97ee373e08fbcb590c64dde47171f7470d813250a2caebb69bde8",
+  "bundle_id": "curve/stableswap-ng-factory/2btc/removeLiquidity@1.0.0",
+  "manifest_path": "manifests/curve/stableswap-ng-factory/2btc/removeLiquidity@1.0.0.json",
+  "bundle_sha256": "0x81955d2e737d1b5c4c10a8cdc9c2f95887d00535d1cee3956501c6dbca7387ee",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/stableswap-ng/2btc/removeLiquidity-ng@1.0.0",
+    "id": "curve/stableswap-ng-factory/2btc/removeLiquidity@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
-      ],
-      "selector": "0x5b36389c"
+      "selector": "0x5b36389c",
+      "chain_to_addresses": {
+        "1": [
+          "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "remove_liquidity",
@@ -87,9 +87,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

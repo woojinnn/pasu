@@ -2,10 +2,12 @@
   "type": "adapter_function",
   "id": "curve/vecrv/createLock@1.0.0",
   "publisher": "curve.fi",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [1],
-    "to": ["0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"],
-    "selector": "0x65fc3873"
+    "selector": "0x65fc3873",
+    "chain_to_addresses": {
+      "1": ["0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"]
+    }
   },
   "abi_fragment": {
     "function_name": "create_lock",
@@ -23,18 +25,19 @@
     "category": "misc",
     "action": "lock_create",
     "fields": {
-      "votingEscrow":  { "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
-      "asset.kind":    { "literal": "erc20" },
-      "asset.address": { "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
-      "amount.kind":   { "literal": "exact" },
-      "amount.value":  { "from": "$.args._value" },
-      "unlockTime":    { "from": "$.args._unlock_time" },
-      "recipient":     { "from": "$.tx.from" }
+      "votingEscrow":        { "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
+      "asset.asset.kind":    { "literal": "erc20" },
+      "asset.asset.address": { "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
+      "asset.amount.kind":   { "literal": "exact" },
+      "asset.amount.value":  { "from": "$.args._value" },
+      "unlockTime":          { "from": "$.args._unlock_time" },
+      "recipient":           { "from": "$.tx.from" }
     }
   },
   "requires": {
-    "imperative":        [],
-    "host_capabilities": ["host:token_metadata"],
-    "extension":         ">=0.1.0"
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
   }
 }

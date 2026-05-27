@@ -1,0 +1,59 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/masterchef-v3/collectTo@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x0d55f913",
+    "chain_to_addresses": {
+      "1": ["0x556b9306565093c855aea9ae92a594704c2cd59e"],
+      "56": ["0x556b9306565093c855aea9ae92a594704c2cd59e"],
+      "8453": ["0xc6a2db661d5a5690172d8eb0a7dea2d3008665a3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "collectTo",
+    "abi": {
+      "name": "collectTo",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "tokenId", "type": "uint256" },
+            { "name": "recipient", "type": "address" },
+            { "name": "amount0Max", "type": "uint128" },
+            { "name": "amount1Max", "type": "uint128" }
+          ]
+        },
+        { "name": "to", "type": "address" }
+      ],
+      "outputs": [
+        { "name": "amount0", "type": "uint256" },
+        { "name": "amount1", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "claim_rewards",
+    "fields": {
+      "source.address": { "from": "$.tx.to" },
+      "nft.kind": { "literal": "erc721" },
+      "nft.address": { "from": "$.tx.to" },
+      "nft.tokenId": { "from": "$.args.params[0]" },
+      "tokenId": { "from": "$.args.params[0]" },
+      "from": { "from": "$.tx.from" },
+      "recipient": { "from": "$.args.to" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

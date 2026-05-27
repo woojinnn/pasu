@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream-npm/safeTransferFrom@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream-npm/safeTransferFrom@1.0.0.json",
-  "bundle_sha256": "0xa38c3f1e3ed08078890248f49cb9ebe26dd410e4667998a477df5b5a985039dc",
+  "bundle_id": "aerodrome/slipstream-nfpm/safeTransferFrom@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-nfpm/safeTransferFrom@1.0.0.json",
+  "bundle_sha256": "0x4229f08a12397939415b85a9ff847a11133a551bff7b988194df6f3b627275fe",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream-npm/safeTransferFrom@1.0.0",
+    "id": "aerodrome/slipstream-nfpm/safeTransferFrom@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x827922686190790b37229fd06084350E74485b72"
-      ],
-      "selector": "0x42842e0e"
+      "selector": "0x42842e0e",
+      "chain_to_addresses": {
+        "8453": [
+          "0x827922686190790b37229fd06084350E74485b72"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "safeTransferFrom",

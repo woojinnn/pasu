@@ -1,0 +1,129 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/permit2/permit-batch@1.0.0",
+  "manifest_path": "manifests/pancake/permit2/permit-batch@1.0.0.json",
+  "bundle_sha256": "0x09f2d2739d40969fdff05ba5596d9cb8905d6de1f331918b2c95ba3625d54f72",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/permit2/permit-batch@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x2a2d80d1",
+      "chain_to_addresses": {
+        "1": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "56": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "8453": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "permit",
+      "abi": {
+        "name": "permit",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "permitBatch",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "details",
+                "type": "tuple[]",
+                "components": [
+                  {
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint160"
+                  },
+                  {
+                    "name": "expiration",
+                    "type": "uint48"
+                  },
+                  {
+                    "name": "nonce",
+                    "type": "uint48"
+                  }
+                ]
+              },
+              {
+                "name": "spender",
+                "type": "address"
+              },
+              {
+                "name": "sigDeadline",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "signature",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "array_emit",
+      "category": "misc",
+      "action": "permit",
+      "array_path": "$.args.permitBatch[0]",
+      "max_elements": 64,
+      "fields": {
+        "permitKind": {
+          "literal": "permit2_single"
+        },
+        "token.kind": {
+          "literal": "erc20"
+        },
+        "token.address": {
+          "from": "$.args.element[0]"
+        },
+        "owner": {
+          "from": "$.args.owner"
+        },
+        "spender": {
+          "from": "$.args.permitBatch[1]"
+        },
+        "amount.kind": {
+          "literal": "max"
+        },
+        "amount.value": {
+          "from": "$.args.element[1]"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.element[2]"
+        },
+        "validity.source": {
+          "literal": "grant-expiration"
+        },
+        "signatureValidity.expiresAt": {
+          "from": "$.args.permitBatch[2]"
+        },
+        "signatureValidity.source": {
+          "literal": "signature-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

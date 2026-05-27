@@ -6,6 +6,6 @@ forbid (
   action == Action::"lp_stake",
   resource
 ) when {
-  context.amount has value &&
-  context.amount.value == "0"
+  context.lpToken.amount has value &&
+  context.lpToken.amount.value == "0"
 };

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/gauge_vote.json",
+  "title": "GaugeVoteAction",
+  "description": "Solidly 계열 (Aerodrome / Velodrome / Curve veCRV) 의 emission gauge 가중 투표 — Voter.vote(tokenId, pools, weights) / Voter.reset(tokenId) / Voter.poke(tokenId). pools 와 weights 가 parallel array 로 매핑되어 epoch 의 emission 분배를 결정. veNFT 보유자가 자신의 voting power 를 여러 pool 에 분배 가능. kind 가 'reset' 이면 기존 vote 클리어 (pools/weights empty), 'poke' 이면 기존 vote 재계산 (weights 그대로). 정책 'whitelist 된 pool 만 vote' / 'reset 만 허용' 분기 가능. Curve veCRV 는 per-position NFT 없음 — tokenId 생략.",
+
+  "type": "object",
+  "properties": {
+    "voter": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "Voter 컨트랙트 주소 (tx.to). 정책 'whitelist 된 voter contract 만' 분기."
+    },
+
+    "tokenId": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "veNFT 의 tokenId (Aerodrome veAERO / Velodrome veVELO). account-bound voting escrow (Curve veCRV) 는 per-position NFT 없으므로 생략. 정책 'host:onchain 으로 ownerOf(tokenId) == root.from 검증' 분기."
+    },
+
+    "pools": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/Address" },
+      "description": "emission 가중치를 받을 gauge pool 주소 array. weights 와 parallel 매핑. 빈 array = reset (kind='reset' 시). 정책 'whitelist 된 pool 만 vote' 분기 — schema-level (Cedar) 또는 register-level (host:registry 의 known_gauges)."
+    },
+
+    "weights": {
+      "type": "array",
+      "items": { "$ref": "../../common/_common.json#/$defs/DecimalString" },
+      "description": "pools[i] 에 대한 voting weight (uint256). pools 와 parallel 매핑 — 같은 길이. weightsSum derived field 는 lowering 단계에서 자동 생성 (본 schema 에 미포함). reset 시 빈 array."
+    },
+
+    "kind": {
+      "type": "string",
+      "enum": ["vote", "reset", "poke"],
+      "description": "subkind discriminator. 'vote' (기본, pools/weights 로 emission 분배), 'reset' (기존 vote 클리어 — pools/weights empty), 'poke' (기존 vote 재계산 — weights 그대로). Voter contract 의 vote/reset/poke selector 별로 mapper 가 채움."
+    },
+
+    "validity": {
+      "$ref": "../../common/_common.json#/$defs/Validity",
+      "description": "off-chain sig 변형 (예: Aerodrome 의 voteBySig 류, 현재 미존재) 의 signature expiry. on-chain vote 직접 호출은 본 필드 부재. source=signature-deadline 또는 tx-deadline."
+    }
+  },
+
+  "required": ["voter", "pools", "weights"]
+}

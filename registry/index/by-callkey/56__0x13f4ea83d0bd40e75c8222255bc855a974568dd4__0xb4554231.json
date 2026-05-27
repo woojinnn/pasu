@@ -1,0 +1,117 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/smart-router/exactInputStableSwap@1.0.0",
+  "manifest_path": "manifests/pancake/smart-router/exactInputStableSwap@1.0.0.json",
+  "bundle_sha256": "0x5883dea9461793dc2155e8049003f6a29ff125c04c2d715f29c5fb8696bf1334",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/smart-router/exactInputStableSwap@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xb4554231",
+      "chain_to_addresses": {
+        "1": [
+          "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
+        ],
+        "56": [
+          "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
+        ],
+        "8453": [
+          "0x678aa4bf4e210cf2166753e054d5b7c31cc7fa86"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "exactInputStableSwap",
+      "abi": {
+        "name": "exactInputStableSwap",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "path",
+            "type": "address[]"
+          },
+          {
+            "name": "flag",
+            "type": "uint256[]"
+          },
+          {
+            "name": "amountIn",
+            "type": "uint256"
+          },
+          {
+            "name": "amountOutMin",
+            "type": "uint256"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "fn": "select_address",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": 0
+            }
+          ]
+        },
+        "inputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args.amountIn"
+        },
+        "outputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "outputToken.asset.address": {
+          "fn": "select_address",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": -1
+            }
+          ]
+        },
+        "outputToken.amount.kind": {
+          "literal": "min"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args.amountOutMin"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

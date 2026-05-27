@@ -1,0 +1,116 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/v3-nfpm/decreaseLiquidity@1.0.0",
+  "manifest_path": "manifests/pancake/v3-nfpm/decreaseLiquidity@1.0.0.json",
+  "bundle_sha256": "0x458d77cf8cba35cd25af4b6a9fc923d5fe5032467874bb166aa86d11bf3030ad",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/v3-nfpm/decreaseLiquidity@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x0c49ccbe",
+      "chain_to_addresses": {
+        "1": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "56": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "8453": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "decreaseLiquidity",
+      "abi": {
+        "name": "decreaseLiquidity",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "params",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "tokenId",
+                "type": "uint256"
+              },
+              {
+                "name": "liquidity",
+                "type": "uint128"
+              },
+              {
+                "name": "amount0Min",
+                "type": "uint256"
+              },
+              {
+                "name": "amount1Min",
+                "type": "uint256"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "decrease_liquidity",
+      "fields": {
+        "nft.kind": {
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "from": "$.tx.to"
+        },
+        "nft.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "liquidityDelta.kind": {
+          "literal": "exact"
+        },
+        "liquidityDelta.value": {
+          "from": "$.args.liquidity"
+        },
+        "outputTokens[0].asset.kind": {
+          "literal": "unknown"
+        },
+        "outputTokens[0].amount.kind": {
+          "literal": "min"
+        },
+        "outputTokens[0].amount.value": {
+          "from": "$.args.amount0Min"
+        },
+        "outputTokens[1].asset.kind": {
+          "literal": "unknown"
+        },
+        "outputTokens[1].amount.kind": {
+          "literal": "min"
+        },
+        "outputTokens[1].amount.value": {
+          "from": "$.args.amount1Min"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "tx-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

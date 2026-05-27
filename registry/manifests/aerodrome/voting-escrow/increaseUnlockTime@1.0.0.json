@@ -2,19 +2,22 @@
   "type": "adapter_function",
   "id": "aerodrome/voting-escrow/increaseUnlockTime@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
-    "selector": "0x9d507b8b"
+    "selector": "0x9d507b8b",
+    "chain_to_addresses": {
+      "8453": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"]
+    }
   },
   "abi_fragment": {
     "function_name": "increaseUnlockTime",
     "abi": {
       "name": "increaseUnlockTime",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "tokenId",      "type": "uint256" },
-        { "name": "lockDuration", "type": "uint256" }
+        { "name": "_tokenId",      "type": "uint256" },
+        { "name": "_lockDuration", "type": "uint256" }
       ]
     }
   },
@@ -23,15 +26,15 @@
     "category": "misc",
     "action": "lock_increase",
     "fields": {
-      "votingEscrow":       { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
-      "tokenId":            { "from":    "$.args.tokenId" },
+      "votingEscrow":       { "from": "$.tx.to" },
+      "tokenId":            { "from": "$.args._tokenId" },
       "kind":               { "literal": "unlock_time" },
-      "newLockDurationSec": { "from":    "$.args.lockDuration" }
+      "newLockDurationSec": { "from": "$.args._lockDuration" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

@@ -1,0 +1,41 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/nfpm/burn@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x42966c68",
+    "chain_to_addresses": {
+      "1": ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "8453": ["0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "burn",
+    "abi": {
+      "name": "burn",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "tokenId", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "burn_liquidity_nft",
+    "fields": {
+      "nft.kind": { "literal": "erc721" },
+      "nft.address": { "from": "$.tx.to" },
+      "nft.tokenId": { "from": "$.args.tokenId" },
+      "burnKind": { "literal": "empty_only" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

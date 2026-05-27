@@ -2,32 +2,33 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/increaseUnlockTime@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/increaseUnlockTime@1.0.0.json",
-  "bundle_sha256": "0xebcc319cc85a6ab7ce8d4b0f1709ecf998abbdf4661fb60aa87964d4571f8b23",
+  "bundle_sha256": "0xb543e33e2518804a143f8fd128b6bec007ebf7da0ea90e5ea5cdc06d4aef6b14",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/increaseUnlockTime@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0x9d507b8b"
+      "selector": "0x9d507b8b",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "increaseUnlockTime",
       "abi": {
         "name": "increaseUnlockTime",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           },
           {
-            "name": "lockDuration",
+            "name": "_lockDuration",
             "type": "uint256"
           }
         ]
@@ -39,22 +40,24 @@
       "action": "lock_increase",
       "fields": {
         "votingEscrow": {
-          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+          "from": "$.tx.to"
         },
         "tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "kind": {
           "literal": "unlock_time"
         },
         "newLockDurationSec": {
-          "from": "$.args.lockDuration"
+          "from": "$.args._lockDuration"
         }
       }
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

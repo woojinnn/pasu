@@ -1,0 +1,40 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/v3-nfpm/refundETH@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x12210e8a",
+    "chain_to_addresses": {
+      "1": ["0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"],
+      "56": ["0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"],
+      "8453": ["0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "refundETH",
+    "abi": {
+      "name": "refundETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind": { "literal": "native" },
+      "token.amount.kind": { "literal": "unknown" },
+      "from": { "from": "$.tx.to" },
+      "recipient": { "from": "$.tx.from" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

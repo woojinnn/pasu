@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/cryptoswap/crvcrvusdtbtcwsteth/exchange-noEth@1.0.0",
-  "manifest_path": "manifests/curve/cryptoswap/crvcrvusdtbtcwsteth/exchange-noEth@1.0.0.json",
-  "bundle_sha256": "0x7b6da7c824c23a9742303b3f3cea9a62a46de09202650f22bb45f0c34782bfec",
+  "bundle_id": "curve/cryptoswap/crvcrvusdtbtcwsteth/exchange@1.0.0",
+  "manifest_path": "manifests/curve/cryptoswap/crvcrvusdtbtcwsteth/exchange@1.0.0.json",
+  "bundle_sha256": "0xba82c3ec19b78f4fdf272b78b5fb00407071eaa6fb8185f3d1857418175253a3",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/cryptoswap/crvcrvusdtbtcwsteth/exchange-noEth@1.0.0",
+    "id": "curve/cryptoswap/crvcrvusdtbtcwsteth/exchange@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x2889302a794da87fbf1d6db415c1492194663d13"
-      ],
-      "selector": "0x5b41b908"
+      "selector": "0x5b41b908",
+      "chain_to_addresses": {
+        "1": [
+          "0x2889302a794da87fbf1d6db415c1492194663d13"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exchange",
@@ -105,9 +105,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

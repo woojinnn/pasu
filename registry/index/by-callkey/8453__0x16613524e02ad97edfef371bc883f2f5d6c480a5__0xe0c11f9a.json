@@ -2,25 +2,26 @@
   "matched": true,
   "bundle_id": "aerodrome/voter/depositManaged@1.0.0",
   "manifest_path": "manifests/aerodrome/voter/depositManaged@1.0.0.json",
-  "bundle_sha256": "0xa171a7896011645635bbd3512c89a5f9824233a36c80fa5f79518230b5df15c7",
+  "bundle_sha256": "0x3a15c5f1ddd93daab9c6b04448ba1297663e0d0d0876268aa502f6213673a32b",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voter/depositManaged@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
-      ],
-      "selector": "0xe0c11f9a"
+      "selector": "0xe0c11f9a",
+      "chain_to_addresses": {
+        "8453": [
+          "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "depositManaged",
       "abi": {
         "name": "depositManaged",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
             "name": "_tokenId",
@@ -54,7 +55,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

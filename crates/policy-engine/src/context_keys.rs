@@ -159,8 +159,10 @@ pub const LOCK_DURATION_SEC: &str = "lockDurationSec";
 pub const UNLOCK_TIME: &str = "unlockTime";
 /// Additional amount field for `lock_increase` (amount kind).
 pub const ADDITIONAL_AMOUNT: &str = "additionalAmount";
-/// New lock duration for `lock_increase` (`unlock_time` kind).
+/// New lock duration for `lock_increase` (`unlock_time` kind, Aerodrome relative seconds).
 pub const NEW_LOCK_DURATION_SEC: &str = "newLockDurationSec";
+/// New absolute unlock timestamp for `lock_increase` (`unlock_time` kind, Curve absolute epoch).
+pub const NEW_UNLOCK_TIME: &str = "newUnlockTime";
 /// Source veNFT token id for `lock_manage`.
 pub const FROM_TOKEN_ID: &str = "fromTokenId";
 /// Destination veNFT token id for `lock_manage` (merge target).

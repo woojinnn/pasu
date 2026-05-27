@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/cryptoswap/btcghoeth/removeLiquidityOneCoin-v2@1.0.0",
-  "manifest_path": "manifests/curve/cryptoswap/btcghoeth/removeLiquidityOneCoin-v2@1.0.0.json",
-  "bundle_sha256": "0x596c13caff81969e928fc2002b56fbe3ee7b4a37005314705910e5c1c70dd8e2",
+  "bundle_id": "curve/cryptoswap/btcghoeth/removeLiquidityOneCoin@1.0.0",
+  "manifest_path": "manifests/curve/cryptoswap/btcghoeth/removeLiquidityOneCoin@1.0.0.json",
+  "bundle_sha256": "0x2468edcf95f58aa86ace54f5a5665001aafa4c0c2a81b45ef7a4cf043669f8e5",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/cryptoswap/btcghoeth/removeLiquidityOneCoin-v2@1.0.0",
+    "id": "curve/cryptoswap/btcghoeth/removeLiquidityOneCoin@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f"
-      ],
-      "selector": "0xf1dc3cc9"
+      "selector": "0xf1dc3cc9",
+      "chain_to_addresses": {
+        "1": [
+          "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "remove_liquidity_one_coin",
@@ -91,9 +91,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

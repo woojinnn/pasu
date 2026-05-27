@@ -1,9 +1,11 @@
 type LockIncreaseContext = {
   votingEscrow: String,
-  tokenId: String,
+  tokenId?: String,
   kind: String,
   additionalAmount?: AmountConstraint,
   newLockDurationSec?: String,
+  newUnlockTime?: String,
+  recipient?: String,
 };
 
 action "lock_increase" appliesTo {

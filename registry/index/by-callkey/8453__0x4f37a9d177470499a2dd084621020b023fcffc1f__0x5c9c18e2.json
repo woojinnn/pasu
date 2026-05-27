@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "curve/router-ng/exchange-5arg-base@1.0.0",
-  "manifest_path": "manifests/curve/router-ng/exchange-5arg-base@1.0.0.json",
-  "bundle_sha256": "0x0bcfdacdd9ef02dca5af33c78753901a6da2044b81ebb8ec4be6105095f69c70",
+  "bundle_id": "curve/router-ng/exchange-5arg@1.0.0",
+  "manifest_path": "manifests/curve/router-ng/exchange-5arg@1.0.0.json",
+  "bundle_sha256": "0x4a40db20730108a9c4dfb03a1f3015b556ec1905e16c443f0291558f78e06609",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/router-ng/exchange-5arg-base@1.0.0",
+    "id": "curve/router-ng/exchange-5arg@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x4f37A9d177470499A2dD084621020b023fcffc1F"
-      ],
-      "selector": "0x5c9c18e2"
+      "selector": "0x5c9c18e2",
+      "chain_to_addresses": {
+        "1": [
+          "0x45312ea0eFf7E09C83CBE249fa1d7598c4C8cd4e"
+        ],
+        "8453": [
+          "0x4f37a9d177470499a2dd084621020b023fcffc1f"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exchange",
@@ -100,9 +103,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

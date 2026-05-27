@@ -1,26 +1,27 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream-npm/collect@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream-npm/collect@1.0.0.json",
-  "bundle_sha256": "0x255712e9f6c7f0f7cdbda548695f799530b1aeaa5c9700adfe37650148c765d1",
+  "bundle_id": "aerodrome/slipstream-nfpm/collect@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-nfpm/collect@1.0.0.json",
+  "bundle_sha256": "0xe893ec53c71b678b3d590f6f65f50703168cfe8c2d062f0c7e8ae079af190e0b",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream-npm/collect@1.0.0",
+    "id": "aerodrome/slipstream-nfpm/collect@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x827922686190790b37229fd06084350E74485b72"
-      ],
-      "selector": "0xfc6f7865"
+      "selector": "0xfc6f7865",
+      "chain_to_addresses": {
+        "8453": [
+          "0x827922686190790b37229fd06084350E74485b72"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "collect",
       "abi": {
         "name": "collect",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -52,8 +53,17 @@
       "category": "misc",
       "action": "claim_rewards",
       "fields": {
+        "source.address": {
+          "from": "$.tx.to"
+        },
+        "source.label": {
+          "literal": "Slipstream NFPM Position"
+        },
         "nft.kind": {
-          "literal": "unknown"
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "from": "$.tx.to"
         },
         "tokenId": {
           "from": "$.args.tokenId"
@@ -63,6 +73,18 @@
         },
         "recipient": {
           "from": "$.args.recipient"
+        },
+        "maxAmounts[0].kind": {
+          "literal": "max"
+        },
+        "maxAmounts[0].value": {
+          "from": "$.args.amount0Max"
+        },
+        "maxAmounts[1].kind": {
+          "literal": "max"
+        },
+        "maxAmounts[1].value": {
+          "from": "$.args.amount1Max"
         }
       }
     },

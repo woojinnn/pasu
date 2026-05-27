@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/lp_stake.json",
+  "title": "LpStakeAction",
+  "description": "LP 토큰을 gauge / staking contract 에 stake — Aerodrome Gauge.deposit / Curve Gauge.deposit / Convex stake. liquid staking 의 StakeAction 과 구별 — LpStakeAction 은 receipt 토큰 미발행 (gauge 가 stake share 만 기록, ERC20 receipt 없음). LP 토큰 자체를 gauge 가 escrow 하고 stake 후 emission 보상 (별도 ClaimRewardsAction). 정책 'whitelist 된 gauge 만 stake' / 'recipient == root.from' 분기.",
+
+  "type": "object",
+  "properties": {
+    "gauge": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "Gauge / staking contract 주소 (tx.to). Aerodrome 의 경우 V2 Gauge / Slipstream Gauge factory 가 deploy 한 per-pool gauge. 정책 'whitelist 된 gauge 만' 분기 — host:registry 의 known_gauges."
+    },
+
+    "lpToken": {
+      "$ref": "../../common/_common.json#/$defs/AssetRefWithAmountConstraint",
+      "description": "stake 되는 LP 토큰 + stake 수량. asset 은 (kind=erc20) LP token 정보 — Aerodrome Gauge 는 calldata 에 LP 주소 미포함 (gauge 가 immutable LP 만 처리) → emit 시 'asset.kind:unknown' literal 로 placeholder (B-3 결함 fix 패턴). amount 는 deposit(amount) 의 uint256 인자 (kind=exact)."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "stake credit 의 owner — gauge 의 stake share 가 기록되는 주소. Aerodrome Gauge.deposit 은 msg.sender 로 implicit (recipient=root.from), Gauge.depositTo(amount, recipient) 는 명시. 정책 'recipient == root.from' 강력 권장 (제3자 stake 위장 차단)."
+    }
+  },
+
+  "required": ["gauge", "lpToken", "recipient"]
+}

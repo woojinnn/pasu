@@ -2,26 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/permit2/approve@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      56,
-      130,
-      137,
-      480,
-      8453,
-      42161,
-      42220,
-      43114,
-      57073,
-      81457,
-      7777777
-    ],
-    "to": [
-      "0x000000000022D473030F116dDEE9F6B43aC78BA3"
-    ],
-    "selector": "0x87517c45"
+    "selector": "0x87517c45",
+    "chain_to_addresses": {
+      "1": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"],
+      "8453": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"]
+    }
   },
   "abi_fragment": {
     "function_name": "approve",
@@ -29,22 +16,10 @@
       "name": "approve",
       "type": "function",
       "inputs": [
-        {
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "name": "amount",
-          "type": "uint160"
-        },
-        {
-          "name": "expiration",
-          "type": "uint48"
-        }
+        { "name": "token", "type": "address" },
+        { "name": "spender", "type": "address" },
+        { "name": "amount", "type": "uint160" },
+        { "name": "expiration", "type": "uint48" }
       ]
     }
   },
@@ -53,37 +28,19 @@
     "category": "misc",
     "action": "approve",
     "fields": {
-      "token.kind": {
-        "literal": "erc20"
-      },
-      "token.address": {
-        "from": "$.args.token"
-      },
-      "spender": {
-        "from": "$.args.spender"
-      },
-      "amount.kind": {
-        "literal": "max"
-      },
-      "amount.value": {
-        "from": "$.args.amount"
-      },
-      "approvalKind": {
-        "literal": "permit2"
-      },
-      "validity.expiresAt": {
-        "from": "$.args.expiration"
-      },
-      "validity.source": {
-        "literal": "grant-expiration"
-      }
+      "token.kind": { "literal": "erc20" },
+      "token.address": { "from": "$.args.token" },
+      "spender": { "from": "$.args.spender" },
+      "amount.kind": { "literal": "max" },
+      "amount.value": { "from": "$.args.amount" },
+      "approvalKind": { "literal": "permit2" },
+      "validity.expiresAt": { "from": "$.args.expiration" },
+      "validity.source": { "literal": "grant-expiration" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [
-      "token_metadata"
-    ],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

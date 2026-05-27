@@ -2,24 +2,27 @@
   "type": "adapter_function",
   "id": "aerodrome/gauge/withdraw@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": [
-      "0x4F09bAb2f0E15e2A078A227FE1537665F55b8360",
-      "0x519BBD1Dd8C6A94C46080E24f316c14Ee758C025",
-      "0xeca7Ff920E7162334634c721133F3183B83B0323",
-      "0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC",
-      "0x96a24aB830D4ec8b1F6f04Ceac104F1A3b211a01"
-    ],
-    "selector": "0x2e1a7d4d"
+    "selector": "0x2e1a7d4d",
+    "chain_to_addresses": {
+      "8453": [
+        "0x4f09bab2f0e15e2a078a227fe1537665f55b8360",
+        "0x519bbd1dd8c6a94c46080e24f316c14ee758c025",
+        "0xeca7ff920e7162334634c721133f3183b83b0323",
+        "0xaeba79d1108788e5754eb30aac64eb868a3247fc",
+        "0x96a24ab830d4ec8b1f6f04ceac104f1a3b211a01"
+      ]
+    }
   },
   "abi_fragment": {
     "function_name": "withdraw",
     "abi": {
       "name": "withdraw",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "amount", "type": "uint256" }
+        { "name": "_amount", "type": "uint256" }
       ]
     }
   },
@@ -28,12 +31,11 @@
     "category": "misc",
     "action": "lp_unstake",
     "fields": {
-      "gauge":           { "from": "$.tx.to" },
-      "lpToken.kind":    { "literal": "erc20" },
-      "lpToken.address": { "from": "$.tx.to" },
-      "amount.kind":     { "literal": "exact" },
-      "amount.value":    { "from": "$.args.amount" },
-      "recipient":       { "from": "$.tx.from" }
+      "gauge":                  { "from": "$.tx.to" },
+      "lpToken.asset.kind":     { "literal": "unknown" },
+      "lpToken.amount.kind":    { "literal": "exact" },
+      "lpToken.amount.value":   { "from": "$.args._amount" },
+      "recipient":              { "from": "$.tx.from" }
     }
   },
   "requires": {

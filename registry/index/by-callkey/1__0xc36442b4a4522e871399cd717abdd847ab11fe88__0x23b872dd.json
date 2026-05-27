@@ -1,23 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/transferFrom@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/transferFrom@1.0.0.json",
-  "bundle_sha256": "0xb7bf782d950a3efa3678cd1c442ac7ab0c19a077bd3833b2065303b79b95c7dd",
+  "bundle_id": "uniswap/nfpm/transferFrom@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/transferFrom@1.0.0.json",
+  "bundle_sha256": "0x16b4e9b8df3e5b317ffe59f34d7facdebd18f43f4f4529e7c82b641d81d787cf",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/transferFrom@1.0.0",
+    "id": "uniswap/nfpm/transferFrom@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
-      ],
-      "selector": "0x23b872dd"
+      "selector": "0x23b872dd",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "transferFrom",

@@ -1,0 +1,56 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/slipstream-nfpm/collect@1.0.0",
+  "publisher": "aerodrome.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xfc6f7865",
+    "chain_to_addresses": {
+      "8453": ["0x827922686190790b37229fd06084350E74485b72"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "collect",
+    "abi": {
+      "name": "collect",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "tokenId",    "type": "uint256" },
+            { "name": "recipient",  "type": "address" },
+            { "name": "amount0Max", "type": "uint128" },
+            { "name": "amount1Max", "type": "uint128" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "claim_rewards",
+    "fields": {
+      "source.address":      { "from": "$.tx.to" },
+      "source.label":        { "literal": "Slipstream NFPM Position" },
+      "nft.kind":            { "literal": "erc721" },
+      "nft.address":         { "from": "$.tx.to" },
+      "tokenId":             { "from": "$.args.tokenId" },
+      "from":                { "from": "$.tx.from" },
+      "recipient":           { "from": "$.args.recipient" },
+      "maxAmounts[0].kind":  { "literal": "max" },
+      "maxAmounts[0].value": { "from": "$.args.amount0Max" },
+      "maxAmounts[1].kind":  { "literal": "max" },
+      "maxAmounts[1].value": { "from": "$.args.amount1Max" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

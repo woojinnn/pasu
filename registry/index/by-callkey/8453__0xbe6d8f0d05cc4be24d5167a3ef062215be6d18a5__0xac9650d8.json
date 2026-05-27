@@ -1,26 +1,27 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream/multicall@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream/multicall@1.0.0.json",
-  "bundle_sha256": "0x648e4ad7ee5a4281918d883137ff14278103e92ac138514747d1753263ee17f7",
+  "bundle_id": "aerodrome/slipstream-swap-router/multicall@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-swap-router/multicall@1.0.0.json",
+  "bundle_sha256": "0xf58f2f0418939016c9ffc41ff6cd7a2dd0076c1390c016e5babcabc59b6554ce",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream/multicall@1.0.0",
+    "id": "aerodrome/slipstream-swap-router/multicall@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
-      ],
-      "selector": "0xac9650d8"
+      "selector": "0xac9650d8",
+      "chain_to_addresses": {
+        "8453": [
+          "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "multicall",
       "abi": {
         "name": "multicall",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "data",

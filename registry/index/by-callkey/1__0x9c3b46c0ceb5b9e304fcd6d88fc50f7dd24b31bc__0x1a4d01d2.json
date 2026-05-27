@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/stableswap-ng/frxeth-ng/removeLiquidityOneCoin-ng@1.0.0",
-  "manifest_path": "manifests/curve/stableswap-ng/frxeth-ng/removeLiquidityOneCoin-ng@1.0.0.json",
-  "bundle_sha256": "0x043a8548bad696981f2884b92071c1cb53513683e64a3efbdab8fb1f068d8a6a",
+  "bundle_id": "curve/stableswap-ng-factory/frxeth-ng/removeLiquidityOneCoin@1.0.0",
+  "manifest_path": "manifests/curve/stableswap-ng-factory/frxeth-ng/removeLiquidityOneCoin@1.0.0.json",
+  "bundle_sha256": "0xbfb5e1c732f26d3f766ddaa8dd2ae8c31b8ab1ca4c6e3850d8ee210ec8305e75",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/stableswap-ng/frxeth-ng/removeLiquidityOneCoin-ng@1.0.0",
+    "id": "curve/stableswap-ng-factory/frxeth-ng/removeLiquidityOneCoin@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
-      ],
-      "selector": "0x1a4d01d2"
+      "selector": "0x1a4d01d2",
+      "chain_to_addresses": {
+        "1": [
+          "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "remove_liquidity_one_coin",
@@ -90,9 +90,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

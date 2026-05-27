@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/cryptoswap/trylsd/removeLiquidityOneCoin-v2@1.0.0",
-  "manifest_path": "manifests/curve/cryptoswap/trylsd/removeLiquidityOneCoin-v2@1.0.0.json",
-  "bundle_sha256": "0x37579fd2671cd0810037f7ef82f50c5416a17273574b850d4339ec1a8dd30b6c",
+  "bundle_id": "curve/cryptoswap/trylsd/removeLiquidityOneCoin@1.0.0",
+  "manifest_path": "manifests/curve/cryptoswap/trylsd/removeLiquidityOneCoin@1.0.0.json",
+  "bundle_sha256": "0x082b1698ae3e1d0dac13b936bcaf1fc7fd4ce1d829b67b82ef628f04a9644f90",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/cryptoswap/trylsd/removeLiquidityOneCoin-v2@1.0.0",
+    "id": "curve/cryptoswap/trylsd/removeLiquidityOneCoin@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193"
-      ],
-      "selector": "0xf1dc3cc9"
+      "selector": "0xf1dc3cc9",
+      "chain_to_addresses": {
+        "1": [
+          "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "remove_liquidity_one_coin",
@@ -91,9 +91,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

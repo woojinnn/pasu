@@ -62,19 +62,53 @@ pub enum BundleType {
     AdapterFunction,
 }
 
-/// Match criteria — `(chain_ids, to, selector)` tuple identifying a callsite.
+/// Match criteria identifying a callsite. registry v2 schema:
+/// `chain_to_addresses` (chain → addresses map) + `selector`. The cartesian
+/// `chain_ids × to` shape of v1 is retained via `#[serde(default)]` for
+/// backward compatibility (test fixtures, legacy seed bundles). Iteration
+/// must go through [`BundleMatch::entries`] so consumers do not need to
+/// branch on which shape parsed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BundleMatch {
-    /// Chain ids this bundle applies to (one bundle multi-chain).
+    /// v2 — chain id → contract addresses (case-insensitive hex). Empty
+    /// (`{}`) when the bundle uses the v1 legacy shape below.
+    #[serde(default)]
+    pub chain_to_addresses: BTreeMap<u64, Vec<String>>,
+
+    /// v1 legacy — chain ids the bundle applies to. Empty when the bundle
+    /// uses the v2 shape above. Cartesian with [`Self::to`].
+    #[serde(default)]
     pub chain_ids: Vec<u64>,
 
-    /// Contract addresses this bundle applies to (one bundle multi-deployment).
-    /// String form `"0x..."` — Phase 0 does not enforce hex; that is up to
-    /// the bundle validator / installer.
+    /// v1 legacy — contract addresses the bundle applies to. Empty when the
+    /// bundle uses the v2 shape above. Cartesian with [`Self::chain_ids`].
+    #[serde(default)]
     pub to: Vec<String>,
 
     /// 4-byte function selector as `"0x" + 8 hex chars`.
     pub selector: String,
+}
+
+impl BundleMatch {
+    /// Iterate `(chain_id, address)` pairs regardless of which shape
+    /// (v2 `chain_to_addresses` or v1 `chain_ids × to`) the bundle uses.
+    /// v2 takes precedence when both are present; legacy cartesian is the
+    /// fallback. Returns owned pairs so the caller can mutate addresses
+    /// (lowercase) without conflicting with the borrow.
+    pub fn entries(&self) -> Vec<(u64, String)> {
+        if !self.chain_to_addresses.is_empty() {
+            return self
+                .chain_to_addresses
+                .iter()
+                .flat_map(|(c, addrs)| addrs.iter().map(move |a| (*c, a.clone())))
+                .collect();
+        }
+        // v1 cartesian fallback
+        self.chain_ids
+            .iter()
+            .flat_map(|c| self.to.iter().map(move |a| (*c, a.clone())))
+            .collect()
+    }
 }
 
 /// Outer ABI fragment. `abi` is opaque `serde_json::Value` because alloy

@@ -148,17 +148,17 @@ fn make_vote_call(
         function_signature: "vote(uint256,address[],uint256[])".into(),
         args: vec![
             DecodedArg {
-                name: "tokenId".into(),
+                name: "_tokenId".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(token_id),
             },
             DecodedArg {
-                name: "pools".into(),
+                name: "_poolVote".into(),
                 abi_type: "address[]".into(),
                 value: DecodedValue::Array(pools.into_iter().map(DecodedValue::Address).collect()),
             },
             DecodedArg {
-                name: "weights".into(),
+                name: "_weights".into(),
                 abi_type: "uint256[]".into(),
                 value: DecodedValue::Array(weights.into_iter().map(DecodedValue::Uint).collect()),
             },
@@ -172,7 +172,7 @@ fn make_reset_or_poke_call(mapper: &DeclarativeMapper, sig: &str, token_id: U256
         decoder_id: mapper.declarative_decoder_id(),
         function_signature: sig.into(),
         args: vec![DecodedArg {
-            name: "tokenId".into(),
+            name: "_tokenId".into(),
             abi_type: "uint256".into(),
             value: DecodedValue::Uint(token_id),
         }],
@@ -192,12 +192,12 @@ fn make_claim_fees_call(
         function_signature: "claimFees(address[],address[][],uint256)".into(),
         args: vec![
             DecodedArg {
-                name: "fees".into(),
+                name: "_fees".into(),
                 abi_type: "address[]".into(),
                 value: DecodedValue::Array(fees.into_iter().map(DecodedValue::Address).collect()),
             },
             DecodedArg {
-                name: "tokens".into(),
+                name: "_tokens".into(),
                 abi_type: "address[][]".into(),
                 value: DecodedValue::Array(
                     tokens
@@ -211,7 +211,7 @@ fn make_claim_fees_call(
                 ),
             },
             DecodedArg {
-                name: "tokenId".into(),
+                name: "_tokenId".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(token_id),
             },

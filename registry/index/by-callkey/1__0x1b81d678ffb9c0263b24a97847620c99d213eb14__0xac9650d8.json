@@ -1,0 +1,53 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/v3-swap-router/multicall@1.0.0",
+  "manifest_path": "manifests/pancake/v3-swap-router/multicall@1.0.0.json",
+  "bundle_sha256": "0x3d601842af6ad0bd7f47382a33add51877f0c9021642ec9d1d75d38b4dee0523",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/v3-swap-router/multicall@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xac9650d8",
+      "chain_to_addresses": {
+        "1": [
+          "0x1b81D678ffb9C0263b24A97847620C99d213eB14"
+        ],
+        "56": [
+          "0x1b81D678ffb9C0263b24A97847620C99d213eB14"
+        ],
+        "8453": [
+          "0x1b81D678ffb9C0263b24A97847620C99d213eB14"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "multicall",
+      "abi": {
+        "name": "multicall",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "data",
+            "type": "bytes[]"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "multicall_recurse",
+      "recurse_rule_id": "self_array_bytes_last_arg",
+      "max_depth": 3
+    },
+    "requires": {
+      "imperative": [
+        "multicall-recurse@^1.0"
+      ],
+      "adapter_capabilities": [],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

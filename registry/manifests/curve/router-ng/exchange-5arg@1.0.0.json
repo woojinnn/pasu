@@ -2,10 +2,13 @@
   "type": "adapter_function",
   "id": "curve/router-ng/exchange-5arg@1.0.0",
   "publisher": "curve.fi",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [10, 100, 137, 250, 2222, 43114],
-    "to": ["0x0DCDED3545D565bA3B19E683431381007245d983"],
-    "selector": "0x5c9c18e2"
+    "selector": "0x5c9c18e2",
+    "chain_to_addresses": {
+      "1": ["0x45312ea0eFf7E09C83CBE249fa1d7598c4C8cd4e"],
+      "8453": ["0x4f37a9d177470499a2dd084621020b023fcffc1f"]
+    }
   },
   "abi_fragment": {
     "function_name": "exchange",
@@ -51,8 +54,9 @@
     }
   },
   "requires": {
-    "imperative":        [],
-    "host_capabilities": ["host:token_metadata"],
-    "extension":         ">=0.1.0"
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
   }
 }

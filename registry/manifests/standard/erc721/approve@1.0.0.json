@@ -1,0 +1,67 @@
+{
+  "type": "adapter_function",
+  "id": "standard/erc721/approve@1.0.0",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x095ea7b3",
+    "chain_to_addresses_source": "tokens:erc721",
+    "chain_ids": [
+      1,
+      56,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "approve",
+    "abi": {
+      "name": "approve",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "approve",
+    "fields": {
+      "token.kind": {
+        "literal": "erc721"
+      },
+      "token.address": {
+        "from": "$.tx.to"
+      },
+      "token.tokenId": {
+        "from": "$.args.tokenId"
+      },
+      "spender": {
+        "from": "$.args.to"
+      },
+      "amount.kind": {
+        "literal": "exact"
+      },
+      "amount.value": {
+        "literal": "1"
+      },
+      "approvalKind": {
+        "literal": "erc721"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

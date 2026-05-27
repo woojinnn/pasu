@@ -2,22 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/swap-router-02/selfPermitIfNecessary@1.0.0",
   "manifest_path": "manifests/uniswap/swap-router-02/selfPermitIfNecessary@1.0.0.json",
-  "bundle_sha256": "0x56d79f941d80fce725812398eb359b0260b1dc92091dc82635b34d30efb221ff",
+  "bundle_sha256": "0x61e782ebd0fe91483e27fc712b2d8698383398ed67a2ba20832395079c665686",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/swap-router-02/selfPermitIfNecessary@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-      ],
-      "selector": "0xc2e3140a"
+      "selector": "0xc2e3140a",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "selfPermitIfNecessary",

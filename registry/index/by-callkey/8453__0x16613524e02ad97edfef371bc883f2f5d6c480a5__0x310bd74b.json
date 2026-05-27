@@ -2,28 +2,29 @@
   "matched": true,
   "bundle_id": "aerodrome/voter/reset@1.0.0",
   "manifest_path": "manifests/aerodrome/voter/reset@1.0.0.json",
-  "bundle_sha256": "0x713d91b14a81dcae9587ee94785a287c474d856eea42ff2cad323ae5a4d9aef9",
+  "bundle_sha256": "0xa41b7478061632ae94f234e6b4c9fcb23bef4a1c880e3a53c78e27e74c7eed5c",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voter/reset@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
-      ],
-      "selector": "0x310bd74b"
+      "selector": "0x310bd74b",
+      "chain_to_addresses": {
+        "8453": [
+          "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "reset",
       "abi": {
         "name": "reset",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           }
         ]
@@ -35,10 +36,10 @@
       "action": "gauge_vote",
       "fields": {
         "voter": {
-          "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+          "from": "$.tx.to"
         },
         "tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "pools": {
           "literal": []
@@ -53,7 +54,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

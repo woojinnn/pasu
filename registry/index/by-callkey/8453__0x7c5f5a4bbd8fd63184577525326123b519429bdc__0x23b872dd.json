@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v4/transferFrom-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v4/transferFrom-base@1.0.0.json",
-  "bundle_sha256": "0x7572735fc157fc7e4e9e2d2eb7521db971bc5f361aa49ca520ec074b5389616b",
+  "bundle_id": "uniswap/position-manager/transferFrom@1.0.0",
+  "manifest_path": "manifests/uniswap/position-manager/transferFrom@1.0.0.json",
+  "bundle_sha256": "0x624198d9634e2de2fb01cc6b3c6b4a30174a3f1046333fb86af5c53634292d05",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v4/transferFrom-base@1.0.0",
+    "id": "uniswap/position-manager/transferFrom@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x7c5f5a4bbd8fd63184577525326123b519429bdc"
-      ],
-      "selector": "0x23b872dd"
+      "selector": "0x23b872dd",
+      "chain_to_addresses": {
+        "1": [
+          "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"
+        ],
+        "8453": [
+          "0x7C5f5A4bBd8fD63184577525326123B519429bDc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "transferFrom",

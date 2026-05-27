@@ -1,26 +1,27 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream-npm/decreaseLiquidity@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream-npm/decreaseLiquidity@1.0.0.json",
-  "bundle_sha256": "0xa41d122fad781685b6d882b8990518db5f7056f8f5423284c4e454603fd6453e",
+  "bundle_id": "aerodrome/slipstream-nfpm/decreaseLiquidity@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-nfpm/decreaseLiquidity@1.0.0.json",
+  "bundle_sha256": "0xa1f1af6547d7807313c9fbdf5c65f799fcd1d79500f9daa665dcb0d491fead14",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream-npm/decreaseLiquidity@1.0.0",
+    "id": "aerodrome/slipstream-nfpm/decreaseLiquidity@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x827922686190790b37229fd06084350E74485b72"
-      ],
-      "selector": "0x0c49ccbe"
+      "selector": "0x0c49ccbe",
+      "chain_to_addresses": {
+        "8453": [
+          "0x827922686190790b37229fd06084350E74485b72"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "decreaseLiquidity",
       "abi": {
         "name": "decreaseLiquidity",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -60,7 +61,7 @@
           "literal": "erc721"
         },
         "nft.address": {
-          "literal": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53"
+          "from": "$.tx.to"
         },
         "nft.tokenId": {
           "from": "$.args.tokenId"

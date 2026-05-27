@@ -1,0 +1,97 @@
+{
+  "matched": true,
+  "bundle_id": "curve/stableswap-ng-factory/2btc/removeLiquidityImbalance@1.0.0",
+  "manifest_path": "manifests/curve/stableswap-ng-factory/2btc/removeLiquidityImbalance@1.0.0.json",
+  "bundle_sha256": "0x8f3b837f6f98b122aff78c8841bb8957b463c0ba2251f0a1f81d44f8811fa499",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/stableswap-ng-factory/2btc/removeLiquidityImbalance@1.0.0",
+    "publisher": "curve.fi",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xe3103273",
+      "chain_to_addresses": {
+        "1": [
+          "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "remove_liquidity_imbalance",
+      "abi": {
+        "name": "remove_liquidity_imbalance",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "_amounts",
+            "type": "uint256[2]"
+          },
+          {
+            "name": "_max_burn_amount",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "remove_liquidity",
+      "fields": {
+        "exitMode": {
+          "literal": "exact_out"
+        },
+        "pool.address": {
+          "literal": "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+        },
+        "inputLp.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputLp.asset.address": {
+          "literal": "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+        },
+        "inputLp.amount.kind": {
+          "literal": "max"
+        },
+        "inputLp.amount.value": {
+          "from": "$.args._max_burn_amount"
+        },
+        "outputTokens[0].asset.kind": {
+          "literal": "erc20"
+        },
+        "outputTokens[0].asset.address": {
+          "literal": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        },
+        "outputTokens[1].asset.kind": {
+          "literal": "erc20"
+        },
+        "outputTokens[1].asset.address": {
+          "literal": "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+        },
+        "outputTokens[0].amount.kind": {
+          "literal": "exact"
+        },
+        "outputTokens[0].amount.value": {
+          "from": "$.args._amounts[0]"
+        },
+        "outputTokens[1].amount.kind": {
+          "literal": "exact"
+        },
+        "outputTokens[1].amount.value": {
+          "from": "$.args._amounts[1]"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

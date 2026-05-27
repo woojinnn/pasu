@@ -24,11 +24,48 @@
 
 export type BundleType = "adapter_function";
 
+/**
+ * Match criteria identifying a callsite. registry v2 schema uses
+ * `chain_to_addresses` (chain → addresses map). v1 legacy (`chain_ids × to`
+ * cartesian) is retained for backward compatibility (test fixtures, legacy
+ * seed bundles). Consumers should use {@link matchEntries} to iterate
+ * `(chainId, address)` pairs without branching on which shape parsed.
+ */
 export interface BundleMatch {
-  chain_ids: number[];
-  to: string[];
+  /** v2 — chain id (string) → contract addresses. Absent when v1 shape used. */
+  chain_to_addresses?: Record<string, string[]>;
+  /** v1 legacy — chain ids the bundle applies to. Absent when v2 shape used. Cartesian with `to`. */
+  chain_ids?: number[];
+  /** v1 legacy — contract addresses. Absent when v2 shape used. Cartesian with `chain_ids`. */
+  to?: string[];
   /** "0x" + 8 hex chars. */
   selector: string;
+}
+
+/**
+ * Iterate `(chainId, address)` pairs from a bundle match regardless of
+ * whether v2 (`chain_to_addresses`) or v1 (`chain_ids × to`) shape parsed.
+ * v2 takes precedence when both are present; legacy cartesian is fallback.
+ */
+export function matchEntries(m: BundleMatch): Array<[number, string]> {
+  const v2 = m.chain_to_addresses;
+  if (v2) {
+    const keys = Object.keys(v2);
+    if (keys.length > 0) {
+      const out: Array<[number, string]> = [];
+      for (const k of keys) {
+        const cid = Number(k);
+        for (const a of v2[k]) out.push([cid, a]);
+      }
+      return out;
+    }
+  }
+  // v1 cartesian fallback
+  const out: Array<[number, string]> = [];
+  for (const cid of m.chain_ids ?? []) {
+    for (const a of m.to ?? []) out.push([cid, a]);
+  }
+  return out;
 }
 
 export interface AbiFragment {
@@ -624,11 +661,40 @@ function parseMatch(v: unknown, path: string): BundleMatch {
       `${path}.selector: expected "0x" + 8 hex chars, got "${selector}"`,
     );
   }
-  return {
-    chain_ids: reqChainIdArray(obj.chain_ids, `${path}.chain_ids`),
-    to: reqAddressArray(obj.to, `${path}.to`),
-    selector,
-  };
+
+  const hasV2 = obj.chain_to_addresses !== undefined;
+  const hasV1 = obj.chain_ids !== undefined || obj.to !== undefined;
+  if (!hasV2 && !hasV1) {
+    throw new BundleParseError(
+      `${path}: must have "chain_to_addresses" (v2) or "chain_ids"+"to" (v1 legacy)`,
+    );
+  }
+
+  const result: BundleMatch = { selector };
+  if (hasV2) {
+    const m = reqObj(obj.chain_to_addresses, `${path}.chain_to_addresses`);
+    const c2a: Record<string, string[]> = {};
+    for (const key of Object.keys(m)) {
+      const cid = Number(key);
+      if (!Number.isInteger(cid) || cid < 1) {
+        throw new BundleParseError(
+          `${path}.chain_to_addresses["${key}"]: key must stringify positive integer`,
+        );
+      }
+      c2a[key] = reqAddressArray(m[key], `${path}.chain_to_addresses["${key}"]`);
+    }
+    if (Object.keys(c2a).length === 0) {
+      throw new BundleParseError(
+        `${path}.chain_to_addresses: must have at least one chain entry`,
+      );
+    }
+    result.chain_to_addresses = c2a;
+  }
+  if (hasV1) {
+    result.chain_ids = reqChainIdArray(obj.chain_ids, `${path}.chain_ids`);
+    result.to = reqAddressArray(obj.to, `${path}.to`);
+  }
+  return result;
 }
 
 function parseAbiFragment(v: unknown, path: string): AbiFragment {

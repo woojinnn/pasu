@@ -1,7 +1,7 @@
 //! Aerodrome V2 Router edge case integration tests (Phase 8 — A-TEST-AERO-V2).
 //!
 //! Round 4 introduced 8 Aerodrome V2 Router bundles under
-//! `registry/manifests/aerodrome/v2/`. The router replaces Uniswap V2's
+//! `registry/manifests/aerodrome/router-v2/`. The router replaces Uniswap V2's
 //! `address[] path` with a `tuple[] routes` whose tuple fields are
 //! `(from, to, stable, factory)`. These tests pin the declarative path's
 //! handling of that new shape, with focus on:
@@ -39,19 +39,21 @@ use policy_engine::action::{
 use policy_engine::{policy_request_from_envelope, PolicyEngineBuilder, Verdict};
 
 // ───────────────────────────────────────────────────────────────────────────
-// Aerodrome V2 Router bundle fixtures (registry/manifests/aerodrome/v2/*).
+// Aerodrome V2 Router bundle fixtures (registry/manifests/aerodrome/router-v2/*).
 // Loaded directly so the tests track whatever the registry ships, no
 // drift between fixture and production.
 // ───────────────────────────────────────────────────────────────────────────
 
-const AERO_SWAP_EXACT_TOKENS_FOR_TOKENS: &str =
-    include_str!("../../../../registry/manifests/aerodrome/v2/swapExactTokensForTokens@1.0.0.json");
-const AERO_SWAP_EXACT_ETH_FOR_TOKENS: &str =
-    include_str!("../../../../registry/manifests/aerodrome/v2/swapExactETHForTokens@1.0.0.json");
+const AERO_SWAP_EXACT_TOKENS_FOR_TOKENS: &str = include_str!(
+    "../../../../registry/manifests/aerodrome/router-v2/swapExactTokensForTokens@1.0.0.json"
+);
+const AERO_SWAP_EXACT_ETH_FOR_TOKENS: &str = include_str!(
+    "../../../../registry/manifests/aerodrome/router-v2/swapExactETHForTokens@1.0.0.json"
+);
 const AERO_ADD_LIQUIDITY: &str =
-    include_str!("../../../../registry/manifests/aerodrome/v2/addLiquidity@1.0.0.json");
+    include_str!("../../../../registry/manifests/aerodrome/router-v2/addLiquidity@1.0.0.json");
 const AERO_REMOVE_LIQUIDITY_ETH_FOT: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/v2/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0.json"
+    "../../../../registry/manifests/aerodrome/router-v2/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0.json"
 );
 
 // ───────────────────────────────────────────────────────────────────────────

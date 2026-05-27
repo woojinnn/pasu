@@ -2,28 +2,29 @@
   "matched": true,
   "bundle_id": "aerodrome/voter/poke@1.0.0",
   "manifest_path": "manifests/aerodrome/voter/poke@1.0.0.json",
-  "bundle_sha256": "0xfad687af042e9446671a6395614177751b78e85c464627236462a11e574041d0",
+  "bundle_sha256": "0x091420df3f2ca91889d1261f517e7d9d2ee1554354eea6b870409e87c85ad641",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voter/poke@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
-      ],
-      "selector": "0x32145f90"
+      "selector": "0x32145f90",
+      "chain_to_addresses": {
+        "8453": [
+          "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "poke",
       "abi": {
         "name": "poke",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           }
         ]
@@ -35,10 +36,10 @@
       "action": "gauge_vote",
       "fields": {
         "voter": {
-          "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+          "from": "$.tx.to"
         },
         "tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "pools": {
           "literal": []
@@ -53,7 +54,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

@@ -1,0 +1,86 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/masterchef-v3/harvest@1.0.0",
+  "manifest_path": "manifests/pancake/masterchef-v3/harvest@1.0.0.json",
+  "bundle_sha256": "0xc70d78654c581b43e589ceabfd198a72c50ae6f483269787b41faf9a6c472c2a",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/masterchef-v3/harvest@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x18fccc76",
+      "chain_to_addresses": {
+        "1": [
+          "0x556b9306565093c855aea9ae92a594704c2cd59e"
+        ],
+        "56": [
+          "0x556b9306565093c855aea9ae92a594704c2cd59e"
+        ],
+        "8453": [
+          "0xc6a2db661d5a5690172d8eb0a7dea2d3008665a3"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "harvest",
+      "abi": {
+        "name": "harvest",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "reward",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "claim_rewards",
+      "fields": {
+        "source.address": {
+          "from": "$.tx.to"
+        },
+        "nft.kind": {
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "from": "$.tx.to"
+        },
+        "nft.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "from": {
+          "from": "$.tx.from"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

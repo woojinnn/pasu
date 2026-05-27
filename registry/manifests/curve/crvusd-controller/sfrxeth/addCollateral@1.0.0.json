@@ -1,0 +1,67 @@
+{
+  "type": "adapter_function",
+  "id": "curve/crvusd-controller/sfrxeth/addCollateral@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x24049e57",
+    "chain_to_addresses": {
+      "1": [
+        "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "add_collateral",
+    "abi": {
+      "name": "add_collateral",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "collateral",
+          "type": "uint256"
+        },
+        {
+          "name": "_for",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "lending",
+    "action": "supply",
+    "fields": {
+      "market.address": {
+        "literal": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+      },
+      "market.label": {
+        "literal": "Curve crvUSD Controller"
+      },
+      "asset.kind": {
+        "literal": "erc20"
+      },
+      "asset.address": {
+        "literal": "0xac3e018457b222d93114458476f3e3416abbe38f"
+      },
+      "amount.kind": {
+        "literal": "exact"
+      },
+      "amount.value": {
+        "from": "$.args.collateral"
+      },
+      "recipient": {
+        "from": "$.args._for"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -2,22 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/swap-router-02/pull@1.0.0",
   "manifest_path": "manifests/uniswap/swap-router-02/pull@1.0.0.json",
-  "bundle_sha256": "0x922be942f9fe66d69b53505da654293330d2c36c603d209352f2425db88f8de9",
+  "bundle_sha256": "0x684b091d6f48c0ce56cd7b29d0081a91b2f91d51e915982004a9954e0f3008a2",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/swap-router-02/pull@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-      ],
-      "selector": "0xf2d5d56b"
+      "selector": "0xf2d5d56b",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "pull",

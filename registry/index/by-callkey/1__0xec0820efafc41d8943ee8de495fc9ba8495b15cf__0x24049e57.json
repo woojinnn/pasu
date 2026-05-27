@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/sfrxeth/addCollateral-for@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/sfrxeth/addCollateral-for@1.0.0.json",
-  "bundle_sha256": "0xabc38a7ec6d88fec65d8ba7d692db7f53bbd28324455dcc4e697fc5629af22a7",
+  "bundle_id": "curve/crvusd-controller/sfrxeth/addCollateral@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/sfrxeth/addCollateral@1.0.0.json",
+  "bundle_sha256": "0x2b7c72a89edabeddd1f875333a4f948a4a17fbccb11c692d273c04c9401398b6",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/sfrxeth/addCollateral-for@1.0.0",
+    "id": "curve/crvusd-controller/sfrxeth/addCollateral@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
-      ],
-      "selector": "0x24049e57"
+      "selector": "0x24049e57",
+      "chain_to_addresses": {
+        "1": [
+          "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "add_collateral",
@@ -42,7 +42,7 @@
           "literal": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
         },
         "market.label": {
-          "literal": "Curve crvUSD sfrxETH Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "asset.kind": {
           "literal": "erc20"
@@ -63,9 +63,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

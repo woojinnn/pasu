@@ -1,0 +1,8 @@
+{
+  "kind": "erc1155",
+  "chainId": 1,
+  "address": "0xd07dc4262bcdbf85190c01c996b4c06a461d2430",
+  "collection_name": "Rarible Multi-Token",
+  "symbol": "RARI",
+  "source": "https://etherscan.io/address/0xd07dc4262BCDbF85190C01c996b4C06a461d2430"
+}

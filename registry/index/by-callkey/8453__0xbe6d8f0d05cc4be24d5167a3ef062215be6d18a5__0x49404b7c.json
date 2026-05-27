@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream/unwrapWETH9@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream/unwrapWETH9@1.0.0.json",
-  "bundle_sha256": "0xad9c4904fe24cc835471809da839a100a5101f5e98ae3ad0dcbc72fcbda762da",
+  "bundle_id": "aerodrome/slipstream-swap-router/unwrapWETH9@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-swap-router/unwrapWETH9@1.0.0.json",
+  "bundle_sha256": "0x40803e58424b248ecaf65bff9c52dad5e12d78767aa12a788ea4cd65e66f967f",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream/unwrapWETH9@1.0.0",
+    "id": "aerodrome/slipstream-swap-router/unwrapWETH9@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
-      ],
-      "selector": "0x49404b7c"
+      "selector": "0x49404b7c",
+      "chain_to_addresses": {
+        "8453": [
+          "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "unwrapWETH9",

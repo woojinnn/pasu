@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v4/permitBatch-permit2-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v4/permitBatch-permit2-base@1.0.0.json",
-  "bundle_sha256": "0x3d5830335bdce8621b735e8d626c6cf7f3bf4bd102a2c3015274e1c54338d7a8",
+  "bundle_id": "uniswap/position-manager/permitBatch-permit2@1.0.0",
+  "manifest_path": "manifests/uniswap/position-manager/permitBatch-permit2@1.0.0.json",
+  "bundle_sha256": "0xd0f8f5eba7942988e1bfe9f3e35f8a395af98e75020f0f81d772540e47f48393",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v4/permitBatch-permit2-base@1.0.0",
+    "id": "uniswap/position-manager/permitBatch-permit2@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x7c5f5a4bbd8fd63184577525326123b519429bdc"
-      ],
-      "selector": "0x002a3e3a"
+      "selector": "0x002a3e3a",
+      "chain_to_addresses": {
+        "1": [
+          "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"
+        ],
+        "8453": [
+          "0x7C5f5A4bBd8fD63184577525326123B519429bDc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permitBatch",
@@ -78,7 +81,7 @@
       "max_elements": 64,
       "fields": {
         "permitKind": {
-          "literal": "permit2_batch"
+          "literal": "permit2_single"
         },
         "token.kind": {
           "literal": "erc20"

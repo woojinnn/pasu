@@ -1,0 +1,42 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/infinity-vault/setOperator@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x558a7297",
+    "chain_to_addresses": {
+      "56": ["0x238a358808379702088667322f80aC48bAd5e6c4"],
+      "8453": ["0x238a358808379702088667322f80aC48bAd5e6c4"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setOperator",
+    "abi": {
+      "name": "setOperator",
+      "type": "function",
+      "inputs": [
+        { "name": "operator", "type": "address" },
+        { "name": "approved", "type": "bool" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "set_approval_for_all",
+    "fields": {
+      "collection.kind": { "literal": "erc1155" },
+      "collection.address": { "from": "$.tx.to" },
+      "collection.tokenId": { "literal": "0" },
+      "operator": { "from": "$.args.operator" },
+      "approved": { "from": "$.args.approved" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

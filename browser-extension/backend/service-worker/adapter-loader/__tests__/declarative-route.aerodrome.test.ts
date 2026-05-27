@@ -137,8 +137,16 @@ function bundleSelector(bundle: AdapterFunctionBundle): string {
 
 function bundlePrimaryAddress(bundle: AdapterFunctionBundle): string {
   // For multi-address bundles (Gauge), take the first entry. Lowercase
-  // mirrors the orchestrator's call-key normalisation.
-  return bundle.match.to[0].toLowerCase();
+  // mirrors the orchestrator's call-key normalisation. v2 schema may use
+  // `chain_to_addresses` instead of `to` — fall through to either.
+  const v2 = bundle.match.chain_to_addresses;
+  if (v2) {
+    const first = Object.values(v2)[0];
+    if (first && first[0]) return first[0].toLowerCase();
+  }
+  const to = bundle.match.to;
+  if (to && to[0]) return to[0].toLowerCase();
+  throw new Error(`bundlePrimaryAddress: bundle ${bundle.id} has no addresses`);
 }
 
 function adapterHitFor(
@@ -259,7 +267,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
 
   // ── Scenario 1: V2 swapExactTokensForTokens (single hop) ────────────────
   it("V2 swap full e2e — single-hop route emits one swap envelope", async () => {
-    const bundle = loadAerodromeBundle("v2", "swapExactTokensForTokens");
+    const bundle = loadAerodromeBundle("router-v2", "swapExactTokensForTokens");
     const router = bundlePrimaryAddress(bundle);
     const sel = bundleSelector(bundle);
     expect(sel).toBe("0xcac88ea9"); // selector sanity
@@ -294,7 +302,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
           outputAmount: "950000",
         }),
       ],
-      decoder_id: "declarative.aerodrome/v2/swapExactTokensForTokens",
+      decoder_id: "declarative.aerodrome/router-v2/swapExactTokensForTokens",
     });
 
     const outcome = await tryDeclarativeRoute({
@@ -311,7 +319,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.kind).toBe("hit");
     if (outcome.kind !== "hit") return;
     expect(outcome.value.decoderId).toBe(
-      "declarative.aerodrome/v2/swapExactTokensForTokens",
+      "declarative.aerodrome/router-v2/swapExactTokensForTokens",
     );
     expect(outcome.value.source).toBe("layer1");
     expect(outcome.value.envelopes).toHaveLength(1);
@@ -328,7 +336,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
 
   // ── Scenario 2: V2 swap multi-hop (routes length 3) ─────────────────────
   it("V2 swap multi-hop — three-route chain reaches the WASM with full path", async () => {
-    const bundle = loadAerodromeBundle("v2", "swapExactTokensForTokens");
+    const bundle = loadAerodromeBundle("router-v2", "swapExactTokensForTokens");
     const router = bundlePrimaryAddress(bundle);
 
     const intermediate1 = "0x2222222222222222222222222222222222222222";
@@ -369,7 +377,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
           outputAmount: "100000",
         }),
       ],
-      decoder_id: "declarative.aerodrome/v2/swapExactTokensForTokens",
+      decoder_id: "declarative.aerodrome/router-v2/swapExactTokensForTokens",
     });
 
     const outcome = await tryDeclarativeRoute({
@@ -387,7 +395,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
 
   // ── Scenario 3: V2 addLiquidity stable=true ─────────────────────────────
   it("V2 addLiquidity — stable=true flag is forwarded into the decoded args", async () => {
-    const bundle = loadAerodromeBundle("v2", "addLiquidity");
+    const bundle = loadAerodromeBundle("router-v2", "addLiquidity");
     const router = bundlePrimaryAddress(bundle);
     const sel = bundleSelector(bundle);
 
@@ -431,7 +439,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
           },
         },
       ],
-      decoder_id: "declarative.aerodrome/v2/addLiquidity",
+      decoder_id: "declarative.aerodrome/router-v2/addLiquidity",
     });
 
     const outcome = await tryDeclarativeRoute({
@@ -445,7 +453,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.kind).toBe("hit");
     if (outcome.kind !== "hit") return;
     expect(outcome.value.decoderId).toBe(
-      "declarative.aerodrome/v2/addLiquidity",
+      "declarative.aerodrome/router-v2/addLiquidity",
     );
     expect(outcome.value.envelopes).toHaveLength(1);
 
@@ -456,7 +464,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
   // ── Scenario 4: V2 removeLiquidityETHSupportingFeeOnTransferTokens ──────
   it("V2 removeLiquidityETHSupportingFeeOnTransfer — fee-on-transfer variant routes correctly", async () => {
     const bundle = loadAerodromeBundle(
-      "v2",
+      "router-v2",
       "removeLiquidityETHSupportingFeeOnTransferTokens",
     );
     const router = bundlePrimaryAddress(bundle);
@@ -504,7 +512,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
         },
       ],
       decoder_id:
-        "declarative.aerodrome/v2/removeLiquidityETHSupportingFeeOnTransferTokens",
+        "declarative.aerodrome/router-v2/removeLiquidityETHSupportingFeeOnTransferTokens",
     });
 
     const outcome = await tryDeclarativeRoute({
@@ -518,7 +526,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.kind).toBe("hit");
     if (outcome.kind !== "hit") return;
     expect(outcome.value.decoderId).toBe(
-      "declarative.aerodrome/v2/removeLiquidityETHSupportingFeeOnTransferTokens",
+      "declarative.aerodrome/router-v2/removeLiquidityETHSupportingFeeOnTransferTokens",
     );
     expect(outcome.value.envelopes).toHaveLength(1);
 
@@ -526,7 +534,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
 
   // ── Scenario 5: Slipstream exactInput (packed path) ─────────────────────
   it("Slipstream exactInput — packed-path bytes reach the engine + enrichment runs", async () => {
-    const bundle = loadAerodromeBundle("slipstream", "exactInput");
+    const bundle = loadAerodromeBundle("slipstream-swap-router", "exactInput");
     const router = bundlePrimaryAddress(bundle);
 
     // Packed path: AERO (20B) + tickSpacing=200 (3B big-endian = 0x0000c8)
@@ -562,7 +570,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
           outputAmount: "1900000",
         }),
       ],
-      decoder_id: "declarative.aerodrome/slipstream/exactInput",
+      decoder_id: "declarative.aerodrome/slipstream-swap-router/exactInput",
     });
 
     const outcome = await tryDeclarativeRoute({
@@ -576,7 +584,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.kind).toBe("hit");
     if (outcome.kind !== "hit") return;
     expect(outcome.value.decoderId).toBe(
-      "declarative.aerodrome/slipstream/exactInput",
+      "declarative.aerodrome/slipstream-swap-router/exactInput",
     );
 
     // Enrichment ran on the AERO + USDC AssetRefs.
@@ -598,7 +606,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
 
   // ── Scenario 6: Slipstream exactInputSingle (struct param) ──────────────
   it("Slipstream exactInputSingle — int24 tickSpacing inside flattened tuple", async () => {
-    const bundle = loadAerodromeBundle("slipstream", "exactInputSingle");
+    const bundle = loadAerodromeBundle("slipstream-swap-router", "exactInputSingle");
     const router = bundlePrimaryAddress(bundle);
 
     const calldata = encodeFunctionData({
@@ -628,7 +636,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
           outputAmount: "950000",
         }),
       ],
-      decoder_id: "declarative.aerodrome/slipstream/exactInputSingle",
+      decoder_id: "declarative.aerodrome/slipstream-swap-router/exactInputSingle",
     });
 
     const outcome = await tryDeclarativeRoute({
@@ -642,7 +650,7 @@ describe("tryDeclarativeRoute — Aerodrome bundles", () => {
     expect(outcome.kind).toBe("hit");
     if (outcome.kind !== "hit") return;
     expect(outcome.value.decoderId).toBe(
-      "declarative.aerodrome/slipstream/exactInputSingle",
+      "declarative.aerodrome/slipstream-swap-router/exactInputSingle",
     );
 
   });

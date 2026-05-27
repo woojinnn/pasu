@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/swap-router-02/selfPermitAllowed-base@1.0.0",
-  "manifest_path": "manifests/uniswap/swap-router-02/selfPermitAllowed-base@1.0.0.json",
-  "bundle_sha256": "0x5e957e39eaa943be357e636c31b7c0f0e1461423f16ed02129bbc36d0e39c9c7",
+  "bundle_id": "uniswap/swap-router-02/selfPermitAllowed@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/selfPermitAllowed@1.0.0.json",
+  "bundle_sha256": "0x3e6ff1c89581dd9e06017ccfe0901c2f175949c9fd66161301e3a2d4132e20bb",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/swap-router-02/selfPermitAllowed-base@1.0.0",
+    "id": "uniswap/swap-router-02/selfPermitAllowed@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x2626664c2603336E57B271c5C0b26F421741e481"
-      ],
-      "selector": "0x4659a494"
+      "selector": "0x4659a494",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "selfPermitAllowed",

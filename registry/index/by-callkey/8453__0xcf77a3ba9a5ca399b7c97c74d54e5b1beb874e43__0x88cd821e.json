@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0",
-  "manifest_path": "manifests/aerodrome/v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0.json",
-  "bundle_sha256": "0x265c275177a65fff7eebddc5b2cabd3a7e86d81763337890a548f7f084bd7cc0",
+  "bundle_id": "aerodrome/router-v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0",
+  "manifest_path": "manifests/aerodrome/router-v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0.json",
+  "bundle_sha256": "0x25a0a74b057313ed4644d246ebe26692ad56019bbab0b46521619a40ac778c69",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0",
+    "id": "aerodrome/router-v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
-      ],
-      "selector": "0x88cd821e"
+      "selector": "0x88cd821e",
+      "chain_to_addresses": {
+        "8453": [
+          "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "swapExactTokensForTokensSupportingFeeOnTransferTokens",

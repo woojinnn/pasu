@@ -2,20 +2,20 @@
   "matched": true,
   "bundle_id": "aerodrome/universal-router/execute@1.0.0",
   "manifest_path": "manifests/aerodrome/universal-router/execute@1.0.0.json",
-  "bundle_sha256": "0x5480f12cf5ba5d212a8a4f4ca947086457e7beb74c6060f86619f375e6a022da",
+  "bundle_sha256": "0x0b59a35fea08fc492d292c2d2110865b96a9a56d21bf3adc272c0a1188ed0543",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/universal-router/execute@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xC5b6786D7B64767D775877b0B6A319AD946B11B5",
-        "0xcAF22ce31298CF2BF1D152862F80216478ad7c67"
-      ],
-      "selector": "0x3593564c"
+      "selector": "0x3593564c",
+      "chain_to_addresses": {
+        "8453": [
+          "0xC5b6786D7B64767D775877b0B6A319AD946B11B5",
+          "0xcAF22ce31298CF2BF1D152862F80216478ad7c67"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "execute",
@@ -91,7 +91,12 @@
               "from": "$.args.amountOutMin"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -141,7 +146,12 @@
               "from": "$.args.amountOut"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -166,7 +176,12 @@
               "from": "$.tx.from"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -231,7 +246,12 @@
               "from": "$.tx.to"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -256,7 +276,12 @@
               "from": "$.tx.to"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -281,7 +306,12 @@
               "from": "$.tx.to"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -306,7 +336,12 @@
               "from": "$.tx.from"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -356,7 +391,12 @@
               "from": "$.args.amountOutMin"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -406,7 +446,12 @@
               "from": "$.args.amountOut"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -477,7 +522,12 @@
               "from": "$.args.amount"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -508,7 +558,12 @@
               "from": "$.args.amountMin"
             },
             "recipient": {
-              "from": "$.args.recipient"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.recipient"
+                }
+              ]
             }
           }
         },
@@ -533,7 +588,12 @@
               "from": "$.args.transferDetails[0][0]"
             },
             "recipient": {
-              "from": "$.args.transferDetails[0][1]"
+              "fn": "map_recipient",
+              "args": [
+                {
+                  "from": "$.args.transferDetails[0][1]"
+                }
+              ]
             }
           }
         }

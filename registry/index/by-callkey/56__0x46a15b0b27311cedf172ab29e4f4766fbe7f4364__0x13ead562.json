@@ -1,0 +1,88 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/v3-nfpm/createAndInitializePoolIfNecessary@1.0.0",
+  "manifest_path": "manifests/pancake/v3-nfpm/createAndInitializePoolIfNecessary@1.0.0.json",
+  "bundle_sha256": "0xd24d5d97c3ca348a6ec29466b26b9f0feb888de7eff2494f904090a6ac6939db",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/v3-nfpm/createAndInitializePoolIfNecessary@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x13ead562",
+      "chain_to_addresses": {
+        "1": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "56": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "8453": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "createAndInitializePoolIfNecessary",
+      "abi": {
+        "name": "createAndInitializePoolIfNecessary",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "token0",
+            "type": "address"
+          },
+          {
+            "name": "token1",
+            "type": "address"
+          },
+          {
+            "name": "fee",
+            "type": "uint24"
+          },
+          {
+            "name": "sqrtPriceX96",
+            "type": "uint160"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "initialize_pool",
+      "fields": {
+        "pool.address": {
+          "literal": "0x0000000000000000000000000000000000000000"
+        },
+        "token0.kind": {
+          "literal": "erc20"
+        },
+        "token0.address": {
+          "from": "$.args.token0"
+        },
+        "token1.kind": {
+          "literal": "erc20"
+        },
+        "token1.address": {
+          "from": "$.args.token1"
+        },
+        "feeBps": {
+          "from": "$.args.fee"
+        },
+        "sqrtPriceX96": {
+          "from": "$.args.sqrtPriceX96"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

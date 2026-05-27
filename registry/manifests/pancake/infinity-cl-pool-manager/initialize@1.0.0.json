@@ -1,0 +1,57 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/infinity-cl-pool-manager/initialize@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x8b0c1b22",
+    "chain_to_addresses": {
+      "56": ["0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"],
+      "8453": ["0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "initialize",
+    "abi": {
+      "name": "initialize",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "tuple",
+          "components": [
+            { "name": "currency0", "type": "address" },
+            { "name": "currency1", "type": "address" },
+            { "name": "hooks", "type": "address" },
+            { "name": "poolManager", "type": "address" },
+            { "name": "fee", "type": "uint24" },
+            { "name": "parameters", "type": "bytes32" }
+          ]
+        },
+        { "name": "sqrtPriceX96", "type": "uint160" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "initialize_pool",
+    "fields": {
+      "pool.address": { "from": "$.tx.to" },
+      "token0.kind": { "literal": "erc20" },
+      "token0.address": { "from": "$.args.key[0]" },
+      "token1.kind": { "literal": "erc20" },
+      "token1.address": { "from": "$.args.key[1]" },
+      "feeBps": { "from": "$.args.key[4]" },
+      "hooks": { "from": "$.args.key[2]" },
+      "sqrtPriceX96": { "from": "$.args.sqrtPriceX96" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -2,20 +2,23 @@
   "type": "adapter_function",
   "id": "aerodrome/voter/vote@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"],
-    "selector": "0x7ac09bf7"
+    "selector": "0x7ac09bf7",
+    "chain_to_addresses": {
+      "8453": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"]
+    }
   },
   "abi_fragment": {
     "function_name": "vote",
     "abi": {
       "name": "vote",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "tokenId", "type": "uint256"   },
-        { "name": "pools",   "type": "address[]" },
-        { "name": "weights", "type": "uint256[]" }
+        { "name": "_tokenId",  "type": "uint256"   },
+        { "name": "_poolVote", "type": "address[]" },
+        { "name": "_weights",  "type": "uint256[]" }
       ]
     }
   },
@@ -24,16 +27,16 @@
     "category": "misc",
     "action": "gauge_vote",
     "fields": {
-      "voter":   { "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5" },
-      "tokenId": { "from":    "$.args.tokenId" },
-      "pools":   { "from":    "$.args.pools" },
-      "weights": { "from":    "$.args.weights" },
+      "voter":   { "from": "$.tx.to" },
+      "tokenId": { "from": "$.args._tokenId" },
+      "pools":   { "from": "$.args._poolVote" },
+      "weights": { "from": "$.args._weights" },
       "kind":    { "literal": "vote" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

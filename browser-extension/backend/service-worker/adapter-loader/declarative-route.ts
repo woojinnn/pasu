@@ -264,22 +264,48 @@ export async function tryDeclarativeRoute(args: {
     calldata: args.calldataHex!,
   });
 
-  // ── multicall_recurse child-prefetch ────────────────────────────────────
-  // When the outer bundle is a `multicall_recurse` strategy, the WASM-side
-  // `WasmChildResolver` can only resolve an inner sub-call if that child's
-  // bundle is already mounted (WASM is synchronous — it cannot fetch). So
-  // before `declarativeRouteRequest`, ask the engine to decode the outer
-  // multicall and hand back the child callkeys, then fetch+install each one.
-  // `adapter.bundle.emit.strategy` is already on the resolved `MountResult`,
-  // so non-multicall txs skip the planner WASM call entirely.
+  // ── child-prefetch (multicall_recurse + opcode_stream_dispatch) ────────
+  // The WASM-side `WasmChildResolver` is synchronous — it can only resolve an
+  // inner sub-call if the child bundle is already mounted in
+  // `DECLARATIVE_STATE`. For two outer strategies we ask the engine to plan
+  // the inner callkeys, then fetch+install each one before
+  // `declarativeRouteRequest`:
+  //   - `multicall_recurse`: self-multicall (child to == outer to). Covers
+  //     V3 NFPM `multicall(bytes[])`, SR02 multicall overloads, Multicall3.
+  //   - `opcode_stream_dispatch`: cross-target dispatch (UR V2 family commands
+  //     `0x11 V3_POSITION_MANAGER_PERMIT` / `0x12 V3_POSITION_MANAGER_CALL` /
+  //     `0x14 V4_POSITION_MANAGER_CALL`). Track B Fix 3 — registry-v2 cutover.
+  //
+  // Other strategies (`single_emit`, `enum_tagged_dispatch`, `array_emit`,
+  // and `opcode_stream_dispatch` with dispatcher_id = "v4_position_manager"
+  // which has no cross-target opcodes) skip the planner WASM call entirely —
+  // the engine planner returns `children:[]` for them and the resolver
+  // works without prefetch.
   //
   // Strictly best-effort: a planner fault or a child that 404s must NOT abort
   // the route. `declarativeRouteRequest` still runs; the WASM resolver
   // produces a precise `map_failed` for any child it cannot find, which the
   // orchestrator degrades to the static path.
-  if (adapter.bundle.emit.strategy === "multicall_recurse") {
+  const PREFETCH_STRATEGIES = new Set([
+    "multicall_recurse",
+    "opcode_stream_dispatch",
+  ]);
+  console.log("[Scopeball][DBG] prefetch-eval", {
+    strategy: adapter.bundle.emit.strategy,
+    shouldPrefetch: PREFETCH_STRATEGIES.has(adapter.bundle.emit.strategy),
+  });
+  if (PREFETCH_STRATEGIES.has(adapter.bundle.emit.strategy)) {
     try {
+      console.log("[Scopeball][DBG] prefetch-begin", {
+        chainId: args.chainId,
+        to: args.to,
+        selector,
+      });
       const plan = await declarativePlanChildren(routeInput);
+      console.log("[Scopeball][DBG] prefetch-plan", {
+        childrenCount: plan.children.length,
+        children: plan.children,
+      });
       if (plan.children.length > 0) {
         await prefetchChildAdapters(plan.children, {
           registry: {
@@ -287,13 +313,46 @@ export async function tryDeclarativeRoute(args: {
               args.options?.registryBaseUrl ?? DEFAULT_REGISTRY_BASE_URL,
           },
         });
+        console.log("[Scopeball][DBG] prefetch-installed", {
+          childrenCount: plan.children.length,
+        });
+        // post-verification — 5 child 의 bridge 등록 결과 직접 재확인
+        for (const c of plan.children) {
+          try {
+            const verif = await resolveAdapter(c as CallMatchKey, {
+              registry: {
+                baseUrl:
+                  args.options?.registryBaseUrl ?? DEFAULT_REGISTRY_BASE_URL,
+              },
+            });
+            console.log("[Scopeball][DBG] prefetch-child-verify", {
+              callkey: `${c.chain_id}__${c.to}__${c.selector}`,
+              kind: verif.kind,
+              reason:
+                verif.kind === "verdict" ? verif.reason : undefined,
+              source:
+                verif.kind === "adapter" ? verif.source : undefined,
+              bundleId:
+                verif.kind === "adapter" ? verif.adapter.bundleId : undefined,
+            });
+          } catch (verifyErr) {
+            console.warn("[Scopeball][DBG] prefetch-child-verify-error", {
+              callkey: `${c.chain_id}__${c.to}__${c.selector}`,
+              error:
+                verifyErr instanceof Error
+                  ? verifyErr.message
+                  : String(verifyErr),
+            });
+          }
+        }
       }
     } catch (err) {
-      console.debug("[Scopeball] multicall child-prefetch skipped", {
+      console.warn("[Scopeball][DBG] prefetch-error", {
         chainId: args.chainId,
         to: args.to,
         selector,
-        reason: err instanceof Error ? err.message : String(err),
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
       });
     }
   }
@@ -302,6 +361,14 @@ export async function tryDeclarativeRoute(args: {
   try {
     result = await declarativeRouteRequest(routeInput);
   } catch (err) {
+    console.error("[Scopeball][DBG] route-request-error", {
+      chainId: args.chainId,
+      to: args.to,
+      selector,
+      kind: err instanceof EngineError ? err.kind : "unknown",
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     if (err instanceof EngineError) {
       if (err.kind === "no_declarative_mapper") {
         // Bridge was empty for this callkey — the JIT install must have

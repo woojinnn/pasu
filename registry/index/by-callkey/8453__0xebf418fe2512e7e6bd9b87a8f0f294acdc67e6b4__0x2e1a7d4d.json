@@ -2,28 +2,29 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/withdraw@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/withdraw@1.0.0.json",
-  "bundle_sha256": "0x8aa849b49e63df9a210fbae6b22fb5ed169a3e5ba26a1c97dab82e1c8b143f60",
+  "bundle_sha256": "0x81bf4717bc03f68fa53d8dc76d0fff034b5be98f773cb984f71461a89af02406",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/withdraw@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0x2e1a7d4d"
+      "selector": "0x2e1a7d4d",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "withdraw",
       "abi": {
         "name": "withdraw",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           }
         ]
@@ -44,10 +45,10 @@
           "literal": "erc721"
         },
         "ticket.nft.address": {
-          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+          "from": "$.tx.to"
         },
         "ticket.nft.tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "recipient": {
           "from": "$.tx.from"

@@ -2,41 +2,42 @@
   "matched": true,
   "bundle_id": "aerodrome/slipstream-gauge/deposit@1.0.0",
   "manifest_path": "manifests/aerodrome/slipstream-gauge/deposit@1.0.0.json",
-  "bundle_sha256": "0xb4ec8be8bcf78f0ce559eaa05aa355a6130671da917df3f8b1d2f5e0cfb9f93e",
+  "bundle_sha256": "0x73a567f09ec0300c31a74e4ccb79d792cb08a14b5dc153255cb91d5217257cc8",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/slipstream-gauge/deposit@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xFd73Ab1100a60Ba64686ef9dcdE36d0209773f6a",
-        "0x319e23D38d8ee58783Ff5331507b808709bd00b0",
-        "0xdE8FF0D3e8ab225110B088a250b546015C567E27",
-        "0xF33a96b5932D9E9B9A0eDA447AbD8C9d48d2e0c8",
-        "0xcC2714BF50F3c7174a868bec8f4D4d284A0b07cc",
-        "0x2c0CbF25Bb64687d11ea2E4a3dc893D56Ca39c10",
-        "0x1f6c9d116CE22b51b0BC666f86B038a6c19900B8",
-        "0x2A1f7bf46bd975b5004b61c6040597E1B6117040",
-        "0x0b537aC41400433F09d97Cd370C1ea9CE78D8a74",
-        "0xE2F3C8c699A1bf30A12118B287B5208e7C6ddFEF",
-        "0xE62Adb491707513EA98B957d9Adb73D8D23e191C",
-        "0xF5550F8F0331B8CAA165046667f4E6628E9E3Aac",
-        "0xC6B4fe83Fb284bDdE1f1d19F0B5beB31011B280A",
-        "0x41b2126661C673C2beDd208cC72E85DC51a5320a",
-        "0x6399ed6725cC163D019aA64FF55b22149D7179A8",
-        "0xfCfEE5f453728BaA5ffDA151f25A0e53B8C5A01C",
-        "0xBd85D45f1636fCEB2359d9Dcf839f12b3cF5AF3F"
-      ],
-      "selector": "0xb6b55f25"
+      "selector": "0xb6b55f25",
+      "chain_to_addresses": {
+        "8453": [
+          "0xfd73ab1100a60ba64686ef9dcde36d0209773f6a",
+          "0x319e23d38d8ee58783ff5331507b808709bd00b0",
+          "0xde8ff0d3e8ab225110b088a250b546015c567e27",
+          "0xf33a96b5932d9e9b9a0eda447abd8c9d48d2e0c8",
+          "0xcc2714bf50f3c7174a868bec8f4d4d284a0b07cc",
+          "0x2c0cbf25bb64687d11ea2e4a3dc893d56ca39c10",
+          "0x1f6c9d116ce22b51b0bc666f86b038a6c19900b8",
+          "0x2a1f7bf46bd975b5004b61c6040597e1b6117040",
+          "0x0b537ac41400433f09d97cd370c1ea9ce78d8a74",
+          "0xe2f3c8c699a1bf30a12118b287b5208e7c6ddfef",
+          "0xe62adb491707513ea98b957d9adb73d8d23e191c",
+          "0xf5550f8f0331b8caa165046667f4e6628e9e3aac",
+          "0xc6b4fe83fb284bdde1f1d19f0b5beb31011b280a",
+          "0x41b2126661c673c2bedd208cc72e85dc51a5320a",
+          "0x6399ed6725cc163d019aa64ff55b22149d7179a8",
+          "0xfcfee5f453728baa5ffda151f25a0e53b8c5a01c",
+          "0xbd85d45f1636fceb2359d9dcf839f12b3cf5af3f"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "deposit",
       "abi": {
         "name": "deposit",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
             "name": "tokenId",
@@ -53,13 +54,19 @@
         "gauge": {
           "from": "$.tx.to"
         },
-        "lpToken.kind": {
-          "literal": "unknown"
+        "lpToken.asset.kind": {
+          "literal": "erc721"
         },
-        "amount.kind": {
+        "lpToken.asset.address": {
+          "literal": "0x827922686190790b37229fd06084350E74485b72"
+        },
+        "lpToken.asset.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "lpToken.amount.kind": {
           "literal": "exact"
         },
-        "amount.value": {
+        "lpToken.amount.value": {
           "literal": "1"
         },
         "recipient": {

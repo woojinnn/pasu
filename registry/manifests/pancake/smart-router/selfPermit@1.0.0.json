@@ -1,0 +1,52 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/smart-router/selfPermit@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xf3995c67",
+    "chain_to_addresses": {
+      "1": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "56": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "8453": ["0x678aa4bf4e210cf2166753e054d5b7c31cc7fa86"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "selfPermit",
+    "abi": {
+      "name": "selfPermit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "token", "type": "address" },
+        { "name": "value", "type": "uint256" },
+        { "name": "deadline", "type": "uint256" },
+        { "name": "v", "type": "uint8" },
+        { "name": "r", "type": "bytes32" },
+        { "name": "s", "type": "bytes32" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "permit",
+    "fields": {
+      "permitKind": { "literal": "eip2612" },
+      "token.kind": { "literal": "erc20" },
+      "token.address": { "from": "$.args.token" },
+      "owner": { "from": "$.tx.from" },
+      "spender": { "from": "$.tx.to" },
+      "amount.kind": { "literal": "exact" },
+      "amount.value": { "from": "$.args.value" },
+      "validity.expiresAt": { "from": "$.args.deadline" },
+      "validity.source": { "literal": "signature-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

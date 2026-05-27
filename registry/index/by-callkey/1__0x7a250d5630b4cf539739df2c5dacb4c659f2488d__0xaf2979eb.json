@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v2/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0",
-  "manifest_path": "manifests/uniswap/v2/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0.json",
-  "bundle_sha256": "0xe2f4cc92a47d2a47c6e1081cfea9c79c18b3f7feb0c5a96cce3ae1675f8d1a81",
+  "bundle_id": "uniswap/v2-router-02/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0",
+  "manifest_path": "manifests/uniswap/v2-router-02/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0.json",
+  "bundle_sha256": "0xd5517af1ae96278594bad1b4bdc7af818417dff8382edf31281e0eeecf6aed41",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v2/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0",
+    "id": "uniswap/v2-router-02/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
-      ],
-      "selector": "0xaf2979eb"
+      "selector": "0xaf2979eb",
+      "chain_to_addresses": {
+        "1": [
+          "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+        ],
+        "8453": [
+          "0x4752ba5DBc23f44D87826276BF6Fd6b1C372ad24"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "removeLiquidityETHSupportingFeeOnTransferTokens",

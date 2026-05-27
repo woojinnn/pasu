@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/lock_manage.json",
+  "title": "LockManageAction",
+  "description": "voting-escrow 의 lock position 재구성 — Aerodrome VotingEscrow.merge (두 lock 통합) / .split (한 lock 을 두 개로 분할). kind discriminator 로 두 path 구별. merge 는 from + to 두 tokenId (from 소비, to 에 통합), split 은 from + splitRatio (from 일부를 새 lock 으로 분리). NFT-bound (Aerodrome veAERO) 만 cover — Curve veCRV 는 미지원. 정책 'fromTokenId 의 owner == root.from' / 'merge target whitelist' 분기.",
+
+  "type": "object",
+  "properties": {
+    "votingEscrow": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "VotingEscrow 컨트랙트 주소 (tx.to). LockCreateAction / LockIncreaseAction 의 votingEscrow 와 동일."
+    },
+
+    "kind": {
+      "type": "string",
+      "enum": ["merge", "split"],
+      "description": "subkind discriminator. 'merge' (merge(from, to) — from 의 amount/unlockTime 을 to 로 통합 후 from burn), 'split' (split(from, splitRatio) — from 의 amount 를 ratio 로 분할해 새 veNFT 생성). selector 별로 mapper 가 채움."
+    },
+
+    "fromTokenId": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "source veNFT 의 tokenId — merge / split 둘 다에서 소비되거나 변경됨. 정책 'host:onchain 으로 ownerOf(fromTokenId) == root.from 검증' 분기."
+    },
+
+    "toTokenId": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "destination veNFT 의 tokenId (kind 가 'merge' 일 때만). merge 후 sum amount 와 max unlockTime 이 본 tokenId 에 누적. 정책 'host:onchain 으로 ownerOf(toTokenId) == root.from' 강력 권장 (제3자 lock 으로 merge 위장 차단)."
+    },
+
+    "splitRatio": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "split 비율 (kind 가 'split' 일 때만). Aerodrome split(from, splitRatio) 의 splitRatio — 일반적으로 1e18 scale 의 ratio (50% = 5e17). 정책 'splitRatio in [0, 1e18]' validity check."
+    }
+  },
+
+  "required": ["votingEscrow", "kind", "fromTokenId"]
+}

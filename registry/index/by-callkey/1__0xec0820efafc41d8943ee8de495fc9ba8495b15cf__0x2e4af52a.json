@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/sfrxeth/removeCollateral-useEth@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/sfrxeth/removeCollateral-useEth@1.0.0.json",
-  "bundle_sha256": "0x8331a310a1ca53c474e3ea45b264c58fc787348d33e7a9a682719dca7fb92994",
+  "bundle_id": "curve/crvusd-controller/sfrxeth/removeCollateral@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/sfrxeth/removeCollateral@1.0.0.json",
+  "bundle_sha256": "0x2c4f3c7bf57317bd12900c393246577810b2e7379fd21bdd2c1e3feedf605fb8",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/sfrxeth/removeCollateral-useEth@1.0.0",
+    "id": "curve/crvusd-controller/sfrxeth/removeCollateral@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
-      ],
-      "selector": "0x2e4af52a"
+      "selector": "0x2e4af52a",
+      "chain_to_addresses": {
+        "1": [
+          "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "remove_collateral",
@@ -42,7 +42,7 @@
           "literal": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
         },
         "market.label": {
-          "literal": "Curve crvUSD sfrxETH Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "asset.kind": {
           "literal": "erc20"
@@ -63,9 +63,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

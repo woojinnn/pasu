@@ -1,0 +1,84 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/permit2/transferFrom@1.0.0",
+  "manifest_path": "manifests/pancake/permit2/transferFrom@1.0.0.json",
+  "bundle_sha256": "0x07267d752ec3a4ecb3b084fdebfad5e507eebda6d37935d96f00eeb3f360891c",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/permit2/transferFrom@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x36c78516",
+      "chain_to_addresses": {
+        "1": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "56": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "8453": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "transferFrom",
+      "abi": {
+        "name": "transferFrom",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint160"
+          },
+          {
+            "name": "token",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "transfer",
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc20"
+        },
+        "token.asset.address": {
+          "from": "$.args.token"
+        },
+        "token.amount.kind": {
+          "literal": "exact"
+        },
+        "token.amount.value": {
+          "from": "$.args.amount"
+        },
+        "from": {
+          "from": "$.args.from"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

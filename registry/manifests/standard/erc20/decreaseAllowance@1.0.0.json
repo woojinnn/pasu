@@ -1,0 +1,64 @@
+{
+  "type": "adapter_function",
+  "id": "standard/erc20/decreaseAllowance@1.0.0",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xa457c2d7",
+    "chain_to_addresses_source": "tokens:erc20",
+    "chain_ids": [
+      1,
+      56,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "decreaseAllowance",
+    "abi": {
+      "name": "decreaseAllowance",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "name": "subtractedValue",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "approve",
+    "fields": {
+      "token.kind": {
+        "literal": "erc20"
+      },
+      "token.address": {
+        "from": "$.tx.to"
+      },
+      "spender": {
+        "from": "$.args.spender"
+      },
+      "amount.kind": {
+        "literal": "exact"
+      },
+      "amount.value": {
+        "from": "$.args.subtractedValue"
+      },
+      "approvalKind": {
+        "literal": "erc20_decrease"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

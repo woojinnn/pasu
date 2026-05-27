@@ -2,28 +2,29 @@
   "matched": true,
   "bundle_id": "aerodrome/rewards-distributor/claimMany@1.0.0",
   "manifest_path": "manifests/aerodrome/rewards-distributor/claimMany@1.0.0.json",
-  "bundle_sha256": "0x1090883a5758f1d5fcf5746906e3e2e00416a5cdced14e610221478b1153552a",
+  "bundle_sha256": "0x8a5aabb879711914f9515c47cfb18d8706f5cd6a4b1e322df663feb9e68c110b",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/rewards-distributor/claimMany@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x227f65131A261548b057215bB1D5Ab2997964C7d"
-      ],
-      "selector": "0x925489a8"
+      "selector": "0x925489a8",
+      "chain_to_addresses": {
+        "8453": [
+          "0x227f65131A261548b057215bB1D5Ab2997964C7d"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "claimMany",
       "abi": {
         "name": "claimMany",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenIds",
+            "name": "_tokenIds",
             "type": "uint256[]"
           }
         ]
@@ -35,10 +36,10 @@
       "action": "claim_rewards",
       "fields": {
         "source.address": {
-          "literal": "0x227f65131A261548b057215bB1D5Ab2997964C7d"
+          "from": "$.tx.to"
         },
         "source.label": {
-          "literal": "Aerodrome Rewards Distributor"
+          "literal": "Aerodrome veAERO Rewards (multi)"
         },
         "from": {
           "from": "$.tx.from"

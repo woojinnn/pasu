@@ -28,7 +28,7 @@ use policy_engine::action::{Address, DecimalString};
 use policy_engine::ActionEnvelope;
 
 const UR_BUNDLE_JSON: &str =
-    include_str!("../../../../registry/manifests/uniswap/universal-router/execute@1.0.0.json");
+    include_str!("../../../../registry/manifests/uniswap/universal-router/execute-v2@1.0.0.json");
 
 /// UR `V4_SWAP` opcode (after `UNISWAP_UR_MASK`).
 const OPCODE_V4_SWAP: u8 = 0x10;
@@ -96,7 +96,10 @@ fn encode_execute_sub_plan_input(inner_commands: Vec<u8>, inner_inputs: Vec<Vec<
 }
 
 fn encode_position_manager_step_input(inner_calldata: Vec<u8>) -> Vec<u8> {
-    encode_step_input("(bytes)", &[DynSolValue::Bytes(inner_calldata)])
+    // UR Dispatcher.sol forwards `inputs[i]` raw to V3 NPM / V4 PM — no
+    // `abi.encode((bytes,))` wrapper. The runtime reads `step.raw_input`
+    // directly; mirror that here so tests align with Dispatcher.sol.
+    inner_calldata
 }
 
 /// Encode a V4 router `SWAP_EXACT_IN_SINGLE` (0x06) action params in the

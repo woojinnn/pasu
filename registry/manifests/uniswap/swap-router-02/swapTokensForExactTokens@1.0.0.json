@@ -2,17 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/swap-router-02/swapTokensForExactTokens@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      137,
-      42161
-    ],
-    "to": [
-      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-    ],
-    "selector": "0x42712a67"
+    "selector": "0x42712a67",
+    "chain_to_addresses": {
+      "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+      "8453": ["0x2626664c2603336E57B271c5C0b26F421741e481"]
+    }
   },
   "abi_fragment": {
     "function_name": "swapTokensForExactTokens",
@@ -20,22 +16,10 @@
       "name": "swapTokensForExactTokens",
       "type": "function",
       "inputs": [
-        {
-          "name": "amountOut",
-          "type": "uint256"
-        },
-        {
-          "name": "amountInMax",
-          "type": "uint256"
-        },
-        {
-          "name": "path",
-          "type": "address[]"
-        },
-        {
-          "name": "to",
-          "type": "address"
-        }
+        { "name": "amountOut", "type": "uint256" },
+        { "name": "amountInMax", "type": "uint256" },
+        { "name": "path", "type": "address[]" },
+        { "name": "to", "type": "address" }
       ]
     }
   },
@@ -44,59 +28,27 @@
     "category": "dex",
     "action": "swap",
     "fields": {
-      "swapMode": {
-        "literal": "exact_out"
-      },
-      "inputToken.asset.kind": {
-        "literal": "erc20"
-      },
+      "swapMode": { "literal": "exact_out" },
+      "inputToken.asset.kind": { "literal": "erc20" },
       "inputToken.asset.address": {
         "fn": "select_address",
-        "args": [
-          {
-            "from": "$.args.path"
-          },
-          {
-            "literal": 0
-          }
-        ]
+        "args": [{ "from": "$.args.path" }, { "literal": 0 }]
       },
-      "inputToken.amount.kind": {
-        "literal": "max"
-      },
-      "inputToken.amount.value": {
-        "from": "$.args.amountInMax"
-      },
-      "outputToken.asset.kind": {
-        "literal": "erc20"
-      },
+      "inputToken.amount.kind": { "literal": "max" },
+      "inputToken.amount.value": { "from": "$.args.amountInMax" },
+      "outputToken.asset.kind": { "literal": "erc20" },
       "outputToken.asset.address": {
         "fn": "select_address",
-        "args": [
-          {
-            "from": "$.args.path"
-          },
-          {
-            "literal": -1
-          }
-        ]
+        "args": [{ "from": "$.args.path" }, { "literal": -1 }]
       },
-      "outputToken.amount.kind": {
-        "literal": "exact"
-      },
-      "outputToken.amount.value": {
-        "from": "$.args.amountOut"
-      },
-      "recipient": {
-        "from": "$.args.to"
-      }
+      "outputToken.amount.kind": { "literal": "exact" },
+      "outputToken.amount.value": { "from": "$.args.amountOut" },
+      "recipient": { "from": "$.args.to" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [
-      "token_metadata"
-    ],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

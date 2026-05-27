@@ -2,11 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::action::common::{Address, AmountConstraint, AssetRef, DecimalString};
+use crate::action::common::{Address, AssetRefWithAmountConstraint, DecimalString};
 
 /// Voting-escrow lock creation — Aerodrome `VotingEscrow.createLock` and equivalents.
 ///
-/// Equivalents include Curve veCRV. Locks `amount` of `asset` into
+/// Equivalents include Curve veCRV. Locks `asset.amount` of `asset.asset` into
 /// `voting_escrow`; lock period is given as either a relative
 /// `lock_duration_sec` or an absolute `unlock_time` (mutually exclusive).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -14,10 +14,8 @@ use crate::action::common::{Address, AmountConstraint, AssetRef, DecimalString};
 pub struct LockCreateAction {
     /// `VotingEscrow` contract.
     pub voting_escrow: Address,
-    /// Asset being locked (e.g. AERO ERC20).
-    pub asset: AssetRef,
-    /// Lock amount.
-    pub amount: AmountConstraint,
+    /// Asset being locked (e.g. AERO ERC20) with the lock amount.
+    pub asset: AssetRefWithAmountConstraint,
     /// Lock duration in seconds (relative). Aerodrome `createLock(value, lockDuration)`.
     /// Mutually exclusive with `unlock_time` — exactly one is present.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -40,8 +38,10 @@ mod tests {
     fn test_lock_create_serde_roundtrip() {
         assert_json_roundtrip::<LockCreateAction>(json!({
             "votingEscrow": address(0x91),
-            "asset": erc20("AERO"),
-            "amount": amount("exact", "1000000000000000000"),
+            "asset": {
+                "asset": erc20("AERO"),
+                "amount": amount("exact", "1000000000000000000")
+            },
             "lockDurationSec": "126144000",
             "recipient": address(0x30)
         }));

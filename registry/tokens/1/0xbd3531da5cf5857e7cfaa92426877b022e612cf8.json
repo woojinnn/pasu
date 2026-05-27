@@ -1,0 +1,8 @@
+{
+  "kind": "erc721",
+  "chainId": 1,
+  "address": "0xbd3531da5cf5857e7cfaa92426877b022e612cf8",
+  "collection_name": "Pudgy Penguins",
+  "symbol": "PPG",
+  "source": "https://etherscan.io/address/0xBd3531dA5CF5857e7CfAA92426877b022e612cf8"
+}

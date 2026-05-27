@@ -573,6 +573,7 @@ fn parse_approval_kind(kind: &str) -> Option<ApprovalKind> {
         "erc20_increase" => Some(ApprovalKind::Erc20Increase),
         "erc20_decrease" => Some(ApprovalKind::Erc20Decrease),
         "permit2" => Some(ApprovalKind::Permit2),
+        "erc721" => Some(ApprovalKind::Erc721),
         _ => None,
     }
 }
@@ -1204,10 +1205,6 @@ fn build_claim_unstake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelo
 ///   * `maxAmounts[i].kind` / `.value` — corresponding max claim amounts
 fn build_claim_rewards_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
     let source = read_optional_source_ref(tree, "source")?;
-    let nft = match tree.get("nft") {
-        Some(serde_json::Value::Null) | None => None,
-        Some(_) => Some(read_asset_inline(tree, "nft")?),
-    };
     let token_id = match tree.get("tokenId") {
         Some(serde_json::Value::String(s)) => Some(
             DecimalString::from_str(s)
@@ -1218,6 +1215,24 @@ fn build_claim_rewards_envelope(tree: &serde_json::Value) -> Result<ActionEnvelo
             return Err(MapperError::Internal(anyhow::anyhow!(
                 "tokenId: expected decimal string, got {other}"
             )));
+        }
+    };
+    let nft = match tree.get("nft") {
+        Some(serde_json::Value::Null) | None => None,
+        Some(_) => {
+            let mut asset = read_asset_inline(tree, "nft")?;
+            // AssetRef invariant (kind=erc721/1155 → tokenId required) 가
+            // claim_rewards 의 root-level tokenId 로도 충족되도록 후처리.
+            // schema 의 dual-tokenId 패턴 (nft AssetRef + root tokenId) 의
+            // 정합성 유지 — `read_asset_inline` 가 tokenId 를 읽지 않으므로
+            // (line 1872 의 comment 참조: "tokenId 는 read_nft_asset 가 layers on
+            // afterwards") root-level tokenId 가 있으면 AssetRef 에 inject.
+            if asset.token_id.is_none() {
+                if let Some(id) = token_id.clone() {
+                    asset.token_id = Some(id);
+                }
+            }
+            Some(asset)
         }
     };
     let from = read_address(tree, "from")?;
@@ -1866,9 +1881,6 @@ fn read_asset_inline(tree: &serde_json::Value, field: &str) -> Result<AssetRef, 
     // evaluate stage's `AssetRef` deserialize rejects it and fail-closes the
     // engine with an opaque `__engine::invalid_input_json`. Faulting here lets
     // the orchestrator degrade to the static path instead of a false `fail`.
-    // `read_asset_inline` is also the building block for `read_nft_asset`
-    // (which layers on `tokenId` afterwards), so this checks only the address
-    // requirement — an NFT's address is already resolved at this point.
     if address.is_none()
         && matches!(
             kind,
@@ -1880,10 +1892,30 @@ fn read_asset_inline(tree: &serde_json::Value, field: &str) -> Result<AssetRef, 
              bundle emits a token the evaluate stage cannot deserialize"
         )));
     }
+    // Generic tokenId — the evaluate stage's `AssetRef` invariant requires
+    // `tokenId` for `erc721` / `erc1155`. NFPM `permit` / approve-style
+    // bundles emit `token.tokenId` directly under `token`; reading it here
+    // lets the generic AssetRef path satisfy the invariant without a
+    // per-builder shim. `read_nft_asset` still adds the same field for the
+    // `nft.kind=erc721` builders (claim_rewards / decrease_liquidity / ...);
+    // its layer is a no-op when this generic path already populated tokenId.
+    let token_id = match object.get("tokenId") {
+        Some(serde_json::Value::String(s)) => {
+            Some(DecimalString::from_str(s).map_err(|m| {
+                MapperError::Internal(anyhow::anyhow!("{field}.tokenId {s:?}: {m}"))
+            })?)
+        }
+        Some(serde_json::Value::Null) | None => None,
+        Some(other) => {
+            return Err(MapperError::Internal(anyhow::anyhow!(
+                "{field}.tokenId: expected decimal string, got {other}"
+            )));
+        }
+    };
     Ok(normalize_native_sentinel(AssetRef {
         kind,
         address,
-        token_id: None,
+        token_id,
         symbol: None,
         decimals: None,
     }))
@@ -2151,14 +2183,11 @@ fn build_gauge_vote_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope,
 
 fn build_lp_stake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
     let gauge = read_address(tree, "gauge")?;
-    let lp_token = read_asset_inline(tree, "lpToken")?;
-    let amount = read_amount_inline(tree, "amount")?
-        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let lp_token = read_asset_with_amount(tree, "lpToken")?;
     let recipient = read_address(tree, "recipient")?;
     let action = LpStakeAction {
         gauge,
         lp_token,
-        amount,
         recipient,
     };
     Ok(ActionEnvelope {
@@ -2169,14 +2198,11 @@ fn build_lp_stake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, M
 
 fn build_lp_unstake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
     let gauge = read_address(tree, "gauge")?;
-    let lp_token = read_asset_inline(tree, "lpToken")?;
-    let amount = read_amount_inline(tree, "amount")?
-        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let lp_token = read_asset_with_amount(tree, "lpToken")?;
     let recipient = read_address(tree, "recipient")?;
     let action = LpUnstakeAction {
         gauge,
         lp_token,
-        amount,
         recipient,
     };
     Ok(ActionEnvelope {
@@ -2187,9 +2213,7 @@ fn build_lp_unstake_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope,
 
 fn build_lock_create_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
     let voting_escrow = read_address(tree, "votingEscrow")?;
-    let asset = read_asset_inline(tree, "asset")?;
-    let amount = read_amount_inline(tree, "amount")?
-        .ok_or_else(|| MapperError::MissingArgument("amount".to_owned()))?;
+    let asset = read_asset_with_amount(tree, "asset")?;
     let lock_duration_sec = read_optional_decimal(tree, "lockDurationSec")?;
     let unlock_time = read_optional_decimal(tree, "unlockTime")?;
     let recipient = read_address(tree, "recipient")?;
@@ -2214,7 +2238,6 @@ fn build_lock_create_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope
     let action = LockCreateAction {
         voting_escrow,
         asset,
-        amount,
         lock_duration_sec,
         unlock_time,
         recipient,
@@ -2227,15 +2250,23 @@ fn build_lock_create_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope
 
 fn build_lock_increase_envelope(tree: &serde_json::Value) -> Result<ActionEnvelope, MapperError> {
     let voting_escrow = read_address(tree, "votingEscrow")?;
-    let token_id = read_decimal(tree, "tokenId")?;
+    // SX-1/SX-2: tokenId optional — Aerodrome veAERO 만 채움, Curve veCRV 는 account-bound
+    // (NFT 없음) 라 생략. mapper 가 manifest emit rule 따라 채움.
+    let token_id = read_optional_decimal(tree, "tokenId")?;
     let kind: LockIncreaseKind = read_optional_enum(tree, "kind")?
         .ok_or_else(|| MapperError::MissingArgument("kind".to_owned()))?;
     let additional_amount = read_amount_inline(tree, "additionalAmount")?;
     let new_lock_duration_sec = read_optional_decimal(tree, "newLockDurationSec")?;
+    // SX-2: Curve veCRV `_unlock_time` (absolute timestamp). Mutually exclusive
+    // with `newLockDurationSec` (Aerodrome relative seconds).
+    let new_unlock_time = read_optional_decimal(tree, "newUnlockTime")?;
+    // SX-4: Curve veCRV `deposit_for(_addr, _value)` 의 `_addr` — 제3자 lock 의
+    // owner. 부재 = caller's own lock.
+    let recipient = read_optional_address(tree, "recipient")?;
 
-    // Kind-required-field enforcement (Round 7 P1 #2):
+    // Kind-required-field enforcement (Round 7 P1 #2 + SX-2 확장):
     //   kind=amount       → additionalAmount must be present
-    //   kind=unlock_time  → newLockDurationSec must be present
+    //   kind=unlock_time  → newLockDurationSec 또는 newUnlockTime 중 하나 must be present
     // Without this an adapter typo would silently produce an envelope with
     // the wrong discriminator, and Cedar policies that branch on `kind`
     // would evaluate against a half-populated context.
@@ -2248,9 +2279,9 @@ fn build_lock_increase_envelope(tree: &serde_json::Value) -> Result<ActionEnvelo
             }
         }
         LockIncreaseKind::UnlockTime => {
-            if new_lock_duration_sec.is_none() {
+            if new_lock_duration_sec.is_none() && new_unlock_time.is_none() {
                 return Err(MapperError::Internal(anyhow::anyhow!(
-                    "lock_increase kind=unlock_time requires newLockDurationSec"
+                    "lock_increase kind=unlock_time requires newLockDurationSec (Aerodrome) or newUnlockTime (Curve)"
                 )));
             }
         }
@@ -2262,6 +2293,8 @@ fn build_lock_increase_envelope(tree: &serde_json::Value) -> Result<ActionEnvelo
         kind,
         additional_amount,
         new_lock_duration_sec,
+        new_unlock_time,
+        recipient,
     };
     Ok(ActionEnvelope {
         category: Category::Misc,
@@ -3420,8 +3453,10 @@ mod tests {
     fn build_lp_stake_envelope_minimal() {
         let tree = json!({
             "gauge": "0x1111111111111111111111111111111111111111",
-            "lpToken": aero_lp_token(),
-            "amount": { "kind": "exact", "value": "1000000000000000000" },
+            "lpToken": {
+                "asset": aero_lp_token(),
+                "amount": { "kind": "exact", "value": "1000000000000000000" }
+            },
             "recipient": "0x3333333333333333333333333333333333333333"
         });
         let envelope = build_lp_stake_envelope(&tree).expect("build OK");
@@ -3434,10 +3469,15 @@ mod tests {
             action.gauge.to_string(),
             "0x1111111111111111111111111111111111111111"
         );
-        assert_eq!(action.lp_token.kind, AssetKind::Erc20);
-        assert_eq!(action.amount.kind, AmountKind::Exact);
+        assert_eq!(action.lp_token.asset.kind, AssetKind::Erc20);
+        assert_eq!(action.lp_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.amount.value.as_ref().map(ToString::to_string),
+            action
+                .lp_token
+                .amount
+                .value
+                .as_ref()
+                .map(ToString::to_string),
             Some("1000000000000000000".to_owned())
         );
     }
@@ -3446,13 +3486,15 @@ mod tests {
     fn build_lp_stake_envelope_missing_amount_errors() {
         let tree = json!({
             "gauge": "0x1111111111111111111111111111111111111111",
-            "lpToken": aero_lp_token(),
+            "lpToken": {
+                "asset": aero_lp_token()
+            },
             "recipient": "0x3333333333333333333333333333333333333333"
         });
         let err = build_lp_stake_envelope(&tree).unwrap_err();
         match err {
-            MapperError::MissingArgument(name) => assert_eq!(name, "amount"),
-            other => panic!("expected MissingArgument(\"amount\"), got {other:?}"),
+            MapperError::MissingArgument(name) => assert_eq!(name, "lpToken.amount"),
+            other => panic!("expected MissingArgument(\"lpToken.amount\"), got {other:?}"),
         }
     }
 
@@ -3460,8 +3502,10 @@ mod tests {
     fn build_lp_unstake_envelope_minimal() {
         let tree = json!({
             "gauge": "0x1111111111111111111111111111111111111111",
-            "lpToken": aero_lp_token(),
-            "amount": { "kind": "exact", "value": "500000000000000000" },
+            "lpToken": {
+                "asset": aero_lp_token(),
+                "amount": { "kind": "exact", "value": "500000000000000000" }
+            },
             "recipient": "0x3333333333333333333333333333333333333333"
         });
         let envelope = build_lp_unstake_envelope(&tree).expect("build OK");
@@ -3469,9 +3513,14 @@ mod tests {
         let Action::LpUnstake(action) = envelope.action else {
             panic!("expected Action::LpUnstake");
         };
-        assert_eq!(action.amount.kind, AmountKind::Exact);
+        assert_eq!(action.lp_token.amount.kind, AmountKind::Exact);
         assert_eq!(
-            action.amount.value.as_ref().map(ToString::to_string),
+            action
+                .lp_token
+                .amount
+                .value
+                .as_ref()
+                .map(ToString::to_string),
             Some("500000000000000000".to_owned())
         );
         assert_eq!(
@@ -3483,8 +3532,10 @@ mod tests {
     #[test]
     fn build_lp_unstake_envelope_missing_gauge_errors() {
         let tree = json!({
-            "lpToken": aero_lp_token(),
-            "amount": { "kind": "exact", "value": "1" },
+            "lpToken": {
+                "asset": aero_lp_token(),
+                "amount": { "kind": "exact", "value": "1" }
+            },
             "recipient": "0x3333333333333333333333333333333333333333"
         });
         let err = build_lp_unstake_envelope(&tree).unwrap_err();
@@ -3498,8 +3549,10 @@ mod tests {
     fn build_lock_create_envelope_minimal() {
         let tree = json!({
             "votingEscrow": aero_voting_escrow(),
-            "asset": aero_asset(),
-            "amount": { "kind": "exact", "value": "1000000000000000000" },
+            "asset": {
+                "asset": aero_asset(),
+                "amount": { "kind": "exact", "value": "1000000000000000000" }
+            },
             "lockDurationSec": "126144000",
             "recipient": "0x3333333333333333333333333333333333333333"
         });
@@ -3510,7 +3563,7 @@ mod tests {
             panic!("expected Action::LockCreate");
         };
         assert_eq!(action.voting_escrow.to_string(), aero_voting_escrow());
-        assert_eq!(action.asset.kind, AssetKind::Erc20);
+        assert_eq!(action.asset.asset.kind, AssetKind::Erc20);
         assert_eq!(
             action.lock_duration_sec.as_ref().unwrap().to_string(),
             "126144000"
@@ -3523,8 +3576,10 @@ mod tests {
         // Neither present → XOR error.
         let tree = json!({
             "votingEscrow": aero_voting_escrow(),
-            "asset": aero_asset(),
-            "amount": { "kind": "exact", "value": "1" },
+            "asset": {
+                "asset": aero_asset(),
+                "amount": { "kind": "exact", "value": "1" }
+            },
             "recipient": "0x3333333333333333333333333333333333333333"
         });
         let err = build_lock_create_envelope(&tree).unwrap_err();
@@ -3543,8 +3598,10 @@ mod tests {
         // F7 — Curve veCRV path: absolute unlockTime, no relative lockDurationSec.
         let tree = json!({
             "votingEscrow": aero_voting_escrow(),
-            "asset": aero_asset(),
-            "amount": { "kind": "exact", "value": "1" },
+            "asset": {
+                "asset": aero_asset(),
+                "amount": { "kind": "exact", "value": "1" }
+            },
             "unlockTime": "1905548203",
             "recipient": "0x3333333333333333333333333333333333333333"
         });
@@ -3573,7 +3630,10 @@ mod tests {
             panic!("expected Action::LockIncrease");
         };
         assert_eq!(action.kind, LockIncreaseKind::Amount);
-        assert_eq!(action.token_id.to_string(), "42");
+        assert_eq!(
+            action.token_id.as_ref().map(ToString::to_string),
+            Some("42".to_owned())
+        );
         let additional = action
             .additional_amount
             .as_ref()
@@ -3732,6 +3792,15 @@ mod tests {
         assert_eq!(source.label.as_deref(), Some("Aerodrome Voter"));
         let nft = action.nft.as_ref().expect("nft present");
         assert_eq!(nft.kind, AssetKind::Erc721);
+        // dual-tokenId 정합성: root-level tokenId 가 AssetRef.token_id 로 inject.
+        // schema 의 dual-emit 패턴 (nft.AssetRef + root tokenId) 에서 evaluate
+        // engine 의 AssetRef invariant (kind=erc721/1155 → tokenId required) 가
+        // 만족되는지 검증.
+        assert_eq!(
+            nft.token_id.as_ref().map(ToString::to_string),
+            Some("42".to_owned()),
+            "nft.token_id should be injected from root-level tokenId"
+        );
         assert_eq!(
             action.token_id.as_ref().map(ToString::to_string),
             Some("42".to_owned())
@@ -3739,6 +3808,58 @@ mod tests {
         let rewards = action.reward_tokens.as_ref().expect("rewardTokens present");
         assert_eq!(rewards.len(), 1);
         assert_eq!(rewards[0].kind, AssetKind::Erc20);
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_injects_root_tokenid_into_nft() {
+        // Track A fix — NFPM `collect` 의 dual-emit manifest (nft.kind + nft.address
+        // + root tokenId) 에서 nft AssetRef 가 token_id 없이 생성되면 evaluate
+        // engine 의 AssetRef invariant 위반. root-level tokenId 가 있으면 inject.
+        let tree = json!({
+            "nft": {
+                "kind": "erc721",
+                "address": "0x03a520b32c04bf3beef7beb72e919cf822ed34f1"
+            },
+            "tokenId": "5181335",
+            "from": "0x676fa5b94067c2be14bc025df6c5c80dedf49a54",
+            "recipient": "0x676fa5b94067c2be14bc025df6c5c80dedf49a54"
+        });
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        let nft = action.nft.as_ref().expect("nft present");
+        assert_eq!(nft.kind, AssetKind::Erc721);
+        assert_eq!(
+            nft.token_id.as_ref().map(ToString::to_string),
+            Some("5181335".to_owned()),
+            "nft.token_id must inherit root-level tokenId"
+        );
+        assert_eq!(
+            action.token_id.as_ref().map(ToString::to_string),
+            Some("5181335".to_owned())
+        );
+    }
+
+    #[test]
+    fn build_claim_rewards_envelope_no_inject_when_nft_absent() {
+        // nft 가 없으면 root-level tokenId 가 있어도 inject 대상 없음. 단순
+        // action.token_id 로만 채워짐 (Aerodrome voter/Compound rewards 같은
+        // 비-NFT claim 시나리오).
+        let tree = json!({
+            "tokenId": "999",
+            "from": "0x1111111111111111111111111111111111111111",
+            "recipient": "0x2222222222222222222222222222222222222222"
+        });
+        let envelope = build_claim_rewards_envelope(&tree).expect("build OK");
+        let Action::ClaimRewards(action) = envelope.action else {
+            panic!("expected Action::ClaimRewards");
+        };
+        assert!(action.nft.is_none());
+        assert_eq!(
+            action.token_id.as_ref().map(ToString::to_string),
+            Some("999".to_owned())
+        );
     }
 
     #[test]

@@ -1,23 +1,25 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/universal-router/execute-no-deadline-base@1.0.0",
-  "manifest_path": "manifests/uniswap/universal-router/execute-no-deadline-base@1.0.0.json",
-  "bundle_sha256": "0xbfe824a1e2516f9979ba8790f55979f8b1d2d43cb3086dc1d23be97f32afea7a",
+  "bundle_id": "uniswap/universal-router/execute-no-deadline-v1@1.0.0",
+  "manifest_path": "manifests/uniswap/universal-router/execute-no-deadline-v1@1.0.0.json",
+  "bundle_sha256": "0x862ba5ab4dc1c440a502c02bbcacbd940b84dc060a2d652c4598b69d8876102c",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/universal-router/execute-no-deadline-base@1.0.0",
+    "id": "uniswap/universal-router/execute-no-deadline-v1@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-        "0x6fF5693b99212Da76ad316178A184AB56D299b43",
-        "0xF3A4F4094BD2c6C06cA2F61789d8727B8d1e7259",
-        "0xFdf682F51FE81Aa4898F0AE2163d8A55c127fbC7"
-      ],
-      "selector": "0x24856bc3"
+      "selector": "0x24856bc3",
+      "chain_to_addresses": {
+        "1": [
+          "0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B",
+          "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD"
+        ],
+        "8453": [
+          "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
+          "0xeC8B0F7Ffe3ae75d7FfAb09429e3675bb63503e4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "execute",
@@ -592,40 +594,6 @@
                   "from": "$.args.transferDetails[0][1]"
                 }
               ]
-            }
-          }
-        },
-        "0x13": {
-          "name": "V4_INITIALIZE_POOL",
-          "category": "dex",
-          "action": "initialize_pool",
-          "fields": {
-            "pool.address": {
-              "from": "$.args.poolKey[0]"
-            },
-            "token0.kind": {
-              "literal": "erc20"
-            },
-            "token0.address": {
-              "from": "$.args.poolKey[0]"
-            },
-            "token1.kind": {
-              "literal": "erc20"
-            },
-            "token1.address": {
-              "from": "$.args.poolKey[1]"
-            },
-            "feeBps": {
-              "from": "$.args.poolKey[2]"
-            },
-            "tickSpacing": {
-              "from": "$.args.poolKey[3]"
-            },
-            "hooks": {
-              "from": "$.args.poolKey[4]"
-            },
-            "sqrtPriceX96": {
-              "from": "$.args.sqrtPriceX96"
             }
           }
         }

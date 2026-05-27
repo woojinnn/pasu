@@ -1,0 +1,99 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/v3-nfpm/permit@1.0.0",
+  "manifest_path": "manifests/pancake/v3-nfpm/permit@1.0.0.json",
+  "bundle_sha256": "0xfc5d614a8d4712fe840298170c5f7c0a6a5c21ccc884c6cf4a91cf6d5176a060",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/v3-nfpm/permit@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x7ac2ff7b",
+      "chain_to_addresses": {
+        "1": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "56": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "8453": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "permit",
+      "abi": {
+        "name": "permit",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "permit",
+      "fields": {
+        "permitKind": {
+          "literal": "erc721_permit"
+        },
+        "token.kind": {
+          "literal": "erc721"
+        },
+        "token.address": {
+          "from": "$.tx.to"
+        },
+        "token.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "owner": {
+          "from": "$.tx.from"
+        },
+        "spender": {
+          "from": "$.args.spender"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "signature-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

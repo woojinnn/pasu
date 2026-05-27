@@ -152,7 +152,7 @@ fn gauge_deposit_decoded(decoder_id: DecoderId, amount: U256) -> DecodedCall {
         decoder_id,
         function_signature: "deposit(uint256)".into(),
         args: vec![DecodedArg {
-            name: "amount".into(),
+            name: "_amount".into(),
             abi_type: "uint256".into(),
             value: DecodedValue::Uint(amount),
         }],
@@ -166,7 +166,7 @@ fn gauge_withdraw_decoded(decoder_id: DecoderId, amount: U256) -> DecodedCall {
         decoder_id,
         function_signature: "withdraw(uint256)".into(),
         args: vec![DecodedArg {
-            name: "amount".into(),
+            name: "_amount".into(),
             abi_type: "uint256".into(),
             value: DecodedValue::Uint(amount),
         }],
@@ -180,7 +180,7 @@ fn gauge_get_reward_decoded(decoder_id: DecoderId, account: Address) -> DecodedC
         decoder_id,
         function_signature: "getReward(address)".into(),
         args: vec![DecodedArg {
-            name: "account".into(),
+            name: "_account".into(),
             abi_type: "address".into(),
             value: DecodedValue::Address(account),
         }],
@@ -268,14 +268,14 @@ fn gauge_deposit_emits_lp_stake_envelope() {
     // `lpToken.address = $.tx.to` placeholder, which falsely implied the
     // gauge address was the LP token. The actual LP token is un-derivable
     // from `deposit(uint256)` calldata.)
-    assert_eq!(stake.lp_token.kind, AssetKind::Unknown);
+    assert_eq!(stake.lp_token.asset.kind, AssetKind::Unknown);
     assert_eq!(
-        stake.lp_token.address, None,
+        stake.lp_token.asset.address, None,
         "lpToken.address = None (kind:unknown carries no address)"
     );
-    assert_eq!(stake.amount.kind, AmountKind::Exact);
+    assert_eq!(stake.lp_token.amount.kind, AmountKind::Exact);
     assert_eq!(
-        amount_value_string(&stake.amount.value),
+        amount_value_string(&stake.lp_token.amount.value),
         "1000000000000000000000",
         "amount.value preserves the 21-digit decimal string"
     );
@@ -299,9 +299,9 @@ fn gauge_deposit_zero_amount_emits_envelope_unchanged() {
         .expect("deposit(0) still maps (no builder-side rejection)");
     let stake = unwrap_lp_stake(&envelopes[0]);
 
-    assert_eq!(stake.amount.kind, AmountKind::Exact);
+    assert_eq!(stake.lp_token.amount.kind, AmountKind::Exact);
     assert_eq!(
-        amount_value_string(&stake.amount.value),
+        amount_value_string(&stake.lp_token.amount.value),
         "0",
         "amount.value = \"0\" — Cedar handles forbid-zero policy"
     );
@@ -345,7 +345,7 @@ fn gauge_deposit_single_arg_recipient_is_tx_from() {
     // gauge is still tied to ctx.to.
     assert_eq!(stake.gauge, to);
     // Phase D B-3 fix: lpToken.kind = "unknown" → address = None.
-    assert_eq!(stake.lp_token.address, None);
+    assert_eq!(stake.lp_token.asset.address, None);
 }
 
 /// **T4: withdraw happy path — `amount = 500e18`**.
@@ -365,11 +365,13 @@ fn gauge_withdraw_emits_lp_unstake_envelope() {
 
     let unstake = unwrap_lp_unstake(&envelopes[0]);
     assert_eq!(unstake.gauge, gauge_addr());
-    assert_eq!(unstake.lp_token.kind, AssetKind::Erc20);
-    assert_eq!(unstake.lp_token.address.as_ref(), Some(&gauge_addr()));
-    assert_eq!(unstake.amount.kind, AmountKind::Exact);
+    // Phase D B-3 fix: withdraw bundle also emits lpToken.kind = "unknown"
+    // because the LP token is un-derivable from `withdraw(uint256)` calldata.
+    assert_eq!(unstake.lp_token.asset.kind, AssetKind::Unknown);
+    assert_eq!(unstake.lp_token.asset.address, None);
+    assert_eq!(unstake.lp_token.amount.kind, AmountKind::Exact);
     assert_eq!(
-        amount_value_string(&unstake.amount.value),
+        amount_value_string(&unstake.lp_token.amount.value),
         "500000000000000000000",
         "withdraw amount preserves 21-digit decimal"
     );
@@ -396,9 +398,9 @@ fn gauge_withdraw_max_uint256_amount_emits_envelope() {
 
     let expected_max =
         "115792089237316195423570985008687907853269984665640564039457584007913129639935";
-    assert_eq!(unstake.amount.kind, AmountKind::Exact);
+    assert_eq!(unstake.lp_token.amount.kind, AmountKind::Exact);
     assert_eq!(
-        amount_value_string(&unstake.amount.value),
+        amount_value_string(&unstake.lp_token.amount.value),
         expected_max,
         "u256::MAX serializes as the canonical 78-digit decimal string"
     );
@@ -443,7 +445,7 @@ fn gauge_get_reward_emits_claim_rewards_with_account_recipient() {
     // "Aerodrome Gauge" label.
     let source = claim.source.as_ref().expect("source present");
     assert_eq!(source.address.as_ref(), Some(&gauge_addr()));
-    assert_eq!(source.label.as_deref(), Some("Aerodrome Gauge"));
+    assert_eq!(source.label.as_deref(), Some("Aerodrome V2 Gauge"));
 
     // `rewardTokens[0]` hard-coded to AERO.
     let rewards = claim

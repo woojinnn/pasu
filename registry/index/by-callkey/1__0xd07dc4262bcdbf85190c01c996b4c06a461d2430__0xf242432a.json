@@ -1,0 +1,85 @@
+{
+  "matched": true,
+  "bundle_id": "standard/erc1155/safeTransferFrom@1.0.0",
+  "manifest_path": "manifests/standard/erc1155/safeTransferFrom@1.0.0.json",
+  "bundle_sha256": "0x238011d70b06399375e1b69e65a82b5aed7e8da64a3edc91a0e3249a345db942",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "standard/erc1155/safeTransferFrom@1.0.0",
+    "schema_version": "2",
+    "abi_fragment": {
+      "function_name": "safeTransferFrom",
+      "abi": {
+        "name": "safeTransferFrom",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "transfer",
+      "fields": {
+        "token.asset.kind": {
+          "literal": "erc1155"
+        },
+        "token.asset.address": {
+          "from": "$.tx.to"
+        },
+        "token.asset.tokenId": {
+          "from": "$.args.id"
+        },
+        "token.amount.kind": {
+          "literal": "exact"
+        },
+        "token.amount.value": {
+          "from": "$.args.amount"
+        },
+        "from": {
+          "from": "$.args.from"
+        },
+        "recipient": {
+          "from": "$.args.to"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    },
+    "match": {
+      "selector": "0xf242432a",
+      "chain_to_addresses": {
+        "1": [
+          "0x495f947276749ce646f68ac8c248420045cb7b5e",
+          "0xd07dc4262bcdbf85190c01c996b4c06a461d2430"
+        ]
+      }
+    }
+  }
+}

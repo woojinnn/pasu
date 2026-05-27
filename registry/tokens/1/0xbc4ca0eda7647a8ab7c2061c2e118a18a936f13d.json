@@ -1,0 +1,8 @@
+{
+  "kind": "erc721",
+  "chainId": 1,
+  "address": "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
+  "collection_name": "Bored Ape Yacht Club",
+  "symbol": "BAYC",
+  "source": "https://etherscan.io/address/0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"
+}

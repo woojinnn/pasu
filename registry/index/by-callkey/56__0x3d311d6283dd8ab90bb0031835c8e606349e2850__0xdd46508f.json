@@ -1,0 +1,201 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/infinity-bin-position-manager/modifyLiquidities@1.0.0",
+  "manifest_path": "manifests/pancake/infinity-bin-position-manager/modifyLiquidities@1.0.0.json",
+  "bundle_sha256": "0x2d6a6604d74798ec85a3167bd3a04a76be5d905fe19b93f6f49d74cfc439862e",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/infinity-bin-position-manager/modifyLiquidities@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xdd46508f",
+      "chain_to_addresses": {
+        "56": [
+          "0x3D311D6283Dd8aB90bb0031835C8e606349e2850"
+        ],
+        "8453": [
+          "0x3D311D6283Dd8aB90bb0031835C8e606349e2850"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "modifyLiquidities",
+      "abi": {
+        "name": "modifyLiquidities",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "payload",
+            "type": "bytes"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "opcode_stream_dispatch",
+      "dispatcher_id": "pancake_infinity_position_manager",
+      "mask": "0xff",
+      "allow_revert_bit": "0x00",
+      "unknown_opcode_policy": "ignore_step",
+      "per_opcode_emit": {
+        "0x19": {
+          "name": "BIN_ADD_LIQUIDITY",
+          "category": "dex",
+          "action": "add_liquidity",
+          "fields": {
+            "pool.address": {
+              "from": "$.args.poolKey[3]"
+            },
+            "inputTokens[0].asset.kind": {
+              "literal": "erc20"
+            },
+            "inputTokens[0].asset.address": {
+              "from": "$.args.poolKey[0]"
+            },
+            "inputTokens[0].amount.kind": {
+              "literal": "max"
+            },
+            "inputTokens[0].amount.value": {
+              "from": "$.args.amount0Max"
+            },
+            "inputTokens[1].asset.kind": {
+              "literal": "erc20"
+            },
+            "inputTokens[1].asset.address": {
+              "from": "$.args.poolKey[1]"
+            },
+            "inputTokens[1].amount.kind": {
+              "literal": "max"
+            },
+            "inputTokens[1].amount.value": {
+              "from": "$.args.amount1Max"
+            },
+            "outputLp.asset.kind": {
+              "literal": "unknown"
+            },
+            "outputLp.asset.address": {
+              "from": "$.tx.to"
+            },
+            "outputLp.amount.kind": {
+              "literal": "unknown"
+            },
+            "recipient": {
+              "from": "$.args.to"
+            }
+          }
+        },
+        "0x1a": {
+          "name": "BIN_REMOVE_LIQUIDITY",
+          "category": "dex",
+          "action": "remove_liquidity",
+          "fields": {
+            "exitMode": {
+              "literal": "proportional"
+            },
+            "pool.address": {
+              "from": "$.args.poolKey[3]"
+            },
+            "inputLp.asset.kind": {
+              "literal": "unknown"
+            },
+            "inputLp.asset.address": {
+              "from": "$.tx.to"
+            },
+            "inputLp.amount.kind": {
+              "literal": "unknown"
+            },
+            "outputTokens[0].asset.kind": {
+              "literal": "erc20"
+            },
+            "outputTokens[0].asset.address": {
+              "from": "$.args.poolKey[0]"
+            },
+            "outputTokens[0].amount.kind": {
+              "literal": "min"
+            },
+            "outputTokens[0].amount.value": {
+              "from": "$.args.amount0Min"
+            },
+            "outputTokens[1].asset.kind": {
+              "literal": "erc20"
+            },
+            "outputTokens[1].asset.address": {
+              "from": "$.args.poolKey[1]"
+            },
+            "outputTokens[1].amount.kind": {
+              "literal": "min"
+            },
+            "outputTokens[1].amount.value": {
+              "from": "$.args.amount1Min"
+            },
+            "recipient": {
+              "from": "$.args.from"
+            }
+          }
+        },
+        "0x1b": {
+          "name": "BIN_ADD_LIQUIDITY_FROM_DELTAS",
+          "category": "dex",
+          "action": "add_liquidity",
+          "fields": {
+            "pool.address": {
+              "from": "$.args.poolKey[3]"
+            },
+            "inputTokens[0].asset.kind": {
+              "literal": "erc20"
+            },
+            "inputTokens[0].asset.address": {
+              "from": "$.args.poolKey[0]"
+            },
+            "inputTokens[0].amount.kind": {
+              "literal": "max"
+            },
+            "inputTokens[0].amount.value": {
+              "from": "$.args.amount0Max"
+            },
+            "inputTokens[1].asset.kind": {
+              "literal": "erc20"
+            },
+            "inputTokens[1].asset.address": {
+              "from": "$.args.poolKey[1]"
+            },
+            "inputTokens[1].amount.kind": {
+              "literal": "max"
+            },
+            "inputTokens[1].amount.value": {
+              "from": "$.args.amount1Max"
+            },
+            "outputLp.asset.kind": {
+              "literal": "unknown"
+            },
+            "outputLp.asset.address": {
+              "from": "$.tx.to"
+            },
+            "outputLp.amount.kind": {
+              "literal": "unknown"
+            },
+            "recipient": {
+              "from": "$.args.to"
+            }
+          }
+        }
+      }
+    },
+    "requires": {
+      "imperative": [
+        "pancake-infinity-position-manager-dispatcher@^1.0"
+      ],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "type": "adapter_function",
+  "id": "curve/cryptoswap/_template/exchangeReceiver@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xce7d6503",
+    "chain_to_addresses": {
+      "__CHAIN_ID__": ["__POOL_ADDRESS__"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "i",        "type": "uint256" },
+        { "name": "j",        "type": "uint256" },
+        { "name": "dx",       "type": "uint256" },
+        { "name": "min_dy",   "type": "uint256" },
+        { "name": "use_eth",  "type": "bool"    },
+        { "name": "receiver", "type": "address" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode":                  { "literal": "exact_in" },
+      "inputToken.asset.kind":     { "literal": "erc20" },
+      "inputToken.asset.address":  {
+        "fn": "select_from_literal_array",
+        "args": [
+          { "literal": ["__COIN0__", "__COIN1__", "__COIN2__"] },
+          { "from": "$.args.i" }
+        ]
+      },
+      "inputToken.amount.kind":    { "literal": "exact" },
+      "inputToken.amount.value":   { "from": "$.args.dx" },
+      "outputToken.asset.kind":    { "literal": "erc20" },
+      "outputToken.asset.address": {
+        "fn": "select_from_literal_array",
+        "args": [
+          { "literal": ["__COIN0__", "__COIN1__", "__COIN2__"] },
+          { "from": "$.args.j" }
+        ]
+      },
+      "outputToken.amount.kind":   { "literal": "min" },
+      "outputToken.amount.value":  { "from": "$.args.min_dy" },
+      "recipient":                 { "from": "$.args.receiver" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

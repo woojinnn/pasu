@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/wsteth/liquidate@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/wsteth/liquidate@1.0.0.json",
-  "bundle_sha256": "0xe95002e6d05436ab6692b5502dd09fc22e72493e278df8001ed7e5ffaffc6d78",
+  "bundle_id": "curve/crvusd-controller/wsteth/liquidate@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/wsteth/liquidate@1.0.0.json",
+  "bundle_sha256": "0x82265b609b53ef82770819fde23cdd175977e6bcd6478ba6252d37605a8d032c",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/wsteth/liquidate@1.0.0",
+    "id": "curve/crvusd-controller/wsteth/liquidate@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
-      ],
-      "selector": "0xbcbaf487"
+      "selector": "0xbcbaf487",
+      "chain_to_addresses": {
+        "1": [
+          "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "liquidate",
@@ -42,7 +42,7 @@
           "literal": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
         },
         "market.label": {
-          "literal": "Curve crvUSD wstETH Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "borrower": {
           "from": "$.args.user"
@@ -72,9 +72,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

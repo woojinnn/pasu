@@ -1,0 +1,47 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/infinity-bin-position-manager/batchTransferFrom@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x17fad7fc",
+    "chain_to_addresses": {
+      "56": ["0x3D311D6283Dd8aB90bb0031835C8e606349e2850"],
+      "8453": ["0x3D311D6283Dd8aB90bb0031835C8e606349e2850"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "batchTransferFrom",
+    "abi": {
+      "name": "batchTransferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "from", "type": "address" },
+        { "name": "to", "type": "address" },
+        { "name": "ids", "type": "uint256[]" },
+        { "name": "amounts", "type": "uint256[]" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "category": "misc",
+    "action": "transfer",
+    "array_path": "$.args.ids",
+    "max_elements": 64,
+    "fields": {
+      "asset.kind": { "literal": "erc1155" },
+      "asset.address": { "from": "$.tx.to" },
+      "asset.tokenId": { "from": "$.args.element" },
+      "from": { "from": "$.args.from" },
+      "to": { "from": "$.args.to" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

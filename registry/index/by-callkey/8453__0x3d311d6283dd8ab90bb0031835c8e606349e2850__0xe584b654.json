@@ -1,0 +1,71 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/infinity-bin-position-manager/approveForAll@1.0.0",
+  "manifest_path": "manifests/pancake/infinity-bin-position-manager/approveForAll@1.0.0.json",
+  "bundle_sha256": "0xa850b2160d24366908879097405a26a102fe848de8b28c057ae626a7e5c7b970",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/infinity-bin-position-manager/approveForAll@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xe584b654",
+      "chain_to_addresses": {
+        "56": [
+          "0x3D311D6283Dd8aB90bb0031835C8e606349e2850"
+        ],
+        "8453": [
+          "0x3D311D6283Dd8aB90bb0031835C8e606349e2850"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "approveForAll",
+      "abi": {
+        "name": "approveForAll",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "operator",
+            "type": "address"
+          },
+          {
+            "name": "approved",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "set_approval_for_all",
+      "fields": {
+        "collection.kind": {
+          "literal": "erc1155"
+        },
+        "collection.address": {
+          "from": "$.tx.to"
+        },
+        "collection.tokenId": {
+          "literal": "0"
+        },
+        "operator": {
+          "from": "$.args.operator"
+        },
+        "approved": {
+          "from": "$.args.approved"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

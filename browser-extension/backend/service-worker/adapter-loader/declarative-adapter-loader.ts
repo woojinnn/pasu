@@ -31,6 +31,7 @@ import {
 } from "../wasm-bridge";
 import {
   BundleParseError,
+  matchEntries,
   parseBundle,
   type AdapterFunctionBundle,
 } from "./bundle-schema";
@@ -152,11 +153,9 @@ function registerCallKeys(
   result: MountResult,
 ): void {
   const sel = bundle.match.selector.toLowerCase();
-  for (const chainId of bundle.match.chain_ids) {
-    for (const to of bundle.match.to) {
-      const key = `${chainId}__${to.toLowerCase()}__${sel}`;
-      mountedByCallKey.set(key, result);
-    }
+  for (const [chainId, to] of matchEntries(bundle.match)) {
+    const key = `${chainId}__${to.toLowerCase()}__${sel}`;
+    mountedByCallKey.set(key, result);
   }
 }
 

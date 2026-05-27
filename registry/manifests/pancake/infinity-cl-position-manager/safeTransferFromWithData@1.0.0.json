@@ -1,0 +1,46 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/infinity-cl-position-manager/safeTransferFromWithData@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xb88d4fde",
+    "chain_to_addresses": {
+      "56": ["0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"],
+      "8453": ["0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "safeTransferFrom",
+    "abi": {
+      "name": "safeTransferFrom",
+      "type": "function",
+      "inputs": [
+        { "name": "from", "type": "address" },
+        { "name": "to", "type": "address" },
+        { "name": "id", "type": "uint256" },
+        { "name": "data", "type": "bytes" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind": { "literal": "erc721" },
+      "token.asset.address": { "from": "$.tx.to" },
+      "token.asset.tokenId": { "from": "$.args.id" },
+      "token.amount.kind": { "literal": "exact" },
+      "token.amount.value": { "literal": "1" },
+      "from": { "from": "$.args.from" },
+      "recipient": { "from": "$.args.to" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

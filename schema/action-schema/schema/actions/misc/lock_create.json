@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/lock_create.json",
+  "title": "LockCreateAction",
+  "description": "Voting-escrow lock 생성 — Aerodrome VotingEscrow.createLock / .createLockFor / Curve veCRV.create_lock 등. asset.asset 을 votingEscrow 에 locked 토큰으로 escrow + 만기까지 잠금. lock_duration_sec (Aerodrome 의 relative) 와 unlock_time (Curve 의 absolute) 가 mutually exclusive — exactly one. recipient = veNFT 의 owner (createLock 은 msg.sender, createLockFor 는 명시). Aerodrome 은 veNFT (ERC721) 발행, Curve 는 account-bound (NFT 없음). 정책 'lock_duration <= 4y' / 'recipient == root.from' 분기.",
+
+  "type": "object",
+  "properties": {
+    "votingEscrow": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "VotingEscrow 컨트랙트 주소 (tx.to). Aerodrome veAERO / Curve veCRV / Velodrome veVELO 등. 정책 'whitelist 된 VE contract 만' 분기."
+    },
+
+    "asset": {
+      "$ref": "../../common/_common.json#/$defs/AssetRefWithAmountConstraint",
+      "description": "lock 되는 토큰 + lock 수량. asset.asset 은 (kind=erc20) VE contract 의 immutable governance token (Aerodrome=AERO / Curve=CRV) — calldata 에 명시 X, emit 시 host:registry 의 ve_locked_token 또는 'asset.kind:unknown' literal. asset.amount 는 createLock(value, lockDuration) 의 value 인자 (kind=exact)."
+    },
+
+    "lockDurationSec": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "lock 기간 (relative, seconds). Aerodrome createLock(value, lockDuration) 의 lockDuration. unlockTime 과 mutually exclusive — 둘 중 하나만 present. 최대 = MAX_LOCK_DURATION (Aerodrome = 4y = 126144000s). 정책 'lockDurationSec > 4y 차단' 분기."
+    },
+
+    "unlockTime": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "absolute unlock timestamp (epoch seconds). Curve veCRV.create_lock(_value, _unlock_time) 의 _unlock_time. lockDurationSec 과 mutually exclusive. 정책 'unlockTime - now > 4y 차단' 분기."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "veNFT 의 owner (Aerodrome) 또는 lock 의 account (Curve). createLock 은 msg.sender (recipient=root.from), createLockFor 는 명시. 정책 'recipient == root.from' 강력 권장 (제3자 lock 위장 차단)."
+    }
+  },
+
+  "required": ["votingEscrow", "asset", "recipient"]
+}

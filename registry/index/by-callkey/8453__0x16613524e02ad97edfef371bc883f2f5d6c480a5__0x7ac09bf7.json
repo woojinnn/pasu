@@ -2,36 +2,37 @@
   "matched": true,
   "bundle_id": "aerodrome/voter/vote@1.0.0",
   "manifest_path": "manifests/aerodrome/voter/vote@1.0.0.json",
-  "bundle_sha256": "0x570723a25e80ec00dd4530bb49491f95e738a5edd869079ec269b6f65ccec79a",
+  "bundle_sha256": "0xb28f11d09f1151623feffff59ab119db243505321c077236f0f5dad71e1dd65a",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voter/vote@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
-      ],
-      "selector": "0x7ac09bf7"
+      "selector": "0x7ac09bf7",
+      "chain_to_addresses": {
+        "8453": [
+          "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "vote",
       "abi": {
         "name": "vote",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           },
           {
-            "name": "pools",
+            "name": "_poolVote",
             "type": "address[]"
           },
           {
-            "name": "weights",
+            "name": "_weights",
             "type": "uint256[]"
           }
         ]
@@ -43,16 +44,16 @@
       "action": "gauge_vote",
       "fields": {
         "voter": {
-          "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+          "from": "$.tx.to"
         },
         "tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "pools": {
-          "from": "$.args.pools"
+          "from": "$.args._poolVote"
         },
         "weights": {
-          "from": "$.args.weights"
+          "from": "$.args._weights"
         },
         "kind": {
           "literal": "vote"
@@ -61,7 +62,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

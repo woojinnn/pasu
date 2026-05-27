@@ -1,0 +1,45 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/nfpm/sweepToken@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xdf2ab5bb",
+    "chain_to_addresses": {
+      "1": ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "8453": ["0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "sweepToken",
+    "abi": {
+      "name": "sweepToken",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "token", "type": "address" },
+        { "name": "amountMinimum", "type": "uint256" },
+        { "name": "recipient", "type": "address" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind": { "literal": "erc20" },
+      "token.asset.address": { "from": "$.args.token" },
+      "token.amount.kind": { "literal": "min" },
+      "token.amount.value": { "from": "$.args.amountMinimum" },
+      "from": { "from": "$.tx.to" },
+      "recipient": { "from": "$.args.recipient" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

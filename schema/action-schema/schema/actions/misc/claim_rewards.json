@@ -23,12 +23,12 @@
 
     "nft": {
       "$ref": "../../common/_common.json#/$defs/AssetRef",
-      "description": "V3/V4 NPM position 기반 claim 한정 — NFT collection (kind=erc721). burn / increase / decrease_liquidity_nft 의 nft 와 동일 패턴. 비-NFT claim (Aave / Compound / Curve / Pendle 등) 시 생략."
+      "description": "V3/V4 NPM position 기반 claim 한정 — NFT collection (kind=erc721). burn / increase / decrease_liquidity_nft 의 nft 와 동일 패턴. 비-NFT claim (Aave / Compound / Curve / Pendle 등) 시 생략. **dual-tokenId 패턴 주의** — AssetRef invariant (kind=erc721/1155 → tokenId required) 가 본 nft 에도 적용. mapper 가 root-level `tokenId` 를 nft.tokenId 로 inject 함으로써 invariant 충족 (`build_claim_rewards_envelope` 의 Track A fix 참조). 본 Action 만 dual-tokenId 패턴 — 다른 NFT Action (burn/increase/decrease_liquidity) 은 nft.AssetRef.tokenId 단일 source."
     },
 
     "tokenId": {
       "$ref": "../../common/_common.json#/$defs/DecimalString",
-      "description": "V3/V4 NPM position 의 tokenId — fee 가 적립된 NFT 의 식별자. nft 가 있을 때만 함께 채움. 정책 'host:onchain 으로 NFT.ownerOf(tokenId) == root.from 검증' 분기."
+      "description": "V3/V4 NPM position 의 tokenId — fee 가 적립된 NFT 의 식별자. nft 가 있을 때만 함께 채움 (NFT claim 시) — Aerodrome voter / Compound rewards 같은 비-NFT claim 시 root-level tokenId 도 생략. 정책 'host:onchain 으로 NFT.ownerOf(tokenId) == root.from 검증' 분기. **dual-tokenId 패턴 주의** — mapper 가 본 root-level tokenId 를 nft.AssetRef.tokenId 로 inject (nft 가 있을 때). 본 Action 만 root-level tokenId field 보유 — 다른 NFT Action 은 nft.AssetRef.tokenId 단일 source. 본 패턴의 의도 = 비-NFT claim 의 일반화 가능성."
     },
 
     "from": {

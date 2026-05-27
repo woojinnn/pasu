@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v4/multicall@1.0.0",
-  "manifest_path": "manifests/uniswap/v4/multicall@1.0.0.json",
-  "bundle_sha256": "0x86e03e52321116ac700f2467442cecfafda4fe6c940f40ccb09f31ce53dada20",
+  "bundle_id": "uniswap/position-manager/multicall@1.0.0",
+  "manifest_path": "manifests/uniswap/position-manager/multicall@1.0.0.json",
+  "bundle_sha256": "0x0fadd56444b49cbb43302f8d642dd58584bcac0f2991a0728585ecd417b73078",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v4/multicall@1.0.0",
+    "id": "uniswap/position-manager/multicall@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e"
-      ],
-      "selector": "0xac9650d8"
+      "selector": "0xac9650d8",
+      "chain_to_addresses": {
+        "1": [
+          "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"
+        ],
+        "8453": [
+          "0x7C5f5A4bBd8fD63184577525326123B519429bDc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "multicall",

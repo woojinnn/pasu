@@ -1,0 +1,64 @@
+{
+  "matched": true,
+  "bundle_id": "standard/erc1155/setApprovalForAll@1.0.0",
+  "manifest_path": "manifests/standard/erc1155/setApprovalForAll@1.0.0.json",
+  "bundle_sha256": "0x47043edc8c8d4e68bb2f5ce5d057f6b91162494689d2aaa125efb886dc1f1b83",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "standard/erc1155/setApprovalForAll@1.0.0",
+    "schema_version": "2",
+    "abi_fragment": {
+      "function_name": "setApprovalForAll",
+      "abi": {
+        "name": "setApprovalForAll",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "operator",
+            "type": "address"
+          },
+          {
+            "name": "approved",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "set_approval_for_all",
+      "fields": {
+        "collection.kind": {
+          "literal": "erc1155"
+        },
+        "collection.address": {
+          "from": "$.tx.to"
+        },
+        "operator": {
+          "from": "$.args.operator"
+        },
+        "approved": {
+          "from": "$.args.approved"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    },
+    "match": {
+      "selector": "0xa22cb465",
+      "chain_to_addresses": {
+        "1": [
+          "0x495f947276749ce646f68ac8c248420045cb7b5e",
+          "0xd07dc4262bcdbf85190c01c996b4c06a461d2430"
+        ]
+      }
+    }
+  }
+}

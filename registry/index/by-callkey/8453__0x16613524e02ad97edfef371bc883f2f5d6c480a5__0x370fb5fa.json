@@ -2,25 +2,26 @@
   "matched": true,
   "bundle_id": "aerodrome/voter/withdrawManaged@1.0.0",
   "manifest_path": "manifests/aerodrome/voter/withdrawManaged@1.0.0.json",
-  "bundle_sha256": "0xc5e8d6d1885b94b46ceb6e4358a29b2bfdcebbb236d2167a771e3242bec43636",
+  "bundle_sha256": "0x2a623915ae9cd05bcc4541fe2de11ec6d8380a0edc7cb5cc7f2251130790d826",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voter/withdrawManaged@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
-      ],
-      "selector": "0x370fb5fa"
+      "selector": "0x370fb5fa",
+      "chain_to_addresses": {
+        "8453": [
+          "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "withdrawManaged",
       "abi": {
         "name": "withdrawManaged",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
             "name": "_tokenId",
@@ -50,7 +51,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

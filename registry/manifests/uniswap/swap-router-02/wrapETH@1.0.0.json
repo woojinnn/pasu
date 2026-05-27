@@ -2,17 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/swap-router-02/wrapETH@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      137,
-      42161
-    ],
-    "to": [
-      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-    ],
-    "selector": "0x1c58db4f"
+    "selector": "0x1c58db4f",
+    "chain_to_addresses": {
+      "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+      "8453": ["0x2626664c2603336E57B271c5C0b26F421741e481"]
+    }
   },
   "abi_fragment": {
     "function_name": "wrapETH",
@@ -21,10 +17,7 @@
       "type": "function",
       "stateMutability": "payable",
       "inputs": [
-        {
-          "name": "value",
-          "type": "uint256"
-        }
+        { "name": "value", "type": "uint256" }
       ]
     }
   },
@@ -33,34 +26,18 @@
     "category": "misc",
     "action": "wrap",
     "fields": {
-      "nativeAsset.asset.kind": {
-        "literal": "native"
-      },
-      "nativeAsset.amount.kind": {
-        "literal": "exact"
-      },
-      "nativeAsset.amount.value": {
-        "from": "$.args.value"
-      },
-      "wrappedAsset.asset.kind": {
-        "literal": "unknown"
-      },
-      "wrappedAsset.amount.kind": {
-        "literal": "exact"
-      },
-      "wrappedAsset.amount.value": {
-        "from": "$.args.value"
-      },
-      "recipient": {
-        "from": "$.tx.to"
-      }
+      "nativeAsset.asset.kind": { "literal": "native" },
+      "nativeAsset.amount.kind": { "literal": "exact" },
+      "nativeAsset.amount.value": { "from": "$.args.value" },
+      "wrappedAsset.asset.kind": { "literal": "unknown" },
+      "wrappedAsset.amount.kind": { "literal": "exact" },
+      "wrappedAsset.amount.value": { "from": "$.args.value" },
+      "recipient": { "from": "$.tx.to" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [
-      "token_metadata"
-    ],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

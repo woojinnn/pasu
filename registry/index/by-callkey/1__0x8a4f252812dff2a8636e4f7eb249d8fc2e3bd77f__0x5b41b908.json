@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/cryptoswap/btcghoeth/exchange-noEth@1.0.0",
-  "manifest_path": "manifests/curve/cryptoswap/btcghoeth/exchange-noEth@1.0.0.json",
-  "bundle_sha256": "0xd8f25c0c3cb0b45977bebe3e90c669cb346f6a461c1c3361cf24c325a4bf0d74",
+  "bundle_id": "curve/cryptoswap/btcghoeth/exchange@1.0.0",
+  "manifest_path": "manifests/curve/cryptoswap/btcghoeth/exchange@1.0.0.json",
+  "bundle_sha256": "0xb61f1ae988bd0c9d03cff3ed21584bc931e4b6f6ad96181501c94a8cb3ef1cf3",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/cryptoswap/btcghoeth/exchange-noEth@1.0.0",
+    "id": "curve/cryptoswap/btcghoeth/exchange@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f"
-      ],
-      "selector": "0x5b41b908"
+      "selector": "0x5b41b908",
+      "chain_to_addresses": {
+        "1": [
+          "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exchange",
@@ -105,9 +105,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

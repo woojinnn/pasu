@@ -2,16 +2,19 @@
   "type": "adapter_function",
   "id": "aerodrome/voting-escrow/lockPermanent@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
-    "selector": "0xe75b1c2e"
+    "selector": "0xe75b1c2e",
+    "chain_to_addresses": {
+      "8453": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"]
+    }
   },
   "abi_fragment": {
     "function_name": "lockPermanent",
     "abi": {
       "name": "lockPermanent",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
         { "name": "_tokenId", "type": "uint256" }
       ]
@@ -22,15 +25,15 @@
     "category": "misc",
     "action": "lock_manage",
     "fields": {
-      "votingEscrow": { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
+      "votingEscrow": { "from": "$.tx.to" },
       "kind":         { "literal": "merge" },
-      "fromTokenId":  { "from":    "$.args._tokenId" },
-      "toTokenId":    { "from":    "$.args._tokenId" }
+      "fromTokenId":  { "from": "$.args._tokenId" },
+      "toTokenId":    { "from": "$.args._tokenId" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

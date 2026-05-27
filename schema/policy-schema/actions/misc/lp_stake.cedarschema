@@ -1,7 +1,6 @@
 type LpStakeContext = {
   gauge: String,
-  lpToken: AssetRef,
-  amount: AmountConstraint,
+  lpToken: AssetRefWithAmountConstraint,
   recipient: String,
 };
 

@@ -2,17 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/swap-router-02/selfPermit@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      137,
-      42161
-    ],
-    "to": [
-      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-    ],
-    "selector": "0xf3995c67"
+    "selector": "0xf3995c67",
+    "chain_to_addresses": {
+      "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+      "8453": ["0x2626664c2603336E57B271c5C0b26F421741e481"]
+    }
   },
   "abi_fragment": {
     "function_name": "selfPermit",
@@ -20,30 +16,12 @@
       "name": "selfPermit",
       "type": "function",
       "inputs": [
-        {
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "name": "value",
-          "type": "uint256"
-        },
-        {
-          "name": "deadline",
-          "type": "uint256"
-        },
-        {
-          "name": "v",
-          "type": "uint8"
-        },
-        {
-          "name": "r",
-          "type": "bytes32"
-        },
-        {
-          "name": "s",
-          "type": "bytes32"
-        }
+        { "name": "token", "type": "address" },
+        { "name": "value", "type": "uint256" },
+        { "name": "deadline", "type": "uint256" },
+        { "name": "v", "type": "uint8" },
+        { "name": "r", "type": "bytes32" },
+        { "name": "s", "type": "bytes32" }
       ]
     }
   },
@@ -52,40 +30,20 @@
     "category": "misc",
     "action": "permit",
     "fields": {
-      "permitKind": {
-        "literal": "eip2612"
-      },
-      "token.kind": {
-        "literal": "erc20"
-      },
-      "token.address": {
-        "from": "$.args.token"
-      },
-      "owner": {
-        "from": "$.tx.from"
-      },
-      "spender": {
-        "from": "$.tx.to"
-      },
-      "amount.kind": {
-        "literal": "exact"
-      },
-      "amount.value": {
-        "from": "$.args.value"
-      },
-      "validity.expiresAt": {
-        "from": "$.args.deadline"
-      },
-      "validity.source": {
-        "literal": "signature-deadline"
-      }
+      "permitKind": { "literal": "eip2612" },
+      "token.kind": { "literal": "erc20" },
+      "token.address": { "from": "$.args.token" },
+      "owner": { "from": "$.tx.from" },
+      "spender": { "from": "$.tx.to" },
+      "amount.kind": { "literal": "exact" },
+      "amount.value": { "from": "$.args.value" },
+      "validity.expiresAt": { "from": "$.args.deadline" },
+      "validity.source": { "literal": "signature-deadline" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [
-      "token_metadata"
-    ],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

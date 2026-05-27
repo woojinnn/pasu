@@ -36,12 +36,28 @@ use std::collections::HashMap;
 use std::str::FromStr as _;
 use std::sync::Arc;
 
+use abi_resolver::subdecode::protocols::universal_router::{
+    v3_position_manager_address, v4_position_manager_address, UNISWAP_UR_MASK,
+};
 use abi_resolver::{CallMatchKey, DecodedArg, DecodedCall, DecodedValue, DecoderId};
 use alloy_primitives::{I256, U256};
 use mappers::declarative::multicall::extract_self_array_bytes;
+use mappers::declarative::opcode_stream::{
+    extract_ur_commands_and_inputs, DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER,
+    DISPATCHER_ID_PANCAKE_INFINITY_POSITION_MANAGER, DISPATCHER_ID_PANCAKE_UNIVERSAL_ROUTER,
+    DISPATCHER_ID_UNIVERSAL_ROUTER, DISPATCHER_ID_V4_POSITION_MANAGER,
+};
 use mappers::declarative::{AdapterFunctionBundle, DeclarativeMapper, EmitRule};
 use mappers::mapper::{ChildResolver, MapContext, Mapper, MapperError};
 use mappers::token_registry::EmptyTokenRegistry;
+
+// Cross-target opcodes for the Uniswap UR family (mirrored from
+// `mappers::declarative::opcode_stream` where they are crate-private; kept
+// here as the local single source of truth for the planner's cross-target
+// child extraction).
+const PLANNER_OPCODE_V3_PM_PERMIT: u8 = 0x11;
+const PLANNER_OPCODE_V3_PM_CALL: u8 = 0x12;
+const PLANNER_OPCODE_V4_PM_CALL: u8 = 0x14;
 use policy_engine::action::{Address, DecimalString};
 use wasm_bindgen::prelude::*;
 
@@ -98,23 +114,23 @@ thread_local! {
     static DECLARATIVE_STATE: RefCell<DeclarativeState> = RefCell::new(DeclarativeState::new());
 }
 
-/// Expand `bundle.match.{chain_ids × to × selector}` into bridge entries.
-/// Existing entries for the same callkey are replaced (re-install semantics).
+/// Expand the bundle's `match` entries into bridge entries. v2 schema
+/// (`chain_to_addresses` map) and v1 legacy (`chain_ids × to` cartesian)
+/// both flow through [`BundleMatch::entries`]. Existing entries for the
+/// same callkey are replaced (re-install semantics).
 fn register_bridge_entries(
     bundle: &AdapterFunctionBundle,
     decoder_id: &str,
     state: &mut DeclarativeState,
 ) {
     let selector = bundle.match_.selector.to_ascii_lowercase();
-    for &chain_id in &bundle.match_.chain_ids {
-        for to in &bundle.match_.to {
-            let key = BridgeKey {
-                chain_id,
-                to: to.to_ascii_lowercase(),
-                selector: selector.clone(),
-            };
-            state.bridge.insert(key, decoder_id.to_string());
-        }
+    for (chain_id, to) in bundle.match_.entries() {
+        let key = BridgeKey {
+            chain_id,
+            to: to.to_ascii_lowercase(),
+            selector: selector.clone(),
+        };
+        state.bridge.insert(key, decoder_id.to_string());
     }
 }
 
@@ -556,8 +572,15 @@ pub fn declarative_plan_children_json(input_json: String) -> String {
             }
         };
 
-        // Only `multicall_recurse` bundles have children to prefetch.
-        if !matches!(mapper.bundle().emit, EmitRule::MulticallRecurse { .. }) {
+        // Strategy 별 child extraction:
+        //   - MulticallRecurse → self-multicall (child to == outer to)
+        //   - OpcodeStreamDispatch (UR family) → cross-target (V3/V4 PM)
+        //   - 그 외 (single_emit, enum_tagged, array_emit, V4 PM dispatcher) → 없음
+        let needs_decode = matches!(
+            mapper.bundle().emit,
+            EmitRule::MulticallRecurse { .. } | EmitRule::OpcodeStreamDispatch { .. }
+        );
+        if !needs_decode {
             return Ok(DeclarativePlanChildrenResultDto {
                 children: Vec::new(),
                 decoder_id,
@@ -579,32 +602,64 @@ pub fn declarative_plan_children_json(input_json: String) -> String {
                 EngineErrorDto::new("decode_failed", format!("calldata decode failed: {error}"))
             })?;
 
-        let child_calldatas = extract_self_array_bytes(&decoded).map_err(|error| {
-            EngineErrorDto::new(
-                "decode_failed",
-                format!("multicall child extraction failed: {error}"),
-            )
-        })?;
-
-        let mut children = Vec::with_capacity(child_calldatas.len());
-        for (index, child) in child_calldatas.iter().enumerate() {
-            if child.len() < 4 {
-                return Err(EngineErrorDto::new(
-                    "decode_failed",
-                    format!(
-                        "multicall child #{index} calldata shorter than 4 bytes (len={})",
-                        child.len()
-                    ),
-                ));
+        let children = match &mapper.bundle().emit {
+            EmitRule::MulticallRecurse { .. } => {
+                // Existing path — self-multicall (child to == outer to).
+                let child_calldatas = extract_self_array_bytes(&decoded).map_err(|error| {
+                    EngineErrorDto::new(
+                        "decode_failed",
+                        format!("multicall child extraction failed: {error}"),
+                    )
+                })?;
+                let mut children = Vec::with_capacity(child_calldatas.len());
+                for (index, child) in child_calldatas.iter().enumerate() {
+                    if child.len() < 4 {
+                        return Err(EngineErrorDto::new(
+                            "decode_failed",
+                            format!(
+                                "multicall child #{index} calldata shorter than 4 bytes (len={})",
+                                child.len()
+                            ),
+                        ));
+                    }
+                    children.push(DeclarativeChildCallKeyDto {
+                        chain_id: input.chain_id,
+                        to: input.to.to_ascii_lowercase(),
+                        selector: format!("0x{}", hex::encode(&child[..4])),
+                    });
+                }
+                children
             }
-            children.push(DeclarativeChildCallKeyDto {
-                chain_id: input.chain_id,
-                // `self_array_bytes_last_arg` is a self-multicall: a child's
-                // `to` equals the outer `to` (mirrors `multicall::execute`).
-                to: input.to.to_ascii_lowercase(),
-                selector: format!("0x{}", hex::encode(&child[..4])),
-            });
-        }
+            EmitRule::OpcodeStreamDispatch { dispatcher_id, .. } => {
+                // Track B Fix 3a — UR family 의 cross-target opcode (0x11/0x12/0x14) 의
+                // inner calldata 를 추출 후 per-chain V3 NPM / V4 PM 의 callkey 로 변환.
+                // V4 PM dispatcher 는 internal action stream 만 가지므로 cross-target 없음.
+                match dispatcher_id.as_str() {
+                    DISPATCHER_ID_UNIVERSAL_ROUTER | DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER => {
+                        extract_ur_cross_target_children(&decoded, input.chain_id)?
+                    }
+                    DISPATCHER_ID_V4_POSITION_MANAGER => {
+                        // V4 PM action stream — V4_ROUTER_TABLE 내부 처리, cross-target 없음.
+                        Vec::new()
+                    }
+                    DISPATCHER_ID_PANCAKE_UNIVERSAL_ROUTER => {
+                        // Pancake UR 0x11/0x12 는 Commands.sol placeholder (revert).
+                        // 0x13/0x14 INFI_*_INITIALIZE_POOL 은 self-stored immutable
+                        // pool manager 로 forward — cross-target callkey 없음.
+                        // 따라서 planner 가 prefetch 할 child callkey 부재.
+                        Vec::new()
+                    }
+                    DISPATCHER_ID_PANCAKE_INFINITY_POSITION_MANAGER => {
+                        // Pancake Infinity PositionManager — flat opcode set
+                        // (PANCAKE_INFI_TABLE), recursive / cross-table action
+                        // 미존재. cross-target callkey 없음.
+                        Vec::new()
+                    }
+                    _ => Vec::new(),
+                }
+            }
+            _ => Vec::new(),
+        };
 
         Ok(DeclarativePlanChildrenResultDto {
             children,
@@ -616,6 +671,76 @@ pub fn declarative_plan_children_json(input_json: String) -> String {
         Ok(dto) => Envelope::ok(dto).to_json(),
         Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
     }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Track B Fix 3a — UR cross-target child callkey extraction
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Extract cross-target child callkeys from a UR `execute` outer call.
+///
+/// Mirrors `opcode_stream::execute_position_manager_step` but stops at the
+/// (chain_id, to, selector) tuple — does not invoke any inner mapper. Used
+/// by the planner so the TS host can fetch+install each child bundle before
+/// `declarative_route_request_json` runs and the WasmChildResolver tries to
+/// resolve them.
+///
+/// Returns empty when:
+///   * the outer args don't structurally match UR `execute` (commands + inputs)
+///   * none of the commands are cross-target opcodes (V3/V4 PM)
+///   * the chain has no V3/V4 PM address registered for the encountered opcode
+fn extract_ur_cross_target_children(
+    decoded: &DecodedCall,
+    chain_id: u64,
+) -> Result<Vec<DeclarativeChildCallKeyDto>, EngineErrorDto> {
+    let extracted = extract_ur_commands_and_inputs(decoded).map_err(|error| {
+        EngineErrorDto::new(
+            "decode_failed",
+            format!("UR commands/inputs extraction failed: {error}"),
+        )
+    })?;
+    let Some((commands, inputs)) = extracted else {
+        // Non-UR outer call or ABI shape mismatch — planner is best-effort.
+        return Ok(Vec::new());
+    };
+    let mut children = Vec::new();
+    for (i, &cmd) in commands.iter().enumerate() {
+        let masked = cmd & UNISWAP_UR_MASK;
+        let pm_addr = match masked {
+            PLANNER_OPCODE_V3_PM_PERMIT | PLANNER_OPCODE_V3_PM_CALL => {
+                v3_position_manager_address(chain_id)
+            }
+            PLANNER_OPCODE_V4_PM_CALL => v4_position_manager_address(chain_id),
+            _ => continue,
+        };
+        let Some(addr) = pm_addr else {
+            // Chain has no PM registered for this opcode — the cross-target Tx
+            // would itself revert on-chain, but the planner just skips so the
+            // route stays best-effort. WasmChildResolver still surfaces a
+            // precise error if this path is actually reached.
+            continue;
+        };
+        let Some(inner) = inputs.get(i) else {
+            // commands.len() > inputs.len() — Tier B would also reject. Skip.
+            continue;
+        };
+        if inner.len() < 4 {
+            return Err(EngineErrorDto::new(
+                "decode_failed",
+                format!(
+                    "UR cross-target step {i} (opcode {masked:#04x}) inner calldata \
+                     shorter than 4 bytes (len={})",
+                    inner.len()
+                ),
+            ));
+        }
+        children.push(DeclarativeChildCallKeyDto {
+            chain_id,
+            to: format!("0x{}", hex::encode(addr)),
+            selector: format!("0x{}", hex::encode(&inner[..4])),
+        });
+    }
+    Ok(children)
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -1376,6 +1501,256 @@ mod tests {
         let parsed: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed["ok"], false, "{parsed}");
         assert_eq!(parsed["error"]["kind"], "invalid_input_json");
+    }
+
+    // ── Track B Fix 3a — UR cross-target child extraction ──────────────────
+
+    /// UR V2 V4-aware `execute(bytes,bytes[],uint256)` on Base (chain 8453).
+    /// Schema v2 — `chain_to_addresses` map. Used to validate Fix 3a's
+    /// cross-target child callkey extraction (0x11/0x12/0x14 dispatch).
+    const UR_EXECUTE_V2_BASE_BUNDLE_JSON: &str = r#"{
+      "type": "adapter_function",
+      "id": "uniswap/universal-router/execute-v2@1.0.0",
+      "publisher": "uniswap.eth",
+      "schema_version": "2",
+      "match": {
+        "chain_to_addresses": {
+          "8453": ["0x6fF5693b99212Da76ad316178A184AB56D299b43"]
+        },
+        "selector": "0x3593564c"
+      },
+      "abi_fragment": {
+        "function_name": "execute",
+        "abi": {
+          "name": "execute",
+          "type": "function",
+          "inputs": [
+            { "name": "commands", "type": "bytes" },
+            { "name": "inputs", "type": "bytes[]" },
+            { "name": "deadline", "type": "uint256" }
+          ]
+        }
+      },
+      "emit": {
+        "strategy": "opcode_stream_dispatch",
+        "dispatcher_id": "universal_router",
+        "mask": "0x7f",
+        "allow_revert_bit": "0x80",
+        "per_opcode_emit": {},
+        "unknown_opcode_policy": "warn"
+      },
+      "requires": {
+        "imperative": ["opcode-stream-dispatch@^1.0"],
+        "adapter_capabilities": [],
+        "host_capabilities": [],
+        "extension": ">=0.1.0"
+      }
+    }"#;
+
+    /// V4 PositionManager `modifyLiquidities(bytes,uint256)` on Base.
+    /// dispatcher_id = "v4_position_manager" — no cross-target opcodes,
+    /// only internal V4 action stream. Planner must return children: [].
+    const V4_PM_MODIFY_LIQUIDITIES_BASE_BUNDLE_JSON: &str = r#"{
+      "type": "adapter_function",
+      "id": "uniswap/position-manager/modifyLiquidities@1.0.0",
+      "publisher": "uniswap.eth",
+      "schema_version": "2",
+      "match": {
+        "chain_to_addresses": {
+          "8453": ["0x7C5f5A4bBd8fD63184577525326123B519429bDc"]
+        },
+        "selector": "0xdd46508f"
+      },
+      "abi_fragment": {
+        "function_name": "modifyLiquidities",
+        "abi": {
+          "name": "modifyLiquidities",
+          "type": "function",
+          "inputs": [
+            { "name": "unlockData", "type": "bytes" },
+            { "name": "deadline", "type": "uint256" }
+          ]
+        }
+      },
+      "emit": {
+        "strategy": "opcode_stream_dispatch",
+        "dispatcher_id": "v4_position_manager",
+        "mask": "0xff",
+        "allow_revert_bit": "0x00",
+        "per_opcode_emit": {},
+        "unknown_opcode_policy": "warn"
+      },
+      "requires": {
+        "imperative": ["opcode-stream-dispatch@^1.0"],
+        "adapter_capabilities": [],
+        "host_capabilities": [],
+        "extension": ">=0.1.0"
+      }
+    }"#;
+
+    /// Build a UR `execute(commands, inputs, deadline)` calldata. Each
+    /// `inputs[i]` is wrapped raw bytes — the planner pattern-matches on
+    /// `(Bytes, Array<Bytes>, _)` via `extract_commands_and_inputs`.
+    fn ur_execute_calldata(commands: Vec<u8>, inputs: Vec<Vec<u8>>) -> String {
+        use alloy_dyn_abi::DynSolValue;
+        let inputs_values: Vec<DynSolValue> = inputs.into_iter().map(DynSolValue::Bytes).collect();
+        encode_calldata(
+            "0x3593564c",
+            &[
+                DynSolValue::Bytes(commands),
+                DynSolValue::Array(inputs_values),
+                DynSolValue::Uint(U256::from(1_900_000_000_u64), 256),
+            ],
+        )
+    }
+
+    /// Wrap an inner selector + 32B-pad word so it parses as a min-size
+    /// inner call. Real cross-target inner blobs are longer but the planner
+    /// only reads the first 4 bytes.
+    fn padded_inner_calldata(selector: [u8; 4]) -> Vec<u8> {
+        let mut b = selector.to_vec();
+        b.extend_from_slice(&[0u8; 32]);
+        b
+    }
+
+    #[test]
+    fn plan_children_extracts_cross_target_for_ur_v2_execute_on_base() {
+        // Mirrors the Tx 3 scenario: UR V2 V4-aware execute on Base 8453 with
+        // commands `0x11 0x12 0x12 0x12 0x14` → 5 cross-target child callkeys.
+        // The Fix 3a planner must extract each as `(8453, v3_pm | v4_pm, sel)`.
+        declarative_install_json(UR_EXECUTE_V2_BASE_BUNDLE_JSON.to_owned());
+
+        // Inner selectors mirroring Tx 3's actual payload.
+        let nfpm_permit = padded_inner_calldata([0x7a, 0xc2, 0xff, 0x7b]);
+        let nfpm_decrease = padded_inner_calldata([0x0c, 0x49, 0xcc, 0xbe]);
+        let nfpm_collect = padded_inner_calldata([0xfc, 0x6f, 0x78, 0x65]);
+        let nfpm_burn = padded_inner_calldata([0x42, 0x96, 0x6c, 0x68]);
+        let v4_pm_modify = padded_inner_calldata([0xdd, 0x46, 0x50, 0x8f]);
+
+        let calldata = ur_execute_calldata(
+            vec![0x11, 0x12, 0x12, 0x12, 0x14],
+            vec![
+                nfpm_permit,
+                nfpm_decrease,
+                nfpm_collect,
+                nfpm_burn,
+                v4_pm_modify,
+            ],
+        );
+        let input = json!({
+            "chain_id": 8453,
+            "to":       "0x6ff5693b99212da76ad316178a184ab56d299b43",
+            "selector": "0x3593564c",
+            "ctx": {
+                "chain_id": 8453,
+                "from": "0x676fa5b94067c2be14bc025df6c5c80dedf49a54",
+                "to":   "0x6ff5693b99212da76ad316178a184ab56d299b43",
+                "value_wei": "0",
+                "block_timestamp": 1_700_000_000_u64
+            },
+            "calldata": calldata
+        });
+        let out = declarative_plan_children_json(input.to_string());
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        let children = parsed["data"]["children"].as_array().expect("children");
+        assert_eq!(children.len(), 5, "{parsed}");
+
+        // children[0] = NFPM permit (0x11 → v3_pm)
+        assert_eq!(children[0]["chain_id"], 8453);
+        assert_eq!(
+            children[0]["to"],
+            "0x03a520b32c04bf3beef7beb72e919cf822ed34f1"
+        );
+        assert_eq!(children[0]["selector"], "0x7ac2ff7b");
+
+        // children[1..=3] = NFPM decrease/collect/burn (0x12 → v3_pm)
+        assert_eq!(
+            children[1]["to"],
+            "0x03a520b32c04bf3beef7beb72e919cf822ed34f1"
+        );
+        assert_eq!(children[1]["selector"], "0x0c49ccbe");
+        assert_eq!(children[2]["selector"], "0xfc6f7865");
+        assert_eq!(children[3]["selector"], "0x42966c68");
+
+        // children[4] = V4 PM modifyLiquidities (0x14 → v4_pm)
+        assert_eq!(
+            children[4]["to"],
+            "0x7c5f5a4bbd8fd63184577525326123b519429bdc"
+        );
+        assert_eq!(children[4]["selector"], "0xdd46508f");
+    }
+
+    #[test]
+    fn plan_children_empty_for_v4_pm_modify_liquidities() {
+        // V4 PM's modifyLiquidities is opcode_stream_dispatch but
+        // dispatcher_id = "v4_position_manager" — internal action stream,
+        // no cross-target opcodes. Planner returns children:[].
+        declarative_install_json(V4_PM_MODIFY_LIQUIDITIES_BASE_BUNDLE_JSON.to_owned());
+
+        // Minimal unlockData (bytes) + deadline.
+        use alloy_dyn_abi::DynSolValue;
+        let calldata = encode_calldata(
+            "0xdd46508f",
+            &[
+                DynSolValue::Bytes(vec![0x00; 4]),
+                DynSolValue::Uint(U256::from(1_900_000_000_u64), 256),
+            ],
+        );
+        let input = json!({
+            "chain_id": 8453,
+            "to":       "0x7c5f5a4bbd8fd63184577525326123b519429bdc",
+            "selector": "0xdd46508f",
+            "ctx": {
+                "chain_id": 8453,
+                "from": "0x000000000000000000000000000000000000aaaa",
+                "to":   "0x7c5f5a4bbd8fd63184577525326123b519429bdc",
+                "value_wei": "0",
+                "block_timestamp": 1_700_000_000_u64
+            },
+            "calldata": calldata
+        });
+        let out = declarative_plan_children_json(input.to_string());
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["children"].as_array().expect("array").len(),
+            0
+        );
+    }
+
+    #[test]
+    fn plan_children_empty_for_ur_execute_without_cross_target_opcodes() {
+        // UR execute with only V2/V3 swap commands (0x00, 0x08, 0x09) — no
+        // cross-target opcodes. Planner returns children:[].
+        declarative_install_json(UR_EXECUTE_V2_BASE_BUNDLE_JSON.to_owned());
+
+        let dummy = padded_inner_calldata([0x00, 0x00, 0x00, 0x00]);
+        let calldata = ur_execute_calldata(
+            vec![0x00, 0x08, 0x09],
+            vec![dummy.clone(), dummy.clone(), dummy],
+        );
+        let input = json!({
+            "chain_id": 8453,
+            "to":       "0x6ff5693b99212da76ad316178a184ab56d299b43",
+            "selector": "0x3593564c",
+            "ctx": {
+                "chain_id": 8453,
+                "from": "0x000000000000000000000000000000000000aaaa",
+                "to":   "0x6ff5693b99212da76ad316178a184ab56d299b43",
+                "value_wei": "0",
+                "block_timestamp": 1_700_000_000_u64
+            },
+            "calldata": calldata
+        });
+        let out = declarative_plan_children_json(input.to_string());
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["children"].as_array().expect("array").len(),
+            0,
+            "no cross-target opcodes → empty children, got {parsed}"
+        );
     }
 
     #[test]

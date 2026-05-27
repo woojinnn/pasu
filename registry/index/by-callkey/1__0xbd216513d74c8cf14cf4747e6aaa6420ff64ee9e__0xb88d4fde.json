@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v4/safeTransferFromData@1.0.0",
-  "manifest_path": "manifests/uniswap/v4/safeTransferFromData@1.0.0.json",
-  "bundle_sha256": "0x3937dfd5fe68402e6d57c797b140378f89861167b4ce0f094b785a960a2d4c57",
+  "bundle_id": "uniswap/position-manager/safeTransferFromWithData@1.0.0",
+  "manifest_path": "manifests/uniswap/position-manager/safeTransferFromWithData@1.0.0.json",
+  "bundle_sha256": "0x9ad1fd9ebfa43c2ef2fa887a06c3d64b5eeec77a7fbddb64d817db71e8735a57",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v4/safeTransferFromData@1.0.0",
+    "id": "uniswap/position-manager/safeTransferFromWithData@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e"
-      ],
-      "selector": "0xb88d4fde"
+      "selector": "0xb88d4fde",
+      "chain_to_addresses": {
+        "1": [
+          "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"
+        ],
+        "8453": [
+          "0x7C5f5A4bBd8fD63184577525326123B519429bDc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "safeTransferFrom",

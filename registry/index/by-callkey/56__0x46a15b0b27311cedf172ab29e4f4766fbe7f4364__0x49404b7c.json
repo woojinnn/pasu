@@ -1,0 +1,77 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/v3-nfpm/unwrapWETH9@1.0.0",
+  "manifest_path": "manifests/pancake/v3-nfpm/unwrapWETH9@1.0.0.json",
+  "bundle_sha256": "0xb6c1749255bbaa611a88606f12a5702b06f70a85b3db9b7f75285fb0e81aaf7b",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/v3-nfpm/unwrapWETH9@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x49404b7c",
+      "chain_to_addresses": {
+        "1": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "56": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ],
+        "8453": [
+          "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "unwrapWETH9",
+      "abi": {
+        "name": "unwrapWETH9",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "amountMinimum",
+            "type": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "unwrap",
+      "fields": {
+        "wrappedAsset.asset.kind": {
+          "literal": "unknown"
+        },
+        "wrappedAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "nativeAsset.asset.kind": {
+          "literal": "native"
+        },
+        "nativeAsset.amount.kind": {
+          "literal": "min"
+        },
+        "nativeAsset.amount.value": {
+          "from": "$.args.amountMinimum"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

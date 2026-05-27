@@ -1,0 +1,91 @@
+{
+  "type": "adapter_function",
+  "id": "curve/stableswap-ng-factory/2btc/removeLiquidity@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x5b36389c",
+    "chain_to_addresses": {
+      "1": [
+        "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "remove_liquidity",
+    "abi": {
+      "name": "remove_liquidity",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "_burn_amount",
+          "type": "uint256"
+        },
+        {
+          "name": "_min_amounts",
+          "type": "uint256[2]"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "remove_liquidity",
+    "fields": {
+      "exitMode": {
+        "literal": "proportional"
+      },
+      "pool.address": {
+        "literal": "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+      },
+      "inputLp.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputLp.asset.address": {
+        "literal": "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+      },
+      "inputLp.amount.kind": {
+        "literal": "exact"
+      },
+      "inputLp.amount.value": {
+        "from": "$.args._burn_amount"
+      },
+      "outputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "outputTokens[0].asset.address": {
+        "literal": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+      },
+      "outputTokens[1].asset.kind": {
+        "literal": "erc20"
+      },
+      "outputTokens[1].asset.address": {
+        "literal": "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+      },
+      "outputTokens[0].amount.kind": {
+        "literal": "min"
+      },
+      "outputTokens[0].amount.value": {
+        "from": "$.args._min_amounts[0]"
+      },
+      "outputTokens[1].amount.kind": {
+        "literal": "min"
+      },
+      "outputTokens[1].amount.value": {
+        "from": "$.args._min_amounts[1]"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

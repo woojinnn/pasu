@@ -1,0 +1,109 @@
+{
+  "type": "adapter_function",
+  "id": "curve/cryptoswap/tricrypto-base/exchange@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x5b41b908",
+    "chain_to_addresses": {
+      "8453": [
+        "0x6e53131f68a034873b6bfa15502af094ef0c5854"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "i",
+          "type": "uint256"
+        },
+        {
+          "name": "j",
+          "type": "uint256"
+        },
+        {
+          "name": "dx",
+          "type": "uint256"
+        },
+        {
+          "name": "min_dy",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": {
+        "literal": "exact_in"
+      },
+      "inputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputToken.asset.address": {
+        "fn": "select_from_literal_array",
+        "args": [
+          {
+            "literal": [
+              "0x417ac0e078398c154edfadd9ef675d30be60af93",
+              "0x236aa50979d5f3de3bd1eeb40e81137f22ab794b",
+              "0x4200000000000000000000000000000000000006"
+            ]
+          },
+          {
+            "from": "$.args.i"
+          }
+        ]
+      },
+      "inputToken.amount.kind": {
+        "literal": "exact"
+      },
+      "inputToken.amount.value": {
+        "from": "$.args.dx"
+      },
+      "outputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputToken.asset.address": {
+        "fn": "select_from_literal_array",
+        "args": [
+          {
+            "literal": [
+              "0x417ac0e078398c154edfadd9ef675d30be60af93",
+              "0x236aa50979d5f3de3bd1eeb40e81137f22ab794b",
+              "0x4200000000000000000000000000000000000006"
+            ]
+          },
+          {
+            "from": "$.args.j"
+          }
+        ]
+      },
+      "outputToken.amount.kind": {
+        "literal": "min"
+      },
+      "outputToken.amount.value": {
+        "from": "$.args.min_dy"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

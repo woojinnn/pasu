@@ -2,18 +2,21 @@
   "type": "adapter_function",
   "id": "aerodrome/voter/claimRewards@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"],
-    "selector": "0xf9f031df"
+    "selector": "0xf9f031df",
+    "chain_to_addresses": {
+      "8453": ["0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"]
+    }
   },
   "abi_fragment": {
     "function_name": "claimRewards",
     "abi": {
       "name": "claimRewards",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "gauges", "type": "address[]" }
+        { "name": "_gauges", "type": "address[]" }
       ]
     }
   },
@@ -22,15 +25,15 @@
     "category": "misc",
     "action": "claim_rewards",
     "fields": {
-      "source.address": { "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5" },
+      "source.address": { "from": "$.tx.to" },
       "source.label":   { "literal": "Aerodrome Voter (Gauge Rewards)" },
-      "from":           { "from":    "$.tx.from" },
-      "recipient":      { "from":    "$.tx.from" }
+      "from":           { "from": "$.tx.from" },
+      "recipient":      { "from": "$.tx.from" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

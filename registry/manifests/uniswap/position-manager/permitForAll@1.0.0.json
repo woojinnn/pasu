@@ -1,0 +1,51 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/position-manager/permitForAll@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x3aea60f0",
+    "chain_to_addresses": {
+      "1": ["0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"],
+      "8453": ["0x7C5f5A4bBd8fD63184577525326123B519429bDc"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permitForAll",
+    "abi": {
+      "name": "permitForAll",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "owner", "type": "address" },
+        { "name": "operator", "type": "address" },
+        { "name": "approved", "type": "bool" },
+        { "name": "deadline", "type": "uint256" },
+        { "name": "nonce", "type": "uint256" },
+        { "name": "signature", "type": "bytes" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "permit",
+    "fields": {
+      "permitKind": { "literal": "erc721_permit_for_all" },
+      "token.kind": { "literal": "erc721" },
+      "token.address": { "from": "$.tx.to" },
+      "token.tokenId": { "literal": "0" },
+      "owner": { "from": "$.args.owner" },
+      "operator": { "from": "$.args.operator" },
+      "approved": { "from": "$.args.approved" },
+      "validity.expiresAt": { "from": "$.args.deadline" },
+      "validity.source": { "literal": "signature-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

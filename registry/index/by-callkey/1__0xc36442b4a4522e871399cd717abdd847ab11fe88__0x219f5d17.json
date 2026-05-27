@@ -1,29 +1,30 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/increaseLiquidity@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/increaseLiquidity@1.0.0.json",
-  "bundle_sha256": "0x8fd17c26f56441a052b596644c1f8ef1dffcf34988fc22183908d95c2f287ac2",
+  "bundle_id": "uniswap/nfpm/increaseLiquidity@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/increaseLiquidity@1.0.0.json",
+  "bundle_sha256": "0x25cd842b1132b3a3bc230d066a82a5a7ed426aa5efbe44aa3e9be99aa2fb3ea5",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/increaseLiquidity@1.0.0",
+    "id": "uniswap/nfpm/increaseLiquidity@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
-      ],
-      "selector": "0x219f5d17"
+      "selector": "0x219f5d17",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "increaseLiquidity",
       "abi": {
         "name": "increaseLiquidity",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -67,7 +68,7 @@
           "literal": "erc721"
         },
         "nft.address": {
-          "literal": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+          "from": "$.tx.to"
         },
         "nft.tokenId": {
           "from": "$.args.tokenId"
@@ -76,19 +77,19 @@
           "literal": "unknown"
         },
         "inputTokens[0].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[0].amount.value": {
-          "from": "$.args.amount0Desired"
+          "from": "$.args.amount0Min"
         },
         "inputTokens[1].asset.kind": {
           "literal": "unknown"
         },
         "inputTokens[1].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[1].amount.value": {
-          "from": "$.args.amount1Desired"
+          "from": "$.args.amount1Min"
         },
         "validity.expiresAt": {
           "from": "$.args.deadline"

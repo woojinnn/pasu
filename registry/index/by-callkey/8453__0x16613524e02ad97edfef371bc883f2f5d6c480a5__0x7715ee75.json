@@ -2,36 +2,37 @@
   "matched": true,
   "bundle_id": "aerodrome/voter/claimBribes@1.0.0",
   "manifest_path": "manifests/aerodrome/voter/claimBribes@1.0.0.json",
-  "bundle_sha256": "0xebdc03193149a801f70bd4caf15ac8b06051739a5895de9916298a513fd8cbb9",
+  "bundle_sha256": "0x0b8ff7c084751183867acda786d856caff9f8527f165a1539b61811e5ad2ebfa",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voter/claimBribes@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
-      ],
-      "selector": "0x7715ee75"
+      "selector": "0x7715ee75",
+      "chain_to_addresses": {
+        "8453": [
+          "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "claimBribes",
       "abi": {
         "name": "claimBribes",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "bribes",
+            "name": "_bribes",
             "type": "address[]"
           },
           {
-            "name": "tokens",
+            "name": "_tokens",
             "type": "address[][]"
           },
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           }
         ]
@@ -43,13 +44,19 @@
       "action": "claim_rewards",
       "fields": {
         "source.address": {
-          "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+          "from": "$.tx.to"
         },
         "source.label": {
           "literal": "Aerodrome Voter (Bribes)"
         },
+        "nft.kind": {
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        },
         "tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "from": {
           "from": "$.tx.from"
@@ -61,13 +68,15 @@
           "literal": "erc20"
         },
         "rewardTokens[0].address": {
-          "from": "$.args.tokens[0][0]"
+          "from": "$.args._tokens[0][0]"
         }
       }
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

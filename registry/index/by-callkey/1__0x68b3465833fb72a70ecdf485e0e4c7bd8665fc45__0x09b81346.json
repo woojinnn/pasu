@@ -2,22 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/swap-router-02/exactOutput@1.0.0",
   "manifest_path": "manifests/uniswap/swap-router-02/exactOutput@1.0.0.json",
-  "bundle_sha256": "0xa02c72414a952c68d3310dc0862aa04646e25e166a7e100cd85617010ae1420d",
+  "bundle_sha256": "0x59f66b6d3dc4ba3fb6f0b668dbecb20aa436afb17624c2f52f19ead62fa108cf",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/swap-router-02/exactOutput@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-      ],
-      "selector": "0x09b81346"
+      "selector": "0x09b81346",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exactOutput",

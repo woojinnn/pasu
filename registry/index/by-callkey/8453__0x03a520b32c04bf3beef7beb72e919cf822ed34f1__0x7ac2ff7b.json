@@ -1,26 +1,30 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/permit-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/permit-base@1.0.0.json",
-  "bundle_sha256": "0x864775fd0a4f71f6e7736efec7c12c7fa19bc1e226bf69c24ab4c9b1bbd9bcfe",
+  "bundle_id": "uniswap/nfpm/permit@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/permit@1.0.0.json",
+  "bundle_sha256": "0x9e4fe58c99bbcb8d2a37926c1afc5f15a4c37526a5ab8abf24b528e7d562a66e",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/permit-base@1.0.0",
+    "id": "uniswap/nfpm/permit@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
-      ],
-      "selector": "0x7ac2ff7b"
+      "selector": "0x7ac2ff7b",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permit",
       "abi": {
         "name": "permit",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "spender",

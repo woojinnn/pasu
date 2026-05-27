@@ -1,0 +1,90 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/permit2/approve@1.0.0",
+  "manifest_path": "manifests/pancake/permit2/approve@1.0.0.json",
+  "bundle_sha256": "0xed471e11c3affd205429426dc67b0af8bf568d9affb208dd23de247dbd35a273",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/permit2/approve@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x87517c45",
+      "chain_to_addresses": {
+        "1": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "56": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "8453": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "approve",
+      "abi": {
+        "name": "approve",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint160"
+          },
+          {
+            "name": "expiration",
+            "type": "uint48"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "approve",
+      "fields": {
+        "token.kind": {
+          "literal": "erc20"
+        },
+        "token.address": {
+          "from": "$.args.token"
+        },
+        "spender": {
+          "from": "$.args.spender"
+        },
+        "amount.kind": {
+          "literal": "max"
+        },
+        "amount.value": {
+          "from": "$.args.amount"
+        },
+        "approvalKind": {
+          "literal": "permit2"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.expiration"
+        },
+        "validity.source": {
+          "literal": "grant-expiration"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

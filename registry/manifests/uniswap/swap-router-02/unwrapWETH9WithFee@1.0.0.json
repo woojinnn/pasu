@@ -2,17 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/swap-router-02/unwrapWETH9WithFee@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      137,
-      42161
-    ],
-    "to": [
-      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-    ],
-    "selector": "0x9b2c0a37"
+    "selector": "0x9b2c0a37",
+    "chain_to_addresses": {
+      "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+      "8453": ["0x2626664c2603336E57B271c5C0b26F421741e481"]
+    }
   },
   "abi_fragment": {
     "function_name": "unwrapWETH9WithFee",
@@ -20,22 +16,10 @@
       "name": "unwrapWETH9WithFee",
       "type": "function",
       "inputs": [
-        {
-          "name": "amountMinimum",
-          "type": "uint256"
-        },
-        {
-          "name": "recipient",
-          "type": "address"
-        },
-        {
-          "name": "feeBips",
-          "type": "uint256"
-        },
-        {
-          "name": "feeRecipient",
-          "type": "address"
-        }
+        { "name": "amountMinimum", "type": "uint256" },
+        { "name": "recipient", "type": "address" },
+        { "name": "feeBips", "type": "uint256" },
+        { "name": "feeRecipient", "type": "address" }
       ]
     }
   },
@@ -44,31 +28,17 @@
     "category": "misc",
     "action": "unwrap",
     "fields": {
-      "wrappedAsset.asset.kind": {
-        "literal": "unknown"
-      },
-      "wrappedAsset.amount.kind": {
-        "literal": "exact"
-      },
-      "nativeAsset.asset.kind": {
-        "literal": "native"
-      },
-      "nativeAsset.amount.kind": {
-        "literal": "min"
-      },
-      "nativeAsset.amount.value": {
-        "from": "$.args.amountMinimum"
-      },
-      "recipient": {
-        "from": "$.args.recipient"
-      }
+      "wrappedAsset.asset.kind": { "literal": "unknown" },
+      "wrappedAsset.amount.kind": { "literal": "exact" },
+      "nativeAsset.asset.kind": { "literal": "native" },
+      "nativeAsset.amount.kind": { "literal": "min" },
+      "nativeAsset.amount.value": { "from": "$.args.amountMinimum" },
+      "recipient": { "from": "$.args.recipient" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [
-      "token_metadata"
-    ],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

@@ -1,0 +1,78 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/permit2/permitTransferFrom-batch@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xedd9444b",
+    "chain_to_addresses": {
+      "1": ["0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"],
+      "56": ["0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"],
+      "8453": ["0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permitTransferFrom",
+    "abi": {
+      "name": "permitTransferFrom",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "permit",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "permitted",
+              "type": "tuple[]",
+              "components": [
+                { "name": "token", "type": "address" },
+                { "name": "amount", "type": "uint256" }
+              ]
+            },
+            { "name": "nonce", "type": "uint256" },
+            { "name": "deadline", "type": "uint256" }
+          ]
+        },
+        {
+          "name": "transferDetails",
+          "type": "tuple[]",
+          "components": [
+            { "name": "to", "type": "address" },
+            { "name": "requestedAmount", "type": "uint256" }
+          ]
+        },
+        { "name": "owner", "type": "address" },
+        { "name": "signature", "type": "bytes" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "category": "misc",
+    "action": "permit",
+    "array_path": "$.args.permit[0]",
+    "parallel_paths": {
+      "td": "$.args.transferDetails"
+    },
+    "max_elements": 64,
+    "fields": {
+      "permitKind": { "literal": "permit2_transfer" },
+      "token.kind": { "literal": "erc20" },
+      "token.address": { "from": "$.args.element[0]" },
+      "owner": { "from": "$.args.owner" },
+      "recipient": { "from": "$.args.td[0]" },
+      "amount.kind": { "literal": "max" },
+      "amount.value": { "from": "$.args.element[1]" },
+      "requestedAmount.kind": { "literal": "exact" },
+      "requestedAmount.value": { "from": "$.args.td[1]" },
+      "validity.expiresAt": { "from": "$.args.permit[2]" },
+      "validity.source": { "literal": "signature-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

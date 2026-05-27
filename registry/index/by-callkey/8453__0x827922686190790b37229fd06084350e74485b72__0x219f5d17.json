@@ -1,26 +1,27 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream-npm/increaseLiquidity@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream-npm/increaseLiquidity@1.0.0.json",
-  "bundle_sha256": "0x06510b414226fa41b8bd6a6c97e8edcdbea9c634e1a5b0e269d7aaeed072d3c4",
+  "bundle_id": "aerodrome/slipstream-nfpm/increaseLiquidity@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-nfpm/increaseLiquidity@1.0.0.json",
+  "bundle_sha256": "0xc9e77865abe698616527f90ee611c13241ed11399be8f245a4a31e5eeceef176",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream-npm/increaseLiquidity@1.0.0",
+    "id": "aerodrome/slipstream-nfpm/increaseLiquidity@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x827922686190790b37229fd06084350E74485b72"
-      ],
-      "selector": "0x219f5d17"
+      "selector": "0x219f5d17",
+      "chain_to_addresses": {
+        "8453": [
+          "0x827922686190790b37229fd06084350E74485b72"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "increaseLiquidity",
       "abi": {
         "name": "increaseLiquidity",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -64,7 +65,7 @@
           "literal": "erc721"
         },
         "nft.address": {
-          "literal": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53"
+          "from": "$.tx.to"
         },
         "nft.tokenId": {
           "from": "$.args.tokenId"
@@ -73,19 +74,19 @@
           "literal": "unknown"
         },
         "inputTokens[0].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[0].amount.value": {
-          "from": "$.args.amount0Desired"
+          "from": "$.args.amount0Min"
         },
         "inputTokens[1].asset.kind": {
           "literal": "unknown"
         },
         "inputTokens[1].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[1].amount.value": {
-          "from": "$.args.amount1Desired"
+          "from": "$.args.amount1Min"
         },
         "validity.expiresAt": {
           "from": "$.args.deadline"

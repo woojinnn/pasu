@@ -2,18 +2,21 @@
   "type": "adapter_function",
   "id": "aerodrome/voting-escrow/withdraw@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
-    "selector": "0x2e1a7d4d"
+    "selector": "0x2e1a7d4d",
+    "chain_to_addresses": {
+      "8453": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"]
+    }
   },
   "abi_fragment": {
     "function_name": "withdraw",
     "abi": {
       "name": "withdraw",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "tokenId", "type": "uint256" }
+        { "name": "_tokenId", "type": "uint256" }
       ]
     }
   },
@@ -25,8 +28,8 @@
       "tokenOut.kind":      { "literal": "erc20" },
       "tokenOut.address":   { "literal": "0x940181a94A35A4569E4529A3CDfB74e38FD98631" },
       "ticket.nft.kind":    { "literal": "erc721" },
-      "ticket.nft.address": { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
-      "ticket.nft.tokenId": { "from": "$.args.tokenId" },
+      "ticket.nft.address": { "from": "$.tx.to" },
+      "ticket.nft.tokenId": { "from": "$.args._tokenId" },
       "recipient":          { "from": "$.tx.from" }
     }
   },

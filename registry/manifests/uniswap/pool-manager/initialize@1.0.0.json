@@ -1,0 +1,56 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/pool-manager/initialize@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x6276cbbe",
+    "chain_to_addresses": {
+      "1": ["0x000000000004444c5dC75cB358380D2E3dE08A90"],
+      "8453": ["0x498581fF718922c3f8e6A244956aF099B2652b2b"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "initialize",
+    "abi": {
+      "name": "initialize",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "tuple",
+          "components": [
+            { "name": "currency0", "type": "address" },
+            { "name": "currency1", "type": "address" },
+            { "name": "fee", "type": "uint24" },
+            { "name": "tickSpacing", "type": "int24" },
+            { "name": "hooks", "type": "address" }
+          ]
+        },
+        { "name": "sqrtPriceX96", "type": "uint160" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "initialize_pool",
+    "fields": {
+      "pool.address": { "from": "$.tx.to" },
+      "token0.kind": { "literal": "erc20" },
+      "token0.address": { "from": "$.args.currency0" },
+      "token1.kind": { "literal": "erc20" },
+      "token1.address": { "from": "$.args.currency1" },
+      "feeBps": { "from": "$.args.fee" },
+      "tickSpacing": { "from": "$.args.tickSpacing" },
+      "hooks": { "from": "$.args.hooks" },
+      "sqrtPriceX96": { "from": "$.args.sqrtPriceX96" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

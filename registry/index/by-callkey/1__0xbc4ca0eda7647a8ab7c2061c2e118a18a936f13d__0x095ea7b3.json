@@ -1,0 +1,76 @@
+{
+  "matched": true,
+  "bundle_id": "standard/erc721/approve@1.0.0",
+  "manifest_path": "manifests/standard/erc721/approve@1.0.0.json",
+  "bundle_sha256": "0x3a0c269d0b98ebb4ee0b4a65da45ba8a2e127a883eeeac908004758226385d68",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "standard/erc721/approve@1.0.0",
+    "schema_version": "2",
+    "abi_fragment": {
+      "function_name": "approve",
+      "abi": {
+        "name": "approve",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "approve",
+      "fields": {
+        "token.kind": {
+          "literal": "erc721"
+        },
+        "token.address": {
+          "from": "$.tx.to"
+        },
+        "token.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "spender": {
+          "from": "$.args.to"
+        },
+        "amount.kind": {
+          "literal": "exact"
+        },
+        "amount.value": {
+          "literal": "1"
+        },
+        "approvalKind": {
+          "literal": "erc721"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    },
+    "match": {
+      "selector": "0x095ea7b3",
+      "chain_to_addresses": {
+        "1": [
+          "0x8a90cab2b38dba80c64b7734e58ee1db38b8992e",
+          "0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb",
+          "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
+          "0xbd3531da5cf5857e7cfaa92426877b022e612cf8",
+          "0xed5af388653567af2f388e6224dc7c4b3241c544"
+        ]
+      }
+    }
+  }
+}

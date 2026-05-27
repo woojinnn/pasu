@@ -1,0 +1,64 @@
+{
+  "type": "adapter_function",
+  "id": "standard/erc20/increaseAllowance@1.0.0",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x39509351",
+    "chain_to_addresses_source": "tokens:erc20",
+    "chain_ids": [
+      1,
+      56,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "increaseAllowance",
+    "abi": {
+      "name": "increaseAllowance",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "name": "addedValue",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "approve",
+    "fields": {
+      "token.kind": {
+        "literal": "erc20"
+      },
+      "token.address": {
+        "from": "$.tx.to"
+      },
+      "spender": {
+        "from": "$.args.spender"
+      },
+      "amount.kind": {
+        "literal": "exact"
+      },
+      "amount.value": {
+        "from": "$.args.addedValue"
+      },
+      "approvalKind": {
+        "literal": "erc20_increase"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

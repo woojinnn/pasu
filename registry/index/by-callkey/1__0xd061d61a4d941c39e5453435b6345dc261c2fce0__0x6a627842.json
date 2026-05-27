@@ -2,19 +2,19 @@
   "matched": true,
   "bundle_id": "curve/minter/mint@1.0.0",
   "manifest_path": "manifests/curve/minter/mint@1.0.0.json",
-  "bundle_sha256": "0xc9268b8d7dd778ad141e876580a98b52cdc2b482ab732e1415d334ba63fa4b34",
+  "bundle_sha256": "0x75d6419b9ec6734f9c100389baa17e98617f8f0d3b75bfcca6f598d6be882ea3",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/minter/mint@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
-      ],
-      "selector": "0x6a627842"
+      "selector": "0x6a627842",
+      "chain_to_addresses": {
+        "1": [
+          "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "mint",
@@ -35,10 +35,10 @@
       "action": "claim_rewards",
       "fields": {
         "source.address": {
-          "literal": "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
+          "from": "$.args.gauge_addr"
         },
         "source.label": {
-          "literal": "Curve Minter"
+          "literal": "Curve gauge"
         },
         "from": {
           "from": "$.tx.from"

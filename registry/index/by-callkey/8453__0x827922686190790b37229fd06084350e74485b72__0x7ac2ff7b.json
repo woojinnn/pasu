@@ -1,26 +1,27 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream-npm/permit@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream-npm/permit@1.0.0.json",
-  "bundle_sha256": "0x0b6ad1e0b3b58e2799a487e40197eab97d9fb02b1965261b804d64edf2c29818",
+  "bundle_id": "aerodrome/slipstream-nfpm/permit@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-nfpm/permit@1.0.0.json",
+  "bundle_sha256": "0xe643531b976a274a79babf27afcaa41c4a24866a8b559fceffb6959aeeabc0e0",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream-npm/permit@1.0.0",
+    "id": "aerodrome/slipstream-nfpm/permit@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x827922686190790b37229fd06084350E74485b72"
-      ],
-      "selector": "0x7ac2ff7b"
+      "selector": "0x7ac2ff7b",
+      "chain_to_addresses": {
+        "8453": [
+          "0x827922686190790b37229fd06084350E74485b72"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permit",
       "abi": {
         "name": "permit",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "spender",

@@ -1,0 +1,88 @@
+{
+  "type": "adapter_function",
+  "id": "curve/stableswap-ng-factory/2btc/addLiquidity@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x0b4c7e4d",
+    "chain_to_addresses": {
+      "1": [
+        "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "add_liquidity",
+    "abi": {
+      "name": "add_liquidity",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "_amounts",
+          "type": "uint256[2]"
+        },
+        {
+          "name": "_min_mint_amount",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "add_liquidity",
+    "fields": {
+      "pool.address": {
+        "literal": "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+      },
+      "inputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[0].asset.address": {
+        "literal": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+      },
+      "inputTokens[1].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[1].asset.address": {
+        "literal": "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+      },
+      "inputTokens[0].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[0].amount.value": {
+        "from": "$.args._amounts[0]"
+      },
+      "inputTokens[1].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[1].amount.value": {
+        "from": "$.args._amounts[1]"
+      },
+      "outputLp.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputLp.asset.address": {
+        "literal": "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+      },
+      "outputLp.amount.kind": {
+        "literal": "min"
+      },
+      "outputLp.amount.value": {
+        "from": "$.args._min_mint_amount"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

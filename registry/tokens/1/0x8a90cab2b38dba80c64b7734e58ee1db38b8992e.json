@@ -1,0 +1,8 @@
+{
+  "kind": "erc721",
+  "chainId": 1,
+  "address": "0x8a90cab2b38dba80c64b7734e58ee1db38b8992e",
+  "collection_name": "Doodles",
+  "symbol": "DOODLE",
+  "source": "https://etherscan.io/address/0x8a90CAb2b38dba80c64b7734e58Ee1dB38B8992e"
+}

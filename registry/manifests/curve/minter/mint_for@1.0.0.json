@@ -1,0 +1,42 @@
+{
+  "type": "adapter_function",
+  "id": "curve/minter/mint_for@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x27f18ae3",
+    "chain_to_addresses": {
+      "1": ["0xd061d61a4d941c39e5453435b6345dc261c2fce0"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mint_for",
+    "abi": {
+      "name": "mint_for",
+      "type": "function",
+      "inputs": [
+        { "name": "gauge_addr", "type": "address" },
+        { "name": "_for",       "type": "address" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "claim_rewards",
+    "fields": {
+      "source.address":          { "from": "$.args.gauge_addr" },
+      "source.label":            { "literal": "Curve gauge" },
+      "from":                    { "from": "$.args._for" },
+      "recipient":               { "from": "$.args._for" },
+      "rewardTokens[0].kind":    { "literal": "erc20" },
+      "rewardTokens[0].address": { "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

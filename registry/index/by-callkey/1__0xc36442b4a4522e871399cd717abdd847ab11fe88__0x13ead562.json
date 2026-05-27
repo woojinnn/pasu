@@ -1,23 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/createAndInitializePoolIfNecessary@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/createAndInitializePoolIfNecessary@1.0.0.json",
-  "bundle_sha256": "0x9aa81c97a227da8819262ea5c7a94c08b2eaebfd145594b64641015ab17f48df",
+  "bundle_id": "uniswap/nfpm/createAndInitializePoolIfNecessary@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/createAndInitializePoolIfNecessary@1.0.0.json",
+  "bundle_sha256": "0xb5fab0f5fa95fe49d959924ec9c27dc500a1ac52768eda586473d199e7dfcbe8",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/createAndInitializePoolIfNecessary@1.0.0",
+    "id": "uniswap/nfpm/createAndInitializePoolIfNecessary@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
-      ],
-      "selector": "0x13ead562"
+      "selector": "0x13ead562",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "createAndInitializePoolIfNecessary",

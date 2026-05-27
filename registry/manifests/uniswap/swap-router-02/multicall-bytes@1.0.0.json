@@ -2,17 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/swap-router-02/multicall-bytes@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      137,
-      42161
-    ],
-    "to": [
-      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-    ],
-    "selector": "0xac9650d8"
+    "selector": "0xac9650d8",
+    "chain_to_addresses": {
+      "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+      "8453": ["0x2626664c2603336E57B271c5C0b26F421741e481"]
+    }
   },
   "abi_fragment": {
     "function_name": "multicall",
@@ -20,10 +16,7 @@
       "name": "multicall",
       "type": "function",
       "inputs": [
-        {
-          "name": "data",
-          "type": "bytes[]"
-        }
+        { "name": "data", "type": "bytes[]" }
       ]
     }
   },
@@ -33,9 +26,7 @@
     "max_depth": 3
   },
   "requires": {
-    "imperative": [
-      "multicall-recurse@^1.0"
-    ],
+    "imperative": ["multicall-recurse@^1.0"],
     "adapter_capabilities": [],
     "host_capabilities": [],
     "extension": ">=0.1.0"

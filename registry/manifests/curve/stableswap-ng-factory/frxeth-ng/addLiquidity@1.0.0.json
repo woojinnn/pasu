@@ -1,0 +1,88 @@
+{
+  "type": "adapter_function",
+  "id": "curve/stableswap-ng-factory/frxeth-ng/addLiquidity@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x0b4c7e4d",
+    "chain_to_addresses": {
+      "1": [
+        "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "add_liquidity",
+    "abi": {
+      "name": "add_liquidity",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "_amounts",
+          "type": "uint256[2]"
+        },
+        {
+          "name": "_min_mint_amount",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "add_liquidity",
+    "fields": {
+      "pool.address": {
+        "literal": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
+      },
+      "inputTokens[0].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[0].asset.address": {
+        "literal": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      },
+      "inputTokens[1].asset.kind": {
+        "literal": "erc20"
+      },
+      "inputTokens[1].asset.address": {
+        "literal": "0x5e8422345238f34275888049021821e8e08caa1f"
+      },
+      "inputTokens[0].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[0].amount.value": {
+        "from": "$.args._amounts[0]"
+      },
+      "inputTokens[1].amount.kind": {
+        "literal": "max"
+      },
+      "inputTokens[1].amount.value": {
+        "from": "$.args._amounts[1]"
+      },
+      "outputLp.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputLp.asset.address": {
+        "literal": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
+      },
+      "outputLp.amount.kind": {
+        "literal": "min"
+      },
+      "outputLp.amount.value": {
+        "from": "$.args._min_mint_amount"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

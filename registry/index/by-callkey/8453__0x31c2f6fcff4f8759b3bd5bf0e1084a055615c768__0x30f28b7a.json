@@ -1,0 +1,133 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/permit2/permitTransferFrom@1.0.0",
+  "manifest_path": "manifests/pancake/permit2/permitTransferFrom@1.0.0.json",
+  "bundle_sha256": "0x0b4f7e6260e4b211205346a6bb0cf203049e9d397e95b648652a5a5c051e9afc",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/permit2/permitTransferFrom@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x30f28b7a",
+      "chain_to_addresses": {
+        "1": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "56": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ],
+        "8453": [
+          "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "permitTransferFrom",
+      "abi": {
+        "name": "permitTransferFrom",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "permit",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "permitted",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256"
+                  }
+                ]
+              },
+              {
+                "name": "nonce",
+                "type": "uint256"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "transferDetails",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "to",
+                "type": "address"
+              },
+              {
+                "name": "requestedAmount",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "signature",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "permit",
+      "fields": {
+        "permitKind": {
+          "literal": "permit2_transfer"
+        },
+        "token.kind": {
+          "literal": "erc20"
+        },
+        "token.address": {
+          "from": "$.args.permit[0][0]"
+        },
+        "owner": {
+          "from": "$.args.owner"
+        },
+        "recipient": {
+          "from": "$.args.transferDetails[0]"
+        },
+        "amount.kind": {
+          "literal": "max"
+        },
+        "amount.value": {
+          "from": "$.args.permit[0][1]"
+        },
+        "requestedAmount.kind": {
+          "literal": "exact"
+        },
+        "requestedAmount.value": {
+          "from": "$.args.transferDetails[1]"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.permit[2]"
+        },
+        "validity.source": {
+          "literal": "signature-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

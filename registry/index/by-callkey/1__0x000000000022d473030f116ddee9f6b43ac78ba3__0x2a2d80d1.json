@@ -2,31 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/permit2/permit-batch@1.0.0",
   "manifest_path": "manifests/uniswap/permit2/permit-batch@1.0.0.json",
-  "bundle_sha256": "0x68b4baecc9801397f53ddd8cdd22d077f78b0d6ec2a5bd7fa7c1b3a20055e0f3",
+  "bundle_sha256": "0x63c71fcc13eb9606f2ca35820413fb46816e1637952624ae881c7a8c6d3fba27",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/permit2/permit-batch@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        56,
-        130,
-        137,
-        480,
-        8453,
-        42161,
-        42220,
-        43114,
-        57073,
-        81457,
-        7777777
-      ],
-      "to": [
-        "0x000000000022D473030F116dDEE9F6B43aC78BA3"
-      ],
-      "selector": "0x2a2d80d1"
+      "selector": "0x2a2d80d1",
+      "chain_to_addresses": {
+        "1": [
+          "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+        ],
+        "8453": [
+          "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permit",
@@ -89,7 +80,7 @@
       "max_elements": 64,
       "fields": {
         "permitKind": {
-          "literal": "permit2_batch"
+          "literal": "permit2_single"
         },
         "token.kind": {
           "literal": "erc20"

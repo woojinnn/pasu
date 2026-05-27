@@ -1,0 +1,112 @@
+{
+  "matched": true,
+  "bundle_id": "curve/stableswap-ng-factory/2btc/exchangeUnderlying@1.0.0",
+  "manifest_path": "manifests/curve/stableswap-ng-factory/2btc/exchangeUnderlying@1.0.0.json",
+  "bundle_sha256": "0xba4c89f4f14af81e7d5894ea4c3887f2800c4c56b39cef408ff6625a82270064",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "curve/stableswap-ng-factory/2btc/exchangeUnderlying@1.0.0",
+    "publisher": "curve.fi",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xa6417ed6",
+      "chain_to_addresses": {
+        "1": [
+          "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "exchange_underlying",
+      "abi": {
+        "name": "exchange_underlying",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "i",
+            "type": "int128"
+          },
+          {
+            "name": "j",
+            "type": "int128"
+          },
+          {
+            "name": "_dx",
+            "type": "uint256"
+          },
+          {
+            "name": "_min_dy",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "swapMode": {
+          "literal": "exact_in"
+        },
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "fn": "select_from_literal_array",
+          "args": [
+            {
+              "literal": [
+                "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+                "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+              ]
+            },
+            {
+              "from": "$.args.i"
+            }
+          ]
+        },
+        "inputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args._dx"
+        },
+        "outputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "outputToken.asset.address": {
+          "fn": "select_from_literal_array",
+          "args": [
+            {
+              "literal": [
+                "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+                "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+              ]
+            },
+            {
+              "from": "$.args.j"
+            }
+          ]
+        },
+        "outputToken.amount.kind": {
+          "literal": "min"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args._min_dy"
+        },
+        "recipient": {
+          "from": "$.tx.from"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

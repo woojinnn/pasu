@@ -1,22 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v2/addLiquidityETH-bnb@1.0.0",
-  "manifest_path": "manifests/uniswap/v2/addLiquidityETH-bnb@1.0.0.json",
-  "bundle_sha256": "0x484923e13828776cc941acedc1b582fdd0f5b36a289f28c86a4bc4fb3958a219",
+  "bundle_id": "uniswap/v2-router-02/addLiquidityETH@1.0.0",
+  "manifest_path": "manifests/uniswap/v2-router-02/addLiquidityETH@1.0.0.json",
+  "bundle_sha256": "0xb4ee36e6e8cb5b8a0143f25ddf628d7a9e4739054c2ec0fd88b35fdc51a1e883",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v2/addLiquidityETH-bnb@1.0.0",
+    "id": "uniswap/v2-router-02/addLiquidityETH@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        56,
-        8453,
-        42161
-      ],
-      "to": [
-        "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"
-      ],
-      "selector": "0xf305d719"
+      "selector": "0xf305d719",
+      "chain_to_addresses": {
+        "1": [
+          "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+        ],
+        "8453": [
+          "0x4752ba5DBc23f44D87826276BF6Fd6b1C372ad24"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "addLiquidityETH",

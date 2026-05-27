@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v4/permit-permit2-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v4/permit-permit2-base@1.0.0.json",
-  "bundle_sha256": "0xa4f4007486dc83cdc7c7a05eaaef69e81661b70bf23b50e1ff6b0c7084e86c47",
+  "bundle_id": "uniswap/position-manager/permit-permit2@1.0.0",
+  "manifest_path": "manifests/uniswap/position-manager/permit-permit2@1.0.0.json",
+  "bundle_sha256": "0xf2ec47b7378f0a4be0af0c5e9a95166960272f34a4049ab9a9440cf1ef3778da",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v4/permit-permit2-base@1.0.0",
+    "id": "uniswap/position-manager/permit-permit2@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x7c5f5a4bbd8fd63184577525326123b519429bdc"
-      ],
-      "selector": "0x2b67b570"
+      "selector": "0x2b67b570",
+      "chain_to_addresses": {
+        "1": [
+          "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"
+        ],
+        "8453": [
+          "0x7C5f5A4bBd8fD63184577525326123B519429bDc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permit",

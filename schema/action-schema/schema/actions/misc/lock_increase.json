@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/lock_increase.json",
+  "title": "LockIncreaseAction",
+  "description": "기존 voting-escrow lock 을 확장 — (1) Aerodrome VotingEscrow.increaseAmount (NFT-bound, principal 추가) / .increaseUnlockTime (기간 연장, relative seconds) (2) Curve veCRV.increase_amount (account-bound, principal 추가) / .increase_unlock_time (account-bound, absolute timestamp) (3) Curve veCRV.deposit_for (제3자 account 의 lock 에 principal 추가). kind discriminator 로 amount/unlock_time path 구별. amount path 는 additionalAmount, unlock_time path 는 newLockDurationSec (Aerodrome relative) 또는 newUnlockTime (Curve absolute) 채움 — 둘 mutually exclusive. tokenId 는 Aerodrome 만 (account-bound veCRV 는 생략). recipient 는 deposit_for 의 _addr 채움 (부재 = root.from). 정책 'tokenId 의 owner == root.from' (있을 때) / 'recipient == root.from' / 'newLockDuration <= 4y' 분기.",
+
+  "type": "object",
+  "properties": {
+    "votingEscrow": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "VotingEscrow 컨트랙트 주소 (tx.to). LockCreateAction 의 votingEscrow 와 동일."
+    },
+
+    "tokenId": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "수정 대상 veNFT 의 tokenId — Aerodrome veAERO / Velodrome veVELO 에만 적용 (필수). Curve veCRV 는 account-bound (NFT 없음) 라 본 필드 생략 — lowering 단계에서 root.from 자체가 lock owner 로 처리. 정책 'host:onchain 으로 ownerOf(tokenId) == root.from 검증' 분기 (tokenId 있을 때만)."
+    },
+
+    "kind": {
+      "type": "string",
+      "enum": ["amount", "unlock_time"],
+      "description": "subkind discriminator. 'amount' (increaseAmount — principal 추가, additionalAmount 채움), 'unlock_time' (increaseUnlockTime — 기간 연장, newLockDurationSec 또는 newUnlockTime 채움). selector 별로 mapper 가 채움."
+    },
+
+    "additionalAmount": {
+      "$ref": "../../common/_common.json#/$defs/AmountConstraint",
+      "description": "추가 lock 할 토큰 수량 (kind=exact, kind 가 'amount' 일 때만). increaseAmount(tokenId, value) 의 value 인자 또는 Curve `increase_amount(_value)` / `deposit_for(_addr, _value)` 의 `_value`."
+    },
+
+    "newLockDurationSec": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "새 lock 기간 (relative, seconds, kind 가 'unlock_time' 일 때만, Aerodrome). increaseUnlockTime(tokenId, lockDuration) 의 lockDuration. 기존 unlockTime 보다 늦어야 함 (VE invariant). 최대 = MAX_LOCK_DURATION (Aerodrome 4y). `newUnlockTime` 와 mutually exclusive."
+    },
+
+    "newUnlockTime": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "absolute unlock timestamp (epoch seconds, kind 가 'unlock_time' 일 때만, Curve). Curve veCRV `increase_unlock_time(_unlock_time)` 의 `_unlock_time` — absolute timestamp 사용. `newLockDurationSec` (relative seconds, Aerodrome) 와 mutually exclusive. lowering 단계에서 Cedar policy 가 absolute → relative 변환 (block timestamp 차감) — host:onchain 의존. 정책 'newUnlockTime - now > 4y 차단' 분기."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "본 lock 의 owner (제3자 lock 추가 케이스 — Curve veCRV `deposit_for(_addr, _value)` 의 `_addr`). 부재 = root.from 자체가 owner (`increaseAmount` 직접 호출). Aerodrome veAERO 는 tokenId 의 ownerOf 가 자동 결정 — 본 필드 부재. 정책 'recipient == root.from' 강력 권장 (제3자 lock 위장 차단)."
+    }
+  },
+
+  "required": ["votingEscrow", "kind"]
+}

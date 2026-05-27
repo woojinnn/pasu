@@ -16,6 +16,7 @@ pub(crate) mod gauge_vote;
 pub(crate) mod lock_create;
 pub(crate) mod lock_increase;
 pub(crate) mod lock_manage;
+pub(crate) mod lock_withdraw;
 pub(crate) mod lp_stake;
 pub(crate) mod lp_unstake;
 pub(crate) mod permit;

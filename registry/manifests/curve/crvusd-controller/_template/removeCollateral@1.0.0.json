@@ -1,0 +1,43 @@
+{
+  "type": "adapter_function",
+  "id": "curve/crvusd-controller/_template/removeCollateral@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x2e4af52a",
+    "chain_to_addresses": {
+      "__CHAIN_ID__": ["__CONTROLLER_ADDRESS__"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "remove_collateral",
+    "abi": {
+      "name": "remove_collateral",
+      "type": "function",
+      "inputs": [
+        { "name": "collateral", "type": "uint256" },
+        { "name": "use_eth",    "type": "bool"    }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "lending",
+    "action": "withdraw",
+    "fields": {
+      "market.address": { "literal": "__CONTROLLER_ADDRESS__" },
+      "market.label":   { "literal": "Curve crvUSD Controller" },
+      "asset.kind":     { "literal": "erc20" },
+      "asset.address":  { "literal": "__COLLATERAL_ADDRESS__" },
+      "amount.kind":    { "literal": "exact" },
+      "amount.value":   { "from": "$.args.collateral" },
+      "recipient":      { "from": "$.tx.from" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

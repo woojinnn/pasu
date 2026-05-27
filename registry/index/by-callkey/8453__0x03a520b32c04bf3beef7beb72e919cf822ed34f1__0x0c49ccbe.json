@@ -1,26 +1,30 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/decreaseLiquidity-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/decreaseLiquidity-base@1.0.0.json",
-  "bundle_sha256": "0x56d7d7d1c6b12d67a38435e3e84b326e8eaf7fdec2954656ad9e10d520bc3a58",
+  "bundle_id": "uniswap/nfpm/decreaseLiquidity@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/decreaseLiquidity@1.0.0.json",
+  "bundle_sha256": "0x0035477bdab6f1d6efc6badb1152e2998ebd34bab3ddad18892e82984acbe637",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/decreaseLiquidity-base@1.0.0",
+    "id": "uniswap/nfpm/decreaseLiquidity@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
-      ],
-      "selector": "0x0c49ccbe"
+      "selector": "0x0c49ccbe",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "decreaseLiquidity",
       "abi": {
         "name": "decreaseLiquidity",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -60,7 +64,7 @@
           "literal": "erc721"
         },
         "nft.address": {
-          "literal": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+          "from": "$.tx.to"
         },
         "nft.tokenId": {
           "from": "$.args.tokenId"

@@ -1,0 +1,42 @@
+{
+  "type": "adapter_function",
+  "id": "uniswap/position-manager/setApprovalForAll@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xa22cb465",
+    "chain_to_addresses": {
+      "1": ["0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"],
+      "8453": ["0x7C5f5A4bBd8fD63184577525326123B519429bDc"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setApprovalForAll",
+    "abi": {
+      "name": "setApprovalForAll",
+      "type": "function",
+      "inputs": [
+        { "name": "operator", "type": "address" },
+        { "name": "approved", "type": "bool" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "set_approval_for_all",
+    "fields": {
+      "collection.kind": { "literal": "erc721" },
+      "collection.address": { "from": "$.tx.to" },
+      "collection.tokenId": { "literal": "0" },
+      "operator": { "from": "$.args.operator" },
+      "approved": { "from": "$.args.approved" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

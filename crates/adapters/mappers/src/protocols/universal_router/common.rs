@@ -95,20 +95,25 @@ fn is_zero_address(addr: &Address) -> bool {
         .eq_ignore_ascii_case("0x0000000000000000000000000000000000000000")
 }
 
-pub(super) fn asset_with_amount(
+// Visibility widened to `pub(crate)` so the sibling
+// `protocols::pancake_universal_router::infi_swap_builder` can reuse the
+// shared swap-envelope helpers without re-implementing them. These helpers
+// build types the Pancake INFI_SWAP builder needs (the V4 and Pancake
+// builders share the policy_engine schema).
+pub(crate) fn asset_with_amount(
     asset: AssetRef,
     amount: AmountConstraint,
 ) -> AssetRefWithAmountConstraint {
     AssetRefWithAmountConstraint { asset, amount }
 }
 
-pub(super) fn decimal_from_uint(value: U256) -> DecimalString {
+pub(crate) fn decimal_from_uint(value: U256) -> DecimalString {
     DecimalString::from_str(&value.to_string()).expect("U256 decimal string is always valid")
 }
 
 /// Convenience: build a `SwapAction.*_token.amount` constraint without
 /// repeating `AmountConstraint { kind, value: Some(_) }` in every mapper.
-pub(super) fn swap_amount_constraint(kind: AmountKind, value: DecimalString) -> AmountConstraint {
+pub(crate) fn swap_amount_constraint(kind: AmountKind, value: DecimalString) -> AmountConstraint {
     AmountConstraint {
         kind,
         value: Some(value),

@@ -1,0 +1,38 @@
+[
+  {
+    "chainId": 1,
+    "poolName": "crvusd-controller-wstETH",
+    "poolAddress": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+    "lpToken": null,
+    "poolType": "crvusd-controller",
+    "collateral": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+    "sources": [
+      "https://etherscan.io/address/0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "crates/adapters/abi-resolver/src/subdecode/protocols/curve.rs:244 CRVUSD_CONTROLLERS[0] (wstETH)"
+    ]
+  },
+  {
+    "chainId": 1,
+    "poolName": "crvusd-controller-sfrxETH",
+    "poolAddress": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+    "lpToken": null,
+    "poolType": "crvusd-controller",
+    "collateral": "0xac3e018457b222d93114458476f3e3416abbe38f",
+    "sources": [
+      "https://etherscan.io/address/0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "crates/adapters/abi-resolver/src/subdecode/protocols/curve.rs:256 CRVUSD_CONTROLLERS[1] (sfrxETH, v1 deploy)"
+    ]
+  },
+  {
+    "chainId": 1,
+    "poolName": "crvusd-controller-WBTC",
+    "poolAddress": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+    "lpToken": null,
+    "poolType": "crvusd-controller",
+    "collateral": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+    "sources": [
+      "https://etherscan.io/address/0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "crates/adapters/abi-resolver/src/subdecode/protocols/curve.rs:268 CRVUSD_CONTROLLERS[2] (WBTC)"
+    ]
+  }
+]

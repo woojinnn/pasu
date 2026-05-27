@@ -1,0 +1,40 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/smart-router/refundETH@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x12210e8a",
+    "chain_to_addresses": {
+      "1": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "56": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "8453": ["0x678aa4bf4e210cf2166753e054d5b7c31cc7fa86"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "refundETH",
+    "abi": {
+      "name": "refundETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind": { "literal": "native" },
+      "token.amount.kind": { "literal": "unknown" },
+      "from": { "from": "$.tx.to" },
+      "recipient": { "from": "$.tx.from" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

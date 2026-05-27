@@ -1,0 +1,99 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/infinity-cl-position-manager/permitForAll@1.0.0",
+  "manifest_path": "manifests/pancake/infinity-cl-position-manager/permitForAll@1.0.0.json",
+  "bundle_sha256": "0x971661babb066b91a7d79092ce8a93dc9765b28c5fc8dd4fda4d770cf8a14b24",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/infinity-cl-position-manager/permitForAll@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x3aea60f0",
+      "chain_to_addresses": {
+        "56": [
+          "0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"
+        ],
+        "8453": [
+          "0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "permitForAll",
+      "abi": {
+        "name": "permitForAll",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "operator",
+            "type": "address"
+          },
+          {
+            "name": "approved",
+            "type": "bool"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "signature",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "permit",
+      "fields": {
+        "permitKind": {
+          "literal": "erc721_permit_for_all"
+        },
+        "token.kind": {
+          "literal": "erc721"
+        },
+        "token.address": {
+          "from": "$.tx.to"
+        },
+        "token.tokenId": {
+          "literal": "0"
+        },
+        "owner": {
+          "from": "$.args.owner"
+        },
+        "operator": {
+          "from": "$.args.operator"
+        },
+        "approved": {
+          "from": "$.args.approved"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "signature-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

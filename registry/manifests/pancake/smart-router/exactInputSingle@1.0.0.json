@@ -1,0 +1,60 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/smart-router/exactInputSingle@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x04e45aaf",
+    "chain_to_addresses": {
+      "1": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "56": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "8453": ["0x678aa4bf4e210cf2166753e054d5b7c31cc7fa86"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exactInputSingle",
+    "abi": {
+      "name": "exactInputSingle",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "tokenIn", "type": "address" },
+            { "name": "tokenOut", "type": "address" },
+            { "name": "fee", "type": "uint24" },
+            { "name": "recipient", "type": "address" },
+            { "name": "amountIn", "type": "uint256" },
+            { "name": "amountOutMinimum", "type": "uint256" },
+            { "name": "sqrtPriceLimitX96", "type": "uint160" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": { "literal": "exact_in" },
+      "inputToken.asset.kind": { "literal": "erc20" },
+      "inputToken.asset.address": { "from": "$.args.tokenIn" },
+      "inputToken.amount.kind": { "literal": "exact" },
+      "inputToken.amount.value": { "from": "$.args.amountIn" },
+      "outputToken.asset.kind": { "literal": "erc20" },
+      "outputToken.asset.address": { "from": "$.args.tokenOut" },
+      "outputToken.amount.kind": { "literal": "min" },
+      "outputToken.amount.value": { "from": "$.args.amountOutMinimum" },
+      "recipient": { "from": "$.args.recipient" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

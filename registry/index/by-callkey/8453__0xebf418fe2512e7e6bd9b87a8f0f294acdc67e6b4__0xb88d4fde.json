@@ -2,40 +2,41 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/safeTransferFromWithData@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/safeTransferFromWithData@1.0.0.json",
-  "bundle_sha256": "0x93e57ff7fa93bca6f18d65d53bf1c418543d927027cf992595b72fca0bdc232f",
+  "bundle_sha256": "0x998ddb9a3901d3987dc4f353ef19b2d99e5e0a9ac6e533e469663f7c9322e223",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/safeTransferFromWithData@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0xb88d4fde"
+      "selector": "0xb88d4fde",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "safeTransferFrom",
       "abi": {
         "name": "safeTransferFrom",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "from",
+            "name": "_from",
             "type": "address"
           },
           {
-            "name": "to",
+            "name": "_to",
             "type": "address"
           },
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           },
           {
-            "name": "data",
+            "name": "_data",
             "type": "bytes"
           }
         ]
@@ -53,7 +54,7 @@
           "from": "$.tx.to"
         },
         "token.asset.tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "token.amount.kind": {
           "literal": "exact"
@@ -62,10 +63,10 @@
           "literal": "1"
         },
         "from": {
-          "from": "$.args.from"
+          "from": "$.args._from"
         },
         "recipient": {
-          "from": "$.args.to"
+          "from": "$.args._to"
         }
       }
     },

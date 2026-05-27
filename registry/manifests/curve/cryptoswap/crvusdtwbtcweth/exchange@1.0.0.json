@@ -1,0 +1,109 @@
+{
+  "type": "adapter_function",
+  "id": "curve/cryptoswap/crvusdtwbtcweth/exchange@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x5b41b908",
+    "chain_to_addresses": {
+      "1": [
+        "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "i",
+          "type": "uint256"
+        },
+        {
+          "name": "j",
+          "type": "uint256"
+        },
+        {
+          "name": "dx",
+          "type": "uint256"
+        },
+        {
+          "name": "min_dy",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": {
+        "literal": "exact_in"
+      },
+      "inputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "inputToken.asset.address": {
+        "fn": "select_from_literal_array",
+        "args": [
+          {
+            "literal": [
+              "0xdac17f958d2ee523a2206206994597c13d831ec7",
+              "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+              "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+            ]
+          },
+          {
+            "from": "$.args.i"
+          }
+        ]
+      },
+      "inputToken.amount.kind": {
+        "literal": "exact"
+      },
+      "inputToken.amount.value": {
+        "from": "$.args.dx"
+      },
+      "outputToken.asset.kind": {
+        "literal": "erc20"
+      },
+      "outputToken.asset.address": {
+        "fn": "select_from_literal_array",
+        "args": [
+          {
+            "literal": [
+              "0xdac17f958d2ee523a2206206994597c13d831ec7",
+              "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+              "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+            ]
+          },
+          {
+            "from": "$.args.j"
+          }
+        ]
+      },
+      "outputToken.amount.kind": {
+        "literal": "min"
+      },
+      "outputToken.amount.value": {
+        "from": "$.args.min_dy"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

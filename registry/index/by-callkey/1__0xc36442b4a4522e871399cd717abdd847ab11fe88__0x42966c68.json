@@ -1,29 +1,30 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/burn@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/burn@1.0.0.json",
-  "bundle_sha256": "0x8d444b7488c0cb5dfa7fb8b508f6109adbcd7e7ae23446269bdc7d66ae34382f",
+  "bundle_id": "uniswap/nfpm/burn@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/burn@1.0.0.json",
+  "bundle_sha256": "0x7e944d4ec9148b6dff3a27261b20593035b364e55d1476e6209ad1006c48cf00",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/burn@1.0.0",
+    "id": "uniswap/nfpm/burn@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
-      ],
-      "selector": "0x42966c68"
+      "selector": "0x42966c68",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "burn",
       "abi": {
         "name": "burn",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "tokenId",
@@ -41,7 +42,7 @@
           "literal": "erc721"
         },
         "nft.address": {
-          "literal": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+          "from": "$.tx.to"
         },
         "nft.tokenId": {
           "from": "$.args.tokenId"

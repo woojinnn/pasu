@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/cryptoswap/tricrypto-base/exchange-v2@1.0.0",
-  "manifest_path": "manifests/curve/cryptoswap/tricrypto-base/exchange-v2@1.0.0.json",
-  "bundle_sha256": "0x8471e78ef25981fb3476c271bcb1db60c8cc491d21629fc8bed8bca3bef87f4d",
+  "bundle_id": "curve/cryptoswap/tricrypto-base/exchangeUseEth@1.0.0",
+  "manifest_path": "manifests/curve/cryptoswap/tricrypto-base/exchangeUseEth@1.0.0.json",
+  "bundle_sha256": "0x7da9434bb25ce9ed6aa3c05ea80c42bee7c10fe5ab665b29b51ed86a5c82184f",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/cryptoswap/tricrypto-base/exchange-v2@1.0.0",
+    "id": "curve/cryptoswap/tricrypto-base/exchangeUseEth@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x6e53131f68a034873b6bfa15502af094ef0c5854"
-      ],
-      "selector": "0x394747c5"
+      "selector": "0x394747c5",
+      "chain_to_addresses": {
+        "8453": [
+          "0x6e53131f68a034873b6bfa15502af094ef0c5854"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exchange",
@@ -109,9 +109,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

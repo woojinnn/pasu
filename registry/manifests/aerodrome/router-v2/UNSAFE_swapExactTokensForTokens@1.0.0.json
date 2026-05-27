@@ -1,0 +1,59 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/router-v2/UNSAFE_swapExactTokensForTokens@1.0.0",
+  "publisher": "aerodrome.finance",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x4111d597",
+    "chain_to_addresses": {
+      "8453": ["0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "UNSAFE_swapExactTokensForTokens",
+    "abi": {
+      "name": "UNSAFE_swapExactTokensForTokens",
+      "type": "function",
+      "inputs": [
+        { "name": "amounts", "type": "uint256[]" },
+        {
+          "name": "routes",
+          "type": "tuple[]",
+          "components": [
+            { "name": "from",    "type": "address" },
+            { "name": "to",      "type": "address" },
+            { "name": "stable",  "type": "bool"    },
+            { "name": "factory", "type": "address" }
+          ]
+        },
+        { "name": "to",       "type": "address" },
+        { "name": "deadline", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode":                  { "literal": "exact_in" },
+      "inputToken.asset.kind":     { "literal": "erc20" },
+      "inputToken.asset.address":  { "from": "$.args.routes[0][0]" },
+      "inputToken.amount.kind":    { "literal": "exact" },
+      "inputToken.amount.value":   { "from": "$.args.amounts[0]" },
+      "outputToken.asset.kind":    { "literal": "erc20" },
+      "outputToken.asset.address": { "from": "$.args.routes[-1][1]" },
+      "outputToken.amount.kind":   { "literal": "estimated" },
+      "outputToken.amount.value":  { "from": "$.args.amounts[-1]" },
+      "recipient":                 { "from": "$.args.to" },
+      "validity.expiresAt":        { "from": "$.args.deadline" },
+      "validity.source":           { "literal": "tx-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

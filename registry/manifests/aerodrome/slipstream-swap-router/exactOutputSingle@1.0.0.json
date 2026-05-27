@@ -1,0 +1,60 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/slipstream-swap-router/exactOutputSingle@1.0.0",
+  "publisher": "aerodrome.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xc714e838",
+    "chain_to_addresses": {
+      "8453": ["0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exactOutputSingle",
+    "abi": {
+      "name": "exactOutputSingle",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "tokenIn",           "type": "address" },
+            { "name": "tokenOut",          "type": "address" },
+            { "name": "tickSpacing",       "type": "int24"   },
+            { "name": "recipient",         "type": "address" },
+            { "name": "deadline",          "type": "uint256" },
+            { "name": "amountOut",         "type": "uint256" },
+            { "name": "amountInMaximum",   "type": "uint256" },
+            { "name": "sqrtPriceLimitX96", "type": "uint160" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode":                  { "literal": "exact_out" },
+      "inputToken.asset.kind":     { "literal": "erc20" },
+      "inputToken.asset.address":  { "from": "$.args.tokenIn" },
+      "inputToken.amount.kind":    { "literal": "max" },
+      "inputToken.amount.value":   { "from": "$.args.amountInMaximum" },
+      "outputToken.asset.kind":    { "literal": "erc20" },
+      "outputToken.asset.address": { "from": "$.args.tokenOut" },
+      "outputToken.amount.kind":   { "literal": "exact" },
+      "outputToken.amount.value":  { "from": "$.args.amountOut" },
+      "recipient":                 { "from": "$.args.recipient" },
+      "validity.expiresAt":        { "from": "$.args.deadline" },
+      "validity.source":           { "literal": "tx-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

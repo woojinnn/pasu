@@ -137,12 +137,12 @@ fn create_lock_decoded(decoder_id: DecoderId, value: U256, lock_duration: U256) 
         function_signature: "createLock(uint256,uint256)".into(),
         args: vec![
             DecodedArg {
-                name: "value".into(),
+                name: "_value".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(value),
             },
             DecodedArg {
-                name: "lockDuration".into(),
+                name: "_lockDuration".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(lock_duration),
             },
@@ -162,17 +162,17 @@ fn create_lock_for_decoded(
         function_signature: "createLockFor(uint256,uint256,address)".into(),
         args: vec![
             DecodedArg {
-                name: "value".into(),
+                name: "_value".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(value),
             },
             DecodedArg {
-                name: "lockDuration".into(),
+                name: "_lockDuration".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(lock_duration),
             },
             DecodedArg {
-                name: "to".into(),
+                name: "_to".into(),
                 abi_type: "address".into(),
                 value: DecodedValue::Address(to),
             },
@@ -187,12 +187,12 @@ fn increase_amount_decoded(decoder_id: DecoderId, token_id: U256, value: U256) -
         function_signature: "increaseAmount(uint256,uint256)".into(),
         args: vec![
             DecodedArg {
-                name: "tokenId".into(),
+                name: "_tokenId".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(token_id),
             },
             DecodedArg {
-                name: "value".into(),
+                name: "_value".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(value),
             },
@@ -211,12 +211,12 @@ fn increase_unlock_time_decoded(
         function_signature: "increaseUnlockTime(uint256,uint256)".into(),
         args: vec![
             DecodedArg {
-                name: "tokenId".into(),
+                name: "_tokenId".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(token_id),
             },
             DecodedArg {
-                name: "lockDuration".into(),
+                name: "_lockDuration".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(lock_duration),
             },
@@ -231,12 +231,12 @@ fn merge_decoded(decoder_id: DecoderId, from: U256, to: U256) -> DecodedCall {
         function_signature: "merge(uint256,uint256)".into(),
         args: vec![
             DecodedArg {
-                name: "from".into(),
+                name: "_from".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(from),
             },
             DecodedArg {
-                name: "to".into(),
+                name: "_to".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(to),
             },
@@ -251,12 +251,12 @@ fn split_decoded(decoder_id: DecoderId, token_id: U256, ratios: U256) -> Decoded
         function_signature: "split(uint256,uint256)".into(),
         args: vec![
             DecodedArg {
-                name: "tokenId".into(),
+                name: "_from".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(token_id),
             },
             DecodedArg {
-                name: "ratios".into(),
+                name: "_amount".into(),
                 abi_type: "uint256".into(),
                 value: DecodedValue::Uint(ratios),
             },
@@ -327,11 +327,11 @@ fn create_lock_at_max_duration_succeeds() {
     let action = unwrap_lock_create(&envelopes[0]);
 
     assert_eq!(action.voting_escrow, voting_escrow());
-    assert_eq!(action.asset.kind, AssetKind::Erc20);
-    assert_eq!(action.asset.address, Some(aero_token()));
-    assert_eq!(action.amount.kind, AmountKind::Exact);
+    assert_eq!(action.asset.asset.kind, AssetKind::Erc20);
+    assert_eq!(action.asset.asset.address, Some(aero_token()));
+    assert_eq!(action.asset.amount.kind, AmountKind::Exact);
     assert_eq!(
-        action.amount.value.as_ref().map(ToString::to_string),
+        action.asset.amount.value.as_ref().map(ToString::to_string),
         Some("1000000000000000000000".to_owned())
     );
     assert_eq!(
@@ -363,7 +363,7 @@ fn create_lock_zero_duration_emits_envelope() {
     let action = unwrap_lock_create(&envelopes[0]);
     assert_eq!(action.lock_duration_sec.as_ref().unwrap().to_string(), "0");
     assert_eq!(
-        action.amount.value.as_ref().map(ToString::to_string),
+        action.asset.amount.value.as_ref().map(ToString::to_string),
         Some("1".to_owned())
     );
 }
@@ -416,7 +416,7 @@ fn increase_amount_yields_amount_kind() {
     let action = unwrap_lock_increase(&envelopes[0]);
 
     assert_eq!(action.kind, LockIncreaseKind::Amount);
-    assert_eq!(action.token_id.to_string(), "42");
+    assert_eq!(action.token_id.as_ref().map(ToString::to_string), Some("42".to_owned()));
     let amount = action
         .additional_amount
         .as_ref()
@@ -449,7 +449,7 @@ fn increase_unlock_time_yields_unlock_time_kind() {
     let action = unwrap_lock_increase(&envelopes[0]);
 
     assert_eq!(action.kind, LockIncreaseKind::UnlockTime);
-    assert_eq!(action.token_id.to_string(), "42");
+    assert_eq!(action.token_id.as_ref().map(ToString::to_string), Some("42".to_owned()));
     // The principal-addition field must be unset for the `unlock_time` kind.
     assert!(action.additional_amount.is_none());
     assert_eq!(

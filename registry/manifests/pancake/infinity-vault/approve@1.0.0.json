@@ -1,0 +1,44 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/infinity-vault/approve@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xe1f21c67",
+    "chain_to_addresses": {
+      "56": ["0x238a358808379702088667322f80aC48bAd5e6c4"],
+      "8453": ["0x238a358808379702088667322f80aC48bAd5e6c4"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "approve",
+    "abi": {
+      "name": "approve",
+      "type": "function",
+      "inputs": [
+        { "name": "spender", "type": "address" },
+        { "name": "currency", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "approve",
+    "fields": {
+      "token.kind": { "literal": "erc20" },
+      "token.address": { "from": "$.args.currency" },
+      "spender": { "from": "$.args.spender" },
+      "amount.kind": { "literal": "exact" },
+      "amount.value": { "from": "$.args.amount" },
+      "approvalKind": { "literal": "erc20" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

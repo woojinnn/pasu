@@ -1,0 +1,84 @@
+{
+  "type": "adapter_function",
+  "id": "standard/erc1155/safeBatchTransferFrom@1.0.0",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x2eb2c2d6",
+    "chain_to_addresses_source": "tokens:erc1155",
+    "chain_ids": [
+      1,
+      56,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "safeBatchTransferFrom",
+    "abi": {
+      "name": "safeBatchTransferFrom",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "ids",
+          "type": "uint256[]"
+        },
+        {
+          "name": "amounts",
+          "type": "uint256[]"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "category": "misc",
+    "action": "transfer",
+    "array_path": "$.args.ids",
+    "parallel_paths": {
+      "amount": "$.args.amounts"
+    },
+    "max_elements": 64,
+    "fields": {
+      "token.asset.kind": {
+        "literal": "erc1155"
+      },
+      "token.asset.address": {
+        "from": "$.tx.to"
+      },
+      "token.asset.tokenId": {
+        "from": "$.args.element"
+      },
+      "token.amount.kind": {
+        "literal": "exact"
+      },
+      "token.amount.value": {
+        "from": "$.args.amount"
+      },
+      "from": {
+        "from": "$.args.from"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

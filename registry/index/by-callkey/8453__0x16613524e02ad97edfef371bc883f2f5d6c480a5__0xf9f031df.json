@@ -2,28 +2,29 @@
   "matched": true,
   "bundle_id": "aerodrome/voter/claimRewards@1.0.0",
   "manifest_path": "manifests/aerodrome/voter/claimRewards@1.0.0.json",
-  "bundle_sha256": "0x4e9afa63e3d2e0175665aa06888491b7f5731802c613e6f603120bc0c72620ef",
+  "bundle_sha256": "0x6fc47c012d6e92a4aa6de37c41ab98d648d9a75ebb2876f05913139d2727e066",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voter/claimRewards@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
-      ],
-      "selector": "0xf9f031df"
+      "selector": "0xf9f031df",
+      "chain_to_addresses": {
+        "8453": [
+          "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "claimRewards",
       "abi": {
         "name": "claimRewards",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "gauges",
+            "name": "_gauges",
             "type": "address[]"
           }
         ]
@@ -35,7 +36,7 @@
       "action": "claim_rewards",
       "fields": {
         "source.address": {
-          "literal": "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5"
+          "from": "$.tx.to"
         },
         "source.label": {
           "literal": "Aerodrome Voter (Gauge Rewards)"
@@ -50,7 +51,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/v2/UNSAFE_swapExactTokensForTokens@1.0.0",
-  "manifest_path": "manifests/aerodrome/v2/UNSAFE_swapExactTokensForTokens@1.0.0.json",
-  "bundle_sha256": "0x3cdc4edc873981766397bb9ccd393e0ab8f0d15e649d9f7e702f42258697e260",
+  "bundle_id": "aerodrome/router-v2/UNSAFE_swapExactTokensForTokens@1.0.0",
+  "manifest_path": "manifests/aerodrome/router-v2/UNSAFE_swapExactTokensForTokens@1.0.0.json",
+  "bundle_sha256": "0x0fc5a5cbb24008901daa2a0e60f13083bdaf758e5c300a956666433899181b84",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/v2/UNSAFE_swapExactTokensForTokens@1.0.0",
+    "id": "aerodrome/router-v2/UNSAFE_swapExactTokensForTokens@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
-      ],
-      "selector": "0x4111d597"
+      "selector": "0x4111d597",
+      "chain_to_addresses": {
+        "8453": [
+          "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "UNSAFE_swapExactTokensForTokens",

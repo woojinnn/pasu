@@ -2,36 +2,37 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/safeTransferFrom@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/safeTransferFrom@1.0.0.json",
-  "bundle_sha256": "0x4ccbd361596c8c548c8aaf68d01518bfaf80de9c8d3c2456bbdd4c61a171f7c1",
+  "bundle_sha256": "0x0554012f440461c2612f678f04a31248ddb6703237a6883b60b528e9afbee120",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/safeTransferFrom@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0x42842e0e"
+      "selector": "0x42842e0e",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "safeTransferFrom",
       "abi": {
         "name": "safeTransferFrom",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "from",
+            "name": "_from",
             "type": "address"
           },
           {
-            "name": "to",
+            "name": "_to",
             "type": "address"
           },
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           }
         ]
@@ -49,7 +50,7 @@
           "from": "$.tx.to"
         },
         "token.asset.tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "token.amount.kind": {
           "literal": "exact"
@@ -58,10 +59,10 @@
           "literal": "1"
         },
         "from": {
-          "from": "$.args.from"
+          "from": "$.args._from"
         },
         "recipient": {
-          "from": "$.args.to"
+          "from": "$.args._to"
         }
       }
     },

@@ -1,0 +1,79 @@
+{
+  "type": "adapter_function",
+  "id": "standard/erc1155/safeTransferFrom@1.0.0",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xf242432a",
+    "chain_to_addresses_source": "tokens:erc1155",
+    "chain_ids": [
+      1,
+      56,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "safeTransferFrom",
+    "abi": {
+      "name": "safeTransferFrom",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind": {
+        "literal": "erc1155"
+      },
+      "token.asset.address": {
+        "from": "$.tx.to"
+      },
+      "token.asset.tokenId": {
+        "from": "$.args.id"
+      },
+      "token.amount.kind": {
+        "literal": "exact"
+      },
+      "token.amount.value": {
+        "from": "$.args.amount"
+      },
+      "from": {
+        "from": "$.args.from"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

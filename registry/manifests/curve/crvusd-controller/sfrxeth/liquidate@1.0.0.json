@@ -1,0 +1,76 @@
+{
+  "type": "adapter_function",
+  "id": "curve/crvusd-controller/sfrxeth/liquidate@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xbcbaf487",
+    "chain_to_addresses": {
+      "1": [
+        "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "liquidate",
+    "abi": {
+      "name": "liquidate",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "name": "min_x",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "lending",
+    "action": "liquidate",
+    "fields": {
+      "market.address": {
+        "literal": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+      },
+      "market.label": {
+        "literal": "Curve crvUSD Controller"
+      },
+      "borrower": {
+        "from": "$.args.user"
+      },
+      "collateralAsset.kind": {
+        "literal": "erc20"
+      },
+      "collateralAsset.address": {
+        "literal": "0xac3e018457b222d93114458476f3e3416abbe38f"
+      },
+      "debtAsset.kind": {
+        "literal": "erc20"
+      },
+      "debtAsset.address": {
+        "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+      },
+      "debtToCover.kind": {
+        "literal": "min"
+      },
+      "debtToCover.value": {
+        "from": "$.args.min_x"
+      },
+      "liquidationKind": {
+        "literal": "pool_share"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

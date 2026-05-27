@@ -512,7 +512,10 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
             ("/fields/weights/0", "100000000000000000000"),
         ],
         "voting-escrow/createLock" => &[
-            ("/fields/amount/value", "14400000000000000"),
+            // Stage 0+ wrapper refactor: lock_create.asset is now
+            // AssetRefWithAmountConstraint, so amount.value lives at
+            // /fields/asset/amount/value.
+            ("/fields/asset/amount/value", "14400000000000000"),
             ("/fields/lockDurationSec", "46656000"),
             (
                 "/fields/recipient",
@@ -528,7 +531,11 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
             ("/fields/toTokenId", "119946"),
         ],
         "gauge/deposit (wallet-suffixed)" => &[
-            ("/fields/amount/value", "226720148733"),
+            // Stage 0+ wrapper refactor: lp_stake.lpToken is now
+            // AssetRefWithAmountConstraint, so amount.value lives at
+            // /fields/lpToken/amount/value and the asset kind at
+            // /fields/lpToken/asset/kind.
+            ("/fields/lpToken/amount/value", "226720148733"),
             (
                 "/fields/recipient",
                 "0xa8b9b8b02f1caf1b7a9825eb7c568e58eea8eca0",
@@ -537,11 +544,11 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
                 "/fields/gauge",
                 "0x519bbd1dd8c6a94c46080e24f316c14ee758c025",
             ),
-            // Phase D B-3 fix: lpToken.kind = "unknown" (was `erc20` +
+            // Phase D B-3 fix: lpToken.asset.kind = "unknown" (was `erc20` +
             // misleading `$.tx.to` placeholder address). The staked LP token
             // is un-derivable from `deposit(uint256)` calldata; with
             // kind:unknown the address slot is empty.
-            ("/fields/lpToken/kind", "unknown"),
+            ("/fields/lpToken/asset/kind", "unknown"),
         ],
         // ─── Phase A B-1 — Slipstream router 4 fixtures (Clean after fix) ─────
         // Ground truth = `cast calldata-decode` of the same raw calldata, run
@@ -627,20 +634,23 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
             ),
         ],
         // ─── Phase A B-1 — Slipstream NPM 4 fixtures (Clean after fix) ────────
+        //
+        // V2 manifest semantics: `inputTokens[i].amount` carries `kind=min`,
+        // so `amount.value` reflects `amount{0,1}Min` (slippage floor) — the
+        // user's intent token amount (`amount{0,1}Desired`) is *not* the
+        // permission surface. In this real tx Min = 0 (the wallet did not
+        // enforce a minimum), matching the Uniswap NFPM precedent.
         "slipstream-npm/mint" => &[
             (
                 "/fields/inputTokens/0/asset/address",
                 "0x1111111111166b7fe7bd91427724b487980afc69",
             ),
-            (
-                "/fields/inputTokens/0/amount/value",
-                "20926820120463245574144",
-            ),
+            ("/fields/inputTokens/0/amount/value", "0"),
             (
                 "/fields/inputTokens/1/asset/address",
                 "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
             ),
-            ("/fields/inputTokens/1/amount/value", "181409906"),
+            ("/fields/inputTokens/1/amount/value", "0"),
             (
                 "/fields/recipient",
                 "0x5ea80c1699bb786ade0e58d0b0c40ff2a6974bf0",
@@ -653,31 +663,29 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
             ),
         ],
         "slipstream-npm/increaseLiquidity" => &[
+            // nft.address = $.tx.to = Aerodrome Slipstream NPM on Base
             (
                 "/fields/nft/address",
-                "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53",
+                "0x827922686190790b37229fd06084350e74485b72",
             ),
             ("/fields/nft/tokenId", "28450522"),
-            (
-                "/fields/inputTokens/0/amount/value",
-                "59658533187234071151222",
-            ),
-            ("/fields/inputTokens/1/amount/value", "8008525429"),
+            // amount.value = amount{0,1}Min (slippage floor); see mint above.
+            ("/fields/inputTokens/0/amount/value", "0"),
+            ("/fields/inputTokens/1/amount/value", "0"),
         ],
         "slipstream-npm/decreaseLiquidity" => &[
             (
                 "/fields/nft/address",
-                "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53",
+                "0x827922686190790b37229fd06084350e74485b72",
             ),
             ("/fields/nft/tokenId", "71112746"),
             ("/fields/liquidityDelta/value", "56059427952970733145572"),
         ],
         "slipstream-npm/collect" => &[
-            // Phase A B-1 fix: nft.kind = "unknown" (was emitting erc721 +
-            // address but missing AssetRef.tokenId, which validate_required_fields
-            // rejects). The position NFT contract is fully derivable from
-            // `$.tx.to` for evaluation; AssetRef carries the kind tag only.
-            ("/fields/nft/kind", "unknown"),
+            // V2 bundle: nft.kind = "erc721" (was "unknown" in v1 because
+            // AssetRef.tokenId was missing; v2 schema carries tokenId
+            // alongside kind+address, so erc721 round-trips correctly).
+            ("/fields/nft/kind", "erc721"),
             ("/fields/tokenId", "71058132"),
             ("/fields/from", "0xb11727bf13d29e20680f3fa74d15a8d76b33b430"),
             (
@@ -724,10 +732,10 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
         "slipstream-npm/multicall" => &[
             // inner[0] = decreaseLiquidity(tokenId=0xc2d05e=12767326,
             //   liquidity=0x47d08db8887580b=323424487221975051, ...)
-            // bundle nft.address literal = Slipstream NFPM @ Base
+            // bundle nft.address = $.tx.to = Aerodrome Slipstream NFPM @ Base
             (
                 "/fields/nft/address",
-                "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53",
+                "0x827922686190790b37229fd06084350e74485b72",
             ),
             ("/fields/nft/tokenId", "12767326"),
             ("/fields/liquidityDelta/value", "323424487221975051"),
@@ -758,7 +766,7 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
                 "/fields/source/address",
                 "0x227f65131a261548b057215bb1d5ab2997964c7d",
             ),
-            ("/fields/source/label", "Aerodrome Rewards Distributor"),
+            ("/fields/source/label", "Aerodrome veAERO Rewards"),
             // tokenId = $.args.tokenId = 0x988b = 39051
             ("/fields/tokenId", "39051"),
             ("/fields/from", "0x4227185aac699ffb5d18707ebc46ee5568370151"),
@@ -778,7 +786,7 @@ fn field_checks_for(label: &str) -> &'static [(&'static str, &'static str)] {
                 "/fields/source/address",
                 "0x4f09bab2f0e15e2a078a227fe1537665f55b8360",
             ),
-            ("/fields/source/label", "Aerodrome Gauge"),
+            ("/fields/source/label", "Aerodrome V2 Gauge"),
             // from / recipient = $.args.account (the wallet-suffix's
             // address arg, which matches `$.tx.from` in this fixture)
             ("/fields/from", "0xaecf89718604b2edb5b7fbe6203448755b7d9525"),
@@ -905,26 +913,27 @@ macro_rules! bundle {
     };
 }
 
-const B_V2_SWAP_TT: &str = bundle!("v2/swapExactTokensForTokens@1.0.0.json");
+const B_V2_SWAP_TT: &str = bundle!("router-v2/swapExactTokensForTokens@1.0.0.json");
 const B_V2_SWAP_TE_FOT: &str =
-    bundle!("v2/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0.json");
+    bundle!("router-v2/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0.json");
 const B_V2_SWAP_ET_FOT: &str =
-    bundle!("v2/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0.json");
+    bundle!("router-v2/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0.json");
 const B_V2_SWAP_TT_FOT: &str =
-    bundle!("v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0.json");
-const B_V2_ADD_LIQ: &str = bundle!("v2/addLiquidity@1.0.0.json");
-const B_V2_ADD_LIQ_ETH: &str = bundle!("v2/addLiquidityETH@1.0.0.json");
-const B_V2_REMOVE_LIQ: &str = bundle!("v2/removeLiquidity@1.0.0.json");
-const B_SLIP_EXACT_IN_SINGLE: &str = bundle!("slipstream/exactInputSingle@1.0.0.json");
-const B_SLIP_EXACT_IN: &str = bundle!("slipstream/exactInput@1.0.0.json");
-const B_SLIP_EXACT_OUT_SINGLE: &str = bundle!("slipstream/exactOutputSingle@1.0.0.json");
-const B_SLIP_EXACT_OUT: &str = bundle!("slipstream/exactOutput@1.0.0.json");
-const B_SLIP_MULTICALL: &str = bundle!("slipstream/multicall@1.0.0.json");
-const B_NPM_MINT: &str = bundle!("slipstream-npm/mint@1.0.0.json");
-const B_NPM_INCREASE: &str = bundle!("slipstream-npm/increaseLiquidity@1.0.0.json");
-const B_NPM_DECREASE: &str = bundle!("slipstream-npm/decreaseLiquidity@1.0.0.json");
-const B_NPM_COLLECT: &str = bundle!("slipstream-npm/collect@1.0.0.json");
-const B_NPM_MULTICALL: &str = bundle!("slipstream-npm/multicall@1.0.0.json");
+    bundle!("router-v2/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0.json");
+const B_V2_ADD_LIQ: &str = bundle!("router-v2/addLiquidity@1.0.0.json");
+const B_V2_ADD_LIQ_ETH: &str = bundle!("router-v2/addLiquidityETH@1.0.0.json");
+const B_V2_REMOVE_LIQ: &str = bundle!("router-v2/removeLiquidity@1.0.0.json");
+const B_SLIP_EXACT_IN_SINGLE: &str = bundle!("slipstream-swap-router/exactInputSingle@1.0.0.json");
+const B_SLIP_EXACT_IN: &str = bundle!("slipstream-swap-router/exactInput@1.0.0.json");
+const B_SLIP_EXACT_OUT_SINGLE: &str =
+    bundle!("slipstream-swap-router/exactOutputSingle@1.0.0.json");
+const B_SLIP_EXACT_OUT: &str = bundle!("slipstream-swap-router/exactOutput@1.0.0.json");
+const B_SLIP_MULTICALL: &str = bundle!("slipstream-swap-router/multicall@1.0.0.json");
+const B_NPM_MINT: &str = bundle!("slipstream-nfpm/mint@1.0.0.json");
+const B_NPM_INCREASE: &str = bundle!("slipstream-nfpm/increaseLiquidity@1.0.0.json");
+const B_NPM_DECREASE: &str = bundle!("slipstream-nfpm/decreaseLiquidity@1.0.0.json");
+const B_NPM_COLLECT: &str = bundle!("slipstream-nfpm/collect@1.0.0.json");
+const B_NPM_MULTICALL: &str = bundle!("slipstream-nfpm/multicall@1.0.0.json");
 const B_UR_EXECUTE: &str = bundle!("universal-router/execute@1.0.0.json");
 const B_UR_EXECUTE_NO_DEADLINE: &str = bundle!("universal-router/execute-no-deadline@1.0.0.json");
 const B_VOTER_VOTE: &str = bundle!("voter/vote@1.0.0.json");

@@ -2,22 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/swap-router-02/wrapETH@1.0.0",
   "manifest_path": "manifests/uniswap/swap-router-02/wrapETH@1.0.0.json",
-  "bundle_sha256": "0x48cd58bf03f19d54fe9fadc3f6c1c9d21ca352fc4b897d57747d1c00bdea3046",
+  "bundle_sha256": "0x26d4034e7816f738f686cc0e445f67ed3d5d6ce2250ea45d96d63da30637b019",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/swap-router-02/wrapETH@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-      ],
-      "selector": "0x1c58db4f"
+      "selector": "0x1c58db4f",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "wrapETH",

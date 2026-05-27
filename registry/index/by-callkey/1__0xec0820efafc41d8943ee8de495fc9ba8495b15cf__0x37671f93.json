@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/sfrxeth/repay@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/sfrxeth/repay@1.0.0.json",
-  "bundle_sha256": "0xacc7d2325fd01ea313b8a16131d06a043b84c24b55595beb52187ca9b6fc3e71",
+  "bundle_id": "curve/crvusd-controller/sfrxeth/repay@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/sfrxeth/repay@1.0.0.json",
+  "bundle_sha256": "0x78b0a415f9d6450daf644011f39128b37266563fb075846c7bcaeab3b9d65569",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/sfrxeth/repay@1.0.0",
+    "id": "curve/crvusd-controller/sfrxeth/repay@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
-      ],
-      "selector": "0x37671f93"
+      "selector": "0x37671f93",
+      "chain_to_addresses": {
+        "1": [
+          "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "repay",
@@ -50,7 +50,7 @@
           "literal": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
         },
         "market.label": {
-          "literal": "Curve crvUSD sfrxETH Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "asset.kind": {
           "literal": "erc20"
@@ -74,9 +74,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

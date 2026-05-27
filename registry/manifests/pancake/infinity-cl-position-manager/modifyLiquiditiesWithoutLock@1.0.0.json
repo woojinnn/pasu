@@ -1,0 +1,136 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/infinity-cl-position-manager/modifyLiquiditiesWithoutLock@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xeb80d35e",
+    "chain_to_addresses": {
+      "56": ["0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"],
+      "8453": ["0x55f4c8abA71A1e923edC303eb4fEfF14608cC226"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "modifyLiquiditiesWithoutLock",
+    "abi": {
+      "name": "modifyLiquiditiesWithoutLock",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "actions", "type": "bytes" },
+        { "name": "params", "type": "bytes[]" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "opcode_stream_dispatch",
+    "dispatcher_id": "pancake_infinity_position_manager",
+    "mask": "0xff",
+    "allow_revert_bit": "0x00",
+    "unknown_opcode_policy": "ignore_step",
+    "per_opcode_emit": {
+      "0x00": {
+        "name": "CL_INCREASE_LIQUIDITY",
+        "category": "dex",
+        "action": "increase_liquidity",
+        "fields": {
+          "nft.kind": { "literal": "erc721" },
+          "nft.address": { "from": "$.tx.to" },
+          "nft.tokenId": { "from": "$.args.tokenId" },
+          "inputTokens[0].asset.kind": { "literal": "unknown" },
+          "inputTokens[0].amount.kind": { "literal": "max" },
+          "inputTokens[0].amount.value": { "from": "$.args.amount0Max" },
+          "inputTokens[1].asset.kind": { "literal": "unknown" },
+          "inputTokens[1].amount.kind": { "literal": "max" },
+          "inputTokens[1].amount.value": { "from": "$.args.amount1Max" }
+        }
+      },
+      "0x01": {
+        "name": "CL_DECREASE_LIQUIDITY",
+        "category": "dex",
+        "action": "decrease_liquidity",
+        "fields": {
+          "nft.kind": { "literal": "erc721" },
+          "nft.address": { "from": "$.tx.to" },
+          "nft.tokenId": { "from": "$.args.tokenId" },
+          "liquidityDelta.kind": { "literal": "exact" },
+          "liquidityDelta.value": { "from": "$.args.liquidity" },
+          "outputTokens": { "literal": [] }
+        }
+      },
+      "0x02": {
+        "name": "CL_MINT_POSITION",
+        "category": "dex",
+        "action": "mint_liquidity_nft",
+        "fields": {
+          "pool.address": { "from": "$.args.poolKey[3]" },
+          "feeBps": { "from": "$.args.poolKey[4]" },
+          "tickRange.lower": { "from": "$.args.tickLower" },
+          "tickRange.upper": { "from": "$.args.tickUpper" },
+          "inputTokens[0].asset.kind": { "literal": "erc20" },
+          "inputTokens[0].asset.address": { "from": "$.args.poolKey[0]" },
+          "inputTokens[0].amount.kind": { "literal": "max" },
+          "inputTokens[0].amount.value": { "from": "$.args.amount0Max" },
+          "inputTokens[1].asset.kind": { "literal": "erc20" },
+          "inputTokens[1].asset.address": { "from": "$.args.poolKey[1]" },
+          "inputTokens[1].amount.kind": { "literal": "max" },
+          "inputTokens[1].amount.value": { "from": "$.args.amount1Max" },
+          "recipient": { "from": "$.args.owner" }
+        }
+      },
+      "0x03": {
+        "name": "CL_BURN_POSITION",
+        "category": "dex",
+        "action": "burn_liquidity_nft",
+        "fields": {
+          "nft.kind": { "literal": "erc721" },
+          "nft.address": { "from": "$.tx.to" },
+          "nft.tokenId": { "from": "$.args.tokenId" },
+          "burnKind": { "literal": "auto_decrease" }
+        }
+      },
+      "0x04": {
+        "name": "CL_INCREASE_LIQUIDITY_FROM_DELTAS",
+        "category": "dex",
+        "action": "increase_liquidity",
+        "fields": {
+          "nft.kind": { "literal": "erc721" },
+          "nft.address": { "from": "$.tx.to" },
+          "nft.tokenId": { "from": "$.args.tokenId" },
+          "inputTokens[0].asset.kind": { "literal": "unknown" },
+          "inputTokens[0].amount.kind": { "literal": "max" },
+          "inputTokens[0].amount.value": { "from": "$.args.amount0Max" },
+          "inputTokens[1].asset.kind": { "literal": "unknown" },
+          "inputTokens[1].amount.kind": { "literal": "max" },
+          "inputTokens[1].amount.value": { "from": "$.args.amount1Max" }
+        }
+      },
+      "0x05": {
+        "name": "CL_MINT_POSITION_FROM_DELTAS",
+        "category": "dex",
+        "action": "mint_liquidity_nft",
+        "fields": {
+          "pool.address": { "from": "$.args.poolKey[3]" },
+          "feeBps": { "from": "$.args.poolKey[4]" },
+          "tickRange.lower": { "from": "$.args.tickLower" },
+          "tickRange.upper": { "from": "$.args.tickUpper" },
+          "inputTokens[0].asset.kind": { "literal": "erc20" },
+          "inputTokens[0].asset.address": { "from": "$.args.poolKey[0]" },
+          "inputTokens[0].amount.kind": { "literal": "max" },
+          "inputTokens[0].amount.value": { "from": "$.args.amount0Max" },
+          "inputTokens[1].asset.kind": { "literal": "erc20" },
+          "inputTokens[1].asset.address": { "from": "$.args.poolKey[1]" },
+          "inputTokens[1].amount.kind": { "literal": "max" },
+          "inputTokens[1].amount.value": { "from": "$.args.amount1Max" },
+          "recipient": { "from": "$.args.owner" }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": ["pancake-infinity-position-manager-dispatcher@^1.0"],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

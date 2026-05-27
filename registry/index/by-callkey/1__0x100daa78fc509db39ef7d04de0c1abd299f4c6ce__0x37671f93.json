@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/wsteth/repay@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/wsteth/repay@1.0.0.json",
-  "bundle_sha256": "0xc7362f6e14c2ea4b59bbafa73ddaa05cf9243e75237cd1e277929f7923bc8abc",
+  "bundle_id": "curve/crvusd-controller/wsteth/repay@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/wsteth/repay@1.0.0.json",
+  "bundle_sha256": "0x1382e804ebfed042b4242a48baadeff847cdd84c9fb5c06dfc955b7bd5d2ac63",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/wsteth/repay@1.0.0",
+    "id": "curve/crvusd-controller/wsteth/repay@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
-      ],
-      "selector": "0x37671f93"
+      "selector": "0x37671f93",
+      "chain_to_addresses": {
+        "1": [
+          "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "repay",
@@ -50,7 +50,7 @@
           "literal": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
         },
         "market.label": {
-          "literal": "Curve crvUSD wstETH Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "asset.kind": {
           "literal": "erc20"
@@ -74,9 +74,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

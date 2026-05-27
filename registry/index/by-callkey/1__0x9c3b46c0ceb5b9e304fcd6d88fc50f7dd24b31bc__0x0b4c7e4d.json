@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/stableswap-ng/frxeth-ng/addLiquidity-ng@1.0.0",
-  "manifest_path": "manifests/curve/stableswap-ng/frxeth-ng/addLiquidity-ng@1.0.0.json",
-  "bundle_sha256": "0x9a00054d536ec880edd0ee41c40a2f491663107b02f459d2ddf19888278f2d8f",
+  "bundle_id": "curve/stableswap-ng-factory/frxeth-ng/addLiquidity@1.0.0",
+  "manifest_path": "manifests/curve/stableswap-ng-factory/frxeth-ng/addLiquidity@1.0.0.json",
+  "bundle_sha256": "0x9455b79763c037ab50ded3234eae53cfd5ff020c44e0da27568695a16d14a015",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/stableswap-ng/frxeth-ng/addLiquidity-ng@1.0.0",
+    "id": "curve/stableswap-ng-factory/frxeth-ng/addLiquidity@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
-      ],
-      "selector": "0x0b4c7e4d"
+      "selector": "0x0b4c7e4d",
+      "chain_to_addresses": {
+        "1": [
+          "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "add_liquidity",
@@ -84,9 +84,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

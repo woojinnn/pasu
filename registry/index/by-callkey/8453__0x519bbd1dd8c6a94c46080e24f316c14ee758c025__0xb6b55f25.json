@@ -2,32 +2,33 @@
   "matched": true,
   "bundle_id": "aerodrome/gauge/deposit@1.0.0",
   "manifest_path": "manifests/aerodrome/gauge/deposit@1.0.0.json",
-  "bundle_sha256": "0xe290544e400b6ecbd958f5d5232fccfc902ffcbcdd7902e2dd23227c2777ad71",
+  "bundle_sha256": "0x193f8e8f6b3b77496b359bda2604a8e833009a45c1797060bd1b843e08a23b18",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/gauge/deposit@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x4F09bAb2f0E15e2A078A227FE1537665F55b8360",
-        "0x519BBD1Dd8C6A94C46080E24f316c14Ee758C025",
-        "0xeca7Ff920E7162334634c721133F3183B83B0323",
-        "0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC",
-        "0x96a24aB830D4ec8b1F6f04Ceac104F1A3b211a01"
-      ],
-      "selector": "0xb6b55f25"
+      "selector": "0xb6b55f25",
+      "chain_to_addresses": {
+        "8453": [
+          "0x4f09bab2f0e15e2a078a227fe1537665f55b8360",
+          "0x519bbd1dd8c6a94c46080e24f316c14ee758c025",
+          "0xeca7ff920e7162334634c721133f3183b83b0323",
+          "0xaeba79d1108788e5754eb30aac64eb868a3247fc",
+          "0x96a24ab830d4ec8b1f6f04ceac104f1a3b211a01"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "deposit",
       "abi": {
         "name": "deposit",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "amount",
+            "name": "_amount",
             "type": "uint256"
           }
         ]
@@ -41,14 +42,14 @@
         "gauge": {
           "from": "$.tx.to"
         },
-        "lpToken.kind": {
+        "lpToken.asset.kind": {
           "literal": "unknown"
         },
-        "amount.kind": {
+        "lpToken.amount.kind": {
           "literal": "exact"
         },
-        "amount.value": {
-          "from": "$.args.amount"
+        "lpToken.amount.value": {
+          "from": "$.args._amount"
         },
         "recipient": {
           "from": "$.tx.from"

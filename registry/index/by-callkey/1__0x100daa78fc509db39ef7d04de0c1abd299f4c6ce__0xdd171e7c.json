@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/wsteth/borrowMore@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/wsteth/borrowMore@1.0.0.json",
-  "bundle_sha256": "0x29db1c5e682d0b58b6e28b985663a89a10df4e0f838d8ee211faf60e11ba02b3",
+  "bundle_id": "curve/crvusd-controller/wsteth/borrowMore@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/wsteth/borrowMore@1.0.0.json",
+  "bundle_sha256": "0xe56d249f6793b1e088bc8d87fd4c4e24daa693381dcb0e043d20ac9263c4f63b",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/wsteth/borrowMore@1.0.0",
+    "id": "curve/crvusd-controller/wsteth/borrowMore@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
-      ],
-      "selector": "0xdd171e7c"
+      "selector": "0xdd171e7c",
+      "chain_to_addresses": {
+        "1": [
+          "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "borrow_more",
@@ -42,7 +42,7 @@
           "literal": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
         },
         "market.label": {
-          "literal": "Curve crvUSD wstETH Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "asset.kind": {
           "literal": "erc20"
@@ -78,9 +78,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

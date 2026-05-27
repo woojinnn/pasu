@@ -1,0 +1,63 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/smart-router/exactOutput@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x09b81346",
+    "chain_to_addresses": {
+      "1": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "56": ["0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"],
+      "8453": ["0x678aa4bf4e210cf2166753e054d5b7c31cc7fa86"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exactOutput",
+    "abi": {
+      "name": "exactOutput",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "path", "type": "bytes" },
+            { "name": "recipient", "type": "address" },
+            { "name": "amountOut", "type": "uint256" },
+            { "name": "amountInMaximum", "type": "uint256" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": { "literal": "exact_out" },
+      "inputToken.asset.kind": { "literal": "erc20" },
+      "inputToken.asset.address": {
+        "fn": "unfold_v3_path",
+        "args": [{ "from": "$.args.path" }, { "literal": "last_token" }]
+      },
+      "inputToken.amount.kind": { "literal": "max" },
+      "inputToken.amount.value": { "from": "$.args.amountInMaximum" },
+      "outputToken.asset.kind": { "literal": "erc20" },
+      "outputToken.asset.address": {
+        "fn": "unfold_v3_path",
+        "args": [{ "from": "$.args.path" }, { "literal": "first_token" }]
+      },
+      "outputToken.amount.kind": { "literal": "exact" },
+      "outputToken.amount.value": { "from": "$.args.amountOut" },
+      "recipient": { "from": "$.args.recipient" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

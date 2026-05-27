@@ -1,24 +1,71 @@
 /**
- * build-index.ts
+ * build-index.ts — ScopeBall Adapter Registry v2
  *
- * ScopeBall Adapter Marketplace registry — index builder (PoC).
+ * Manifest schema v2 (registry/docs/SCHEMA_V2.md):
+ *   {
+ *     "type": "adapter_function",
+ *     "id": "<publisher>/<contract>/<func>@<v>",
+ *     "publisher": "<eth-name>",                  // optional for standard/*
+ *     "schema_version": "2",                       // required, exactly "2"
+ *
+ *     "match": {
+ *       "selector": "0x<8 hex>",
+ *
+ *       // ── exactly one of the two `to` modes ──
+ *
+ *       // mode A — explicit chain → addresses map (Uniswap etc.)
+ *       "chain_to_addresses": {
+ *         "<chainId>": ["0x<40 hex>", ...]
+ *       }
+ *
+ *       // mode B — auto-enumerate from `tokens/<chainId>/<addr>.json`
+ *       // (ERC20 / ERC721 / ERC1155 standard manifests)
+ *       "chain_to_addresses_source": "tokens:erc20" | "tokens:erc721" | "tokens:erc1155",
+ *       "chain_ids": [<chainId>, ...]
+ *     },
+ *
+ *     "abi_fragment": { ... },
+ *     "emit":         { ... },
+ *     "requires":     { ... }
+ *   }
  *
  * Algorithm:
- *   1. `manifests/` recursive scan → Adapter Function Bundle JSON 파일 list
- *   2. 각 bundle 의 `match.{chain_ids[], to[], selector}` cross product 로 callkey 조합
- *   3. canonical_json(bundle) — RFC 8785 JSON Canonicalization Scheme (JCS)
- *   4. bundle_sha256 = "0x" + hex(sha256(canonical_json(bundle)))
- *   5. 각 callkey 에 대해 `index/by-callkey/<chain_id>__<lowercased_to>__<lowercased_selector>.json`
- *      파일 작성. 파일 내용에 `bundle` field 를 inline 시켜 client 가 1-step lookup 가능.
- *   6. 기존 `index/by-callkey/` 디렉토리 wipe 후 재기록 (orphan 방지).
+ *   1. walk `manifests/**\/*.json` (skip `_template/` subtrees)
+ *   2. parseBundle() — strict schema validation. Reject if
+ *        (a) schema_version !== "2"
+ *        (b) `match` lacks both `chain_to_addresses` and `chain_to_addresses_source`
+ *        (c) `match` has both (mutually exclusive)
+ *        (d) selector / chainId / address regex mismatch
+ *   3. If `chain_to_addresses_source` present:
+ *        - parse "tokens:<kind>" with kind ∈ {erc20, erc721, erc1155}
+ *        - for each chainId in `match.chain_ids`, walk `tokens/<chainId>/*.json`
+ *          and select addresses whose `kind` field matches
+ *        - build effective `chain_to_addresses`
+ *   4. Substitute effective `chain_to_addresses` back into the bundle
+ *      (delete `chain_to_addresses_source` and `chain_ids` from the inlined
+ *      `bundle.match`) so the index entry is self-contained — clients see
+ *      a uniform `chain_to_addresses` shape regardless of source mode.
+ *   5. bundle_sha256 = "0x" + sha256(canonicalize(bundle))   (RFC 8785 JCS)
+ *   6. for each (chainId, to) pair: write
+ *      `index/by-callkey/<chainId>__<to.toLowerCase()>__<selector.toLowerCase()>.json`
+ *      with entry { matched: true, bundle_id, manifest_path, bundle_sha256, bundle }
+ *   7. wipeDir(`index/by-callkey/`) before write to prevent orphan
  *
- * Spec reference:
- *   - /Users/jhy/Desktop/ScopeBall/ADAPTER_MARKETPLACE_ARCHITECTURE.md §6, §6.1, §6.2
+ * Lint:
+ *   - validateAssetRefs() — Aerodrome-audit post-mortem lint.
+ *     Reject a bundle whose emit rule binds an erc20/erc721/erc1155 `asset.kind`
+ *     literal without the required `.address` (and `.tokenId` for NFTs).
+ *     The runtime engine fail-closes on such inputs; catching at build time
+ *     keeps a hand-edited bundle from quietly slipping a malformed AssetRef.
+ *
+ * Spec references:
+ *   - registry/docs/SCHEMA_V2.md
+ *   - registry/docs/ERC_STANDARD_AUTO_ENUMERATE.md
  *   - RFC 8785 (JSON Canonicalization Scheme) — https://www.rfc-editor.org/rfc/rfc8785
  *
- * 실행:
- *   $ npm install      # tsx + canonicalize + @types/node 설치
- *   $ npm run build    # 본 스크립트 실행 → index 재생성
+ * Run:
+ *   $ npm install
+ *   $ npm run build
  */
 
 import { createHash } from "node:crypto";
@@ -29,20 +76,43 @@ import { fileURLToPath } from "node:url";
 import canonicalize from "canonicalize";
 
 // ---------------------------------------------------------------------------
-// Types — Adapter Function Bundle 의 PoC 단계 minimum field set
+// Types
 // ---------------------------------------------------------------------------
 
-interface BundleMatch {
-  chain_ids: number[];
-  to: string[];
-  selector: string;
+type ChainId = number;
+type Hex = string;
+
+interface BundleMatchSpecific {
+  selector: Hex;
+  chain_to_addresses: Record<string, Hex[]>;
 }
 
+interface BundleMatchSourced {
+  selector: Hex;
+  chain_to_addresses_source: TokenKindSource;
+  chain_ids: ChainId[];
+}
+
+type BundleMatch = BundleMatchSpecific | BundleMatchSourced;
+
+type TokenKind = "erc20" | "erc721" | "erc1155";
+type TokenKindSource = `tokens:${TokenKind}`;
+
 interface AdapterBundle {
-  type: string;
+  type: "adapter_function";
   id: string;
+  schema_version: "2";
+  publisher?: string;
   match: BundleMatch;
-  // emit / abi_fragment / requires 등 다른 field 는 본 스크립트 입장에서 opaque.
+  [key: string]: unknown;
+}
+
+interface ResolvedBundle {
+  type: "adapter_function";
+  id: string;
+  schema_version: "2";
+  publisher?: string;
+  match: BundleMatchSpecific;
   [key: string]: unknown;
 }
 
@@ -50,8 +120,15 @@ interface IndexEntry {
   matched: true;
   bundle_id: string;
   manifest_path: string;
-  bundle_sha256: string;
-  bundle: AdapterBundle;
+  bundle_sha256: Hex;
+  bundle: ResolvedBundle;
+}
+
+interface TokenMetadata {
+  kind: TokenKind;
+  chainId: ChainId;
+  address: Hex;
+  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,36 +139,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REGISTRY_ROOT = resolve(__dirname, "..");
 const MANIFESTS_DIR = join(REGISTRY_ROOT, "manifests");
+const TOKENS_DIR = join(REGISTRY_ROOT, "tokens");
 const INDEX_BY_CALLKEY_DIR = join(REGISTRY_ROOT, "index", "by-callkey");
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Regex constants
 // ---------------------------------------------------------------------------
 
-function walkJsonFiles(root: string): string[] {
-  const out: string[] = [];
-  if (!safeExists(root)) return out;
-  const stack: string[] = [root];
-  while (stack.length > 0) {
-    const cur = stack.pop()!;
-    for (const entry of readdirSync(cur)) {
-      const p = join(cur, entry);
-      const s = statSync(p);
-      if (s.isDirectory()) {
-        // Skip `_template/` dirs — these hold pool-type emit-rule templates
-        // with placeholder addresses (0x1111…/0xaaaa…) consumed by
-        // `gen-curve-pools.ts` per-pool generation. They are NOT live bundles
-        // and must never be installed or indexed (placeholder addresses would
-        // create dead callkeys and tripping audit-addresses bogus gate).
-        if (entry === "_template") continue;
-        stack.push(p);
-      } else if (s.isFile() && entry.endsWith(".json")) {
-        out.push(p);
-      }
-    }
-  }
-  return out.sort();
-}
+const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
+const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+const SCHEMA_VERSION_REQUIRED = "2" as const;
+const TOKEN_KINDS: ReadonlySet<TokenKind> = new Set(["erc20", "erc721", "erc1155"]);
+
+// ---------------------------------------------------------------------------
+// Filesystem helpers
+// ---------------------------------------------------------------------------
 
 function safeExists(p: string): boolean {
   try {
@@ -102,65 +164,25 @@ function safeExists(p: string): boolean {
   }
 }
 
-function sha256Hex(s: string): string {
-  return createHash("sha256").update(s, "utf8").digest("hex");
-}
-
-// Round 3 audit (P1) — tighten registry-side validation so the index
-// builder rejects malformed bundles before they get a callkey entry.
-// The runtime `parseBundle` enforces the same shape, but catching this
-// at build time keeps a hand-edited bundle from quietly slipping a
-// "0x" + N-where-N != 8 selector or a non-EVM address into the index.
-const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
-
-function loadBundle(path: string): AdapterBundle {
-  const raw = readFileSync(path, "utf8");
-  const json = JSON.parse(raw) as AdapterBundle;
-  if (typeof json !== "object" || json === null) {
-    throw new Error(`bundle not an object: ${path}`);
-  }
-  if (json.type !== "adapter_function") {
-    throw new Error(`bundle.type !== "adapter_function": ${path}`);
-  }
-  if (!json.match || !Array.isArray(json.match.chain_ids) || !Array.isArray(json.match.to)) {
-    throw new Error(`bundle.match shape invalid: ${path}`);
-  }
-  for (const [i, cid] of json.match.chain_ids.entries()) {
-    if (typeof cid !== "number" || !Number.isInteger(cid) || cid < 1) {
-      throw new Error(
-        `bundle.match.chain_ids[${i}] must be positive integer: ${path}`,
-      );
+function walkJsonFiles(root: string, opts: { skipDirs?: ReadonlySet<string> } = {}): string[] {
+  const skipDirs = opts.skipDirs ?? new Set<string>();
+  const out: string[] = [];
+  if (!safeExists(root)) return out;
+  const stack: string[] = [root];
+  while (stack.length > 0) {
+    const cur = stack.pop()!;
+    for (const entry of readdirSync(cur)) {
+      const p = join(cur, entry);
+      const s = statSync(p);
+      if (s.isDirectory()) {
+        if (skipDirs.has(entry)) continue;
+        stack.push(p);
+      } else if (s.isFile() && entry.endsWith(".json")) {
+        out.push(p);
+      }
     }
   }
-  for (const [i, to] of json.match.to.entries()) {
-    if (typeof to !== "string" || !ADDRESS_RE.test(to)) {
-      throw new Error(
-        `bundle.match.to[${i}] expected EVM address "0x" + 40 hex, got "${to}": ${path}`,
-      );
-    }
-  }
-  if (typeof json.match.selector !== "string" || !SELECTOR_RE.test(json.match.selector)) {
-    throw new Error(
-      `bundle.match.selector expected "0x" + 8 hex, got "${json.match.selector}": ${path}`,
-    );
-  }
-  return json;
-}
-
-function computeBundleSha256(bundle: AdapterBundle): string {
-  // RFC 8785 JCS — `canonicalize` package returns canonical JSON string (UTF-8).
-  const canonical = canonicalize(bundle);
-  if (typeof canonical !== "string") {
-    throw new Error("canonicalize returned non-string");
-  }
-  return "0x" + sha256Hex(canonical);
-}
-
-function callkeyFilename(chainId: number, to: string, selector: string): string {
-  // 파일명: lowercased to + lowercased selector. spec §6.2 의 예시는 case 유지지만
-  // PoC client lookup 의 case-sensitivity 문제를 회피하기 위해 lowercased 결정.
-  return `${chainId}__${to.toLowerCase()}__${selector.toLowerCase()}.json`;
+  return out.sort();
 }
 
 function wipeDir(p: string): void {
@@ -170,47 +192,250 @@ function wipeDir(p: string): void {
   mkdirSync(p, { recursive: true });
 }
 
+function sha256Hex(s: string): string {
+  return createHash("sha256").update(s, "utf8").digest("hex");
+}
+
 // ---------------------------------------------------------------------------
-// Asset-address lint — post-Aerodrome audit.
-//
-// `AssetRef`'s deserialize validation (policy-engine) requires an `address`
-// for every `erc20`/`erc721`/`erc1155` asset (and a `tokenId` for NFTs). A
-// bundle whose emit rule produces such an asset without those fields cannot
-// be deserialized at the evaluate stage — the engine fail-closes with an
-// opaque `__engine::invalid_input_json` (a false `fail`). Reject such bundles
-// here, at index-build time, before they ever reach a client.
-//
-// `KNOWN_DEFERRED_ASSET_ADDRESS` lists manifests with a pre-existing gap
-// scheduled for a follow-up fix. They warn instead of throwing so the
-// Aerodrome remediation can ship without blocking on Uniswap/Curve. This is a
-// ratchet: a NEW violation (manifest not on the list) still fails the build,
-// and each entry is deleted as its bundle is fixed.
+// Token registry — load + index by (chainId, kind)
+// ---------------------------------------------------------------------------
+
+/** Map<chainId, Map<kind, Set<lowercased address>>> */
+type TokensByChainKind = Map<ChainId, Map<TokenKind, Set<Hex>>>;
+
+function loadTokensIndex(): TokensByChainKind {
+  const out: TokensByChainKind = new Map();
+  if (!safeExists(TOKENS_DIR)) return out;
+
+  // tokens/<chainId>/*.json
+  for (const chainDir of readdirSync(TOKENS_DIR)) {
+    const chainPath = join(TOKENS_DIR, chainDir);
+    if (!statSync(chainPath).isDirectory()) continue;
+    const chainId = Number(chainDir);
+    if (!Number.isInteger(chainId) || chainId < 1) {
+      throw new Error(`tokens/: invalid chain directory name "${chainDir}" — expected positive integer`);
+    }
+
+    const perKind = new Map<TokenKind, Set<Hex>>();
+    perKind.set("erc20", new Set());
+    perKind.set("erc721", new Set());
+    perKind.set("erc1155", new Set());
+
+    for (const fname of readdirSync(chainPath)) {
+      if (!fname.endsWith(".json")) continue;
+      const fpath = join(chainPath, fname);
+      const meta = loadTokenMetadata(fpath, chainId);
+      perKind.get(meta.kind)!.add(meta.address.toLowerCase());
+    }
+
+    out.set(chainId, perKind);
+  }
+  return out;
+}
+
+function loadTokenMetadata(path: string, expectedChainId: ChainId): TokenMetadata {
+  const raw = readFileSync(path, "utf8");
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch (e) {
+    throw new Error(`tokens/: invalid JSON in ${path}: ${(e as Error).message}`);
+  }
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    throw new Error(`tokens/: ${path} must be a JSON object`);
+  }
+  const obj = json as Record<string, unknown>;
+
+  const kind = obj.kind;
+  if (typeof kind !== "string" || !TOKEN_KINDS.has(kind as TokenKind)) {
+    throw new Error(
+      `tokens/: ${path} has missing or invalid "kind" — expected one of erc20/erc721/erc1155, got ${JSON.stringify(kind)}`,
+    );
+  }
+
+  const address = obj.address;
+  if (typeof address !== "string" || !ADDRESS_RE.test(address)) {
+    throw new Error(
+      `tokens/: ${path} has missing or invalid "address" — expected "0x" + 40 hex, got ${JSON.stringify(address)}`,
+    );
+  }
+
+  const chainId = obj.chainId;
+  if (typeof chainId !== "number" || !Number.isInteger(chainId) || chainId < 1) {
+    throw new Error(`tokens/: ${path} has missing or invalid "chainId" — expected positive integer, got ${JSON.stringify(chainId)}`);
+  }
+  if (chainId !== expectedChainId) {
+    throw new Error(`tokens/: ${path} chainId field (${chainId}) does not match directory (${expectedChainId})`);
+  }
+
+  return { kind: kind as TokenKind, chainId, address, ...obj };
+}
+
+// ---------------------------------------------------------------------------
+// Bundle parsing + validation
+// ---------------------------------------------------------------------------
+
+function loadBundle(path: string): AdapterBundle {
+  const raw = readFileSync(path, "utf8");
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch (e) {
+    throw new Error(`manifests/: invalid JSON in ${path}: ${(e as Error).message}`);
+  }
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    throw new Error(`manifests/: ${path} must be a JSON object`);
+  }
+  const obj = json as Record<string, unknown>;
+
+  if (obj.type !== "adapter_function") {
+    throw new Error(`manifests/: ${path} type !== "adapter_function" (got ${JSON.stringify(obj.type)})`);
+  }
+  if (typeof obj.id !== "string" || obj.id.length === 0) {
+    throw new Error(`manifests/: ${path} has missing or invalid "id"`);
+  }
+  if (obj.schema_version !== SCHEMA_VERSION_REQUIRED) {
+    throw new Error(
+      `manifests/: ${path} schema_version !== "${SCHEMA_VERSION_REQUIRED}" (got ${JSON.stringify(obj.schema_version)}). ` +
+        `registry v2 rejects pre-v2 bundles — migrate to chain_to_addresses map first.`,
+    );
+  }
+
+  validateMatchShape(path, obj.match);
+
+  return json as AdapterBundle;
+}
+
+function validateMatchShape(path: string, match: unknown): asserts match is BundleMatch {
+  if (typeof match !== "object" || match === null || Array.isArray(match)) {
+    throw new Error(`manifests/: ${path} match must be a JSON object`);
+  }
+  const m = match as Record<string, unknown>;
+
+  if (typeof m.selector !== "string" || !SELECTOR_RE.test(m.selector)) {
+    throw new Error(
+      `manifests/: ${path} match.selector expected "0x" + 8 hex, got ${JSON.stringify(m.selector)}`,
+    );
+  }
+
+  const hasMap = "chain_to_addresses" in m;
+  const hasSource = "chain_to_addresses_source" in m;
+
+  if (hasMap === hasSource) {
+    throw new Error(
+      `manifests/: ${path} match must have exactly one of "chain_to_addresses" or "chain_to_addresses_source" (found ${hasMap && hasSource ? "both" : "neither"})`,
+    );
+  }
+
+  if (hasMap) {
+    if (typeof m.chain_to_addresses !== "object" || m.chain_to_addresses === null || Array.isArray(m.chain_to_addresses)) {
+      throw new Error(`manifests/: ${path} match.chain_to_addresses must be an object`);
+    }
+    const map = m.chain_to_addresses as Record<string, unknown>;
+    if (Object.keys(map).length === 0) {
+      throw new Error(`manifests/: ${path} match.chain_to_addresses must have at least one chain entry`);
+    }
+    for (const [chainKey, addresses] of Object.entries(map)) {
+      const chainId = Number(chainKey);
+      if (!Number.isInteger(chainId) || chainId < 1) {
+        throw new Error(
+          `manifests/: ${path} match.chain_to_addresses key "${chainKey}" must stringify a positive integer`,
+        );
+      }
+      if (!Array.isArray(addresses) || addresses.length === 0) {
+        throw new Error(
+          `manifests/: ${path} match.chain_to_addresses["${chainKey}"] must be a non-empty array`,
+        );
+      }
+      for (const [i, addr] of addresses.entries()) {
+        if (typeof addr !== "string" || !ADDRESS_RE.test(addr)) {
+          throw new Error(
+            `manifests/: ${path} match.chain_to_addresses["${chainKey}"][${i}] expected "0x" + 40 hex, got ${JSON.stringify(addr)}`,
+          );
+        }
+      }
+    }
+  } else {
+    // hasSource — chain_to_addresses_source + chain_ids
+    if (typeof m.chain_to_addresses_source !== "string") {
+      throw new Error(
+        `manifests/: ${path} match.chain_to_addresses_source must be a string`,
+      );
+    }
+    const parts = m.chain_to_addresses_source.split(":");
+    if (parts.length !== 2 || parts[0] !== "tokens" || !TOKEN_KINDS.has(parts[1] as TokenKind)) {
+      throw new Error(
+        `manifests/: ${path} match.chain_to_addresses_source must be one of "tokens:erc20" | "tokens:erc721" | "tokens:erc1155", got ${JSON.stringify(m.chain_to_addresses_source)}`,
+      );
+    }
+    if (!Array.isArray(m.chain_ids) || m.chain_ids.length === 0) {
+      throw new Error(`manifests/: ${path} match.chain_ids must be a non-empty array when chain_to_addresses_source is set`);
+    }
+    for (const [i, cid] of m.chain_ids.entries()) {
+      if (typeof cid !== "number" || !Number.isInteger(cid) || cid < 1) {
+        throw new Error(`manifests/: ${path} match.chain_ids[${i}] must be a positive integer, got ${JSON.stringify(cid)}`);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Source resolution — sourced bundles → effective chain_to_addresses
+// ---------------------------------------------------------------------------
+
+function resolveBundle(bundle: AdapterBundle, tokens: TokensByChainKind, manifestPath: string): ResolvedBundle {
+  if ("chain_to_addresses" in bundle.match) {
+    // already concrete
+    return bundle as ResolvedBundle;
+  }
+
+  const sourced = bundle.match as BundleMatchSourced;
+  const kind = sourced.chain_to_addresses_source.split(":")[1] as TokenKind;
+
+  const effective: Record<string, Hex[]> = {};
+  let totalAddresses = 0;
+  for (const chainId of sourced.chain_ids) {
+    const perKind = tokens.get(chainId);
+    if (!perKind) {
+      throw new Error(
+        `manifests/: ${manifestPath} match.chain_to_addresses_source references chain ${chainId} but tokens/${chainId}/ does not exist`,
+      );
+    }
+    const addresses = Array.from(perKind.get(kind)!).sort();
+    if (addresses.length === 0) {
+      // not an error — a chain with no tokens of this kind simply produces zero callkeys for this chain.
+      console.error(
+        `[build-index] WARN ${manifestPath}: chain ${chainId} has no tokens of kind=${kind} — 0 callkeys for this (chain, selector)`,
+      );
+      continue;
+    }
+    effective[String(chainId)] = addresses;
+    totalAddresses += addresses.length;
+  }
+
+  if (totalAddresses === 0) {
+    throw new Error(
+      `manifests/: ${manifestPath} match.chain_to_addresses_source resolved to 0 addresses across all chain_ids — at least one token of kind=${kind} required`,
+    );
+  }
+
+  // Build resolved bundle — replace sourced match with concrete map, drop source/chain_ids fields
+  const resolvedMatch: BundleMatchSpecific = {
+    selector: sourced.selector,
+    chain_to_addresses: effective,
+  };
+
+  const { match: _omit, ...rest } = bundle;
+  return { ...rest, match: resolvedMatch } as ResolvedBundle;
+}
+
+// ---------------------------------------------------------------------------
+// AssetRef lint (post-Aerodrome audit, ported)
 // ---------------------------------------------------------------------------
 
 const ERC_KINDS: ReadonlySet<string> = new Set(["erc20", "erc721", "erc1155"]);
 const NFT_KINDS: ReadonlySet<string> = new Set(["erc721", "erc1155"]);
 
-const KNOWN_DEFERRED_ASSET_ADDRESS: ReadonlySet<string> = new Set([
-  "manifests/curve/stableswap/frxeth/addLiquidity-2@1.0.0.json",
-  "manifests/curve/stableswap/frxeth/removeLiquidity-2@1.0.0.json",
-  "manifests/curve/stableswap/frxeth/removeLiquidityImbalance-2@1.0.0.json",
-  "manifests/curve/stableswap/frxeth/removeLiquidityOneCoin@1.0.0.json",
-  "manifests/uniswap/swap-router-02/unwrapWETH9@1.0.0.json",
-  "manifests/uniswap/swap-router-02/wrapETH@1.0.0.json",
-  "manifests/uniswap/v2/addLiquidity@1.0.0.json",
-  "manifests/uniswap/v2/addLiquidityETH@1.0.0.json",
-  "manifests/uniswap/v2/removeLiquidity@1.0.0.json",
-  "manifests/uniswap/v2/removeLiquidityETH@1.0.0.json",
-  "manifests/uniswap/v2/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0.json",
-  "manifests/uniswap/v2/removeLiquidityETHWithPermit@1.0.0.json",
-  "manifests/uniswap/v2/removeLiquidityETHWithPermitSupportingFeeOnTransferTokens@1.0.0.json",
-  "manifests/uniswap/v2/removeLiquidityWithPermit@1.0.0.json",
-  "manifests/uniswap/v3/decreaseLiquidity@1.0.0.json",
-  "manifests/uniswap/v3/increaseLiquidity@1.0.0.json",
-  "manifests/uniswap/v3/unwrapWETH9@1.0.0.json",
-]);
-
-/** Collect every object that is the value of a key literally named `fields`. */
 function collectFieldsMaps(node: unknown, out: Record<string, unknown>[]): void {
   if (Array.isArray(node)) {
     for (const child of node) collectFieldsMaps(child, out);
@@ -225,11 +450,6 @@ function collectFieldsMaps(node: unknown, out: Record<string, unknown>[]): void 
   }
 }
 
-/**
- * Reject a bundle whose emit rule binds an `erc20`/`erc721`/`erc1155` asset
- * `kind` without the required `address` (or `tokenId` for NFTs). Deferred
- * manifests warn; everything else throws and fails the build.
- */
 function validateAssetRefs(manifestPath: string, bundle: AdapterBundle): void {
   const fieldsMaps: Record<string, unknown>[] = [];
   collectFieldsMaps(bundle, fieldsMaps);
@@ -237,8 +457,10 @@ function validateAssetRefs(manifestPath: string, bundle: AdapterBundle): void {
   const violations: string[] = [];
   for (const fm of fieldsMaps) {
     for (const key of Object.keys(fm)) {
-      if (!key.endsWith(".asset.kind")) continue;
-      const prefix = key.slice(0, -".kind".length); // "<path>.asset"
+      if (!key.endsWith(".asset.kind") && !key.endsWith("token.kind") && !key.endsWith("token0.kind") && !key.endsWith("token1.kind")) {
+        continue;
+      }
+      const prefix = key.slice(0, -".kind".length);
       const kindNode = fm[key];
       const literal =
         kindNode !== null && typeof kindNode === "object" && !Array.isArray(kindNode)
@@ -256,15 +478,26 @@ function validateAssetRefs(manifestPath: string, bundle: AdapterBundle): void {
   if (violations.length === 0) return;
 
   const detail = violations.map((v) => `                - ${v}`).join("\n");
-  if (KNOWN_DEFERRED_ASSET_ADDRESS.has(manifestPath)) {
-    console.error(`[build-index] WARN ${manifestPath}: deferred asset-address gap\n${detail}`);
-    return;
-  }
   throw new Error(
-    `bundle ${manifestPath} emits an erc-kind AssetRef without a required ` +
-      `address/tokenId — the evaluate stage cannot deserialize it ` +
-      `(add to KNOWN_DEFERRED_ASSET_ADDRESS only with a tracked follow-up):\n${detail}`,
+    `manifests/: ${manifestPath} emits an erc-kind AssetRef without a required ` +
+      `address/tokenId — the evaluate stage cannot deserialize it:\n${detail}`,
   );
+}
+
+// ---------------------------------------------------------------------------
+// SHA-256 + callkey filename
+// ---------------------------------------------------------------------------
+
+function computeBundleSha256(bundle: ResolvedBundle): Hex {
+  const canonical = canonicalize(bundle);
+  if (typeof canonical !== "string") {
+    throw new Error("canonicalize returned non-string");
+  }
+  return "0x" + sha256Hex(canonical);
+}
+
+function callkeyFilename(chainId: ChainId, to: Hex, selector: Hex): string {
+  return `${chainId}__${to.toLowerCase()}__${selector.toLowerCase()}.json`;
 }
 
 // ---------------------------------------------------------------------------
@@ -272,53 +505,74 @@ function validateAssetRefs(manifestPath: string, bundle: AdapterBundle): void {
 // ---------------------------------------------------------------------------
 
 function main(): void {
-  const files = walkJsonFiles(MANIFESTS_DIR);
-  if (files.length === 0) {
+  const skipDirs = new Set(["_template"]);
+  const manifestFiles = walkJsonFiles(MANIFESTS_DIR, { skipDirs });
+  if (manifestFiles.length === 0) {
     console.error(`[build-index] no manifests found in ${MANIFESTS_DIR}`);
     process.exit(1);
   }
 
-  console.error(`[build-index] manifests root: ${MANIFESTS_DIR}`);
-  console.error(`[build-index] index root:     ${INDEX_BY_CALLKEY_DIR}`);
-  console.error(`[build-index] manifests:      ${files.length}`);
+  console.error(`[build-index] registry root: ${REGISTRY_ROOT}`);
+  console.error(`[build-index] manifests:    ${manifestFiles.length}`);
 
-  // orphan 방지 — 기존 index/by-callkey/ wipe
+  const tokens = loadTokensIndex();
+  const tokenChainCount = tokens.size;
+  let tokenTotal = 0;
+  for (const perKind of tokens.values()) {
+    for (const set of perKind.values()) tokenTotal += set.size;
+  }
+  console.error(`[build-index] tokens:       ${tokenTotal} across ${tokenChainCount} chain(s)`);
+
+  // orphan 방지
   wipeDir(INDEX_BY_CALLKEY_DIR);
 
-  let indexCount = 0;
-  for (const file of files) {
-    const bundle = loadBundle(file);
+  let totalCallkeys = 0;
+  let totalErrors = 0;
+  for (const file of manifestFiles) {
     const manifestPath = relative(REGISTRY_ROOT, file).split(/[\\/]/).join("/");
-    validateAssetRefs(manifestPath, bundle);
-    const bundleSha256 = computeBundleSha256(bundle);
-    const callkeyCount = bundle.match.chain_ids.length * bundle.match.to.length;
+    try {
+      const bundle = loadBundle(file);
+      validateAssetRefs(manifestPath, bundle);
+      const resolved = resolveBundle(bundle, tokens, manifestPath);
+      const bundleSha256 = computeBundleSha256(resolved);
 
-    console.error(
-      `[build-index] ${bundle.id}\n` +
-        `              manifest:  ${manifestPath}\n` +
-        `              sha256:    ${bundleSha256}\n` +
-        `              callkeys:  ${callkeyCount}`,
-    );
+      const pairs = Object.entries(resolved.match.chain_to_addresses);
+      const pairCount = pairs.reduce((acc, [, addrs]) => acc + addrs.length, 0);
 
-    for (const chainId of bundle.match.chain_ids) {
-      for (const to of bundle.match.to) {
-        const entry: IndexEntry = {
-          matched: true,
-          bundle_id: bundle.id,
-          manifest_path: manifestPath,
-          bundle_sha256: bundleSha256,
-          bundle,
-        };
-        const fname = callkeyFilename(chainId, to, bundle.match.selector);
-        const outPath = join(INDEX_BY_CALLKEY_DIR, fname);
-        // index 파일도 pretty-print JSON 으로 commit (PoC 디버깅 편의)
-        writeFileSync(outPath, JSON.stringify(entry, null, 2) + "\n", "utf8");
-        indexCount++;
+      console.error(
+        `[build-index] ${resolved.id}\n` +
+          `              manifest:  ${manifestPath}\n` +
+          `              sha256:    ${bundleSha256}\n` +
+          `              callkeys:  ${pairCount}`,
+      );
+
+      for (const [chainKey, addresses] of pairs) {
+        const chainId = Number(chainKey);
+        for (const to of addresses) {
+          const entry: IndexEntry = {
+            matched: true,
+            bundle_id: resolved.id,
+            manifest_path: manifestPath,
+            bundle_sha256: bundleSha256,
+            bundle: resolved,
+          };
+          const fname = callkeyFilename(chainId, to, resolved.match.selector);
+          const outPath = join(INDEX_BY_CALLKEY_DIR, fname);
+          writeFileSync(outPath, JSON.stringify(entry, null, 2) + "\n", "utf8");
+          totalCallkeys++;
+        }
       }
+    } catch (e) {
+      totalErrors++;
+      console.error(`[build-index] FAIL ${manifestPath}: ${(e as Error).message}`);
     }
   }
 
-  console.error(`[build-index] done — ${indexCount} index file(s) written`);
+  if (totalErrors > 0) {
+    console.error(`[build-index] FAILED — ${totalErrors} manifest(s) rejected, ${totalCallkeys} callkey(s) written`);
+    process.exit(1);
+  }
+  console.error(`[build-index] done — ${totalCallkeys} callkey(s) written across ${manifestFiles.length} manifest(s)`);
 }
 
 main();

@@ -1,29 +1,30 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/collect@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/collect@1.0.0.json",
-  "bundle_sha256": "0x7b5c3b45907f2d35d09bdc162a6610b64731bd9437a76c379a779acc3430e14f",
+  "bundle_id": "uniswap/nfpm/collect@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/collect@1.0.0.json",
+  "bundle_sha256": "0xb1b639d0829d10172803d2f9a34bf5aa5fe8fe503c585796fb39ddad98d84857",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/collect@1.0.0",
+    "id": "uniswap/nfpm/collect@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
-      ],
-      "selector": "0xfc6f7865"
+      "selector": "0xfc6f7865",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "collect",
       "abi": {
         "name": "collect",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -59,7 +60,13 @@
           "from": "$.tx.to"
         },
         "nft.kind": {
-          "literal": "unknown"
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "from": "$.tx.to"
+        },
+        "nft.tokenId": {
+          "from": "$.args.tokenId"
         },
         "tokenId": {
           "from": "$.args.tokenId"

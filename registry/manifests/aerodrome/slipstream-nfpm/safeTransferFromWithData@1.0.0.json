@@ -1,0 +1,45 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/slipstream-nfpm/safeTransferFromWithData@1.0.0",
+  "publisher": "aerodrome.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xb88d4fde",
+    "chain_to_addresses": {
+      "8453": ["0x827922686190790b37229fd06084350E74485b72"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "safeTransferFrom",
+    "abi": {
+      "name": "safeTransferFrom",
+      "type": "function",
+      "inputs": [
+        { "name": "from",    "type": "address" },
+        { "name": "to",      "type": "address" },
+        { "name": "tokenId", "type": "uint256" },
+        { "name": "data",    "type": "bytes"   }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind":      { "literal": "erc721" },
+      "token.asset.address":   { "from": "$.tx.to" },
+      "token.asset.tokenId":   { "from": "$.args.tokenId" },
+      "token.amount.kind":     { "literal": "exact" },
+      "token.amount.value":    { "literal": "1" },
+      "from":                  { "from": "$.args.from" },
+      "recipient":             { "from": "$.args.to" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

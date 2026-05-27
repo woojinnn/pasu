@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/v2/removeLiquidityETH@1.0.0",
-  "manifest_path": "manifests/aerodrome/v2/removeLiquidityETH@1.0.0.json",
-  "bundle_sha256": "0xd78136d55c00ff40843b60915d143b1e14edc35a467e0ba88f5117914937e27a",
+  "bundle_id": "aerodrome/router-v2/removeLiquidityETH@1.0.0",
+  "manifest_path": "manifests/aerodrome/router-v2/removeLiquidityETH@1.0.0.json",
+  "bundle_sha256": "0xf88e9da3f952de68922beb248417b4d953b790c44ef7c2627f2659c579a0078f",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/v2/removeLiquidityETH@1.0.0",
+    "id": "aerodrome/router-v2/removeLiquidityETH@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
-      ],
-      "selector": "0xd7b0e0a5"
+      "selector": "0xd7b0e0a5",
+      "chain_to_addresses": {
+        "8453": [
+          "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "removeLiquidityETH",

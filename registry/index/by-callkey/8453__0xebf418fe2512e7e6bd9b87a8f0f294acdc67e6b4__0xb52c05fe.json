@@ -2,32 +2,33 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/createLock@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/createLock@1.0.0.json",
-  "bundle_sha256": "0x1977104cb839a01f3e17da04b9ae4b3789b5049f84881fb8a673e213f222d25e",
+  "bundle_sha256": "0x398b1beac93beca07ac2d8dd8d5b76cc431f29230d227c88c386affb7fc16a14",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/createLock@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0xb52c05fe"
+      "selector": "0xb52c05fe",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "createLock",
       "abi": {
         "name": "createLock",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "value",
+            "name": "_value",
             "type": "uint256"
           },
           {
-            "name": "lockDuration",
+            "name": "_lockDuration",
             "type": "uint256"
           }
         ]
@@ -39,22 +40,22 @@
       "action": "lock_create",
       "fields": {
         "votingEscrow": {
-          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+          "from": "$.tx.to"
         },
-        "asset.kind": {
+        "asset.asset.kind": {
           "literal": "erc20"
         },
-        "asset.address": {
+        "asset.asset.address": {
           "literal": "0x940181a94A35A4569E4529A3CDfB74e38FD98631"
         },
-        "amount.kind": {
+        "asset.amount.kind": {
           "literal": "exact"
         },
-        "amount.value": {
-          "from": "$.args.value"
+        "asset.amount.value": {
+          "from": "$.args._value"
         },
         "lockDurationSec": {
-          "from": "$.args.lockDuration"
+          "from": "$.args._lockDuration"
         },
         "recipient": {
           "from": "$.tx.from"
@@ -63,7 +64,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

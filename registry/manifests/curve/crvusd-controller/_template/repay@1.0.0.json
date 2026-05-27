@@ -1,0 +1,46 @@
+{
+  "type": "adapter_function",
+  "id": "curve/crvusd-controller/_template/repay@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x37671f93",
+    "chain_to_addresses": {
+      "__CHAIN_ID__": ["__CONTROLLER_ADDRESS__"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "repay",
+    "abi": {
+      "name": "repay",
+      "type": "function",
+      "inputs": [
+        { "name": "_d_debt",         "type": "uint256" },
+        { "name": "_for",            "type": "address" },
+        { "name": "max_active_band", "type": "int256"  },
+        { "name": "use_eth",         "type": "bool"    }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "lending",
+    "action": "repay",
+    "fields": {
+      "market.address": { "literal": "__CONTROLLER_ADDRESS__" },
+      "market.label":   { "literal": "Curve crvUSD Controller" },
+      "asset.kind":     { "literal": "erc20" },
+      "asset.address":  { "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
+      "amount.kind":    { "literal": "exact" },
+      "amount.value":   { "from": "$.args._d_debt" },
+      "onBehalf":       { "from": "$.args._for" },
+      "repayKind":      { "literal": "debt_asset" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

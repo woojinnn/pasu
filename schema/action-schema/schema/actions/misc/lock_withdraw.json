@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema/actions/misc/lock_withdraw.json",
+  "title": "LockWithdrawAction",
+  "description": "voting-escrow lock 만기 후 principal 회수 — Aerodrome VotingEscrow.withdraw(tokenId) / Curve veCRV.withdraw(). lock 만기 (block.timestamp >= locked.end) 가 invariant — 만기 전 호출은 contract level 에서 revert. recipient = lock owner (root.from). tokenId 는 Aerodrome veAERO / Velodrome veVELO 만 (account-bound veCRV 는 생략). 정책 'recipient == root.from' 강력 권장 (제3자 withdraw 위장 차단) / '만기 일주일 이내만 허용' (자동 reinvest 패턴 enforcement) / 'withdraw 와 동시 swap 차단' (lock release 후 즉시 매도 회피).",
+
+  "type": "object",
+  "properties": {
+    "votingEscrow": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "VotingEscrow 컨트랙트 주소 (tx.to). LockCreateAction / LockIncreaseAction 의 votingEscrow 와 동일."
+    },
+
+    "tokenId": {
+      "$ref": "../../common/_common.json#/$defs/DecimalString",
+      "description": "withdraw 대상 veNFT 의 tokenId — Aerodrome veAERO / Velodrome veVELO 에만 적용. Curve veCRV 는 account-bound (NFT 없음) 라 본 필드 생략. 정책 'host:onchain 으로 ownerOf(tokenId) == root.from 검증' 분기 (tokenId 있을 때만)."
+    },
+
+    "asset": {
+      "$ref": "../../common/_common.json#/$defs/AssetRef",
+      "description": "lock 에서 회수되는 토큰 (kind=erc20). Aerodrome 의 경우 AERO, Curve 는 CRV. VE contract 의 immutable governance token — calldata 에 명시 X, emit 시 host:registry 의 ve_locked_token 또는 'kind:unknown' literal."
+    },
+
+    "recipient": {
+      "$ref": "../../common/_common.json#/$defs/Address",
+      "description": "회수 토큰 수령자. Aerodrome / Curve 둘 다 항상 msg.sender (root.from). 정책 'recipient == root.from' 강력 권장."
+    }
+  },
+
+  "required": ["votingEscrow", "asset", "recipient"]
+}

@@ -31,7 +31,7 @@
 //!
 //! All tests are read-only on production code. The Slipstream `exactInput`
 //! bundle JSON is loaded via `include_str!` from the registry's manifest
-//! tree (see `registry/manifests/aerodrome/slipstream/exactInput@1.0.0.json`).
+//! tree (see `registry/manifests/aerodrome/slipstream-swap-router/exactInput@1.0.0.json`).
 
 use std::str::FromStr as _;
 
@@ -50,8 +50,9 @@ use serde_json::json;
 // Loaded directly via `include_str!` (relative to this test file's location).
 // ───────────────────────────────────────────────────────────────────────────
 
-const SLIPSTREAM_EXACT_INPUT_BUNDLE: &str =
-    include_str!("../../../../registry/manifests/aerodrome/slipstream/exactInput@1.0.0.json");
+const SLIPSTREAM_EXACT_INPUT_BUNDLE: &str = include_str!(
+    "../../../../registry/manifests/aerodrome/slipstream-swap-router/exactInput@1.0.0.json"
+);
 
 // ───────────────────────────────────────────────────────────────────────────
 // Address fixtures. Slipstream addresses are dummy unique ones for unit-test
@@ -505,7 +506,7 @@ fn slipstream_dsl_integration_exact_input_emits_swap_with_correct_endpoints() {
 // ───────────────────────────────────────────────────────────────────────────
 
 const SLIPSTREAM_NPM_DECREASE_LIQUIDITY_BUNDLE: &str = include_str!(
-    "../../../../registry/manifests/aerodrome/slipstream-npm/decreaseLiquidity@1.0.0.json"
+    "../../../../registry/manifests/aerodrome/slipstream-nfpm/decreaseLiquidity@1.0.0.json"
 );
 
 /// Build a `DecodedCall` for Slipstream NPM `decreaseLiquidity`. Phase A B-1

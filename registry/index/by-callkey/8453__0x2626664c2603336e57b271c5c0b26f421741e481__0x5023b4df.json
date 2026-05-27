@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/swap-router-02/exactOutputSingle-base@1.0.0",
-  "manifest_path": "manifests/uniswap/swap-router-02/exactOutputSingle-base@1.0.0.json",
-  "bundle_sha256": "0x441313def51ef9c90f6c33bcc98f00cf6ff7c88f8492b42321e35cde26f0a45c",
+  "bundle_id": "uniswap/swap-router-02/exactOutputSingle@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/exactOutputSingle@1.0.0.json",
+  "bundle_sha256": "0x45d0a0e758d957f9f13a458369c18acd5011458a64ac1f4cd87f0fde5cf257dc",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/swap-router-02/exactOutputSingle-base@1.0.0",
+    "id": "uniswap/swap-router-02/exactOutputSingle@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x2626664c2603336E57B271c5C0b26F421741e481"
-      ],
-      "selector": "0x5023b4df"
+      "selector": "0x5023b4df",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exactOutputSingle",

@@ -1,0 +1,54 @@
+{
+  "type": "adapter_function",
+  "id": "curve/cryptoswap/_template/addLiquidity@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x4515cef3",
+    "chain_to_addresses": {
+      "__CHAIN_ID__": ["__POOL_ADDRESS__"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "add_liquidity",
+    "abi": {
+      "name": "add_liquidity",
+      "type": "function",
+      "inputs": [
+        { "name": "amounts",         "type": "uint256[3]" },
+        { "name": "min_mint_amount", "type": "uint256"    }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "add_liquidity",
+    "fields": {
+      "pool.address":                 { "literal": "__POOL_ADDRESS__" },
+      "inputTokens[0].asset.kind":    { "literal": "erc20" },
+      "inputTokens[0].asset.address": { "literal": "__COIN0__" },
+      "inputTokens[1].asset.kind":    { "literal": "erc20" },
+      "inputTokens[1].asset.address": { "literal": "__COIN1__" },
+      "inputTokens[2].asset.kind":    { "literal": "erc20" },
+      "inputTokens[2].asset.address": { "literal": "__COIN2__" },
+      "inputTokens[0].amount.kind":   { "literal": "max" },
+      "inputTokens[0].amount.value":  { "from": "$.args.amounts[0]" },
+      "inputTokens[1].amount.kind":   { "literal": "max" },
+      "inputTokens[1].amount.value":  { "from": "$.args.amounts[1]" },
+      "inputTokens[2].amount.kind":   { "literal": "max" },
+      "inputTokens[2].amount.value":  { "from": "$.args.amounts[2]" },
+      "outputLp.asset.kind":          { "literal": "erc20" },
+      "outputLp.asset.address":       { "literal": "__LP_TOKEN__" },
+      "outputLp.amount.kind":         { "literal": "min" },
+      "outputLp.amount.value":        { "from": "$.args.min_mint_amount" },
+      "recipient":                    { "from": "$.tx.from" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

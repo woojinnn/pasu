@@ -2,32 +2,28 @@
   "matched": true,
   "bundle_id": "curve/vecrv/increaseUnlockTime@1.0.0",
   "manifest_path": "manifests/curve/vecrv/increaseUnlockTime@1.0.0.json",
-  "bundle_sha256": "0x9b2f3162cf62dc67f47091b4bd1ec48088226a4fb50da2fef0f60a72050e3c63",
+  "bundle_sha256": "0xa704dac9bfa9fa6fd1239f1ca586753c21267cd3ba65fc4672afc0af9f75f77d",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/vecrv/increaseUnlockTime@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
-      ],
-      "selector": "0xeff7a612"
-    },
-    "abi_fragment": {
-      "function_name": "increase_unlock_time",
-      "abi": {
-        "name": "increase_unlock_time",
-        "type": "function",
-        "inputs": [
-          {
-            "name": "_unlock_time",
-            "type": "uint256"
-          }
+      "selector": "0xeff7a612",
+      "chain_to_addresses": {
+        "1": [
+          "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
         ]
       }
+    },
+    "abi_fragment": {
+      "name": "increase_unlock_time",
+      "inputs": [
+        {
+          "name": "_unlock_time",
+          "type": "uint256"
+        }
+      ]
     },
     "emit": {
       "strategy": "single_emit",
@@ -37,23 +33,13 @@
         "votingEscrow": {
           "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
         },
-        "tokenId": {
-          "literal": "0"
-        },
         "kind": {
           "literal": "unlock_time"
         },
-        "newLockDurationSec": {
+        "newUnlockTime": {
           "from": "$.args._unlock_time"
         }
       }
-    },
-    "requires": {
-      "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
-      ],
-      "extension": ">=0.1.0"
     }
   }
 }

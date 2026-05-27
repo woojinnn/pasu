@@ -1,22 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v2/swapTokensForExactTokens-bnb@1.0.0",
-  "manifest_path": "manifests/uniswap/v2/swapTokensForExactTokens-bnb@1.0.0.json",
-  "bundle_sha256": "0x090d3624f09dceb3060a5c8151c2a7a5cde1b7a8b7b45da329b753c1cd8d499e",
+  "bundle_id": "uniswap/v2-router-02/swapTokensForExactTokens@1.0.0",
+  "manifest_path": "manifests/uniswap/v2-router-02/swapTokensForExactTokens@1.0.0.json",
+  "bundle_sha256": "0x1cdb1fbb1106b987c8469b070210f2c369377e7b971064a05ce17de15f7496f7",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v2/swapTokensForExactTokens-bnb@1.0.0",
+    "id": "uniswap/v2-router-02/swapTokensForExactTokens@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        56,
-        8453,
-        42161
-      ],
-      "to": [
-        "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"
-      ],
-      "selector": "0x8803dbee"
+      "selector": "0x8803dbee",
+      "chain_to_addresses": {
+        "1": [
+          "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+        ],
+        "8453": [
+          "0x4752ba5DBc23f44D87826276BF6Fd6b1C372ad24"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "swapTokensForExactTokens",

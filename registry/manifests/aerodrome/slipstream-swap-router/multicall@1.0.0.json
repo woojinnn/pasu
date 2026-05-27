@@ -1,0 +1,34 @@
+{
+  "type": "adapter_function",
+  "id": "aerodrome/slipstream-swap-router/multicall@1.0.0",
+  "publisher": "aerodrome.eth",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xac9650d8",
+    "chain_to_addresses": {
+      "8453": ["0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "multicall",
+    "abi": {
+      "name": "multicall",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "data", "type": "bytes[]" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "multicall_recurse",
+    "recurse_rule_id": "self_array_bytes_last_arg",
+    "max_depth": 3
+  },
+  "requires": {
+    "imperative": ["multicall-recurse@^1.0"],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

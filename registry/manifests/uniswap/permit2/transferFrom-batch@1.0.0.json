@@ -2,26 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/permit2/transferFrom-batch@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      56,
-      130,
-      137,
-      480,
-      8453,
-      42161,
-      42220,
-      43114,
-      57073,
-      81457,
-      7777777
-    ],
-    "to": [
-      "0x000000000022D473030F116dDEE9F6B43aC78BA3"
-    ],
-    "selector": "0x0d58b1db"
+    "selector": "0x0d58b1db",
+    "chain_to_addresses": {
+      "1": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"],
+      "8453": ["0x000000000022D473030F116dDEE9F6B43aC78BA3"]
+    }
   },
   "abi_fragment": {
     "function_name": "transferFrom",
@@ -33,22 +20,10 @@
           "name": "transferDetails",
           "type": "tuple[]",
           "components": [
-            {
-              "name": "from",
-              "type": "address"
-            },
-            {
-              "name": "to",
-              "type": "address"
-            },
-            {
-              "name": "amount",
-              "type": "uint160"
-            },
-            {
-              "name": "token",
-              "type": "address"
-            }
+            { "name": "from", "type": "address" },
+            { "name": "to", "type": "address" },
+            { "name": "amount", "type": "uint160" },
+            { "name": "token", "type": "address" }
           ]
         }
       ]
@@ -61,31 +36,17 @@
     "array_path": "$.args.transferDetails",
     "max_elements": 64,
     "fields": {
-      "token.asset.kind": {
-        "literal": "erc20"
-      },
-      "token.asset.address": {
-        "from": "$.args.element[3]"
-      },
-      "token.amount.kind": {
-        "literal": "exact"
-      },
-      "token.amount.value": {
-        "from": "$.args.element[2]"
-      },
-      "from": {
-        "from": "$.args.element[0]"
-      },
-      "recipient": {
-        "from": "$.args.element[1]"
-      }
+      "token.asset.kind": { "literal": "erc20" },
+      "token.asset.address": { "from": "$.args.element[3]" },
+      "token.amount.kind": { "literal": "exact" },
+      "token.amount.value": { "from": "$.args.element[2]" },
+      "from": { "from": "$.args.element[0]" },
+      "recipient": { "from": "$.args.element[1]" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [
-      "token_metadata"
-    ],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

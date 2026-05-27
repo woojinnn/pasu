@@ -2,31 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/permit2/permit@1.0.0",
   "manifest_path": "manifests/uniswap/permit2/permit@1.0.0.json",
-  "bundle_sha256": "0xda00f216640b0b7bd06c486feb017085ecd11142417e18a00741f6114611b95a",
+  "bundle_sha256": "0xf10d77846abfc281176c30d4b0234ed8cd4458e1cb89fce0fea710fc1d34ba52",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/permit2/permit@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        56,
-        130,
-        137,
-        480,
-        8453,
-        42161,
-        42220,
-        43114,
-        57073,
-        81457,
-        7777777
-      ],
-      "to": [
-        "0x000000000022D473030F116dDEE9F6B43aC78BA3"
-      ],
-      "selector": "0x2b67b570"
+      "selector": "0x2b67b570",
+      "chain_to_addresses": {
+        "1": [
+          "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+        ],
+        "8453": [
+          "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permit",

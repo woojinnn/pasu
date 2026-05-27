@@ -1,0 +1,42 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/masterchef-v3/burn@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x42966c68",
+    "chain_to_addresses": {
+      "1": ["0x556b9306565093c855aea9ae92a594704c2cd59e"],
+      "56": ["0x556b9306565093c855aea9ae92a594704c2cd59e"],
+      "8453": ["0xc6a2db661d5a5690172d8eb0a7dea2d3008665a3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "burn",
+    "abi": {
+      "name": "burn",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "tokenId", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "burn_liquidity_nft",
+    "fields": {
+      "nft.kind": { "literal": "erc721" },
+      "nft.address": { "from": "$.tx.to" },
+      "nft.tokenId": { "from": "$.args.tokenId" },
+      "burnKind": { "literal": "empty_only" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

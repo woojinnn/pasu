@@ -1,0 +1,65 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/masterchef-v3/increaseLiquidity@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x219f5d17",
+    "chain_to_addresses": {
+      "1": ["0x556b9306565093c855aea9ae92a594704c2cd59e"],
+      "56": ["0x556b9306565093c855aea9ae92a594704c2cd59e"],
+      "8453": ["0xc6a2db661d5a5690172d8eb0a7dea2d3008665a3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "increaseLiquidity",
+    "abi": {
+      "name": "increaseLiquidity",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "tokenId", "type": "uint256" },
+            { "name": "amount0Desired", "type": "uint256" },
+            { "name": "amount1Desired", "type": "uint256" },
+            { "name": "amount0Min", "type": "uint256" },
+            { "name": "amount1Min", "type": "uint256" },
+            { "name": "deadline", "type": "uint256" }
+          ]
+        }
+      ],
+      "outputs": [
+        { "name": "liquidity", "type": "uint128" },
+        { "name": "amount0", "type": "uint256" },
+        { "name": "amount1", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "increase_liquidity",
+    "fields": {
+      "nft.kind": { "literal": "erc721" },
+      "nft.address": { "from": "$.tx.to" },
+      "nft.tokenId": { "from": "$.args.tokenId" },
+      "inputTokens[0].asset.kind": { "literal": "unknown" },
+      "inputTokens[0].amount.kind": { "literal": "min" },
+      "inputTokens[0].amount.value": { "from": "$.args.amount0Min" },
+      "inputTokens[1].asset.kind": { "literal": "unknown" },
+      "inputTokens[1].amount.kind": { "literal": "min" },
+      "inputTokens[1].amount.value": { "from": "$.args.amount1Min" },
+      "validity.expiresAt": { "from": "$.args.deadline" },
+      "validity.source": { "literal": "tx-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

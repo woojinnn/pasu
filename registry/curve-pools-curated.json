@@ -1,0 +1,196 @@
+{
+  "$schema": "scripts/gen-curve-pools.ts — CuratedDoc",
+  "version": 1,
+  "generatedAt": "2026-05-25",
+  "note": "Curve per-pool curation for ScopeBall registry v2. mainnet (1) + Base (8453) only. 모든 entry 는 1차 출처 (Curve API getPools + on-chain coins() selector 0xc6610657 + Etherscan/BaseScan verified label) cross-check 통과. 새 entry 추가 시 사전 검증 (a) Curve API registryId / coins (b) on-chain coins() (c) eth_getCode + EIP-1167 follow (d) selector 가 bytecode 에 존재 (e) Etherscan/BaseScan verified label 일치 의 5 단계 통과 필수.",
+
+  "pools": [
+    {
+      "chainId": 1,
+      "poolName": "crvusdtwbtcweth",
+      "poolAddress": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "lpToken": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "poolType": "cryptoswap",
+      "coins": [
+        "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      ],
+      "tvlUsd": 13774000,
+      "source": "Curve API getPools/big/ethereum (registryId factory-tricrypto) + Etherscan name-tag 'TriCRV-2-USDT' verified; coins = USDT/WBTC/WETH"
+    },
+    {
+      "chainId": 1,
+      "poolName": "crvcrvusdtbtcwsteth",
+      "poolAddress": "0x2889302a794da87fbf1d6db415c1492194663d13",
+      "lpToken": "0x2889302a794da87fbf1d6db415c1492194663d13",
+      "poolType": "cryptoswap",
+      "coins": [
+        "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
+        "0x18084fba666a33d37592fa2633fd49a74dd93a88",
+        "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+      ],
+      "tvlUsd": 3154000,
+      "source": "Curve API factory-tricrypto + Etherscan verified; coins = crvUSD/tBTC/wstETH"
+    },
+    {
+      "chainId": 1,
+      "poolName": "crvusdethcrv",
+      "poolAddress": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "lpToken": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "poolType": "cryptoswap",
+      "coins": [
+        "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "0xd533a949740bb3306d119cc777fa900ba034cd52"
+      ],
+      "tvlUsd": 2360000,
+      "source": "Curve API factory-tricrypto + Etherscan verified; coins = crvUSD/WETH/CRV"
+    },
+    {
+      "chainId": 1,
+      "poolName": "btcghoeth",
+      "poolAddress": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "lpToken": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "poolType": "cryptoswap",
+      "coins": [
+        "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f",
+        "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      ],
+      "tvlUsd": 2039000,
+      "source": "Curve API factory-tricrypto + Etherscan verified; coins = GHO/cbBTC/WETH"
+    },
+    {
+      "chainId": 1,
+      "poolName": "trylsd",
+      "poolAddress": "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193",
+      "lpToken": "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193",
+      "poolType": "cryptoswap",
+      "coins": [
+        "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+        "0xae78736cd615f374d3085123a210448e74fc6393",
+        "0xac3e018457b222d93114458476f3e3416abbe38f"
+      ],
+      "tvlUsd": 261000,
+      "source": "Curve API factory-tricrypto + Etherscan verified; coins = wstETH/rETH/sfrxETH (TryLSD)"
+    },
+    {
+      "chainId": 8453,
+      "poolName": "tricrypto-base",
+      "poolAddress": "0x6e53131f68a034873b6bfa15502af094ef0c5854",
+      "lpToken": "0x6e53131f68a034873b6bfa15502af094ef0c5854",
+      "poolType": "cryptoswap",
+      "coins": [
+        "0x417ac0e078398c154edfadd9ef675d30be60af93",
+        "0x236aa50979d5f3de3bd1eeb40e81137f22ab794b",
+        "0x4200000000000000000000000000000000000006"
+      ],
+      "tvlUsd": 595000,
+      "source": "Curve API getPools/big/base factory-tricrypto + BaseScan verified; coins = crvUSD/tBTC/WETH"
+    },
+
+    {
+      "chainId": 1,
+      "poolName": "2btc",
+      "poolAddress": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+      "lpToken": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+      "poolType": "stableswap-ng-factory",
+      "coins": [
+        "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+        "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+      ],
+      "tvlUsd": 10504000,
+      "source": "Curve API getPools/big/ethereum (registryId factory-crvusd plain 2-coin) + Etherscan verified; coins = WBTC/tBTC. ABI: add_liquidity(uint256[2],uint256) selector 0x0b4c7e4d ✓"
+    },
+    {
+      "chainId": 1,
+      "poolName": "frxeth-ng",
+      "poolAddress": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+      "lpToken": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+      "poolType": "stableswap-ng-factory",
+      "coins": [
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "0x5e8422345238f34275888049021821e8e08caa1f"
+      ],
+      "tvlUsd": 8641000,
+      "source": "Curve API factory-crvusd plain 2-coin + Etherscan verified; coins = WETH/frxETH. P1-6 audit fix: lpToken=poolAddress (NG factory-crvusd convention LP token == pool 자체)"
+    },
+    {
+      "chainId": 1,
+      "poolName": "crvusdfrax",
+      "poolAddress": "0x0cd6f267b2086bea681e922e19d40512511be538",
+      "lpToken": "0x0cd6f267b2086bea681e922e19d40512511be538",
+      "poolType": "stableswap-ng-factory",
+      "coins": [
+        "0x853d955acef822db058eb8505911ed77f175b99e",
+        "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+      ],
+      "tvlUsd": 234000,
+      "source": "Curve API factory-crvusd plain 2-coin + Etherscan verified; coins = FRAX/crvUSD"
+    },
+    {
+      "chainId": 1,
+      "poolName": "wsteth",
+      "poolAddress": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "lpToken": null,
+      "poolType": "crvusd-controller",
+      "coins": ["0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"],
+      "collateral": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "source": "Etherscan verified Controller + crates/.../subdecode/protocols/curve.rs:244 CRVUSD_CONTROLLERS[0] (wstETH). LLAMMA AMM, ERC20 LP 부재 (lpToken=null)."
+    },
+    {
+      "chainId": 1,
+      "poolName": "sfrxeth",
+      "poolAddress": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "lpToken": null,
+      "poolType": "crvusd-controller",
+      "coins": ["0xac3e018457b222d93114458476f3e3416abbe38f"],
+      "collateral": "0xac3e018457b222d93114458476f3e3416abbe38f",
+      "source": "Etherscan verified Controller (v1 deploy) + crates/.../subdecode/protocols/curve.rs:256 CRVUSD_CONTROLLERS[1] (sfrxETH). LLAMMA AMM."
+    },
+    {
+      "chainId": 1,
+      "poolName": "wbtc",
+      "poolAddress": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "lpToken": null,
+      "poolType": "crvusd-controller",
+      "coins": ["0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"],
+      "collateral": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+      "source": "Etherscan verified Controller + crates/.../subdecode/protocols/curve.rs:268 CRVUSD_CONTROLLERS[2] (WBTC). LLAMMA AMM."
+    }
+  ],
+
+  "skipped": [
+    {
+      "chainId": 1,
+      "address": "0x66da369fc5dbba0774da70546bd20f2b242cd34d",
+      "name": "crvDBRINV (factory-tricrypto, $896K)",
+      "reason": "cryptoswap template 의 selector 중 0xce7d6503 (exchange-receiver) / 0x394747c5 (exchange use_eth) 가 bytecode 에 없음. codeLen 21585 — 다른 tricrypto-NG impl. 추측 emit 회피."
+    },
+    {
+      "chainId": 8453,
+      "address": "0x11c1fbd4b3de66bc0565779b35171a6cf3e71f59",
+      "name": "cbETH/WETH cbeth-f (Base factory-crypto, $6M)",
+      "reason": "factory-crypto twocrypto pool. v2 worktree 의 factory-crypto template (N=2, exchange w/o receiver as primary) ABI 호환 가능 단 사전 on-chain selector 검증 미완 — 후속 라운드에서 cross-check 후 추가 가능."
+    },
+    {
+      "chainId": 8453,
+      "address": "0x302a94e3c28c290eaf2a4605fc52e11eb915f378",
+      "name": "superOETHb/WETH sOETH/WETH (Base factory-stable-ng, $17M)",
+      "reason": "modern stableswap-NG plainstableng impl. add_liquidity(uint256[],uint256,address) (3-arg dynamic w/ receiver) — v2 template (factory-crvusd plain 2-arg fixed uint256[2]) 의 selector 0x0b4c7e4d 와 다른 selector 0xa7256d09. 다른 template 가 필요 — 별건 (modern-ng-factory-* 신규 template variant)."
+    },
+    {
+      "chainId": 1,
+      "address": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+      "name": "3pool (Stableswap V1, $200M+)",
+      "reason": "Stableswap V1 deprecated. add_liquidity(uint256[3],uint256) selector 0x4515cef3 + LP token 별도 (0x6c3F90f0...3490) — v2 template (N=2 fixed-size + LP==pool) 와 불일치. 별건 (stableswap-v1-* 신규 template variant)."
+    },
+    {
+      "chainId": 1,
+      "address": "0xdc24316b9ae028f1497c275eb9192a3ea0f67022",
+      "name": "stETH-ETH (Stableswap V1, $50M+)",
+      "reason": "Stableswap V1 + native ETH (coin0 = 0xEeeeEEee... ETH sentinel). v2 template 의 `select_from_literal_array` 는 ERC-20 address 가정 — native ETH 시맨틱 별도 처리 필요. 별건 (stableswap-v1-native-* template variant)."
+    }
+  ]
+}

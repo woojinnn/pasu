@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream/exactOutputSingle@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream/exactOutputSingle@1.0.0.json",
-  "bundle_sha256": "0xdb4e3eb4f8c612dcb7a2ce05e401f9bd6e5ab629b9572d4c6a2f56e950e02ef7",
+  "bundle_id": "aerodrome/slipstream-swap-router/exactOutputSingle@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-swap-router/exactOutputSingle@1.0.0.json",
+  "bundle_sha256": "0xbe4866ee9fa3662e53f66cd0850e69f943cdb9ec0331a5d82f61cf80328dcdf3",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream/exactOutputSingle@1.0.0",
+    "id": "aerodrome/slipstream-swap-router/exactOutputSingle@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
-      ],
-      "selector": "0xc714e838"
+      "selector": "0xc714e838",
+      "chain_to_addresses": {
+        "8453": [
+          "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exactOutputSingle",

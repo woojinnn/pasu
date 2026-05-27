@@ -1,0 +1,12 @@
+type LockWithdrawContext = {
+  votingEscrow: String,
+  tokenId?: String,
+  asset: AssetRef,
+  recipient: String,
+};
+
+action "lock_withdraw" appliesTo {
+  principal: Wallet,
+  resource: Protocol,
+  context: LockWithdrawContext,
+};

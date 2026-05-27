@@ -1,26 +1,27 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream-npm/mint@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream-npm/mint@1.0.0.json",
-  "bundle_sha256": "0xbe57124a94881370ed99634e48a4f01c83c0085f71e84baf44c4f5cd6a163e72",
+  "bundle_id": "aerodrome/slipstream-nfpm/mint@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-nfpm/mint@1.0.0.json",
+  "bundle_sha256": "0xa7288c051af6a3ff30f49bfd4750333e38a30d120d77a3ca5a3d4711ee8a2eba",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream-npm/mint@1.0.0",
+    "id": "aerodrome/slipstream-nfpm/mint@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x827922686190790b37229fd06084350E74485b72"
-      ],
-      "selector": "0xb5007d1f"
+      "selector": "0xb5007d1f",
+      "chain_to_addresses": {
+        "8453": [
+          "0x827922686190790b37229fd06084350E74485b72"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "mint",
       "abi": {
         "name": "mint",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -103,10 +104,10 @@
           "from": "$.args.token0"
         },
         "inputTokens[0].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[0].amount.value": {
-          "from": "$.args.amount0Desired"
+          "from": "$.args.amount0Min"
         },
         "inputTokens[1].asset.kind": {
           "literal": "erc20"
@@ -115,10 +116,10 @@
           "from": "$.args.token1"
         },
         "inputTokens[1].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[1].amount.value": {
-          "from": "$.args.amount1Desired"
+          "from": "$.args.amount1Min"
         },
         "recipient": {
           "from": "$.args.recipient"

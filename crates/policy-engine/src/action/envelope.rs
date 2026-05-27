@@ -105,10 +105,14 @@ pub enum Action {
     LpUnstake(crate::action::misc::LpUnstakeAction),
     /// Create a voting-escrow lock (Aerodrome VotingEscrow.createLock).
     LockCreate(crate::action::misc::LockCreateAction),
-    /// Modify a voting-escrow lock (Aerodrome VotingEscrow.increaseAmount / .increaseUnlockTime).
+    /// Modify a voting-escrow lock (Aerodrome VotingEscrow.increaseAmount / .increaseUnlockTime
+    /// / Curve veCRV.increase_amount / .increase_unlock_time / .deposit_for).
     LockIncrease(crate::action::misc::LockIncreaseAction),
     /// Merge or split voting-escrow positions (Aerodrome VotingEscrow.merge / .split).
     LockManage(crate::action::misc::LockManageAction),
+    /// Withdraw matured voting-escrow lock principal (Aerodrome VotingEscrow.withdraw
+    /// / Curve veCRV.withdraw).
+    LockWithdraw(crate::action::misc::LockWithdrawAction),
 }
 
 impl Action {
@@ -156,6 +160,7 @@ impl Action {
             Self::LockCreate(_) => "lock_create",
             Self::LockIncrease(_) => "lock_increase",
             Self::LockManage(_) => "lock_manage",
+            Self::LockWithdraw(_) => "lock_withdraw",
         }
     }
 
@@ -202,7 +207,8 @@ impl Action {
             | Self::LpUnstake(_)
             | Self::LockCreate(_)
             | Self::LockIncrease(_)
-            | Self::LockManage(_) => Category::Misc,
+            | Self::LockManage(_)
+            | Self::LockWithdraw(_) => Category::Misc,
         }
     }
 }
@@ -868,8 +874,10 @@ mod tests {
     fn lp_stake_fields() -> Value {
         json!({
             "gauge": address(0x90),
-            "lpToken": erc20("LP"),
-            "amount": amount("exact", "1000"),
+            "lpToken": {
+                "asset": erc20("LP"),
+                "amount": amount("exact", "1000")
+            },
             "recipient": address(0x30)
         })
     }
@@ -877,8 +885,10 @@ mod tests {
     fn lp_unstake_fields() -> Value {
         json!({
             "gauge": address(0x90),
-            "lpToken": erc20("LP"),
-            "amount": amount("exact", "1000"),
+            "lpToken": {
+                "asset": erc20("LP"),
+                "amount": amount("exact", "1000")
+            },
             "recipient": address(0x30)
         })
     }
@@ -886,8 +896,10 @@ mod tests {
     fn lock_create_fields() -> Value {
         json!({
             "votingEscrow": address(0x91),
-            "asset": erc20("AERO"),
-            "amount": amount("exact", "1000000000000000000"),
+            "asset": {
+                "asset": erc20("AERO"),
+                "amount": amount("exact", "1000000000000000000")
+            },
             "lockDurationSec": "126144000",
             "recipient": address(0x30)
         })

@@ -44,6 +44,8 @@ use abi_resolver::bridge::convert_arg;
 use abi_resolver::subdecode::opcode_stream as tier_b_opcode_stream;
 use abi_resolver::subdecode::opcode_stream::DecodedStep;
 use abi_resolver::subdecode::protocols::aerodrome_ur::AERODROME_UR_MAIN_TABLE;
+use abi_resolver::subdecode::protocols::pancake_infinity::PANCAKE_INFI_TABLE;
+use abi_resolver::subdecode::protocols::pancake_ur::PANCAKE_UR_TABLE;
 use abi_resolver::subdecode::protocols::universal_router::{
     extract_commands_and_inputs, v3_position_manager_address, v4_position_manager_address,
     UNISWAP_UR_TABLE,
@@ -63,6 +65,7 @@ use policy_engine::ActionEnvelope;
 use std::collections::BTreeMap;
 
 use crate::mapper::{MapContext, MapperError};
+use crate::protocols::pancake_universal_router::build_pancake_infi_swap_envelopes;
 use crate::protocols::universal_router::build_v4_swap_envelopes;
 use crate::protocols::universal_router::common as ur_common;
 
@@ -91,6 +94,30 @@ pub const DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER: &str = "aerodrome_universal_
 /// allow-revert flag, unlike UR command bytes).
 pub const DISPATCHER_ID_V4_POSITION_MANAGER: &str = "v4_position_manager";
 
+/// Dispatcher id for the PancakeSwap Infinity Universal Router
+/// `execute(bytes,bytes[],uint256)` / `execute(bytes,bytes[])` entrypoints.
+/// Outer shape is identical to Uniswap UR (selectors `0x3593564c` /
+/// `0x24856bc3`), but the opcode table is [`PANCAKE_UR_TABLE`] (`mask 0x3f` —
+/// 6-bit opcode + high-bit `allowRevert`). Inner `INFI_SWAP` (0x10)
+/// cross-table dispatches against [`PANCAKE_INFI_TABLE`].
+///
+/// Unlike `universal_router`, Pancake UR's 0x11/0x12 are placeholders (the
+/// Pancake `Dispatcher.sol` reverts), and 0x13/0x14 are
+/// `INFI_CL/BIN_INITIALIZE_POOL` whose inner target is a *self-stored*
+/// immutable pool manager — no cross-target callkey extraction.
+pub const DISPATCHER_ID_PANCAKE_UNIVERSAL_ROUTER: &str = "pancake_universal_router";
+
+/// Dispatcher id for the PancakeSwap Infinity CL / Bin PositionManager
+/// `modifyLiquidities(bytes,uint256)` /
+/// `modifyLiquiditiesWithoutLock(bytes,bytes[])` entrypoints. Outer payload
+/// resolves to a `(bytes actions, bytes[] params)` pair dispatched against
+/// the Pancake Infinity Actions table ([`PANCAKE_INFI_TABLE`] — 6-field
+/// PoolKey + 6-field PathKey, different from Uniswap V4's 5-field variants).
+/// Flat opcode set: no `EXECUTE_SUB_PLAN` / cross-table recursion exists in
+/// the Infinity Actions space.
+pub const DISPATCHER_ID_PANCAKE_INFINITY_POSITION_MANAGER: &str =
+    "pancake_infinity_position_manager";
+
 /// Maximum nesting depth allowed for `EXECUTE_SUB_PLAN` (0x21) recursion and
 /// `V4_SWAP` (0x10) cross-table recursion.
 ///
@@ -110,6 +137,15 @@ const OPCODE_EXECUTE_SUB_PLAN: u8 = 0x21;
 /// cross-table dispatch through `V4_ROUTER_TABLE` (Uniswap V4 action set).
 const OPCODE_V4_SWAP: u8 = 0x10;
 
+/// Tier B opcode for Pancake UR `INFI_SWAP` after `PANCAKE_UR_MASK` is
+/// applied. Same byte value as Uniswap's `V4_SWAP` (`0x10`) — and the outer
+/// payload `(bytes actions, bytes[] params)` shape is identical — but the
+/// inner action stream dispatches against [`PANCAKE_INFI_TABLE`] rather than
+/// the Uniswap [`V4_ROUTER_TABLE`]. The PoolKey/PathKey layouts diverge
+/// (Pancake = 6 fields, V4 = 5 fields — D010), so the envelope builder is
+/// separate.
+const OPCODE_INFI_SWAP: u8 = 0x10;
+
 /// Tier B opcode for `V3_POSITION_MANAGER_PERMIT` after `UNISWAP_UR_MASK` is
 /// applied. The opcode's single `(bytes data)` arg carries a complete V3
 /// NonfungiblePositionManager calldata which we dispatch back through
@@ -125,10 +161,13 @@ const OPCODE_V3_POSITION_MANAGER_CALL: u8 = 0x12;
 const OPCODE_V4_POSITION_MANAGER_CALL: u8 = 0x14;
 
 /// The opcodes a dispatcher treats as recursion entrypoints (sub-plan / V4
-/// cross-table / cross-target PositionManager). Carried per-dispatcher because
-/// each router lays its recursion opcodes out at different byte values.
+/// cross-table / Pancake cross-table / cross-target PositionManager). Carried
+/// per-dispatcher because each router lays its recursion opcodes out at
+/// different byte values, and the *destination tables* differ even when the
+/// byte value coincides (Uniswap UR `0x10` → V4_ROUTER_TABLE; Pancake UR
+/// `0x10` → PANCAKE_INFI_TABLE).
 ///
-/// All five fields name a masked opcode in the dispatcher's own
+/// All six fields name a masked opcode in the dispatcher's own
 /// [`tier_b_opcode_stream::OpcodeTable`]. A dispatcher without recursion
 /// special-casing (a flat opcode set) uses `DispatcherConfig::recursion =
 /// None` instead, which routes every opcode through the plain
@@ -137,9 +176,14 @@ const OPCODE_V4_POSITION_MANAGER_CALL: u8 = 0x14;
 struct RecursionOpcodes {
     /// `EXECUTE_SUB_PLAN` — re-enters the same table (self-recursion).
     execute_sub_plan: u8,
-    /// `V4_SWAP` — dispatches the inner stream against the V4 router table
-    /// (cross-table recursion).
+    /// `V4_SWAP` — dispatches the inner stream against the Uniswap V4 router
+    /// table (cross-table recursion).
     v4_swap: u8,
+    /// `INFI_SWAP` — dispatches the inner stream against
+    /// [`PANCAKE_INFI_TABLE`] (Pancake Infinity action set; 6-field PoolKey /
+    /// PathKey). Set to [`OPCODE_NONE`] for dispatchers that do not embed a
+    /// Pancake Infinity action stream.
+    infi_swap: u8,
     /// `V3_POSITION_MANAGER_PERMIT` — inner calldata targets the per-chain V3
     /// NonfungiblePositionManager (cross-target recursion).
     v3_position_manager_permit: u8,
@@ -181,6 +225,15 @@ struct DispatcherConfig {
 /// (e.g. `0x10` V4_SWAP, `0x21` EXECUTE_SUB_PLAN) follow the bundle's
 /// `unknown_opcode_policy` (a deliberate graceful degrade — Aerodrome
 /// recursion handlers are a follow-up, not wired here).
+/// Sentinel value for [`RecursionOpcodes`] fields that don't apply to a
+/// dispatcher. Every Tier B `OpcodeTable` in this module masks to at most
+/// `0x7f` (Uniswap) — so a masked `step.opcode` is always in `[0..=0x7f]`,
+/// and `step.opcode == OPCODE_NONE` can never fire. Adding a dispatcher
+/// whose table mask is `0xff` would require migrating the struct to
+/// `Option<u8>`; the current set (Uniswap `0x7f`, Aerodrome `0x3f`, Pancake
+/// `0x3f`) is safe.
+const OPCODE_NONE: u8 = 0xff;
+
 const DISPATCHERS: &[DispatcherConfig] = &[
     DispatcherConfig {
         id: DISPATCHER_ID_UNIVERSAL_ROUTER,
@@ -188,6 +241,9 @@ const DISPATCHERS: &[DispatcherConfig] = &[
         recursion: Some(RecursionOpcodes {
             execute_sub_plan: OPCODE_EXECUTE_SUB_PLAN,
             v4_swap: OPCODE_V4_SWAP,
+            // Uniswap UR has no Pancake Infinity action stream — its `0x10`
+            // is V4_SWAP, not INFI_SWAP.
+            infi_swap: OPCODE_NONE,
             v3_position_manager_permit: OPCODE_V3_POSITION_MANAGER_PERMIT,
             v3_position_manager_call: OPCODE_V3_POSITION_MANAGER_CALL,
             v4_position_manager_call: OPCODE_V4_POSITION_MANAGER_CALL,
@@ -196,6 +252,46 @@ const DISPATCHERS: &[DispatcherConfig] = &[
     DispatcherConfig {
         id: DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER,
         table: &AERODROME_UR_MAIN_TABLE,
+        recursion: None,
+    },
+    DispatcherConfig {
+        // PancakeSwap Infinity UR. Outer entrypoint same as Uniswap UR
+        // (`execute(bytes,bytes[],...)`), but with a Pancake-specific opcode
+        // table (`PANCAKE_UR_TABLE`, mask 0x3f).
+        //
+        // Recursion layout — P1 mini-round B.3:
+        // - `execute_sub_plan: 0x21` — identical to Uniswap UR; re-enters
+        //   `PANCAKE_UR_TABLE` for the inner `(commands, inputs)` pair.
+        // - `v4_swap: OPCODE_NONE` — Pancake's 0x10 IS NOT V4_SWAP; routing
+        //   it through `build_v4_swap_envelopes` would silently mis-decode
+        //   the 6-field PoolKey (D010).
+        // - `infi_swap: OPCODE_INFI_SWAP (0x10)` — D008 fix. Same outer
+        //   payload `(bytes actions, bytes[] params)` shape as Uniswap V4_SWAP
+        //   but the inner stream dispatches against `PANCAKE_INFI_TABLE` via
+        //   the Pancake-specific [`build_pancake_infi_swap_envelopes`]
+        //   builder (6-field PoolKey + 6-field PathKey).
+        // - V3/V4 PM slots all `OPCODE_NONE` because Pancake's 0x11/0x12 are
+        //   Commands.sol placeholders (the dispatcher reverts), and Pancake
+        //   does NOT use 0x14 for V4 PM (it's `INFI_BIN_INITIALIZE_POOL`).
+        id: DISPATCHER_ID_PANCAKE_UNIVERSAL_ROUTER,
+        table: &PANCAKE_UR_TABLE,
+        recursion: Some(RecursionOpcodes {
+            execute_sub_plan: OPCODE_EXECUTE_SUB_PLAN, // 0x21 — same as Uniswap
+            v4_swap: OPCODE_NONE,
+            infi_swap: OPCODE_INFI_SWAP, // 0x10 — Pancake INFI_SWAP cross-table
+            v3_position_manager_permit: OPCODE_NONE,
+            v3_position_manager_call: OPCODE_NONE,
+            v4_position_manager_call: OPCODE_NONE,
+        }),
+    },
+    DispatcherConfig {
+        // PancakeSwap Infinity CL/Bin PositionManager `modifyLiquidities` /
+        // `modifyLiquiditiesWithoutLock`. Flat opcode set — no recursive /
+        // cross-table actions in the Pancake Infinity Actions space (the
+        // Infinity equivalents of EXECUTE_SUB_PLAN / V4_SWAP do not exist in
+        // periphery's `Actions.sol`).
+        id: DISPATCHER_ID_PANCAKE_INFINITY_POSITION_MANAGER,
+        table: &PANCAKE_INFI_TABLE,
         recursion: None,
     },
 ];
@@ -690,6 +786,21 @@ fn dispatch_steps(
                 continue;
             }
 
+            // `INFI_SWAP` (Pancake UR 0x10) carries the same outer payload
+            // shape as Uniswap V4_SWAP (`(bytes actions, bytes[] params)`),
+            // but the inner stream dispatches against PANCAKE_INFI_TABLE
+            // (6-field PoolKey / PathKey, D010) via
+            // `build_pancake_infi_swap_envelopes` — a Pancake-specific
+            // builder kept separate from `build_v4_swap_envelopes` so the
+            // V4-hardcoded 5-field assumptions cannot silently mis-decode a
+            // Pancake swap. D008 root-cause fix (P1 mini-round B.3).
+            // Depth-bounded by the same `MAX_SUB_PLAN_DEPTH` cap.
+            if step.opcode == rec.infi_swap {
+                let infi_envelopes = execute_pancake_infi_swap_step(ctx, step)?;
+                envelopes.extend(infi_envelopes);
+                continue;
+            }
+
             // `V3_POSITION_MANAGER_PERMIT`, `V3_POSITION_MANAGER_CALL`, and
             // `V4_POSITION_MANAGER_CALL` each carry a single `(bytes data)`
             // arg — the complete calldata for the per-chain NPM / V4 PM.
@@ -906,6 +1017,70 @@ fn execute_v4_swap_step(
     build_v4_swap_envelopes(ctx, &inner_steps)
 }
 
+/// Handle a single `INFI_SWAP` (Pancake UR 0x10) step — Pancake-specific
+/// cross-table recursive dispatch.
+///
+/// The step's Tier B args carry `(bytes actions, bytes[] params)` (see
+/// `PANCAKE_UR_TABLE` entry for 0x10). We pull the inner pair out via
+/// Pancake-side `extract_actions_and_params`, then re-dispatch through Tier
+/// B's `opcode_stream::dispatch` against **`PANCAKE_INFI_TABLE`** (Pancake
+/// Infinity Actions: CL_SWAP_EXACT_IN_SINGLE, SETTLE, TAKE, BIN_SWAP_*, …).
+///
+/// The dispatched step list is handed to
+/// [`build_pancake_infi_swap_envelopes`] — the Pancake-specific two-pass
+/// builder accounts for two protocol divergences vs Uniswap V4 (catalogued
+/// under D010):
+///   * `PoolKey` is **6 fields** (`fee` at index 4), not V4's 5 (`fee` at
+///     index 2).
+///   * `PathKey` is **6 fields** (adds `poolManager` + `parameters`).
+///
+/// Running a Pancake `INFI_SWAP` step through the V4 builder would silently
+/// mis-bind the fee slot and discard half the path-key metadata; the two
+/// builders therefore stay separate even though the outer dispatch logic is
+/// structurally identical.
+///
+/// Settle/take-only streams (no swap action) emit zero envelopes — a clean
+/// result, not a fault. Recursion depth is bounded by `MAX_SUB_PLAN_DEPTH`
+/// so a maliciously deep `EXECUTE_SUB_PLAN` chain ending in an `INFI_SWAP`
+/// cannot bypass the cap.
+fn execute_pancake_infi_swap_step(
+    ctx: &MapContext<'_>,
+    step: &DecodedStep,
+) -> Result<Vec<ActionEnvelope>, MapperError> {
+    // Depth bound shared with EXECUTE_SUB_PLAN / V4_SWAP / cross-target PM.
+    if ctx.depth >= MAX_SUB_PLAN_DEPTH {
+        return Err(MapperError::Internal(anyhow::anyhow!(
+            "INFI_SWAP exceeded MAX_SUB_PLAN_DEPTH={MAX_SUB_PLAN_DEPTH} \
+             at step index {} (current depth {})",
+            step.index,
+            ctx.depth
+        )));
+    }
+
+    // Pull `(bytes actions, bytes[] params)` out of the step's decoded args.
+    // PANCAKE_UR_TABLE declares INFI_SWAP with the same `(bytes actions,
+    // bytes[] params)` signature as Uniswap V4_SWAP, so the structural
+    // extractor is the Pancake-side mirror of V4's helper. `None` here
+    // surfaces as an internal error so authors notice the schema mismatch
+    // instead of silently dropping an INFI_SWAP block.
+    let (actions, params) =
+        abi_resolver::subdecode::protocols::pancake_infinity::extract_actions_and_params(step)
+            .ok_or_else(|| {
+                MapperError::Internal(anyhow::anyhow!(
+                    "INFI_SWAP step index {} args do not match (bytes actions, bytes[] params) \
+                     — Tier B name {:?}, error {:?}",
+                    step.index,
+                    step.name,
+                    step.error
+                ))
+            })?;
+
+    // Dispatch the inner action stream against the Pancake Infinity table,
+    // then run the Pancake-specific two-pass swap-envelope builder.
+    let inner_steps = tier_b_opcode_stream::dispatch(&actions, &params, &PANCAKE_INFI_TABLE);
+    build_pancake_infi_swap_envelopes(ctx, &inner_steps)
+}
+
 /// Handle a single V3/V4 PositionManager opcode step — cross-target recursive
 /// dispatch.
 ///
@@ -949,22 +1124,16 @@ fn execute_position_manager_step(
         )));
     }
 
-    let step_args = step.args.as_ref().ok_or_else(|| {
-        MapperError::Internal(anyhow::anyhow!(
-            "{} step index {} has no decoded args — Tier B error: {:?}",
-            step.name,
-            step.index,
-            step.error
-        ))
-    })?;
-
-    let pm_calldata = extract_bytes_at_field(step_args, "data").map_err(|e| {
-        MapperError::Internal(anyhow::anyhow!(
-            "{} step index {} data extract failed: {e}",
-            step.name,
-            step.index
-        ))
-    })?;
+    // Universal Router Dispatcher.sol forwards `inputs[i]` raw to
+    // `address(V3_POSITION_MANAGER).call(inputs)` /
+    // `address(V4_POSITION_MANAGER).call(inputs)` for opcodes 0x11/0x12/0x14
+    // — there is no `abi.encode((bytes,))` wrapper. The Tier B `(bytes data)`
+    // signature in `UNISWAP_UR_TABLE` is therefore a misleading abstraction:
+    // for well-formed inputs `step.args` decodes only when the inner blob
+    // happens to look like an ABI-encoded bytes tuple, but real on-chain
+    // calldata is just `selector || args`. Always read the raw bytes off
+    // `step.raw_input` so the planner / dispatch agree with Dispatcher.sol.
+    let pm_calldata: Vec<u8> = step.raw_input.clone();
 
     if pm_calldata.len() < 4 {
         return Err(MapperError::Internal(anyhow::anyhow!(
@@ -1110,6 +1279,25 @@ fn per_opcode_rule_to_single_emit(rule: &PerOpcodeEmit) -> EmitRule {
     }
 }
 
+/// Bridge a new-pipeline `decoder::DecodedCall` to its Tier B legacy form
+/// and pull `(commands, inputs)` via [`extract_commands_and_inputs`].
+///
+/// `None` when the outer args don't structurally match UR `execute` —
+/// caller can treat that as "this is not a UR outer call".
+///
+/// Pub so `policy-engine-wasm` (`declarative_plan_children_json`) can reuse
+/// the same legacy-bridge path Tier B's opcode-stream dispatcher uses for
+/// cross-target child planning — both must agree on the (commands, inputs)
+/// extraction or the planner and the runtime will disagree on which child
+/// callkeys exist.
+#[allow(clippy::type_complexity)]
+pub fn extract_ur_commands_and_inputs(
+    decoded: &DecodedCall,
+) -> Result<Option<(Vec<u8>, Vec<Vec<u8>>)>, MapperError> {
+    let legacy = to_legacy_decoded(decoded)?;
+    Ok(extract_commands_and_inputs(&legacy))
+}
+
 /// Bridge `decoder::DecodedCall` → `decode::DecodedCall` (legacy view used by
 /// Tier B). The two share field semantics but use different value enums; we
 /// rebuild the legacy form so `extract_commands_and_inputs` (which pattern-
@@ -1221,7 +1409,7 @@ mod tests {
     use super::*;
 
     const UR_BUNDLE_JSON: &str = include_str!(
-        "../../../../../registry/manifests/uniswap/universal-router/execute@1.0.0.json"
+        "../../../../../registry/manifests/uniswap/universal-router/execute-v2@1.0.0.json"
     );
 
     fn build_ctx<'a>(
@@ -2062,15 +2250,18 @@ mod tests {
         }
     }
 
-    /// Encode a UR position-manager step input — `(bytes data)` carrying the
-    /// inner PM calldata. Mirrors the structure Tier B's
-    /// `position_manager_opcodes_decode_bytes_data` test exercises against
-    /// `UNISWAP_UR_TABLE`.
+    /// UR position-manager step input — raw inner PM calldata (selector + args).
+    ///
+    /// Universal Router's Dispatcher.sol forwards `inputs[i]` raw to
+    /// `address(V3_POSITION_MANAGER).call(inputs)` /
+    /// `address(V4_POSITION_MANAGER).call(inputs)` for opcodes 0x11/0x12/0x14.
+    /// There is no `abi.encode((bytes,))` wrapper — `inputs[i]` IS the inner
+    /// calldata. This helper used to wrap in `step(bytes)` to mirror the
+    /// (misleading) `(bytes data)` signature in `UNISWAP_UR_TABLE`; the
+    /// post-cross-target-fix runtime reads `step.raw_input` directly, so the
+    /// wrapper is removed to match Dispatcher.sol's on-chain behaviour.
     fn encode_position_manager_step_input(inner_calldata: Vec<u8>) -> Vec<u8> {
-        let func = Function::parse("step(bytes)").unwrap();
-        let values = vec![DynSolValue::Bytes(inner_calldata)];
-        let raw = func.abi_encode_input(&values).unwrap();
-        raw[4..].to_vec()
+        inner_calldata
     }
 
     /// Synthetic V3 NPM `decreaseLiquidity` calldata — 4-byte selector +
@@ -3406,6 +3597,92 @@ mod tests {
         assert!(
             detail.contains("pancake_infinity"),
             "expected dispatcher id in detail, got: {detail}"
+        );
+    }
+
+    /// Phase 4: the new Pancake dispatcher ids must resolve through
+    /// `resolve_dispatcher` (i.e. they're wired into the `DISPATCHERS` array).
+    /// A miss here surfaces as `MapperError::Unsupported`, so the positive
+    /// assertion is that the resolver does not return `None`.
+    #[test]
+    fn pancake_dispatcher_ids_resolve() {
+        // `resolve_dispatcher` is crate-private; use the public dispatcher_id
+        // constants and assert that constructing a bundle with each id is
+        // accepted by `execute` (it would early-error on resolve miss).
+        assert!(
+            super::resolve_dispatcher(DISPATCHER_ID_PANCAKE_UNIVERSAL_ROUTER).is_some(),
+            "DISPATCHER_ID_PANCAKE_UNIVERSAL_ROUTER must be wired into DISPATCHERS"
+        );
+        assert!(
+            super::resolve_dispatcher(DISPATCHER_ID_PANCAKE_INFINITY_POSITION_MANAGER).is_some(),
+            "DISPATCHER_ID_PANCAKE_INFINITY_POSITION_MANAGER must be wired into DISPATCHERS"
+        );
+        // Pre-existing wiring sanity (regression guard for the array order).
+        assert!(super::resolve_dispatcher(DISPATCHER_ID_UNIVERSAL_ROUTER).is_some());
+        assert!(super::resolve_dispatcher(DISPATCHER_ID_AERODROME_UNIVERSAL_ROUTER).is_some());
+        // The V4 PM dispatcher does NOT go through the `DISPATCHERS` table
+        // (it routes via the `DISPATCHER_ID_V4_POSITION_MANAGER` shortcut in
+        // `execute`), so it must miss the resolver — this anchors the
+        // routing branch's expectation.
+        assert!(super::resolve_dispatcher(DISPATCHER_ID_V4_POSITION_MANAGER).is_none());
+    }
+
+    /// Phase 4: a Pancake UR bundle's mask must agree with `PANCAKE_UR_TABLE`
+    /// (`0x3f`). A bundle author writing `mask = "0x7f"` (Uniswap value) must
+    /// surface `MapperError::Internal` with a "Tier B pancake_universal_router
+    /// table mask" diagnostic rather than silently mis-dispatching.
+    #[test]
+    fn pancake_ur_mask_mismatch_surfaces_error() {
+        // Reuse the UR bundle as scaffolding — swap dispatcher_id + mask only.
+        let mut bundle: AdapterFunctionBundle = serde_json::from_str(UR_BUNDLE_JSON).unwrap();
+        if let EmitRule::OpcodeStreamDispatch {
+            dispatcher_id,
+            mask,
+            allow_revert_bit,
+            ..
+        } = &mut bundle.emit
+        {
+            *dispatcher_id = DISPATCHER_ID_PANCAKE_UNIVERSAL_ROUTER.to_owned();
+            *mask = "0x7f".to_owned(); // Uniswap mask — wrong for Pancake (must be 0x3f)
+            *allow_revert_bit = "0x80".to_owned();
+        } else {
+            panic!("UR_BUNDLE_JSON emit must be OpcodeStreamDispatch");
+        }
+
+        // Minimal `execute(commands, inputs)` payload — empty stream is
+        // sufficient because the mask check runs before dispatch.
+        let decoded = DecodedCall {
+            decoder_id: DecoderId::new("test"),
+            function_signature: "execute(bytes,bytes[])".to_owned(),
+            args: vec![
+                DecodedArg {
+                    name: "commands".to_owned(),
+                    abi_type: "bytes".to_owned(),
+                    value: DecodedValue::Bytes(Vec::new()),
+                },
+                DecodedArg {
+                    name: "inputs".to_owned(),
+                    abi_type: "bytes[]".to_owned(),
+                    value: DecodedValue::Array(Vec::new()),
+                },
+            ],
+            nested: Vec::new(),
+        };
+
+        let registry = EmptyTokenRegistry;
+        let from = dummy_addr(0xAA);
+        let to = dummy_addr(0xBB);
+        let value = DecimalString::from_str("0").unwrap();
+        let ctx = build_ctx(&registry, &from, &to, &value);
+
+        let err = super::execute(&ctx, &decoded, &bundle.emit).unwrap_err();
+        let MapperError::Internal(inner) = &err else {
+            panic!("expected MapperError::Internal, got {err:?}");
+        };
+        let msg = inner.to_string();
+        assert!(
+            msg.contains("mask") && msg.contains("0x3f"),
+            "expected Pancake UR mask-mismatch error mentioning 0x3f, got: {msg}"
         );
     }
 }

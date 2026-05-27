@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/swap-router-02/swapTokensForExactTokens-base@1.0.0",
-  "manifest_path": "manifests/uniswap/swap-router-02/swapTokensForExactTokens-base@1.0.0.json",
-  "bundle_sha256": "0x12de40390e18fe50d626a492ba2d4e09a6a618cf1a1d510aa34275787cc3bd30",
+  "bundle_id": "uniswap/swap-router-02/swapTokensForExactTokens@1.0.0",
+  "manifest_path": "manifests/uniswap/swap-router-02/swapTokensForExactTokens@1.0.0.json",
+  "bundle_sha256": "0x87a7f8b2e084720eca495bb6f51ee9632e606bddec64d86ddced568f5c736ab5",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/swap-router-02/swapTokensForExactTokens-base@1.0.0",
+    "id": "uniswap/swap-router-02/swapTokensForExactTokens@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x2626664c2603336E57B271c5C0b26F421741e481"
-      ],
-      "selector": "0x42712a67"
+      "selector": "0x42712a67",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "swapTokensForExactTokens",

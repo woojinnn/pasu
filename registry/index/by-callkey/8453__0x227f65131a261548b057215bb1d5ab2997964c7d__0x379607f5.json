@@ -2,28 +2,29 @@
   "matched": true,
   "bundle_id": "aerodrome/rewards-distributor/claim@1.0.0",
   "manifest_path": "manifests/aerodrome/rewards-distributor/claim@1.0.0.json",
-  "bundle_sha256": "0xee6d078e5ede2d822ff6d0088bf45485eff1146f0894430f18e5679b3f933c0f",
+  "bundle_sha256": "0x99e5f6a979e6d76260d8add54f3ee990ac7885e276bcae5f23c75cce2e3a3323",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/rewards-distributor/claim@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x227f65131A261548b057215bB1D5Ab2997964C7d"
-      ],
-      "selector": "0x379607f5"
+      "selector": "0x379607f5",
+      "chain_to_addresses": {
+        "8453": [
+          "0x227f65131A261548b057215bB1D5Ab2997964C7d"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "claim",
       "abi": {
         "name": "claim",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "tokenId",
+            "name": "_tokenId",
             "type": "uint256"
           }
         ]
@@ -35,13 +36,19 @@
       "action": "claim_rewards",
       "fields": {
         "source.address": {
-          "literal": "0x227f65131A261548b057215bB1D5Ab2997964C7d"
+          "from": "$.tx.to"
         },
         "source.label": {
-          "literal": "Aerodrome Rewards Distributor"
+          "literal": "Aerodrome veAERO Rewards"
+        },
+        "nft.kind": {
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
         },
         "tokenId": {
-          "from": "$.args.tokenId"
+          "from": "$.args._tokenId"
         },
         "from": {
           "from": "$.tx.from"

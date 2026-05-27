@@ -2,19 +2,22 @@
   "type": "adapter_function",
   "id": "aerodrome/voting-escrow/depositFor@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
-    "selector": "0x0ec84dda"
+    "selector": "0x0ec84dda",
+    "chain_to_addresses": {
+      "8453": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"]
+    }
   },
   "abi_fragment": {
     "function_name": "depositFor",
     "abi": {
       "name": "depositFor",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "tokenId", "type": "uint256" },
-        { "name": "value",   "type": "uint256" }
+        { "name": "_tokenId", "type": "uint256" },
+        { "name": "_value",   "type": "uint256" }
       ]
     }
   },
@@ -23,16 +26,16 @@
     "category": "misc",
     "action": "lock_increase",
     "fields": {
-      "votingEscrow":           { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
-      "tokenId":                { "from":    "$.args.tokenId" },
+      "votingEscrow":           { "from": "$.tx.to" },
+      "tokenId":                { "from": "$.args._tokenId" },
       "kind":                   { "literal": "amount" },
       "additionalAmount.kind":  { "literal": "exact" },
-      "additionalAmount.value": { "from":    "$.args.value" }
+      "additionalAmount.value": { "from": "$.args._value" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

@@ -2,32 +2,33 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/merge@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/merge@1.0.0.json",
-  "bundle_sha256": "0xe3ccc63b35da34ed8b4812817c9ed22f2aa616f394c67fb98f78629192c8be8b",
+  "bundle_sha256": "0xca43e6b7733770235f9acf69953f7104f1c4d0112229d1a154a2c30e87ab89ce",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/merge@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0xd1c2babb"
+      "selector": "0xd1c2babb",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "merge",
       "abi": {
         "name": "merge",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "from",
+            "name": "_from",
             "type": "uint256"
           },
           {
-            "name": "to",
+            "name": "_to",
             "type": "uint256"
           }
         ]
@@ -39,22 +40,24 @@
       "action": "lock_manage",
       "fields": {
         "votingEscrow": {
-          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+          "from": "$.tx.to"
         },
         "kind": {
           "literal": "merge"
         },
         "fromTokenId": {
-          "from": "$.args.from"
+          "from": "$.args._from"
         },
         "toTokenId": {
-          "from": "$.args.to"
+          "from": "$.args._to"
         }
       }
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

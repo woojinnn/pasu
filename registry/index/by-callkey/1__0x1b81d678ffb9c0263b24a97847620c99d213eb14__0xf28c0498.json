@@ -1,0 +1,129 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/v3-swap-router/exactOutput@1.0.0",
+  "manifest_path": "manifests/pancake/v3-swap-router/exactOutput@1.0.0.json",
+  "bundle_sha256": "0x55c2482c4429ff8c1a56e45aff370aed4beeb7cf7b02a5144fd96ccf7b9aecc1",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/v3-swap-router/exactOutput@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xf28c0498",
+      "chain_to_addresses": {
+        "1": [
+          "0x1b81D678ffb9C0263b24A97847620C99d213eB14"
+        ],
+        "56": [
+          "0x1b81D678ffb9C0263b24A97847620C99d213eB14"
+        ],
+        "8453": [
+          "0x1b81D678ffb9C0263b24A97847620C99d213eB14"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "exactOutput",
+      "abi": {
+        "name": "exactOutput",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "params",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "path",
+                "type": "bytes"
+              },
+              {
+                "name": "recipient",
+                "type": "address"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "name": "amountOut",
+                "type": "uint256"
+              },
+              {
+                "name": "amountInMaximum",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "dex",
+      "action": "swap",
+      "fields": {
+        "swapMode": {
+          "literal": "exact_out"
+        },
+        "inputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "inputToken.asset.address": {
+          "fn": "unfold_v3_path",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": "last_token"
+            }
+          ]
+        },
+        "inputToken.amount.kind": {
+          "literal": "max"
+        },
+        "inputToken.amount.value": {
+          "from": "$.args.amountInMaximum"
+        },
+        "outputToken.asset.kind": {
+          "literal": "erc20"
+        },
+        "outputToken.asset.address": {
+          "fn": "unfold_v3_path",
+          "args": [
+            {
+              "from": "$.args.path"
+            },
+            {
+              "literal": "first_token"
+            }
+          ]
+        },
+        "outputToken.amount.kind": {
+          "literal": "exact"
+        },
+        "outputToken.amount.value": {
+          "from": "$.args.amountOut"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "tx-deadline"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

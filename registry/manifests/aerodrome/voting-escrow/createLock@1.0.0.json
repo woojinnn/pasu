@@ -2,19 +2,22 @@
   "type": "adapter_function",
   "id": "aerodrome/voting-escrow/createLock@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
-    "selector": "0xb52c05fe"
+    "selector": "0xb52c05fe",
+    "chain_to_addresses": {
+      "8453": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"]
+    }
   },
   "abi_fragment": {
     "function_name": "createLock",
     "abi": {
       "name": "createLock",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "value",        "type": "uint256" },
-        { "name": "lockDuration", "type": "uint256" }
+        { "name": "_value",        "type": "uint256" },
+        { "name": "_lockDuration", "type": "uint256" }
       ]
     }
   },
@@ -23,18 +26,18 @@
     "category": "misc",
     "action": "lock_create",
     "fields": {
-      "votingEscrow":    { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
-      "asset.kind":      { "literal": "erc20" },
-      "asset.address":   { "literal": "0x940181a94A35A4569E4529A3CDfB74e38FD98631" },
-      "amount.kind":     { "literal": "exact" },
-      "amount.value":    { "from":    "$.args.value" },
-      "lockDurationSec": { "from":    "$.args.lockDuration" },
-      "recipient":       { "from":    "$.tx.from" }
+      "votingEscrow":        { "from": "$.tx.to" },
+      "asset.asset.kind":    { "literal": "erc20" },
+      "asset.asset.address": { "literal": "0x940181a94A35A4569E4529A3CDfB74e38FD98631" },
+      "asset.amount.kind":   { "literal": "exact" },
+      "asset.amount.value":  { "from": "$.args._value" },
+      "lockDurationSec":     { "from": "$.args._lockDuration" },
+      "recipient":           { "from": "$.tx.from" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

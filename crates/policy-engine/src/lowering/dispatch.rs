@@ -137,6 +137,7 @@ pub fn try_policy_request_from_envelope(
         Action::LockCreate(action) => action.build(&ctx).map(Some),
         Action::LockIncrease(action) => action.build(&ctx).map(Some),
         Action::LockManage(action) => action.build(&ctx).map(Some),
+        Action::LockWithdraw(action) => action.build(&ctx).map(Some),
         // misc — reward claims (Curve Gauge claim_rewards + Aerodrome Voter
         // claimFees/Bribes + Slipstream NPM collect). Without this arm
         // ClaimRewards envelopes lower to Ok(None), which fail-opens past

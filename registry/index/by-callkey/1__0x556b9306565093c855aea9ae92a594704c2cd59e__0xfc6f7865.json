@@ -1,0 +1,104 @@
+{
+  "matched": true,
+  "bundle_id": "pancake/masterchef-v3/collect@1.0.0",
+  "manifest_path": "manifests/pancake/masterchef-v3/collect@1.0.0.json",
+  "bundle_sha256": "0x9b400a148cb291b979de4ef31e8757b9a58aab1bb76c0750afad154eb5e94778",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "pancake/masterchef-v3/collect@1.0.0",
+    "publisher": "pancake",
+    "schema_version": "2",
+    "match": {
+      "selector": "0xfc6f7865",
+      "chain_to_addresses": {
+        "1": [
+          "0x556b9306565093c855aea9ae92a594704c2cd59e"
+        ],
+        "56": [
+          "0x556b9306565093c855aea9ae92a594704c2cd59e"
+        ],
+        "8453": [
+          "0xc6a2db661d5a5690172d8eb0a7dea2d3008665a3"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "collect",
+      "abi": {
+        "name": "collect",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "params",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "tokenId",
+                "type": "uint256"
+              },
+              {
+                "name": "recipient",
+                "type": "address"
+              },
+              {
+                "name": "amount0Max",
+                "type": "uint128"
+              },
+              {
+                "name": "amount1Max",
+                "type": "uint128"
+              }
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "amount0",
+            "type": "uint256"
+          },
+          {
+            "name": "amount1",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "claim_rewards",
+      "fields": {
+        "source.address": {
+          "from": "$.tx.to"
+        },
+        "nft.kind": {
+          "literal": "erc721"
+        },
+        "nft.address": {
+          "from": "$.tx.to"
+        },
+        "nft.tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "tokenId": {
+          "from": "$.args.tokenId"
+        },
+        "from": {
+          "from": "$.tx.from"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

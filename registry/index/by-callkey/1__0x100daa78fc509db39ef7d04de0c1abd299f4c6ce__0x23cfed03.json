@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/crvusd/wsteth/createLoan@1.0.0",
-  "manifest_path": "manifests/curve/crvusd/wsteth/createLoan@1.0.0.json",
-  "bundle_sha256": "0x86ec80b8d704a45353e2ad95ddb3cd659bd7a4b8ec6fb64519c42ccc4af27187",
+  "bundle_id": "curve/crvusd-controller/wsteth/createLoan@1.0.0",
+  "manifest_path": "manifests/curve/crvusd-controller/wsteth/createLoan@1.0.0.json",
+  "bundle_sha256": "0x95612bb0fb1bd2a5044348926a5e3cf934fcfe67283a871b4ca9b95129869e4c",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/crvusd/wsteth/createLoan@1.0.0",
+    "id": "curve/crvusd-controller/wsteth/createLoan@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
-      ],
-      "selector": "0x23cfed03"
+      "selector": "0x23cfed03",
+      "chain_to_addresses": {
+        "1": [
+          "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "create_loan",
@@ -46,7 +46,7 @@
           "literal": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
         },
         "market.label": {
-          "literal": "Curve crvUSD wstETH Controller"
+          "literal": "Curve crvUSD Controller"
         },
         "asset.kind": {
           "literal": "erc20"
@@ -82,9 +82,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

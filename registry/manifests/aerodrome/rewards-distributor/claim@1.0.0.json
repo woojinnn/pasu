@@ -2,18 +2,21 @@
   "type": "adapter_function",
   "id": "aerodrome/rewards-distributor/claim@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0x227f65131A261548b057215bB1D5Ab2997964C7d"],
-    "selector": "0x379607f5"
+    "selector": "0x379607f5",
+    "chain_to_addresses": {
+      "8453": ["0x227f65131A261548b057215bB1D5Ab2997964C7d"]
+    }
   },
   "abi_fragment": {
     "function_name": "claim",
     "abi": {
       "name": "claim",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "tokenId", "type": "uint256" }
+        { "name": "_tokenId", "type": "uint256" }
       ]
     }
   },
@@ -22,9 +25,11 @@
     "category": "misc",
     "action": "claim_rewards",
     "fields": {
-      "source.address":          { "literal": "0x227f65131A261548b057215bB1D5Ab2997964C7d" },
-      "source.label":            { "literal": "Aerodrome Rewards Distributor" },
-      "tokenId":                 { "from": "$.args.tokenId" },
+      "source.address":          { "from": "$.tx.to" },
+      "source.label":            { "literal": "Aerodrome veAERO Rewards" },
+      "nft.kind":                { "literal": "erc721" },
+      "nft.address":             { "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4" },
+      "tokenId":                 { "from": "$.args._tokenId" },
       "from":                    { "from": "$.tx.from" },
       "recipient":               { "from": "$.tx.from" },
       "rewardTokens[0].kind":    { "literal": "erc20" },

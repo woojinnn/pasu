@@ -2,21 +2,24 @@
   "type": "adapter_function",
   "id": "aerodrome/voting-escrow/safeTransferFromWithData@1.0.0",
   "publisher": "aerodrome.finance",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [8453],
-    "to": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"],
-    "selector": "0xb88d4fde"
+    "selector": "0xb88d4fde",
+    "chain_to_addresses": {
+      "8453": ["0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"]
+    }
   },
   "abi_fragment": {
     "function_name": "safeTransferFrom",
     "abi": {
       "name": "safeTransferFrom",
       "type": "function",
+      "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "from",    "type": "address" },
-        { "name": "to",      "type": "address" },
-        { "name": "tokenId", "type": "uint256" },
-        { "name": "data",    "type": "bytes"   }
+        { "name": "_from",    "type": "address" },
+        { "name": "_to",      "type": "address" },
+        { "name": "_tokenId", "type": "uint256" },
+        { "name": "_data",    "type": "bytes"   }
       ]
     }
   },
@@ -25,13 +28,13 @@
     "category": "misc",
     "action": "transfer",
     "fields": {
-      "token.asset.kind":          { "literal": "erc721" },
-      "token.asset.address":       { "from": "$.tx.to" },
-      "token.asset.tokenId":       { "from": "$.args.tokenId" },
-      "token.amount.kind":         { "literal": "exact" },
-      "token.amount.value":        { "literal": "1" },
-      "from":                      { "from": "$.args.from" },
-      "recipient":                 { "from": "$.args.to" }
+      "token.asset.kind":    { "literal": "erc721" },
+      "token.asset.address": { "from": "$.tx.to" },
+      "token.asset.tokenId": { "from": "$.args._tokenId" },
+      "token.amount.kind":   { "literal": "exact" },
+      "token.amount.value":  { "literal": "1" },
+      "from":                { "from": "$.args._from" },
+      "recipient":           { "from": "$.args._to" }
     }
   },
   "requires": {

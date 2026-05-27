@@ -1,26 +1,30 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/mint-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/mint-base@1.0.0.json",
-  "bundle_sha256": "0xf52b5325ecad2fe9bfd29d16022cfa67e8fffac00f4c74fc675a4db1b125c99f",
+  "bundle_id": "uniswap/nfpm/mint@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/mint@1.0.0.json",
+  "bundle_sha256": "0x35152febe9faeed975ab86d96af340b9312e4e08a05fde3b0774089bfb74b703",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/mint-base@1.0.0",
+    "id": "uniswap/nfpm/mint@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
-      ],
-      "selector": "0x88316456"
+      "selector": "0x88316456",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "mint",
       "abi": {
         "name": "mint",
         "type": "function",
+        "stateMutability": "payable",
         "inputs": [
           {
             "name": "params",
@@ -99,10 +103,10 @@
           "from": "$.args.token0"
         },
         "inputTokens[0].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[0].amount.value": {
-          "from": "$.args.amount0Desired"
+          "from": "$.args.amount0Min"
         },
         "inputTokens[1].asset.kind": {
           "literal": "erc20"
@@ -111,10 +115,10 @@
           "from": "$.args.token1"
         },
         "inputTokens[1].amount.kind": {
-          "literal": "max"
+          "literal": "min"
         },
         "inputTokens[1].amount.value": {
-          "from": "$.args.amount1Desired"
+          "from": "$.args.amount1Min"
         },
         "recipient": {
           "from": "$.args.recipient"

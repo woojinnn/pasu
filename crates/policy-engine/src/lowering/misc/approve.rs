@@ -37,6 +37,7 @@ const fn approval_kind_str(k: &ApprovalKind) -> &'static str {
         ApprovalKind::Erc20Increase => "erc20_increase",
         ApprovalKind::Erc20Decrease => "erc20_decrease",
         ApprovalKind::Permit2 => "permit2",
+        ApprovalKind::Erc721 => "erc721",
     }
 }
 

@@ -2,32 +2,26 @@
   "type": "adapter_function",
   "id": "curve/vecrv/withdraw@1.0.0",
   "publisher": "curve.fi",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [1],
-    "to": ["0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"],
-    "selector": "0x3ccfd60b"
+    "selector": "0x3ccfd60b",
+    "chain_to_addresses": {
+      "1": ["0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"]
+    }
   },
   "abi_fragment": {
-    "function_name": "withdraw",
-    "abi": {
-      "name": "withdraw",
-      "type": "function",
-      "inputs": []
-    }
+    "name": "withdraw",
+    "inputs": []
   },
   "emit": {
     "strategy": "single_emit",
-    "category": "staking",
-    "action": "claim_unstake",
+    "category": "misc",
+    "action": "lock_withdraw",
     "fields": {
-      "tokenOut.kind":    { "literal": "erc20" },
-      "tokenOut.address": { "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
-      "recipient":        { "from": "$.tx.from" }
+      "votingEscrow": { "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
+      "asset.kind": { "literal": "erc20" },
+      "asset.address": { "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
+      "recipient": { "from": "$.tx.from" }
     }
-  },
-  "requires": {
-    "imperative":        [],
-    "host_capabilities": ["host:token_metadata"],
-    "extension":         ">=0.1.0"
   }
 }

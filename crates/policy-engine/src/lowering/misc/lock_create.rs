@@ -1,10 +1,7 @@
 use crate::action::misc::LockCreateAction;
-use crate::context_keys::{
-    AMOUNT, ASSET_FIELD, LOCK_DURATION_SEC, RECIPIENT, UNLOCK_TIME, VOTING_ESCROW,
-};
-use crate::lowering::common::amount::amount_constraint_json;
-use crate::lowering::common::asset::asset_ref_json;
+use crate::context_keys::{ASSET_FIELD, LOCK_DURATION_SEC, RECIPIENT, UNLOCK_TIME, VOTING_ESCROW};
 use crate::lowering::dispatch::{Lower, LoweringCtx};
+use crate::lowering::misc::asset_with_amount_json;
 use crate::lowering::LoweringError;
 use crate::policy::PolicyRequest;
 use serde_json::{Map, Value};
@@ -23,8 +20,7 @@ fn context(action: &LockCreateAction) -> Result<Value, LoweringError> {
         VOTING_ESCROW.into(),
         Value::from(action.voting_escrow.to_string()),
     );
-    context.insert(ASSET_FIELD.into(), asset_ref_json(&action.asset)?);
-    context.insert(AMOUNT.into(), amount_constraint_json(&action.amount));
+    context.insert(ASSET_FIELD.into(), asset_with_amount_json(&action.asset)?);
     if let Some(lock_duration_sec) = &action.lock_duration_sec {
         context.insert(
             LOCK_DURATION_SEC.into(),

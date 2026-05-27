@@ -28,8 +28,8 @@
 
     "approvalKind": {
       "type": "string",
-      "enum": ["erc20", "erc20_increase", "erc20_decrease", "permit2"],
-      "description": "approve 메소드의 종류. erc20 = 기본 ERC-20 approve(spender, amount), erc20_increase / erc20_decrease = OpenZeppelin (OZ) 의 안전 변형 (기존 allowance 와의 delta), permit2 = Uniswap Permit2 컨트랙트의 on-chain approve(token, spender, amount, expiration)."
+      "enum": ["erc20", "erc20_increase", "erc20_decrease", "permit2", "erc721"],
+      "description": "approve 메소드의 종류. erc20 = 기본 ERC-20 approve(spender, amount), erc20_increase / erc20_decrease = OpenZeppelin (OZ) 의 안전 변형 (기존 allowance 와의 delta), permit2 = Uniswap Permit2 컨트랙트의 on-chain approve(token, spender, amount, expiration), erc721 = ERC-721 approve(spender, tokenId) — 특정 tokenId 단일 위임 (collection 전체는 set_approval_for_all 별도)."
     },
 
     "currentAllowance": {

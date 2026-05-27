@@ -2,71 +2,54 @@
   "matched": true,
   "bundle_id": "curve/vecrv/depositFor@1.0.0",
   "manifest_path": "manifests/curve/vecrv/depositFor@1.0.0.json",
-  "bundle_sha256": "0xb9d15597bd3aae94bc8c86f4fbb3e4b8eebb0ab7c4a5bc1912adceb446acbca0",
+  "bundle_sha256": "0xc0b96353dd4a1c225a9cecae8fc38fdbe9dd513682730c62becfe3256a2adcf5",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/vecrv/depositFor@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
-      ],
-      "selector": "0x3a46273e"
-    },
-    "abi_fragment": {
-      "function_name": "deposit_for",
-      "abi": {
-        "name": "deposit_for",
-        "type": "function",
-        "inputs": [
-          {
-            "name": "_addr",
-            "type": "address"
-          },
-          {
-            "name": "_value",
-            "type": "uint256"
-          }
+      "selector": "0x3a46273e",
+      "chain_to_addresses": {
+        "1": [
+          "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
         ]
       }
     },
+    "abi_fragment": {
+      "name": "deposit_for",
+      "inputs": [
+        {
+          "name": "_addr",
+          "type": "address"
+        },
+        {
+          "name": "_value",
+          "type": "uint256"
+        }
+      ]
+    },
     "emit": {
       "strategy": "single_emit",
-      "category": "staking",
-      "action": "stake",
+      "category": "misc",
+      "action": "lock_increase",
       "fields": {
-        "tokenIn.kind": {
-          "literal": "erc20"
-        },
-        "tokenIn.address": {
-          "literal": "0xd533a949740bb3306d119cc777fa900ba034cd52"
-        },
-        "receiptToken.kind": {
-          "literal": "erc20"
-        },
-        "receiptToken.address": {
+        "votingEscrow": {
           "literal": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
         },
-        "amountIn.kind": {
-          "literal": "exact"
+        "kind": {
+          "literal": "amount"
         },
-        "amountIn.value": {
+        "additionalAmount.value": {
           "from": "$.args._value"
+        },
+        "additionalAmount.kind": {
+          "literal": "exact"
         },
         "recipient": {
           "from": "$.args._addr"
         }
       }
-    },
-    "requires": {
-      "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
-      ],
-      "extension": ">=0.1.0"
     }
   }
 }

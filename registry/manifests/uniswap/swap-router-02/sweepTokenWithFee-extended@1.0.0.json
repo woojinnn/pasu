@@ -2,17 +2,13 @@
   "type": "adapter_function",
   "id": "uniswap/swap-router-02/sweepTokenWithFee-extended@1.0.0",
   "publisher": "uniswap.eth",
+  "schema_version": "2",
   "match": {
-    "chain_ids": [
-      1,
-      10,
-      137,
-      42161
-    ],
-    "to": [
-      "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-    ],
-    "selector": "0x3068c554"
+    "selector": "0x3068c554",
+    "chain_to_addresses": {
+      "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+      "8453": ["0x2626664c2603336E57B271c5C0b26F421741e481"]
+    }
   },
   "abi_fragment": {
     "function_name": "sweepTokenWithFee",
@@ -20,22 +16,10 @@
       "name": "sweepTokenWithFee",
       "type": "function",
       "inputs": [
-        {
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "name": "amountMinimum",
-          "type": "uint256"
-        },
-        {
-          "name": "feeBips",
-          "type": "uint256"
-        },
-        {
-          "name": "feeRecipient",
-          "type": "address"
-        }
+        { "name": "token", "type": "address" },
+        { "name": "amountMinimum", "type": "uint256" },
+        { "name": "feeBips", "type": "uint256" },
+        { "name": "feeRecipient", "type": "address" }
       ]
     }
   },
@@ -44,31 +28,17 @@
     "category": "misc",
     "action": "transfer",
     "fields": {
-      "token.asset.kind": {
-        "literal": "erc20"
-      },
-      "token.asset.address": {
-        "from": "$.args.token"
-      },
-      "token.amount.kind": {
-        "literal": "min"
-      },
-      "token.amount.value": {
-        "from": "$.args.amountMinimum"
-      },
-      "from": {
-        "from": "$.tx.to"
-      },
-      "recipient": {
-        "from": "$.tx.from"
-      }
+      "token.asset.kind": { "literal": "erc20" },
+      "token.asset.address": { "from": "$.args.token" },
+      "token.amount.kind": { "literal": "min" },
+      "token.amount.value": { "from": "$.args.amountMinimum" },
+      "from": { "from": "$.tx.to" },
+      "recipient": { "from": "$.tx.from" }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": [
-      "token_metadata"
-    ],
+    "adapter_capabilities": ["token_metadata"],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

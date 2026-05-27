@@ -2,22 +2,22 @@
   "matched": true,
   "bundle_id": "uniswap/swap-router-02/sweepTokenWithFee@1.0.0",
   "manifest_path": "manifests/uniswap/swap-router-02/sweepTokenWithFee@1.0.0.json",
-  "bundle_sha256": "0xb381fa4798752eaf041af2e55b6e91d59dacd9da7b6a1f6b2bf7f695598958fb",
+  "bundle_sha256": "0x59fd72bc497dd84c5dc09c7b1b2a1ec849314d141ae2b553207f502dcaaa61b6",
   "bundle": {
     "type": "adapter_function",
     "id": "uniswap/swap-router-02/sweepTokenWithFee@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1,
-        10,
-        137,
-        42161
-      ],
-      "to": [
-        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
-      ],
-      "selector": "0xe0e189a0"
+      "selector": "0xe0e189a0",
+      "chain_to_addresses": {
+        "1": [
+          "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+        ],
+        "8453": [
+          "0x2626664c2603336E57B271c5C0b26F421741e481"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "sweepTokenWithFee",

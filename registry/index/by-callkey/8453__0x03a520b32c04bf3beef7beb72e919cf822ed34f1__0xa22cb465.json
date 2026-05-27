@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v3/setApprovalForAll-base@1.0.0",
-  "manifest_path": "manifests/uniswap/v3/setApprovalForAll-base@1.0.0.json",
-  "bundle_sha256": "0xb56e7ad553f24469c5baf77381b819d631f4982a4021d3a8e26790fd6d3f34d0",
+  "bundle_id": "uniswap/nfpm/setApprovalForAll@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/setApprovalForAll@1.0.0.json",
+  "bundle_sha256": "0xaf08e90110c65207a785a71c86a4b6f023ce1d0a2f7e25e7fa50dbeea5420494",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v3/setApprovalForAll-base@1.0.0",
+    "id": "uniswap/nfpm/setApprovalForAll@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
-      ],
-      "selector": "0xa22cb465"
+      "selector": "0xa22cb465",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "setApprovalForAll",

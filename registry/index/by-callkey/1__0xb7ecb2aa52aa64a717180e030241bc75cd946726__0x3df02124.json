@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "curve/stableswap-ng/2btc/exchange-noReceiver@1.0.0",
-  "manifest_path": "manifests/curve/stableswap-ng/2btc/exchange-noReceiver@1.0.0.json",
-  "bundle_sha256": "0x7a6f66762890c9084fac357ef298f4830b0dd57e20bfe3285e2bb8fbeeb0f9c5",
+  "bundle_id": "curve/stableswap-ng-factory/2btc/exchange@1.0.0",
+  "manifest_path": "manifests/curve/stableswap-ng-factory/2btc/exchange@1.0.0.json",
+  "bundle_sha256": "0x4a876c0805f50085917aef2661491f0422e8c428021ef3ef3adace2311c06cd8",
   "bundle": {
     "type": "adapter_function",
-    "id": "curve/stableswap-ng/2btc/exchange-noReceiver@1.0.0",
+    "id": "curve/stableswap-ng-factory/2btc/exchange@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
-      ],
-      "selector": "0x3df02124"
+      "selector": "0x3df02124",
+      "chain_to_addresses": {
+        "1": [
+          "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exchange",
@@ -102,9 +102,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

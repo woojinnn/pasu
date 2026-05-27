@@ -2,19 +2,19 @@
   "matched": true,
   "bundle_id": "curve/gauge-controller/voteForGaugeWeights@1.0.0",
   "manifest_path": "manifests/curve/gauge-controller/voteForGaugeWeights@1.0.0.json",
-  "bundle_sha256": "0xa1b64d6e0d555a250de1c49f1a99e38cbeb0a1d74bc6a6f322c0c6dae2da99a2",
+  "bundle_sha256": "0x8bde5ab99cb0294d9cebfab82b65d2f39ec21d1efb63c63c6464ad48cd86e56f",
   "bundle": {
     "type": "adapter_function",
     "id": "curve/gauge-controller/voteForGaugeWeights@1.0.0",
     "publisher": "curve.fi",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb"
-      ],
-      "selector": "0xd7136328"
+      "selector": "0xd7136328",
+      "chain_to_addresses": {
+        "1": [
+          "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "vote_for_gauge_weights",
@@ -54,9 +54,10 @@
     },
     "requires": {
       "imperative": [],
-      "host_capabilities": [
-        "host:token_metadata"
+      "adapter_capabilities": [
+        "token_metadata"
       ],
+      "host_capabilities": [],
       "extension": ">=0.1.0"
     }
   }

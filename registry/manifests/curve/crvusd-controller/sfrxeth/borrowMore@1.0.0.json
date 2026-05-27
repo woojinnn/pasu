@@ -1,0 +1,82 @@
+{
+  "type": "adapter_function",
+  "id": "curve/crvusd-controller/sfrxeth/borrowMore@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xdd171e7c",
+    "chain_to_addresses": {
+      "1": [
+        "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "borrow_more",
+    "abi": {
+      "name": "borrow_more",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "collateral",
+          "type": "uint256"
+        },
+        {
+          "name": "debt",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "lending",
+    "action": "borrow",
+    "fields": {
+      "market.address": {
+        "literal": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf"
+      },
+      "market.label": {
+        "literal": "Curve crvUSD Controller"
+      },
+      "asset.kind": {
+        "literal": "erc20"
+      },
+      "asset.address": {
+        "literal": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+      },
+      "amount.kind": {
+        "literal": "exact"
+      },
+      "amount.value": {
+        "from": "$.args.debt"
+      },
+      "collateralAsset.kind": {
+        "literal": "erc20"
+      },
+      "collateralAsset.address": {
+        "literal": "0xac3e018457b222d93114458476f3e3416abbe38f"
+      },
+      "collateralAmount.kind": {
+        "literal": "exact"
+      },
+      "collateralAmount.value": {
+        "from": "$.args.collateral"
+      },
+      "recipient": {
+        "from": "$.tx.from"
+      },
+      "onBehalf": {
+        "from": "$.tx.from"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

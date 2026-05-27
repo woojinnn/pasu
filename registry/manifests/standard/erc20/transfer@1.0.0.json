@@ -1,0 +1,64 @@
+{
+  "type": "adapter_function",
+  "id": "standard/erc20/transfer@1.0.0",
+  "schema_version": "2",
+  "match": {
+    "selector": "0xa9059cbb",
+    "chain_to_addresses_source": "tokens:erc20",
+    "chain_ids": [
+      1,
+      56,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "transfer",
+    "abi": {
+      "name": "transfer",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "misc",
+    "action": "transfer",
+    "fields": {
+      "token.asset.kind": {
+        "literal": "erc20"
+      },
+      "token.asset.address": {
+        "from": "$.tx.to"
+      },
+      "token.amount.kind": {
+        "literal": "exact"
+      },
+      "token.amount.value": {
+        "from": "$.args.amount"
+      },
+      "from": {
+        "from": "$.tx.from"
+      },
+      "recipient": {
+        "from": "$.args.to"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

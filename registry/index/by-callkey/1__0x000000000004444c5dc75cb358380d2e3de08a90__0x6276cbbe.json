@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v4/initialize@1.0.0",
-  "manifest_path": "manifests/uniswap/v4/initialize@1.0.0.json",
-  "bundle_sha256": "0x8cad46fec4e3be6f5dc8e2286b933199cad2a3e6b554f841f7895c16d2e76a68",
+  "bundle_id": "uniswap/pool-manager/initialize@1.0.0",
+  "manifest_path": "manifests/uniswap/pool-manager/initialize@1.0.0.json",
+  "bundle_sha256": "0x478130b7450a2458f9623709f75fcc0f81f1a2bac8fa186ddd550f35edc52dba",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v4/initialize@1.0.0",
+    "id": "uniswap/pool-manager/initialize@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0x000000000004444c5dc75cB358380D2e3dE08A90"
-      ],
-      "selector": "0x6276cbbe"
+      "selector": "0x6276cbbe",
+      "chain_to_addresses": {
+        "1": [
+          "0x000000000004444c5dC75cB358380D2E3dE08A90"
+        ],
+        "8453": [
+          "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "initialize",
@@ -61,28 +64,28 @@
       "action": "initialize_pool",
       "fields": {
         "pool.address": {
-          "from": "$.args.key[0]"
+          "from": "$.tx.to"
         },
         "token0.kind": {
           "literal": "erc20"
         },
         "token0.address": {
-          "from": "$.args.key[0]"
+          "from": "$.args.currency0"
         },
         "token1.kind": {
           "literal": "erc20"
         },
         "token1.address": {
-          "from": "$.args.key[1]"
+          "from": "$.args.currency1"
         },
         "feeBps": {
-          "from": "$.args.key[2]"
+          "from": "$.args.fee"
         },
         "tickSpacing": {
-          "from": "$.args.key[3]"
+          "from": "$.args.tickSpacing"
         },
         "hooks": {
-          "from": "$.args.key[4]"
+          "from": "$.args.hooks"
         },
         "sqrtPriceX96": {
           "from": "$.args.sqrtPriceX96"

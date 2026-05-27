@@ -2,25 +2,26 @@
   "matched": true,
   "bundle_id": "aerodrome/voting-escrow/unlockPermanent@1.0.0",
   "manifest_path": "manifests/aerodrome/voting-escrow/unlockPermanent@1.0.0.json",
-  "bundle_sha256": "0x976b465ec2a2b55f64acde278a592b38b440601872a25c82c20ad99c3609930a",
+  "bundle_sha256": "0xa80fc38f66b99c08ceeabb9463e807cdcf7ea2f170560e479f69e4cf6cefc53c",
   "bundle": {
     "type": "adapter_function",
     "id": "aerodrome/voting-escrow/unlockPermanent@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
-      ],
-      "selector": "0x35b0f6bd"
+      "selector": "0x35b0f6bd",
+      "chain_to_addresses": {
+        "8453": [
+          "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "unlockPermanent",
       "abi": {
         "name": "unlockPermanent",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
             "name": "_tokenId",
@@ -35,7 +36,7 @@
       "action": "lock_manage",
       "fields": {
         "votingEscrow": {
-          "literal": "0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4"
+          "from": "$.tx.to"
         },
         "kind": {
           "literal": "split"
@@ -50,7 +51,9 @@
     },
     "requires": {
       "imperative": [],
-      "adapter_capabilities": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
       "host_capabilities": [],
       "extension": ">=0.1.0"
     }

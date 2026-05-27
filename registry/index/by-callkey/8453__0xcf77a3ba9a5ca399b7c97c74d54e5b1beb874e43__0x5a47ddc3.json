@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/v2/addLiquidity@1.0.0",
-  "manifest_path": "manifests/aerodrome/v2/addLiquidity@1.0.0.json",
-  "bundle_sha256": "0x6740d64620543c79936bafe06e42d7b0cf2b18d26234a360ecc1ec24d3d5cf20",
+  "bundle_id": "aerodrome/router-v2/addLiquidity@1.0.0",
+  "manifest_path": "manifests/aerodrome/router-v2/addLiquidity@1.0.0.json",
+  "bundle_sha256": "0xecad5e460b5ce1eaec1675f084eeabb9724917945c5b061446c5153879294e66",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/v2/addLiquidity@1.0.0",
+    "id": "aerodrome/router-v2/addLiquidity@1.0.0",
     "publisher": "aerodrome.finance",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
-      ],
-      "selector": "0x5a47ddc3"
+      "selector": "0x5a47ddc3",
+      "chain_to_addresses": {
+        "8453": [
+          "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "addLiquidity",

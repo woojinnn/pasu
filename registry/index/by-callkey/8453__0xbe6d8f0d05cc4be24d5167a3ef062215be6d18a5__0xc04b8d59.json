@@ -1,20 +1,20 @@
 {
   "matched": true,
-  "bundle_id": "aerodrome/slipstream/exactInput@1.0.0",
-  "manifest_path": "manifests/aerodrome/slipstream/exactInput@1.0.0.json",
-  "bundle_sha256": "0x858b3f69ab14f9dd07f7b08d37af7ae2380c82e7f6c8dedd181b837443b62371",
+  "bundle_id": "aerodrome/slipstream-swap-router/exactInput@1.0.0",
+  "manifest_path": "manifests/aerodrome/slipstream-swap-router/exactInput@1.0.0.json",
+  "bundle_sha256": "0x4c803e0fc724c4768cf943a0b920ddab7003a2ab57618c0db11f613617291c96",
   "bundle": {
     "type": "adapter_function",
-    "id": "aerodrome/slipstream/exactInput@1.0.0",
+    "id": "aerodrome/slipstream-swap-router/exactInput@1.0.0",
     "publisher": "aerodrome.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
-      ],
-      "selector": "0xc04b8d59"
+      "selector": "0xc04b8d59",
+      "chain_to_addresses": {
+        "8453": [
+          "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "exactInput",

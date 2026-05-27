@@ -1,23 +1,25 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/universal-router/execute-base@1.0.0",
-  "manifest_path": "manifests/uniswap/universal-router/execute-base@1.0.0.json",
-  "bundle_sha256": "0x83ac2862b2a92f47202bc15a8fb6bf3258ca53836bf163086fd4fd66c29a7c6a",
+  "bundle_id": "uniswap/universal-router/execute-v2@1.0.0",
+  "manifest_path": "manifests/uniswap/universal-router/execute-v2@1.0.0.json",
+  "bundle_sha256": "0x79ce7ce31424d510ee7642ab2dda6432f07b06cbc4e90e8e24ba5a01574260ea",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/universal-router/execute-base@1.0.0",
+    "id": "uniswap/universal-router/execute-v2@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        8453
-      ],
-      "to": [
-        "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-        "0x6fF5693b99212Da76ad316178A184AB56D299b43",
-        "0xF3A4F4094BD2c6C06cA2F61789d8727B8d1e7259",
-        "0xFdf682F51FE81Aa4898F0AE2163d8A55c127fbC7"
-      ],
-      "selector": "0x3593564c"
+      "selector": "0x3593564c",
+      "chain_to_addresses": {
+        "1": [
+          "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+          "0x4c82d1FbFE28C977cbb58D8C7Ff8FCf9F70A2cca"
+        ],
+        "8453": [
+          "0x6fF5693b99212Da76ad316178A184AB56D299b43",
+          "0xFdf682F51FE81Aa4898F0AE2163d8A55c127fbC7"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "execute",

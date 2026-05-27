@@ -1,20 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "uniswap/v4/permitForAll@1.0.0",
-  "manifest_path": "manifests/uniswap/v4/permitForAll@1.0.0.json",
-  "bundle_sha256": "0xbbe14c4296b3d36f37f2c92112641ce11b0150f7dc68df744547a1589913810e",
+  "bundle_id": "uniswap/position-manager/permitForAll@1.0.0",
+  "manifest_path": "manifests/uniswap/position-manager/permitForAll@1.0.0.json",
+  "bundle_sha256": "0xe758b1afb363318b5ec968d9b90eae4537b647dd07ebf468704c5125b3da5fa6",
   "bundle": {
     "type": "adapter_function",
-    "id": "uniswap/v4/permitForAll@1.0.0",
+    "id": "uniswap/position-manager/permitForAll@1.0.0",
     "publisher": "uniswap.eth",
+    "schema_version": "2",
     "match": {
-      "chain_ids": [
-        1
-      ],
-      "to": [
-        "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e"
-      ],
-      "selector": "0x3aea60f0"
+      "selector": "0x3aea60f0",
+      "chain_to_addresses": {
+        "1": [
+          "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"
+        ],
+        "8453": [
+          "0x7C5f5A4bBd8fD63184577525326123B519429bDc"
+        ]
+      }
     },
     "abi_fragment": {
       "function_name": "permitForAll",
@@ -53,22 +56,34 @@
     "emit": {
       "strategy": "single_emit",
       "category": "misc",
-      "action": "set_approval_for_all",
+      "action": "permit",
       "fields": {
-        "collection.kind": {
+        "permitKind": {
+          "literal": "erc721_permit_for_all"
+        },
+        "token.kind": {
           "literal": "erc721"
         },
-        "collection.address": {
+        "token.address": {
           "from": "$.tx.to"
         },
-        "collection.tokenId": {
+        "token.tokenId": {
           "literal": "0"
+        },
+        "owner": {
+          "from": "$.args.owner"
         },
         "operator": {
           "from": "$.args.operator"
         },
         "approved": {
           "from": "$.args.approved"
+        },
+        "validity.expiresAt": {
+          "from": "$.args.deadline"
+        },
+        "validity.source": {
+          "literal": "signature-deadline"
         }
       }
     },

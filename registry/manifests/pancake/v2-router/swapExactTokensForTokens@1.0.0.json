@@ -1,0 +1,59 @@
+{
+  "type": "adapter_function",
+  "id": "pancake/v2-router/swapExactTokensForTokens@1.0.0",
+  "publisher": "pancake",
+  "schema_version": "2",
+  "match": {
+    "selector": "0x38ed1739",
+    "chain_to_addresses": {
+      "1": ["0xEfF92A263d31888d860bD50809A8D171709b7b1c"],
+      "56": ["0x10ED43C718714eb63d5aA57B78B54704E256024E"],
+      "8453": ["0x8cFe327CEc66d1C090Dd72bd0FF11d690C33a2Eb"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapExactTokensForTokens",
+    "abi": {
+      "name": "swapExactTokensForTokens",
+      "type": "function",
+      "inputs": [
+        { "name": "amountIn", "type": "uint256" },
+        { "name": "amountOutMin", "type": "uint256" },
+        { "name": "path", "type": "address[]" },
+        { "name": "to", "type": "address" },
+        { "name": "deadline", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "category": "dex",
+    "action": "swap",
+    "fields": {
+      "swapMode": { "literal": "exact_in" },
+      "inputToken.asset.kind": { "literal": "erc20" },
+      "inputToken.asset.address": {
+        "fn": "select_address",
+        "args": [{ "from": "$.args.path" }, { "literal": 0 }]
+      },
+      "inputToken.amount.kind": { "literal": "exact" },
+      "inputToken.amount.value": { "from": "$.args.amountIn" },
+      "outputToken.asset.kind": { "literal": "erc20" },
+      "outputToken.asset.address": {
+        "fn": "select_address",
+        "args": [{ "from": "$.args.path" }, { "literal": -1 }]
+      },
+      "outputToken.amount.kind": { "literal": "min" },
+      "outputToken.amount.value": { "from": "$.args.amountOutMin" },
+      "recipient": { "from": "$.args.to" },
+      "validity.expiresAt": { "from": "$.args.deadline" },
+      "validity.source": { "literal": "tx-deadline" }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

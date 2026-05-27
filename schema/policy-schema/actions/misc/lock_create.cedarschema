@@ -1,7 +1,6 @@
 type LockCreateContext = {
   votingEscrow: String,
-  asset: AssetRef,
-  amount: AmountConstraint,
+  asset: AssetRefWithAmountConstraint,
   lockDurationSec?: String,
   unlockTime?: String,
   recipient: String,

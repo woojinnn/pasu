@@ -1,0 +1,74 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/nfpm/unwrapWETH9@1.0.0",
+  "manifest_path": "manifests/uniswap/nfpm/unwrapWETH9@1.0.0.json",
+  "bundle_sha256": "0x4c57380ee1c4860d5cd67950fad9c3191b6e5cf18393acd6b3c3721819f54237",
+  "bundle": {
+    "type": "adapter_function",
+    "id": "uniswap/nfpm/unwrapWETH9@1.0.0",
+    "publisher": "uniswap.eth",
+    "schema_version": "2",
+    "match": {
+      "selector": "0x49404b7c",
+      "chain_to_addresses": {
+        "1": [
+          "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+        ],
+        "8453": [
+          "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "unwrapWETH9",
+      "abi": {
+        "name": "unwrapWETH9",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "amountMinimum",
+            "type": "uint256"
+          },
+          {
+            "name": "recipient",
+            "type": "address"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "category": "misc",
+      "action": "unwrap",
+      "fields": {
+        "wrappedAsset.asset.kind": {
+          "literal": "unknown"
+        },
+        "wrappedAsset.amount.kind": {
+          "literal": "exact"
+        },
+        "nativeAsset.asset.kind": {
+          "literal": "native"
+        },
+        "nativeAsset.amount.kind": {
+          "literal": "min"
+        },
+        "nativeAsset.amount.value": {
+          "from": "$.args.amountMinimum"
+        },
+        "recipient": {
+          "from": "$.args.recipient"
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}
