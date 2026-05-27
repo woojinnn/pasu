@@ -34,9 +34,10 @@ use crate::apply::Reducer;
 use crate::error::{ReducerError, ReducerResult};
 use crate::helpers;
 
-use super::{uniswap_v2, uniswap_v3, uniswap_v4};
+use super::{aggregator, uniswap_v2, uniswap_v3, uniswap_v4};
 
 impl Reducer for SwapAction {
+    #[allow(clippy::too_many_lines)]
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta> {
         let route = &self.live_inputs.route.value;
 
@@ -158,10 +159,26 @@ impl Reducer for SwapAction {
             }
         }
 
-        // Outer-level aggregator hook (Phase 2G) — referrer fees, executor
-        // bookkeeping, permit bundling. Intentionally omitted in 2D.
-
         let mut delta = StateDelta::new();
+
+        // Outer-level aggregator hook (Phase 2G). Wired only for the top-level
+        // `AggregatorRoute` venue — the inner per-hop variant (rejected above
+        // as `UnsupportedProtocol("aggregator_route")`) stays unsupported to
+        // prevent nested-aggregator dispatch. The hook order is: executor
+        // allow-list check → calldata-hash sanity check → optional Permit2
+        // bundle. The Permit2 `ApprovalSet` emits *before* the balance debit /
+        // credit below so the resulting `TokenChange` sequence matches the
+        // on-chain order (`permit` → `swap`).
+        if let AmmVenue::AggregatorRoute { .. } = &self.venue {
+            if let Some(agg_meta) = &route.aggregator {
+                aggregator::verify_executor(agg_meta)?;
+                aggregator::verify_calldata_hash(agg_meta)?;
+                if agg_meta.permit_bundled {
+                    aggregator::apply_permit_bundle(state, &mut delta, ctx, agg_meta, self)?;
+                }
+            }
+        }
+
         helpers::balance::debit(
             state,
             &mut delta,
@@ -181,8 +198,8 @@ impl Reducer for SwapAction {
 mod tests {
     use super::*;
     use crate::action::amm::{
-        AmmVenue, PoolState, RouteHop, RoutePath, SwapDirection, SwapLiveInputs, SwapParams,
-        SwapRoute,
+        AggregatorKind, AggregatorMeta, AmmVenue, PoolState, RouteHop, RoutePath, SwapDirection,
+        SwapLiveInputs, SwapParams, SwapRoute,
     };
     use simulation_state::delta::TokenChange;
     use simulation_state::eval_context::RequestKind;
@@ -892,5 +909,198 @@ mod tests {
         );
         let err = swap.apply(&s, &ctx()).unwrap_err();
         assert!(matches!(err, ReducerError::TokenNotFound(_)));
+    }
+
+    // ----------------------------------------------------------------------
+    // Phase 2G — AggregatorRoute outer-level hook
+    // ----------------------------------------------------------------------
+
+    fn one_inch_router_addr() -> Address {
+        Address::from_str("0x111111125421ca6dc452d289314280a0f8842a65").unwrap()
+    }
+
+    fn aggregator_venue() -> AmmVenue {
+        AmmVenue::AggregatorRoute {
+            chain: ChainId::ethereum_mainnet(),
+            router: one_inch_router_addr(),
+            route_hash: format!("0x{}", "00".repeat(32)),
+        }
+    }
+
+    fn make_aggregator_meta(permit_bundled: bool) -> AggregatorMeta {
+        AggregatorMeta {
+            aggregator: AggregatorKind::OneInchV6,
+            router: one_inch_router_addr(),
+            executor: Some(one_inch_router_addr()),
+            raw_calldata_hash: format!("0x{}", "00".repeat(32)),
+            permit_bundled,
+            referrer: None,
+            referrer_fee_bp: 0,
+        }
+    }
+
+    fn aggregator_swap_action(
+        amount_in: U256,
+        min_out: U256,
+        meta: AggregatorMeta,
+    ) -> SwapAction {
+        let route = SwapRoute {
+            paths: vec![RoutePath {
+                share_bp: 10_000,
+                hops: vec![RouteHop {
+                    token_in: usdc_ref(),
+                    token_out: weth_ref(),
+                    venue: v2_venue(),
+                    pool_state: xy_pool(10_000, 10_000, 30),
+                    effective_fee_bp: 30,
+                    estimated_out: U256::ZERO,
+                }],
+                estimated_out: U256::ZERO,
+            }],
+            aggregator: Some(meta),
+        };
+        SwapAction {
+            venue: aggregator_venue(),
+            params: SwapParams {
+                token_in: usdc_ref(),
+                token_out: weth_ref(),
+                direction: SwapDirection::ExactInput {
+                    amount_in,
+                    min_amount_out: min_out,
+                },
+                recipient: user(),
+                slippage_bp: 50,
+            },
+            live_inputs: make_live_inputs(route),
+        }
+    }
+
+    /// `AggregatorRoute` happy path with `permit_bundled = true`. The
+    /// resulting `StateDelta` must contain exactly three rows in the
+    /// `permit → debit → credit` order: a `Permit2`-shaped `ApprovalSet`
+    /// on `token_in`, then the USDC debit, then the WETH credit. The
+    /// underlying hop math is identical to the V2 happy path (`1_000` in,
+    /// `10_000` / `10_000` reserves, 30 bp fee → 906 out).
+    #[test]
+    fn aggregator_route_with_permit_bundle_happy_path() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let meta = make_aggregator_meta(true);
+        let swap = aggregator_swap_action(U256::from(1_000u64), U256::from(800u64), meta);
+
+        let delta = swap.apply(&state, &ctx()).unwrap();
+
+        assert_eq!(delta.token_changes.len(), 3);
+        // Order matters — permit comes first, then debit, then credit.
+        match &delta.token_changes[0] {
+            TokenChange::ApprovalSet { key, .. } => {
+                assert_eq!(*key, usdc_ref().key);
+            }
+            other => panic!("expected ApprovalSet first, got {other:?}"),
+        }
+        match &delta.token_changes[1] {
+            TokenChange::BalanceDelta { key, delta: d } => {
+                assert_eq!(*key, usdc_ref().key);
+                assert!(d.is_negative());
+                assert_eq!(d.unsigned_abs().to_string(), "1000");
+            }
+            other => panic!("expected USDC debit, got {other:?}"),
+        }
+        match &delta.token_changes[2] {
+            TokenChange::BalanceDelta { key, delta: d } => {
+                assert_eq!(*key, weth_ref().key);
+                assert!(d.is_positive());
+                assert_eq!(d.unsigned_abs().to_string(), "906");
+            }
+            other => panic!("expected WETH credit, got {other:?}"),
+        }
+    }
+
+    /// `permit_bundled = false` → no `ApprovalSet`, just the two balance
+    /// changes (matches the V2 single-hop happy path output exactly).
+    #[test]
+    fn aggregator_route_without_permit_bundle_emits_only_balance_changes() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let meta = make_aggregator_meta(false);
+        let swap = aggregator_swap_action(U256::from(1_000u64), U256::from(800u64), meta);
+
+        let delta = swap.apply(&state, &ctx()).unwrap();
+
+        assert_eq!(delta.token_changes.len(), 2);
+        for tc in &delta.token_changes {
+            assert!(
+                matches!(tc, TokenChange::BalanceDelta { .. }),
+                "expected BalanceDelta only, got {tc:?}"
+            );
+        }
+    }
+
+    /// `AggregatorRoute` with an unknown executor surfaces as `Invariant`
+    /// *before* any pool math or balance accounting runs — proving the
+    /// outer-level hook fires before the route walk's hop side effects
+    /// would land in `delta`.
+    #[test]
+    fn aggregator_route_unknown_executor_rejected() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let mut meta = make_aggregator_meta(false);
+        meta.executor =
+            Some(Address::from_str("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap());
+        let swap = aggregator_swap_action(U256::from(1_000u64), U256::ZERO, meta);
+
+        let err = swap.apply(&state, &ctx()).unwrap_err();
+        assert!(
+            matches!(&err, ReducerError::Invariant(msg) if msg.contains("unknown executor")),
+            "unexpected err: {err:?}"
+        );
+    }
+
+    /// Inner-hop `AggregatorRoute` (an aggregator venue inside another
+    /// route's `hops`) stays unsupported — Phase 2G refuses nested
+    /// aggregator dispatch.
+    #[test]
+    fn nested_aggregator_inner_hop_returns_unsupported_protocol() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let inner_agg = AmmVenue::AggregatorRoute {
+            chain: ChainId::ethereum_mainnet(),
+            router: one_inch_router_addr(),
+            route_hash: format!("0x{}", "00".repeat(32)),
+        };
+        let route = SwapRoute {
+            paths: vec![RoutePath {
+                share_bp: 10_000,
+                hops: vec![RouteHop {
+                    token_in: usdc_ref(),
+                    token_out: weth_ref(),
+                    venue: inner_agg,
+                    pool_state: xy_pool(10_000, 10_000, 30),
+                    effective_fee_bp: 30,
+                    estimated_out: U256::ZERO,
+                }],
+                estimated_out: U256::ZERO,
+            }],
+            aggregator: None,
+        };
+        let swap = SwapAction {
+            venue: v2_venue(),
+            params: SwapParams {
+                token_in: usdc_ref(),
+                token_out: weth_ref(),
+                direction: SwapDirection::ExactInput {
+                    amount_in: U256::from(1_000u64),
+                    min_amount_out: U256::ZERO,
+                },
+                recipient: user(),
+                slippage_bp: 50,
+            },
+            live_inputs: make_live_inputs(route),
+        };
+
+        let err = swap.apply(&state, &ctx()).unwrap_err();
+        match err {
+            ReducerError::UnsupportedProtocol { protocol, action } => {
+                assert_eq!(protocol, "aggregator_route");
+                assert_eq!(action, "swap");
+            }
+            other => panic!("expected UnsupportedProtocol, got {other:?}"),
+        }
     }
 }
