@@ -1,5 +1,5 @@
-//! GMX V2 venue math — on-chain perp DEX backed by GMV pools; mark price from
-//! Pyth/Chainlink, funding paid to/from GMV.
+//! GMX V2 venue math — on-chain perp DEX backed by `GM` market pools; mark
+//! price from Pyth/Chainlink, funding paid to/from the `GM` pool.
 //!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::GmxV2`. Not a `Reducer` impl.

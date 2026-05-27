@@ -1,6 +1,6 @@
 //! Balance manipulation primitives: `debit`, `credit`, `transfer`.
 
-use simulation_state::primitives::U256;
+use simulation_state::primitives::{Address, U256};
 use simulation_state::token::TokenKey;
 use simulation_state::{StateDelta, WalletState};
 
@@ -29,13 +29,16 @@ pub fn credit(
     todo!()
 }
 
-/// `debit(from)` then `credit(to)` of `amount` on the same `key` —
-/// idiomatic ERC20 transfer between two holdings of the same token.
+/// Outgoing `ERC20`-style transfer from this wallet to `recipient`.
+///
+/// Decreases the effective balance of `key` by `amount` (via `debit`) and
+/// records the recipient in `delta` for audit. The recipient wallet itself
+/// is not tracked here — the simulator only models one wallet's state.
 pub fn transfer(
     _state: &WalletState,
     _delta: &mut StateDelta,
-    _from_key: &TokenKey,
-    _to_key: &TokenKey,
+    _key: &TokenKey,
+    _recipient: Address,
     _amount: U256,
 ) -> ReducerResult<()> {
     todo!()

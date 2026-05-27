@@ -6,11 +6,12 @@
 //!   - [`launchpad`] — `Commit` / `ClaimAllocation` / `ClaimVested` / ...
 //!
 //! Protocol-rich domains use a subdirectory with one file per action and one
-//! file per venue's math (Phase 2 starts with one venue per domain; the rest
-//! are added by following the same pattern):
-//!   - [`amm`]     — swap / add+remove liquidity / ... + `uniswap_v3`
-//!   - [`lending`] — supply / borrow / repay / ... + `aave_v3`
-//!   - [`perp`]    — open / close / `place_order` / ... + `hyperliquid`
+//! file per venue's math. Every variant of `AmmVenue` / `LendingVenue` /
+//! `PerpVenue` (except the catch-all `PerpVenue::Generic`) has a corresponding
+//! stub file:
+//!   - [`amm`]     — swap / add+remove liquidity / ... + per-protocol math
+//!   - [`lending`] — supply / borrow / repay / ... + per-protocol math
+//!   - [`perp`]    — open / close / `place_order` / ... + per-protocol math
 
 pub mod airdrop;
 pub mod amm;
