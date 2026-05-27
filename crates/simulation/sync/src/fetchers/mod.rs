@@ -6,13 +6,14 @@
 pub mod decoder;
 pub mod onchain;
 pub mod oracle;
+pub mod registry;
 pub mod rpc;
 
 pub use decoder::DecoderRegistry;
 pub use onchain::{OnchainCall, OnchainOutcome, OnchainViewFetcher};
 pub use oracle::{ChainlinkFeed, ChainlinkFeedRegistry, ChainlinkFetcher};
+pub use registry::RegistryFetcher;
 
 // 단계적 활성화:
 // pub mod venue;         // Hyperliquid, GMX, dYdX      (Phase 8)
-// pub mod registry;      // scopeball registry server   (Phase 6)
 // pub mod derived;       // DerivedFrom 라우팅          (Phase 7)
