@@ -20,6 +20,8 @@ pub mod calc;
 pub mod error;
 pub mod fetchers;
 pub mod orchestrator;
+pub mod primitives_sync;
+pub mod resolver;
 pub mod scheduler;
 pub mod subscription;
 pub mod topo;
@@ -33,6 +35,8 @@ pub use fetchers::rpc::{
     BlockTag, EthCallRequest, ProviderName, RpcConfig, RpcProvider, RpcRouter,
 };
 pub use orchestrator::{Orchestrator, RefreshReport};
+pub use primitives_sync::PrimitivesReport;
+pub use resolver::{GlobalValues, resolve_field, resolve_inputs};
 pub use scheduler::{Scheduler, SchedulerConfig, TickReport, WalletStore};
 pub use subscription::{BlockSubscription, NewBlock, PollingBlockSubscription};
 pub use topo::{DepNode, topological_sort};

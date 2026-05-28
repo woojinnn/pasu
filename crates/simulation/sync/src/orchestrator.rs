@@ -38,6 +38,11 @@ pub struct Orchestrator {
     registry: Option<RegistryFetcher>,
     hyperliquid: Option<HyperliquidFetcher>,
     calc: CalcRegistry,
+    /// Global LiveField 값 (gas_price, eth_usd 등). DerivedFrom 의 Global FieldRef
+    /// resolve 에 사용. scheduler/sync 가 주기적으로 갱신.
+    globals: crate::resolver::GlobalValues,
+    /// primitives sync (balance/block_height/approval) 용 직접 router 접근.
+    router: Option<Arc<crate::RpcRouter>>,
 }
 
 impl Orchestrator {
@@ -48,7 +53,19 @@ impl Orchestrator {
             registry: None,
             hyperliquid: None,
             calc: CalcRegistry::with_builtins(),
+            globals: crate::resolver::GlobalValues::new(),
+            router: None,
         }
+    }
+
+    /// Global LiveField 값 갱신 (gas_price, eth_usd 등).
+    pub fn set_global(&mut self, name: impl Into<String>, value: serde_json::Value) {
+        self.globals.insert(name.into(), value);
+    }
+
+    /// primitives sync 가 사용할 router 참조.
+    pub(crate) fn router_ref(&self) -> Option<Arc<crate::RpcRouter>> {
+        self.router.clone()
     }
 
     pub fn with_chainlink(mut self, chainlink: ChainlinkFetcher) -> Self {
@@ -73,13 +90,15 @@ impl Orchestrator {
 
     pub fn from_rpc_router(router: Arc<crate::RpcRouter>) -> Self {
         let onchain = OnchainViewFetcher::new(router.clone());
-        let chainlink = ChainlinkFetcher::new(router);
+        let chainlink = ChainlinkFetcher::new(router.clone());
         Self {
             onchain,
             chainlink: Some(chainlink),
             registry: Some(RegistryFetcher::new()),
             hyperliquid: Some(HyperliquidFetcher::new()),
             calc: CalcRegistry::with_builtins(),
+            globals: crate::resolver::GlobalValues::new(),
+            router: Some(router),
         }
     }
 
@@ -212,14 +231,15 @@ impl Orchestrator {
                 let mut ok = 0;
                 let mut fail = 0;
                 for item in batch.items {
-                    if let simulation_state::DataSource::DerivedFrom {
-                        calc_id,
-                        inputs: _,
-                    } = &item.source
+                    if let simulation_state::DataSource::DerivedFrom { calc_id, inputs } =
+                        &item.source
                     {
+                        // ★ FieldRef inputs 를 현재 state 값으로 resolve (Phase 7 완성)
+                        let resolved =
+                            crate::resolver::resolve_inputs(state, &self.globals, inputs);
                         let ctx = CalcContext {
                             state,
-                            inputs: vec![], // input resolver 는 후속 — 지금은 빈 입력으로 stub
+                            inputs: resolved,
                         };
                         match self.calc.run(calc_id, &ctx) {
                             Ok(value) => {
@@ -401,5 +421,94 @@ priority = 1
         assert_eq!(report.walked.total_live_fields, 0);
         assert_eq!(report.fields_updated, 0);
         assert_eq!(report.batches_processed, 0);
+    }
+
+    /// DerivedFrom HF 가 Global FieldRef inputs 로부터 실제 계산되는지 end-to-end.
+    /// RPC 호출 없음 — Derived batch 만 처리.
+    #[tokio::test]
+    async fn derived_hf_computes_from_globals() {
+        use simulation_state::{
+            DataSource, Decimal, Duration, FieldRef, LendingAccount, LiveField, MarketRef,
+            Position, PositionKind, Time as T, VenueRef, WalletId,
+        };
+
+        // RPC 안 쓰는 orchestrator (onchain fetcher 는 존재하지만 derived 만 처리)
+        let toml = r#"
+[chains."eip155:1"]
+[[chains."eip155:1".providers]]
+name = "publicnode"
+kind = "public"
+url = "https://ethereum-rpc.publicnode.com"
+priority = 1
+"#;
+        let cfg = crate::RpcConfig::load_str(toml).unwrap();
+        let router = std::sync::Arc::new(crate::RpcRouter::from_config(cfg).unwrap());
+        let mut orch = Orchestrator::from_rpc_router(router);
+
+        // collateral=1000, debt=500, liq_threshold=0.8 → HF = (1000*0.8)/500 = 1.6
+        orch.set_global("collateral_usd", serde_json::json!("1000"));
+        orch.set_global("debt_usd", serde_json::json!("500"));
+        orch.set_global("liq_threshold", serde_json::json!("0.8"));
+
+        // HF LiveField 의 source = DerivedFrom(aave_hf, [collateral, debt, liq_threshold])
+        let hf_source = DataSource::DerivedFrom {
+            calc_id: "aave_hf".into(),
+            inputs: vec![
+                FieldRef::Global {
+                    name: "collateral_usd".into(),
+                },
+                FieldRef::Global {
+                    name: "debt_usd".into(),
+                },
+                FieldRef::Global {
+                    name: "liq_threshold".into(),
+                },
+            ],
+        };
+
+        // stale 하도록 ttl=60, synced_at=0, now=10000
+        let stale_at = T::from_unix(0);
+        let now = T::from_unix(10_000);
+        let fresh_source = DataSource::UserSupplied;
+
+        let lending = LendingAccount {
+            market: MarketRef {
+                symbol: "aave-v3".into(),
+                venue: VenueRef::new("aave"),
+            },
+            collaterals: vec![],
+            debts: vec![],
+            emode: None,
+            is_isolated: false,
+            health_factor: LiveField::new(Decimal::new("0"), hf_source, stale_at)
+                .with_ttl(Duration::from_secs(60)),
+            ltv: LiveField::new(Decimal::new("0"), fresh_source.clone(), now)
+                .with_ttl(Duration::from_secs(60)),
+            liquidation_threshold: LiveField::new(Decimal::new("0.8"), fresh_source, now)
+                .with_ttl(Duration::from_secs(60)),
+        };
+
+        let mut state = WalletState::new(WalletId::new(
+            Address::ZERO,
+            [ChainId::ethereum_mainnet()],
+        ));
+        state.positions.push(Position {
+            id: "aave_v3:main".into(),
+            protocol: simulation_state::ProtocolRef::new("aave_v3"),
+            chain: Some(ChainId::ethereum_mainnet()),
+            kind: PositionKind::LendingAccount(lending),
+            primitives_synced_at: now,
+            primitives_source: DataSource::UserSupplied,
+        });
+
+        let report = orch.refresh(&mut state, now).await.unwrap();
+        assert!(report.fields_updated >= 1, "HF should have been updated");
+
+        // HF 가 1.6 으로 계산됐는지 확인
+        if let PositionKind::LendingAccount(la) = &state.positions[0].kind {
+            assert_eq!(la.health_factor.value.as_str(), "1.6");
+        } else {
+            panic!("expected lending account");
+        }
     }
 }
