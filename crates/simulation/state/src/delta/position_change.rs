@@ -10,17 +10,32 @@ use crate::position::{Position, PositionId};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct PositionPatch {
-    /// 변경된 필드 path → 새 값.
-    /// 예: { "health_factor.value": "0.762", "collaterals[+]": [USDC, 1000] }
+    /// 변경된 필드 path → 새 값. 예: `{ "health_factor.value": "0.762",
+    /// "collaterals[+]": [USDC, 1000] }`.
     #[tsify(type = "unknown")]
     pub fields: Value,
 }
 
+/// 한 포지션의 Open / Update / Close 이벤트.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PositionChange {
-    Open { position: Position },
-    Update { id: PositionId, patch: PositionPatch },
-    Close { id: PositionId },
+    /// 신규 포지션 추가.
+    Open {
+        /// 추가될 포지션 전체.
+        position: Position,
+    },
+    /// 기존 포지션 부분 갱신.
+    Update {
+        /// 갱신될 포지션 식별자.
+        id: PositionId,
+        /// 변경된 필드 / 새 값.
+        patch: PositionPatch,
+    },
+    /// 기존 포지션 종료.
+    Close {
+        /// 닫을 포지션 식별자.
+        id: PositionId,
+    },
 }

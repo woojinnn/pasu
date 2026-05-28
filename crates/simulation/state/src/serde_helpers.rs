@@ -10,10 +10,12 @@
 //! pub tokens: BTreeMap<TokenKey, TokenHolding>,
 //! ```
 
+/// `BTreeMap<K, V>` 를 `Vec<(K, V)>` 형태 (JSON pairs) 로 직렬화 / 역직렬화.
 pub mod map_as_pairs {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::collections::BTreeMap;
 
+    /// `BTreeMap` 을 (key, value) pair 의 배열로 직렬화.
     pub fn serialize<K, V, S>(map: &BTreeMap<K, V>, ser: S) -> Result<S::Ok, S::Error>
     where
         K: Serialize + Ord,
@@ -24,6 +26,7 @@ pub mod map_as_pairs {
         vec.serialize(ser)
     }
 
+    /// (key, value) pair 배열을 `BTreeMap` 으로 역직렬화.
     pub fn deserialize<'de, K, V, D>(de: D) -> Result<BTreeMap<K, V>, D::Error>
     where
         K: Deserialize<'de> + Ord,

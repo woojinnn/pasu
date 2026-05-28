@@ -1,10 +1,11 @@
-//! LiveField 의 신선도/품질 메타.
+//! `LiveField` 의 신선도/품질 메타.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use crate::primitives::BasisPoints;
 
+/// `LiveField` 의 신선도 / 품질 메타.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct Confidence {
@@ -15,6 +16,8 @@ pub struct Confidence {
 }
 
 impl Confidence {
+    /// deviation 0 + 신선 (not stale) 한 `Confidence`.
+    #[must_use]
     pub fn fresh() -> Self {
         Self {
             deviation_bp: 0,
