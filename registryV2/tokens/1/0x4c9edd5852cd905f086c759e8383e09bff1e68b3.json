@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+  "symbol": "USDe",
+  "decimals": 18,
+  "name": "USDe",
+  "source": "https://docs.ethena.fi/solution-overview/usde",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

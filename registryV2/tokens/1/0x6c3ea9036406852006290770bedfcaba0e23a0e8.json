@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+  "symbol": "PYUSD",
+  "decimals": 6,
+  "name": "PayPal USD",
+  "source": "https://etherscan.io/token/0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

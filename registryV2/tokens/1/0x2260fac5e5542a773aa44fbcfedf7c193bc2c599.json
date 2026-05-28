@@ -1,0 +1,13 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+  "symbol": "WBTC",
+  "decimals": 8,
+  "name": "Wrapped BTC",
+  "source": "https://etherscan.io/token/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "volatile" }
+  }
+}

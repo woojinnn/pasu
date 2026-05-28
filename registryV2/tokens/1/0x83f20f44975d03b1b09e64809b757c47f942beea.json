@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x83f20f44975d03b1b09e64809b757c47f942beea",
+  "symbol": "sDAI",
+  "decimals": 18,
+  "name": "Savings Dai",
+  "source": "https://docs.spark.fi/dev/sdai",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "spark", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x6b175474e89094c44da98b954eedeac495271d0f" }
+    },
+    "rebase_form": "index"
+  }
+}
