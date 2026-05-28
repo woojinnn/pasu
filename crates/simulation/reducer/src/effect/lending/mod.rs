@@ -20,6 +20,7 @@ mod compound_v3;
 mod fluid;
 mod morpho_blue;
 mod morpho_optimizer;
+mod shared;
 mod spark;
 
 use simulation_state::{EvalContext, StateDelta, WalletState};
