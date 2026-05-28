@@ -35,6 +35,7 @@
 
 pub mod action_scope;
 pub mod action_walk;
+pub mod args_resolver;
 pub mod batcher;
 pub mod calc;
 pub mod error;
@@ -49,6 +50,7 @@ pub mod walker;
 
 pub use action_scope::{ActionScope, walk_scope};
 pub use action_walk::{apply_value_to_action, walk_action_stale};
+pub use args_resolver::resolve_args;
 pub use batcher::{BatchKind, FetchBatch, batch_by_source};
 pub use calc::{CalcContext, CalcFn, CalcRegistry};
 pub use error::{SyncError, SyncResult};
