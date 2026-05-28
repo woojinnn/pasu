@@ -24,6 +24,12 @@ mod jupiter_perps;
 mod synthetix;
 mod vertex;
 
+// Cross-venue math primitives (PnL, funding, simple liq-price common form).
+mod math;
+
+// Shared per-action helpers (PendingTx id derivation, market venue tag).
+mod common;
+
 use simulation_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::perp::PerpAction;

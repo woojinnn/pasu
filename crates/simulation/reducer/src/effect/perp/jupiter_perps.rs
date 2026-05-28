@@ -3,9 +3,27 @@
 //!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::JupiterPerps`. Not a `Reducer` impl.
+//!
+//! ## Deferred liquidation price
+//!
+//! Jupiter Perps uses a JLP-pool-counterparty model (GMX V1 lineage): the
+//! liquidation price depends on the position's accrued borrow fees, JLP
+//! pool utilisation, and the venue's `liquidationFeeUsd` parameter. The
+//! borrow-fee accumulator state lives only in Jupiter Perps' on-chain
+//! `Position` account; we cannot reconstruct it from the
+//! `OpenPerpLiveInputs` `LiveFields` available at reducer time.
+//! `liquidation_price` therefore returns `UnsupportedProtocol { …
+//! "deferred — see venue API" }`; the canonical figure is sourced via the
+//! Jupiter Perps REST endpoint (`positions/<address>`) and refreshed by
+//! the sync orchestrator.
+//!
+//! ## Primary sources
+//!
+//! - <https://station.jup.ag/docs/perpetual-exchange/onchain-account-types>
+//!   — `Position` account layout (Anchor)
+//! - <https://station.jup.ag/docs/perpetual-exchange/fees> — fee /
+//!   liquidation model description
 
-// Phase 2 stubs: callers (per-action reducers) are still `todo!()` so these
-// functions look unused. Lift this allow when the first caller wires up.
 #![allow(dead_code)]
 
 use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
@@ -14,44 +32,48 @@ use simulation_state::{EvalContext, WalletState};
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs};
 use crate::error::ReducerResult;
 
+use super::math;
+
 /// Compute the initial margin required for an `OpenPerpAction` on Jupiter
 /// Perps.
 pub(super) fn required_initial_margin(
     _state: &WalletState,
     _ctx: &EvalContext,
-    _action: &OpenPerpAction,
-    _live: &OpenPerpLiveInputs,
+    action: &OpenPerpAction,
+    live: &OpenPerpLiveInputs,
 ) -> ReducerResult<U256> {
-    todo!()
+    math::required_initial_margin_common("jupiter_perps", action, live)
 }
 
 /// Compute the liquidation price of a newly opened position on Jupiter Perps.
+///
+/// Returns `UnsupportedProtocol` — deferred, see module docs.
 pub(super) fn liquidation_price(
     _state: &WalletState,
     _ctx: &EvalContext,
-    _action: &OpenPerpAction,
+    action: &OpenPerpAction,
     _live: &OpenPerpLiveInputs,
 ) -> ReducerResult<Option<Price>> {
-    todo!()
+    math::liquidation_price_deferred("jupiter_perps", &action.venue)
 }
 
 /// Compute unrealized `PnL` on Jupiter Perps given size, entry price, and
 /// current mark price.
 pub(super) fn unrealized_pnl(
-    _size_base: U256,
-    _entry: Price,
-    _mark: Price,
-    _is_long: bool,
+    size_base: U256,
+    entry: &Price,
+    mark: &Price,
+    is_long: bool,
 ) -> ReducerResult<SignedI256> {
-    todo!()
+    math::unrealized_pnl_common(size_base, entry, mark, is_long)
 }
 
 /// Compute funding accrued on a position since `last_funding_at` on Jupiter
 /// Perps.
 pub(super) fn funding_accrued(
-    _size_base: U256,
-    _funding_rate: Decimal,
-    _hours_elapsed: u32,
+    size_base: U256,
+    funding_rate: &Decimal,
+    hours_elapsed: u32,
 ) -> ReducerResult<SignedI256> {
-    todo!()
+    math::funding_accrued_common(size_base, funding_rate, hours_elapsed)
 }
