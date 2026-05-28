@@ -81,6 +81,16 @@ async function bootSequence(): Promise<void> {
     // Non-fatal — first JIT fetch will populate the new key anyway.
   }
 
+  // B4 cleanup (commits 6aa3cc0 / b6f3ac9) — v1 routing 의 `registry:adapter-bundles`
+  // chrome.storage namespace 가 deprecated. v3 = 별 namespace
+  // (`scopeball:declarative-v3-bundle:*`). 보존된 v1 key 가 storage 용량 차지하므로
+  // boot 시 한 번 제거. SW restart 후 entry 부재 → 영향 0.
+  try {
+    await Browser.storage.local.remove("registry:adapter-bundles");
+  } catch {
+    // ignore — key 부재 또는 storage error 시 silent. boot 진행 영향 X.
+  }
+
   // Cold-start prewarm: kick off WASM module load + default policy
   // install so the first dApp request doesn't pay the 4.77MB compile
   // cost inside the 3s lifecycle budget. We await this before hydrating

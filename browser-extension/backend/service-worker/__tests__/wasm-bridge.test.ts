@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { parseVerdict, WasmDecodeError } from "../wasm-bridge.types";
 import {
-  declarativeRouteRequest,
   EngineError,
   installPolicies,
   evaluatePolicyRpc,
@@ -15,7 +14,6 @@ const wasmMocks = vi.hoisted(() => ({
   evaluatePolicyRpcJson: vi.fn(),
   planPolicyRpcJson: vi.fn(),
   routeRequestJson: vi.fn(),
-  declarativeRouteRequestJson: vi.fn(),
 }));
 
 vi.mock("webextension-polyfill", () => ({
@@ -32,7 +30,6 @@ vi.mock("../../wasm/policy_engine_wasm", () => ({
   evaluate_policy_rpc_json: wasmMocks.evaluatePolicyRpcJson,
   plan_policy_rpc_json: wasmMocks.planPolicyRpcJson,
   route_request_json: wasmMocks.routeRequestJson,
-  declarative_route_request_json: wasmMocks.declarativeRouteRequestJson,
 }));
 
 describe("wasm bridge parsers", () => {
@@ -193,63 +190,6 @@ describe("wasm bridge parsers", () => {
     expect(wasmMocks.planPolicyRpcJson).toHaveBeenCalledWith(
       JSON.stringify(input),
     );
-  });
-
-  it("declarativeRouteRequest unwraps the WASM envelope on success", async () => {
-    wasmMocks.declarativeRouteRequestJson.mockReturnValue(
-      JSON.stringify({
-        ok: true,
-        data: {
-          envelopes: [
-            { category: "dex", action: "swap", fields: { swapMode: "exact_in" } },
-          ],
-          decoder_id: "declarative.uniswap/v2/swapExactTokensForTokens",
-        },
-      }),
-    );
-
-    const result = await declarativeRouteRequest({
-      chain_id: 1,
-      to: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-      selector: "0x38ed1739",
-      ctx: {
-        chain_id: 1,
-        from: "0x1111111111111111111111111111111111111111",
-        to: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-      },
-      calldata: "0x38ed1739000000000000000000000000000000000000000000000000",
-    });
-    expect(result.decoder_id).toBe(
-      "declarative.uniswap/v2/swapExactTokensForTokens",
-    );
-    expect(result.envelopes).toHaveLength(1);
-  });
-
-  it("declarativeRouteRequest surfaces 'no_declarative_mapper' as EngineError", async () => {
-    wasmMocks.declarativeRouteRequestJson.mockReturnValue(
-      JSON.stringify({
-        ok: false,
-        error: { kind: "no_declarative_mapper", message: "no bundle" },
-      }),
-    );
-
-    try {
-      await declarativeRouteRequest({
-        chain_id: 1,
-        to: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-        selector: "0x38ed1739",
-        ctx: {
-          chain_id: 1,
-          from: "0x1111111111111111111111111111111111111111",
-          to: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-        },
-        calldata: "0x38ed1739000000000000000000000000000000000000000000000000",
-      });
-      expect.fail("expected throw");
-    } catch (err) {
-      expect(err).toBeInstanceOf(EngineError);
-      expect((err as EngineError).kind).toBe("no_declarative_mapper");
-    }
   });
 
   it("evaluatePolicyRpc unwraps and parses the WASM verdict", async () => {
