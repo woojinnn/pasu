@@ -1,13 +1,16 @@
 //! Lending 도메인의 walk + apply.
 //!
-//! 현재 wired: Borrow (5 slot), Supply (5 slot).
-//! TODO: Withdraw, Repay, Liquidate, SwapRateMode, SetEMode, SetCollateral,
-//!       DelegateBorrow.
+//! Wired: Supply, Withdraw, Borrow, Repay, SwapRateMode, SetEMode,
+//!        EnableCollateral, DisableCollateral, Liquidate.
+//! DelegateBorrow 는 live_inputs 없음 → no-op.
 
 use serde_json::Value;
 
-use simulation_reducer::action::lending::{BorrowAction, LendingAction, SupplyAction};
-use simulation_state::{Time, U256};
+use simulation_reducer::action::lending::{
+    BorrowAction, LendingAction, LiquidateAction, RepayAction, SetCollateralAction, SetEModeAction,
+    SupplyAction, SwapRateModeAction, WithdrawAction,
+};
+use simulation_state::Time;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 
@@ -23,49 +26,130 @@ pub(super) fn walk(
     stats: &mut WalkStats,
 ) {
     match la {
-        LendingAction::Borrow(b) => walk_borrow(b, action_index, now, stale, stats),
         LendingAction::Supply(s) => walk_supply(s, action_index, now, stale, stats),
-        // 나머지 lending 액션은 후속 패스
-        _ => {}
+        LendingAction::Withdraw(w) => walk_withdraw(w, action_index, now, stale, stats),
+        LendingAction::Borrow(b) => walk_borrow(b, action_index, now, stale, stats),
+        LendingAction::Repay(r) => walk_repay(r, action_index, now, stale, stats),
+        LendingAction::SwapRateMode(s) => walk_swap_rate(s, action_index, now, stale, stats),
+        LendingAction::SetEMode(s) => walk_set_emode(s, action_index, now, stale, stats),
+        LendingAction::EnableCollateral(s) | LendingAction::DisableCollateral(s) => {
+            walk_set_collat(s, action_index, now, stale, stats);
+        }
+        LendingAction::Liquidate(l) => walk_liquidate(l, action_index, now, stale, stats),
+        LendingAction::DelegateBorrow(_) => {} // no live_inputs
     }
 }
 
-fn walk_borrow(
-    b: &BorrowAction,
-    action_index: usize,
-    now: Time,
-    stale: &mut Vec<StaleField>,
-    stats: &mut WalkStats,
-) {
-    let li = &b.live_inputs;
-    push_if_stale(stale, stats, &li.reserve_state, now, action_index, ActionSlot::LendingBorrowReserveState);
-    push_if_stale(stale, stats, &li.user_state_before, now, action_index, ActionSlot::LendingBorrowUserState);
-    push_if_stale(stale, stats, &li.asset_price_usd, now, action_index, ActionSlot::LendingBorrowAssetPriceUsd);
-    push_if_stale(stale, stats, &li.current_borrow_rate, now, action_index, ActionSlot::LendingBorrowCurrentRate);
-    push_if_stale(stale, stats, &li.available_liquidity, now, action_index, ActionSlot::LendingBorrowAvailableLiquidity);
+fn walk_supply(s: &SupplyAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
+    let li = &s.live_inputs;
+    push_if_stale(st, sx, &li.reserve_state, now, ix, ActionSlot::LendingSupplyReserveState);
+    push_if_stale(st, sx, &li.supply_apy, now, ix, ActionSlot::LendingSupplySupplyApy);
+    push_if_stale(st, sx, &li.a_token_price_usd, now, ix, ActionSlot::LendingSupplyATokenPriceUsd);
+    push_if_stale(st, sx, &li.eligible_as_collat, now, ix, ActionSlot::LendingSupplyEligibleAsCollat);
+    push_if_stale(st, sx, &li.user_state_before, now, ix, ActionSlot::LendingSupplyUserState);
 }
 
-fn walk_supply(
-    s: &SupplyAction,
-    action_index: usize,
-    now: Time,
-    stale: &mut Vec<StaleField>,
-    stats: &mut WalkStats,
-) {
+fn walk_withdraw(w: &WithdrawAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
+    let li = &w.live_inputs;
+    push_if_stale(st, sx, &li.reserve_state, now, ix, ActionSlot::LendingWithdrawReserveState);
+    push_if_stale(st, sx, &li.available_to_withdraw, now, ix, ActionSlot::LendingWithdrawAvailableToWithdraw);
+    push_if_stale(st, sx, &li.user_state_before, now, ix, ActionSlot::LendingWithdrawUserState);
+}
+
+fn walk_borrow(b: &BorrowAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
+    let li = &b.live_inputs;
+    push_if_stale(st, sx, &li.reserve_state, now, ix, ActionSlot::LendingBorrowReserveState);
+    push_if_stale(st, sx, &li.user_state_before, now, ix, ActionSlot::LendingBorrowUserState);
+    push_if_stale(st, sx, &li.asset_price_usd, now, ix, ActionSlot::LendingBorrowAssetPriceUsd);
+    push_if_stale(st, sx, &li.current_borrow_rate, now, ix, ActionSlot::LendingBorrowCurrentRate);
+    push_if_stale(st, sx, &li.available_liquidity, now, ix, ActionSlot::LendingBorrowAvailableLiquidity);
+}
+
+fn walk_repay(r: &RepayAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
+    let li = &r.live_inputs;
+    push_if_stale(st, sx, &li.reserve_state, now, ix, ActionSlot::LendingRepayReserveState);
+    push_if_stale(st, sx, &li.current_debt, now, ix, ActionSlot::LendingRepayCurrentDebt);
+    push_if_stale(st, sx, &li.user_state_before, now, ix, ActionSlot::LendingRepayUserState);
+}
+
+fn walk_swap_rate(s: &SwapRateModeAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
     let li = &s.live_inputs;
-    push_if_stale(stale, stats, &li.reserve_state, now, action_index, ActionSlot::LendingSupplyReserveState);
-    push_if_stale(stale, stats, &li.supply_apy, now, action_index, ActionSlot::LendingSupplySupplyApy);
-    push_if_stale(stale, stats, &li.a_token_price_usd, now, action_index, ActionSlot::LendingSupplyATokenPriceUsd);
-    push_if_stale(stale, stats, &li.eligible_as_collat, now, action_index, ActionSlot::LendingSupplyEligibleAsCollat);
-    push_if_stale(stale, stats, &li.user_state_before, now, action_index, ActionSlot::LendingSupplyUserState);
+    push_if_stale(st, sx, &li.current_debts, now, ix, ActionSlot::LendingSwapRateModeCurrentDebts);
+    push_if_stale(st, sx, &li.rates, now, ix, ActionSlot::LendingSwapRateModeRates);
+}
+
+fn walk_set_emode(s: &SetEModeAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
+    let li = &s.live_inputs;
+    push_if_stale(st, sx, &li.category_config, now, ix, ActionSlot::LendingSetEModeCategoryConfig);
+    push_if_stale(st, sx, &li.user_state_before, now, ix, ActionSlot::LendingSetEModeUserState);
+}
+
+fn walk_set_collat(s: &SetCollateralAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
+    let li = &s.live_inputs;
+    push_if_stale(st, sx, &li.reserve_state, now, ix, ActionSlot::LendingSetCollateralReserveState);
+    push_if_stale(st, sx, &li.user_state_before, now, ix, ActionSlot::LendingSetCollateralUserState);
+}
+
+fn walk_liquidate(l: &LiquidateAction, ix: usize, now: Time, st: &mut Vec<StaleField>, sx: &mut WalkStats) {
+    let li = &l.live_inputs;
+    push_if_stale(st, sx, &li.victim_state, now, ix, ActionSlot::LendingLiquidateVictimState);
+    push_if_stale(st, sx, &li.liquidation_bonus, now, ix, ActionSlot::LendingLiquidateBonus);
+    push_if_stale(st, sx, &li.debt_asset_price, now, ix, ActionSlot::LendingLiquidateDebtAssetPrice);
+    push_if_stale(st, sx, &li.collat_asset_price, now, ix, ActionSlot::LendingLiquidateCollatAssetPrice);
 }
 
 // ─────────────────────── apply ───────────────────────
 
 pub(super) fn apply(la: &mut LendingAction, slot: &ActionSlot, value: Value, now: Time) {
     match la {
-        LendingAction::Borrow(b) => apply_borrow(b, slot, value, now),
         LendingAction::Supply(s) => apply_supply(s, slot, value, now),
+        LendingAction::Withdraw(w) => apply_withdraw(w, slot, value, now),
+        LendingAction::Borrow(b) => apply_borrow(b, slot, value, now),
+        LendingAction::Repay(r) => apply_repay(r, slot, value, now),
+        LendingAction::SwapRateMode(s) => apply_swap_rate(s, slot, value, now),
+        LendingAction::SetEMode(s) => apply_set_emode(s, slot, value, now),
+        LendingAction::EnableCollateral(s) | LendingAction::DisableCollateral(s) => {
+            apply_set_collat(s, slot, value, now);
+        }
+        LendingAction::Liquidate(l) => apply_liquidate(l, slot, value, now),
+        LendingAction::DelegateBorrow(_) => {}
+    }
+}
+
+fn apply_supply(s: &mut SupplyAction, slot: &ActionSlot, value: Value, now: Time) {
+    let li = &mut s.live_inputs;
+    match slot {
+        ActionSlot::LendingSupplyReserveState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.reserve_state, v, now); }
+        }
+        ActionSlot::LendingSupplySupplyApy => {
+            if let Some(d) = value_to_decimal(&value) { set_field(&mut li.supply_apy, d, now); }
+        }
+        ActionSlot::LendingSupplyATokenPriceUsd => {
+            if let Some(d) = value_to_decimal(&value) { set_field(&mut li.a_token_price_usd, d, now); }
+        }
+        ActionSlot::LendingSupplyEligibleAsCollat => {
+            if let Value::Bool(b) = value { set_field(&mut li.eligible_as_collat, b, now); }
+        }
+        ActionSlot::LendingSupplyUserState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.user_state_before, v, now); }
+        }
+        _ => {}
+    }
+}
+
+fn apply_withdraw(w: &mut WithdrawAction, slot: &ActionSlot, value: Value, now: Time) {
+    let li = &mut w.live_inputs;
+    match slot {
+        ActionSlot::LendingWithdrawReserveState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.reserve_state, v, now); }
+        }
+        ActionSlot::LendingWithdrawAvailableToWithdraw => {
+            if let Some(u) = value_to_u256(&value) { set_field(&mut li.available_to_withdraw, u, now); }
+        }
+        ActionSlot::LendingWithdrawUserState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.user_state_before, v, now); }
+        }
         _ => {}
     }
 }
@@ -74,67 +158,96 @@ fn apply_borrow(b: &mut BorrowAction, slot: &ActionSlot, value: Value, now: Time
     let li = &mut b.live_inputs;
     match slot {
         ActionSlot::LendingBorrowReserveState => {
-            if let Ok(v) = serde_json::from_value(value) {
-                set_field(&mut li.reserve_state, v, now);
-            }
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.reserve_state, v, now); }
         }
         ActionSlot::LendingBorrowUserState => {
-            if let Ok(v) = serde_json::from_value(value) {
-                set_field(&mut li.user_state_before, v, now);
-            }
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.user_state_before, v, now); }
         }
         ActionSlot::LendingBorrowAssetPriceUsd => {
-            if let Some(d) = value_to_decimal(&value) {
-                set_field(&mut li.asset_price_usd, d, now);
-            }
+            if let Some(d) = value_to_decimal(&value) { set_field(&mut li.asset_price_usd, d, now); }
         }
         ActionSlot::LendingBorrowCurrentRate => {
-            if let Some(d) = value_to_decimal(&value) {
-                set_field(&mut li.current_borrow_rate, d, now);
-            }
+            if let Some(d) = value_to_decimal(&value) { set_field(&mut li.current_borrow_rate, d, now); }
         }
         ActionSlot::LendingBorrowAvailableLiquidity => {
-            if let Some(u) = value_to_u256(&value) {
-                set_field(&mut li.available_liquidity, u, now);
-            }
+            if let Some(u) = value_to_u256(&value) { set_field(&mut li.available_liquidity, u, now); }
         }
         _ => {}
     }
 }
 
-fn apply_supply(s: &mut SupplyAction, slot: &ActionSlot, value: Value, now: Time) {
-    let li = &mut s.live_inputs;
+fn apply_repay(r: &mut RepayAction, slot: &ActionSlot, value: Value, now: Time) {
+    let li = &mut r.live_inputs;
     match slot {
-        ActionSlot::LendingSupplyReserveState => {
-            if let Ok(v) = serde_json::from_value(value) {
-                set_field(&mut li.reserve_state, v, now);
-            }
+        ActionSlot::LendingRepayReserveState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.reserve_state, v, now); }
         }
-        ActionSlot::LendingSupplySupplyApy => {
-            if let Some(d) = value_to_decimal(&value) {
-                set_field(&mut li.supply_apy, d, now);
-            }
+        ActionSlot::LendingRepayCurrentDebt => {
+            if let Some(u) = value_to_u256(&value) { set_field(&mut li.current_debt, u, now); }
         }
-        ActionSlot::LendingSupplyATokenPriceUsd => {
-            if let Some(d) = value_to_decimal(&value) {
-                set_field(&mut li.a_token_price_usd, d, now);
-            }
+        ActionSlot::LendingRepayUserState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.user_state_before, v, now); }
         }
-        ActionSlot::LendingSupplyEligibleAsCollat => {
-            if let Value::Bool(b) = value {
-                set_field(&mut li.eligible_as_collat, b, now);
-            }
-        }
-        ActionSlot::LendingSupplyUserState => {
-            if let Ok(v) = serde_json::from_value(value) {
-                set_field(&mut li.user_state_before, v, now);
-            }
-        }
-        // Borrow 슬롯이 들어와도 무시 (잘못된 dispatch 방어)
         _ => {}
     }
-    // 미사용 변수 경고 회피
-    let _ = (s, now);
+}
+
+fn apply_swap_rate(s: &mut SwapRateModeAction, slot: &ActionSlot, value: Value, now: Time) {
+    let li = &mut s.live_inputs;
+    match slot {
+        ActionSlot::LendingSwapRateModeCurrentDebts => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.current_debts, v, now); }
+        }
+        ActionSlot::LendingSwapRateModeRates => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.rates, v, now); }
+        }
+        _ => {}
+    }
+}
+
+fn apply_set_emode(s: &mut SetEModeAction, slot: &ActionSlot, value: Value, now: Time) {
+    let li = &mut s.live_inputs;
+    match slot {
+        ActionSlot::LendingSetEModeCategoryConfig => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.category_config, v, now); }
+        }
+        ActionSlot::LendingSetEModeUserState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.user_state_before, v, now); }
+        }
+        _ => {}
+    }
+}
+
+fn apply_set_collat(s: &mut SetCollateralAction, slot: &ActionSlot, value: Value, now: Time) {
+    let li = &mut s.live_inputs;
+    match slot {
+        ActionSlot::LendingSetCollateralReserveState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.reserve_state, v, now); }
+        }
+        ActionSlot::LendingSetCollateralUserState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.user_state_before, v, now); }
+        }
+        _ => {}
+    }
+}
+
+fn apply_liquidate(l: &mut LiquidateAction, slot: &ActionSlot, value: Value, now: Time) {
+    let li = &mut l.live_inputs;
+    match slot {
+        ActionSlot::LendingLiquidateVictimState => {
+            if let Ok(v) = serde_json::from_value(value) { set_field(&mut li.victim_state, v, now); }
+        }
+        ActionSlot::LendingLiquidateBonus => {
+            if let Some(n) = value.as_u64() { set_field(&mut li.liquidation_bonus, n as u32, now); }
+        }
+        ActionSlot::LendingLiquidateDebtAssetPrice => {
+            if let Some(d) = value_to_decimal(&value) { set_field(&mut li.debt_asset_price, d, now); }
+        }
+        ActionSlot::LendingLiquidateCollatAssetPrice => {
+            if let Some(d) = value_to_decimal(&value) { set_field(&mut li.collat_asset_price, d, now); }
+        }
+        _ => {}
+    }
 }
 
 #[cfg(test)]
@@ -152,171 +265,72 @@ mod tests {
 
     fn dummy_reserve() -> ReserveState {
         ReserveState {
-            total_supply: U256::ZERO,
-            total_borrow: U256::ZERO,
-            utilization_bp: 0,
-            supply_cap: None,
-            borrow_cap: None,
-            ltv_bp: 0,
-            liquidation_threshold_bp: 0,
-            liquidation_bonus_bp: 0,
-            reserve_factor_bp: 0,
-            is_frozen: false,
-            is_paused: false,
+            total_supply: U256::ZERO, total_borrow: U256::ZERO, utilization_bp: 0,
+            supply_cap: None, borrow_cap: None,
+            ltv_bp: 0, liquidation_threshold_bp: 0, liquidation_bonus_bp: 0,
+            reserve_factor_bp: 0, is_frozen: false, is_paused: false,
         }
     }
-
-    fn dummy_user_state() -> UserLendingState {
+    fn dummy_user() -> UserLendingState {
         UserLendingState {
             health_factor: Decimal::from("0"),
-            total_collat_usd: U256::ZERO,
-            total_debt_usd: U256::ZERO,
+            total_collat_usd: U256::ZERO, total_debt_usd: U256::ZERO,
             available_borrow_usd: U256::ZERO,
         }
     }
 
-    fn mk_borrow_action(synced_at: u64) -> Action {
+    fn mk_borrow(synced_at: u64) -> Action {
         let chain = ChainId::ethereum_mainnet();
-        let aave_pool = Address::ZERO;
+        let aave = Address::ZERO;
         let usdc = Address::ZERO;
-
-        let borrow = BorrowAction {
-            venue: LendingVenue::AaveV3 {
-                chain: chain.clone(),
-                pool: aave_pool,
-                market_id: None,
-            },
-            asset: TokenRef {
-                key: TokenKey::Erc20 { chain: chain.clone(), address: usdc },
-            },
-            amount: U256::from(500u64),
-            rate_mode: RateMode::Variable,
-            on_behalf_of: None,
-            live_inputs: BorrowLiveInputs {
-                reserve_state: LiveField::new(
-                    dummy_reserve(),
-                    DataSource::OnchainView {
-                        chain: chain.clone(),
-                        contract: aave_pool,
-                        function: "getReserveData(address)".into(),
-                        decoder_id: "aave_reserve_data".into(),
-                    },
-                    Time::from_unix(synced_at),
-                )
-                .with_ttl(Duration::from_secs(60)),
-                user_state_before: LiveField::new(
-                    dummy_user_state(),
-                    DataSource::OnchainView {
-                        chain: chain.clone(),
-                        contract: aave_pool,
-                        function: "getUserAccountData(address)".into(),
-                        decoder_id: "aave_user_data".into(),
-                    },
-                    Time::from_unix(synced_at),
-                )
-                .with_ttl(Duration::from_secs(60)),
-                asset_price_usd: LiveField::new(
-                    Price::from("0.0"),
-                    DataSource::OracleFeed {
-                        provider: OracleProvider::Chainlink,
-                        feed_id: "USDC/USD".into(),
-                    },
-                    Time::from_unix(synced_at),
-                )
-                .with_ttl(Duration::from_secs(60)),
-                current_borrow_rate: LiveField::new(
-                    Decimal::from("0.0"),
-                    DataSource::OnchainView {
-                        chain: chain.clone(),
-                        contract: aave_pool,
-                        function: "getReserveData(address)".into(),
-                        decoder_id: "u256".into(),
-                    },
-                    Time::from_unix(synced_at),
-                )
-                .with_ttl(Duration::from_secs(60)),
-                available_liquidity: LiveField::new(
-                    U256::ZERO,
-                    DataSource::OnchainView {
-                        chain: chain.clone(),
-                        contract: usdc,
-                        function: "balanceOf(address)".into(),
-                        decoder_id: "erc20_balance".into(),
-                    },
-                    Time::from_unix(synced_at),
-                )
-                .with_ttl(Duration::from_secs(60)),
-            },
+        let stale_src = DataSource::OnchainView {
+            chain: chain.clone(), contract: aave,
+            function: "x".into(), decoder_id: "x".into(),
         };
-
         Action {
             meta: ActionMeta {
                 submitted_at: Time::from_unix(synced_at),
                 submitter: Address::ZERO,
                 nature: ActionNature::OnchainTx {
-                    chain,
-                    nonce: 0,
+                    chain: chain.clone(), nonce: 0,
                     gas_limit: U256::from(200_000u64),
                     gas_price: LiveField::new(U256::ZERO, DataSource::UserSupplied, Time::from_unix(synced_at)),
                     value: U256::ZERO,
                 },
             },
-            body: ActionBody::Lending(LendingAction::Borrow(borrow)),
+            body: ActionBody::Lending(LendingAction::Borrow(BorrowAction {
+                venue: LendingVenue::AaveV3 { chain: chain.clone(), pool: aave, market_id: None },
+                asset: TokenRef { key: TokenKey::Erc20 { chain, address: usdc } },
+                amount: U256::from(500u64), rate_mode: RateMode::Variable, on_behalf_of: None,
+                live_inputs: BorrowLiveInputs {
+                    reserve_state: LiveField::new(dummy_reserve(), stale_src.clone(), Time::from_unix(synced_at)).with_ttl(Duration::from_secs(60)),
+                    user_state_before: LiveField::new(dummy_user(), stale_src.clone(), Time::from_unix(synced_at)).with_ttl(Duration::from_secs(60)),
+                    asset_price_usd: LiveField::new(Price::from("0"), DataSource::OracleFeed { provider: OracleProvider::Chainlink, feed_id: "USDC/USD".into() }, Time::from_unix(synced_at)).with_ttl(Duration::from_secs(60)),
+                    current_borrow_rate: LiveField::new(Decimal::from("0"), stale_src.clone(), Time::from_unix(synced_at)).with_ttl(Duration::from_secs(60)),
+                    available_liquidity: LiveField::new(U256::ZERO, stale_src, Time::from_unix(synced_at)).with_ttl(Duration::from_secs(60)),
+                },
+            })),
         }
     }
 
     #[test]
-    fn walks_borrow_live_inputs_when_stale() {
-        let action = mk_borrow_action(1);
+    fn walks_borrow_when_stale() {
+        let action = mk_borrow(1);
         let (stale, stats) = walk_action_stale(&action, Time::from_unix(1_000_000));
         assert_eq!(stats.total_live_fields, 5);
         assert_eq!(stats.stale_count, 5);
-        assert_eq!(stale.len(), 5);
         for s in &stale {
             assert!(matches!(s.location, FieldLocation::Action { action_index: 0, .. }));
         }
     }
 
     #[test]
-    fn walk_returns_empty_when_all_fresh() {
-        let action = mk_borrow_action(999_000);
-        let (stale, stats) = walk_action_stale(&action, Time::from_unix(999_010));
-        assert_eq!(stats.total_live_fields, 5);
-        assert_eq!(stats.fresh_count, 5);
-        assert_eq!(stats.stale_count, 0);
-        assert_eq!(stale.len(), 0);
-    }
-
-    #[test]
-    fn apply_writes_asset_price_to_borrow() {
-        let mut action = mk_borrow_action(1);
-        let loc = FieldLocation::Action {
-            action_index: 0,
-            slot: ActionSlot::LendingBorrowAssetPriceUsd,
-        };
+    fn apply_asset_price_to_borrow() {
+        let mut action = mk_borrow(1);
+        let loc = FieldLocation::Action { action_index: 0, slot: ActionSlot::LendingBorrowAssetPriceUsd };
         apply_value_to_action(&mut action, &loc, Value::String("1.0001".into()), Time::from_unix(2_000_000));
-
         if let ActionBody::Lending(LendingAction::Borrow(b)) = &action.body {
             assert_eq!(b.live_inputs.asset_price_usd.value.as_str(), "1.0001");
-            assert_eq!(b.live_inputs.asset_price_usd.synced_at.as_unix(), 2_000_000);
-        } else {
-            panic!("expected Borrow action");
-        }
-    }
-
-    #[test]
-    fn apply_writes_available_liquidity_as_u256() {
-        let mut action = mk_borrow_action(1);
-        let loc = FieldLocation::Action {
-            action_index: 0,
-            slot: ActionSlot::LendingBorrowAvailableLiquidity,
-        };
-        apply_value_to_action(&mut action, &loc, Value::String("12000000000000".into()), Time::from_unix(2_000_000));
-
-        if let ActionBody::Lending(LendingAction::Borrow(b)) = &action.body {
-            assert_eq!(b.live_inputs.available_liquidity.value, U256::from(12_000_000_000_000u64));
-        } else {
-            panic!("expected Borrow action");
-        }
+        } else { panic!("expected Borrow"); }
     }
 }

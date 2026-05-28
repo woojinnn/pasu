@@ -28,4 +28,7 @@ thiserror = { workspace = true }
 
 # EVM types (eth_call ABI encoding 등)
 alloy-primitives = { workspace = true }
+# Dynamic ABI decoding — generic decoder + Sourcify integration
+alloy-dyn-abi = { workspace = true }
+alloy-sol-types = { workspace = true }
 hex = { workspace = true }

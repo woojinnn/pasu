@@ -66,6 +66,7 @@ pub struct OnchainOutcome {
 pub struct OnchainViewFetcher {
     router: Arc<RpcRouter>,
     decoders: DecoderRegistry,
+    abi_decoder: super::abi_decoder::AbiDecoder,
     multicall: Multicall,
 }
 
@@ -75,6 +76,7 @@ impl OnchainViewFetcher {
         Self {
             router,
             decoders: DecoderRegistry::with_builtins(),
+            abi_decoder: super::abi_decoder::AbiDecoder::default(),
             multicall,
         }
     }
@@ -84,6 +86,7 @@ impl OnchainViewFetcher {
         Self {
             router,
             decoders,
+            abi_decoder: super::abi_decoder::AbiDecoder::default(),
             multicall,
         }
     }
@@ -92,11 +95,30 @@ impl OnchainViewFetcher {
         &mut self.decoders
     }
 
+    pub fn abi_decoder_mut(&mut self) -> &mut super::abi_decoder::AbiDecoder {
+        &mut self.abi_decoder
+    }
+
+    /// `decoder_id` 를 풀 디코더 결정: 먼저 손코딩 DecoderRegistry,
+    /// 모르면 AbiDecoder (alloy-dyn-abi) 로 fallback.
+    fn decode_any(&self, decoder_id: &str, data: &[u8]) -> Result<Value, SyncError> {
+        // 1) 빠른 path — 단순 디코더 (u256, erc20_balance 등)
+        if let Ok(v) = self.decoders.decode(decoder_id, data) {
+            return Ok(v);
+        }
+        // 2) generic ABI fallback — registered ABI 시그니처
+        if self.abi_decoder.knows(decoder_id) {
+            return self.abi_decoder.decode(decoder_id, data);
+        }
+        // 3) 둘 다 모름
+        Err(SyncError::UnknownDecoder(decoder_id.to_string()))
+    }
+
     /// 단일 호출.
     pub async fn fetch_one(&self, call: &OnchainCall) -> Result<Value, SyncError> {
         let req = EthCallRequest::new(call.contract, call.calldata.clone());
         let returndata = self.router.eth_call(&call.chain, req).await?;
-        self.decoders.decode(&call.decoder_id, &returndata)
+        self.decode_any(&call.decoder_id, &returndata)
     }
 
     /// N 개를 한 chain 안에서 Multicall3 로 묶어서 호출.
@@ -148,7 +170,7 @@ impl OnchainViewFetcher {
                 });
                 continue;
             }
-            match self.decoders.decode(&call.decoder_id, &mc_res.return_data) {
+            match self.decode_any(&call.decoder_id, &mc_res.return_data) {
                 Ok(v) => out.push(OnchainOutcome {
                     success: true,
                     value: Some(v),

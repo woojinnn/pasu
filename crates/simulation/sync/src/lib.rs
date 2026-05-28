@@ -35,8 +35,10 @@
 
 pub mod action_scope;
 pub mod action_walk;
+pub mod args_resolver;
 pub mod batcher;
 pub mod calc;
+pub mod manifest_v2;
 pub mod error;
 pub mod fetchers;
 pub mod orchestrator;
@@ -49,9 +51,12 @@ pub mod walker;
 
 pub use action_scope::{ActionScope, walk_scope};
 pub use action_walk::{apply_value_to_action, walk_action_stale};
+pub use args_resolver::resolve_args;
+pub use manifest_v2::{LiveInputSpec, LiveInputsSpec, ResolveContext, parse_live_inputs, resolve_placeholders};
 pub use batcher::{BatchKind, FetchBatch, batch_by_source};
 pub use calc::{CalcContext, CalcFn, CalcRegistry};
 pub use error::{SyncError, SyncResult};
+pub use fetchers::abi_decoder::{AbiDecoder, AbiTypeRegistry};
 pub use fetchers::rpc::{
     BlockTag, EthCallRequest, ProviderName, RpcConfig, RpcProvider, RpcRouter,
 };

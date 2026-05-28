@@ -199,14 +199,20 @@ impl Orchestrator {
                 }
             }
             BatchKind::Onchain { chain } => {
-                // Action live_inputs 의 OnchainView 는 인자가 필요한 경우가 많아
-                // (balanceOf(user), getReserveData(asset) 등). Phase 1 에서는
-                // 인자 없는 케이스만 처리하거나 호출자가 source.function 안에 args 인코드.
+                // Action live_inputs 의 OnchainView 는 인자가 필요한 경우가 많음
+                // (balanceOf(user), getReserveData(asset) 등). slot 별 resolver
+                // (args_resolver::resolve_args) 가 action context 에서 인자를 추출.
                 let calls: Result<Vec<_>, _> = batch
                     .items
                     .iter()
                     .map(|item| {
-                        crate::fetchers::onchain::OnchainCall::from_source(&item.source, vec![])
+                        let args = match &item.location {
+                            crate::walker::FieldLocation::Action { slot, .. } => {
+                                crate::args_resolver::resolve_args(slot, action, _state)
+                            }
+                            _ => Vec::new(),
+                        };
+                        crate::fetchers::onchain::OnchainCall::from_source(&item.source, args)
                     })
                     .collect();
                 let Ok(calls) = calls else {

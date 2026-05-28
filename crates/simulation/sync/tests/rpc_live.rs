@@ -305,3 +305,209 @@ async fn live_orchestrator_refresh_end_to_end() {
     assert_eq!(report.fields_updated, 1);
     assert!(report.errors.is_empty(), "errors: {:?}", report.errors);
 }
+
+#[tokio::test]
+#[ignore]
+async fn live_aave_borrow_scenario_fills_live_inputs() {
+    //! Aave V3 Borrow action 의 live_inputs 가 실제 mainnet 호출로 채워지는지.
+    //!
+    //! 5 슬롯 중 검증 가능한 2개:
+    //!   ✓ asset_price_usd       — Chainlink USDC/USD
+    //!   ✓ available_liquidity   — USDC.balanceOf(Aave Pool)  (args resolver 검증)
+    //!
+    //! 나머지 3개 (reserve_state, user_state_before, current_borrow_rate) 는
+    //! Aave 의 getReserveData / getUserAccountData 디코더가 ReserveState /
+    //! UserLendingState 의 정확한 shape 으로 JSON 을 만들어야 통과. 본 테스트는
+    //! 그 디코더 부재로 실패 항목으로 카운트만 됨 (errors 누적은 안 함, value=None
+    //! 처리). 미래 디코더 추가 시 자동 통과.
+    use simulation_reducer::action::lending::{
+        BorrowAction, BorrowLiveInputs, LendingAction, LendingVenue, ReserveState, UserLendingState,
+    };
+    use simulation_reducer::action::{Action, ActionBody, ActionMeta, ActionNature};
+    use simulation_state::{
+        Address, DataSource, Decimal, Duration as SDuration, LiveField, OracleProvider, Price,
+        RateMode, Time, TokenKey, TokenRef, U256, WalletId, WalletState,
+    };
+    use simulation_sync::Orchestrator;
+    use std::str::FromStr;
+    use std::sync::Arc;
+
+    // mainnet 의 실제 주소들
+    let chain = ChainId::ethereum_mainnet();
+    let aave_pool = Address::from_str("0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2").unwrap(); // Aave V3 Pool
+    let usdc = Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
+    let vitalik = Address::from_str("0xd8da6bf26964af9d7eed9e03e53415d37aa96045").unwrap();
+
+    fn empty_reserve() -> ReserveState {
+        ReserveState {
+            total_supply: U256::ZERO, total_borrow: U256::ZERO, utilization_bp: 0,
+            supply_cap: None, borrow_cap: None,
+            ltv_bp: 0, liquidation_threshold_bp: 0, liquidation_bonus_bp: 0,
+            reserve_factor_bp: 0, is_frozen: false, is_paused: false,
+        }
+    }
+    fn empty_user() -> UserLendingState {
+        UserLendingState {
+            health_factor: Decimal::from("0"),
+            total_collat_usd: U256::ZERO, total_debt_usd: U256::ZERO,
+            available_borrow_usd: U256::ZERO,
+        }
+    }
+
+    // synced_at=1, ttl=60s 라 모두 stale 로 시작
+    let stale = Time::from_unix(1);
+
+    let borrow = BorrowAction {
+        venue: LendingVenue::AaveV3 { chain: chain.clone(), pool: aave_pool, market_id: None },
+        asset: TokenRef { key: TokenKey::Erc20 { chain: chain.clone(), address: usdc } },
+        amount: U256::from(500_000_000u64), // 500 USDC
+        rate_mode: RateMode::Variable,
+        on_behalf_of: None,
+        live_inputs: BorrowLiveInputs {
+            // Aave Pool.getReserveData(asset)  — 디코더 미구현이라 실패 예상
+            reserve_state: LiveField::new(
+                empty_reserve(),
+                DataSource::OnchainView {
+                    chain: chain.clone(), contract: aave_pool,
+                    function: "getReserveData(address)".into(),
+                    decoder_id: "aave_v3_reserve_data".into(),
+                },
+                stale,
+            ).with_ttl(SDuration::from_secs(60)),
+            // Aave Pool.getUserAccountData(user)  — 디코더 'aave_user_data' 있음.
+            // 다만 응답 JSON shape 이 UserLendingState 와 100% 일치 안 함 → serde
+            // deserialize 실패 가능 (totalCollatUsd vs totalCollateralBase). 실패 예상.
+            user_state_before: LiveField::new(
+                empty_user(),
+                DataSource::OnchainView {
+                    chain: chain.clone(), contract: aave_pool,
+                    function: "getUserAccountData(address)".into(),
+                    decoder_id: "aave_v3_user_account_data".into(),
+                },
+                stale,
+            ).with_ttl(SDuration::from_secs(60)),
+            // ✓ Chainlink USDC/USD
+            asset_price_usd: LiveField::new(
+                Price::from("0"),
+                DataSource::OracleFeed {
+                    provider: OracleProvider::Chainlink,
+                    feed_id: "USDC/USD".into(),
+                },
+                stale,
+            ).with_ttl(SDuration::from_secs(60)),
+            // u256 디코더로 풀지만 Aave 의 borrow rate 는 getReserveData 안에 있어
+            // 직접 호출은 안 맞음. 본 테스트에선 실패 예상.
+            current_borrow_rate: LiveField::new(
+                Decimal::from("0"),
+                DataSource::OnchainView {
+                    chain: chain.clone(), contract: aave_pool,
+                    function: "getReserveData(address)".into(),
+                    decoder_id: "aave_v3_current_borrow_rate".into(),
+                },
+                stale,
+            ).with_ttl(SDuration::from_secs(60)),
+            // ✓ USDC.balanceOf(pool)  — args resolver 가 pool 주소 인자로 인코드
+            available_liquidity: LiveField::new(
+                U256::ZERO,
+                DataSource::OnchainView {
+                    chain: chain.clone(), contract: usdc,
+                    function: "balanceOf(address)".into(),
+                    decoder_id: "erc20_balance".into(),
+                },
+                stale,
+            ).with_ttl(SDuration::from_secs(60)),
+        },
+    };
+
+    let mut action = Action {
+        meta: ActionMeta {
+            submitted_at: stale, submitter: vitalik,
+            nature: ActionNature::OnchainTx {
+                chain: chain.clone(), nonce: 0,
+                gas_limit: U256::from(350_000u64),
+                gas_price: LiveField::new(U256::ZERO, DataSource::UserSupplied, stale),
+                value: U256::ZERO,
+            },
+        },
+        body: ActionBody::Lending(LendingAction::Borrow(borrow)),
+    };
+
+    let state = WalletState::new(WalletId::new(vitalik, [chain.clone()]));
+
+    let router = Arc::new(RpcRouter::from_config(live_config()).unwrap());
+    let orch = Orchestrator::from_rpc_router(router);
+
+    let now = Time::from_unix(1_738_000_000);
+    let report = orch.refresh_action(&mut action, &state, now).await.unwrap();
+    println!("aave borrow refresh report: {:?}", report);
+
+    // 검증 — 모든 슬롯의 synced_at 출력
+    if let ActionBody::Lending(LendingAction::Borrow(b)) = &action.body {
+        let li = &b.live_inputs;
+        println!("[1] asset_price_usd       value={} synced={}", li.asset_price_usd.value.as_str(), li.asset_price_usd.synced_at.as_unix());
+        println!("[2] available_liquidity   value={} synced={}", li.available_liquidity.value, li.available_liquidity.synced_at.as_unix());
+        println!("[3] user_state_before     hf={} synced={}", li.user_state_before.value.health_factor.as_str(), li.user_state_before.synced_at.as_unix());
+        println!("[4] reserve_state         total_supply={} synced={}", li.reserve_state.value.total_supply, li.reserve_state.synced_at.as_unix());
+        println!("[5] current_borrow_rate   value={} synced={}", li.current_borrow_rate.value.as_str(), li.current_borrow_rate.synced_at.as_unix());
+
+        assert_ne!(li.asset_price_usd.value.as_str(), "0", "asset_price_usd should be filled");
+        assert!(li.available_liquidity.value > U256::ZERO, "available_liquidity > 0");
+    } else {
+        panic!("expected Borrow action");
+    }
+
+    assert!(report.fields_updated >= 2);
+}
+
+#[test]
+fn manifest_v2_parse_real_uniswap_universal_router() {
+    //! 실제 registryV2/manifests 의 Uniswap UR manifest 를 읽어서
+    //! live_inputs 섹션 파싱 + placeholder resolve 가 동작하는지.
+    //! (네트워크 불필요)
+    use simulation_sync::manifest_v2::{parse_live_inputs, resolve_placeholders, ResolveContext};
+    use std::fs;
+
+    // 실제 파일 경로 (workspace 루트 기준)
+    let path = "../../../registryV2/manifests/uniswap/universal-router/execute-v1-no-deadline@1.0.0.json";
+    let manifest_text = fs::read_to_string(path).expect("read manifest file");
+    let manifest_json: serde_json::Value = serde_json::from_str(&manifest_text).expect("parse JSON");
+
+    // V2 의 emit/per_opcode_body 안에 live_inputs 가 있음. 여기서는 V3_SWAP_EXACT_IN (0x00) 의 swap body.
+    // 경로: emit.per_opcode_body."0x00".body.amm.swap.live_inputs
+    let live_subtree = &manifest_json["emit"]["per_opcode_body"]["0x00"]["body"]["amm"]["swap"];
+
+    let parsed = parse_live_inputs(live_subtree).expect("parse live_inputs");
+    println!("parsed {} live_input slots:", parsed.len());
+    for (slot, spec) in &parsed {
+        println!("  - {} (ttl={:?})", slot, spec.ttl_s);
+    }
+
+    // 실제 manifest 의 슬롯들 확인
+    assert!(parsed.contains_key("route"));
+    assert!(parsed.contains_key("expected_amount_out"));
+    assert!(parsed.contains_key("price_impact_bp"));
+    assert!(parsed.contains_key("gas_estimate"));
+
+    // route 의 source 가 onchain_view, slot0() 호출 — placeholder 가 있음
+    let route_source = &parsed["route"].source;
+    assert_eq!(route_source["kind"], "onchain_view");
+    assert_eq!(route_source["chain"], "$chain");
+    assert_eq!(route_source["contract"], "$resolved.pool");
+    assert_eq!(route_source["function"], "slot0()");
+
+    // 이제 resolve: context 에 chain + pool 채워서 placeholder 치환
+    let ctx = ResolveContext::new()
+        .with_chain("eip155:1")
+        .insert_resolved("pool", serde_json::json!("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"));
+
+    let resolved = resolve_placeholders(route_source, &ctx).unwrap();
+    assert_eq!(resolved["chain"], "eip155:1");
+    assert_eq!(resolved["contract"], "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640");
+    println!("\nresolved route source:");
+    println!("{}", serde_json::to_string_pretty(&resolved).unwrap());
+
+    // gas_estimate 는 oracle_feed (placeholder 없음)
+    let gas_source = &parsed["gas_estimate"].source;
+    assert_eq!(gas_source["kind"], "oracle_feed");
+    assert_eq!(gas_source["provider"], "pyth");
+}
