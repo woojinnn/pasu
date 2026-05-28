@@ -460,13 +460,36 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       // Plan §M5/M8 (2026-05-28 사용자 e2e 확인) — DevTools 의 lazy object
       // expansion 없이 actions[] 의 정확한 ActionBody JSON 을 string 으로
       // 직접 출력. narrow scope "ActionEnvelope[] devtool console 에서
-      // 정확하게 나오는지 확인" 의 직접 검증용. JSON.stringify(null, 2) 로
-      // pretty-print — console 에서 expand 클릭 없이 readable.
+      // 정확하게 나오는지 확인" 의 직접 검증용.
+      //
+      // 사용자 요청 (2026-05-28) — multicall children 을 한 덩어리로 묶은
+      // 단일 JSON 은 가독성 부족 → outer Action 의 meta 와 body 의 각
+      // multicall child 를 separate console line 으로 print. 단일 action
+      // (multicall 외) 은 그대로 한 line.
       if (v3Outcome.kind === "hit") {
-        console.info(
-          "[Scopeball] declarative-route-v3 actions JSON",
-          JSON.stringify(v3Outcome.value.actions, null, 2),
-        );
+        v3Outcome.value.actions.forEach((action, oi) => {
+          const body = (action as { body?: { domain?: string; actions?: unknown[] } }).body;
+          const meta = (action as { meta?: unknown }).meta;
+          if (body && body.domain === "multicall" && Array.isArray(body.actions)) {
+            // multicall: meta 1 line + children each
+            console.info(
+              `[Scopeball] declarative-route-v3 actions[${oi}].meta`,
+              JSON.stringify(meta, null, 2),
+            );
+            body.actions.forEach((child, ci) => {
+              console.info(
+                `[Scopeball] declarative-route-v3 actions[${oi}].body.actions[${ci}]`,
+                JSON.stringify(child, null, 2),
+              );
+            });
+          } else {
+            // 단일 action: meta + body 한 line
+            console.info(
+              `[Scopeball] declarative-route-v3 actions[${oi}]`,
+              JSON.stringify(action, null, 2),
+            );
+          }
+        });
       }
     } catch (err) {
       console.warn("[Scopeball] declarative-route-v3 threw", {
