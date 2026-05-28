@@ -119,8 +119,10 @@ interface BundleMatchSourced {
 
 type BundleMatch = BundleMatchSpecific | BundleMatchSourced;
 
-/** ERC contract kind (registry-level, distinct from semantic TokenKind). */
-type TokenErcKind = "erc20" | "erc721" | "erc1155";
+/** ERC contract kind (registry-level, distinct from semantic TokenKind).
+ *  `native` = chain native asset (ETH / OP / ARB gas token) — uses sentinel
+ *  address `0x0000...0000` per TOKEN_SCHEMA_V3.md §4.4. */
+type TokenErcKind = "erc20" | "erc721" | "erc1155" | "native";
 type TokenErcKindSource = `tokens:${TokenErcKind}`;
 
 /**
@@ -195,7 +197,10 @@ const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const SCHEMA_VERSION_REQUIRED = "3" as const;
 const ADAPTER_TYPE_REQUIRED = "adapter_action" as const;
-const TOKEN_ERC_KINDS: ReadonlySet<TokenErcKind> = new Set(["erc20", "erc721", "erc1155"]);
+const TOKEN_ERC_KINDS: ReadonlySet<TokenErcKind> = new Set(["erc20", "erc721", "erc1155", "native"]);
+
+/** Sentinel address for `erc_kind: "native"` (TOKEN_SCHEMA_V3.md §4.4). */
+const NATIVE_SENTINEL = "0x0000000000000000000000000000000000000000";
 
 /**
  * Protocol-aware source kinds that pass the validator. Resolution itself is
@@ -279,6 +284,7 @@ function loadTokensIndex(): TokensByChainKind {
     perKind.set("erc20", new Set());
     perKind.set("erc721", new Set());
     perKind.set("erc1155", new Set());
+    perKind.set("native", new Set());
 
     for (const fname of readdirSync(chainPath)) {
       if (!fname.endsWith(".json")) continue;
@@ -308,7 +314,7 @@ function loadTokenMetadata(path: string, expectedChainId: ChainId): TokenMetadat
   const ercKind = obj.erc_kind;
   if (typeof ercKind !== "string" || !TOKEN_ERC_KINDS.has(ercKind as TokenErcKind)) {
     throw new Error(
-      `tokens/: ${path} has missing or invalid "erc_kind" — expected one of erc20/erc721/erc1155, got ${JSON.stringify(ercKind)}`,
+      `tokens/: ${path} has missing or invalid "erc_kind" — expected one of erc20/erc721/erc1155/native, got ${JSON.stringify(ercKind)}`,
     );
   }
 
@@ -316,6 +322,11 @@ function loadTokenMetadata(path: string, expectedChainId: ChainId): TokenMetadat
   if (typeof address !== "string" || !ADDRESS_RE.test(address)) {
     throw new Error(
       `tokens/: ${path} has missing or invalid "address" — expected "0x" + 40 hex, got ${JSON.stringify(address)}`,
+    );
+  }
+  if (ercKind === "native" && address.toLowerCase() !== NATIVE_SENTINEL) {
+    throw new Error(
+      `tokens/: ${path} erc_kind=native must use sentinel ${NATIVE_SENTINEL}, got ${address}`,
     );
   }
 
