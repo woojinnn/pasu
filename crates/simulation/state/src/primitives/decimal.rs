@@ -18,14 +18,17 @@ pub use alloy_primitives::{I256 as SignedI256, U128, U256};
 pub struct Decimal(pub String);
 
 impl Decimal {
+    /// 임의 문자열로부터 `Decimal` 생성. 호출자가 decimal 표기인지 보증.
     pub fn new(s: impl Into<String>) -> Self {
         Self(s.into())
     }
 
+    /// 0 을 표현하는 `Decimal`.
     pub fn zero() -> Self {
         Self("0".into())
     }
 
+    /// 내부 decimal 문자열에 대한 borrow.
     pub fn as_str(&self) -> &str {
         &self.0
     }

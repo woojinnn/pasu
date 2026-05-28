@@ -10,22 +10,27 @@ use tsify_next::Tsify;
 pub struct ChainId(pub String);
 
 impl ChainId {
+    /// CAIP-2 문자열로부터 `ChainId` 생성. 호출자가 형식 보증.
     pub fn new(s: impl Into<String>) -> Self {
         Self(s.into())
     }
 
+    /// 내부 CAIP-2 문자열에 대한 borrow.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
+    /// Ethereum mainnet 의 `eip155:1` 상수.
     pub fn ethereum_mainnet() -> Self {
         Self("eip155:1".into())
     }
 
+    /// Arbitrum One 의 `eip155:42161` 상수.
     pub fn arbitrum() -> Self {
         Self("eip155:42161".into())
     }
 
+    /// Base 의 `eip155:8453` 상수.
     pub fn base() -> Self {
         Self("eip155:8453".into())
     }
@@ -53,6 +58,8 @@ impl std::fmt::Display for ChainId {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct BlockHeight {
+    /// 블록 번호.
     pub number: u64,
+    /// 블록 timestamp (unix epoch 초).
     pub time: u64,
 }

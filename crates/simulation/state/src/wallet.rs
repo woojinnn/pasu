@@ -1,6 +1,6 @@
-//! WalletState — 한 지갑의 온체인 사실 스냅샷. spec §3.
+//! `WalletState` — 한 지갑의 온체인 사실 스냅샷. spec §3.
 //!
-//! Sync Orchestrator 가 LiveField 를 갱신하고, Reducer 가 action 적용 시
+//! Sync Orchestrator 가 `LiveField` 를 갱신하고, Reducer 가 action 적용 시
 //! in-place 로 수정한다.
 
 use serde::{Deserialize, Serialize};
@@ -19,13 +19,16 @@ use crate::token::{TokenHolding, TokenKey};
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WalletId {
+    /// EVM account address (lowercase hex).
     #[tsify(type = "string")]
     pub address: Address,
+    /// 본 지갑이 추적하는 chain 집합 (CAIP-2 id).
     #[tsify(type = "Array<ChainId>")]
     pub chains: BTreeSet<ChainId>,
 }
 
 impl WalletId {
+    /// address 와 추적 chain iterator 로부터 `WalletId` 생성.
     pub fn new(address: Address, chains: impl IntoIterator<Item = ChainId>) -> Self {
         Self {
             address,
@@ -34,13 +37,15 @@ impl WalletId {
     }
 }
 
+/// 한 지갑의 모든 온체인 사실 (잔고 / approval / position / pending / 블록 헤더) 스냅샷.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WalletState {
+    /// 본 지갑의 식별자.
     pub wallet_id: WalletId,
 
     /// per-instance fungibility 단위로 holding 1개.
-    /// (TokenKey 가 enum 이라 JSON object key 로 못 쓰므로 pairs 로 직렬화.)
+    /// (`TokenKey` 가 enum 이라 JSON object key 로 못 쓰므로 pairs 로 직렬화.)
     #[serde(default, with = "crate::serde_helpers::map_as_pairs")]
     #[tsify(type = "Array<[TokenKey, TokenHolding]>")]
     pub tokens: BTreeMap<TokenKey, TokenHolding>,
@@ -64,6 +69,7 @@ pub struct WalletState {
 }
 
 impl WalletState {
+    /// 비어 있는 `WalletState` 생성.
     pub fn new(wallet_id: WalletId) -> Self {
         Self {
             wallet_id,
@@ -124,15 +130,23 @@ impl WalletState {
 /// `all_approvals_to` walker 결과.
 #[derive(Debug)]
 pub enum ApprovalEntry<'a> {
+    /// ERC20 한도 1건.
     Erc20 {
+        /// 권한이 부여된 토큰의 (chain, contract).
         contract: crate::approval::ContractAddrKey,
+        /// 권한 한도 / 만료.
         spec: &'a crate::approval::AllowanceSpec,
     },
+    /// ERC721 / 1155 `setApprovalForAll` 1건.
     SetForAll {
+        /// 권한이 부여된 NFT / 1155 의 (chain, contract).
         contract: crate::approval::ContractAddrKey,
     },
+    /// Permit2 한도 1건.
     Permit2 {
+        /// (chain, token contract, spender) 트리플.
         key: crate::approval::SpenderKey,
+        /// Permit2 한도 / 만료 / nonce.
         allowance: &'a crate::approval::Permit2Allowance,
     },
 }
