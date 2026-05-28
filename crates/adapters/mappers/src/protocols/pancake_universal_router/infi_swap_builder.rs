@@ -485,6 +485,7 @@ mod tests {
     /// Encode a Pancake Infinity `CL_SWAP_EXACT_IN_SINGLE` (0x06) params
     /// blob — the 6-field PoolKey + 4 flat fields wrapped in an outer tuple
     /// (matches `PANCAKE_INFI_TABLE` JSON ABI for opcode 0x06).
+    #[allow(clippy::too_many_arguments)]
     fn encode_cl_swap_single_input(
         currency0: alloy_primitives::Address,
         currency1: alloy_primitives::Address,

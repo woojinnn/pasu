@@ -18,6 +18,7 @@
 //!   - Phase 5: `OpcodeStreamDispatch` execution (Universal Router)
 //!   - 향후:    `EnumTaggedDispatch` (Balancer V2 등)
 
+pub mod action_builder;
 pub mod array_emit;
 pub mod builtin_fn;
 pub mod enum_tagged;

@@ -1892,6 +1892,8 @@ dependencies = [
  "policy-engine",
  "serde",
  "serde_json",
+ "simulation-reducer",
+ "simulation-state",
  "thiserror",
 ]
 
