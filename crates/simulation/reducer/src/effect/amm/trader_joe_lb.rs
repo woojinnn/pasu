@@ -190,7 +190,8 @@ mod tests {
         assert_eq!(out, U256::from(90u64));
     }
 
-    /// Inactive-bin only fixture: the active_bin_id is not in the bins list.
+    /// Inactive-bin only fixture: the `active_bin_id` is not in the bins
+    /// list.
     /// Surfaces as `Invariant` so the policy / observability layer can see it.
     #[test]
     fn missing_active_bin_id_errors() {

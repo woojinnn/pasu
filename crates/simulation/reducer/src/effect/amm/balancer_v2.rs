@@ -36,12 +36,12 @@
 //!
 //! which is exact for `w_in == w_out` (i.e. 50/50 pools, the canonical case)
 //! and within a few percent for moderate weight skews (80/20). The
-//! approximation is the linearisation of the WeightedMath fractional power
+//! approximation is the linearisation of the `WeightedMath` fractional power
 //! around `w_in == w_out` (the dominant deployed weighting on Balancer V2).
 //!
 //! ## Stable pools
 //!
-//! `PoolState::Stable` reuses the Curve V1 StableSwap solver
+//! `PoolState::Stable` reuses the Curve V1 `StableSwap` solver
 //! (`curve_v1::compute_d` + `curve_v1::compute_y`) since Balancer
 //! `StableMath.sol::_calcOutGivenIn` is mathematically identical to Curve V1's
 //! `get_y` (same invariant, same Newton iteration). The direction convention
@@ -152,7 +152,7 @@ fn quote_weighted(
     Ok(numerator / denominator)
 }
 
-/// Quote a `Stable` pool single hop. Reuses Curve V1's StableSwap solver via
+/// Quote a `Stable` pool single hop. Reuses Curve V1's `StableSwap` solver via
 /// `curve_v1::compute_d` + `curve_v1::compute_y` (mathematically identical
 /// invariant — see module docs).
 fn quote_stable(balances: &[U256], amp: u32, fee_bp: u32, amount_in: U256) -> ReducerResult<U256> {

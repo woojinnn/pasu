@@ -8,7 +8,7 @@
 //!
 //! ## 1차 출처
 //!
-//! * SushiSwap V2 contracts (Uniswap V2 fork) —
+//! * `SushiSwap V2` contracts (`Uniswap V2` fork) —
 //!   <https://github.com/sushiswap/sushiswap/tree/master/protocols/sushiswap>
 //!   * `UniswapV2Pair.sol::getAmountOut` — identical `x*y=k` formula.
 //!   * Default fee 30 bp, expressed as the `(10000 - fee_bp)` multiplier — same

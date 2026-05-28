@@ -23,10 +23,10 @@
 //!
 //! ## 1차 출처
 //!
-//! * Egorov 2019 — "StableSwap — efficient mechanism for Stablecoin liquidity"
+//! * Egorov 2019 — "`StableSwap` — efficient mechanism for Stablecoin liquidity"
 //!   <https://classic.curve.fi/files/stableswap-paper.pdf> (§3 invariant,
 //!   §4 `get_y` derivation).
-//! * Curve V1 contracts —
+//! * `Curve V1` contracts —
 //!   <https://github.com/curvefi/curve-contract/blob/master/contracts/pool-templates/base/SwapTemplateBase.vy>
 //!   * `_xp` (line ~248) — scaling, treated as identity here because
 //!     `PoolState::StableV1` already exposes pre-scaled balances.
@@ -50,8 +50,8 @@ use crate::error::{ReducerError, ReducerResult};
 /// Hard cap on Newton-iteration rounds — matches the on-chain Vyper loop.
 const MAX_ITER: u32 = 255;
 
-/// Solve for the StableSwap invariant `D` given the per-coin balances and the
-/// amplification coefficient `A`.
+/// Solve for the `StableSwap` invariant `D` given the per-coin balances and
+/// the amplification coefficient `A`.
 ///
 /// Implements the canonical fixed-point iteration from
 /// `SwapTemplateBase.vy::get_D` — see Egorov 2019, §3.
@@ -71,10 +71,10 @@ const MAX_ITER: u32 = 255;
 ///   * any `U256` overflow during the iteration,
 ///   * non-convergence after `MAX_ITER` rounds.
 ///
-/// Shared with `balancer_v2` / `balancer_v3` so the StableSwap-family pool
+/// Shared with `balancer_v2` / `balancer_v3` so the `StableSwap`-family pool
 /// types in those venues can reuse the same Vyper-equivalent solver instead
 /// of duplicating it (Balancer `StablePool.sol::_calcOutGivenIn` calls the
-/// same StableSwap invariant under the hood).
+/// same `StableSwap` invariant under the hood).
 pub(super) fn compute_d(balances: &[U256], a: u32) -> ReducerResult<U256> {
     let n_u32 = u32::try_from(balances.len())
         .map_err(|_| ReducerError::Invariant("curve_v1 D: too many coins".into()))?;
@@ -178,7 +178,7 @@ pub(super) fn compute_d(balances: &[U256], a: u32) -> ReducerResult<U256> {
 }
 
 /// Solve for the new `y` (balance of coin `j`) after coin `i` changes to `x_i`,
-/// given the StableSwap invariant `D` and amplification `A`.
+/// given the `StableSwap` invariant `D` and amplification `A`.
 ///
 /// Implements `SwapTemplateBase.vy::get_y` — see Egorov 2019, §4.
 ///
@@ -191,6 +191,7 @@ pub(super) fn compute_d(balances: &[U256], a: u32) -> ReducerResult<U256> {
 /// ```
 ///
 /// Shared with `balancer_v2` / `balancer_v3` — see `compute_d` doc note.
+#[allow(clippy::many_single_char_names)]
 pub(super) fn compute_y(
     balances: &[U256],
     i: usize,
@@ -447,7 +448,7 @@ mod tests {
         assert_eq!(out, U256::ZERO);
     }
 
-    /// Out-of-range `fee_bp` (>= 10_000) is rejected with `Invariant`.
+    /// Out-of-range `fee_bp` (>= `10_000`) is rejected with `Invariant`.
     #[test]
     fn oversized_fee_errors() {
         let bal = vec![U256::from(1_000_000u64), U256::from(1_000_000u64)];

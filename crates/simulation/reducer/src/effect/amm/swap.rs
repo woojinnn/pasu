@@ -846,9 +846,9 @@ mod tests {
     }
 
     /// Batch 2 — Curve V2 dispatch now lands in `curve_v2::quote_swap_hop`.
-    /// A degenerate 3-coin payload with zero price_scale is rejected upstream
-    /// by the twocrypto simplification (`needs 2 coins` Invariant), so the
-    /// observable error type changes from `UnsupportedProtocol` to
+    /// A degenerate 3-coin payload with zero `price_scale` is rejected
+    /// upstream by the twocrypto simplification (`needs 2 coins` Invariant),
+    /// so the observable error type changes from `UnsupportedProtocol` to
     /// `Invariant`. The test pins this to catch a regression where the Curve
     /// dispatch silently falls back to `UnsupportedProtocol`.
     #[test]
@@ -879,12 +879,12 @@ mod tests {
         );
     }
 
-    /// Batch 2 — Curve V1 happy path through swap.rs. Two-coin StableSwap pool
-    /// at equal balances (1_000_000 / 1_000_000), `A = 100`, zero fee →
-    /// approximately 1:1. Verifies outer-only accounting and that the venue
-    /// dispatch lands in the curve_v1 helper. Slippage threshold tuned ≤ 999
-    /// to absorb the Newton-iteration +/- 2-wei slack documented in the
-    /// curve_v1 unit tests.
+    /// Batch 2 — Curve V1 happy path through `swap.rs`. Two-coin `StableSwap`
+    /// pool at equal balances (`1_000_000` / `1_000_000`), `A = 100`, zero
+    /// fee → approximately 1:1. Verifies outer-only accounting and that the
+    /// venue dispatch lands in the `curve_v1` helper. Slippage threshold
+    /// tuned ≤ 999 to absorb the Newton-iteration +/- 2-wei slack documented
+    /// in the `curve_v1` unit tests.
     #[test]
     fn curve_v1_single_hop_happy_path_equal_balance_peg() {
         let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
@@ -912,9 +912,10 @@ mod tests {
         assert_eq!(delta.token_changes.len(), 2);
     }
 
-    /// Batch 2 — Balancer V2 happy path through swap.rs. 50/50 weighted pool
-    /// (`1_000 / 1_000`, zero fee, `100` in) → `90` out via the balanced-
-    /// weight closed form. Verifies the dispatch lands in balancer_v2.
+    /// Batch 2 — Balancer V2 happy path through `swap.rs`. 50/50 weighted
+    /// pool (`1_000 / 1_000`, zero fee, `100` in) → `90` out via the
+    /// balanced-weight closed form. Verifies the dispatch lands in
+    /// `balancer_v2`.
     #[test]
     fn balancer_v2_single_hop_happy_path_5050_weighted() {
         let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
