@@ -34,7 +34,10 @@ use crate::apply::Reducer;
 use crate::error::{ReducerError, ReducerResult};
 use crate::helpers;
 
-use super::{aggregator, uniswap_v2, uniswap_v3, uniswap_v4};
+use super::{
+    aggregator, balancer_v2, balancer_v3, curve_v1, curve_v2, maverick_v2, sushi_v2,
+    trader_joe_lb, uniswap_v2, uniswap_v3, uniswap_v4,
+};
 
 impl Reducer for SwapAction {
     #[allow(clippy::too_many_lines)]
@@ -67,8 +70,16 @@ impl Reducer for SwapAction {
             let mut hop_in = path_amount_in;
             for hop in &path.hops {
                 hop_in = match &hop.venue {
-                    AmmVenue::UniswapV2 { .. } | AmmVenue::SushiV2 { .. } => {
+                    AmmVenue::UniswapV2 { .. } => {
                         uniswap_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
+                    }
+                    // Batch 2 — SushiV2 is a UniswapV2 fork and proxies to the
+                    // same closed form (`uniswap_v2::quote_swap_hop`); kept on
+                    // its own arm so per-venue divergence (Trident hybrid
+                    // pools, BentoBox-routed reserves) lands without a swap.rs
+                    // re-edit.
+                    AmmVenue::SushiV2 { .. } => {
+                        sushi_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     // Phase 2E — V3 concentrated-liquidity math (simplified
                     // active-tick closed form; see `uniswap_v3` module docs).
@@ -94,44 +105,30 @@ impl Reducer for SwapAction {
                         }
                         uniswap_v4::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
-                    // Phase 2 follow-up batches — Curve, Balancer, Trader Joe,
-                    // Maverick. Surface each one with a distinct protocol tag
-                    // so policy / observability can target them individually.
+                    // Batch 2 — Curve / Balancer / Trader Joe LB / Maverick
+                    // wired through their per-venue helpers. Each retains a
+                    // distinct error tag in its Invariant messages so policy
+                    // / observability can target them individually. Per-venue
+                    // simplifications (Curve V2 twocrypto, Balancer balanced-
+                    // weight approximation, TJ-LB / Maverick single active-bin)
+                    // are documented in the corresponding venue module docs.
                     AmmVenue::CurveV1 { .. } => {
-                        return Err(ReducerError::UnsupportedProtocol {
-                            action: "swap".into(),
-                            protocol: "curve_v1".into(),
-                        });
+                        curve_v1::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     AmmVenue::CurveV2 { .. } => {
-                        return Err(ReducerError::UnsupportedProtocol {
-                            action: "swap".into(),
-                            protocol: "curve_v2".into(),
-                        });
+                        curve_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     AmmVenue::BalancerV2 { .. } => {
-                        return Err(ReducerError::UnsupportedProtocol {
-                            action: "swap".into(),
-                            protocol: "balancer_v2".into(),
-                        });
+                        balancer_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     AmmVenue::BalancerV3 { .. } => {
-                        return Err(ReducerError::UnsupportedProtocol {
-                            action: "swap".into(),
-                            protocol: "balancer_v3".into(),
-                        });
+                        balancer_v3::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     AmmVenue::TraderJoeLB { .. } => {
-                        return Err(ReducerError::UnsupportedProtocol {
-                            action: "swap".into(),
-                            protocol: "trader_joe_lb".into(),
-                        });
+                        trader_joe_lb::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     AmmVenue::MaverickV2 { .. } => {
-                        return Err(ReducerError::UnsupportedProtocol {
-                            action: "swap".into(),
-                            protocol: "maverick_v2".into(),
-                        });
+                        maverick_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
                     // Phase 2G — aggregator outer-level wiring. The aggregator
                     // hop variant is unusual inside a path (the aggregator
@@ -848,10 +845,14 @@ mod tests {
         }
     }
 
-    /// Curve hop also surfaces as `UnsupportedProtocol` with the appropriate
-    /// protocol tag.
+    /// Batch 2 — Curve V2 dispatch now lands in `curve_v2::quote_swap_hop`.
+    /// A degenerate 3-coin payload with zero `price_scale` is rejected
+    /// upstream by the twocrypto simplification (`needs 2 coins` Invariant),
+    /// so the observable error type changes from `UnsupportedProtocol` to
+    /// `Invariant`. The test pins this to catch a regression where the Curve
+    /// dispatch silently falls back to `UnsupportedProtocol`.
     #[test]
-    fn curve_hop_returns_unsupported_protocol_with_curve_tag() {
+    fn curve_v2_three_coin_payload_surfaces_invariant_from_helper() {
         let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
         let curve = AmmVenue::CurveV2 {
             chain: ChainId::ethereum_mainnet(),
@@ -872,12 +873,85 @@ mod tests {
             pool_state,
         );
         let err = swap.apply(&state, &ctx()).unwrap_err();
-        match err {
-            ReducerError::UnsupportedProtocol { protocol, .. } => {
-                assert_eq!(protocol, "curve_v2");
-            }
-            other => panic!("expected UnsupportedProtocol, got {other:?}"),
-        }
+        assert!(
+            matches!(&err, ReducerError::Invariant(msg) if msg.contains("2 coins")),
+            "unexpected err: {err:?}"
+        );
+    }
+
+    /// Batch 2 — Curve V1 happy path through `swap.rs`. Two-coin `StableSwap`
+    /// pool at equal balances (`1_000_000` / `1_000_000`), `A = 100`, zero
+    /// fee → approximately 1:1. Verifies outer-only accounting and that the
+    /// venue dispatch lands in the `curve_v1` helper. Slippage threshold
+    /// tuned ≤ 999 to absorb the Newton-iteration +/- 2-wei slack documented
+    /// in the `curve_v1` unit tests.
+    #[test]
+    fn curve_v1_single_hop_happy_path_equal_balance_peg() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let curve = AmmVenue::CurveV1 {
+            chain: ChainId::ethereum_mainnet(),
+            pool: Address::from_str("0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7").unwrap(),
+            n_coins: 2,
+            is_meta: false,
+        };
+        let pool_state = PoolState::StableV1 {
+            balances: vec![U256::from(1_000_000u64), U256::from(1_000_000u64)],
+            a: 100,
+            fee_bp: 0,
+        };
+        let swap = exact_in_swap(
+            U256::from(1_000u64),
+            U256::from(990u64),
+            usdc_ref(),
+            weth_ref(),
+            curve,
+            pool_state,
+        );
+        let delta = swap.apply(&state, &ctx()).unwrap();
+        // Outer-only accounting (USDC debit, WETH credit).
+        assert_eq!(delta.token_changes.len(), 2);
+    }
+
+    /// Batch 2 — Balancer V2 happy path through `swap.rs`. 50/50 weighted
+    /// pool (`1_000 / 1_000`, zero fee, `100` in) → `90` out via the
+    /// balanced-weight closed form. Verifies the dispatch lands in
+    /// `balancer_v2`.
+    #[test]
+    fn balancer_v2_single_hop_happy_path_5050_weighted() {
+        let state = state_with_pair(U256::from(1_000_000u64), U256::ZERO);
+        let bal = AmmVenue::BalancerV2 {
+            chain: ChainId::ethereum_mainnet(),
+            vault: Address::from_str("0xba12222222228d8ba445958a75a0704d566bf2c8").unwrap(),
+            pool_id: format!("0x{}", "00".repeat(32)),
+            pool_type: crate::action::amm::BalancerPoolType::Weighted,
+        };
+        let pool_state = PoolState::Weighted {
+            balances: vec![U256::from(1_000u64), U256::from(1_000u64)],
+            weights: vec![50, 50],
+            fee_bp: 0,
+        };
+        let swap = exact_in_swap(
+            U256::from(100u64),
+            U256::from(80u64),
+            usdc_ref(),
+            weth_ref(),
+            bal,
+            pool_state,
+        );
+        let delta = swap.apply(&state, &ctx()).unwrap();
+        let weth_change = delta
+            .token_changes
+            .iter()
+            .find_map(|tc| match tc {
+                TokenChange::BalanceDelta { key, delta }
+                    if key == &weth_ref().key && delta.is_positive() =>
+                {
+                    Some(delta.unsigned_abs().to_string())
+                }
+                _ => None,
+            })
+            .expect("expected positive WETH delta");
+        assert_eq!(weth_change, "90");
     }
 
     // ----------------------------------------------------------------------
