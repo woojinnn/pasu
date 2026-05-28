@@ -1,5 +1,4 @@
 import Browser from "webextension-polyfill";
-import { ensureSeedBundlesInstalled } from "./adapter-loader/declarative-adapter-loader";
 import {
   tryDeclarativeRouteV3,
   type DeclarativeRouteV3Outcome,
@@ -138,10 +137,6 @@ export async function decideMessage(
   options: DecisionOptions = {},
 ): Promise<DecisionResult> {
   await ensureDefaultPoliciesInstalled();
-  // Phase 1B — mount declarative adapter seed bundles after the policy
-  // engine is warm. `ensureSeedBundlesInstalled` is idempotent within a
-  // single SW lifetime; subsequent calls return the cached promise.
-  await ensureSeedBundlesInstalled();
   return withActorLock(inferActor(message), () =>
     decideInner(message, options),
   );

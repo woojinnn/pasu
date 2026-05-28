@@ -1,27 +1,11 @@
 /**
- * T-TEST-ENVELOPE — enrichEnvelopeAssets + Cedar verdict source audit edge
- * cases (no production code change).
+ * T-TEST-ENVELOPE — Cedar verdict source audit edge cases (Groups B + C).
  *
- * Coverage matrix (8 tests):
+ * Plan §B4 (2026-05-28) — Group A (`enrichEnvelopeAssets edge cases`)
+ * removed alongside the v1 source. Groups B + C remain under `describe.skip`
+ * pending Cedar v3 verdict re-integration (별 plan `cedar-verdict-v3-integration.md`).
  *
- *   1. enrichEnvelopeAssets_handles_unknown_token_with_empty_symbol
- *      — Layer 3 returns null for unknown address. Skeleton survives intact
- *        (no `symbol`/`decimals` injected). A downstream Cedar policy that
- *        reads `context.outputToken.asset.symbol == ""` would still trigger
- *        because Cedar treats missing attrs differently from empty strings,
- *        so the *enricher's* contract is `skeleton preserved`. The Cedar
- *        verdict side is exercised in test 6.
- *
- *   2. enrichEnvelopeAssets_uses_negative_cache_on_404
- *      — When the token client treats HTTP 404 as a negative-cache hit, a
- *        second `enrichEnvelopeAssets` call for the same envelope shape must
- *        not re-invoke the underlying fetch. We simulate this via the mock
- *        client counter — first lookup → null + sticky null forever.
- *
- *   3. enrichEnvelopeAssets_handles_network_timeout
- *      — Token client throws (AbortError, network failure). Enricher must
- *        absorb the throw, return the skeleton unchanged, and let the route
- *        stay alive (no exception leaks).
+ * Coverage matrix (Groups B + C, currently skipped):
  *
  *   4. verdictSource_audit_declarative_path_logged
  *      — Orchestrator integration: declarative-route hit + envelope ≥ 1 →
@@ -52,72 +36,20 @@
  *        WASM falls closed via `__engine::projection_failed`. We assert that
  *        evaluateWithEnvelopes returning this engine error → orchestrator
  *        records `verdict.kind === "fail"` with the synthetic policy id.
- *
- * Production code (declarative-route.ts, token-client.ts, orchestrator.ts,
- * policy-set.json) is NOT modified. All boundaries are mocked at the test
- * fence — vitest mocks for `wasm-bridge`, `jit-fetcher`, `policy-rpc`,
- * `policies-loader`, `storage`, `adapter-loader/declarative-route`, and
- * `webextension-polyfill`.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestType, type Message } from "@lib/types";
-
-// ─── Group A: enrichEnvelopeAssets unit tests ─────────────────────────────
-const enrichmentMocks = vi.hoisted(() => ({
-  resolveAdapter: vi.fn(),
-  declarativeRouteRequest: vi.fn(),
-}));
-
-vi.mock("webextension-polyfill", () => ({
-  default: {
-    runtime: {
-      getURL: vi.fn((p: string) => `chrome-extension://scopeball/${p}`),
-    },
-  },
-}));
-vi.mock("../../wasm-bridge", () => {
-  class MockEngineError extends Error {
-    constructor(
-      readonly kind: string,
-      message: string,
-    ) {
-      super(message);
-      this.name = "EngineError";
-    }
-  }
-  return {
-    EngineError: MockEngineError,
-    declarativeRouteRequest: enrichmentMocks.declarativeRouteRequest,
-  };
-});
-vi.mock("../jit-fetcher", () => ({
-  resolveAdapter: enrichmentMocks.resolveAdapter,
-}));
-
-import { enrichEnvelopeAssets } from "../declarative-route";
-import type {
-  TokenMetadata,
-  TokenRegistryClient,
-} from "../../registry/token-client";
 
 const WETH_MAINNET = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const USDC_MAINNET = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-const UNKNOWN_ADDR = "0x0000000000000000000000000000000000000099";
-
-const WETH_META: TokenMetadata = {
-  kind: "erc20",
-  chainId: 1,
-  address: WETH_MAINNET,
-  symbol: "WETH",
-  decimals: 18,
-  name: "Wrapped Ether",
-};
 
 /**
  * Make a V2 swap envelope with the given input asset (WETH default), the
- * given output asset (USDC default), and the given recipient. Used by both
- * enrichment tests (Group A) and Cedar verdict tests (Group C — they share
- * the same envelope shape).
+ * given output asset (USDC default), and the given recipient. Plan §B4
+ * (2026-05-28) — kept module-level even after Group A removal because
+ * Group C orchestrator tests share the same envelope shape; cedar verdict
+ * v3 migration (별 plan `cedar-verdict-v3-integration.md`) will repoint
+ * these fixtures at the v3 Action shape.
  */
 function makeSwapEnvelope(opts: {
   inputAddress?: string;
@@ -156,128 +88,6 @@ function makeSwapEnvelope(opts: {
     },
   };
 }
-
-describe("enrichEnvelopeAssets edge cases", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("enrichEnvelopeAssets_handles_unknown_token_with_empty_symbol", async () => {
-    // Token client cannot resolve UNKNOWN_ADDR — lookup returns null. The
-    // enricher's contract: leave the skeleton intact (no spurious symbol).
-    // This is the state a downstream Cedar policy
-    // (`forbid-untrusted-output-symbol` / `known-token-only`) inspects via
-    // `context.outputToken.asset.symbol == ""`. Because the enricher never
-    // synthesises a symbol of `""`, the policy actually fires off the
-    // *absent* attr, not an empty string — but the contract under test
-    // here is the enricher: it MUST NOT inject a `symbol: ""` of its own.
-    const lookup = vi.fn(async (_chain: number, addr: string) => {
-      if (addr.toLowerCase() === WETH_MAINNET) return WETH_META;
-      return null;
-    });
-    const client: TokenRegistryClient = { lookup };
-
-    const swap = makeSwapEnvelope({ outputAddress: UNKNOWN_ADDR });
-    const [out] = await enrichEnvelopeAssets([swap], 1, client);
-    const fields = (out as { fields: Record<string, unknown> }).fields as {
-      inputToken: { asset: Record<string, unknown> };
-      outputToken: { asset: Record<string, unknown> };
-    };
-
-    // Known token → enriched as normal.
-    expect(fields.inputToken.asset).toMatchObject({
-      symbol: "WETH",
-      decimals: 18,
-    });
-    // Unknown token → skeleton untouched. `symbol` MUST be absent (not "").
-    expect(fields.outputToken.asset).toEqual({
-      kind: "erc20",
-      address: UNKNOWN_ADDR,
-    });
-    expect("symbol" in fields.outputToken.asset).toBe(false);
-    expect("decimals" in fields.outputToken.asset).toBe(false);
-    expect(lookup).toHaveBeenCalledTimes(2);
-  });
-
-  it("enrichEnvelopeAssets_uses_negative_cache_on_404", async () => {
-    // Simulate the token-client's negative-cache behaviour: after the first
-    // 404, subsequent same-key lookups return null without re-fetching.
-    // The mock client's `lookup` counts calls — we feed it through the
-    // enricher twice for the same envelope shape and assert the second
-    // call uses the same null result (i.e. it never throws / never tries
-    // to "do better" the second time).
-    let underlyingFetchCount = 0;
-    const negativeKey = `1__${UNKNOWN_ADDR}`;
-    const negativeCache = new Set<string>();
-    const lookup = vi.fn(async (chainId: number, addr: string) => {
-      const lower = addr.toLowerCase();
-      const k = `${chainId}__${lower}`;
-      if (negativeCache.has(k)) return null;
-      if (lower === WETH_MAINNET) {
-        underlyingFetchCount += 1;
-        return WETH_META;
-      }
-      // Unknown → first lookup hits the "404" path → returns null AND
-      // installs a negative cache slot to mirror token-client.ts behaviour.
-      underlyingFetchCount += 1;
-      negativeCache.add(k);
-      return null;
-    });
-    const client: TokenRegistryClient = { lookup };
-
-    const swap = makeSwapEnvelope({ outputAddress: UNKNOWN_ADDR });
-    await enrichEnvelopeAssets([swap], 1, client);
-    const firstCount = underlyingFetchCount;
-
-    // Second pass: WETH is also unique per envelope, so it also fetches a
-    // second time in this mock — but UNKNOWN_ADDR must NOT, because the
-    // negative cache short-circuits it.
-    await enrichEnvelopeAssets([swap], 1, client);
-
-    // The negative cache must have been honoured for the unknown address:
-    // total fetches = first(WETH+UNKNOWN) + second(WETH) = 3, not 4.
-    expect(underlyingFetchCount - firstCount).toBe(1);
-    expect(negativeCache.has(negativeKey)).toBe(true);
-    expect(lookup).toHaveBeenCalledTimes(4); // 2 envelopes × 2 assets
-  });
-
-  it("enrichEnvelopeAssets_handles_network_timeout", async () => {
-    // Simulate a token-client.ts network timeout — the underlying client
-    // throws an AbortError. The enricher MUST absorb it (per
-    // `enrichAssetRef`'s try/catch) and emit the bare skeleton.
-    const lookup = vi.fn(async () => {
-      const err = new Error("The operation was aborted.");
-      err.name = "AbortError";
-      throw err;
-    });
-    const client: TokenRegistryClient = { lookup };
-
-    const swap = makeSwapEnvelope({});
-
-    // The call must NOT throw — the route stays alive.
-    const [out] = await enrichEnvelopeAssets([swap], 1, client);
-    const fields = (out as { fields: Record<string, unknown> }).fields as {
-      inputToken: { asset: Record<string, unknown> };
-      outputToken: { asset: Record<string, unknown> };
-    };
-
-    // Both AssetRefs come back as bare skeletons — symbol/decimals absent.
-    expect(fields.inputToken.asset).toEqual({
-      kind: "erc20",
-      address: WETH_MAINNET,
-    });
-    expect(fields.outputToken.asset).toEqual({
-      kind: "erc20",
-      address: USDC_MAINNET,
-    });
-    // lookup was attempted for every AssetRef despite the throw — the
-    // enricher does not bail early on the first exception.
-    expect(lookup).toHaveBeenCalledTimes(2);
-  });
-});
 
 // ─── Groups B + C: orchestrator-driven verdictSource + Cedar verdict ──────
 //

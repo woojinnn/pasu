@@ -4,7 +4,6 @@ import {
   handleDashboardRequest,
   isDashboardRequest,
 } from "./dashboard/api";
-import { ensureSeedBundlesInstalled } from "./adapter-loader/declarative-adapter-loader";
 import {
   handleManifestRequest,
   isManifestRequest,
@@ -91,18 +90,6 @@ async function bootSequence(): Promise<void> {
     await ensureDefaultPoliciesInstalled();
   } catch (err) {
     console.warn("[Scopeball] cold-start prewarm failed:", err);
-  }
-
-  // Phase 7 adapter-loader seed: install declarative adapter bundles
-  // (shipped with the extension) into the WASM engine. Sequenced after
-  // `ensureDefaultPoliciesInstalled` because both call into the same
-  // WASM module — sequencing keeps the init() singleton's first caller
-  // from racing the second. Failures here don't abort manifest hydration
-  // — the decideMessage path retries.
-  try {
-    await ensureSeedBundlesInstalled();
-  } catch (err) {
-    console.warn("[Scopeball] seed bundle install failed:", err);
   }
 
   // Phase 6 / Task 6.3: hydrate the manifest-driven schema on SW boot.
