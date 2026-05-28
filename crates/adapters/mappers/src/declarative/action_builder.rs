@@ -65,6 +65,64 @@ pub enum V3BuildError {
         /// Policy that triggered the error.
         policy: UnknownOpcodePolicy,
     },
+    /// A `$resolved.<k>` / `$derived.<k>` placeholder name is not in the
+    /// fallback type catalog. Fail-loud so manifest authors notice when they
+    /// introduce a new placeholder that hasn't been wired into
+    /// [`placeholder_type_lookup`].
+    #[error("unknown placeholder (no fallback type registered): {0}")]
+    UnknownPlaceholder(String),
+}
+
+/// Fallback type for unresolved `$resolved.<k>` / `$derived.<k>` placeholders.
+///
+/// Plan §M9 — Sync orchestrator (별 plan) 가 실체화 전까지 narrow scope
+/// ("value 비어있는 상태") 를 유지하려면 placeholder 의 expected type 에 맞는
+/// zero value 를 채워야 함. ABI Address 자리에는 `0x0...0` (20 byte), u32 자리
+/// 에는 0, U256 자리에는 `"0"`, bytes32 자리에는 `0x0...0` (32 byte).
+#[derive(Copy, Clone, Debug)]
+enum FallbackType {
+    Address,
+    U32,
+    U256,
+    Bytes32,
+}
+
+/// Plan §M9 — 25 manifest 의 placeholder 16종 → FallbackType 매핑.
+///
+/// match-based const evaluation. 새 placeholder 추가 시 본 함수에 arm 추가
+/// (안 하면 [`V3BuildError::UnknownPlaceholder`] fail-loud).
+fn placeholder_type_lookup(rest: &str) -> Option<FallbackType> {
+    use FallbackType::*;
+    match rest {
+        "weth"
+        | "factory"
+        | "pool"
+        | "pool_manager"
+        | "v3_path_first_token"
+        | "v3_path_last_token"
+        | "v4_token_in"
+        | "v4_token_out"
+        | "v4_hooks"
+        | "v4_recipient" => Some(Address),
+        "fee_tier_bp" | "slippage_bp" => Some(U32),
+        "v4_amount_in" | "v4_amount_out_min" | "min_lp_out" => Some(U256),
+        "v4_pool_id" => Some(Bytes32),
+        _ => None,
+    }
+}
+
+/// Type-aware zero value for [`FallbackType`].
+fn zero_value_for(t: FallbackType) -> JsonValue {
+    match t {
+        FallbackType::Address => JsonValue::String(
+            "0x0000000000000000000000000000000000000000".to_owned(),
+        ),
+        FallbackType::U32 => JsonValue::Number(serde_json::Number::from(0u32)),
+        FallbackType::U256 => JsonValue::String("0".to_owned()),
+        FallbackType::Bytes32 => JsonValue::String(
+            "0x0000000000000000000000000000000000000000000000000000000000000000".to_owned(),
+        ),
+    }
 }
 
 /// How [`build_multicall_from_opcode_stream`] reacts to an unknown opcode.
@@ -179,26 +237,24 @@ fn resolve_placeholder(ctx: &V3MapContext<'_>, raw: &str) -> Result<JsonValue, V
                 args: format!("{e}: {}", ctx.args_json),
             })
         }
-        // Plan §M5 narrow scope — `$resolved.<k>` / `$derived.<k>` 는
-        // Sync orchestrator (별 plan) 가 채우는 영역. 본 plan narrow scope
-        // "live_inputs.value 비어있는 상태" 와 consistent 하게, 미배선 시
-        // Address zero hex (`"0x" + 40 zeros`) 로 fallback. PoolId (bytes32)
-        // 같이 다른 type 의 placeholder 도 fallback 같음 — serde deserialize
-        // 단계에서 type mismatch 시 build_action_body_failed 로 surfacing.
-        "resolved" => Ok(ctx
-            .resolved
-            .get(rest)
-            .cloned()
-            .unwrap_or_else(|| JsonValue::String(
-                "0x0000000000000000000000000000000000000000".to_owned(),
-            ))),
-        "derived" => Ok(ctx
-            .derived
-            .get(rest)
-            .cloned()
-            .unwrap_or_else(|| JsonValue::String(
-                "0x0000000000000000000000000000000000000000".to_owned(),
-            ))),
+        // Plan §M9 — `$resolved.<k>` / `$derived.<k>` 는 Sync orchestrator
+        // (별 plan) 가 채우는 영역. 본 plan narrow scope 안에서 ctx.resolved /
+        // ctx.derived 는 비어있을 수 있으므로, placeholder name 에 따라
+        // type-aware zero value 로 fallback (Address / U32 / U256 / Bytes32).
+        // 카탈로그에 없는 placeholder 는 UnknownPlaceholder 로 fail-loud —
+        // manifest 작성자가 새 placeholder 도입 시 placeholder_type_lookup
+        // 갱신 강제. 75b05d1 commit 의 Address zero hex 일괄 fallback 이
+        // u32/bytes32 자리에서 serde mismatch 를 일으킨 부작용 fix.
+        "resolved" | "derived" => {
+            let map = if root == "resolved" { &ctx.resolved } else { &ctx.derived };
+            if let Some(v) = map.get(rest).cloned() {
+                Ok(v)
+            } else if let Some(ty) = placeholder_type_lookup(rest) {
+                Ok(zero_value_for(ty))
+            } else {
+                Err(V3BuildError::UnknownPlaceholder(format!("{root}.{rest}")))
+            }
+        }
         "inputs" => {
             let inputs = ctx
                 .inputs
@@ -1250,5 +1306,55 @@ mod tests {
         let ctx = mk_ctx(&args);
         let v = resolve_placeholder(&ctx, "$args.path[-1]").unwrap();
         assert_eq!(v, json!("0xcccc"));
+    }
+
+    // Plan §M9 — type-aware placeholder fallback (Sync orchestrator 별 plan).
+
+    #[test]
+    fn m9_resolved_address_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$resolved.weth").unwrap();
+        assert_eq!(v, json!("0x0000000000000000000000000000000000000000"));
+    }
+
+    #[test]
+    fn m9_derived_u32_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$derived.fee_tier_bp").unwrap();
+        assert_eq!(v, json!(0u32));
+    }
+
+    #[test]
+    fn m9_derived_u256_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$derived.v4_amount_in").unwrap();
+        assert_eq!(v, json!("0"));
+    }
+
+    #[test]
+    fn m9_derived_bytes32_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$derived.v4_pool_id").unwrap();
+        assert_eq!(
+            v,
+            json!("0x0000000000000000000000000000000000000000000000000000000000000000")
+        );
+    }
+
+    #[test]
+    fn m9_unknown_placeholder_fail_loud() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let err = resolve_placeholder(&ctx, "$derived.nonexistent_field").unwrap_err();
+        match err {
+            V3BuildError::UnknownPlaceholder(s) => {
+                assert_eq!(s, "derived.nonexistent_field");
+            }
+            other => panic!("expected UnknownPlaceholder, got {other:?}"),
+        }
     }
 }
