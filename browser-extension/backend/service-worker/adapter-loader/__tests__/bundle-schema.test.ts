@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
   BundleParseError,
+  matchEntriesV3,
   parseBundle,
+  parseBundleV3,
   type AdapterFunctionBundle,
 } from "../bundle-schema";
 
@@ -331,5 +333,128 @@ describe("parseBundle — error paths", () => {
         requires: { imperative: [], host_capabilities: [], extension: ">=0.1.0" },
       }),
     ).toThrow(/max_depth/);
+  });
+
+  it("rejects schema_version=3 — caller must use parseBundleV3", () => {
+    expect(() =>
+      parseBundle({
+        type: "adapter_action",
+        id: "x@1.0.0",
+        publisher: "p",
+        schema_version: "3",
+        match: {
+          chain_to_addresses: {
+            "1": ["0x0000000000000000000000000000000000000001"],
+          },
+          selector: "0x12345678",
+        },
+        abi_fragment: { function_name: "x", abi: {} },
+        emit: { strategy: "single_emit", body: {} },
+      }),
+    ).toThrow(/parseBundleV3/);
+  });
+});
+
+describe("parseBundleV3", () => {
+  const v3Bundle = {
+    type: "adapter_action",
+    id: "uniswap/v2-router-02/swapExactTokensForETH@1.0.0",
+    publisher: "uniswap.eth",
+    schema_version: "3",
+    match: {
+      selector: "0x18cbafe5",
+      chain_to_addresses: {
+        "1": ["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],
+        "8453": ["0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"],
+      },
+    },
+    abi_fragment: {
+      function_name: "swapExactTokensForETH",
+      abi: { name: "swapExactTokensForETH", type: "function", inputs: [] },
+    },
+    emit: {
+      strategy: "single_emit",
+      body: {
+        domain: "amm",
+        amm: { action: "swap", swap: { venue: { name: "uniswap_v2" } } },
+      },
+    },
+  };
+
+  it("parses a valid v3 manifest and preserves emit pass-through", () => {
+    const bundle = parseBundleV3(v3Bundle);
+    expect(bundle).not.toBeNull();
+    expect(bundle!.type).toBe("adapter_action");
+    expect(bundle!.schema_version).toBe("3");
+    expect(bundle!.id).toBe(
+      "uniswap/v2-router-02/swapExactTokensForETH@1.0.0",
+    );
+    expect(bundle!.match.selector).toBe("0x18cbafe5");
+    expect(bundle!.match.chain_to_addresses).toEqual({
+      "1": ["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],
+      "8453": ["0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"],
+    });
+    // Pass-through invariant: the raw emit tree flows untouched so the
+    // WASM-side action_builder can consume the exact registry payload.
+    expect(bundle!.emit).toEqual(v3Bundle.emit);
+  });
+
+  it("returns null for v2 manifests (schema_version=2)", () => {
+    expect(
+      parseBundleV3({
+        type: "adapter_function",
+        id: "uniswap/swap-router-02/wrapETH@1.0.0",
+        publisher: "uniswap.eth",
+        schema_version: "2",
+        match: {
+          selector: "0x1c58db4f",
+          chain_to_addresses: {
+            "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+          },
+        },
+        abi_fragment: { function_name: "wrapETH", abi: {} },
+        emit: { strategy: "single_emit", category: "misc", action: "wrap", fields: {} },
+        requires: { imperative: [], host_capabilities: [], extension: ">=0.1.0" },
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null for v1 manifests (schema_version absent)", () => {
+    expect(
+      parseBundleV3({
+        type: "adapter_function",
+        id: "demo@1.0.0",
+        match: { chain_ids: [1], to: [], selector: "0x12345678" },
+        abi_fragment: { function_name: "x", abi: {} },
+        emit: { strategy: "single_emit", category: "x", action: "y", fields: {} },
+        requires: { imperative: [], host_capabilities: [], extension: ">=0.1.0" },
+      }),
+    ).toBeNull();
+  });
+
+  it("throws BundleParseError when schema_version=3 but type != adapter_action", () => {
+    expect(() =>
+      parseBundleV3({
+        ...v3Bundle,
+        type: "adapter_function",
+      }),
+    ).toThrow(/adapter_action/);
+  });
+
+  it("throws BundleParseError when match.selector is malformed", () => {
+    expect(() =>
+      parseBundleV3({
+        ...v3Bundle,
+        match: { ...v3Bundle.match, selector: "0xshort" },
+      }),
+    ).toThrow(/selector/);
+  });
+
+  it("matchEntriesV3 expands chain_to_addresses to (chainId, address) pairs", () => {
+    const bundle = parseBundleV3(v3Bundle)!;
+    expect(matchEntriesV3(bundle.match)).toEqual([
+      [1, "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],
+      [8453, "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"],
+    ]);
   });
 });

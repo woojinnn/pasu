@@ -17,6 +17,7 @@ import path from "node:path";
 
 const mocks = vi.hoisted(() => ({
   installDeclarativeBundle: vi.fn(),
+  declarativeInstallV3: vi.fn(),
   getURL: vi.fn((p: string) => `chrome-extension://scopeball/${p}`),
 }));
 
@@ -26,12 +27,16 @@ vi.mock("webextension-polyfill", () => ({
 
 vi.mock("../wasm-bridge", () => ({
   installDeclarativeBundle: mocks.installDeclarativeBundle,
+  declarativeInstallV3: mocks.declarativeInstallV3,
 }));
 
 import {
+  __resetDeclarativeV3CacheForTest,
   __resetSeedBundlesForTest,
   DeclarativeAdapterLoadError,
   ensureSeedBundlesInstalled,
+  installDeclarativeBundleV3,
+  InstallDeclarativeV3Error,
   mountDeclarativeBundle,
 } from "../adapter-loader/declarative-adapter-loader";
 
@@ -182,5 +187,246 @@ describe("ensureSeedBundlesInstalled", () => {
     expect(warnSpy).toHaveBeenCalled();
     expect(mocks.installDeclarativeBundle).not.toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+});
+
+describe("installDeclarativeBundleV3", () => {
+  const fetchMock = vi.fn();
+  const v3Bundle = {
+    type: "adapter_action",
+    id: "uniswap/v2-router-02/swapExactTokensForETH@1.0.0",
+    publisher: "uniswap.eth",
+    schema_version: "3",
+    match: {
+      selector: "0x18cbafe5",
+      chain_to_addresses: {
+        "1": ["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],
+        "8453": ["0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"],
+      },
+    },
+    abi_fragment: {
+      function_name: "swapExactTokensForETH",
+      abi: { name: "swapExactTokensForETH", type: "function", inputs: [] },
+    },
+    emit: {
+      strategy: "single_emit",
+      body: {
+        domain: "amm",
+        amm: { action: "swap", swap: { venue: { name: "uniswap_v2" } } },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    __resetDeclarativeV3CacheForTest();
+    fetchMock.mockReset();
+  });
+
+  it("fetches the callkey, parses the v3 bundle, and installs via WASM", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          matched: true,
+          bundle_id: v3Bundle.id,
+          manifest_path: "manifests/x",
+          bundle_sha256: "0x" + "a".repeat(64),
+          bundle: v3Bundle,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    mocks.declarativeInstallV3.mockResolvedValueOnce({
+      decoder_id: v3Bundle.id,
+      bundle_id: v3Bundle.id,
+    });
+
+    const result = await installDeclarativeBundleV3({
+      chainId: 1,
+      to: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      selector: "0x18cbafe5",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.decoderId).toBe(v3Bundle.id);
+    expect(result!.bundleId).toBe(v3Bundle.id);
+    expect(result!.bundle.schema_version).toBe("3");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.invalid/index/by-callkey/1__0x7a250d5630b4cf539739df2c5dacb4c659f2488d__0x18cbafe5.json",
+    );
+    // The bundle text handed to WASM mirrors what the registry sent
+    // (pass-through invariant for byte-stable hashing downstream).
+    expect(mocks.declarativeInstallV3).toHaveBeenCalledTimes(1);
+    expect(mocks.declarativeInstallV3).toHaveBeenCalledWith(
+      JSON.stringify(v3Bundle),
+    );
+  });
+
+  it("returns the cached install on the same callkey without re-fetching", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          matched: true,
+          bundle_id: v3Bundle.id,
+          manifest_path: "manifests/x",
+          bundle_sha256: "0x" + "a".repeat(64),
+          bundle: v3Bundle,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    mocks.declarativeInstallV3.mockResolvedValue({
+      decoder_id: v3Bundle.id,
+      bundle_id: v3Bundle.id,
+    });
+
+    const first = await installDeclarativeBundleV3({
+      chainId: 1,
+      to: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      selector: "0x18cbafe5",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    const second = await installDeclarativeBundleV3({
+      chainId: 1,
+      to: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      selector: "0x18cbafe5",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(first!.bundleId).toBe(second!.bundleId);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mocks.declarativeInstallV3).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null for a 404 miss without throwing or installing", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("not found", { status: 404 }),
+    );
+
+    const result = await installDeclarativeBundleV3({
+      chainId: 1,
+      to: "0x0000000000000000000000000000000000000001",
+      selector: "0xdeadbeef",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(result).toBeNull();
+    expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the response matched=false", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ matched: false }), { status: 200 }),
+    );
+
+    const result = await installDeclarativeBundleV3({
+      chainId: 1,
+      to: "0x0000000000000000000000000000000000000001",
+      selector: "0xdeadbeef",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(result).toBeNull();
+    expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the registry serves a v2 manifest (silent v3 miss)", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          matched: true,
+          bundle_id: "uniswap/swap-router-02/wrapETH@1.0.0",
+          manifest_path: "manifests/x",
+          bundle_sha256: "0x" + "a".repeat(64),
+          bundle: {
+            type: "adapter_function",
+            id: "uniswap/swap-router-02/wrapETH@1.0.0",
+            publisher: "uniswap.eth",
+            schema_version: "2",
+            match: {
+              selector: "0x1c58db4f",
+              chain_to_addresses: {
+                "1": ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
+              },
+            },
+            abi_fragment: { function_name: "wrapETH", abi: {} },
+            emit: {
+              strategy: "single_emit",
+              category: "misc",
+              action: "wrap",
+              fields: {},
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const result = await installDeclarativeBundleV3({
+      chainId: 1,
+      to: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+      selector: "0x1c58db4f",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(result).toBeNull();
+    expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+
+  it("throws InstallDeclarativeV3Error when the parsed v3 bundle is malformed", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          matched: true,
+          bundle_id: "x",
+          manifest_path: "x",
+          bundle_sha256: "0x" + "a".repeat(64),
+          bundle: { ...v3Bundle, type: "adapter_function" },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      installDeclarativeBundleV3({
+        chainId: 1,
+        to: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        selector: "0x18cbafe5",
+        baseUrl: "https://example.invalid",
+        fetchImpl: fetchMock as unknown as typeof fetch,
+      }),
+    ).rejects.toBeInstanceOf(InstallDeclarativeV3Error);
+    expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+
+  it("wraps WASM install rejections in InstallDeclarativeV3Error", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          matched: true,
+          bundle_id: v3Bundle.id,
+          manifest_path: "x",
+          bundle_sha256: "0x" + "a".repeat(64),
+          bundle: v3Bundle,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    mocks.declarativeInstallV3.mockRejectedValueOnce(new Error("engine boom"));
+
+    await expect(
+      installDeclarativeBundleV3({
+        chainId: 1,
+        to: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        selector: "0x18cbafe5",
+        baseUrl: "https://example.invalid",
+        fetchImpl: fetchMock as unknown as typeof fetch,
+      }),
+    ).rejects.toBeInstanceOf(InstallDeclarativeV3Error);
   });
 });

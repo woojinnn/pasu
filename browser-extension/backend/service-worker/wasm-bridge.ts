@@ -23,6 +23,11 @@ interface WasmExports {
   // `crates/policy-engine-wasm/src/declarative_exports.rs`.
   declarative_install_json(bundle_json: string): string;
   declarative_lookup_json(input_json: string): string;
+  // M2 — v3 install entry. Parallel to `declarative_install_json` but
+  // stores the raw v3 manifest (`type: "adapter_action"`,
+  // `schema_version: "3"`, hierarchical `emit.body`) in
+  // `DECLARATIVE_V3_STATE` for the v3 route entry to consume.
+  declarative_install_v3_json(bundle_json: string): string;
   // Phase 6 — orchestrator route entry. Resolves
   // (chain_id, to, selector) through the engine-internal bridge populated
   // at install time, then runs the matching declarative mapper.
@@ -404,6 +409,36 @@ export async function installDeclarativeBundle(
   const exports = await load();
   return unwrap<DeclarativeInstallResult>(
     exports.declarative_install_json(bundleJson),
+  );
+}
+
+/**
+ * M2 — install a v3 declarative bundle (`type: "adapter_action"`,
+ * `schema_version: "3"`, hierarchical `emit.body`) into the engine's
+ * `DECLARATIVE_V3_STATE` so subsequent `declarative_route_request_v3_json`
+ * calls find it via the same callkey `(chain_id, to, selector)` bridge.
+ *
+ * Parallel to {@link installDeclarativeBundle} (v1). The v1 install path
+ * is untouched — both states coexist throughout the cutover.
+ *
+ * Error semantics:
+ *   - `EngineError("invalid_bundle_json", …)` — payload is not valid JSON
+ *     once stringified on the SW side. The caller built a bad request and
+ *     must fix it.
+ *   - `EngineError("missing_id", …)` — bundle has no `id` string.
+ *   - `EngineError("invalid_match", …)` — `match` is missing or its
+ *     `BundleMatch` deserialisation failed inside WASM.
+ *
+ * The caller MUST stringify the bundle exactly as it received it from the
+ * registry (no re-canonicalisation) — `bundle_sha256` integrity downstream
+ * depends on byte stability.
+ */
+export async function declarativeInstallV3(
+  bundleJson: string,
+): Promise<DeclarativeInstallResult> {
+  const exports = await load();
+  return unwrap<DeclarativeInstallResult>(
+    exports.declarative_install_v3_json(bundleJson),
   );
 }
 

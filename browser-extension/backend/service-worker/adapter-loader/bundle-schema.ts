@@ -710,9 +710,27 @@ function parseAbiFragment(v: unknown, path: string): AbiFragment {
  * `BundleParseError` on any shape violation. This is a pure shape check —
  * semantic validation (e.g. ABI inputs match field paths, Tier B
  * imperatives are installed) lives elsewhere.
+ *
+ * Schema version handling (M3 cutover): `parseBundle` rejects
+ * `schema_version === "3"` so the v3 path (`parseBundleV3`) can take over
+ * without v1/v2 silently swallowing the new hierarchical bundles. v1/v2
+ * bundles that omit `schema_version` (legacy fixtures) and v2 bundles that
+ * carry `schema_version === "2"` both pass through to the original parser.
  */
 export function parseBundle(input: unknown): AdapterFunctionBundle {
   const obj = reqObj(input, "$");
+
+  // M3 — separate v3 path. v3 bundles use `type: "adapter_action"` (not
+  // "adapter_function") and a hierarchical `emit.body` shape that the v1/v2
+  // emit parser does not understand. Reject explicitly so a routing bug
+  // (calling parseBundle with a v3 payload) surfaces a clear error instead
+  // of a cascade of "expected single_emit field" parse failures.
+  const schemaVersionRaw = obj.schema_version;
+  if (typeof schemaVersionRaw === "string" && schemaVersionRaw === "3") {
+    throw new BundleParseError(
+      `$.schema_version: v3 bundles must be parsed via parseBundleV3 (got "${schemaVersionRaw}")`,
+    );
+  }
 
   const bundleType = reqString(obj.type, "$.type");
   if (bundleType !== "adapter_function") {
@@ -730,4 +748,266 @@ export function parseBundle(input: unknown): AdapterFunctionBundle {
     emit: parseEmitRule(obj.emit, "$.emit"),
     requires: parseRequires(obj.requires, "$.requires"),
   };
+}
+
+// ---------------------------------------------------------------------------
+// v3 schema (M3 — hierarchical ActionBody)
+// ---------------------------------------------------------------------------
+//
+// v3 bundles ship the registry-side hierarchical `emit.body` tree the WASM
+// `action_builder` consumes directly. The SW does NOT shape-validate the
+// emit body — that lives in `declarative_install_v3_json` and the
+// build-time `build-index.ts` (canonical SHA + JSON Schema check). The SW
+// guards only what it routes on (id / type / schema_version / match) plus
+// the ABI fragment so a stray non-v3 payload (v1/v2 emit shape) cannot
+// reach the v3 WASM install entry.
+
+export type V3BundleType = "adapter_action";
+
+export interface V3TypedData {
+  domain_name: string;
+  verifying_contract: string;
+  primary_type: string;
+  types: Record<string, Array<{ name: string; type: string }>>;
+}
+
+export interface V3BundleMatch {
+  /** "0x" + 8 hex chars. Same wire shape as v1/v2. */
+  selector: string;
+  /** v2-style explicit chain → addresses map. Mutually exclusive with the source form. */
+  chain_to_addresses?: Record<string, string[]>;
+  /**
+   * v2 ERC-standard auto-enumerate marker (e.g. "tokens:erc20"). Build-time
+   * `build-index.ts` expands this against `tokens/<chainId>/*.json` to
+   * produce concrete callkeys. At runtime the SW carries the raw source
+   * label through to WASM untouched — install / route only see the
+   * hydrated bundle from the registry, never this hint.
+   */
+  chain_to_addresses_source?: string;
+  /** Companion to `chain_to_addresses_source`. */
+  chain_ids?: number[];
+  /** Optional EIP-712 typed-data section for sign-only bundles (Permit2 et al). */
+  typed_data?: V3TypedData;
+}
+
+export interface V3Bundle {
+  type: V3BundleType;
+  id: string;
+  publisher?: string;
+  schema_version: "3";
+  match: V3BundleMatch;
+  abi_fragment: {
+    function_name: string;
+    /** JSON ABI — opaque at the SW layer; alloy decodes inside WASM. */
+    abi: unknown;
+  };
+  /**
+   * Hierarchical emit body — pass-through at the SW layer. The WASM
+   * `declarative_install_v3_json` / `declarative_route_request_v3_json`
+   * pair consumes the raw `serde_json::Value` so the SW never has to
+   * model the shape directly.
+   */
+  emit: unknown;
+  /** Optional `multicall_recurse` recurse config — also pass-through. */
+  recurse?: unknown;
+  /**
+   * Optional manifest-level requires (capabilities list). Retained as
+   * pass-through so the WASM bridge can read it later without an SW
+   * schema bump.
+   */
+  requires?: unknown;
+}
+
+/**
+ * Iterate `(chainId, address)` pairs from a v3 bundle match. Mirrors
+ * {@link matchEntries} for v2 but operates on the {@link V3BundleMatch}
+ * shape directly. `chain_to_addresses_source` bundles are returned with an
+ * empty pair list — the SW path expects the registry to have already
+ * hydrated the explicit map by the time the callkey response arrives, so
+ * the only case left is a defensive zero-pair iteration.
+ */
+export function matchEntriesV3(m: V3BundleMatch): Array<[number, string]> {
+  const v2 = m.chain_to_addresses;
+  if (v2) {
+    const keys = Object.keys(v2);
+    if (keys.length > 0) {
+      const out: Array<[number, string]> = [];
+      for (const k of keys) {
+        const cid = Number(k);
+        for (const a of v2[k]) out.push([cid, a]);
+      }
+      return out;
+    }
+  }
+  return [];
+}
+
+function parseV3Match(v: unknown, path: string): V3BundleMatch {
+  const obj = reqObj(v, path);
+  const selector = reqString(obj.selector, `${path}.selector`);
+  if (!SELECTOR_RE.test(selector)) {
+    throw new BundleParseError(
+      `${path}.selector: expected "0x" + 8 hex chars, got "${selector}"`,
+    );
+  }
+
+  const hasExplicit = obj.chain_to_addresses !== undefined;
+  const hasSource = obj.chain_to_addresses_source !== undefined;
+  if (!hasExplicit && !hasSource) {
+    throw new BundleParseError(
+      `${path}: must have "chain_to_addresses" or "chain_to_addresses_source"`,
+    );
+  }
+
+  const result: V3BundleMatch = { selector };
+
+  if (hasExplicit) {
+    const m = reqObj(obj.chain_to_addresses, `${path}.chain_to_addresses`);
+    const c2a: Record<string, string[]> = {};
+    for (const key of Object.keys(m)) {
+      const cid = Number(key);
+      if (!Number.isInteger(cid) || cid < 1) {
+        throw new BundleParseError(
+          `${path}.chain_to_addresses["${key}"]: key must stringify positive integer`,
+        );
+      }
+      c2a[key] = reqAddressArray(
+        m[key],
+        `${path}.chain_to_addresses["${key}"]`,
+      );
+    }
+    if (Object.keys(c2a).length === 0) {
+      throw new BundleParseError(
+        `${path}.chain_to_addresses: must have at least one chain entry`,
+      );
+    }
+    result.chain_to_addresses = c2a;
+  }
+
+  if (hasSource) {
+    result.chain_to_addresses_source = reqString(
+      obj.chain_to_addresses_source,
+      `${path}.chain_to_addresses_source`,
+    );
+    if ("chain_ids" in obj) {
+      result.chain_ids = reqChainIdArray(obj.chain_ids, `${path}.chain_ids`);
+    }
+  }
+
+  if ("typed_data" in obj) {
+    const td = reqObj(obj.typed_data, `${path}.typed_data`);
+    const rawTypes = reqObj(td.types, `${path}.typed_data.types`);
+    const types: Record<string, Array<{ name: string; type: string }>> = {};
+    for (const [k, raw] of Object.entries(rawTypes)) {
+      const arr = reqArray(raw, `${path}.typed_data.types.${k}`);
+      types[k] = arr.map((entry, i) => {
+        const fieldObj = reqObj(
+          entry,
+          `${path}.typed_data.types.${k}[${i}]`,
+        );
+        return {
+          name: reqString(
+            fieldObj.name,
+            `${path}.typed_data.types.${k}[${i}].name`,
+          ),
+          type: reqString(
+            fieldObj.type,
+            `${path}.typed_data.types.${k}[${i}].type`,
+          ),
+        };
+      });
+    }
+    result.typed_data = {
+      domain_name: reqString(
+        td.domain_name,
+        `${path}.typed_data.domain_name`,
+      ),
+      verifying_contract: reqString(
+        td.verifying_contract,
+        `${path}.typed_data.verifying_contract`,
+      ),
+      primary_type: reqString(
+        td.primary_type,
+        `${path}.typed_data.primary_type`,
+      ),
+      types,
+    };
+  }
+
+  return result;
+}
+
+function parseV3AbiFragment(
+  v: unknown,
+  path: string,
+): { function_name: string; abi: unknown } {
+  const obj = reqObj(v, path);
+  return {
+    function_name: reqString(obj.function_name, `${path}.function_name`),
+    abi: obj.abi,
+  };
+}
+
+/**
+ * Parse arbitrary JSON into a {@link V3Bundle}. v1/v2 payloads — including
+ * payloads with `schema_version` absent or "2" — yield `null` so the
+ * caller can fall back to {@link parseBundle}.
+ *
+ * The validator is intentionally lighter than `parseBundle`: only the
+ * routing-critical fields (`type`, `id`, `schema_version`, `match`,
+ * `abi_fragment.function_name`) are validated structurally. The
+ * hierarchical `emit` tree, optional `recurse`, and optional `requires`
+ * flow through unchanged — `declarative_install_v3_json` / `build-index.ts`
+ * own the deep schema validation, and any inline validation here would
+ * have to duplicate them.
+ *
+ * Throws {@link BundleParseError} when `schema_version === "3"` but the
+ * payload is structurally broken (e.g. missing `id`); this is the
+ * "matched v3 but invalid" branch that callers MUST surface as a fault
+ * instead of silently downgrading to the v1/v2 path.
+ */
+export function parseBundleV3(input: unknown): V3Bundle | null {
+  if (!isPlainObject(input)) return null;
+  const obj = input;
+
+  const schemaVersionRaw = obj.schema_version;
+  if (typeof schemaVersionRaw !== "string" || schemaVersionRaw !== "3") {
+    return null;
+  }
+
+  const typeRaw = obj.type;
+  if (typeof typeRaw !== "string" || typeRaw !== "adapter_action") {
+    throw new BundleParseError(
+      `$.type: v3 bundles must declare "adapter_action" (got ${typeof typeRaw === "string" ? `"${typeRaw}"` : typeof typeRaw})`,
+    );
+  }
+
+  const id = reqString(obj.id, "$.id");
+  const match = parseV3Match(obj.match, "$.match");
+  const abi_fragment = parseV3AbiFragment(obj.abi_fragment, "$.abi_fragment");
+
+  if (!("emit" in obj)) {
+    throw new BundleParseError("$.emit: required for v3 bundles");
+  }
+
+  const result: V3Bundle = {
+    type: "adapter_action",
+    id,
+    schema_version: "3",
+    match,
+    abi_fragment,
+    emit: obj.emit,
+  };
+
+  if (typeof obj.publisher === "string") {
+    result.publisher = obj.publisher;
+  }
+  if ("recurse" in obj) {
+    result.recurse = obj.recurse;
+  }
+  if ("requires" in obj) {
+    result.requires = obj.requires;
+  }
+
+  return result;
 }
