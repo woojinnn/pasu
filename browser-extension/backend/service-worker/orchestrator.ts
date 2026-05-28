@@ -520,7 +520,23 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
             }
           : v3Outcome.kind === "miss"
             ? { reason: v3Outcome.reason }
-            : { reason: v3Outcome.reason }),
+            : {
+                reason: v3Outcome.reason,
+                // Plan §M5 — e2e 진단용 cause exposure. fault 발생 시
+                // WASM EngineError 의 kind / message + stack 가 console 에
+                // 보여야 어떤 opcode / placeholder / serde 가 실패했는지
+                // 추적 가능.
+                cause:
+                  v3Outcome.cause instanceof Error
+                    ? {
+                        name: v3Outcome.cause.name,
+                        message: v3Outcome.cause.message,
+                        ...("kind" in v3Outcome.cause
+                          ? { kind: (v3Outcome.cause as { kind: unknown }).kind }
+                          : {}),
+                      }
+                    : v3Outcome.cause,
+              }),
       });
     } catch (err) {
       console.warn("[Scopeball] declarative-route-v3 threw", {
