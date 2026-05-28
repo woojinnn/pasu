@@ -19,6 +19,30 @@ import type {
   ExtensionClient,
   PreviewManifestOutput,
 } from "@scopeball/sdk";
+
+// `manifest-editor.tsx` imports `../policy/builder-wasm`, which in turn
+// imports the generated wasm-bindgen glue at `../wasm/policy_builder_wasm.js`.
+// That glue is a build artifact produced by
+// `scripts/wasm-build-dashboard.sh` and lives in a gitignored directory, so
+// vitest's import-analysis stage cannot resolve it. Mock the bridge with the
+// same shape as `manifest-editor.test.tsx` (the editor only needs
+// `fetchTypedPaths` for the param-validator effect and `fetchActionSchema`
+// for the selector picker). See `selector-picker.test.tsx` for the same
+// pattern.
+vi.mock("../policy/builder-wasm", () => ({
+  fetchActionSchema: vi.fn(async () => ({
+    schema: {
+      action: "swap",
+      principalType: "Wallet",
+      resourceType: "Protocol",
+      fields: [],
+    },
+  })),
+  fetchTypedPaths: vi.fn(async () => ({
+    paths: { action: "swap", scalars: [], records: [] },
+  })),
+}));
+
 import { ManifestEditor, PREVIEW_HANDOFF_KEY } from "./manifest-editor";
 import { SchemaViewer } from "./schema-viewer";
 import { TestSdkProvider } from "../testing/test-sdk-provider";
