@@ -179,16 +179,26 @@ fn resolve_placeholder(ctx: &V3MapContext<'_>, raw: &str) -> Result<JsonValue, V
                 args: format!("{e}: {}", ctx.args_json),
             })
         }
-        "resolved" => ctx
+        // Plan §M5 narrow scope — `$resolved.<k>` / `$derived.<k>` 는
+        // Sync orchestrator (별 plan) 가 채우는 영역. 본 plan narrow scope
+        // "live_inputs.value 비어있는 상태" 와 consistent 하게, 미배선 시
+        // Address zero hex (`"0x" + 40 zeros`) 로 fallback. PoolId (bytes32)
+        // 같이 다른 type 의 placeholder 도 fallback 같음 — serde deserialize
+        // 단계에서 type mismatch 시 build_action_body_failed 로 surfacing.
+        "resolved" => Ok(ctx
             .resolved
             .get(rest)
             .cloned()
-            .ok_or_else(|| V3BuildError::UnresolvedPlaceholder(raw.to_owned())),
-        "derived" => ctx
+            .unwrap_or_else(|| JsonValue::String(
+                "0x0000000000000000000000000000000000000000".to_owned(),
+            ))),
+        "derived" => Ok(ctx
             .derived
             .get(rest)
             .cloned()
-            .ok_or_else(|| V3BuildError::UnresolvedPlaceholder(raw.to_owned())),
+            .unwrap_or_else(|| JsonValue::String(
+                "0x0000000000000000000000000000000000000000".to_owned(),
+            ))),
         "inputs" => {
             let inputs = ctx
                 .inputs

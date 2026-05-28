@@ -993,6 +993,25 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             })?
             .to_owned();
 
+        // Plan §M5 — chain 별 well-known token addresses pre-populate.
+        // Sync orchestrator (별 plan) 가 채울 동적 resolved (pool / factory
+        // 등) 외에, chain ID 만으로 결정되는 정적 token address (WETH 등) 는
+        // 본 layer 에서 미리 채워 manifest 의 `$resolved.weth` 같은 placeholder
+        // 가 zero address fallback 대신 정확한 값으로 substitute 되도록 함.
+        let mut resolved = BTreeMap::new();
+        let weth_address: Option<&'static str> = match input.chain_id {
+            1 => Some("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+            8453 | 10 => Some("0x4200000000000000000000000000000000000006"),
+            42161 => Some("0x82af49447d8a07e3bd95bd0d56f35241523fbab1"),
+            _ => None,
+        };
+        if let Some(addr) = weth_address {
+            resolved.insert(
+                "weth".to_owned(),
+                serde_json::Value::String(addr.to_owned()),
+            );
+        }
+
         let ctx = V3MapContext {
             chain: chain.clone(),
             tx_to: target,
@@ -1000,7 +1019,7 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             value,
             submitted_at,
             args_json: &args_json,
-            resolved: BTreeMap::new(),
+            resolved,
             derived: BTreeMap::new(),
             inputs: None,
         };
