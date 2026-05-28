@@ -57,6 +57,15 @@ gcloud run deploy "${SERVICE_NAME}" \
   --set-env-vars="REGISTRY_BUCKET=${BUCKET}" \
   --no-allow-unauthenticated
 
+echo "=== Step 7b: allUsers 에 run.invoker 권한 부여 (extension anonymous fetch) ==="
+# Plan §M0 — v2 와 동일 패턴. registry-api-v3 가 GCS proxy 역할만 하고 GCS bucket
+# 자체는 private (registry-api-v3-sa objectViewer 만) 이므로 invoker 만 anonymous.
+# 위협 모델은 v2 와 동일 (docs/REGISTRY_THREAT_MODEL.md).
+gcloud run services add-iam-policy-binding "${SERVICE_NAME}" \
+  --region="${REGION}" \
+  --member=allUsers \
+  --role=roles/run.invoker
+
 echo "=== Step 8: Cloud Run URL 출력 ==="
 URL=$(gcloud run services describe "${SERVICE_NAME}" \
   --region="${REGION}" --format='value(status.url)')
