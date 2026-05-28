@@ -22,7 +22,7 @@ BUCKET="scopeball-registry-v3-seoul"
 SA_NAME="registry-api-v3-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 SERVICE_NAME="registry-api-v3"
-IMAGE="gcr.io/${PROJECT_ID}/registry-api:latest"
+IMAGE="asia-northeast3-docker.pkg.dev/${PROJECT_ID}/scopeball/registry-api:v1"
 
 echo "=== Step 1: gcloud config 활성 ==="
 gcloud config configurations activate scopeball
@@ -45,9 +45,9 @@ gsutil iam ch "serviceAccount:${SA_EMAIL}:objectViewer" "gs://${BUCKET}"
 
 echo "=== Step 6: registryV2 build-index → GCS 업로드 ==="
 cd "$(dirname "$0")/.."
-yarn install
-node --loader ts-node/esm scripts/build-index.ts
-gsutil -m rsync -r ./ "gs://${BUCKET}/"
+npm install --no-audit --no-fund --silent
+npx tsx scripts/build-index.ts
+gsutil -m rsync -r -x '^(node_modules/|\.git/|package\.json$|package-lock\.json$|tsconfig\.json$|scripts/)' ./ "gs://${BUCKET}/"
 
 echo "=== Step 7: Cloud Run 배포 ==="
 gcloud run deploy "${SERVICE_NAME}" \
