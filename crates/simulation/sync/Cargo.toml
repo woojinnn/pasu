@@ -8,6 +8,8 @@ publish = false
 [dependencies]
 simulation-state = { workspace = true }
 simulation-db = { path = "../db", version = "0.1.0" }
+# Action types — sync 가 Action.live_inputs 도 walk/apply 하기 위해
+simulation-reducer = { workspace = true }
 
 # 외부 데이터 fetch
 tokio = { workspace = true }

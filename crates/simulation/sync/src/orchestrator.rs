@@ -133,6 +133,133 @@ impl Orchestrator {
         Ok(report)
     }
 
+    /// `action` 안의 모든 stale LiveField 를 갱신. wallet refresh 와 같은 인프라
+    /// (walker → batcher → fetcher) 를 재사용하되 walker 와 apply 만 Action 측.
+    ///
+    /// `state` 는 read-only context — fetcher 가 wallet 정보 (address 등) 가 필요할 때 참고.
+    pub async fn refresh_action(
+        &self,
+        action: &mut simulation_reducer::action::Action,
+        state: &WalletState,
+        now: Time,
+    ) -> Result<RefreshReport, SyncError> {
+        let (stale, walked) = crate::action_walk::walk_action_stale(action, now);
+        let mut report = RefreshReport {
+            walked,
+            ..Default::default()
+        };
+        if stale.is_empty() {
+            return Ok(report);
+        }
+
+        let batches = batch_by_source(stale);
+        for batch in batches {
+            report.batches_processed += 1;
+            match self.process_batch_for_action(batch, action, state, now).await {
+                Ok((ok, fail)) => {
+                    report.fields_updated += ok;
+                    report.fields_failed += fail;
+                }
+                Err(e) => {
+                    report.errors.push(format!("{}", e));
+                }
+            }
+        }
+        Ok(report)
+    }
+
+    async fn process_batch_for_action(
+        &self,
+        batch: FetchBatch,
+        action: &mut simulation_reducer::action::Action,
+        _state: &WalletState,
+        now: Time,
+    ) -> Result<(usize, usize), SyncError> {
+        // 같은 fetcher 들을 호출하되, 결과를 apply_value_to_action 으로 적용.
+        let mut ok = 0usize;
+        let mut fail = 0usize;
+        match &batch.kind {
+            BatchKind::Oracle => {
+                let Some(cl) = self.chainlink.as_ref() else {
+                    return Ok((0, batch.items.len()));
+                };
+                for item in batch.items {
+                    match cl.fetch_price(&item.source).await {
+                        Ok(price) => {
+                            crate::action_walk::apply_value_to_action(
+                                action,
+                                &item.location,
+                                serde_json::Value::String(price.0),
+                                now,
+                            );
+                            ok += 1;
+                        }
+                        Err(_) => fail += 1,
+                    }
+                }
+            }
+            BatchKind::Onchain { chain } => {
+                // Action live_inputs 의 OnchainView 는 인자가 필요한 경우가 많아
+                // (balanceOf(user), getReserveData(asset) 등). Phase 1 에서는
+                // 인자 없는 케이스만 처리하거나 호출자가 source.function 안에 args 인코드.
+                let calls: Result<Vec<_>, _> = batch
+                    .items
+                    .iter()
+                    .map(|item| {
+                        crate::fetchers::onchain::OnchainCall::from_source(&item.source, vec![])
+                    })
+                    .collect();
+                let Ok(calls) = calls else {
+                    return Ok((0, batch.items.len()));
+                };
+                let outcomes = self.onchain.fetch_batch(chain, &calls).await?;
+                for (item, outcome) in batch.items.into_iter().zip(outcomes.into_iter()) {
+                    if outcome.success {
+                        if let Some(value) = outcome.value {
+                            crate::action_walk::apply_value_to_action(action, &item.location, value, now);
+                            ok += 1;
+                        } else {
+                            fail += 1;
+                        }
+                    } else {
+                        fail += 1;
+                    }
+                }
+            }
+            BatchKind::Registry { .. } => {
+                let Some(reg) = self.registry.as_ref() else {
+                    return Ok((0, batch.items.len()));
+                };
+                for item in batch.items {
+                    match reg.fetch(&item.source).await {
+                        Ok(v) => {
+                            crate::action_walk::apply_value_to_action(action, &item.location, v, now);
+                            ok += 1;
+                        }
+                        Err(_) => fail += 1,
+                    }
+                }
+            }
+            BatchKind::Venue { endpoint } => {
+                let is_hl = endpoint.contains("hyperliquid");
+                let Some(hl) = (if is_hl { self.hyperliquid.as_ref() } else { None }) else {
+                    return Ok((0, batch.items.len()));
+                };
+                for item in batch.items {
+                    match hl.fetch(&item.source).await {
+                        Ok(v) => {
+                            crate::action_walk::apply_value_to_action(action, &item.location, v, now);
+                            ok += 1;
+                        }
+                        Err(_) => fail += 1,
+                    }
+                }
+            }
+            BatchKind::Derived | BatchKind::UserSupplied => {}
+        }
+        Ok((ok, fail))
+    }
+
     pub(crate) async fn process_batch_public(
         &self,
         batch: FetchBatch,
@@ -333,6 +460,9 @@ fn apply_value(state: &mut WalletState, loc: &FieldLocation, value: Value, now: 
         | FieldLocation::PerpLeverage { .. } => {
             // TODO Phase 8: venue fetcher 결과 처리
         }
+        // Action 측 슬롯은 apply_value_to_action 이 별도로 처리.
+        // 여기서는 무시 (refresh_action 흐름에서 dispatch 됨).
+        FieldLocation::Action { .. } => {}
     }
 }
 

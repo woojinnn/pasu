@@ -34,6 +34,7 @@
 #![allow(missing_docs)]
 
 pub mod action_scope;
+pub mod action_walk;
 pub mod batcher;
 pub mod calc;
 pub mod error;
@@ -47,6 +48,7 @@ pub mod topo;
 pub mod walker;
 
 pub use action_scope::{ActionScope, walk_scope};
+pub use action_walk::{apply_value_to_action, walk_action_stale};
 pub use batcher::{BatchKind, FetchBatch, batch_by_source};
 pub use calc::{CalcContext, CalcFn, CalcRegistry};
 pub use error::{SyncError, SyncResult};
@@ -59,4 +61,4 @@ pub use resolver::{GlobalValues, resolve_field, resolve_inputs};
 pub use scheduler::{Scheduler, SchedulerConfig, TickReport, WalletStore};
 pub use subscription::{BlockSubscription, NewBlock, PollingBlockSubscription};
 pub use topo::{DepNode, topological_sort};
-pub use walker::{FieldLocation, StaleField, WalkStats, walk_stale};
+pub use walker::{ActionSlot, FieldLocation, StaleField, WalkStats, walk_stale};

@@ -9,8 +9,14 @@
 use simulation_state::{DataSource, LiveField, Time, WalletState};
 
 /// LiveField 가 어디에 있는지의 경로.
+///
+/// 두 종류:
+/// * `Wallet*` — `WalletState` 안의 LiveField (sync 주기/event-trigger 로 갱신)
+/// * `Action { ix, slot }` — `Action.body.*.live_inputs` 안의 LiveField
+///   (정책 평가 직전 [`Orchestrator::refresh_action`] 으로 갱신)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FieldLocation {
+    // ───── Wallet side ─────
     /// `tokens[K].price_usd`
     TokenPrice {
         token_key_json: String,
@@ -41,6 +47,35 @@ pub enum FieldLocation {
     PerpLeverage {
         position_id: String,
     },
+
+    // ───── Action side ─────
+    /// `Action.body.*.live_inputs.<slot>`
+    /// `action_index` 는 `Multicall` 안의 자식 위치 (단일 액션이면 0).
+    Action {
+        action_index: usize,
+        slot: ActionSlot,
+    },
+}
+
+/// `Action.body.*.live_inputs` 안의 슬롯 식별자.
+///
+/// 점진적으로 채워짐 — 지금은 lending borrow / supply 의 5+5 슬롯만.
+/// 새 액션 wire-up 시 variant 추가 (컴파일러가 walk/apply 양쪽의 match 누락을 잡음).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ActionSlot {
+    // ── Lending Borrow ──
+    LendingBorrowReserveState,
+    LendingBorrowUserState,
+    LendingBorrowAssetPriceUsd,
+    LendingBorrowCurrentRate,
+    LendingBorrowAvailableLiquidity,
+
+    // ── Lending Supply ──
+    LendingSupplyReserveState,
+    LendingSupplySupplyApy,
+    LendingSupplyATokenPriceUsd,
+    LendingSupplyEligibleAsCollat,
+    LendingSupplyUserState,
 }
 
 #[derive(Clone, Debug)]
