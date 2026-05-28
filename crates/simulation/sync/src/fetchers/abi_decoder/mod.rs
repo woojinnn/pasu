@@ -11,10 +11,12 @@
 //! let json = decoder.decode("aave_v3_user_account_data", &returndata)?;
 //! ```
 
+pub mod mappers;
 pub mod sourcify;
 pub mod types;
 pub mod value_to_json;
 
+pub use mappers::{MapperFn, MapperRegistry};
 pub use types::AbiTypeRegistry;
 
 use alloy_dyn_abi::DynSolType;
@@ -22,25 +24,30 @@ use serde_json::Value;
 
 use crate::error::SyncError;
 
-/// generic ABI 디코더 — `decoder_id` 기반 dispatch.
+/// generic ABI 디코더 — `decoder_id` 기반 dispatch + struct shape 매핑.
 #[derive(Debug)]
 pub struct AbiDecoder {
     types: AbiTypeRegistry,
+    mappers: MapperRegistry,
 }
 
 impl Default for AbiDecoder {
     fn default() -> Self {
-        Self::new(AbiTypeRegistry::with_builtins())
+        Self::new(AbiTypeRegistry::with_builtins(), MapperRegistry::with_builtins())
     }
 }
 
 impl AbiDecoder {
-    pub fn new(types: AbiTypeRegistry) -> Self {
-        Self { types }
+    pub fn new(types: AbiTypeRegistry, mappers: MapperRegistry) -> Self {
+        Self { types, mappers }
     }
 
     pub fn types_mut(&mut self) -> &mut AbiTypeRegistry {
         &mut self.types
+    }
+
+    pub fn mappers_mut(&mut self) -> &mut MapperRegistry {
+        &mut self.mappers
     }
 
     /// `decoder_id` 가 known ABI 시그니처인지.
@@ -49,24 +56,30 @@ impl AbiDecoder {
     }
 
     /// raw returndata 를 디코드해서 JSON Value 로.
-    /// 단일 반환값이면 그 값 자체, 다중이면 JSON Array.
+    ///
+    /// 흐름:
+    ///   1. `types` 에서 ABI 시그니처 찾아 generic decode
+    ///   2. `mappers` 에 매퍼 등록돼있으면 array → struct shape 변환 적용
+    ///
+    /// 결과: 매퍼 있으면 typed struct JSON object, 없으면 raw array.
     pub fn decode(&self, decoder_id: &str, data: &[u8]) -> Result<Value, SyncError> {
         let ty = self.types.get(decoder_id).ok_or_else(|| {
             SyncError::UnknownDecoder(format!("abi_decoder: {}", decoder_id))
         })?;
 
-        // ABI 함수 응답은 보통 tuple 로 래핑. ty 가 Tuple 이라고 가정.
         let decoded = ty.abi_decode(data).map_err(|e| SyncError::FetchFailed {
             source_id: "abi_decoder".into(),
             reason: format!("abi decode '{}': {}", decoder_id, e),
         })?;
 
-        // ty 가 Tuple 이면 그 안의 components 가 함수 반환값들
-        if let alloy_dyn_abi::DynSolValue::Tuple(items) = &decoded {
-            Ok(value_to_json::flatten_function_result(items))
+        let raw = if let alloy_dyn_abi::DynSolValue::Tuple(items) = &decoded {
+            value_to_json::flatten_function_result(items)
         } else {
-            Ok(value_to_json::dyn_to_json(&decoded))
-        }
+            value_to_json::dyn_to_json(&decoded)
+        };
+
+        // 매퍼 적용 (있으면 typed struct shape 으로, 없으면 raw 그대로)
+        Ok(self.mappers.maybe_apply(decoder_id, raw))
     }
 
     /// `decoder_id` 의 ABI 시그니처 (debugging 용).
@@ -92,19 +105,21 @@ mod tests {
 
     #[test]
     fn decodes_aave_v3_user_account_data() {
-        // 6 × uint256 = 192 byte
-        // 각 32-byte 슬롯에 1, 2, 3, 4, 5, 6
+        // 6 × uint256 = 192 byte. 각 32-byte 슬롯에 1, 2, 3, 4, 5, 6.
+        // 이제 mapper 가 적용돼서 UserLendingState shape JSON object 가 결과.
         let decoder = AbiDecoder::default();
         let mut data = vec![0u8; 192];
         for i in 0..6 {
             data[(i + 1) * 32 - 1] = (i + 1) as u8;
         }
         let json = decoder.decode("aave_v3_user_account_data", &data).unwrap();
-        // 6 개 값이 JSON Array 로
-        let arr = json.as_array().expect("expected array");
-        assert_eq!(arr.len(), 6);
-        assert_eq!(arr[0], Value::String("1".into()));
-        assert_eq!(arr[5], Value::String("6".into()));
+        let obj = json.as_object().expect("mapper should produce object");
+        assert_eq!(obj["total_collat_usd"], Value::String("1".into()));
+        assert_eq!(obj["total_debt_usd"], Value::String("2".into()));
+        assert_eq!(obj["available_borrow_usd"], Value::String("3".into()));
+        // health_factor = 6 (ray) → "0.000000000000000000000000006" 로 scale
+        // (테스트는 매우 작은 ray 라 그렇지만 변환 로직 동작 확인)
+        assert!(obj.contains_key("health_factor"));
     }
 
     #[test]

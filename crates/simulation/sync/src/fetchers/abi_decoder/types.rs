@@ -60,14 +60,22 @@ impl AbiTypeRegistry {
         // Aave V3 의 ReserveData struct — bp/index 단위 + 주소들 + bitmask config
         r.register(
             "aave_v3_reserve_data",
-            // ReserveDataLegacy struct - 14 필드
+            // ReserveDataLegacy struct - 15 필드
             // configuration (uint256 bitmap), liquidityIndex, currentLiquidityRate,
             // variableBorrowIndex, currentVariableBorrowRate, currentStableBorrowRate,
             // lastUpdateTimestamp (uint40), id (uint16),
             // aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress,
             // interestRateStrategyAddress,
             // accruedToTreasury (uint128), unbacked (uint128), isolationModeTotalDebt (uint128)
-            "((uint256),uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128)",
+            "(uint256,uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128)",
+        )
+        .unwrap();
+
+        // 같은 reserve_data ABI 의 다른 view — currentVariableBorrowRate (index 4) 만 추출.
+        // mapper 가 ray scale 적용해서 borrow APY decimal 만 반환.
+        r.register(
+            "aave_v3_current_borrow_rate",
+            "(uint256,uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128)",
         )
         .unwrap();
 

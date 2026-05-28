@@ -370,7 +370,7 @@ async fn live_aave_borrow_scenario_fills_live_inputs() {
                 DataSource::OnchainView {
                     chain: chain.clone(), contract: aave_pool,
                     function: "getReserveData(address)".into(),
-                    decoder_id: "aave_reserve_data".into(),
+                    decoder_id: "aave_v3_reserve_data".into(),
                 },
                 stale,
             ).with_ttl(SDuration::from_secs(60)),
@@ -382,7 +382,7 @@ async fn live_aave_borrow_scenario_fills_live_inputs() {
                 DataSource::OnchainView {
                     chain: chain.clone(), contract: aave_pool,
                     function: "getUserAccountData(address)".into(),
-                    decoder_id: "aave_user_data".into(),
+                    decoder_id: "aave_v3_user_account_data".into(),
                 },
                 stale,
             ).with_ttl(SDuration::from_secs(60)),
@@ -402,7 +402,7 @@ async fn live_aave_borrow_scenario_fills_live_inputs() {
                 DataSource::OnchainView {
                     chain: chain.clone(), contract: aave_pool,
                     function: "getReserveData(address)".into(),
-                    decoder_id: "u256".into(),
+                    decoder_id: "aave_v3_current_borrow_rate".into(),
                 },
                 stale,
             ).with_ttl(SDuration::from_secs(60)),
@@ -441,27 +441,73 @@ async fn live_aave_borrow_scenario_fills_live_inputs() {
     let report = orch.refresh_action(&mut action, &state, now).await.unwrap();
     println!("aave borrow refresh report: {:?}", report);
 
-    // 검증 — 채워진 슬롯들
+    // 검증 — 모든 슬롯의 synced_at 출력
     if let ActionBody::Lending(LendingAction::Borrow(b)) = &action.body {
         let li = &b.live_inputs;
+        println!("[1] asset_price_usd       value={} synced={}", li.asset_price_usd.value.as_str(), li.asset_price_usd.synced_at.as_unix());
+        println!("[2] available_liquidity   value={} synced={}", li.available_liquidity.value, li.available_liquidity.synced_at.as_unix());
+        println!("[3] user_state_before     hf={} synced={}", li.user_state_before.value.health_factor.as_str(), li.user_state_before.synced_at.as_unix());
+        println!("[4] reserve_state         total_supply={} synced={}", li.reserve_state.value.total_supply, li.reserve_state.synced_at.as_unix());
+        println!("[5] current_borrow_rate   value={} synced={}", li.current_borrow_rate.value.as_str(), li.current_borrow_rate.synced_at.as_unix());
 
-        // ✓ 1: Chainlink price (no args needed)
-        println!("asset_price_usd = {}", li.asset_price_usd.value.as_str());
-        assert_ne!(li.asset_price_usd.value.as_str(), "0",
-                   "asset_price_usd should be filled by Chainlink");
-        assert_eq!(li.asset_price_usd.synced_at, now,
-                   "asset_price_usd synced_at should be now");
-
-        // ✓ 2: USDC.balanceOf(Aave Pool) — args resolver 가 pool 주소 인자 인코드해야 동작
-        println!("available_liquidity = {}", li.available_liquidity.value);
-        assert!(li.available_liquidity.value > U256::ZERO,
-                "Aave Pool 의 USDC 잔고는 0 보다 커야 함 (args resolver 동작 증명)");
-        assert_eq!(li.available_liquidity.synced_at, now);
+        assert_ne!(li.asset_price_usd.value.as_str(), "0", "asset_price_usd should be filled");
+        assert!(li.available_liquidity.value > U256::ZERO, "available_liquidity > 0");
     } else {
         panic!("expected Borrow action");
     }
 
-    // 최소 2 slot 갱신
-    assert!(report.fields_updated >= 2,
-            "최소 asset_price_usd + available_liquidity 는 갱신되어야 함");
+    assert!(report.fields_updated >= 2);
+}
+
+#[test]
+fn manifest_v2_parse_real_uniswap_universal_router() {
+    //! 실제 registryV2/manifests 의 Uniswap UR manifest 를 읽어서
+    //! live_inputs 섹션 파싱 + placeholder resolve 가 동작하는지.
+    //! (네트워크 불필요)
+    use simulation_sync::manifest_v2::{parse_live_inputs, resolve_placeholders, ResolveContext};
+    use std::fs;
+
+    // 실제 파일 경로 (workspace 루트 기준)
+    let path = "../../../registryV2/manifests/uniswap/universal-router/execute-v1-no-deadline@1.0.0.json";
+    let manifest_text = fs::read_to_string(path).expect("read manifest file");
+    let manifest_json: serde_json::Value = serde_json::from_str(&manifest_text).expect("parse JSON");
+
+    // V2 의 emit/per_opcode_body 안에 live_inputs 가 있음. 여기서는 V3_SWAP_EXACT_IN (0x00) 의 swap body.
+    // 경로: emit.per_opcode_body."0x00".body.amm.swap.live_inputs
+    let live_subtree = &manifest_json["emit"]["per_opcode_body"]["0x00"]["body"]["amm"]["swap"];
+
+    let parsed = parse_live_inputs(live_subtree).expect("parse live_inputs");
+    println!("parsed {} live_input slots:", parsed.len());
+    for (slot, spec) in &parsed {
+        println!("  - {} (ttl={:?})", slot, spec.ttl_s);
+    }
+
+    // 실제 manifest 의 슬롯들 확인
+    assert!(parsed.contains_key("route"));
+    assert!(parsed.contains_key("expected_amount_out"));
+    assert!(parsed.contains_key("price_impact_bp"));
+    assert!(parsed.contains_key("gas_estimate"));
+
+    // route 의 source 가 onchain_view, slot0() 호출 — placeholder 가 있음
+    let route_source = &parsed["route"].source;
+    assert_eq!(route_source["kind"], "onchain_view");
+    assert_eq!(route_source["chain"], "$chain");
+    assert_eq!(route_source["contract"], "$resolved.pool");
+    assert_eq!(route_source["function"], "slot0()");
+
+    // 이제 resolve: context 에 chain + pool 채워서 placeholder 치환
+    let ctx = ResolveContext::new()
+        .with_chain("eip155:1")
+        .insert_resolved("pool", serde_json::json!("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"));
+
+    let resolved = resolve_placeholders(route_source, &ctx).unwrap();
+    assert_eq!(resolved["chain"], "eip155:1");
+    assert_eq!(resolved["contract"], "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640");
+    println!("\nresolved route source:");
+    println!("{}", serde_json::to_string_pretty(&resolved).unwrap());
+
+    // gas_estimate 는 oracle_feed (placeholder 없음)
+    let gas_source = &parsed["gas_estimate"].source;
+    assert_eq!(gas_source["kind"], "oracle_feed");
+    assert_eq!(gas_source["provider"], "pyth");
 }

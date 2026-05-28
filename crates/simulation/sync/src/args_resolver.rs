@@ -39,8 +39,8 @@ pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) ->
             // getUserAccountData(user) — submitter 의 lending 상태
             encode_address(action.meta.submitter).to_vec()
         }
-        ActionSlot::LendingBorrowReserveState => {
-            // getReserveData(asset) — borrow 대상 자산의 reserve 상태
+        // 둘 다 getReserveData(asset) 호출 — 같은 인자 (borrow 자산 주소)
+        ActionSlot::LendingBorrowReserveState | ActionSlot::LendingBorrowCurrentRate => {
             if let ActionBody::Lending(LendingAction::Borrow(b)) = &action.body {
                 if let Some(addr) = token_ref_to_address(&b.asset) {
                     return encode_address(addr).to_vec();
