@@ -247,7 +247,7 @@ fn validate_context_extensions(
 /// the placeholder the composer overwrites with the manifest fragment and
 /// must not be reserved against manifest authors.
 #[allow(clippy::too_many_lines, clippy::match_same_arms)]
-fn base_field_names(action: &str) -> &'static [&'static str] {
+pub(crate) fn base_field_names(action: &str) -> &'static [&'static str] {
     match action {
         // DEX
         "swap" => &[

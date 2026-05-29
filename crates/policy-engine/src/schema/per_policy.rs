@@ -1,0 +1,721 @@
+//! Per-policy Cedar schema synthesis.
+//!
+//! Where [`super::compose_enriched`] produces ONE unified `.cedarschema`
+//! covering every shipped action (the legacy / installed-set path), this module
+//! synthesizes an ISOLATED `.cedarschema` for a single policy bundle
+//! ([`ManifestV2`]). The synthesized text contains only:
+//!
+//! 1. the shared `core.cedarschema` (entities + shared types), plus
+//! 2. the base schema file(s) of every action whose `(domain, action_tag)` the
+//!    manifest's [`Trigger`] can match, with
+//! 3. the manifest's [`CustomContext`] fields injected into each matched
+//!    action's `type <Action>CustomContext = {};` stub.
+//!
+//! The result is intended to parse with
+//! [`cedar_policy::Schema::from_cedarschema_str`].
+//!
+//! This path is purely additive and does not alter [`super::compose_enriched`].
+
+use std::collections::BTreeMap;
+use std::fmt::Write as _;
+
+use super::merge_namespace_blocks;
+use crate::policy_rpc::{
+    evaluate_trigger, ManifestV2, PolicyRpcError, Trigger, TriggerField, TxView,
+};
+use simulation_reducer::action::ActionView;
+
+use super::{
+    AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
+    AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
+    AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
+    CORE_UNKNOWN_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA,
+    LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA,
+    LENDING_BORROW_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
+    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_REPAY_SCHEMA,
+    LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA,
+    LENDING_WITHDRAW_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
+    PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
+    PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
+    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
+    TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA,
+    TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA,
+    TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
+};
+
+/// One row of the action resolver: the `(domain, action_tag)` a trigger can
+/// match, the shipped base `.cedarschema` to include, and the bare `PascalCase`
+/// stub name whose `type <Stub>CustomContext = {};` placeholder receives the
+/// manifest's custom fields.
+struct ActionEntry {
+    /// `ActionBody` domain serde tag (e.g. `"amm"`, `"multicall"`).
+    domain: &'static str,
+    /// Inner action serde tag (e.g. `"swap"`, `"set_e_mode"`); `None` for the
+    /// structural `multicall` / `unknown` bodies, which carry no tag.
+    action_tag: Option<&'static str>,
+    /// The action's shipped base `.cedarschema` (`include_str!` const).
+    schema_text: &'static str,
+    /// Bare `PascalCase` prefix of the custom-context stub
+    /// (`<Stub>CustomContext`). May differ from `snake_to_pascal(action_tag)`
+    /// — notably `set_e_mode` → `SetEMode` (`SetEModeCustomContext`).
+    pascal_stub: &'static str,
+}
+
+/// The authoritative `(domain, action_tag)` → `(schema, stub)` table.
+///
+/// The `action_tag` column is the runtime serde discriminant returned by
+/// [`ActionView::action_tag`] (verified against the reducer `action_tag()`
+/// implementations), and the `pascal_stub` column is taken verbatim from the
+/// `type <Stub>CustomContext = {};` declaration grepped out of each shipped
+/// `.cedarschema`. Notably the serde tag `set_e_mode` maps to schema file
+/// `set_emode.cedarschema` whose stub is `SetEModeCustomContext`.
+const RESOLVER_TABLE: &[ActionEntry] = &[
+    // core structural (domain is "multicall" / "unknown", no inner tag)
+    ActionEntry {
+        domain: "multicall",
+        action_tag: None,
+        schema_text: CORE_MULTICALL_SCHEMA,
+        pascal_stub: "Multicall",
+    },
+    ActionEntry {
+        domain: "unknown",
+        action_tag: None,
+        schema_text: CORE_UNKNOWN_SCHEMA,
+        pascal_stub: "Unknown",
+    },
+    // airdrop
+    ActionEntry {
+        domain: "airdrop",
+        action_tag: Some("claim"),
+        schema_text: AIRDROP_CLAIM_SCHEMA,
+        pascal_stub: "Claim",
+    },
+    ActionEntry {
+        domain: "airdrop",
+        action_tag: Some("delegate"),
+        schema_text: AIRDROP_DELEGATE_SCHEMA,
+        pascal_stub: "Delegate",
+    },
+    // amm
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("swap"),
+        schema_text: AMM_SWAP_SCHEMA,
+        pascal_stub: "Swap",
+    },
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("add_liquidity"),
+        schema_text: AMM_ADD_LIQUIDITY_SCHEMA,
+        pascal_stub: "AddLiquidity",
+    },
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("remove_liquidity"),
+        schema_text: AMM_REMOVE_LIQUIDITY_SCHEMA,
+        pascal_stub: "RemoveLiquidity",
+    },
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("collect_fees"),
+        schema_text: AMM_COLLECT_FEES_SCHEMA,
+        pascal_stub: "CollectFees",
+    },
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("sign_intent_order"),
+        schema_text: AMM_SIGN_INTENT_ORDER_SCHEMA,
+        pascal_stub: "SignIntentOrder",
+    },
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("cancel_intent_order"),
+        schema_text: AMM_CANCEL_INTENT_ORDER_SCHEMA,
+        pascal_stub: "CancelIntentOrder",
+    },
+    // lending
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("supply"),
+        schema_text: LENDING_SUPPLY_SCHEMA,
+        pascal_stub: "Supply",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("withdraw"),
+        schema_text: LENDING_WITHDRAW_SCHEMA,
+        pascal_stub: "Withdraw",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("borrow"),
+        schema_text: LENDING_BORROW_SCHEMA,
+        pascal_stub: "Borrow",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("repay"),
+        schema_text: LENDING_REPAY_SCHEMA,
+        pascal_stub: "Repay",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("swap_rate_mode"),
+        schema_text: LENDING_SWAP_RATE_MODE_SCHEMA,
+        pascal_stub: "SwapRateMode",
+    },
+    // Serde tag is `set_e_mode`; schema file is `set_emode.cedarschema`; stub
+    // is `SetEModeCustomContext`. This row pins that three-way mismatch.
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("set_e_mode"),
+        schema_text: LENDING_SET_EMODE_SCHEMA,
+        pascal_stub: "SetEMode",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("enable_collateral"),
+        schema_text: LENDING_ENABLE_COLLATERAL_SCHEMA,
+        pascal_stub: "EnableCollateral",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("disable_collateral"),
+        schema_text: LENDING_DISABLE_COLLATERAL_SCHEMA,
+        pascal_stub: "DisableCollateral",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("delegate_borrow"),
+        schema_text: LENDING_DELEGATE_BORROW_SCHEMA,
+        pascal_stub: "DelegateBorrow",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("liquidate"),
+        schema_text: LENDING_LIQUIDATE_SCHEMA,
+        pascal_stub: "Liquidate",
+    },
+    // launchpad
+    ActionEntry {
+        domain: "launchpad",
+        action_tag: Some("commit"),
+        schema_text: LAUNCHPAD_COMMIT_SCHEMA,
+        pascal_stub: "Commit",
+    },
+    ActionEntry {
+        domain: "launchpad",
+        action_tag: Some("claim_allocation"),
+        schema_text: LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
+        pascal_stub: "ClaimAllocation",
+    },
+    ActionEntry {
+        domain: "launchpad",
+        action_tag: Some("claim_vested"),
+        schema_text: LAUNCHPAD_CLAIM_VESTED_SCHEMA,
+        pascal_stub: "ClaimVested",
+    },
+    ActionEntry {
+        domain: "launchpad",
+        action_tag: Some("refund"),
+        schema_text: LAUNCHPAD_REFUND_SCHEMA,
+        pascal_stub: "Refund",
+    },
+    ActionEntry {
+        domain: "launchpad",
+        action_tag: Some("withdraw_commit"),
+        schema_text: LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA,
+        pascal_stub: "WithdrawCommit",
+    },
+    // perp
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("open_position"),
+        schema_text: PERP_OPEN_POSITION_SCHEMA,
+        pascal_stub: "OpenPosition",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("close_position"),
+        schema_text: PERP_CLOSE_POSITION_SCHEMA,
+        pascal_stub: "ClosePosition",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("increase_position"),
+        schema_text: PERP_INCREASE_POSITION_SCHEMA,
+        pascal_stub: "IncreasePosition",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("decrease_position"),
+        schema_text: PERP_DECREASE_POSITION_SCHEMA,
+        pascal_stub: "DecreasePosition",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("adjust_margin"),
+        schema_text: PERP_ADJUST_MARGIN_SCHEMA,
+        pascal_stub: "AdjustMargin",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("change_leverage"),
+        schema_text: PERP_CHANGE_LEVERAGE_SCHEMA,
+        pascal_stub: "ChangeLeverage",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("change_margin_mode"),
+        schema_text: PERP_CHANGE_MARGIN_MODE_SCHEMA,
+        pascal_stub: "ChangeMarginMode",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("place_limit_order"),
+        schema_text: PERP_PLACE_LIMIT_ORDER_SCHEMA,
+        pascal_stub: "PlaceLimitOrder",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("place_stop_order"),
+        schema_text: PERP_PLACE_STOP_ORDER_SCHEMA,
+        pascal_stub: "PlaceStopOrder",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("cancel_order"),
+        schema_text: PERP_CANCEL_ORDER_SCHEMA,
+        pascal_stub: "CancelOrder",
+    },
+    ActionEntry {
+        domain: "perp",
+        action_tag: Some("claim_funding"),
+        schema_text: PERP_CLAIM_FUNDING_SCHEMA,
+        pascal_stub: "ClaimFunding",
+    },
+    // token
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("erc20_approve"),
+        schema_text: TOKEN_ERC20_APPROVE_SCHEMA,
+        pascal_stub: "Erc20Approve",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("erc20_permit"),
+        schema_text: TOKEN_ERC20_PERMIT_SCHEMA,
+        pascal_stub: "Erc20Permit",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("permit2_approve"),
+        schema_text: TOKEN_PERMIT2_APPROVE_SCHEMA,
+        pascal_stub: "Permit2Approve",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("permit2_sign_allowance"),
+        schema_text: TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
+        pascal_stub: "Permit2SignAllowance",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("erc20_transfer"),
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("nft_approve"),
+        schema_text: TOKEN_NFT_APPROVE_SCHEMA,
+        pascal_stub: "NftApprove",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("nft_set_approval_for_all"),
+        schema_text: TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA,
+        pascal_stub: "NftSetApprovalForAll",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("nft_transfer"),
+        schema_text: TOKEN_NFT_TRANSFER_SCHEMA,
+        pascal_stub: "NftTransfer",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("revoke_approval"),
+        schema_text: TOKEN_REVOKE_APPROVAL_SCHEMA,
+        pascal_stub: "RevokeApproval",
+    },
+];
+
+/// Synthesize an isolated per-policy `.cedarschema` for one bundle.
+///
+/// The result starts from `core.cedarschema`, adds the base schema of every
+/// action whose `(domain, action_tag)` the manifest's [`Trigger`] can match,
+/// and injects [`ManifestV2::custom_context`] fields into each matched
+/// action's `type <Action>CustomContext = {};` stub.
+///
+/// # Matched-action resolution
+///
+/// Only [`TriggerField::ActionDomain`] and [`TriggerField::ActionTag`]
+/// constraints affect which action *types* are included — venue / transaction
+/// constraints narrow which concrete actions a policy evaluates but never
+/// change the action type, so they are ignored here. An action row is included
+/// when the domain/tag-only projection of the trigger matches it (reusing the
+/// exact `eq` / `ne` / `in` / `nin` semantics of
+/// [`crate::policy_rpc::evaluate_trigger`]). An empty trigger matches every row.
+///
+/// # Custom-context injection
+///
+/// When [`ManifestV2::custom_context`] is non-empty, its fields are injected
+/// into the `<Stub>CustomContext` of *every* matched action (fields sorted by
+/// name for determinism; a `"Decimal"` type spelling is normalized to the Cedar
+/// `decimal` extension type). In practice a manifest declaring custom context
+/// almost always pins a single action via `action.tag` `eq`, so the same fields
+/// landing on several stubs only arises for deliberately broad triggers.
+///
+/// # Errors
+///
+/// Returns [`PolicyRpcError::Schema`] when a matched action's
+/// `type <Stub>CustomContext = {};` stub is absent from the assembled text
+/// (mirroring [`super::compose_enriched`]), or when a custom field name
+/// collides with one of that action's base context fields.
+pub fn compose_per_policy(manifest: &ManifestV2) -> Result<String, PolicyRpcError> {
+    let matched = matched_entries(&manifest.trigger);
+
+    // Assemble: core first, then each matched action's base schema. Reuse the
+    // unified path's namespace merge so per-namespace blocks collapse into a
+    // single `namespace <Name> { ... }` (Cedar rejects duplicates).
+    let mut inputs: Vec<&str> = Vec::with_capacity(matched.len() + 1);
+    inputs.push(CORE_SCHEMA);
+    for entry in &matched {
+        inputs.push(entry.schema_text);
+    }
+    let mut text = merge_namespace_blocks(&inputs);
+
+    // Inject custom context fields into each matched action's stub.
+    if !manifest.custom_context.fields.is_empty() {
+        for entry in &matched {
+            inject_custom_context(&mut text, entry, &manifest.custom_context.fields)?;
+        }
+    }
+
+    Ok(text)
+}
+
+/// Resolve which action rows the trigger can match, considering only the
+/// domain/tag constraints (venue/tx constraints do not change the action type).
+fn matched_entries(trigger: &Trigger) -> Vec<&'static ActionEntry> {
+    // Project the trigger down to its action-type-relevant constraints so a
+    // venue/tx miss never excludes an action row.
+    let mut where_ = BTreeMap::new();
+    if let Some(c) = trigger.where_.get(&TriggerField::ActionDomain) {
+        where_.insert(TriggerField::ActionDomain, c.clone());
+    }
+    if let Some(c) = trigger.where_.get(&TriggerField::ActionTag) {
+        where_.insert(TriggerField::ActionTag, c.clone());
+    }
+    let projected = Trigger {
+        scope: trigger.scope,
+        where_,
+    };
+
+    // Transaction fields are irrelevant after projection; placeholders suffice.
+    let tx = TxView {
+        chain_id: "",
+        from: "",
+        to: "",
+    };
+
+    RESOLVER_TABLE
+        .iter()
+        .filter(|entry| {
+            let view = ActionView {
+                domain: entry.domain,
+                action_tag: entry.action_tag,
+                venue_name: None,
+            };
+            evaluate_trigger(&projected, &view, &tx)
+        })
+        .collect()
+}
+
+/// Replace one matched action's `type <Stub>CustomContext = {};` stub with a
+/// populated type carrying the manifest's custom fields.
+fn inject_custom_context(
+    text: &mut String,
+    entry: &ActionEntry,
+    fields: &BTreeMap<String, String>,
+) -> Result<(), PolicyRpcError> {
+    let stub = format!("type {}CustomContext = {{}};\n", entry.pascal_stub);
+    if !text.contains(&stub) {
+        return Err(PolicyRpcError::Schema(format!(
+            "per-policy base schema missing `type {}CustomContext = {{}};` stub \
+             for action `{}`",
+            entry.pascal_stub,
+            entry.action_tag.unwrap_or(entry.domain),
+        )));
+    }
+    let body = render_custom_body(entry, fields)?;
+    *text = text.replace(&stub, &body);
+    Ok(())
+}
+
+/// Render the populated `type <Stub>CustomContext = { ... };` text.
+///
+/// Fields are sorted by name (the source map is already a [`BTreeMap`], so this
+/// is inherent) and each is declared optional (`?:`) per the fail-open
+/// enrichment model. A `"Decimal"` type spelling is normalized to the Cedar
+/// `decimal` extension type, mirroring `manifest_fragment`.
+fn render_custom_body(
+    entry: &ActionEntry,
+    fields: &BTreeMap<String, String>,
+) -> Result<String, PolicyRpcError> {
+    // Resolve the snake action tag for the base-field collision check. The
+    // structural multicall/unknown bodies carry no inner tag; use the domain.
+    let snake_tag = entry.action_tag.unwrap_or(entry.domain);
+    let base_fields = super::manifest_fragment::base_field_names(snake_tag);
+
+    let mut lines = String::new();
+    for (name, raw_type) in fields {
+        if base_fields.contains(&name.as_str()) {
+            return Err(PolicyRpcError::Schema(format!(
+                "custom_context field `{name}` collides with base context field \
+                 of action `{snake_tag}`"
+            )));
+        }
+        let cedar_type = normalize_type(raw_type);
+        // Writing to a `String` is infallible; the `Result` is discarded.
+        let _ = writeln!(lines, "  {name}?: {cedar_type},");
+    }
+    Ok(format!(
+        "type {}CustomContext = {{\n{lines}}};\n",
+        entry.pascal_stub
+    ))
+}
+
+/// Normalize a manifest type spelling to its Cedar form. Only `Decimal` differs
+/// (Cedar's extension type is the lowercase `decimal`); every other spelling is
+/// passed through verbatim.
+fn normalize_type(raw: &str) -> &str {
+    match raw {
+        "Decimal" => "decimal",
+        other => other,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::policy_rpc::{CustomContext, TriggerConstraint, TriggerScope};
+
+    fn manifest(trigger: Trigger, fields: &[(&str, &str)]) -> ManifestV2 {
+        let mut map = BTreeMap::new();
+        for (k, v) in fields {
+            map.insert((*k).to_owned(), (*v).to_owned());
+        }
+        ManifestV2 {
+            id: "test".to_owned(),
+            schema_version: 2,
+            trigger,
+            policy_rpc: Vec::new(),
+            custom_context: CustomContext { fields: map },
+        }
+    }
+
+    fn trigger_of(pairs: &[(TriggerField, TriggerConstraint)]) -> Trigger {
+        let mut where_ = BTreeMap::new();
+        for (field, constraint) in pairs {
+            where_.insert(*field, constraint.clone());
+        }
+        Trigger {
+            scope: TriggerScope::Inner,
+            where_,
+        }
+    }
+
+    /// Trigger `{ action.tag: eq "swap" }` + a custom field injects into the
+    /// swap stub, parses, and includes only core + swap (no other domains).
+    ///
+    /// NOTE: the field type is `Decimal` (→ normalized `decimal`), not the
+    /// spec's `UsdValuation`. `UsdValuation`'s Cedar `type` definition was
+    /// removed in the pre-migration cleanup, so a schema referencing it no
+    /// longer parses; `decimal` is the Cedar extension type the swap schema
+    /// already uses for USD fields, which keeps the parse-success assertion
+    /// meaningful while still exercising the injection + stub replacement.
+    #[test]
+    fn swap_with_custom_field_parses() {
+        let trigger = trigger_of(&[(
+            TriggerField::ActionTag,
+            TriggerConstraint::Eq("swap".into()),
+        )]);
+        let m = manifest(trigger, &[("totalInputUsd", "Decimal")]);
+        let text = compose_per_policy(&m).expect("compose");
+
+        let parsed = cedar_policy::Schema::from_cedarschema_str(&text);
+        assert!(
+            parsed.is_ok(),
+            "per-policy swap schema must parse: {:?}",
+            parsed.err()
+        );
+        assert!(text.contains("type SwapCustomContext = {"));
+        assert!(text.contains("totalInputUsd?: decimal"));
+        assert!(
+            !text.contains("type SwapCustomContext = {};"),
+            "stub must be replaced"
+        );
+        // Only core + swap: no other domain's action context type.
+        assert!(!text.contains("BorrowContext"));
+        assert!(!text.contains("OpenPositionContext"));
+        assert!(!text.contains("AddLiquidityContext"));
+    }
+
+    /// Same trigger, but no custom_context → the swap stub is left untouched
+    /// and the schema still parses.
+    #[test]
+    fn empty_custom_context_leaves_stub() {
+        let trigger = trigger_of(&[(
+            TriggerField::ActionTag,
+            TriggerConstraint::Eq("swap".into()),
+        )]);
+        let m = manifest(trigger, &[]);
+        let text = compose_per_policy(&m).expect("compose");
+
+        assert!(text.contains("type SwapCustomContext = {};"));
+        let parsed = cedar_policy::Schema::from_cedarschema_str(&text);
+        assert!(parsed.is_ok(), "{:?}", parsed.err());
+    }
+
+    /// Trigger pinning the `set_e_mode` serde tag resolves to the
+    /// `set_emode.cedarschema` file (whose context type is `SetEModeContext`)
+    /// and parses. Pins the serde-tag ↔ filename ↔ stub three-way mismatch.
+    #[test]
+    fn set_e_mode_resolves_to_set_emode_schema() {
+        let trigger = trigger_of(&[
+            (
+                TriggerField::ActionDomain,
+                TriggerConstraint::Eq("lending".into()),
+            ),
+            (
+                TriggerField::ActionTag,
+                TriggerConstraint::Eq("set_e_mode".into()),
+            ),
+        ]);
+        let m = manifest(trigger, &[]);
+        let text = compose_per_policy(&m).expect("compose");
+
+        assert!(
+            text.contains("type SetEModeContext = {"),
+            "set_e_mode trigger must include the set_emode action context"
+        );
+        let parsed = cedar_policy::Schema::from_cedarschema_str(&text);
+        assert!(parsed.is_ok(), "{:?}", parsed.err());
+    }
+
+    /// Domain-only trigger `{ action.domain: eq "amm" }` includes all 6 amm
+    /// action contexts and parses.
+    #[test]
+    fn domain_only_trigger_includes_all_amm() {
+        let trigger = trigger_of(&[(
+            TriggerField::ActionDomain,
+            TriggerConstraint::Eq("amm".into()),
+        )]);
+        let m = manifest(trigger, &[]);
+        let text = compose_per_policy(&m).expect("compose");
+
+        for ctx in [
+            "SwapContext",
+            "AddLiquidityContext",
+            "RemoveLiquidityContext",
+            "CollectFeesContext",
+            "SignIntentOrderContext",
+            "CancelIntentOrderContext",
+        ] {
+            assert!(text.contains(ctx), "amm trigger must include `{ctx}`");
+        }
+        // No other domain leaked in.
+        assert!(!text.contains("BorrowContext"));
+        let parsed = cedar_policy::Schema::from_cedarschema_str(&text);
+        assert!(parsed.is_ok(), "{:?}", parsed.err());
+    }
+
+    /// Empty trigger → core + all 45 actions. Confirms no namespace / type
+    /// collisions across the full set.
+    #[test]
+    fn always_trigger_parses() {
+        let m = manifest(Trigger::default(), &[]);
+        let text = compose_per_policy(&m).expect("compose");
+
+        let parsed = cedar_policy::Schema::from_cedarschema_str(&text);
+        assert!(
+            parsed.is_ok(),
+            "all-actions per-policy schema must parse: {:?}",
+            parsed.err()
+        );
+        // Spot-check one action per namespace is present.
+        for ctx in [
+            "SwapContext",
+            "BorrowContext",
+            "OpenPositionContext",
+            "Erc20ApproveContext",
+            "CommitContext",
+            "ClaimContext",
+        ] {
+            assert!(text.contains(ctx), "always trigger must include `{ctx}`");
+        }
+    }
+
+    /// Every resolver row's `(schema_text, pascal_stub)` pairing must be
+    /// internally consistent: the named schema const must actually declare
+    /// `type <Stub>CustomContext = {};`. This fires loudly if a row points a
+    /// stub at the wrong schema file (the kind of mistake no
+    /// parse-only test catches, because the stub-replacement path only runs
+    /// when a manifest declares custom_context).
+    #[test]
+    fn resolver_table_stubs_exist() {
+        for entry in RESOLVER_TABLE {
+            let stub = format!("type {}CustomContext = {{}};", entry.pascal_stub);
+            assert!(
+                entry.schema_text.contains(&stub),
+                "resolver row (domain={}, tag={:?}) names stub `{}` but its schema \
+                 const does not declare `{stub}`",
+                entry.domain,
+                entry.action_tag,
+                entry.pascal_stub,
+            );
+        }
+        // The table covers exactly the 45 shipped actions (multicall + unknown
+        // included). Guards against a row being dropped or duplicated.
+        assert_eq!(RESOLVER_TABLE.len(), 45, "resolver table must have 45 rows");
+    }
+
+    /// A custom_context field whose name collides with one of the matched
+    /// action's base context fields must be rejected with
+    /// [`PolicyRpcError::Schema`] (mirroring the unified composer's Rule 4).
+    /// `recipient` is a declared base field of `SwapContext`.
+    #[test]
+    fn rejects_custom_field_colliding_with_base() {
+        let trigger = trigger_of(&[(
+            TriggerField::ActionTag,
+            TriggerConstraint::Eq("swap".into()),
+        )]);
+        let m = manifest(trigger, &[("recipient", "String")]);
+        let err = compose_per_policy(&m).expect_err("collision must be rejected");
+        match err {
+            PolicyRpcError::Schema(msg) => {
+                assert!(
+                    msg.contains("recipient"),
+                    "error must name the colliding field: {msg}"
+                );
+                assert!(
+                    msg.contains("swap"),
+                    "error must name the action: {msg}"
+                );
+            }
+            other => panic!("expected PolicyRpcError::Schema, got {other:?}"),
+        }
+    }
+}
