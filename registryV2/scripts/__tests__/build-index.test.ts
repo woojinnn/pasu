@@ -212,6 +212,111 @@ describe("build-index by-typed-data emission", () => {
     expect(listTypedData(root)).toEqual([]);
   });
 
+  it("(5) appends witness_type as a 4th filename segment when present", () => {
+    // UniswapX-style Permit2-witness manifest: same (chain, vc, primary_type)
+    // as a plain Permit2 sig, disambiguated by witness_type. The 4th segment
+    // keeps the by-typed-data index file distinct.
+    const manifest = permit2Manifest({
+      match: {
+        selector: "0x30f28b7a",
+        chain_to_addresses: { "1": [PERMIT2] },
+        typed_data: {
+          domain_name: "Permit2",
+          verifying_contract: PERMIT2,
+          primary_type: "PermitWitnessTransferFrom",
+          witness_type: "ExclusiveDutchOrder",
+          types: {
+            PermitWitnessTransferFrom: [
+              { name: "spender", type: "address" },
+              { name: "witness", type: "ExclusiveDutchOrder" },
+            ],
+          },
+        },
+      },
+    });
+    const root = track(scaffold({ "witness.json": manifest }));
+    const res = runBuild(root);
+    expect(res.status, `stderr:\n${res.stderr}`).toBe(0);
+
+    expect(listTypedData(root)).toEqual([
+      `1__${PERMIT2}__PermitWitnessTransferFrom__ExclusiveDutchOrder.json`,
+    ]);
+
+    // descriptor round-trips witness_type into the index entry's bundle.
+    const entry = JSON.parse(
+      readFileSync(
+        join(
+          typedDataDir(root),
+          `1__${PERMIT2}__PermitWitnessTransferFrom__ExclusiveDutchOrder.json`,
+        ),
+        "utf8",
+      ),
+    );
+    expect(entry.bundle.match.typed_data.witness_type).toBe(
+      "ExclusiveDutchOrder",
+    );
+  });
+
+  it("(6) without witness_type the filename stays the byte-identical 3-segment form", () => {
+    // Backward compat: a typed_data block with NO witness_type produces exactly
+    // the pre-T1 3-segment filename.
+    const root = track(scaffold({ "permitSingle.json": permit2Manifest() }));
+    const res = runBuild(root);
+    expect(res.status, `stderr:\n${res.stderr}`).toBe(0);
+    expect(listTypedData(root)).toContain(`1__${PERMIT2}__PermitSingle.json`);
+    // No 4-segment variant leaked in.
+    expect(
+      listTypedData(root).some((f) => f.split("__").length > 3),
+    ).toBe(false);
+  });
+
+  it("(7) two manifests colliding on (chain, vc, primary_type) but differing in witness_type both emit (no overwrite)", () => {
+    const manifestA = permit2Manifest({
+      id: "uniswapx/test/orderA@1.0.0",
+      match: {
+        selector: "0x00000001",
+        chain_to_addresses: { "1": [PERMIT2] },
+        typed_data: {
+          domain_name: "Permit2",
+          verifying_contract: PERMIT2,
+          primary_type: "PermitWitnessTransferFrom",
+          witness_type: "OrderA",
+          types: {
+            PermitWitnessTransferFrom: [{ name: "witness", type: "OrderA" }],
+          },
+        },
+      },
+    });
+    const manifestB = permit2Manifest({
+      id: "uniswapx/test/orderB@1.0.0",
+      match: {
+        selector: "0x00000002",
+        chain_to_addresses: { "1": [PERMIT2] },
+        typed_data: {
+          domain_name: "Permit2",
+          verifying_contract: PERMIT2,
+          primary_type: "PermitWitnessTransferFrom",
+          witness_type: "OrderB",
+          types: {
+            PermitWitnessTransferFrom: [{ name: "witness", type: "OrderB" }],
+          },
+        },
+      },
+    });
+    const root = track(
+      scaffold({ "orderA.json": manifestA, "orderB.json": manifestB }),
+    );
+    const res = runBuild(root);
+    expect(res.status, `stderr:\n${res.stderr}`).toBe(0);
+
+    expect([...listTypedData(root)].sort()).toEqual(
+      [
+        `1__${PERMIT2}__PermitWitnessTransferFrom__OrderA.json`,
+        `1__${PERMIT2}__PermitWitnessTransferFrom__OrderB.json`,
+      ].sort(),
+    );
+  });
+
   it("(4) emits NO by-typed-data entry when a manifest has no typed_data", () => {
     const plain = {
       type: "adapter_action",

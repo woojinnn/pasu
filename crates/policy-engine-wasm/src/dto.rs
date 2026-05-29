@@ -316,6 +316,15 @@ pub struct DeclarativeRouteTypedDataV3InputDto {
     pub verifying_contract: String,
     /// EIP-712 `primaryType` (e.g. `"PermitSingle"`).
     pub primary_type: String,
+    /// Optional 4th routing-key component (T1). For Permit2
+    /// `permitWitnessTransferFrom` witnesses (UniswapX intent orders etc.) the
+    /// real order type is the EIP-712 `witness` field's type — every such order
+    /// collides on `(chain_id, Permit2, "PermitWitnessTransferFrom")`, so
+    /// `witness_type` (the witness struct's EIP-712 type name, kept VERBATIM
+    /// like `primary_type`) disambiguates. Absent for non-witness payloads →
+    /// the bridge key keeps its 3-tuple shape (backward compatible).
+    #[serde(default)]
+    pub witness_type: Option<String>,
     /// EIP-712 `domain.name`. Optional — defaults to empty.
     #[serde(default)]
     pub domain_name: Option<String>,

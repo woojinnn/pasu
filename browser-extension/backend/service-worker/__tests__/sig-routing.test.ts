@@ -239,6 +239,90 @@ describe("routeTypedSignaturePayload — manifest-driven typed-data router", () 
     ).toBe("offchain_sig");
   });
 
+  it("UniswapX Permit2-witness order: extracts witness_type from types[primaryType].witness and threads it to the WASM route", async () => {
+    // UniswapX orders sign as Permit2 `permitWitnessTransferFrom` witnesses:
+    // primaryType is the Permit2 type, and the ACTUAL order type is the EIP-712
+    // `witness` field's type inside types["PermitWitnessTransferFrom"]. The SW
+    // must surface that as `witnessType` so the WASM bridge key can disambiguate
+    // the otherwise-colliding (chain, Permit2, "PermitWitnessTransferFrom") tuple.
+    mocks.declarativeRouteTypedDataV3.mockResolvedValue({
+      ok: true,
+      data: {
+        actions: [{ meta: { nature: { kind: "offchain_sig" } }, body: {} }],
+        decoder_id: "uniswap/uniswapx/exclusiveDutchOrder@1.0.0",
+      },
+    });
+
+    const typedData = {
+      domain: {
+        name: "Permit2",
+        chainId: 1,
+        verifyingContract: PERMIT2,
+      },
+      primaryType: "PermitWitnessTransferFrom",
+      types: {
+        PermitWitnessTransferFrom: [
+          { name: "permitted", type: "TokenPermissions" },
+          { name: "spender", type: "address" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+          { name: "witness", type: "ExclusiveDutchOrder" },
+        ],
+      },
+      message: {
+        permitted: { token: USDC, amount: "1000" },
+        spender: UNISWAPX_REACTOR,
+        nonce: "0",
+        deadline: "1700000000",
+        witness: {},
+      },
+    };
+
+    const result = await routeTypedSignaturePayload(payload(typedData));
+
+    // The WASM route is called with witnessType = the `witness` field's EIP-712
+    // type, kept VERBATIM (no lowercasing — it is the exact discriminator).
+    expect(mocks.declarativeRouteTypedDataV3).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chainId: 1,
+        verifyingContract: PERMIT2,
+        primaryType: "PermitWitnessTransferFrom",
+        witnessType: "ExclusiveDutchOrder",
+      }),
+    );
+    expect(result?.decoderId).toBe(
+      "uniswap/uniswapx/exclusiveDutchOrder@1.0.0",
+    );
+  });
+
+  it("no witness field in types[primaryType] → witnessType passed as undefined", async () => {
+    // A plain Permit2 PermitSingle has no `witness` entry — the SW must pass
+    // witnessType=undefined so the WASM bridge key keeps its 3-tuple shape
+    // (backward compatible with every existing typed_data manifest).
+    mocks.declarativeRouteTypedDataV3.mockResolvedValue({
+      ok: true,
+      data: {
+        actions: [{ meta: { nature: { kind: "offchain_sig" } }, body: {} }],
+        decoder_id: "uniswap/permit2/permitSingle@1.0.0",
+      },
+    });
+
+    const typedData = {
+      domain: { name: "Permit2", chainId: 1, verifyingContract: PERMIT2 },
+      primaryType: "PermitSingle",
+      types: { PermitSingle: [{ name: "spender", type: "address" }] },
+      message: { spender: UNISWAPX_REACTOR, sigDeadline: "1700000000" },
+    };
+
+    await routeTypedSignaturePayload(payload(typedData));
+
+    expect(mocks.declarativeRouteTypedDataV3).toHaveBeenCalledTimes(1);
+    const callArg = mocks.declarativeRouteTypedDataV3.mock.calls[0]?.[0] as {
+      witnessType?: string;
+    };
+    expect(callArg.witnessType).toBeUndefined();
+  });
+
   it("returns null and does NOT call WASM route when install misses", async () => {
     mocks.installDeclarativeBundleV3ByTypedData.mockResolvedValue({
       ok: false,

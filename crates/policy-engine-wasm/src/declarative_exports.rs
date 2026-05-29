@@ -53,7 +53,8 @@ struct BridgeKey {
     selector: String,
 }
 
-/// Typed-data bridge key: `(chain_id, verifying_contract_lowercase, primary_type)`.
+/// Typed-data bridge key:
+/// `(chain_id, verifying_contract_lowercase, primary_type, witness_type?)`.
 ///
 /// Parallel to [`BridgeKey`] but for the off-chain EIP-712 path. `verifying_contract`
 /// is normalised to lowercase hex (no checksum) so the lookup is case-insensitive
@@ -62,11 +63,21 @@ struct BridgeKey {
 /// (e.g. `"PermitSingle"`, `"PermitWitnessTransferFrom"`,
 /// `"HyperliquidTransaction:UsdSend"`) — kept verbatim (NOT lowered) since it is the
 /// exact discriminator the wallet's `eth_signTypedData` payload carries.
+///
+/// `witness_type` (T1) is the OPTIONAL 4th component. Permit2
+/// `permitWitnessTransferFrom` witnesses (UniswapX intent orders etc.) ALL share
+/// the `(chain_id, Permit2, "PermitWitnessTransferFrom")` triple — the actual
+/// order type is the EIP-712 `witness` field's type. `witness_type` carries that
+/// struct's type name (kept VERBATIM, like `primary_type`) to disambiguate.
+/// `None` for every non-witness payload, so the key matches exactly as it did
+/// pre-T1 (backward compatible: `None`-on-both manifest+input hashes/compares
+/// identically to the old 3-tuple).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct TypedDataBridgeKey {
     chain_id: u64,
     verifying_contract: String,
     primary_type: String,
+    witness_type: Option<String>,
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -165,15 +176,23 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
         let bundle_id = bundle_value
             .get("id")
             .and_then(serde_json::Value::as_str)
-            .ok_or_else(|| EngineErrorDto::new("missing_id", "bundle.id missing or not a string".to_string()))?
+            .ok_or_else(|| {
+                EngineErrorDto::new(
+                    "missing_id",
+                    "bundle.id missing or not a string".to_string(),
+                )
+            })?
             .to_owned();
 
-        let match_value = bundle_value
-            .get("match")
-            .ok_or_else(|| EngineErrorDto::new("invalid_match", "bundle.match missing".to_string()))?;
+        let match_value = bundle_value.get("match").ok_or_else(|| {
+            EngineErrorDto::new("invalid_match", "bundle.match missing".to_string())
+        })?;
         let bundle_match: BundleMatch =
             serde_json::from_value(match_value.clone()).map_err(|error| {
-                EngineErrorDto::new("invalid_match", format!("bundle.match parse failed: {error}"))
+                EngineErrorDto::new(
+                    "invalid_match",
+                    format!("bundle.match parse failed: {error}"),
+                )
             })?;
 
         let selector = bundle_match.selector.to_ascii_lowercase();
@@ -184,7 +203,11 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
         // [`declarative_route_typed_data_v3_json`] can route an off-chain
         // signature payload to the same emit-rule the calldata path uses.
         // calldata-only manifests omit `typed_data` and skip this entirely.
-        let typed_data_route: Option<(String, String)> = match_value
+        // `witness_type` (T1) is read here too — the optional 4th key
+        // component. Kept verbatim (NOT lowercased), like `primary_type`. A
+        // manifest with no `witness_type` yields `None`, matching the pre-T1
+        // 3-tuple key shape exactly.
+        let typed_data_route: Option<(String, String, Option<String>)> = match_value
             .get("typed_data")
             .and_then(serde_json::Value::as_object)
             .and_then(|td| {
@@ -196,7 +219,11 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
                     .get("primary_type")
                     .and_then(serde_json::Value::as_str)?
                     .to_owned();
-                Some((vc, pt))
+                let wt = td
+                    .get("witness_type")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::to_owned);
+                Some((vc, pt, wt))
             });
 
         DECLARATIVE_V3_STATE.with(|state| {
@@ -209,12 +236,13 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
                 };
                 state.bridge.insert(key, bundle_id.clone());
             }
-            if let Some((ref vc, ref pt)) = typed_data_route {
+            if let Some((ref vc, ref pt, ref wt)) = typed_data_route {
                 for (chain_id, _to) in bundle_match.entries() {
                     let key = TypedDataBridgeKey {
                         chain_id,
                         verifying_contract: vc.clone(),
                         primary_type: pt.clone(),
+                        witness_type: wt.clone(),
                     };
                     state.typed_data_bridge.insert(key, bundle_id.clone());
                 }
@@ -289,8 +317,8 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
 pub fn declarative_route_request_v3_json(input_json: String) -> String {
     let result = (|| -> Result<DeclarativeRouteRequestV3ResultDto, EngineErrorDto> {
         check_input_size(&input_json, "declarative_route_request_v3_json")?;
-        let input: DeclarativeRouteRequestV3InputDto = serde_json::from_str(&input_json)
-            .map_err(|error| {
+        let input: DeclarativeRouteRequestV3InputDto =
+            serde_json::from_str(&input_json).map_err(|error| {
                 EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
             })?;
 
@@ -397,9 +425,9 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             })?;
         let args_json = args_to_json(&decoded);
 
-        let emit = bundle_value.get("emit").ok_or_else(|| {
-            EngineErrorDto::new("invalid_bundle", "missing emit".to_string())
-        })?;
+        let emit = bundle_value
+            .get("emit")
+            .ok_or_else(|| EngineErrorDto::new("invalid_bundle", "missing emit".to_string()))?;
         let strategy = emit
             .get("strategy")
             .and_then(serde_json::Value::as_str)
@@ -481,7 +509,9 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                         )
                     })?;
                 let mask = parse_hex_u8(
-                    emit.get("mask").and_then(serde_json::Value::as_str).unwrap_or("0xff"),
+                    emit.get("mask")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("0xff"),
                     "emit.mask",
                 )?;
                 let allow_revert_bit = parse_hex_u8(
@@ -522,10 +552,8 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                         .get("unlock_data_source")
                         .and_then(serde_json::Value::as_str)
                     {
-                        let (actions, params) =
-                            decode_v4_unlock_data(&ctx, src).map_err(|error| {
-                                EngineErrorDto::new("invalid_unlock_data", error)
-                            })?;
+                        let (actions, params) = decode_v4_unlock_data(&ctx, src)
+                            .map_err(|error| EngineErrorDto::new("invalid_unlock_data", error))?;
                         unlock_decoded = Some(params);
                         (actions, unlock_decoded.as_ref().expect("just set"))
                     } else {
@@ -538,15 +566,14 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                                     "missing args.commands".to_string(),
                                 )
                             })?;
-                        let commands_bytes = hex::decode(
-                            commands_str.strip_prefix("0x").unwrap_or(commands_str),
-                        )
-                        .map_err(|error| {
-                            EngineErrorDto::new(
-                                "invalid_commands",
-                                format!("commands not hex: {error}"),
-                            )
-                        })?;
+                        let commands_bytes =
+                            hex::decode(commands_str.strip_prefix("0x").unwrap_or(commands_str))
+                                .map_err(|error| {
+                                    EngineErrorDto::new(
+                                        "invalid_commands",
+                                        format!("commands not hex: {error}"),
+                                    )
+                                })?;
                         let inputs_array = args_json
                             .get("inputs")
                             .and_then(serde_json::Value::as_array)
@@ -582,20 +609,16 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                 let mut decoded_inputs_array = Vec::with_capacity(inputs_array.len());
                 for (i, input_hex) in inputs_array.iter().enumerate() {
                     let input_hex_str = input_hex.as_str().ok_or_else(|| {
-                        EngineErrorDto::new(
-                            "invalid_inputs",
-                            format!("inputs[{i}] not string"),
-                        )
+                        EngineErrorDto::new("invalid_inputs", format!("inputs[{i}] not string"))
                     })?;
-                    let input_bytes = hex::decode(
-                        input_hex_str.strip_prefix("0x").unwrap_or(input_hex_str),
-                    )
-                    .map_err(|error| {
-                        EngineErrorDto::new(
-                            "invalid_inputs_hex",
-                            format!("inputs[{i}]: {error}"),
-                        )
-                    })?;
+                    let input_bytes =
+                        hex::decode(input_hex_str.strip_prefix("0x").unwrap_or(input_hex_str))
+                            .map_err(|error| {
+                                EngineErrorDto::new(
+                                    "invalid_inputs_hex",
+                                    format!("inputs[{i}]: {error}"),
+                                )
+                            })?;
 
                     let opcode_byte = *commands_bytes.get(i).ok_or_else(|| {
                         EngineErrorDto::new(
@@ -634,9 +657,7 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                     allow_revert_bit,
                     unknown_policy,
                 )
-                .map_err(|error| {
-                    EngineErrorDto::new("build_multicall_failed", error.to_string())
-                })?
+                .map_err(|error| EngineErrorDto::new("build_multicall_failed", error.to_string()))?
             }
             // Phase A.2 — homogeneous-array fan-out. `emit.array_source` is a
             // `$args.<path>` placeholder resolving to a JSON array; each
@@ -648,16 +669,18 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                     .get("array_source")
                     .and_then(serde_json::Value::as_str)
                     .ok_or_else(|| {
-                        EngineErrorDto::new("invalid_bundle", "missing emit.array_source".to_string())
+                        EngineErrorDto::new(
+                            "invalid_bundle",
+                            "missing emit.array_source".to_string(),
+                        )
                     })?;
                 let per_item_body = emit.get("body").ok_or_else(|| {
                     EngineErrorDto::new("invalid_bundle", "missing emit.body".to_string())
                 })?;
                 let per_item_live_inputs = emit.get("live_inputs");
-                build_array_emit(&ctx, array_source, per_item_body, per_item_live_inputs)
-                    .map_err(|error| {
-                        EngineErrorDto::new("build_array_emit_failed", error.to_string())
-                    })?
+                build_array_emit(&ctx, array_source, per_item_body, per_item_live_inputs).map_err(
+                    |error| EngineErrorDto::new("build_array_emit_failed", error.to_string()),
+                )?
             }
             other => {
                 return Err(EngineErrorDto::new(
@@ -736,13 +759,16 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
         // ── Typed-data bridge lookup ────────────────────────────────────────
         //
         // `verifying_contract` is lowercased to match the install-time
-        // normalisation; `primary_type` is kept verbatim (it is the exact
-        // EIP-712 discriminator). A miss surfaces `no_typed_data_mapper` so the
-        // SW caller can surface the gap.
+        // normalisation; `primary_type` AND `witness_type` (T1) are kept
+        // verbatim (they are the exact EIP-712 discriminators). `witness_type`
+        // is `None` for non-witness payloads, matching the install-side key
+        // exactly — so the pre-T1 3-tuple lookup is byte-for-byte unchanged. A
+        // miss surfaces `no_typed_data_mapper` so the SW caller can surface the gap.
         let key = TypedDataBridgeKey {
             chain_id: input.chain_id,
             verifying_contract: input.verifying_contract.to_ascii_lowercase(),
             primary_type: input.primary_type.clone(),
+            witness_type: input.witness_type.clone(),
         };
 
         let (bundle_id, bundle_value) = DECLARATIVE_V3_STATE
@@ -760,15 +786,15 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
                 EngineErrorDto::new(
                     "no_typed_data_mapper",
                     format!(
-                        "no typed-data mapper bridged for chain_id={} verifying_contract={} primary_type={}",
-                        input.chain_id, input.verifying_contract, input.primary_type
+                        "no typed-data mapper bridged for chain_id={} verifying_contract={} primary_type={} witness_type={:?}",
+                        input.chain_id, input.verifying_contract, input.primary_type, input.witness_type
                     ),
                 )
             })?;
 
-        let emit = bundle_value.get("emit").ok_or_else(|| {
-            EngineErrorDto::new("invalid_bundle", "missing emit".to_string())
-        })?;
+        let emit = bundle_value
+            .get("emit")
+            .ok_or_else(|| EngineErrorDto::new("invalid_bundle", "missing emit".to_string()))?;
         let strategy = emit
             .get("strategy")
             .and_then(serde_json::Value::as_str)
@@ -790,7 +816,11 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
         }
 
         // ── Build args_json from the EIP-712 message (WRAP RULE) ───────────
-        let args_json = build_typed_data_args_json(bundle_value.pointer("/abi_fragment/abi"), &input.primary_type, &input.message);
+        let args_json = build_typed_data_args_json(
+            bundle_value.pointer("/abi_fragment/abi"),
+            &input.primary_type,
+            &input.message,
+        );
 
         // ── V3MapContext (same resolved/derived population as calldata) ─────
         // Plan §M5 — static WETH-by-chain pre-populate (mirrors the calldata
@@ -1040,8 +1070,8 @@ fn decode_inputs_abi_tuple(
     use alloy_json_abi::Function;
 
     let synthetic = format!("step{inputs_abi}");
-    let function = Function::parse(&synthetic)
-        .map_err(|error| format!("parse {inputs_abi:?}: {error}"))?;
+    let function =
+        Function::parse(&synthetic).map_err(|error| format!("parse {inputs_abi:?}: {error}"))?;
     let selector = function.selector().0;
 
     let mut prefixed = Vec::with_capacity(4 + input_bytes.len());
@@ -1102,27 +1132,23 @@ fn decode_v4_unlock_data(
     src: &str,
 ) -> Result<(Vec<u8>, Vec<serde_json::Value>), String> {
     // Resolve the `$args.<name>` placeholder to the unlockData bytes hex.
-    let unlock_hex =
-        substitute_placeholders(ctx, &serde_json::Value::String(src.to_owned()))
-            .map_err(|error| format!("resolve {src:?}: {error}"))?;
+    let unlock_hex = substitute_placeholders(ctx, &serde_json::Value::String(src.to_owned()))
+        .map_err(|error| format!("resolve {src:?}: {error}"))?;
     let unlock_str = unlock_hex
         .as_str()
         .ok_or_else(|| format!("{src:?} did not resolve to a bytes hex string"))?;
-    let unlock_bytes =
-        hex::decode(unlock_str.strip_prefix("0x").unwrap_or(unlock_str))
-            .map_err(|error| format!("unlockData not hex: {error}"))?;
+    let unlock_bytes = hex::decode(unlock_str.strip_prefix("0x").unwrap_or(unlock_str))
+        .map_err(|error| format!("unlockData not hex: {error}"))?;
 
     // ABI-decode `(bytes actions, bytes[] params)` via the shared tuple decoder.
-    let decoded =
-        decode_inputs_abi_tuple("(bytes actions, bytes[] params)", &unlock_bytes)?;
+    let decoded = decode_inputs_abi_tuple("(bytes actions, bytes[] params)", &unlock_bytes)?;
 
     let actions_str = decoded
         .get("actions")
         .and_then(serde_json::Value::as_str)
         .ok_or_else(|| "decoded unlockData missing `actions` bytes".to_string())?;
-    let actions_bytes =
-        hex::decode(actions_str.strip_prefix("0x").unwrap_or(actions_str))
-            .map_err(|error| format!("actions not hex: {error}"))?;
+    let actions_bytes = hex::decode(actions_str.strip_prefix("0x").unwrap_or(actions_str))
+        .map_err(|error| format!("actions not hex: {error}"))?;
 
     let params = decoded
         .get("params")
@@ -1211,7 +1237,10 @@ fn compute_v4_pool_id(
     buf[0x7d..0x80].copy_from_slice(&spacing_bytes[5..8]);
     write_address_word(&mut buf[0x80..0xa0], hooks)?;
 
-    Some(format!("0x{}", hex::encode(alloy_primitives::keccak256(buf))))
+    Some(format!(
+        "0x{}",
+        hex::encode(alloy_primitives::keccak256(buf))
+    ))
 }
 
 /// Write a `0x`-prefixed 20-byte address into a 32-byte word slot (left-padded
@@ -1258,7 +1287,10 @@ mod tests {
         let out = declarative_route_request_v3_json(v3_route_input().to_string());
         let parsed: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed["ok"], false, "{parsed}");
-        assert_eq!(parsed["error"]["kind"], "no_declarative_v3_mapper", "{parsed}");
+        assert_eq!(
+            parsed["error"]["kind"], "no_declarative_v3_mapper",
+            "{parsed}"
+        );
     }
 
     #[test]
@@ -1304,6 +1336,9 @@ mod tests {
         assert_eq!(parsed["ok"], false, "{parsed}");
         // Bridge miss — the defaults parsed successfully (no
         // `invalid_input_json` from the U256 / address parsers above).
-        assert_eq!(parsed["error"]["kind"], "no_declarative_v3_mapper", "{parsed}");
+        assert_eq!(
+            parsed["error"]["kind"], "no_declarative_v3_mapper",
+            "{parsed}"
+        );
     }
 }

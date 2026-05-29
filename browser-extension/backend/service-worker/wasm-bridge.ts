@@ -424,6 +424,16 @@ export interface DeclarativeRouteTypedDataV3Input {
   /** EIP-712 `primaryType` discriminator (may contain a `:` segment). */
   primaryType: string;
   /**
+   * Optional 4th routing-key component (T1) — the EIP-712 `witness` field's
+   * struct type for Permit2 `permitWitnessTransferFrom` payloads (UniswapX
+   * intent orders etc.), which otherwise all collide on
+   * `(chainId, Permit2, "PermitWitnessTransferFrom")`. Kept VERBATIM (the exact
+   * EIP-712 type name). `undefined` for non-witness payloads → the WASM bridge
+   * key keeps its 3-tuple shape. Typed `string | undefined` so callers can
+   * forward a derived value straight through under `exactOptionalPropertyTypes`.
+   */
+  witnessType?: string | undefined;
+  /**
    * Optional EIP-712 `domain.name` — audit only, not part of the key. Typed
    * as `string | undefined` (not just optional) so callers can forward
    * `typedData.domain.name` straight through under `exactOptionalPropertyTypes`.
@@ -470,6 +480,10 @@ export async function declarativeRouteTypedDataV3(
         chain_id: input.chainId,
         verifying_contract: input.verifyingContract,
         primary_type: input.primaryType,
+        // T1 — 4th routing-key component. Omitted from the JSON when undefined
+        // (JSON.stringify drops undefined values), so the Rust DTO's
+        // `#[serde(default)]` yields `None` and the bridge key stays a 3-tuple.
+        witness_type: input.witnessType,
         domain_name: input.domainName,
         message: input.message,
         submitter: input.submitter,

@@ -104,6 +104,17 @@ export async function routeTypedData(args: {
     return null;
   }
 
+  // T1 — derive the optional `witness_type` 4th routing-key component. Permit2
+  // `permitWitnessTransferFrom` payloads (UniswapX intent orders etc.) all
+  // share `(chainId, Permit2, "PermitWitnessTransferFrom")`; the actual order
+  // type is the EIP-712 `witness` field's type inside types[primaryType]. We
+  // locate it by the field NAMED "witness" — this is the Permit2 witness
+  // convention (the field is always named `witness` in IPermit2's
+  // `PermitWitnessTransferFrom`). Absent → `undefined` (the 3-tuple key, every
+  // non-witness manifest). The install key stays the 3-tuple (the manifest
+  // carries witness_type itself); only the route lookup disambiguates.
+  const witnessType = extractWitnessType(args.typedData, primaryType);
+
   const installed = await installDeclarativeBundleV3ByTypedData({
     chainId,
     verifyingContract,
@@ -117,6 +128,7 @@ export async function routeTypedData(args: {
     chainId,
     verifyingContract,
     primaryType,
+    witnessType,
     domainName: args.typedData.domain.name,
     message: args.typedData.message,
     submitter: args.submitter,
@@ -132,6 +144,31 @@ export async function routeTypedData(args: {
 // ───────────────────────────────────────────────────────────────────────────
 // Helpers
 // ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * T1 — extract the EIP-712 `witness` field's struct type from
+ * `types[primaryType]`, used as the optional 4th routing-key component to
+ * de-collide Permit2 `permitWitnessTransferFrom` payloads.
+ *
+ * Convention-based: it finds the field literally NAMED `"witness"`. This is
+ * the IPermit2 `PermitWitnessTransferFrom` convention — the witness struct is
+ * always the field named `witness`. Returns `undefined` when there is no such
+ * field (every non-witness payload), keeping the WASM bridge key a 3-tuple.
+ *
+ * Kept VERBATIM (the exact EIP-712 type name) — the WASM compares it without
+ * lowercasing, exactly like `primaryType`.
+ */
+function extractWitnessType(
+  typedData: EIP712TypedData,
+  primaryType: string,
+): string | undefined {
+  const fields = typedData.types?.[primaryType];
+  if (!Array.isArray(fields)) return undefined;
+  const witness = fields.find((f) => f && f.name === "witness");
+  return typeof witness?.type === "string" && witness.type.length > 0
+    ? witness.type
+    : undefined;
+}
 
 /**
  * Wallets serialise `domain.chainId` inconsistently: viem keeps it a number,

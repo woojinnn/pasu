@@ -116,6 +116,16 @@ interface V3TypedData {
   domain_name: string;
   verifying_contract: Hex;
   primary_type: string;
+  /**
+   * Optional 4th routing-key component (T1). Permit2 `permitWitnessTransferFrom`
+   * witnesses (UniswapX intent orders etc.) ALL share the same
+   * `(chainId, Permit2, "PermitWitnessTransferFrom")` triple — the actual order
+   * type lives in the EIP-712 `witness` field's type inside
+   * `types["PermitWitnessTransferFrom"]`. `witness_type` carries that struct's
+   * EIP-712 type name (e.g. "ExclusiveDutchOrder") to de-collide. Absent for
+   * every non-witness manifest → the routing key keeps its 3-tuple shape.
+   */
+  witness_type?: string;
   types: Record<string, Array<{ name: string; type: string }>>;
 }
 
@@ -533,6 +543,25 @@ function validateTypedDataShape(path: string, td: unknown): asserts td is V3Type
   if (typeof t.primary_type !== "string" || t.primary_type.length === 0) {
     throw new Error(`manifests/: ${path} match.typed_data.primary_type must be a non-empty string`);
   }
+  // T1 — optional `witness_type` 4th routing-key component. When present it
+  // must be a non-empty string (fail-loud, consistent with the other field
+  // validators above).
+  if ("witness_type" in t && (typeof t.witness_type !== "string" || t.witness_type.length === 0)) {
+    throw new Error(
+      `manifests/: ${path} match.typed_data.witness_type must be a non-empty string when present, got ${JSON.stringify(t.witness_type)}`,
+    );
+  }
+  // T1 hardening — a `PermitWitnessTransferFrom` primary type ALWAYS collides
+  // on its (chain, Permit2, primary_type) triple (every UniswapX / Permit2-
+  // witness order shares it), so it MUST carry a witness_type to be routable.
+  // No existing manifest uses this primary type, so this rejects only new
+  // witness manifests that forgot the disambiguator.
+  if (t.primary_type === "PermitWitnessTransferFrom" && typeof t.witness_type !== "string") {
+    throw new Error(
+      `manifests/: ${path} match.typed_data.primary_type "PermitWitnessTransferFrom" requires a witness_type ` +
+        `(the EIP-712 witness struct's type, e.g. "ExclusiveDutchOrder") — every Permit2-witness order collides on this triple otherwise`,
+    );
+  }
   if (typeof t.types !== "object" || t.types === null || Array.isArray(t.types)) {
     throw new Error(`manifests/: ${path} match.typed_data.types must be a JSON object`);
   }
@@ -704,11 +733,23 @@ function callkeyFilename(chainId: ChainId, to: Hex, selector: Hex): string {
   return `${chainId}__${to.toLowerCase()}__${selector.toLowerCase()}.json`;
 }
 
-function typedDataFilename(chainId: ChainId, verifyingContract: Hex, primaryType: string): string {
+function typedDataFilename(
+  chainId: ChainId,
+  verifyingContract: Hex,
+  primaryType: string,
+  witnessType?: string,
+): string {
   // EIP-712 primary types can contain a colon (e.g. HyperLiquid's
   // "HyperliquidTransaction:UsdSend") — escape it to a filesystem-safe token.
   const ptEscaped = primaryType.replace(/:/g, "__");
-  return `${chainId}__${verifyingContract.toLowerCase()}__${ptEscaped}.json`;
+  const base = `${chainId}__${verifyingContract.toLowerCase()}__${ptEscaped}`;
+  // T1 — when present, witness_type is a 4th segment (colons escaped the same
+  // way). When ABSENT the filename is byte-identical to the pre-T1 3-segment
+  // form — every existing typed_data manifest keeps its exact filename.
+  if (witnessType !== undefined) {
+    return `${base}__${witnessType.replace(/:/g, "__")}.json`;
+  }
+  return `${base}.json`;
 }
 
 // ---------------------------------------------------------------------------
@@ -794,7 +835,7 @@ async function main(): Promise<void> {
         const td = resolved.match.typed_data;
         for (const [chainKey] of pairs) {
           const chainId = Number(chainKey);
-          const fname = typedDataFilename(chainId, td.verifying_contract, td.primary_type);
+          const fname = typedDataFilename(chainId, td.verifying_contract, td.primary_type, td.witness_type);
           const entry: IndexEntry = {
             matched: true,
             bundle_id: resolved.id,
