@@ -12,7 +12,7 @@ pub use composer::compose_enriched;
 pub use enriched::EnrichedSchema;
 pub use fragment::{CedarTypeFragment, CustomFieldSource};
 pub use manifest_fragment::manifest_to_cedarschema;
-pub use per_policy::compose_per_policy;
+pub use per_policy::{compose_per_policy, lint_custom_field_refs};
 
 use crate::policy_rpc::{validate_manifests, PolicyManifest, PolicyRpcError};
 use serde::Serialize;

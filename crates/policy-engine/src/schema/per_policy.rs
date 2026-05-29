@@ -469,19 +469,21 @@ fn inject_custom_context(
 /// Fields are sorted by name (the source map is already a [`BTreeMap`], so this
 /// is inherent) and each is declared optional (`?:`) per the fail-open
 /// enrichment model. A `"Decimal"` type spelling is normalized to the Cedar
-/// `decimal` extension type, mirroring `manifest_fragment`.
+/// `decimal` extension type.
 fn render_custom_body(
     entry: &ActionEntry,
     fields: &BTreeMap<String, String>,
 ) -> Result<String, PolicyRpcError> {
-    // Resolve the snake action tag for the base-field collision check. The
-    // structural multicall/unknown bodies carry no inner tag; use the domain.
     let snake_tag = entry.action_tag.unwrap_or(entry.domain);
-    let base_fields = super::manifest_fragment::base_field_names(snake_tag);
+    // Source of truth for an action's base context fields is its OWN shipped
+    // `.cedarschema` (`schema/policy-schema/actions/...`), parsed from the
+    // `type <Stub>Context = { ... }` block — NOT a hardcoded table. This keeps
+    // the collision check aligned with the `simulation-reducer` action shapes.
+    let base_fields = context_base_fields(entry.schema_text, entry.pascal_stub);
 
     let mut lines = String::new();
     for (name, raw_type) in fields {
-        if base_fields.contains(&name.as_str()) {
+        if base_fields.contains(name) {
             return Err(PolicyRpcError::Schema(format!(
                 "custom_context field `{name}` collides with base context field \
                  of action `{snake_tag}`"
@@ -497,6 +499,44 @@ fn render_custom_body(
     ))
 }
 
+/// Extract the top-level field names of an action's `type <Stub>Context = {...}`
+/// block from its cedarschema text. The shipped action `.cedarschema` files are
+/// the single source of truth for an action's base context fields; the
+/// manifest-extensible `custom` slot is excluded.
+fn context_base_fields(
+    schema_text: &str,
+    pascal_stub: &str,
+) -> std::collections::BTreeSet<String> {
+    let mut fields = std::collections::BTreeSet::new();
+    let needle = format!("type {pascal_stub}Context = {{");
+    let Some(start) = schema_text.find(&needle) else {
+        return fields;
+    };
+    let body = &schema_text[start + needle.len()..];
+    // The `<Stub>Context` block ends at the first `};`. Action context fields
+    // reference NAMED types (e.g. `Core::ActionMeta`), never inline records, so
+    // no nested `};` can appear before the block's own terminator.
+    let end = body.find("};").unwrap_or(body.len());
+    for line in body[..end].lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("//") {
+            continue;
+        }
+        // Field shape: `name: Type,` or `name?: Type,`. The first `:` precedes
+        // any `::` in the type, so the ident is everything before it.
+        if let Some(colon) = trimmed.find(':') {
+            let name = trimmed[..colon].trim().trim_end_matches('?').trim();
+            if !name.is_empty()
+                && name != "custom"
+                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+            {
+                fields.insert(name.to_owned());
+            }
+        }
+    }
+    fields
+}
+
 /// Normalize a manifest type spelling to its Cedar form. Only `Decimal` differs
 /// (Cedar's extension type is the lowercase `decimal`); every other spelling is
 /// passed through verbatim.
@@ -505,6 +545,72 @@ fn normalize_type(raw: &str) -> &str {
         "Decimal" => "decimal",
         other => other,
     }
+}
+
+/// Lint a policy body's custom-field references against the manifest's declared
+/// fields, closing the `has`-guard validation gap (Cedar spike finding #2).
+///
+/// Per-policy strict validation (run at install) rejects an UNGUARDED reference
+/// to an undeclared `context.custom.<field>`, but a `has`-guarded reference
+/// (`context.custom has X && context.custom.X`) is dead-code-eliminated by
+/// Cedar's type checker and slips through. This lint catches it: every field
+/// reached via `context.custom.<field>` or `context.custom has <field>` must be
+/// declared in [`ManifestV2::custom_context`].
+///
+/// Pragmatic PoC: a textual scan (not a full Cedar AST walk) — sufficient
+/// because custom fields are always reached through the literal `context.custom`
+/// path. A bundle author who writes that path inside a comment for an
+/// undeclared field would get a false positive (documented; don't do that).
+///
+/// # Errors
+///
+/// Returns [`PolicyRpcError::Schema`] naming the first undeclared field.
+pub fn lint_custom_field_refs(
+    policy_cedar: &str,
+    manifest: &ManifestV2,
+) -> Result<(), PolicyRpcError> {
+    let declared = &manifest.custom_context.fields;
+    for field in custom_field_refs(policy_cedar) {
+        if !declared.contains_key(&field) {
+            return Err(PolicyRpcError::Schema(format!(
+                "policy `{}` references undeclared custom field `context.custom.{field}` \
+                 — declare it in manifest.custom_context.fields",
+                manifest.id
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Collect every identifier reached via `context.custom.<ident>` or
+/// `context.custom has <ident>` in a Cedar policy body.
+fn custom_field_refs(policy_cedar: &str) -> std::collections::BTreeSet<String> {
+    const PREFIX: &str = "context.custom";
+    let mut refs = std::collections::BTreeSet::new();
+    for (idx, _) in policy_cedar.match_indices(PREFIX) {
+        let rest = &policy_cedar[idx + PREFIX.len()..];
+        if let Some(after_dot) = rest.strip_prefix('.') {
+            if let Some(ident) = leading_ident(after_dot) {
+                refs.insert(ident);
+            }
+        } else if let Some(after_has) = rest.trim_start().strip_prefix("has ") {
+            if let Some(ident) = leading_ident(after_has.trim_start()) {
+                refs.insert(ident);
+            }
+        }
+    }
+    refs
+}
+
+/// Take the leading Cedar identifier (`[A-Za-z_][A-Za-z0-9_]*`) of `s`, if any.
+fn leading_ident(s: &str) -> Option<String> {
+    let end = s
+        .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+        .unwrap_or(s.len());
+    if end == 0 || s.as_bytes()[0].is_ascii_digit() {
+        return None;
+    }
+    Some(s[..end].to_owned())
 }
 
 #[cfg(test)]
@@ -717,5 +823,92 @@ mod tests {
             }
             other => panic!("expected PolicyRpcError::Schema, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn base_fields_derive_from_cedarschema_not_legacy_table() {
+        // `tokenIn` is a REAL base field of the new `Amm::SwapContext`
+        // (schema/policy-schema/actions/amm/swap.cedarschema) but is ABSENT
+        // from the legacy `manifest_fragment::base_field_names("swap")` table
+        // (which lists the stale `inputToken`/`outputToken`). Deriving base
+        // fields from the cedarschema (source of truth) must reject it.
+        let base = context_base_fields(super::AMM_SWAP_SCHEMA, "Swap");
+        assert!(base.contains("tokenIn"), "new model field must be detected");
+        assert!(base.contains("venue"));
+        assert!(!base.contains("inputToken"), "legacy field must NOT appear");
+        assert!(!base.contains("custom"), "the custom slot is excluded");
+
+        let m = ManifestV2 {
+            id: "collide-new-base".to_owned(),
+            schema_version: 2,
+            trigger: Trigger {
+                scope: TriggerScope::Inner,
+                where_: [(TriggerField::ActionTag, TriggerConstraint::Eq("swap".to_owned()))]
+                    .into_iter()
+                    .collect(),
+            },
+            policy_rpc: Vec::new(),
+            custom_context: CustomContext {
+                fields: [("tokenIn".to_owned(), "String".to_owned())]
+                    .into_iter()
+                    .collect(),
+            },
+        };
+        let err = compose_per_policy(&m).expect_err("tokenIn collides with a new base field");
+        assert!(matches!(err, PolicyRpcError::Schema(msg) if msg.contains("tokenIn")));
+    }
+
+    // ----- Task 7: custom-field reference lint (has-guard gap) -----
+
+    fn manifest_declaring(fields: &[(&str, &str)]) -> ManifestV2 {
+        ManifestV2 {
+            id: "lint-test".to_owned(),
+            schema_version: 2,
+            trigger: Trigger::default(),
+            policy_rpc: Vec::new(),
+            custom_context: CustomContext {
+                fields: fields
+                    .iter()
+                    .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+                    .collect(),
+            },
+        }
+    }
+
+    #[test]
+    fn lint_passes_when_all_custom_refs_declared() {
+        let policy = "@id(\"p\") forbid(principal, action, resource) when { \
+                      context has custom && context.custom has totalInputUsd && \
+                      context.custom.totalInputUsd > decimal(\"1.0\") };";
+        let manifest = manifest_declaring(&[("totalInputUsd", "decimal")]);
+        lint_custom_field_refs(policy, &manifest).expect("declared field passes");
+    }
+
+    #[test]
+    fn lint_rejects_undeclared_has_guarded_field() {
+        // The reference IS `has`-guarded, so per-policy strict validation would
+        // dead-code-eliminate and miss it — this lint must catch it.
+        let policy = "@id(\"p\") forbid(principal, action, resource) when { \
+                      context.custom has tokenRiskScore && \
+                      context.custom.tokenRiskScore > 50 };";
+        let manifest = manifest_declaring(&[("totalInputUsd", "decimal")]);
+        let err = lint_custom_field_refs(policy, &manifest).expect_err("undeclared must fail");
+        match err {
+            PolicyRpcError::Schema(msg) => assert!(
+                msg.contains("tokenRiskScore"),
+                "error must name the undeclared field: {msg}"
+            ),
+            other => panic!("expected Schema error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lint_ignores_non_custom_context_refs() {
+        // Base-context refs (not under `context.custom`) are validated by the
+        // per-policy schema, not this lint; an empty custom_context is fine.
+        let policy = "@id(\"p\") forbid(principal, action, resource) when { \
+                      context.recipient == \"0x0000000000000000000000000000000000000000\" };";
+        let manifest = manifest_declaring(&[]);
+        lint_custom_field_refs(policy, &manifest).expect("no custom refs → ok");
     }
 }

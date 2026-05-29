@@ -106,9 +106,7 @@ impl PolicyEngine {
     ///
     /// Returns an error when any bundle's schema or policy fails to parse, or a
     /// policy fails strict validation against its own schema.
-    pub(super) fn build_from_per_policy(
-        bundles: &[(String, String)],
-    ) -> Result<Self, PolicyError> {
+    pub fn build_from_per_policy(bundles: &[(String, String)]) -> Result<Self, PolicyError> {
         // 1. Validate each policy against ONLY its own schema.
         for (index, (policy_text, schema_text)) in bundles.iter().enumerate() {
             let (schema, _warnings) = Schema::from_cedarschema_str(schema_text)
