@@ -1,0 +1,41 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/hype-system/native-transfer@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "note": "B.3 selector-less (bare native transfer) routing. The HYPE deposit is a bare native transfer: EMPTY calldata + value > 0 sent to the HyperEVM system address 0x2222...2 (chain 999 mainnet / 998 testnet), hitting its payable receive(). It has NO 4-byte function selector, so it is keyed under the reserved sentinel selector 0x00000000 — the all-zero 4-byte word, which still satisfies the '0x' + 8-hex SELECTOR_RE that build-index + the SW bundle parser enforce. The WASM route (declarative_route_request_v3_json) substitutes this sentinel for the lookup key ONLY when calldata is empty, so it can never collide with a real dispatch (a genuine selector requires >= 4 calldata bytes). There is no native-value-transfer TokenAction variant (token actions cover approve/permit/transfer of a NAMED token only), so the honest body is ActionBody::Unknown: $calldata resolves to '0x' and $tx.value carries the HYPE amount, surfacing the full native value movement to the policy layer.",
+  "match": {
+    "selector": "0x00000000",
+    "chain_to_addresses": {
+      "999": ["0x2222222222222222222222222222222222222222"],
+      "998": ["0x2222222222222222222222222222222222222222"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "receive",
+    "abi": {
+      "name": "receive",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

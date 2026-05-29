@@ -5344,3 +5344,166 @@ fn t23_tagged_dispatch_bad_version_fail_soft() {
     assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
     assert_eq!(body["calldata"], calldata, "{parsed}");
 }
+
+// ===========================================================================
+// B.3 — selector-less (bare native transfer) routing: HYPE system deposit
+// ===========================================================================
+//
+// A bare native transfer is EMPTY calldata (`"0x"`) + `value > 0` + a known
+// system `to`. It has NO 4-byte selector, so the calldata callkey
+// `(chain, to, selector)` is unroutable as-is. The route extends the key with
+// a reserved SENTINEL selector `0x00000000` (the all-zero 4-byte word) when
+// calldata is empty; a manifest opts in by declaring `match.selector` =
+// `"0x00000000"`. The sentinel passes the existing 8-hex `SELECTOR_RE`
+// (build-index + SW) unchanged, and can never collide with a real dispatch:
+// a function selector requires ≥4 calldata bytes, but the sentinel branch only
+// fires when calldata is EMPTY.
+//
+// HyperLiquid's HYPE deposit IS this shape: `to = 0x2222…2` (HyperEVM 999
+// mainnet / 998 testnet), empty calldata, `value` = HYPE amount, hitting the
+// system address's payable `receive()`. There is no native-value-transfer
+// `TokenAction` variant (token actions are approve/permit/transfer of a NAMED
+// token only), so the honest body is `ActionBody::Unknown` — `$calldata`
+// resolves to "0x" and `$tx.value` carries the amount, so the policy layer
+// sees the full native value movement and warns/denies rather than mis-typing
+// it as a token op.
+
+const HYPE_SYSTEM_ADDRESS: &str = "0x2222222222222222222222222222222222222222";
+const NATIVE_TRANSFER_SENTINEL: &str = "0x00000000";
+
+/// HYPE system bare-native-transfer manifest (registryV2 on-disk twin of
+/// `manifests/hyperliquid/hype-system/native-transfer@1.0.0.json`). The
+/// `abi_fragment` is a degenerate zero-arg function — it is NEVER decoded on
+/// the selector-less path (empty calldata → no args), but the v3 install
+/// envelope still requires the field structurally.
+const HYPE_NATIVE_TRANSFER_MANIFEST: &str = r#"{
+  "type": "adapter_action",
+  "id": "hyperliquid/hype-system/native-transfer@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x00000000",
+    "chain_to_addresses": {
+      "999": ["0x2222222222222222222222222222222222222222"],
+      "998": ["0x2222222222222222222222222222222222222222"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "receive",
+    "abi": {
+      "name": "receive",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target":   "$to",
+        "chain":    "$chain",
+        "calldata": "$calldata",
+        "value":    "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}"#;
+
+/// Route a bare native transfer: EMPTY calldata, the supplied `value`, on the
+/// HYPE system address. `selector` is the sentinel — the route ignores it for
+/// the lookup when calldata is empty (it recomputes the sentinel internally),
+/// but the wire DTO still requires the field, so pass the sentinel verbatim.
+fn hype_native_transfer_input(chain_id: u64, value: &str) -> String {
+    route_input_with_value(
+        chain_id,
+        HYPE_SYSTEM_ADDRESS,
+        NATIVE_TRANSFER_SENTINEL,
+        "0x".to_owned(),
+        HL_SUBMITTER,
+        value,
+    )
+}
+
+// b3.a — HYPE mainnet (999) bare deposit of 1 HYPE → Unknown body, value
+// preserved as `$tx.value`, calldata "0x".
+#[test]
+fn b3_hype_native_transfer_routes_unknown_with_value() {
+    let install = install_ok(HYPE_NATIVE_TRANSFER_MANIFEST);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/hype-system/native-transfer@1.0.0"
+    );
+
+    // 1 HYPE = 1e18 wei.
+    let input = hype_native_transfer_input(999, "1000000000000000000");
+    let parsed = route_ok(input);
+    assert_eq!(
+        parsed["data"]["decoder_id"], "hyperliquid/hype-system/native-transfer@1.0.0",
+        "{parsed}"
+    );
+
+    // Exactly one action, honest Unknown body.
+    assert_eq!(
+        parsed["data"]["actions"].as_array().unwrap().len(),
+        1,
+        "{parsed}"
+    );
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HYPE_SYSTEM_ADDRESS, "{parsed}");
+    assert_eq!(body["chain"], "eip155:999", "{parsed}");
+    // Bare native transfer → calldata is the empty "0x" word.
+    assert_eq!(body["calldata"], "0x", "{parsed}");
+    // The HYPE amount rides on $tx.value (U256 → hex): 1e18 = 0xde0b6b3a7640000.
+    assert_eq!(body["value"], "0xde0b6b3a7640000", "{parsed}");
+}
+
+// b3.b — HYPE testnet (998) routes through the same sentinel key (proving the
+// second chain_to_addresses entry is bridged under the sentinel selector).
+#[test]
+fn b3_hype_native_transfer_testnet_chain() {
+    install_ok(HYPE_NATIVE_TRANSFER_MANIFEST);
+
+    let input = hype_native_transfer_input(998, "500000000000000000");
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["chain"], "eip155:998", "{parsed}");
+    // 0.5 HYPE = 5e17 = 0x6f05b59d3b20000.
+    assert_eq!(body["value"], "0x6f05b59d3b20000", "{parsed}");
+}
+
+// b3.c — a NON-empty calldata to the same (chain, to) does NOT hit the
+// sentinel: it computes the real selector key, which the manifest never
+// registered → clean `no_declarative_v3_mapper` miss. Proves the sentinel
+// branch fires ONLY for empty calldata and selector-bearing routing is
+// unaffected.
+#[test]
+fn b3_nonempty_calldata_does_not_hit_sentinel() {
+    install_ok(HYPE_NATIVE_TRANSFER_MANIFEST);
+
+    // Some real 4-byte selector + payload to the HYPE system address.
+    let input = route_input_with_value(
+        999,
+        HYPE_SYSTEM_ADDRESS,
+        "0xa9059cbb",
+        "0xa9059cbb".to_owned(),
+        HL_SUBMITTER,
+        "1000000000000000000",
+    );
+    let out = declarative_route_request_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], false, "{parsed}");
+    assert_eq!(
+        parsed["error"]["kind"], "no_declarative_v3_mapper",
+        "{parsed}"
+    );
+}

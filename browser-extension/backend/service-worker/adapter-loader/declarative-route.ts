@@ -32,6 +32,49 @@ import {
 } from "./declarative-adapter-loader";
 
 /**
+ * B.3 — reserved selector key for **bare native transfers**. A tx with EMPTY
+ * calldata (`"0x"` / absent) + `value > 0` (e.g. the HyperLiquid HYPE deposit
+ * to `0x2222…2`) has NO 4-byte selector, so it is keyed under this sentinel —
+ * the all-zero 4-byte word. It mirrors the WASM-side `NATIVE_TRANSFER_SELECTOR`
+ * and the on-disk `match.selector = "0x00000000"` manifest, and satisfies the
+ * `"0x" + 8 hex` callkey filename convention so the registry index fetch
+ * (`…/by-callkey/<chain>__<to>__0x00000000.json`) resolves it like any other.
+ */
+const NATIVE_TRANSFER_SELECTOR = "0x00000000";
+
+/** Whether a value string parses to a non-zero amount (hex `0x…` or decimal). */
+function isPositiveValue(valueWei: string | undefined): boolean {
+  if (valueWei === undefined) return false;
+  const trimmed = valueWei.trim();
+  if (trimmed === "") return false;
+  try {
+    return BigInt(trimmed) > 0n;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve the routing selector for a tx. A selector-bearing call (≥4 calldata
+ * bytes) returns its real 4-byte selector. A bare native transfer (EMPTY
+ * calldata + `value > 0`) returns the [`NATIVE_TRANSFER_SELECTOR`] sentinel so
+ * the selector-less route path engages. Anything else (empty calldata with
+ * zero value — e.g. a no-op self-call) returns `null` → clean miss.
+ */
+function resolveRouteSelector(
+  calldataHex: string | undefined,
+  valueWei: string | undefined,
+): string | null {
+  const selector = extractSelector(calldataHex);
+  if (selector) return selector;
+  const isEmptyCalldata = !calldataHex || calldataHex === "0x";
+  if (isEmptyCalldata && isPositiveValue(valueWei)) {
+    return NATIVE_TRANSFER_SELECTOR;
+  }
+  return null;
+}
+
+/**
  * Phase 4B — v3 outcome shape. The hit payload carries the new `Action[]`
  * (PDF FSM `Vec<Action>`) rather than the legacy flat envelope list.
  * `decoder_id` is empty under the Phase 4B stub — Phase 4D populates it
@@ -82,10 +125,19 @@ export async function tryDeclarativeRouteV3(args: {
   blockTimestamp?: number;
   calldataHex: string | undefined;
 }): Promise<DeclarativeRouteV3Outcome> {
-  const selector = extractSelector(args.calldataHex);
+  // B.3 — a selector-bearing call uses its 4-byte selector; a bare native
+  // transfer (empty calldata + value > 0) routes under the native-transfer
+  // sentinel so the selector-less path engages. Empty calldata with no value
+  // is a clean `no_selector` miss as before.
+  const selector = resolveRouteSelector(args.calldataHex, args.valueWei);
   if (!selector) {
     return { kind: "miss", reason: "no_selector" };
   }
+  // The native-transfer path has empty calldata — normalise an absent value to
+  // the canonical empty word the WASM route expects (it detects emptiness from
+  // the decoded byte vec and recomputes the sentinel internally).
+  const calldataForRoute =
+    selector === NATIVE_TRANSFER_SELECTOR ? "0x" : args.calldataHex!;
   const submittedAt = args.submittedAt ?? Math.floor(Date.now() / 1000);
 
   // Plan §M4 — JIT install via registry-api-v3. If the callkey has no
@@ -114,7 +166,7 @@ export async function tryDeclarativeRouteV3(args: {
       chain_id: args.chainId,
       to: args.to,
       selector,
-      calldata: args.calldataHex!,
+      calldata: calldataForRoute,
       ...(args.valueWei !== undefined ? { value: args.valueWei } : {}),
       ...(args.gasLimit !== undefined ? { gas_limit: args.gasLimit } : {}),
       ...(args.gasPrice !== undefined ? { gas_price: args.gasPrice } : {}),

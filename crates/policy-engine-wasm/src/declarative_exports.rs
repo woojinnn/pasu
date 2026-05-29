@@ -41,6 +41,18 @@ use simulation_state::primitives::{
     Address as V3Address, ChainId as V3ChainId, Time as V3Time, U256 as V3U256,
 };
 
+/// Reserved selector key for **bare native transfers** (B.3). A tx with EMPTY
+/// calldata (`"0x"` / absent) and `value > 0` has NO 4-byte function selector,
+/// so it cannot be keyed by a real selector. Such a call is keyed under this
+/// sentinel — the all-zero 4-byte word, which still satisfies the `"0x" + 8 hex`
+/// `SELECTOR_RE` that build-index and the SW bundle parser enforce, so no
+/// validation has to relax. It can never collide with a genuine dispatch: a
+/// real selector requires ≥4 calldata bytes, but the route only substitutes
+/// this sentinel when calldata is EMPTY. A manifest opts in by declaring
+/// `match.selector = "0x00000000"` (e.g. the HyperLiquid HYPE system address's
+/// payable `receive()`).
+const NATIVE_TRANSFER_SELECTOR: &str = "0x00000000";
+
 /// Bridge key: `(chain_id, to_lowercase, selector_lowercase)`.
 /// `to` is normalised to lowercase hex (no checksum) and `selector` to
 /// lowercase `"0x" + 8 hex` so the lookup is case-insensitive — the spec lets
@@ -381,10 +393,32 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         // `$resolved.<k>` or `$derived.<k>` therefore surface a precise
         // `unresolved_placeholder` error at this stage, which is the
         // intended observable behaviour while the resolver layer is wired.
+        //
+        // B.3 — selector-less (bare native transfer) routing. A tx with EMPTY
+        // calldata has no 4-byte selector, so the lookup uses the reserved
+        // [`NATIVE_TRANSFER_SELECTOR`] sentinel instead of `input.selector`.
+        // The byte vec is decoded once here (so emptiness is authoritative,
+        // not the raw string) and reused for the ABI-decode pass below. A
+        // selector-bearing call (≥1 calldata byte) keeps the exact prior key
+        // (`input.selector`), so existing routing is byte-identical.
+        let calldata_hex = input.calldata.strip_prefix("0x").unwrap_or(&input.calldata);
+        let calldata_bytes = hex::decode(calldata_hex).map_err(|error| {
+            EngineErrorDto::new(
+                "invalid_calldata",
+                format!("calldata is not valid hex: {error}"),
+            )
+        })?;
+        let is_native_transfer = calldata_bytes.is_empty();
+        let lookup_selector = if is_native_transfer {
+            NATIVE_TRANSFER_SELECTOR.to_owned()
+        } else {
+            input.selector.to_ascii_lowercase()
+        };
+
         let key = BridgeKey {
             chain_id: input.chain_id,
             to: input.to.to_ascii_lowercase(),
-            selector: input.selector.to_ascii_lowercase(),
+            selector: lookup_selector.clone(),
         };
 
         let (bundle_id, bundle_value) = DECLARATIVE_V3_STATE
@@ -402,28 +436,30 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                 EngineErrorDto::new(
                     "no_declarative_v3_mapper",
                     format!(
-                        "no v3 mapper bridged for chain_id={} to={} selector={}",
-                        input.chain_id, input.to, input.selector
+                        "no v3 mapper bridged for chain_id={} to={} selector={lookup_selector}",
+                        input.chain_id, input.to
                     ),
                 )
             })?;
 
-        // Decode calldata against the manifest ABI (same pattern as v1).
-        let calldata_hex = input.calldata.strip_prefix("0x").unwrap_or(&input.calldata);
-        let calldata_bytes = hex::decode(calldata_hex).map_err(|error| {
-            EngineErrorDto::new(
-                "invalid_calldata",
-                format!("calldata is not valid hex: {error}"),
-            )
-        })?;
-        let abi_json = bundle_value.pointer("/abi_fragment/abi").ok_or_else(|| {
-            EngineErrorDto::new("invalid_bundle", "missing abi_fragment.abi".to_string())
-        })?;
-        let decoded = abi_resolver::bridge::decode_with_json_abi(abi_json, &calldata_bytes)
-            .map_err(|error| {
-                EngineErrorDto::new("decode_failed", format!("calldata decode failed: {error}"))
+        // Decode calldata against the manifest ABI (same pattern as v1). A bare
+        // native transfer has NO calldata to decode against a function ABI
+        // (the byte vec is empty, and `decode_with_json_abi` requires ≥4 bytes
+        // for a selector), so the args object is simply empty — the
+        // native-transfer body references only `$to` / `$chain` / `$calldata` /
+        // `$tx.value`, never `$args.*`.
+        let args_json = if is_native_transfer {
+            serde_json::Value::Object(serde_json::Map::new())
+        } else {
+            let abi_json = bundle_value.pointer("/abi_fragment/abi").ok_or_else(|| {
+                EngineErrorDto::new("invalid_bundle", "missing abi_fragment.abi".to_string())
             })?;
-        let args_json = args_to_json(&decoded);
+            let decoded = abi_resolver::bridge::decode_with_json_abi(abi_json, &calldata_bytes)
+                .map_err(|error| {
+                    EngineErrorDto::new("decode_failed", format!("calldata decode failed: {error}"))
+                })?;
+            args_to_json(&decoded)
+        };
 
         let emit = bundle_value
             .get("emit")
