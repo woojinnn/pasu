@@ -66,20 +66,37 @@ mod tests {
 
     use super::super::test_support::{live, onchain_meta, usdc, venue};
 
-    /// A representative rate-mode swap to variable.
-    #[test]
-    fn swap_rate_mode_lowering_conforms_to_schema() {
-        let action = LendingAction::SwapRateMode(SwapRateModeAction {
+    /// Build a `SwapRateMode` body targeting `new_mode`, holding the rest fixed.
+    fn swap_body(new_mode: RateMode) -> ActionBody {
+        ActionBody::Lending(LendingAction::SwapRateMode(SwapRateModeAction {
             venue: venue(),
             asset: usdc(),
-            new_mode: RateMode::Variable,
+            new_mode,
             live_inputs: SwapRateModeLiveInputs {
                 current_debts: live((U256::from(0u64), U256::from(250_000_000u64))),
                 rates: live((Decimal::new("0.0512"), Decimal::new("0.0689"))),
             },
-        });
-        let body = ActionBody::Lending(action);
-        let meta = onchain_meta();
-        super::super::test_support::assert_conforms("swap_rate_mode", &body, &meta);
+        }))
+    }
+
+    /// A representative rate-mode swap to variable.
+    #[test]
+    fn swap_rate_mode_lowering_conforms_to_schema() {
+        let body = swap_body(RateMode::Variable);
+        super::super::test_support::assert_conforms("swap_rate_mode", &body, &onchain_meta());
+    }
+
+    /// `newMode == "stable"` — exercises the stable spelling of `rate_mode_str`.
+    #[test]
+    fn swap_rate_mode_to_stable_conforms() {
+        let body = swap_body(RateMode::Stable);
+        super::super::test_support::assert_conforms("swap_rate_mode", &body, &onchain_meta());
+    }
+
+    /// `newMode == "fixed"` — exercises the fixed spelling of `rate_mode_str`.
+    #[test]
+    fn swap_rate_mode_to_fixed_conforms() {
+        let body = swap_body(RateMode::Fixed);
+        super::super::test_support::assert_conforms("swap_rate_mode", &body, &onchain_meta());
     }
 }

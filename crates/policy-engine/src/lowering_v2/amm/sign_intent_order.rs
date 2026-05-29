@@ -80,13 +80,11 @@ mod tests {
 
     use super::super::test_support::{now, onchain_source, sample_token_ref, submitter, user};
 
-    /// A UniswapX Dutch sign-intent order, offchain-sig meta.
-    fn sample_sign_intent() -> (ActionBody, ActionMeta) {
+    /// A sign-intent order parameterized by `venue` + `order_kind`, offchain-sig
+    /// meta. Lets every `IntentVenue` arm and every `IntentOrderKind` arm be
+    /// driven through the strict conformance gate.
+    fn sample_sign_intent_with(venue: IntentVenue, order_kind: IntentOrderKind) -> (ActionBody, ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
-        let venue = IntentVenue::UniswapX {
-            chain: chain.clone(),
-            reactor: Address::from_str("0x6000da47483062a0d734ba3dc7576ce6a0b645c4").unwrap(),
-        };
 
         let sign = AmmAction::SignIntentOrder(SignIntentOrderAction {
             venue,
@@ -94,7 +92,7 @@ mod tests {
             buy: sample_token_ref(&chain),
             sell_amount: U256::from(1_000_000_000u64),
             buy_min: U256::from(300_000_000_000_000_000u64),
-            order_kind: IntentOrderKind::Dutch,
+            order_kind,
             recipient: user(),
             valid_until: Time::from_unix(1_738_003_600),
             live_inputs: SignIntentOrderLiveInputs {
@@ -126,9 +124,86 @@ mod tests {
         (ActionBody::Amm(sign), meta)
     }
 
+    fn uniswap_x() -> IntentVenue {
+        IntentVenue::UniswapX {
+            chain: ChainId::ethereum_mainnet(),
+            reactor: Address::from_str("0x6000da47483062a0d734ba3dc7576ce6a0b645c4").unwrap(),
+        }
+    }
+
+    /// A UniswapX Dutch sign-intent order, offchain-sig meta.
+    fn sample_sign_intent() -> (ActionBody, ActionMeta) {
+        sample_sign_intent_with(uniswap_x(), IntentOrderKind::Dutch)
+    }
+
     #[test]
     fn sign_intent_order_lowering_conforms_to_schema() {
         let (body, meta) = sample_sign_intent();
         super::super::test_support::assert_conforms("sign_intent_order", &body, &meta);
+    }
+
+    // ========================================================================
+    // BRANCH COVERAGE: every IntentVenue arm (reactor / settlement / bare) and
+    // every IntentOrderKind spelling, driven through the strict gate.
+    // ========================================================================
+
+    /// `cow_swap` venue → `{ settlement }` field.
+    #[test]
+    fn sign_intent_venue_cow_swap_conforms() {
+        let venue = IntentVenue::CowSwap {
+            chain: ChainId::ethereum_mainnet(),
+            settlement: Address::from_str("0x9008d19f58aabd9ed0d60971565aa8510560ab41").unwrap(),
+        };
+        let (body, meta) = sample_sign_intent_with(venue, IntentOrderKind::Limit);
+        super::super::test_support::assert_conforms("sign_intent_order", &body, &meta);
+    }
+
+    /// `one_inch_fusion` venue → `{ chain }` only (no reactor/settlement).
+    #[test]
+    fn sign_intent_venue_one_inch_fusion_conforms() {
+        let venue = IntentVenue::OneInchFusion {
+            chain: ChainId::ethereum_mainnet(),
+        };
+        let (body, meta) = sample_sign_intent_with(venue, IntentOrderKind::Rfq);
+        super::super::test_support::assert_conforms("sign_intent_order", &body, &meta);
+    }
+
+    /// `bebop` venue → `{ chain }` only (the other bare-chain arm).
+    #[test]
+    fn sign_intent_venue_bebop_conforms() {
+        let venue = IntentVenue::Bebop {
+            chain: ChainId::arbitrum(),
+        };
+        let (body, meta) = sample_sign_intent_with(venue, IntentOrderKind::Limit);
+        super::super::test_support::assert_conforms("sign_intent_order", &body, &meta);
+    }
+
+    /// Each `IntentOrderKind` drives the gate, and the emitted `orderKind`
+    /// string is pinned to its exact snake_case spelling.
+    #[test]
+    fn sign_intent_all_order_kinds_conform_and_spell() {
+        for (kind, expected) in [
+            (IntentOrderKind::Dutch, "dutch"),
+            (IntentOrderKind::Limit, "limit"),
+            (IntentOrderKind::Rfq, "rfq"),
+        ] {
+            let label = format!("{kind:?}");
+            let (body, meta) = sample_sign_intent_with(uniswap_x(), kind);
+            super::super::test_support::assert_conforms("sign_intent_order", &body, &meta);
+            let lowered = crate::lowering_v2::lower_action(
+                &body,
+                &meta,
+                &crate::lowering_v2::TxMeta {
+                    from: "0x1111111111111111111111111111111111111111",
+                    to: "0x2222222222222222222222222222222222222222",
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                lowered.context["orderKind"],
+                serde_json::json!(expected),
+                "orderKind spelling for {label}"
+            );
+        }
     }
 }

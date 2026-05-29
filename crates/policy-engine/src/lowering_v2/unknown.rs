@@ -57,9 +57,12 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
+    use serde_json::Value;
+
     use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
+    use simulation_state::live_field::{DataSource, OracleProvider};
     use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::NonceKey;
+    use simulation_state::{LiveField, NonceKey};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 
@@ -74,15 +77,20 @@ mod tests {
         Address::from_str("0x000000000000000000000000000000000000a01c").unwrap()
     }
 
-    /// An unidentified call with raw calldata, OffchainSig meta (exercises the
-    /// offchain `meta.nature` branch alongside the raw-call fields).
-    fn sample_unknown() -> (ActionBody, ActionMeta) {
-        let body = ActionBody::Unknown {
+    /// The raw `Unknown` body reused by every nature variant below — only the
+    /// `meta.nature` differs across the conformance tests.
+    fn unknown_body() -> ActionBody {
+        ActionBody::Unknown {
             target: Address::from_str("0xfeed000000000000000000000000000000000001").unwrap(),
             chain: ChainId::ethereum_mainnet(),
             calldata: "0xdeadbeefcafebabe".into(),
             value: U256::from(1_000_000_000_000_000_000u64),
-        };
+        }
+    }
+
+    /// An unidentified call with raw calldata, OffchainSig meta (exercises the
+    /// offchain `meta.nature` branch alongside the raw-call fields).
+    fn sample_unknown() -> (ActionBody, ActionMeta) {
         let meta = ActionMeta {
             submitted_at: now(),
             submitter: user(),
@@ -100,7 +108,7 @@ mod tests {
                 }),
             },
         };
-        (body, meta)
+        (unknown_body(), meta)
     }
 
     /// Synthesize the unknown per-policy schema (core + unknown). NOTE: like
@@ -117,13 +125,12 @@ mod tests {
         crate::schema::compose_per_policy(&manifest).unwrap()
     }
 
-    /// THE GATE: the lowered `UnknownContext` (meta + target/chain/calldata/
-    /// value) must conform strictly to the schema.
-    #[test]
-    fn unknown_lowering_conforms_to_schema() {
-        let (body, meta) = sample_unknown();
-        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
-
+    /// THE GATE, factored: lower an `Unknown` body and strictly validate the
+    /// resulting `Core::UnknownContext` JSON against the synthesized schema.
+    /// Returns the lowered context so per-branch assertions can inspect the
+    /// `meta.nature` (and its kind-specific fields) the branch produced.
+    fn assert_unknown_conforms(body: &ActionBody, meta: &ActionMeta) -> Value {
+        let lowered = lower_action(body, meta, &TxMeta { from: FROM, to: TO }).unwrap();
         assert_eq!(lowered.action_uid, "Core::Action::\"Unknown\"");
 
         let schema_text = unknown_schema_text();
@@ -132,5 +139,95 @@ mod tests {
 
         cedar_policy::Context::from_json_value(lowered.context.clone(), Some((&schema, &uid)))
             .expect("lowered unknown context must conform to Core::UnknownContext");
+        lowered.context
+    }
+
+    /// THE GATE: the lowered `UnknownContext` (meta + target/chain/calldata/
+    /// value) must conform strictly to the schema. Uses the `OffchainSig` nature
+    /// with `nonceKey` PRESENT — pins the off-chain branch + the populated
+    /// `nonceKey` slot.
+    #[test]
+    fn unknown_lowering_conforms_to_schema() {
+        let (body, meta) = sample_unknown();
+        let ctx = assert_unknown_conforms(&body, &meta);
+        assert_eq!(ctx["meta"]["nature"]["kind"], Value::from("offchain_sig"));
+        // nonce_key = Some → `nonceKey` slot populated.
+        assert!(ctx["meta"]["nature"].get("nonceKey").is_some());
+    }
+
+    /// `OnchainTx` `meta.nature`: the on-chain branch of `lower_nature`. The
+    /// existing sample only used `OffchainSig`, so the lowered context never
+    /// carried the `onchain_tx` discriminator + its `gasLimit`/`gasPrice`/
+    /// `nonce`/`chain` slots through strict schema validation until now.
+    #[test]
+    fn unknown_onchain_tx_nature_conforms() {
+        let meta = ActionMeta {
+            submitted_at: now(),
+            submitter: user(),
+            nature: ActionNature::OnchainTx {
+                chain: ChainId::ethereum_mainnet(),
+                nonce: 0,
+                gas_limit: U256::from(21_000u64),
+                gas_price: LiveField::new(
+                    U256::from(1u64),
+                    DataSource::OracleFeed {
+                        provider: OracleProvider::Pyth,
+                        feed_id: "gas".into(),
+                    },
+                    now(),
+                ),
+                value: U256::ZERO,
+            },
+        };
+
+        let ctx = assert_unknown_conforms(&unknown_body(), &meta);
+        let nature = &ctx["meta"]["nature"];
+        assert_eq!(nature["kind"], Value::from("onchain_tx"));
+        // The kind-specific slots must be present (omitting any would still
+        // conform structurally, so assert they are emitted by the branch).
+        assert!(nature.get("gasLimit").is_some());
+        assert!(nature.get("gasPrice").is_some());
+        assert_eq!(nature["nonce"], Value::from(0));
+    }
+
+    /// `OffchainSig` with `nonce_key: None` AND every `Eip712Domain` optional
+    /// PRESENT (`version` / `verifyingContract` / `salt`), `chainId` ABSENT.
+    /// Complements `sample_unknown` (which had `nonce_key: Some`, `chainId:
+    /// Some`, and the other optionals absent), so between the two every
+    /// `lower_eip712` Option arm — and the `nonceKey` omitted branch — is hit.
+    #[test]
+    fn unknown_offchain_sig_no_nonce_key_full_domain_conforms() {
+        let meta = ActionMeta {
+            submitted_at: now(),
+            submitter: user(),
+            nature: ActionNature::OffchainSig {
+                domain: Eip712Domain {
+                    name: "Unknown".into(),
+                    version: Some("2".into()),
+                    chain_id: None,
+                    verifying_contract: Some(
+                        Address::from_str("0x00000000000000000000000000000000deadbeef").unwrap(),
+                    ),
+                    salt: Some(
+                        "0xfeed0000000000000000000000000000000000000000000000000000000000ff".into(),
+                    ),
+                },
+                deadline: Time::from_unix(1_738_001_800),
+                nonce_key: None,
+            },
+        };
+
+        let ctx = assert_unknown_conforms(&unknown_body(), &meta);
+        let nature = &ctx["meta"]["nature"];
+        assert_eq!(nature["kind"], Value::from("offchain_sig"));
+        // nonce_key = None → `nonceKey` slot omitted entirely (never null).
+        assert!(nature.get("nonceKey").is_none());
+
+        let domain = &nature["domain"];
+        // version / verifyingContract / salt present; chainId omitted.
+        assert_eq!(domain["version"], Value::from("2"));
+        assert!(domain.get("verifyingContract").is_some());
+        assert!(domain.get("salt").is_some());
+        assert!(domain.get("chainId").is_none());
     }
 }

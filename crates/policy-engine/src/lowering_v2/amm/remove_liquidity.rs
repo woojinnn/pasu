@@ -176,6 +176,40 @@ mod tests {
         (ActionBody::Amm(remove), onchain_meta())
     }
 
+    /// A Uniswap V3 ConcentratedBurn (burn an empty position NFT) — exercises
+    /// the third `RemoveLiquidityParams` arm (nftKey only; no lpToken /
+    /// liquidityBurn / amountMin / recipient).
+    fn sample_concentrated_burn() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        let chain = ChainId::ethereum_mainnet();
+        let venue = AmmVenue::UniswapV3 {
+            chain: chain.clone(),
+            pool: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
+            fee_tier_bp: 500,
+        };
+        let pool_state = PoolState::Concentrated {
+            sqrt_price_x96: U256::from(1u64),
+            tick: 0,
+            liquidity: U128::from(0u64),
+            ticks: vec![],
+        };
+        let nft_key = TokenKey::Erc721 {
+            chain: chain.clone(),
+            contract: Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
+            token_id: U256::from(98765u64),
+        };
+
+        let remove = AmmAction::RemoveLiquidity(RemoveLiquidityAction {
+            venue,
+            params: RemoveLiquidityParams::ConcentratedBurn { nft_key },
+            live_inputs: RemoveLiquidityLiveInputs {
+                pool_state: LiveField::new(pool_state, onchain_source(), now()),
+                fees_owed: LiveField::new(vec![], onchain_source(), now()),
+            },
+        });
+
+        (ActionBody::Amm(remove), onchain_meta())
+    }
+
     #[test]
     fn remove_liquidity_pooled_burn_conforms_to_schema() {
         let (body, meta) = sample_pooled_burn();
@@ -186,5 +220,31 @@ mod tests {
     fn remove_liquidity_concentrated_decrease_conforms_to_schema() {
         let (body, meta) = sample_concentrated_decrease();
         assert_conforms("remove_liquidity", &body, &meta);
+    }
+
+    /// `ConcentratedBurn` arm: conforms AND emits `kind = "concentrated_burn"`
+    /// with only `nftKey` present (no lpToken / liquidityBurn / amountMin /
+    /// recipient).
+    #[test]
+    fn remove_liquidity_concentrated_burn_conforms_and_pins_kind() {
+        let (body, meta) = sample_concentrated_burn();
+        assert_conforms("remove_liquidity", &body, &meta);
+
+        let lowered = crate::lowering_v2::lower_action(
+            &body,
+            &meta,
+            &crate::lowering_v2::TxMeta {
+                from: "0x1111111111111111111111111111111111111111",
+                to: "0x2222222222222222222222222222222222222222",
+            },
+        )
+        .unwrap();
+        let params = &lowered.context["params"];
+        assert_eq!(params["kind"], serde_json::json!("concentrated_burn"));
+        assert!(params.get("nftKey").is_some());
+        assert!(params.get("lpToken").is_none());
+        assert!(params.get("liquidityBurn").is_none());
+        assert!(params.get("amountMin").is_none());
+        assert!(params.get("recipient").is_none());
     }
 }

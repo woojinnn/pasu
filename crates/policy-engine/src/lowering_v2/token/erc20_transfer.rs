@@ -40,17 +40,45 @@ mod tests {
     use simulation_reducer::action::token::{Erc20TransferAction, TokenAction};
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::U256;
+    use simulation_state::token::TokenRef;
 
-    use super::super::test_support::{onchain_meta, recipient, sample_erc20_token};
+    use super::super::test_support::{
+        onchain_meta, recipient, sample_erc1155_token, sample_erc20_token, sample_native_key,
+    };
 
-    #[test]
-    fn erc20_transfer_lowering_conforms_to_schema() {
+    /// Gate an `Erc20Transfer` carrying the given `token` ref. The `token` slot
+    /// is the only place `lower_token_ref` / `lower_token_key` runs in this
+    /// action, so varying the `TokenKey` standard exercises every `Core::TokenKey`
+    /// discriminator arm end-to-end against the schema.
+    fn assert_transfer_token_conforms(token: TokenRef) {
         let body = ActionBody::Token(TokenAction::Erc20Transfer(Erc20TransferAction {
-            token: sample_erc20_token(),
+            token,
             recipient: recipient(),
             amount: U256::from(1_234_567u64),
         }));
         let meta = onchain_meta();
         super::super::test_support::assert_conforms("erc20_transfer", &body, &meta);
+    }
+
+    /// ERC20 `token` (`standard = "erc20"`, carries `address`).
+    #[test]
+    fn erc20_transfer_lowering_conforms_to_schema() {
+        assert_transfer_token_conforms(sample_erc20_token());
+    }
+
+    /// Native `token` (`standard = "native"`) — the `lower_token_key` arm that
+    /// emits NEITHER `address` nor `contract`/`tokenId`.
+    #[test]
+    fn erc20_transfer_native_token_key_conforms() {
+        assert_transfer_token_conforms(TokenRef {
+            key: sample_native_key(),
+        });
+    }
+
+    /// ERC1155 `token` (`standard = "erc1155"`) — the `{ contract, tokenId }`
+    /// arm reached via `lower_token_ref`.
+    #[test]
+    fn erc20_transfer_erc1155_token_key_conforms() {
+        assert_transfer_token_conforms(sample_erc1155_token());
     }
 }

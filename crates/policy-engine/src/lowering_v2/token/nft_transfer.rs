@@ -45,17 +45,33 @@ mod tests {
     use simulation_reducer::action::token::{NftTransferAction, TokenAction};
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::U256;
+    use simulation_state::token::TokenKey;
 
-    use super::super::test_support::{onchain_meta, recipient, sample_nft_key};
+    use super::super::test_support::{
+        onchain_meta, recipient, sample_erc1155_key, sample_nft_key,
+    };
 
-    #[test]
-    fn nft_transfer_lowering_conforms_to_schema() {
+    /// Gate an `NftTransfer` with the given key + optional amount.
+    fn assert_transfer_conforms(nft_key: TokenKey, amount: Option<U256>) {
         let body = ActionBody::Token(TokenAction::NftTransfer(NftTransferAction {
-            nft_key: sample_nft_key(),
-            amount: Some(U256::from(2u64)),
+            nft_key,
+            amount,
             recipient: recipient(),
         }));
         let meta = onchain_meta();
         super::super::test_support::assert_conforms("nft_transfer", &body, &meta);
+    }
+
+    /// `amount = Some(..)` — the ERC1155-quantity branch (field present).
+    #[test]
+    fn nft_transfer_lowering_conforms_to_schema() {
+        assert_transfer_conforms(sample_erc1155_key(), Some(U256::from(2u64)));
+    }
+
+    /// `amount = None` — the ERC721 branch (field OMITTED, never JSON null).
+    /// Pairs with an ERC721 `nftKey` (`standard = "erc721"`).
+    #[test]
+    fn nft_transfer_erc721_no_amount_conforms() {
+        assert_transfer_conforms(sample_nft_key(), None);
     }
 }

@@ -52,21 +52,39 @@ mod tests {
 
     use super::super::test_support::{offchain_meta, other, usdc, venue};
 
+    /// Build a `DelegateBorrow` body targeting `rate_mode`, holding the rest
+    /// fixed. This action carries no live inputs.
+    fn delegate_body(rate_mode: RateMode) -> ActionBody {
+        ActionBody::Lending(LendingAction::DelegateBorrow(DelegateBorrowAction {
+            venue: venue(),
+            asset: usdc(),
+            delegatee: other(),
+            amount: U256::from(1_000_000_000u64),
+            rate_mode,
+        }))
+    }
+
     /// A representative credit delegation of USDC to another address. Credit
     /// delegation is a signature action, so this uses the OFF-CHAIN meta — which
     /// also widens the lending gate to prove a lending context conforms with
     /// `nature = offchain_sig` (exercising `lower_eip712` + `nonceKey`).
     #[test]
     fn delegate_borrow_lowering_conforms_to_schema() {
-        let action = LendingAction::DelegateBorrow(DelegateBorrowAction {
-            venue: venue(),
-            asset: usdc(),
-            delegatee: other(),
-            amount: U256::from(1_000_000_000u64),
-            rate_mode: RateMode::Variable,
-        });
-        let body = ActionBody::Lending(action);
-        let meta = offchain_meta();
-        super::super::test_support::assert_conforms("delegate_borrow", &body, &meta);
+        let body = delegate_body(RateMode::Variable);
+        super::super::test_support::assert_conforms("delegate_borrow", &body, &offchain_meta());
+    }
+
+    /// `rateMode == "stable"` — exercises the stable spelling.
+    #[test]
+    fn delegate_borrow_stable_rate_conforms() {
+        let body = delegate_body(RateMode::Stable);
+        super::super::test_support::assert_conforms("delegate_borrow", &body, &offchain_meta());
+    }
+
+    /// `rateMode == "fixed"` — exercises the fixed spelling.
+    #[test]
+    fn delegate_borrow_fixed_rate_conforms() {
+        let body = delegate_body(RateMode::Fixed);
+        super::super::test_support::assert_conforms("delegate_borrow", &body, &offchain_meta());
     }
 }

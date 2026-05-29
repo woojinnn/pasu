@@ -72,25 +72,34 @@ mod tests {
         assert_conforms, live, onchain_meta, sample_market, sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    /// Build a `ChangeMarginMode` body switching to the requested `new_mode`.
+    fn build(new_mode: MarginMode) -> ActionBody {
         let action = ChangeMarginModeAction {
             venue: sample_venue(),
             market: sample_market(),
-            new_mode: MarginMode::Isolated,
+            new_mode,
             live_inputs: ChangeMarginModeLiveInputs {
                 affected_positions: live(vec!["pos-1".to_owned()]),
                 margin_reallocation: live(vec![("pos-1".to_owned(), U256::from(2_000_000_000u64))]),
             },
         };
-        (
-            ActionBody::Perp(PerpAction::ChangeMarginMode(action)),
-            onchain_meta(),
-        )
+        ActionBody::Perp(PerpAction::ChangeMarginMode(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        (build(MarginMode::Isolated), onchain_meta())
     }
 
     #[test]
     fn change_margin_mode_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("change_margin_mode", &body, &meta);
+    }
+
+    /// `new_mode = Cross` (the `margin_mode` arm the Isolated sample skips).
+    #[test]
+    fn change_margin_mode_to_cross_conforms() {
+        let body = build(MarginMode::Cross);
+        assert_conforms("change_margin_mode", &body, &onchain_meta());
     }
 }

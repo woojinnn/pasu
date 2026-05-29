@@ -207,4 +207,79 @@ mod tests {
         let body = ActionBody::Airdrop(claim);
         assert_conforms("claim", &body, &super::super::test_support::onchain_meta());
     }
+
+    /// A staking-reward claim (the third `ClaimTarget` variant, untested by the
+    /// other samples) whose `source` ProtocolRef sets every optional field
+    /// (`version` + `chain` + `market`) — exercising the `Some` branch of each
+    /// optional in `lower_protocol_ref`, which the merkle/signature samples
+    /// leave `None`. Neither `proof` nor `sig` is supplied (a staking claim
+    /// needs neither), so the omitted-both combination is covered here too.
+    #[test]
+    fn claim_staking_with_full_source_conforms_to_schema() {
+        let chain = ChainId::base();
+        let claim = AirdropAction::Claim(ClaimAirdropAction {
+            source: ProtocolRef {
+                name: "lido".into(),
+                version: Some("v2".into()),
+                chain: Some(ChainId::ethereum_mainnet()),
+                market: Some("steth".into()),
+            },
+            claim_target: ClaimTarget::StakingClaim {
+                chain: chain.clone(),
+                contract: Address::from_str("0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed")
+                    .unwrap(),
+            },
+            recipient: Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
+            proof: None,
+            sig: None,
+            live_inputs: ClaimAirdropLiveInputs {
+                is_still_claimable: LiveField::new(true, onchain_source(), now()),
+                actual_amount: LiveField::new(U256::from(42u64), onchain_source(), now()),
+                claim_token: LiveField::new(sample_token_ref(&chain), onchain_source(), now()),
+                claim_window: LiveField::new(
+                    Some((Time::from_unix(1_738_000_000), Time::from_unix(1_739_000_000))),
+                    onchain_source(),
+                    now(),
+                ),
+            },
+        });
+
+        let body = ActionBody::Airdrop(claim);
+        assert_conforms("claim", &body, &super::super::test_support::onchain_meta());
+    }
+
+    /// A merkle claim whose `source` ProtocolRef sets `chain` but leaves
+    /// `version`/`market` `None`, paired with `proof = Some` and `sig = None`.
+    /// The other merkle sample (`sample_claim`) leaves the source's `chain`
+    /// `None`, so this isolates the `chain = Some` / `market = None` mix.
+    #[test]
+    fn claim_merkle_source_chain_only_conforms_to_schema() {
+        let chain = ChainId::arbitrum();
+        let mut source = ProtocolRef::new("optimism");
+        source.chain = Some(ChainId::ethereum_mainnet());
+        let claim = AirdropAction::Claim(ClaimAirdropAction {
+            source,
+            claim_target: ClaimTarget::MerkleDistributor {
+                chain: chain.clone(),
+                contract: Address::from_str("0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed")
+                    .unwrap(),
+                index: 0,
+            },
+            recipient: Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
+            proof: Some(MerkleProof {
+                leaf_index: 0,
+                siblings: vec![],
+            }),
+            sig: None,
+            live_inputs: ClaimAirdropLiveInputs {
+                is_still_claimable: LiveField::new(true, onchain_source(), now()),
+                actual_amount: LiveField::new(U256::from(1u64), onchain_source(), now()),
+                claim_token: LiveField::new(sample_token_ref(&chain), onchain_source(), now()),
+                claim_window: LiveField::new(None, onchain_source(), now()),
+            },
+        });
+
+        let body = ActionBody::Airdrop(claim);
+        assert_conforms("claim", &body, &super::super::test_support::onchain_meta());
+    }
 }

@@ -60,33 +60,127 @@ pub(crate) fn lower(action: &SupplyAction, ctx: &LowerCtx<'_>) -> Result<Lowered
 )]
 mod tests {
     use simulation_reducer::action::lending::{
-        LendingAction, SupplyAction, SupplyLiveInputs,
+        LendingAction, LendingVenue, ReserveState, SupplyAction, SupplyLiveInputs,
     };
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::{Decimal, U256};
 
     use super::super::test_support::{
-        live, onchain_meta, reserve_state, user_state, usdc, venue,
+        live, onchain_meta, reserve_state, reserve_state_no_caps, user_state, usdc, venue,
+        venue_aave_v2, venue_aave_v3_no_market, venue_compound_v2, venue_compound_v3, venue_fluid,
+        venue_morpho_blue, venue_morpho_optimizer, venue_spark,
     };
 
-    /// A representative `Supply` of USDC into Aave V3 (on-behalf-of populated).
-    #[test]
-    fn supply_lowering_conforms_to_schema() {
-        let action = LendingAction::Supply(SupplyAction {
-            venue: venue(),
+    /// Build a `Supply` body with a chosen `venue` + `reserve_state`, holding all
+    /// other fields fixed. Lets each test exercise exactly one
+    /// `lower_lending_venue` / `lower_reserve_state` branch through the full gate.
+    fn supply_body(venue: LendingVenue, reserve: ReserveState) -> ActionBody {
+        ActionBody::Lending(LendingAction::Supply(SupplyAction {
+            venue,
             asset: usdc(),
             amount: U256::from(1_000_000_000u64),
             on_behalf_of: Some(super::super::test_support::user()),
             live_inputs: SupplyLiveInputs {
-                reserve_state: live(reserve_state()),
+                reserve_state: live(reserve),
                 supply_apy: live(Decimal::new("0.0345")),
                 a_token_price_usd: live(Decimal::new("1.00")),
                 eligible_as_collat: live(true),
                 user_state_before: live(user_state()),
             },
-        });
-        let body = ActionBody::Lending(action);
-        let meta = onchain_meta();
-        super::super::test_support::assert_conforms("supply", &body, &meta);
+        }))
+    }
+
+    /// A representative `Supply` of USDC into Aave V3 (on-behalf-of populated).
+    #[test]
+    fn supply_lowering_conforms_to_schema() {
+        let body = supply_body(venue(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `on_behalf_of == None` — exercises the omitted-`onBehalfOf` branch.
+    #[test]
+    fn supply_without_on_behalf_of_conforms() {
+        let body = ActionBody::Lending(LendingAction::Supply(SupplyAction {
+            venue: venue(),
+            asset: usdc(),
+            amount: U256::from(1_000_000_000u64),
+            on_behalf_of: None,
+            live_inputs: SupplyLiveInputs {
+                reserve_state: live(reserve_state()),
+                supply_apy: live(Decimal::new("0.0345")),
+                a_token_price_usd: live(Decimal::new("1.00")),
+                eligible_as_collat: live(false),
+                user_state_before: live(user_state()),
+            },
+        }));
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `ReserveState` with BOTH caps absent — exercises the
+    /// `supplyCap`/`borrowCap` omitted branches of `lower_reserve_state`.
+    #[test]
+    fn supply_reserve_state_without_caps_conforms() {
+        let body = supply_body(venue(), reserve_state_no_caps());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    // -- LendingVenue: one test per remaining variant, each driven end-to-end
+    //    through the supply gate so the venue's emitted fields are validated. --
+
+    /// `AaveV3` WITHOUT a market id — omitted-`marketId` branch.
+    #[test]
+    fn supply_venue_aave_v3_no_market_conforms() {
+        let body = supply_body(venue_aave_v3_no_market(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `AaveV2` venue — `{ pool }`.
+    #[test]
+    fn supply_venue_aave_v2_conforms() {
+        let body = supply_body(venue_aave_v2(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `Spark` venue — shares the `{ pool }` arm with `AaveV2`.
+    #[test]
+    fn supply_venue_spark_conforms() {
+        let body = supply_body(venue_spark(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `CompoundV3` venue — `{ comet, baseAsset }`.
+    #[test]
+    fn supply_venue_compound_v3_conforms() {
+        let body = supply_body(venue_compound_v3(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `CompoundV2` venue — `{ comptroller }`.
+    #[test]
+    fn supply_venue_compound_v2_conforms() {
+        let body = supply_body(venue_compound_v2(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `MorphoBlue` venue — `{ marketIdStr }`.
+    #[test]
+    fn supply_venue_morpho_blue_conforms() {
+        let body = supply_body(venue_morpho_blue(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `MorphoOptimizer` venue — `{ vault }`.
+    #[test]
+    fn supply_venue_morpho_optimizer_conforms() {
+        let body = supply_body(venue_morpho_optimizer(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
+    }
+
+    /// `Fluid` venue (on Arbitrum) — shares the `{ vault }` arm with
+    /// `MorphoOptimizer`; also exercises a non-mainnet `chain` string.
+    #[test]
+    fn supply_venue_fluid_conforms() {
+        let body = supply_body(venue_fluid(), reserve_state());
+        super::super::test_support::assert_conforms("supply", &body, &onchain_meta());
     }
 }

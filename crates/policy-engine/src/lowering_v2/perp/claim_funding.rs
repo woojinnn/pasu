@@ -55,28 +55,40 @@ mod tests {
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::U256;
 
+    use simulation_state::primitives::MarketRef;
+
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_market, sample_token, sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    /// Build a `ClaimFunding` body with the requested optional `market`.
+    fn build(market: Option<MarketRef>) -> ActionBody {
         let action = ClaimFundingAction {
             venue: sample_venue(),
-            // Claim from a single market (exercises the Some arm).
-            market: Some(sample_market()),
+            market,
             live_inputs: ClaimFundingLiveInputs {
                 claimable: live(vec![(sample_token(), U256::from(1_234_567u64))]),
             },
         };
-        (
-            ActionBody::Perp(PerpAction::ClaimFunding(action)),
-            onchain_meta(),
-        )
+        ActionBody::Perp(PerpAction::ClaimFunding(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        // Claim from a single market (exercises the Some arm).
+        (build(Some(sample_market())), onchain_meta())
     }
 
     #[test]
     fn claim_funding_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("claim_funding", &body, &meta);
+    }
+
+    /// `market = None` — claim from all markets; the `market` key is omitted (the
+    /// absent arm of the optional `market`).
+    #[test]
+    fn claim_funding_all_markets_conforms() {
+        let body = build(None);
+        assert_conforms("claim_funding", &body, &onchain_meta());
     }
 }

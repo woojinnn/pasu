@@ -105,6 +105,61 @@ mod tests {
         )
     }
 
+    /// A UniswapX cancel with signature present — covers the `{ reactor }`
+    /// IntentVenue arm together with the Some(signature) branch.
+    fn sample_cancel_uniswap_x_with_sig() -> (ActionBody, ActionMeta) {
+        let chain = ChainId::ethereum_mainnet();
+        let venue = IntentVenue::UniswapX {
+            chain,
+            reactor: Address::from_str("0x6000da47483062a0d734ba3dc7576ce6a0b645c4").unwrap(),
+        };
+
+        let cancel = AmmAction::CancelIntentOrder(CancelIntentOrderAction {
+            venue,
+            order_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000"
+                .into(),
+            signature: Some("0xfeedface".into()),
+        });
+
+        let meta = ActionMeta {
+            submitted_at: now(),
+            submitter: submitter(),
+            nature: ActionNature::OffchainSig {
+                domain: Eip712Domain {
+                    name: "UniswapX".into(),
+                    version: Some("1".into()),
+                    chain_id: Some(1),
+                    verifying_contract: None,
+                    salt: None,
+                },
+                deadline: Time::from_unix(1_738_003_600),
+                nonce_key: None,
+            },
+        };
+
+        (ActionBody::Amm(cancel), meta)
+    }
+
+    /// A 1inch Fusion on-chain cancel, no signature — covers the second bare
+    /// `{ chain }` IntentVenue arm together with the None(signature) branch.
+    fn sample_cancel_one_inch_fusion_no_sig() -> (ActionBody, ActionMeta) {
+        let venue = IntentVenue::OneInchFusion {
+            chain: ChainId::ethereum_mainnet(),
+        };
+
+        let cancel = AmmAction::CancelIntentOrder(CancelIntentOrderAction {
+            venue,
+            order_hash: "0x1110000000000000000000000000000000000000000000000000000000000000"
+                .into(),
+            signature: None,
+        });
+
+        (
+            ActionBody::Amm(cancel),
+            super::super::test_support::onchain_meta(),
+        )
+    }
+
     #[test]
     fn cancel_intent_order_with_sig_conforms_to_schema() {
         let (body, meta) = sample_cancel_with_sig();
@@ -115,5 +170,53 @@ mod tests {
     fn cancel_intent_order_no_sig_conforms_to_schema() {
         let (body, meta) = sample_cancel_no_sig();
         super::super::test_support::assert_conforms("cancel_intent_order", &body, &meta);
+    }
+
+    /// UniswapX `{ reactor }` arm + Some(signature) branch.
+    #[test]
+    fn cancel_intent_order_uniswap_x_with_sig_conforms() {
+        let (body, meta) = sample_cancel_uniswap_x_with_sig();
+        super::super::test_support::assert_conforms("cancel_intent_order", &body, &meta);
+        // Pin that the signature field is actually emitted on the Some branch.
+        let lowered = crate::lowering_v2::lower_action(
+            &body,
+            &meta,
+            &crate::lowering_v2::TxMeta {
+                from: "0x1111111111111111111111111111111111111111",
+                to: "0x2222222222222222222222222222222222222222",
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            lowered.context["signature"],
+            serde_json::json!("0xfeedface")
+        );
+        assert_eq!(lowered.context["venue"]["name"], serde_json::json!("uniswap_x"));
+    }
+
+    /// 1inch Fusion bare `{ chain }` arm + None(signature) branch (signature
+    /// must be ABSENT, not null).
+    #[test]
+    fn cancel_intent_order_one_inch_fusion_no_sig_conforms() {
+        let (body, meta) = sample_cancel_one_inch_fusion_no_sig();
+        super::super::test_support::assert_conforms("cancel_intent_order", &body, &meta);
+        let lowered = crate::lowering_v2::lower_action(
+            &body,
+            &meta,
+            &crate::lowering_v2::TxMeta {
+                from: "0x1111111111111111111111111111111111111111",
+                to: "0x2222222222222222222222222222222222222222",
+            },
+        )
+        .unwrap();
+        assert!(
+            lowered.context.get("signature").is_none(),
+            "signature must be omitted on the None branch, got {:?}",
+            lowered.context.get("signature")
+        );
+        assert_eq!(
+            lowered.context["venue"]["name"],
+            serde_json::json!("one_inch_fusion")
+        );
     }
 }

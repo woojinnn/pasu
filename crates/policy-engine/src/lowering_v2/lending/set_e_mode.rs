@@ -89,7 +89,8 @@ mod tests {
     use super::super::test_support::{live, onchain_meta, user_state, usdc, venue, weth};
 
     /// A representative e-mode selection (category 1) with a price source and
-    /// two eligible assets.
+    /// two eligible assets — exercises `priceSource` PRESENT, `categoryCode`
+    /// PRESENT, and a non-empty `assetsInCategory`.
     #[test]
     fn set_e_mode_lowering_conforms_to_schema() {
         let action = LendingAction::SetEMode(SetEModeAction {
@@ -105,6 +106,32 @@ mod tests {
                     ),
                     assets_in_category: vec![usdc(), weth()],
                     category: Some(1),
+                }),
+                user_state_before: live(user_state()),
+            },
+        });
+        let body = ActionBody::Lending(action);
+        let meta = onchain_meta();
+        super::super::test_support::assert_conforms("set_e_mode", &body, &meta);
+    }
+
+    /// E-mode DISABLE (`category_id == 0`) with `price_source == None`,
+    /// `category == None`, and an EMPTY `assets_in_category` — exercises the
+    /// omitted-`priceSource`, omitted-`categoryCode`, and empty-Set branches of
+    /// `lower_emode_config`.
+    #[test]
+    fn set_e_mode_disable_without_optionals_conforms() {
+        let action = LendingAction::SetEMode(SetEModeAction {
+            venue: venue(),
+            category_id: 0,
+            live_inputs: SetEModeLiveInputs {
+                category_config: live(EModeConfig {
+                    ltv_bp: 0,
+                    liquidation_threshold_bp: 0,
+                    liquidation_bonus_bp: 0,
+                    price_source: None,
+                    assets_in_category: vec![],
+                    category: None,
                 }),
                 user_state_before: live(user_state()),
             },

@@ -67,22 +67,23 @@ mod tests {
         BorrowAction, BorrowLiveInputs, LendingAction,
     };
     use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Decimal, U256};
+    use simulation_state::primitives::{Address, Decimal, U256};
     use simulation_state::token::RateMode;
 
     use super::super::test_support::{
         live, onchain_meta, reserve_state, user_state, usdc, venue,
     };
 
-    /// A representative variable-rate `Borrow` of USDC against Aave V3.
-    #[test]
-    fn borrow_lowering_conforms_to_schema() {
-        let action = LendingAction::Borrow(BorrowAction {
+    /// Build a `Borrow` body with a chosen `rate_mode` and `on_behalf_of`,
+    /// holding the rest fixed. Lets each test exercise exactly one
+    /// `rate_mode_str` branch + the `onBehalfOf` present/absent branch.
+    fn borrow_body(rate_mode: RateMode, on_behalf_of: Option<Address>) -> ActionBody {
+        ActionBody::Lending(LendingAction::Borrow(BorrowAction {
             venue: venue(),
             asset: usdc(),
             amount: U256::from(500_000_000u64),
-            rate_mode: RateMode::Variable,
-            on_behalf_of: None,
+            rate_mode,
+            on_behalf_of,
             live_inputs: BorrowLiveInputs {
                 reserve_state: live(reserve_state()),
                 user_state_before: live(user_state()),
@@ -90,9 +91,29 @@ mod tests {
                 current_borrow_rate: live(Decimal::new("0.0512")),
                 available_liquidity: live(U256::from(400_000_000_000u64)),
             },
-        });
-        let body = ActionBody::Lending(action);
-        let meta = onchain_meta();
-        super::super::test_support::assert_conforms("borrow", &body, &meta);
+        }))
+    }
+
+    /// A representative variable-rate `Borrow` of USDC against Aave V3
+    /// (`on_behalf_of == None`).
+    #[test]
+    fn borrow_lowering_conforms_to_schema() {
+        let body = borrow_body(RateMode::Variable, None);
+        super::super::test_support::assert_conforms("borrow", &body, &onchain_meta());
+    }
+
+    /// `rateMode == "stable"` + `onBehalfOf` PRESENT — exercises the stable
+    /// rate spelling and the populated-`onBehalfOf` branch.
+    #[test]
+    fn borrow_stable_rate_with_on_behalf_of_conforms() {
+        let body = borrow_body(RateMode::Stable, Some(super::super::test_support::other()));
+        super::super::test_support::assert_conforms("borrow", &body, &onchain_meta());
+    }
+
+    /// `rateMode == "fixed"` — exercises the third `RateMode` spelling.
+    #[test]
+    fn borrow_fixed_rate_conforms() {
+        let body = borrow_body(RateMode::Fixed, None);
+        super::super::test_support::assert_conforms("borrow", &body, &onchain_meta());
     }
 }

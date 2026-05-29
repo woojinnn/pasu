@@ -39,16 +39,32 @@ pub(crate) fn lower(
 mod tests {
     use simulation_reducer::action::token::{NftApproveAction, TokenAction};
     use simulation_reducer::action::ActionBody;
+    use simulation_state::token::TokenKey;
 
-    use super::super::test_support::{onchain_meta, sample_nft_key, spender};
+    use super::super::test_support::{
+        onchain_meta, sample_erc1155_key, sample_nft_key, spender,
+    };
 
-    #[test]
-    fn nft_approve_lowering_conforms_to_schema() {
+    /// Gate an `NftApprove` carrying the given `nftKey`.
+    fn assert_approve_conforms(nft_key: TokenKey) {
         let body = ActionBody::Token(TokenAction::NftApprove(NftApproveAction {
-            nft_key: sample_nft_key(),
+            nft_key,
             spender: spender(),
         }));
         let meta = onchain_meta();
         super::super::test_support::assert_conforms("nft_approve", &body, &meta);
+    }
+
+    /// ERC721 `nftKey` (`standard = "erc721"`).
+    #[test]
+    fn nft_approve_lowering_conforms_to_schema() {
+        assert_approve_conforms(sample_nft_key());
+    }
+
+    /// ERC1155 `nftKey` (`standard = "erc1155"`) — the other half of the merged
+    /// `lower_token_key` arm, reachable via the per-token-id ERC1155 approval.
+    #[test]
+    fn nft_approve_erc1155_key_conforms() {
+        assert_approve_conforms(sample_erc1155_key());
     }
 }

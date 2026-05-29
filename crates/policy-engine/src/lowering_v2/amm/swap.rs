@@ -115,8 +115,8 @@ mod tests {
     use std::str::FromStr;
 
     use simulation_reducer::action::amm::{
-        AmmAction, AmmVenue, PoolState, RouteHop, RoutePath, SwapAction, SwapDirection,
-        SwapLiveInputs, SwapParams, SwapRoute,
+        AmmAction, AmmVenue, BalancerPoolType, PoolState, RouteHop, RoutePath, SwapAction,
+        SwapDirection, SwapLiveInputs, SwapParams, SwapRoute,
     };
     use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
     use simulation_state::live_field::{DataSource, OracleProvider};
@@ -441,5 +441,336 @@ mod tests {
             matches!(verdict, crate::policy::Verdict::Warn(_)),
             "slippage 150 must warn, got {verdict:?}"
         );
+    }
+
+    // ========================================================================
+    // BRANCH COVERAGE: every AmmVenue variant + every BalancerPoolType spelling
+    // + every SwapDirection kind, each driven end-to-end through the strict
+    // conformance gate. A wrong per-variant field name / type makes
+    // `Context::from_json_value` ERROR for that branch's sample.
+    // ========================================================================
+
+    /// Build a full ExactInput USDC→WETH swap on ethereum-mainnet wrapping an
+    /// arbitrary `venue`, so every `lower_amm_venue` arm can be driven through
+    /// the strict conformance gate. The hop venue is a fixed UniswapV3 pool —
+    /// the route shape is not exposed at the policy layer (only the summed
+    /// estimated-out is), so the wrapped `venue` is the only thing the lowering
+    /// emits as the discriminated `context.venue` record.
+    fn sample_swap_with_venue(venue: AmmVenue) -> (ActionBody, ActionMeta) {
+        let chain = ChainId::ethereum_mainnet();
+        let usdc = TokenRef {
+            key: TokenKey::Erc20 {
+                chain: chain.clone(),
+                address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+            },
+        };
+        let weth = TokenRef {
+            key: TokenKey::Erc20 {
+                chain: chain.clone(),
+                address: Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
+            },
+        };
+        let hop_venue = AmmVenue::UniswapV3 {
+            chain: chain.clone(),
+            pool: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
+            fee_tier_bp: 500,
+        };
+        let pool_state = PoolState::Concentrated {
+            sqrt_price_x96: U256::from(1u64),
+            tick: 0,
+            liquidity: U128::from(0u64),
+            ticks: vec![],
+        };
+        let src = DataSource::OracleFeed {
+            provider: OracleProvider::Pyth,
+            feed_id: "x".into(),
+        };
+        let route = SwapRoute {
+            paths: vec![RoutePath {
+                share_bp: 10000,
+                hops: vec![RouteHop {
+                    token_in: usdc.clone(),
+                    token_out: weth.clone(),
+                    venue: hop_venue,
+                    pool_state,
+                    effective_fee_bp: 5,
+                    estimated_out: U256::from(300_000_000_000_000_000u64),
+                }],
+                estimated_out: U256::from(300_000_000_000_000_000u64),
+            }],
+            aggregator: None,
+        };
+
+        let swap = AmmAction::Swap(SwapAction {
+            venue,
+            params: SwapParams {
+                token_in: usdc,
+                token_out: weth,
+                direction: SwapDirection::ExactInput {
+                    amount_in: U256::from(1_000_000_000u64),
+                    min_amount_out: U256::from(300_000_000_000_000_000u64),
+                },
+                recipient: user(),
+                slippage_bp: 50,
+            },
+            live_inputs: SwapLiveInputs {
+                route: LiveField::new(route, src.clone(), now()),
+                expected_amount_out: LiveField::new(
+                    U256::from(300_000_000_000_000_000u64),
+                    src.clone(),
+                    now(),
+                ),
+                price_impact_bp: LiveField::new(12u32, src.clone(), now()),
+                gas_estimate: LiveField::new(U256::from(180_000u64), src, now()),
+            },
+        });
+
+        let meta = ActionMeta {
+            submitted_at: now(),
+            submitter: user(),
+            nature: ActionNature::OnchainTx {
+                chain,
+                nonce: 1,
+                gas_limit: U256::from(200_000u64),
+                gas_price: LiveField::new(
+                    U256::from(100_000_000u64),
+                    DataSource::OracleFeed {
+                        provider: OracleProvider::Pyth,
+                        feed_id: "ETH/USD".into(),
+                    },
+                    now(),
+                ),
+                value: U256::ZERO,
+            },
+        };
+
+        (ActionBody::Amm(swap), meta)
+    }
+
+    /// Drive a swap sample wrapping `venue` through the strict conformance gate.
+    fn assert_venue_conforms(venue: AmmVenue) {
+        let (body, meta) = sample_swap_with_venue(venue);
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let schema_text = swap_schema_text();
+        let (schema, _w) = cedar_policy::Schema::from_cedarschema_str(&schema_text).unwrap();
+        let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
+        cedar_policy::Context::from_json_value(lowered.context.clone(), Some((&schema, &uid)))
+            .unwrap_or_else(|e| panic!("venue swap context must conform: {e:?}"));
+    }
+
+    fn eth() -> ChainId {
+        ChainId::ethereum_mainnet()
+    }
+
+    fn sample_addr() -> Address {
+        Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap()
+    }
+
+    /// `uniswap_v2` venue → `{ pool, factory }` field set.
+    #[test]
+    fn swap_venue_uniswap_v2_conforms() {
+        assert_venue_conforms(AmmVenue::UniswapV2 {
+            chain: eth(),
+            pool: sample_addr(),
+            factory: Address::from_str("0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f").unwrap(),
+        });
+    }
+
+    /// `uniswap_v3` venue → `{ pool, feeTierBp }` (feeTierBp is Long).
+    #[test]
+    fn swap_venue_uniswap_v3_conforms() {
+        assert_venue_conforms(AmmVenue::UniswapV3 {
+            chain: eth(),
+            pool: sample_addr(),
+            fee_tier_bp: 3000,
+        });
+    }
+
+    /// `uniswap_v4` venue → `{ poolId, poolManager, hooks }`.
+    #[test]
+    fn swap_venue_uniswap_v4_conforms() {
+        assert_venue_conforms(AmmVenue::UniswapV4 {
+            chain: eth(),
+            pool_id: "0xabc0000000000000000000000000000000000000000000000000000000000000"
+                .into(),
+            pool_manager: sample_addr(),
+            hooks: Address::from_str("0x0000000000000000000000000000000000000000").unwrap(),
+        });
+    }
+
+    /// `sushi_v2` venue → `{ pool }` only.
+    #[test]
+    fn swap_venue_sushi_v2_conforms() {
+        assert_venue_conforms(AmmVenue::SushiV2 {
+            chain: eth(),
+            pool: sample_addr(),
+        });
+    }
+
+    /// `curve_v1` venue → `{ pool, nCoins (Long), isMeta (Bool) }`.
+    #[test]
+    fn swap_venue_curve_v1_conforms() {
+        assert_venue_conforms(AmmVenue::CurveV1 {
+            chain: eth(),
+            pool: sample_addr(),
+            n_coins: 3,
+            is_meta: false,
+        });
+    }
+
+    /// `curve_v2` venue → `{ pool }` only.
+    #[test]
+    fn swap_venue_curve_v2_conforms() {
+        assert_venue_conforms(AmmVenue::CurveV2 {
+            chain: eth(),
+            pool: sample_addr(),
+        });
+    }
+
+    /// `balancer_v2` venue → `{ vault, poolId, poolType }`.
+    #[test]
+    fn swap_venue_balancer_v2_conforms() {
+        assert_venue_conforms(AmmVenue::BalancerV2 {
+            chain: eth(),
+            vault: Address::from_str("0xba12222222228d8ba445958a75a0704d566bf2c8").unwrap(),
+            pool_id: "0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014"
+                .into(),
+            pool_type: BalancerPoolType::Weighted,
+        });
+    }
+
+    /// `balancer_v3` venue → `{ poolId, poolType }` (no vault).
+    #[test]
+    fn swap_venue_balancer_v3_conforms() {
+        assert_venue_conforms(AmmVenue::BalancerV3 {
+            chain: eth(),
+            pool_id: "0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014"
+                .into(),
+            pool_type: BalancerPoolType::Stable,
+        });
+    }
+
+    /// `trader_joe_lb` venue → `{ pair, binStep (Long) }`.
+    #[test]
+    fn swap_venue_trader_joe_lb_conforms() {
+        assert_venue_conforms(AmmVenue::TraderJoeLB {
+            chain: eth(),
+            pair: sample_addr(),
+            bin_step: 25,
+        });
+    }
+
+    /// `maverick_v2` venue → `{ pool }` only.
+    #[test]
+    fn swap_venue_maverick_v2_conforms() {
+        assert_venue_conforms(AmmVenue::MaverickV2 {
+            chain: eth(),
+            pool: sample_addr(),
+        });
+    }
+
+    /// `aggregator_route` venue → `{ router, routeHash }`.
+    #[test]
+    fn swap_venue_aggregator_route_conforms() {
+        assert_venue_conforms(AmmVenue::AggregatorRoute {
+            chain: eth(),
+            router: sample_addr(),
+            route_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000"
+                .into(),
+        });
+    }
+
+    /// Drive a `balancer_v2` swap through the gate for each of the 6
+    /// `BalancerPoolType` spellings — covers every `balancer_pool_type` arm.
+    /// `poolType` is `String` in-schema, so this validates the field is emitted
+    /// (not type) for every variant; the exact spelling is asserted by the
+    /// dedicated unit test below.
+    #[test]
+    fn swap_venue_balancer_all_pool_types_conform() {
+        let pool_id =
+            "0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014".to_owned();
+        let vault = Address::from_str("0xba12222222228d8ba445958a75a0704d566bf2c8").unwrap();
+        for pt in [
+            BalancerPoolType::Weighted,
+            BalancerPoolType::Stable,
+            BalancerPoolType::ComposableStable,
+            BalancerPoolType::MetaStable,
+            BalancerPoolType::LiquidityBootstrapping,
+            BalancerPoolType::Linear,
+        ] {
+            assert_venue_conforms(AmmVenue::BalancerV2 {
+                chain: eth(),
+                vault,
+                pool_id: pool_id.clone(),
+                pool_type: pt,
+            });
+        }
+    }
+
+    /// Pin the exact snake_case `poolType` spelling emitted for every
+    /// `BalancerPoolType` variant (the `balancer_pool_type` mapping). Guards
+    /// against a rename that the (String-typed) schema gate alone wouldn't
+    /// catch.
+    #[test]
+    fn balancer_pool_type_spellings_are_exact() {
+        let vault = Address::from_str("0xba12222222228d8ba445958a75a0704d566bf2c8").unwrap();
+        let pool_id =
+            "0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014".to_owned();
+        for (pt, expected) in [
+            (BalancerPoolType::Weighted, "weighted"),
+            (BalancerPoolType::Stable, "stable"),
+            (BalancerPoolType::ComposableStable, "composable_stable"),
+            (BalancerPoolType::MetaStable, "meta_stable"),
+            (BalancerPoolType::LiquidityBootstrapping, "liquidity_bootstrapping"),
+            (BalancerPoolType::Linear, "linear"),
+        ] {
+            let label = format!("{pt:?}");
+            let v = super::super::lower_amm_venue(&AmmVenue::BalancerV2 {
+                chain: eth(),
+                vault,
+                pool_id: pool_id.clone(),
+                pool_type: pt,
+            });
+            assert_eq!(
+                v["poolType"],
+                serde_json::json!(expected),
+                "poolType spelling for {label}"
+            );
+            assert_eq!(v["name"], serde_json::json!("balancer_v2"));
+        }
+    }
+
+    /// `ExactOutput` direction → `{ maxAmountIn, amountOut }` field set,
+    /// exercised through the gate (the existing aggregator sample also hits
+    /// this, but this pins it on a plain single-pool venue too).
+    #[test]
+    fn swap_direction_exact_output_conforms() {
+        let chain = ChainId::ethereum_mainnet();
+        let (mut body, meta) = sample_swap_with_venue(AmmVenue::UniswapV3 {
+            chain: chain.clone(),
+            pool: sample_addr(),
+            fee_tier_bp: 500,
+        });
+        // Swap the ExactInput direction the builder produced for ExactOutput.
+        if let ActionBody::Amm(AmmAction::Swap(s)) = &mut body {
+            s.params.direction = SwapDirection::ExactOutput {
+                max_amount_in: U256::from(1_100_000_000u64),
+                amount_out: U256::from(300_000_000_000_000_000u64),
+            };
+        }
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let schema_text = swap_schema_text();
+        let (schema, _w) = cedar_policy::Schema::from_cedarschema_str(&schema_text).unwrap();
+        let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
+        cedar_policy::Context::from_json_value(lowered.context.clone(), Some((&schema, &uid)))
+            .expect("exact_output swap context must conform");
+        // Pin the discriminated field set: exact_output emits maxAmountIn +
+        // amountOut and NOT amountIn / minAmountOut.
+        let dir = &lowered.context["direction"];
+        assert_eq!(dir["kind"], serde_json::json!("exact_output"));
+        assert!(dir.get("maxAmountIn").is_some());
+        assert!(dir.get("amountOut").is_some());
+        assert!(dir.get("amountIn").is_none());
+        assert!(dir.get("minAmountOut").is_none());
     }
 }

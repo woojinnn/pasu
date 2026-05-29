@@ -67,7 +67,9 @@ fn lower_child_summary(child: &ActionBody) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::{token, ActionBody, ActionMeta, ActionNature};
+    use serde_json::Value;
+
+    use simulation_reducer::action::{airdrop, token, ActionBody, ActionMeta, ActionNature};
     use simulation_state::live_field::{DataSource, OracleProvider};
     use simulation_state::primitives::{Address, ChainId, Time, U256};
     use simulation_state::token::{TokenKey, TokenRef};
@@ -86,40 +88,11 @@ mod tests {
         Address::from_str("0x000000000000000000000000000000000000a01c").unwrap()
     }
 
-    /// A `Token::Erc20Approve` child — exercises the `Some(action_tag)` branch
-    /// of the child summary projection.
-    fn approve_child() -> ActionBody {
-        let token = TokenRef {
-            key: TokenKey::Erc20 {
-                chain: ChainId::ethereum_mainnet(),
-                address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
-            },
-        };
-        ActionBody::Token(token::TokenAction::Erc20Approve(token::Erc20ApproveAction {
-            token,
-            spender: Address::from_str("0x00000000000000000000000000000000deadbeef").unwrap(),
-            amount: U256::from(1_000_000_000u64),
-        }))
-    }
-
-    /// An `Unknown` child — exercises the `None` action-tag fallback branch
-    /// (`action` falls back to the `"unknown"` domain tag).
-    fn unknown_child() -> ActionBody {
-        ActionBody::Unknown {
-            target: Address::from_str("0xfeed000000000000000000000000000000000001").unwrap(),
-            chain: ChainId::ethereum_mainnet(),
-            calldata: "0xdeadbeef".into(),
-            value: U256::ZERO,
-        }
-    }
-
-    /// A two-child multicall (approve + unknown), OnchainTx meta. Covers BOTH
-    /// the tagged-child and the untagged-child (None → domain fallback) paths.
-    fn sample_multicall() -> (ActionBody, ActionMeta) {
-        let body = ActionBody::Multicall {
-            actions: vec![approve_child(), unknown_child()],
-        };
-        let meta = ActionMeta {
+    /// OnchainTx meta — the on-chain `meta.nature` branch (the `sample_multicall`
+    /// path uses the same; this is shared so every multicall test reuses one
+    /// conforming meta regardless of how many / which children it carries.)
+    fn onchain_meta() -> ActionMeta {
+        ActionMeta {
             submitted_at: now(),
             submitter: user(),
             nature: ActionNature::OnchainTx {
@@ -136,8 +109,83 @@ mod tests {
                 ),
                 value: U256::ZERO,
             },
+        }
+    }
+
+    /// A `Token::Erc20Approve` child — exercises the `Some(action_tag)` branch
+    /// of the child summary projection.
+    fn approve_child() -> ActionBody {
+        let token = TokenRef {
+            key: TokenKey::Erc20 {
+                chain: ChainId::ethereum_mainnet(),
+                address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+            },
         };
-        (body, meta)
+        ActionBody::Token(token::TokenAction::Erc20Approve(token::Erc20ApproveAction {
+            token,
+            spender: Address::from_str("0x00000000000000000000000000000000deadbeef").unwrap(),
+            amount: U256::from(1_000_000_000u64),
+        }))
+    }
+
+    /// An `Unknown` child — exercises ONE of the two `None` action-tag fallback
+    /// branches (`action` falls back to the `"unknown"` domain tag).
+    fn unknown_child() -> ActionBody {
+        ActionBody::Unknown {
+            target: Address::from_str("0xfeed000000000000000000000000000000000001").unwrap(),
+            chain: ChainId::ethereum_mainnet(),
+            calldata: "0xdeadbeef".into(),
+            value: U256::ZERO,
+        }
+    }
+
+    /// An `Airdrop::Delegate` child — a TAGGED child from a NON-token domain.
+    /// Confirms the `domain` discriminator flows through verbatim for a domain
+    /// other than `token`, and the `Some(action_tag)` projection (`"delegate"`)
+    /// is taken from a fresh enum (not just the one token leaf the existing
+    /// `approve_child` exercised).
+    fn airdrop_child() -> ActionBody {
+        let token = TokenRef {
+            key: TokenKey::Erc20 {
+                chain: ChainId::ethereum_mainnet(),
+                address: Address::from_str("0x1f9840a85d5af5bf1d1762f925bdaddc4201f984").unwrap(),
+            },
+        };
+        let src = DataSource::OnchainView {
+            chain: ChainId::ethereum_mainnet(),
+            contract: Address::from_str("0x1f9840a85d5af5bf1d1762f925bdaddc4201f984").unwrap(),
+            function: "delegates(address)".into(),
+            decoder_id: "erc20votes_delegates".into(),
+        };
+        ActionBody::Airdrop(airdrop::AirdropAction::Delegate(
+            airdrop::DelegateGovernanceAction {
+                token,
+                delegatee: Address::from_str("0x00000000000000000000000000000000deadbeef").unwrap(),
+                live_inputs: airdrop::DelegateLiveInputs {
+                    current_delegate: LiveField::new(None::<Address>, src.clone(), now()),
+                    voting_power: LiveField::new(U256::from(1_000u64), src, now()),
+                },
+            },
+        ))
+    }
+
+    /// A nested `Multicall` child — the OTHER `None` action-tag fallback branch
+    /// (besides `Unknown`). `action` falls back to the `"multicall"` domain tag.
+    /// The flat projection is one level deep: a nested multicall is summarized,
+    /// not recursed.
+    fn multicall_child() -> ActionBody {
+        ActionBody::Multicall {
+            actions: vec![approve_child()],
+        }
+    }
+
+    /// A two-child multicall (approve + unknown), OnchainTx meta. Covers BOTH
+    /// the tagged-child and the untagged-child (None → domain fallback) paths.
+    fn sample_multicall() -> (ActionBody, ActionMeta) {
+        let body = ActionBody::Multicall {
+            actions: vec![approve_child(), unknown_child()],
+        };
+        (body, onchain_meta())
     }
 
     /// Synthesize the multicall per-policy schema (core + multicall). NOTE:
@@ -154,13 +202,13 @@ mod tests {
         crate::schema::compose_per_policy(&manifest).unwrap()
     }
 
-    /// THE GATE: the lowered `MulticallContext` (meta + childCount + the flat
-    /// `{domain, action}` child set) must conform strictly to the schema.
-    #[test]
-    fn multicall_lowering_conforms_to_schema() {
-        let (body, meta) = sample_multicall();
-        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
-
+    /// THE GATE, factored: lower a `Multicall` body and strictly validate the
+    /// resulting `Core::MulticallContext` JSON against the synthesized schema.
+    /// Returns the lowered context so per-branch assertions can inspect
+    /// `childCount` / `children` directly (the venue/enum/None-tag field lives
+    /// in this JSON, so conformance validates that branch end-to-end).
+    fn assert_multicall_conforms(body: &ActionBody, meta: &ActionMeta) -> Value {
+        let lowered = lower_action(body, meta, &TxMeta { from: FROM, to: TO }).unwrap();
         assert_eq!(lowered.action_uid, "Core::Action::\"Multicall\"");
 
         let schema_text = multicall_schema_text();
@@ -169,5 +217,134 @@ mod tests {
 
         cedar_policy::Context::from_json_value(lowered.context.clone(), Some((&schema, &uid)))
             .expect("lowered multicall context must conform to Core::MulticallContext");
+        lowered.context
+    }
+
+    /// THE GATE: the lowered `MulticallContext` (meta + childCount + the flat
+    /// `{domain, action}` child set) must conform strictly to the schema.
+    #[test]
+    fn multicall_lowering_conforms_to_schema() {
+        let (body, meta) = sample_multicall();
+        let ctx = assert_multicall_conforms(&body, &meta);
+        // Two children: a tagged token child + an untagged Unknown child.
+        assert_eq!(ctx["childCount"], Value::from(2));
+    }
+
+    /// EMPTY multicall: `childCount` = 0 and `children` is the empty Set. The
+    /// `actions.iter().map(...)` produces no entries — the zero-child boundary
+    /// the two-child sample never exercised.
+    #[test]
+    fn multicall_empty_conforms_and_has_zero_children() {
+        let body = ActionBody::Multicall { actions: vec![] };
+        let ctx = assert_multicall_conforms(&body, &onchain_meta());
+
+        assert_eq!(ctx["childCount"], Value::from(0));
+        assert_eq!(
+            ctx["children"].as_array().expect("children is an array").len(),
+            0,
+        );
+    }
+
+    /// NESTED-Multicall child: exercises the OTHER `None` action-tag fallback
+    /// branch (besides `Unknown`). A `Multicall` child must summarize to
+    /// `{ domain: "multicall", action: "multicall" }` — the `unwrap_or(domain)`
+    /// taken when `action_tag` is `None` for a non-`unknown` domain.
+    #[test]
+    fn multicall_nested_child_falls_back_to_multicall_tag() {
+        let body = ActionBody::Multicall {
+            actions: vec![multicall_child()],
+        };
+        let ctx = assert_multicall_conforms(&body, &onchain_meta());
+
+        assert_eq!(ctx["childCount"], Value::from(1));
+        let children = ctx["children"].as_array().expect("children is an array");
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0]["domain"], Value::from("multicall"));
+        // action falls back to the domain tag because action_tag is None.
+        assert_eq!(children[0]["action"], Value::from("multicall"));
+    }
+
+    /// MANY children spanning VARIED domains + BOTH untagged fallbacks. Exercises:
+    ///   - a tagged token child   → { token, erc20_approve }
+    ///   - a tagged airdrop child → { airdrop, delegate }   (non-token domain)
+    ///   - an untagged Unknown    → { unknown, unknown }
+    ///   - a nested Multicall     → { multicall, multicall }
+    /// Confirms the per-child projection picks the right `(domain, action)` for
+    /// every branch in one bundle, and the larger `childCount` (4) conforms.
+    #[test]
+    fn multicall_many_varied_children_conform() {
+        let body = ActionBody::Multicall {
+            actions: vec![
+                approve_child(),
+                airdrop_child(),
+                unknown_child(),
+                multicall_child(),
+            ],
+        };
+        let ctx = assert_multicall_conforms(&body, &onchain_meta());
+
+        assert_eq!(ctx["childCount"], Value::from(4));
+        let children = ctx["children"].as_array().expect("children is an array");
+        // `children` is a Cedar Set: 4 DISTINCT `(domain, action)` pairs survive
+        // (no two children share a summary), so the set carries all 4.
+        assert_eq!(children.len(), 4);
+
+        let mut pairs: Vec<(String, String)> = children
+            .iter()
+            .map(|c| {
+                (
+                    c["domain"].as_str().unwrap().to_owned(),
+                    c["action"].as_str().unwrap().to_owned(),
+                )
+            })
+            .collect();
+        pairs.sort();
+        assert_eq!(
+            pairs,
+            vec![
+                ("airdrop".to_owned(), "delegate".to_owned()),
+                ("multicall".to_owned(), "multicall".to_owned()),
+                ("token".to_owned(), "erc20_approve".to_owned()),
+                ("unknown".to_owned(), "unknown".to_owned()),
+            ],
+        );
+    }
+
+    /// OffchainSig `meta.nature`: a multicall can be submitted as an off-chain
+    /// signature (e.g. a batched intent). The two-child sample only used the
+    /// `OnchainTx` nature; this pins the `offchain_sig` meta branch through the
+    /// multicall context too (the `meta` slot is shared but venue/none-tag and
+    /// nature interact in one JSON object).
+    #[test]
+    fn multicall_offchain_sig_meta_conforms() {
+        use simulation_reducer::action::Eip712Domain;
+        use simulation_state::NonceKey;
+
+        let body = ActionBody::Multicall {
+            actions: vec![approve_child(), unknown_child()],
+        };
+        let meta = ActionMeta {
+            submitted_at: now(),
+            submitter: user(),
+            nature: ActionNature::OffchainSig {
+                domain: Eip712Domain {
+                    name: "Multicall".into(),
+                    version: Some("1".into()),
+                    chain_id: Some(1),
+                    verifying_contract: Some(
+                        Address::from_str("0x00000000000000000000000000000000deadbeef").unwrap(),
+                    ),
+                    salt: None,
+                },
+                deadline: Time::from_unix(1_738_001_800),
+                nonce_key: Some(NonceKey::OrderHash {
+                    hash: "0xabc0000000000000000000000000000000000000000000000000000000000000"
+                        .into(),
+                }),
+            },
+        };
+
+        let ctx = assert_multicall_conforms(&body, &meta);
+        assert_eq!(ctx["meta"]["nature"]["kind"], Value::from("offchain_sig"));
     }
 }

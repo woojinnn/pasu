@@ -48,19 +48,23 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{ClosePerpLiveInputs, DecreasePerpAction, PerpAction};
+    use simulation_reducer::action::perp::{
+        ClosePerpLiveInputs, DecreasePerpAction, PerpAction, SizeSpec,
+    };
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::{Price, SignedI256};
 
     use super::super::test_support::{
-        assert_conforms, live, onchain_meta, sample_size, sample_venue,
+        assert_conforms, live, onchain_meta, sample_size, sample_size_base, sample_size_quote,
+        sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    /// Build a `DecreasePosition` body with the requested `size` spec.
+    fn build(size: SizeSpec) -> ActionBody {
         let action = DecreasePerpAction {
             venue: sample_venue(),
             position_id: "pos-123".into(),
-            size: sample_size(),
+            size,
             slippage_bp: 50,
             live_inputs: ClosePerpLiveInputs {
                 mark_price: live(Price::new("3050")),
@@ -69,15 +73,30 @@ mod tests {
                 fee_bp: live(5u32),
             },
         };
-        (
-            ActionBody::Perp(PerpAction::DecreasePosition(action)),
-            onchain_meta(),
-        )
+        ActionBody::Perp(PerpAction::DecreasePosition(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        (build(sample_size()), onchain_meta())
     }
 
     #[test]
     fn decrease_position_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("decrease_position", &body, &meta);
+    }
+
+    /// `size = BaseAmount` (the `base_amount` arm of `lower_size_spec`).
+    #[test]
+    fn decrease_position_base_amount_size_conforms() {
+        let body = build(sample_size_base());
+        assert_conforms("decrease_position", &body, &onchain_meta());
+    }
+
+    /// `size = QuoteAmount` (the `quote_amount` arm of `lower_size_spec`).
+    #[test]
+    fn decrease_position_quote_amount_size_conforms() {
+        let body = build(sample_size_quote());
+        assert_conforms("decrease_position", &body, &onchain_meta());
     }
 }

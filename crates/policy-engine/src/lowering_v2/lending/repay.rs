@@ -58,31 +58,60 @@ pub(crate) fn lower(action: &RepayAction, ctx: &LowerCtx<'_>) -> Result<LoweredA
 mod tests {
     use simulation_reducer::action::lending::{LendingAction, RepayAction, RepayLiveInputs};
     use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::U256;
+    use simulation_state::primitives::{Address, U256};
     use simulation_state::token::RateMode;
 
     use super::super::test_support::{
         live, onchain_meta, reserve_state, user_state, usdc, venue,
     };
 
-    /// A representative full-repay (`U256::MAX`) stable-rate using aTokens.
-    #[test]
-    fn repay_lowering_conforms_to_schema() {
-        let action = LendingAction::Repay(RepayAction {
+    /// Build a `Repay` body with a chosen `rate_mode`, `on_behalf_of`, and
+    /// `use_a_tokens`, holding the rest fixed.
+    fn repay_body(
+        rate_mode: RateMode,
+        on_behalf_of: Option<Address>,
+        use_a_tokens: bool,
+    ) -> ActionBody {
+        ActionBody::Lending(LendingAction::Repay(RepayAction {
             venue: venue(),
             asset: usdc(),
             amount: U256::MAX,
-            rate_mode: RateMode::Stable,
-            on_behalf_of: None,
-            use_a_tokens: true,
+            rate_mode,
+            on_behalf_of,
+            use_a_tokens,
             live_inputs: RepayLiveInputs {
                 reserve_state: live(reserve_state()),
                 current_debt: live(U256::from(250_000_000u64)),
                 user_state_before: live(user_state()),
             },
-        });
-        let body = ActionBody::Lending(action);
-        let meta = onchain_meta();
-        super::super::test_support::assert_conforms("repay", &body, &meta);
+        }))
+    }
+
+    /// A representative full-repay (`U256::MAX`) stable-rate using aTokens
+    /// (`on_behalf_of == None`).
+    #[test]
+    fn repay_lowering_conforms_to_schema() {
+        let body = repay_body(RateMode::Stable, None, true);
+        super::super::test_support::assert_conforms("repay", &body, &onchain_meta());
+    }
+
+    /// `rateMode == "variable"`, `onBehalfOf` PRESENT, `useATokens == false` —
+    /// exercises the variable spelling + populated-`onBehalfOf` + the other
+    /// `useATokens` boolean.
+    #[test]
+    fn repay_variable_rate_with_on_behalf_of_no_a_tokens_conforms() {
+        let body = repay_body(
+            RateMode::Variable,
+            Some(super::super::test_support::other()),
+            false,
+        );
+        super::super::test_support::assert_conforms("repay", &body, &onchain_meta());
+    }
+
+    /// `rateMode == "fixed"` — exercises the third `RateMode` spelling.
+    #[test]
+    fn repay_fixed_rate_conforms() {
+        let body = repay_body(RateMode::Fixed, None, true);
+        super::super::test_support::assert_conforms("repay", &body, &onchain_meta());
     }
 }

@@ -61,35 +61,54 @@ pub(crate) fn lower(
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
     use simulation_reducer::action::perp::{
-        PerpAction, PlaceStopLiveInputs, PlaceStopOrderAction, StopOrderKind,
+        PerpAccountState, PerpAction, PlaceStopLiveInputs, PlaceStopOrderAction, StopOrderKind,
     };
     use simulation_reducer::action::ActionBody;
     use simulation_state::position::PerpSide;
     use simulation_state::primitives::Price;
 
     use super::super::test_support::{
-        assert_conforms, live, offchain_meta, sample_account_state, sample_market, sample_size,
-        sample_venue,
+        assert_conforms, live, offchain_meta, sample_account_state, sample_account_state_empty,
+        sample_market, sample_size, sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    /// Build a `PlaceStopOrder` body exercising the requested `side`,
+    /// `order_kind`, optional `limit_price`, `reduce_only`, and account-state
+    /// branches.
+    fn build(
+        side: PerpSide,
+        order_kind: StopOrderKind,
+        limit_price: Option<Price>,
+        reduce_only: bool,
+        account_state: PerpAccountState,
+    ) -> ActionBody {
         let action = PlaceStopOrderAction {
             venue: sample_venue(),
             market: sample_market(),
-            side: PerpSide::Long,
+            side,
             size: sample_size(),
             trigger_price: Price::new("2900"),
-            // StopLimit carries a limitPrice (exercises the Some arm).
-            order_kind: StopOrderKind::StopLimit,
-            limit_price: Some(Price::new("2890")),
-            reduce_only: true,
+            order_kind,
+            limit_price,
+            reduce_only,
             live_inputs: PlaceStopLiveInputs {
                 mark_price: live(Price::new("3050")),
-                user_account_state: live(sample_account_state()),
+                user_account_state: live(account_state),
             },
         };
+        ActionBody::Perp(PerpAction::PlaceStopOrder(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        // StopLimit carries a limitPrice (Some arm) + long side + reduce_only.
         (
-            ActionBody::Perp(PerpAction::PlaceStopOrder(action)),
+            build(
+                PerpSide::Long,
+                StopOrderKind::StopLimit,
+                Some(Price::new("2890")),
+                true,
+                sample_account_state(),
+            ),
             offchain_meta(),
         )
     }
@@ -98,5 +117,47 @@ mod tests {
     fn place_stop_order_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("place_stop_order", &body, &meta);
+    }
+
+    /// `StopMarket` — a market-triggered stop with **no** `limitPrice` (the
+    /// `None` arm; `limitPrice` key is omitted). Also flips to the short side.
+    #[test]
+    fn place_stop_order_stop_market_no_limit_conforms() {
+        let body = build(
+            PerpSide::Short,
+            StopOrderKind::StopMarket,
+            None,
+            false,
+            sample_account_state(),
+        );
+        assert_conforms("place_stop_order", &body, &offchain_meta());
+    }
+
+    /// `TakeProfit` — market-triggered take-profit with no `limitPrice` (`None`
+    /// arm) plus the empty `openPositions` set arm.
+    #[test]
+    fn place_stop_order_take_profit_no_limit_conforms() {
+        let body = build(
+            PerpSide::Long,
+            StopOrderKind::TakeProfit,
+            None,
+            false,
+            sample_account_state_empty(),
+        );
+        assert_conforms("place_stop_order", &body, &offchain_meta());
+    }
+
+    /// `TakeProfitLimit` — take-profit placed as a limit order, so it carries a
+    /// `limitPrice` (the `Some` arm for this `orderKind`).
+    #[test]
+    fn place_stop_order_take_profit_limit_conforms() {
+        let body = build(
+            PerpSide::Long,
+            StopOrderKind::TakeProfitLimit,
+            Some(Price::new("3200")),
+            false,
+            sample_account_state(),
+        );
+        assert_conforms("place_stop_order", &body, &offchain_meta());
     }
 }

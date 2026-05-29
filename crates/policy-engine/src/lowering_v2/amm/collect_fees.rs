@@ -90,9 +90,45 @@ mod tests {
         (ActionBody::Amm(collect), onchain_meta())
     }
 
+    /// A collect-fees with an EMPTY `feesOwed` set — exercises the empty-Set
+    /// branch of `lower_token_amount_set` (the populated branch is covered
+    /// above). A V4 venue (poolId/poolManager/hooks) also widens venue cover
+    /// here.
+    fn sample_collect_fees_empty() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        let chain = ChainId::ethereum_mainnet();
+        let venue = AmmVenue::UniswapV4 {
+            chain: chain.clone(),
+            pool_id: "0xabc0000000000000000000000000000000000000000000000000000000000000".into(),
+            pool_manager: Address::from_str("0x000000000004444c5dc75cb358380d2e3de08a90").unwrap(),
+            hooks: Address::from_str("0x0000000000000000000000000000000000000000").unwrap(),
+        };
+        let nft_key = TokenKey::Erc721 {
+            chain,
+            contract: Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
+            token_id: U256::from(42u64),
+        };
+
+        let collect = AmmAction::CollectFees(CollectFeesAction {
+            venue,
+            nft_key,
+            recipient: user(),
+            live_inputs: CollectFeesLiveInputs {
+                fees_owed: LiveField::new(vec![], onchain_source(), now()),
+            },
+        });
+
+        (ActionBody::Amm(collect), onchain_meta())
+    }
+
     #[test]
     fn collect_fees_lowering_conforms_to_schema() {
         let (body, meta) = sample_collect_fees();
+        assert_conforms("collect_fees", &body, &meta);
+    }
+
+    #[test]
+    fn collect_fees_empty_fees_owed_conforms_to_schema() {
+        let (body, meta) = sample_collect_fees_empty();
         assert_conforms("collect_fees", &body, &meta);
     }
 }

@@ -47,15 +47,27 @@ mod tests {
 
     use super::super::test_support::{nft_contract, onchain_meta, spender};
 
-    #[test]
-    fn nft_set_approval_for_all_lowering_conforms_to_schema() {
+    /// Gate a `NftSetApprovalForAll` with the given `approved` flag.
+    fn assert_set_for_all_conforms(approved: bool) {
         let body = ActionBody::Token(TokenAction::NftSetApprovalForAll(NftSetForAllAction {
             chain: ChainId::ethereum_mainnet(),
             contract: nft_contract(),
             spender: spender(),
-            approved: true,
+            approved,
         }));
         let meta = onchain_meta();
         super::super::test_support::assert_conforms("nft_set_approval_for_all", &body, &meta);
+    }
+
+    /// `approved = true` — the grant branch.
+    #[test]
+    fn nft_set_approval_for_all_lowering_conforms_to_schema() {
+        assert_set_for_all_conforms(true);
+    }
+
+    /// `approved = false` — the revoke branch (`setApprovalForAll(false)`).
+    #[test]
+    fn nft_set_approval_for_all_revoke_conforms() {
+        assert_set_for_all_conforms(false);
     }
 }

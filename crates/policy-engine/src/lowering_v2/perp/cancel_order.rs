@@ -33,7 +33,7 @@ mod tests {
     use simulation_reducer::action::perp::{CancelOrderAction, PerpAction};
     use simulation_reducer::action::ActionBody;
 
-    use super::super::test_support::{assert_conforms, offchain_meta, sample_venue};
+    use super::super::test_support::{all_venues, assert_conforms, offchain_meta, sample_venue};
 
     fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
         let action = CancelOrderAction {
@@ -50,5 +50,21 @@ mod tests {
     fn cancel_order_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("cancel_order", &body, &meta);
+    }
+
+    /// Drive **every** `PerpVenue` variant through `lower_perp_venue` end-to-end.
+    /// `CancelOrder` is the leanest perp action (venue + `order_id` only), so it
+    /// isolates the venue lowering: the 8 `{ name, chain }` arms plus the
+    /// `Generic` `{ name, chain, contract }` arm must all conform.
+    #[test]
+    fn cancel_order_all_venue_variants_conform() {
+        for (name, venue) in all_venues() {
+            let action = CancelOrderAction {
+                venue,
+                order_id: format!("order-{name}"),
+            };
+            let body = ActionBody::Perp(PerpAction::CancelOrder(action));
+            assert_conforms("cancel_order", &body, &offchain_meta());
+        }
     }
 }

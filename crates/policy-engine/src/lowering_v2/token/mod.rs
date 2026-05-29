@@ -102,6 +102,32 @@ pub(crate) mod test_support {
         }
     }
 
+    /// A representative ERC1155 `TokenKey` (semi-fungible token id in a
+    /// collection). Shares the `{ contract, tokenId }` match arm with `Erc721`
+    /// but lowers to `standard = "erc1155"` via `is_nft()`.
+    pub(crate) fn sample_erc1155_key() -> TokenKey {
+        TokenKey::Erc1155 {
+            chain: ChainId::ethereum_mainnet(),
+            contract: nft_contract(),
+            token_id: U256::from(42u64),
+        }
+    }
+
+    /// A representative `Native` `TokenKey` (chain gas asset; no
+    /// address/contract/tokenId emitted).
+    pub(crate) fn sample_native_key() -> TokenKey {
+        TokenKey::Native {
+            chain: ChainId::ethereum_mainnet(),
+        }
+    }
+
+    /// An ERC1155 `TokenRef` (wraps `sample_erc1155_key`).
+    pub(crate) fn sample_erc1155_token() -> TokenRef {
+        TokenRef {
+            key: sample_erc1155_key(),
+        }
+    }
+
     /// Wrap a `U256` in a `LiveField` (the on-chain-view source shape used by
     /// `Erc20Permit`'s `nonce`).
     pub(crate) fn live_u256(value: U256) -> LiveField<U256> {

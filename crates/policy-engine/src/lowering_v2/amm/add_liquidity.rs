@@ -132,7 +132,7 @@ mod tests {
     };
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::{Address, ChainId, Decimal, U128, U256};
-    use simulation_state::token::RangeSpec;
+    use simulation_state::token::{RangeSpec, TokenKey};
     use simulation_state::LiveField;
 
     use super::super::test_support::{
@@ -218,6 +218,127 @@ mod tests {
         (ActionBody::Amm(add), onchain_meta())
     }
 
+    /// A Uniswap V3 ConcentratedIncrease (add to an existing position NFT) —
+    /// exercises the third `AddLiquidityParams` arm (nftKey, amountDesired,
+    /// amountMin; NO recipient field).
+    fn sample_concentrated_increase() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        let chain = ChainId::ethereum_mainnet();
+        let venue = AmmVenue::UniswapV3 {
+            chain: chain.clone(),
+            pool: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
+            fee_tier_bp: 500,
+        };
+        let pool_state = PoolState::Concentrated {
+            sqrt_price_x96: U256::from(1u64),
+            tick: 0,
+            liquidity: U128::from(0u64),
+            ticks: vec![],
+        };
+        let nft_key = TokenKey::Erc721 {
+            chain: chain.clone(),
+            contract: Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
+            token_id: U256::from(98765u64),
+        };
+
+        let add = AmmAction::AddLiquidity(AddLiquidityAction {
+            venue,
+            params: AddLiquidityParams::ConcentratedIncrease {
+                nft_key,
+                amount_desired: (U256::from(1_000_000u64), U256::from(500_000u64)),
+                amount_min: (U256::from(990_000u64), U256::from(495_000u64)),
+            },
+            live_inputs: AddLiquidityLiveInputs {
+                pool_state: LiveField::new(pool_state, onchain_source(), now()),
+                current_price: LiveField::new(Decimal::new("1234.5678"), onchain_source(), now()),
+            },
+        });
+
+        (ActionBody::Amm(add), onchain_meta())
+    }
+
+    /// A ConcentratedMint with a `RangeSpec::Bin` range (Trader Joe LB) —
+    /// exercises the `bin` range arm (activeId emitted; distribution dropped).
+    fn sample_concentrated_mint_bin_range() -> (ActionBody, simulation_reducer::action::ActionMeta)
+    {
+        let chain = ChainId::ethereum_mainnet();
+        let venue = AmmVenue::TraderJoeLB {
+            chain: chain.clone(),
+            pair: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
+            bin_step: 25,
+        };
+        let token_a = sample_token_ref(&chain);
+        let token_b = sample_token_ref(&chain);
+        let pool_state = PoolState::Concentrated {
+            sqrt_price_x96: U256::from(1u64),
+            tick: 0,
+            liquidity: U128::from(0u64),
+            ticks: vec![],
+        };
+
+        let add = AmmAction::AddLiquidity(AddLiquidityAction {
+            venue,
+            params: AddLiquidityParams::ConcentratedMint {
+                pool_pair: (token_a, token_b),
+                amount_desired: (U256::from(1_000_000u64), U256::from(500_000u64)),
+                amount_min: (U256::from(990_000u64), U256::from(495_000u64)),
+                range: RangeSpec::Bin {
+                    active_id: 8_388_608,
+                    distribution: vec![
+                        (8_388_607, U128::from(10u64)),
+                        (8_388_608, U128::from(80u64)),
+                        (8_388_609, U128::from(10u64)),
+                    ],
+                },
+                recipient: user(),
+            },
+            live_inputs: AddLiquidityLiveInputs {
+                pool_state: LiveField::new(pool_state, onchain_source(), now()),
+                current_price: LiveField::new(Decimal::new("1.0"), onchain_source(), now()),
+            },
+        });
+
+        (ActionBody::Amm(add), onchain_meta())
+    }
+
+    /// A ConcentratedMint with a `RangeSpec::Custom` range (Maverick / unknown)
+    /// — exercises the `custom` range arm (protocol emitted; raw dropped).
+    fn sample_concentrated_mint_custom_range()
+        -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        let chain = ChainId::ethereum_mainnet();
+        let venue = AmmVenue::MaverickV2 {
+            chain: chain.clone(),
+            pool: Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap(),
+        };
+        let token_a = sample_token_ref(&chain);
+        let token_b = sample_token_ref(&chain);
+        let pool_state = PoolState::Concentrated {
+            sqrt_price_x96: U256::from(1u64),
+            tick: 0,
+            liquidity: U128::from(0u64),
+            ticks: vec![],
+        };
+
+        let add = AmmAction::AddLiquidity(AddLiquidityAction {
+            venue,
+            params: AddLiquidityParams::ConcentratedMint {
+                pool_pair: (token_a, token_b),
+                amount_desired: (U256::from(1_000_000u64), U256::from(500_000u64)),
+                amount_min: (U256::from(990_000u64), U256::from(495_000u64)),
+                range: RangeSpec::Custom {
+                    protocol: "maverick_mode_both".into(),
+                    raw: serde_json::json!({ "tickSpacing": 10 }),
+                },
+                recipient: user(),
+            },
+            live_inputs: AddLiquidityLiveInputs {
+                pool_state: LiveField::new(pool_state, onchain_source(), now()),
+                current_price: LiveField::new(Decimal::new("1.0"), onchain_source(), now()),
+            },
+        });
+
+        (ActionBody::Amm(add), onchain_meta())
+    }
+
     #[test]
     fn add_liquidity_concentrated_mint_conforms_to_schema() {
         let (body, meta) = sample_concentrated_mint();
@@ -228,5 +349,43 @@ mod tests {
     fn add_liquidity_pooled_conforms_to_schema() {
         let (body, meta) = sample_pooled();
         assert_conforms("add_liquidity", &body, &meta);
+    }
+
+    #[test]
+    fn add_liquidity_concentrated_increase_conforms_to_schema() {
+        let (body, meta) = sample_concentrated_increase();
+        assert_conforms("add_liquidity", &body, &meta);
+    }
+
+    /// `RangeSpec::Bin` arm: conforms AND emits `kind = "bin"` with `activeId`
+    /// present and tick fields absent.
+    #[test]
+    fn add_liquidity_bin_range_conforms_and_pins_kind() {
+        let (body, meta) = sample_concentrated_mint_bin_range();
+        assert_conforms("add_liquidity", &body, &meta);
+        let range = super::lower_range_spec(&RangeSpec::Bin {
+            active_id: 8_388_608,
+            distribution: vec![],
+        });
+        assert_eq!(range["kind"], serde_json::json!("bin"));
+        assert_eq!(range["activeId"], serde_json::json!(8_388_608));
+        assert!(range.get("tickLower").is_none());
+        assert!(range.get("protocol").is_none());
+    }
+
+    /// `RangeSpec::Custom` arm: conforms AND emits `kind = "custom"` with
+    /// `protocol` present and tick/bin fields absent.
+    #[test]
+    fn add_liquidity_custom_range_conforms_and_pins_kind() {
+        let (body, meta) = sample_concentrated_mint_custom_range();
+        assert_conforms("add_liquidity", &body, &meta);
+        let range = super::lower_range_spec(&RangeSpec::Custom {
+            protocol: "maverick_mode_both".into(),
+            raw: serde_json::json!({}),
+        });
+        assert_eq!(range["kind"], serde_json::json!("custom"));
+        assert_eq!(range["protocol"], serde_json::json!("maverick_mode_both"));
+        assert!(range.get("activeId").is_none());
+        assert!(range.get("tickLower").is_none());
     }
 }

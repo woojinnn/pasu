@@ -55,14 +55,18 @@ mod tests {
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::{Price, SignedI256};
 
-    use super::super::test_support::{assert_conforms, live, onchain_meta, sample_venue};
+    use simulation_reducer::action::perp::SizeSpec;
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    use super::super::test_support::{
+        assert_conforms, live, onchain_meta, sample_size, sample_venue,
+    };
+
+    /// Build a `ClosePosition` body with the requested optional `size`.
+    fn build(size: Option<SizeSpec>) -> ActionBody {
         let action = ClosePerpAction {
             venue: sample_venue(),
             position_id: "pos-123".into(),
-            // Full close: `size` is None.
-            size: None,
+            size,
             slippage_bp: 50,
             live_inputs: ClosePerpLiveInputs {
                 mark_price: live(Price::new("3050")),
@@ -71,15 +75,25 @@ mod tests {
                 fee_bp: live(5u32),
             },
         };
-        (
-            ActionBody::Perp(PerpAction::ClosePosition(action)),
-            onchain_meta(),
-        )
+        ActionBody::Perp(PerpAction::ClosePosition(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        // Full close: `size` is None.
+        (build(None), onchain_meta())
     }
 
     #[test]
     fn close_position_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("close_position", &body, &meta);
+    }
+
+    /// Partial close: `size = Some(..)` (the present arm of the `size` Option,
+    /// which also drives the `leverage_implied` `lower_size_spec` arm here).
+    #[test]
+    fn close_position_partial_size_conforms() {
+        let body = build(Some(sample_size()));
+        assert_conforms("close_position", &body, &onchain_meta());
     }
 }

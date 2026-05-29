@@ -99,27 +99,37 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::perp::{OpenPerpAction, OpenPerpLiveInputs, PerpAction};
+    use simulation_reducer::action::perp::{
+        OpenPerpAction, OpenPerpLiveInputs, PerpAccountState, PerpAction, SizeSpec,
+    };
     use simulation_reducer::action::ActionBody;
     use simulation_state::position::{MarginMode, PerpSide};
     use simulation_state::primitives::{Decimal, Price, U256};
 
     use super::super::test_support::{
-        assert_conforms, live, onchain_meta, sample_account_state, sample_market, sample_size,
-        sample_token, sample_venue,
+        assert_conforms, live, onchain_meta, sample_account_state, sample_account_state_empty,
+        sample_market, sample_size, sample_size_base, sample_size_quote, sample_token, sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    /// Build an `OpenPosition` body exercising the requested `side`, `size`,
+    /// `margin_mode`, `reduce_only`, and account-state branches.
+    fn build(
+        side: PerpSide,
+        size: SizeSpec,
+        margin_mode: MarginMode,
+        reduce_only: bool,
+        account_state: PerpAccountState,
+    ) -> ActionBody {
         let action = OpenPerpAction {
             venue: sample_venue(),
             market: sample_market(),
-            side: PerpSide::Long,
-            size: sample_size(),
+            side,
+            size,
             leverage: Decimal::new("5"),
             collateral: (sample_token(), U256::from(1_000_000_000u64)),
-            margin_mode: MarginMode::Cross,
+            margin_mode,
             slippage_bp: 50,
-            reduce_only: false,
+            reduce_only,
             live_inputs: OpenPerpLiveInputs {
                 mark_price: live(Price::new("3050")),
                 oracle_price: live(Price::new("3048")),
@@ -130,11 +140,21 @@ mod tests {
                 maintenance_bp: live(300u32),
                 fee_taker_bp: live(5u32),
                 fee_maker_bp: live(2u32),
-                user_account_state: live(sample_account_state()),
+                user_account_state: live(account_state),
             },
         };
+        ActionBody::Perp(PerpAction::OpenPosition(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
         (
-            ActionBody::Perp(PerpAction::OpenPosition(action)),
+            build(
+                PerpSide::Long,
+                sample_size(),
+                MarginMode::Cross,
+                false,
+                sample_account_state(),
+            ),
             onchain_meta(),
         )
     }
@@ -143,5 +163,84 @@ mod tests {
     fn open_position_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("open_position", &body, &meta);
+    }
+
+    /// `side = Short` (the `perp_side` arm the long sample never reaches).
+    #[test]
+    fn open_position_short_side_conforms() {
+        let body = build(
+            PerpSide::Short,
+            sample_size(),
+            MarginMode::Cross,
+            false,
+            sample_account_state(),
+        );
+        assert_conforms("open_position", &body, &onchain_meta());
+    }
+
+    /// `margin_mode = Isolated` (the `margin_mode` arm the Cross sample omits).
+    #[test]
+    fn open_position_isolated_margin_conforms() {
+        let body = build(
+            PerpSide::Long,
+            sample_size(),
+            MarginMode::Isolated,
+            false,
+            sample_account_state(),
+        );
+        assert_conforms("open_position", &body, &onchain_meta());
+    }
+
+    /// `reduce_only = true` (the bool flag the sample leaves `false`).
+    #[test]
+    fn open_position_reduce_only_conforms() {
+        let body = build(
+            PerpSide::Long,
+            sample_size(),
+            MarginMode::Cross,
+            true,
+            sample_account_state(),
+        );
+        assert_conforms("open_position", &body, &onchain_meta());
+    }
+
+    /// `size = BaseAmount` (the `base_amount` arm of `lower_size_spec`).
+    #[test]
+    fn open_position_base_amount_size_conforms() {
+        let body = build(
+            PerpSide::Long,
+            sample_size_base(),
+            MarginMode::Cross,
+            false,
+            sample_account_state(),
+        );
+        assert_conforms("open_position", &body, &onchain_meta());
+    }
+
+    /// `size = QuoteAmount` (the `quote_amount` arm of `lower_size_spec`).
+    #[test]
+    fn open_position_quote_amount_size_conforms() {
+        let body = build(
+            PerpSide::Long,
+            sample_size_quote(),
+            MarginMode::Cross,
+            false,
+            sample_account_state(),
+        );
+        assert_conforms("open_position", &body, &onchain_meta());
+    }
+
+    /// Empty `openPositions` set (the empty-array arm of
+    /// `lower_perp_account_state`).
+    #[test]
+    fn open_position_empty_account_state_conforms() {
+        let body = build(
+            PerpSide::Long,
+            sample_size(),
+            MarginMode::Cross,
+            false,
+            sample_account_state_empty(),
+        );
+        assert_conforms("open_position", &body, &onchain_meta());
     }
 }

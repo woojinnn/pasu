@@ -240,6 +240,70 @@ pub(crate) mod test_support {
         }
     }
 
+    /// All 9 [`PerpVenue`] variants paired with their schema `name` tag, so a
+    /// single test can drive every venue arm through `assert_conforms`. The 8
+    /// `{ chain }`-only arms plus the `Generic` `{ chain, contract }` arm.
+    pub(crate) fn all_venues() -> Vec<(&'static str, PerpVenue)> {
+        let chain = ChainId::arbitrum();
+        vec![
+            ("hyperliquid", PerpVenue::Hyperliquid { chain: chain.clone() }),
+            ("gmx_v2", PerpVenue::GmxV2 { chain: chain.clone() }),
+            ("dy_dx_v4", PerpVenue::DyDxV4 { chain: chain.clone() }),
+            ("vertex", PerpVenue::Vertex { chain: chain.clone() }),
+            ("aevo", PerpVenue::Aevo { chain: chain.clone() }),
+            ("drift", PerpVenue::Drift { chain: chain.clone() }),
+            ("jupiter_perps", PerpVenue::JupiterPerps { chain: chain.clone() }),
+            ("synthetix", PerpVenue::Synthetix { chain: chain.clone() }),
+            (
+                "generic",
+                PerpVenue::Generic {
+                    chain,
+                    contract: perp_contract(),
+                },
+            ),
+        ]
+    }
+
+    /// A `BaseAmount` size spec (exercises the `amount` arm of
+    /// `lower_size_spec`).
+    pub(crate) fn sample_size_base() -> SizeSpec {
+        SizeSpec::BaseAmount {
+            amount: U256::from(2_000_000_000u64),
+        }
+    }
+
+    /// A `QuoteAmount` size spec (exercises the `amountUsd` arm of
+    /// `lower_size_spec`).
+    pub(crate) fn sample_size_quote() -> SizeSpec {
+        SizeSpec::QuoteAmount {
+            amount_usd: U256::from(5_000_000_000u64),
+        }
+    }
+
+    /// A [`PerpAccountState`] with **no** open positions (exercises the empty
+    /// `openPositions` set arm of `lower_perp_account_state`).
+    pub(crate) fn sample_account_state_empty() -> PerpAccountState {
+        PerpAccountState {
+            total_collateral_usd: U256::from(10_000_000_000u64),
+            used_margin_usd: U256::ZERO,
+            free_margin_usd: U256::from(10_000_000_000u64),
+            open_positions: vec![],
+        }
+    }
+
+    /// A [`PerpPositionLive`] with `liq_price` **absent** (exercises the `None`
+    /// arm of `lower_perp_position_live`'s `liqPrice` field).
+    pub(crate) fn sample_position_live_no_liq() -> PerpPositionLive {
+        PerpPositionLive {
+            size_base: U256::from(1_000_000_000u64),
+            notional_usd: U256::from(3_000_000_000u64),
+            entry_price: Price::new("3000"),
+            mark_price: Price::new("3050"),
+            liq_price: None,
+            unrealized_pnl: SignedI256::try_from(50i64).unwrap(),
+        }
+    }
+
     /// `ETH-USD` market on a `hyperliquid` `VenueRef` (with a `chain`).
     pub(crate) fn sample_market() -> MarketRef {
         MarketRef {

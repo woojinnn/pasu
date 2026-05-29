@@ -71,18 +71,59 @@ fn lower_revoke_scope(scope: &RevokeScope) -> Value {
 mod tests {
     use simulation_reducer::action::token::{RevokeApprovalAction, RevokeScope, TokenAction};
     use simulation_reducer::action::ActionBody;
+    use simulation_state::primitives::ChainId;
 
-    use super::super::test_support::{onchain_meta, sample_erc20_token, spender};
+    use super::super::test_support::{
+        nft_contract, onchain_meta, sample_erc1155_key, sample_erc20_token, sample_nft_key,
+        spender,
+    };
+
+    /// Build a `revoke_approval` body for the given scope and gate it.
+    fn assert_scope_conforms(scope: RevokeScope) {
+        let body = ActionBody::Token(TokenAction::RevokeApproval(RevokeApprovalAction { scope }));
+        let meta = onchain_meta();
+        super::super::test_support::assert_conforms("revoke_approval", &body, &meta);
+    }
 
     #[test]
     fn revoke_approval_lowering_conforms_to_schema() {
-        let body = ActionBody::Token(TokenAction::RevokeApproval(RevokeApprovalAction {
-            scope: RevokeScope::Erc20 {
-                token: sample_erc20_token(),
-                spender: spender(),
-            },
-        }));
-        let meta = onchain_meta();
-        super::super::test_support::assert_conforms("revoke_approval", &body, &meta);
+        assert_scope_conforms(RevokeScope::Erc20 {
+            token: sample_erc20_token(),
+            spender: spender(),
+        });
+    }
+
+    /// `kind = "nft_single_token"` carries only `nftKey` (a bare `TokenKey`).
+    /// Exercise both NFT standards through the `nft_single_token` arm:
+    /// ERC721 (`is_nft()` true) and ERC1155 (the merged-arm `else`).
+    #[test]
+    fn revoke_approval_nft_single_token_kind_conforms() {
+        assert_scope_conforms(RevokeScope::NftSingleToken {
+            nft_key: sample_nft_key(),
+        });
+        assert_scope_conforms(RevokeScope::NftSingleToken {
+            nft_key: sample_erc1155_key(),
+        });
+    }
+
+    /// `kind = "nft_set_for_all"` carries `chain` + `contract` + `spender`
+    /// (no `token`, no `nftKey`).
+    #[test]
+    fn revoke_approval_nft_set_for_all_kind_conforms() {
+        assert_scope_conforms(RevokeScope::NftSetForAll {
+            chain: ChainId::ethereum_mainnet(),
+            contract: nft_contract(),
+            spender: spender(),
+        });
+    }
+
+    /// `kind = "permit2_lockdown"` carries `token` + `spender` (same field set
+    /// as `erc20` but a distinct discriminator).
+    #[test]
+    fn revoke_approval_permit2_lockdown_kind_conforms() {
+        assert_scope_conforms(RevokeScope::Permit2Lockdown {
+            token: sample_erc20_token(),
+            spender: spender(),
+        });
     }
 }

@@ -346,6 +346,95 @@ pub(crate) mod test_support {
         }
     }
 
+    /// An `AaveV3` venue WITHOUT a market id — exercises the `marketId == None`
+    /// branch of `lower_lending_venue` through the end-to-end schema gate.
+    pub(crate) fn venue_aave_v3_no_market() -> LendingVenue {
+        LendingVenue::AaveV3 {
+            chain: ChainId::ethereum_mainnet(),
+            pool: Address::from_str("0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2").unwrap(),
+            market_id: None,
+        }
+    }
+
+    /// An `AaveV2` venue — emits `{ name, chain, pool }`.
+    pub(crate) fn venue_aave_v2() -> LendingVenue {
+        LendingVenue::AaveV2 {
+            chain: ChainId::ethereum_mainnet(),
+            pool: Address::from_str("0x7d2768de32b0b80b7a3454c06bdac94a69ddc7a9").unwrap(),
+        }
+    }
+
+    /// A `Spark` venue — shares the `{ name, chain, pool }` arm with `AaveV2`.
+    pub(crate) fn venue_spark() -> LendingVenue {
+        LendingVenue::Spark {
+            chain: ChainId::ethereum_mainnet(),
+            pool: Address::from_str("0xc13e21b648a5ee794902342038ff3adab66be987").unwrap(),
+        }
+    }
+
+    /// A `CompoundV3` venue — emits `{ name, chain, comet, baseAsset }`.
+    pub(crate) fn venue_compound_v3() -> LendingVenue {
+        LendingVenue::CompoundV3 {
+            chain: ChainId::ethereum_mainnet(),
+            comet: Address::from_str("0xc3d688b66703497daa19211eedff47f25384cdc3").unwrap(),
+            base_asset: usdc(),
+        }
+    }
+
+    /// A `CompoundV2` venue — emits `{ name, chain, comptroller }`.
+    pub(crate) fn venue_compound_v2() -> LendingVenue {
+        LendingVenue::CompoundV2 {
+            chain: ChainId::ethereum_mainnet(),
+            comptroller: Address::from_str("0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b")
+                .unwrap(),
+        }
+    }
+
+    /// A `MorphoBlue` venue — emits `{ name, chain, marketIdStr }` (32-byte hex).
+    pub(crate) fn venue_morpho_blue() -> LendingVenue {
+        LendingVenue::MorphoBlue {
+            chain: ChainId::ethereum_mainnet(),
+            market_id: "0xb323495f7e4148be5643a4ea4a8221eef163e4bccfdedc2a6f4696baacbc86cc"
+                .into(),
+        }
+    }
+
+    /// A `MorphoOptimizer` venue — shares the `{ name, chain, vault }` arm with
+    /// `Fluid`.
+    pub(crate) fn venue_morpho_optimizer() -> LendingVenue {
+        LendingVenue::MorphoOptimizer {
+            chain: ChainId::ethereum_mainnet(),
+            vault: Address::from_str("0x186514400e52270cef3d80e1c6f8d10a75d14334").unwrap(),
+        }
+    }
+
+    /// A `Fluid` venue — emits `{ name, chain, vault }`.
+    pub(crate) fn venue_fluid() -> LendingVenue {
+        LendingVenue::Fluid {
+            chain: ChainId::arbitrum(),
+            vault: Address::from_str("0x0c8c77b7ff4c2af7f6cebbe67350a490e3dd6cb3").unwrap(),
+        }
+    }
+
+    /// A `ReserveState` with BOTH optional caps ABSENT — exercises the
+    /// `supply_cap == None` / `borrow_cap == None` branches of
+    /// `lower_reserve_state` (the `reserve_state()` builder has both present).
+    pub(crate) fn reserve_state_no_caps() -> ReserveState {
+        ReserveState {
+            total_supply: U256::from(1_000_000_000_000u64),
+            total_borrow: U256::from(600_000_000_000u64),
+            utilization_bp: 6000,
+            supply_cap: None,
+            borrow_cap: None,
+            ltv_bp: 8000,
+            liquidation_threshold_bp: 8500,
+            liquidation_bonus_bp: 500,
+            reserve_factor_bp: 1000,
+            is_frozen: false,
+            is_paused: false,
+        }
+    }
+
     /// A USDC `TokenRef` on Ethereum mainnet.
     pub(crate) fn usdc() -> TokenRef {
         TokenRef {

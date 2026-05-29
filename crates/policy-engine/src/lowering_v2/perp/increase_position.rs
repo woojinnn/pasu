@@ -91,22 +91,29 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::perp::{IncreasePerpAction, OpenPerpLiveInputs, PerpAction};
+    use simulation_reducer::action::perp::{
+        IncreasePerpAction, OpenPerpLiveInputs, PerpAccountState, PerpAction,
+    };
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::{Decimal, Price, U256};
+    use simulation_state::token::TokenRef;
 
     use super::super::test_support::{
-        assert_conforms, live, onchain_meta, sample_account_state, sample_size, sample_token,
-        sample_venue,
+        assert_conforms, live, onchain_meta, sample_account_state, sample_account_state_empty,
+        sample_size, sample_token, sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    /// Build an `IncreasePosition` body with the requested optional
+    /// `add_collateral` and account-state branches.
+    fn build(
+        add_collateral: Option<(TokenRef, U256)>,
+        account_state: PerpAccountState,
+    ) -> ActionBody {
         let action = IncreasePerpAction {
             venue: sample_venue(),
             position_id: "pos-123".into(),
             size: sample_size(),
-            // Exercise the Some arm: addCollateralToken + addCollateralAmount.
-            add_collateral: Some((sample_token(), U256::from(500_000_000u64))),
+            add_collateral,
             slippage_bp: 50,
             live_inputs: OpenPerpLiveInputs {
                 mark_price: live(Price::new("3050")),
@@ -118,11 +125,19 @@ mod tests {
                 maintenance_bp: live(300u32),
                 fee_taker_bp: live(5u32),
                 fee_maker_bp: live(2u32),
-                user_account_state: live(sample_account_state()),
+                user_account_state: live(account_state),
             },
         };
+        ActionBody::Perp(PerpAction::IncreasePosition(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        // Exercise the Some arm: addCollateralToken + addCollateralAmount.
         (
-            ActionBody::Perp(PerpAction::IncreasePosition(action)),
+            build(
+                Some((sample_token(), U256::from(500_000_000u64))),
+                sample_account_state(),
+            ),
             onchain_meta(),
         )
     }
@@ -131,5 +146,24 @@ mod tests {
     fn increase_position_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("increase_position", &body, &meta);
+    }
+
+    /// `add_collateral = None` — both `addCollateralToken` / `addCollateralAmount`
+    /// keys are omitted (the absent arm of the optional top-up).
+    #[test]
+    fn increase_position_no_add_collateral_conforms() {
+        let body = build(None, sample_account_state());
+        assert_conforms("increase_position", &body, &onchain_meta());
+    }
+
+    /// Empty `openPositions` set (the empty-array arm of
+    /// `lower_perp_account_state`).
+    #[test]
+    fn increase_position_empty_account_state_conforms() {
+        let body = build(
+            Some((sample_token(), U256::from(500_000_000u64))),
+            sample_account_state_empty(),
+        );
+        assert_conforms("increase_position", &body, &onchain_meta());
     }
 }

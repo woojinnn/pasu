@@ -71,23 +71,35 @@ mod tests {
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::{SignedI256, U256};
 
+    use simulation_reducer::action::perp::PerpPositionLive;
+
     use super::super::test_support::{
-        assert_conforms, live, onchain_meta, sample_position_live, sample_venue,
+        assert_conforms, live, onchain_meta, sample_position_live, sample_position_live_no_liq,
+        sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    /// Build an `AdjustMargin` body with the requested signed `delta` and live
+    /// position state (whose `liq_price` Option arm we want to exercise).
+    fn build(delta: SignedI256, position_state: PerpPositionLive) -> ActionBody {
         let action = AdjustMarginAction {
             venue: sample_venue(),
             position_id: "pos-123".into(),
-            // Withdraw 100 (negative delta) to exercise the signed path.
-            delta: SignedI256::try_from(-100i64).unwrap(),
+            delta,
             live_inputs: AdjustMarginLiveInputs {
-                position_state: live(sample_position_live()),
+                position_state: live(position_state),
                 free_margin_after: live(U256::from(7_900_000_000u64)),
             },
         };
+        ActionBody::Perp(PerpAction::AdjustMargin(action))
+    }
+
+    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+        // Withdraw 100 (negative delta) + position with a `liqPrice` (Some arm).
         (
-            ActionBody::Perp(PerpAction::AdjustMargin(action)),
+            build(
+                SignedI256::try_from(-100i64).unwrap(),
+                sample_position_live(),
+            ),
             onchain_meta(),
         )
     }
@@ -96,5 +108,16 @@ mod tests {
     fn adjust_margin_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("adjust_margin", &body, &meta);
+    }
+
+    /// Deposit (positive delta) + position with **no** `liqPrice` (the `None`
+    /// arm of `lower_perp_position_live`, where `liqPrice` is omitted).
+    #[test]
+    fn adjust_margin_deposit_no_liq_price_conforms() {
+        let body = build(
+            SignedI256::try_from(250i64).unwrap(),
+            sample_position_live_no_liq(),
+        );
+        assert_conforms("adjust_margin", &body, &onchain_meta());
     }
 }

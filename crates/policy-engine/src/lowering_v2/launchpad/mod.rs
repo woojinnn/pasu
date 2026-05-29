@@ -196,6 +196,10 @@ pub(crate) mod test_support {
 
     /// A representative `SaleState`: active, with caps, a sale window, and a
     /// vesting schedule (exercises every optional + the flattened window/curve).
+    ///
+    /// The vest schedule uses the `Stepped` curve with both `cliff` and `end`
+    /// present, so this single value covers: `hardCap`/`softCap`/`vestSchedule`
+    /// all PRESENT, `cliff`/`end` PRESENT, and `VestCurve::Stepped`.
     pub(crate) fn sale_state() -> SaleState {
         SaleState {
             is_active: true,
@@ -214,6 +218,62 @@ pub(crate) mod test_support {
                     ],
                 },
                 total: U256::from(1_000u64),
+            }),
+        }
+    }
+
+    /// A MINIMAL `SaleState`: every optional ABSENT (`hard_cap` / `soft_cap` /
+    /// `vest_schedule` all `None`). Exercises the omit-branch of every optional
+    /// in `lower_sale_state` (the counterpart to [`sale_state`]).
+    pub(crate) fn sale_state_minimal() -> SaleState {
+        SaleState {
+            is_active: false,
+            total_committed: U256::ZERO,
+            hard_cap: None,
+            soft_cap: None,
+            sale_window: (Time::from_unix(1_738_000_000), Time::from_unix(1_738_600_000)),
+            vest_schedule: None,
+        }
+    }
+
+    /// A `SaleState` whose `vest_schedule` is PRESENT but uses the `Linear`
+    /// curve with BOTH `cliff` and `end` ABSENT. Exercises `VestCurve::Linear`
+    /// plus the omit-branch of `cliff`/`end` in `lower_vest_schedule`.
+    pub(crate) fn sale_state_linear_bare_vest() -> SaleState {
+        SaleState {
+            is_active: true,
+            total_committed: U256::from(1_000_000_000u64),
+            hard_cap: Some(U256::from(5_000_000_000u64)),
+            soft_cap: None,
+            sale_window: (Time::from_unix(1_738_000_000), Time::from_unix(1_738_600_000)),
+            vest_schedule: Some(VestSchedule {
+                start: Time::from_unix(1_739_000_000),
+                cliff: None,
+                end: None,
+                curve: VestCurve::Linear,
+                total: U256::from(2_000u64),
+            }),
+        }
+    }
+
+    /// A `SaleState` whose `vest_schedule` is PRESENT and uses the `Custom`
+    /// curve (with `cliff` present, `end` absent — a mixed optional case).
+    /// Exercises `VestCurve::Custom`.
+    pub(crate) fn sale_state_custom_vest() -> SaleState {
+        SaleState {
+            is_active: true,
+            total_committed: U256::from(1_000_000_000u64),
+            hard_cap: None,
+            soft_cap: Some(U256::from(500_000_000u64)),
+            sale_window: (Time::from_unix(1_738_000_000), Time::from_unix(1_738_600_000)),
+            vest_schedule: Some(VestSchedule {
+                start: Time::from_unix(1_739_000_000),
+                cliff: Some(Time::from_unix(1_739_500_000)),
+                end: None,
+                curve: VestCurve::Custom {
+                    description: "bespoke milestone unlock".into(),
+                },
+                total: U256::from(3_000u64),
             }),
         }
     }
