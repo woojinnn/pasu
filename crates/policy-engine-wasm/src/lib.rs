@@ -4,6 +4,7 @@
 //! `install_policies_json`, `route_request_json`, `plan_policy_rpc_json`,
 //! `evaluate_policy_rpc_json`, and `evaluate_with_envelopes_json`.
 
+mod action_eval_exports;
 mod declarative_exports;
 mod dto;
 mod exports;
@@ -30,6 +31,7 @@ pub fn _start() {
 
 mod sim_types;
 
+pub use action_eval_exports::{evaluate_action_v2_json, plan_action_rpc_v2_json};
 pub use declarative_exports::{
     declarative_install_json, declarative_install_v3_json, declarative_lookup_json,
     declarative_plan_children_json, declarative_route_request_json,
