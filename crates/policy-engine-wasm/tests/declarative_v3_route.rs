@@ -3831,3 +3831,343 @@ fn t1_typed_data_no_witness_type_backward_compat() {
     let body = &parsed["data"]["actions"][0]["body"];
     assert_eq!(body["token"]["key"]["address"], token, "{parsed}");
 }
+
+// ===========================================================================
+// T2 — UniswapX intent-order SIGN manifests (Permit2-witness) + cancel
+// ===========================================================================
+//
+// The four UniswapX sign families are signed as Permit2 `permitWitnessTransferFrom`
+// witnesses: `domain.name = "Permit2"`, `verifying_contract = Permit2`,
+// `primary_type = "PermitWitnessTransferFrom"`, and the order struct is the
+// EIP-712 `witness` field — disambiguated by `match.typed_data.witness_type`
+// (the order struct's type name). The Permit2 MESSAGE the wallet surfaces is
+// `{ permitted{token,amount}, spender, nonce, deadline, witness{<order>} }`; the
+// abi_fragment's single `order` tuple param drives the wrap rule
+// (`build_typed_data_args_json`) so the body's `$args.order.witness.*` paths
+// resolve. These tests inline the on-disk manifest content VERBATIM (so they
+// pin the committed routing behaviour) and route a realistic message per family.
+//
+// §3.3 nesting: ExclusiveDutchOrder (V1) + V2DutchOrder FLATTEN input
+// (`inputToken`/`baseInputToken` …); V3DutchOrder + PriorityOrder KEEP nested
+// `baseInput`/`input` structs. The witness fixture below matches each.
+
+const T2_WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+const T2_USDC: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+const T2_RECIPIENT: &str = "0x000000000000000000000000000000000000c0fe";
+const T2_ZERO: &str = "0x0000000000000000000000000000000000000000";
+
+/// Shared TokenPermissions + the OUTER permitWitnessTransferFrom message
+/// scaffold; the caller supplies the `witness` order object. The `permitted`
+/// token/amount mirror the order's sell side (Permit2 transfers the sell token)
+/// but the routed body reads token/amount from the witness, not `permitted`.
+fn t2_permit_witness_message(witness: Value) -> Value {
+    json!({
+        "permitted": { "token": T2_WETH, "amount": "1000000000000000000" },
+        "spender": "0x00000000000000000000000000000000deadbeef",
+        "nonce": "0",
+        "deadline": 1_738_002_000_u64,
+        "witness": witness
+    })
+}
+
+/// 6-field OrderInfo message object (verbatim §3.3 OrderInfo) shared by all
+/// four order families. `reactor` is the per-family reactor; `deadline` is the
+/// order expiry the body reads as `valid_until`.
+fn t2_order_info(reactor: &str) -> Value {
+    json!({
+        "reactor": reactor,
+        "swapper": T1_SIGNER,
+        "nonce": "0",
+        "deadline": 1_738_002_000_u64,
+        "additionalValidationContract": T2_ZERO,
+        "additionalValidationData": "0x"
+    })
+}
+
+// ---------------------------------------------------------------------------
+// T2.1 — ExclusiveDutchOrder (V1), mainnet only. FLATTEN input.
+// ---------------------------------------------------------------------------
+
+const T2_EXCLUSIVE_DUTCH_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswapx/exclusive-dutch-order/sign@1.0.0.json");
+
+#[test]
+fn t2_uniswapx_exclusive_dutch_sign_intent_order() {
+    install_ok(T2_EXCLUSIVE_DUTCH_V3);
+
+    let reactor = "0x6000da47483062a0d734ba3dc7576ce6a0b645c4";
+    let witness = json!({
+        "info": t2_order_info(reactor),
+        "decayStartTime": 1_738_001_800_u64,
+        "decayEndTime": 1_738_002_000_u64,
+        "exclusiveFiller": T2_ZERO,
+        "exclusivityOverrideBps": "0",
+        "inputToken": T2_WETH,
+        "inputStartAmount": "1000000000000000000",
+        "inputEndAmount": "1000000000000000000",
+        "outputs": [
+            {
+                "token": T2_USDC,
+                "startAmount": "3500000000",
+                "endAmount": "3400000000",
+                "recipient": T2_RECIPIENT
+            }
+        ]
+    });
+    let input = t1_typed_data_input(
+        1,
+        PERMIT2_VC,
+        "PermitWitnessTransferFrom",
+        Some("ExclusiveDutchOrder"),
+        t2_permit_witness_message(witness),
+    );
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"], "uniswapx/exclusive-dutch-order/sign@1.0.0",
+        "{parsed}"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "amm", "{parsed}");
+    assert_eq!(body["action"], "sign_intent_order", "{parsed}");
+    assert_eq!(body["venue"]["name"], "uniswap_x", "{parsed}");
+    // reactor read from the witness `info.reactor` (NOT $to / verifying_contract).
+    assert_eq!(body["venue"]["reactor"], reactor, "{parsed}");
+    assert_eq!(body["venue"]["chain"], "eip155:1", "{parsed}");
+    assert_eq!(body["sell"]["key"]["address"], T2_WETH, "{parsed}");
+    assert_eq!(body["buy"]["key"]["address"], T2_USDC, "{parsed}");
+    assert_eq!(body["order_kind"], "dutch", "{parsed}");
+    assert_eq!(body["recipient"], T2_RECIPIENT, "{parsed}");
+    assert_eq!(body["valid_until"], 1_738_002_000_u64, "{parsed}");
+    // sell_amount = inputStartAmount (1e18 == 0xde0b6b3a7640000).
+    assert_eq!(body["sell_amount"], "0xde0b6b3a7640000", "{parsed}");
+    // buy_min = outputs[0].endAmount (3.4e9 == 0xcaa7e200).
+    assert_eq!(body["buy_min"], "0xcaa7e200", "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// T2.2 — V2DutchOrder, mainnet + arbitrum. FLATTEN baseInput.
+// ---------------------------------------------------------------------------
+
+const T2_V2_DUTCH_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswapx/v2-dutch-order/sign@1.0.0.json");
+
+#[test]
+fn t2_uniswapx_v2_dutch_sign_intent_order() {
+    install_ok(T2_V2_DUTCH_V3);
+
+    let reactor = "0x00000011f84b9aa48e5f8aa8b9897600006289be";
+    let witness = json!({
+        "info": t2_order_info(reactor),
+        "cosigner": T2_ZERO,
+        "baseInputToken": T2_WETH,
+        "baseInputStartAmount": "1000000000000000000",
+        "baseInputEndAmount": "1000000000000000000",
+        "baseOutputs": [
+            {
+                "token": T2_USDC,
+                "startAmount": "3500000000",
+                "endAmount": "3400000000",
+                "recipient": T2_RECIPIENT
+            }
+        ]
+    });
+    let input = t1_typed_data_input(
+        1,
+        PERMIT2_VC,
+        "PermitWitnessTransferFrom",
+        Some("V2DutchOrder"),
+        t2_permit_witness_message(witness),
+    );
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"], "uniswapx/v2-dutch-order/sign@1.0.0",
+        "{parsed}"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["action"], "sign_intent_order", "{parsed}");
+    assert_eq!(body["venue"]["reactor"], reactor, "{parsed}");
+    assert_eq!(body["sell"]["key"]["address"], T2_WETH, "{parsed}");
+    assert_eq!(body["buy"]["key"]["address"], T2_USDC, "{parsed}");
+    assert_eq!(body["order_kind"], "dutch", "{parsed}");
+    assert_eq!(body["recipient"], T2_RECIPIENT, "{parsed}");
+    assert_eq!(body["sell_amount"], "0xde0b6b3a7640000", "{parsed}");
+    assert_eq!(body["buy_min"], "0xcaa7e200", "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// T2.3 — V3DutchOrder, mainnet + base + optimism + arbitrum. NESTED baseInput.
+// ---------------------------------------------------------------------------
+
+const T2_V3_DUTCH_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswapx/v3-dutch-order/sign@1.0.0.json");
+
+#[test]
+fn t2_uniswapx_v3_dutch_sign_intent_order() {
+    install_ok(T2_V3_DUTCH_V3);
+
+    let reactor = "0x0000000015757c461808ea25eb309638b62681cf";
+    let curve = json!({ "relativeBlocks": "0", "relativeAmounts": [] });
+    let witness = json!({
+        "info": t2_order_info(reactor),
+        "cosigner": T2_ZERO,
+        "startingBaseFee": "0",
+        "baseInput": {
+            "token": T2_WETH,
+            "startAmount": "1000000000000000000",
+            "curve": curve,
+            "maxAmount": "1000000000000000000",
+            "adjustmentPerGweiBaseFee": "0"
+        },
+        "baseOutputs": [
+            {
+                "token": T2_USDC,
+                "startAmount": "3500000000",
+                "curve": curve,
+                "recipient": T2_RECIPIENT,
+                "minAmount": "3400000000",
+                "adjustmentPerGweiBaseFee": "0"
+            }
+        ]
+    });
+    let input = t1_typed_data_input(
+        1,
+        PERMIT2_VC,
+        "PermitWitnessTransferFrom",
+        Some("V3DutchOrder"),
+        t2_permit_witness_message(witness),
+    );
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"], "uniswapx/v3-dutch-order/sign@1.0.0",
+        "{parsed}"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["action"], "sign_intent_order", "{parsed}");
+    assert_eq!(body["venue"]["reactor"], reactor, "{parsed}");
+    // NESTED: sell from baseInput.token, buy_min from baseOutputs[0].minAmount.
+    assert_eq!(body["sell"]["key"]["address"], T2_WETH, "{parsed}");
+    assert_eq!(body["buy"]["key"]["address"], T2_USDC, "{parsed}");
+    assert_eq!(body["order_kind"], "dutch", "{parsed}");
+    assert_eq!(body["recipient"], T2_RECIPIENT, "{parsed}");
+    assert_eq!(body["sell_amount"], "0xde0b6b3a7640000", "{parsed}");
+    assert_eq!(body["buy_min"], "0xcaa7e200", "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// T2.4 — PriorityOrder, base only. NESTED input/outputs. order_kind = limit.
+// ---------------------------------------------------------------------------
+
+const T2_PRIORITY_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswapx/priority-order/sign@1.0.0.json");
+
+#[test]
+fn t2_uniswapx_priority_sign_intent_order() {
+    install_ok(T2_PRIORITY_V3);
+
+    let reactor = "0x000000001ec5656dcdb24d90dfa42742738de729";
+    let witness = json!({
+        "info": t2_order_info(reactor),
+        "cosigner": T2_ZERO,
+        "auctionStartBlock": "0",
+        "baselinePriorityFeeWei": "0",
+        "input": {
+            "token": T2_WETH,
+            "amount": "1000000000000000000",
+            "mpsPerPriorityFeeWei": "0"
+        },
+        "outputs": [
+            {
+                "token": T2_USDC,
+                "amount": "3400000000",
+                "mpsPerPriorityFeeWei": "0",
+                "recipient": T2_RECIPIENT
+            }
+        ]
+    });
+    let input = t1_typed_data_input(
+        8453,
+        PERMIT2_VC,
+        "PermitWitnessTransferFrom",
+        Some("PriorityOrder"),
+        t2_permit_witness_message(witness),
+    );
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"], "uniswapx/priority-order/sign@1.0.0",
+        "{parsed}"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["action"], "sign_intent_order", "{parsed}");
+    assert_eq!(body["venue"]["reactor"], reactor, "{parsed}");
+    assert_eq!(body["venue"]["chain"], "eip155:8453", "{parsed}");
+    // Priority output has only `amount` (fixed at sign) → both sell_amount &
+    // buy_min read it. order_kind = "limit" (no Priority variant; least-wrong).
+    assert_eq!(body["sell"]["key"]["address"], T2_WETH, "{parsed}");
+    assert_eq!(body["buy"]["key"]["address"], T2_USDC, "{parsed}");
+    assert_eq!(body["order_kind"], "limit", "{parsed}");
+    assert_eq!(body["recipient"], T2_RECIPIENT, "{parsed}");
+    assert_eq!(body["sell_amount"], "0xde0b6b3a7640000", "{parsed}");
+    assert_eq!(body["buy_min"], "0xcaa7e200", "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// T2.5 — cancel: Permit2 invalidateUnorderedNonces CALLDATA → cancel_intent_order
+// ---------------------------------------------------------------------------
+//
+// Cancellation is an on-chain Permit2 `invalidateUnorderedNonces(uint256,uint256)`
+// call (selector 0x3ff9dcb1), NOT a typed-data signature. Permit2-nonce-word
+// granular (not per-order): venue.reactor = $to (Permit2, venue-agnostic
+// placeholder), order_hash = $args.wordPos (the invalidated nonce word, not a
+// real 32-byte order hash). Calldata path → named `$args.wordPos` access.
+
+const T2_CANCEL_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswapx/cancel-order/cancel@1.0.0.json");
+
+#[test]
+fn t2_uniswapx_cancel_invalidate_unordered_nonces() {
+    install_ok(T2_CANCEL_V3);
+
+    // invalidateUnorderedNonces(uint256 wordPos, uint256 mask).
+    let calldata = encode_calldata(
+        "0x3ff9dcb1",
+        &[
+            DynSolValue::Uint(AlloyU256::from(7u64), 256),
+            DynSolValue::Uint(AlloyU256::from(0b1010u64), 256),
+        ],
+    );
+    let input = route_input(1, PERMIT2_VC, "0x3ff9dcb1", calldata, T1_SIGNER);
+    let parsed = route_ok(input);
+    assert_eq!(
+        parsed["data"]["decoder_id"], "uniswapx/cancel-order/cancel@1.0.0",
+        "{parsed}"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "amm", "{parsed}");
+    assert_eq!(body["action"], "cancel_intent_order", "{parsed}");
+    assert_eq!(body["venue"]["name"], "uniswap_x", "{parsed}");
+    // reactor = $to (Permit2, lowercased).
+    assert_eq!(body["venue"]["reactor"], PERMIT2_VC, "{parsed}");
+    assert_eq!(body["venue"]["chain"], "eip155:1", "{parsed}");
+    // order_hash = $args.wordPos. CancelIntentOrderAction.order_hash is a
+    // String; a uint256 arg renders as a DECIMAL string ("7"), not hex.
+    assert_eq!(body["order_hash"], "7", "{parsed}");
+    // signature omitted (None) → absent from the body.
+    assert!(body.get("signature").is_none(), "{parsed}");
+}

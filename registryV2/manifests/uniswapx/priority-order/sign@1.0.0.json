@@ -1,41 +1,38 @@
 {
   "type": "adapter_action",
-  "id": "uniswapx/exclusive-dutch-order/sign@1.0.0",
+  "id": "uniswapx/priority-order/sign@1.0.0",
   "publisher": "uniswap.eth",
   "schema_version": "3",
-  "note": "UniswapX ExclusiveDutchOrder (V1) signed as a Permit2 permitWitnessTransferFrom witness — domain=Permit2, verifying_contract=canonical Permit2 (all chains), primary_type=PermitWitnessTransferFrom, witness_type=ExclusiveDutchOrder (the EIP-712 witness struct). reactor read from the witness order.info.reactor (NOT the EIP-712 verifying_contract). Mainnet only (ExclusiveDutchOrderReactor 0x6000da47…, 1차 SDK REACTOR_ADDRESS_MAPPING + Etherscan Exact Match, research §3.2/§3.3). EIP-712 type FLATTENS input → witness.inputToken/inputStartAmount/inputEndAmount. selector 0x00000001 is a sign-only placeholder (off-chain order is never an on-chain calldata call against this manifest; distinct per family to avoid by-callkey collision on the shared Permit2 address).",
+  "note": "UniswapX PriorityOrder signed as a Permit2 permitWitnessTransferFrom witness — domain=Permit2, verifying_contract=canonical Permit2, primary_type=PermitWitnessTransferFrom, witness_type=PriorityOrder. reactor read from witness order.info.reactor. Base only (PriorityOrderReactor 0x000000001Ec5656…, SDK+BaseScan Exact Match; NOT deployed on mainnet — zero address in SDK map), research §3.2. PriorityOrder KEEPS NESTED input/outputs (PriorityInput/PriorityOutput). MODELING APPROXIMATION: order_kind=\"limit\" — priority orders fix amounts at sign time (the priority fee is the ordering mechanism, not a price-decay curve); IntentOrderKind has no Priority variant so \"limit\" is the least-wrong. The PriorityOutput carries only `amount` (no start/end) → sell_amount=input.amount, buy_min=outputs[0].amount (both read the fixed sign-time amount). cosignerData/cosignature are cosigner-added, EXCLUDED from the swapper witness. selector 0x00000004 is a sign-only placeholder (distinct per family).",
   "match": {
-    "selector": "0x00000001",
+    "selector": "0x00000004",
     "chain_to_addresses": {
-      "1": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+      "8453": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
     },
     "typed_data": {
       "domain_name": "Permit2",
       "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
       "primary_type": "PermitWitnessTransferFrom",
-      "witness_type": "ExclusiveDutchOrder",
+      "witness_type": "PriorityOrder",
       "types": {
         "PermitWitnessTransferFrom": [
           { "name": "permitted", "type": "TokenPermissions" },
           { "name": "spender", "type": "address" },
           { "name": "nonce", "type": "uint256" },
           { "name": "deadline", "type": "uint256" },
-          { "name": "witness", "type": "ExclusiveDutchOrder" }
+          { "name": "witness", "type": "PriorityOrder" }
         ],
         "TokenPermissions": [
           { "name": "token", "type": "address" },
           { "name": "amount", "type": "uint256" }
         ],
-        "ExclusiveDutchOrder": [
+        "PriorityOrder": [
           { "name": "info", "type": "OrderInfo" },
-          { "name": "decayStartTime", "type": "uint256" },
-          { "name": "decayEndTime", "type": "uint256" },
-          { "name": "exclusiveFiller", "type": "address" },
-          { "name": "exclusivityOverrideBps", "type": "uint256" },
-          { "name": "inputToken", "type": "address" },
-          { "name": "inputStartAmount", "type": "uint256" },
-          { "name": "inputEndAmount", "type": "uint256" },
-          { "name": "outputs", "type": "DutchOutput[]" }
+          { "name": "cosigner", "type": "address" },
+          { "name": "auctionStartBlock", "type": "uint256" },
+          { "name": "baselinePriorityFeeWei", "type": "uint256" },
+          { "name": "input", "type": "PriorityInput" },
+          { "name": "outputs", "type": "PriorityOutput[]" }
         ],
         "OrderInfo": [
           { "name": "reactor", "type": "address" },
@@ -45,10 +42,15 @@
           { "name": "additionalValidationContract", "type": "address" },
           { "name": "additionalValidationData", "type": "bytes" }
         ],
-        "DutchOutput": [
+        "PriorityInput": [
           { "name": "token", "type": "address" },
-          { "name": "startAmount", "type": "uint256" },
-          { "name": "endAmount", "type": "uint256" },
+          { "name": "amount", "type": "uint256" },
+          { "name": "mpsPerPriorityFeeWei", "type": "uint256" }
+        ],
+        "PriorityOutput": [
+          { "name": "token", "type": "address" },
+          { "name": "amount", "type": "uint256" },
+          { "name": "mpsPerPriorityFeeWei", "type": "uint256" },
           { "name": "recipient", "type": "address" }
         ]
       }
@@ -91,20 +93,25 @@
                     { "name": "additionalValidationData", "type": "bytes" }
                   ]
                 },
-                { "name": "decayStartTime", "type": "uint256" },
-                { "name": "decayEndTime", "type": "uint256" },
-                { "name": "exclusiveFiller", "type": "address" },
-                { "name": "exclusivityOverrideBps", "type": "uint256" },
-                { "name": "inputToken", "type": "address" },
-                { "name": "inputStartAmount", "type": "uint256" },
-                { "name": "inputEndAmount", "type": "uint256" },
+                { "name": "cosigner", "type": "address" },
+                { "name": "auctionStartBlock", "type": "uint256" },
+                { "name": "baselinePriorityFeeWei", "type": "uint256" },
+                {
+                  "name": "input",
+                  "type": "tuple",
+                  "components": [
+                    { "name": "token", "type": "address" },
+                    { "name": "amount", "type": "uint256" },
+                    { "name": "mpsPerPriorityFeeWei", "type": "uint256" }
+                  ]
+                },
                 {
                   "name": "outputs",
                   "type": "tuple[]",
                   "components": [
                     { "name": "token", "type": "address" },
-                    { "name": "startAmount", "type": "uint256" },
-                    { "name": "endAmount", "type": "uint256" },
+                    { "name": "amount", "type": "uint256" },
+                    { "name": "mpsPerPriorityFeeWei", "type": "uint256" },
                     { "name": "recipient", "type": "address" }
                   ]
                 }
@@ -128,11 +135,11 @@
             "chain": "$chain",
             "reactor": "$args.order.witness.info.reactor"
           },
-          "sell": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.witness.inputToken" } },
+          "sell": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.witness.input.token" } },
           "buy": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.witness.outputs[0].token" } },
-          "sell_amount": "$args.order.witness.inputStartAmount",
-          "buy_min": "$args.order.witness.outputs[0].endAmount",
-          "order_kind": "dutch",
+          "sell_amount": "$args.order.witness.input.amount",
+          "buy_min": "$args.order.witness.outputs[0].amount",
+          "order_kind": "limit",
           "recipient": "$args.order.witness.outputs[0].recipient",
           "valid_until": "$args.order.witness.info.deadline"
         }
