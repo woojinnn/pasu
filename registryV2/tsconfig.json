@@ -16,5 +16,7 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["scripts/**/*.ts"]
+  "include": ["scripts/**/*.ts"],
+  "//exclude": "__tests__ run under browser-extension's vitest (which provides the `vitest` types); registryV2 has no vitest dependency, so exclude them from this build's typecheck.",
+  "exclude": ["scripts/**/__tests__/**"]
 }

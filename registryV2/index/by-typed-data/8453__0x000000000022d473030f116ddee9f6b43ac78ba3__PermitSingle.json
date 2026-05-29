@@ -1,0 +1,164 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/permit2/permitSingle@1.0.0",
+  "manifest_path": "manifests/uniswap/permit2/permitSingle@1.0.0.json",
+  "bundle_sha256": "0xa4b96318b9cb3684dc4a330af034c4172eb6ed36e3f14aa5a4f704c0ae1152c6",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "uniswap/permit2/permitSingle@1.0.0",
+    "publisher": "uniswap.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0x2b67b570",
+      "chain_to_addresses": {
+        "1": [
+          "0x000000000022d473030f116ddee9f6b43ac78ba3"
+        ],
+        "10": [
+          "0x000000000022d473030f116ddee9f6b43ac78ba3"
+        ],
+        "8453": [
+          "0x000000000022d473030f116ddee9f6b43ac78ba3"
+        ],
+        "42161": [
+          "0x000000000022d473030f116ddee9f6b43ac78ba3"
+        ]
+      },
+      "typed_data": {
+        "domain_name": "Permit2",
+        "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+        "primary_type": "PermitSingle",
+        "types": {
+          "PermitSingle": [
+            {
+              "name": "details",
+              "type": "PermitDetails"
+            },
+            {
+              "name": "spender",
+              "type": "address"
+            },
+            {
+              "name": "sigDeadline",
+              "type": "uint256"
+            }
+          ],
+          "PermitDetails": [
+            {
+              "name": "token",
+              "type": "address"
+            },
+            {
+              "name": "amount",
+              "type": "uint160"
+            },
+            {
+              "name": "expiration",
+              "type": "uint48"
+            },
+            {
+              "name": "nonce",
+              "type": "uint48"
+            }
+          ]
+        }
+      }
+    },
+    "abi_fragment": {
+      "function_name": "permit",
+      "abi": {
+        "name": "permit",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "permitSingle",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "details",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "token",
+                    "type": "address"
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint160"
+                  },
+                  {
+                    "name": "expiration",
+                    "type": "uint48"
+                  },
+                  {
+                    "name": "nonce",
+                    "type": "uint48"
+                  }
+                ]
+              },
+              {
+                "name": "spender",
+                "type": "address"
+              },
+              {
+                "name": "sigDeadline",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "signature",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "token",
+        "token": {
+          "action": "permit2_sign_allowance",
+          "permit2_sign_allowance": {
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$args.permitSingle.details.token"
+              }
+            },
+            "spender": "$args.permitSingle.spender",
+            "amount": "$args.permitSingle.details.amount",
+            "expires_at": "$args.permitSingle.details.expiration",
+            "sig_deadline": "$args.permitSingle.sigDeadline",
+            "nonce": "$args.permitSingle.details.nonce"
+          }
+        }
+      },
+      "live_inputs": {
+        "nonce": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+            "function": "nonceBitmap(address,uint256)",
+            "decoder_id": "permit2_nonce_bitmap"
+          },
+          "ttl_s": 12
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

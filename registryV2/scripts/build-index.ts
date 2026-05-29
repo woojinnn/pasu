@@ -106,15 +106,30 @@ import canonicalize from "canonicalize";
 type ChainId = number;
 type Hex = string;
 
+/**
+ * EIP-712 typed-data routing descriptor (Phase A.1). When present on a
+ * manifest's `match`, build-index emits a `by-typed-data/` index entry keyed
+ * on (chainId, verifying_contract, primary_type) so the service-worker can
+ * route an off-chain `eth_signTypedData` payload to this manifest.
+ */
+interface V3TypedData {
+  domain_name: string;
+  verifying_contract: Hex;
+  primary_type: string;
+  types: Record<string, Array<{ name: string; type: string }>>;
+}
+
 interface BundleMatchSpecific {
   selector: Hex;
   chain_to_addresses: Record<string, Hex[]>;
+  typed_data?: V3TypedData;
 }
 
 interface BundleMatchSourced {
   selector: Hex;
   chain_to_addresses_source: ChainToAddressesSource;
   chain_ids: ChainId[];
+  typed_data?: V3TypedData;
 }
 
 type BundleMatch = BundleMatchSpecific | BundleMatchSourced;
@@ -184,10 +199,17 @@ interface TokenMetadata {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const REGISTRY_ROOT = resolve(__dirname, "..");
+// REGISTRY_ROOT is script-location-relative by default. `BUILD_INDEX_REGISTRY_ROOT`
+// overrides it for test isolation — a plain `cd` into a temp dir would NOT work
+// because this path is anchored to the script, not cwd. Default behavior
+// (env unset) is identical to before.
+const REGISTRY_ROOT = process.env.BUILD_INDEX_REGISTRY_ROOT
+  ? resolve(process.env.BUILD_INDEX_REGISTRY_ROOT)
+  : resolve(__dirname, "..");
 const MANIFESTS_DIR = join(REGISTRY_ROOT, "manifests");
 const TOKENS_DIR = join(REGISTRY_ROOT, "tokens");
 const INDEX_BY_CALLKEY_DIR = join(REGISTRY_ROOT, "index", "by-callkey");
+const INDEX_BY_TYPED_DATA_DIR = join(REGISTRY_ROOT, "index", "by-typed-data");
 
 // ---------------------------------------------------------------------------
 // Regex constants
@@ -403,6 +425,13 @@ function validateMatchShape(path: string, match: unknown): asserts match is Bund
     );
   }
 
+  // typed_data (optional, Phase A.1) — validate object shape regardless of
+  // `to` mode. The verifying_contract ↔ chain_to_addresses membership check is
+  // deferred to the hasMap branch below (sourced addresses resolve later).
+  if ("typed_data" in m) {
+    validateTypedDataShape(path, m.typed_data);
+  }
+
   if (hasMap) {
     if (
       typeof m.chain_to_addresses !== "object" ||
@@ -431,6 +460,18 @@ function validateMatchShape(path: string, match: unknown): asserts match is Bund
         if (typeof addr !== "string" || !ADDRESS_RE.test(addr)) {
           throw new Error(
             `manifests/: ${path} match.chain_to_addresses["${chainKey}"][${i}] expected "0x" + 40 hex, got ${JSON.stringify(addr)}`,
+          );
+        }
+      }
+      // typed_data routing requires the EIP-712 verifying_contract to be one
+      // of this chain's matched addresses — otherwise the by-typed-data index
+      // would point at a contract the by-callkey index never matches.
+      if ("typed_data" in m) {
+        const vc = (m.typed_data as V3TypedData).verifying_contract.toLowerCase();
+        const lowered = (addresses as string[]).map((a) => a.toLowerCase());
+        if (!lowered.includes(vc)) {
+          throw new Error(
+            `manifests/: ${path} match.typed_data.verifying_contract ${vc} not in chain_to_addresses["${chainKey}"]`,
           );
         }
       }
@@ -468,6 +509,32 @@ function validateMatchShape(path: string, match: unknown): asserts match is Bund
         );
       }
     }
+  }
+}
+
+/**
+ * Validate the optional `match.typed_data` block shape (Phase A.1). This only
+ * checks structural well-formedness; the verifying_contract ↔ chain_to_addresses
+ * membership invariant is enforced in `validateMatchShape`'s hasMap branch.
+ */
+function validateTypedDataShape(path: string, td: unknown): asserts td is V3TypedData {
+  if (typeof td !== "object" || td === null || Array.isArray(td)) {
+    throw new Error(`manifests/: ${path} match.typed_data must be a JSON object`);
+  }
+  const t = td as Record<string, unknown>;
+  if (typeof t.domain_name !== "string" || t.domain_name.length === 0) {
+    throw new Error(`manifests/: ${path} match.typed_data.domain_name must be a non-empty string`);
+  }
+  if (typeof t.verifying_contract !== "string" || !ADDRESS_RE.test(t.verifying_contract)) {
+    throw new Error(
+      `manifests/: ${path} match.typed_data.verifying_contract expected "0x" + 40 hex, got ${JSON.stringify(t.verifying_contract)}`,
+    );
+  }
+  if (typeof t.primary_type !== "string" || t.primary_type.length === 0) {
+    throw new Error(`manifests/: ${path} match.typed_data.primary_type must be a non-empty string`);
+  }
+  if (typeof t.types !== "object" || t.types === null || Array.isArray(t.types)) {
+    throw new Error(`manifests/: ${path} match.typed_data.types must be a JSON object`);
   }
 }
 
@@ -637,6 +704,13 @@ function callkeyFilename(chainId: ChainId, to: Hex, selector: Hex): string {
   return `${chainId}__${to.toLowerCase()}__${selector.toLowerCase()}.json`;
 }
 
+function typedDataFilename(chainId: ChainId, verifyingContract: Hex, primaryType: string): string {
+  // EIP-712 primary types can contain a colon (e.g. HyperLiquid's
+  // "HyperliquidTransaction:UsdSend") — escape it to a filesystem-safe token.
+  const ptEscaped = primaryType.replace(/:/g, "__");
+  return `${chainId}__${verifyingContract.toLowerCase()}__${ptEscaped}.json`;
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -654,9 +728,10 @@ async function main(): Promise<void> {
   if (manifestFiles.length === 0) {
     console.error(`[build-index] no manifests found in ${MANIFESTS_DIR} — registry empty (expected during Phase 3A scaffold)`);
     // Phase 3A scaffold: zero manifests is not a fatal condition. The
-    // index/by-callkey/ directory is wiped + recreated empty, ready for
-    // Phase 3C-F manifest authoring.
+    // index/by-callkey/ + index/by-typed-data/ directories are wiped +
+    // recreated empty, ready for Phase 3C-F manifest authoring.
     wipeDir(INDEX_BY_CALLKEY_DIR);
+    wipeDir(INDEX_BY_TYPED_DATA_DIR);
     return;
   }
 
@@ -673,8 +748,10 @@ async function main(): Promise<void> {
 
   // orphan 방지
   wipeDir(INDEX_BY_CALLKEY_DIR);
+  wipeDir(INDEX_BY_TYPED_DATA_DIR);
 
   let totalCallkeys = 0;
+  let totalTypedDataEntries = 0;
   let totalErrors = 0;
   for (const file of manifestFiles) {
     const manifestPath = relative(REGISTRY_ROOT, file).split(/[\\/]/).join("/");
@@ -709,6 +786,26 @@ async function main(): Promise<void> {
           totalCallkeys++;
         }
       }
+
+      // by-typed-data index — one entry per chain when the manifest carries an
+      // EIP-712 routing descriptor. Keyed (chainId, verifying_contract,
+      // primary_type) so the SW can route an off-chain typed-sig payload.
+      if (resolved.match.typed_data) {
+        const td = resolved.match.typed_data;
+        for (const [chainKey] of pairs) {
+          const chainId = Number(chainKey);
+          const fname = typedDataFilename(chainId, td.verifying_contract, td.primary_type);
+          const entry: IndexEntry = {
+            matched: true,
+            bundle_id: resolved.id,
+            manifest_path: manifestPath,
+            bundle_sha256: bundleSha256,
+            bundle: resolved,
+          };
+          writeFileSync(join(INDEX_BY_TYPED_DATA_DIR, fname), JSON.stringify(entry, null, 2) + "\n", "utf8");
+          totalTypedDataEntries++;
+        }
+      }
     } catch (e) {
       totalErrors++;
       console.error(`[build-index] FAIL ${manifestPath}: ${(e as Error).message}`);
@@ -716,10 +813,14 @@ async function main(): Promise<void> {
   }
 
   if (totalErrors > 0) {
-    console.error(`[build-index] FAILED — ${totalErrors} manifest(s) rejected, ${totalCallkeys} callkey(s) written`);
+    console.error(
+      `[build-index] FAILED — ${totalErrors} manifest(s) rejected, ${totalCallkeys} callkey(s) + ${totalTypedDataEntries} typed-data entry(ies) written`,
+    );
     process.exit(1);
   }
-  console.error(`[build-index] done — ${totalCallkeys} callkey(s) written across ${manifestFiles.length} manifest(s)`);
+  console.error(
+    `[build-index] done — ${totalCallkeys} callkey(s) + ${totalTypedDataEntries} typed-data entry(ies) written across ${manifestFiles.length} manifest(s)`,
+  );
 }
 
 main().catch((err) => {
