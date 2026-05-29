@@ -21,6 +21,7 @@ pub mod launchpad;
 pub mod lending;
 pub mod perp;
 pub mod token;
+pub mod view;
 
 pub use airdrop::AirdropAction;
 pub use amm::AmmAction;
@@ -28,6 +29,7 @@ pub use launchpad::LaunchpadAction;
 pub use lending::LendingAction;
 pub use perp::PerpAction;
 pub use token::TokenAction;
+pub use view::ActionView;
 
 // ---------------------------------------------------------------------------
 // Common helper types

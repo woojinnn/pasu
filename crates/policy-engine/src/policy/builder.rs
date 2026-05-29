@@ -84,9 +84,8 @@ impl PolicyEngineBuilder {
         let (schema, _warnings) = cedar_policy::Schema::from_cedarschema_str(&combined_schema)
             .map_err(|e| PolicyError::Schema(e.to_string()))?;
 
-        let baseline = "@id(\"engine/baseline-allow\")\npermit(principal, action, resource);\n";
         let mut combined = String::new();
-        combined.push_str(baseline);
+        combined.push_str(super::engine::BASELINE_PERMIT);
         for src in &self.text_sources {
             combined.push_str(src);
             combined.push('\n');

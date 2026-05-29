@@ -53,6 +53,44 @@ pub enum LendingAction {
     Liquidate(LiquidateAction),
 }
 
+impl LendingAction {
+    /// The action's `serde` `action` tag (e.g. `"borrow"`, `"set_e_mode"`).
+    ///
+    /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
+    /// discriminant exactly; verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn action_tag(&self) -> &'static str {
+        match self {
+            Self::Supply(_) => "supply",
+            Self::Withdraw(_) => "withdraw",
+            Self::Borrow(_) => "borrow",
+            Self::Repay(_) => "repay",
+            Self::SwapRateMode(_) => "swap_rate_mode",
+            Self::SetEMode(_) => "set_e_mode",
+            Self::EnableCollateral(_) => "enable_collateral",
+            Self::DisableCollateral(_) => "disable_collateral",
+            Self::DelegateBorrow(_) => "delegate_borrow",
+            Self::Liquidate(_) => "liquidate",
+        }
+    }
+
+    /// The venue `name` of the wrapped action. Every lending action carries a venue.
+    #[must_use]
+    pub const fn venue_name(&self) -> Option<&'static str> {
+        match self {
+            Self::Supply(a) => Some(a.venue.name()),
+            Self::Withdraw(a) => Some(a.venue.name()),
+            Self::Borrow(a) => Some(a.venue.name()),
+            Self::Repay(a) => Some(a.venue.name()),
+            Self::SwapRateMode(a) => Some(a.venue.name()),
+            Self::SetEMode(a) => Some(a.venue.name()),
+            Self::EnableCollateral(a) | Self::DisableCollateral(a) => Some(a.venue.name()),
+            Self::DelegateBorrow(a) => Some(a.venue.name()),
+            Self::Liquidate(a) => Some(a.venue.name()),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Venue
 // ---------------------------------------------------------------------------
@@ -131,6 +169,26 @@ pub enum LendingVenue {
         #[tsify(type = "string")]
         vault: Address,
     },
+}
+
+impl LendingVenue {
+    /// The venue's `serde` `name` tag (e.g. `"aave_v3"`, `"morpho_blue"`).
+    ///
+    /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
+    /// discriminants exactly and are verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::AaveV3 { .. } => "aave_v3",
+            Self::AaveV2 { .. } => "aave_v2",
+            Self::CompoundV3 { .. } => "compound_v3",
+            Self::CompoundV2 { .. } => "compound_v2",
+            Self::MorphoBlue { .. } => "morpho_blue",
+            Self::MorphoOptimizer { .. } => "morpho_optimizer",
+            Self::Spark { .. } => "spark",
+            Self::Fluid { .. } => "fluid",
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

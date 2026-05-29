@@ -7,7 +7,7 @@
 //! ```
 
 use simulation_state::ChainId;
-use simulation_sync::{BlockTag, RpcConfig, RpcRouter};
+use simulation_sync::{BlockTag, RpcConfig, RpcRouter, SyncConfig};
 
 fn live_config() -> RpcConfig {
     let toml = r#"
@@ -21,6 +21,23 @@ url = "https://ethereum-rpc.publicnode.com"
 priority = 1
 "#;
     RpcConfig::load_str(toml).unwrap()
+}
+
+/// `scopeball-sync.toml` (워크스페이스 루트) 를 그대로 로드.
+///
+/// rpc 만 필요한 테스트는 [`live_config`] 를 쓰지만, oracle/venue 설정도
+/// 같이 필요한 시나리오는 실제 sync config 파일을 사용.
+fn live_sync_config() -> SyncConfig {
+    // tests/rpc_live.rs 는 `crates/simulation/sync/` 의 CARGO_MANIFEST_DIR
+    // 에서 실행됨. workspace 루트의 scopeball-sync.toml 까지 4단계 위.
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let path = std::path::Path::new(manifest_dir)
+        .join("..")
+        .join("..")
+        .join("..")
+        .join("scopeball-sync.toml");
+    SyncConfig::load_file(&path)
+        .unwrap_or_else(|e| panic!("load_file({}): {}", path.display(), e))
 }
 
 #[tokio::test]
@@ -160,13 +177,15 @@ async fn live_sync_primitives_block_height_and_balances() {
 #[ignore]
 async fn live_chainlink_real_prices() {
     // ChainlinkFetcher 가 실제 mainnet Chainlink AggregatorV3 로 USDC/USD, ETH/USD,
-    // WBTC/USD 가격을 가져오는지.
+    // WBTC/USD 가격을 가져오는지. feed catalog 는 scopeball-sync.toml 의
+    // [oracles.chainlink.chains."eip155:1".feeds] 에서 자동 로드.
     use simulation_state::{DataSource, OracleProvider};
     use simulation_sync::fetchers::ChainlinkFetcher;
     use std::sync::Arc;
 
-    let router = Arc::new(RpcRouter::from_config(live_config()).unwrap());
-    let fetcher = ChainlinkFetcher::new(router);
+    let sync_cfg = live_sync_config();
+    let router = Arc::new(RpcRouter::from_config(sync_cfg.rpc.clone()).unwrap());
+    let fetcher = ChainlinkFetcher::from_sync_config(router, &sync_cfg.oracles.chainlink);
 
     for feed in ["USDC/USD", "ETH/USD", "WBTC/USD"] {
         let source = DataSource::OracleFeed {
@@ -179,6 +198,160 @@ async fn live_chainlink_real_prices() {
         // 살아있는 가격은 0 아님
         assert!(price.as_str() != "0", "{} returned zero", feed);
     }
+}
+
+#[tokio::test]
+#[ignore]
+async fn live_coingecko_real_prices() {
+    // RestJsonOracleFetcher 가 CoinGecko 의 simple price API 에서 USDC/USD,
+    // ETH/USD, WBTC/USD 를 진짜로 받아오는지. feed catalog 는
+    // scopeball-sync.toml 의 [oracles.rest.coingecko] 에서 자동 로드.
+    use simulation_state::{DataSource, OracleProvider};
+    use simulation_sync::{PriceFetcher, RestJsonOracleFetcher};
+
+    let sync_cfg = live_sync_config();
+    let rest = sync_cfg
+        .oracles
+        .rest
+        .get("coingecko")
+        .expect("[oracles.rest.coingecko] missing from toml");
+    let fetcher = RestJsonOracleFetcher::from_sync_config("coingecko", rest);
+
+    for feed in ["USDC/USD", "ETH/USD", "WBTC/USD"] {
+        let source = DataSource::OracleFeed {
+            provider: OracleProvider::Other("coingecko".into()),
+            feed_id: feed.into(),
+        };
+        let price = fetcher.fetch_price(&source).await.expect(feed);
+        println!("[coingecko] {} = {}", feed, price.as_str());
+        assert!(price.as_str() != "0", "{} returned zero", feed);
+    }
+}
+
+/// Orchestrator dispatch — 같은 USDC/USD 를 OracleProvider 두 종류 (Chainlink
+/// + CoinGecko) 로 받아와서, dispatch 가 provider 별로 다른 fetcher 로 routing
+/// 되는지 검증.
+#[tokio::test]
+#[ignore]
+async fn live_orchestrator_routes_oracle_by_provider() {
+    use simulation_state::{
+        Address, Balance, BaseCategory, DataSource, Decimal, Duration as SDuration, FiatCurrency,
+        LiveField, OracleProvider, PegTarget, Time, TokenHolding, TokenKey, TokenKind, WalletId,
+        WalletState,
+    };
+    use simulation_sync::Orchestrator;
+    use std::str::FromStr;
+
+    let orch = Orchestrator::from_sync_config(&live_sync_config()).unwrap();
+
+    let usdc_addr = Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
+    let mk_key = || TokenKey::Erc20 {
+        chain: ChainId::ethereum_mainnet(),
+        address: usdc_addr,
+    };
+
+    // 두 wallet — 동일 token, 다른 oracle provider.
+    let mut state_chainlink = WalletState::new(WalletId::new(
+        Address::ZERO,
+        [ChainId::ethereum_mainnet()],
+    ));
+    state_chainlink.tokens.insert(
+        mk_key(),
+        TokenHolding {
+            key: mk_key(),
+            kind: TokenKind::Base {
+                category: BaseCategory::Stable,
+                peg_to: Some(PegTarget::Fiat(FiatCurrency::Usd)),
+            },
+            symbol: "USDC".into(),
+            decimals: 6,
+            balance: Balance::zero_fungible(),
+            committed: Balance::zero_fungible(),
+            approved_to: None,
+            price_usd: Some(
+                LiveField::new(
+                    Decimal::new("0"),
+                    DataSource::OracleFeed {
+                        provider: OracleProvider::Chainlink,
+                        feed_id: "USDC/USD".into(),
+                    },
+                    Time::from_unix(1),
+                )
+                .with_ttl(SDuration::from_secs(1)),
+            ),
+            last_synced_at: Time::from_unix(1),
+            primitives_source: DataSource::UserSupplied,
+        },
+    );
+
+    let mut state_coingecko = WalletState::new(WalletId::new(
+        Address::ZERO,
+        [ChainId::ethereum_mainnet()],
+    ));
+    state_coingecko.tokens.insert(
+        mk_key(),
+        TokenHolding {
+            key: mk_key(),
+            kind: TokenKind::Base {
+                category: BaseCategory::Stable,
+                peg_to: Some(PegTarget::Fiat(FiatCurrency::Usd)),
+            },
+            symbol: "USDC".into(),
+            decimals: 6,
+            balance: Balance::zero_fungible(),
+            committed: Balance::zero_fungible(),
+            approved_to: None,
+            price_usd: Some(
+                LiveField::new(
+                    Decimal::new("0"),
+                    DataSource::OracleFeed {
+                        provider: OracleProvider::Other("coingecko".into()),
+                        feed_id: "USDC/USD".into(),
+                    },
+                    Time::from_unix(1),
+                )
+                .with_ttl(SDuration::from_secs(1)),
+            ),
+            last_synced_at: Time::from_unix(1),
+            primitives_source: DataSource::UserSupplied,
+        },
+    );
+
+    let now = Time::from_unix(1_738_000_000);
+    let r1 = orch.refresh(&mut state_chainlink, now).await.unwrap();
+    let r2 = orch.refresh(&mut state_coingecko, now).await.unwrap();
+
+    let p_chainlink = state_chainlink.tokens[&mk_key()]
+        .price_usd
+        .as_ref()
+        .unwrap()
+        .value
+        .as_str()
+        .to_string();
+    let p_coingecko = state_coingecko.tokens[&mk_key()]
+        .price_usd
+        .as_ref()
+        .unwrap()
+        .value
+        .as_str()
+        .to_string();
+
+    println!("chainlink USDC/USD = {} (report {:?})", p_chainlink, r1);
+    println!("coingecko USDC/USD = {} (report {:?})", p_coingecko, r2);
+
+    assert_ne!(p_chainlink, "0", "chainlink not refreshed");
+    assert_ne!(p_coingecko, "0", "coingecko not refreshed");
+    // 두 값 모두 USDC stablecoin 의 합리적 범위 (0.9 ~ 1.1) 안.
+    let pc: f64 = p_chainlink.parse().expect("chainlink price parse");
+    let pg: f64 = p_coingecko.parse().expect("coingecko price parse");
+    assert!(
+        (0.9..=1.1).contains(&pc),
+        "chainlink USDC out of range: {pc}"
+    );
+    assert!(
+        (0.9..=1.1).contains(&pg),
+        "coingecko USDC out of range: {pg}"
+    );
 }
 
 #[tokio::test]
@@ -239,10 +412,10 @@ async fn live_orchestrator_refresh_end_to_end() {
     };
     use simulation_sync::Orchestrator;
     use std::str::FromStr;
-    use std::sync::Arc;
 
-    let router = Arc::new(RpcRouter::from_config(live_config()).unwrap());
-    let orch = Orchestrator::from_rpc_router(router);
+    // Chainlink feed catalog (USDC/USD 등) 는 scopeball-sync.toml 의
+    // [oracles.chainlink] 에서 로드.
+    let orch = Orchestrator::from_sync_config(&live_sync_config()).unwrap();
 
     let usdc_addr = Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
     let usdc_key = TokenKey::Erc20 {
@@ -330,7 +503,6 @@ async fn live_aave_borrow_scenario_fills_live_inputs() {
     };
     use simulation_sync::Orchestrator;
     use std::str::FromStr;
-    use std::sync::Arc;
 
     // mainnet 의 실제 주소들
     let chain = ChainId::ethereum_mainnet();
@@ -434,8 +606,9 @@ async fn live_aave_borrow_scenario_fills_live_inputs() {
 
     let state = WalletState::new(WalletId::new(vitalik, [chain.clone()]));
 
-    let router = Arc::new(RpcRouter::from_config(live_config()).unwrap());
-    let orch = Orchestrator::from_rpc_router(router);
+    // Orchestrator 를 scopeball-sync.toml 에서 빌드 — Chainlink feed catalog
+    // (USDC/USD 등) 가 [oracles.chainlink] 섹션에서 자동 로드되도록.
+    let orch = Orchestrator::from_sync_config(&live_sync_config()).unwrap();
 
     let now = Time::from_unix(1_738_000_000);
     let report = orch.refresh_action(&mut action, &state, now).await.unwrap();

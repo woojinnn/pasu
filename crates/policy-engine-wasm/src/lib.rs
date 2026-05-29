@@ -4,10 +4,12 @@
 //! `install_policies_json`, `route_request_json`, `plan_policy_rpc_json`,
 //! `evaluate_policy_rpc_json`, and `evaluate_with_envelopes_json`.
 
+mod action_eval_exports;
 mod declarative_exports;
 mod dto;
 mod exports;
 mod policy_request_exports;
+mod trigger_exports;
 
 /// Part 5 — Curve real-transaction coverage verification harness (test-only).
 ///
@@ -29,6 +31,7 @@ pub fn _start() {
 
 mod sim_types;
 
+pub use action_eval_exports::{evaluate_action_v2_json, plan_action_rpc_v2_json};
 pub use declarative_exports::{
     declarative_install_v3_json, declarative_route_request_v3_json,
     declarative_route_typed_data_v3_json,
@@ -39,3 +42,4 @@ pub use exports::{
     preview_installed_schema_json, preview_schema_json, route_request_json,
 };
 pub use policy_request_exports::evaluate_policy_request_json;
+pub use trigger_exports::evaluate_triggers_json;

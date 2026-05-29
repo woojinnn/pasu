@@ -13,6 +13,7 @@ use alloy_primitives::{Address, I256, U256};
 
 use simulation_state::{ChainId, DataSource, Decimal};
 
+use crate::config::ChainlinkConfig;
 use crate::error::SyncError;
 use crate::fetchers::decoder::function_selector;
 use crate::fetchers::rpc::{BlockTag, EthCallRequest, RpcRouter};
@@ -28,9 +29,14 @@ pub struct ChainlinkFeed {
     pub decimals: u8,
 }
 
+/// Chainlink feed 카탈로그.
+///
+/// 키는 `(chain, feed_id)`. `DataSource::OracleFeed` 가 아직 chain 을 carry
+/// 하지 않아 [`lookup`] 은 feed_id 만으로도 찾을 수 있도록 fallback path 를
+/// 두고 있다 (향후 OracleFeed 가 chain 을 받게 되면 fallback 제거 예정).
 #[derive(Default)]
 pub struct ChainlinkFeedRegistry {
-    by_id: HashMap<String, ChainlinkFeed>,
+    by_chain_id: HashMap<(ChainId, String), ChainlinkFeed>,
 }
 
 impl ChainlinkFeedRegistry {
@@ -39,14 +45,49 @@ impl ChainlinkFeedRegistry {
     }
 
     pub fn register(&mut self, feed: ChainlinkFeed) {
-        self.by_id.insert(feed.feed_id.clone(), feed);
+        self.by_chain_id
+            .insert((feed.chain.clone(), feed.feed_id.clone()), feed);
     }
 
+    /// Strict lookup — `(chain, feed_id)` exact match.
+    pub fn lookup_on(&self, chain: &ChainId, id: &str) -> Option<&ChainlinkFeed> {
+        self.by_chain_id.get(&(chain.clone(), id.to_string()))
+    }
+
+    /// chain 모르는 호출자용 fallback.
+    ///
+    /// 같은 `feed_id` 가 여러 chain 에 등록되어 있으면 어느 것이 반환될지
+    /// HashMap 순회 순서에 달려있다. `DataSource::OracleFeed` 에 chain 필드가
+    /// 추가되면 본 메서드는 deprecated 되고 `lookup_on` 만 사용.
     pub fn lookup(&self, id: &str) -> Option<&ChainlinkFeed> {
-        self.by_id.get(id)
+        self.by_chain_id
+            .iter()
+            .find(|((_, fid), _)| fid == id)
+            .map(|(_, feed)| feed)
     }
 
-    /// 잘 알려진 mainnet feed 들 미리 등록 — 개발/테스트 편의용.
+    /// [`ChainlinkConfig`] (= `scopeball-sync.toml` 의 `[oracles.chainlink]`)
+    /// 의 모든 (chain, feed_id) 를 등록.
+    pub fn from_config(cfg: &ChainlinkConfig) -> Self {
+        let mut r = Self::new();
+        for (chain, chain_cfg) in &cfg.chains {
+            for (feed_id, feed_cfg) in &chain_cfg.feeds {
+                r.register(ChainlinkFeed {
+                    feed_id: feed_id.clone(),
+                    chain: chain.clone(),
+                    address: feed_cfg.address,
+                    decimals: feed_cfg.decimals,
+                });
+            }
+        }
+        r
+    }
+
+    /// 잘 알려진 mainnet feed 들 미리 등록 — 단위테스트 전용.
+    ///
+    /// 실 운영에서는 [`Self::from_config`] 를 사용. 본 helper 는 config 로딩
+    /// 없이 동작 검증이 필요한 inline 테스트용으로만 남김.
+    #[cfg(test)]
     pub fn with_mainnet_defaults() -> Self {
         use std::str::FromStr;
         let mut r = Self::new();
@@ -78,15 +119,25 @@ pub struct ChainlinkFetcher {
 }
 
 impl ChainlinkFetcher {
+    /// 빈 registry 로 시작. 실 사용 전에 [`Self::with_registry`] 또는
+    /// [`Self::from_sync_config`] 로 feed 들을 주입해야 함.
     pub fn new(router: Arc<RpcRouter>) -> Self {
         Self {
             router,
-            registry: ChainlinkFeedRegistry::with_mainnet_defaults(),
+            registry: ChainlinkFeedRegistry::default(),
         }
     }
 
     pub fn with_registry(router: Arc<RpcRouter>, registry: ChainlinkFeedRegistry) -> Self {
         Self { router, registry }
+    }
+
+    /// `scopeball-sync.toml` 의 `[oracles.chainlink]` 섹션을 바로 주입.
+    pub fn from_sync_config(router: Arc<RpcRouter>, cfg: &ChainlinkConfig) -> Self {
+        Self {
+            router,
+            registry: ChainlinkFeedRegistry::from_config(cfg),
+        }
     }
 
     pub fn registry_mut(&mut self) -> &mut ChainlinkFeedRegistry {
@@ -176,6 +227,15 @@ fn trim_trailing_zeros(s: &str) -> &str {
     }
     let trimmed = s.trim_end_matches('0');
     trimmed.trim_end_matches('.')
+}
+
+// PriceFetcher trait impl — Orchestrator 가 동일 trait object 로 dispatch 한다.
+// 본문은 기존 inherent `fetch_price` 에 그대로 위임.
+#[async_trait::async_trait]
+impl crate::fetchers::oracle::PriceFetcher for ChainlinkFetcher {
+    async fn fetch_price(&self, source: &DataSource) -> Result<Decimal, SyncError> {
+        Self::fetch_price(self, source).await
+    }
 }
 
 #[cfg(test)]

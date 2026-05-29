@@ -69,6 +69,22 @@ pub enum IntentVenue {
     },
 }
 
+impl IntentVenue {
+    /// The venue's `serde` `name` tag (e.g. `"uniswap_x"`, `"one_inch_fusion"`).
+    ///
+    /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
+    /// discriminants exactly and are verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::UniswapX { .. } => "uniswap_x",
+            Self::CowSwap { .. } => "cow_swap",
+            Self::OneInchFusion { .. } => "one_inch_fusion",
+            Self::Bebop { .. } => "bebop",
+        }
+    }
+}
+
 /// Semantics of an intent order's price discovery.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]

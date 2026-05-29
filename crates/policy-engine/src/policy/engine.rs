@@ -12,11 +12,25 @@ use super::error::PolicyError;
 use super::request::PolicyRequest;
 use super::verdict::{MatchedPolicy, PolicyRequestOrigin, Severity, Verdict};
 
+/// The auto-injected baseline `permit` so that absence of any matched `forbid`
+/// evaluates to allow. Prepended to every assembled policy set.
+pub(super) const BASELINE_PERMIT: &str =
+    "@id(\"engine/baseline-allow\")\npermit(principal, action, resource);\n";
+
+/// Synthetic matched-policy id used when the schema-less (per-policy) path
+/// fails closed on an evaluation error.
+const SCHEMALESS_EVAL_ERROR_ID: &str = "__schemaless_eval_error__";
+
 /// Compiled policy set + the auto-injected baseline permit.
 #[derive(Debug)]
 pub struct PolicyEngine {
     policy_set: PolicySet,
-    schema: Schema,
+    /// The Cedar schema used to validate requests/context/entities at
+    /// evaluation time. `Some` for the unified single-schema path
+    /// ([`Self::build_from`]); `None` for the per-policy path
+    /// ([`Self::build_from_per_policy`]), where each policy was validated
+    /// against its OWN schema at install and evaluation runs schema-less.
+    schema: Option<Schema>,
     /// Per-policy-id severity, lifted from the `@severity(...)` annotation at
     /// parse time so we don't have to re-parse on every evaluation.
     severities: HashMap<String, Severity>,
@@ -70,7 +84,58 @@ impl PolicyEngine {
 
         Ok(Self {
             policy_set,
-            schema,
+            schema: Some(schema),
+            severities,
+            reasons,
+        })
+    }
+
+    /// Build a single-`PolicySet` engine from per-policy bundles.
+    ///
+    /// Each bundle is `(policy_cedar_text, per_policy_schema_text)`. Per the
+    /// Cedar separation of validation from authorization, every policy is
+    /// strict-validated against its OWN schema here at install; the resulting
+    /// combined set (baseline permit + all bundle policies) is then evaluated
+    /// SCHEMA-LESS (see [`Self::evaluate`] with `schema: None`). This gives
+    /// per-policy field isolation without one Cedar engine per policy.
+    ///
+    /// Policy ids come from each policy's `@id` annotation; bundles are
+    /// concatenated and parsed once so Cedar's fallback auto-ids never collide.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when any bundle's schema or policy fails to parse, or a
+    /// policy fails strict validation against its own schema.
+    pub fn build_from_per_policy(bundles: &[(String, String)]) -> Result<Self, PolicyError> {
+        // 1. Validate each policy against ONLY its own schema.
+        for (index, (policy_text, schema_text)) in bundles.iter().enumerate() {
+            let (schema, _warnings) = Schema::from_cedarschema_str(schema_text)
+                .map_err(|e| PolicyError::Schema(format!("bundle #{index}: {e}")))?;
+            let pset = PolicySet::from_str(policy_text)
+                .map_err(|e| PolicyError::Parse(format!("bundle #{index}: {e}")))?;
+            validate_policy_set(&pset, &schema)?;
+        }
+
+        // 2. Assemble the combined set (baseline + every bundle policy) and
+        //    parse once so auto-ids are unique across the whole set.
+        let mut combined = String::from(BASELINE_PERMIT);
+        for (policy_text, _) in bundles {
+            combined.push_str(policy_text);
+            combined.push('\n');
+        }
+        let initial_set =
+            PolicySet::from_str(&combined).map_err(|e| PolicyError::Parse(e.to_string()))?;
+
+        let mut policy_set = PolicySet::new();
+        let mut severities: HashMap<String, Severity> = HashMap::new();
+        let mut reasons: HashMap<String, String> = HashMap::new();
+        for p in initial_set.policies() {
+            ingest_policy(p, &mut policy_set, &mut severities, &mut reasons)?;
+        }
+
+        Ok(Self {
+            policy_set,
+            schema: None,
             severities,
             reasons,
         })
@@ -156,16 +221,37 @@ impl PolicyEngine {
             .parse()
             .map_err(|e: cedar_policy::ParseErrors| PolicyError::EntityUid(e.to_string()))?;
 
-        let entities = Entities::from_json_value(entities_json.clone(), Some(&self.schema))
+        // `schema: Some` → strict request/context validation (unified path).
+        // `schema: None` → schema-less (per-policy path: each policy already
+        // validated against its own schema at install).
+        let entities = Entities::from_json_value(entities_json.clone(), self.schema.as_ref())
             .map_err(|e| PolicyError::Entities(e.to_string()))?;
-        let context = Context::from_json_value(context_json.clone(), Some((&self.schema, &action)))
-            .map_err(|e| PolicyError::Context(e.to_string()))?;
+        let context =
+            Context::from_json_value(context_json.clone(), self.schema.as_ref().map(|s| (s, &action)))
+                .map_err(|e| PolicyError::Context(e.to_string()))?;
 
-        let request = Request::new(principal, action, resource, context, Some(&self.schema))
+        let request = Request::new(principal, action, resource, context, self.schema.as_ref())
             .map_err(|e| PolicyError::Request(e.to_string()))?;
 
         let auth = Authorizer::new();
         let response = auth.is_authorized(&request, &self.policy_set, &entities);
+
+        // Schema-less safety net (spike finding #3): in the per-policy path an
+        // unguarded reference to an absent custom field makes a `forbid`'s
+        // condition ERROR rather than fire — which, under the baseline permit,
+        // would silently fail OPEN. If any policy errored during evaluation we
+        // fail CLOSED instead of trusting the (possibly under-enforced) Allow.
+        // The unified path keeps strict validation, so this never trips there.
+        if self.schema.is_none() {
+            if let Some(err) = response.diagnostics().errors().next() {
+                return Ok(Verdict::Fail(vec![MatchedPolicy {
+                    policy_id: SCHEMALESS_EVAL_ERROR_ID.to_owned(),
+                    reason: Some(format!("schema-less evaluation error: {err}")),
+                    severity: Severity::Deny,
+                    origin: PolicyRequestOrigin::Action,
+                }]));
+            }
+        }
 
         // Cedar gives us a final `Allow` / `Deny` plus the set of policy ids
         // that contributed (`reason`). Each fired policy becomes a
@@ -653,6 +739,98 @@ mod tests {
                 assert_eq!(matched[0].origin, PolicyRequestOrigin::Action);
             }
             other => panic!("expected Verdict::Fail, got {other:?}"),
+        }
+    }
+
+    // ----- Task 8: per-policy single-engine + schema-less evaluation -----
+
+    /// Minimal per-policy schema: a top-level `Act` action with one `Long`
+    /// context field. Two such schemas with different field names emulate two
+    /// marketplace bundles whose `custom` slots are isolated. `optional`
+    /// controls `?:` vs `:` so tests can exercise both the has-guard path
+    /// (optional) and the unguarded-required path (required).
+    fn act_schema(field: &str, optional: bool) -> String {
+        let opt = if optional { "?" } else { "" };
+        format!(
+            "entity Wallet;\nentity Protocol;\n\
+             action \"Act\" appliesTo {{\n  principal: [Wallet],\n  \
+             resource: [Protocol],\n  context: {{ \"{field}\"{opt}: Long }}\n}};\n"
+        )
+    }
+
+    fn decide_act(engine: &PolicyEngine, context_json: JsonValue) -> Verdict {
+        engine
+            .evaluate(
+                "Wallet::\"w\"",
+                "Action::\"Act\"",
+                "Protocol::\"p\"",
+                &json!([]),
+                &context_json,
+            )
+            .expect("schema-less decide")
+    }
+
+    #[test]
+    fn per_policy_two_bundles_isolated_with_schemaless_eval() {
+        // Each bundle validates against ITS OWN schema (different field name),
+        // then both load into one schema-less PolicySet.
+        let bundle_a = (
+            "@id(\"bundleA\")\n@severity(\"deny\")\n\
+             forbid(principal, action == Action::\"Act\", resource)\n\
+             when { context has aField && context.aField > 10 };\n"
+                .to_owned(),
+            act_schema("aField", true),
+        );
+        let bundle_b = (
+            "@id(\"bundleB\")\n@severity(\"deny\")\n\
+             forbid(principal, action == Action::\"Act\", resource)\n\
+             when { context has bField && context.bField > 10 };\n"
+                .to_owned(),
+            act_schema("bField", true),
+        );
+
+        let engine = PolicyEngine::build_from_per_policy(&[bundle_a, bundle_b])
+            .expect("per-policy bundles validate against their own schemas");
+
+        // Context carries only aField → A fires; B's field is absent but
+        // `has`-guarded, so B is cleanly skipped with no evaluation error.
+        match decide_act(&engine, json!({ "aField": 50 })) {
+            Verdict::Fail(matched) => {
+                assert!(matched.iter().any(|m| m.policy_id == "bundleA"));
+                assert!(!matched.iter().any(|m| m.policy_id == "bundleB"));
+            }
+            other => panic!("expected Fail from bundleA, got {other:?}"),
+        }
+
+        // Neither forbid's threshold met → baseline permit → Pass.
+        assert!(matches!(
+            decide_act(&engine, json!({ "aField": 1 })),
+            Verdict::Pass
+        ));
+    }
+
+    #[test]
+    fn per_policy_unguarded_missing_field_fails_closed() {
+        // `aField` is REQUIRED in the policy's own schema (so the unguarded
+        // `context.aField` passes strict install validation) but ABSENT at
+        // schema-less eval time → the forbid's condition errors. Spike finding
+        // #3: that must fail CLOSED, not silently allow via the baseline permit.
+        let bundle = (
+            "@id(\"unguarded\")\n@severity(\"deny\")\n\
+             forbid(principal, action == Action::\"Act\", resource)\n\
+             when { context.aField > 10 };\n"
+                .to_owned(),
+            act_schema("aField", false),
+        );
+        let engine = PolicyEngine::build_from_per_policy(std::slice::from_ref(&bundle))
+            .expect("validates: aField is declared (required) in the bundle schema");
+
+        match decide_act(&engine, json!({})) {
+            Verdict::Fail(matched) => {
+                assert_eq!(matched.len(), 1);
+                assert_eq!(matched[0].policy_id, super::SCHEMALESS_EVAL_ERROR_ID);
+            }
+            other => panic!("expected fail-closed Fail, got {other:?}"),
         }
     }
 }

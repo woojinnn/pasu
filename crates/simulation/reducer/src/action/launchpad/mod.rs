@@ -36,6 +36,29 @@ pub enum LaunchpadAction {
     WithdrawCommit(WithdrawCommitAction),
 }
 
+impl LaunchpadAction {
+    /// The action's `serde` `action` tag (e.g. `"commit"`, `"claim_vested"`).
+    ///
+    /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
+    /// discriminant exactly; verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn action_tag(&self) -> &'static str {
+        match self {
+            Self::Commit(_) => "commit",
+            Self::ClaimAllocation(_) => "claim_allocation",
+            Self::ClaimVested(_) => "claim_vested",
+            Self::Refund(_) => "refund",
+            Self::WithdrawCommit(_) => "withdraw_commit",
+        }
+    }
+
+    /// Launchpad actions never carry a venue; always `None`.
+    #[must_use]
+    pub const fn venue_name(&self) -> Option<&'static str> {
+        None
+    }
+}
+
 /// Snapshot of a launchpad sale's on-chain state.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]

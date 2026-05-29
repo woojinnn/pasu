@@ -1,10 +1,17 @@
-# scopeball-sync RPC config
+# scopeball sync config
 #
-# 한 chain 당 N 개 provider 를 priority 순으로 정의. `${VAR}` 패턴은
-# 환경변수로 치환된다. 실제 키는 .env 파일에 두고 git 에서 제외.
+# 세 섹션: [rpc] / [oracles] / [venues]
+#   - rpc:     체인별 JSON-RPC provider + failover
+#   - oracles: Chainlink (on-chain) / Pyth (off-chain Hermes API) feed catalog
+#   - venues:  Hyperliquid 등 venue REST endpoint
+#
+# `${VAR}` 는 환경변수로 치환. 시크릿은 .env 와 함께 git 제외.
 
-# ---------- failover 정책 ----------
-[failover]
+# ===========================================================================
+#  RPC
+# ===========================================================================
+
+[rpc.failover]
 strategy = "priority"          # priority | round_robin (priority 만 구현됨)
 retry_attempts = 3
 retry_delay_ms = 200
@@ -12,18 +19,18 @@ mark_unhealthy_after = 5
 unhealthy_cooldown_sec = 60
 
 # ---------- Ethereum mainnet ----------
-[chains."eip155:1"]
+[rpc.chains."eip155:1"]
 multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
 
-[[chains."eip155:1".providers]]
+[[rpc.chains."eip155:1".providers]]
 name = "publicnode"
 kind = "public"
 url = "https://ethereum-rpc.publicnode.com"
 priority = 1
 ws = false
 
-# 향후 추가 예시 (지금은 주석)
-# [[chains."eip155:1".providers]]
+# 향후 추가 예시:
+# [[rpc.chains."eip155:1".providers]]
 # name = "alchemy"
 # kind = "alchemy"
 # url = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"
@@ -31,10 +38,10 @@ ws = false
 # ws = true
 
 # ---------- Arbitrum One ----------
-[chains."eip155:42161"]
+[rpc.chains."eip155:42161"]
 multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
 
-[[chains."eip155:42161".providers]]
+[[rpc.chains."eip155:42161".providers]]
 name = "publicnode-arb"
 kind = "public"
 url = "https://arbitrum-one-rpc.publicnode.com"
@@ -42,19 +49,113 @@ priority = 1
 ws = false
 
 # ---------- Base ----------
-[chains."eip155:8453"]
+[rpc.chains."eip155:8453"]
 multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
 
-[[chains."eip155:8453".providers]]
+[[rpc.chains."eip155:8453".providers]]
 name = "publicnode-base"
 kind = "public"
 url = "https://base-rpc.publicnode.com"
 priority = 1
 ws = false
 
-# ---------- 로컬 registry 서버 (scopeball 자체 메타데이터 공급자) ----------
-# 이건 simulation-sync 가 별도로 사용하는 settings — RpcConfig 와 분리.
-# 실제 사용은 RegistryFetcher 가 자체 config 읽음.
+
+# ===========================================================================
+#  Oracles
+# ===========================================================================
+
+# ---------- Chainlink AggregatorV3 (on-chain, eth_call 로 호출) ----------
+#
+# 한 feed_id ("USDC/USD" 등) 가 chain 마다 contract 주소가 다름.
+# 등록 안 된 feed_id 가 들어오면 ChainlinkFetcher 는 FetchFailed 반환.
+
+[oracles.chainlink.chains."eip155:1".feeds]
+"USDC/USD" = { address = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6", decimals = 8 }
+"USDT/USD" = { address = "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D", decimals = 8 }
+"ETH/USD"  = { address = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", decimals = 8 }
+"WBTC/USD" = { address = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", decimals = 8 }
+"DAI/USD"  = { address = "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9", decimals = 8 }
+
+[oracles.chainlink.chains."eip155:42161".feeds]
+"USDC/USD" = { address = "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3", decimals = 8 }
+"USDT/USD" = { address = "0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7", decimals = 8 }
+"ETH/USD"  = { address = "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612", decimals = 8 }
+"WBTC/USD" = { address = "0xd0C7101eACbB49F3deCcCc166d238410D6D46d57", decimals = 8 }
+"DAI/USD"  = { address = "0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB", decimals = 8 }
+
+[oracles.chainlink.chains."eip155:8453".feeds]
+"USDC/USD" = { address = "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B", decimals = 8 }
+"ETH/USD"  = { address = "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70", decimals = 8 }
+
+# ---------- Pyth (off-chain Hermes REST API) ----------
+#
+# 구현체 (fetchers/oracle/pyth.rs) 는 아직 없음 — 카탈로그만 미리 잡아둠.
+# feed_id 는 우리 내부 alias, price_id 는 Pyth network 의 32-byte feed id.
+# 참고: https://docs.pyth.network/price-feeds/price-feeds
+
+# [oracles.pyth]
+# endpoint = "https://hermes.pyth.network"
+#
+# [oracles.pyth.feeds]
+# "ETH/USD"      = { price_id = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace" }
+# "USDC/USD"     = { price_id = "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a" }
+# "BTC/USD"      = { price_id = "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43" }
+
+# ---------- Generic REST JSON oracles ----------
+#
+# CoinGecko / CoinMarketCap / Pyth Hermes 같은 REST 가격 API 들.
+# 새 provider 추가는 본 섹션 한 블록만 추가하면 끝 — Rust 코드 변경 0.
+#
+# 매칭 규칙: DataSource::OracleFeed { provider: Other(name), feed_id }
+#   에서 name 이 [oracles.rest.<name>] 의 name 과 일치해야 dispatch.
+
+[oracles.rest.coingecko]
+base_url = "https://api.coingecko.com/api/v3"
+timeout_sec = 10
+# Pro plan 사용 시 인증 추가:
+# auth = { header_name = "x-cg-pro-api-key", env_var = "COINGECKO_KEY" }
+
+[oracles.rest.coingecko.feeds]
+"USDC/USD"  = { path = "/simple/price?ids=usd-coin&vs_currencies=usd",        json_pointer = "/usd-coin/usd" }
+"USDT/USD"  = { path = "/simple/price?ids=tether&vs_currencies=usd",          json_pointer = "/tether/usd" }
+"ETH/USD"   = { path = "/simple/price?ids=ethereum&vs_currencies=usd",        json_pointer = "/ethereum/usd" }
+"WETH/USD"  = { path = "/simple/price?ids=weth&vs_currencies=usd",            json_pointer = "/weth/usd" }
+"BTC/USD"   = { path = "/simple/price?ids=bitcoin&vs_currencies=usd",         json_pointer = "/bitcoin/usd" }
+"WBTC/USD"  = { path = "/simple/price?ids=wrapped-bitcoin&vs_currencies=usd", json_pointer = "/wrapped-bitcoin/usd" }
+"DAI/USD"   = { path = "/simple/price?ids=dai&vs_currencies=usd",             json_pointer = "/dai/usd" }
+"MATIC/USD" = { path = "/simple/price?ids=matic-network&vs_currencies=usd",   json_pointer = "/matic-network/usd" }
+"ARB/USD"   = { path = "/simple/price?ids=arbitrum&vs_currencies=usd",        json_pointer = "/arbitrum/usd" }
+
+# 예시 — CoinMarketCap (auth 필요):
+# [oracles.rest.coinmarketcap]
+# base_url = "https://pro-api.coinmarketcap.com/v2"
+# auth = { header_name = "X-CMC_PRO_API_KEY", env_var = "CMC_KEY" }
+# [oracles.rest.coinmarketcap.feeds]
+# "USDC/USD" = { path = "/cryptocurrency/quotes/latest?symbol=USDC", json_pointer = "/data/USDC/0/quote/USD/price" }
+
+
+# ===========================================================================
+#  Venues
+# ===========================================================================
+
+[venues.hyperliquid]
+endpoint = "https://api.hyperliquid.xyz"
+
+# 향후 추가 예시:
+# [venues.uniswap]
+# quote_endpoint = "https://api.uniswap.org/v2/quote"
+# orders_endpoint = "https://api.uniswap.org/v2/orders"
+#
+# [venues.oneinch]
+# quote_endpoint = "https://api.1inch.dev/swap/v6.0"
+# api_key = "${ONEINCH_KEY}"
+
+
+# ===========================================================================
+#  (옵션) 로컬 registry 서버 — 별도 config 로 분리 예정
+# ===========================================================================
+# scopeball 자체 메타데이터 공급자. 본 파일과는 별도로 RegistryFetcher 가
+# 자체 config 읽음.
 # [registry]
 # endpoint = "http://localhost:8080"
 # version = "v1"

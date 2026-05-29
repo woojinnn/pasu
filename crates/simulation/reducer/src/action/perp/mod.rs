@@ -62,6 +62,47 @@ pub enum PerpAction {
     ClaimFunding(ClaimFundingAction),
 }
 
+impl PerpAction {
+    /// The action's `serde` `action` tag (e.g. `"open_position"`, `"claim_funding"`).
+    ///
+    /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
+    /// discriminant exactly; verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn action_tag(&self) -> &'static str {
+        match self {
+            Self::OpenPosition(_) => "open_position",
+            Self::ClosePosition(_) => "close_position",
+            Self::IncreasePosition(_) => "increase_position",
+            Self::DecreasePosition(_) => "decrease_position",
+            Self::AdjustMargin(_) => "adjust_margin",
+            Self::ChangeLeverage(_) => "change_leverage",
+            Self::ChangeMarginMode(_) => "change_margin_mode",
+            Self::PlaceLimitOrder(_) => "place_limit_order",
+            Self::PlaceStopOrder(_) => "place_stop_order",
+            Self::CancelOrder(_) => "cancel_order",
+            Self::ClaimFunding(_) => "claim_funding",
+        }
+    }
+
+    /// The venue `name` of the wrapped action. Every perp action carries a venue.
+    #[must_use]
+    pub const fn venue_name(&self) -> Option<&'static str> {
+        match self {
+            Self::OpenPosition(a) => Some(a.venue.name()),
+            Self::ClosePosition(a) => Some(a.venue.name()),
+            Self::IncreasePosition(a) => Some(a.venue.name()),
+            Self::DecreasePosition(a) => Some(a.venue.name()),
+            Self::AdjustMargin(a) => Some(a.venue.name()),
+            Self::ChangeLeverage(a) => Some(a.venue.name()),
+            Self::ChangeMarginMode(a) => Some(a.venue.name()),
+            Self::PlaceLimitOrder(a) => Some(a.venue.name()),
+            Self::PlaceStopOrder(a) => Some(a.venue.name()),
+            Self::CancelOrder(a) => Some(a.venue.name()),
+            Self::ClaimFunding(a) => Some(a.venue.name()),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Venue
 // ---------------------------------------------------------------------------
@@ -119,6 +160,27 @@ pub enum PerpVenue {
         #[tsify(type = "string")]
         contract: Address,
     },
+}
+
+impl PerpVenue {
+    /// The venue's `serde` `name` tag (e.g. `"hyperliquid"`, `"dy_dx_v4"`).
+    ///
+    /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
+    /// discriminants exactly and are verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::Hyperliquid { .. } => "hyperliquid",
+            Self::GmxV2 { .. } => "gmx_v2",
+            Self::DyDxV4 { .. } => "dy_dx_v4",
+            Self::Vertex { .. } => "vertex",
+            Self::Aevo { .. } => "aevo",
+            Self::Drift { .. } => "drift",
+            Self::JupiterPerps { .. } => "jupiter_perps",
+            Self::Synthetix { .. } => "synthetix",
+            Self::Generic { .. } => "generic",
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

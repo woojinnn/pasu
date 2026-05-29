@@ -6,11 +6,13 @@ pub mod composer;
 pub mod enriched;
 pub mod fragment;
 pub mod manifest_fragment;
+pub mod per_policy;
 
 pub use composer::compose_enriched;
 pub use enriched::EnrichedSchema;
 pub use fragment::{CedarTypeFragment, CustomFieldSource};
 pub use manifest_fragment::manifest_to_cedarschema;
+pub use per_policy::{compose_per_policy, lint_custom_field_refs};
 
 use crate::policy_rpc::{validate_manifests, PolicyManifest, PolicyRpcError};
 use serde::Serialize;
@@ -309,7 +311,7 @@ pub(crate) fn base_schema_text() -> String {
 /// file like `core.cedarschema` declare top-level `entity Wallet` /
 /// `entity Protocol` (shared across legacy and new schemas) alongside
 /// `namespace Core { ... }`, and have both flow through to the result.
-fn merge_namespace_blocks(inputs: &[&str]) -> String {
+pub(crate) fn merge_namespace_blocks(inputs: &[&str]) -> String {
     // BTreeMap keeps namespace iteration deterministic (alphabetical).
     let mut bodies: BTreeMap<String, String> = BTreeMap::new();
     // Track first-seen order so output namespaces match shipped order intent.

@@ -1,16 +1,21 @@
 //! `simulation-db` — `simulation-state` 의 타입을 SQLite 로 영속화.
 //!
-//! 글로벌 카탈로그 (`tokens`, `global_live_fields`) + 지갑별 sparse tables
-//! (`token_holdings`, `approvals_*`, `positions_*`, `pending_txs`) + 변화 로그
-//! (`state_deltas`) 의 스키마 + repository CRUD.
+//! 사용자당 1 DB 파일 (`~/.scopeball/users/<user_id>/scopeball.db`) 모델.
+//! 한 DB 안에 user_profile (singleton) + wallets (N개) + 글로벌 token catalog +
+//! 지갑별 sparse tables + 변화 로그 (`state_deltas`) 가 같이 들어간다.
 //!
-//! Cedar 평가 시의 atomicity 는 SQL transaction (BEGIN/COMMIT/ROLLBACK) 으로 보장:
+//! 세 가지 tx 유형 지원:
+//! * **Live** — 익스텐션이 가로챈 tx. status = predicted → pending → confirmed.
+//! * **Backfill** — Etherscan API 등으로 가져온 과거 tx. status = historical.
+//! * **Simulation** — 시뮬레이션 페이지의 what-if. DB 에 저장하지 않음.
+//!
+//! 일반적 사용:
 //! ```ignore
-//! db.with_tx(|tx| {
-//!     let state = tx.load_wallet_state(&id)?;
-//!     let (new_state, delta) = simulation_reducer::apply(&state, &action, &eval)?;
-//!     tx.save_wallet_state(&new_state)?;
-//!     tx.append_delta(&delta)?;
+//! let pool = Pool::open("~/.scopeball/users/google_123/scopeball.db")?;
+//! simulation_db::run_migrations(&pool)?;
+//! pool.with_tx(|tx| {
+//!     repositories::profile::upsert(tx, &profile)?;
+//!     repositories::wallets::insert(tx, &wallet)?;
 //!     Ok(())
 //! })?;
 //! ```
@@ -28,13 +33,18 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::dbg_macro)]
+// Phase 1 본문은 동작 우선 — 후속에서 doc 보강.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(missing_docs)]
 
+pub mod codec;
 pub mod error;
+pub mod migrate;
+pub mod pool;
+pub mod repositories;
 
-// 단계적 활성화:
-// pub mod pool;          // rusqlite Connection 관리 + Tx wrapper
-// pub mod migrate;       // migrations 실행
-// pub mod transaction;   // BEGIN/COMMIT/ROLLBACK 헬퍼
-// pub mod repositories;  // 테이블별 CRUD
-// pub mod codec;         // Rust struct ↔ SQL row 변환
-// pub mod queries;       // 자주 쓰는 read query
+pub use error::{DbError, DbResult};
+pub use migrate::run as run_migrations;
+pub use pool::Pool;
