@@ -6,6 +6,8 @@ import type { ObjectReader, ObjectResult } from "../gcs-client";
 const CALLKEY_PATH =
   "/index/by-callkey/1__0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2__0x38ed1739.json";
 const TOKEN_PATH = "/tokens/1/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.json";
+const TYPED_DATA_PATH =
+  "/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle.json";
 
 function fakeReader(
   objects: Record<string, string>,
@@ -162,5 +164,28 @@ describe("registry-api HTTP server", () => {
       }),
     );
     expect((await fetch(`${url}${TOKEN_PATH}`)).status).toBe(200);
+  });
+
+  it("proxies a typed-data object (200)", async () => {
+    const url = await start(
+      fakeReader({
+        "index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle.json":
+          '{"matched":true}',
+      }),
+    );
+    expect((await fetch(`${url}${TYPED_DATA_PATH}`)).status).toBe(200);
+  });
+
+  it("passes a typed-data GCS miss through as a real HTTP 404", async () => {
+    const url = await start(fakeReader({}));
+    expect((await fetch(`${url}${TYPED_DATA_PATH}`)).status).toBe(404);
+  });
+
+  it("rejects a malformed typed-data path with 404 and no GCS read", async () => {
+    const reader = fakeReader({});
+    const url = await start(reader);
+    const res = await fetch(`${url}/index/by-typed-data/0x1__bad__Type.json`);
+    expect(res.status).toBe(404);
+    expect(reader.reads).toHaveLength(0);
   });
 });

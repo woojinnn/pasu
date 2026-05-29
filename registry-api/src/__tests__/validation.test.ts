@@ -3,6 +3,7 @@ import {
   isValidCallKeySegment,
   isValidChainSegment,
   isValidAddressSegment,
+  isTypedDataKey,
   parseProxyTarget,
 } from "../validation";
 
@@ -84,5 +85,150 @@ describe("parseProxyTarget", () => {
       false,
     );
     expect(parseProxyTarget("/tokens/1/..%2f..%2fsecret.json").ok).toBe(false);
+  });
+});
+
+describe("validation — typed-data key segment", () => {
+  it("accepts canonical typed-data keys (Permit2 / UniswapX / EIP-2612)", () => {
+    expect(
+      isTypedDataKey(
+        "1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle",
+      ),
+    ).toBe(true);
+    expect(
+      isTypedDataKey(
+        "1__0x6000da47483062a0d734ba3dc7576ce6a0b645c4__ExclusiveDutchOrder",
+      ),
+    ).toBe(true);
+    expect(
+      isTypedDataKey(
+        "1__0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48__Permit",
+      ),
+    ).toBe(true);
+  });
+  it("accepts a primaryType with an embedded '__' (escaped EIP-712 colon)", () => {
+    expect(
+      isTypedDataKey(
+        "42161__0x0000000000000000000000000000000000000000__HyperliquidTransaction__UsdSend",
+      ),
+    ).toBe(true);
+  });
+  it("rejects a hex-style (0x-prefixed) chain id", () => {
+    expect(
+      isTypedDataKey(
+        "0x1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle",
+      ),
+    ).toBe(false);
+  });
+  it("rejects a bad verifyingContract (not 0x + 40 hex)", () => {
+    expect(isTypedDataKey("1__0x123__PermitSingle")).toBe(false);
+    expect(
+      isTypedDataKey(
+        "1__0x000000000022D473030F116DDEE9F6B43AC78BA3__PermitSingle",
+      ),
+    ).toBe(false); // uppercase vc
+  });
+  it("rejects a missing / empty primaryType", () => {
+    expect(
+      isTypedDataKey("1__0x000000000022d473030f116ddee9f6b43ac78ba3__"),
+    ).toBe(false);
+    expect(
+      isTypedDataKey("1__0x000000000022d473030f116ddee9f6b43ac78ba3"),
+    ).toBe(false);
+  });
+  it("rejects a primaryType containing a '/' (traversal)", () => {
+    expect(
+      isTypedDataKey(
+        "1__0x000000000022d473030f116ddee9f6b43ac78ba3__a/b",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("parseProxyTarget — typed-data", () => {
+  it("maps a Permit2 typed-data path to the GCS object name", () => {
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle.json",
+      ),
+    ).toEqual({
+      ok: true,
+      objectName:
+        "index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle.json",
+    });
+  });
+  it("maps a UniswapX ExclusiveDutchOrder typed-data path", () => {
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/1__0x6000da47483062a0d734ba3dc7576ce6a0b645c4__ExclusiveDutchOrder.json",
+      ),
+    ).toEqual({
+      ok: true,
+      objectName:
+        "index/by-typed-data/1__0x6000da47483062a0d734ba3dc7576ce6a0b645c4__ExclusiveDutchOrder.json",
+    });
+  });
+  it("maps an EIP-2612 Permit typed-data path", () => {
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/1__0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48__Permit.json",
+      ),
+    ).toEqual({
+      ok: true,
+      objectName:
+        "index/by-typed-data/1__0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48__Permit.json",
+    });
+  });
+  it("maps a typed-data path whose primaryType has an embedded '__'", () => {
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/42161__0x0000000000000000000000000000000000000000__HyperliquidTransaction__UsdSend.json",
+      ),
+    ).toEqual({
+      ok: true,
+      objectName:
+        "index/by-typed-data/42161__0x0000000000000000000000000000000000000000__HyperliquidTransaction__UsdSend.json",
+    });
+  });
+  it("rejects malformed typed-data paths", () => {
+    // hex chain id
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/0x1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle.json",
+      ).ok,
+    ).toBe(false);
+    // bad verifyingContract
+    expect(
+      parseProxyTarget("/index/by-typed-data/1__0x123__PermitSingle.json").ok,
+    ).toBe(false);
+    // missing primaryType
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3.json",
+      ).ok,
+    ).toBe(false);
+    // traversal via .. (caught by the '%'/'..' guard)
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/../../manifests/secret.json",
+      ).ok,
+    ).toBe(false);
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__..%2fx.json",
+      ).ok,
+    ).toBe(false);
+    // missing .json suffix
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle",
+      ).ok,
+    ).toBe(false);
+    // a '/' inside the segment (would re-route the object path)
+    expect(
+      parseProxyTarget(
+        "/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__a/b.json",
+      ).ok,
+    ).toBe(false);
   });
 });

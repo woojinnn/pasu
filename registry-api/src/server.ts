@@ -8,6 +8,7 @@
  *   GET /health                       → { ok: true }
  *   GET /debug/recent                 → 최근 요청 log + cache stats
  *   GET /index/by-callkey/<key>.json  → 비공개 버킷 object proxy
+ *   GET /index/by-typed-data/<key>.json → 비공개 버킷 object proxy (off-chain sig)
  *   GET /tokens/<chain>/<addr>.json   → 비공개 버킷 object proxy
  *   GET /v1/registry/by-callkey?chain_id&to&selector
  *                                     → spec §6.1 callkey proxy alias (secondary)
@@ -141,6 +142,7 @@ async function routeRequest(input: RouteInput): Promise<void> {
   if (
     method === "GET" &&
     (proxyPath.startsWith("/index/by-callkey/") ||
+      proxyPath.startsWith("/index/by-typed-data/") ||
       proxyPath.startsWith("/tokens/"))
   ) {
     await handleProxy(input, proxyPath);

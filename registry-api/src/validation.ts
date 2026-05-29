@@ -2,8 +2,9 @@
  * registry-api — request-path validation.
  *
  * proxy 는 임의 버킷 object 에 요청이 닿게 두면 안 된다. 익스텐션이 GET 하는
- * 경로는 딱 두 종류:
+ * 경로는 딱 세 종류:
  *   GET /index/by-callkey/<chainId>__<to>__<selector>.json
+ *   GET /index/by-typed-data/<chainId>__<verifyingContract>__<primaryType>.json
  *   GET /tokens/<chainId>/<address>.json
  *
  * 이 regex 는 browser-extension/backend/service-worker/registry/client.ts
@@ -21,8 +22,20 @@ const CALL_KEY_RE = new RegExp(`^${CHAIN_ID}__${ADDRESS_LC}__${SELECTOR_LC}$`);
 const CHAIN_RE = new RegExp(`^${CHAIN_ID}$`);
 const ADDRESS_RE = new RegExp(`^${ADDRESS_LC}$`);
 
+// typed-data key = <chainId>__<verifyingContract.lower>__<primaryType>.
+// primaryType 는 EIP-712 콜론(:)이 "__" 로 escape 된 형태라 자체적으로 "__" 를
+// 품을 수 있다 (예: HyperliquidTransaction:UsdSend → HyperliquidTransaction__UsdSend).
+// 그래서 trailing 세그먼트는 [A-Za-z0-9_]+ — "/" / "." / ".." / 공백이 불가능해
+// path-traversal-safe. chainId / verifyingContract 는 callkey 와 같은 fragment 재사용.
+const TYPED_DATA_KEY_RE = new RegExp(
+  `^${CHAIN_ID}__${ADDRESS_LC}__[A-Za-z0-9_]+$`,
+);
+
 export function isValidCallKeySegment(s: string): boolean {
   return CALL_KEY_RE.test(s);
+}
+export function isTypedDataKey(s: string): boolean {
+  return TYPED_DATA_KEY_RE.test(s);
 }
 export function isValidChainSegment(s: string): boolean {
   return CHAIN_RE.test(s);
@@ -41,6 +54,7 @@ export interface ProxyTargetErr {
 export type ProxyTarget = ProxyTargetOk | ProxyTargetErr;
 
 const INDEX_PREFIX = "/index/by-callkey/";
+const INDEX_TYPED_DATA_PREFIX = "/index/by-typed-data/";
 const TOKENS_PREFIX = "/tokens/";
 const JSON_SUFFIX = ".json";
 
@@ -58,6 +72,19 @@ export function parseProxyTarget(pathname: string): ProxyTarget {
     );
     return isValidCallKeySegment(seg)
       ? { ok: true, objectName: `index/by-callkey/${seg}.json` }
+      : { ok: false };
+  }
+
+  if (
+    pathname.startsWith(INDEX_TYPED_DATA_PREFIX) &&
+    pathname.endsWith(JSON_SUFFIX)
+  ) {
+    const seg = pathname.slice(
+      INDEX_TYPED_DATA_PREFIX.length,
+      pathname.length - JSON_SUFFIX.length,
+    );
+    return isTypedDataKey(seg)
+      ? { ok: true, objectName: `index/by-typed-data/${seg}.json` }
       : { ok: false };
   }
 
