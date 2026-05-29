@@ -1,0 +1,126 @@
+{
+  "matched": true,
+  "bundle_id": "aave/v3/deposit-eth@1.0.0",
+  "manifest_path": "manifests/aave/v3/deposit-eth@1.0.0.json",
+  "bundle_sha256": "0x9886b6cf1cc7633653ae3d7143927c5c4614ae363ebf83eb753123dd636d12e1",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "aave/v3/deposit-eth@1.0.0",
+    "publisher": "aave.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0x474cf53d",
+      "chain_to_addresses": {
+        "1": [
+          "0xd01607c3c5ecaba394d8be377a08590149325722"
+        ],
+        "10": [
+          "0x5f2508cae9923b02316254026cd43d7902866725"
+        ],
+        "8453": [
+          "0xa0d9c1e9e48ca30c8d8c3b5d69ff5dc1f6dffc24"
+        ],
+        "42161": [
+          "0x5283beced7adf6d003225c13896e536f2d4264ff"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "depositETH",
+      "abi": {
+        "name": "depositETH",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "pool",
+            "type": "address"
+          },
+          {
+            "name": "onBehalfOf",
+            "type": "address"
+          },
+          {
+            "name": "referralCode",
+            "type": "uint16"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "supply",
+          "supply": {
+            "venue": {
+              "name": "aave_v3",
+              "chain": "$chain",
+              "pool": "$resolved.pool",
+              "market_id": null
+            },
+            "asset": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$resolved.weth"
+              }
+            },
+            "amount": "$tx.value",
+            "on_behalf_of": "$args.onBehalfOf"
+          }
+        }
+      },
+      "live_inputs": {
+        "reserve_state": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$resolved.pool",
+            "function": "getReserveData(address)",
+            "decoder_id": "aave_v3_reserve_data"
+          },
+          "ttl_s": 30
+        },
+        "supply_apy": {
+          "source": {
+            "kind": "derived_from",
+            "inputs": [],
+            "calc_id": "aave_v3_supply_apy"
+          },
+          "ttl_s": 30
+        },
+        "a_token_price_usd": {
+          "source": {
+            "kind": "oracle_feed",
+            "provider": "chainlink",
+            "feed_id": "AAVE_V3_RESERVE_PRICE"
+          },
+          "ttl_s": 60
+        },
+        "eligible_as_collat": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$resolved.pool",
+            "function": "getConfiguration(address)",
+            "decoder_id": "aave_v3_reserve_config"
+          },
+          "ttl_s": 60
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$resolved.pool",
+            "function": "getUserAccountData(address)",
+            "decoder_id": "aave_v3_user_account_data"
+          },
+          "ttl_s": 12
+        }
+      }
+    }
+  }
+}

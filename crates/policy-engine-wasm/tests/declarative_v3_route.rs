@@ -59,6 +59,34 @@ fn route_input(
     .to_string()
 }
 
+/// Like [`route_input`] but with a caller-supplied native `value` (decimal wei
+/// string). Used by payable-entry fixtures (e.g. WrappedTokenGateway
+/// `depositETH`) where the supplied amount IS `msg.value` (`$tx.value`), not a
+/// calldata arg.
+fn route_input_with_value(
+    chain_id: u64,
+    to: &str,
+    selector: &str,
+    calldata: String,
+    submitter: &str,
+    value: &str,
+) -> String {
+    json!({
+        "chain_id": chain_id,
+        "to": to,
+        "selector": selector,
+        "calldata": calldata,
+        "value": value,
+        "gas_limit": "200000",
+        "gas_price": "20000000000",
+        "submitter": submitter,
+        "submitted_at": 1_700_000_000_u64,
+        "nonce": 1_u64,
+        "block_timestamp": 1_700_000_010_u64
+    })
+    .to_string()
+}
+
 fn install_ok(manifest: &str) -> Value {
     let out = declarative_install_v3_json(manifest.to_owned());
     let parsed: Value = serde_json::from_str(&out).unwrap();
@@ -1880,4 +1908,475 @@ fn t15_aave_set_user_use_reserve_as_collateral_action_value_map() {
         body["asset"]["key"]["address"],
         "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     );
+}
+
+// ===========================================================================
+// B.2.3 — Aave V3 WrappedTokenGateway (WTG) native-ETH gateway manifests
+// ===========================================================================
+//
+// The WrappedTokenGatewayV3 (a.k.a. WETH_GATEWAY) lets users interact with the
+// Aave V3 Pool using native ETH instead of WETH. Four payable/non-payable entry
+// points wrap+supply / withdraw+unwrap / borrow+unwrap / wrap+repay; each routes
+// into the EXISTING asset-generic lending `ActionBody` variant (Supply /
+// Withdraw / Borrow / Repay) — there is NO WTG-specific action.
+//
+// Verified deployed signatures (aave-dao/aave-v3-origin
+// `WrappedTokenGatewayV3.sol` + bgd-labs/aave-address-book WETH_GATEWAY +
+// deployed-verified Etherscan/Optimistic/Basescan at the address-book address):
+//   * depositETH(address, address onBehalfOf, uint16 referralCode) payable  0x474cf53d
+//   * withdrawETH(address, uint256 amount, address to)                      0x80500d20
+//   * borrowETH(address, uint256 amount, uint16 referralCode)               0xe74f7b85
+//   * repayETH(address, uint256 amount, address onBehalfOf) payable         0xbcc3c255
+// (`cast sig`-derived selectors.)
+//
+// THREE source-grounded mapping facts (distinct from the on-chain Pool calls):
+//   1. The leading `address` param is IGNORED by the contract — every body uses
+//      the immutable `POOL` state var, NOT the calldata arg. `venue.pool` (and
+//      the live_input `source.contract`) therefore bind `$resolved.pool` (a
+//      registered Address placeholder; Sync fills the real per-chain Pool, so it
+//      resolves to the zero-address placeholder on this narrow-scope route path)
+//      — NOT `$args.pool` (the ignored dummy) and NOT `$to` (the WTG, not the
+//      Pool).
+//   2. The asset is ALWAYS WETH — `$resolved.weth` (also zero-address placeholder
+//      here). There is no asset arg.
+//   3. borrowETH/repayETH have NO rate-mode arg: the contract hardcodes
+//      `DataTypes.InterestRateMode.VARIABLE`, so `rate_mode` is the LITERAL
+//      `"variable"` (no value-map — there is no discriminant arg to map).
+// depositETH's supplied amount is `msg.value` (`$tx.value`), not a calldata arg.
+//
+// Each inline manifest is IDENTICAL in `abi_fragment` + `emit.body` to the
+// committed fixture under `registryV2/manifests/aave/v3/` (mainnet-only
+// chain_to_addresses here; the on-disk fixtures carry all 4 chains: 1 / 10 /
+// 8453 / 42161). All route FULLY GREEN on the B.2-infra lending
+// `live_input_default` skeletons.
+
+const WTG_MAINNET: &str = "0xd01607c3c5ecaba394d8be377a08590149325722";
+const ADDR_ZERO: &str = "0x0000000000000000000000000000000000000000";
+// `$resolved.weth` IS pre-populated by the route handler (declarative_exports
+// `route_request` chain→WETH map) — mainnet 1 → canonical WETH9. So the WETH
+// asset substitutes the REAL address on the route path (NOT a zero
+// placeholder). `$resolved.pool`, by contrast, is NOT pre-populated (the Sync
+// orchestrator fills it later) → it falls through to the Address-typed zero
+// placeholder. These two assertions together prove the watch-point resolution:
+// asset = real WETH, venue.pool = $resolved.pool (zero until Sync wires it).
+const WETH_MAINNET: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
+// ---------------------------------------------------------------------------
+// t16 — WTG depositETH → LendingAction::Supply (amount = $tx.value)
+// ---------------------------------------------------------------------------
+
+const T16_WTG_DEPOSIT_ETH_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "aave/v3/deposit-eth@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x474cf53d",
+    "chain_to_addresses": { "1": ["0xd01607c3c5ecaba394d8be377a08590149325722"] }
+  },
+  "abi_fragment": {
+    "function_name": "depositETH",
+    "abi": {
+      "name": "depositETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "pool",         "type": "address" },
+        { "name": "onBehalfOf",   "type": "address" },
+        { "name": "referralCode", "type": "uint16"  }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "supply",
+        "supply": {
+          "venue": { "name": "aave_v3", "chain": "$chain", "pool": "$resolved.pool", "market_id": null },
+          "asset":        { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.weth" } },
+          "amount":       "$tx.value",
+          "on_behalf_of": "$args.onBehalfOf"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state":      { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getReserveData(address)", "decoder_id": "aave_v3_reserve_data" }, "ttl_s": 30 },
+      "supply_apy":         { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_supply_apy" }, "ttl_s": 30 },
+      "a_token_price_usd":  { "source": { "kind": "oracle_feed", "provider": "chainlink", "feed_id": "AAVE_V3_RESERVE_PRICE" }, "ttl_s": 60 },
+      "eligible_as_collat": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getConfiguration(address)", "decoder_id": "aave_v3_reserve_config" }, "ttl_s": 60 },
+      "user_state_before":  { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getUserAccountData(address)", "decoder_id": "aave_v3_user_account_data" }, "ttl_s": 12 }
+    }
+  }
+}"#;
+
+#[test]
+fn t16_aave_deposit_eth() {
+    let install = install_ok(T16_WTG_DEPOSIT_ETH_V3);
+    assert_eq!(install["data"]["bundle_id"], "aave/v3/deposit-eth@1.0.0");
+
+    // depositETH(pool, onBehalfOf, referralCode). The supplied amount is
+    // msg.value (NOT a calldata arg) — pass a non-zero tx value and assert it
+    // flows into SupplyAction.amount via `$tx.value`.
+    let calldata = encode_calldata(
+        "0x474cf53d",
+        &[
+            // pool (IGNORED by the contract — uses immutable POOL).
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000dddd"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // onBehalfOf (load-bearing).
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000cccc"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // referralCode (uint16 — decoded but unreferenced).
+            DynSolValue::Uint(AlloyU256::from(0u64), 16),
+        ],
+    );
+    // 1 ETH of native value attached to the call.
+    let input = route_input_with_value(
+        1,
+        WTG_MAINNET,
+        "0x474cf53d",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+        "1000000000000000000",
+    );
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "supply");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    // pool/asset bind `$resolved.{pool,weth}` → zero-address placeholder on the
+    // route path (Sync orchestrator not wired here).
+    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
+    // amount = $tx.value (1 ETH). U256 round-trips as a hex string via alloy.
+    assert_eq!(body["amount"], "0xde0b6b3a7640000"); // 1e18
+    assert_eq!(
+        body["on_behalf_of"],
+        "0x000000000000000000000000000000000000cccc"
+    );
+    // live_input defaults wrapped + deserialized (same 5 as supply@1.0.0).
+    assert_eq!(
+        body["live_inputs"]["reserve_state"]["value"]["total_supply"],
+        "0x0"
+    );
+    assert_eq!(body["live_inputs"]["eligible_as_collat"]["value"], false);
+}
+
+// ---------------------------------------------------------------------------
+// t17 — WTG withdrawETH → LendingAction::Withdraw (recipient = $args.to)
+// ---------------------------------------------------------------------------
+
+const T17_WTG_WITHDRAW_ETH_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "aave/v3/withdraw-eth@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x80500d20",
+    "chain_to_addresses": { "1": ["0xd01607c3c5ecaba394d8be377a08590149325722"] }
+  },
+  "abi_fragment": {
+    "function_name": "withdrawETH",
+    "abi": {
+      "name": "withdrawETH",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "pool",   "type": "address" },
+        { "name": "amount", "type": "uint256" },
+        { "name": "to",     "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": { "name": "aave_v3", "chain": "$chain", "pool": "$resolved.pool", "market_id": null },
+          "asset":     { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.weth" } },
+          "amount":    "$args.amount",
+          "recipient": "$args.to"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state":         { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getReserveData(address)", "decoder_id": "aave_v3_reserve_data" }, "ttl_s": 30 },
+      "available_to_withdraw": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_available_to_withdraw" }, "ttl_s": 30 },
+      "user_state_before":     { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getUserAccountData(address)", "decoder_id": "aave_v3_user_account_data" }, "ttl_s": 12 }
+    }
+  }
+}"#;
+
+#[test]
+fn t17_aave_withdraw_eth() {
+    let install = install_ok(T17_WTG_WITHDRAW_ETH_V3);
+    assert_eq!(install["data"]["bundle_id"], "aave/v3/withdraw-eth@1.0.0");
+
+    // withdrawETH(pool, amount, to). `to` is the ultimate ETH recipient
+    // (_safeTransferETH(to, ...) after unwrap) → WithdrawAction.recipient.
+    let calldata = encode_calldata(
+        "0x80500d20",
+        &[
+            // pool (IGNORED).
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000dddd"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // amount (load-bearing).
+            DynSolValue::Uint(AlloyU256::from(500_000u64), 256),
+            // to (load-bearing recipient).
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000bbbb"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+        ],
+    );
+    let input = route_input(
+        1,
+        WTG_MAINNET,
+        "0x80500d20",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "withdraw");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
+    // amount: U256 round-trips as a hex string via alloy.
+    assert_eq!(body["amount"], "0x7a120"); // 500_000
+    assert_eq!(
+        body["recipient"],
+        "0x000000000000000000000000000000000000bbbb"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// t18 — WTG borrowETH → LendingAction::Borrow (rate_mode literal "variable")
+// ---------------------------------------------------------------------------
+
+const T18_WTG_BORROW_ETH_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "aave/v3/borrow-eth@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xe74f7b85",
+    "chain_to_addresses": { "1": ["0xd01607c3c5ecaba394d8be377a08590149325722"] }
+  },
+  "abi_fragment": {
+    "function_name": "borrowETH",
+    "abi": {
+      "name": "borrowETH",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "pool",         "type": "address" },
+        { "name": "amount",       "type": "uint256" },
+        { "name": "referralCode", "type": "uint16"  }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "borrow",
+        "borrow": {
+          "venue": { "name": "aave_v3", "chain": "$chain", "pool": "$resolved.pool", "market_id": null },
+          "asset":     { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.weth" } },
+          "amount":    "$args.amount",
+          "rate_mode": "variable"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state":       { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getReserveData(address)", "decoder_id": "aave_v3_reserve_data" }, "ttl_s": 30 },
+      "user_state_before":   { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getUserAccountData(address)", "decoder_id": "aave_v3_user_account_data" }, "ttl_s": 12 },
+      "asset_price_usd":     { "source": { "kind": "oracle_feed", "provider": "chainlink", "feed_id": "AAVE_V3_RESERVE_PRICE" }, "ttl_s": 60 },
+      "current_borrow_rate": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_borrow_rate" }, "ttl_s": 30 },
+      "available_liquidity": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_available_liquidity" }, "ttl_s": 30 }
+    }
+  }
+}"#;
+
+#[test]
+fn t18_aave_borrow_eth() {
+    let install = install_ok(T18_WTG_BORROW_ETH_V3);
+    assert_eq!(install["data"]["bundle_id"], "aave/v3/borrow-eth@1.0.0");
+
+    // borrowETH(pool, amount, referralCode). No rate-mode arg — the contract
+    // hardcodes VARIABLE, so rate_mode is the literal "variable". No
+    // onBehalfOf arg (borrows for msg.sender) → on_behalf_of omitted (Option).
+    let calldata = encode_calldata(
+        "0xe74f7b85",
+        &[
+            // pool (IGNORED).
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000dddd"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // amount (load-bearing).
+            DynSolValue::Uint(AlloyU256::from(3_000_000u64), 256),
+            // referralCode (uint16 — decoded but unreferenced).
+            DynSolValue::Uint(AlloyU256::from(0u64), 16),
+        ],
+    );
+    let input = route_input(
+        1,
+        WTG_MAINNET,
+        "0xe74f7b85",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "borrow");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
+    // amount: U256 round-trips as a hex string via alloy.
+    assert_eq!(body["amount"], "0x2dc6c0"); // 3_000_000
+    // rate_mode is the literal "variable" (the only mode the gateway supports).
+    assert_eq!(body["rate_mode"], "variable");
+    // on_behalf_of omitted → skip_serializing_if(Option::is_none) → absent.
+    assert!(body.get("on_behalf_of").is_none(), "{parsed}");
+    // live_input defaults wrapped + deserialized (same 5 as borrow@1.0.0).
+    assert_eq!(
+        body["live_inputs"]["reserve_state"]["value"]["total_borrow"],
+        "0x0"
+    );
+    assert_eq!(body["live_inputs"]["available_liquidity"]["value"], "0x0");
+}
+
+// ---------------------------------------------------------------------------
+// t19 — WTG repayETH → LendingAction::Repay (rate_mode literal "variable")
+// ---------------------------------------------------------------------------
+
+const T19_WTG_REPAY_ETH_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "aave/v3/repay-eth@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xbcc3c255",
+    "chain_to_addresses": { "1": ["0xd01607c3c5ecaba394d8be377a08590149325722"] }
+  },
+  "abi_fragment": {
+    "function_name": "repayETH",
+    "abi": {
+      "name": "repayETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "pool",       "type": "address" },
+        { "name": "amount",     "type": "uint256" },
+        { "name": "onBehalfOf", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "repay",
+        "repay": {
+          "venue": { "name": "aave_v3", "chain": "$chain", "pool": "$resolved.pool", "market_id": null },
+          "asset":        { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.weth" } },
+          "amount":       "$args.amount",
+          "rate_mode":    "variable",
+          "on_behalf_of": "$args.onBehalfOf",
+          "use_a_tokens": false
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state":     { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getReserveData(address)", "decoder_id": "aave_v3_reserve_data" }, "ttl_s": 30 },
+      "current_debt":      { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_current_debt" }, "ttl_s": 12 },
+      "user_state_before": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$resolved.pool", "function": "getUserAccountData(address)", "decoder_id": "aave_v3_user_account_data" }, "ttl_s": 12 }
+    }
+  }
+}"#;
+
+#[test]
+fn t19_aave_repay_eth() {
+    let install = install_ok(T19_WTG_REPAY_ETH_V3);
+    assert_eq!(install["data"]["bundle_id"], "aave/v3/repay-eth@1.0.0");
+
+    // repayETH(pool, amount, onBehalfOf) payable. No rate-mode arg — the
+    // contract hardcodes VARIABLE → rate_mode literal "variable". onBehalfOf is
+    // the debtor of record → RepayAction.on_behalf_of.
+    let calldata = encode_calldata(
+        "0xbcc3c255",
+        &[
+            // pool (IGNORED).
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000dddd"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // amount (load-bearing).
+            DynSolValue::Uint(AlloyU256::from(1_250_000u64), 256),
+            // onBehalfOf (load-bearing debtor of record).
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000cccc"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+        ],
+    );
+    // repayETH is payable — pass a tx value (unreferenced by the body; amount
+    // comes from $args.amount, not $tx.value).
+    let input = route_input_with_value(
+        1,
+        WTG_MAINNET,
+        "0xbcc3c255",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+        "1250000000000000000",
+    );
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "repay");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
+    // amount comes from the calldata arg, NOT $tx.value.
+    assert_eq!(body["amount"], "0x1312d0"); // 1_250_000
+    assert_eq!(body["rate_mode"], "variable");
+    assert_eq!(
+        body["on_behalf_of"],
+        "0x000000000000000000000000000000000000cccc"
+    );
+    assert_eq!(body["use_a_tokens"], false);
+    // live_input defaults wrapped + deserialized (same 3 as repay@1.0.0).
+    assert_eq!(body["live_inputs"]["current_debt"]["value"], "0x0");
 }
