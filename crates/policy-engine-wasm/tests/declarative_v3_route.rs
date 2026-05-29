@@ -4573,8 +4573,7 @@ fn t22_max_depth_exceeded_fails_loud() {
 const VAULT_MAINNET: &str = "0xba12222222228d8ba445958a75a0704d566bf2c8";
 // A realistic Balancer V2 weighted-pool id shape: 20-byte pool address ++
 // 2-byte specifier ++ 10-byte nonce. (Any bytes32 decodes; this is plausible.)
-const LBP_POOL_ID: &str =
-    "0xc45d42f801105e861e86658648e3678ad7aa70f900020000000000000000011e";
+const LBP_POOL_ID: &str = "0xc45d42f801105e861e86658648e3678ad7aa70f900020000000000000000011e";
 
 const B5_BALANCER_VAULT_SWAP_V3: &str = r#"{
   "type": "adapter_action",
@@ -4702,8 +4701,7 @@ fn route_balancer_swap(kind: u8, amount: u64, limit: u64) -> Value {
     let sender = "0x000000000000000000000000000000000000a01c"
         .parse::<AlloyAddress>()
         .unwrap();
-    let pool_id_bytes =
-        hex::decode(LBP_POOL_ID.trim_start_matches("0x")).expect("32-byte poolId");
+    let pool_id_bytes = hex::decode(LBP_POOL_ID.trim_start_matches("0x")).expect("32-byte poolId");
 
     // SingleSwap = (bytes32 poolId, uint8 kind, address assetIn, address
     // assetOut, uint256 amount, bytes userData). A tuple ARG (not the lone arg)
@@ -4774,7 +4772,10 @@ fn t21_balancer_vault_swap_given_in_exact_input() {
     // kind=0 → exact_input via the $match/$cases direction switch.
     assert_eq!(body["params"]["direction"]["kind"], "exact_input", "{body}");
     // amount_in = $args.singleSwap[4] (uint256 → alloy hex string). 1_000_000.
-    assert_eq!(body["params"]["direction"]["amount_in"], "0xf4240", "{body}");
+    assert_eq!(
+        body["params"]["direction"]["amount_in"], "0xf4240",
+        "{body}"
+    );
     // min_amount_out = $args.limit. 950_000 == 0xe7ef0.
     assert_eq!(
         body["params"]["direction"]["min_amount_out"], "0xe7ef0",
@@ -4782,19 +4783,16 @@ fn t21_balancer_vault_swap_given_in_exact_input() {
     );
     // token_in = assetIn (USDC), token_out = assetOut (WETH).
     assert_eq!(
-        body["params"]["token_in"]["key"]["address"],
-        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        body["params"]["token_in"]["key"]["address"], "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
         "{body}"
     );
     assert_eq!(
-        body["params"]["token_out"]["key"]["address"],
-        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        body["params"]["token_out"]["key"]["address"], "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         "{body}"
     );
     // recipient = $args.funds[2] (FundManagement.recipient).
     assert_eq!(
-        body["params"]["recipient"],
-        "0x000000000000000000000000000000000000bbbb",
+        body["params"]["recipient"], "0x000000000000000000000000000000000000bbbb",
         "{body}"
     );
     assert_eq!(body["params"]["slippage_bp"], 50, "{body}");
@@ -4832,7 +4830,10 @@ fn t22_balancer_vault_swap_given_out_exact_output() {
     // kind=1 → exact_output via the $match/$cases switch (the SAME manifest,
     // different discriminant arg → different direction shape). This is the
     // load-bearing proof the value-map switches the whole direction object.
-    assert_eq!(body["params"]["direction"]["kind"], "exact_output", "{body}");
+    assert_eq!(
+        body["params"]["direction"]["kind"], "exact_output",
+        "{body}"
+    );
     // amount_out = $args.singleSwap[4]. 2_000_000 == 0x1e8480.
     assert_eq!(
         body["params"]["direction"]["amount_out"], "0x1e8480",
@@ -4937,7 +4938,10 @@ fn b4_layerzero_claim() {
     assert_eq!(body["action"], "claim", "{parsed}");
     assert_eq!(body["source"]["name"], "layerzero", "{parsed}");
     // MerkleDistributor claim_target: chain = $chain, contract = $to (hub).
-    assert_eq!(body["claim_target"]["kind"], "merkle_distributor", "{parsed}");
+    assert_eq!(
+        body["claim_target"]["kind"], "merkle_distributor",
+        "{parsed}"
+    );
     assert_eq!(body["claim_target"]["chain"], "eip155:42161", "{parsed}");
     assert_eq!(body["claim_target"]["contract"], LZ_HUB, "{parsed}");
     // recipient = $args.to.
@@ -4997,7 +5001,10 @@ fn b4_layerzero_donate_and_claim() {
     let body = &parsed["data"]["actions"][0]["body"];
     assert_eq!(body["domain"], "airdrop", "{parsed}");
     assert_eq!(body["action"], "claim", "{parsed}");
-    assert_eq!(body["claim_target"]["kind"], "merkle_distributor", "{parsed}");
+    assert_eq!(
+        body["claim_target"]["kind"], "merkle_distributor",
+        "{parsed}"
+    );
     assert_eq!(body["claim_target"]["contract"], LZ_HUB, "{parsed}");
     assert_eq!(body["recipient"], LZ_RECIPIENT, "{parsed}");
     assert_eq!(
@@ -5069,7 +5076,13 @@ fn b4_layerzero_withdraw_donation() {
             DynSolValue::Uint(AlloyU256::from(500_000_000_000_000u128), 256), // amount
         ],
     );
-    let input = route_input(LZ_ARBITRUM, LZ_HUB, "0x46d7ce37", calldata.clone(), LZ_SUBMITTER);
+    let input = route_input(
+        LZ_ARBITRUM,
+        LZ_HUB,
+        "0x46d7ce37",
+        calldata.clone(),
+        LZ_SUBMITTER,
+    );
     let parsed = route_ok(input);
 
     let body = &parsed["data"]["actions"][0]["body"];
@@ -5340,6 +5353,319 @@ fn t23_tagged_dispatch_bad_version_fail_soft() {
     let body = &parsed["data"]["actions"][0]["body"];
     // Fail-soft Unknown body: target=$to, full $calldata preserved → policy
     // warns/denies on the unrecognised envelope rather than mis-classifying.
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// ===========================================================================
+// b3 — HyperLiquid CoreWriter `sendRawAction` 15-action tagged_dispatch
+// ===========================================================================
+//
+// The PRODUCTION manifest (registryV2/manifests/hyperliquid/core-writer/
+// send-raw-action@1.0.0.json) covering all 15 CoreWriter action IDs. Unlike
+// the minimal t23 mechanism fixture above, this is the real cover: 15
+// `per_action_body` entries + `default`, with the GROUNDED per-action decision
+// (see ~/.claude-web3/plans/hl-corewriter-cover.md):
+//
+//   * action 11 (Cancel by cloid) → STRUCTURED `ActionBody::Perp(CancelOrder)`.
+//     The ONE CoreWriter action that maps cleanly to a perp-domain body:
+//     `PerpVenue::Hyperliquid { chain }` exists, `CancelOrderAction` is just
+//     `{ venue, order_id: String }` with NO `live_inputs`, and `cloid` is a
+//     uint128 (renders as a JSON STRING, accepted by `order_id: String`).
+//   * EVERY OTHER action (1-10, 12-15) + `default` → `ActionBody::Unknown`
+//     with `$calldata` preserved. These are vault/staking/delegate/transfer/
+//     permission/system ops with NO matching ActionBody domain, OR (action 1
+//     limit-order, action 10 cancel-by-oid) carry HL fixed-point uint fields
+//     that don't fit the perp struct's String/enum/Decimal types — Unknown is
+//     the honest representation, not a mislabel.
+//
+// This const is byte-identical to the on-disk manifest JSON.
+const HL_COREWRITER_FULL_MANIFEST: &str = r#"{
+  "type": "adapter_action",
+  "id": "hyperliquid/core-writer/sendRawAction@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x17938e13",
+    "chain_to_addresses": {
+      "999": ["0x3333333333333333333333333333333333333333"],
+      "998": ["0x3333333333333333333333333333333333333333"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "sendRawAction",
+    "abi": {
+      "name": "sendRawAction",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [{ "name": "data", "type": "bytes" }],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "tagged_dispatch",
+    "bytes_source": "$args.data",
+    "version_byte": "0x01",
+    "tag_offset": 1,
+    "tag_size": 3,
+    "per_action_body": {
+      "1": {
+        "name": "limit_order",
+        "inputs_abi": "(uint32 asset, bool isBuy, uint64 limitPx, uint64 sz, bool reduceOnly, uint8 encodedTif, uint128 cloid)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "2": {
+        "name": "vault_transfer",
+        "inputs_abi": "(address vault, bool isDeposit, uint64 usd)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "3": {
+        "name": "token_delegate",
+        "inputs_abi": "(address validator, uint64 wei, bool isUndelegate)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "4": {
+        "name": "staking_deposit",
+        "inputs_abi": "(uint64 wei)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "5": {
+        "name": "staking_withdraw",
+        "inputs_abi": "(uint64 wei)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "6": {
+        "name": "spot_send",
+        "inputs_abi": "(address destination, uint64 token, uint64 wei)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "7": {
+        "name": "usd_class_transfer",
+        "inputs_abi": "(uint64 ntl, bool toPerp)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "8": {
+        "name": "finalize_evm_contract",
+        "inputs_abi": "(uint64 token, uint8 encodedFinalizeEvmContractVariant, uint64 createNonce)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "9": {
+        "name": "add_api_wallet",
+        "inputs_abi": "(address apiWalletAddress, string apiWalletName)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "10": {
+        "name": "cancel_order_by_oid",
+        "inputs_abi": "(uint32 asset, uint64 oid)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "11": {
+        "name": "cancel_order_by_cloid",
+        "inputs_abi": "(uint32 asset, uint128 cloid)",
+        "body": {
+          "domain": "perp",
+          "perp": {
+            "action": "cancel_order",
+            "cancel_order": { "venue": { "name": "hyperliquid", "chain": "$chain" }, "order_id": "$inputs.cloid" }
+          }
+        }
+      },
+      "12": {
+        "name": "approve_builder_fee",
+        "inputs_abi": "(uint64 maxFeeRate, address builder)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "13": {
+        "name": "send_asset",
+        "inputs_abi": "(address destination, address subAccount, uint32 source_dex, uint32 destination_dex, uint64 token, uint64 wei)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "14": {
+        "name": "reflect_evm_supply_change",
+        "inputs_abi": "(uint64 token, uint64 wei, bool is_mint)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "15": {
+        "name": "borrow_lend_operation",
+        "inputs_abi": "(uint8 encodedOperation, uint64 token, uint64 wei)",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      },
+      "default": {
+        "name": "unrecognized_action",
+        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
+      }
+    }
+  },
+  "requires": {
+    "imperative": ["core-writer-dispatcher@^1.0"],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}"#;
+
+// b3.a — action 11 (Cancel by cloid) → STRUCTURED `Perp(CancelOrder)` body.
+// The headline structured-perp win: cloid (uint128) decodes to a JSON string
+// that flows into `order_id: String`; `venue` resolves to
+// `Hyperliquid { chain }`.
+#[test]
+fn b3_corewriter_action_11_cancel_cloid_structured_perp() {
+    let install = install_ok(HL_COREWRITER_FULL_MANIFEST);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/core-writer/sendRawAction@1.0.0"
+    );
+
+    // cloid = 2^128 - 1 (max uint128) → decimal string "340282366920938463463374607431768211455".
+    let cloid_max = AlloyU256::from(1_u64)
+        .checked_shl(128)
+        .unwrap()
+        .wrapping_sub(AlloyU256::from(1_u64));
+    let calldata = hl_encode_send_raw_action(
+        0x01,
+        11,
+        &[
+            DynSolValue::Uint(AlloyU256::from(5_u64), 32), // asset
+            DynSolValue::Uint(cloid_max, 128),             // cloid
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    // SINGLE structured Perp body (NOT Unknown, NOT a Multicall).
+    assert_eq!(
+        parsed["data"]["actions"].as_array().unwrap().len(),
+        1,
+        "{parsed}"
+    );
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "perp", "{parsed}");
+    assert_eq!(body["action"], "cancel_order", "{parsed}");
+    assert_eq!(body["venue"]["name"], "hyperliquid", "{parsed}");
+    // $chain resolves to the CAIP-2 chain id for HyperEVM mainnet.
+    assert_eq!(body["venue"]["chain"], "eip155:999", "{parsed}");
+    // cloid uint128 → JSON string (N>64 rule) → order_id:String.
+    assert_eq!(
+        body["order_id"], "340282366920938463463374607431768211455",
+        "{parsed}"
+    );
+}
+
+// b3.b — action 1 (Limit order) → Unknown (perp struct types don't fit HL
+// fixed-point uint fields; see plan §2). Raw call preserved via $calldata.
+#[test]
+fn b3_corewriter_action_1_limit_unknown() {
+    install_ok(HL_COREWRITER_FULL_MANIFEST);
+
+    // Realistic limit order: asset=5, isBuy=true, limitPx=3750e8, sz=2e8,
+    // reduceOnly=false, encodedTif=2 (GTC), cloid=0xdead.
+    let calldata = hl_encode_send_raw_action(
+        0x01,
+        1,
+        &[
+            DynSolValue::Uint(AlloyU256::from(5_u64), 32),
+            DynSolValue::Bool(true),
+            DynSolValue::Uint(AlloyU256::from(375_000_000_000_u64), 64),
+            DynSolValue::Uint(AlloyU256::from(200_000_000_u64), 64),
+            DynSolValue::Bool(false),
+            DynSolValue::Uint(AlloyU256::from(2_u64), 8),
+            DynSolValue::Uint(AlloyU256::from(0xdead_u64), 128),
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// b3.c — action 10 (Cancel by oid) → Unknown. Semantically identical to
+// action 11, BUT oid is uint64 (renders as a JSON NUMBER), which
+// `order_id: String` would reject — so it stays Unknown (contrast with b3.a).
+#[test]
+fn b3_corewriter_action_10_cancel_oid_unknown() {
+    install_ok(HL_COREWRITER_FULL_MANIFEST);
+
+    let calldata = hl_encode_send_raw_action(
+        0x01,
+        10,
+        &[
+            DynSolValue::Uint(AlloyU256::from(5_u64), 32), // asset
+            DynSolValue::Uint(AlloyU256::from(123_456_u64), 64), // oid (uint64)
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// b3.d — action 4 (Staking deposit) → Unknown. No matching ActionBody domain
+// for L1 staking; raw call preserved.
+#[test]
+fn b3_corewriter_action_4_staking_deposit_unknown() {
+    install_ok(HL_COREWRITER_FULL_MANIFEST);
+
+    // staking deposit: wei = 1e9 (uint64).
+    let calldata = hl_encode_send_raw_action(
+        0x01,
+        4,
+        &[DynSolValue::Uint(AlloyU256::from(1_000_000_000_u64), 64)],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// b3.e — action 6 (Spot send) → Unknown. token/wei are uint64 L1 identifiers
+// (not EVM address/U256), so a token.erc20_transfer would mislabel. Unknown.
+#[test]
+fn b3_corewriter_action_6_spot_send_unknown() {
+    install_ok(HL_COREWRITER_FULL_MANIFEST);
+
+    let calldata = hl_encode_send_raw_action(
+        0x01,
+        6,
+        &[
+            DynSolValue::Address(addr(HL_INPUT_ADDR)), // destination
+            DynSolValue::Uint(AlloyU256::from(1_u64), 64), // token (L1 id)
+            DynSolValue::Uint(AlloyU256::from(5_000_000_u64), 64), // wei (L1 fixed-point)
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// b3.f — bad version byte (0x02 ≠ 0x01) → `default` Unknown body (fail-soft).
+// The manifest HAS a "default" entry, so this exercises the default-fallback
+// branch (vs t23.c which had none and hit the inline-Unknown branch).
+#[test]
+fn b3_corewriter_bad_version_default_unknown() {
+    install_ok(HL_COREWRITER_FULL_MANIFEST);
+
+    let calldata = hl_encode_send_raw_action(
+        0x02, // wrong version
+        11,
+        &[
+            DynSolValue::Uint(AlloyU256::from(5_u64), 32),
+            DynSolValue::Uint(AlloyU256::from(42_u64), 128),
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    // Fail-soft (ok:true), routed to the manifest's "default" Unknown body.
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    let body = &parsed["data"]["actions"][0]["body"];
     assert_eq!(body["domain"], "unknown", "{parsed}");
     assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
     assert_eq!(body["calldata"], calldata, "{parsed}");
