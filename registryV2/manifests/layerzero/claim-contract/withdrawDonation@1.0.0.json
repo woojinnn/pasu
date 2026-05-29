@@ -1,0 +1,44 @@
+{
+  "type": "adapter_action",
+  "id": "layerzero/claim-contract/withdrawDonation@1.0.0",
+  "publisher": "layerzero",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x46d7ce37",
+    "chain_to_addresses": {
+      "42161": ["0xd6b6a6701303B5Ea36fa0eDf7389b562d8F894DB"]
+    }
+  },
+  "_note_mapping": "withdrawDonation(currency, amount) reclaims a previously-made donation. Not a claim, not a standard token op → Unknown (policy warn/deny). calldata = literal sentinel `0x`; not payable → value 0.",
+  "abi_fragment": {
+    "function_name": "withdrawDonation",
+    "abi": {
+      "name": "withdrawDonation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "currency", "type": "uint8"   },
+        { "name": "amount",   "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target":   "$to",
+        "chain":    "$chain",
+        "calldata": "0x",
+        "value":    "0"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

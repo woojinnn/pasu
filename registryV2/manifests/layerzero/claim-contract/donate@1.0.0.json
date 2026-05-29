@@ -1,0 +1,45 @@
+{
+  "type": "adapter_action",
+  "id": "layerzero/claim-contract/donate@1.0.0",
+  "publisher": "layerzero",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xcd139742",
+    "chain_to_addresses": {
+      "42161": ["0xd6b6a6701303B5Ea36fa0eDf7389b562d8F894DB"]
+    }
+  },
+  "_note_mapping": "donate(currency, amount, recipient) is a donation to the protocol/DAO, not a claim and not a standard ERC20 transfer. No matching ActionBody domain (token/amm/lending/airdrop/launchpad/perp) → Unknown, so the policy engine warns/denies rather than mis-classifying. calldata field is the literal sentinel `0x` (the v3 engine has no calldata placeholder); value = $tx.value (donate is payable).",
+  "abi_fragment": {
+    "function_name": "donate",
+    "abi": {
+      "name": "donate",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "currency",  "type": "uint8"   },
+        { "name": "amount",    "type": "uint256" },
+        { "name": "recipient", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target":   "$to",
+        "chain":    "$chain",
+        "calldata": "0x",
+        "value":    "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

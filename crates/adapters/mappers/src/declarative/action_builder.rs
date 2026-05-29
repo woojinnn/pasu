@@ -827,6 +827,27 @@ fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -
             JsonValue::String("0".into())
         }
         (Some("amm"), Some("sign_intent_order"), "competing_orders") => JsonValue::Number(0.into()),
+        // -------- Airdrop (Claim) --------
+        //
+        // `ClaimAirdropLiveInputs` (action/airdrop/claim.rs): `is_still_claimable`
+        // (`LiveField<bool>`), `actual_amount` (`LiveField<U256>`), `claim_token`
+        // (`LiveField<TokenRef>`), `claim_window` (`LiveField<Option<(Time,Time)>>`).
+        // Without a default `value` each `LiveField` serialises `null`; the three
+        // non-Option fields reject `null` (bool / U256 / TokenRef) →
+        // `build_action_body_failed`. `claim_window` is an `Option` so it takes the
+        // `_ => Null` fallback below (= `None`). `claim_token` needs a concrete
+        // `TokenRef { key }` skeleton — a zero ERC20 stands in until the Sync
+        // orchestrator fills the real ZRO token (the real claim token is always
+        // ZRO). The chain in the skeleton is a neutral placeholder.
+        (Some("airdrop"), Some("claim"), "is_still_claimable") => JsonValue::Bool(false),
+        (Some("airdrop"), Some("claim"), "actual_amount") => JsonValue::String("0".into()),
+        (Some("airdrop"), Some("claim"), "claim_token") => serde_json::json!({
+            "key": {
+                "standard": "erc20",
+                "chain": "eip155:1",
+                "address": "0x0000000000000000000000000000000000000000"
+            }
+        }),
         // -------- Token --------
         (Some("token"), Some("erc20_permit"), "nonce")
         | (Some("token"), Some("permit2_approve"), "nonce") => JsonValue::String("0".into()),

@@ -1,0 +1,100 @@
+{
+  "type": "adapter_action",
+  "id": "layerzero/claim-contract/claim@1.0.0",
+  "publisher": "layerzero",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xf9429637",
+    "chain_to_addresses": {
+      "42161": ["0xd6b6a6701303B5Ea36fa0eDf7389b562d8F894DB"]
+    }
+  },
+  "_note_addresses": "ClaimContract hub on Arbitrum (chain 42161) — 1차-verified. Per-satellite ClaimRemote addresses (Ethereum 1 / BNB 56 / Avalanche 43114 / Polygon 137 / Optimism 10 / Base 8453) are NOT 1차-verified (referenced a deleted /tmp source) → limited-cover, hub only. claim is PAUSED at deploy (merkleRoot=0): the manifest still decodes calldata correctly — paused/revert is a verdict concern, not a decode concern.",
+  "abi_fragment": {
+    "function_name": "claim",
+    "abi": {
+      "name": "claim",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "currency",     "type": "uint8"     },
+        { "name": "amount",       "type": "uint256"   },
+        { "name": "proof",        "type": "bytes32[]" },
+        { "name": "to",           "type": "address"   },
+        { "name": "extraOptions", "type": "bytes"     }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "claim",
+        "claim": {
+          "source": { "name": "layerzero" },
+          "claim_target": {
+            "kind":     "merkle_distributor",
+            "chain":    "$chain",
+            "contract": "$to",
+            "index":    0
+          },
+          "recipient": "$args.to",
+          "proof": {
+            "leaf_index": 0,
+            "siblings":   "$args.proof"
+          },
+          "sig": null
+        }
+      }
+    },
+    "live_inputs": {
+      "is_still_claimable": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "claimed(address)",
+          "decoder_id": "layerzero_claim_claimed"
+        },
+        "ttl_s": 30,
+        "_note": "Claim is PAUSED at deploy (merkleRoot == 0); a real fetcher must also check merkleRoot != 0. Decode is unaffected."
+      },
+      "actual_amount": {
+        "source": {
+          "kind":      "venue_api",
+          "endpoint":  "https://www.layerzero.foundation/api/claim",
+          "parser_id": "layerzero_claim_amount"
+        },
+        "ttl_s": 60,
+        "_note": "LayerZero claim/proof-generation API. Proof-generation API is ABSENT from 1차 sources → limited cover: source descriptor only, no RPC fetcher implemented (separate track). The calldata `amount` arg is the user-requested amount; Claim's actual_amount is intentionally a live field."
+      },
+      "claim_token": {
+        "source": {
+          "kind":    "derived_from",
+          "inputs":  [],
+          "calc_id": "layerzero_zro_token"
+        },
+        "ttl_s": 3600,
+        "_note": "Claim token is always ZRO (0x6985884c4392d348587b19cb9eaaf157f13271cd)."
+      },
+      "claim_window": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "claimDeadline()",
+          "decoder_id": "layerzero_claim_deadline"
+        },
+        "ttl_s": 300
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

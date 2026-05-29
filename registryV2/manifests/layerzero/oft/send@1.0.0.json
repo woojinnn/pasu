@@ -1,0 +1,70 @@
+{
+  "type": "adapter_action",
+  "id": "layerzero/oft/send@1.0.0",
+  "publisher": "layerzero",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xc7c7f5b3",
+    "chain_to_addresses": {
+      "1":     ["0x6985884c4392d348587b19cb9eaaf157f13271cd"],
+      "10":    ["0x6985884c4392d348587b19cb9eaaf157f13271cd"],
+      "56":    ["0x6985884c4392d348587b19cb9eaaf157f13271cd"],
+      "137":   ["0x6985884c4392d348587b19cb9eaaf157f13271cd"],
+      "8453":  ["0x6985884c4392d348587b19cb9eaaf157f13271cd"],
+      "42161": ["0x6985884c4392d348587b19cb9eaaf157f13271cd"],
+      "43114": ["0x6985884c4392d348587b19cb9eaaf157f13271cd"]
+    }
+  },
+  "_note_mapping": "OFT send is a cross-chain bridge of ZRO (LayerZero V2 OFT). ActionBody has NO bridge domain (token/amm/lending/airdrop/launchpad/perp/multicall/unknown) → Unknown, the honest conservative mapping (NOT shoehorned into a token transfer or swap). ZRO ERC20 0x6985884c4392d348587b19cb9eaaf157f13271cd is the same address on 7 chains (1/10/56/137/8453/42161/43114 — 1차-verified). calldata = literal sentinel `0x`; value = $tx.value (send is payable — nativeFee paid via msg.value). The abi_fragment carries the exact SendParam/MessagingFee tuple components because the route decodes calldata against it before building the body.",
+  "abi_fragment": {
+    "function_name": "send",
+    "abi": {
+      "name": "send",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "sendParam",
+          "type": "tuple",
+          "components": [
+            { "name": "dstEid",       "type": "uint32"  },
+            { "name": "to",           "type": "bytes32" },
+            { "name": "amountLD",     "type": "uint256" },
+            { "name": "minAmountLD",  "type": "uint256" },
+            { "name": "extraOptions", "type": "bytes"   },
+            { "name": "composeMsg",   "type": "bytes"   },
+            { "name": "oftCmd",       "type": "bytes"   }
+          ]
+        },
+        {
+          "name": "fee",
+          "type": "tuple",
+          "components": [
+            { "name": "nativeFee",  "type": "uint256" },
+            { "name": "lzTokenFee", "type": "uint256" }
+          ]
+        },
+        { "name": "refundAddress", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target":   "$to",
+        "chain":    "$chain",
+        "calldata": "0x",
+        "value":    "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
