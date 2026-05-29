@@ -1,15 +1,22 @@
 //! Manifest-driven policy RPC planning and context materialization.
 
 mod manifest;
+mod manifest_v2;
 mod materialize;
 mod planning;
 mod selector;
+mod trigger;
 
 pub use manifest::{
     validate_manifests, ContextProjection, PolicyManifest, PolicyRpcCall, PolicyRpcError,
     PolicyRpcErrorBody, PolicyRpcResponse, PolicyRpcResult, ProjectionType, Requirement,
     RequirementWhen, RootInput,
 };
+pub use manifest_v2::{
+    CustomContext, ManifestV2, PolicyRpcCallSpec, Trigger, TriggerConstraint, TriggerField,
+    TriggerScope, MANIFEST_V2_SCHEMA_VERSION,
+};
+pub use trigger::{evaluate as evaluate_trigger, TxView};
 pub use materialize::{
     apply_rpc_results, apply_rpc_results_with_indices, system_fail_verdict, SYSTEM_POLICY_ID,
 };
