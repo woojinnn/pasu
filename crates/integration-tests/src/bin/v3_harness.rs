@@ -31,6 +31,8 @@ fn main() {
         "fuzz" => cmd_fuzz(&rest),
         "coverage" => cmd_coverage(),
         "replay" => cmd_replay(&rest),
+        "corpus" => cmd_corpus(&rest),
+        "import-dune" => cmd_import_dune(&rest),
         "-h" | "--help" | "help" | "" => {
             usage();
             return;
@@ -53,7 +55,9 @@ fn usage() {
          USAGE:\n  \
          v3-harness fuzz [--iterations N] [--seed S] [--json PATH]\n  \
          v3-harness coverage\n  \
-         v3-harness replay --callkey <chain>__<addr>__<selector> [--seed S]"
+         v3-harness replay --callkey <chain>__<addr>__<selector> [--seed S]\n  \
+         v3-harness corpus [--root DIR]\n  \
+         v3-harness import-dune <dune-export.json> [--chain N] [--out PATH]"
     );
 }
 
@@ -144,5 +148,93 @@ fn cmd_replay(args: &[String]) -> Result<()> {
         "{}",
         serde_json::to_string_pretty(&envelope).context("serialize envelope")?
     );
+    Ok(())
+}
+
+fn cmd_corpus(args: &[String]) -> Result<()> {
+    let root =
+        flag(args, "--root").map_or_else(harness::default_corpus_root, std::path::PathBuf::from);
+    let outcomes = harness::corpus::run_corpus(&root)?;
+    let total = outcomes.len();
+    let matched = outcomes.iter().filter(|o| o.matched).count();
+    for o in &outcomes {
+        let mark = if o.matched { "ok  " } else { "MISS" };
+        println!(
+            "  {mark} [{}] {} expect={} got={}",
+            o.source, o.label, o.expect, o.got
+        );
+    }
+    println!(
+        "\ncorpus: {matched}/{total} matched (root {})",
+        root.display()
+    );
+    if matched < total {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+/// Convert a Dune export (JSON: a bare array of rows, or `{result:{rows:[...]}}`,
+/// or `{rows:[...]}`) into the v3 corpus format on stdout (or `--out`). Maps the
+/// common Dune column names (`hash`/`tx_hash`, `to`/`to_address`/`contract_address`,
+/// `data`/`input`/`calldata`, `value`, `chain_id`). The result needs `expect`
+/// annotation by hand (defaulted to `"pass"`).
+fn cmd_import_dune(args: &[String]) -> Result<()> {
+    let path = args
+        .iter()
+        .find(|a| !a.starts_with("--") && a.ends_with(".json"))
+        .ok_or_else(|| anyhow!("usage: import-dune <dune-export.json> [--chain N] [--out PATH]"))?;
+    let default_chain = flag_u64(args, "--chain", 1)?;
+    let raw = std::fs::read_to_string(path).with_context(|| format!("read {path}"))?;
+    let v: serde_json::Value = serde_json::from_str(&raw).context("parse dune export")?;
+    let rows = v
+        .as_array()
+        .cloned()
+        .or_else(|| v.get("rows").and_then(|r| r.as_array()).cloned())
+        .or_else(|| {
+            v.get("result")
+                .and_then(|r| r.get("rows"))
+                .and_then(|r| r.as_array())
+                .cloned()
+        })
+        .ok_or_else(|| {
+            anyhow!("no rows array found (expected [...] / {{rows}} / {{result.rows}})")
+        })?;
+
+    let pick = |row: &serde_json::Value, keys: &[&str]| -> Option<String> {
+        keys.iter()
+            .find_map(|k| row.get(*k).and_then(|x| x.as_str()).map(ToOwned::to_owned))
+    };
+    let mut txs = Vec::new();
+    for row in &rows {
+        let Some(to) = pick(row, &["to", "to_address", "contract_address"]) else {
+            continue;
+        };
+        let Some(data) = pick(row, &["data", "input", "calldata"]) else {
+            continue;
+        };
+        let chain = row
+            .get("chain_id")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(default_chain);
+        let value = pick(row, &["value"]).unwrap_or_else(|| "0".to_owned());
+        let tx_hash = pick(row, &["hash", "tx_hash"]).unwrap_or_default();
+        txs.push(serde_json::json!({
+            "expect": "pass",
+            "tx_hash": tx_hash,
+            "chain_id": chain,
+            "rpc": { "params": [{ "to": to, "value": value, "data": data }] }
+        }));
+    }
+    let out = serde_json::to_string_pretty(&serde_json::json!({
+        "_comment": format!("imported from {path} via v3-harness import-dune — annotate `expect`/`expect_domain` before committing"),
+        "transactions": txs
+    }))?;
+    if let Some(p) = flag(args, "--out") {
+        std::fs::write(p, &out).with_context(|| format!("write {p}"))?;
+        eprintln!("wrote {} transactions to {p}", rows.len());
+    } else {
+        println!("{out}");
+    }
     Ok(())
 }

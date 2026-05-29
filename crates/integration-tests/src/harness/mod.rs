@@ -25,6 +25,7 @@
 #![allow(clippy::pedantic, clippy::nursery, clippy::missing_errors_doc)]
 
 pub mod adapters;
+pub mod corpus;
 pub mod encode;
 pub mod fuzz;
 pub mod oracle;
@@ -33,6 +34,12 @@ pub mod report;
 pub mod route;
 
 use anyhow::Result;
+
+/// Default real-tx corpus root: `<crate>/data/golden/v3-decode`.
+#[must_use]
+pub fn default_corpus_root() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data/golden/v3-decode")
+}
 
 /// Run a synthetic `single_emit` fuzz sweep over the whole local surface.
 ///

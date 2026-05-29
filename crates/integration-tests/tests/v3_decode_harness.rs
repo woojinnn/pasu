@@ -68,6 +68,36 @@ fn synthetic_fuzz_single_emit() {
 }
 
 #[test]
+fn corpus_replay() {
+    let root = harness::default_corpus_root();
+    let outcomes = harness::corpus::run_corpus(&root).expect("run real-tx corpus");
+
+    let mismatches: Vec<_> = outcomes.iter().filter(|o| !o.matched).collect();
+    eprintln!(
+        "corpus: {}/{} matched",
+        outcomes.len() - mismatches.len(),
+        outcomes.len()
+    );
+    for m in &mismatches {
+        eprintln!(
+            "  MISS [{}] {} expect={} got={}",
+            m.source, m.label, m.expect, m.got
+        );
+    }
+
+    assert!(
+        !outcomes.is_empty(),
+        "no corpus.json found under {}",
+        root.display()
+    );
+    assert!(
+        mismatches.is_empty(),
+        "{} corpus entr(ies) did not match their pinned expectation",
+        mismatches.len()
+    );
+}
+
+#[test]
 fn synthetic_fuzz_all_strategies() {
     let report = harness::run_synthetic_all(GLOBAL_SEED, ITERS_PER_CALLKEY)
         .expect("run synthetic all-strategy fuzz");
