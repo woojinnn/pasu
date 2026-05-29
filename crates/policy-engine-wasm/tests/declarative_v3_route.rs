@@ -4544,3 +4544,312 @@ fn t22_max_depth_exceeded_fails_loud() {
         "expected max_depth_exceeded, got: {parsed}"
     );
 }
+
+// ===========================================================================
+// B.5 — Balancer V2 Vault.swap (Fjord Foundry LBP retail cover, Option A)
+// ===========================================================================
+//
+// A retail Fjord Foundry LBP buy IS a Balancer V2 `Vault.swap(...)` direct call
+// (Option A — Fjord's own wrapper fns are creator-side/onlyOwner-gated, and the
+// 5 prompt retail operations commit/claim_allocation/refund/withdraw_commit/
+// claim_vested are ABSENT from verified source → out-of-scope). This manifest is
+// GENERIC Balancer V2 (covers EVERY V2 single swap); Fjord-ness is the
+// host:registry `registry_api`/`PoolMeta` enrichment on `live_inputs.route`.
+//
+// Inline-mirrors `registryV2/manifests/balancer/v2/vault-swap@1.0.0.json`
+// (mainnet-only chain_to_addresses here; the on-disk fixture carries all 6
+// Fjord-verified-deploy chains 1/42161/43114/10/137/56). Selector `cast sig`-
+// verified: 0x52bbbe29.
+//
+// THE LOAD-BEARING ABI FACT (a reviewer watch-point): `swap` has FOUR top-level
+// args (singleSwap, funds, limit, deadline), so the bridge does NOT flatten the
+// leading struct (it flattens only the single-arg case). `singleSwap` / `funds`
+// therefore stay as named args whose VALUE is a positional JSON array — the
+// emit references their fields by INDEX (`$args.singleSwap[0]` .. `[5]`,
+// `$args.funds[2]`), NOT by component name. The `uint8 kind` (index 1) renders
+// as a JSON number (canonical-parenthesised abi_type threads its width), so the
+// `$match`/`$cases` direction switch keys on "0"/"1".
+
+const VAULT_MAINNET: &str = "0xba12222222228d8ba445958a75a0704d566bf2c8";
+// A realistic Balancer V2 weighted-pool id shape: 20-byte pool address ++
+// 2-byte specifier ++ 10-byte nonce. (Any bytes32 decodes; this is plausible.)
+const LBP_POOL_ID: &str =
+    "0xc45d42f801105e861e86658648e3678ad7aa70f900020000000000000000011e";
+
+const B5_BALANCER_VAULT_SWAP_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "balancer/v2/vault-swap@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x52bbbe29",
+    "chain_to_addresses": { "1": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"] }
+  },
+  "abi_fragment": {
+    "function_name": "swap",
+    "abi": {
+      "name": "swap",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "singleSwap",
+          "type": "tuple",
+          "components": [
+            { "name": "poolId",   "type": "bytes32" },
+            { "name": "kind",     "type": "uint8"   },
+            { "name": "assetIn",  "type": "address" },
+            { "name": "assetOut", "type": "address" },
+            { "name": "amount",   "type": "uint256" },
+            { "name": "userData", "type": "bytes"   }
+          ]
+        },
+        {
+          "name": "funds",
+          "type": "tuple",
+          "components": [
+            { "name": "sender",              "type": "address" },
+            { "name": "fromInternalBalance", "type": "bool"    },
+            { "name": "recipient",           "type": "address" },
+            { "name": "toInternalBalance",   "type": "bool"    }
+          ]
+        },
+        { "name": "limit",    "type": "uint256" },
+        { "name": "deadline", "type": "uint256" }
+      ],
+      "outputs": [ { "name": "", "type": "uint256" } ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name":      "balancer_v2",
+            "chain":     "$chain",
+            "vault":     "$to",
+            "pool_id":   "$args.singleSwap[0]",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "token_in":  { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.singleSwap[2]" } },
+            "token_out": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.singleSwap[3]" } },
+            "direction": {
+              "$match": "$args.singleSwap[1]",
+              "$cases": {
+                "0": { "kind": "exact_input",  "amount_in":     "$args.singleSwap[4]", "min_amount_out": "$args.limit" },
+                "1": { "kind": "exact_output", "max_amount_in": "$args.limit",          "amount_out":     "$args.singleSwap[4]" }
+              }
+            },
+            "recipient":   "$args.funds[2]",
+            "slippage_bp": 50
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind":     "registry_api",
+                "endpoint": "https://registry-api-v2-891268973493.asia-northeast3.run.app",
+                "resource": { "kind": "pool_meta", "chain": "$chain", "pool_addr": "0x0000000000000000000000000000000000000000" },
+                "version": "2"
+              },
+              "ttl_s": 86400
+            },
+            "expected_amount_out": {
+              "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "queryBatchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool))", "decoder_id": "balancer_v2_query_swap" },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": { "kind": "derived_from", "inputs": [], "calc_id": "balancer_v2_price_impact_bp" },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": { "kind": "oracle_feed", "provider": "pyth", "feed_id": "gas/ethereum" },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": ["registry:pool_meta"],
+    "extension": ">=0.1.0"
+  }
+}"#;
+
+/// Build `Vault.swap` calldata for the given `kind` (0 = GIVEN_IN, 1 = GIVEN_OUT)
+/// + route it, returning the resolved `body` JSON. `amount` / `limit` are
+/// load-bearing — they map to amount_in/min_amount_out (GIVEN_IN) or
+/// max_amount_in/amount_out (GIVEN_OUT).
+fn route_balancer_swap(kind: u8, amount: u64, limit: u64) -> Value {
+    install_ok(B5_BALANCER_VAULT_SWAP_V3);
+
+    // assetIn = USDC, assetOut = WETH, recipient = 0x..bbbb, sender = 0x..a01c.
+    let asset_in = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        .parse::<AlloyAddress>()
+        .unwrap();
+    let asset_out = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        .parse::<AlloyAddress>()
+        .unwrap();
+    let recipient = "0x000000000000000000000000000000000000bbbb"
+        .parse::<AlloyAddress>()
+        .unwrap();
+    let sender = "0x000000000000000000000000000000000000a01c"
+        .parse::<AlloyAddress>()
+        .unwrap();
+    let pool_id_bytes =
+        hex::decode(LBP_POOL_ID.trim_start_matches("0x")).expect("32-byte poolId");
+
+    // SingleSwap = (bytes32 poolId, uint8 kind, address assetIn, address
+    // assetOut, uint256 amount, bytes userData). A tuple ARG (not the lone arg)
+    // → stays nested; decodes to a positional JSON array.
+    let single_swap = DynSolValue::Tuple(vec![
+        DynSolValue::FixedBytes(alloy_primitives::B256::from_slice(&pool_id_bytes), 32),
+        DynSolValue::Uint(AlloyU256::from(u64::from(kind)), 8),
+        DynSolValue::Address(asset_in),
+        DynSolValue::Address(asset_out),
+        DynSolValue::Uint(AlloyU256::from(amount), 256),
+        DynSolValue::Bytes(vec![]),
+    ]);
+    // FundManagement = (address sender, bool fromInternalBalance, address
+    // recipient, bool toInternalBalance). recipient is index 2.
+    let funds = DynSolValue::Tuple(vec![
+        DynSolValue::Address(sender),
+        DynSolValue::Bool(false),
+        DynSolValue::Address(recipient),
+        DynSolValue::Bool(false),
+    ]);
+
+    let calldata = encode_calldata(
+        "0x52bbbe29",
+        &[
+            single_swap,
+            funds,
+            DynSolValue::Uint(AlloyU256::from(limit), 256),
+            DynSolValue::Uint(AlloyU256::from(1_900_000_000u64), 256),
+        ],
+    );
+    let input = route_input(
+        1,
+        VAULT_MAINNET,
+        "0x52bbbe29",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+    let parsed = route_ok(input);
+    assert_eq!(
+        parsed["data"]["decoder_id"], "balancer/v2/vault-swap@1.0.0",
+        "{parsed}"
+    );
+    parsed["data"]["actions"][0]["body"].clone()
+}
+
+// ---------------------------------------------------------------------------
+// t21 — GIVEN_IN (kind=0) → exact_input
+// ---------------------------------------------------------------------------
+
+#[test]
+fn t21_balancer_vault_swap_given_in_exact_input() {
+    // kind=0 GIVEN_IN: amount = exact amount_in (1_000_000), limit = min out.
+    let body = route_balancer_swap(0, 1_000_000, 950_000);
+
+    // Domain / action / venue.
+    assert_eq!(body["domain"], "amm", "{body}");
+    assert_eq!(body["action"], "swap", "{body}");
+    assert_eq!(body["venue"]["name"], "balancer_v2", "{body}");
+    assert_eq!(body["venue"]["chain"], "eip155:1", "{body}");
+    // vault = $to (the Vault the user called), lowercased.
+    assert_eq!(body["venue"]["vault"], VAULT_MAINNET, "{body}");
+    // pool_id = $args.singleSwap[0] (bytes32 → hex string). The venue pool
+    // identifier — host:registry resolves whether it is a Fjord LBP.
+    assert_eq!(body["venue"]["pool_id"], LBP_POOL_ID, "{body}");
+    // pool_type defaults to weighted (generic); precise type is host:registry.
+    assert_eq!(body["venue"]["pool_type"], "weighted", "{body}");
+
+    // kind=0 → exact_input via the $match/$cases direction switch.
+    assert_eq!(body["params"]["direction"]["kind"], "exact_input", "{body}");
+    // amount_in = $args.singleSwap[4] (uint256 → alloy hex string). 1_000_000.
+    assert_eq!(body["params"]["direction"]["amount_in"], "0xf4240", "{body}");
+    // min_amount_out = $args.limit. 950_000 == 0xe7ef0.
+    assert_eq!(
+        body["params"]["direction"]["min_amount_out"], "0xe7ef0",
+        "{body}"
+    );
+    // token_in = assetIn (USDC), token_out = assetOut (WETH).
+    assert_eq!(
+        body["params"]["token_in"]["key"]["address"],
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "{body}"
+    );
+    assert_eq!(
+        body["params"]["token_out"]["key"]["address"],
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "{body}"
+    );
+    // recipient = $args.funds[2] (FundManagement.recipient).
+    assert_eq!(
+        body["params"]["recipient"],
+        "0x000000000000000000000000000000000000bbbb",
+        "{body}"
+    );
+    assert_eq!(body["params"]["slippage_bp"], 50, "{body}");
+
+    // live_inputs: Fjord-LBP identification (host:registry) on `route`, swap
+    // quote on `expected_amount_out`.
+    assert_eq!(
+        body["live_inputs"]["route"]["source"]["kind"], "registry_api",
+        "{body}"
+    );
+    assert_eq!(
+        body["live_inputs"]["route"]["source"]["resource"]["kind"], "pool_meta",
+        "{body}"
+    );
+    assert_eq!(
+        body["live_inputs"]["expected_amount_out"]["source"]["kind"], "onchain_view",
+        "{body}"
+    );
+    assert_eq!(
+        body["live_inputs"]["gas_estimate"]["source"]["kind"], "oracle_feed",
+        "{body}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// t22 — GIVEN_OUT (kind=1) → exact_output
+// ---------------------------------------------------------------------------
+
+#[test]
+fn t22_balancer_vault_swap_given_out_exact_output() {
+    // kind=1 GIVEN_OUT: amount = exact amount_out (2_000_000), limit = max in.
+    let body = route_balancer_swap(1, 2_000_000, 2_500_000);
+
+    assert_eq!(body["venue"]["name"], "balancer_v2", "{body}");
+    // kind=1 → exact_output via the $match/$cases switch (the SAME manifest,
+    // different discriminant arg → different direction shape). This is the
+    // load-bearing proof the value-map switches the whole direction object.
+    assert_eq!(body["params"]["direction"]["kind"], "exact_output", "{body}");
+    // amount_out = $args.singleSwap[4]. 2_000_000 == 0x1e8480.
+    assert_eq!(
+        body["params"]["direction"]["amount_out"], "0x1e8480",
+        "{body}"
+    );
+    // max_amount_in = $args.limit. 2_500_000 == 0x2625a0.
+    assert_eq!(
+        body["params"]["direction"]["max_amount_in"], "0x2625a0",
+        "{body}"
+    );
+    // GIVEN_OUT must NOT carry the exact_input fields.
+    assert!(
+        body["params"]["direction"].get("amount_in").is_none(),
+        "{body}"
+    );
+    assert!(
+        body["params"]["direction"].get("min_amount_out").is_none(),
+        "{body}"
+    );
+}

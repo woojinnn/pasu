@@ -1,0 +1,133 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v2/vault-swap@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "GENERIC Balancer V2 Vault.swap (selector 0x52bbbe29, cast-verified). Covers EVERY Balancer V2 single swap, NOT only Fjord. A retail Fjord Foundry LBP buy IS exactly this call (Option A: Fjord's own wrapper fns are creator-side/onlyOwner-gated; the LBP buy reaches the wallet as a direct Vault.swap). Fjord-ness is NOT baked into match/emit — it is a host:registry enrichment on live_inputs.route (registry_api/PoolMeta tells the extension which pool_ids are Fjord LBPs + the precise pool_type, which defaults to weighted here). The 5 Fjord retail operations commit/claim_allocation/refund/withdraw_commit/claim_vested are ABSENT from verified source and are out-of-scope. Vault 0xBA12222222228d8Ba445958a75a0704d566BF2C8 is identical on all chains; chain_to_addresses lists the Fjord-verified-deploy chains 1/42161/43114/10/137/56.",
+  "match": {
+    "selector": "0x52bbbe29",
+    "chain_to_addresses": {
+      "1":     ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "42161": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "43114": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "10":    ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "137":   ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "56":    ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swap",
+    "abi": {
+      "name": "swap",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "singleSwap",
+          "type": "tuple",
+          "components": [
+            { "name": "poolId",    "type": "bytes32" },
+            { "name": "kind",      "type": "uint8"   },
+            { "name": "assetIn",   "type": "address" },
+            { "name": "assetOut",  "type": "address" },
+            { "name": "amount",    "type": "uint256" },
+            { "name": "userData",  "type": "bytes"   }
+          ]
+        },
+        {
+          "name": "funds",
+          "type": "tuple",
+          "components": [
+            { "name": "sender",              "type": "address" },
+            { "name": "fromInternalBalance", "type": "bool"    },
+            { "name": "recipient",           "type": "address" },
+            { "name": "toInternalBalance",   "type": "bool"    }
+          ]
+        },
+        { "name": "limit",    "type": "uint256" },
+        { "name": "deadline", "type": "uint256" }
+      ],
+      "outputs": [ { "name": "", "type": "uint256" } ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name":      "balancer_v2",
+            "chain":     "$chain",
+            "vault":     "$to",
+            "pool_id":   "$args.singleSwap[0]",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "token_in":  { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.singleSwap[2]" } },
+            "token_out": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.singleSwap[3]" } },
+            "direction": {
+              "$match": "$args.singleSwap[1]",
+              "$cases": {
+                "0": { "kind": "exact_input",  "amount_in":     "$args.singleSwap[4]", "min_amount_out": "$args.limit" },
+                "1": { "kind": "exact_output", "max_amount_in": "$args.limit",          "amount_out":     "$args.singleSwap[4]" }
+              }
+            },
+            "recipient":   "$args.funds[2]",
+            "slippage_bp": 50
+          },
+          "live_inputs": {
+            "route": {
+              "_note": "host:registry Fjord-LBP identification. The convergent registry sync track derives pool_addr = poolId[0:20], resolves whether this pool_id is a Fjord Foundry LBP, and supplies the real pool tokens/weights (+ precise pool_type) for the route. pool_addr is the zero-address placeholder here because the declarative DSL cannot slice the 32-byte poolId down to the 20-byte pool address.",
+              "source": {
+                "kind":     "registry_api",
+                "endpoint": "https://registry-api-v2-891268973493.asia-northeast3.run.app",
+                "resource": {
+                  "kind":      "pool_meta",
+                  "chain":     "$chain",
+                  "pool_addr": "0x0000000000000000000000000000000000000000"
+                },
+                "version": "2"
+              },
+              "ttl_s": 86400
+            },
+            "expected_amount_out": {
+              "_note": "swap-quote source — Balancer V2 Vault.queryBatchSwap simulates the swap output off the live pool reserves.",
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$to",
+                "function":   "queryBatchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool))",
+                "decoder_id": "balancer_v2_query_swap"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind":    "derived_from",
+                "inputs":  [],
+                "calc_id": "balancer_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind":     "oracle_feed",
+                "provider": "pyth",
+                "feed_id":  "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": ["registry:pool_meta"],
+    "extension": ">=0.1.0"
+  }
+}
