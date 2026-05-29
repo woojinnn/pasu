@@ -1,0 +1,108 @@
+{
+  "matched": true,
+  "bundle_id": "hyperliquid/usd-send/sign@1.0.0",
+  "manifest_path": "manifests/hyperliquid/usd-send/sign@1.0.0.json",
+  "bundle_sha256": "0x0a679bd6be40ea1e6e287792997140e250904726cfcdd1a027cb70db1328d18f",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "hyperliquid/usd-send/sign@1.0.0",
+    "publisher": "hyperliquid",
+    "schema_version": "3",
+    "note": "Phase A.1 routing-mechanism fixture. The HyperLiquid UsdSend -> erc20_transfer mapping is a B.3 placeholder: HyperLiquid signs an L1 action (HyperliquidTransaction:UsdSend) whose `amount` is a DECIMAL STRING (e.g. '100.0') that cannot parse as a U256, and whose value moves USDC on the HyperLiquid L1 (no EVM token-transfer calldata). We map `recipient` from the message `destination` and pin `amount` to a literal 0 + a zero token address purely so the payload ROUTES to a valid Erc20TransferAction body and exercises the by-typed-data index + WASM typed-data routing. Real HyperLiquid action semantics (decimal amount parse, USDC L1 identity, signatureChainId binding) are a B.3 concern. selector/verifying_contract are 0x000..00 placeholders (HyperLiquid uses chain-id-scoped domains, not a real verifying contract).",
+    "match": {
+      "selector": "0x00000002",
+      "chain_to_addresses": {
+        "42161": [
+          "0x0000000000000000000000000000000000000000"
+        ],
+        "421614": [
+          "0x0000000000000000000000000000000000000000"
+        ]
+      },
+      "typed_data": {
+        "domain_name": "HyperliquidSignTransaction",
+        "verifying_contract": "0x0000000000000000000000000000000000000000",
+        "primary_type": "HyperliquidTransaction:UsdSend",
+        "types": {
+          "HyperliquidTransaction:UsdSend": [
+            {
+              "name": "hyperliquidChain",
+              "type": "string"
+            },
+            {
+              "name": "destination",
+              "type": "string"
+            },
+            {
+              "name": "amount",
+              "type": "string"
+            },
+            {
+              "name": "time",
+              "type": "uint64"
+            }
+          ]
+        }
+      }
+    },
+    "abi_fragment": {
+      "function_name": "usdSend",
+      "abi": {
+        "name": "usdSend",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "usdSend",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "hyperliquidChain",
+                "type": "string"
+              },
+              {
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "name": "amount",
+                "type": "string"
+              },
+              {
+                "name": "time",
+                "type": "uint64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "token",
+        "token": {
+          "action": "erc20_transfer",
+          "erc20_transfer": {
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "0x0000000000000000000000000000000000000000"
+              }
+            },
+            "recipient": "$args.usdSend.destination",
+            "amount": "0"
+          }
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}
