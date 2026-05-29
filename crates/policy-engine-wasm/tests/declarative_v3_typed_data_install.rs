@@ -596,95 +596,46 @@ fn typed_data_uniswapx_exclusive_dutch_sign_intent_order() {
 }
 
 // ---------------------------------------------------------------------------
-// #4 — HyperLiquid UsdSend (nested → wrapped, token/erc20_transfer)
+// #4 — HyperLiquid UsdSend (Mode B "UserSigned") → best-effort Unknown
 // ---------------------------------------------------------------------------
 //
-// Route-proof for the `registryV2/manifests/hyperliquid/usd-send/sign@1.0.0.
-// json` fixture. The ABI payload is a SINGLE `usdSend` tuple param → wrap rule
-// wraps `args_json = { usdSend: message }`. The manifest emits
-// `token`/`erc20_transfer` (Erc20TransferAction, no live_inputs). The
-// `recipient` is sourced from `$args.usdSend.destination` (a hex address
-// string), while `amount` + the token address are LITERAL placeholders
-// (HyperLiquid `amount` is a decimal string that cannot parse as U256, and the
-// USDC value moves on the HyperLiquid L1, not as an EVM token transfer) — a
-// B.3 placeholder so the payload ROUTES to a valid ActionBody.
+// Route-proof for the on-disk `registryV2/manifests/hyperliquid/rest/
+// usd-send@1.0.0.json` fixture (pinned via `include_str!` so this test tracks
+// the committed manifest). HyperLiquid's REST `HyperliquidTransaction:UsdSend`
+// is an OFF-CHAIN L1 action authorized by an `eth_signTypedData_v4` signature:
+// `amount` is a DECIMAL STRING ("100.0", not U256) and `destination` is an L1
+// identifier string. The 8-domain ActionBody cannot faithfully hold those, so a
+// `token`/`erc20_transfer` mapping (amount→0, token→0x0) would be a MISLABEL
+// with DATA LOSS. The frozen decision routes it to best-effort `ActionBody::
+// Unknown` instead: `target=0x0` sentinel (off-chain sign has NO contract
+// target), `chain=$chain`, `calldata="0x"` (sigs have no calldata), `value="0"`.
+// The WIN is ROUTING (recognized: a HyperLiquid UsdSend signature, NOT
+// no_adapter); the STRUCTURED representation (destination/amount) requires a NEW
+// off-chain-exchange ActionBody variant = DEFERRED schema enhancement (the key
+// b3 limitation, OUT OF SCOPE). This SUPERSEDES the prior erc20_transfer
+// placeholder mapping (and the deleted `hyperliquid/usd-send/sign@1.0.0.json`).
 //
 // The colon-bearing primaryType `HyperliquidTransaction:UsdSend` is the exact
-// EIP-712 discriminator (kept verbatim by the bridge — never lowered).
+// EIP-712 discriminator (kept verbatim by the bridge — never lowered). vc=0x0
+// membership: the typed-data bridge keys on the `chain_to_addresses` chain ids
+// (42161 / 421614), so those entries (value 0x0) are what make the per-chain
+// bridge keys install — mirrored from the canonical fixture.
 
-const HYPERLIQUID_USD_SEND_V3: &str = r#"{
-  "type": "adapter_action",
-  "id": "hyperliquid/usd-send/sign@1.0.0",
-  "publisher": "hyperliquid",
-  "schema_version": "3",
-  "match": {
-    "selector": "0x00000002",
-    "chain_to_addresses": {
-      "42161": ["0x0000000000000000000000000000000000000000"],
-      "421614": ["0x0000000000000000000000000000000000000000"]
-    },
-    "typed_data": {
-      "domain_name": "HyperliquidSignTransaction",
-      "verifying_contract": "0x0000000000000000000000000000000000000000",
-      "primary_type": "HyperliquidTransaction:UsdSend",
-      "types": {
-        "HyperliquidTransaction:UsdSend": [
-          { "name": "hyperliquidChain", "type": "string" },
-          { "name": "destination", "type": "string" },
-          { "name": "amount", "type": "string" },
-          { "name": "time", "type": "uint64" }
-        ]
-      }
-    }
-  },
-  "abi_fragment": {
-    "function_name": "usdSend",
-    "abi": {
-      "name": "usdSend",
-      "type": "function",
-      "inputs": [
-        {
-          "name": "usdSend",
-          "type": "tuple",
-          "components": [
-            { "name": "hyperliquidChain", "type": "string" },
-            { "name": "destination", "type": "address" },
-            { "name": "amount", "type": "string" },
-            { "name": "time", "type": "uint64" }
-          ]
-        }
-      ]
-    }
-  },
-  "emit": {
-    "strategy": "single_emit",
-    "body": {
-      "domain": "token",
-      "token": {
-        "action": "erc20_transfer",
-        "erc20_transfer": {
-          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "0x0000000000000000000000000000000000000000" } },
-          "recipient": "$args.usdSend.destination",
-          "amount": "0"
-        }
-      }
-    }
-  },
-  "requires": {
-    "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
-    "host_capabilities": [],
-    "extension": ">=0.1.0"
-  }
-}"#;
+const HYPERLIQUID_USD_SEND_V3: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/rest/usd-send@1.0.0.json");
 
 #[test]
-fn typed_data_hyperliquid_usd_send_erc20_transfer() {
-    install_ok(HYPERLIQUID_USD_SEND_V3);
+fn typed_data_hyperliquid_usd_send_best_effort_unknown() {
+    let install = install_ok(HYPERLIQUID_USD_SEND_V3);
+    assert_eq!(
+        install["data"]["bundle_id"], "hyperliquid/rest/usd-send@1.0.0",
+        "{install}"
+    );
 
-    // EIP-712 message — the UsdSend content directly. `destination` is a hex
-    // address string (decodes as Address); `amount` is a HyperLiquid decimal
-    // string (deliberately NOT used for the body's U256 amount).
+    // EIP-712 message — the UsdSend content directly. `destination` is an L1
+    // identifier string and `amount` a HyperLiquid decimal string; NEITHER is
+    // surfaced in a structured body (the deferred off-chain-exchange variant
+    // would carry them — that is the data the Unknown bucket cannot represent).
     let message = json!({
         "hyperliquidChain": "Mainnet",
         "destination": "0x00000000000000000000000000000000deadbeef",
@@ -704,34 +655,34 @@ fn typed_data_hyperliquid_usd_send_erc20_transfer() {
     let parsed: Value = serde_json::from_str(&out).unwrap();
     assert_eq!(parsed["ok"], true, "route failed: {parsed}");
     assert_eq!(
-        parsed["data"]["decoder_id"], "hyperliquid/usd-send/sign@1.0.0",
+        parsed["data"]["decoder_id"], "hyperliquid/rest/usd-send@1.0.0",
         "{parsed}"
     );
 
     let actions = parsed["data"]["actions"].as_array().expect("actions array");
     assert_eq!(actions.len(), 1, "expected exactly 1 action: {parsed}");
 
+    // OffchainSig nature + HyperLiquid domain bound to chain 42161.
     let meta = &actions[0]["meta"];
     assert_eq!(meta["nature"]["kind"], "offchain_sig", "{parsed}");
     assert_eq!(
         meta["nature"]["domain"]["name"], "HyperliquidSignTransaction",
         "{parsed}"
     );
+    assert_eq!(meta["nature"]["domain"]["chain_id"], 42161, "{parsed}");
 
+    // Best-effort Unknown body — the frozen sentinel shape (recognized, NOT a
+    // token transfer): target 0x0 sentinel, chain $chain, value "0", calldata
+    // "0x". No `recipient`/`amount`/`token` fields exist on an Unknown body.
     let body = &actions[0]["body"];
-    assert_eq!(body["domain"], "token", "{parsed}");
-    assert_eq!(body["action"], "erc20_transfer", "{parsed}");
-    // THE WRAP PROOF: `$args.usdSend.destination` resolved to the actual
-    // destination ADDRESS (lowercased by alloy), proving the wrap under
-    // `usdSend` happened.
+    assert_eq!(body["domain"], "unknown", "{parsed}");
     assert_eq!(
-        body["recipient"], "0x00000000000000000000000000000000deadbeef",
+        body["target"], "0x0000000000000000000000000000000000000000",
         "{parsed}"
     );
-    // amount is the literal 0 placeholder (round-trips as 0x0 through alloy).
-    assert_eq!(body["amount"], "0x0", "{parsed}");
-    assert_eq!(body["token"]["key"]["standard"], "erc20", "{parsed}");
-    assert_eq!(body["token"]["key"]["chain"], "eip155:42161", "{parsed}");
+    assert_eq!(body["chain"], "eip155:42161", "{parsed}");
+    assert_eq!(body["value"], "0x0", "{parsed}");
+    assert_eq!(body["calldata"], "0x", "{parsed}");
 }
 
 // ---------------------------------------------------------------------------

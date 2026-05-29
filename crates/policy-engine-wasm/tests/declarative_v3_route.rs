@@ -5344,3 +5344,177 @@ fn t23_tagged_dispatch_bad_version_fail_soft() {
     assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
     assert_eq!(body["calldata"], calldata, "{parsed}");
 }
+
+// ===========================================================================
+// b3 — HyperLiquid REST exchange, Mode B "UserSigned" typed-data sigs
+// ===========================================================================
+//
+// HyperLiquid's REST exchange accepts L1 actions authorized by an EIP-712
+// `eth_signTypedData_v4` signature ("Mode B / UserSigned"). 12 primaryTypes,
+// all sharing `domain.name="HyperliquidSignTransaction"`, version="1",
+// `verifyingContract=0x0`, `chainId=signatureChainId` (mainnet 42161 Arbitrum /
+// testnet 421614). The fields are OFF-CHAIN L1 semantics: `amount` is a DECIMAL
+// STRING ("100.0", not U256); `token`/`destination` are L1 STRING identifiers
+// (not EVM address / U256).
+//
+// MAPPING DECISION (frozen): the 8-domain ActionBody cannot faithfully hold a
+// decimal-string amount + L1-string token/destination, so a `token.erc20_transfer`
+// mapping would be a MISLABEL (amount→0, token→0x0 = DATA LOSS). All 12 route to
+// best-effort `ActionBody::Unknown` instead — `target=0x0` sentinel (off-chain
+// sign has no contract target), `chain=$chain`, `calldata="0x"` (sigs have no
+// calldata), `value="0"`. The WIN is ROUTING (the user signing a HyperLiquid
+// op gets "recognized: <op> signature" instead of `no_adapter`); the STRUCTURED
+// representation (destination/amount/token) requires a NEW off-chain-exchange
+// ActionBody variant = DEFERRED schema enhancement (the key b3 limitation, OUT
+// OF SCOPE). These tests pin the on-disk manifests (`include_str!`) and route a
+// representative payload for a few primaryTypes covering the field variety
+// (string destination + decimal amount / validator address + uint64 wei + bool /
+// agent address / spot `token`).
+
+const HL_REST_USD_SEND: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/rest/usd-send@1.0.0.json");
+const HL_REST_SPOT_SEND: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/rest/spot-send@1.0.0.json");
+const HL_REST_TOKEN_DELEGATE: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/rest/token-delegate@1.0.0.json");
+const HL_REST_APPROVE_AGENT: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/rest/approve-agent@1.0.0.json");
+
+const HL_VC_ZERO: &str = "0x0000000000000000000000000000000000000000";
+const HL_DOMAIN: &str = "HyperliquidSignTransaction";
+const HL_SIGNER: &str = "0x000000000000000000000000000000000000aaaa";
+const HL_MAINNET: u64 = 42161; // Arbitrum signatureChainId (mainnet)
+
+/// Build a HyperLiquid Mode B typed-data route input. `verifying_contract` is
+/// always 0x0 and `domain_name` always "HyperliquidSignTransaction" (Mode B
+/// invariants); only `chain_id` / `primary_type` / `message` vary.
+fn hl_typed_data_input(chain_id: u64, primary_type: &str, message: Value) -> String {
+    json!({
+        "chain_id": chain_id,
+        "verifying_contract": HL_VC_ZERO,
+        "primary_type": primary_type,
+        "domain_name": HL_DOMAIN,
+        "message": message,
+        "submitter": HL_SIGNER,
+        "submitted_at": 1_700_000_000_u64
+    })
+    .to_string()
+}
+
+/// Common assertions every Mode B sig must satisfy: recognized (ok:true, the
+/// expected decoder_id), routed to the best-effort Unknown body with the frozen
+/// sentinel shape, and carried under an OffchainSig meta nature whose domain is
+/// the HyperLiquid sign-transaction domain bound to the routed chain.
+fn assert_hl_best_effort_unknown(parsed: &Value, decoder_id: &str, chain_id: u64) {
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(parsed["data"]["decoder_id"], decoder_id, "{parsed}");
+
+    let actions = parsed["data"]["actions"].as_array().expect("actions array");
+    assert_eq!(actions.len(), 1, "expected exactly 1 action: {parsed}");
+
+    // OffchainSig nature + HyperLiquid domain bound to the routed chain.
+    let meta = &actions[0]["meta"];
+    assert_eq!(meta["nature"]["kind"], "offchain_sig", "{parsed}");
+    assert_eq!(meta["nature"]["domain"]["name"], HL_DOMAIN, "{parsed}");
+    assert_eq!(meta["nature"]["domain"]["chain_id"], chain_id, "{parsed}");
+
+    // Best-effort Unknown body — the frozen sentinel shape.
+    let body = &actions[0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_VC_ZERO, "{parsed}");
+    assert_eq!(body["chain"], format!("eip155:{chain_id}"), "{parsed}");
+    // value "0" → U256 ZERO → "0x0"; calldata literal "0x" (sigs have none).
+    assert_eq!(body["value"], "0x0", "{parsed}");
+    assert_eq!(body["calldata"], "0x", "{parsed}");
+}
+
+// b3.usdSend — string destination + decimal amount → best-effort Unknown.
+#[test]
+fn b3_hl_usd_send_routes_to_unknown() {
+    let install = install_ok(HL_REST_USD_SEND);
+    assert_eq!(install["data"]["bundle_id"], "hyperliquid/rest/usd-send@1.0.0");
+
+    // The decimal `amount` ("100.0") + L1 `destination` are deliberately NOT
+    // mapped into a structured body — they are the data the Unknown bucket
+    // cannot carry (the deferred off-chain-exchange variant would).
+    let message = json!({
+        "hyperliquidChain": "Mainnet",
+        "destination": "0x00000000000000000000000000000000deadbeef",
+        "amount": "100.0",
+        "time": 1_700_000_000_u64
+    });
+    let input = hl_typed_data_input(HL_MAINNET, "HyperliquidTransaction:UsdSend", message);
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/usd-send@1.0.0", HL_MAINNET);
+}
+
+// b3.tokenDelegate — validator:address + wei:uint64 + isUndelegate:bool mix.
+#[test]
+fn b3_hl_token_delegate_routes_to_unknown() {
+    let install = install_ok(HL_REST_TOKEN_DELEGATE);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/rest/token-delegate@1.0.0"
+    );
+
+    let message = json!({
+        "hyperliquidChain": "Mainnet",
+        "validator": "0x00000000000000000000000000000000cafef00d",
+        "wei": 5_000_000_000_u64,
+        "isUndelegate": false,
+        "nonce": 1_700_000_000_u64
+    });
+    let input = hl_typed_data_input(HL_MAINNET, "HyperliquidTransaction:TokenDelegate", message);
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/token-delegate@1.0.0", HL_MAINNET);
+}
+
+// b3.approveAgent — agentAddress:address. D9: SDK hard-codes the TESTNET
+// signatureChainId 0x66eee (421614) for ApproveAgent; mainnet 42161 is assumed
+// valid and listed too — this test routes on 42161 to prove the mainnet entry
+// is installed and resolves.
+#[test]
+fn b3_hl_approve_agent_routes_to_unknown() {
+    let install = install_ok(HL_REST_APPROVE_AGENT);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/rest/approve-agent@1.0.0"
+    );
+
+    let message = json!({
+        "hyperliquidChain": "Mainnet",
+        "agentAddress": "0x00000000000000000000000000000000a9e47a9e",
+        "agentName": "my-api-agent",
+        "nonce": 1_700_000_000_u64
+    });
+    let input = hl_typed_data_input(HL_MAINNET, "HyperliquidTransaction:ApproveAgent", message);
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/approve-agent@1.0.0", HL_MAINNET);
+}
+
+// b3.spotSend — adds an L1 `token` string. Also exercises the TESTNET chain
+// (421614) to prove the second `chain_to_addresses` entry installs + routes.
+#[test]
+fn b3_hl_spot_send_routes_to_unknown_testnet() {
+    let install = install_ok(HL_REST_SPOT_SEND);
+    assert_eq!(install["data"]["bundle_id"], "hyperliquid/rest/spot-send@1.0.0");
+
+    let message = json!({
+        "hyperliquidChain": "Testnet",
+        "destination": "0x00000000000000000000000000000000deadbeef",
+        "token": "PURR:0xc1fb593aeffbeb02f85e0b7c0f6f3b8a7e7f7e7e",
+        "amount": "42.5",
+        "time": 1_700_000_000_u64
+    });
+    let input = hl_typed_data_input(421_614, "HyperliquidTransaction:SpotSend", message);
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/spot-send@1.0.0", 421_614);
+}

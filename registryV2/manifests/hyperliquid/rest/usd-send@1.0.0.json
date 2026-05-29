@@ -1,11 +1,11 @@
 {
   "type": "adapter_action",
-  "id": "hyperliquid/usd-send/sign@1.0.0",
+  "id": "hyperliquid/rest/usd-send@1.0.0",
   "publisher": "hyperliquid",
   "schema_version": "3",
-  "note": "Phase A.1 routing-mechanism fixture. The HyperLiquid UsdSend -> erc20_transfer mapping is a B.3 placeholder: HyperLiquid signs an L1 action (HyperliquidTransaction:UsdSend) whose `amount` is a DECIMAL STRING (e.g. '100.0') that cannot parse as a U256, and whose value moves USDC on the HyperLiquid L1 (no EVM token-transfer calldata). We map `recipient` from the message `destination` and pin `amount` to a literal 0 + a zero token address purely so the payload ROUTES to a valid Erc20TransferAction body and exercises the by-typed-data index + WASM typed-data routing. Real HyperLiquid action semantics (decimal amount parse, USDC L1 identity, signatureChainId binding) are a B.3 concern. selector/verifying_contract are 0x000..00 placeholders (HyperLiquid uses chain-id-scoped domains, not a real verifying contract).",
+  "_note_mapping": "HyperLiquid Mode B (UserSigned) REST exchange action `HyperliquidTransaction:UsdSend`, an OFF-CHAIN L1 action authorized by an eth_signTypedData_v4 signature (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0, chainId=signatureChainId). Its fields are L1 semantics — `amount` is a DECIMAL STRING ('100.0', not U256) and `destination` is an L1 identifier string — which the 8-domain ActionBody schema cannot faithfully represent. A token.erc20_transfer mapping would be a MISLABEL (amount->0, token->0x0 = data loss), so this routes to best-effort `Unknown`: the WIN is ROUTING (the user gets 'recognized: HyperLiquid UsdSend signature' instead of no_adapter); the STRUCTURED representation (destination/amount) requires a new off-chain-exchange ActionBody variant = deferred schema enhancement (B.3 key limitation, OUT OF SCOPE). target=0x0 sentinel (off-chain sign has no contract target); calldata='0x' (sigs have no calldata); value='0'.",
   "match": {
-    "selector": "0x00000002",
+    "selector": "0x00000001",
     "chain_to_addresses": {
       "42161": ["0x0000000000000000000000000000000000000000"],
       "421614": ["0x0000000000000000000000000000000000000000"]
@@ -35,7 +35,7 @@
           "type": "tuple",
           "components": [
             { "name": "hyperliquidChain", "type": "string" },
-            { "name": "destination", "type": "address" },
+            { "name": "destination", "type": "string" },
             { "name": "amount", "type": "string" },
             { "name": "time", "type": "uint64" }
           ]
@@ -46,20 +46,18 @@
   "emit": {
     "strategy": "single_emit",
     "body": {
-      "domain": "token",
-      "token": {
-        "action": "erc20_transfer",
-        "erc20_transfer": {
-          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "0x0000000000000000000000000000000000000000" } },
-          "recipient": "$args.usdSend.destination",
-          "amount": "0"
-        }
+      "domain": "unknown",
+      "unknown": {
+        "target": "0x0000000000000000000000000000000000000000",
+        "chain": "$chain",
+        "calldata": "0x",
+        "value": "0"
       }
     }
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

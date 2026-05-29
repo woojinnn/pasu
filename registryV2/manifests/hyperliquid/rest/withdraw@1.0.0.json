@@ -1,0 +1,64 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/withdraw@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:Withdraw` — off-chain L1 withdrawal (USDC to an L1 `destination`) signed via eth_signTypedData_v4. `amount` decimal-string + L1 `destination` cannot map to the 8-domain ActionBody without data loss → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+  "match": {
+    "selector": "0x00000003",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:Withdraw",
+      "types": {
+        "HyperliquidTransaction:Withdraw": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "destination", "type": "string" },
+          { "name": "amount", "type": "string" },
+          { "name": "time", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "withdraw",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "destination", "type": "string" },
+            { "name": "amount", "type": "string" },
+            { "name": "time", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "0x0000000000000000000000000000000000000000",
+        "chain": "$chain",
+        "calldata": "0x",
+        "value": "0"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
