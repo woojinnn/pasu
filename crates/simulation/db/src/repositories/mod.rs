@@ -12,8 +12,11 @@
 //! })?;
 //! ```
 
+pub mod approvals;
 pub mod deltas;
 pub mod holdings;
+pub mod pending_txs;
+pub mod positions;
 pub mod profile;
 pub mod tokens;
 pub mod wallets;

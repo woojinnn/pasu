@@ -31,7 +31,25 @@ const MIGRATION_001: Migration = Migration {
     sql: include_str!("migrations/001_initial.sql"),
 };
 
-const ALL_MIGRATIONS: &[Migration] = &[MIGRATION_001];
+const MIGRATION_002: Migration = Migration {
+    version: 2,
+    description: "approvals — erc20 / set_for_all / permit2",
+    sql: include_str!("migrations/002_approvals.sql"),
+};
+
+const MIGRATION_003: Migration = Migration {
+    version: 3,
+    description: "positions — lending / perp / airdrop / launchpad / vesting (generic)",
+    sql: include_str!("migrations/003_positions.sql"),
+};
+
+const MIGRATION_004: Migration = Migration {
+    version: 4,
+    description: "pending_txs — offchain signature ledger (UniswapX intent / Permit2 / Safe pre-sign)",
+    sql: include_str!("migrations/004_pending_txs.sql"),
+};
+
+const ALL_MIGRATIONS: &[Migration] = &[MIGRATION_001, MIGRATION_002, MIGRATION_003, MIGRATION_004];
 
 /// 모든 migration 을 멱등하게 적용. 이미 적용된 버전은 skip.
 pub fn run(pool: &Pool) -> DbResult<()> {
@@ -113,7 +131,8 @@ mod tests {
         let pool = Pool::open_in_memory();
         assert_eq!(current_version(&pool).unwrap(), None);
         run(&pool).unwrap();
-        assert_eq!(current_version(&pool).unwrap(), Some(1));
+        // Phase 2: 002 까지 적용.
+        assert_eq!(current_version(&pool).unwrap(), Some(4));
     }
 
     #[test]
@@ -122,14 +141,14 @@ mod tests {
         run(&pool).unwrap();
         run(&pool).unwrap(); // 두 번째 호출도 OK
         run(&pool).unwrap(); // 세 번째도
-        assert_eq!(current_version(&pool).unwrap(), Some(1));
+        assert_eq!(current_version(&pool).unwrap(), Some(4));
 
-        // _schema_migrations 에는 version=1 row 1개만.
+        // _schema_migrations 에는 적용된 버전 수 만큼만 row.
         pool.with_conn(|c| {
             let n: i64 = c
                 .query_row("SELECT COUNT(*) FROM _schema_migrations", [], |r| r.get(0))
                 .unwrap();
-            assert_eq!(n, 1);
+            assert_eq!(n, 4);
             Ok(())
         })
         .unwrap();
