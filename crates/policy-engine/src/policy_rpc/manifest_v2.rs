@@ -136,8 +136,10 @@ pub struct PolicyRpcCallSpec {
 /// The custom Cedar context fields this policy declares.
 ///
 /// A map of `field_name → Cedar type spelling` (e.g.
-/// `"totalInputUsd" → "UsdValuation"`). Injected into the action's
-/// `<Action>CustomContext` stub during per-policy schema synthesis.
+/// `"totalInputUsd" → "decimal"`). Injected into the action's
+/// `<Action>CustomContext` stub during per-policy schema synthesis. Use only
+/// types the synthesized schema defines — Cedar primitives / `decimal` /
+/// `Set<...>` — not the removed legacy records (`UsdValuation`/`WindowStats`).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct CustomContext {
     /// Declared field → Cedar type spelling.
@@ -208,21 +210,19 @@ mod tests {
                 "id": "total-input-usd",
                 "method": "oracle.usd_value",
                 "params": {
-                    "chain_id": "$.root.chain_id",
-                    "asset": "$.action.inputToken.asset",
-                    "amount": "$.action.inputToken.amount.value"
+                    "chain_id": "$.root.chain_id"
                 },
                 "outputs": [{
                     "kind": "context",
                     "field": "totalInputUsd",
-                    "type": "UsdValuation",
-                    "from": "$.result",
+                    "type": "Decimal",
+                    "from": "$.result.usd",
                     "required": false
                 }],
                 "optional": true
             }],
             "custom_context": {
-                "fields": { "totalInputUsd": "UsdValuation" }
+                "fields": { "totalInputUsd": "decimal" }
             }
         })
     }
@@ -240,7 +240,7 @@ mod tests {
         assert_eq!(manifest.policy_rpc[0].method, "oracle.usd_value");
         assert_eq!(
             manifest.custom_context.fields.get("totalInputUsd").map(String::as_str),
-            Some("UsdValuation")
+            Some("decimal")
         );
         manifest.validate().expect("valid manifest");
 
