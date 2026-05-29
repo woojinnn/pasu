@@ -52,6 +52,22 @@ struct BridgeKey {
     selector: String,
 }
 
+/// Typed-data bridge key: `(chain_id, verifying_contract_lowercase, primary_type)`.
+///
+/// Parallel to [`BridgeKey`] but for the off-chain EIP-712 path. `verifying_contract`
+/// is normalised to lowercase hex (no checksum) so the lookup is case-insensitive
+/// — manifests may carry checksummed addresses while the orchestrator side sends
+/// whatever the wallet surfaced. `primary_type` is the EIP-712 `primaryType` string
+/// (e.g. `"PermitSingle"`, `"PermitWitnessTransferFrom"`,
+/// `"HyperliquidTransaction:UsdSend"`) — kept verbatim (NOT lowered) since it is the
+/// exact discriminator the wallet's `eth_signTypedData` payload carries.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct TypedDataBridgeKey {
+    chain_id: u64,
+    verifying_contract: String,
+    primary_type: String,
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // M2 — v3 declarative state
 // ───────────────────────────────────────────────────────────────────────────
@@ -82,6 +98,13 @@ struct DeclarativeV3State {
     /// (`emit.body`, `emit.live_inputs`, `emit.per_opcode_body`) are not
     /// modelled in `EmitRule` — the action_builder consumes them as-is.
     bundles: HashMap<String, serde_json::Value>,
+    /// `(chain_id, verifying_contract_lower, primary_type)` → `bundle_id`.
+    /// Parallel off-chain EIP-712 routing table. Populated by
+    /// [`declarative_install_v3_json`] only for manifests carrying a
+    /// `match.typed_data` block (Phase A.1) — calldata-only manifests leave it
+    /// empty. [`declarative_route_typed_data_v3_json`] resolves a wallet
+    /// `eth_signTypedData` payload through it.
+    typed_data_bridge: HashMap<TypedDataBridgeKey, String>,
 }
 
 thread_local! {
@@ -154,6 +177,27 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
 
         let selector = bundle_match.selector.to_ascii_lowercase();
 
+        // Phase A.1 — off-chain EIP-712 typed-data bridge. Manifests carrying
+        // a `match.typed_data` block additionally register a
+        // `(chain_id, verifying_contract, primary_type)` → bundle_id mapping so
+        // [`declarative_route_typed_data_v3_json`] can route an off-chain
+        // signature payload to the same emit-rule the calldata path uses.
+        // calldata-only manifests omit `typed_data` and skip this entirely.
+        let typed_data_route: Option<(String, String)> = match_value
+            .get("typed_data")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|td| {
+                let vc = td
+                    .get("verifying_contract")
+                    .and_then(serde_json::Value::as_str)?
+                    .to_ascii_lowercase();
+                let pt = td
+                    .get("primary_type")
+                    .and_then(serde_json::Value::as_str)?
+                    .to_owned();
+                Some((vc, pt))
+            });
+
         DECLARATIVE_V3_STATE.with(|state| {
             let mut state = state.borrow_mut();
             for (chain_id, to) in bundle_match.entries() {
@@ -163,6 +207,16 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
                     selector: selector.clone(),
                 };
                 state.bridge.insert(key, bundle_id.clone());
+            }
+            if let Some((ref vc, ref pt)) = typed_data_route {
+                for (chain_id, _to) in bundle_match.entries() {
+                    let key = TypedDataBridgeKey {
+                        chain_id,
+                        verifying_contract: vc.clone(),
+                        primary_type: pt.clone(),
+                    };
+                    state.typed_data_bridge.insert(key, bundle_id.clone());
+                }
             }
             state.bundles.insert(bundle_id.clone(), bundle_value);
         });
