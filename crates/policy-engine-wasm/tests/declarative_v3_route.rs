@@ -1298,3 +1298,289 @@ fn t10_aave_supply() {
         "0x0"
     );
 }
+
+// ===========================================================================
+// B.2.2 — Aave V3 permit-variant Pool manifests (supplyWithPermit/repayWithPermit)
+// ===========================================================================
+//
+// Two `Pool` calls that bundle an EIP-2612 permit with the lending action:
+//   * t11 supplyWithPermit (0x02c205f0) → LendingAction::Supply
+//   * t12 repayWithPermit   (0xee3e210b) → LendingAction::Repay
+//
+// Each inline manifest is IDENTICAL in `abi_fragment` + `emit.body` to the
+// committed fixture under `registryV2/manifests/aave/v3/` (selectors are
+// `cast sig`-verified; the venue `chain_to_addresses` mirror supply/repay —
+// mainnet Pool here, the on-disk fixtures carry all 4 chains). The four
+// trailing permit params (deadline / permitV / permitR / permitS) are bundled
+// approval authorization, decoded by `abi_fragment` but UNREFERENCED in
+// `emit.body` — the lending intent is exactly the SupplyAction / RepayAction
+// shape of supply@1.0.0 / repay@1.0.0. `repayWithPermit` binds a literal
+// `rate_mode: "variable"` (mirroring swapBorrowRateMode's `new_mode`) because
+// the on-chain `interestRateMode` uint does not deserialize into the `RateMode`
+// enum and repay@1.0.0's `$derived.aave_v3_rate_mode` has no registered
+// fallback type. Both route FULLY GREEN (`ok:true`) on the B.2-infra
+// foundation (lending `live_input_default` skeletons + uint≤64 coercion).
+
+// ---------------------------------------------------------------------------
+// t11 — Aave V3 supplyWithPermit → LendingAction::Supply
+// ---------------------------------------------------------------------------
+
+const T11_AAVE_SUPPLY_WITH_PERMIT_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "aave/v3/supplyWithPermit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x02c205f0",
+    "chain_to_addresses": { "1": ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"] }
+  },
+  "abi_fragment": {
+    "function_name": "supplyWithPermit",
+    "abi": {
+      "name": "supplyWithPermit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "asset",        "type": "address" },
+        { "name": "amount",       "type": "uint256" },
+        { "name": "onBehalfOf",   "type": "address" },
+        { "name": "referralCode", "type": "uint16"  },
+        { "name": "deadline",     "type": "uint256" },
+        { "name": "permitV",      "type": "uint8"   },
+        { "name": "permitR",      "type": "bytes32" },
+        { "name": "permitS",      "type": "bytes32" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "supply",
+        "supply": {
+          "venue": { "name": "aave_v3", "chain": "$chain", "pool": "$to", "market_id": null },
+          "asset":        { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } },
+          "amount":       "$args.amount",
+          "on_behalf_of": "$args.onBehalfOf"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state":      { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getReserveData(address)", "decoder_id": "aave_v3_reserve_data" }, "ttl_s": 30 },
+      "supply_apy":         { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_supply_apy" }, "ttl_s": 30 },
+      "a_token_price_usd":  { "source": { "kind": "oracle_feed", "provider": "chainlink", "feed_id": "AAVE_V3_RESERVE_PRICE" }, "ttl_s": 60 },
+      "eligible_as_collat": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getConfiguration(address)", "decoder_id": "aave_v3_reserve_config" }, "ttl_s": 60 },
+      "user_state_before":  { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getUserAccountData(address)", "decoder_id": "aave_v3_user_account_data" }, "ttl_s": 12 }
+    }
+  }
+}"#;
+
+#[test]
+fn t11_aave_supply_with_permit() {
+    let install = install_ok(T11_AAVE_SUPPLY_WITH_PERMIT_V3);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "aave/v3/supplyWithPermit@1.0.0"
+    );
+
+    // 8 args: asset, amount, onBehalfOf, referralCode, deadline, permitV,
+    // permitR, permitS. Only asset/amount/onBehalfOf are referenced by the
+    // body; the trailing permit params are decoded but ignored.
+    let calldata = encode_calldata(
+        "0x02c205f0",
+        &[
+            // asset (load-bearing) — USDC
+            DynSolValue::Address(
+                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // amount (load-bearing)
+            DynSolValue::Uint(AlloyU256::from(2_500_000u64), 256),
+            // onBehalfOf
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000cccc"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // referralCode (uint16)
+            DynSolValue::Uint(AlloyU256::from(0u64), 16),
+            // deadline (permit param — unreferenced)
+            DynSolValue::Uint(AlloyU256::from(1_900_000_000u64), 256),
+            // permitV (permit param — unreferenced)
+            DynSolValue::Uint(AlloyU256::from(27u64), 8),
+            // permitR (permit param — unreferenced)
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x11), 32),
+            // permitS (permit param — unreferenced)
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x22), 32),
+        ],
+    );
+    let input = route_input(
+        1,
+        "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+        "0x02c205f0",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    // Bundled-permit supply routes fully green — same SupplyAction body as
+    // supply@1.0.0 (t10), with the 4 permit args decoded but unreferenced.
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "supply");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    // load-bearing $args fields resolved from calldata.
+    assert_eq!(
+        body["asset"]["key"]["address"],
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    );
+    // amount: U256 round-trips as a hex string through alloy serde.
+    assert_eq!(body["amount"], "0x2625a0"); // 2_500_000
+    assert_eq!(
+        body["on_behalf_of"],
+        "0x000000000000000000000000000000000000cccc"
+    );
+    // live_input defaults wrapped + deserialized (same 5 as supply@1.0.0).
+    assert_eq!(
+        body["live_inputs"]["reserve_state"]["value"]["total_supply"],
+        "0x0"
+    );
+    assert_eq!(body["live_inputs"]["eligible_as_collat"]["value"], false);
+}
+
+// ---------------------------------------------------------------------------
+// t12 — Aave V3 repayWithPermit → LendingAction::Repay
+// ---------------------------------------------------------------------------
+
+const T12_AAVE_REPAY_WITH_PERMIT_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "aave/v3/repayWithPermit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xee3e210b",
+    "chain_to_addresses": { "1": ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"] }
+  },
+  "abi_fragment": {
+    "function_name": "repayWithPermit",
+    "abi": {
+      "name": "repayWithPermit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "asset",            "type": "address" },
+        { "name": "amount",           "type": "uint256" },
+        { "name": "interestRateMode", "type": "uint256" },
+        { "name": "onBehalfOf",       "type": "address" },
+        { "name": "deadline",         "type": "uint256" },
+        { "name": "permitV",          "type": "uint8"   },
+        { "name": "permitR",          "type": "bytes32" },
+        { "name": "permitS",          "type": "bytes32" }
+      ],
+      "outputs": [ { "name": "", "type": "uint256" } ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "repay",
+        "repay": {
+          "venue": { "name": "aave_v3", "chain": "$chain", "pool": "$to", "market_id": null },
+          "asset":        { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } },
+          "amount":       "$args.amount",
+          "rate_mode":    "variable",
+          "on_behalf_of": "$args.onBehalfOf",
+          "use_a_tokens": false
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state":     { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getReserveData(address)", "decoder_id": "aave_v3_reserve_data" }, "ttl_s": 30 },
+      "current_debt":      { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_current_debt" }, "ttl_s": 12 },
+      "user_state_before": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getUserAccountData(address)", "decoder_id": "aave_v3_user_account_data" }, "ttl_s": 12 }
+    }
+  }
+}"#;
+
+#[test]
+fn t12_aave_repay_with_permit() {
+    let install = install_ok(T12_AAVE_REPAY_WITH_PERMIT_V3);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "aave/v3/repayWithPermit@1.0.0"
+    );
+
+    // 8 args: asset, amount, interestRateMode, onBehalfOf, deadline, permitV,
+    // permitR, permitS. The body references asset/amount/onBehalfOf; the
+    // `interestRateMode` arg is decoded but the body binds a literal
+    // `rate_mode: "variable"` (the on-chain uint can't deserialize into the
+    // RateMode enum); the 4 permit params are decoded but ignored.
+    let calldata = encode_calldata(
+        "0xee3e210b",
+        &[
+            // asset (load-bearing) — USDC
+            DynSolValue::Address(
+                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // amount (load-bearing)
+            DynSolValue::Uint(AlloyU256::from(750_000u64), 256),
+            // interestRateMode (2 = variable; decoded but not bound via $args)
+            DynSolValue::Uint(AlloyU256::from(2u64), 256),
+            // onBehalfOf
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000cccc"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // deadline (permit param — unreferenced)
+            DynSolValue::Uint(AlloyU256::from(1_900_000_000u64), 256),
+            // permitV (permit param — unreferenced)
+            DynSolValue::Uint(AlloyU256::from(28u64), 8),
+            // permitR (permit param — unreferenced)
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x33), 32),
+            // permitS (permit param — unreferenced)
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x44), 32),
+        ],
+    );
+    let input = route_input(
+        1,
+        "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+        "0xee3e210b",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    // Bundled-permit repay routes fully green — same RepayAction body as
+    // repay@1.0.0 but with the route-green literal `rate_mode: "variable"`.
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "repay");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    // load-bearing $args fields resolved from calldata.
+    assert_eq!(
+        body["asset"]["key"]["address"],
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    );
+    // amount: U256 round-trips as a hex string through alloy serde.
+    assert_eq!(body["amount"], "0xb71b0"); // 750_000
+    assert_eq!(
+        body["on_behalf_of"],
+        "0x000000000000000000000000000000000000cccc"
+    );
+    assert_eq!(body["rate_mode"], "variable");
+    assert_eq!(body["use_a_tokens"], false);
+    // live_input defaults wrapped + deserialized (same 3 as repay@1.0.0).
+    assert_eq!(
+        body["live_inputs"]["reserve_state"]["value"]["total_borrow"],
+        "0x0"
+    );
+    assert_eq!(body["live_inputs"]["current_debt"]["value"], "0x0");
+}

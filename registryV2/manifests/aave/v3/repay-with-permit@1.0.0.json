@@ -1,0 +1,89 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/repayWithPermit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave V3 Pool.repayWithPermit — repay + bundled EIP-2612 permit (the permit grants the Pool ERC20 allowance in the same call). emit.body is the SAME RepayAction shape as aave/v3/repay@1.0.0: asset/amount/onBehalfOf carry the lending intent. The interestRateMode arg is decoded by abi_fragment but, exactly as in repay@1.0.0, it is NOT bound into the RepayAction.rate_mode field via $args — the on-chain uint (1=stable/2=variable) does not deserialize into the RateMode enum (variable/stable/fixed), and repay@1.0.0 uses a $derived placeholder that has no registered fallback type. The route-green literal `variable` mirrors the swapBorrowRateMode manifest's `new_mode` and the dominant Aave V3 debt mode; a future enrichment can derive the actual mode from interestRateMode. The four trailing permit args (deadline/permitV/permitR/permitS) are bundled approval authorization, NOT part of the repay intent, so they are decoded but left UNREFERENCED in emit.body. The wallet's standalone EIP-2612 sign is handled by A.1's standard/erc20/permit route.",
+  "match": {
+    "selector": "0xee3e210b",
+    "chain_to_addresses": {
+      "1":     ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"],
+      "10":    ["0x794a61358d6845594f94dc1db02a252b5b4814ad"],
+      "8453":  ["0xa238dd80c259a72e81d7e4664a9801593f98d1c5"],
+      "42161": ["0x794a61358d6845594f94dc1db02a252b5b4814ad"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "repayWithPermit",
+    "abi": {
+      "name": "repayWithPermit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "asset",            "type": "address" },
+        { "name": "amount",           "type": "uint256" },
+        { "name": "interestRateMode", "type": "uint256" },
+        { "name": "onBehalfOf",       "type": "address" },
+        { "name": "deadline",         "type": "uint256" },
+        { "name": "permitV",          "type": "uint8"   },
+        { "name": "permitR",          "type": "bytes32" },
+        { "name": "permitS",          "type": "bytes32" }
+      ],
+      "outputs": [
+        { "name": "", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "repay",
+        "repay": {
+          "venue": {
+            "name":      "aave_v3",
+            "chain":     "$chain",
+            "pool":      "$to",
+            "market_id": null
+          },
+          "asset":        { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } },
+          "amount":       "$args.amount",
+          "rate_mode":    "variable",
+          "on_behalf_of": "$args.onBehalfOf",
+          "use_a_tokens": false
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "getReserveData(address)",
+          "decoder_id": "aave_v3_reserve_data"
+        },
+        "ttl_s": 30
+      },
+      "current_debt": {
+        "source": {
+          "kind":    "derived_from",
+          "inputs":  [],
+          "calc_id": "aave_v3_current_debt"
+        },
+        "ttl_s": 12
+      },
+      "user_state_before": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "getUserAccountData(address)",
+          "decoder_id": "aave_v3_user_account_data"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}
