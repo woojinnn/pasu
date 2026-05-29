@@ -23,6 +23,21 @@
 //! [`system_fail_verdict`](policy_engine::policy_rpc::system_fail_verdict)),
 //! mirroring v1's `d9_branch` in `evaluate_policy_rpc_json`.
 //!
+//! # Boundary invariant — the planned set is derived from the bundles
+//!
+//! v1 tied PLAN + materialize + the installed engine to ONE manifest set via
+//! `manifest_set_hash` / `schema_hash`, so a required RPC call could never be
+//! evaluated by a policy that the plan phase did not enrich. v2 has no
+//! installed engine to hash against — the policies arrive inline as `bundles`.
+//! The equivalent invariant is therefore restored structurally:
+//! [`evaluate_action_v2_json`] PLANS and MATERIALIZES from the **bundles' own
+//! manifests**, never from a host-supplied side list. Every bundle that is
+//! evaluated thus has its required (`optional == false`) calls in the planned
+//! set; a missing result for any of them surfaces as
+//! [`PolicyRpcError::SystemFail`] → a fail-closed `__system__` verdict. The
+//! boundary cannot fail-open by the host passing inconsistent manifest lists,
+//! because there is only one list.
+//!
 //! [`ActionBody`]: simulation_reducer::action::ActionBody
 
 use std::collections::BTreeMap;
@@ -77,15 +92,19 @@ struct BundleInput {
 
 /// Input to [`evaluate_action_v2_json`].
 ///
-/// Everything [`PlanActionInput`] carries (the action must be re-lowered to
-/// recover the principal/action/resource uids and base context), plus the
-/// installed `bundles` and the host's raw `results` keyed by
+/// Everything [`PlanActionInput`] carries minus `manifests` (the action must be
+/// re-lowered to recover the principal/action/resource uids and base context),
+/// plus the installed `bundles` and the host's raw `results` keyed by
 /// [`PlannedCallV2::call_id`].
+///
+/// There is deliberately **no** standalone `manifests` field: the planned set
+/// that drives materialization (and therefore the `SystemFail` gate) is derived
+/// from `bundles[].manifest`, the same manifests that produce the evaluated
+/// schemas. See the module-level boundary invariant — a separate `manifests`
+/// list would let the host diverge the gate from the evaluated policies and
+/// silently fail-open a required RPC call.
 #[derive(Debug, Deserialize)]
 struct EvaluateActionInput {
-    /// The manifests used to PLAN the calls (so `materialize_v2` sees the same
-    /// planned set the plan phase produced).
-    manifests: Vec<ManifestV2>,
     action: ActionBody,
     meta: ActionMeta,
     tx: TxInput,
@@ -130,6 +149,14 @@ struct EvaluateActionOutput {
 /// [`plan_policy_rpc_v2`], and returns the planned calls inside the standard
 /// `{ ok, data }` envelope. The host dispatches each call and returns the raw
 /// results keyed by `call_id` to [`evaluate_action_v2_json`].
+///
+/// The host **should** plan over the same manifest set it later submits as
+/// `bundles[].manifest` to [`evaluate_action_v2_json`], so every required call
+/// is dispatched. This is advisory only: the plan phase does not gate the
+/// verdict. [`evaluate_action_v2_json`] re-plans from the bundles themselves and
+/// fail-closes (`__system__`) on any required call whose result is missing, so a
+/// plan/evaluate manifest mismatch can never silently fail-open — it can only
+/// surface as a fail-closed verdict.
 #[wasm_bindgen]
 #[must_use]
 pub fn plan_action_rpc_v2_json(input_json: String) -> String {
@@ -154,13 +181,14 @@ pub fn plan_action_rpc_v2_json(input_json: String) -> String {
 /// evaluate every matching bundle and aggregate the verdict.
 ///
 /// Parses [`EvaluateActionInput`], re-lowers the action (to recover the
-/// principal/action/resource uids + base context), re-plans the calls so
-/// [`materialize_v2`](policy_engine::policy_rpc::materialize_v2) sees the same
-/// planned set, writes the host `results` into `context.custom.*`, then — for
-/// each bundle whose [`Trigger`](policy_engine::policy_rpc::Trigger) matches the
-/// action — composes its per-policy schema, builds a single per-policy engine,
-/// and evaluates. The per-bundle verdicts are aggregated by deny-overrides
-/// ([`Verdict::aggregate`]).
+/// principal/action/resource uids + base context), plans the calls **from the
+/// bundles' own manifests** so the planned set materialized into the context is
+/// exactly the set the evaluated policies depend on (see the module-level
+/// boundary invariant), writes the host `results` into `context.custom.*`,
+/// then — for each bundle whose [`Trigger`](policy_engine::policy_rpc::Trigger)
+/// matches the action — composes its per-policy schema, builds a single
+/// per-policy engine, and evaluates. The per-bundle verdicts are aggregated by
+/// deny-overrides ([`Verdict::aggregate`]).
 ///
 /// A [`PolicyRpcError::SystemFail`] during materialization is translated here
 /// into the synthetic `__system__` `Verdict::Fail` (mirroring v1's `d9_branch`);
@@ -175,7 +203,15 @@ pub fn evaluate_action_v2_json(input_json: String) -> String {
             .map_err(|error| invalid_input(&error.to_string()))?;
 
         let lowered = lower(&input.action, &input.meta, &input.tx)?;
-        let planned = plan(&input.manifests, &input.action, &lowered, &input.tx)?;
+
+        // Boundary invariant: PLAN over the bundles' own manifests, never a
+        // host-supplied side list. This ties the `SystemFail` gate (driven by
+        // the planned set below) to the exact manifests whose schemas/policies
+        // are evaluated, so a bundle requiring an un-planned RPC call cannot
+        // silently fail-open (v2 analogue of v1's manifest_set_hash tie).
+        let manifests: Vec<ManifestV2> =
+            input.bundles.iter().map(|b| b.manifest.clone()).collect();
+        let planned = plan(&manifests, &input.action, &lowered, &input.tx)?;
 
         // Replay the host's raw results into context.custom.* . A required
         // call that is missing / fails projection surfaces as `SystemFail`,
@@ -347,7 +383,9 @@ fn engine_error_verdict(error: EngineErrorDto) -> VerdictDto {
             policy_id,
             reason: Some(reason),
             severity: "deny".to_owned(),
-            origin: "action".to_owned(),
+            // Match v1's `exports::engine_error_verdict` contract: the synthetic
+            // `__engine::*` Fail carries origin "engine_error", not "action".
+            origin: "engine_error".to_owned(),
         }],
     }
 }
@@ -558,10 +596,11 @@ mod tests {
         assert_eq!(call_id, "large-swap-usd-warning::total-input-usd");
 
         // 2. EVALUATE — the host returns a $3500 oracle valuation, which the
-        //    warn policy (threshold 1000) trips.
+        //    warn policy (threshold 1000) trips. The evaluate phase plans from
+        //    the bundle's own manifest, so the planned call_id matches the one
+        //    the plan phase produced and the host keyed its result under.
         let eval_out = evaluate_action_v2_json(
             json!({
-                "manifests": [swap_manifest()],
                 "action": body,
                 "meta": meta,
                 "tx": tx(),
@@ -585,7 +624,6 @@ mod tests {
         let (body, meta) = swap_sample();
         let eval_out = evaluate_action_v2_json(
             json!({
-                "manifests": [],
                 "action": body,
                 "meta": meta,
                 "tx": tx(),
@@ -607,7 +645,6 @@ mod tests {
         let (body, meta) = swap_sample();
         let eval_out = evaluate_action_v2_json(
             json!({
-                "manifests": [swap_manifest()],
                 "action": body,
                 "meta": meta,
                 "tx": tx(),
@@ -620,6 +657,50 @@ mod tests {
         let parsed: Value = serde_json::from_str(&eval_out).unwrap();
         assert_eq!(parsed["ok"], true, "{parsed}");
         assert_eq!(parsed["data"]["verdict"]["kind"], "fail", "{parsed}");
+        assert_eq!(
+            parsed["data"]["verdict"]["matched"][0]["policy_id"], "__system__",
+            "{parsed}"
+        );
+    }
+
+    /// Regression for the divergent-manifest fail-open (Task #7 review,
+    /// high). Before the fix, `evaluate_action_v2_json` drove the SystemFail
+    /// gate off a standalone `manifests` list while evaluating a SEPARATE
+    /// `bundles[].manifest`. A bundle whose required RPC manifest was *absent*
+    /// from `manifests` was never planned, never materialized, never
+    /// SystemFailed — and the has-guarded forbid reading the absent custom
+    /// field short-circuited to Pass (fail-open).
+    ///
+    /// The fix derives the planned set from `bundles[].manifest`, so there is
+    /// no second list to diverge: a bundle requiring an RPC call whose result
+    /// the host never returns now ALWAYS SystemFails to a `__system__` Fail.
+    /// Here we reproduce the historical attack shape — a (now-ignored)
+    /// `manifests` side list that does NOT contain the bundle's manifest, with
+    /// empty `results` — and assert it fails closed.
+    #[test]
+    fn evaluate_action_v2_divergent_manifest_fails_closed_not_open() {
+        let (body, meta) = swap_sample();
+        let eval_out = evaluate_action_v2_json(
+            json!({
+                // Historical fail-open vector: a side list that does NOT carry
+                // the bundle's manifest. It is now ignored entirely — the
+                // planned set comes from `bundles[].manifest`.
+                "manifests": [],
+                "action": body,
+                "meta": meta,
+                "tx": tx(),
+                "bundles": [{ "policy": warn_policy(), "manifest": swap_manifest() }],
+                // Host returned nothing for the bundle's required call.
+                "results": {}
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&eval_out).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["verdict"]["kind"], "fail",
+            "divergent manifest must fail closed, not Pass: {parsed}"
+        );
         assert_eq!(
             parsed["data"]["verdict"]["matched"][0]["policy_id"], "__system__",
             "{parsed}"
