@@ -2918,3 +2918,269 @@ fn b2_permit2_permit_batch_calldata_decodes() {
     assert_eq!(inner[1]["expires_at"], 1_738_001_900u64, "{parsed}");
     assert_eq!(inner[1]["sig_deadline"], 1u64, "{parsed}");
 }
+
+// ===========================================================================
+// b1 — Uniswap V3 NonfungiblePositionManager (NFPM) direct functions
+// ===========================================================================
+//
+// The 5 user-facing NFPM functions route to the EXISTING concentrated-liquidity
+// `AmmAction` variants (the Rust simulation effects already dispatch UniswapV3):
+//   * mint              (0x88316456) → add_liquidity / concentrated_mint
+//   * increaseLiquidity (0x219f5d17) → add_liquidity / concentrated_increase
+//   * decreaseLiquidity (0x0c49ccbe) → remove_liquidity / concentrated_decrease
+//   * collect           (0xfc6f7865) → collect_fees
+//   * burn              (0x42966c68) → remove_liquidity / concentrated_burn
+//
+// Each manifest is loaded from the committed registryV2 file (`include_str!`)
+// so the on-disk artifact is what the route exercises. NFPM addresses:
+// mainnet/OP/Arb share the deterministic CREATE2 deploy
+// `0xC36442b4a4522E871399CD717aBDD847Ab11FE88`; Base is `0x03a5…34f1`. Tests
+// route on chain 1.
+//
+// Tuple-arg CALLDATA access convention: mint/increase/decrease/collect each take
+// a SOLE top-level `params` struct. The abi-resolver bridge
+// (`bridge::convert_legacy_call`, the `args.len() == 1 && Tuple` arm) flattens a
+// sole-tuple arg into one `DecodedArg` PER FIELD, keyed by the component NAME
+// ("sol!-flattened layout"). So the manifests access these by top-level NAME
+// (`$args.token0`, `$args.fee`, `$args.tickLower`, `$args.tokenId`,
+// `$args.liquidity`, …) — NOT positionally as `$args.params[i]`. This is the
+// opposite of the b2 permitBatch case, where the tuple is one of THREE args
+// (`owner`, `permitBatch`, `signature`) so `permitBatch` stays a positional array
+// `$args.permitBatch[i]`; the sole-tuple flatten only fires when the function has
+// exactly one (tuple) arg. burn takes a flat `uint256 tokenId` (no tuple) →
+// `$args.tokenId` directly. The `6a24f09` width-threading fix makes the flattened
+// `int24` ticks (`tickLower`/`tickUpper`) and `uint24` `fee` render as JSON
+// **numbers** (it threads each component's canonical width), so
+// `RangeSpec::Tick { lower: i32, upper: i32 }` and `AmmVenue::UniswapV3 {
+// fee_tier_bp: u32 }` deserialize cleanly.
+//
+// `venue.pool` / `fee_tier_bp` (for increase/decrease/collect/burn, where the
+// pool is not derivable from a call arg) come from `$resolved.*` — empty in this
+// narrow scope, so they fall back to the `placeholder_type_lookup` zero values
+// (`pool` → zero Address, `fee_tier_bp` → 0). `mint`'s `fee_tier_bp` is the live
+// `uint24` `$args.params[2]`. The `nft_key` ERC721 `TokenKey` mirrors the
+// committed `standard/erc721` NFT manifests: bare `{ standard:"erc721",
+// chain:"$chain", contract:"$to" (the NFPM), token_id:"$args.params[0]" }`.
+
+const NFPM_MINT_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswap/v3-nfpm/mint@1.0.0.json");
+const NFPM_INCREASE_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswap/v3-nfpm/increase-liquidity@1.0.0.json");
+const NFPM_DECREASE_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswap/v3-nfpm/decrease-liquidity@1.0.0.json");
+const NFPM_COLLECT_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswap/v3-nfpm/collect@1.0.0.json");
+const NFPM_BURN_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswap/v3-nfpm/burn@1.0.0.json");
+
+const NFPM_MAINNET: &str = "0xc36442b4a4522e871399cd717abdd847ab11fe88";
+const NFPM_TOKEN0: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"; // USDC
+const NFPM_TOKEN1: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"; // WETH
+const NFPM_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
+
+fn addr(s: &str) -> AlloyAddress {
+    s.parse::<AlloyAddress>().unwrap()
+}
+
+// ---------------------------------------------------------------------------
+// b1.nfpm.mint — concentrated_mint (single tuple, int24 ticks as NUMBERS)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b1_nfpm_mint_concentrated_mint() {
+    let install = install_ok(NFPM_MINT_V3);
+    assert_eq!(install["data"]["bundle_id"], "uniswap/v3-nfpm/mint@1.0.0");
+
+    // mint(MintParams) — one positional tuple arg. tickLower=-887220 /
+    // tickUpper=887220 exercise the int24 signed-narrow decode; fee=3000 the
+    // uint24 path.
+    let params = DynSolValue::Tuple(vec![
+        DynSolValue::Address(addr(NFPM_TOKEN0)),         // [0] token0
+        DynSolValue::Address(addr(NFPM_TOKEN1)),         // [1] token1
+        DynSolValue::Uint(AlloyU256::from(3000u64), 24), // [2] fee
+        DynSolValue::Int(alloy_primitives::I256::try_from(-887_220i64).unwrap(), 24), // [3] tickLower
+        DynSolValue::Int(alloy_primitives::I256::try_from(887_220i64).unwrap(), 24),  // [4] tickUpper
+        DynSolValue::Uint(AlloyU256::from(1_000_000u64), 256), // [5] amount0Desired
+        DynSolValue::Uint(AlloyU256::from(500u64), 256),       // [6] amount1Desired
+        DynSolValue::Uint(AlloyU256::from(900_000u64), 256),   // [7] amount0Min
+        DynSolValue::Uint(AlloyU256::from(450u64), 256),       // [8] amount1Min
+        DynSolValue::Address(addr(NFPM_SUBMITTER)),            // [9] recipient
+        DynSolValue::Uint(AlloyU256::from(1_738_002_000u64), 256), // [10] deadline
+    ]);
+    let calldata = encode_calldata("0x88316456", &[params]);
+    let input = route_input(1, NFPM_MAINNET, "0x88316456", calldata, NFPM_SUBMITTER);
+
+    let parsed = route_ok(input);
+    assert_eq!(parsed["data"]["decoder_id"], "uniswap/v3-nfpm/mint@1.0.0");
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "amm", "{parsed}");
+    assert_eq!(body["action"], "add_liquidity", "{parsed}");
+    assert_eq!(body["venue"]["name"], "uniswap_v3", "{parsed}");
+    // fee = uint24 3000 ≤ 64 bits → JSON number → u32 fee_tier_bp.
+    assert_eq!(body["venue"]["fee_tier_bp"], 3000u64, "{parsed}");
+    assert_eq!(body["params"]["kind"], "concentrated_mint", "{parsed}");
+    // LOAD-BEARING: int24 tick decodes to a signed JSON NUMBER (not a string).
+    // `serde_json::Value` equality holds against `-887220` only when it really
+    // is a number — a `"-887220"` string would compare unequal, and the `i32`
+    // `RangeSpec::Tick.lower` would have rejected a string at deserialize.
+    assert_eq!(body["params"]["range"]["kind"], "tick", "{parsed}");
+    assert_eq!(body["params"]["range"]["lower"], -887_220i64, "{parsed}");
+    assert_eq!(body["params"]["range"]["upper"], 887_220i64, "{parsed}");
+    // pool_pair token0/token1 bound positionally off the tuple.
+    assert_eq!(
+        body["params"]["pool_pair"][0]["key"]["address"], NFPM_TOKEN0,
+        "{parsed}"
+    );
+    assert_eq!(
+        body["params"]["pool_pair"][1]["key"]["address"], NFPM_TOKEN1,
+        "{parsed}"
+    );
+    // amount_desired = (amount0Desired, amount1Desired) → U256 hex.
+    assert_eq!(body["params"]["amount_desired"][0], "0xf4240", "{parsed}"); // 1_000_000
+    assert_eq!(body["params"]["amount_desired"][1], "0x1f4", "{parsed}"); // 500
+    assert_eq!(body["params"]["recipient"], NFPM_SUBMITTER, "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// b1.nfpm.increase — concentrated_increase (nft_key ERC721 off NFPM)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b1_nfpm_increase_concentrated_increase() {
+    let install = install_ok(NFPM_INCREASE_V3);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "uniswap/v3-nfpm/increase-liquidity@1.0.0"
+    );
+
+    // increaseLiquidity(IncreaseLiquidityParams) — tokenId=424242.
+    let params = DynSolValue::Tuple(vec![
+        DynSolValue::Uint(AlloyU256::from(424_242u64), 256), // [0] tokenId
+        DynSolValue::Uint(AlloyU256::from(2_000_000u64), 256), // [1] amount0Desired
+        DynSolValue::Uint(AlloyU256::from(1000u64), 256),    // [2] amount1Desired
+        DynSolValue::Uint(AlloyU256::from(1_800_000u64), 256), // [3] amount0Min
+        DynSolValue::Uint(AlloyU256::from(900u64), 256),     // [4] amount1Min
+        DynSolValue::Uint(AlloyU256::from(1_738_002_000u64), 256), // [5] deadline
+    ]);
+    let calldata = encode_calldata("0x219f5d17", &[params]);
+    let input = route_input(1, NFPM_MAINNET, "0x219f5d17", calldata, NFPM_SUBMITTER);
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "amm", "{parsed}");
+    assert_eq!(body["action"], "add_liquidity", "{parsed}");
+    assert_eq!(body["venue"]["name"], "uniswap_v3", "{parsed}");
+    assert_eq!(body["params"]["kind"], "concentrated_increase", "{parsed}");
+    // nft_key is a bare ERC721 TokenKey: contract = NFPM (`$to`), token_id
+    // = tokenId. token_id is uint256 (> 64 bits) → U256 → alloy hex "0x67932".
+    assert_eq!(body["params"]["nft_key"]["standard"], "erc721", "{parsed}");
+    assert_eq!(
+        body["params"]["nft_key"]["contract"], NFPM_MAINNET,
+        "{parsed}"
+    );
+    assert_eq!(body["params"]["nft_key"]["token_id"], "0x67932", "{parsed}"); // 424242
+    assert_eq!(body["params"]["amount_desired"][0], "0x1e8480", "{parsed}"); // 2_000_000
+    assert_eq!(body["params"]["amount_desired"][1], "0x3e8", "{parsed}"); // 1000
+}
+
+// ---------------------------------------------------------------------------
+// b1.nfpm.decrease — concentrated_decrease (uint128 liquidity_burn)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b1_nfpm_decrease_concentrated_decrease() {
+    let install = install_ok(NFPM_DECREASE_V3);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "uniswap/v3-nfpm/decrease-liquidity@1.0.0"
+    );
+
+    // decreaseLiquidity(DecreaseLiquidityParams) — liquidity=123456789 (uint128).
+    let params = DynSolValue::Tuple(vec![
+        DynSolValue::Uint(AlloyU256::from(424_242u64), 256), // [0] tokenId
+        DynSolValue::Uint(AlloyU256::from(123_456_789u64), 128), // [1] liquidity
+        DynSolValue::Uint(AlloyU256::from(50u64), 256),      // [2] amount0Min
+        DynSolValue::Uint(AlloyU256::from(60u64), 256),      // [3] amount1Min
+        DynSolValue::Uint(AlloyU256::from(1_738_002_000u64), 256), // [4] deadline
+    ]);
+    let calldata = encode_calldata("0x0c49ccbe", &[params]);
+    let input = route_input(1, NFPM_MAINNET, "0x0c49ccbe", calldata, NFPM_SUBMITTER);
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "amm", "{parsed}");
+    assert_eq!(body["action"], "remove_liquidity", "{parsed}");
+    assert_eq!(body["venue"]["name"], "uniswap_v3", "{parsed}");
+    assert_eq!(body["params"]["kind"], "concentrated_decrease", "{parsed}");
+    // LOAD-BEARING: uint128 liquidity_burn → > 64 bits → decimal string into the
+    // U128 field, serialised back as alloy hex (123456789 = 0x75bcd15).
+    assert_eq!(body["params"]["liquidity_burn"], "0x75bcd15", "{parsed}");
+    assert_eq!(
+        body["params"]["nft_key"]["token_id"], "0x67932",
+        "{parsed}"
+    ); // 424242
+    assert_eq!(body["params"]["amount_min"][0], "0x32", "{parsed}"); // 50
+    assert_eq!(body["params"]["amount_min"][1], "0x3c", "{parsed}"); // 60
+}
+
+// ---------------------------------------------------------------------------
+// b1.nfpm.collect — collect_fees (no params enum; direct nft_key + recipient)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b1_nfpm_collect_collect_fees() {
+    let install = install_ok(NFPM_COLLECT_V3);
+    assert_eq!(install["data"]["bundle_id"], "uniswap/v3-nfpm/collect@1.0.0");
+
+    // collect(CollectParams) — recipient distinct from submitter.
+    let recipient = "0x00000000000000000000000000000000cafef00d";
+    let params = DynSolValue::Tuple(vec![
+        DynSolValue::Uint(AlloyU256::from(424_242u64), 256), // [0] tokenId
+        DynSolValue::Address(addr(recipient)),               // [1] recipient
+        DynSolValue::Uint(AlloyU256::MAX, 128),              // [2] amount0Max
+        DynSolValue::Uint(AlloyU256::MAX, 128),              // [3] amount1Max
+    ]);
+    let calldata = encode_calldata("0xfc6f7865", &[params]);
+    let input = route_input(1, NFPM_MAINNET, "0xfc6f7865", calldata, NFPM_SUBMITTER);
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "amm", "{parsed}");
+    assert_eq!(body["action"], "collect_fees", "{parsed}");
+    assert_eq!(body["venue"]["name"], "uniswap_v3", "{parsed}");
+    // LOAD-BEARING: nft_key bound off NFPM (`$to`) + tokenId positional.
+    assert_eq!(body["nft_key"]["standard"], "erc721", "{parsed}");
+    assert_eq!(body["nft_key"]["contract"], NFPM_MAINNET, "{parsed}");
+    assert_eq!(body["nft_key"]["token_id"], "0x67932", "{parsed}"); // 424242
+    assert_eq!(body["recipient"], recipient, "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// b1.nfpm.burn — concentrated_burn (flat uint256 arg, NOT a tuple)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b1_nfpm_burn_concentrated_burn() {
+    let install = install_ok(NFPM_BURN_V3);
+    assert_eq!(install["data"]["bundle_id"], "uniswap/v3-nfpm/burn@1.0.0");
+
+    // burn(uint256 tokenId) — a flat (non-tuple) arg → `$args.tokenId`.
+    let calldata = encode_calldata(
+        "0x42966c68",
+        &[DynSolValue::Uint(AlloyU256::from(424_242u64), 256)],
+    );
+    let input = route_input(1, NFPM_MAINNET, "0x42966c68", calldata, NFPM_SUBMITTER);
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "amm", "{parsed}");
+    assert_eq!(body["action"], "remove_liquidity", "{parsed}");
+    assert_eq!(body["venue"]["name"], "uniswap_v3", "{parsed}");
+    assert_eq!(body["params"]["kind"], "concentrated_burn", "{parsed}");
+    assert_eq!(body["params"]["nft_key"]["standard"], "erc721", "{parsed}");
+    assert_eq!(
+        body["params"]["nft_key"]["contract"], NFPM_MAINNET,
+        "{parsed}"
+    );
+    assert_eq!(body["params"]["nft_key"]["token_id"], "0x67932", "{parsed}"); // 424242
+}
