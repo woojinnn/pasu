@@ -29,7 +29,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::dto::{
     DeclarativeInstallResultDto, DeclarativeRouteRequestV3InputDto,
-    DeclarativeRouteRequestV3ResultDto, EngineErrorDto, Envelope,
+    DeclarativeRouteRequestV3ResultDto, DeclarativeRouteTypedDataV3InputDto, EngineErrorDto,
+    Envelope,
 };
 use crate::exports::check_input_size;
 
@@ -590,6 +591,275 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         Ok(dto) => Envelope::ok(dto).to_json(),
         Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
     }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase A.1 — `declarative_route_typed_data_v3_json`
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Off-chain EIP-712 parallel to `declarative_route_request_v3_json`. Instead
+// of a calldata `(chain_id, to, selector)` callkey, it resolves a wallet
+// `eth_signTypedData` payload through the `typed_data_bridge`
+// `(chain_id, verifying_contract, primary_type)` populated at install time,
+// reshapes the EIP-712 `message` into `args_json` via the ABI-derived wrap
+// rule, then reuses the SAME `build_action_body` emit-rule engine the calldata
+// path uses. The resulting body is wrapped in an `OffchainSig` meta nature.
+//
+// Scope (Phase A.1): `single_emit` only. `opcode_stream_dispatch` is a
+// calldata-stream construct (Universal Router `execute` etc.) with no off-chain
+// signature analogue, so it is rejected with `unsupported_strategy_for_typed_data`.
+
+/// Phase A.1 — v3 off-chain typed-data route entry emitting the PDF FSM
+/// `Action` tree with an `OffchainSig` nature.
+///
+/// Input JSON shape (see [`DeclarativeRouteTypedDataV3InputDto`]):
+/// ```json
+/// {
+///   "chain_id": 1,
+///   "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+///   "primary_type": "PermitSingle",
+///   "domain_name": "Permit2",
+///   "message": { "details": { ... }, "spender": "0x...", "sigDeadline": "..." },
+///   "submitter": "0xaaaa...",
+///   "submitted_at": 1700000000
+/// }
+/// ```
+///
+/// Output:
+/// ```json
+/// { "ok": true, "data": { "actions": [<Action>], "decoder_id": "<bundle_id>" } }
+/// ```
+/// or `{ "ok": false, "error": { "kind": "...", "message": "..." } }`.
+#[wasm_bindgen]
+pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
+    let result = (|| -> Result<DeclarativeRouteRequestV3ResultDto, EngineErrorDto> {
+        check_input_size(&input_json, "declarative_route_typed_data_v3_json")?;
+        let input: DeclarativeRouteTypedDataV3InputDto = serde_json::from_str(&input_json)
+            .map_err(|error| {
+                EngineErrorDto::new("invalid_input_json", format!("invalid input json: {error}"))
+            })?;
+
+        // ── Parse + normalise ──────────────────────────────────────────────
+        let submitter = parse_v3_address(&input.submitter, "submitter")?;
+        let verifying_contract = parse_v3_address(&input.verifying_contract, "verifying_contract")?;
+        let chain = V3ChainId::new(format!("eip155:{}", input.chain_id));
+        let submitted_at = V3Time::from_unix(input.submitted_at);
+
+        // ── Typed-data bridge lookup ────────────────────────────────────────
+        //
+        // `verifying_contract` is lowercased to match the install-time
+        // normalisation; `primary_type` is kept verbatim (it is the exact
+        // EIP-712 discriminator). A miss surfaces `no_typed_data_mapper` so the
+        // SW caller can surface the gap.
+        let key = TypedDataBridgeKey {
+            chain_id: input.chain_id,
+            verifying_contract: input.verifying_contract.to_ascii_lowercase(),
+            primary_type: input.primary_type.clone(),
+        };
+
+        let (bundle_id, bundle_value) = DECLARATIVE_V3_STATE
+            .with(|state| {
+                let state = state.borrow();
+                state.typed_data_bridge.get(&key).and_then(|bundle_id| {
+                    state
+                        .bundles
+                        .get(bundle_id)
+                        .cloned()
+                        .map(|b| (bundle_id.clone(), b))
+                })
+            })
+            .ok_or_else(|| {
+                EngineErrorDto::new(
+                    "no_typed_data_mapper",
+                    format!(
+                        "no typed-data mapper bridged for chain_id={} verifying_contract={} primary_type={}",
+                        input.chain_id, input.verifying_contract, input.primary_type
+                    ),
+                )
+            })?;
+
+        let emit = bundle_value.get("emit").ok_or_else(|| {
+            EngineErrorDto::new("invalid_bundle", "missing emit".to_string())
+        })?;
+        let strategy = emit
+            .get("strategy")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| {
+                EngineErrorDto::new("invalid_bundle", "missing emit.strategy".to_string())
+            })?;
+
+        // Typed-data is single_emit only — opcode_stream_dispatch is a
+        // calldata-stream construct (no off-chain sig analogue).
+        if strategy != "single_emit" {
+            return Err(EngineErrorDto::new(
+                "unsupported_strategy_for_typed_data",
+                format!(
+                    "emit.strategy {strategy:?} is calldata-only; typed-data routing supports single_emit only"
+                ),
+            ));
+        }
+
+        // ── Build args_json from the EIP-712 message (WRAP RULE) ───────────
+        let args_json = build_typed_data_args_json(bundle_value.pointer("/abi_fragment/abi"), &input.primary_type, &input.message);
+
+        // ── V3MapContext (same resolved/derived population as calldata) ─────
+        // Plan §M5 — static WETH-by-chain pre-populate (mirrors the calldata
+        // route path so `$resolved.weth` substitutes the correct address).
+        let mut resolved = BTreeMap::new();
+        let weth_address: Option<&'static str> = match input.chain_id {
+            1 => Some("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+            8453 | 10 => Some("0x4200000000000000000000000000000000000006"),
+            42161 => Some("0x82af49447d8a07e3bd95bd0d56f35241523fbab1"),
+            _ => None,
+        };
+        if let Some(addr) = weth_address {
+            resolved.insert(
+                "weth".to_owned(),
+                serde_json::Value::String(addr.to_owned()),
+            );
+        }
+
+        let ctx = V3MapContext {
+            chain: chain.clone(),
+            tx_to: verifying_contract,
+            tx_from: submitter,
+            value: V3U256::ZERO,
+            submitted_at,
+            args_json: &args_json,
+            resolved,
+            derived: BTreeMap::new(),
+            inputs: None,
+        };
+
+        let body_template = emit.get("body").ok_or_else(|| {
+            EngineErrorDto::new("invalid_bundle", "missing emit.body".to_string())
+        })?;
+        let live_inputs_template = emit.get("live_inputs");
+        let body = build_action_body(&ctx, body_template, live_inputs_template).map_err(|error| {
+            EngineErrorDto::new("build_action_body_failed", error.to_string())
+        })?;
+
+        // ── ActionMeta (OffchainSig nature) ─────────────────────────────────
+        //
+        // `deadline` is best-effort from the message: `sigDeadline` (Permit2 /
+        // UniswapX convention) wins, else `deadline` (EIP-2612), else 0. The
+        // domain carries the wallet-supplied name + the bound chain +
+        // verifying_contract; `version` / `salt` are not part of the route
+        // input wire (the manifest's `match.typed_data` would carry the full
+        // domain if a downstream consumer needs it).
+        let deadline_secs = message_u64(&input.message, "sigDeadline")
+            .or_else(|| message_u64(&input.message, "deadline"))
+            .unwrap_or(0);
+
+        let meta = v3_action::ActionMeta {
+            submitted_at,
+            submitter,
+            nature: v3_action::ActionNature::OffchainSig {
+                domain: v3_action::Eip712Domain {
+                    name: input.domain_name.unwrap_or_default(),
+                    version: None,
+                    chain_id: Some(input.chain_id),
+                    verifying_contract: Some(verifying_contract),
+                    salt: None,
+                },
+                deadline: V3Time::from_unix(deadline_secs),
+                nonce_key: None,
+            },
+        };
+
+        let action = v3_action::Action { meta, body };
+
+        Ok(DeclarativeRouteRequestV3ResultDto {
+            actions: vec![action],
+            decoder_id: bundle_id,
+        })
+    })();
+
+    match result {
+        Ok(dto) => Envelope::ok(dto).to_json(),
+        Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
+    }
+}
+
+/// Reshape an EIP-712 `message` object into the `args_json` the manifest's
+/// `$args.<path>` placeholders expect, per the Phase A.1 WRAP RULE.
+///
+/// Two manifest conventions exist:
+///   * **Nested** (Permit2 `PermitSingle`, UniswapX, HyperLiquid): the ABI
+///     payload is a single tuple param whose content IS the EIP-712 message,
+///     so `$args.<root>.<...>` placeholders need `args_json = { <root>: message }`.
+///   * **Flat** (EIP-2612 `permit`): the ABI payload is multiple scalar params
+///     matching the message keys directly, so `$args.spender` /  `$args.value`
+///     resolve against the message as-is — `args_json = message`.
+///
+/// The rule is computed from `abi_fragment.abi.inputs`, filtering out the
+/// signature-machinery params (`owner` / `signature` / `v` / `r` / `s`):
+///   * exactly one remaining param whose type starts with `tuple` → wrap under
+///     that param's name;
+///   * otherwise → flat (no wrap).
+///
+/// Fallback (inputs missing / empty / unreadable): wrap under the
+/// `primary_type` lower-camel-cased — the most common single-tuple shape.
+fn build_typed_data_args_json(
+    abi: Option<&serde_json::Value>,
+    primary_type: &str,
+    message: &serde_json::Value,
+) -> serde_json::Value {
+    let payload_inputs: Option<Vec<(String, String)>> = abi
+        .and_then(|abi| abi.get("inputs"))
+        .and_then(serde_json::Value::as_array)
+        .map(|inputs| {
+            inputs
+                .iter()
+                .filter_map(|i| {
+                    let name = i.get("name").and_then(serde_json::Value::as_str)?;
+                    let ty = i.get("type").and_then(serde_json::Value::as_str)?;
+                    if matches!(name, "owner" | "signature" | "v" | "r" | "s") {
+                        None
+                    } else {
+                        Some((name.to_owned(), ty.to_owned()))
+                    }
+                })
+                .collect()
+        });
+
+    match payload_inputs {
+        // Single tuple payload → wrap under its param name.
+        Some(ref payload) if payload.len() == 1 && payload[0].1.starts_with("tuple") => {
+            serde_json::json!({ payload[0].0.clone(): message.clone() })
+        }
+        // Multiple scalars (or single non-tuple) → flat, no wrap.
+        Some(payload) if !payload.is_empty() => message.clone(),
+        // Fallback: inputs missing / empty / unreadable → wrap under the
+        // lower-camel-cased primary_type (the dominant single-tuple shape).
+        _ => serde_json::json!({ primary_type_to_lower_camel(primary_type): message.clone() }),
+    }
+}
+
+/// Lower-camel-case an EIP-712 `primaryType` for the wrap-rule fallback.
+///
+/// Handles the EIP-712 colon-suffix convention (`"HyperliquidTransaction:UsdSend"`
+/// → root type `"UsdSend"` → `"usdSend"`): the substring after the last `:`
+/// is taken, then its leading character is lowercased. No `:` present →
+/// the whole string's leading char is lowercased (`"PermitSingle"` →
+/// `"permitSingle"`).
+fn primary_type_to_lower_camel(primary_type: &str) -> String {
+    let root = primary_type.rsplit(':').next().unwrap_or(primary_type);
+    let mut chars = root.chars();
+    match chars.next() {
+        Some(first) => first.to_lowercase().chain(chars).collect(),
+        None => String::new(),
+    }
+}
+
+/// Best-effort extract a `u64` from a message field that may be a JSON number
+/// or a decimal string (wallets serialize EIP-712 uints either way).
+fn message_u64(message: &serde_json::Value, field: &str) -> Option<u64> {
+    let v = message.get(field)?;
+    if let Some(n) = v.as_u64() {
+        return Some(n);
+    }
+    v.as_str().and_then(|s| s.parse::<u64>().ok())
 }
 
 /// Parse a "0x"-prefixed 40-hex string into an [`Address`](V3Address).
