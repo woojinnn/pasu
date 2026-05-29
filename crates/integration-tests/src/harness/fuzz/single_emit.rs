@@ -19,15 +19,21 @@ use crate::harness::{encode, route};
 /// Returns `(calldata, judged)`, or `Err` if the harness could not build args
 /// for this ABI (a harness skip, not a decode finding).
 pub fn fuzz_one(call: &RoutableCall, seed: u64, edge: Edge) -> Result<(String, Judged)> {
+    let calldata = build_calldata(call, seed, edge)?;
+    let env = route::route_calldata(call.chain_id, &call.to, &call.selector, &calldata, "0");
+    Ok((calldata, judge(&env)))
+}
+
+/// Build the `0x`-prefixed calldata for one fuzz iteration (no routing). Used by
+/// [`fuzz_one`] and by the CLI `replay` command.
+pub fn build_calldata(call: &RoutableCall, seed: u64, edge: Edge) -> Result<String> {
     let mut rng = crate::harness::prng::SplitMix64::new(seed);
     let args = call
         .abi_inputs
         .iter()
         .map(|i| Ok(gen_value(&mut rng, &abi_input_to_soltype(i)?, edge)))
         .collect::<Result<Vec<DynSolValue>>>()?;
-    let calldata = encode::encode_calldata(&call.selector, &args);
-    let env = route::route_calldata(call.chain_id, &call.to, &call.selector, &calldata, "0");
-    Ok((calldata, judge(&env)))
+    Ok(encode::encode_calldata(&call.selector, &args))
 }
 
 /// Fuzz every `single_emit` callkey on the surface `iters` times each.

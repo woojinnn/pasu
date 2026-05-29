@@ -60,6 +60,37 @@ pub fn run_synthetic_all(global_seed: u64, iters: u64) -> Result<report::Report>
     Ok(report)
 }
 
+/// Replay one `single_emit` callkey at a fixed seed, returning the raw route
+/// envelope (`{ok, data, error}`). Used by the CLI `replay` command to
+/// reproduce a fuzz failure. Non-`single_emit` strategies are not replayable
+/// standalone yet (use corpus replay).
+pub fn replay(callkey: &str, seed: u64) -> Result<serde_json::Value> {
+    let surface = adapters::load_and_install()?;
+    let call = surface
+        .calls
+        .iter()
+        .find(|c| c.source_callkey == callkey)
+        .ok_or_else(|| anyhow::anyhow!("callkey not found on surface: {callkey}"))?;
+    if call.strategy == adapters::Strategy::SingleEmit
+        && !call.has_typed_data
+        && call.selector != "0x00000000"
+    {
+        let calldata = fuzz::single_emit::build_calldata(call, seed, fuzz::values::Edge::Random)?;
+        Ok(route::route_calldata(
+            call.chain_id,
+            &call.to,
+            &call.selector,
+            &calldata,
+            "0",
+        ))
+    } else {
+        Err(anyhow::anyhow!(
+            "replay supports single_emit calldata only; `{callkey}` is strategy={} (use corpus replay)",
+            call.strategy.as_str()
+        ))
+    }
+}
+
 /// Run `f` with the panic hook silenced (so per-iteration `catch_unwind`
 /// recoveries don't spam stderr), restoring the previous hook afterwards.
 pub fn with_silenced_panics<R>(f: impl FnOnce() -> R) -> R {

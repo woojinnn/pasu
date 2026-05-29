@@ -7,7 +7,7 @@ use std::fmt::Write as _;
 use super::oracle::{Judged, Verdict};
 
 /// A replayable failure record.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct Failure {
     /// Source callkey (or typed-data key) — the routing key.
     pub key: String,
@@ -24,7 +24,7 @@ pub struct Failure {
 }
 
 /// Per-protocol tally (protocol = first path segment of the bundle id).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize)]
 pub struct ProtoStat {
     /// Cases run.
     pub total: usize,
@@ -39,7 +39,7 @@ pub struct ProtoStat {
 }
 
 /// Aggregated run report.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize)]
 pub struct Report {
     /// Cases run (excludes harness skips).
     pub total: usize,
