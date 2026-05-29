@@ -23,31 +23,163 @@ use crate::mapper::{MapContext, MapperError};
 use super::builtin_fn;
 use super::types::{BuiltinFn, ValueExpr};
 
-/// Convert a single [`DecodedValue`] into a `serde_json::Value` view.
+/// Convert a single [`DecodedValue`] into a `serde_json::Value` view, WITHOUT
+/// ABI-width context.
+///
+/// This is the type-agnostic entry point — `Uint` always renders as a decimal
+/// string. Callers that have the ABI type string (e.g. [`args_to_json`] via
+/// `DecodedArg::abi_type`) should prefer [`decoded_value_to_json_typed`] so
+/// narrow uints (`uint8` .. `uint64`) render as JSON numbers (see that fn's
+/// docs for the rationale). Kept for callers that carry no per-value type
+/// (e.g. the enum-tagged bridge), where the historic decimal-string behaviour
+/// is preserved unchanged.
+pub fn decoded_value_to_json(value: &DecodedValue) -> serde_json::Value {
+    decoded_value_to_json_typed(value, "")
+}
+
+/// Convert a [`DecodedValue`] into a `serde_json::Value` using the ABI type
+/// string `abi_type` to pick the JSON encoding for integers.
 ///
 /// Encoding rules:
 ///   * `Address` → JSON string `"0x.."` (lowercased by `Address::to_string`).
-///   * `Uint` / `Int` → JSON string of the base-10 representation. This keeps
-///     `uint256` values lossless (JS numbers lose precision beyond 2^53), and
-///     matches how `DecimalString` parses.
+///   * `Uint` → JSON **number** when `abi_type` is a scalar `uintN` with
+///     `N <= 64` (the value provably fits in `u64`); otherwise a JSON decimal
+///     **string**. This mirrors serde: `u8` / `u16` / `u32` / `u64` struct
+///     fields parse from a JSON number and REJECT a string, whereas `U256`
+///     fields parse from a decimal string and lose precision as a JS number
+///     (> 2^53). The width comes from the ABI param type, the only place it is
+///     available — `DynSolValue::Uint` keeps the bit width but the
+///     `DecodedValue::Uint(U256)` shape drops it, so we thread the type string.
+///   * `Int` → JSON decimal string (unchanged). No narrow **signed** struct
+///     field is in scope today; if one lands, apply the analogous `iN <= 64`
+///     rule here.
 ///   * `Bool` → JSON boolean.
 ///   * `Bytes` → JSON string `"0x.." + hex`.
 ///   * `String` → JSON string.
-///   * `Array` / `Tuple` → JSON array of recursively-encoded values.
-pub fn decoded_value_to_json(value: &DecodedValue) -> serde_json::Value {
+///   * `Array` → JSON array; each element re-typed with the element type
+///     (one trailing `[..]` group stripped from `abi_type`).
+///   * `Tuple` → JSON array; when `abi_type` is a parenthesised tuple type its
+///     top-level components are matched positionally, otherwise (e.g. the bare
+///     `"tuple"` alloy emits, whose field types live in `components` not the
+///     type string) each element falls back to the type-agnostic string form.
+pub fn decoded_value_to_json_typed(value: &DecodedValue, abi_type: &str) -> serde_json::Value {
     match value {
         DecodedValue::Address(address) => serde_json::Value::String(address.to_string()),
-        DecodedValue::Uint(value) => serde_json::Value::String(u256_to_decimal_string(*value)),
+        DecodedValue::Uint(value) => uint_to_json(*value, abi_type),
         DecodedValue::Int(value) => serde_json::Value::String(i256_to_decimal_string(*value)),
         DecodedValue::Bool(value) => serde_json::Value::Bool(*value),
         DecodedValue::Bytes(bytes) => {
             serde_json::Value::String(format!("0x{}", hex::encode(bytes)))
         }
         DecodedValue::String(string) => serde_json::Value::String(string.clone()),
-        DecodedValue::Array(values) | DecodedValue::Tuple(values) => {
-            serde_json::Value::Array(values.iter().map(decoded_value_to_json).collect())
+        DecodedValue::Array(values) => {
+            let elem_type = array_element_type(abi_type).unwrap_or("");
+            serde_json::Value::Array(
+                values
+                    .iter()
+                    .map(|v| decoded_value_to_json_typed(v, elem_type))
+                    .collect(),
+            )
+        }
+        DecodedValue::Tuple(values) => {
+            let component_types = tuple_component_types(abi_type);
+            serde_json::Value::Array(
+                values
+                    .iter()
+                    .enumerate()
+                    .map(|(i, v)| {
+                        let ty = component_types
+                            .as_ref()
+                            .and_then(|cs| cs.get(i))
+                            .map_or("", String::as_str);
+                        decoded_value_to_json_typed(v, ty)
+                    })
+                    .collect(),
+            )
         }
     }
+}
+
+/// Encode a `U256` either as a JSON number (scalar `uintN`, `N <= 64`) or a
+/// JSON decimal string (everything else). See [`decoded_value_to_json_typed`].
+fn uint_to_json(value: U256, abi_type: &str) -> serde_json::Value {
+    match uint_bits(abi_type) {
+        // `N <= 64` ⇒ the value fits in `u64` by construction; the
+        // `try_into` is a belt-and-braces guard — if it ever failed we fall
+        // back to the lossless decimal string rather than truncating.
+        Some(bits) if bits <= 64 => match u64::try_from(value) {
+            Ok(n) => serde_json::Value::Number(serde_json::Number::from(n)),
+            Err(_) => serde_json::Value::String(u256_to_decimal_string(value)),
+        },
+        _ => serde_json::Value::String(u256_to_decimal_string(value)),
+    }
+}
+
+/// Parse the bit width of a SCALAR unsigned-integer ABI type string.
+///
+/// `"uint8"` → 8, `"uint48"` → 48, `"uint256"` → 256, bare `"uint"` → 256
+/// (Solidity alias). Anything that is not a scalar uint (`"uint8[]"`,
+/// `"tuple"`, `"address"`, `""`) → `None`. The trailing array/`[..]` suffix is
+/// NOT stripped here — array element typing is handled by the caller, so a
+/// type with a bracket is correctly rejected as "not a scalar uint".
+fn uint_bits(abi_type: &str) -> Option<u32> {
+    let t = abi_type.trim();
+    let digits = t.strip_prefix("uint")?;
+    if digits.is_empty() {
+        return Some(256); // bare `uint` == `uint256`
+    }
+    // A scalar `uintN` is all-ASCII-digits after the prefix; a bracket or any
+    // other char (array suffix, etc.) means this is not a scalar uint.
+    if digits.bytes().all(|b| b.is_ascii_digit()) {
+        digits.parse::<u32>().ok()
+    } else {
+        None
+    }
+}
+
+/// For an array ABI type, return the element type by stripping the single
+/// trailing `[..]` (fixed or dynamic) group.
+///
+/// `"uint256[]"` → `"uint256"`, `"uint256[3]"` → `"uint256"`,
+/// `"address[][2]"` → `"address[]"`. Returns `None` when `abi_type` is not an
+/// array (no trailing `]`).
+fn array_element_type(abi_type: &str) -> Option<&str> {
+    let t = abi_type.trim_end();
+    if !t.ends_with(']') {
+        return None;
+    }
+    // Find the matching `[` for the final `]` (no nested brackets inside a
+    // single dimension group, so the last `[` before the end is the match).
+    let open = t.rfind('[')?;
+    Some(&t[..open])
+}
+
+/// For a parenthesised tuple ABI type `"(t1,t2,..)"`, return its top-level
+/// component type strings. Returns `None` for a non-tuple type (including the
+/// bare `"tuple"` / `"tuple[]"` alloy emits when field types are carried out of
+/// band on `components`).
+fn tuple_component_types(abi_type: &str) -> Option<Vec<String>> {
+    let t = abi_type.trim();
+    let inner = t.strip_prefix('(')?.strip_suffix(')')?;
+    if inner.is_empty() {
+        return Some(Vec::new());
+    }
+    let mut out = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0usize;
+    for (i, ch) in inner.char_indices() {
+        match ch {
+            '(' | '[' => depth += 1,
+            ')' | ']' => depth -= 1,
+            ',' if depth == 0 => {
+                out.push(inner[start..i].trim().to_owned());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    out.push(inner[start..].trim().to_owned());
+    Some(out)
 }
 
 fn u256_to_decimal_string(value: U256) -> String {
@@ -67,7 +199,13 @@ fn i256_to_decimal_string(value: I256) -> String {
 pub fn args_to_json(decoded: &DecodedCall) -> serde_json::Value {
     let mut obj = serde_json::Map::new();
     for arg in &decoded.args {
-        obj.insert(arg.name.clone(), decoded_value_to_json(&arg.value));
+        // Pass the arg's ABI type so narrow uints (`uint8` .. `uint64`) render
+        // as JSON numbers — `u8` / `u64` struct fields (Aave `categoryId`,
+        // Permit2 `expiration` uint48) parse from numbers and reject strings.
+        obj.insert(
+            arg.name.clone(),
+            decoded_value_to_json_typed(&arg.value, &arg.abi_type),
+        );
     }
     serde_json::Value::Object(obj)
 }

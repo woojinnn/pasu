@@ -613,16 +613,69 @@ fn wrap_live_field(
     JsonValue::Object(out)
 }
 
+/// Deserializable zero skeleton for `simulation_reducer::action::lending::ReserveState`.
+///
+/// `U256` fields (`total_supply` / `total_borrow`) are decimal strings (alloy
+/// serde), the `*_bp` / `utilization_bp` / `reserve_factor_bp` fields are
+/// `u32` numbers, and the optional `supply_cap` / `borrow_cap` are omitted
+/// (their `#[serde(default, skip_serializing_if = "Option::is_none")]` makes
+/// absence == `None`).
+fn lending_reserve_state_skeleton() -> JsonValue {
+    serde_json::json!({
+        "total_supply": "0",
+        "total_borrow": "0",
+        "utilization_bp": 0,
+        "ltv_bp": 0,
+        "liquidation_threshold_bp": 0,
+        "liquidation_bonus_bp": 0,
+        "reserve_factor_bp": 0,
+        "is_frozen": false,
+        "is_paused": false,
+    })
+}
+
+/// Deserializable zero skeleton for `lending::UserLendingState`.
+///
+/// `health_factor` is a `Decimal` (`#[serde(transparent)]` over `String`) so it
+/// is the string `"0"`; the three USD aggregates (`total_collat_usd` /
+/// `total_debt_usd` / `available_borrow_usd`) are `U256` decimal strings.
+fn lending_user_state_skeleton() -> JsonValue {
+    serde_json::json!({
+        "health_factor": "0",
+        "total_collat_usd": "0",
+        "total_debt_usd": "0",
+        "available_borrow_usd": "0",
+    })
+}
+
+/// Deserializable zero skeleton for `lending::set_emode::EModeConfig`.
+///
+/// The three `*_bp` fields are `u32` numbers; `price_source` (`Option<Address>`)
+/// and `category` (`Option<EModeCategory>`) are omitted (both skip-if-none);
+/// `assets_in_category` is an empty `Vec<TokenRef>`.
+fn lending_emode_config_skeleton() -> JsonValue {
+    serde_json::json!({
+        "ltv_bp": 0,
+        "liquidation_threshold_bp": 0,
+        "liquidation_bonus_bp": 0,
+        "assets_in_category": [],
+    })
+}
+
 /// Per-`(domain, action, field)` default `value` for the `LiveField` wrap.
 ///
 /// Each entry encodes the minimal `serde_json` shape needed for
 /// `simulation_state::LiveField<T>` to deserialize successfully — typically
-/// `"0"` for `U256`, `0` for `u32`, and a hand-rolled object skeleton for the
-/// richer state types (`SwapRoute`, `PoolState`, `Vec<(TokenRef, U256)>`).
+/// `"0"` for `U256` / `Decimal` / `Price`, `0` for `u32`, `false` for `bool`,
+/// `["0","0"]` for 2-tuples, and a hand-rolled object skeleton for the richer
+/// state types (`SwapRoute`, `PoolState`, `Vec<(TokenRef, U256)>`,
+/// `ReserveState`, `UserLendingState`, `EModeConfig`).
 ///
 /// Extending the catalog when a new `live_inputs.<field>` lands in registry
 /// V2 is a one-line edit — the test suite covers what's currently emitted by
-/// the 25 v3 manifests.
+/// the v3 manifests. (Filling these with REAL fetched values is a separate
+/// orchestrator task — here we only need a deserializable zero so the typed
+/// `ActionBody` decode succeeds.)
 fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -> JsonValue {
     match (domain, action, field) {
         // -------- AMM --------
@@ -659,6 +712,61 @@ fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -
             // `LiveField<(U256, u8)>` — JSON encodes a 2-tuple as a 2-element
             // array. Default: bitmap word 0, bit 0.
             serde_json::json!(["0", 0])
+        }
+        // -------- Lending (Aave V3 family) --------
+        //
+        // Every lending action wraps its on-chain / derived reads in
+        // `LiveField<T>`; without a default `value` here each `LiveField`
+        // serialises `null`, and the richer `T`s (`ReserveState`,
+        // `UserLendingState`, `EModeConfig`, the 2-tuples) reject `null` →
+        // `build_action_body_failed`. The `action` keys below are the serde
+        // `LendingAction` tags (snake_case), NOT the source file names — note
+        // `set_e_mode` (SetEMode), `enable_collateral` / `disable_collateral`
+        // (both SetCollateralAction).
+        //
+        // Supply (SupplyLiveInputs).
+        (Some("lending"), Some("supply"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("supply"), "supply_apy") => JsonValue::String("0".into()),
+        (Some("lending"), Some("supply"), "a_token_price_usd") => JsonValue::String("0".into()),
+        (Some("lending"), Some("supply"), "eligible_as_collat") => JsonValue::Bool(false),
+        (Some("lending"), Some("supply"), "user_state_before") => lending_user_state_skeleton(),
+        // Borrow (BorrowLiveInputs).
+        (Some("lending"), Some("borrow"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("borrow"), "user_state_before") => lending_user_state_skeleton(),
+        (Some("lending"), Some("borrow"), "asset_price_usd") => JsonValue::String("0".into()),
+        (Some("lending"), Some("borrow"), "current_borrow_rate") => JsonValue::String("0".into()),
+        (Some("lending"), Some("borrow"), "available_liquidity") => JsonValue::String("0".into()),
+        // Withdraw (WithdrawLiveInputs).
+        (Some("lending"), Some("withdraw"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("withdraw"), "available_to_withdraw") => {
+            JsonValue::String("0".into())
+        }
+        (Some("lending"), Some("withdraw"), "user_state_before") => lending_user_state_skeleton(),
+        // Repay (RepayLiveInputs).
+        (Some("lending"), Some("repay"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("repay"), "current_debt") => JsonValue::String("0".into()),
+        (Some("lending"), Some("repay"), "user_state_before") => lending_user_state_skeleton(),
+        // Liquidate (LiquidateLiveInputs). `liquidation_bonus` is a `u32`.
+        (Some("lending"), Some("liquidate"), "victim_state") => lending_user_state_skeleton(),
+        (Some("lending"), Some("liquidate"), "liquidation_bonus") => JsonValue::Number(0.into()),
+        (Some("lending"), Some("liquidate"), "debt_asset_price") => JsonValue::String("0".into()),
+        (Some("lending"), Some("liquidate"), "collat_asset_price") => JsonValue::String("0".into()),
+        // SetEMode (SetEModeLiveInputs) — serde tag `set_e_mode`.
+        (Some("lending"), Some("set_e_mode"), "category_config") => lending_emode_config_skeleton(),
+        (Some("lending"), Some("set_e_mode"), "user_state_before") => lending_user_state_skeleton(),
+        // SwapRateMode (SwapRateModeLiveInputs) — `(U256,U256)` / `(Decimal,Decimal)`
+        // both encode as 2-element JSON arrays of decimal strings.
+        (Some("lending"), Some("swap_rate_mode"), "current_debts") => serde_json::json!(["0", "0"]),
+        (Some("lending"), Some("swap_rate_mode"), "rates") => serde_json::json!(["0", "0"]),
+        // SetCollateral (SetCollateralLiveInputs) — used by BOTH the
+        // `enable_collateral` and `disable_collateral` tags.
+        (Some("lending"), Some("enable_collateral"), "reserve_state")
+        | (Some("lending"), Some("disable_collateral"), "reserve_state") => {
+            lending_reserve_state_skeleton()
+        }
+        (Some("lending"), Some("enable_collateral"), "user_state_before")
+        | (Some("lending"), Some("disable_collateral"), "user_state_before") => {
+            lending_user_state_skeleton()
         }
         // Fallback — null lets the per-field type's `Option<T>` (if any) take
         // over; for stricter types serde reports a clear error pointing at the

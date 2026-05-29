@@ -351,24 +351,15 @@ const T3_PERMIT2_APPROVE_V3: &str = r#"{
 fn t3_permit2_approve_onchain() {
     install_ok(T3_PERMIT2_APPROVE_V3);
 
-    // Permit2 approve uses uint160 for amount and uint48 for expiration —
-    // both are ABI-encoded into 32-byte words, but `expiration` must fit in
-    // 48 bits. The action_builder's `Time` field deserializes from a JSON
-    // number, not a decimal string — but `args_to_json` always emits decimal
-    // strings for uint.
-    //
-    // Observed M2 outcome (pinned here so a future numeric-string coercion
-    // shim in `args_to_json` flips the branch and the assertion blocks
-    // catch the change):
-    //   * envelope.kind = `build_action_body_failed`
-    //   * message contains "expected u64" — `Time` is `transparent` over
-    //     u64, so serde rejects the decimal-string arg.
-    //
-    // M1 t6_permit2_approve passed because it hand-crafted the args
-    // directly (`expiration` as a u64 JSON number). The route path
-    // through `args_to_json` does NOT round-trip uints as numbers —
-    // changing that is out of M2 scope (would require a per-field type
-    // map sourced from the manifest ABI). M3+ owns the fix.
+    // Permit2 approve uses uint160 for `amount` and uint48 for `expiration`.
+    // `expires_at` deserializes into a `Time` (transparent over u64), which
+    // accepts a JSON NUMBER and rejects a decimal string. With the
+    // width-based `args_to_json` coercion (uint ≤ 64 bit → JSON number), the
+    // uint48 `expiration` now renders as a number and the body decodes — so
+    // this test asserts `ok:true` (previously it tolerated a documented
+    // `build_action_body_failed` "expected u64" fallback). `amount` is
+    // uint160 (> 64) and stays a decimal string → parses into the `U256`
+    // amount field as before.
     let calldata = encode_calldata(
         "0x87517c45",
         &[
@@ -393,37 +384,18 @@ fn t3_permit2_approve_onchain() {
         calldata,
         "0x000000000000000000000000000000000000aaaa",
     );
-    // Whether the action_builder accepts `expires_at` as a decimal string
-    // depends on the `Time`-via-`u64` serde behaviour. We assert via the
-    // envelope kind: success means the full hierarchical body landed;
-    // `build_action_body_failed` is the documented M2 fallback when serde
-    // coercion is rejected. Both are acceptable to the narrow plan scope
-    // — what matters is that the WASM entry never panics and the v3
-    // pipeline observably runs through the install + route phases.
-    let out = declarative_route_request_v3_json(input);
-    let parsed: Value = serde_json::from_str(&out).unwrap();
-    if parsed["ok"] == Value::Bool(true) {
-        let body = &parsed["data"]["actions"][0]["body"];
-        assert_eq!(body["domain"], "token");
-        assert_eq!(body["action"], "permit2_approve");
-        assert_eq!(
-            body["spender"],
-            "0x00000000000000000000000000000000deadbeef"
-        );
-        assert_eq!(
-            body["token"]["key"]["address"],
-            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-        );
-    } else {
-        // Documented M2 fallback — serde coerce on `expires_at` Time may
-        // reject the decimal-string arg shape until the M3 type-cast layer
-        // lands. The error kind must be the action_builder one so we know
-        // the pipeline reached that stage.
-        assert_eq!(
-            parsed["error"]["kind"], "build_action_body_failed",
-            "expected build_action_body_failed fallback, got: {parsed}"
-        );
-    }
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token");
+    assert_eq!(body["action"], "permit2_approve");
+    assert_eq!(
+        body["spender"],
+        "0x00000000000000000000000000000000deadbeef"
+    );
+    assert_eq!(
+        body["token"]["key"]["address"],
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -690,7 +662,10 @@ fn t5_array_emit_calldata_two_transfers() {
         "0x000000000000000000000000000000000000aaaa",
     );
     let parsed = route_ok(input);
-    assert_eq!(parsed["data"]["decoder_id"], "test/batch/transferBatch@2.0.0");
+    assert_eq!(
+        parsed["data"]["decoder_id"],
+        "test/batch/transferBatch@2.0.0"
+    );
 
     let body = &parsed["data"]["actions"][0]["body"];
     assert_eq!(body["domain"], "multicall", "{parsed}");
@@ -740,7 +715,10 @@ fn t5_array_emit_empty_array_empty_multicall() {
     let body = &parsed["data"]["actions"][0]["body"];
     assert_eq!(body["domain"], "multicall", "{parsed}");
     assert!(
-        body["actions"].as_array().expect("inner actions").is_empty(),
+        body["actions"]
+            .as_array()
+            .expect("inner actions")
+            .is_empty(),
         "{parsed}"
     );
 }
@@ -817,7 +795,10 @@ fn t6_array_emit_non_array_source_errors() {
     let out = declarative_route_request_v3_json(input);
     let parsed: Value = serde_json::from_str(&out).unwrap();
     assert_eq!(parsed["ok"], false, "{parsed}");
-    assert_eq!(parsed["error"]["kind"], "build_array_emit_failed", "{parsed}");
+    assert_eq!(
+        parsed["error"]["kind"], "build_array_emit_failed",
+        "{parsed}"
+    );
     assert!(
         parsed["error"]["message"]
             .as_str()
@@ -842,64 +823,25 @@ fn t6_array_emit_non_array_source_errors() {
 // `chain_to_addresses` mirror the existing supply/borrow/withdraw/repay
 // manifests (mainnet Pool here; the on-disk fixtures carry all 4 chains).
 //
-// DUAL-BRANCH ASSERTION (same contract as t3/t4 above)
-// ----------------------------------------------------
+// FULLY GREEN `ok:true` (B.2-infra closed the two foundation gaps)
+// ----------------------------------------------------------------
 // These manifests are STRUCTURALLY valid: install succeeds, the selector +
 // address match, `$args.*` / `$chain` / `$to` placeholders substitute, and the
-// body flattens into the right `LendingAction` variant. The ONE remaining gap
-// before a fully green `ok:true` route is downstream of the manifest and owned
-// by a separate cross-cutting task ("live_field VALUE-fill orchestrator
-// wiring"):
-//   * liquidate / swap_rate_mode — `action_builder::live_input_default` has no
-//     `(lending, …)` entries, so each `LiveField<T>` wrap defaults its `value`
-//     to JSON `null`; `LiveField<UserLendingState>` / `LiveField<(U256,U256)>`
-//     cannot deserialize from `null` → `build_action_body_failed`. The failure
-//     message names the live struct (`UserLendingState`) / its shape
-//     (`tuple of size 2`), proving every deterministic + `$args` field already
-//     resolved and ONLY the live default is missing.
-//   * set_e_mode — `categoryId` is a `uint8`; `args_to_json` emits uints as
-//     DECIMAL STRINGS (the same limitation pinned by t3's Permit2 `expiration`
-//     `expected u64`), and `u8` serde rejects a JSON string → the documented
-//     `build_action_body_failed` (`string "…", expected u8`). The numeric
-//     string-coercion shim is M3+/orchestrator scope, not a manifest defect.
-//
-// So each test asserts EITHER the full `lending` body lands (ok, domain +
-// action + a load-bearing `$args` field) OR the specific documented
-// `build_action_body_failed` fallback — and in the fallback branch we assert
-// the message is the KNOWN downstream serde gap (NOT an
-// unresolved/invalid-arg-path/unknown-placeholder error), which is the proof
-// that the manifest's placeholder mapping is correct.
-
-/// Assert that `parsed` is the documented action_builder serde fallback whose
-/// message contains one of `needles` — and is NOT a placeholder/arg-path
-/// resolution error (those would indicate a broken manifest mapping, not the
-/// known downstream live-default / uint-coercion gap).
-fn assert_action_builder_fallback(parsed: &Value, needles: &[&str]) {
-    assert_eq!(parsed["ok"], false, "{parsed}");
-    assert_eq!(
-        parsed["error"]["kind"], "build_action_body_failed",
-        "expected build_action_body_failed fallback, got: {parsed}"
-    );
-    let msg = parsed["error"]["message"].as_str().unwrap_or("");
-    // Proof the manifest's placeholder mapping is sound: the failure is a
-    // typed-decode gap, never an unresolved `$args.*` / `$resolved.*` /
-    // `$derived.*` substitution.
-    for forbidden in [
-        "InvalidArgPath",
-        "did not resolve",
-        "unknown placeholder",
-        "UnresolvedPlaceholder",
-    ] {
-        assert!(
-            !msg.contains(forbidden),
-            "manifest placeholder mapping broke ({forbidden}): {parsed}"
-        );
-    }
-    assert!(
-        needles.iter().any(|n| msg.contains(n)),
-        "expected one of {needles:?} in error message, got: {parsed}"
-    );
-}
+// body flattens into the right `LendingAction` variant. The two former gaps
+// (which made these route tests tolerate a documented `build_action_body_failed`)
+// are now fixed in B.2-infra:
+//   * liquidate / set_e_mode / swap_rate_mode — `action_builder::live_input_default`
+//     now has `(lending, …)` deserializable zero skeletons for every lending
+//     `LiveField<T>` (UserLendingState / ReserveState / EModeConfig / u32 /
+//     the `(U256,U256)` + `(Decimal,Decimal)` 2-tuples), so each wrap's `value`
+//     is a valid `T` instead of `null`.
+//   * set_e_mode — `categoryId` is a `uint8`; `args_to_json` now emits uint
+//     args ≤ 64 bit as JSON NUMBERS (the same coercion that fixes t3's Permit2
+//     `expiration` uint48 → `Time`/u64), and the `category_id: u8` field accepts
+//     a number.
+// So each test asserts `ok:true` + the full hierarchical body (domain `lending`,
+// the correct action tag, the load-bearing `$args` fields, and a representative
+// defaulted `live_inputs` value).
 
 // ---------------------------------------------------------------------------
 // t7 — Aave V3 liquidationCall → LendingAction::Liquidate
@@ -964,7 +906,10 @@ const T7_AAVE_LIQUIDATION_V3: &str = r#"{
 #[test]
 fn t7_aave_liquidation_call() {
     let install = install_ok(T7_AAVE_LIQUIDATION_V3);
-    assert_eq!(install["data"]["bundle_id"], "aave/v3/liquidationCall@1.0.0");
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "aave/v3/liquidationCall@1.0.0"
+    );
 
     let calldata = encode_calldata(
         "0x00a718a9",
@@ -1001,27 +946,33 @@ fn t7_aave_liquidation_call() {
         "0x000000000000000000000000000000000000aaaa",
     );
 
-    let out = declarative_route_request_v3_json(input);
-    let parsed: Value = serde_json::from_str(&out).unwrap();
-    if parsed["ok"] == Value::Bool(true) {
-        let body = &parsed["data"]["actions"][0]["body"];
-        assert_eq!(body["domain"], "lending");
-        assert_eq!(body["action"], "liquidate");
-        assert_eq!(body["venue"]["name"], "aave_v3");
-        // load-bearing $args fields resolved from calldata.
-        assert_eq!(
-            body["collat_asset"]["key"]["address"],
-            "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-        );
-        assert_eq!(
-            body["debt_asset"]["key"]["address"],
-            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-        );
-        assert_eq!(body["victim"], "0x000000000000000000000000000000000000cccc");
-    } else {
-        // Documented live-default gap: LiveField<UserLendingState>.value=null.
-        assert_action_builder_fallback(&parsed, &["UserLendingState"]);
-    }
+    // With the `(lending, …)` `live_input_default` skeletons in place, every
+    // `LiveField<T>` wrap (victim_state: UserLendingState, liquidation_bonus:
+    // u32, debt/collat_asset_price: Price) defaults to a deserializable zero,
+    // so the full `lending` body lands. (Previously this tolerated a
+    // documented `build_action_body_failed` with `UserLendingState` in the
+    // message — that gap is now closed.)
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "liquidate");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    // load-bearing $args fields resolved from calldata.
+    assert_eq!(
+        body["collat_asset"]["key"]["address"],
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    );
+    assert_eq!(
+        body["debt_asset"]["key"]["address"],
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    );
+    assert_eq!(body["victim"], "0x000000000000000000000000000000000000cccc");
+    // live_input defaults wrapped + deserialized.
+    assert_eq!(
+        body["live_inputs"]["victim_state"]["value"]["health_factor"],
+        "0"
+    );
+    assert_eq!(body["live_inputs"]["liquidation_bonus"]["value"], 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -1087,24 +1038,25 @@ fn t8_aave_set_user_emode() {
         "0x000000000000000000000000000000000000aaaa",
     );
 
-    let out = declarative_route_request_v3_json(input);
-    let parsed: Value = serde_json::from_str(&out).unwrap();
-    if parsed["ok"] == Value::Bool(true) {
-        let body = &parsed["data"]["actions"][0]["body"];
-        assert_eq!(body["domain"], "lending");
-        assert_eq!(body["action"], "set_e_mode");
-        assert_eq!(body["venue"]["name"], "aave_v3");
-        // load-bearing arg: category id resolved (2) — number OR string form.
-        let cat = &body["category_id"];
-        assert!(
-            cat == &Value::from(2u64) || cat == &Value::from("2"),
-            "category_id should be 2: {parsed}"
-        );
-    } else {
-        // Documented uint-arg-as-decimal-string gap (cf. t3 Permit2 expiration):
-        // `categoryId` u8 ← JSON string "2" → serde rejects.
-        assert_action_builder_fallback(&parsed, &["expected u8", "u8"]);
-    }
+    // `categoryId` is a `uint8` (≤ 64 bit) so the width-based `args_to_json`
+    // coercion now emits it as a JSON NUMBER, which the `category_id: u8`
+    // field accepts; combined with the `(lending, set_e_mode, …)` live_input
+    // defaults the full body lands. (Previously this tolerated a documented
+    // `build_action_body_failed` `expected u8` fallback from the decimal-string
+    // arg — that gap is now closed.)
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "set_e_mode");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    // load-bearing arg: category id resolved to the JSON number 2.
+    assert_eq!(body["category_id"], 2, "{parsed}");
+    // live_input defaults wrapped + deserialized (EModeConfig + UserLendingState).
+    assert_eq!(body["live_inputs"]["category_config"]["value"]["ltv_bp"], 0);
+    assert_eq!(
+        body["live_inputs"]["user_state_before"]["value"]["health_factor"],
+        "0"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1162,7 +1114,10 @@ const T9_AAVE_SWAP_RATE_MODE_V3: &str = r#"{
 #[test]
 fn t9_aave_swap_borrow_rate_mode() {
     let install = install_ok(T9_AAVE_SWAP_RATE_MODE_V3);
-    assert_eq!(install["data"]["bundle_id"], "aave/v3/swapBorrowRateMode@1.0.0");
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "aave/v3/swapBorrowRateMode@1.0.0"
+    );
 
     let calldata = encode_calldata(
         "0x94ba89a2",
@@ -1185,21 +1140,161 @@ fn t9_aave_swap_borrow_rate_mode() {
         "0x000000000000000000000000000000000000aaaa",
     );
 
-    let out = declarative_route_request_v3_json(input);
-    let parsed: Value = serde_json::from_str(&out).unwrap();
-    if parsed["ok"] == Value::Bool(true) {
-        let body = &parsed["data"]["actions"][0]["body"];
-        assert_eq!(body["domain"], "lending");
-        assert_eq!(body["action"], "swap_rate_mode");
-        assert_eq!(body["venue"]["name"], "aave_v3");
-        // load-bearing $args field resolved.
-        assert_eq!(
-            body["asset"]["key"]["address"],
-            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-        );
-        assert_eq!(body["new_mode"], "variable");
-    } else {
-        // Documented live-default gap: LiveField<(U256, U256)>.value=null.
-        assert_action_builder_fallback(&parsed, &["tuple of size 2", "tuple"]);
+    // With the `(lending, swap_rate_mode, …)` live_input defaults the
+    // `LiveField<(U256,U256)>` (current_debts) and `LiveField<(Decimal,Decimal)>`
+    // (rates) wraps default to the deserializable `["0","0"]` 2-tuples, so the
+    // full body lands. (Previously this tolerated a documented
+    // `build_action_body_failed` `tuple of size 2` fallback — now closed.)
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "swap_rate_mode");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    // load-bearing $args field resolved.
+    assert_eq!(
+        body["asset"]["key"]["address"],
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    );
+    assert_eq!(body["new_mode"], "variable");
+    // live_input 2-tuple defaults wrapped + deserialized. `current_debts` is
+    // `(U256, U256)` → alloy serialises each U256 as a hex string; `rates` is
+    // `(Decimal, Decimal)` (transparent over String) → decimal "0".
+    assert_eq!(
+        body["live_inputs"]["current_debts"]["value"],
+        json!(["0x0", "0x0"])
+    );
+    assert_eq!(body["live_inputs"]["rates"]["value"], json!(["0", "0"]));
+}
+
+// ---------------------------------------------------------------------------
+// t10 — Aave V3 supply → LendingAction::Supply (EXISTING on-disk manifest)
+// ---------------------------------------------------------------------------
+//
+// Inline-mirrors `registryV2/manifests/aave/v3/supply@1.0.0.json` verbatim
+// (same `abi_fragment` + `emit.body` + the 5 declared `live_inputs`). The
+// pre-existing supply manifest was never route-tested; with the
+// `(lending, supply, …)` live_input_default skeletons it now routes fully
+// green (reserve_state: ReserveState, supply_apy: Decimal, a_token_price_usd:
+// Price, eligible_as_collat: bool, user_state_before: UserLendingState). The
+// `referralCode` arg is a uint16 (≤ 64 bit) → JSON number via Fix B, though
+// the supply body does not bind it.
+
+const T10_AAVE_SUPPLY_V3: &str = r#"{
+  "type": "adapter_action",
+  "id": "aave/v3/supply@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x617ba037",
+    "chain_to_addresses": { "1": ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"] }
+  },
+  "abi_fragment": {
+    "function_name": "supply",
+    "abi": {
+      "name": "supply",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "asset",        "type": "address" },
+        { "name": "amount",       "type": "uint256" },
+        { "name": "onBehalfOf",   "type": "address" },
+        { "name": "referralCode", "type": "uint16"  }
+      ],
+      "outputs": []
     }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "supply",
+        "supply": {
+          "venue": { "name": "aave_v3", "chain": "$chain", "pool": "$to", "market_id": null },
+          "asset":        { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } },
+          "amount":       "$args.amount",
+          "on_behalf_of": "$args.onBehalfOf"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state":      { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getReserveData(address)", "decoder_id": "aave_v3_reserve_data" }, "ttl_s": 30 },
+      "supply_apy":         { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_v3_supply_apy" }, "ttl_s": 30 },
+      "a_token_price_usd":  { "source": { "kind": "oracle_feed", "provider": "chainlink", "feed_id": "AAVE_V3_RESERVE_PRICE" }, "ttl_s": 60 },
+      "eligible_as_collat": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getConfiguration(address)", "decoder_id": "aave_v3_reserve_config" }, "ttl_s": 60 },
+      "user_state_before":  { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getUserAccountData(address)", "decoder_id": "aave_v3_user_account_data" }, "ttl_s": 12 }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}"#;
+
+#[test]
+fn t10_aave_supply() {
+    let install = install_ok(T10_AAVE_SUPPLY_V3);
+    assert_eq!(install["data"]["bundle_id"], "aave/v3/supply@1.0.0");
+
+    let calldata = encode_calldata(
+        "0x617ba037",
+        &[
+            // asset (load-bearing) — USDC
+            DynSolValue::Address(
+                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // amount
+            DynSolValue::Uint(AlloyU256::from(1_000_000u64), 256),
+            // onBehalfOf
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000cccc"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            // referralCode (uint16 ≤ 64 bit → JSON number)
+            DynSolValue::Uint(AlloyU256::from(0u64), 16),
+        ],
+    );
+    let input = route_input(
+        1,
+        "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+        "0x617ba037",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    // EXISTING supply manifest must route fully green now.
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending");
+    assert_eq!(body["action"], "supply");
+    assert_eq!(body["venue"]["name"], "aave_v3");
+    assert_eq!(
+        body["asset"]["key"]["address"],
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    );
+    // amount: U256 round-trips as a hex string through alloy serde.
+    assert_eq!(body["amount"], "0xf4240"); // 1_000_000
+    assert_eq!(
+        body["on_behalf_of"],
+        "0x000000000000000000000000000000000000cccc"
+    );
+    // All 5 live_input defaults wrapped + deserialized. `total_supply` /
+    // `available_borrow_usd` are `U256` → alloy hex string "0x0"; `supply_apy`
+    // / `a_token_price_usd` are `Decimal` / `Price` (transparent String) → "0".
+    assert_eq!(
+        body["live_inputs"]["reserve_state"]["value"]["total_supply"],
+        "0x0"
+    );
+    assert_eq!(body["live_inputs"]["supply_apy"]["value"], "0");
+    assert_eq!(body["live_inputs"]["a_token_price_usd"]["value"], "0");
+    assert_eq!(body["live_inputs"]["eligible_as_collat"]["value"], false);
+    assert_eq!(
+        body["live_inputs"]["user_state_before"]["value"]["available_borrow_usd"],
+        "0x0"
+    );
 }

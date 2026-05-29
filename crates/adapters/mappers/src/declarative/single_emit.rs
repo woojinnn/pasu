@@ -1821,9 +1821,9 @@ fn read_signature_validity(tree: &serde_json::Value) -> Result<Option<Validity>,
     if validity.is_null() {
         return Ok(None);
     }
-    let expires_at_str = required_string(validity, "expiresAt")
+    let expires_at_str = required_decimal_field(validity, "expiresAt")
         .map_err(|_| missing_field("signatureValidity", "expiresAt"))?;
-    let expires_at = DecimalString::from_str(expires_at_str).map_err(|message| {
+    let expires_at = DecimalString::from_str(&expires_at_str).map_err(|message| {
         MapperError::Internal(anyhow::anyhow!(
             "signatureValidity.expiresAt {expires_at_str:?}: {message}"
         ))
@@ -2096,9 +2096,9 @@ fn read_validity(tree: &serde_json::Value) -> Result<Option<Validity>, MapperErr
             "validity must be an object, got {validity}"
         ))
     })?;
-    let expires_at_str = required_string(validity, "expiresAt")
+    let expires_at_str = required_decimal_field(validity, "expiresAt")
         .map_err(|_| missing_field("validity", "expiresAt"))?;
-    let expires_at = DecimalString::from_str(expires_at_str).map_err(|message| {
+    let expires_at = DecimalString::from_str(&expires_at_str).map_err(|message| {
         MapperError::Internal(anyhow::anyhow!(
             "validity.expiresAt {expires_at_str:?}: {message}"
         ))
@@ -2568,6 +2568,23 @@ fn required_string<'a>(tree: &'a serde_json::Value, field: &str) -> Result<&'a s
     tree.get(field)
         .and_then(|v| v.as_str())
         .ok_or_else(|| MapperError::MissingArgument(field.to_owned()))
+}
+
+/// Read `tree.<field>` as a decimal string, accepting EITHER a JSON string OR a
+/// JSON number.
+///
+/// Needed because `eval::args_to_json` now renders uint args ≤ 64 bit as JSON
+/// numbers (so `u8`/`u64` action-builder fields parse). Some `single_emit`
+/// bundles map a narrow-uint arg into a field this v1 reader consumes (e.g.
+/// `validity.expiresAt` ← Permit2 `expiration` uint48); a bare `required_string`
+/// would reject the number. A number's `to_string()` is its plain decimal form,
+/// exactly what `DecimalString` / `Decimal` expect.
+fn required_decimal_field(tree: &serde_json::Value, field: &str) -> Result<String, MapperError> {
+    match tree.get(field) {
+        Some(serde_json::Value::String(s)) => Ok(s.clone()),
+        Some(v) if v.is_number() => Ok(v.to_string()),
+        _ => Err(MapperError::MissingArgument(field.to_owned())),
+    }
 }
 
 fn missing_field(parent: &str, field: &str) -> MapperError {
