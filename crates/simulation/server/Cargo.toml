@@ -1,0 +1,15 @@
+[package]
+name = "simulation-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "HTTP backend service for the simulation engine — executes enrichment calls + simulates Action(s) over wallet state and returns state / statediff / results. Cedar evaluation stays in the browser extension, so this crate has NO cedar/policy-engine dependency."
+publish = false
+
+[dependencies]
+# The service operates on the pure simulation types + reducer. NO cedar /
+# policy-engine dependency: the extension owns Cedar evaluation.
+simulation-state.workspace = true
+simulation-reducer.workspace = true
+serde.workspace = true
+serde_json.workspace = true
