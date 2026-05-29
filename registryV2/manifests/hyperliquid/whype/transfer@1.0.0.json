@@ -1,0 +1,49 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/whype/transfer@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note": "WHYPE (HyperEVM chain 999) standard ERC20 transfer. WHYPE is a WETH9 fork with a standard ERC20 surface, so this mirrors standard/erc20/transfer@1.0.0 -> token/erc20_transfer. A WHYPE-specific manifest (explicit chain_to_addresses) is used instead of the tokens:erc20 source because chain 999 has no committed tokens/999 list. No collision: standard/erc20 covers only chains [1,10,8453,42161]. CAVEAT: WHYPE full 40-hex D9-limited; 0x5555...5 ASSUMED.",
+  "match": {
+    "selector": "0xa9059cbb",
+    "chain_to_addresses": {
+      "999": ["0x5555555555555555555555555555555555555555"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "transfer",
+    "abi": {
+      "name": "transfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "to", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ],
+      "outputs": [
+        { "name": "", "type": "bool" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "recipient": "$args.to",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -5507,3 +5507,316 @@ fn b3_nonempty_calldata_does_not_hit_sentinel() {
         "{parsed}"
     );
 }
+
+// ===========================================================================
+// b3 — HyperLiquid Bridge2 (on-chain) + WHYPE (HyperEVM chain 999) cover
+// ===========================================================================
+//
+// Manifests are loaded from the committed registryV2 files via `include_str!`
+// so the tests exercise the SHIPPED on-disk shapes (not inline copies).
+//
+//   Bridge2 batchedDepositWithPermit  0xb30b5bce  → Multicall of USDC transfers
+//   USDC EIP-2612 permit              0xd505accf  → erc20_permit (typed-data)
+//   WHYPE deposit()                   0xd0e30db0  → Unknown ($calldata, $tx.value)
+//   WHYPE withdraw(uint256)           0x2e1a7d4d  → Unknown ($calldata, value "0")
+//   WHYPE transfer/approve/transferFrom            → erc20_transfer / erc20_approve
+
+const HL_BRIDGE2_DEPOSIT_MANIFEST: &str = include_str!(
+    "../../../registryV2/manifests/hyperliquid/bridge2/batched-deposit-with-permit@1.0.0.json"
+);
+const HL_USDC_PERMIT_MANIFEST: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/bridge2/usdc-permit@1.0.0.json");
+const HL_WHYPE_DEPOSIT_MANIFEST: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/whype/deposit@1.0.0.json");
+const HL_WHYPE_WITHDRAW_MANIFEST: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/whype/withdraw@1.0.0.json");
+const HL_WHYPE_TRANSFER_MANIFEST: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/whype/transfer@1.0.0.json");
+const HL_WHYPE_APPROVE_MANIFEST: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/whype/approve@1.0.0.json");
+const HL_WHYPE_TRANSFER_FROM_MANIFEST: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/whype/transferFrom@1.0.0.json");
+
+const HL_BRIDGE2: &str = "0x2df1c51e09aecf9cacb7bc98cb1742757f163df7";
+const HL_USDC: &str = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"; // USDC on Arbitrum (lowercased)
+const HL_WHYPE: &str = "0x5555555555555555555555555555555555555555"; // WHYPE (D9-limited; all-5s assumed)
+const HL_ARBITRUM: u64 = 42161;
+const HL_HYPEREVM: u64 = 999;
+const HL_USER_A: &str = "0x00000000000000000000000000000000deadbeef";
+const HL_USER_B: &str = "0x00000000000000000000000000000000cafef00d";
+// `HL_SUBMITTER` is already defined for the t23 tagged_dispatch tests (same value).
+
+// ---------------------------------------------------------------------------
+// b3.bridge2.batchedDepositWithPermit — array_emit → Multicall of USDC transfers
+// ---------------------------------------------------------------------------
+//
+// `deposits` is a tuple[] `(address user, uint64 usd, uint64 deadline,
+// (uint256 r, uint256 s, uint8 v) signature)`. On the calldata path each
+// element decodes POSITIONALLY, so the body reads `$inputs.[1]` (usd) for the
+// amount. The two elements carry DIFFERENT usd amounts → proves per-element
+// binding. The inner signature tuple (index [3]) is decoded but unused.
+
+/// One deposit tuple `(user, usd, deadline, (r, s, v))`.
+fn hl_deposit_tuple(user: &str, usd: u64, deadline: u64) -> DynSolValue {
+    DynSolValue::Tuple(vec![
+        DynSolValue::Address(addr(user)),
+        DynSolValue::Uint(AlloyU256::from(usd), 64),
+        DynSolValue::Uint(AlloyU256::from(deadline), 64),
+        DynSolValue::Tuple(vec![
+            DynSolValue::Uint(AlloyU256::from(0x11_u64), 256), // r
+            DynSolValue::Uint(AlloyU256::from(0x22_u64), 256), // s
+            DynSolValue::Uint(AlloyU256::from(27_u64), 8),     // v
+        ]),
+    ])
+}
+
+#[test]
+fn b3_hl_bridge2_batched_deposit_with_permit() {
+    let install = install_ok(HL_BRIDGE2_DEPOSIT_MANIFEST);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/bridge2/batched-deposit-with-permit@1.0.0"
+    );
+
+    // 100 USDC (6-dp = 100_000_000) and 250 USDC (250_000_000).
+    let calldata = encode_calldata(
+        "0xb30b5bce",
+        &[DynSolValue::Array(vec![
+            hl_deposit_tuple(HL_USER_A, 100_000_000, 1_900_000_000),
+            hl_deposit_tuple(HL_USER_B, 250_000_000, 1_900_000_001),
+        ])],
+    );
+    let input = route_input(HL_ARBITRUM, HL_BRIDGE2, "0xb30b5bce", calldata, HL_SUBMITTER);
+    let parsed = route_ok(input);
+    assert_eq!(
+        parsed["data"]["decoder_id"],
+        "hyperliquid/bridge2/batched-deposit-with-permit@1.0.0"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "multicall", "{parsed}");
+    let actions = body["actions"].as_array().expect("inner actions array");
+    assert_eq!(actions.len(), 2, "{parsed}");
+
+    // element-0 — 100 USDC to the Bridge2 contract.
+    assert_eq!(actions[0]["domain"], "token");
+    assert_eq!(actions[0]["action"], "erc20_transfer");
+    assert_eq!(actions[0]["recipient"], HL_BRIDGE2, "recipient = $to (Bridge2)");
+    assert_eq!(actions[0]["amount"], "0x5f5e100", "{parsed}"); // 100_000_000
+    assert_eq!(actions[0]["token"]["key"]["address"], HL_USDC, "{parsed}");
+    assert_eq!(actions[0]["token"]["key"]["chain"], "eip155:42161", "{parsed}");
+
+    // element-1 — DIFFERENT usd amount proves per-element $inputs.[1] binding.
+    assert_eq!(actions[1]["action"], "erc20_transfer");
+    assert_eq!(actions[1]["recipient"], HL_BRIDGE2);
+    assert_eq!(actions[1]["amount"], "0xee6b280", "{parsed}"); // 250_000_000
+    assert_eq!(actions[1]["token"]["key"]["address"], HL_USDC, "{parsed}");
+}
+
+#[test]
+fn b3_hl_bridge2_batched_deposit_empty() {
+    install_ok(HL_BRIDGE2_DEPOSIT_MANIFEST);
+
+    // Empty deposits array → empty Multicall (valid, ok:true).
+    let calldata = encode_calldata("0xb30b5bce", &[DynSolValue::Array(vec![])]);
+    let input = route_input(HL_ARBITRUM, HL_BRIDGE2, "0xb30b5bce", calldata, HL_SUBMITTER);
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "multicall", "{parsed}");
+    assert!(
+        body["actions"].as_array().expect("inner actions").is_empty(),
+        "{parsed}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// b3.bridge2.usdcPermit — EIP-2612 typed-data → erc20_permit (FLAT unwrapped)
+// ---------------------------------------------------------------------------
+//
+// USDC EIP-2612 permit (domain.name "USD Coin", chain 42161). The flat path
+// resolves `$args.spender` / `$args.value` against the message directly. The
+// signed permit grants a USDC allowance to `spender` (here the Bridge2
+// contract — contextual, not modelled as a Bridge2-specific action).
+
+#[test]
+fn b3_hl_bridge2_usdc_permit() {
+    install_ok(HL_USDC_PERMIT_MANIFEST);
+
+    let message = json!({
+        "owner": HL_SUBMITTER,
+        "spender": HL_BRIDGE2,
+        "value": "100000000",
+        "nonce": "0",
+        "deadline": 1_900_000_000_u64
+    });
+    let input = json!({
+        "chain_id": HL_ARBITRUM,
+        "verifying_contract": HL_USDC,
+        "primary_type": "Permit",
+        "domain_name": "USD Coin",
+        "message": message,
+        "submitter": HL_SUBMITTER,
+        "submitted_at": 1_700_000_000_u64
+    })
+    .to_string();
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"],
+        "hyperliquid/bridge2/usdc-permit@1.0.0",
+        "{parsed}"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "erc20_permit", "{parsed}");
+    // FLAT proof: $args.spender resolved to the Bridge2 address (not the whole message).
+    assert_eq!(body["spender"], HL_BRIDGE2, "{parsed}");
+    // amount = message.value (100_000_000 = 0x5f5e100), $args.value resolved flat.
+    assert_eq!(body["amount"], "0x5f5e100", "{parsed}");
+    // token.key.address = $tx.to = verifying_contract = USDC (lowercased).
+    assert_eq!(body["token"]["key"]["address"], HL_USDC, "{parsed}");
+    assert_eq!(body["token"]["key"]["chain"], "eip155:42161", "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// b3.whype.deposit — deposit() (payable wrap) → Unknown ($calldata, $tx.value)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b3_hl_whype_deposit() {
+    let install = install_ok(HL_WHYPE_DEPOSIT_MANIFEST);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/whype/deposit@1.0.0"
+    );
+
+    // deposit() has no args → calldata is the bare selector.
+    let calldata = encode_calldata("0xd0e30db0", &[]);
+    // deposit is payable — the wrapped HYPE amount is msg.value (1 HYPE = 1e18).
+    let input = route_input_with_value(
+        HL_HYPEREVM,
+        HL_WHYPE,
+        "0xd0e30db0",
+        calldata.clone(),
+        HL_SUBMITTER,
+        "1000000000000000000",
+    );
+    let parsed = route_ok(input);
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_WHYPE, "{parsed}");
+    assert_eq!(body["chain"], "eip155:999", "{parsed}");
+    // value = $tx.value (deposit is payable). 1e18 wei = 0xde0b6b3a7640000.
+    assert_eq!(body["value"], "0xde0b6b3a7640000", "{parsed}");
+    // $calldata preserves the raw deposit() call (the wrap intent), not "0x".
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// b3.whype.withdraw — withdraw(uint256 wad) (unwrap) → Unknown (value "0")
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b3_hl_whype_withdraw() {
+    let install = install_ok(HL_WHYPE_WITHDRAW_MANIFEST);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/whype/withdraw@1.0.0"
+    );
+
+    // withdraw(wad) — the unwrapped amount is in calldata (0.5 WHYPE).
+    let calldata = encode_calldata(
+        "0x2e1a7d4d",
+        &[DynSolValue::Uint(AlloyU256::from(500_000_000_000_000_000_u64), 256)],
+    );
+    let input = route_input(HL_HYPEREVM, HL_WHYPE, "0x2e1a7d4d", calldata.clone(), HL_SUBMITTER);
+    let parsed = route_ok(input);
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_WHYPE, "{parsed}");
+    assert_eq!(body["chain"], "eip155:999", "{parsed}");
+    // withdraw is non-payable → value literal "0" → "0x0".
+    assert_eq!(body["value"], "0x0", "{parsed}");
+    // $calldata preserves the wad (the unwrap amount) for scope analysis.
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// ---------------------------------------------------------------------------
+// b3.whype.transfer / approve / transferFrom — standard ERC20 on chain 999
+// ---------------------------------------------------------------------------
+
+#[test]
+fn b3_hl_whype_transfer() {
+    install_ok(HL_WHYPE_TRANSFER_MANIFEST);
+
+    let calldata = encode_calldata(
+        "0xa9059cbb",
+        &[
+            DynSolValue::Address(addr(HL_USER_A)),
+            DynSolValue::Uint(AlloyU256::from(1_500_000_000_000_000_000_u64), 256),
+        ],
+    );
+    let input = route_input(HL_HYPEREVM, HL_WHYPE, "0xa9059cbb", calldata, HL_SUBMITTER);
+    let parsed = route_ok(input);
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "erc20_transfer", "{parsed}");
+    assert_eq!(body["recipient"], HL_USER_A, "{parsed}");
+    assert_eq!(body["amount"], "0x14d1120d7b160000", "{parsed}"); // 1.5e18
+    assert_eq!(body["token"]["key"]["address"], HL_WHYPE, "{parsed}");
+    assert_eq!(body["token"]["key"]["chain"], "eip155:999", "{parsed}");
+}
+
+#[test]
+fn b3_hl_whype_approve() {
+    install_ok(HL_WHYPE_APPROVE_MANIFEST);
+
+    let calldata = encode_calldata(
+        "0x095ea7b3",
+        &[
+            DynSolValue::Address(addr(HL_USER_B)),
+            DynSolValue::Uint(AlloyU256::from(7_000_000_000_000_000_000_u64), 256),
+        ],
+    );
+    let input = route_input(HL_HYPEREVM, HL_WHYPE, "0x095ea7b3", calldata, HL_SUBMITTER);
+    let parsed = route_ok(input);
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "erc20_approve", "{parsed}");
+    assert_eq!(body["spender"], HL_USER_B, "{parsed}");
+    assert_eq!(body["amount"], "0x6124fee993bc0000", "{parsed}"); // 7e18
+    assert_eq!(body["token"]["key"]["address"], HL_WHYPE, "{parsed}");
+    assert_eq!(body["token"]["key"]["chain"], "eip155:999", "{parsed}");
+}
+
+#[test]
+fn b3_hl_whype_transfer_from() {
+    install_ok(HL_WHYPE_TRANSFER_FROM_MANIFEST);
+
+    let calldata = encode_calldata(
+        "0x23b872dd",
+        &[
+            DynSolValue::Address(addr(HL_USER_A)), // from
+            DynSolValue::Address(addr(HL_USER_B)), // to
+            DynSolValue::Uint(AlloyU256::from(2_000_000_000_000_000_000_u64), 256),
+        ],
+    );
+    let input = route_input(HL_HYPEREVM, HL_WHYPE, "0x23b872dd", calldata, HL_SUBMITTER);
+    let parsed = route_ok(input);
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "erc20_transfer", "{parsed}");
+    // recipient = $args.to (the `from` arg is not an erc20_transfer field).
+    assert_eq!(body["recipient"], HL_USER_B, "{parsed}");
+    assert_eq!(body["amount"], "0x1bc16d674ec80000", "{parsed}"); // 2e18
+    assert_eq!(body["token"]["key"]["address"], HL_WHYPE, "{parsed}");
+    assert_eq!(body["token"]["key"]["chain"], "eip155:999", "{parsed}");
+}
