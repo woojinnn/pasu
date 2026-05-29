@@ -29,6 +29,21 @@ export interface CallMatchKey {
 }
 
 /**
+ * Input to `byTypedData` — the EIP-712 typed-data routing triple. Mirrors
+ * the `by-typed-data/` index `build-index.ts` produces (Phase A.1 Task 2),
+ * keyed on `(chainId, verifyingContract, primaryType)`. `domain.name` is
+ * NOT part of the key (EIP-2612 Permits carry the token name there, so it
+ * can't disambiguate).
+ */
+export interface TypedDataMatchKey {
+  chainId: number;
+  /** "0x" + 40 hex. Case is normalised (lowercased) before URL construction. */
+  verifyingContract: string;
+  /** EIP-712 `primaryType` discriminator — may contain a `:` segment. */
+  primaryType: string;
+}
+
+/**
  * Registry index response (§6.1). On 200 OK with `matched: true` the
  * `bundle` field is the inline Adapter Function Bundle JSON so the client
  * gets a 1-RTT lookup. A 404 surfaces as `RegistryError("not_found", …)`
@@ -89,6 +104,13 @@ const DEFAULT_TIMEOUT_MS = 2000;
 const CALL_KEY_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const CALL_KEY_SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
 const CALL_KEY_BUNDLE_SHA256_RE = /^0x[0-9a-f]{64}$/;
+// Phase A.1 — `primaryType` is an EIP-712 struct name (Solidity identifier),
+// optionally with a `:`-joined namespace segment (e.g. HyperLiquid's
+// `HyperliquidTransaction:UsdSend`). We reject path-traversal / query / fragment
+// metacharacters so a hostile `primaryType` can't walk out of the
+// `index/by-typed-data/` namespace; the `:` is later escaped to `__` in the URL.
+const TYPED_DATA_PRIMARY_TYPE_RE =
+  /^[A-Za-z_$][A-Za-z0-9_$]*(?::[A-Za-z_$][A-Za-z0-9_$]*)*$/;
 
 /**
  * Build the callkey index URL. `to` and `selector` are lowercased to mirror
@@ -128,6 +150,47 @@ export function callKeyUrl(baseUrl: string, key: CallMatchKey): string {
 }
 
 /**
+ * Build the typed-data index URL. Mirrors `callKeyUrl` — `verifyingContract`
+ * is lowercased and the `primaryType`'s `:` segments are escaped to `__`
+ * (matching `build-index.ts`'s `typedDataFilename`, which can't put a raw `:`
+ * in a filename). Filename:
+ *   `<chainId>__<verifyingContract>__<primaryType-with-colons-as-__>.json`
+ *
+ * Same hostile-input gate as `callKeyUrl`: positive-int chainId, "0x"+40 hex
+ * verifyingContract, identifier-shaped `primaryType` (no `/`, `..`, `?`, `#`).
+ * Throws `RegistryError("malformed_response")` on a gate failure so the
+ * jit-fetcher routes it to the timeout negative-cache slot, not a spin.
+ */
+export function typedDataUrl(baseUrl: string, key: TypedDataMatchKey): string {
+  if (!Number.isInteger(key.chainId) || key.chainId < 1) {
+    throw new RegistryError(
+      "malformed_response",
+      `typedDataUrl: chainId must be a positive integer (got ${key.chainId})`,
+    );
+  }
+  if (!CALL_KEY_ADDRESS_RE.test(key.verifyingContract)) {
+    throw new RegistryError(
+      "malformed_response",
+      `typedDataUrl: verifyingContract must be "0x" + 40 hex (got "${key.verifyingContract}")`,
+    );
+  }
+  if (
+    typeof key.primaryType !== "string" ||
+    key.primaryType.length === 0 ||
+    !TYPED_DATA_PRIMARY_TYPE_RE.test(key.primaryType)
+  ) {
+    throw new RegistryError(
+      "malformed_response",
+      `typedDataUrl: primaryType must be a non-empty EIP-712 identifier (got "${key.primaryType}")`,
+    );
+  }
+  const vc = key.verifyingContract.toLowerCase();
+  const pt = key.primaryType.replace(/:/g, "__");
+  const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  return `${base}/index/by-typed-data/${key.chainId}__${vc}__${pt}.json`;
+}
+
+/**
  * GET the index entry for `key`. Resolves to the parsed JSON on 200 OK,
  * rejects with `RegistryError` on anything else.
  *
@@ -159,9 +222,95 @@ export async function byCallKey(
   } catch (err) {
     clearTimeout(timeoutHandle);
     if (isAbortError(err)) {
-      throw new RegistryError("timeout", `${url}: aborted after ${timeoutMs}ms`, undefined, {
-        cause: err,
-      });
+      throw new RegistryError(
+        "timeout",
+        `${url}: aborted after ${timeoutMs}ms`,
+        undefined,
+        {
+          cause: err,
+        },
+      );
+    }
+    throw new RegistryError(
+      "network",
+      `${url}: ${err instanceof Error ? err.message : String(err)}`,
+      undefined,
+      { cause: err },
+    );
+  }
+  clearTimeout(timeoutHandle);
+
+  if (response.status === 404) {
+    throw new RegistryError("not_found", `${url}: 404`, 404);
+  }
+  if (!response.ok) {
+    throw new RegistryError(
+      "network",
+      `${url}: HTTP ${response.status}`,
+      response.status,
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = await response.json();
+  } catch (err) {
+    throw new RegistryError(
+      "malformed_response",
+      `${url}: invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
+      response.status,
+      { cause: err },
+    );
+  }
+
+  if (!isByCallKeyOk(parsed)) {
+    throw new RegistryError(
+      "malformed_response",
+      `${url}: response does not match ByCallKeyOk shape`,
+      response.status,
+    );
+  }
+
+  return parsed;
+}
+
+/**
+ * Phase A.1 — GET the typed-data index entry for `key`. Resolves to the
+ * parsed JSON on 200 OK, rejects with `RegistryError` on anything else.
+ *
+ * Byte-for-byte mirror of {@link byCallKey} (same timeout, AbortController,
+ * `RegistryError` failure mapping, and `ByCallKeyOk` wire shape + validator
+ * — the index entry is identical, only the lookup key/URL differ). The
+ * `by-typed-data/` file absence surfaces as `RegistryError("not_found")`
+ * exactly like the callkey 404 path.
+ */
+export async function byTypedData(
+  key: TypedDataMatchKey,
+  options: ByCallKeyOptions = {},
+): Promise<ByCallKeyOk> {
+  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const doFetch = options.fetchImpl ?? fetch;
+
+  const url = typedDataUrl(baseUrl, key);
+
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await doFetch(url, { signal: controller.signal });
+  } catch (err) {
+    clearTimeout(timeoutHandle);
+    if (isAbortError(err)) {
+      throw new RegistryError(
+        "timeout",
+        `${url}: aborted after ${timeoutMs}ms`,
+        undefined,
+        {
+          cause: err,
+        },
+      );
     }
     throw new RegistryError(
       "network",

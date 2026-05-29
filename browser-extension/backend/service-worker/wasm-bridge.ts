@@ -27,6 +27,12 @@ interface WasmExports {
   // `simulation_reducer::action::Action` tree via the registry-v2 manifest
   // lookup + emit-rule decode pipeline.
   declarative_route_request_v3_json(input_json: string): string;
+  // Phase A.1 — v3 typed-data (EIP-712 sign) route entry. Same emit-rule
+  // decode pipeline as `declarative_route_request_v3_json`, keyed on the
+  // typed-data triple `(chain_id, verifying_contract, primary_type)` the
+  // install populated in the typed_data bridge. `message` is the raw
+  // EIP-712 message object the manifest `$args.*` placeholders resolve over.
+  declarative_route_typed_data_v3_json(input_json: string): string;
   // Phase 7A — evaluate Cedar policies against caller-supplied envelopes.
   // Skips the route → plan stages so the declarative pipeline can drive
   // verdicts directly from its post-processed envelopes.
@@ -208,11 +214,14 @@ export async function installPolicies(input: {
   manifests?: readonly unknown[] | Record<string, unknown>;
 }): Promise<InstallPoliciesOutput | null> {
   const exports = await load();
-  const raw = unwrap<unknown>(exports.install_policies_json(JSON.stringify(input)));
+  const raw = unwrap<unknown>(
+    exports.install_policies_json(JSON.stringify(input)),
+  );
   if (raw === null || raw === undefined) return null;
   if (
     typeof raw === "object" &&
-    typeof (raw as { enrichedSchemaHash?: unknown }).enrichedSchemaHash === "string"
+    typeof (raw as { enrichedSchemaHash?: unknown }).enrichedSchemaHash ===
+      "string"
   ) {
     const r = raw as {
       enrichedSchemaHash: string;
@@ -272,7 +281,9 @@ export async function planPolicyRpc(
 ): Promise<PolicyRpcPlanDto> {
   const exports = await load();
   const startedAtMs = Date.now();
-  const raw = unwrap<unknown>(exports.plan_policy_rpc_json(JSON.stringify(input)));
+  const raw = unwrap<unknown>(
+    exports.plan_policy_rpc_json(JSON.stringify(input)),
+  );
   const plan = parsePolicyRpcPlan(raw);
   console.debug("[Scopeball] wasm.plan", {
     requestId: input.request_id,
@@ -283,7 +294,11 @@ export async function planPolicyRpc(
     manifestSetHash: plan.manifest_set_hash,
     schemaHash: plan.schema_hash,
     envelopeCount: plan.envelopes.length,
-    calls: plan.calls.map((c) => ({ id: c.id, method: c.method, params: c.params })),
+    calls: plan.calls.map((c) => ({
+      id: c.id,
+      method: c.method,
+      params: c.params,
+    })),
     diagnostics: plan.diagnostics,
   });
   return plan;
@@ -388,6 +403,81 @@ export async function declarativeRouteRequestV3(
   return unwrap<DeclarativeRouteRequestV3Result>(
     exports.declarative_route_request_v3_json(JSON.stringify(input)),
   );
+}
+
+/**
+ * Phase A.1 — wire shape for `declarative_route_typed_data_v3_json`.
+ *
+ * The typed-data analogue of {@link DeclarativeRouteRequestV3Input}: instead
+ * of `(to, selector, calldata)` the WASM keys on the typed-data triple
+ * `(chain_id, verifying_contract, primary_type)` the install bridged, plus
+ * the raw EIP-712 `message` object the manifest `$args.*` placeholders read.
+ *
+ * `domain_name` is optional — EIP-2612 token Permits carry the token name as
+ * `domain.name`, so it can't be part of the routing key; the WASM only uses
+ * it for audit / display. `submitted_at` is unix-epoch seconds.
+ */
+export interface DeclarativeRouteTypedDataV3Input {
+  chainId: number;
+  /** "0x" + 40 hex. Case-insensitive on the engine side. */
+  verifyingContract: string;
+  /** EIP-712 `primaryType` discriminator (may contain a `:` segment). */
+  primaryType: string;
+  /**
+   * Optional EIP-712 `domain.name` — audit only, not part of the key. Typed
+   * as `string | undefined` (not just optional) so callers can forward
+   * `typedData.domain.name` straight through under `exactOptionalPropertyTypes`.
+   */
+  domainName?: string | undefined;
+  /** Raw EIP-712 `message` object — the manifest `$args.*` decode root. */
+  message: unknown;
+  /** Signer address — "0x" + 40 hex. */
+  submitter: string;
+  /** Unix epoch seconds at which the signature was requested. */
+  submittedAt: number;
+}
+
+/**
+ * Phase A.1 — v3 typed-data (EIP-712 sign) route entry.
+ *
+ * Mirrors {@link declarativeRouteRequestV3} but returns the WASM envelope
+ * in a non-throwing `{ ok, data?, error? }` shape so the SW sig-router can
+ * treat a `route_failed` / `no_declarative_v3_mapper` miss as a transparent
+ * fall-through (`null`) rather than catching an `EngineError`. `actions` is
+ * the JSON-serialised `Vec<simulation_reducer::action::Action>`; `decoder_id`
+ * is the matched bundle id (`""` on no match).
+ *
+ * The caller marshals the snake_case wire keys
+ * (`chain_id, verifying_contract, primary_type, domain_name, message,
+ * submitter, submitted_at`) the Rust DTO expects.
+ */
+export async function declarativeRouteTypedDataV3(
+  input: DeclarativeRouteTypedDataV3Input,
+): Promise<{
+  ok: boolean;
+  data?: { actions: unknown[]; decoder_id: string };
+  error?: { kind: string; message: string };
+}> {
+  const exports = await load();
+  const raw = exports.declarative_route_typed_data_v3_json(
+    JSON.stringify({
+      chain_id: input.chainId,
+      verifying_contract: input.verifyingContract,
+      primary_type: input.primaryType,
+      domain_name: input.domainName,
+      message: input.message,
+      submitter: input.submitter,
+      submitted_at: input.submittedAt,
+    }),
+  );
+  const parsed = JSON.parse(raw) as Envelope<{
+    actions: unknown[];
+    decoder_id: string;
+  }>;
+  if (parsed.ok === true) {
+    return { ok: true, data: parsed.data };
+  }
+  return { ok: false, error: parsed.error };
 }
 
 /**

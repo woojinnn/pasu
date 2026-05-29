@@ -24,6 +24,11 @@ import {
   declarativeV3Cache,
   type DeclarativeV3CacheEntry,
 } from "./declarative-v3-cache";
+import {
+  byTypedData,
+  RegistryError,
+  type TypedDataMatchKey,
+} from "../registry/client";
 
 // ---------------------------------------------------------------------------
 // M3 — v3 bundle hydration (JIT)
@@ -367,6 +372,137 @@ export async function installDeclarativeBundleV3(
 }
 
 const v3CachedBundleByCallKey = new Map<string, V3Bundle>();
+
+/**
+ * Phase A.1 — cache key for a typed-data install. Prefixed `td:` so it never
+ * collides with the `v3:` callkey entries that share `v3InstallCache` /
+ * `v3InstalledBundleIds` (a callkey and a typed-data key could otherwise
+ * stringify to the same `<n>__<addr>__<rest>` shape).
+ */
+function v3TypedDataCacheKey(key: TypedDataMatchKey): string {
+  return `td:${key.chainId}__${key.verifyingContract.toLowerCase()}__${key.primaryType}`;
+}
+
+/**
+ * Result of {@link installDeclarativeBundleV3ByTypedData}. Mirrors the
+ * orchestrator-facing contract of the callkey path but flattened to a
+ * boolean + reason so the SW sig-router can map a miss to a transparent
+ * `null` fall-through. `bundleId` is present iff `ok`.
+ */
+export interface InstallDeclarativeV3ByTypedDataResult {
+  ok: boolean;
+  bundleId?: string;
+  reason?: string;
+}
+
+/**
+ * Phase A.1 — hydrate + install the v3 bundle for an EIP-712 typed-data
+ * triple `(chainId, verifyingContract, primaryType)` so a subsequent
+ * `declarative_route_typed_data_v3_json` call finds it via the WASM
+ * typed_data bridge the install populates.
+ *
+ * Mirrors {@link installDeclarativeBundleV3} but fetches via
+ * {@link byTypedData} (the `by-typed-data/` index) instead of the callkey
+ * index, and returns a flattened `{ ok, bundleId?, reason? }` so the sig
+ * router can treat a miss as a `null` fall-through:
+ *   - `byTypedData` 404 → `RegistryError("not_found")` (caught) →
+ *     `{ ok: false, reason: "manifest_not_found" }`.
+ *   - any other `RegistryError` (timeout / network / malformed) → caught →
+ *     `{ ok: false, reason: <code> }`.
+ *
+ * Memory cache only (Layer-2 chrome.storage rehydrate is the callkey path's
+ * concern — a typed-data install is cheap to re-fetch on SW cold start and
+ * the install is idempotent on the WASM side). The cache reuses the shared
+ * `v3InstallCache` under the `td:`-prefixed key so it can't collide with the
+ * `v3:` callkey entries.
+ */
+export async function installDeclarativeBundleV3ByTypedData(
+  key: TypedDataMatchKey,
+  options: { baseUrl?: string; fetchImpl?: typeof fetch } = {},
+): Promise<InstallDeclarativeV3ByTypedDataResult> {
+  const cacheKey = v3TypedDataCacheKey(key);
+  const cached = v3InstallCache.get(cacheKey);
+  if (cached) {
+    console.info(
+      "[Scopeball] installDeclarativeBundleV3ByTypedData cache-hit",
+      {
+        typedDataKey: cacheKey,
+        bundleId: cached.bundle_id,
+        decoderId: cached.decoder_id,
+      },
+    );
+    return { ok: true, bundleId: cached.bundle_id };
+  }
+
+  let entry: Awaited<ReturnType<typeof byTypedData>>;
+  try {
+    entry = await byTypedData(key, {
+      ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
+      ...(options.fetchImpl !== undefined
+        ? { fetchImpl: options.fetchImpl }
+        : {}),
+    });
+  } catch (err) {
+    if (err instanceof RegistryError) {
+      // 404 = no publisher for this triple. timeout / network / malformed
+      // also surface as a miss — the sig router falls through to `null`
+      // (Task 6 wires the orchestrator's observability-only audit row).
+      const reason = err.code === "not_found" ? "manifest_not_found" : err.code;
+      return { ok: false, reason };
+    }
+    throw err;
+  }
+
+  // Reuse the same v3 parse gate the callkey path uses — rejects v1/v2 or
+  // structurally broken v3 payloads. A malformed typed-data manifest is a
+  // miss (not a throw) so a single bad publisher can't brick the sig path.
+  let parsedBundle: V3Bundle | null;
+  try {
+    parsedBundle = parseBundleV3(entry.bundle);
+  } catch (err) {
+    if (err instanceof BundleParseError) {
+      console.warn(
+        "[Scopeball] installDeclarativeBundleV3ByTypedData parse failed",
+        { typedDataKey: cacheKey, message: err.message },
+      );
+      return { ok: false, reason: "parse_failed" };
+    }
+    throw err;
+  }
+  if (parsedBundle === null) {
+    return { ok: false, reason: "not_v3_bundle" };
+  }
+
+  const bundleJson = JSON.stringify(entry.bundle);
+  let installed: DeclarativeInstallResult;
+  try {
+    installed = await declarativeInstallV3(bundleJson);
+  } catch (err) {
+    console.warn(
+      "[Scopeball] installDeclarativeBundleV3ByTypedData install failed",
+      {
+        typedDataKey: cacheKey,
+        message: err instanceof Error ? err.message : err,
+      },
+    );
+    return { ok: false, reason: "install_failed" };
+  }
+
+  v3InstallCache.set(cacheKey, installed);
+  v3CachedBundleByCallKey.set(cacheKey, parsedBundle);
+  v3InstalledBundleIds.add(installed.bundle_id);
+
+  console.info(
+    "[Scopeball] installDeclarativeBundleV3ByTypedData fresh-install",
+    {
+      typedDataKey: cacheKey,
+      bundleId: installed.bundle_id,
+      decoderId: installed.decoder_id,
+    },
+  );
+
+  return { ok: true, bundleId: installed.bundle_id };
+}
 
 /**
  * Test helper — drops the v3 install cache so successive vitest cases run
