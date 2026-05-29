@@ -1,150 +1,217 @@
-//! LiveField 의 출처 (DataSource) 정의. 어디서 어떻게 가져오는지의 메타.
+//! Defines where a `LiveField` comes from (its `DataSource`): the metadata
+//! describing where and how the value is fetched.
 //!
-//! `value` 자체는 LiveField 안에 들고, source 는 갱신 주체가 보는 명세.
+//! The `value` itself lives inside the `LiveField`; the source is the spec the
+//! updater (sync orchestrator) reads to refresh it.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use crate::primitives::{Address, ChainId};
 
-/// 오라클 공급자.
+/// Oracle price-feed provider.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum OracleProvider {
+    /// Pyth Network oracle.
     Pyth,
+    /// Chainlink oracle.
     Chainlink,
+    /// RedStone oracle.
     RedStone,
-    /// 그 외 공급자는 이름만 보존.
+    /// Any other provider, preserved by name only.
     Other(String),
 }
 
-/// 외부 API 호출 시 인증 방식.
+/// Authentication scheme used when calling an external API.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AuthSpec {
+    /// No authentication required.
     None,
-    Bearer { token_env: String },
-    HmacSig { key_env: String },
+    /// Bearer-token auth; the token is read from this environment variable.
+    Bearer {
+        /// Name of the env var holding the bearer token.
+        token_env: String,
+    },
+    /// HMAC-signature auth; the signing key is read from this environment variable.
+    HmacSig {
+        /// Name of the env var holding the HMAC signing key.
+        key_env: String,
+    },
+    /// Custom auth scheme, identified by an opaque string.
     Custom(String),
 }
 
-/// Sync orchestrator 가 사용하는 데이터 출처.
+/// A data source the sync orchestrator uses to populate a `LiveField`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DataSource {
-    /// `eth_call` 같은 view 함수.
+    /// An on-chain view (read-only) function call, e.g. via `eth_call`.
     OnchainView {
+        /// Chain the contract lives on.
         chain: ChainId,
+        /// Address of the contract to call.
         #[tsify(type = "string")]
         contract: Address,
+        /// Name of the view function to invoke.
         function: String,
-        /// 결과를 어떻게 decode 할지 식별자 (외부 registry).
+        /// Identifier of the decoder (in an external registry) used to decode the result.
         decoder_id: String,
     },
 
-    /// 표준 오라클 피드.
+    /// A standard oracle price feed.
     OracleFeed {
+        /// Oracle provider serving the feed.
         provider: OracleProvider,
+        /// Provider-specific feed identifier.
         feed_id: String,
     },
 
-    /// REST/WebSocket venue API (Hyperliquid, GMX subgraph, dYdX indexer 등).
+    /// A REST/WebSocket venue API (e.g. Hyperliquid, GMX subgraph, dYdX indexer).
     VenueApi {
+        /// Endpoint URL of the venue API.
         endpoint: String,
+        /// Identifier of the parser (in an external registry) used to interpret the response.
         parser_id: String,
+        /// Optional authentication scheme for the endpoint.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[tsify(optional)]
         auth: Option<AuthSpec>,
     },
 
-    /// 다른 LiveField 들에서 계산. reducer 가 in-place 갱신.
+    /// A value computed from other `LiveField`s; a reducer updates it in place.
     DerivedFrom {
+        /// References to the `LiveField`s this value is computed from.
         inputs: Vec<FieldRef>,
+        /// Identifier of the calculation (in an external registry) to run over the inputs.
         calc_id: String,
     },
 
-    /// scopeball registry 서버 — 토큰 분류, protocol 매핑, decoder 등의
-    /// 정적 메타데이터 공급자. oracle 과 달리 가격이 아니라 "이게 무엇인지"
-    /// 를 알려준다. cache 정책이 매우 길음 (24h+).
+    /// The scopeball registry server: a provider of static metadata such as
+    /// token classification, protocol mapping, and decoders. Unlike an oracle,
+    /// it tells you "what this is" rather than a price, and its cache policy is
+    /// very long (24h+).
     RegistryApi {
+        /// Endpoint URL of the registry server.
         endpoint: String,
+        /// Specific registry resource being requested.
         resource: RegistryResource,
-        /// registry schema 가 바뀔 때 pin 하기 위한 버전.
+        /// Optional version to pin against, used when the registry schema changes.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         version: Option<String>,
     },
 
-    /// 사용자가 직접 입력한 값 (e.g., manual override).
+    /// A value supplied directly by the user (e.g. a manual override).
     UserSupplied,
 }
 
-/// Registry 서버에 요청할 리소스 종류.
+/// Kind of resource to request from the registry server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RegistryResource {
-    /// 토큰 분류 — kind / symbol / decimals 가져옴.
-    TokenMeta { chain: ChainId, address: Address },
-    /// 컨트랙트가 어느 protocol 의 어느 component 인지.
-    ProtocolMap { chain: ChainId, address: Address },
-    /// pool 메타 — fee tier, underlyings 등.
-    PoolMeta { chain: ChainId, pool_addr: Address },
-    /// 4-byte selector → ABI / function decoder 매핑.
+    /// Token classification: fetches kind / symbol / decimals.
+    TokenMeta {
+        /// Chain the token lives on.
+        chain: ChainId,
+        /// Token contract address.
+        address: Address,
+    },
+    /// Which protocol and which component of it the contract belongs to.
+    ProtocolMap {
+        /// Chain the contract lives on.
+        chain: ChainId,
+        /// Contract address to map.
+        address: Address,
+    },
+    /// Pool metadata: fee tier, underlyings, and so on.
+    PoolMeta {
+        /// Chain the pool lives on.
+        chain: ChainId,
+        /// Pool contract address.
+        pool_addr: Address,
+    },
+    /// Mapping from a 4-byte selector to its ABI / function decoder.
     DecoderRegistry,
 }
 
-/// 다른 LiveField 를 가리키는 참조 (DerivedFrom 의 inputs 에 사용).
+/// A reference to another `LiveField`, used in `DataSource::DerivedFrom` inputs.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "scope", rename_all = "snake_case")]
 pub enum FieldRef {
+    /// A field on a specific token.
     TokenField {
-        /// TokenKey 를 JSON 으로 직렬화한 문자열. 순환 의존을 피하기 위해 문자열로
-        /// 들고 다닌다. (LiveField 자체가 token 안에 박혀 있으므로 TokenKey 를
-        /// 직접 import 하면 module cycle 위험.)
+        /// The `TokenKey` serialized to a JSON string. Carried as a string to
+        /// avoid a circular dependency: since the `LiveField` is embedded in the
+        /// token, importing `TokenKey` directly would risk a module cycle.
         token_key_json: String,
+        /// Which token field is referenced.
         field: TokenFieldName,
     },
+    /// A field on a specific position.
     PositionField {
+        /// Identifier of the position.
         position_id: String,
+        /// Which position field is referenced.
         field: PositionFieldName,
     },
+    /// A field on a specific pending action.
     PendingField {
+        /// Identifier of the pending action.
         pending_id: String,
+        /// Which pending field is referenced.
         field: PendingFieldName,
     },
-    /// gas_price, eth_usd 등 wallet/position 무관 전역 값.
-    Global { name: String },
+    /// A global value independent of any wallet/position, e.g. gas_price, eth_usd.
+    Global {
+        /// Name of the global value.
+        name: String,
+    },
 }
 
+/// Referenceable live fields on a token.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenFieldName {
+    /// Token price in USD.
     PriceUsd,
 }
 
+/// Referenceable live fields on a position.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PositionFieldName {
+    /// Position health factor.
     HealthFactor,
+    /// Loan-to-value ratio.
     Ltv,
+    /// Liquidation threshold.
     LiquidationThreshold,
+    /// Current mark price.
     MarkPrice,
+    /// Price at which the position would be liquidated.
     LiqPrice,
+    /// Unrealized profit and loss.
     UnrealizedPnl,
+    /// Funding currently owed on the position.
     FundingOwed,
+    /// Position leverage.
     Leverage,
 }
 
+/// Referenceable live fields on a pending action.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PendingFieldName {
+    /// Status of the pending action.
     Status,
-    /// 부분 fill 비율 등.
+    /// Fill progress, e.g. partial-fill ratio.
     FillRatio,
 }

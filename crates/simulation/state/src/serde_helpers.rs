@@ -1,19 +1,22 @@
-//! JSON serde 헬퍼들.
+//! JSON serde helpers.
 //!
-//! JSON object 의 key 는 string 이어야 하므로, key 가 enum 이나 tuple 인
-//! `BTreeMap<K, V>` 는 그대로 직렬화할 수 없다. 이 모듈은 해당 map 들을
-//! `Vec<(K, V)>` 형태로 직렬화/역직렬화하는 helper 들을 제공한다.
+//! Because JSON object keys must be strings, a `BTreeMap<K, V>` whose key is an
+//! enum or tuple cannot be serialized directly. This module provides helpers
+//! that serialize/deserialize such maps as a `Vec<(K, V)>` instead.
 //!
-//! 사용:
+//! Usage:
 //! ```ignore
 //! #[serde(with = "crate::serde_helpers::map_as_pairs")]
 //! pub tokens: BTreeMap<TokenKey, TokenHolding>,
 //! ```
 
+/// Serde adapter that (de)serializes a `BTreeMap<K, V>` as a `Vec<(K, V)>`,
+/// allowing maps with non-string keys to round-trip through JSON.
 pub mod map_as_pairs {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::collections::BTreeMap;
 
+    /// Serializes the map as a sequence of `(key, value)` pairs.
     pub fn serialize<K, V, S>(map: &BTreeMap<K, V>, ser: S) -> Result<S::Ok, S::Error>
     where
         K: Serialize + Ord,
@@ -24,6 +27,7 @@ pub mod map_as_pairs {
         vec.serialize(ser)
     }
 
+    /// Deserializes a sequence of `(key, value)` pairs back into a `BTreeMap`.
     pub fn deserialize<'de, K, V, D>(de: D) -> Result<BTreeMap<K, V>, D::Error>
     where
         K: Deserialize<'de> + Ord,

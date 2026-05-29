@@ -1,6 +1,7 @@
-//! 모든 다른 모듈이 의존하는 기본 타입들.
+//! Foundational primitive types (addresses, chains, decimals, refs, time) that all other modules depend on.
 
 pub mod address;
+/// Chain and block identifiers: CAIP-2 `ChainId` and `BlockHeight`.
 pub mod chain;
 pub mod decimal;
 pub mod refs;
