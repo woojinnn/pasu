@@ -911,4 +911,85 @@ mod tests {
         let manifest = manifest_declaring(&[]);
         lint_custom_field_refs(policy, &manifest).expect("no custom refs → ok");
     }
+
+    // ----- End-to-end: the full PR2 pipeline against the REAL swap schema -----
+
+    #[test]
+    fn end_to_end_swap_bundle_compose_validate_evaluate() {
+        use crate::policy::{PolicyEngine, Verdict};
+        use serde_json::json;
+
+        // A realistic marketplace bundle: a swap policy that warns when the
+        // oracle-priced input value exceeds a USD threshold. Uses `decimal`
+        // (the enrichment value types like UsdValuation were dropped from the
+        // base schema), action id `Amm::Action::"Swap"`, and the `context.custom`
+        // slot the manifest declares.
+        // Cedar idioms exercised here (policy-authoring guidance):
+        //  - `custom` is optional, so guard `context has custom` BEFORE
+        //    `context.custom has <field>` before the access;
+        //  - `decimal` has no `>` operator — use `.greaterThan(decimal(..))`.
+        let policy_cedar = "@id(\"large-swap-usd-warning\")\n@severity(\"warn\")\n\
+             forbid(principal, action == Amm::Action::\"Swap\", resource)\n\
+             when { context has custom && context.custom has totalInputUsd && \
+             context.custom.totalInputUsd.greaterThan(decimal(\"10000.0\")) };\n";
+
+        let manifest: ManifestV2 = serde_json::from_value(json!({
+            "id": "large-swap-usd-warning",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+            "policy_rpc": [{
+                "id": "input-usd",
+                "method": "oracle.usd_value",
+                "params": {},
+                "optional": true,
+                "outputs": [{
+                    "kind": "context", "field": "totalInputUsd",
+                    "type": "Decimal", "from": "$.result.usd", "required": false
+                }]
+            }],
+            "custom_context": { "fields": { "totalInputUsd": "decimal" } }
+        }))
+        .unwrap();
+        manifest.validate().expect("manifest valid");
+
+        // 1. synthesize the isolated per-policy schema from the REAL swap base.
+        let schema = compose_per_policy(&manifest).expect("schema synthesizes");
+        assert!(schema.contains("totalInputUsd?: decimal"));
+        // 2. lint custom-field references against the manifest.
+        lint_custom_field_refs(policy_cedar, &manifest).expect("refs declared");
+        // 3. install: the policy strict-validates against its own schema.
+        let engine =
+            PolicyEngine::build_from_per_policy(&[(policy_cedar.to_owned(), schema)])
+                .expect("policy validates against its synthesized schema");
+
+        // 4a. input over the threshold → warn-severity forbid fires.
+        let over = json!({
+            "custom": { "totalInputUsd": { "__extn": { "fn": "decimal", "arg": "15000.0" } } }
+        });
+        let verdict = engine
+            .evaluate(
+                "Wallet::\"w\"",
+                "Amm::Action::\"Swap\"",
+                "Protocol::\"p\"",
+                &json!([]),
+                &over,
+            )
+            .expect("evaluate over");
+        assert!(matches!(verdict, Verdict::Warn(_)), "expected Warn, got {verdict:?}");
+
+        // 4b. input under the threshold → baseline permit → pass.
+        let under = json!({
+            "custom": { "totalInputUsd": { "__extn": { "fn": "decimal", "arg": "5000.0" } } }
+        });
+        let verdict = engine
+            .evaluate(
+                "Wallet::\"w\"",
+                "Amm::Action::\"Swap\"",
+                "Protocol::\"p\"",
+                &json!([]),
+                &under,
+            )
+            .expect("evaluate under");
+        assert!(matches!(verdict, Verdict::Pass), "expected Pass, got {verdict:?}");
+    }
 }
