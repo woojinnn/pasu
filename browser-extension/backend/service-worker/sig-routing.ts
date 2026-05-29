@@ -111,14 +111,23 @@ export async function routeTypedData(args: {
   // locate it by the field NAMED "witness" — this is the Permit2 witness
   // convention (the field is always named `witness` in IPermit2's
   // `PermitWitnessTransferFrom`). Absent → `undefined` (the 3-tuple key, every
-  // non-witness manifest). The install key stays the 3-tuple (the manifest
-  // carries witness_type itself); only the route lookup disambiguates.
+  // non-witness manifest).
   const witnessType = extractWitnessType(args.typedData, primaryType);
 
+  // Thread witnessType into BOTH the install/fetch key and the WASM route
+  // below. The install path builds the `by-typed-data/` index URL from this
+  // key (`typedDataUrl`): without witnessType the live SW would fetch the
+  // 3-segment file and 404 against build-index's 4-segment witness file, so
+  // the manifest would never install and the WASM route would miss. The key
+  // is spread conditionally (omitting `witnessType` rather than setting it to
+  // `undefined`) for `exactOptionalPropertyTypes` — omission keeps the URL +
+  // install cache key byte-identical to the pre-T1 3-tuple for non-witness
+  // payloads.
   const installed = await installDeclarativeBundleV3ByTypedData({
     chainId,
     verifyingContract,
     primaryType,
+    ...(witnessType !== undefined ? { witnessType } : {}),
   });
   if (!installed.ok) {
     return null;

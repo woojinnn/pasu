@@ -41,6 +41,17 @@ export interface TypedDataMatchKey {
   verifyingContract: string;
   /** EIP-712 `primaryType` discriminator — may contain a `:` segment. */
   primaryType: string;
+  /**
+   * Optional 4th routing-key component (T1, commit `0f9270a`). Permit2
+   * `permitWitnessTransferFrom` payloads (UniswapX intent orders etc.) all
+   * share `(chainId, Permit2, "PermitWitnessTransferFrom")`; the EIP-712
+   * `witness` struct name (e.g. "ExclusiveDutchOrder") disambiguates them.
+   * Kept VERBATIM (no lowercasing) — it is the exact EIP-712 type name. When
+   * present it becomes the URL's 4th segment (`:` escaped to `__`, exactly
+   * like `primaryType`); when absent the URL is the byte-identical pre-T1
+   * 3-segment form.
+   */
+  witnessType?: string;
 }
 
 /**
@@ -156,10 +167,25 @@ export function callKeyUrl(baseUrl: string, key: CallMatchKey): string {
  * in a filename). Filename:
  *   `<chainId>__<verifyingContract>__<primaryType-with-colons-as-__>.json`
  *
+ * T1 (commit `0f9270a`) — when `key.witnessType` is present a 4th segment is
+ * appended (`:` escaped to `__` the same way), de-colliding Permit2
+ * `permitWitnessTransferFrom` payloads (UniswapX orders):
+ *   `<chainId>__<vc>__<primaryType>__<witnessType-with-colons-as-__>.json`
+ * When `witnessType` is ABSENT the URL is BYTE-IDENTICAL to the pre-T1
+ * 3-segment form (Permit2 PermitSingle/PermitBatch, EIP-2612 Permit,
+ * HyperLiquid all carry no witnessType).
+ *
+ * ⚠️ This MUST byte-match `build-index.ts`'s `typedDataFilename` for the same
+ * inputs — the live SW fetches the exact file build-index wrote, so any
+ * divergence 404s. `typedDataFilename` does:
+ *   base = `${chainId}__${verifyingContract.toLowerCase()}__${primaryType.replace(/:/g,"__")}`
+ *   witnessType ? `${base}__${witnessType.replace(/:/g,"__")}.json` : `${base}.json`
+ *
  * Same hostile-input gate as `callKeyUrl`: positive-int chainId, "0x"+40 hex
- * verifyingContract, identifier-shaped `primaryType` (no `/`, `..`, `?`, `#`).
- * Throws `RegistryError("malformed_response")` on a gate failure so the
- * jit-fetcher routes it to the timeout negative-cache slot, not a spin.
+ * verifyingContract, identifier-shaped `primaryType`/`witnessType` (no `/`,
+ * `..`, `?`, `#` — both flow in from dApp-supplied typed-data). Throws
+ * `RegistryError("malformed_response")` on a gate failure so the jit-fetcher
+ * routes it to the timeout negative-cache slot, not a spin.
  */
 export function typedDataUrl(baseUrl: string, key: TypedDataMatchKey): string {
   if (!Number.isInteger(key.chainId) || key.chainId < 1) {
@@ -184,10 +210,29 @@ export function typedDataUrl(baseUrl: string, key: TypedDataMatchKey): string {
       `typedDataUrl: primaryType must be a non-empty EIP-712 identifier (got "${key.primaryType}")`,
     );
   }
+  // T1 — witnessType is optional, but when present must be a non-empty
+  // EIP-712 identifier (build-index requires a non-empty string; we add the
+  // same path-traversal gate as primaryType because it too is dApp-supplied).
+  if (key.witnessType !== undefined) {
+    if (
+      typeof key.witnessType !== "string" ||
+      key.witnessType.length === 0 ||
+      !TYPED_DATA_PRIMARY_TYPE_RE.test(key.witnessType)
+    ) {
+      throw new RegistryError(
+        "malformed_response",
+        `typedDataUrl: witnessType must be a non-empty EIP-712 identifier when present (got "${key.witnessType}")`,
+      );
+    }
+  }
   const vc = key.verifyingContract.toLowerCase();
   const pt = key.primaryType.replace(/:/g, "__");
   const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-  return `${base}/index/by-typed-data/${key.chainId}__${vc}__${pt}.json`;
+  const file =
+    key.witnessType !== undefined
+      ? `${key.chainId}__${vc}__${pt}__${key.witnessType.replace(/:/g, "__")}`
+      : `${key.chainId}__${vc}__${pt}`;
+  return `${base}/index/by-typed-data/${file}.json`;
 }
 
 /**

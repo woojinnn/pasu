@@ -378,9 +378,20 @@ const v3CachedBundleByCallKey = new Map<string, V3Bundle>();
  * collides with the `v3:` callkey entries that share `v3InstallCache` /
  * `v3InstalledBundleIds` (a callkey and a typed-data key could otherwise
  * stringify to the same `<n>__<addr>__<rest>` shape).
+ *
+ * T1 (commit `0f9270a`) — `witnessType` is part of the key. Two Permit2
+ * `permitWitnessTransferFrom` witness manifests (e.g. ExclusiveDutchOrder vs
+ * V2DutchOrder) share the `(chainId, Permit2, "PermitWitnessTransferFrom")`
+ * triple; without `witnessType` here they would collide in the install cache
+ * and only the first would ever install (the second hits the stale cache
+ * entry and never fetches its own 4-segment index file). Absent `witnessType`
+ * → the cache key is byte-identical to the pre-T1 3-tuple form (every
+ * non-witness typed-data manifest keeps its exact key).
  */
 function v3TypedDataCacheKey(key: TypedDataMatchKey): string {
-  return `td:${key.chainId}__${key.verifyingContract.toLowerCase()}__${key.primaryType}`;
+  const witnessSuffix =
+    key.witnessType !== undefined ? `__${key.witnessType}` : "";
+  return `td:${key.chainId}__${key.verifyingContract.toLowerCase()}__${key.primaryType}${witnessSuffix}`;
 }
 
 /**

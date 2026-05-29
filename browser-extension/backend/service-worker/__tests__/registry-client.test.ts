@@ -15,7 +15,9 @@ import {
   byCallKey,
   callKeyUrl,
   RegistryError,
+  typedDataUrl,
   type CallMatchKey,
+  type TypedDataMatchKey,
 } from "../registry/client";
 
 const KEY: CallMatchKey = {
@@ -45,6 +47,97 @@ describe("callKeyUrl", () => {
   it("strips a trailing slash from the base URL", () => {
     const url = callKeyUrl("http://localhost:8000/", KEY);
     expect(url).not.toContain("//index/");
+  });
+});
+
+describe("typedDataUrl", () => {
+  // CRITICAL SYMMETRY — this MUST byte-match `build-index.ts`'s
+  // `typedDataFilename`. Replicated here verbatim so a divergence in the SW
+  // `typedDataUrl` (which would 404 the live JIT fetch against the index file
+  // build-index wrote) is caught in CI. Keep these two in lock-step.
+  //   build-index.ts:
+  //     ptEscaped = primaryType.replace(/:/g, "__")
+  //     base = `${chainId}__${verifyingContract.toLowerCase()}__${ptEscaped}`
+  //     witnessType ? `${base}__${witnessType.replace(/:/g, "__")}.json`
+  //                 : `${base}.json`
+  function expectedFilename(key: TypedDataMatchKey): string {
+    const ptEscaped = key.primaryType.replace(/:/g, "__");
+    const base = `${key.chainId}__${key.verifyingContract.toLowerCase()}__${ptEscaped}`;
+    return key.witnessType !== undefined
+      ? `${base}__${key.witnessType.replace(/:/g, "__")}.json`
+      : `${base}.json`;
+  }
+
+  it("lowercases verifyingContract and produces the 3-segment URL when witnessType is absent (backward compat)", () => {
+    const key: TypedDataMatchKey = {
+      chainId: 1,
+      verifyingContract: "0x000000000022D473030F116dDEE9F6B43aC78BA3", // mixed case
+      primaryType: "PermitSingle",
+    };
+    const url = typedDataUrl("http://localhost:8000", key);
+    expect(url).toBe(
+      "http://localhost:8000/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitSingle.json",
+    );
+    // Byte-symmetry with build-index typedDataFilename.
+    expect(url.endsWith(`/${expectedFilename(key)}`)).toBe(true);
+  });
+
+  it("escapes a colon primaryType to __ in the 3-segment URL", () => {
+    const key: TypedDataMatchKey = {
+      chainId: 42161,
+      verifyingContract: "0x0000000000000000000000000000000000000000",
+      primaryType: "HyperliquidTransaction:UsdSend",
+    };
+    const url = typedDataUrl("http://localhost:8000", key);
+    expect(url).toBe(
+      "http://localhost:8000/index/by-typed-data/42161__0x0000000000000000000000000000000000000000__HyperliquidTransaction__UsdSend.json",
+    );
+    expect(url.endsWith(`/${expectedFilename(key)}`)).toBe(true);
+  });
+
+  it("appends a 4th segment when witnessType is present (no-colon case)", () => {
+    const key: TypedDataMatchKey = {
+      chainId: 1,
+      verifyingContract: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      primaryType: "PermitWitnessTransferFrom",
+      witnessType: "ExclusiveDutchOrder",
+    };
+    const url = typedDataUrl("http://localhost:8000", key);
+    expect(url).toBe(
+      "http://localhost:8000/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitWitnessTransferFrom__ExclusiveDutchOrder.json",
+    );
+    // Byte-symmetry: identical to what build-index typedDataFilename would write.
+    expect(url.endsWith(`/${expectedFilename(key)}`)).toBe(true);
+  });
+
+  it("escapes a colon in the witnessType 4th segment the same way build-index does", () => {
+    const key: TypedDataMatchKey = {
+      chainId: 1,
+      verifyingContract: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      primaryType: "PermitWitnessTransferFrom",
+      witnessType: "Foo:Bar",
+    };
+    const url = typedDataUrl("http://localhost:8000", key);
+    expect(url).toBe(
+      "http://localhost:8000/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitWitnessTransferFrom__Foo__Bar.json",
+    );
+    expect(url.endsWith(`/${expectedFilename(key)}`)).toBe(true);
+  });
+
+  it("throws malformed_response when witnessType is present but empty", () => {
+    const key: TypedDataMatchKey = {
+      chainId: 1,
+      verifyingContract: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      primaryType: "PermitWitnessTransferFrom",
+      witnessType: "",
+    };
+    try {
+      typedDataUrl("http://localhost:8000", key);
+      expect.fail("expected throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(RegistryError);
+      expect((err as RegistryError).code).toBe("malformed_response");
+    }
   });
 });
 

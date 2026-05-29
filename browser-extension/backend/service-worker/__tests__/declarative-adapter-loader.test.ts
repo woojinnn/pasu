@@ -37,6 +37,7 @@ vi.mock("../wasm-bridge", () => ({
 import {
   __resetDeclarativeV3CacheForTest,
   installDeclarativeBundleV3,
+  installDeclarativeBundleV3ByTypedData,
   InstallDeclarativeV3Error,
 } from "../adapter-loader/declarative-adapter-loader";
 
@@ -370,5 +371,134 @@ describe("installDeclarativeBundleV3", () => {
     expect(mocks.declarativeInstallV3).toHaveBeenCalledWith(
       JSON.stringify(v3Bundle),
     );
+  });
+});
+
+describe("installDeclarativeBundleV3ByTypedData — witness_type fetch URL + cache key", () => {
+  const fetchMock = vi.fn();
+  const PERMIT2 = "0x000000000022d473030f116ddee9f6b43ac78ba3";
+
+  /** Minimal valid v3 typed-data (sign-only) bundle for a Permit2 witness. */
+  function witnessBundle(id: string) {
+    return {
+      type: "adapter_action",
+      id,
+      publisher: "uniswap.eth",
+      schema_version: "3",
+      match: {
+        selector: "0x00000000",
+        chain_to_addresses: { "1": [PERMIT2] },
+        typed_data: {
+          domain_name: "Permit2",
+          verifying_contract: PERMIT2,
+          primary_type: "PermitWitnessTransferFrom",
+          types: {
+            PermitWitnessTransferFrom: [
+              { name: "witness", type: "ExclusiveDutchOrder" },
+            ],
+          },
+        },
+      },
+      abi_fragment: {
+        function_name: "permitWitnessTransferFrom",
+        abi: { name: "permitWitnessTransferFrom", type: "function", inputs: [] },
+      },
+      emit: {
+        strategy: "single_emit",
+        body: { domain: "misc", misc: { action: "noop" } },
+      },
+    };
+  }
+
+  function indexResponse(bundle: object) {
+    return new Response(
+      JSON.stringify({
+        matched: true,
+        bundle_id: (bundle as { id: string }).id,
+        manifest_path: "manifests/x",
+        bundle_sha256: "0x" + "a".repeat(64),
+        bundle,
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.localStore.clear();
+    __resetDeclarativeV3CacheForTest();
+    fetchMock.mockReset();
+  });
+
+  it("fetches the 4-segment by-typed-data URL when witnessType is present", async () => {
+    const bundle = witnessBundle("uniswap/uniswapx/exclusiveDutchOrder@1.0.0");
+    fetchMock.mockResolvedValueOnce(indexResponse(bundle));
+    mocks.declarativeInstallV3.mockResolvedValueOnce({
+      decoder_id: bundle.id,
+      bundle_id: bundle.id,
+    });
+
+    const result = await installDeclarativeBundleV3ByTypedData(
+      {
+        chainId: 1,
+        verifyingContract: PERMIT2,
+        primaryType: "PermitWitnessTransferFrom",
+        witnessType: "ExclusiveDutchOrder",
+      },
+      {
+        baseUrl: "https://example.invalid",
+        fetchImpl: fetchMock as unknown as typeof fetch,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    // 4-segment index file — symmetry with build-index typedDataFilename.
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.invalid/index/by-typed-data/1__0x000000000022d473030f116ddee9f6b43ac78ba3__PermitWitnessTransferFrom__ExclusiveDutchOrder.json",
+      expect.anything(),
+    );
+  });
+
+  it("disambiguates two witness manifests sharing the 3-tuple by witnessType (no install-cache collision)", async () => {
+    const bundleA = witnessBundle("uniswap/uniswapx/exclusiveDutchOrder@1.0.0");
+    const bundleB = witnessBundle("uniswap/uniswapx/v2DutchOrder@1.0.0");
+    fetchMock.mockImplementation(async (url: string) => {
+      if (typeof url === "string" && url.includes("__ExclusiveDutchOrder.json"))
+        return indexResponse(bundleA);
+      if (typeof url === "string" && url.includes("__V2DutchOrder.json"))
+        return indexResponse(bundleB);
+      return new Response("not found", { status: 404 });
+    });
+    mocks.declarativeInstallV3
+      .mockResolvedValueOnce({ decoder_id: bundleA.id, bundle_id: bundleA.id })
+      .mockResolvedValueOnce({ decoder_id: bundleB.id, bundle_id: bundleB.id });
+
+    const base = {
+      chainId: 1,
+      verifyingContract: PERMIT2,
+      primaryType: "PermitWitnessTransferFrom",
+    };
+    const opts = {
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    };
+
+    const a = await installDeclarativeBundleV3ByTypedData(
+      { ...base, witnessType: "ExclusiveDutchOrder" },
+      opts,
+    );
+    const b = await installDeclarativeBundleV3ByTypedData(
+      { ...base, witnessType: "V2DutchOrder" },
+      opts,
+    );
+
+    // Both must install — if v3TypedDataCacheKey ignored witnessType, the
+    // second call would hit the cache from the first and NOT fetch/install B.
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+    expect(a.bundleId).toBe(bundleA.id);
+    expect(b.bundleId).toBe(bundleB.id);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mocks.declarativeInstallV3).toHaveBeenCalledTimes(2);
   });
 });

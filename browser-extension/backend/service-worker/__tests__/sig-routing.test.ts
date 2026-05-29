@@ -290,6 +290,14 @@ describe("routeTypedSignaturePayload — manifest-driven typed-data router", () 
         witnessType: "ExclusiveDutchOrder",
       }),
     );
+    // The SAME witnessType must reach the install/fetch key so the live SW
+    // fetches the 4-segment by-typed-data index file (otherwise WASM route miss).
+    expect(mocks.installDeclarativeBundleV3ByTypedData).toHaveBeenCalledWith({
+      chainId: 1,
+      verifyingContract: PERMIT2,
+      primaryType: "PermitWitnessTransferFrom",
+      witnessType: "ExclusiveDutchOrder",
+    });
     expect(result?.decoderId).toBe(
       "uniswap/uniswapx/exclusiveDutchOrder@1.0.0",
     );
@@ -321,6 +329,10 @@ describe("routeTypedSignaturePayload — manifest-driven typed-data router", () 
       witnessType?: string;
     };
     expect(callArg.witnessType).toBeUndefined();
+    // Install key also carries undefined → 3-segment URL (backward compatible).
+    const installArg = mocks.installDeclarativeBundleV3ByTypedData.mock
+      .calls[0]?.[0] as { witnessType?: string };
+    expect(installArg.witnessType).toBeUndefined();
   });
 
   it("returns null and does NOT call WASM route when install misses", async () => {
