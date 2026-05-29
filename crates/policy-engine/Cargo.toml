@@ -18,6 +18,10 @@ thiserror.workspace = true
 # as `policy_engine::action::v3` so downstream consumers (registryV2 mapper /
 # SW wire / Cedar entry) can migrate without disturbing legacy `action::envelope`.
 simulation-reducer.workspace = true
+# `lowering_v2` names the primitive/token/live-field types that the new action
+# model exposes in its public API (TokenKey, Address, ChainId, U256, LiveField,
+# NonceKey, Time, …), so the state crate is a direct dependency.
+simulation-state.workspace = true
 
 [dev-dependencies]
 hex.workspace = true
