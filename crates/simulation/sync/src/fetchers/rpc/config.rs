@@ -14,8 +14,13 @@ use simulation_state::ChainId;
 
 use crate::error::SyncError;
 
-/// 전체 RPC 설정 — TOML 의 최상위.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// RPC providers + failover 정책.
+///
+/// 과거에는 TOML 의 최상위였으나 [`crate::SyncConfig`] 도입 후
+/// `[rpc]` 섹션 아래로 들어간다. `RpcConfig::load_str` 은 기존 평탄
+/// 포맷 (`[chains."..."]`) 도 그대로 받아들여 인라인 테스트 호환성을
+/// 유지한다.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RpcConfig {
     /// chain id → 해당 체인의 provider 들.
     #[serde(default)]
@@ -110,7 +115,7 @@ impl RpcConfig {
     }
 
     pub fn load_str(text: &str) -> Result<Self, SyncError> {
-        let expanded = expand_env_vars(text);
+        let expanded = crate::config::expand_env_vars(text);
         let cfg: RpcConfig = toml::from_str(&expanded).map_err(|e| SyncError::FetchFailed {
             source_id: "config_toml".into(),
             reason: e.to_string(),
@@ -121,29 +126,6 @@ impl RpcConfig {
     pub fn chain(&self, chain: &ChainId) -> Option<&ChainConfig> {
         self.chains.get(chain)
     }
-}
-
-/// `${VAR_NAME}` → `std::env::var("VAR_NAME")`. 변수 없으면 빈 문자열.
-fn expand_env_vars(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '$' && chars.peek() == Some(&'{') {
-            chars.next(); // consume '{'
-            let mut name = String::new();
-            for c2 in chars.by_ref() {
-                if c2 == '}' {
-                    break;
-                }
-                name.push(c2);
-            }
-            let val = std::env::var(&name).unwrap_or_default();
-            out.push_str(&val);
-        } else {
-            out.push(c);
-        }
-    }
-    out
 }
 
 #[cfg(test)]

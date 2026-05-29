@@ -41,6 +41,7 @@ pub mod cedar_json;
 pub mod context_keys;
 pub mod core;
 pub mod lowering;
+pub mod lowering_v2;
 pub mod policy;
 pub mod policy_rpc;
 pub mod prelude;
@@ -53,6 +54,7 @@ pub use action::{
 };
 pub use core::{Address, AmountSpec, SignatureRequest, Token, TransactionRequest, UsdValuation};
 pub use lowering::policy_request_from_envelope;
+pub use lowering_v2::{lower_action, LoweredAction};
 pub use policy::{
     MatchedPolicy, PolicyEngine, PolicyEngineBuilder, PolicyError, PolicyRequest,
     PolicyRequestOrigin, Severity, Verdict,

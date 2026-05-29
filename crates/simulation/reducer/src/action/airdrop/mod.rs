@@ -22,3 +22,23 @@ pub enum AirdropAction {
     /// Delegate governance voting power for a governance token (e.g. UNI, COMP, ENS).
     Delegate(DelegateGovernanceAction),
 }
+
+impl AirdropAction {
+    /// The action's `serde` `action` tag (`"claim"` or `"delegate"`).
+    ///
+    /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
+    /// discriminant exactly; verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn action_tag(&self) -> &'static str {
+        match self {
+            Self::Claim(_) => "claim",
+            Self::Delegate(_) => "delegate",
+        }
+    }
+
+    /// Airdrop actions never carry a venue; always `None`.
+    #[must_use]
+    pub const fn venue_name(&self) -> Option<&'static str> {
+        None
+    }
+}

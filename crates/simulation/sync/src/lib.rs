@@ -38,6 +38,7 @@ pub mod action_walk;
 pub mod args_resolver;
 pub mod batcher;
 pub mod calc;
+pub mod config;
 pub mod manifest_v2;
 pub mod error;
 pub mod fetchers;
@@ -55,8 +56,14 @@ pub use args_resolver::resolve_args;
 pub use manifest_v2::{LiveInputSpec, LiveInputsSpec, ResolveContext, parse_live_inputs, resolve_placeholders};
 pub use batcher::{BatchKind, FetchBatch, batch_by_source};
 pub use calc::{CalcContext, CalcFn, CalcRegistry};
+pub use config::{
+    ChainlinkChainConfig, ChainlinkConfig, ChainlinkFeedConfig, HyperliquidConfig,
+    OraclesConfig, PythConfig, PythFeedConfig, RestAuthConfig, RestFeedConfig, RestOracleConfig,
+    SyncConfig, VenuesConfig,
+};
 pub use error::{SyncError, SyncResult};
 pub use fetchers::abi_decoder::{AbiDecoder, AbiTypeRegistry};
+pub use fetchers::oracle::{PriceFetcher, RestJsonOracleFetcher, provider_key};
 pub use fetchers::rpc::{
     BlockTag, EthCallRequest, ProviderName, RpcConfig, RpcProvider, RpcRouter,
 };

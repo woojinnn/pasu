@@ -8,6 +8,7 @@ mod declarative_exports;
 mod dto;
 mod exports;
 mod policy_request_exports;
+mod trigger_exports;
 
 /// Part 5 — Curve real-transaction coverage verification harness (test-only).
 ///
@@ -39,3 +40,4 @@ pub use exports::{
     preview_installed_schema_json, preview_schema_json, route_request_json,
 };
 pub use policy_request_exports::evaluate_policy_request_json;
+pub use trigger_exports::evaluate_triggers_json;

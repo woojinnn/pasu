@@ -45,6 +45,37 @@ pub enum AmmAction {
     CancelIntentOrder(CancelIntentOrderAction),
 }
 
+impl AmmAction {
+    /// The action's `serde` `action` tag (e.g. `"swap"`, `"sign_intent_order"`).
+    ///
+    /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
+    /// discriminant exactly; verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn action_tag(&self) -> &'static str {
+        match self {
+            Self::Swap(_) => "swap",
+            Self::AddLiquidity(_) => "add_liquidity",
+            Self::RemoveLiquidity(_) => "remove_liquidity",
+            Self::CollectFees(_) => "collect_fees",
+            Self::SignIntentOrder(_) => "sign_intent_order",
+            Self::CancelIntentOrder(_) => "cancel_intent_order",
+        }
+    }
+
+    /// The venue `name` of the wrapped action. Every AMM action carries a venue.
+    #[must_use]
+    pub const fn venue_name(&self) -> Option<&'static str> {
+        match self {
+            Self::Swap(a) => Some(a.venue.name()),
+            Self::AddLiquidity(a) => Some(a.venue.name()),
+            Self::RemoveLiquidity(a) => Some(a.venue.name()),
+            Self::CollectFees(a) => Some(a.venue.name()),
+            Self::SignIntentOrder(a) => Some(a.venue.name()),
+            Self::CancelIntentOrder(a) => Some(a.venue.name()),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Venue
 // ---------------------------------------------------------------------------
@@ -167,6 +198,29 @@ pub enum AmmVenue {
         /// 32-byte hex hash of the route calldata.
         route_hash: String,
     },
+}
+
+impl AmmVenue {
+    /// The venue's `serde` `name` tag (e.g. `"uniswap_v3"`, `"trader_joe_l_b"`).
+    ///
+    /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
+    /// discriminants exactly and are verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::UniswapV2 { .. } => "uniswap_v2",
+            Self::UniswapV3 { .. } => "uniswap_v3",
+            Self::UniswapV4 { .. } => "uniswap_v4",
+            Self::SushiV2 { .. } => "sushi_v2",
+            Self::CurveV1 { .. } => "curve_v1",
+            Self::CurveV2 { .. } => "curve_v2",
+            Self::BalancerV2 { .. } => "balancer_v2",
+            Self::BalancerV3 { .. } => "balancer_v3",
+            Self::TraderJoeLB { .. } => "trader_joe_l_b",
+            Self::MaverickV2 { .. } => "maverick_v2",
+            Self::AggregatorRoute { .. } => "aggregator_route",
+        }
+    }
 }
 
 /// Math model for a `Balancer V2` / `V3` pool.

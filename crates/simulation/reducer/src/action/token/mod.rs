@@ -57,3 +57,30 @@ pub enum TokenAction {
     /// Revoke a previously granted approval (any scope).
     RevokeApproval(RevokeApprovalAction),
 }
+
+impl TokenAction {
+    /// The action's `serde` `action` tag (e.g. `"erc20_approve"`, `"nft_set_approval_for_all"`).
+    ///
+    /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
+    /// discriminant exactly; verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn action_tag(&self) -> &'static str {
+        match self {
+            Self::Erc20Approve(_) => "erc20_approve",
+            Self::Erc20Permit(_) => "erc20_permit",
+            Self::Permit2Approve(_) => "permit2_approve",
+            Self::Permit2SignAllowance(_) => "permit2_sign_allowance",
+            Self::Erc20Transfer(_) => "erc20_transfer",
+            Self::NftApprove(_) => "nft_approve",
+            Self::NftSetApprovalForAll(_) => "nft_set_approval_for_all",
+            Self::NftTransfer(_) => "nft_transfer",
+            Self::RevokeApproval(_) => "revoke_approval",
+        }
+    }
+
+    /// Token actions never carry a venue; always `None`.
+    #[must_use]
+    pub const fn venue_name(&self) -> Option<&'static str> {
+        None
+    }
+}

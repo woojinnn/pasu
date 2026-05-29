@@ -16,12 +16,18 @@ use serde_json::{Value, json};
 
 use simulation_state::DataSource;
 
+use crate::config::HyperliquidConfig;
 use crate::error::SyncError;
 
-const HL_API_BASE: &str = "https://api.hyperliquid.xyz";
+/// Hyperliquid API 기본 endpoint. `scopeball-sync.toml` 의
+/// `[venues.hyperliquid]` 가 비어있을 때 fallback 으로 사용.
+pub const HL_API_BASE: &str = "https://api.hyperliquid.xyz";
 
 pub struct HyperliquidFetcher {
     client: reqwest::Client,
+    /// venue API 의 base URL. `DataSource::VenueApi.endpoint` 가 절대 URL 이면
+    /// 그쪽이 우선; relative path 만 들어올 경우를 대비한 base.
+    base_url: String,
 }
 
 impl Default for HyperliquidFetcher {
@@ -31,13 +37,30 @@ impl Default for HyperliquidFetcher {
 }
 
 impl HyperliquidFetcher {
+    /// 기본 endpoint (`HL_API_BASE`) 로 초기화.
     pub fn new() -> Self {
+        Self::with_base_url(HL_API_BASE.to_string())
+    }
+
+    pub fn with_base_url(base_url: String) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .timeout(Duration::from_secs(10))
                 .build()
                 .expect("reqwest client init"),
+            base_url,
         }
+    }
+
+    /// `scopeball-sync.toml` 의 `[venues.hyperliquid]` 섹션에서 endpoint 주입.
+    pub fn from_sync_config(cfg: &HyperliquidConfig) -> Self {
+        Self::with_base_url(cfg.endpoint.clone())
+    }
+
+    /// 현재 설정된 base URL — 호출자가 endpoint 결정 시 참고용.
+    #[must_use]
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 
     pub async fn fetch(&self, source: &DataSource) -> Result<Value, SyncError> {

@@ -9,6 +9,7 @@
 //! Phase 4 에선 OnchainView 만 wired up. 나머지 (Oracle/Venue/Registry/Derived) 는
 //! 후속 phase 에서 차례로.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::Value;
@@ -19,6 +20,7 @@ use crate::batcher::{BatchKind, FetchBatch, batch_by_source};
 use crate::error::SyncError;
 use crate::fetchers::onchain::OnchainCall;
 use crate::calc::{CalcContext, CalcRegistry};
+use crate::fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
 use crate::fetchers::{ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher};
 use crate::walker::{FieldLocation, WalkStats, walk_stale};
 
@@ -34,7 +36,12 @@ pub struct RefreshReport {
 
 pub struct Orchestrator {
     onchain: OnchainViewFetcher,
-    chainlink: Option<ChainlinkFetcher>,
+    /// provider_key → fetcher. `provider_key` 는
+    /// [`crate::fetchers::oracle::provider_key`] 로 정규화된 문자열.
+    /// 예: `"chainlink"`, `"coingecko"`, `"pyth"`, `"redstone"`, ...
+    ///
+    /// Chainlink (on-chain) 든 REST oracle 이든 모두 같은 trait object 로 들어감.
+    price_fetchers: HashMap<String, Arc<dyn PriceFetcher>>,
     registry: Option<RegistryFetcher>,
     hyperliquid: Option<HyperliquidFetcher>,
     calc: CalcRegistry,
@@ -49,7 +56,7 @@ impl Orchestrator {
     pub fn new(onchain: OnchainViewFetcher) -> Self {
         Self {
             onchain,
-            chainlink: None,
+            price_fetchers: HashMap::new(),
             registry: None,
             hyperliquid: None,
             calc: CalcRegistry::with_builtins(),
@@ -68,9 +75,20 @@ impl Orchestrator {
         self.router.clone()
     }
 
-    pub fn with_chainlink(mut self, chainlink: ChainlinkFetcher) -> Self {
-        self.chainlink = Some(chainlink);
+    /// 임의 provider name 에 PriceFetcher 등록. dispatch 시 [`provider_key`] 가
+    /// 반환하는 문자열과 일치해야 매칭됨.
+    pub fn with_price_fetcher(
+        mut self,
+        name: impl Into<String>,
+        fetcher: Arc<dyn PriceFetcher>,
+    ) -> Self {
+        self.price_fetchers.insert(name.into(), fetcher);
         self
+    }
+
+    /// Chainlink fetcher 를 "chainlink" 키로 등록.
+    pub fn with_chainlink(self, chainlink: ChainlinkFetcher) -> Self {
+        self.with_price_fetcher("chainlink", Arc::new(chainlink))
     }
 
     pub fn with_registry(mut self, registry: RegistryFetcher) -> Self {
@@ -88,17 +106,74 @@ impl Orchestrator {
         self
     }
 
+    /// router 만으로 minimal 구성 — Chainlink registry 와 Hyperliquid endpoint 는
+    /// 기본값. 실 운영에서는 [`Self::from_sync_config`] 사용 권장.
     pub fn from_rpc_router(router: Arc<crate::RpcRouter>) -> Self {
         let onchain = OnchainViewFetcher::new(router.clone());
         let chainlink = ChainlinkFetcher::new(router.clone());
+        let mut price_fetchers: HashMap<String, Arc<dyn PriceFetcher>> = HashMap::new();
+        price_fetchers.insert("chainlink".into(), Arc::new(chainlink));
         Self {
             onchain,
-            chainlink: Some(chainlink),
+            price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid: Some(HyperliquidFetcher::new()),
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
+        }
+    }
+
+    /// `scopeball-sync.toml` (= [`crate::SyncConfig`]) 한 방으로 모든 fetcher 와이어링.
+    ///
+    /// - `RpcRouter` ← `cfg.rpc`
+    /// - `ChainlinkFetcher` ← `cfg.oracles.chainlink` ("chainlink" 키)
+    /// - `RestJsonOracleFetcher` × N ← `cfg.oracles.rest` (각 키 그대로)
+    /// - `HyperliquidFetcher` ← `cfg.venues.hyperliquid` (있을 때만)
+    /// - `RegistryFetcher` 는 stub
+    pub fn from_sync_config(cfg: &crate::SyncConfig) -> Result<Self, SyncError> {
+        let router = Arc::new(crate::RpcRouter::from_config(cfg.rpc.clone())?);
+        let onchain = OnchainViewFetcher::new(router.clone());
+
+        let mut price_fetchers: HashMap<String, Arc<dyn PriceFetcher>> = HashMap::new();
+
+        // Chainlink (on-chain).
+        let chainlink =
+            ChainlinkFetcher::from_sync_config(router.clone(), &cfg.oracles.chainlink);
+        price_fetchers.insert("chainlink".into(), Arc::new(chainlink));
+
+        // REST oracles — 각 [oracles.rest.<name>] 블록당 fetcher 하나.
+        for (name, rest_cfg) in &cfg.oracles.rest {
+            let f = RestJsonOracleFetcher::from_sync_config(name.clone(), rest_cfg);
+            price_fetchers.insert(name.clone(), Arc::new(f));
+        }
+
+        let hyperliquid = cfg
+            .venues
+            .hyperliquid
+            .as_ref()
+            .map(HyperliquidFetcher::from_sync_config);
+        Ok(Self {
+            onchain,
+            price_fetchers,
+            registry: Some(RegistryFetcher::new()),
+            hyperliquid,
+            calc: CalcRegistry::with_builtins(),
+            globals: crate::resolver::GlobalValues::new(),
+            router: Some(router),
+        })
+    }
+
+    /// 주어진 OracleFeed source 에 매핑되는 PriceFetcher 를 반환.
+    fn price_fetcher_for(
+        &self,
+        source: &simulation_state::DataSource,
+    ) -> Option<&Arc<dyn PriceFetcher>> {
+        match source {
+            simulation_state::DataSource::OracleFeed { provider, .. } => {
+                self.price_fetchers.get(&provider_key(provider))
+            }
+            _ => None,
         }
     }
 
@@ -180,11 +255,12 @@ impl Orchestrator {
         let mut fail = 0usize;
         match &batch.kind {
             BatchKind::Oracle => {
-                let Some(cl) = self.chainlink.as_ref() else {
-                    return Ok((0, batch.items.len()));
-                };
                 for item in batch.items {
-                    match cl.fetch_price(&item.source).await {
+                    let Some(fetcher) = self.price_fetcher_for(&item.source) else {
+                        fail += 1;
+                        continue;
+                    };
+                    match fetcher.fetch_price(&item.source).await {
                         Ok(price) => {
                             crate::action_walk::apply_value_to_action(
                                 action,
@@ -312,15 +388,14 @@ impl Orchestrator {
             }
 
             BatchKind::Oracle => {
-                let chainlink = match self.chainlink.as_ref() {
-                    Some(c) => c,
-                    None => return Ok((0, batch.items.len())),
-                };
-
                 let mut ok = 0;
                 let mut fail = 0;
                 for item in batch.items {
-                    match chainlink.fetch_price(&item.source).await {
+                    let Some(fetcher) = self.price_fetcher_for(&item.source) else {
+                        fail += 1;
+                        continue;
+                    };
+                    match fetcher.fetch_price(&item.source).await {
                         Ok(price) => {
                             apply_value(
                                 state,
