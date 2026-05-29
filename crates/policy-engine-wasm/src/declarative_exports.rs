@@ -483,6 +483,9 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             value,
             submitted_at,
             args_json: &args_json,
+            // Raw tx calldata hex — referenced by the bare `$calldata`
+            // placeholder so an `Unknown` body preserves the full calldata.
+            raw_calldata: &input.calldata,
             resolved,
             derived: BTreeMap::new(),
             inputs: None,
@@ -815,6 +818,9 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
             value: V3U256::ZERO,
             submitted_at,
             args_json: &args_json,
+            // Off-chain EIP-712 sig has NO calldata — `$calldata` resolves to
+            // an empty string here (typed-data manifests do not reference it).
+            raw_calldata: "",
             resolved,
             derived: BTreeMap::new(),
             inputs: None,
@@ -1158,6 +1164,7 @@ fn dispatch_opcode_stream(
             value: ctx.value,
             submitted_at: ctx.submitted_at,
             args_json: ctx.args_json,
+            raw_calldata: ctx.raw_calldata,
             resolved: ctx.resolved.clone(),
             derived: ctx.derived.clone(),
             inputs: inputs_for_this,

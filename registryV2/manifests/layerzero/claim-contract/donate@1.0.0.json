@@ -9,7 +9,7 @@
       "42161": ["0xd6b6a6701303B5Ea36fa0eDf7389b562d8F894DB"]
     }
   },
-  "_note_mapping": "donate(currency, amount, recipient) is a donation to the protocol/DAO, not a claim and not a standard ERC20 transfer. No matching ActionBody domain (token/amm/lending/airdrop/launchpad/perp) → Unknown, so the policy engine warns/denies rather than mis-classifying. calldata field is the literal sentinel `0x` (the v3 engine has no calldata placeholder); value = $tx.value (donate is payable).",
+  "_note_mapping": "donate(currency, amount, recipient) is a donation to the protocol/DAO, not a claim and not a standard ERC20 transfer. No matching ActionBody domain (token/amm/lending/airdrop/launchpad/perp) → Unknown, so the policy engine warns/denies rather than mis-classifying. calldata = $calldata (the raw tx calldata is PRESERVED for scope analysis); value = $tx.value (donate is payable).",
   "abi_fragment": {
     "function_name": "donate",
     "abi": {
@@ -31,7 +31,7 @@
       "unknown": {
         "target":   "$to",
         "chain":    "$chain",
-        "calldata": "0x",
+        "calldata": "$calldata",
         "value":    "$tx.value"
       }
     }

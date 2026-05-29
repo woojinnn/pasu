@@ -5032,7 +5032,7 @@ fn b4_layerzero_donate() {
         LZ_ARBITRUM,
         LZ_HUB,
         "0xcd139742",
-        calldata,
+        calldata.clone(),
         LZ_SUBMITTER,
         "1000000000000000",
     );
@@ -5044,6 +5044,10 @@ fn b4_layerzero_donate() {
     assert_eq!(body["chain"], "eip155:42161", "{parsed}");
     // value = $tx.value (donate is payable). U256 → hex string; 1e15 wei = 0x38d7ea4c68000.
     assert_eq!(body["value"], "0x38d7ea4c68000", "{parsed}");
+    // `$calldata` placeholder — the Unknown body PRESERVES the full raw calldata
+    // (the whole point of an Unknown body for a scope analyzer), not the legacy
+    // "0x" sentinel.
+    assert_eq!(body["calldata"], calldata, "{parsed}");
 }
 
 // ---------------------------------------------------------------------------
@@ -5065,7 +5069,7 @@ fn b4_layerzero_withdraw_donation() {
             DynSolValue::Uint(AlloyU256::from(500_000_000_000_000u128), 256), // amount
         ],
     );
-    let input = route_input(LZ_ARBITRUM, LZ_HUB, "0x46d7ce37", calldata, LZ_SUBMITTER);
+    let input = route_input(LZ_ARBITRUM, LZ_HUB, "0x46d7ce37", calldata.clone(), LZ_SUBMITTER);
     let parsed = route_ok(input);
 
     let body = &parsed["data"]["actions"][0]["body"];
@@ -5073,6 +5077,8 @@ fn b4_layerzero_withdraw_donation() {
     assert_eq!(body["target"], LZ_HUB, "{parsed}");
     // not payable → value literal "0" → U256 hex string "0x0".
     assert_eq!(body["value"], "0x0", "{parsed}");
+    // `$calldata` placeholder — Unknown body preserves the full raw calldata.
+    assert_eq!(body["calldata"], calldata, "{parsed}");
 }
 
 // ---------------------------------------------------------------------------
@@ -5111,7 +5117,7 @@ fn b4_layerzero_oft_send() {
         LZ_ARBITRUM,
         LZ_ZRO,
         "0xc7c7f5b3",
-        calldata,
+        calldata.clone(),
         LZ_SUBMITTER,
         "1000000000000000",
     );
@@ -5125,4 +5131,7 @@ fn b4_layerzero_oft_send() {
     assert_eq!(body["chain"], "eip155:42161", "{parsed}");
     // value = $tx.value (send is payable). 1e15 wei = 0x38d7ea4c68000.
     assert_eq!(body["value"], "0x38d7ea4c68000", "{parsed}");
+    // `$calldata` placeholder — Unknown body preserves the full raw calldata
+    // (the entire SendParam/MessagingFee tuple is retained for scope analysis).
+    assert_eq!(body["calldata"], calldata, "{parsed}");
 }

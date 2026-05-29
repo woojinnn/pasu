@@ -9,7 +9,7 @@
       "42161": ["0xd6b6a6701303B5Ea36fa0eDf7389b562d8F894DB"]
     }
   },
-  "_note_mapping": "withdrawDonation(currency, amount) reclaims a previously-made donation. Not a claim, not a standard token op → Unknown (policy warn/deny). calldata = literal sentinel `0x`; not payable → value 0.",
+  "_note_mapping": "withdrawDonation(currency, amount) reclaims a previously-made donation. Not a claim, not a standard token op → Unknown (policy warn/deny). calldata = $calldata (raw tx calldata PRESERVED); not payable → value 0.",
   "abi_fragment": {
     "function_name": "withdrawDonation",
     "abi": {
@@ -30,7 +30,7 @@
       "unknown": {
         "target":   "$to",
         "chain":    "$chain",
-        "calldata": "0x",
+        "calldata": "$calldata",
         "value":    "0"
       }
     }

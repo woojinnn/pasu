@@ -15,7 +15,7 @@
       "43114": ["0x6985884c4392d348587b19cb9eaaf157f13271cd"]
     }
   },
-  "_note_mapping": "OFT send is a cross-chain bridge of ZRO (LayerZero V2 OFT). ActionBody has NO bridge domain (token/amm/lending/airdrop/launchpad/perp/multicall/unknown) → Unknown, the honest conservative mapping (NOT shoehorned into a token transfer or swap). ZRO ERC20 0x6985884c4392d348587b19cb9eaaf157f13271cd is the same address on 7 chains (1/10/56/137/8453/42161/43114 — 1차-verified). calldata = literal sentinel `0x`; value = $tx.value (send is payable — nativeFee paid via msg.value). The abi_fragment carries the exact SendParam/MessagingFee tuple components because the route decodes calldata against it before building the body.",
+  "_note_mapping": "OFT send is a cross-chain bridge of ZRO (LayerZero V2 OFT). ActionBody has NO bridge domain (token/amm/lending/airdrop/launchpad/perp/multicall/unknown) → Unknown, the honest conservative mapping (NOT shoehorned into a token transfer or swap). ZRO ERC20 0x6985884c4392d348587b19cb9eaaf157f13271cd is the same address on 7 chains (1/10/56/137/8453/42161/43114 — 1차-verified). calldata = $calldata (the full raw tx calldata is PRESERVED for scope analysis); value = $tx.value (send is payable — nativeFee paid via msg.value). The abi_fragment carries the exact SendParam/MessagingFee tuple components because the route decodes calldata against it before building the body.",
   "abi_fragment": {
     "function_name": "send",
     "abi": {
@@ -56,7 +56,7 @@
       "unknown": {
         "target":   "$to",
         "chain":    "$chain",
-        "calldata": "0x",
+        "calldata": "$calldata",
         "value":    "$tx.value"
       }
     }

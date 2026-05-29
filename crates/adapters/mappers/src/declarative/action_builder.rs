@@ -176,6 +176,12 @@ pub struct V3MapContext<'a> {
     pub submitted_at: Time,
     /// Decoded calldata args as a JSON object keyed by ABI argument name.
     pub args_json: &'a JsonValue,
+    /// Raw transaction calldata as a `"0x"`-prefixed hex string. Referenced by
+    /// the bare `$calldata` placeholder so an [`ActionBody::Unknown`] body can
+    /// PRESERVE the full calldata (its whole purpose for a scope analyzer)
+    /// instead of emitting a `"0x"` sentinel. Empty (`""`) on the off-chain
+    /// typed-data route, which has no calldata.
+    pub raw_calldata: &'a str,
     /// `$resolved.<k>` lookups (filled by upstream resolvers — pool address,
     /// fee tier, etc.). May be empty in M1.
     pub resolved: BTreeMap<String, JsonValue>,
@@ -349,6 +355,13 @@ fn resolve_placeholder(ctx: &V3MapContext<'_>, raw: &str) -> Result<JsonValue, V
     match root {
         "chain" => Ok(JsonValue::String(ctx.chain.as_str().to_owned())),
         "to" => Ok(JsonValue::String(format!("{:#x}", ctx.tx_to))),
+        // Bare `$calldata` → the raw tx calldata hex. It is a ROOT-ONLY token
+        // (no `.<path>` / `[idx]` suffix — calldata is opaque bytes); any suffix
+        // is a manifest authoring error, surfaced fail-loud.
+        "calldata" if rest.is_empty() => Ok(JsonValue::String(ctx.raw_calldata.to_owned())),
+        "calldata" => Err(V3BuildError::UnresolvedPlaceholder(format!(
+            "$calldata takes no path suffix (got {raw:?})"
+        ))),
         "tx" => match rest {
             "from" => Ok(JsonValue::String(format!("{:#x}", ctx.tx_from))),
             "to" => Ok(JsonValue::String(format!("{:#x}", ctx.tx_to))),
@@ -982,6 +995,7 @@ pub fn build_multicall_from_opcode_stream(
             value: ctx.value,
             submitted_at: ctx.submitted_at,
             args_json: ctx.args_json,
+            raw_calldata: ctx.raw_calldata,
             resolved: ctx.resolved.clone(),
             derived: ctx.derived.clone(),
             inputs: inputs_for_this,
@@ -1041,6 +1055,7 @@ pub fn build_array_emit(
             value: ctx.value,
             submitted_at: ctx.submitted_at,
             args_json: ctx.args_json,
+            raw_calldata: ctx.raw_calldata,
             resolved: ctx.resolved.clone(),
             derived: ctx.derived.clone(),
             inputs: Some(element),
@@ -1074,6 +1089,7 @@ mod tests {
             value: U256::ZERO,
             submitted_at: Time::from_unix(1_738_000_000),
             args_json: args,
+            raw_calldata: "0xdeadbeef",
             resolved: BTreeMap::new(),
             derived: BTreeMap::new(),
             inputs: None,
