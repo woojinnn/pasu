@@ -1,5 +1,10 @@
 //! Marker file. Integration tests live under `tests/` and run against the
 //! published surfaces of `policy-engine`.
+//!
+//! In addition, [`harness`] hosts the v3 `ActionBody[]` decode harness — a
+//! reusable engine (local adapter loader, strategy-aware fuzzers, layered
+//! oracle, reporter) shared by the `v3_decode_harness` cargo test and the
+//! `v3-harness` CLI binary.
 
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
@@ -18,3 +23,5 @@
 #![cfg_attr(not(test), warn(clippy::expect_used))]
 #![cfg_attr(not(test), warn(clippy::panic))]
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
+
+pub mod harness;

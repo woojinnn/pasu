@@ -9,13 +9,28 @@ publish = false
 [dependencies]
 policy-engine.workspace = true
 serde_json.workspace = true
+# v3 ActionBody decode harness (src/harness/** + src/bin/v3_harness.rs).
+# These must be normal deps (not dev) because the lib module + CLI bin consume
+# them; the test target inherits them transitively.
+policy-engine-wasm = { path = "../policy-engine-wasm" }
+simulation-reducer.workspace = true
+alloy-dyn-abi.workspace = true
+alloy-json-abi.workspace = true
+alloy-primitives.workspace = true
+serde = { version = "1", features = ["derive"] }
+hex = "0.4"
+anyhow = "1"
 
 [dev-dependencies]
-alloy-primitives.workspace = true
-anyhow = "1"
 abi-resolver.workspace = true
-hex = "0.4"
 mappers.workspace = true
 request-router.workspace = true
-serde = { version = "1", features = ["derive"] }
 walkdir = "2"
+
+# v3 ActionBody decode harness CLI. Explicit name keeps the hyphenated invocation
+# `cargo run --bin v3-harness`; path under src/bin/ suppresses bin auto-discovery
+# for this file. Auto-discovery of tests/*.rs (incl. v3_decode_harness.rs) is
+# untouched.
+[[bin]]
+name = "v3-harness"
+path = "src/bin/v3_harness.rs"
