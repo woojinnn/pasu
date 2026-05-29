@@ -215,10 +215,12 @@ pub struct V3MapContext<'a> {
 /// ```
 ///
 /// `$match`, `$cases`, and `$default` are RESERVED object keys — an object that
-/// happens to contain `$match` is always interpreted as a value-map. The
-/// matched-against value and the selected case value are both run back through
-/// `substitute_placeholders`, so cases may themselves embed placeholders or
-/// nested structures (field-level AND action-tag-level switches compose).
+/// happens to contain `$match` is always interpreted as a value-map, and any
+/// OTHER key present is rejected fail-loud (a typo'd `$default` must not
+/// silently degrade to a no-match). The matched-against value and the selected
+/// case value are both run back through `substitute_placeholders`, so cases may
+/// themselves embed placeholders or nested structures (field-level AND
+/// action-tag-level switches compose).
 ///
 /// # Errors
 ///
@@ -264,6 +266,9 @@ pub fn substitute_placeholders(
 /// 2. The resolved value is collapsed to a lookup-key string: JSON String →
 ///    as-is; JSON Number → `to_string()` (integer `1` → `"1"`); JSON Bool →
 ///    `"true"` / `"false"`. Any other type → [`V3BuildError::ValueMapMalformed`].
+///    Numbers are assumed integer-valued (on-chain `uint` discriminants); a
+///    fractional JSON number (e.g. `1.0`) stringifies to `"1.0"` and would NOT
+///    match an integer case key `"1"`.
 /// 3. The key is looked up in `$cases` (which must be a JSON object). On a hit
 ///    the case value is returned, recursively substituted. On a miss `$default`
 ///    is used (also recursively substituted) if present, else
@@ -272,6 +277,18 @@ fn resolve_value_map(
     ctx: &V3MapContext<'_>,
     map: &JsonMap<String, JsonValue>,
 ) -> Result<JsonValue, V3BuildError> {
+    // 0. Reject any stray / typo'd key. Without this a misspelled reserved key
+    //    (e.g. `$dafault`) would silently degrade to a ValueMapNoMatch instead
+    //    of a clear "you typo'd a reserved key" error. Fail-loud, naming the
+    //    offending key (mirrors how other V3BuildError paths name their input).
+    for k in map.keys() {
+        if !matches!(k.as_str(), "$match" | "$cases" | "$default") {
+            return Err(V3BuildError::ValueMapMalformed(format!(
+                "unexpected key '{k}' in value-map (allowed: $match, $cases, $default)"
+            )));
+        }
+    }
+
     // 1. Resolve the matched-against value.
     let match_template = map
         .get("$match")
@@ -1810,6 +1827,37 @@ mod tests {
         let args = json!({ "rateMode": "1" });
         let ctx = mk_ctx(&args);
         let template = json!({ "$match": "$args.rateMode", "$cases": "not-an-object" });
+        let err = substitute_placeholders(&ctx, &template).unwrap_err();
+        assert!(matches!(err, V3BuildError::ValueMapMalformed(_)));
+    }
+
+    // (f) `$match` resolving to a non-keyable JSON type (here an object via an
+    // `$args.<path>` that points at a nested object) → ValueMapMalformed. Only
+    // String / Number / Bool collapse to a lookup key.
+    #[test]
+    fn value_map_non_keyable_match_errors() {
+        let args = json!({ "permit": { "spender": "0xabc", "amount": "1" } });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.permit",
+            "$cases": { "1": "stable", "2": "variable" }
+        });
+        let err = substitute_placeholders(&ctx, &template).unwrap_err();
+        assert!(matches!(err, V3BuildError::ValueMapMalformed(_)));
+    }
+
+    // (g) A stray / typo'd reserved key (`$dafault` instead of `$default`) →
+    // fail-loud ValueMapMalformed naming the offending key, instead of silently
+    // degrading to ValueMapNoMatch.
+    #[test]
+    fn value_map_stray_key_errors() {
+        let args = json!({ "rateMode": "0" });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.rateMode",
+            "$cases": { "1": "stable", "2": "variable" },
+            "$dafault": "fixed"
+        });
         let err = substitute_placeholders(&ctx, &template).unwrap_err();
         assert!(matches!(err, V3BuildError::ValueMapMalformed(_)));
     }
