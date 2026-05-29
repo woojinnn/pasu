@@ -1,12 +1,16 @@
 //! Rust struct ↔ SQL row 변환.
 //!
-//! 한 도메인 타입을 SQL 컬럼들로 풀어쓰는 코드. 예: `TokenKind` enum 의 variant
-//! 를 `kind_tag` 컬럼 + `kind_data` JSON 컬럼 한 쌍으로 표현.
+//! Phase 1 의 대상:
+//! * [`token_key`] — `TokenKey` enum → 16-byte hash + 평탄 컬럼 (standard / chain
+//!   / address / contract / token_id)
+//! * [`balance`] — `Balance` enum → (form_tag, amount_decimal_string)
+//! * [`live_field`] — `LiveField<Price>` → 평탄 컬럼 (value/synced_at/ttl/conf)
+//!   + DataSource JSON
 
-// 단계적 활성화:
-// pub mod token_kind;    // TokenKind  ↔ (kind_tag, kind_data)
-// pub mod balance;       // Balance    ↔ (balance_kind, balance_data)
-// pub mod live_field;    // LiveField  ↔ inline 5 컬럼 (value, source, synced_at, ttl, conf)
-// pub mod position;      // Position   ↔ family 별 row 모양
-// pub mod pending;       // PendingTx  ↔ row + commitment 평탄화
-// pub mod delta;         // StateDelta ↔ JSON
+pub mod balance;
+pub mod live_field;
+pub mod token_key;
+
+pub use balance::{BalanceColumns, decode_balance, encode_balance};
+pub use live_field::{LiveFieldColumns, decode_price_live_field, encode_price_live_field};
+pub use token_key::{TokenColumns, decode_token_key, encode_token_key, token_hash};
