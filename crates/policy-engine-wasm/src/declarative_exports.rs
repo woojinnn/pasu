@@ -654,6 +654,14 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                     |error| EngineErrorDto::new("build_array_emit_failed", error.to_string()),
                 )?
             }
+            // A-redux.2 — `tagged_dispatch` (HyperLiquid CoreWriter mechanism).
+            // ONE action is encoded as `data[0]=version ‖ data[tag..tag+sz]=
+            // action_id (uintN BE) ‖ data[tag+sz..]=abi.encode(args)`. Resolve
+            // `bytes_source` → bytes, assert the version byte, read the action
+            // id, look up `per_action_body["<decimal id>"]`, abi-decode the
+            // trailing args with that action's `inputs_abi` into the ctx
+            // `inputs`, and build that ONE action's `body` (NOT a Multicall).
+            "tagged_dispatch" => build_tagged_dispatch(&ctx, emit)?,
             other => {
                 return Err(EngineErrorDto::new(
                     "unsupported_strategy",
@@ -1318,6 +1326,184 @@ fn parse_hex_u8(raw: &str, field: &str) -> Result<u8, EngineErrorDto> {
             format!("invalid {field} hex u8 {raw:?}: {error}"),
         )
     })
+}
+
+/// A-redux.2 — `tagged_dispatch` strategy → ONE [`ActionBody`].
+///
+/// Decodes a self-describing single-action envelope (HyperLiquid CoreWriter
+/// `sendRawAction(bytes data)`):
+///
+/// ```text
+/// data[0]                         = version          (asserted == version_byte)
+/// data[tag_offset .. +tag_size]   = action_id        (big-endian unsigned)
+/// data[tag_offset + tag_size ..]  = abi.encode(args) (decoded by the matched
+///                                                     action's inputs_abi)
+/// ```
+///
+/// `emit` keys: `bytes_source` (`$args.<name>` resolving to the bytes hex),
+/// `version_byte` (`"0x01"`), `tag_offset` / `tag_size` (default `1` / `3` —
+/// uint24), and `per_action_body` (`{ "<decimal id>": { name?, inputs_abi,
+/// body } }`, plus an optional `"default"` fallback entry).
+///
+/// Fail-soft (recorded, never panics): a version-byte mismatch, an action_id
+/// absent from `per_action_body`, or a `bytes_source` too short to hold the
+/// tag all fall through to the `"default"` body if present, else an inline
+/// `Unknown` body that preserves `$calldata` so the policy layer warns/denies
+/// rather than mis-classifying. (ABI-decode failure of a MATCHED action is NOT
+/// swallowed — the body's `$inputs.<x>` refs then surface a precise
+/// `UnresolvedPlaceholder`, mirroring the opcode-stream contract.)
+fn build_tagged_dispatch(
+    ctx: &V3MapContext<'_>,
+    emit: &serde_json::Value,
+) -> Result<v3_action::ActionBody, EngineErrorDto> {
+    let per_action_body = emit
+        .get("per_action_body")
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| {
+            EngineErrorDto::new("invalid_bundle", "missing emit.per_action_body".to_string())
+        })?;
+
+    // ── Resolve the bytes envelope ──────────────────────────────────────────
+    let bytes_source = emit
+        .get("bytes_source")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| {
+            EngineErrorDto::new("invalid_bundle", "missing emit.bytes_source".to_string())
+        })?;
+    let bytes_hex_val = substitute_placeholders(ctx, &serde_json::json!(bytes_source))
+        .map_err(|error| EngineErrorDto::new("invalid_bytes_source", error.to_string()))?;
+    let bytes_hex = bytes_hex_val.as_str().ok_or_else(|| {
+        EngineErrorDto::new(
+            "invalid_bytes_source",
+            format!("emit.bytes_source {bytes_source:?} did not resolve to a hex string"),
+        )
+    })?;
+    let data = hex::decode(bytes_hex.strip_prefix("0x").unwrap_or(bytes_hex)).map_err(|error| {
+        EngineErrorDto::new(
+            "invalid_bytes_source",
+            format!("emit.bytes_source not hex: {error}"),
+        )
+    })?;
+
+    let version_byte = parse_hex_u8(
+        emit.get("version_byte")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("0x01"),
+        "emit.version_byte",
+    )?;
+    let tag_offset = emit
+        .get("tag_offset")
+        .and_then(serde_json::Value::as_u64)
+        .map_or(1usize, |v| usize::try_from(v).unwrap_or(usize::MAX));
+    let tag_size = emit
+        .get("tag_size")
+        .and_then(serde_json::Value::as_u64)
+        .map_or(3usize, |v| usize::try_from(v).unwrap_or(usize::MAX));
+
+    // Fail-soft fallback: `"default"` per-action entry, else an inline Unknown
+    // body that preserves `$calldata`.
+    let fallback = |ctx: &V3MapContext<'_>| -> Result<v3_action::ActionBody, EngineErrorDto> {
+        if let Some(default_entry) = per_action_body.get("default") {
+            let body_template = default_entry.get("body").ok_or_else(|| {
+                EngineErrorDto::new(
+                    "invalid_bundle",
+                    "emit.per_action_body.default missing body".to_string(),
+                )
+            })?;
+            return build_action_body(ctx, body_template, default_entry.get("live_inputs"))
+                .map_err(|error| {
+                    EngineErrorDto::new("build_action_body_failed", error.to_string())
+                });
+        }
+        let unknown = serde_json::json!({
+            "domain": "unknown",
+            "unknown": {
+                "target": "$to",
+                "chain": "$chain",
+                "calldata": "$calldata",
+                "value": "$tx.value"
+            }
+        });
+        build_action_body(ctx, &unknown, None)
+            .map_err(|error| EngineErrorDto::new("build_action_body_failed", error.to_string()))
+    };
+
+    // ── Version byte ────────────────────────────────────────────────────────
+    match data.first() {
+        Some(&v) if v == version_byte => {}
+        other => {
+            eprintln!(
+                "[declarative_exports] tagged_dispatch: version byte {other:?} != \
+                 expected 0x{version_byte:02x} — fail-soft body"
+            );
+            return fallback(ctx);
+        }
+    }
+
+    // ── action_id (big-endian unsigned, up to 8 bytes) ──────────────────────
+    let tag_end = tag_offset.saturating_add(tag_size);
+    let Some(tag_bytes) = data.get(tag_offset..tag_end) else {
+        eprintln!(
+            "[declarative_exports] tagged_dispatch: data ({} bytes) too short for tag \
+             [{tag_offset}..{tag_end}] — fail-soft body",
+            data.len()
+        );
+        return fallback(ctx);
+    };
+    if tag_size == 0 || tag_size > 8 {
+        return Err(EngineErrorDto::new(
+            "invalid_bundle",
+            format!("emit.tag_size must be 1..=8, got {tag_size}"),
+        ));
+    }
+    let mut action_id: u64 = 0;
+    for b in tag_bytes {
+        action_id = (action_id << 8) | u64::from(*b);
+    }
+
+    // ── Look up the per-action entry ────────────────────────────────────────
+    let action_key = action_id.to_string();
+    let Some(action_entry) = per_action_body.get(&action_key) else {
+        eprintln!(
+            "[declarative_exports] tagged_dispatch: action_id {action_id} absent from \
+             per_action_body — fail-soft body"
+        );
+        return fallback(ctx);
+    };
+    let body_template = action_entry.get("body").ok_or_else(|| {
+        EngineErrorDto::new(
+            "invalid_bundle",
+            format!("emit.per_action_body.{action_key} missing body"),
+        )
+    })?;
+
+    // ── ABI-decode the trailing args into the ctx `inputs` ──────────────────
+    // `decoded` owns the value so the `Some(&decoded)` borrow outlives the
+    // `build_action_body` call below. A matched action whose `inputs_abi`
+    // fails to decode yields `Null` (the body's `$inputs.<x>` refs then surface
+    // a precise UnresolvedPlaceholder — same best-effort contract as the
+    // opcode-stream path).
+    let args_bytes = data.get(tag_end..).unwrap_or(&[]);
+    let decoded = action_entry
+        .get("inputs_abi")
+        .and_then(serde_json::Value::as_str)
+        .and_then(|sig| decode_inputs_abi_tuple(sig, args_bytes).ok())
+        .unwrap_or(serde_json::Value::Null);
+
+    let child_ctx = V3MapContext {
+        chain: ctx.chain.clone(),
+        tx_to: ctx.tx_to,
+        tx_from: ctx.tx_from,
+        value: ctx.value,
+        submitted_at: ctx.submitted_at,
+        args_json: ctx.args_json,
+        raw_calldata: ctx.raw_calldata,
+        resolved: ctx.resolved.clone(),
+        derived: ctx.derived.clone(),
+        inputs: Some(&decoded),
+    };
+    build_action_body(&child_ctx, body_template, action_entry.get("live_inputs"))
+        .map_err(|error| EngineErrorDto::new("build_action_body_failed", error.to_string()))
 }
 
 /// Decode a single opcode's `inputs_abi` Solidity tuple signature against a

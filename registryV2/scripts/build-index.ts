@@ -33,7 +33,7 @@
  *
  *     "abi_fragment": { ... },                      // v3: unchanged from v2
  *     "emit":         {
- *       "strategy": "single_emit" | "array_emit" | "multicall_recurse" | "opcode_stream_dispatch" | ...,
+ *       "strategy": "single_emit" | "array_emit" | "multicall_recurse" | "opcode_stream_dispatch" | "tagged_dispatch" | ...,
  *       "body":     { ... },                        // v3 NEW: hierarchical ActionBody (PDF spec)
  *       "live_inputs": { ... },                     // v3 NEW: LiveField source descriptors
  *       ...

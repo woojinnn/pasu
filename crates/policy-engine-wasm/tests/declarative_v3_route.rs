@@ -5135,3 +5135,212 @@ fn b4_layerzero_oft_send() {
     // (the entire SendParam/MessagingFee tuple is retained for scope analysis).
     assert_eq!(body["calldata"], calldata, "{parsed}");
 }
+
+// ===========================================================================
+// t23 — tagged_dispatch strategy (HyperLiquid CoreWriter mechanism)
+// ===========================================================================
+//
+// HyperLiquid's CoreWriter `sendRawAction(bytes data)` encodes ONE action as
+// `data[0]=0x01 (version) ‖ data[1:4]=action_id (uint24 BE) ‖
+// data[4:]=abi.encode(<action args>)` (1차-verified, HyperLiquid docs).
+//
+// `tagged_dispatch` decodes that envelope to a SINGLE `ActionBody` (NOT a
+// Multicall): assert the version byte, read the uint24 action_id, look up
+// `per_action_body["<decimal id>"]`, abi-decode `data[4:]` with that action's
+// `inputs_abi` into the ctx `inputs`, and build that one action's `body`.
+//
+// SCOPE: this fixture proves the MECHANISM only (the full 15-action mapping is
+// B.3.2). Two minimal `unknown` bodies with DIFFERENT field wiring prove that
+// dispatch routes on `action_id` and that `$inputs.<i>` decode flows into the
+// body; a third case proves version-mismatch fail-soft.
+
+// `sendRawAction(bytes)` selector — `cast sig`-equivalent keccak.
+const HL_SEND_RAW_ACTION_SELECTOR: &str = "0x17938e13";
+const HL_CORE_WRITER: &str = "0x3333333333333333333333333333333333333333";
+const HL_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
+const HL_INPUT_ADDR: &str = "0x00000000000000000000000000000000deadbeef";
+
+// Minimal mechanism-proving manifest. `inputs_abi` decode keys the tuple by
+// field name (unnamed components → `arg0`/`arg1`/...), same as the
+// opcode-stream `$inputs.<name>` convention. action_id=1 wires the Unknown
+// body's `target`/`value` straight from the decoded `$inputs.arg0`/`arg1`
+// (proving the abi-decode of `data[4:]`); action_id=2 is a DIFFERENT body
+// (target=$to, value from a DIFFERENT decoded field with a DIFFERENT
+// inputs_abi), proving dispatch routes on `action_id`. A bad version byte
+// falls through to a fail-soft inline Unknown body (no `"default"` entry
+// present → exercises that branch).
+const HL_TAGGED_DISPATCH_MANIFEST: &str = r#"{
+  "type": "adapter_function",
+  "id": "hyperliquid/core-writer/sendRawAction@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "2",
+  "match": {
+    "chain_to_addresses": { "999": ["0x3333333333333333333333333333333333333333"] },
+    "selector": "0x17938e13"
+  },
+  "abi_fragment": {
+    "function_name": "sendRawAction",
+    "abi": {
+      "name": "sendRawAction",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [ { "name": "data", "type": "bytes" } ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "tagged_dispatch",
+    "bytes_source": "$args.data",
+    "version_byte": "0x01",
+    "tag_offset": 1,
+    "tag_size": 3,
+    "per_action_body": {
+      "1": {
+        "name": "limit_order",
+        "inputs_abi": "(address,uint256)",
+        "body": {
+          "domain": "unknown",
+          "unknown": {
+            "target":   "$inputs.arg0",
+            "chain":    "$chain",
+            "calldata": "$calldata",
+            "value":    "$inputs.arg1"
+          }
+        }
+      },
+      "2": {
+        "name": "vault_transfer",
+        "inputs_abi": "(uint64,bool,uint64)",
+        "body": {
+          "domain": "unknown",
+          "unknown": {
+            "target":   "$to",
+            "chain":    "$chain",
+            "calldata": "$calldata",
+            "value":    "$inputs.arg2"
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}"#;
+
+/// Build the CoreWriter inner `data`: `0x ‖ version ‖ uint24(action_id) BE ‖
+/// abi.encode(args)`, then wrap it as the `bytes data` arg of
+/// `sendRawAction(bytes)` and return the full route-input calldata hex.
+fn hl_encode_send_raw_action(version: u8, action_id: u32, args: &[DynSolValue]) -> String {
+    let mut data = vec![version];
+    // uint24 big-endian (3 bytes).
+    data.push(((action_id >> 16) & 0xff) as u8);
+    data.push(((action_id >> 8) & 0xff) as u8);
+    data.push((action_id & 0xff) as u8);
+    data.extend_from_slice(&DynSolValue::Tuple(args.to_vec()).abi_encode_params());
+    encode_calldata(HL_SEND_RAW_ACTION_SELECTOR, &[DynSolValue::Bytes(data)])
+}
+
+fn hl_route(calldata: String) -> Value {
+    route_ok(route_input(
+        999,
+        HL_CORE_WRITER,
+        HL_SEND_RAW_ACTION_SELECTOR,
+        calldata,
+        HL_SUBMITTER,
+    ))
+}
+
+// t23.a — action_id=1 → routes to action 1's body with decoded `$inputs`.
+#[test]
+fn t23_tagged_dispatch_action_1_decodes_inputs() {
+    let install = install_ok(HL_TAGGED_DISPATCH_MANIFEST);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/core-writer/sendRawAction@1.0.0"
+    );
+
+    // action_id=1, inputs_abi=(address,uint256): target ← $inputs[0],
+    // value ← $inputs[1].
+    let calldata = hl_encode_send_raw_action(
+        0x01,
+        1,
+        &[
+            DynSolValue::Address(addr(HL_INPUT_ADDR)),
+            DynSolValue::Uint(AlloyU256::from(7_777_u64), 256),
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    // SINGLE ActionBody (not a Multicall): exactly one action, domain unknown.
+    assert_eq!(
+        parsed["data"]["actions"].as_array().unwrap().len(),
+        1,
+        "{parsed}"
+    );
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    // $inputs[0] decoded address routed into the body.
+    assert_eq!(body["target"], HL_INPUT_ADDR, "{parsed}");
+    // $inputs[1] decoded uint256 → U256 hex; 7777 = 0x1e61.
+    assert_eq!(body["value"], "0x1e61", "{parsed}");
+    // $calldata preserves the FULL sendRawAction calldata.
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// t23.b — action_id=2 → routes to the DIFFERENT body (proving action_id
+// dispatch + that action 2's distinct inputs_abi is the one decoded).
+#[test]
+fn t23_tagged_dispatch_action_2_routes_different_body() {
+    install_ok(HL_TAGGED_DISPATCH_MANIFEST);
+
+    // action_id=2, inputs_abi=(uint64,bool,uint64): value ← $inputs[2].
+    let calldata = hl_encode_send_raw_action(
+        0x01,
+        2,
+        &[
+            DynSolValue::Uint(AlloyU256::from(1_u64), 64),
+            DynSolValue::Bool(true),
+            DynSolValue::Uint(AlloyU256::from(42_u64), 64),
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    // action 2's body wires target=$to (the CoreWriter), NOT $inputs[0] — this
+    // is what distinguishes it from action 1, proving dispatch routed on id=2.
+    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
+    // $inputs[2] = 42 = 0x2a (action 2's inputs_abi successfully decoded).
+    assert_eq!(body["value"], "0x2a", "{parsed}");
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
+
+// t23.c — bad version byte → fail-soft Unknown body (recorded, no panic).
+#[test]
+fn t23_tagged_dispatch_bad_version_fail_soft() {
+    install_ok(HL_TAGGED_DISPATCH_MANIFEST);
+
+    // version byte 0x02 ≠ manifest's 0x01 → fall through to fail-soft body.
+    let calldata = hl_encode_send_raw_action(
+        0x02,
+        1,
+        &[
+            DynSolValue::Address(addr(HL_INPUT_ADDR)),
+            DynSolValue::Uint(AlloyU256::from(7_777_u64), 256),
+        ],
+    );
+    let parsed = hl_route(calldata.clone());
+
+    // Still ok:true (fail-soft, NOT an error envelope) and a SINGLE body.
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    let body = &parsed["data"]["actions"][0]["body"];
+    // Fail-soft Unknown body: target=$to, full $calldata preserved → policy
+    // warns/denies on the unrecognised envelope rather than mis-classifying.
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
+    assert_eq!(body["calldata"], calldata, "{parsed}");
+}
