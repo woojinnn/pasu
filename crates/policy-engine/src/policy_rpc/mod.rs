@@ -3,7 +3,9 @@
 mod manifest;
 mod manifest_v2;
 mod materialize;
+mod materialize_v2;
 mod planning;
+mod planning_v2;
 mod selector;
 mod trigger;
 
@@ -21,6 +23,8 @@ pub use materialize::{
     apply_rpc_results, apply_rpc_results_with_indices, system_fail_verdict, SYSTEM_POLICY_ID,
 };
 pub use planning::{manifest_set_hash, plan_calls};
+pub use materialize_v2::materialize_v2;
+pub use planning_v2::{plan_policy_rpc_v2, PlannedCallV2};
 pub use selector::resolve_selector;
 
 #[cfg(test)]
