@@ -1645,6 +1645,7 @@ fn decode_v4_unlock_data(
 ///   * NESTED (`SWAP_EXACT_IN_SINGLE` 0x06 / `SWAP_EXACT_OUT_SINGLE` 0x08
 ///     inside a UR `V4_SWAP`): the struct's first member is a `PoolKey poolKey`
 ///     sub-tuple, so the 5 fields live under a nested `poolKey` object.
+///
 /// The top-level shape is tried first (byte-identical to the prior
 /// MINT-only behaviour); the nested `poolKey` shape is the B.1.c.2 addition.
 ///
