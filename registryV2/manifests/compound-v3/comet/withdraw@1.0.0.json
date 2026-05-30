@@ -1,0 +1,50 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v3/comet/withdraw@1.0.0",
+  "publisher": "compound.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xf3fef3a3",
+    "chain_to_addresses": {
+      "1": ["0xc3d688b66703497daa19211eedff47f25384cdc3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "asset", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name": "compound_v3",
+            "chain": "$chain",
+            "comet": "$to",
+            "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" } }
+          },
+          "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } },
+          "amount": "$args.amount",
+          "recipient": "$tx.from"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getAssetInfoByAddress(address)", "decoder_id": "compound_v3_asset_info" }, "ttl_s": 30 },
+      "available_to_withdraw": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_available_to_withdraw" }, "ttl_s": 30 },
+      "user_state_before": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "userBasic(address)", "decoder_id": "compound_v3_user_basic" }, "ttl_s": 12 }
+    }
+  }
+}
