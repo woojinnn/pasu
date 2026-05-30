@@ -877,6 +877,9 @@ fn t6_array_emit_non_array_source_errors() {
 const AAVE_V3_VARIABLE_DEBT_USDC_APPROVE_DELEGATION: &str = include_str!(
     "../../../registryV2/manifests/aave/v3/variable-debt-usdc-approve-delegation@1.0.0.json"
 );
+const AAVE_V3_VARIABLE_DEBT_USDC_DELEGATION_WITH_SIG: &str = include_str!(
+    "../../../registryV2/manifests/aave/v3/variable-debt-usdc-delegation-with-sig@1.0.0.json"
+);
 
 #[test]
 fn t6_aave_variable_debt_usdc_approve_delegation() {
@@ -914,6 +917,114 @@ fn t6_aave_variable_debt_usdc_approve_delegation() {
         body["venue"]["pool"], "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
         "{parsed}"
     );
+    assert_eq!(
+        body["asset"]["key"]["address"], "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "{parsed}"
+    );
+    assert_eq!(
+        body["delegatee"], "0x000000000000000000000000000000000000d1e9",
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x2625a0", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+}
+
+#[test]
+fn t6_aave_variable_debt_usdc_delegation_with_sig_calldata() {
+    let install = install_ok(AAVE_V3_VARIABLE_DEBT_USDC_DELEGATION_WITH_SIG);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "aave/v3/variableDebtUSDC/delegationWithSig@1.0.0"
+    );
+
+    let calldata = encode_calldata(
+        "0x0b52d558",
+        &[
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000b0b0"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000d1e9"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            DynSolValue::Uint(AlloyU256::from(2_500_000u64), 256),
+            DynSolValue::Uint(AlloyU256::from(2_000_000_000u64), 256),
+            DynSolValue::Uint(AlloyU256::from(27u64), 8),
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x11), 32),
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x22), 32),
+        ],
+    );
+    let input = route_input(
+        1,
+        "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+        "0x0b52d558",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "delegate_borrow", "{parsed}");
+    assert_eq!(body["venue"]["name"], "aave_v3", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "{parsed}"
+    );
+    assert_eq!(
+        body["delegatee"], "0x000000000000000000000000000000000000d1e9",
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x2625a0", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+}
+
+#[test]
+fn t6_aave_variable_debt_usdc_delegation_with_sig_typed_data() {
+    install_ok(AAVE_V3_VARIABLE_DEBT_USDC_DELEGATION_WITH_SIG);
+
+    let input = json!({
+        "chain_id": 1,
+        "verifying_contract": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt USDC",
+        "message": {
+            "delegatee": "0x000000000000000000000000000000000000d1e9",
+            "value": "2500000",
+            "nonce": "7",
+            "deadline": "2000000000"
+        },
+        "submitter": "0x000000000000000000000000000000000000b0b0",
+        "submitted_at": 1_700_000_000_u64
+    })
+    .to_string();
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], true, "typed-data route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"], "aave/v3/variableDebtUSDC/delegationWithSig@1.0.0",
+        "{parsed}"
+    );
+
+    let action = &parsed["data"]["actions"][0];
+    assert_eq!(action["meta"]["nature"]["kind"], "offchain_sig", "{parsed}");
+    assert_eq!(
+        action["meta"]["nature"]["domain"]["name"], "Aave Ethereum Variable Debt USDC",
+        "{parsed}"
+    );
+    assert_eq!(
+        action["meta"]["nature"]["deadline"], 2_000_000_000_u64,
+        "{parsed}"
+    );
+
+    let body = &action["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "delegate_borrow", "{parsed}");
+    assert_eq!(body["venue"]["name"], "aave_v3", "{parsed}");
     assert_eq!(
         body["asset"]["key"]["address"], "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
         "{parsed}"

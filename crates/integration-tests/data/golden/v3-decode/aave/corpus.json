@@ -1,5 +1,5 @@
 {
-  "_comment": "Aave V3 real-tx corpus. Source: Etherscan v2 txlist 2026-05-30, free key (only chain 1 + 42161 accessible). chain1 Pool 0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2 + chain1 WrappedTokenGatewayV3 0xd01607c3c5ecaba394d8be377a08590149325722 + chain42161 Pool 0x794a61358d6845594f94dc1db02a252b5b4814ad. Covered verbose-ABI selectors expect pass/lending. L2Pool packed-args (bytes32 CalldataLogic) selectors expect error/no_declarative_v3_mapper - manifest gap; asset is uint16 reserve-index not address, needs onchain getReserveAddressById + bit-field strategy. Plus one hand-encoded Aave V3 WrappedTokenGateway withdrawETHWithPermit edge fixture added 2026-05-31 to cover the Sourcify-verified gateway surface selector not observed in the sampled txlist.",
+  "_comment": "Aave V3 real-tx corpus. Source: Etherscan v2 txlist 2026-05-30, free key (only chain 1 + 42161 accessible). chain1 Pool 0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2 + chain1 WrappedTokenGatewayV3 0xd01607c3c5ecaba394d8be377a08590149325722 + chain42161 Pool 0x794a61358d6845594f94dc1db02a252b5b4814ad. Covered verbose-ABI selectors expect pass/lending. L2Pool packed-args (bytes32 CalldataLogic) selectors expect error/no_declarative_v3_mapper - manifest gap; asset is uint16 reserve-index not address, needs onchain getReserveAddressById + bit-field strategy. Hand fixtures cover Sourcify-verified WrappedTokenGateway withdrawETHWithPermit and official Aave v3-core debt-token credit-delegation signature paths not observed in the sampled txlist.",
   "transactions": [
     {
       "intent": "setUserEMode",
@@ -575,6 +575,40 @@
             "data": "0xd4c40b6c00000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e2000000000000000000000000000000000000000000000000000000000000000500000000000000000000000011111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
           }
         ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDC.delegationWithSig calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from official Aave v3-core ICreditDelegationToken ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+            "value": "0",
+            "data": "0x0b52d558000000000000000000000000000000000000000000000000000000000000b0b0000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a00000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000022"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDC DelegationWithSig typed-data hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand EIP-712 fixture from official Aave DebtTokenBase DelegationWithSig typehash",
+      "typed_data": {
+        "verifying_contract": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt USDC",
+        "message": {
+          "delegatee": "0x000000000000000000000000000000000000d1e9",
+          "value": "2500000",
+          "nonce": "7",
+          "deadline": "2000000000"
+        }
       }
     }
   ]
