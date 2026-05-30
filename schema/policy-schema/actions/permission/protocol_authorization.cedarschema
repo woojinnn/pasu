@@ -20,6 +20,10 @@ namespace Permission {
     protocolName: String,
     // Permission primitive kind: relayer, manager, operator, agent, etc.
     permission: String,
+    // Optional protocol-native label for the grant, e.g. an API-agent name.
+    permissionLabel?: String,
+    // Optional protocol-native limit, retained as a display/policy string.
+    permissionLimit?: String,
     // Account granting/revoking permission, when explicit in calldata or
     // typed data. Absent means the submitter/principal is the authorizer.
     authorizer?: String,

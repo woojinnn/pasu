@@ -2,13 +2,13 @@
   "matched": true,
   "bundle_id": "hyperliquid/rest/approve-agent@1.0.0",
   "manifest_path": "manifests/hyperliquid/rest/approve-agent@1.0.0.json",
-  "bundle_sha256": "0x69fe0d39e7350609782b606d21e7f85fb9cc3694886e1f6299a3c5bbb078cd4e",
+  "bundle_sha256": "0x1708a79cd7c75290e1e0c46ca9f778fec4cab37846a6106dbd1699be9f5c5f99",
   "bundle": {
     "type": "adapter_action",
     "id": "hyperliquid/rest/approve-agent@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:ApproveAgent` — off-chain L1 approval of an `agentAddress` (an API/agent wallet that can act on the user's behalf, `agentName` label), signed via eth_signTypedData_v4. A delegation/permission action (security-relevant: the agent can place orders) with no faithful 8-domain ActionBody mapping → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). D9 CAVEAT: the HyperLiquid SDK hard-codes the TESTNET signatureChainId 0x66eee (421614) for ApproveAgent; mainnet 42161 is assumed valid and both chains are listed so either routes (mainnet signatureChainId not 1차-confirmed beyond the SDK testnet default). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:ApproveAgent` — off-chain L1 approval of an `agentAddress` (an API/agent wallet that can act on the user's behalf, with `agentName` as a label), signed via eth_signTypedData_v4. This is a protocol-level permission primitive, so it maps to Permission::ProtocolAuthorization with permission=agent, authorizer=$tx.from, authorized=agentAddress, permission_label=agentName. D9 CAVEAT: the HyperLiquid SDK hard-codes the TESTNET signatureChainId 0x66eee (421614) for ApproveAgent; mainnet 42161 is assumed valid and both chains are listed so either routes (mainnet signatureChainId not 1차-confirmed beyond the SDK testnet default).",
     "match": {
       "selector": "0x0000000b",
       "chain_to_addresses": {
@@ -79,12 +79,19 @@
     "emit": {
       "strategy": "single_emit",
       "body": {
-        "domain": "unknown",
-        "unknown": {
-          "target": "0x0000000000000000000000000000000000000000",
-          "chain": "$chain",
-          "calldata": "0x",
-          "value": "0"
+        "domain": "permission",
+        "permission": {
+          "action": "protocol_authorization",
+          "protocol_authorization": {
+            "chain": "$chain",
+            "protocol": "0x0000000000000000000000000000000000000000",
+            "protocol_name": "hyperliquid",
+            "permission": "agent",
+            "permission_label": "$args.approveAgent.agentName",
+            "authorizer": "$tx.from",
+            "authorized": "$args.approveAgent.agentAddress",
+            "is_authorized": true
+          }
         }
       }
     },

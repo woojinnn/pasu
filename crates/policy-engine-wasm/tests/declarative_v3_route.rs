@@ -6180,19 +6180,14 @@ fn b3_corewriter_bad_version_default_unknown() {
 // STRING ("100.0", not U256); `token`/`destination` are L1 STRING identifiers
 // (not EVM address / U256).
 //
-// MAPPING DECISION (frozen): the 8-domain ActionBody cannot faithfully hold a
-// decimal-string amount + L1-string token/destination, so a `token.erc20_transfer`
-// mapping would be a MISLABEL (amount→0, token→0x0 = DATA LOSS). All 12 route to
-// best-effort `ActionBody::Unknown` instead — `target=0x0` sentinel (off-chain
-// sign has no contract target), `chain=$chain`, `calldata="0x"` (sigs have no
-// calldata), `value="0"`. The WIN is ROUTING (the user signing a HyperLiquid
-// op gets "recognized: <op> signature" instead of `no_adapter`); the STRUCTURED
-// representation (destination/amount/token) requires a NEW off-chain-exchange
-// ActionBody variant = DEFERRED schema enhancement (the key b3 limitation, OUT
-// OF SCOPE). These tests pin the on-disk manifests (`include_str!`) and route a
-// representative payload for a few primaryTypes covering the field variety
-// (string destination + decimal amount / validator address + uint64 wei + bool /
-// agent address / spot `token`).
+// MAPPING DECISION: transfer/delegation payloads whose semantics are
+// HyperLiquid L1 strings / decimal strings still route to best-effort
+// `ActionBody::Unknown`; mapping those into token transfers would be a MISLABEL.
+// Permission primitives with plain EVM addresses (`ApproveAgent`,
+// `ApproveBuilderFee`) map to Permission::ProtocolAuthorization so policy can
+// distinguish them from opaque L1 money movement. These tests pin the on-disk
+// manifests (`include_str!`) and route representative payloads covering both
+// paths.
 
 const HL_REST_USD_SEND: &str =
     include_str!("../../../registryV2/manifests/hyperliquid/rest/usd-send@1.0.0.json");
@@ -6202,6 +6197,8 @@ const HL_REST_TOKEN_DELEGATE: &str =
     include_str!("../../../registryV2/manifests/hyperliquid/rest/token-delegate@1.0.0.json");
 const HL_REST_APPROVE_AGENT: &str =
     include_str!("../../../registryV2/manifests/hyperliquid/rest/approve-agent@1.0.0.json");
+const HL_REST_APPROVE_BUILDER_FEE: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/rest/approve-builder-fee@1.0.0.json");
 
 const HL_VC_ZERO: &str = "0x0000000000000000000000000000000000000000";
 const HL_DOMAIN: &str = "HyperliquidSignTransaction";
@@ -6299,12 +6296,12 @@ fn b3_hl_token_delegate_routes_to_unknown() {
     assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/token-delegate@1.0.0", HL_MAINNET);
 }
 
-// b3.approveAgent — agentAddress:address. D9: SDK hard-codes the TESTNET
-// signatureChainId 0x66eee (421614) for ApproveAgent; mainnet 42161 is assumed
-// valid and listed too — this test routes on 42161 to prove the mainnet entry
-// is installed and resolves.
+// b3.approveAgent — agentAddress:address maps to protocol permission. D9: SDK
+// hard-codes the TESTNET signatureChainId 0x66eee (421614) for ApproveAgent;
+// mainnet 42161 is assumed valid and listed too — this test routes on 42161 to
+// prove the mainnet entry is installed and resolves.
 #[test]
-fn b3_hl_approve_agent_routes_to_unknown() {
+fn b3_hl_approve_agent_routes_to_permission() {
     let install = install_ok(HL_REST_APPROVE_AGENT);
     assert_eq!(
         install["data"]["bundle_id"],
@@ -6321,7 +6318,86 @@ fn b3_hl_approve_agent_routes_to_unknown() {
 
     let out = declarative_route_typed_data_v3_json(input);
     let parsed: Value = serde_json::from_str(&out).unwrap();
-    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/approve-agent@1.0.0", HL_MAINNET);
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"], "hyperliquid/rest/approve-agent@1.0.0",
+        "{parsed}"
+    );
+
+    let action = &parsed["data"]["actions"][0];
+    assert_eq!(action["meta"]["nature"]["kind"], "offchain_sig", "{parsed}");
+    assert_eq!(
+        action["meta"]["nature"]["domain"]["name"], HL_DOMAIN,
+        "{parsed}"
+    );
+
+    let body = &action["body"];
+    assert_eq!(body["domain"], "permission", "{parsed}");
+    assert_eq!(body["action"], "protocol_authorization", "{parsed}");
+    assert_eq!(body["chain"], format!("eip155:{HL_MAINNET}"), "{parsed}");
+    assert_eq!(body["protocol"], HL_VC_ZERO, "{parsed}");
+    assert_eq!(body["protocol_name"], "hyperliquid", "{parsed}");
+    assert_eq!(body["permission"], "agent", "{parsed}");
+    assert_eq!(body["permission_label"], "my-api-agent", "{parsed}");
+    assert_eq!(body["authorizer"], HL_SIGNER, "{parsed}");
+    assert_eq!(
+        body["authorized"], "0x00000000000000000000000000000000a9e47a9e",
+        "{parsed}"
+    );
+    assert_eq!(body["is_authorized"], true, "{parsed}");
+}
+
+// b3.approveBuilderFee — builder:address + maxFeeRate:string maps to protocol
+// permission with the protocol-native limit retained as a string.
+#[test]
+fn b3_hl_approve_builder_fee_routes_to_permission() {
+    let install = install_ok(HL_REST_APPROVE_BUILDER_FEE);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "hyperliquid/rest/approve-builder-fee@1.0.0"
+    );
+
+    let message = json!({
+        "hyperliquidChain": "Mainnet",
+        "maxFeeRate": "0.001%",
+        "builder": "0x00000000000000000000000000000000b171d3c0",
+        "nonce": 1_700_000_000_u64
+    });
+    let input = hl_typed_data_input(
+        HL_MAINNET,
+        "HyperliquidTransaction:ApproveBuilderFee",
+        message,
+    );
+
+    let out = declarative_route_typed_data_v3_json(input);
+    let parsed: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(parsed["ok"], true, "route failed: {parsed}");
+    assert_eq!(
+        parsed["data"]["decoder_id"], "hyperliquid/rest/approve-builder-fee@1.0.0",
+        "{parsed}"
+    );
+
+    let action = &parsed["data"]["actions"][0];
+    assert_eq!(action["meta"]["nature"]["kind"], "offchain_sig", "{parsed}");
+    assert_eq!(
+        action["meta"]["nature"]["domain"]["name"], HL_DOMAIN,
+        "{parsed}"
+    );
+
+    let body = &action["body"];
+    assert_eq!(body["domain"], "permission", "{parsed}");
+    assert_eq!(body["action"], "protocol_authorization", "{parsed}");
+    assert_eq!(body["chain"], format!("eip155:{HL_MAINNET}"), "{parsed}");
+    assert_eq!(body["protocol"], HL_VC_ZERO, "{parsed}");
+    assert_eq!(body["protocol_name"], "hyperliquid", "{parsed}");
+    assert_eq!(body["permission"], "builder_fee", "{parsed}");
+    assert_eq!(body["permission_limit"], "0.001%", "{parsed}");
+    assert_eq!(body["authorizer"], HL_SIGNER, "{parsed}");
+    assert_eq!(
+        body["authorized"], "0x00000000000000000000000000000000b171d3c0",
+        "{parsed}"
+    );
+    assert_eq!(body["is_authorized"], true, "{parsed}");
 }
 
 // b3.spotSend — adds an L1 `token` string. Also exercises the TESTNET chain

@@ -30,6 +30,12 @@ pub(crate) fn lower(
         "permission".into(),
         Value::String(action.permission.as_str().into()),
     );
+    if let Some(label) = &action.permission_label {
+        m.insert("permissionLabel".into(), Value::String(label.clone()));
+    }
+    if let Some(limit) = &action.permission_limit {
+        m.insert("permissionLimit".into(), Value::String(limit.clone()));
+    }
     if let Some(authorizer) = &action.authorizer {
         m.insert("authorizer".into(), Value::String(addr(authorizer)));
     }
@@ -66,6 +72,8 @@ mod tests {
                 protocol: balancer_vault(),
                 protocol_name: "balancer_v2".into(),
                 permission: ProtocolPermissionKind::Relayer,
+                permission_label: None,
+                permission_limit: None,
                 authorizer: Some(submitter()),
                 authorized: other(),
                 is_authorized,
@@ -87,6 +95,29 @@ mod tests {
         super::super::test_support::assert_conforms(
             "protocol_authorization",
             &body(false),
+            &onchain_meta(),
+        );
+    }
+
+    #[test]
+    fn protocol_authorization_optionals_conform_to_schema() {
+        let body = ActionBody::Permission(PermissionAction::ProtocolAuthorization(
+            ProtocolAuthorizationAction {
+                chain: ChainId::arbitrum(),
+                protocol: Address::ZERO,
+                protocol_name: "hyperliquid".into(),
+                permission: ProtocolPermissionKind::BuilderFee,
+                permission_label: Some("builder fee cap".into()),
+                permission_limit: Some("0.001%".into()),
+                authorizer: Some(submitter()),
+                authorized: other(),
+                is_authorized: true,
+            },
+        ));
+
+        super::super::test_support::assert_conforms(
+            "protocol_authorization",
+            &body,
             &onchain_meta(),
         );
     }

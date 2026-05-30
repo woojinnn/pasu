@@ -592,6 +592,8 @@ mod tests {
                     protocol: any,
                     protocol_name: "balancer_v2".into(),
                     permission: permission::ProtocolPermissionKind::Relayer,
+                    permission_label: None,
+                    permission_limit: None,
                     authorizer: Some(any),
                     authorized: any,
                     is_authorized: true,

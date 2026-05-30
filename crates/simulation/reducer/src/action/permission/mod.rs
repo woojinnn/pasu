@@ -49,6 +49,15 @@ pub struct ProtocolAuthorizationAction {
     pub protocol_name: String,
     /// Kind of permission being toggled.
     pub permission: ProtocolPermissionKind,
+    /// Optional human-readable permission label from the protocol payload.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub permission_label: Option<String>,
+    /// Optional protocol-native permission limit. Kept as a string because
+    /// some off-chain venues use decimal percentages or non-EVM units.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub permission_limit: Option<String>,
     /// Account granting/revoking permission, when explicit in calldata or
     /// typed data. Direct calls may omit this when the submitter is implicit.
     #[serde(default, skip_serializing_if = "Option::is_none")]

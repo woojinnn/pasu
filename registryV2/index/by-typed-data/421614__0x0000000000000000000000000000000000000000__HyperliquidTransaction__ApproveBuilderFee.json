@@ -2,13 +2,13 @@
   "matched": true,
   "bundle_id": "hyperliquid/rest/approve-builder-fee@1.0.0",
   "manifest_path": "manifests/hyperliquid/rest/approve-builder-fee@1.0.0.json",
-  "bundle_sha256": "0xb474bcc452420a4b6ae19a796fff14f7df10310e3803e235f2085476f22a6452",
+  "bundle_sha256": "0x30bc2a075e10921b56c8e912df13bf8e742619f9bff5a703aebaf6d2fcb50613",
   "bundle": {
     "type": "adapter_action",
     "id": "hyperliquid/rest/approve-builder-fee@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:ApproveBuilderFee` — off-chain L1 approval of a `maxFeeRate` (decimal-string percentage) payable to a `builder` address, signed via eth_signTypedData_v4. A fee-authorization action with no faithful 8-domain ActionBody mapping → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:ApproveBuilderFee` — off-chain L1 approval of a `maxFeeRate` (decimal-string percentage) payable to a `builder` address, signed via eth_signTypedData_v4. This is a protocol-level permission primitive, so it maps to Permission::ProtocolAuthorization with permission=builder_fee, authorizer=$tx.from, authorized=builder, permission_limit=maxFeeRate.",
     "match": {
       "selector": "0x0000000c",
       "chain_to_addresses": {
@@ -79,12 +79,19 @@
     "emit": {
       "strategy": "single_emit",
       "body": {
-        "domain": "unknown",
-        "unknown": {
-          "target": "0x0000000000000000000000000000000000000000",
-          "chain": "$chain",
-          "calldata": "0x",
-          "value": "0"
+        "domain": "permission",
+        "permission": {
+          "action": "protocol_authorization",
+          "protocol_authorization": {
+            "chain": "$chain",
+            "protocol": "0x0000000000000000000000000000000000000000",
+            "protocol_name": "hyperliquid",
+            "permission": "builder_fee",
+            "permission_limit": "$args.approveBuilderFee.maxFeeRate",
+            "authorizer": "$tx.from",
+            "authorized": "$args.approveBuilderFee.builder",
+            "is_authorized": true
+          }
         }
       }
     },
