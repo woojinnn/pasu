@@ -121,7 +121,16 @@ interface CoverageFn {
 interface Coverage {
   contract?: string;
   chainId: number;
-  address: Hex;
+  /** Single contract address. Use this OR `addresses[]`. */
+  address?: Hex;
+  /**
+   * Many pool addresses that SHARE the one `snapshot` ABI — for factory-
+   * deployed protocols (Curve: one StableSwap-NG implementation ABI, N pool
+   * addresses each called directly). I1 (snapshot completeness) runs once;
+   * I2/I3/S1/S2 run against EACH address (every pool must carry the cover-
+   * selector manifests). A pool missing a manifest fails the gate.
+   */
+  addresses?: Hex[];
   snapshot: string;
   functions: Record<string, CoverageFn>;
   signed_structs?: Record<string, { decision: "cover" | "exclude"; reason: string }>;
@@ -303,26 +312,44 @@ function main(): void {
 
   for (const u of units) {
     const { coverage: cov, snapshot: snap, coveragePath } = u;
-    const key = ckey(cov.chainId, cov.address);
-    gatedKeys.add(key);
-    const label = `${cov.contract ?? snap.contract ?? "?"} [${cov.chainId}/${cov.address}]`;
+    const label = `${cov.contract ?? snap.contract ?? "?"} [${cov.chainId}]`;
 
-    // snapshot/coverage address agreement
-    if (cov.address.toLowerCase() !== snap.address.toLowerCase() || cov.chainId !== snap.chainId) {
-      failures.push(`${label}: coverage (chainId,address) != snapshot (${snap.chainId}/${snap.address})`);
+    // Effective pool addresses sharing this snapshot's ABI. Single-address mode
+    // (cov.address) and multi-address mode (cov.addresses[], factory pools)
+    // both normalise to a lowercased list.
+    const effectiveAddresses = (
+      cov.addresses && cov.addresses.length > 0
+        ? cov.addresses
+        : cov.address
+          ? [cov.address]
+          : []
+    ).map((a) => a.toLowerCase());
+    if (effectiveAddresses.length === 0) {
+      failures.push(`${label}: coverage has neither "address" nor a non-empty "addresses[]"`);
+      continue;
+    }
+    for (const a of effectiveAddresses) gatedKeys.add(ckey(cov.chainId, a));
+
+    // Chain / address agreement. In multi-address mode the snapshot is the
+    // shared IMPLEMENTATION ABI (its address is the impl, not a pool), so only
+    // the chainId is checked; in single-address mode the snapshot IS the contract.
+    if (cov.chainId !== snap.chainId) {
+      failures.push(`${label}: coverage chainId ${cov.chainId} != snapshot chainId ${snap.chainId}`);
+    }
+    if (!cov.addresses && cov.address && cov.address.toLowerCase() !== snap.address.toLowerCase()) {
+      failures.push(`${label}: coverage address ${cov.address} != snapshot address ${snap.address}`);
     }
 
     const surface = mutatingSelectors(snap);
     const fns = cov.functions ?? {};
-    const manifests = byContract.get(key) ?? { onchainSelectors: new Map(), signedTypes: new Map() };
 
-    // I1 — completeness: every snapshot mutating selector is triaged
+    // I1 — completeness: every snapshot mutating selector is triaged (once).
     for (const [sel, name] of surface) {
       if (!fns[sel]) {
         failures.push(`${label}: I1 un-triaged external-mutating selector ${sel} (${name}) — add cover|exclude to ${coveragePath}`);
       }
     }
-    // I1' — no stale coverage entries
+    // I1' — no stale / malformed coverage entries (once).
     for (const sel of Object.keys(fns)) {
       if (!surface.has(sel)) {
         failures.push(`${label}: I1' coverage selector ${sel} (${fns[sel].name}) is NOT an external-mutating fn in the snapshot (stale/typo)`);
@@ -338,41 +365,57 @@ function main(): void {
         failures.push(`${label}: ${sel} (${fns[sel].name}) is exclude but has no reason`);
       }
     }
-    // I2 — every cover selector has a manifest
-    for (const [sel, fn] of Object.entries(fns)) {
-      if (fn.decision !== "cover") continue;
-      if (!manifests.onchainSelectors.has(sel)) {
-        failures.push(`${label}: I2 cover selector ${sel} (${fn.name}) has NO manifest at this (chain,address)`);
-      }
-    }
-    // I3 — every on-chain manifest selector is a cover in coverage
-    for (const [sel, paths] of manifests.onchainSelectors) {
-      const fn = fns[sel];
-      if (!fn) {
-        failures.push(`${label}: I3 manifest ${paths[0]} selector ${sel} not triaged in coverage`);
-      } else if (fn.decision !== "cover") {
-        failures.push(`${label}: I3 manifest ${paths[0]} exists for ${sel} (${fn.name}) but coverage decision=${fn.decision}`);
-      }
-    }
-    // S1/S2 — EIP-712 signed structs (best-effort)
+
+    // I2 / I3 / S1 / S2 — per pool address. Every listed pool must independently
+    // carry the cover-selector manifests; a pool missing one fails the gate.
     const signed = cov.signed_structs ?? {};
-    for (const [ptype, paths] of manifests.signedTypes) {
-      const s = signed[ptype];
-      if (!s || s.decision !== "cover") {
-        failures.push(`${label}: S1 typed-data manifest ${paths[0]} primary_type "${ptype}" is not a cover in signed_structs`);
+    const multi = effectiveAddresses.length > 1;
+    let onchainManifestTotal = 0;
+    let signedManifestTotal = 0;
+    for (const addr of effectiveAddresses) {
+      const at = multi ? ` @${addr}` : "";
+      const manifests =
+        byContract.get(ckey(cov.chainId, addr)) ?? { onchainSelectors: new Map(), signedTypes: new Map() };
+      onchainManifestTotal += manifests.onchainSelectors.size;
+      signedManifestTotal += manifests.signedTypes.size;
+
+      // I2 — every cover selector has a manifest at this pool.
+      for (const [sel, fn] of Object.entries(fns)) {
+        if (fn.decision !== "cover") continue;
+        if (!manifests.onchainSelectors.has(sel)) {
+          failures.push(`${label}: I2 cover selector ${sel} (${fn.name}) has NO manifest at ${cov.chainId}/${addr}`);
+        }
       }
-    }
-    for (const [ptype, s] of Object.entries(signed)) {
-      if (s.decision === "cover" && !manifests.signedTypes.has(ptype)) {
-        failures.push(`${label}: S2 signed_structs cover "${ptype}" has NO typed-data manifest`);
+      // I3 — every on-chain manifest selector at this pool is a cover.
+      for (const [sel, paths] of manifests.onchainSelectors) {
+        const fn = fns[sel];
+        if (!fn) {
+          failures.push(`${label}${at}: I3 manifest ${paths[0]} selector ${sel} not triaged in coverage`);
+        } else if (fn.decision !== "cover") {
+          failures.push(`${label}${at}: I3 manifest ${paths[0]} exists for ${sel} (${fn.name}) but coverage decision=${fn.decision}`);
+        }
+      }
+      // S1 — every typed-data manifest at this pool is covered in signed_structs.
+      for (const [ptype, paths] of manifests.signedTypes) {
+        const s = signed[ptype];
+        if (!s || s.decision !== "cover") {
+          failures.push(`${label}${at}: S1 typed-data manifest ${paths[0]} primary_type "${ptype}" is not a cover in signed_structs`);
+        }
+      }
+      // S2 — every signed_structs cover has a typed-data manifest at this pool.
+      for (const [ptype, s] of Object.entries(signed)) {
+        if (s.decision === "cover" && !manifests.signedTypes.has(ptype)) {
+          failures.push(`${label}: S2 signed_structs cover "${ptype}" has NO typed-data manifest at ${cov.chainId}/${addr}`);
+        }
       }
     }
 
     const cov_n = Object.values(fns).filter((f) => f.decision === "cover").length;
     const exc_n = Object.values(fns).filter((f) => f.decision === "exclude").length;
+    const addrDesc = multi ? `${effectiveAddresses.length} pools` : effectiveAddresses[0];
     summary.push(
-      `  ✓ ${label}: ${surface.size} surface · ${cov_n} cover · ${exc_n} exclude · ` +
-        `${manifests.onchainSelectors.size} on-chain manifests · ${manifests.signedTypes.size} signed-struct`,
+      `  ✓ ${label} (${addrDesc}): ${surface.size} surface · ${cov_n} cover · ${exc_n} exclude · ` +
+        `${onchainManifestTotal} on-chain manifests · ${signedManifestTotal} signed-struct`,
     );
   }
 

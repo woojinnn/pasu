@@ -60,7 +60,7 @@ must appear under `functions` with an explicit `cover | exclude` + `reason`.
 {
   "contract": "Morpho",
   "chainId": 1,
-  "address": "0x…",                 // must equal the snapshot's
+  "address": "0x…",                 // single-address mode (must equal the snapshot's); see addresses[] below for factory pools
   "snapshot": "morpho-blue.abi.json",
   "functions": {
     "0xa99aad89": { "name": "supply",     "decision": "cover",   "reason": "user position: supply assets" },
@@ -73,14 +73,34 @@ must appear under `functions` with an explicit `cover | exclude` + `reason`.
 }
 ```
 
+### Factory pools — one ABI, many addresses (`addresses[]`)
+
+For factory-deployed protocols where users call each instance **directly** (Curve:
+one StableSwap-NG implementation ABI, N pool addresses), use `addresses[]` instead
+of a single `address`. The one `snapshot` is the shared **implementation** ABI:
+**I1 runs once** against it, while **I2/I3/S1/S2 run against EVERY pool** — each
+pool must carry the cover-selector manifests, so a single pool missing a manifest
+fails the gate. (Router/singleton entry points like Uniswap's router don't need
+this — they're one address.)
+
+```jsonc
+{
+  "contract": "StableSwap-NG",
+  "chainId": 1,
+  "addresses": ["0xpoolA…", "0xpoolB…", "0xpoolC…"],  // share the one snapshot ABI
+  "snapshot": "stableswap-ng.abi.json",               // the IMPLEMENTATION ABI
+  "functions": { /* … the shared surface, triaged once … */ }
+}
+```
+
 ## Invariants (any violation → `npm run check:surface` exits 1)
 
 | ID  | Rule | Catches |
 |-----|------|---------|
 | **I1**  | every snapshot external-mutating selector (`type==="function"` && `stateMutability ∈ {nonpayable,payable}`) has a `functions` entry | the original miss — a function nobody triaged |
 | **I1'** | every `functions` key is a real selector that exists in the snapshot | stale / typo'd coverage |
-| **I2**  | every `cover` selector has a manifest at `(chain,address,selector)` | triaged-as-cover but adapter never built |
-| **I3**  | every on-chain manifest selector at `(chain,address)` is `cover` here | a manifest for a function you marked exclude / never triaged |
+| **I2**  | every `cover` selector has a manifest at `(chain,address,selector)` — for **each** address in `addresses[]` | triaged-as-cover but adapter never built (at any pool) |
+| **I3**  | every on-chain manifest selector at `(chain,address)` is `cover` here — checked per address | a manifest for a function you marked exclude / never triaged |
 | **S1/S2** | each typed-data manifest `primary_type` ↔ a `signed_structs` cover (both ways) | off-chain EIP-712 grant un-triaged |
 
 ## Onboarding a new contract (4 steps)
