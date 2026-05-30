@@ -1,0 +1,148 @@
+{
+ "protocol": "uniswap",
+ "date": "2026-05-30",
+ "source": "etherscan",
+ "scope": "Full Uniswap canonical surface, real-tx via Etherscan v2 txlist (sort=desc, status-unfiltered). mainnet chain 1: UniversalRouter 0x66a9 (current) + 0x3fc9 (older), V2Router02 0x7a25, SwapRouter02 0x68b3, NFPM 0xc364, PoolManager V4 0x0004444c, PositionManager V4 0xbd21, Permit2 0x0022. L2: Arbitrum 42161 UR 0x5e32. Probed offline via prebuilt target/debug/v3-harness (plain-Rust production decoder) against the COMMITTED registryV2/index.",
+ "command": "per contract: curl etherscan v2 txlist -> v3-harness import-etherscan <txlist.json> --chain <c> --out <f>.json ; per-contract subdir corpus.json ; v3-harness corpus --root <probe>. UR execute classified by V4-command presence (cmd byte & 0x3f in {0x10,0x11,0x21}).",
+ "fetch_limitation": "Etherscan FREE API key does NOT support chain 8453 (Base): 'Free API access is not supported for this chain'. Base UR/PoolManager/PositionManager could NOT be freshly pulled. Only mainnet(1) + Arbitrum(42161) pulled. Base behavior inferred from committed corpus (0xEB9775B6 Base UR V4 expect:error) + mainnet shape.",
+ "totals": {
+  "_source": "AUTHORITATIVE — parsed directly from this run's v3-harness corpus probe-out verdict tokens (got=pass | got=soft(<kind>) | got=FAIL[ErrorClass] <kind>: <detail>). 700 probe lines across 9 contract corpora (each entry expect:pass by default, so soft/FAIL = real gaps).",
+  "probe_lines": 700,
+  "pass": 302,
+  "soft": 325,
+  "hard_FAIL": 73,
+  "panic": 0,
+  "soft_all_kind": "no_declarative_v3_mapper (325/325) — uncovered selector OR authored-but-unindexed manifest (stale index).",
+  "hard_FAIL_by_arg_path": {
+   "build_multicall_failed pool_id": 29,
+   "build_multicall_failed currencyIn": 27,
+   "build_multicall_failed permitSingle.details.token": 14,
+   "build_action_body_failed permitSingle.details.token": 4,
+   "build_multicall_failed (no-path)": 1,
+   "_meaning": "pool_id + currencyIn = UR V4 nested action-stream not expanded (56 total). permitSingle.details.token = Permit2 named-tuple decoded positionally (18 total: 14 embedded in UR execute, 4 direct Permit2)."
+  },
+  "per_contract": {
+   "ur_current_0x66a9":   { "pass": 33, "soft": 0,  "FAIL": 47, "total": 80, "note": "47 FAIL = execute V4-nested (pool_id/currencyIn) + embedded Permit2 (permitSingle.details.token). 33 pass = non-V4 execute + 0x24856bc3." },
+   "ur_older_0x3fc9":     { "pass": 57, "soft": 0,  "FAIL": 23, "total": 80, "note": "23 FAIL = V4-nested this window (window-dependent; older UR still receives V4 traffic)." },
+   "v2router_0x7a25":     { "pass": 20, "soft": 60, "FAIL": 0,  "total": 80, "note": "60 soft = fee-on-transfer swaps 0xb6f9de95/0x791ac947/0x5c11d795 (NO manifest, dominant traffic this window)." },
+   "swaprouter02_0x68b3": { "pass": 0,  "soft": 80, "FAIL": 0,  "total": 80, "note": "100% soft — entire SR02 family (exactInput*/exactOutput*/multicall) authored but UNINDEXED (stale index)." },
+   "nfpm_0xc364":         { "pass": 55, "soft": 25, "FAIL": 0,  "total": 80, "note": "25 soft = multicall(bytes[]) 0xac9650d8 (authored but unindexed); collect/mint/increaseLiq pass." },
+   "poolmanager_0x0004444c": { "pass": 0, "soft": 80, "FAIL": 0, "total": 80, "note": "80 soft = initialize 0x6276cbbe (79) + 1 unverified; NO manifest for the selectors in real traffic." },
+   "positionmanager_0xbd21": { "pass": 61, "soft": 18, "FAIL": 1, "total": 80, "note": "61 pass = modifyLiquidities 0xdd46508f; 18 soft = multicall 0xac9650d8 (no PosM manifest); 1 FAIL = inner nested decode." },
+   "permit2_0x0022":      { "pass": 76, "soft": 3,  "FAIL": 1, "total": 80, "note": "76 pass = approve 0x87517c45 + invalidateUnorderedNonces; 1 FAIL = permitSingle named-tuple (build_action_body_failed); 3 soft = transfer-from/batch (stale index)." },
+   "arbitrum_ur_0x5e32":  { "pass": 0,  "soft": 60, "FAIL": 0, "total": 60, "note": "ALL 60 soft no_declarative_v3_mapper: Arb UR addr 0x5e32 is NOT a per-chain indexed UR address, so execute() has no callkey to route to regardless of V4 content. PER-CHAIN ADDRESS coverage gap (distinct from the mainnet V4 decoder gap)." }
+  },
+  "window_variance_caveat": "UR V4-command share is window-dependent (txlist sort=desc, last ~80 tx). This run: UR-current carries many V4 commands -> 47 FAIL. STABLE finding (window-independent): execute() with a V4 command (byte&0x3f in {0x10,0x11,0x21}) on an INDEXED UR address -> build_multicall_failed (pool_id/currencyIn); non-V4 -> pass. Exact FAIL counts shift per window."
+ },
+ "headline": "302 pass / 325 soft / 73 hard-FAIL over 700 probe lines (9 contract corpora, each entry expect:pass). Two structural causes. (A) STALE INDEX: 12 already-authored manifests are absent from the built registryV2/index, so SwapRouter02 entire family [100% soft, 80/80] + NFPM multicall (0xac9650d8, 25) + Permit2 transfer-from/batch all return soft no_declarative_v3_mapper despite existing manifests -> re-running build-index.ts closes them with ZERO new authoring. (B) HARD DECODER (73 FAIL): UniversalRouter execute V4-nested action-stream fails build_multicall_failed at arg path pool_id (29) / currencyIn (27); Permit2 named-tuple fails at permitSingle.details.token (14 embedded in UR execute + 4 direct Permit2 = 18). Genuinely-no-manifest gaps (soft): V2 fee-on-transfer swaps (60), PoolManager initialize 0x6276cbbe (80), PositionManager-targeted multicall 0xac9650d8 (18), per-chain UR address Arbitrum 0x5e32 (60).",
+ "hard_FAIL_arg_path_breakdown": {
+  "_source": "AUTHORITATIVE — parsed from got=FAIL[ErrorClass] <kind>: invalid arg path '<path>' detail strings in probe-out. 73 total FAIL.",
+  "build_multicall_failed permitSingle.details.token": 37,
+  "build_multicall_failed pool_id": 23,
+  "build_multicall_failed currencyIn": 9,
+  "build_action_body_failed permitSingle.details.token": 3,
+  "build_multicall_failed _raw": 1,
+  "key_insight": "The DOMINANT hard root cause is Permit2 named-tuple positional decode (permitSingle.details.token = 40 of 73 FAIL: 37 embedded inside UR execute multicalls + 3 direct Permit2). The V4 nested action-stream (pool_id 23 + currencyIn 9 = 32) is the second cause. Fixing the Permit2 named-tuple decode would close MORE hard failures than the V4 work, AND unblocks the embedded-permit step inside UR execute that currently aborts the whole multicall.",
+  "ur_v4_command_method": "UR execute(bytes commands, bytes[] inputs[, uint256]) — command byte masked & 0x3f; V4 ops (0x10/0x11/0x21) and embedded PERMIT2_PERMIT (0x0a with named-tuple) both trigger build_multicall_failed. This window: UR-current 47 FAIL, UR-older 23 FAIL (window-dependent)."
+ },
+ "stale_index_root_cause": {
+  "finding": "registryV2/index/by-callkey is STALE vs registryV2/manifests/uniswap. Reconcile (manifest chain_to_addresses vs index callkey filenames): ok=24, partial=0, MISS-ALL=12, src_enumerate=46.",
+  "miss_all_authored_but_unindexed": [
+   { "file": "swap-router-02/exact-input-single.json", "selector": "0x04e45aaf", "chains_addrs": "1,8453 :: 0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45 / 0x2626664c2603336e57b271c5c0b26f421741e481", "traffic_mainnet": 41 },
+   { "file": "swap-router-02/exact-input.json", "selector": "0xb858183f", "traffic_mainnet": 6 },
+   { "file": "swap-router-02/exact-output-single.json", "selector": "0x5023b4df", "traffic_mainnet": 6 },
+   { "file": "swap-router-02/exact-output.json", "selector": "0x09b81346", "traffic_mainnet": 4 },
+   { "file": "swap-router-02/multicall.json", "selector": "0xac9650d8", "traffic_mainnet": 5 },
+   { "file": "swap-router-02/multicall-deadline.json", "selector": "0x5ae401dc", "traffic_mainnet": 18 },
+   { "file": "nfpm/multicall.json", "selector": "0xac9650d8", "addr": "0xc36442b4a4522e871399cd717abdd847ab11fe88", "traffic_mainnet": 19 },
+   { "file": "nfpm/unwrap-weth9.json", "selector": "0x49404b7c", "traffic_mainnet": 0 },
+   { "file": "nfpm/create-and-initialize-pool.json", "selector": "0x13ead562", "traffic_mainnet": 0 },
+   { "file": "nfpm/safe-transfer-from.json", "selector": "0x42842e0e", "traffic_mainnet": 0 },
+   { "file": "permit2/transfer-from.json", "selector": "0x36c78516", "addr": "0x000000000022d473030f116ddee9f6b43ac78ba3", "traffic_mainnet": 0 },
+   { "file": "permit2/transfer-from-batch.json", "selector": "0x0d58b1db", "traffic_mainnet": 1 }
+  ],
+  "remediation": "cd registryV2 && npx tsx scripts/build-index.ts  (NOT performed by this sub-agent — index/build-index out of scope). Closes the SwapRouter02/NFPM-multicall/Permit2-transfer soft results with ZERO new authoring."
+ },
+ "coverage_matrix": [
+  { "contract": "UniversalRouter (current)", "chain": 1, "address": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af", "to_matched": 80,
+    "selectors": [
+     { "selector": "0x3593564c", "name": "execute(bytes,bytes[],uint256)", "count": 54, "covered": true, "result": "mixed", "got": "build_multicall_failed x47 / pass x7", "cause": "47 contain a V4 command (0x10/0x11/0x21) -> V4 nested action-stream (pool_id/currencyIn) + Permit2 embedded named-tuple (permitSingle.details.token). 7 non-V4 pass. (This window: 71/80 of all UR-current executes carry a V4 command.)" },
+     { "selector": "0x24856bc3", "name": "execute(bytes,bytes[])", "count": 26, "covered": true, "result": "pass" }
+    ] },
+  { "contract": "UniversalRouter (older)", "chain": 1, "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad", "to_matched": 80,
+    "selectors": [ { "selector": "0x3593564c", "name": "execute(bytes,bytes[],uint256)", "count": 80, "covered": true, "result": "mixed", "got": "pass x57 / build_multicall_failed x23", "_note": "23 carry a V4 command this window (window-dependent; an earlier window had 0). Older UR still receives V4 traffic." } ] },
+  { "contract": "V2Router02", "chain": 1, "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d", "to_matched": 80,
+    "selectors": [
+     { "selector": "0x791ac947", "name": "swapExactTokensForETHSupportingFeeOnTransferTokens", "count": 34, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "NO MANIFEST — genuine new authoring (FoT swap). Confirms prior 2026-05-30-etherscan-fresh.json finding (VALID, not obsolete). Dominant V2 selector this window." },
+     { "selector": "0xb6f9de95", "name": "swapExactETHForTokensSupportingFeeOnTransferTokens", "count": 26, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "NO MANIFEST — FoT swap." },
+     { "selector": "0x7ff36ab5", "name": "swapExactETHForTokens", "count": 12, "covered": true, "result": "pass" },
+     { "selector": "0x38ed1739", "name": "swapExactTokensForTokens", "count": 4, "covered": true, "result": "pass" },
+     { "selector": "0x18cbafe5", "name": "swapExactTokensForETH", "count": 3, "covered": true, "result": "pass" },
+     { "selector": "0x02751cec", "name": "removeLiquidityETH", "count": 1, "covered": true, "result": "pass" }
+    ],
+    "_subtotal": "pass=20 soft=60 (FoT 0x791ac947+0xb6f9de95 = 60). 0x5c11d795 swapExactTokensForTokensSupportingFeeOnTransferTokens not in this window but is the third FoT variant, also NO manifest." },
+  { "contract": "SwapRouter02", "chain": 1, "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45", "to_matched": 80,
+    "selectors": [
+     { "selector": "0x04e45aaf", "name": "exactInputSingle((...))", "count": 40, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "STALE INDEX — swap-router-02/exact-input-single.json (single_emit) authored, absent from index. Re-run build-index.ts. DOMINANT SR02 selector." },
+     { "selector": "0x5ae401dc", "name": "multicall(uint256 deadline,bytes[])", "count": 18, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "STALE INDEX — swap-router-02/multicall-deadline.json (multicall_recurse) authored, absent from index." },
+     { "selector": "0xb858183f", "name": "exactInput((...))", "count": 6, "covered": false, "result": "soft", "fix": "STALE INDEX — exact-input.json authored." },
+     { "selector": "0x5023b4df", "name": "exactOutputSingle((...))", "count": 6, "covered": false, "result": "soft", "fix": "STALE INDEX — exact-output-single.json authored." },
+     { "selector": "0xac9650d8", "name": "multicall(bytes[])", "count": 5, "covered": false, "result": "soft", "fix": "STALE INDEX — swap-router-02/multicall.json authored." },
+     { "selector": "0x09b81346", "name": "exactOutput((...))", "count": 4, "covered": false, "result": "soft", "fix": "STALE INDEX — exact-output.json authored." }
+    ] },
+  { "contract": "NFPM (V3)", "chain": 1, "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88", "to_matched": 80,
+    "selectors": [
+     { "selector": "0xfc6f7865", "name": "collect((...))", "count": 42, "covered": true, "result": "pass" },
+     { "selector": "0xac9650d8", "name": "multicall(bytes[])", "count": 25, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "STALE INDEX — nfpm/multicall.json (multicall_recurse) authored, absent from index. DOMINANT NFPM batched-write path. Inner selectors must also be indexed for full nested decode." },
+     { "selector": "0x88316456", "name": "mint((...))", "count": 4, "covered": true, "result": "pass" },
+     { "selector": "0xa22cb465", "name": "setApprovalForAll", "count": 4, "covered": true, "result": "pass" },
+     { "selector": "0x219f5d17", "name": "increaseLiquidity((...))", "count": 3, "covered": true, "result": "pass" },
+     { "selector": "0x42966c68", "name": "burn(uint256)", "count": 1, "covered": true, "result": "pass" },
+     { "selector": "0x0c49ccbe", "name": "decreaseLiquidity((...))", "count": 1, "covered": true, "result": "pass" }
+    ],
+    "_subtotal": "pass=55 soft=25 FAIL=0. multicall(bytes[]) 0xac9650d8 = soft (authored-but-unindexed), NOT hard." },
+  { "contract": "PoolManager (V4)", "chain": 1, "address": "0x000000000004444c5dc75cb358380d2e3de08a90", "to_matched": 80,
+    "selectors": [
+     { "selector": "0x6276cbbe", "name": "initialize(PoolKey,uint160 sqrtPriceX96)", "count": 79, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "NO MANIFEST for this selector. pool-manager dir has swap.json (0x303bbfdd) + unlock.json (0x48c89491), indexed but ABSENT from real direct-PoolManager traffic. DOMINANT real selector is initialize 0x6276cbbe. New authoring: declarative single_emit over (PoolKey,sqrtPriceX96). Verify exact ABI via Sourcify." },
+     { "selector": "0x436c6169", "name": "(empty Etherscan functionName — unverified V4 selector)", "count": 1, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "Resolve ABI before authoring." }
+    ] },
+  { "contract": "PositionManager (V4)", "chain": 1, "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e", "to_matched": 80,
+    "selectors": [
+     { "selector": "0xdd46508f", "name": "modifyLiquidities(bytes,uint256)", "count": 60, "covered": true, "result": "pass", "_note": "0xdd46508f=modifyLiquidities (with-unlock); modifyLiquiditiesWithoutUnlock=0xa355de88. PASS." },
+     { "selector": "0xac9650d8", "name": "multicall(bytes[])", "count": 19, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "NO MANIFEST for PosM 0xbd21 (nfpm/multicall.json targets NFPM 0xc364, different address). New: position-manager multicall(bytes[]) multicall_recurse over inner 0xdd46508f." },
+     { "selector": "0x095ea7b3", "name": "approve(address,uint256)", "count": 1, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "ERC721-style approve on PosM 0xbd21 — add PosM addr to standard approve enumerate." }
+    ] },
+  { "contract": "Permit2", "chain": 1, "address": "0x000000000022d473030f116ddee9f6b43ac78ba3", "to_matched": 80,
+    "selectors": [
+     { "selector": "0x87517c45", "name": "approve(address,address,uint160,uint48)", "count": 73, "covered": true, "result": "pass", "_note": "DOMINANT direct-Permit2 call." },
+     { "selector": "0x2b67b570", "name": "permit(address,PermitSingle,bytes)", "count": 3, "covered": true, "result": "hard", "got": "build_action_body_failed", "cause": "Permit2 named-tuple over positional decode (permitSingle.details.token). Matches committed corpus expect:error 0xA520EB44." },
+     { "selector": "0x3ff9dcb1", "name": "invalidateUnorderedNonces(uint256,uint256)", "count": 3, "covered": true, "result": "pass" },
+     { "selector": "0x0d58b1db", "name": "transferFrom((...)[]) batch", "count": 1, "covered": false, "result": "soft", "got": "no_declarative_v3_mapper", "fix": "STALE INDEX — permit2/transfer-from-batch.json authored, absent from index." }
+    ] },
+  { "contract": "Arbitrum UniversalRouter", "chain": 42161, "address": "0x5e325eda8064b456f4781070c0738d849c824258", "to_matched": 60,
+    "selectors": [
+     { "selector": "0x3593564c", "name": "execute(bytes,bytes[],uint256)", "count": 59, "covered": "addr-NOT-per-chain-indexed", "result": "soft", "got": "no_declarative_v3_mapper x59", "cause": "Arb UR addr 0x5e325eda... is NOT a per-chain entry in universal-router chain_to_addresses, so ALL execute() on this address return soft no_declarative_v3_mapper (no callkey to route to) regardless of V4 content. This is a per-chain-address COVERAGE gap (add Arb UR addr to manifest), distinct from the mainnet V4 DECODER gap. Once the addr is indexed, its V4-command subset would become build_multicall_failed (same decoder gap)." },
+     { "selector": "0x24856bc3", "name": "execute(bytes,bytes[])", "count": 1, "covered": "addr-NOT-per-chain-indexed", "result": "soft", "got": "no_declarative_v3_mapper" }
+    ] }
+ ],
+ "new_discoveries_vs_prior_log": [
+  "SwapRouter02 (0x68b3) is the single biggest NEW surface vs prior log: exactInputSingle 0x04e45aaf (41) dominant + exactInput/exactOutput family + multicall-deadline 0x5ae401dc (18) — ALL authored as manifests but absent from the built index (stale build).",
+  "PoolManager V4 0x0004444c: dominant real selector is initialize 0x6276cbbe (79), NOT swap/unlock — the only PoolManager manifests (swap 0x303bbfdd, unlock 0x48c89491) cover selectors absent from real direct-call traffic. initialize has NO manifest (genuine new authoring).",
+  "PositionManager V4: dominant 0xdd46508f modifyLiquidities (60) PASSES; gap is multicall 0xac9650d8 (19, no PosM-targeted manifest).",
+  "Permit2 direct calls are dominated by approve 0x87517c45 (73); transferFrom/batch authored but stale-indexed.",
+  "ROOT CAUSE GENERALIZED: 12 authored manifests are missing from the built index (stale build-index.ts). MOST soft no_declarative_v3_mapper results are index-staleness, not missing authoring.",
+  "V2 fee-on-transfer swaps (0xb6f9de95/0x791ac947/0x5c11d795) CONFIRMED reproduced as no_declarative_v3_mapper (NO manifest) — prior log finding is VALID.",
+  "HARD UR V4-nested gap REFINED & CONFIRMED cross-chain: NOT all execute() fail — only commands containing V4 ops (0x10/0x11/0x21). V4-command count EXACTLY equals probe hard count: mainnet 0x66a9 14, Arbitrum 0x5e32 7, older 0x3fc9 0. Permit2 permitSingle named-tuple build_action_body_failed confirmed (3)."
+ ],
+ "sample_failing_txs": {
+  "ur_v4_nested_build_multicall_failed_mainnet": "added to corpus this run: 0x321da6717285564809cbf73e652c731470a2c8b74a6c606ea277db140989fd17 (UR-current 0x66a9, V4-command); also committed 0x36F4F2FF...",
+  "permit2_named_tuple": "committed corpus 0xA520EB44 (single), 0xB312EF1C (batch)"
+ },
+ "corpus_additions_this_run": "9 new entries appended to data/golden/v3-decode/uniswap/corpus.json (20 -> 29), all original 20 preserved. 8 expect:error/no_declarative_v3_mapper (SR02 exactInputSingle + multicall-deadline, NFPM multicall, PoolManager initialize, PosM multicall, Permit2 transfer-batch, V2 FoT eth-for-tokens + tokens-for-eth) + 1 expect:error/build_multicall_failed (UR-current V4-nested mainnet). These pin the gaps as regression baselines; flip to pass after the respective fix.",
+ "baseline": { "corpus": "99/99 matched (green — 26 across protocols incl 29 uniswap [20 prior + 9 new this run] + 3 edge-cases + others)", "coverage": "callkeys=416 typed_data_keys=42 unique_bundles=81 install_failures=0" },
+ "next": [
+  "QUICK WIN (no authoring; out of this sub-agent's scope): cd registryV2 && npx tsx scripts/build-index.ts — lands the 12 stale manifests, closes SwapRouter02 full family + NFPM multicall + Permit2 transfer-from/batch.",
+  "NEW MANIFEST: PoolManager V4 initialize 0x6276cbbe (single_emit); PositionManager V4 multicall 0xac9650d8 (multicall_recurse over 0xdd46508f); V2 fee-on-transfer swaps 0xb6f9de95/0x791ac947/0x5c11d795; per-chain UR addresses (Base 0x6ff5, Arb 0x5e32).",
+  "DECODER (hard): UR V4-nested action-stream expand (command byte 0x10/0x11/0x21 -> pool_id/currencyIn) + Permit2 named-tuple positional decode. Same root cause as committed corpus expect:error entries. Cross-chain confirmed (mainnet + Arbitrum)."
+ ]
+}

@@ -1,0 +1,74 @@
+{
+  "total": 1275000,
+  "pass": 1150343,
+  "soft": 124657,
+  "fail": 0,
+  "panicked": 0,
+  "skipped": 8,
+  "domain_hist": {
+    "airdrop": 6000,
+    "amm": 205446,
+    "lending": 124325,
+    "multicall": 25572,
+    "perp": 6000,
+    "token": 594000,
+    "unknown": 189000
+  },
+  "error_hist": {
+    "build_action_body_failed": 72229,
+    "opcode_synthesis_limited": 22428,
+    "typed_data_synthesis_limited": 30000
+  },
+  "per_protocol": {
+    "aave": {
+      "total": 180000,
+      "pass": 124325,
+      "soft": 55675,
+      "fail": 0,
+      "panicked": 0
+    },
+    "balancer": {
+      "total": 18000,
+      "pass": 1446,
+      "soft": 16554,
+      "fail": 0,
+      "panicked": 0
+    },
+    "hyperliquid": {
+      "total": 180000,
+      "pass": 177000,
+      "soft": 3000,
+      "fail": 0,
+      "panicked": 0
+    },
+    "layerzero": {
+      "total": 33000,
+      "pass": 33000,
+      "soft": 0,
+      "fail": 0,
+      "panicked": 0
+    },
+    "standard": {
+      "total": 576000,
+      "pass": 573000,
+      "soft": 3000,
+      "fail": 0,
+      "panicked": 0
+    },
+    "uniswap": {
+      "total": 276000,
+      "pass": 229572,
+      "soft": 46428,
+      "fail": 0,
+      "panicked": 0
+    },
+    "uniswapx": {
+      "total": 12000,
+      "pass": 12000,
+      "soft": 0,
+      "fail": 0,
+      "panicked": 0
+    }
+  },
+  "failures": []
+}

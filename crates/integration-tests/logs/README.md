@@ -60,11 +60,11 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- \
 
 | protocol | 최신 로그 | total | pass | soft(커버리지) | hard(디코더) |
 |---|---|---|---|---|---|
-| uniswap | `uniswap/2026-05-30-etherscan-fresh.json` | 90 | 50 | 20 | 20 |
-| aave | — | | | | |
-| balancer | — | | | | |
-| hyperliquid | — | | | | |
-| layerzero | — | | | | |
-| uniswapx | — | | | | |
+| uniswap | `uniswap/2026-05-30-coverage.json` | 700 | 302 | 325 (stale-index + FoT/V4) | 73 (Permit2/V4 nested) |
+| aave | `aave/2026-05-30-etherscan.json` | 300 | * | L2Pool packed (31% Arb) | 0 |
+| balancer | `balancer/2026-05-30-etherscan.json` | 300 | 94 | 204 (batchSwap/join/exit) | 0 |
+| hyperliquid | `hyperliquid/2026-05-30-etherscan.json` | 160 | 5+ | 2 (infra, out-of-scope) | 0 |
+| layerzero | `layerzero/2026-05-30-etherscan.json` | ~640 | * | ZRO ERC20(no token file) + claim overloads | 0 |
+| uniswapx | `uniswapx/2026-05-30-etherscan.json` | 160 | 0 | 3 (reactor execute → Tier B) | 0 |
 
 새 로그를 추가하면 이 표 한 줄을 갱신한다.
