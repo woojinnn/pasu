@@ -37,6 +37,7 @@ pub(super) fn walk(
         }
         LendingAction::Liquidate(l) => walk_liquidate(l, action_index, now, stale, stats),
         LendingAction::DelegateBorrow(_) => {} // no live_inputs
+        LendingAction::SetAuthorization(_) => {} // no live_inputs
     }
 }
 
@@ -337,6 +338,7 @@ pub(super) fn apply(la: &mut LendingAction, slot: &ActionSlot, value: Value, now
         }
         LendingAction::Liquidate(l) => apply_liquidate(l, slot, value, now),
         LendingAction::DelegateBorrow(_) => {}
+        LendingAction::SetAuthorization(_) => {}
     }
 }
 

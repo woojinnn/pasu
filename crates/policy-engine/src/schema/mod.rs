@@ -69,6 +69,8 @@ const LENDING_SWAP_RATE_MODE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/swap_rate_mode.cedarschema");
 const LENDING_WITHDRAW_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/withdraw.cedarschema");
+const LENDING_SET_AUTHORIZATION_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/set_authorization.cedarschema");
 
 // launchpad (alphabetical)
 const LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA: &str =
@@ -153,6 +155,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     LENDING_SUPPLY_SCHEMA,
     LENDING_SWAP_RATE_MODE_SCHEMA,
     LENDING_WITHDRAW_SCHEMA,
+    LENDING_SET_AUTHORIZATION_SCHEMA,
     LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA,
     LAUNCHPAD_COMMIT_SCHEMA,

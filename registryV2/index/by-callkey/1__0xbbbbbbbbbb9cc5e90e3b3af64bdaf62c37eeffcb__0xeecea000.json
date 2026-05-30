@@ -1,0 +1,54 @@
+{
+  "matched": true,
+  "bundle_id": "morpho/morpho-blue/set-authorization@1.0.0",
+  "manifest_path": "manifests/morpho/morpho-blue/set-authorization@1.0.0.json",
+  "bundle_sha256": "0x3cc4c4a999a5a07d85d7ebb4639606271edfae8fab2f4591e4b3da236ed93ae0",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "morpho/morpho-blue/set-authorization@1.0.0",
+    "publisher": "morpho.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0xeecea000",
+      "chain_to_addresses": {
+        "1": [
+          "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "setAuthorization",
+      "abi": {
+        "name": "setAuthorization",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "authorized",
+            "type": "address"
+          },
+          {
+            "name": "newIsAuthorized",
+            "type": "bool"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "set_authorization",
+          "set_authorization": {
+            "chain": "$chain",
+            "protocol": "$to",
+            "authorized": "$args.authorized",
+            "is_authorized": "$args.newIsAuthorized"
+          }
+        }
+      }
+    }
+  }
+}

@@ -12,6 +12,7 @@ mod borrow;
 mod delegate_borrow;
 mod liquidate;
 mod repay;
+mod set_authorization;
 mod set_collateral;
 mod set_emode;
 mod supply;
@@ -51,6 +52,7 @@ impl Reducer for LendingAction {
             Self::DisableCollateral(a) => set_collateral::apply(a, state, ctx, false),
             Self::DelegateBorrow(a) => a.apply(state, ctx),
             Self::Liquidate(a) => a.apply(state, ctx),
+            Self::SetAuthorization(a) => a.apply(state, ctx),
         }
     }
 }

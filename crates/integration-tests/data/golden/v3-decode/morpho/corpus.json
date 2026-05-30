@@ -1,5 +1,5 @@
 {
-  "_comment": "Morpho Blue (mainnet, chain 1) real-tx corpus \u2014 Etherscan v2 txlist of the Morpho singleton 0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb (2026-05-30, last-400 sort=desc, adapter-blind pull). Covered surface supply/withdraw/borrow/repay (selectors 0xa99aad89/0x5c2bea49/0x50d8cd4b/0x20b76e81) \u2192 single_emit body.lending venue=morpho_blue; market_id=keccak(MarketParams) injected by Tier B maybe_inject_morpho_market_id (declarative_exports.rs). Uncovered surface supplyCollateral/withdrawCollateral/setAuthorization/createMarket/liquidate (no manifest) \u2192 expect:error (no_declarative_v3_mapper). Selectors keccak-verified (self-test transfer(address,uint256)=0xa9059cbb). Address from docs.morpho.org + github morpho-org/morpho-blue v1.0.0. market_id field-level correctness pinned separately in morpho_supply_market_id_is_keccak_marketparams (corpus oracle checks verdict+domain only, never body VALUES).",
+  "_comment": "Morpho Blue (mainnet, chain 1) real-tx corpus \u2014 Etherscan v2 txlist of singleton 0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb (2026-05-30 last-400, adapter-blind). FULL user surface (8): on-chain supply/withdraw/borrow/repay (loan asset) + supplyCollateral/withdrawCollateral (collateral asset, marketParams[1]) + setAuthorization (operator grant, Tier 3 LendingAction::SetAuthorization) \u2192 pass/lending; off-chain Authorization EIP-712 (the pre-sign operator-grant signature; minimal domain = chainId+verifyingContract, no name) routed via by-typed-data \u2192 pass/lending (hand fixture \u2014 Etherscan has no off-chain sigs). Excluded (no manifest): createMarket/liquidate (keeper/setup) \u2192 error. market_id = keccak(MarketParams) Tier B; authorized/is_authorized field-level pinned in golden #[test]s. Selectors keccak-verified.",
   "transactions": [
     {
       "intent": "morpho supply #1",
@@ -130,8 +130,9 @@
       }
     },
     {
-      "intent": "morpho supplyCollateral (uncovered surface)",
-      "expect": "error",
+      "intent": "morpho supply_collateral #1",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0xc46c696a9ba2eed446ab6f89df9a4b19447369ed681b63f1bd3574699a49bee0",
       "chain_id": 1,
       "rpc": {
@@ -145,8 +146,25 @@
       }
     },
     {
-      "intent": "morpho withdrawCollateral (uncovered surface)",
-      "expect": "error",
+      "intent": "morpho supply_collateral #2",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x325cdb0f999140dd9841e65a6d35bd7d23bfa5b3466880c1c4f15b4f4e88031e",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0x238d6579000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf000000000000000000000000a6d6950c9f177f1de7f7757fb33539e3ec60182a000000000000000000000000870ac11d48b15db9a138cf899d20f13f79ba00bc0000000000000000000000000000000000000000000000000bef55718ad60000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000015775b23340c0f50e0428d674478b0e9d3d0a75900000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "morpho withdraw_collateral #1",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0x8210067270992a21636bce19aa043ff1d958ac1ad40c24c993bf82a1279049f9",
       "chain_id": 1,
       "rpc": {
@@ -160,8 +178,25 @@
       }
     },
     {
-      "intent": "morpho setAuthorization (uncovered surface)",
-      "expect": "error",
+      "intent": "morpho withdraw_collateral #2",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x67060f16351f2b00af8a3d2f283254930802bea3159a992a34d5d1f98a458dfe",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0x8720316d000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000001d69402390657308c91179aa184bf992908c1e08000000000000000000000000da25bff53bf9e12c728cd83ff9fc22c581f564cd000000000000000000000000870ac11d48b15db9a138cf899d20f13f79ba00bc0000000000000000000000000000000000000000000000000cb2bba6f17b800000000000000000000000000000000000000000000000000000000000050b9611000000000000000000000000c1ca0ca710dadc5799c70c25c73a74ff4418a2ea000000000000000000000000c1ca0ca710dadc5799c70c25c73a74ff4418a2ea"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "morpho set_authorization #1",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0x255f24ea704d007044c2613b54b47ac2a67dc5282a3cfa718ae6bfdf64257686",
       "chain_id": 1,
       "rpc": {
@@ -175,7 +210,23 @@
       }
     },
     {
-      "intent": "morpho createMarket (uncovered surface)",
+      "intent": "morpho set_authorization #2",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xa0785b393df1367587700b3b2346d70cc18ba4568e63541ef8b86cebfbd68d1f",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0xeecea0000000000000000000000000004a6c312ec70e8747a587ee860a0353cd42be0ae00000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "morpho createMarket (uncovered)",
       "expect": "error",
       "tx_hash": "0x634768a9239653ffb78e5a532c8376eebb33339ee998d6f4e38e5a0c0d2d9d24",
       "chain_id": 1,
@@ -190,7 +241,7 @@
       }
     },
     {
-      "intent": "morpho liquidate (uncovered surface)",
+      "intent": "morpho liquidate (uncovered)",
       "expect": "error",
       "tx_hash": "0xeaa683445912cd16d0ea803f77f1f5f0bbb1a603f0eed99963b5d7dff89c23c6",
       "chain_id": 1,
@@ -202,6 +253,23 @@
             "data": "0xd8eabcb8000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000e1b4d34e8754600962cd944b535180bd758e6c2e000000000000000000000000cb6a6fdfdb18ec9a004465aef74ff9092fd4f89a000000000000000000000000870ac11d48b15db9a138cf899d20f13f79ba00bc0000000000000000000000000000000000000000000000000cb2bba6f17b800000000000000000000000000018ff80547e84fea3db19f2e7e59611bda91e968000000000000000000000000000000000000000000000000000f0f4e81343df30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000000"
           }
         ]
+      }
+    },
+    {
+      "intent": "morpho Authorization grant (off-chain EIP-712, hand fixture)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+        "primary_type": "Authorization",
+        "message": {
+          "authorizer": "0x1111111111111111111111111111111111111111",
+          "authorized": "0x2222222222222222222222222222222222222222",
+          "isAuthorized": true,
+          "nonce": "0",
+          "deadline": "1900000000"
+        }
       }
     }
   ]

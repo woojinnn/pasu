@@ -18,6 +18,7 @@ mod disable_collateral;
 mod enable_collateral;
 mod liquidate;
 mod repay;
+mod set_authorization;
 mod set_e_mode;
 mod supply;
 mod swap_rate_mode;
@@ -44,6 +45,7 @@ pub(crate) fn lower(
         LendingAction::DisableCollateral(a) => disable_collateral::lower(a, ctx),
         LendingAction::DelegateBorrow(a) => delegate_borrow::lower(a, ctx),
         LendingAction::Liquidate(a) => liquidate::lower(a, ctx),
+        LendingAction::SetAuthorization(a) => set_authorization::lower(a, ctx),
     }
 }
 

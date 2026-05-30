@@ -10,6 +10,7 @@ pub mod borrow;
 pub mod delegate_borrow;
 pub mod liquidate;
 pub mod repay;
+pub mod set_authorization;
 pub mod set_collateral;
 pub mod set_emode;
 pub mod supply;
@@ -20,6 +21,7 @@ pub use self::borrow::*;
 pub use self::delegate_borrow::*;
 pub use self::liquidate::*;
 pub use self::repay::*;
+pub use self::set_authorization::*;
 pub use self::set_collateral::*;
 pub use self::set_emode::*;
 pub use self::supply::*;
@@ -51,6 +53,9 @@ pub enum LendingAction {
     DelegateBorrow(DelegateBorrowAction),
     /// Liquidate an unhealthy position; typically not invoked from a user wallet, included for completeness.
     Liquidate(LiquidateAction),
+    /// Grant or revoke an operator's full control over the submitter's positions
+    /// (`Morpho Blue` `setAuthorization` / off-chain `Authorization`). Account-wide.
+    SetAuthorization(SetAuthorizationAction),
 }
 
 impl LendingAction {
@@ -71,6 +76,7 @@ impl LendingAction {
             Self::DisableCollateral(_) => "disable_collateral",
             Self::DelegateBorrow(_) => "delegate_borrow",
             Self::Liquidate(_) => "liquidate",
+            Self::SetAuthorization(_) => "set_authorization",
         }
     }
 
@@ -87,6 +93,8 @@ impl LendingAction {
             Self::EnableCollateral(a) | Self::DisableCollateral(a) => Some(a.venue.name()),
             Self::DelegateBorrow(a) => Some(a.venue.name()),
             Self::Liquidate(a) => Some(a.venue.name()),
+            // Account-wide grant — no market venue.
+            Self::SetAuthorization(_) => None,
         }
     }
 }

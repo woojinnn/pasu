@@ -168,3 +168,53 @@ fn morpho_supply_market_id_is_keccak_marketparams() {
         "Morpho market_id mismatch — Tier B keccak(MarketParams) regressed"
     );
 }
+
+/// Recursively find the first `"<field>": <bool>` entry in a JSON value.
+fn find_bool_field(v: &serde_json::Value, field: &str) -> Option<bool> {
+    match v {
+        serde_json::Value::Object(m) => {
+            if let Some(serde_json::Value::Bool(b)) = m.get(field) {
+                return Some(*b);
+            }
+            m.values().find_map(|x| find_bool_field(x, field))
+        }
+        serde_json::Value::Array(a) => a.iter().find_map(|x| find_bool_field(x, field)),
+        _ => None,
+    }
+}
+
+/// Field-level golden for Morpho `setAuthorization` (Tier 3
+/// `LendingAction::SetAuthorization`).
+///
+/// The corpus oracle checks only the verdict + top-level domain — never WHO is
+/// being authorized. So a manifest that mis-maps `authorized` (e.g. to the
+/// protocol address or a wrong arg) would still pass as `pass`/`lending`. This
+/// pins the operator address + grant flag from a real mainnet `setAuthorization`
+/// tx — the security-critical fields for a permission-delegation analyzer.
+#[test]
+fn morpho_set_authorization_decodes_operator_and_flag() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet setAuthorization tx 0x255f24ea…: grant control to the
+    // operator 0x4A6c312e… (newIsAuthorized = true).
+    const TO: &str = "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb";
+    const CALLDATA: &str = "0xeecea0000000000000000000000000004a6c312ec70e8747a587ee860a0353cd42be0ae00000000000000000000000000000000000000000000000000000000000000001";
+
+    let env = harness::route::route_calldata(1, TO, "0xeecea000", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let authorized =
+        find_string_field(&env, "authorized").expect("set_authorization body carries `authorized`");
+    assert_eq!(
+        authorized, "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
+        "operator (authorized) address mis-decoded"
+    );
+    assert_eq!(
+        find_bool_field(&env, "is_authorized"),
+        Some(true),
+        "grant flag (is_authorized) mis-decoded"
+    );
+}

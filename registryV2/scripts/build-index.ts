@@ -113,7 +113,14 @@ type Hex = string;
  * route an off-chain `eth_signTypedData` payload to this manifest.
  */
 interface V3TypedData {
-  domain_name: string;
+  /**
+   * Optional EIP-712 `domain.name`. ABSENT for minimal-domain protocols whose
+   * `EIP712Domain` is only `(chainId, verifyingContract)` with no name/version
+   * — e.g. Morpho Blue. When present it must be a non-empty string.
+   * Informational only: routing keys on
+   * `(chainId, verifying_contract, primary_type[, witness_type])`, not the name.
+   */
+  domain_name?: string;
   verifying_contract: Hex;
   primary_type: string;
   /**
@@ -532,8 +539,14 @@ function validateTypedDataShape(path: string, td: unknown): asserts td is V3Type
     throw new Error(`manifests/: ${path} match.typed_data must be a JSON object`);
   }
   const t = td as Record<string, unknown>;
-  if (typeof t.domain_name !== "string" || t.domain_name.length === 0) {
-    throw new Error(`manifests/: ${path} match.typed_data.domain_name must be a non-empty string`);
+  // `domain_name` is OPTIONAL — minimal-domain EIP-712 (only chainId +
+  // verifyingContract, no name/version — e.g. Morpho Blue's `Authorization`)
+  // omits it. When present it must be a non-empty string (mirrors the
+  // witness_type validator below). Routing never uses the name.
+  if ("domain_name" in t && (typeof t.domain_name !== "string" || t.domain_name.length === 0)) {
+    throw new Error(
+      `manifests/: ${path} match.typed_data.domain_name must be a non-empty string when present`,
+    );
   }
   if (typeof t.verifying_contract !== "string" || !ADDRESS_RE.test(t.verifying_contract)) {
     throw new Error(

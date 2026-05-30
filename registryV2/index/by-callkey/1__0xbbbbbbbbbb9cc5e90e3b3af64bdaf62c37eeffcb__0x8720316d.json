@@ -1,0 +1,124 @@
+{
+  "matched": true,
+  "bundle_id": "morpho/morpho-blue/withdraw-collateral@1.0.0",
+  "manifest_path": "manifests/morpho/morpho-blue/withdraw-collateral@1.0.0.json",
+  "bundle_sha256": "0xaa3eb457db440097038747fb9a9246e9003d9e2379afce56d4239de4a52cc9f5",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "morpho/morpho-blue/withdraw-collateral@1.0.0",
+    "publisher": "morpho.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0x8720316d",
+      "chain_to_addresses": {
+        "1": [
+          "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "withdrawCollateral",
+      "abi": {
+        "name": "withdrawCollateral",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "marketParams",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "loanToken",
+                "type": "address"
+              },
+              {
+                "name": "collateralToken",
+                "type": "address"
+              },
+              {
+                "name": "oracle",
+                "type": "address"
+              },
+              {
+                "name": "irm",
+                "type": "address"
+              },
+              {
+                "name": "lltv",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "assets",
+            "type": "uint256"
+          },
+          {
+            "name": "onBehalf",
+            "type": "address"
+          },
+          {
+            "name": "receiver",
+            "type": "address"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "withdraw",
+          "withdraw": {
+            "venue": {
+              "name": "morpho_blue",
+              "chain": "$chain",
+              "market_id": "$derived.morpho_market_id"
+            },
+            "asset": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$args.marketParams[1]"
+              }
+            },
+            "amount": "$args.assets",
+            "recipient": "$args.receiver"
+          }
+        }
+      },
+      "live_inputs": {
+        "reserve_state": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "market(bytes32)",
+            "decoder_id": "morpho_blue_market"
+          },
+          "ttl_s": 30
+        },
+        "available_to_withdraw": {
+          "source": {
+            "kind": "derived_from",
+            "inputs": [],
+            "calc_id": "morpho_blue_available_collateral"
+          },
+          "ttl_s": 30
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "position(bytes32,address)",
+            "decoder_id": "morpho_blue_position"
+          },
+          "ttl_s": 12
+        }
+      }
+    }
+  }
+}
