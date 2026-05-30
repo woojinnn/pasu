@@ -41,6 +41,8 @@ use super::{
     TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA,
     TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA,
     TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
+    HL_APPROVE_AGENT_SCHEMA, HL_ORDER_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_SEND_SCHEMA,
+    HL_WITHDRAW_SCHEMA,
 };
 
 /// One row of the action resolver: the `(domain, action_tag)` a trigger can
@@ -348,6 +350,37 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("revoke_approval"),
         schema_text: TOKEN_REVOKE_APPROVAL_SCHEMA,
         pascal_stub: "RevokeApproval",
+    },
+    // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_order"),
+        schema_text: HL_ORDER_SCHEMA,
+        pascal_stub: "HlOrder",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_update_leverage"),
+        schema_text: HL_UPDATE_LEVERAGE_SCHEMA,
+        pascal_stub: "HlUpdateLeverage",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_withdraw"),
+        schema_text: HL_WITHDRAW_SCHEMA,
+        pascal_stub: "HlWithdraw",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_usd_send"),
+        schema_text: HL_USD_SEND_SCHEMA,
+        pascal_stub: "HlUsdSend",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_approve_agent"),
+        schema_text: HL_APPROVE_AGENT_SCHEMA,
+        pascal_stub: "HlApproveAgent",
     },
 ];
 
@@ -793,9 +826,10 @@ mod tests {
                 entry.pascal_stub,
             );
         }
-        // The table covers exactly the 45 shipped actions (multicall + unknown
-        // included). Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 45, "resolver table must have 45 rows");
+        // The table covers exactly the 50 shipped actions (multicall + unknown +
+        // 5 hyperliquid_core included). Guards against a row being dropped or
+        // duplicated.
+        assert_eq!(RESOLVER_TABLE.len(), 50, "resolver table must have 50 rows");
     }
 
     /// A custom_context field whose name collides with one of the matched

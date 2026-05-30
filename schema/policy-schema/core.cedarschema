@@ -343,3 +343,25 @@ namespace Perp {
     openPositions: Set<{ market: MarketRef, sizeBase: String }>,
   };
 }
+
+namespace HyperliquidCore {
+  // Shared types for the thin Hyperliquid CORE action model (off-chain L1
+  // orders / leverage / fund movement intercepted from `/exchange`). Hoisted
+  // here — like the Perp shared types above — because Cedar 4.10 rejects
+  // duplicate `type` declarations within a namespace, and each per-action
+  // `.cedarschema` re-opens `namespace HyperliquidCore` to add only its own
+  // context + action.
+
+  // Venue identifier — always `{ name: "hyperliquid" }` for this domain, so a
+  // policy can scope every CORE action with `context.venue.name == "hyperliquid"`.
+  type HlVenue = {
+    name: String,
+  };
+
+  // Market an order / leverage action targets. `symbol` falls back to
+  // `ASSET-<assetIndex>` until the venue meta cache resolves the numeric index.
+  type HlMarket = {
+    symbol: String,
+    assetIndex: Long,
+  };
+}

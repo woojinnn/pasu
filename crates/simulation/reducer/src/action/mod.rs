@@ -17,6 +17,7 @@ use simulation_state::{LiveField, NonceKey};
 
 pub mod airdrop;
 pub mod amm;
+pub mod hyperliquid_core;
 pub mod launchpad;
 pub mod lending;
 pub mod perp;
@@ -25,6 +26,7 @@ pub mod view;
 
 pub use airdrop::AirdropAction;
 pub use amm::AmmAction;
+pub use hyperliquid_core::HyperliquidCoreAction;
 pub use launchpad::LaunchpadAction;
 pub use lending::LendingAction;
 pub use perp::PerpAction;
@@ -151,6 +153,9 @@ pub enum ActionBody {
     Launchpad(LaunchpadAction),
     /// Perp-domain action (open/close position, funding, ...).
     Perp(PerpAction),
+    /// Hyperliquid CORE action (off-chain L1 order / leverage / fund movement),
+    /// intercepted from a `/exchange` POST rather than `window.ethereum`.
+    HyperliquidCore(HyperliquidCoreAction),
 
     /// Batched multi-call (e.g. `Uniswap Universal Router`, `Aave`).
     Multicall {
