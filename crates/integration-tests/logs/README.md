@@ -60,7 +60,7 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- \
 
 | protocol | 최신 로그 | total | pass | soft(커버리지) | hard(디코더) |
 |---|---|---|---|---|---|
-| uniswap | `uniswap/2026-05-30-coverage.json` | 700 | 302 | 325 (stale-index + FoT/V4) | 73 (Permit2/V4 nested) |
+| uniswap | `uniswap/2026-05-30-coverage.json` | 700 | 302 | 325 (**migration-gap** registry→registryV2 + FoT/V4) | 73 (Permit2/V4 nested) |
 | aave | `aave/2026-05-30-etherscan.json` | 300 | * | L2Pool packed (31% Arb) | 0 |
 | balancer | `balancer/2026-05-30-etherscan.json` | 300 | 94 | 204 (batchSwap/join/exit) | 0 |
 | hyperliquid | `hyperliquid/2026-05-30-etherscan.json` | 160 | 5+ | 2 (infra, out-of-scope) | 0 |
@@ -85,3 +85,21 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- \
 - `uniswapx` reactor execute((bytes,bytes)) — SignedOrder inner-bytes 를 reactor family 별 재디코드 → Tier B.
 - `aave` flashLoan/flashLoanSimple — declarative 가능하나 `flash_loan` lending action 스키마 추가 선행 필요. 샘플 트래픽 0.
 - `layerzero` ClaimContract overload 3종 — declarative 가능하나 시그니처 미확정(4byte 부재, Sourcify 확인 필요). ~11 tx.
+
+## 2026-05-30 Uniswap 전수 해결 라운드 — 처치 결과
+
+**오진 정정**: 위 라운드가 "stale index (build-index 재실행 필요)"로 본 uniswap soft 갭은 실제로 **registry→registryV2 마이그레이션 누락**이었다. repo 에 트리가 둘 다 git-tracked: `registry/`(레거시 schema v2, uniswap 92 manifest) + `registryV2/`(현행 v3, 하니스가 로드하는 유일 트리, `crates/integration-tests/src/harness/adapters.rs:142`). swap-router-02/pool-manager/position-manager 등은 `registry/` 에만 있었음 → schema v2→v3 변환(type adapter_function→adapter_action, schema_version 2→3) 후 포팅 필요. "재빌드"가 아니라 "포팅".
+
+**또 하나의 정정**: production 디코더는 `crates/policy-engine-wasm/src/declarative_exports.rs` 이고 mappers crate(`eval.rs`/`single_emit.rs`)를 LIVE 재사용한다. strategy dispatch arm 추가/타입 fix 는 이 파일에서.
+
+**처치 완료 (commit):**
+- **multicall_recurse** (`feat(b3) 7f89b71`) — v3 경로에 strategy arm 자체가 없었음(unsupported_strategy + install allow-list drop). manifest 4 포팅(v3-nfpm/multicall, v4-position-manager/multicall, swap-router-02/multicall + multicall-bytes) + `declarative_exports.rs` 에 `build_multicall_recurse_body`(leg 마다 public entry 재진입→ActionBody::Multicall, 미매핑 helper leg skip) + install SUPPORTED_STRATEGIES 5개로. NFPM/PosM(nested modifyLiquidities) multicall pass.
+- **Permit2 named-tuple** (`feat(b3) 3f2a9c80`) — (1) dotted path 가 positional array 에 named 접근 실패 → numeric index `$args.permitSingle[0][0]` (Balancer/V2 `[N]` 선례). (2) sig_deadline/expires_at 가 `Time`(u64)인데 uint256 sigDeadline 은 decimal string 으로 렌더 → `time_from_str_or_num` 추가(number|string→Time, typed-data sign flow 도 커버). permitSingle/permitBatch pass.
+- **SwapRouter02 v3 swap** (`feat(b3) 3f2a9c80`) — exactInputSingle(0x04e45aaf)/exactOutputSingle(0x5023b4df) v2→v3 포팅. 단일 tuple flatten → `$args.tokenIn` 평탄화. live_inputs 4필드(route/expected_amount_out/price_impact_bp/gas_estimate) 완성(SwapLiveInputs 필수). SR02 multicall(inner exactInputSingle) 도 pass.
+- **per-chain UR 주소** (`feat(b3)`) — Arbitrum/Optimism UR 추가. V1_2(no-V4)→execute-v1 계열(Arb 0x5E32/OP 0xCb13), V4-aware→execute-v2 계열(Arb 0xa51a/OP 0x851116). 1차출처: github Uniswap/universal-router deploy-addresses + docs.uniswap.org v4 deployments.
+
+**defer (문서화):**
+- **UR V4 nested action-stream**(0x10 V4_SWAP, `docs(b3)`) — 두 비-contained 갭: (1) inner SWAP_EXACT_IN/OUT(0x07/0x09) inputs_abi 의 PathKey[] nested-tuple-array 가 `decode_inputs_abi_tuple` 의 `Function::parse` synthetic-signature 를 막아 inner action 전체 Null → `$inputs.currencyIn` 누락. fix=`DynSolType::parse` per-component(shared helper, 전 opcode-stream manifest 회귀). (2) SWAP_*_SINGLE(0x06/0x08) pool_id=keccak256(PoolKey) nested 주입(`maybe_inject_v4_pool_id` declarative_exports.rs:1699, 현재 modifyLiquidities MINT 만). corpus 0x36F4F2FF/0xEB9775B6/0x321da671 baseline 유지.
+- **PoolManager initialize**(0x6276cbbe) — ("amm","initialize_pool") v3 single_emit action 변종 부재(amm domain = swap/add·remove_liquidity/collect_fees/sign·cancel_intent_order). 변종 추가 선행 필요.
+- **PositionManager erc721 approve**(0x095ea7b3, ~1 tx) — tokens erc721 enumerate curation 영향, 저트래픽이라 보류.
+- **SR02 exactInput/exactOutput**(packed path) — v3 body 가 `$derived.v3_path_first_token`(deriver) 필요, 오프라인 하니스 미충족.
