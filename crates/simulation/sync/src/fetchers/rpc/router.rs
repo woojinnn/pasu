@@ -146,6 +146,19 @@ impl RpcRouter {
             .await
     }
 
+    pub async fn eth_get_transaction_receipt(
+        &self,
+        chain: &ChainId,
+        tx_hash: &str,
+    ) -> Result<Option<super::TxReceipt>, SyncError> {
+        let hash = tx_hash.to_string();
+        self.try_all(chain, move |p| {
+            let h = hash.clone();
+            async move { p.eth_get_transaction_receipt(&h).await }
+        })
+        .await
+    }
+
     /// 안 healthy 한 provider 까지 한 번씩 강제 ping. cron 으로 호출.
     pub async fn health_sweep(&self) -> Vec<(String, Result<(), SyncError>)> {
         let mut results = Vec::new();

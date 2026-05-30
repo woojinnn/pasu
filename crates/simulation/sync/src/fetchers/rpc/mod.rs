@@ -51,4 +51,21 @@ pub trait RpcProvider: Send + Sync {
 
     /// `eth_gasPrice` — 현재 gas price.
     async fn eth_gas_price(&self) -> Result<U256, SyncError>;
+
+    /// `eth_getTransactionReceipt` — tx_hash → receipt (없으면 `None` = 멤풀).
+    async fn eth_get_transaction_receipt(
+        &self,
+        tx_hash: &str,
+    ) -> Result<Option<TxReceipt>, SyncError>;
+}
+
+/// 우리가 필요한 receipt 필드만. (전체 모양은 큼 — logs/effectiveGasPrice/...)
+#[derive(Debug, Clone)]
+pub struct TxReceipt {
+    /// `1` = success, `0` = revert.
+    pub status: bool,
+    pub block_number: u64,
+    pub block_hash: String,
+    pub gas_used: u64,
+    pub tx_hash: String,
 }

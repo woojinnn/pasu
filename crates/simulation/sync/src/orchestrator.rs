@@ -75,6 +75,11 @@ impl Orchestrator {
         self.router.clone()
     }
 
+    /// 외부에서 (예: receipt watcher) 직접 RPC 호출이 필요할 때.
+    pub fn router_arc(&self) -> Option<Arc<crate::RpcRouter>> {
+        self.router.clone()
+    }
+
     /// 임의 provider name 에 PriceFetcher 등록. dispatch 시 [`provider_key`] 가
     /// 반환하는 문자열과 일치해야 매칭됨.
     pub fn with_price_fetcher(

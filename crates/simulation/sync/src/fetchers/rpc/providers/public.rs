@@ -145,6 +145,86 @@ impl RpcProvider for PublicRpcProvider {
         let hex_string: String = self.call_method("eth_gasPrice", json!([])).await?;
         decode_hex_u256(&hex_string, &self.name)
     }
+
+    async fn eth_get_transaction_receipt(
+        &self,
+        tx_hash: &str,
+    ) -> Result<Option<super::super::TxReceipt>, SyncError> {
+        // call_method 는 result: null 을 에러로 본다. 멤풀 tx 의 receipt 는
+        // 정상적으로 null 이므로 raw 파싱.
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0",
+            method: "eth_getTransactionReceipt",
+            params: json!([tx_hash]),
+            id: 1,
+        };
+        let resp_value: Value = self
+            .client
+            .post(&self.url)
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| SyncError::FetchFailed {
+                source_id: self.name.clone(),
+                reason: format!("http: {e}"),
+            })?
+            .json()
+            .await
+            .map_err(|e| SyncError::FetchFailed {
+                source_id: self.name.clone(),
+                reason: format!("json: {e}"),
+            })?;
+        if let Some(err) = resp_value.get("error") {
+            return Err(SyncError::FetchFailed {
+                source_id: self.name.clone(),
+                reason: format!("rpc error: {err}"),
+            });
+        }
+        let result_val = resp_value.get("result");
+        let Some(result_val) = result_val else { return Ok(None) };
+        if result_val.is_null() {
+            return Ok(None);
+        }
+        let r: RawReceipt = serde_json::from_value(result_val.clone()).map_err(|e| {
+            SyncError::FetchFailed {
+                source_id: self.name.clone(),
+                reason: format!("receipt parse: {e}"),
+            }
+        })?;
+        let status_hex = r.status.unwrap_or_else(|| "0x0".to_string());
+        let status = status_hex == "0x1" || status_hex == "0x01";
+        let block_number = u64::from_str_radix(
+            r.block_number.trim_start_matches("0x"),
+            16,
+        )
+        .map_err(|e| SyncError::FetchFailed {
+            source_id: self.name.clone(),
+            reason: format!("receipt blockNumber: {e}"),
+        })?;
+        let gas_used = u64::from_str_radix(r.gas_used.trim_start_matches("0x"), 16)
+            .unwrap_or(0);
+        Ok(Some(super::super::TxReceipt {
+            status,
+            block_number,
+            block_hash: r.block_hash,
+            gas_used,
+            tx_hash: r.transaction_hash,
+        }))
+    }
+}
+
+/// `eth_getTransactionReceipt` 의 raw response — 우리가 필요한 필드만.
+#[derive(Deserialize)]
+struct RawReceipt {
+    #[serde(rename = "blockNumber")]
+    block_number: String,
+    #[serde(rename = "blockHash")]
+    block_hash: String,
+    #[serde(rename = "transactionHash")]
+    transaction_hash: String,
+    #[serde(rename = "gasUsed")]
+    gas_used: String,
+    status: Option<String>,
 }
 
 // ============ JSON-RPC envelope ============
