@@ -874,6 +874,58 @@ fn t6_array_emit_non_array_source_errors() {
 // the correct action tag, the load-bearing `$args` fields, and a representative
 // defaulted `live_inputs` value).
 
+const AAVE_V3_VARIABLE_DEBT_USDC_APPROVE_DELEGATION: &str = include_str!(
+    "../../../registryV2/manifests/aave/v3/variable-debt-usdc-approve-delegation@1.0.0.json"
+);
+
+#[test]
+fn t6_aave_variable_debt_usdc_approve_delegation() {
+    let install = install_ok(AAVE_V3_VARIABLE_DEBT_USDC_APPROVE_DELEGATION);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "aave/v3/variableDebtUSDC/approveDelegation@1.0.0"
+    );
+
+    let calldata = encode_calldata(
+        "0xc04a8a10",
+        &[
+            DynSolValue::Address(
+                "0x000000000000000000000000000000000000d1e9"
+                    .parse::<AlloyAddress>()
+                    .unwrap(),
+            ),
+            DynSolValue::Uint(AlloyU256::from(2_500_000u64), 256),
+        ],
+    );
+    let input = route_input(
+        1,
+        "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+        "0xc04a8a10",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "delegate_borrow", "{parsed}");
+    assert_eq!(body["venue"]["name"], "aave_v3", "{parsed}");
+    assert_eq!(
+        body["venue"]["pool"], "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+        "{parsed}"
+    );
+    assert_eq!(
+        body["asset"]["key"]["address"], "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "{parsed}"
+    );
+    assert_eq!(
+        body["delegatee"], "0x000000000000000000000000000000000000d1e9",
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x2625a0", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+}
+
 // ---------------------------------------------------------------------------
 // t7 — Aave V3 liquidationCall → LendingAction::Liquidate
 // ---------------------------------------------------------------------------
