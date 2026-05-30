@@ -3,6 +3,8 @@
 raw Tx (calldata) / EIP-712 typed-data 를 **production 디코더**로 돌려 `ActionBody[]` 가 구조적으로 정확히 나오는지 자동 검증하는 하니스. 수동 e2e(Uniswap 사이트에서 Tx 만들기 → 익스텐션 catch → SW DevTools console 확인)를 **프로그래밍적 fuzzing + 실거래 replay** 로 대체한다.
 
 > **이 README 는 사람 + 에이전트(Claude Code) 둘 다를 위한 runbook 이다.** §6 "Log → Gap → Develop 루프" 가 핵심 — 다른 팀원의 Claude Code 가 이 파일만 읽고 (1) 3-source 입력 생성 → (2) 하니스 실행 + 로그 수집 → (3) 부족한 부분(gap) 자동 분류 → (4) 어디를 고칠지 판단 → (5) 회귀로 닫기 를 **자율 수행**할 수 있도록 작성했다.
+>
+> **범위 — framework 진입점 맵**: 이 README 는 **P3-P4(decode 테스트 + fix 루프)** 담당. 새 프로토콜을 **처음부터 온보딩(P0 research → P1 Tier A/B/3 authoring)** 하려면 같은 디렉토리의 **`PROTOCOL_ONBOARDING_AND_TESTING.md`**(4-phase·3-tier·worked example), Tier 3 ActionBody 확장은 **`docs/ACTIONBODY_EXTENSION_GUIDE.md`**, surface 전수성 gate(어댑터 누락 차단)는 **`registryV2/surface/README.md`**(`npm run check:surface`)를 본다.
 
 ---
 
@@ -323,4 +325,4 @@ crates/integration-tests/
 - **typed-data EIP-712 합성은 hard 검증 불가** — calldata 는 canonical ABI 바이트라 "type-valid → 무조건 디코드" 를 hard 로 걸 수 있지만, typed-data 는 JSON message 객체라 표현이 모호하다(uint string-vs-number coercion, 재귀 type-graph). 합성 실패는 `typed_data_synthesis_limited` soft 로 강등하고, **실서명 corpus 로 양성 검증**한다.
 - **합성 cut 영역** — UniswapX witness order, UniversalRouter V4 deep-nested(0x10/0x21 modifyLiquidities), native-transfer sentinel `0x00000000` 은 합성하지 않고 **corpus-only**.
 - **live pull 은 키/네트워크 필요** — gate test 자체는 commit 된 corpus 만 쓰는 offline 경로다. Etherscan 은 BYO 키, Dune 은 MCP/UI export. import-* 는 parse-only(네트워크 X).
-- **현재 corpus** — Uniswap 실거래(Dune-sourced) 20건 + 손수 edge 3건. 다른 프로토콜(aave/hyperliquid/layerzero/balancer/uniswapx)은 합성 fuzz 로만 커버 중 — §3 B/C 로 실거래를 추가하면 된다.
+- **현재 corpus** — `data/golden/v3-decode/<protocol>/corpus.json` 에 8 디렉토리 tracked: uniswap · morpho · aave · balancer · hyperliquid · layerzero · uniswapx + `_edge-cases`. 실거래 비중은 protocol 마다 다르다(uniswap·morpho 가 두꺼움). 부족분은 §3 B/C 로 실거래 추가, domain 별 미커버는 `coverage` 로 확인.

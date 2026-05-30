@@ -1,0 +1,744 @@
+<!-- ─────────────────────────────────────────────────────────────────────────
+  이 문서는 AI 에이전트(Claude Code / Codex 등)가 읽고 그대로 실행하는 매뉴얼이다.
+  새 EVM 프로토콜 요청 → 어댑터 전수 작성 → 실거래 디코드 정확성 검증 → 수정 루프.
+  대상 경로: V3 ActionBody[] 디코드 단독. 레거시(V1 ActionEnvelope)는 이미 제거됨.
+  gitignore 가 *.md 를 무시(!README.md 만 예외)하므로 이 파일은 untracked — 단일 파일로 전달.
+  마지막 grounding: 2026-05-30 (commit 956e5df 시점). file:line 은 작성 시점 기준 — 항상 grep 재확인.
+───────────────────────────────────────────────────────────────────────── -->
+
+# ScopeBall — 신규 프로토콜 온보딩 & V3 디코드 테스트 매뉴얼
+
+> **독자 = AI 에이전트.** 이 문서 하나로 새 프로토콜을 온보딩(어댑터 전수 작성)하고, 실거래로 `ActionBody[]` 디코드 정확성을 검증하고, gap 을 고치는 루프를 돌 수 있어야 한다. 세션 컨텍스트 없이도 동작하도록 모든 경로·커맨드·포맷을 embed 했다.
+
+---
+
+## 0. 목적 · 범위 · 비범위
+
+ScopeBall = EVM 권한 위임을 **서명 직전**에 정적 분석하는 브라우저 익스텐션. raw Tx(calldata) 를 받아 **어떤 어댑터(manifest)를 쓸지 정하고 → 디코드 → 매핑 → `ActionBody[]`** 로 정규화한다. 이 매뉴얼이 다루는 것은 그 **디코드 경로(raw Tx → ActionBody[])의 정확성**이다.
+
+### 이 매뉴얼이 다루는 것
+- **단 하나의 경로: V3 ActionBody 경로.** 진입 = WASM export `declarative_route_request_v3_json`. 산출 = `Vec<ActionBody>`.
+- 새 프로토콜의 진입점 함수에 대한 **어댑터(Tier A manifest) 전수 작성**, 필요 시 **generic 엔진 확장(V3 Tier B)** 과 **ActionBody 스키마 확장(Tier 3)**.
+- **실거래 기반 디코드 정확성 검증** — 합성(synthetic) + 실거래(Etherscan/Dune) 두 입력.
+
+### 이 매뉴얼이 다루지 **않는** 것 (명시적 비범위)
+- **레거시 V1 ActionEnvelope 경로** — `feat(v2)! retire legacy v1 ActionEnvelope path` (commit `4e60392`) 로 **이미 제거됨**. `mapper::DeclarativeMapper`, `single_emit.rs`, `opcode_stream.rs`, `eval.rs`, `enum_tagged.rs`, `multicall.rs`, `array_emit.rs`, `builtin_fn.rs` 는 더 이상 존재하지 않는다. declarative 레이어는 **이제 V3-only by construction** 이다 — V1/V3 혼동을 할 필요가 없다.
+- **`live_inputs` 의 실제 RPC 채움** — host 의 RPC 서버가 production 에서 채운다. 테스트에서는 **default 스텁**(빈 값 / chain별 정적 주입만). 이 매뉴얼의 검증은 calldata→ActionBody **정적 디코드**만 본다.
+- **Cedar 정책 평가 / 시뮬레이션 / SW 메시징** — 디코드 하류. 비범위.
+
+### 핵심 원칙 4가지 (먼저 내면화)
+1. **테스트는 게이트가 아니라 루프 엔진**이다. manifest 0개로 돌리면 전부 `uncovered` → 그게 곧 "무엇을 작성할지" 지도(=discovery). 작성 후 돌리면 정확성 검증(=accuracy). **같은 하니스, 같은 실거래 데이터.**
+2. **정답(oracle) 작성량은 tx 수가 아니라 selector 수에 비례**한다. 10,000 tx 든 1,000 tx 든 작성할 정답은 selector 수(~수십)만큼. tx 를 더 돌리는 건 거의 공짜이나 shape 가 포화되면 marginal 가치가 급감.
+3. **막히는 경우는 없다.** 매핑 불가 함수는 `ActionBody::Unknown`(warn/deny)으로 떨어진다 → 디코드가 멈추지 않음. 단 **존재하지 않는 domain/action 을 target 하는 manifest 는 hard-fail** 한다(아래 4a).
+4. **모든 사실 진술은 1차 출처.** 컨트랙트 주소/ABI 는 공식 docs · Sourcify · Etherscan/BaseScan verified 페이지에서만. 추측 주소 금지.
+
+---
+
+## 1. 코드베이스 지도 (V3 hot path)
+
+raw Tx 한 건이 `ActionBody[]` 가 되기까지 호출되는 실제 코드. **이 표의 좌표를 기준으로 작업**하되, 작성/수정 전 항상 `grep -n` 으로 라인 재확인(코드가 움직인다).
+
+### 1.1 경로 다이어그램
+
+```
+raw Tx { chain, to, selector, calldata, value }
+  │
+  ▼  declarative_install_v3_json(bundle_json)            policy-engine-wasm/src/declarative_exports.rs:177
+     └─ thread-local DECLARATIVE_V3_STATE 에 bundle 설치  (declarative_exports.rs:134)
+  │
+  ▼  declarative_route_request_v3_json(input_json)       declarative_exports.rs:329  ★단일 오케스트레이터(~737)
+     ├─ 1) callkey lookup  (chain,to,selector) → bundle  (DECLARATIVE_V3_STATE.bridge)
+     ├─ 2) DECODE  decode_with_json_abi(abi_fragment, calldata)
+     │        abi-resolver/src/bridge.rs:293 → decode.rs:71 decode_with_function  = alloy 디코드
+     │        → args_json::args_to_json(decoded)          mappers/.../args_json.rs:55  → args_json
+     ├─ 3) resolved 정적 주입 (WETH / V4 pool_manager)    declarative_exports.rs ~480-513  (= live_inputs default)
+     ├─ 4) DISPATCH  match strategy.as_str()              declarative_exports.rs:530   ★분기
+     │        "single_emit"           → build_action_body                  action_builder.rs:514
+     │        "opcode_stream_dispatch" → build_multicall_from_opcode_stream action_builder.rs:966
+     │        "array_emit"            → build_array_emit                    action_builder.rs:1048
+     │        "tagged_dispatch"       → build_tagged_dispatch               declarative_exports.rs(로컬)
+     │        "multicall_recurse"     → build_multicall_recurse_body        declarative_exports.rs:1826
+     │        그 외                    → error "unsupported_strategy"
+     │        (placeholder 해소 = action_builder.rs substitute_placeholders:238 / walk_json_path)
+     ▼
+  Vec<ActionBody>   (serde tag="domain")                  simulation/reducer/src/action/mod.rs:141
+```
+
+### 1.2 파일 reference 표
+
+| 역할 | 파일 | 핵심 심볼 |
+|---|---|---|
+| **진입 / install** | `crates/policy-engine-wasm/src/declarative_exports.rs` | `declarative_install_v3_json`(177), `declarative_route_request_v3_json`(329), dispatch `match strategy`(530) |
+| **입력 DTO** | `crates/policy-engine-wasm/src/dto.rs` | `DeclarativeRouteRequestV3InputDto`(198-227) |
+| **decode (alloy)** | `crates/adapters/abi-resolver/src/bridge.rs`, `.../decode.rs` | `decode_with_json_abi`(bridge:293) → `decode_with_function`(decode:71) |
+| **args→JSON** | `crates/adapters/mappers/src/declarative/args_json.rs` | `args_to_json`(55), `decoded_value_to_json`(25), `decoded_value_to_json_typed`(71) |
+| **V3 generic 엔진** | `crates/adapters/mappers/src/declarative/action_builder.rs` | `build_action_body`(514), `build_multicall_from_opcode_stream`(966), `build_array_emit`(1048), `substitute_placeholders`(238), 내부 `resolve_placeholder`/`walk_json_path`/`flatten_body` |
+| **Bundle JSON 타입** | `crates/adapters/mappers/src/declarative/types.rs` | `BundleMatch` 등 |
+| **ActionBody 스키마(Tier 3)** | `crates/simulation/reducer/src/action/**` | `ActionBody`(mod.rs:141) + domain sub-enum |
+| **하니스 진입** | `crates/integration-tests/src/harness/{adapters,route,oracle,corpus}.rs` | `load_and_install`, `route_calldata`, `judge`, `run_corpus` |
+| **하니스 CLI** | `crates/integration-tests/src/bin/v3_harness.rs` | fuzz/coverage/replay/corpus/import-* |
+| **게이트 테스트** | `crates/integration-tests/tests/v3_decode_harness.rs` | 4 test |
+| **manifest(어댑터)** | `registryV2/manifests/<publisher>/<contract>/<func>@<ver>.json` | schema_version "3" |
+| **index 빌드** | `registryV2/scripts/build-index.ts` | callkey 생성 |
+
+### 1.3 3-tier 구조 (어디를 건드리나)
+
+| Tier | 무엇 | 위치 | 변경 무게 |
+|---|---|---|---|
+| **Tier 1 — manifest** | abi_fragment + emit (선언형 JSON) | `registryV2/manifests/` | 가벼움 (JSON only, release PR 불필요) |
+| **Tier 2 — generic 엔진** | placeholder/strategy 해석기 | `action_builder.rs` (+ `declarative_exports.rs` dispatch) | 무거움 (Rust, WASM 재빌드) |
+| **Tier 3 — ActionBody 스키마** | 디코드 결과 타입(=정규화 산출) | `crates/simulation/reducer/src/action/` | 가장 무거움 (Cedar/TS/oracle 동기화) |
+
+> **주의:** Tier 2 는 `subdecode/protocols/*.rs`(V1 의 opcode 테이블)가 **아니다.** V3 경로의 opcode/array/nested 전개는 `action_builder.rs` 의 generic 빌더 + manifest 의 `per_opcode_body` 가 담당한다. (subdecode 는 V1 잔재 / 일부 inner-decode 헬퍼.)
+
+---
+
+## 2. 전체 E2E 플로우
+
+```
+[입력: 새 프로토콜]
+   │
+   P0 RESEARCH ── 1차출처로 canonical 컨트랙트 + 주소 + 체인 인벤토리
+   │
+   P1 AUTHOR  (함수마다, schema → manifest → engine 순)
+   │   ├ Tier3 schema  : 함수가 어느 ActionBody variant 로 매핑? 없으면 추가 or Unknown
+   │   ├ Tier1 manifest: registryV2/manifests/<p>/ — abi_fragment + emit(strategy)
+   │   └ Tier2 engine  : generic 빌더로 표현 안 되는 shape 만 action_builder.rs 확장
+   │        ▲
+   │        │  gap 분류 → 처치 → 재테스트
+   P2 TEST ⇄┘  install_v3 → route_request_v3 → ActionBody[]   (live_inputs = default)
+   │   ├ _synthetic : 어댑터 기반 calldata 합성 + edge → 입력값 ↔ ActionBody 필드 inverse-check
+   │   ├ real-tx    : 어댑터 BLIND 무작위 pull → hybrid oracle 로 정확성/커버리지 버킷
+   │   └ → logs/<p>/ 기록
+   │
+   P3 DEVELOP ── 로그 gap 분류 → manifest 수정 or 엔진 확장 or schema 추가 → 회귀
+   │
+   P4 LAND ── build-index → corpus flip → cargo test --workspace 0 fail → fmt/clippy → commit
+```
+
+**P1 ↔ P2 는 루프다.** 처음엔 TEST 가 "무엇을 작성할지"(discovery), 나중엔 "정확한가"(accuracy). 작은/단순 프로토콜은 ABI 만 보고 P1 부터 시작해도 되고, 크고 복잡한 프로토콜(UR류, batch)은 P2 를 먼저 한 번 돌려 실제 selector/shape 를 보면 rework 가 준다(선택).
+
+---
+
+## 3. P0 — RESEARCH (1차 출처 인벤토리)
+
+### 산출물
+프로토콜의 **external state-changing 함수 전수 + per-function triage 표**. "우리가 이미 manifest 가진 것" 이나 "눈에 띄는 deposit/withdraw 몇 개" 가 아니라 **hub 컨트랙트의 external 함수를 하나도 빠짐없이 나열**(예: Balancer Vault, Aave Pool+Gateway, Uniswap UR/Routers/NFPM/Permit2, Morpho singleton). 각 함수를 `COVER` 또는 `EXCLUDE: <reason>` 로 **명시 분류** — 누락은 "안 봄" 이 아니라 **버그**. (이 단계가 부실하면 가장 중요한 함수를 silent 하게 빠뜨린다 — §9 의 Morpho `setAuthorization`(권한 위임) 1차 누락이 그 사례.) **이 전수성은 이제 산문이 아니라 `npm run check:surface` 가 build-time 에 기계 강제한다 — 아래 규약 7.**
+
+**relevance taxonomy** (분류 기준):
+
+| class | 처리 | 예 |
+|---|---|---|
+| **user-fund-move** | COVER | supply/withdraw/borrow/repay/swap/transfer |
+| **permission-grant** ⚠️ | **항상 COVER** (아래 red-flag) | approve/permit/setApprovalForAll/setAuthorization/delegate |
+| keeper·integrator | EXCLUDE: 비-user-wallet | liquidate/flashLoan/keeper-only |
+| governance (onlyOwner) | EXCLUDE: DAO/admin | setFee/enableX/setOwner |
+| infra/callback | EXCLUDE: 비-pre-sign | accrueInterest/onERC721Received/internal |
+
+```jsonc
+// research-<protocol>.json (스크래치, 작업용)
+{
+  "protocol": "<name>", "category": "dex|lending|liquid-staking|restaking|perp|...",
+  "contracts": [{
+    "name": "Pool",
+    "addresses": { "1": "0x...", "8453": "0x..." },   // 체인별 정확 주소 (cartesian 금지)
+    "abi_source": "sourcify|etherscan-verified|github", "abi_url": "https://...",
+    "external_functions": [   // ★ 전수 — 하나도 빠뜨리지 않는다. 각 함수에 triage.
+      { "selector": "0x...", "sig": "supply(...)",               "triage": "COVER",   "class": "user-fund-move" },
+      { "selector": "0x...", "sig": "setAuthorization(address,bool)", "triage": "COVER",   "class": "permission-grant" },
+      { "selector": "0x...", "sig": "setFee(...)",               "triage": "EXCLUDE", "class": "governance", "reason": "onlyOwner" }
+    ]
+  }]
+}
+```
+
+### 규약
+1. **주소/ABI 는 1차 출처만** — 공식 docs / Sourcify / Etherscan·BaseScan verified `Read/Write Contract` 탭 / 공식 GitHub. 블로그·AI·wiki 금지.
+2. **selector cross-check** — `selector == keccak256(signature)[0:4]`. (검증: `cast sig "transfer(address,uint256)"` == `0xa9059cbb`. cast 없으면 alloy/로컬 keccak.)
+3. **전수 후 triage** — hub 의 external state-changing 함수를 *전부* 나열한 뒤 각각 `COVER`/`EXCLUDE:reason`. "눈에 띄는 것만" 금지. EXCLUDE 는 사유 명시(`onlyOwner`/keeper/callback/internal). COVER 는 EOA·smart-account 가 서명 직전 직접 부르는 fund-move·permission 함수.
+4. **⚠️ permission-primitive red-flag (반드시 통과)** — `authorize | approve | permit | delegate | setOperator | setApprovalForAll | setAuthorization` 패턴 함수는 **무조건 COVER** (Tier 3 escalate 필요해도). ScopeBall 의 존재 이유(권한 위임 분석)라서 EXCLUDE/Unknown/skip **금지**. on-chain calldata 와 off-chain EIP-712(`*WithSig`/typed-data) **양쪽** 점검 — 둘 다 권한 grant 다. 매핑할 ActionBody 가 없으면 §4a 에서 Tier 3 신규 action 추가(Unknown 으로 떨구지 않음).
+5. **체인 scope** — main chain 1개 + L2 variant. free Etherscan v2 키는 **Base(8453)/Optimism(10) 미지원**(아래 5b) — 그 체인은 Dune 또는 유료키.
+6. **legacy 명시 제외 기록** — 구버전 deploy 제외 결정을 적어둠.
+7. **⚠️ executable gate (산문 → build 강제, 규약의 핵심)** — 위 전수 triage 는 agent 재량에 맡기면 silent 누락이 재발한다(§9 setAuthorization). 그래서 **기계 검증**으로 승격: scratch `research-<protocol>.json` 을 commit 되는 2 artifact 로 — `registryV2/surface/<protocol>/<contract>.abi.json`(1차 출처 verified **전체 ABI** snapshot = manifest·triage 가 거짓말 못 하는 **독립 ground-truth**) + `.coverage.json`(per-selector `COVER`/`EXCLUDE:reason` + `signed_structs`). `npm run check:surface` 가 검사: **I1** snapshot 의 external-mutating selector(`stateMutability∈{nonpayable,payable}`) 전수가 coverage 에 있나(누락 = 원래 miss) · **I2** COVER 는 manifest 보유 · **I3** manifest 는 COVER · **S1/S2** typed-data ↔ `signed_structs`. 위반 = exit 1. coverage·manifest 를 **둘 다** 빠뜨려도 독립 snapshot 이 I1 으로 잡으므로 silent 누락이 *불가능*해진다. 절차·포맷 = `registryV2/surface/README.md`. (이게 §3 의 본질: research-completeness 를 trust 에서 build-enforced invariant 로 — Cedar 등록 누락을 `MissingAction` 이 잡는 것과 같은 패턴.)
+
+---
+
+## 4. P1 — AUTHOR
+
+함수마다 **3a schema → 4b manifest → 4c engine** 순. schema 가 manifest 보다 먼저인 이유: 존재하지 않는 domain/action 을 target 하는 manifest 는 테스트에서 hard-fail 하기 때문.
+
+### 4a. Tier 3 — action-schema 매핑
+
+각 함수가 어느 `ActionBody` variant 로 가는지 결정한다.
+
+#### Decision tree
+```
+함수 X 의 의미가:
+  기존 domain + 기존 action 에 매핑됨?   → YES: 스키마 무수정, 4b 로
+  기존 domain, 새 action?                → 그 domain 모듈에 variant + 파일 추가 (release PR)
+  새 domain 필요?                        → ActionBody variant + 모듈 + VALID_DOMAINS + Cedar + TS (큰 blast)
+  ⚠️ 권한 grant(approve/authorize/delegate…)인데 맞는 action 없음? → Tier 3 신규 action 필수 (Unknown 금지 — §3 red-flag). market 무관 grant 면 venue 없는 bespoke locator 가능 (Morpho SetAuthorization 선례).
+  매핑 불가 + 권한 grant 아님 (admin/opaque)? → Unknown 허용 (warn/deny, 테스트는 excluded)
+```
+
+#### ActionBody 카탈로그 (현재 — `simulation/reducer/src/action/`, serde `tag="domain"`)
+
+최상위 8 variant (`action/mod.rs:141`):
+`Token` · `Amm` · `Lending` · `Airdrop` · `Launchpad` · `Perp` · `Multicall { actions: Vec<ActionBody> }` · `Unknown { target, chain, calldata, value }`
+
+각 domain 의 action (`tag="action"`, snake_case). **작성 전 해당 `<domain>/mod.rs` 를 직접 읽어 현재 variant/필드 재확인**(스키마는 늘 확장된다):
+
+| domain | 파일 | action variant |
+|---|---|---|
+| **token** | `token/mod.rs` | erc20_approve, erc20_permit, permit2_approve, permit2_sign_allowance, erc20_transfer, nft_approve, nft_set_approval_for_all, nft_transfer, revoke_approval |
+| **amm** | `amm/mod.rs` | swap, add_liquidity, remove_liquidity, collect_fees, sign_intent_order, cancel_intent_order |
+| **lending** | `lending/mod.rs` | supply, withdraw, borrow, repay, swap_rate_mode, set_e_mode, enable_collateral, disable_collateral, delegate_borrow, liquidate |
+| **airdrop** | `airdrop/mod.rs` | claim, delegate |
+| **launchpad** | `launchpad/mod.rs` | commit, claim_allocation, claim_vested, refund, withdraw_commit |
+| **perp** | `perp/mod.rs` | open_position, close_position, increase_position, decrease_position, adjust_margin, change_leverage, change_margin_mode, place_limit_order, place_stop_order, cancel_order, claim_funding |
+
+각 action 의 필드 예 (`token/erc20_approve.rs`):
+```rust
+pub struct Erc20ApproveAction { pub token: TokenRef, pub spender: Address, pub amount: U256 }
+```
+`venue` 가 있는 domain(amm/lending/perp)은 별도 venue enum 으로 프로토콜 식별:
+- `AmmVenue`: UniswapV2/V3/V4, SushiV2, CurveV1/V2, BalancerV2/V3, TraderJoeLB, MaverickV2, AggregatorRoute …
+- `LendingVenue`: AaveV3/V2, CompoundV3/V2, MorphoBlue, MorphoOptimizer, Spark, Fluid …
+- `PerpVenue`: Hyperliquid, GmxV2, DyDxV4, Vertex, Aevo, Drift, JupiterPerps, Synthetix, Generic …
+
+> 새 프로토콜이 기존 domain 에 맞지만 venue 가 없으면 → **venue enum 에 variant 추가**(Tier 3, 가벼운 편). 예: 새 lending 프로토콜 → `LendingVenue` 에 추가.
+
+#### 새 action 추가 절차 (기존 domain)
+예: lending 에 `flash_loan` 추가.
+1. `crates/simulation/reducer/src/action/lending/flash_loan.rs` 새 파일 — action struct (`#[derive(Serialize, Deserialize, Tsify, ...)]`).
+2. `lending/mod.rs`: `pub mod flash_loan;` + `pub use self::flash_loan::*;` + enum 에 `FlashLoan(FlashLoanAction)` + `action_tag()` arm `Self::FlashLoan(_) => "flash_loan"`.
+3. manifest 작성(4b) — `body.lending.flash_loan`.
+4. `action_builder.rs` 의 live_inputs default 카탈로그에 (domain,action,field) 추가(해당 함수가 live_inputs 참조 시).
+5. Rust smoke test (mod.rs `#[cfg(test)]`) + corpus 실거래 1건.
+
+#### 새 domain 추가 (드묾, 큰 blast)
+위 + 반드시 **동기화**:
+- `crates/integration-tests/src/harness/oracle.rs:22` `VALID_DOMAINS` 에 새 domain 문자열 추가 (안 하면 하니스가 invalid domain 으로 fail).
+- `action_builder.rs::flatten_body` 의 cross-cutting 분기(multicall/unknown 류 특수 처리) 검토.
+- Cedar 정책 스키마 + TS(tsify) 바인딩.
+
+#### Unknown fallback
+매핑 불가/희귀 함수는 manifest 를 안 만들거나 `body.domain="unknown"` 로 둔다 → `ActionBody::Unknown{target,chain,calldata,value}`. 테스트는 `excluded`(아래 5e). **디코드를 막지 않는다.**
+> ⚠️ Unknown 은 *진짜 opaque/admin* 호출용이지 **알려진 권한 grant 용이 아니다.** 권한 위임을 Unknown 으로 두면 분석기가 "전권 위임"을 opaque calldata 로만 보여줘 **과소경고** — ScopeBall 의 핵심 실패. 권한 grant 는 가치가 항상 높아 extension guide rule 3 의 'value<cost→Unknown' 을 override → Tier 3 escalate (§3 red-flag).
+
+### 4b. Tier 1 — manifest 작성
+
+#### 최상위 구조 (schema v3)
+```jsonc
+{
+  "type": "adapter_action",          // v3 (v1 은 "adapter_function" — 안 씀)
+  "id": "<publisher>/<contract>/<func>@1.0.0",
+  "schema_version": "3",             // 필수
+  "match": {
+    "selector": "0x<8hex>",
+    // (A) 정확 주소 맵:
+    "chain_to_addresses": { "1": ["0x..."], "8453": ["0x..."] }
+    // (B) 또는 ERC 표준 자동 enumerate:
+    // "chain_to_addresses_source": "tokens:erc20", "chain_ids": [1,10,8453,42161]
+  },
+  "abi_fragment": { "function_name": "...", "abi": { "name","type":"function","inputs":[...] } },
+  "emit": { "strategy": "...", /* strategy별 필드 */ },
+  "requires": { "imperative": [], "adapter_capabilities": [], "host_capabilities": [], "extension": ">=0.1.0" }
+}
+```
+디렉토리: `registryV2/manifests/<publisher>/<contract>/<func>@<semver>.json` (publisher = ENS/slug, 표준은 `standard`).
+
+#### Strategy 선택 (decision tree)
+```
+calldata → ActionBody 가:
+  단순 평면 1:1 ?                              → single_emit
+  bytes[] self-recursion (각 원소 = 같은 컨트랙트 다른 함수)?  → multicall_recurse
+  command byte stream (bytes commands, bytes[] inputs) — UR류? → opcode_stream_dispatch
+  동질 tuple-array → N개 ActionBody (Permit2 batch류)?         → array_emit
+  enum-tagged userData (CoreWriter류)?         → tagged_dispatch
+```
+
+#### ① single_emit — 실제 예 (`standard/erc20/approve@1.0.0.json`, 전문)
+```json
+{
+  "type": "adapter_action",
+  "id": "standard/erc20/approve@1.0.0",
+  "schema_version": "3",
+  "match": { "selector": "0x095ea7b3", "chain_to_addresses_source": "tokens:erc20", "chain_ids": [1, 10, 8453, 42161] },
+  "abi_fragment": {
+    "function_name": "approve",
+    "abi": { "name": "approve", "type": "function", "stateMutability": "nonpayable",
+      "inputs": [ { "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" } ],
+      "outputs": [ { "name": "", "type": "bool" } ] }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_approve",
+        "erc20_approve": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "spender": "$args.spender",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": { "imperative": [], "adapter_capabilities": ["token_metadata"], "host_capabilities": [], "extension": ">=0.1.0" }
+}
+```
+구조: `emit.body` = 중첩 `{domain, <domain>: {action, <action>: {...필드}}}`.
+
+#### ② opcode_stream_dispatch — 실제 예 (`uniswap/universal-router/execute-v1@1.0.0.json`, emit 발췌)
+```jsonc
+"emit": {
+  "strategy": "opcode_stream_dispatch",
+  "dispatcher_id": "universal_router",
+  "mask": "0x7f",                  // command byte & mask = opcode
+  "allow_revert_bit": "0x80",      // 최상위 비트 = allow-revert (무시)
+  "unknown_opcode_policy": "warn", // deny | skip | warn
+  "per_opcode_body": {             // 키 = opcode hex, 값 = {name, inputs_abi, body}
+    "0x00": {
+      "name": "V3_SWAP_EXACT_IN",
+      "inputs_abi": "(address recipient, uint256 amountIn, uint256 amountOutMin, bytes path, bool payerIsUser)",
+      "body": { "domain": "amm", "amm": { "action": "swap", "swap": {
+        "venue": { "name": "uniswap_v3", "chain": "$chain", "pool": "$resolved.pool", "fee_tier_bp": "$resolved.fee_tier_bp" },
+        "params": {
+          "token_in":  { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.v3_path_first_token" } },
+          "token_out": { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.v3_path_last_token" } },
+          "direction": { "kind": "exact_input", "amount_in": "$inputs.amountIn", "min_amount_out": "$inputs.amountOutMin" },
+          "recipient": "$inputs.recipient"
+        } } } }
+    },
+    "0x0a": { "name": "PERMIT2_PERMIT", "inputs_abi": "(...)", "body": { /* ... */ } }
+  }
+}
+```
+핵심: opcode 별 `body` 안에서 그 opcode 의 디코드된 인자는 `$inputs.<name>` 으로 참조. opcode payload 의 ABI 는 `inputs_abi` 로 manifest 가 선언(V3 는 Rust 테이블이 아니라 manifest 가 opcode 타입을 들고 있다).
+
+#### ③ multicall_recurse — 실제 예 (`uniswap/v3-nfpm/multicall@1.0.0.json`, 전문)
+```json
+{
+  "type": "adapter_action", "id": "uniswap/v3-nfpm/multicall@1.0.0", "schema_version": "3",
+  "match": { "selector": "0xac9650d8", "chain_to_addresses": {
+    "1": ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"], "8453": ["0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"] } },
+  "abi_fragment": { "function_name": "multicall",
+    "abi": { "name": "multicall", "type": "function", "inputs": [ { "name": "data", "type": "bytes[]" } ] } },
+  "emit": { "strategy": "multicall_recurse", "recurse_rule_id": "self_array_bytes_last_arg", "max_depth": 3 }
+}
+```
+핵심: `body` 없음. 엔진이 `data: bytes[]` 의 각 원소를 **같은 컨트랙트의 다른 함수 호출**로 보고 재귀 분해 → `ActionBody::Multicall{actions}`. inner selector 도 indexed/manifest 가 있어야 완전 분해.
+
+#### ④ array_emit — 실제 예 (`uniswap/permit2/permitBatch@1.0.0.json`, emit 발췌)
+```jsonc
+"emit": {
+  "strategy": "array_emit",
+  "array_source": "$args.permitBatch[0]",   // 펼칠 배열 경로
+  "body": {                                  // 배열 원소 1개당 ActionBody (원소는 $inputs[...])
+    "domain": "token", "token": { "action": "permit2_sign_allowance", "permit2_sign_allowance": {
+      "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs[0]" } },
+      "spender": "$args.permitBatch[1]", "amount": "$inputs[1]", "expires_at": "$inputs[2]", "sig_deadline": "$args.permitBatch[2]"
+    } } },
+  "live_inputs": { /* onchain_view ... */ }
+}
+```
+→ `ActionBody::Multicall{actions}` (원소별 1 action). **V3 형태는 `array_source` + `body`** (V1 의 `array_path`/`fields` 아님).
+
+#### emit.body placeholder 문법 (현재)
+| placeholder | 의미 | 비고 |
+|---|---|---|
+| `$chain` | chain id | root-only (suffix 불가) |
+| `$to` | tx target 주소 | root-only |
+| `$calldata` | raw calldata hex | root-only (Unknown 보존용) |
+| `$tx.value` `$tx.from` `$tx.to` `$tx.chain` | tx 메타 | |
+| `$args.<name>` | 디코드된 함수 인자 | |
+| `$args.x[0][1]` | **chained-numeric** nested tuple/array | 음수 = tail(`[-1]`) |
+| `$inputs.<name>` / `$inputs[0]` | opcode/array item 의 인자 | opcode_stream/array_emit 안에서 |
+| `$resolved.<k>` | 정적 lookup (weth, pool_manager, pool, fee_tier_bp) | host/엔진 채움, 미해소 시 zero |
+| `$derived.<k>` | 절차적 계산 (v3_path_first_token 등) | |
+
+**⚠️ dotted `$args.x.y` 는 미지원.** nested 접근은 반드시 **chained-numeric** `$args.x[i][j]`. (예: Permit2 `permitSingle.details.token` → `$args.permitSingle[0][0]`. 이건 commit `3f93f5c` 에서 디코더의 nested-tuple uint coercion 과 함께 동작 확정됨 — 과거엔 깨졌으나 현재 정상.)
+
+AssetRef 표준: `{ "key": { "standard": "erc20|erc721|erc1155", "chain": "$chain", "address": "<addr placeholder>" } }`.
+`live_inputs` 항목: `{ "<field>": { "source": { "kind": "onchain_view|derived_from|oracle_feed|venue_api", ... }, "ttl_s": N } }`. 테스트에선 default 스텁이라 값 미채움 — 단 **manifest 에 선언은 필요**(스키마 필드 충족).
+
+### 4c. Tier 2 — generic 엔진 확장 (V3 Tier B)
+
+대부분 함수는 4b manifest 로 끝난다. **generic 엔진이 표현 못 하는 shape 만** 여기 해당:
+
+| 깨지는 shape | 증상 | 확장 위치 |
+|---|---|---|
+| nested tuple per-component 타입 유실 (uint48 등 string 화) | `build_action_body_failed: invalid type string, expected u64` | `action_builder.rs` 의 placeholder 해소/coercion (walk_json_path + decoded_value_to_json_typed). **Permit2 류는 3f93f5c 에서 이미 해결** — 새 프로토콜에서 재발 시 같은 패턴으로 |
+| opcode sub-stream nested 전개 (UR V4 action-stream 등) | `build_multicall_failed` (pool_id/currencyIn 등) | `action_builder.rs::build_multicall_from_opcode_stream` + dispatch (현재 deferred baseline = commit `70c34a7`) |
+| 동적 길이 배열 cross-index (`assets[swaps[i].assetInIndex]`, Balancer batchSwap) | declarative 로 cross-array join 불가 | array_emit 으로 표현 불가 → 엔진/별도 처리 |
+| packed bytes32 bit-slice (Aave L2Pool) | reserve index + bit-field, asset 가 주소 아님 | bit-slice 디코드 + onchain reserve→address (live_inputs) |
+
+**확장 절차(TDD):** corpus 에 `expect:error` baseline → `action_builder.rs`(또는 `declarative_exports.rs` dispatch arm) 수정 → corpus `expect:pass` flip → `cargo test --workspace` green → WASM 재빌드. 착지 불가하면 corpus `_note` 로 문서화 + defer.
+
+> Tier 2 변경은 WASM 에 들어가는 Rust → release PR. WASM 사이즈 예산 점검(memory: 6 MiB target).
+
+---
+
+## 5. P2 — TEST
+
+### 5a. 하니스 구동 (V3 경로 단독)
+
+하니스는 production export `declarative_route_request_v3_json` 을 plain Rust 로 직접 호출한다(브라우저/RPC/GCS 없음). `registryV2/index/` 전체를 설치 후 라우트.
+
+```bash
+cd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
+
+# 게이트 (CI 결정적, 4 test):
+cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture
+
+# CLI 빌드(병렬 build-lock 회피 시 prebuilt 직접 호출):
+cargo build -p policy-engine-integration-tests --bin v3-harness
+#   → target/debug/v3-harness <sub>
+```
+
+**CLI 서브커맨드** (`src/bin/v3_harness.rs`):
+```bash
+v3-harness fuzz [--iterations N] [--seed S] [--json PATH]   # 합성 전략별 sweep + 리포트
+v3-harness coverage                                          # strategy별 callkey 수 + deferred
+v3-harness replay --callkey <chain>__<addr>__<selector> [--seed S]   # 단건 재현
+v3-harness corpus [--root DIR]                              # 실거래 corpus replay + expect 체크
+v3-harness import-etherscan|import-dune|import <export.json> [--chain N] [--out PATH]  # parse-only
+```
+seed 기본 `0x5C09EBA1`. corpus root 기본 `data/golden/v3-decode/`.
+
+**입력 DTO** (`dto.rs:198-227`, `DeclarativeRouteRequestV3InputDto`):
+```jsonc
+{ "chain_id": 1, "to": "0x..", "selector": "0x..", "calldata": "0x..",
+  "value": "0", "gas_limit": "0", "gas_price": "0",
+  "submitter": "0x..", "submitted_at": 1700000000, "nonce": 0, "block_timestamp": null }
+```
+value/gas_* 는 **10진 문자열**. 하니스 조립 = `harness/route.rs:15` `route_calldata`.
+
+**게이트 4 test** (`tests/v3_decode_harness.rs`): `surface_installs_clean`(≥300 callkey · ≥50 bundle · 0 install-fail) / `synthetic_fuzz_single_emit`(0 hard) / `corpus_replay` / `synthetic_fuzz_all_strategies`(0 hard).
+
+**R1 (필수):** install state 는 thread-local → install 과 route 는 **같은 thread**. 새 헬퍼는 install→route 를 한 함수에서.
+
+### 5b. 데이터 fetch (real-tx, adapter-BLIND)
+
+목표 = **어댑터를 무시하고** 프로토콜의 실거래를 무작위로 받아 디코드가 정확한지 본다(어댑터 보고 tx 고르지 않음).
+
+#### Etherscan txlist (bulk 주력)
+**한 콜이 최대 10,000 tx 를 반환하고 각 tx 의 `input` 필드 = calldata** 다. 즉 10,000 tx ≈ 콜 1~2번 (tx당 콜 아님).
+```bash
+set -a; source crates/integration-tests/.env; set +a   # ETHERSCAN_API_KEY (commit 금지)
+curl -s "https://api.etherscan.io/v2/api?chainid=1&module=account&action=txlist&address=<ADDR>&page=1&offset=10000&sort=desc&apikey=$ETHERSCAN_API_KEY" -o /tmp/es.json
+target/debug/v3-harness import-etherscan /tmp/es.json --chain 1 --out /tmp/v3probe/<protocol>/corpus.json
+target/debug/v3-harness corpus --root /tmp/v3probe        # 격리 probe
+```
+- import = **parse-only offline**. column pick: `to`←[to,to_address,contract_address], `data`←[data,**input**,calldata], value default "0". 모든 엔트리 기본 `expect:"pass"` 로 찍히니, probe 후 got 분포를 보고 expect 를 재배치.
+- **status 무필터**(calldata 구조만 검증, revert 무관).
+- **제약:** ① 주소당 한 쿼리 window 가 최대 10,000 record → 더 깊이는 `startblock/endblock` block-range 페이지네이션. ② free tier rate ~5 req/s(무시 가능), 100,000 calls/day(과잉). ③ **free tier 가 Base(8453)/Optimism(10) 등 거부**("Free API access is not supported for this chain") → 그 체인은 Dune/유료. ④ recency bias(sort=desc).
+- proxy `eth_getTransactionByHash` 는 value 가 16진 → corpus 는 10진 필요. **txlist 권장.**
+
+#### Dune (핀포인트 보완)
+selector 필터(`WHERE ...`)·decoded 테이블·cross-chain·빈도 통계용. credit 기반(계정 ~2500/월; `getUsage` 로 확인). bulk 는 Etherscan, Dune 은 고트래픽 selector 깊이/희귀 shape.
+
+#### Stratify (무작정 N 늘리지 말 것)
+버그는 **(selector × arg-shape) 커버**에서 나온다. 10,000 random 이면 selector 20종 프로토콜의 shape 를 거의 포화시킨다. 같은 N 이라도 **selector 전수 + block-range 분산**이 recency-only 보다 낫다. **포화 지표**: "1,000건당 새 distinct shape 수" → 0 에 수렴하면 stop(더 돌리면 compute 낭비). raw 영속화 금지 — **실패 + dedup 대표만** corpus 로.
+
+### 5c. Hybrid Oracle (정확성 판정)
+
+**현재 하니스가 하는 것 (oracle.rs `judge`):** shape + domain 까지만.
+- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<simulation_reducer::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS` 8종) / L4 ErrorClass.
+- `VALID_DOMAINS` = token, amm, lending, airdrop, launchpad, perp, multicall, unknown.
+- `SOFT_ERROR_KINDS`(tolerate) = no_declarative_v3_mapper, unsupported_strategy_for_typed_data, no_typed_data_mapper.
+- corpus `expect` 는 `expect_domain` 까지만 비교. **`expect_action`/필드값은 미검증**(reserved).
+
+→ **즉 현 oracle 은 "안 죽고 올바른 모양" 까지(coverage). 필드값(token/amount/spender)이 맞는지는 안 본다.** "정확하게 파싱" 을 달성하려면 아래 hybrid 를 **이 방법론이 추가로 요구**한다(일부는 하니스 확장 필요 — 구현 시 명시).
+
+#### 3계층 (정답 작성량 = selector 수 비례, tx 수 무관)
+
+**① 자동 바닥 (정답 0, 전 tx 자동)**
+- `coverage`: 라우팅됐나? (uncovered 버킷)
+- `decode-no-error`: alloy 디코드 성공? (decode-error 버킷)
+- **provenance**: ActionBody 의 모든 스칼라(주소/uint)가 calldata 디코드 값 집합에 존재하나? → 값 **날조/손상** 적발. (현 하니스 미구현 → 추가 시 production `DecodedCall` 값 ⊆ ActionBody 값 체크. alloy 독립 디코드 불필요 — production decode 결과 재사용.)
+
+**② B — per-selector projection (random emit-accuracy 의 핵심)**
+selector 당 **정답 매핑 공식 1개**를 manifest 와 **독립**으로 작성 → 그 selector 의 모든 random tx 자동 대조.
+```jsonc
+// data/golden/v3-decode/<protocol>/projections/<selector>.json  (방법론 prescribed 포맷)
+{ "selector": "0x095ea7b3", "abi": "approve(address spender,uint256 amount)",
+  "expect": { "domain": "token", "action": "erc20_approve",
+    "token":   "$tx.to",       // approve 대상 = 토큰 컨트랙트 자신
+    "spender": "$rawarg.spender",   // alloy 독립 디코드 결과(manifest emit 재사용 금지)
+    "amount":  "$rawarg.amount" } }
+```
+- **비순환성 규칙(생명):** projection 의 기대값은 **raw ABI 디코드 + 독립 작성**이어야 한다. manifest 의 emit 규칙을 복사하면 "어댑터가 어댑터를 검증" → 아무것도 못 잡음. projection 은 2nd-opinion(divergence 적발)이지 증명이 아님.
+- 비용 = selector 당 1회. covered 고트래픽 selector 부터.
+
+**③ A — hand-authored golden (정밀 spot-check, 수십 건)**
+까다로운 대표 tx(nested/edge)만 **사람이 기대 ActionBody 를 직접** 적어 corpus 로. 현 corpus 포맷(아래 5e)에 **필드 레벨 기대 추가**(현 `expect_domain` 만 → 확장 시 `expect_body` 비교 추가). ABI+emit 전부 잡지만 tx당 1정답이라 **curated 수십 건**(blind random 엔 부적합).
+
+#### 1,000 vs 10,000 tx — 정답 작성량 동일
+```
+N tx (selector 20종):
+  자동 바닥(coverage/decode/provenance) → N건 자동, 정답 0
+  B projection 20개                     → N건 emit 자동 대조
+  A golden ~30개                         → 30 정답 손작성
+정답 = 0 + 20 + 30 = 50  (N=1k 이든 10k 이든 동일)
+```
+
+### 5d. Scale 정책
+- 기본 **10,000 tx/protocol**, stratified.
+- compute/fetch/authoring 다 N 에 거의 무관 → 올려도 됨. 단 **shape 포화 지표 0 되면 stop**.
+- 영속화 = 실패 + dedup 대표만. bulk raw 안 쌓음.
+
+### 5e. Verdict 버킷 + 로그
+
+각 tx 결과를 자동 분류:
+| 버킷 | 의미 | 처치(P3) |
+|---|---|---|
+| **correct** | 디코드 + 두 계층 통과 | — |
+| **MIS-DECODED** | 디코드됐는데 필드 불일치 | emit 수정(manifest) 또는 엔진(4c) |
+| **uncovered** | 어댑터 없음 (soft no_declarative_v3_mapper) | manifest 추가(4b) |
+| **decode-error** | hard 실패 (build_*_failed 등) | abi_fragment 또는 엔진(4c) |
+
+**corpus 엔트리 포맷** (`corpus.rs CorpusTx`, `data/golden/v3-decode/<protocol>/corpus.json`):
+```jsonc
+{ "transactions": [
+  { "intent": "swap", "expect": "pass", "expect_domain": "amm", "tx_hash": "0x..", "chain_id": 1,
+    "rpc": { "params": [ { "to": "0x..", "value": "0", "data": "0x.." } ] } },
+  // 또는 EIP-712:
+  { "expect": "excluded", "chain_id": 1,
+    "typed_data": { "verifying_contract": "0x..", "primary_type": "PermitSingle", "domain_name": "Permit2", "message": { } } }
+] }
+```
+- `expect`: `"pass"`(ok + expect_domain 일치) / `"excluded"`(ok + domain=unknown, off-chain 정상) / `"error"`(Fail|Soft + expect_error 일치).
+- 로그: `crates/integration-tests/logs/<protocol>/YYYY-MM-DD-<source>.json` (포맷·인덱스 = `crates/integration-tests/README.md` §6 "Log→Gap→Develop 루프" 따름). 매 실행이 직전과 diff 되도록 커버리지 매트릭스 + gaps + sample_failing_txs + summary.
+
+---
+
+## 6. P3 — DEVELOP 루프
+
+로그의 각 gap 을 분류 → 처치 위치로 보냄 → 재테스트. (위 5e 표가 분류→처치 매핑.)
+
+```
+for each gap in logs/<protocol>/:
+  uncovered     → 4b manifest 추가
+  MIS-DECODED   → 4b emit 필드 수정  또는  4c 엔진 확장
+  decode-error  → 4b abi_fragment 수정  또는  4c 엔진
+  domain 모름   → 4a schema 추가  (또는 Unknown 허용)
+  → logs 갱신 → P2 재실행 (corpus expect flip)
+포화(새 gap 0)까지 반복.
+```
+큰 Tier 2/Tier 3 건은 상세 fix-plan 후 안전 착지 범위까지, 안 되면 `expect:error` baseline + `_note` defer + 문서화(정직).
+
+---
+
+## 7. P4 — LAND
+
+```bash
+cd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
+
+# 1) index 재빌드 (manifest 변경 반영). deterministic — manifest 무변이면 0 churn.
+cd registryV2 && npx tsx scripts/build-index.ts && cd ..
+
+# 2) corpus expect flip (해결된 gap: error→pass) 후 회귀
+target/debug/v3-harness corpus
+cargo test -p policy-engine-integration-tests --test v3_decode_harness
+cargo test --workspace                 # 0 fail
+
+# 3) Tier 2 변경 시 WASM
+./scripts/wasm-build.sh                 # 사이즈 ≤ 6 MiB 점검
+
+# 4) lint
+cargo clippy -p policy-engine-integration-tests --all-targets && cargo fmt --all
+```
+
+**커밋 규율:**
+- **explicit-stage only** (`git add -A` 금지). 대상 = `registryV2/manifests/<p>/**` · (재빌드 후) 해당 `registryV2/index/` 추가분 · Tier 2 Rust · Tier 3 schema · `crates/integration-tests/{logs,data/golden}/**`.
+- **절대 제외**: 무관 churn(browser-extension/index curation 등), `.env`(ETHERSCAN_API_KEY 로컬만).
+- 메시지 말미: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+
+---
+
+## 8. 부록
+
+### 8.1 커맨드 치트시트
+```bash
+# 게이트
+cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture
+# 합성 soak + 리포트
+target/debug/v3-harness fuzz --iterations 5000 --json /tmp/v3-report.json
+# 커버리지(strategy 분포)
+target/debug/v3-harness coverage
+# 실거래 corpus
+target/debug/v3-harness corpus [--root DIR]
+# 단건 재현
+target/debug/v3-harness replay --callkey 1__0x<addr>__0x<sel> --seed 0x5C09EBA1
+# import (parse-only)
+target/debug/v3-harness import-etherscan /tmp/es.json --chain 1 --out data/golden/v3-decode/<p>/corpus.json
+# index 재빌드
+cd registryV2 && npx tsx scripts/build-index.ts && cd ..
+```
+
+### 8.2 ActionBody domain 카탈로그 (요약)
+token · amm · lending · airdrop · launchpad · perp · multicall · unknown. (각 domain action 목록 = §4a 표. **작성 전 `<domain>/mod.rs` 직접 확인** — 스키마 확장됨.)
+
+### 8.3 알려진 함정 (DEFECT_CATALOG.md, V3 관점)
+- **nested tuple per-component 타입 유실** (D010 류): `[i][j]` 접근 시 uint width 정보 유실 → string 화 → u64 coercion 실패. **Permit2 류는 commit `3f93f5c` 에서 해결**(chained-numeric + coercion). 새 프로토콜 nested-tuple 에서 재발 가능 → 같은 패턴 점검.
+- **schema enum drift** (D007): manifest 가 쓰는 enum 값(예 approvalKind `"erc721"`)이 Rust enum 에 없으면 deserialize fail → 양쪽 동기화.
+- **fork 프로토콜 struct/opcode layout** (D006/D010): Pancake PoolKey(6 field) vs Uniswap V4(5 field) 처럼 fork 가 layout 다름 → **1차 출처 직접 fetch** 로 field index 검증. mirror 가정 금지.
+- **dotted path**: `$args.x.y` 미지원 → chained-numeric `$args.x[i][j]`.
+- **존재 안 하는 domain target**: schema 없는 domain/action 을 manifest 가 가리키면 hard-fail (Unknown 으로 안 떨어짐). schema 먼저.
+
+### 8.4 정직한 한계
+- **semantic 층은 객관 오라클이 없다.** "path[0]이 진짜 token-at-risk 인가", "domain=amm 인가" 는 ScopeBall 의미모델이 정의 — 체인이 안 알려줌. provenance(값 출처)·B projection(2nd-opinion)까지가 자동 검증의 한계. 필드 **역할** 정합성은 사람(또는 미래의 시뮬레이션 trace)이 보증.
+- **synthetic vs real-tx 오라클 분담:** synthetic 은 입력값을 알아 plumbing 을 inverse-check(객관), 단 내가 만든 shape 만. real-tx 는 shape 다양성(객관 = ABI/provenance), 단 emit semantic 은 projection(2nd-opinion)까지.
+- **데이터 한계:** recency bias, free Etherscan 의 Base/OP 미지원, HyperEVM(chain 999) 등 Etherscan 미지원 체인.
+- **file:line 은 작성 시점 스냅샷.** 코드는 움직인다(이 매뉴얼 작성 중에도 V1 retire/Permit2 fix 가 일어났다) — **작업 전 grep 재확인**.
+
+### 8.5 이 매뉴얼이 가정하는 코드 상태 (재검 기준점)
+- declarative 레이어 = `action_builder.rs` + `args_json.rs` + `types.rs` (V1 interpreter 제거됨, commit `4e60392`).
+- V3 dispatch = `declarative_exports.rs:530` `match strategy` (single_emit / opcode_stream_dispatch / array_emit / tagged_dispatch / multicall_recurse / 그 외 unsupported).
+- 빌더 = `action_builder.rs` build_action_body(514) / build_multicall_from_opcode_stream(966) / build_array_emit(1048) / substitute_placeholders(238).
+- 위가 안 맞으면 코드가 또 움직인 것 — §1 표를 `grep -n` 으로 갱신 후 진행.
+
+### 8.6 surface-completeness self-check (P0 마무리 게이트)
+온보딩 "완료" 선언 전 4문 — 하나라도 No 면 P0 미완. 1~3 은 산문 자가점검, **4 가 그걸 build 로 강제**:
+1. hub 의 **external state-changing 함수를 전수**했나? (block explorer Write 탭 / interface 전체 — "눈에 띄는 것만" 아님)
+2. 각 함수를 **COVER 또는 EXCLUDE:reason** 로 분류했나? (분류 안 된 함수 = 0)
+3. 모든 **approval·permit·delegation·authorization grant**(on-chain + off-chain EIP-712)를 잡았나? Unknown/skip 0?
+4. **`npm run check:surface` 가 PASS 인가?** `surface/<protocol>/<contract>.{abi,coverage}.json`(verified 전체 ABI snapshot + per-selector triage)을 작성하면 gate 가 I1~I3·S1/S2 를 기계 검증 — 위반 시 exit 1 = P0 미완. 1~3 을 사람이 빠뜨려도 독립 snapshot 이 잡는다. (§3 규약 7 / `registryV2/surface/README.md`)
+
+> §9 가 이 게이트의 반례: 1차에 supply/withdraw/borrow/repay 4 만 보고 끝냈다가 `setAuthorization`(권한 위임 primitive)을 놓침. 이 self-check 가 있었으면 2·3 에서 걸렸다. **이제 4(`check:surface`)가 기계적으로 강제** — coverage·manifest 를 둘 다 빠뜨려도 독립 ABI snapshot 이 `I1 un-triaged selector 0xeecea000 (setAuthorization)` 으로 build 를 실패시킨다(실측 검증됨).
+
+---
+
+## 9. Worked Example: Morpho Blue P0→P4 (실측 transcript)
+
+> 이 매뉴얼을 **dogfood** 으로 검증하며 만든 실제 온보딩 기록. 모든 커맨드·출력은 실측(2026-05-30, branch `feat/registry-v2`). 결과물은 commit `760af8c` 로 영구 온보딩됨(manifest 4 + Tier B Rust + golden corpus + golden test).
+> Morpho Blue 를 고른 이유: lending 이고 `LendingVenue::MorphoBlue` 가 schema 에 이미 존재(=Tier 3 불필요) — "manifest+test 90% 케이스"로 보였다. **그런데 `market_id` 가 keccak 해시라 manifest-only 로 안 됐다.** 이 갭이 이 예시의 핵심 — manifest→Tier B 에스컬레이션과, 자동 오라클이 못 잡는 **silent MIS-DECODED** 를 코드로 실증한다.
+
+### 9.1 P0 — Research (1차 출처)
+주소·ABI 는 `docs.morpho.org` + `github.com/morpho-org/morpho-blue@v1.0.0` 1차. selector 는 **local keccak**(self-test 로 도구 검증).
+```text
+singleton (mainnet) = 0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb
+struct MarketParams { address loanToken; address collateralToken; address oracle; address irm; uint256 lltv; }
+MarketParamsLib.id = keccak256(marketParams, 5*32)   // = keccak256(abi.encode(..)) (static struct)
+```
+```bash
+$ cast sig 'transfer(address,uint256)'                 # 도구 self-test
+0xa9059cbb                                              # ✓ (= 알려진 값)
+$ cast sig 'supply((address,address,address,address,uint256),uint256,uint256,address,bytes)'
+0xa99aad89
+# withdraw 0x5c2bea49 · borrow 0x50d8cd4b · repay 0x20b76e81
+# (미커버) supplyCollateral 0x238d6579 · withdrawCollateral 0x8720316d · setAuthorization 0xeecea000 · createMarket 0x8c1358a2 · liquidate 0xd8eabcb8
+```
+
+### 9.2 P1 — Author (schema → manifest)
+**9.2a schema 확인** — `reducer/src/action/lending/mod.rs`: `LendingVenue::MorphoBlue { chain, market_id: String }` + supply/withdraw/borrow/repay action 전부 존재 → **Tier 3 변경 0**. 단 `market_id` 가 **keccak 해시 String** 임을 발견 — placeholder 문법(index/slice 만, hash 불가)으로 못 만든다.
+
+**9.2b manifest** — `registryV2/manifests/morpho/morpho-blue/{supply,withdraw,borrow,repay}@1.0.0.json` (single_emit, aave/v3 선례 mirror). 매핑: `asset=$args.marketParams[0]`(loanToken, tuple→positional array), `amount=$args.assets`, `on_behalf_of=$args.onBehalf`, `market_id="$derived.morpho_market_id"`(= 설계 의도; deriver 는 P3 에서). live_inputs 는 각 LiveInputs struct 필드명과 일치(skeleton, prod-fill).
+
+### 9.3 P2 — Test (데이터 fetch + 3단계 corpus 진행)
+**adapter-blind pull** — singleton 의 최근 400 직거래를 무작위로(어댑터 고려 없이) 가져온다.
+```bash
+$ curl -s "https://api.etherscan.io/v2/api?chainid=1&module=account&action=txlist&address=0xbbbb…effcb&offset=400&sort=desc&apikey=$KEY" -o raw.json
+# selector 분포: withdraw 101 · repay 60 · borrow 47 · supply 40  (= covered 248)
+#               withdrawCollateral 60 · supplyCollateral 44 · setAuthorization 35 · createMarket 7 · liquidate 3 · native 3  (= uncovered 152)
+$ target/debug/v3-harness import-etherscan raw.json --chain 1 --out /tmp/morpho/corpus.json
+wrote 400 transactions to /tmp/morpho/corpus.json     # import 는 전부 expect:"pass" 로 찍음
+```
+corpus 를 **세 번** 돌린다 — 각 단계가 gap 버킷 하나씩 보여준다(테스트=루프 엔진, §2):
+```bash
+# RUN #1 — build-index 전 (Morpho 가 index 에 아직 없음) = DISCOVERY iter-0
+$ target/debug/v3-harness corpus --root /tmp/morpho
+corpus: 0/400 matched
+# 400 전부 MISS, got=soft(no_declarative_v3_mapper)            ← 전부 UNCOVERED
+
+# build-index → Morpho callkey 4개 생성
+$ (cd registryV2 && npm run build)
+… done — 468 callkey(s) … across 94 manifest(s)
+
+# RUN #2 — build-index 후, Tier B 전
+$ target/debug/v3-harness corpus --root /tmp/morpho
+corpus: 0/400 matched
+#  152 MISS  got=soft(no_declarative_v3_mapper)                ← 여전히 UNCOVERED (미작성 selector)
+#  248 MISS  got=FAIL[ErrorClass] build_action_body_failed:
+#            unknown placeholder (no fallback): derived.morpho_market_id   ← DECODE-ERROR (loud)
+```
+RUN #2 의 248 = supply/withdraw/borrow/repay. manifest 가 라우팅되기 시작했으나 `$derived.morpho_market_id` 가 미해소 → **hard error**(silent 아님 — 시스템이 거부). 이게 Tier B 가 필요한 신호.
+
+### 9.4 P3 — Develop (Tier B + golden + silent MIS-DECODED 실증)
+**Tier B** — `declarative_exports.rs` 에 `maybe_inject_morpho_market_id` + `compute_morpho_market_id`(= `maybe_inject_v4_pool_id` 미러; address×4 left-pad + uint256 lltv = 0xa0 버퍼 → `keccak256`). single_emit 의 `ctx.derived` 에 주입(decode 직후, `match strategy` 전).
+```bash
+$ cargo build --bin v3-harness                          # policy-engine-wasm 재컴파일
+# RUN #3 — Tier B 후 (corpus 는 아직 전부 expect:pass)
+$ target/debug/v3-harness corpus --root /tmp/morpho
+corpus: 248/400 matched                                 # supply/withdraw/borrow/repay → PASS/lending ✓
+#  152 MISS = no_declarative_v3_mapper (미커버, 정상)    ← corpus 주석으로 expect:"error" 처리
+```
+**market_id 정확성 cross-check** — 실제 supply tx 1건의 marketParams 를 **독립 도구**로 검산(내 hand-rolled 버퍼와 별개 구현):
+```bash
+$ cast abi-encode "f((address,address,address,address,uint256))" "(0xC02a…,0xe1B4…,0xcb6a…,0x870a…,915000000000000000)" | cast keccak
+0xb7ad412532006bf876534ccae59900ddd9d1d1e394959065cb39b12b22f94ff5   # = MarketParamsLib.id (= 기대값)
+```
+**field-level golden `#[test]`** (`morpho_supply_market_id_is_keccak_marketparams`) — real supply tx 를 `route::route_calldata` 로 라우팅, ActionBody 의 `market_id == 위 keccak` assert. **corpus 가 절대 못 잡는 값**을 잡는 유일 수단.
+
+**silent MIS-DECODED 실증** — manifest 의 `market_id` 를 일부러 `$args.marketParams[0]`(loanToken, **틀렸지만 valid String**)로 바꿔 보면:
+```text
+$ target/debug/v3-harness corpus … | grep <supply-tx>
+  ok   … expect=pass got=pass                            ← corpus 는 통과!! (verdict+domain 만 봄, corpus.rs:204)
+$ cargo test … morpho_supply_market_id_is_keccak_marketparams
+  left:  "0xc02aaa39…c756cc2"   (틀린 loanToken)
+  right: "0xb7ad4125…94ff5"     (정확한 keccak)
+  test … FAILED                                          ← golden 만 잡아냄
+```
+> **이게 매뉴얼 §8.4 의 핵심 한계를 코드로 보여준 것.** 자동 오라클(coverage+decode+domain)은 semantic 으로 틀린 디코드를 `ok` 로 통과시킨다. field-level golden(=hybrid oracle 의 "A" 층)만이 잡는다. (실증 후 manifest 원복 → 전부 green.)
+
+### 9.5 P4 — Land
+```bash
+$ cargo test --workspace                                # 전 크레이트 0 fail (v3_decode_harness 5 passed)
+$ git add  registryV2/manifests/morpho/**  registryV2/index/by-callkey/1__0xbbbb…__0x{a99aad89,5c2bea49,50d8cd4b,20b76e81}.json \
+           crates/policy-engine-wasm/src/declarative_exports.rs  crates/integration-tests/tests/v3_decode_harness.rs \
+           crates/integration-tests/data/golden/v3-decode/morpho/corpus.json
+$ git diff --cached --name-only | wc -l                 # 정확히 11 (전부 Morpho) — build-index 의 무관 index churn 미포함
+$ git commit …                                           # 760af8c (Co-Authored-By 푸터)
+```
+**explicit-stage 주의(§7):** `npm run build` 는 `index/by-callkey/` 를 광범위 재생성 → working tree 의 무관 churn 과 섞인다. Morpho **신규** callkey 4개는 untracked(`??`)라 구분 가능 → 그것 + 내 4 manifest + 2 Rust + corpus 만 stage. `git diff --cached` 로 무관 churn 0 확인 후 commit.
+
+### 9.6 이 dogfood 이 입증한 것
+- **방법론이 실제로 돈다**: P0(1차출처)→P1(schema 확인+manifest)→P2(blind pull+3단계 corpus)→P3(Tier B+golden)→P4(workspace 0 fail+surgical commit) 가 멈춤 없이 관통.
+- **manifest-only 90% 가정은 깨질 수 있다**: keccak 파생 필드(market_id, pool_id 류)는 Tier B Rust 필수. 선례(`maybe_inject_v4_pool_id`)를 먼저 찾아 미러하면 bounded.
+- **자동 오라클의 semantic 갭은 실재한다**(§8.4): corpus 는 verdict+domain 까지. 필드값 정확성은 **반드시 field-level golden** 으로 못박아야 — 안 그러면 틀린 market_id 가 `ok` 로 영원히 통과. 새 프로토콜의 hash/derived 필드마다 golden 1건 권장.
+- **수치**: manifest 4 + Tier B helper 2 fn(~50 LOC) + golden 1 + corpus 13건. authoring 비용 ∝ selector 수(여기 6, 작성 4) — tx 수(400)와 무관(§2).
+
+### 9.7 Surface-completeness 보강 — Full 8 (사용자 지적 → 매뉴얼 dogfood)
+
+§9 1차는 supply/withdraw/borrow/repay **4만** 보고 끝냈는데, 사용자가 "Morpho 함수가 더 많을 텐데?" 지적. 재triage(§3 보강된 P0)로 **user surface = 8** 확정 — 그중 `setAuthorization`(권한 위임)이 ScopeBall 핵심인데 1차에서 uncovered 로 버려졌었다.
+
+**전수 triage (IMorpho.sol v1.0.0, external 17):**
+
+| class | 함수 | triage |
+|---|---|---|
+| user-fund-move | supply/withdraw/borrow/repay | COVER (§9.1~6) |
+| user-fund-move | supplyCollateral/withdrawCollateral | COVER (B1) |
+| **permission-grant** ⚠️ | setAuthorization(on-chain) / Authorization(off-chain EIP-712) | **COVER (B2, Tier 3)** |
+| keeper·infra | liquidate/flashLoan/accrueInterest/createMarket | EXCLUDE |
+| relayer-submit | **setAuthorizationWithSig** (서명자=user 의 off-chain 서명을 제3자 relayer 가 제출; 서명자 risk 는 off-chain Authorization sign 시점에 포착) | EXCLUDE |
+| governance(onlyOwner) | setOwner/enableIrm/enableLltv/setFee/setFeeRecipient | EXCLUDE |
+
+**B1 collateral (쉬움, schema 변경 0)**: supplyCollateral→`Supply{asset=$args.marketParams[1](collateralToken)}`, withdrawCollateral→`Withdraw{asset=marketParams[1], recipient=receiver}`. 기존 action 재사용 + market_id Tier B 그대로. corpus 248→**352**.
+
+**B2 setAuthorization (Tier 3 — 핵심 escalation)**: 기존 LendingAction 에 "operator 전권 위임" action 부재 → Unknown 으로 떨구면 과소경고(§8.4 핵심 실패) → **신규 `LendingAction::SetAuthorization`** (bespoke `{chain,protocol,authorized,is_authorized}` locator; market 무관이라 venue 없음). 확장가이드 ①~⑦ + **등록 3 site**: `SHIPPED_SCHEMA_FILES` + `REGISTERED_ACTIONS` + **`per_policy.rs` ActionEntry 테이블**.
+> ⚠️ **확장가이드 갭 발견**: `ACTIONBODY_EXTENSION_GUIDE.md` 가 manual ⑤를 `SHIPPED_SCHEMA_FILES` 만 명시했으나, 실제론 `REGISTERED_ACTIONS` + `per_policy.rs` ActionEntry 테이블(+그 `len()` assertion)도 등록해야 lowering schema 가 합성된다. conformance test 가 `MissingAction` 으로 잡아줘서 발견(안전망 작동). → 확장가이드 보강 필요(별건).
+
+on-chain manifest(selector `0xeecea000`) → corpus 352→**387**. 나머지 13 = createMarket/liquidate/native(excluded).
+
+**off-chain Authorization (8번째, pre-sign 핵심)**: 유저가 서명하는 EIP-712 `Authorization{authorizer,authorized,isAuthorized,nonce,deadline}` (relayer 가 `setAuthorizationWithSig` 로 제출). typed-data manifest — flat scalar 5개 → `build_typed_data_args_json` 의 flat 경로 → `$args.authorized`/`$args.isAuthorized` 직접. **단 Morpho EIP-712 domain 은 minimal(chainId+verifyingContract, name/version 없음)** → build-index 가 `domain_name 필수` 로 reject → **`build-index.ts` 검증을 optional 로 완화**(witness_type "when present" 패턴 미러; nameless EIP-712 허용, backward-compatible, 기존 manifest 영향 0). by-typed-data 라우팅(verifying_contract+primary_type) → probe **1/1**.
+
+**검증**: `cargo test -p policy-engine`(252) / `-p simulation-reducer`(403) / `v3_decode_harness` **6 passed** (+`morpho_set_authorization_decodes_operator_and_flag` golden: operator `0x4A6c312e…` + grant flag pin — corpus 가 "누가 권한받나"를 미검증하는 층). 커밋 corpus 17건(15 pass/lending + 2 error) green.
+
+**교훈**: 보강된 §3 surface-completeness gate + permission red-flag(Part A)가 이 누락을 1차에 잡았을 것. 권한 grant 는 Unknown 이 아니라 Tier 3(§4a override). ScopeBall 가장 핵심 함수가 manifest-only 가 아니라 schema 확장을 요구했다 — "쉬운 4개"만 집으면 정확히 그걸 놓친다.
+
+**후속(executable gate, 2026-05-31)**: "잡았을 것"은 산문 self-check 의존이라 약하다 → §3 규약 7 의 `npm run check:surface` 로 **기계 강제**. 사용자 진단("함수별 어댑터를 못 작성했으면 research logic 결함")이 정확 → research-completeness 를 trust 에서 build-enforced invariant 로 승격. **gate 가 만들면서 진짜 잔여 gap 도 드러냈다**: 이 §9.7 triage 표가 실제로 **setAuthorizationWithSig 를 누락**(16 나열 / Etherscan verified 17) — on-chain `setAuthorization` + off-chain `Authorization` 만 잡고 17번째 on-chain `setAuthorizationWithSig`(0x8069218f)는 명시 triage 안 됨. 독립 ABI snapshot 의 I1 이 강제 → 명시 결정(EXCLUDE: relayer-submit). 산문 triage 는 사람이 16 을 17 로 착각해도 통과하지만, snapshot diff 는 불가능. 상세 = `registryV2/surface/README.md` + `surface/morpho/morpho-blue.{abi,coverage}.json`.
+
+<!-- 출처: 사용자 설계 세션(V3-only/4-phase/3-tier/hybrid oracle/10k scale) + 코드 grounding(action_builder.rs·declarative_exports.rs·args_json.rs·dto.rs·oracle.rs·corpus.rs·v3_harness.rs·실제 manifest 5종·action/**·DEFECT_CATALOG.md) + §9 dogfood 실측(Morpho Blue 4함수 commit 760af8c + Full-8 보강: collateral 2 + SetAuthorization Tier 3 + off-chain Authorization). 2026-05-31. -->
