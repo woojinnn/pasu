@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsx scripts/build-index.ts",
+    "check:surface": "tsx scripts/check-surface-completeness.ts",
     "typecheck": "tsc --noEmit",
     "serve": "python3 -m http.server 8000"
   },
