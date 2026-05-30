@@ -515,6 +515,18 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             );
         }
 
+        // Aave WETHGateway-style wrappers carry the concrete Pool address as a
+        // top-level `pool` calldata argument. Existing manifests use
+        // `$resolved.pool` so live-input lookups and venue fields share one
+        // placeholder regardless of whether the call goes directly to Pool or
+        // through a gateway.
+        if let Some(pool) = args_json.get("pool").and_then(serde_json::Value::as_str) {
+            resolved.insert(
+                "pool".to_owned(),
+                serde_json::Value::String(pool.to_owned()),
+            );
+        }
+
         // Tier-B synthetic derivations the declarative grammar cannot express
         // (it can index/slice but not hash). Morpho Blue's `market_id` =
         // keccak(MarketParams); inject it as `$derived.morpho_market_id` so the

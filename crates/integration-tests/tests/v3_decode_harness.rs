@@ -282,6 +282,53 @@ fn permit2_invalidate_nonces_decodes_revoke_scope() {
     assert_eq!(token, format!("0x{TOKEN}"), "token mis-decoded");
 }
 
+/// Field-level golden for Aave V3 Gateway `withdrawETHWithPermit`.
+///
+/// The Gateway call carries the concrete Pool address as calldata arg `pool`.
+/// Existing Gateway manifests use `$resolved.pool`, so this pins both the new
+/// selector and the route-context injection that keeps the venue/live-input
+/// target equal to the calldata Pool instead of falling back to zero.
+#[test]
+fn aave_v3_withdraw_eth_with_permit_decodes_pool_and_recipient() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const GATEWAY: &str = "0xd01607c3c5ecaba394d8be377a08590149325722";
+    const POOL: &str = "87870bca3f3fd6335c3f4ce8392d69350b4fa4e2";
+    const RECIPIENT: &str = "1111111111111111111111111111111111111111";
+    const CALLDATA: &str = concat!(
+        "0xd4c40b6c",
+        "000000000000000000000000",
+        "87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+        "0000000000000000000000000000000000000000000000000000000000000005",
+        "000000000000000000000000",
+        "1111111111111111111111111111111111111111",
+        "0000000000000000000000000000000000000000000000000000000000000007",
+        "000000000000000000000000000000000000000000000000000000000000001b",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000"
+    );
+
+    let env = harness::route::route_calldata(1, GATEWAY, "0xd4c40b6c", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+
+    let venue =
+        find_object_with_string_field(&env, "name", "aave_v3").expect("Aave venue is present");
+    assert_eq!(
+        venue.get("pool").and_then(serde_json::Value::as_str),
+        Some(format!("0x{POOL}").as_str()),
+        "Gateway pool arg was not injected into $resolved.pool"
+    );
+    assert_eq!(
+        find_string_field(&env, "recipient"),
+        Some(format!("0x{RECIPIENT}")),
+        "withdraw recipient mis-decoded"
+    );
+}
+
 /// Field-level golden for Compound V3 Comet `allow`.
 ///
 /// Comet `allow(manager,isAllowed)` is account-wide manager authorization, so it

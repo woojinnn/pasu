@@ -1,0 +1,125 @@
+{
+  "matched": true,
+  "bundle_id": "aave/v3/withdrawETHWithPermit@1.0.0",
+  "manifest_path": "manifests/aave/v3/withdraw-eth-with-permit@1.0.0.json",
+  "bundle_sha256": "0xbf119974f6159e85482524c702a43847ab15781479872eb7fcff684c61244d88",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "aave/v3/withdrawETHWithPermit@1.0.0",
+    "publisher": "aave.eth",
+    "schema_version": "3",
+    "note": "Aave V3 WrappedTokenGateway.withdrawETHWithPermit — withdraw WETH collateral, unwrap to ETH, and consume an aToken permit in the same call. The permit fields authorize the gateway to pull aWETH but the user-facing lending intent remains WithdrawAction.",
+    "match": {
+      "selector": "0xd4c40b6c",
+      "chain_to_addresses": {
+        "1": [
+          "0xd01607c3c5ecaba394d8be377a08590149325722"
+        ],
+        "10": [
+          "0x5f2508cae9923b02316254026cd43d7902866725"
+        ],
+        "8453": [
+          "0xa0d9c1e9e48ca30c8d8c3b5d69ff5dc1f6dffc24"
+        ],
+        "42161": [
+          "0x5283beced7adf6d003225c13896e536f2d4264ff"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "withdrawETHWithPermit",
+      "abi": {
+        "name": "withdrawETHWithPermit",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "pool",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "name": "permitV",
+            "type": "uint8"
+          },
+          {
+            "name": "permitR",
+            "type": "bytes32"
+          },
+          {
+            "name": "permitS",
+            "type": "bytes32"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "withdraw",
+          "withdraw": {
+            "venue": {
+              "name": "aave_v3",
+              "chain": "$chain",
+              "pool": "$resolved.pool",
+              "market_id": null
+            },
+            "asset": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$resolved.weth"
+              }
+            },
+            "amount": "$args.amount",
+            "recipient": "$args.to"
+          }
+        }
+      },
+      "live_inputs": {
+        "reserve_state": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$resolved.pool",
+            "function": "getReserveData(address)",
+            "decoder_id": "aave_v3_reserve_data"
+          },
+          "ttl_s": 30
+        },
+        "available_to_withdraw": {
+          "source": {
+            "kind": "derived_from",
+            "inputs": [],
+            "calc_id": "aave_v3_available_to_withdraw"
+          },
+          "ttl_s": 30
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$resolved.pool",
+            "function": "getUserAccountData(address)",
+            "decoder_id": "aave_v3_user_account_data"
+          },
+          "ttl_s": 12
+        }
+      }
+    }
+  }
+}
