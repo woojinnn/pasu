@@ -9,6 +9,8 @@
 #![allow(rustdoc::broken_intra_doc_links)]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustdoc::redundant_explicit_links)]
+#![allow(unknown_lints)]
+#![allow(clippy::duration_suboptimal_units)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
 #![warn(rust_2018_idioms)]

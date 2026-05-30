@@ -11,6 +11,8 @@
 #![allow(rustdoc::broken_intra_doc_links)]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustdoc::redundant_explicit_links)]
+#![allow(unknown_lints)]
+#![allow(clippy::duration_suboptimal_units)]
 
 mod action_eval_exports;
 mod declarative_exports;

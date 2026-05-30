@@ -49,6 +49,8 @@
 #![allow(clippy::too_long_first_doc_paragraph)]
 #![allow(clippy::format_push_string)]
 #![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(unknown_lints)]
+#![allow(clippy::duration_suboptimal_units)]
 
 pub mod codec;
 pub mod error;

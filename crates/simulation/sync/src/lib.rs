@@ -97,6 +97,8 @@
 #![allow(clippy::needless_borrow)]
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::single_char_pattern)]
+#![allow(unknown_lints)]
+#![allow(clippy::duration_suboptimal_units)]
 
 pub mod action_scope;
 pub mod action_walk;

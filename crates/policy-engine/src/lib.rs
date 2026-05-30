@@ -46,6 +46,8 @@
 #![allow(clippy::items_after_statements)]
 #![allow(clippy::write_with_newline)]
 #![allow(clippy::format_push_string)]
+#![allow(unknown_lints)]
+#![allow(clippy::duration_suboptimal_units)]
 #![cfg_attr(not(test), warn(clippy::expect_used))]
 #![cfg_attr(not(test), warn(clippy::panic))]
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
