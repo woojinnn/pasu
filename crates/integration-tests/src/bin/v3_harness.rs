@@ -4,15 +4,19 @@
 //! surface — no browser, no WASM runtime, no RPC. Subcommands:
 //!
 //! ```text
-//! v3-harness fuzz     [--iterations N] [--seed S] [--json PATH]
+//! v3-harness fuzz       [--iterations N] [--seed S] [--json PATH]
 //! v3-harness coverage
-//! v3-harness replay   --callkey <chain>__<addr>__<selector> [--seed S]
+//! v3-harness replay     --callkey <chain>__<addr>__<selector> [--seed S]
+//! v3-harness corpus     [--root DIR]
+//! v3-harness import-dune|import-etherscan|import <export.json> [--chain N] [--out PATH]
 //! ```
 //!
 //! `fuzz` runs the all-strategy synthetic sweep and prints the report (optionally
 //! dumping the full JSON for CI). `coverage` prints the routable surface broken
 //! down by strategy + the categories deferred to corpus replay. `replay`
 //! reproduces a single `single_emit` case and prints the raw route envelope.
+//! `corpus` replays the committed real-tx corpus. `import-*` convert a Dune or
+//! Etherscan export into the corpus JSON format (parse-only, no network).
 
 use std::collections::BTreeMap;
 
@@ -32,7 +36,7 @@ fn main() {
         "coverage" => cmd_coverage(),
         "replay" => cmd_replay(&rest),
         "corpus" => cmd_corpus(&rest),
-        "import-dune" => cmd_import_dune(&rest),
+        "import-dune" | "import-etherscan" | "import" => cmd_import(&rest),
         "-h" | "--help" | "help" | "" => {
             usage();
             return;
@@ -57,7 +61,7 @@ fn usage() {
          v3-harness coverage\n  \
          v3-harness replay --callkey <chain>__<addr>__<selector> [--seed S]\n  \
          v3-harness corpus [--root DIR]\n  \
-         v3-harness import-dune <dune-export.json> [--chain N] [--out PATH]"
+         v3-harness import-dune|import-etherscan|import <export.json> [--chain N] [--out PATH]"
     );
 }
 
@@ -174,22 +178,32 @@ fn cmd_corpus(args: &[String]) -> Result<()> {
     Ok(())
 }
 
-/// Convert a Dune export (JSON: a bare array of rows, or `{result:{rows:[...]}}`,
-/// or `{rows:[...]}`) into the v3 corpus format on stdout (or `--out`). Maps the
-/// common Dune column names (`hash`/`tx_hash`, `to`/`to_address`/`contract_address`,
-/// `data`/`input`/`calldata`, `value`, `chain_id`). The result needs `expect`
-/// annotation by hand (defaulted to `"pass"`).
-fn cmd_import_dune(args: &[String]) -> Result<()> {
+/// Convert a **Dune or Etherscan** export into the v3 corpus format on stdout
+/// (or `--out`). Parse-only — no network. Accepts these JSON shapes:
+/// * bare array `[...]`
+/// * Dune: `{rows:[...]}` or `{result:{rows:[...]}}`
+/// * Etherscan `txlist`: `{status,message,result:[...]}`
+/// * Etherscan `eth_getTransactionByHash`: `{result:{...}}` (single tx)
+///
+/// Maps the column names shared by both sources (`hash`/`tx_hash`,
+/// `to`/`to_address`/`contract_address`, `data`/`input`/`calldata`, `value`,
+/// `chain_id`). The result needs `expect`/`expect_domain` annotation by hand
+/// (defaulted to `"pass"`). Backs the `import-dune`/`import-etherscan`/`import`
+/// subcommands (identical conversion — the source only differs in wrapper shape).
+fn cmd_import(args: &[String]) -> Result<()> {
     let path = args
         .iter()
         .find(|a| !a.starts_with("--") && a.ends_with(".json"))
-        .ok_or_else(|| anyhow!("usage: import-dune <dune-export.json> [--chain N] [--out PATH]"))?;
+        .ok_or_else(|| {
+            anyhow!("usage: import[-dune|-etherscan] <export.json> [--chain N] [--out PATH]")
+        })?;
     let default_chain = flag_u64(args, "--chain", 1)?;
     let raw = std::fs::read_to_string(path).with_context(|| format!("read {path}"))?;
-    let v: serde_json::Value = serde_json::from_str(&raw).context("parse dune export")?;
+    let v: serde_json::Value = serde_json::from_str(&raw).context("parse export")?;
     let rows = v
         .as_array()
         .cloned()
+        // Dune: {rows:[...]} / {result:{rows:[...]}}
         .or_else(|| v.get("rows").and_then(|r| r.as_array()).cloned())
         .or_else(|| {
             v.get("result")
@@ -197,8 +211,18 @@ fn cmd_import_dune(args: &[String]) -> Result<()> {
                 .and_then(|r| r.as_array())
                 .cloned()
         })
+        // Etherscan txlist: {status,message,result:[...]}
+        .or_else(|| v.get("result").and_then(|r| r.as_array()).cloned())
+        // Etherscan eth_getTransactionByHash: {result:{...}} (single tx)
+        .or_else(|| {
+            v.get("result")
+                .filter(|r| r.is_object())
+                .map(|o| vec![o.clone()])
+        })
         .ok_or_else(|| {
-            anyhow!("no rows array found (expected [...] / {{rows}} / {{result.rows}})")
+            anyhow!(
+                "no rows found (expected [...] / {{rows}} / {{result:[...]}} / {{result:{{...}}}})"
+            )
         })?;
 
     let pick = |row: &serde_json::Value, keys: &[&str]| -> Option<String> {
@@ -227,7 +251,7 @@ fn cmd_import_dune(args: &[String]) -> Result<()> {
         }));
     }
     let out = serde_json::to_string_pretty(&serde_json::json!({
-        "_comment": format!("imported from {path} via v3-harness import-dune — annotate `expect`/`expect_domain` before committing"),
+        "_comment": format!("imported from {path} via v3-harness import — annotate `expect`/`expect_domain` before committing"),
         "transactions": txs
     }))?;
     if let Some(p) = flag(args, "--out") {
