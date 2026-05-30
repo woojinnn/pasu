@@ -1,16 +1,16 @@
 {
   "matched": true,
-  "bundle_id": "hyperliquid/rest/spot-send@1.0.0",
-  "manifest_path": "manifests/hyperliquid/rest/spot-send@1.0.0.json",
-  "bundle_sha256": "0xc1fa936eaa461ad8f1bda840dfbeb876a9517dd100f60cd2edf426ded52eb6aa",
+  "bundle_id": "hyperliquid/rest/send-multi-sig@1.0.0",
+  "manifest_path": "manifests/hyperliquid/rest/send-multi-sig@1.0.0.json",
+  "bundle_sha256": "0x1fd338ab5798a328851832452667b16666a810b957b731c01ae7c9de0f85a445",
   "bundle": {
     "type": "adapter_action",
-    "id": "hyperliquid/rest/spot-send@1.0.0",
+    "id": "hyperliquid/rest/send-multi-sig@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SpotSend` — off-chain L1 spot transfer signed via eth_signTypedData_v4. `amount` decimal-string + `token`/`destination` L1-string identifiers cannot map to the 8-domain ActionBody without data loss → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SendMultiSig` — off-chain L1 submission of a multi-sig action (`multiSigActionHash` bytes32 wrapping an inner action), signed via eth_signTypedData_v4. A meta/wrapper action whose inner intent is opaque at the wrapper layer → best-effort `Unknown` (routing win; structured representation, incl. recursive decode of the inner action, = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
     "match": {
-      "selector": "0x00000002",
+      "selector": "0x0000000a",
       "chain_to_addresses": {
         "42161": [
           "0x0000000000000000000000000000000000000000"
@@ -22,27 +22,19 @@
       "typed_data": {
         "domain_name": "HyperliquidSignTransaction",
         "verifying_contract": "0x0000000000000000000000000000000000000000",
-        "primary_type": "HyperliquidTransaction:SpotSend",
+        "primary_type": "HyperliquidTransaction:SendMultiSig",
         "types": {
-          "HyperliquidTransaction:SpotSend": [
+          "HyperliquidTransaction:SendMultiSig": [
             {
               "name": "hyperliquidChain",
               "type": "string"
             },
             {
-              "name": "destination",
-              "type": "string"
+              "name": "multiSigActionHash",
+              "type": "bytes32"
             },
             {
-              "name": "token",
-              "type": "string"
-            },
-            {
-              "name": "amount",
-              "type": "string"
-            },
-            {
-              "name": "time",
+              "name": "nonce",
               "type": "uint64"
             }
           ]
@@ -50,13 +42,13 @@
       }
     },
     "abi_fragment": {
-      "function_name": "spotSend",
+      "function_name": "sendMultiSig",
       "abi": {
-        "name": "spotSend",
+        "name": "sendMultiSig",
         "type": "function",
         "inputs": [
           {
-            "name": "spotSend",
+            "name": "sendMultiSig",
             "type": "tuple",
             "components": [
               {
@@ -64,19 +56,11 @@
                 "type": "string"
               },
               {
-                "name": "destination",
-                "type": "string"
+                "name": "multiSigActionHash",
+                "type": "bytes32"
               },
               {
-                "name": "token",
-                "type": "string"
-              },
-              {
-                "name": "amount",
-                "type": "string"
-              },
-              {
-                "name": "time",
+                "name": "nonce",
                 "type": "uint64"
               }
             ]

@@ -1,16 +1,16 @@
 {
   "matched": true,
-  "bundle_id": "hyperliquid/rest/spot-send@1.0.0",
-  "manifest_path": "manifests/hyperliquid/rest/spot-send@1.0.0.json",
-  "bundle_sha256": "0xc1fa936eaa461ad8f1bda840dfbeb876a9517dd100f60cd2edf426ded52eb6aa",
+  "bundle_id": "hyperliquid/rest/convert-to-multi-sig-user@1.0.0",
+  "manifest_path": "manifests/hyperliquid/rest/convert-to-multi-sig-user@1.0.0.json",
+  "bundle_sha256": "0x98c340763ba9c1109138ca792fc47c2b2706012c37d5fd093e3edfce14024a29",
   "bundle": {
     "type": "adapter_action",
-    "id": "hyperliquid/rest/spot-send@1.0.0",
+    "id": "hyperliquid/rest/convert-to-multi-sig-user@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SpotSend` — off-chain L1 spot transfer signed via eth_signTypedData_v4. `amount` decimal-string + `token`/`destination` L1-string identifiers cannot map to the 8-domain ActionBody without data loss → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:ConvertToMultiSigUser` — off-chain L1 conversion of an account to a multi-sig user (`signers` L1 string payload), signed via eth_signTypedData_v4. An account-control action with no faithful 8-domain ActionBody mapping → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
     "match": {
-      "selector": "0x00000002",
+      "selector": "0x00000009",
       "chain_to_addresses": {
         "42161": [
           "0x0000000000000000000000000000000000000000"
@@ -22,27 +22,19 @@
       "typed_data": {
         "domain_name": "HyperliquidSignTransaction",
         "verifying_contract": "0x0000000000000000000000000000000000000000",
-        "primary_type": "HyperliquidTransaction:SpotSend",
+        "primary_type": "HyperliquidTransaction:ConvertToMultiSigUser",
         "types": {
-          "HyperliquidTransaction:SpotSend": [
+          "HyperliquidTransaction:ConvertToMultiSigUser": [
             {
               "name": "hyperliquidChain",
               "type": "string"
             },
             {
-              "name": "destination",
+              "name": "signers",
               "type": "string"
             },
             {
-              "name": "token",
-              "type": "string"
-            },
-            {
-              "name": "amount",
-              "type": "string"
-            },
-            {
-              "name": "time",
+              "name": "nonce",
               "type": "uint64"
             }
           ]
@@ -50,13 +42,13 @@
       }
     },
     "abi_fragment": {
-      "function_name": "spotSend",
+      "function_name": "convertToMultiSigUser",
       "abi": {
-        "name": "spotSend",
+        "name": "convertToMultiSigUser",
         "type": "function",
         "inputs": [
           {
-            "name": "spotSend",
+            "name": "convertToMultiSigUser",
             "type": "tuple",
             "components": [
               {
@@ -64,19 +56,11 @@
                 "type": "string"
               },
               {
-                "name": "destination",
+                "name": "signers",
                 "type": "string"
               },
               {
-                "name": "token",
-                "type": "string"
-              },
-              {
-                "name": "amount",
-                "type": "string"
-              },
-              {
-                "name": "time",
+                "name": "nonce",
                 "type": "uint64"
               }
             ]

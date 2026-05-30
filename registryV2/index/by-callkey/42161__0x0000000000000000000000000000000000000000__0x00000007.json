@@ -1,16 +1,16 @@
 {
   "matched": true,
-  "bundle_id": "hyperliquid/rest/spot-send@1.0.0",
-  "manifest_path": "manifests/hyperliquid/rest/spot-send@1.0.0.json",
-  "bundle_sha256": "0xc1fa936eaa461ad8f1bda840dfbeb876a9517dd100f60cd2edf426ded52eb6aa",
+  "bundle_id": "hyperliquid/rest/user-set-abstraction@1.0.0",
+  "manifest_path": "manifests/hyperliquid/rest/user-set-abstraction@1.0.0.json",
+  "bundle_sha256": "0x51d1fed2b626a4f9275c01a43b0957b2245aa9ccbba2a4aa1a6a3aced5641f14",
   "bundle": {
     "type": "adapter_action",
-    "id": "hyperliquid/rest/spot-send@1.0.0",
+    "id": "hyperliquid/rest/user-set-abstraction@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SpotSend` — off-chain L1 spot transfer signed via eth_signTypedData_v4. `amount` decimal-string + `token`/`destination` L1-string identifiers cannot map to the 8-domain ActionBody without data loss → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:UserSetAbstraction` — off-chain L1 set of an `abstraction` (L1 string) for a `user` address, signed via eth_signTypedData_v4. A configuration/permission action with no faithful 8-domain ActionBody mapping → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
     "match": {
-      "selector": "0x00000002",
+      "selector": "0x00000007",
       "chain_to_addresses": {
         "42161": [
           "0x0000000000000000000000000000000000000000"
@@ -22,27 +22,23 @@
       "typed_data": {
         "domain_name": "HyperliquidSignTransaction",
         "verifying_contract": "0x0000000000000000000000000000000000000000",
-        "primary_type": "HyperliquidTransaction:SpotSend",
+        "primary_type": "HyperliquidTransaction:UserSetAbstraction",
         "types": {
-          "HyperliquidTransaction:SpotSend": [
+          "HyperliquidTransaction:UserSetAbstraction": [
             {
               "name": "hyperliquidChain",
               "type": "string"
             },
             {
-              "name": "destination",
+              "name": "user",
+              "type": "address"
+            },
+            {
+              "name": "abstraction",
               "type": "string"
             },
             {
-              "name": "token",
-              "type": "string"
-            },
-            {
-              "name": "amount",
-              "type": "string"
-            },
-            {
-              "name": "time",
+              "name": "nonce",
               "type": "uint64"
             }
           ]
@@ -50,13 +46,13 @@
       }
     },
     "abi_fragment": {
-      "function_name": "spotSend",
+      "function_name": "userSetAbstraction",
       "abi": {
-        "name": "spotSend",
+        "name": "userSetAbstraction",
         "type": "function",
         "inputs": [
           {
-            "name": "spotSend",
+            "name": "userSetAbstraction",
             "type": "tuple",
             "components": [
               {
@@ -64,19 +60,15 @@
                 "type": "string"
               },
               {
-                "name": "destination",
+                "name": "user",
+                "type": "address"
+              },
+              {
+                "name": "abstraction",
                 "type": "string"
               },
               {
-                "name": "token",
-                "type": "string"
-              },
-              {
-                "name": "amount",
-                "type": "string"
-              },
-              {
-                "name": "time",
+                "name": "nonce",
                 "type": "uint64"
               }
             ]

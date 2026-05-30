@@ -1,16 +1,16 @@
 {
   "matched": true,
-  "bundle_id": "hyperliquid/rest/spot-send@1.0.0",
-  "manifest_path": "manifests/hyperliquid/rest/spot-send@1.0.0.json",
-  "bundle_sha256": "0xc1fa936eaa461ad8f1bda840dfbeb876a9517dd100f60cd2edf426ded52eb6aa",
+  "bundle_id": "hyperliquid/rest/token-delegate@1.0.0",
+  "manifest_path": "manifests/hyperliquid/rest/token-delegate@1.0.0.json",
+  "bundle_sha256": "0x831675ad4538113ad61a8428cca293268b96351b7b8c9a7b442eb0a2be75b3e4",
   "bundle": {
     "type": "adapter_action",
-    "id": "hyperliquid/rest/spot-send@1.0.0",
+    "id": "hyperliquid/rest/token-delegate@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SpotSend` — off-chain L1 spot transfer signed via eth_signTypedData_v4. `amount` decimal-string + `token`/`destination` L1-string identifiers cannot map to the 8-domain ActionBody without data loss → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:TokenDelegate` — off-chain L1 (un)delegation of HYPE stake (`wei` uint64, `isUndelegate` bool) to a `validator` address, signed via eth_signTypedData_v4. A staking/delegation action with no faithful 8-domain ActionBody mapping (no staking domain) → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
     "match": {
-      "selector": "0x00000002",
+      "selector": "0x00000008",
       "chain_to_addresses": {
         "42161": [
           "0x0000000000000000000000000000000000000000"
@@ -22,27 +22,27 @@
       "typed_data": {
         "domain_name": "HyperliquidSignTransaction",
         "verifying_contract": "0x0000000000000000000000000000000000000000",
-        "primary_type": "HyperliquidTransaction:SpotSend",
+        "primary_type": "HyperliquidTransaction:TokenDelegate",
         "types": {
-          "HyperliquidTransaction:SpotSend": [
+          "HyperliquidTransaction:TokenDelegate": [
             {
               "name": "hyperliquidChain",
               "type": "string"
             },
             {
-              "name": "destination",
-              "type": "string"
+              "name": "validator",
+              "type": "address"
             },
             {
-              "name": "token",
-              "type": "string"
+              "name": "wei",
+              "type": "uint64"
             },
             {
-              "name": "amount",
-              "type": "string"
+              "name": "isUndelegate",
+              "type": "bool"
             },
             {
-              "name": "time",
+              "name": "nonce",
               "type": "uint64"
             }
           ]
@@ -50,13 +50,13 @@
       }
     },
     "abi_fragment": {
-      "function_name": "spotSend",
+      "function_name": "tokenDelegate",
       "abi": {
-        "name": "spotSend",
+        "name": "tokenDelegate",
         "type": "function",
         "inputs": [
           {
-            "name": "spotSend",
+            "name": "tokenDelegate",
             "type": "tuple",
             "components": [
               {
@@ -64,19 +64,19 @@
                 "type": "string"
               },
               {
-                "name": "destination",
-                "type": "string"
+                "name": "validator",
+                "type": "address"
               },
               {
-                "name": "token",
-                "type": "string"
+                "name": "wei",
+                "type": "uint64"
               },
               {
-                "name": "amount",
-                "type": "string"
+                "name": "isUndelegate",
+                "type": "bool"
               },
               {
-                "name": "time",
+                "name": "nonce",
                 "type": "uint64"
               }
             ]

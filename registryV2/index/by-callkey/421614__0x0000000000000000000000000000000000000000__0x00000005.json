@@ -1,16 +1,16 @@
 {
   "matched": true,
-  "bundle_id": "hyperliquid/rest/usd-send@1.0.0",
-  "manifest_path": "manifests/hyperliquid/rest/usd-send@1.0.0.json",
-  "bundle_sha256": "0x2c686698372649c829bc257871a453595f6a364355bfdc62ade745d29ea6cea3",
+  "bundle_id": "hyperliquid/rest/send-asset@1.0.0",
+  "manifest_path": "manifests/hyperliquid/rest/send-asset@1.0.0.json",
+  "bundle_sha256": "0x24da37123068e8cd0631dbf440761c1194264f538b80577fd2415c809ae62e02",
   "bundle": {
     "type": "adapter_action",
-    "id": "hyperliquid/rest/usd-send@1.0.0",
+    "id": "hyperliquid/rest/send-asset@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B (UserSigned) REST exchange action `HyperliquidTransaction:UsdSend`, an OFF-CHAIN L1 action authorized by an eth_signTypedData_v4 signature (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0, chainId=signatureChainId). Its fields are L1 semantics — `amount` is a DECIMAL STRING ('100.0', not U256) and `destination` is an L1 identifier string — which the 8-domain ActionBody schema cannot faithfully represent. A token.erc20_transfer mapping would be a MISLABEL (amount->0, token->0x0 = data loss), so this routes to best-effort `Unknown`: the WIN is ROUTING (the user gets 'recognized: HyperLiquid UsdSend signature' instead of no_adapter); the STRUCTURED representation (destination/amount) requires a new off-chain-exchange ActionBody variant = deferred schema enhancement (B.3 key limitation, OUT OF SCOPE). target=0x0 sentinel (off-chain sign has no contract target); calldata='0x' (sigs have no calldata); value='0'.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SendAsset` — off-chain L1 cross-DEX asset transfer (sourceDex/destinationDex, token, fromSubAccount) signed via eth_signTypedData_v4. `amount` decimal-string + L1 `token`/`destination`/dex string identifiers have no faithful 8-domain ActionBody mapping → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
     "match": {
-      "selector": "0x00000001",
+      "selector": "0x00000005",
       "chain_to_addresses": {
         "42161": [
           "0x0000000000000000000000000000000000000000"
@@ -22,9 +22,9 @@
       "typed_data": {
         "domain_name": "HyperliquidSignTransaction",
         "verifying_contract": "0x0000000000000000000000000000000000000000",
-        "primary_type": "HyperliquidTransaction:UsdSend",
+        "primary_type": "HyperliquidTransaction:SendAsset",
         "types": {
-          "HyperliquidTransaction:UsdSend": [
+          "HyperliquidTransaction:SendAsset": [
             {
               "name": "hyperliquidChain",
               "type": "string"
@@ -34,11 +34,27 @@
               "type": "string"
             },
             {
+              "name": "sourceDex",
+              "type": "string"
+            },
+            {
+              "name": "destinationDex",
+              "type": "string"
+            },
+            {
+              "name": "token",
+              "type": "string"
+            },
+            {
               "name": "amount",
               "type": "string"
             },
             {
-              "name": "time",
+              "name": "fromSubAccount",
+              "type": "string"
+            },
+            {
+              "name": "nonce",
               "type": "uint64"
             }
           ]
@@ -46,13 +62,13 @@
       }
     },
     "abi_fragment": {
-      "function_name": "usdSend",
+      "function_name": "sendAsset",
       "abi": {
-        "name": "usdSend",
+        "name": "sendAsset",
         "type": "function",
         "inputs": [
           {
-            "name": "usdSend",
+            "name": "sendAsset",
             "type": "tuple",
             "components": [
               {
@@ -64,11 +80,27 @@
                 "type": "string"
               },
               {
+                "name": "sourceDex",
+                "type": "string"
+              },
+              {
+                "name": "destinationDex",
+                "type": "string"
+              },
+              {
+                "name": "token",
+                "type": "string"
+              },
+              {
                 "name": "amount",
                 "type": "string"
               },
               {
-                "name": "time",
+                "name": "fromSubAccount",
+                "type": "string"
+              },
+              {
+                "name": "nonce",
                 "type": "uint64"
               }
             ]

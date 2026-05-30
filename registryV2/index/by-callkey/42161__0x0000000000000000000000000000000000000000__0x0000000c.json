@@ -1,16 +1,16 @@
 {
   "matched": true,
-  "bundle_id": "hyperliquid/rest/spot-send@1.0.0",
-  "manifest_path": "manifests/hyperliquid/rest/spot-send@1.0.0.json",
-  "bundle_sha256": "0xc1fa936eaa461ad8f1bda840dfbeb876a9517dd100f60cd2edf426ded52eb6aa",
+  "bundle_id": "hyperliquid/rest/approve-builder-fee@1.0.0",
+  "manifest_path": "manifests/hyperliquid/rest/approve-builder-fee@1.0.0.json",
+  "bundle_sha256": "0xb474bcc452420a4b6ae19a796fff14f7df10310e3803e235f2085476f22a6452",
   "bundle": {
     "type": "adapter_action",
-    "id": "hyperliquid/rest/spot-send@1.0.0",
+    "id": "hyperliquid/rest/approve-builder-fee@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SpotSend` — off-chain L1 spot transfer signed via eth_signTypedData_v4. `amount` decimal-string + `token`/`destination` L1-string identifiers cannot map to the 8-domain ActionBody without data loss → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:ApproveBuilderFee` — off-chain L1 approval of a `maxFeeRate` (decimal-string percentage) payable to a `builder` address, signed via eth_signTypedData_v4. A fee-authorization action with no faithful 8-domain ActionBody mapping → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
     "match": {
-      "selector": "0x00000002",
+      "selector": "0x0000000c",
       "chain_to_addresses": {
         "42161": [
           "0x0000000000000000000000000000000000000000"
@@ -22,27 +22,23 @@
       "typed_data": {
         "domain_name": "HyperliquidSignTransaction",
         "verifying_contract": "0x0000000000000000000000000000000000000000",
-        "primary_type": "HyperliquidTransaction:SpotSend",
+        "primary_type": "HyperliquidTransaction:ApproveBuilderFee",
         "types": {
-          "HyperliquidTransaction:SpotSend": [
+          "HyperliquidTransaction:ApproveBuilderFee": [
             {
               "name": "hyperliquidChain",
               "type": "string"
             },
             {
-              "name": "destination",
+              "name": "maxFeeRate",
               "type": "string"
             },
             {
-              "name": "token",
-              "type": "string"
+              "name": "builder",
+              "type": "address"
             },
             {
-              "name": "amount",
-              "type": "string"
-            },
-            {
-              "name": "time",
+              "name": "nonce",
               "type": "uint64"
             }
           ]
@@ -50,13 +46,13 @@
       }
     },
     "abi_fragment": {
-      "function_name": "spotSend",
+      "function_name": "approveBuilderFee",
       "abi": {
-        "name": "spotSend",
+        "name": "approveBuilderFee",
         "type": "function",
         "inputs": [
           {
-            "name": "spotSend",
+            "name": "approveBuilderFee",
             "type": "tuple",
             "components": [
               {
@@ -64,19 +60,15 @@
                 "type": "string"
               },
               {
-                "name": "destination",
+                "name": "maxFeeRate",
                 "type": "string"
               },
               {
-                "name": "token",
-                "type": "string"
+                "name": "builder",
+                "type": "address"
               },
               {
-                "name": "amount",
-                "type": "string"
-              },
-              {
-                "name": "time",
+                "name": "nonce",
                 "type": "uint64"
               }
             ]

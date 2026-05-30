@@ -1,16 +1,16 @@
 {
   "matched": true,
-  "bundle_id": "hyperliquid/rest/spot-send@1.0.0",
-  "manifest_path": "manifests/hyperliquid/rest/spot-send@1.0.0.json",
-  "bundle_sha256": "0xc1fa936eaa461ad8f1bda840dfbeb876a9517dd100f60cd2edf426ded52eb6aa",
+  "bundle_id": "hyperliquid/rest/usd-class-transfer@1.0.0",
+  "manifest_path": "manifests/hyperliquid/rest/usd-class-transfer@1.0.0.json",
+  "bundle_sha256": "0xff4b8caa32139f65d09890fca3677f2d99c7bb8e524143a91c848abe0dd0b71a",
   "bundle": {
     "type": "adapter_action",
-    "id": "hyperliquid/rest/spot-send@1.0.0",
+    "id": "hyperliquid/rest/usd-class-transfer@1.0.0",
     "publisher": "hyperliquid",
     "schema_version": "3",
-    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SpotSend` — off-chain L1 spot transfer signed via eth_signTypedData_v4. `amount` decimal-string + `token`/`destination` L1-string identifiers cannot map to the 8-domain ActionBody without data loss → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+    "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:UsdClassTransfer` — off-chain L1 transfer of USDC between the perp and spot wallets (`toPerp` bool) signed via eth_signTypedData_v4. `amount` decimal-string + the perp/spot class concept have no faithful 8-domain ActionBody mapping → best-effort `Unknown` (routing win; structured representation = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
     "match": {
-      "selector": "0x00000002",
+      "selector": "0x00000004",
       "chain_to_addresses": {
         "42161": [
           "0x0000000000000000000000000000000000000000"
@@ -22,19 +22,11 @@
       "typed_data": {
         "domain_name": "HyperliquidSignTransaction",
         "verifying_contract": "0x0000000000000000000000000000000000000000",
-        "primary_type": "HyperliquidTransaction:SpotSend",
+        "primary_type": "HyperliquidTransaction:UsdClassTransfer",
         "types": {
-          "HyperliquidTransaction:SpotSend": [
+          "HyperliquidTransaction:UsdClassTransfer": [
             {
               "name": "hyperliquidChain",
-              "type": "string"
-            },
-            {
-              "name": "destination",
-              "type": "string"
-            },
-            {
-              "name": "token",
               "type": "string"
             },
             {
@@ -42,7 +34,11 @@
               "type": "string"
             },
             {
-              "name": "time",
+              "name": "toPerp",
+              "type": "bool"
+            },
+            {
+              "name": "nonce",
               "type": "uint64"
             }
           ]
@@ -50,13 +46,13 @@
       }
     },
     "abi_fragment": {
-      "function_name": "spotSend",
+      "function_name": "usdClassTransfer",
       "abi": {
-        "name": "spotSend",
+        "name": "usdClassTransfer",
         "type": "function",
         "inputs": [
           {
-            "name": "spotSend",
+            "name": "usdClassTransfer",
             "type": "tuple",
             "components": [
               {
@@ -64,19 +60,15 @@
                 "type": "string"
               },
               {
-                "name": "destination",
-                "type": "string"
-              },
-              {
-                "name": "token",
-                "type": "string"
-              },
-              {
                 "name": "amount",
                 "type": "string"
               },
               {
-                "name": "time",
+                "name": "toPerp",
+                "type": "bool"
+              },
+              {
+                "name": "nonce",
                 "type": "uint64"
               }
             ]

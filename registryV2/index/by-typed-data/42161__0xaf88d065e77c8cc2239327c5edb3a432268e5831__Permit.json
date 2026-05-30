@@ -1,0 +1,128 @@
+{
+  "matched": true,
+  "bundle_id": "hyperliquid/bridge2/usdc-permit@1.0.0",
+  "manifest_path": "manifests/hyperliquid/bridge2/usdc-permit@1.0.0.json",
+  "bundle_sha256": "0x348d5fd4b874ff243c444495e705b71e5e73e2229fdb3d503a89707692a1f5c8",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "hyperliquid/bridge2/usdc-permit@1.0.0",
+    "publisher": "hyperliquid",
+    "schema_version": "3",
+    "_note": "USDC EIP-2612 Permit (Arbitrum mainnet, USDC 0xaf88d065e77c8cC2239327C5EDb3A432268e5831, domain.name 'USD Coin'). FLAT wrap-rule case: after filtering the signature-machinery params (owner/v/r/s) the abi payload still has multiple scalars (spender/value/deadline), so the typed-data WRAP RULE leaves args_json FLAT -> $args.<field> resolve against the message directly. This is a GENERIC USDC permit: the signature grants a USDC allowance to `spender`; in the HyperLiquid flow the spender is Bridge2 and the permit is later consumed by batchedDepositWithPermit, but the signed permit itself is contextual (it is a USDC allowance, not a Bridge2-specific action). verifying_contract == the chain_to_addresses entry as required by build-index validation.",
+    "match": {
+      "selector": "0xd505accf",
+      "chain_to_addresses": {
+        "42161": [
+          "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+        ]
+      },
+      "typed_data": {
+        "domain_name": "USD Coin",
+        "verifying_contract": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "primary_type": "Permit",
+        "types": {
+          "Permit": [
+            {
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "name": "spender",
+              "type": "address"
+            },
+            {
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "name": "deadline",
+              "type": "uint256"
+            }
+          ]
+        }
+      }
+    },
+    "abi_fragment": {
+      "function_name": "permit",
+      "abi": {
+        "name": "permit",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "token",
+        "token": {
+          "action": "erc20_permit",
+          "erc20_permit": {
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$tx.to"
+              }
+            },
+            "spender": "$args.spender",
+            "amount": "$args.value",
+            "deadline": "$args.deadline"
+          }
+        }
+      },
+      "live_inputs": {
+        "nonce": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+            "function": "nonces(address)",
+            "decoder_id": "erc20_permit_nonce"
+          },
+          "ttl_s": 12
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

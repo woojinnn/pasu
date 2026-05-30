@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/universal-router/execute-v2@1.0.0",
   "manifest_path": "manifests/uniswap/universal-router/execute-v2@1.0.0.json",
-  "bundle_sha256": "0xd6631f105f16a5ea2f4fc1c8f931252d7cabb6a198a395410f4dbd98b735b9f4",
+  "bundle_sha256": "0x94a33edaa967790fa31c38d50f9d0f336813c02e0ffea0acab000908789efcd9",
   "bundle": {
     "type": "adapter_action",
     "id": "uniswap/universal-router/execute-v2@1.0.0",
@@ -653,23 +653,42 @@
                       "live_inputs": {
                         "route": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "onchain_view",
+                            "chain": "$chain",
+                            "contract": "$resolved.pool_manager",
+                            "function": "getSlot0(bytes32)",
+                            "decoder_id": "uniswap_v4_slot0"
+                          },
+                          "ttl_s": 12
                         },
                         "expected_amount_out": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "venue_api",
+                            "endpoint": "https://api.uniswap.org/v2/quote",
+                            "parser_id": "uniswapx_quote"
+                          },
+                          "ttl_s": 6
                         },
                         "price_impact_bp": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "derived_from",
+                            "inputs": [
+                              {
+                                "scope": "global",
+                                "name": "uniswap_v4_pool_state"
+                              }
+                            ],
+                            "calc_id": "uniswap_v3_price_impact_bp"
+                          },
+                          "ttl_s": 12
                         },
                         "gas_estimate": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "oracle_feed",
+                            "provider": "pyth",
+                            "feed_id": "gas/ethereum"
+                          },
+                          "ttl_s": 6
                         }
                       }
                     }
@@ -717,23 +736,42 @@
                       "live_inputs": {
                         "route": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "onchain_view",
+                            "chain": "$chain",
+                            "contract": "$resolved.pool_manager",
+                            "function": "getSlot0(bytes32)",
+                            "decoder_id": "uniswap_v4_slot0"
+                          },
+                          "ttl_s": 12
                         },
                         "expected_amount_out": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "venue_api",
+                            "endpoint": "https://api.uniswap.org/v2/quote",
+                            "parser_id": "uniswapx_quote"
+                          },
+                          "ttl_s": 6
                         },
                         "price_impact_bp": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "derived_from",
+                            "inputs": [
+                              {
+                                "scope": "global",
+                                "name": "uniswap_v4_pool_state"
+                              }
+                            ],
+                            "calc_id": "uniswap_v3_price_impact_bp"
+                          },
+                          "ttl_s": 12
                         },
                         "gas_estimate": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "oracle_feed",
+                            "provider": "pyth",
+                            "feed_id": "gas/ethereum"
+                          },
+                          "ttl_s": 6
                         }
                       }
                     }
@@ -782,23 +820,42 @@
                       "live_inputs": {
                         "route": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "onchain_view",
+                            "chain": "$chain",
+                            "contract": "$resolved.pool_manager",
+                            "function": "getSlot0(bytes32)",
+                            "decoder_id": "uniswap_v4_slot0"
+                          },
+                          "ttl_s": 12
                         },
                         "expected_amount_out": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "venue_api",
+                            "endpoint": "https://api.uniswap.org/v2/quote",
+                            "parser_id": "uniswapx_quote"
+                          },
+                          "ttl_s": 6
                         },
                         "price_impact_bp": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "derived_from",
+                            "inputs": [
+                              {
+                                "scope": "global",
+                                "name": "uniswap_v4_pool_state"
+                              }
+                            ],
+                            "calc_id": "uniswap_v3_price_impact_bp"
+                          },
+                          "ttl_s": 12
                         },
                         "gas_estimate": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "oracle_feed",
+                            "provider": "pyth",
+                            "feed_id": "gas/ethereum"
+                          },
+                          "ttl_s": 6
                         }
                       }
                     }
@@ -845,23 +902,42 @@
                       "live_inputs": {
                         "route": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "onchain_view",
+                            "chain": "$chain",
+                            "contract": "$resolved.pool_manager",
+                            "function": "getSlot0(bytes32)",
+                            "decoder_id": "uniswap_v4_slot0"
+                          },
+                          "ttl_s": 12
                         },
                         "expected_amount_out": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "venue_api",
+                            "endpoint": "https://api.uniswap.org/v2/quote",
+                            "parser_id": "uniswapx_quote"
+                          },
+                          "ttl_s": 6
                         },
                         "price_impact_bp": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "derived_from",
+                            "inputs": [
+                              {
+                                "scope": "global",
+                                "name": "uniswap_v4_pool_state"
+                              }
+                            ],
+                            "calc_id": "uniswap_v3_price_impact_bp"
+                          },
+                          "ttl_s": 12
                         },
                         "gas_estimate": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "oracle_feed",
+                            "provider": "pyth",
+                            "feed_id": "gas/ethereum"
+                          },
+                          "ttl_s": 6
                         }
                       }
                     }
@@ -965,23 +1041,42 @@
                       "live_inputs": {
                         "route": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "onchain_view",
+                            "chain": "$chain",
+                            "contract": "$resolved.pool",
+                            "function": "slot0()",
+                            "decoder_id": "uniswap_v3_slot0"
+                          },
+                          "ttl_s": 12
                         },
                         "expected_amount_out": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "venue_api",
+                            "endpoint": "https://api.uniswap.org/v2/quote",
+                            "parser_id": "uniswapx_quote"
+                          },
+                          "ttl_s": 6
                         },
                         "price_impact_bp": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "derived_from",
+                            "inputs": [
+                              {
+                                "scope": "global",
+                                "name": "uniswap_v3_pool_state"
+                              }
+                            ],
+                            "calc_id": "uniswap_v3_price_impact_bp"
+                          },
+                          "ttl_s": 12
                         },
                         "gas_estimate": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "oracle_feed",
+                            "provider": "pyth",
+                            "feed_id": "gas/ethereum"
+                          },
+                          "ttl_s": 6
                         }
                       }
                     }
@@ -1027,23 +1122,47 @@
                       "live_inputs": {
                         "route": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "onchain_view",
+                            "chain": "$chain",
+                            "contract": "$resolved.pool",
+                            "function": "getReserves()",
+                            "decoder_id": "uniswap_v2_get_reserves"
+                          },
+                          "ttl_s": 12
                         },
                         "expected_amount_out": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "derived_from",
+                            "inputs": [
+                              {
+                                "scope": "global",
+                                "name": "uniswap_v2_pool_state"
+                              }
+                            ],
+                            "calc_id": "uniswap_v2_price_impact_bp"
+                          },
+                          "ttl_s": 12
                         },
                         "price_impact_bp": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "derived_from",
+                            "inputs": [
+                              {
+                                "scope": "global",
+                                "name": "uniswap_v2_pool_state"
+                              }
+                            ],
+                            "calc_id": "uniswap_v2_price_impact_bp"
+                          },
+                          "ttl_s": 12
                         },
                         "gas_estimate": {
                           "source": {
-                            "kind": "user_supplied"
-                          }
+                            "kind": "oracle_feed",
+                            "provider": "pyth",
+                            "feed_id": "gas/ethereum"
+                          },
+                          "ttl_s": 6
                         }
                       }
                     }
