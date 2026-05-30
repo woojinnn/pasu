@@ -170,6 +170,6 @@ describe("XHR venue-order hook mechanics", () => {
       ORDER_BODY,
     );
     expect(out).toHaveLength(1);
-    expect(out![0].order.b).toBe(false);
+    expect(out![0].hlAction).toMatchObject({ kind: "order", order: { b: false } });
   });
 });

@@ -36,7 +36,7 @@ export function generateRequestId(data: MessageData): string {
       return objectHash({
         venue: data.venue,
         endpoint: data.endpoint,
-        order: data.order,
+        hlAction: data.hlAction,
       });
     case "raw-transaction-advisory":
       return objectHash({

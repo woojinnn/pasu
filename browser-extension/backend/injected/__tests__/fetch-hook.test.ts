@@ -32,7 +32,7 @@ describe("parseHyperliquidExchangeOrders", () => {
       venue: "hyperliquid",
       endpoint: ENDPOINT,
       hostname: HOST,
-      order: { a: 0, b: false, p: "60000", s: "0.1", r: false },
+      hlAction: { kind: "order", order: { a: 0, b: false, p: "60000", s: "0.1", r: false } },
     });
   });
 
@@ -48,11 +48,30 @@ describe("parseHyperliquidExchangeOrders", () => {
       },
     });
     expect(out).toHaveLength(2);
-    expect(out![1].order.r).toBe(true);
+    expect(out![1].hlAction).toMatchObject({ kind: "order", order: { r: true } });
   });
 
-  it("returns null for non-order actions (cancel / info / leverage)", () => {
+  it("parses the v1 fund-movement / leverage action subset (D4)", () => {
+    expect(
+      parse({ action: { type: "updateLeverage", asset: 0, isCross: true, leverage: 10 } })![0]
+        .hlAction,
+    ).toEqual({ kind: "update_leverage", assetIndex: 0, isCross: true, leverage: 10 });
+    expect(
+      parse({ action: { type: "withdraw3", destination: "0xabc", amount: "5" } })![0].hlAction,
+    ).toEqual({ kind: "withdraw", destination: "0xabc", amount: "5" });
+    expect(
+      parse({ action: { type: "usdSend", destination: "0xdef", amount: "9" } })![0].hlAction,
+    ).toEqual({ kind: "usd_send", destination: "0xdef", amount: "9" });
+    expect(
+      parse({ action: { type: "approveAgent", agentAddress: "0x123", agentName: "bot" } })![0]
+        .hlAction,
+    ).toEqual({ kind: "approve_agent", agentAddress: "0x123", agentName: "bot" });
+  });
+
+  it("returns null for out-of-scope or malformed actions", () => {
     expect(parse({ action: { type: "cancel", cancels: [] } })).toBeNull();
+    expect(parse({ action: { type: "batchModify", modifies: [] } })).toBeNull();
+    // updateLeverage missing the required isCross flag → not parseable.
     expect(parse({ action: { type: "updateLeverage", asset: 0, leverage: 10 } })).toBeNull();
     expect(parse({ type: "meta" })).toBeNull();
     expect(parse("not json")).toBeNull();
@@ -71,7 +90,7 @@ describe("parseHyperliquidExchangeOrders", () => {
       },
     });
     expect(out).toHaveLength(1);
-    expect(out![0].order.a).toBe(3);
+    expect(out![0].hlAction).toMatchObject({ kind: "order", order: { a: 3 } });
   });
 
   it("returns null when all legs are malformed", () => {

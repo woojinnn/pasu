@@ -1,14 +1,20 @@
 /**
  * Pure parser: a Hyperliquid `/exchange` POST body → one
- * {@link VenueOrderPayload} per order leg.
+ * {@link VenueOrderPayload} per guarded CORE action.
  *
  * Kept in its own module (no DOM / `@metamask/post-message-stream` imports) so
  * it is trivially unit-testable and so importing it never triggers the
  * MAIN-world `fetch` install side effect in `fetch-hook.ts`.
+ *
+ * v1 guards the high-risk subset — `order`, `updateLeverage`, and the three
+ * fund-movement / delegation actions (`withdraw3`, `usdSend`, `approveAgent`).
+ * Every other action type (cancel, batchModify, info, …) returns `null` and is
+ * passed through untouched.
  */
 import {
   RequestType,
   type HyperliquidOrderWire,
+  type VenueActionWire,
   type VenueOrderPayload,
 } from "@lib/types";
 
@@ -33,11 +39,71 @@ export function matchVenue(url: string): string | undefined {
   return VENUE_MATCHERS.find((m) => m.test(url))?.venue;
 }
 
+/** Coerce an unknown to a plain object, or `undefined`. */
+function asObject(v: unknown): Record<string, unknown> | undefined {
+  return v && typeof v === "object" && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : undefined;
+}
+
+/** Wrap one parsed CORE action in a `VenueOrderPayload` envelope. */
+function envelope(
+  venue: string,
+  endpoint: string,
+  hostname: string,
+  hlAction: VenueActionWire,
+): VenueOrderPayload {
+  return {
+    type: RequestType.VENUE_ORDER,
+    chainId: 0,
+    hostname,
+    venue,
+    endpoint,
+    hlAction,
+    // `symbol` is resolved SW-side from the venue meta cache (the wire only has
+    // the numeric index); omitted here.
+  };
+}
+
+/** Parse the `orders[]` of a `{"type":"order"}` action — one payload per leg. */
+function parseOrders(
+  venue: string,
+  endpoint: string,
+  hostname: string,
+  action: Record<string, unknown>,
+): VenueOrderPayload[] | null {
+  const orders = action.orders;
+  if (!Array.isArray(orders) || orders.length === 0) return null;
+
+  const payloads: VenueOrderPayload[] = [];
+  for (const o of orders) {
+    const order = asObject(o);
+    // An order-wire entry must at least carry the numeric asset index `a` and
+    // the boolean side `b`; anything else is not an order leg.
+    if (!order || typeof order.a !== "number" || typeof order.b !== "boolean") {
+      continue;
+    }
+    const wire: HyperliquidOrderWire = {
+      a: order.a,
+      b: order.b,
+      p: String(order.p ?? ""),
+      s: String(order.s ?? ""),
+      r: typeof order.r === "boolean" ? order.r : false,
+      t: order.t,
+    };
+    if (typeof order.c === "string") wire.c = order.c;
+    payloads.push(envelope(venue, endpoint, hostname, { kind: "order", order: wire }));
+  }
+  return payloads.length > 0 ? payloads : null;
+}
+
 /**
  * Parse a Hyperliquid `/exchange` POST body into one {@link VenueOrderPayload}
- * per order. Returns `null` when the body is not a recognizable `order` action
- * (info calls, cancels, leverage updates, …) — those are out of scope and must
- * pass through untouched.
+ * per guarded CORE action. Returns `null` when the body is not one of the
+ * guarded action types — those are out of scope and pass through untouched.
+ *
+ * (Name kept for import stability; it now parses the full v1 action subset, not
+ * just orders.)
  */
 export function parseHyperliquidExchangeOrders(
   venue: string,
@@ -53,43 +119,70 @@ export function parseHyperliquidExchangeOrders(
       return null;
     }
   }
-  if (!body || typeof body !== "object") return null;
+  const root = asObject(body);
+  if (!root) return null;
 
-  const action = (body as { action?: unknown }).action;
-  if (!action || typeof action !== "object") return null;
-  if ((action as { type?: unknown }).type !== "order") return null;
+  const action = asObject(root.action);
+  if (!action || typeof action.type !== "string") return null;
 
-  const orders = (action as { orders?: unknown }).orders;
-  if (!Array.isArray(orders) || orders.length === 0) return null;
+  const one = (a: VenueActionWire): VenueOrderPayload[] => [
+    envelope(venue, endpoint, hostname, a),
+  ];
 
-  const payloads: VenueOrderPayload[] = [];
-  for (const o of orders) {
-    if (!o || typeof o !== "object") continue;
-    const order = o as Record<string, unknown>;
-    // An order-wire entry must at least carry the numeric asset index `a` and
-    // the boolean side `b`; anything else is not an order leg.
-    if (typeof order.a !== "number" || typeof order.b !== "boolean") continue;
-    const wire: HyperliquidOrderWire = {
-      a: order.a,
-      b: order.b,
-      p: String(order.p ?? ""),
-      s: String(order.s ?? ""),
-      r: typeof order.r === "boolean" ? order.r : false,
-      t: order.t,
-    };
-    // Only set the optional `c` (cloid) when present — keeps the payload clean
-    // under `exactOptionalPropertyTypes`.
-    if (typeof order.c === "string") wire.c = order.c;
-    payloads.push({
-      type: RequestType.VENUE_ORDER,
-      chainId: 0,
-      hostname,
-      venue,
-      endpoint,
-      order: wire,
-      // symbol is resolved SW-side from the venue meta cache (the wire only has
-      // the numeric index `a`); omitted here.
-    });
+  switch (action.type) {
+    case "order":
+      return parseOrders(venue, endpoint, hostname, action);
+
+    case "updateLeverage": {
+      if (
+        typeof action.asset !== "number" ||
+        typeof action.isCross !== "boolean" ||
+        typeof action.leverage !== "number"
+      ) {
+        return null;
+      }
+      return one({
+        kind: "update_leverage",
+        assetIndex: action.asset,
+        isCross: action.isCross,
+        leverage: action.leverage,
+      });
+    }
+
+    case "withdraw3": {
+      if (typeof action.destination !== "string" || action.amount === undefined) {
+        return null;
+      }
+      return one({
+        kind: "withdraw",
+        destination: action.destination,
+        amount: String(action.amount),
+      });
+    }
+
+    case "usdSend": {
+      if (typeof action.destination !== "string" || action.amount === undefined) {
+        return null;
+      }
+      return one({
+        kind: "usd_send",
+        destination: action.destination,
+        amount: String(action.amount),
+      });
+    }
+
+    case "approveAgent": {
+      if (typeof action.agentAddress !== "string") return null;
+      const a: VenueActionWire = {
+        kind: "approve_agent",
+        agentAddress: action.agentAddress,
+      };
+      if (typeof action.agentName === "string") a.agentName = action.agentName;
+      return one(a);
+    }
+
+    default:
+      // Out of scope (cancel / batchModify / info / …) — pass through.
+      return null;
   }
-  return payloads.length > 0 ? payloads : null;
 }

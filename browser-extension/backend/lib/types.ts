@@ -59,9 +59,32 @@ export interface HyperliquidOrderWire {
 }
 
 /**
- * An off-chain venue order intercepted from a network POST. Carries the parsed
- * order intent plus the resolved asset `symbol` (the wire only has the numeric
- * index `a`; the fetch hook / SW resolves it from a `meta` cache).
+ * One parsed Hyperliquid CORE action, discriminated by `kind`. Mirrors the
+ * v1 high-risk subset the engine's `ActionBody::HyperliquidCore` variant models
+ * (an order leg, a leverage change, and the three fund-movement / delegation
+ * actions). The SW converter (`hl-order-to-action.ts`) maps each variant to the
+ * matching `ActionBody` JSON.
+ */
+export type VenueActionWire =
+  | { kind: "order"; order: HyperliquidOrderWire }
+  | {
+      kind: "update_leverage";
+      /** Asset index (`asset`). */
+      assetIndex: number;
+      /** `isCross` — cross vs isolated margin. */
+      isCross: boolean;
+      /** New leverage multiplier. */
+      leverage: number;
+    }
+  | { kind: "withdraw"; destination: string; amount: string }
+  | { kind: "usd_send"; destination: string; amount: string }
+  | { kind: "approve_agent"; agentAddress: string; agentName?: string };
+
+/**
+ * An off-chain venue action intercepted from a network POST. Carries one parsed
+ * Hyperliquid CORE action plus, for market actions, the resolved asset `symbol`
+ * (the order wire only has the numeric index; the SW resolves it from a `meta`
+ * cache).
  */
 export interface VenueOrderPayload {
   type: RequestType.VENUE_ORDER;
@@ -73,8 +96,8 @@ export interface VenueOrderPayload {
   venue: string;
   /** The intercepted endpoint URL (the `/exchange` POST target). */
   endpoint: string;
-  /** The parsed order-wire entry. */
-  order: HyperliquidOrderWire;
+  /** The parsed CORE action. */
+  hlAction: VenueActionWire;
   /** Resolved asset symbol (e.g. `"BTC-USD"`); `undefined` until meta resolves. */
   symbol?: string;
 }

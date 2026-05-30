@@ -1,34 +1,32 @@
 /**
- * Hyperliquid `/exchange` order-wire → v2 `ActionBody` + `ActionMeta`.
+ * Hyperliquid `/exchange` CORE action → v2 `ActionBody` + `ActionMeta`.
  *
- * The fetch hook intercepts the `/exchange` POST and hands the parsed order to
+ * The fetch hook intercepts the `/exchange` POST and hands each parsed action to
  * the service worker as a {@link VenueOrderPayload}. This converter turns that
  * into the exact JSON the v2 policy entry point (`evaluate_action_v2_json`)
- * deserializes — an `ActionBody::Perp(PlaceLimitOrder)` plus an off-chain-sig
+ * deserializes — an `ActionBody::HyperliquidCore(...)` plus an off-chain-sig
  * `ActionMeta`.
  *
- * The emitted shape is byte-pinned to the Rust serde output (see
- * `crates/policy-engine-wasm/tests/hl_exchange_deny_e2e.rs`, which builds the
- * same body from the real structs). `hl-order-to-action.test.ts` asserts this
- * converter reproduces that canonical JSON exactly, so a serde drift on either
- * side fails a test rather than silently mis-deserializing at runtime.
+ * The emitted shape is byte-pinned to the Rust serde output: `ActionBody` is
+ * doubly internally-tagged, so each body is `{ domain: "hyperliquid_core",
+ * action: "hl_*", ...fields }`. `hl-order-to-action.test.ts` asserts this
+ * converter reproduces the canonical JSON, and
+ * `crates/policy-engine-wasm/tests/hl_exchange_deny_e2e.rs` feeds the same shape
+ * through the real WASM entry point — so a serde drift on either side fails a
+ * test rather than silently mis-deserializing at runtime.
  *
- * Notes / current limits (intentional for the PoC, tracked separately):
- *   - `size` carries only the integer part of the decimal `s` (the deny
- *     conditions read side/venue/symbol, not size); precise base-unit scaling
- *     is a converter refinement.
- *   - `symbol` must be resolved from the venue `meta` cache (the wire only has
- *     the numeric index `a`); absent a resolution we fall back to `ASSET-<a>`.
- *   - only the `{ limit: { tif } }` order type is mapped; `trigger` orders fall
- *     back to GTC for the limit-order body.
+ * No live data is fetched: prices / sizes / amounts pass through as decimal
+ * strings verbatim (fractional-safe — the engine models them as `Decimal`, not
+ * `U256`), and the asset symbol is left for the Rust lowering to resolve (it
+ * falls back to `ASSET-<index>` when unresolved).
  */
 
-import type { VenueOrderPayload } from "@lib/types";
+import type { VenueActionWire, VenueOrderPayload } from "@lib/types";
 
 /** The off-chain venue chain id used for Hyperliquid in the v2 model. */
 export const HL_CHAIN_ID = "hl-mainnet";
 
-/** `tx.to` sentinel — Hyperliquid orders have no on-chain settlement address. */
+/** `tx.to` sentinel — Hyperliquid CORE actions have no on-chain settlement address. */
 export const HL_TO_SENTINEL = "0x0000000000000000000000000000000000000000";
 
 /** Result of {@link hlOrderToAction}: the two JSON inputs the v2 path needs. */
@@ -37,25 +35,74 @@ export interface HlActionInput {
   meta: Record<string, unknown>;
 }
 
-function userSuppliedLive(value: unknown): Record<string, unknown> {
-  return { value, source: { kind: "user_supplied" }, synced_at: 0 };
-}
-
-/** Integer part of a decimal string, as a base-10 string (`"0.1"` → `"0"`). */
-function integerPart(decimal: string): string {
-  const whole = decimal.split(".")[0]?.trim() ?? "0";
-  return /^\d+$/.test(whole) ? whole : "0";
-}
-
-function timeInForceFromWire(t: unknown): Record<string, unknown> {
-  const tif = (t as { limit?: { tif?: string } })?.limit?.tif;
+/** Normalize a Hyperliquid order-type object's tif to the engine's spelling. */
+function tifFromWire(t: unknown): string {
+  const tif = (t as { limit?: { tif?: string } } | undefined)?.limit?.tif;
   switch (tif) {
     case "Ioc":
-      return { kind: "ioc" };
+      return "ioc";
     case "Alo": // Add-Liquidity-Only == post-only
-      return { kind: "post_only" };
+      return "post_only";
     default:
-      return { kind: "gtc" };
+      return "gtc";
+  }
+}
+
+/** Build the `ActionBody::HyperliquidCore` JSON for one parsed CORE action. */
+function actionBody(
+  a: VenueActionWire,
+  symbol: string | undefined,
+): Record<string, unknown> {
+  switch (a.kind) {
+    case "order": {
+      const o = a.order;
+      const body: Record<string, unknown> = {
+        domain: "hyperliquid_core",
+        action: "hl_order",
+        asset_index: o.a,
+        is_buy: o.b,
+        price: String(o.p),
+        size: String(o.s),
+        reduce_only: o.r ?? false,
+        tif: tifFromWire(o.t),
+      };
+      if (symbol !== undefined) body.symbol = symbol;
+      return body;
+    }
+    case "update_leverage": {
+      const body: Record<string, unknown> = {
+        domain: "hyperliquid_core",
+        action: "hl_update_leverage",
+        asset_index: a.assetIndex,
+        is_cross: a.isCross,
+        leverage: a.leverage,
+      };
+      if (symbol !== undefined) body.symbol = symbol;
+      return body;
+    }
+    case "withdraw":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_withdraw",
+        destination: a.destination,
+        amount: String(a.amount),
+      };
+    case "usd_send":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_usd_send",
+        destination: a.destination,
+        amount: String(a.amount),
+      };
+    case "approve_agent": {
+      const body: Record<string, unknown> = {
+        domain: "hyperliquid_core",
+        action: "hl_approve_agent",
+        agent_address: a.agentAddress,
+      };
+      if (a.agentName !== undefined) body.agent_name = a.agentName;
+      return body;
+    }
   }
 }
 
@@ -64,33 +111,7 @@ function timeInForceFromWire(t: unknown): Record<string, unknown> {
  * v2 entry point consumes. Pure and synchronous.
  */
 export function hlOrderToAction(payload: VenueOrderPayload): HlActionInput {
-  const { order } = payload;
-  const side = order.b ? "long" : "short";
-  const price = String(order.p);
-  const symbol = payload.symbol ?? `ASSET-${order.a}`;
-
-  const action: Record<string, unknown> = {
-    domain: "perp",
-    action: "place_limit_order",
-    venue: { name: "hyperliquid", chain: HL_CHAIN_ID },
-    market: { symbol, venue: { name: "hyperliquid" } },
-    side,
-    size: { kind: "base_amount", amount: integerPart(String(order.s)) },
-    price,
-    time_in_force: timeInForceFromWire(order.t),
-    reduce_only: order.r ?? false,
-    live_inputs: {
-      mark_price: userSuppliedLive(price),
-      best_bid_ask: userSuppliedLive(["0", "0"]),
-      open_orders_count: userSuppliedLive(0),
-      user_account_state: userSuppliedLive({
-        total_collateral_usd: "0",
-        used_margin_usd: "0",
-        free_margin_usd: "0",
-        open_positions: [],
-      }),
-    },
-  };
+  const action = actionBody(payload.hlAction, payload.symbol);
 
   const meta: Record<string, unknown> = {
     submitted_at: 1_738_000_000,

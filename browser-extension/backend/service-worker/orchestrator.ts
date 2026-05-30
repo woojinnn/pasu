@@ -861,11 +861,20 @@ function redactEnvelope(message: Message): unknown {
     };
   }
   if (isVenueOrder(message)) {
+    const a = message.data.hlAction;
+    // Redacted audit envelope: action kind + venue only. For order legs include
+    // side/reduceOnly; NEVER persist destination addresses or amounts for the
+    // fund-movement actions.
     return {
       venue: message.data.venue,
-      symbol: message.data.symbol,
-      side: message.data.order.b ? "long" : "short",
-      reduceOnly: message.data.order.r ?? false,
+      action: a.kind,
+      ...(a.kind === "order"
+        ? {
+            symbol: message.data.symbol,
+            side: a.order.b ? "long" : "short",
+            reduceOnly: a.order.r ?? false,
+          }
+        : {}),
     };
   }
   return {};
