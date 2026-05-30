@@ -1935,10 +1935,9 @@ fn t15_aave_set_user_use_reserve_as_collateral_action_value_map() {
 // THREE source-grounded mapping facts (distinct from the on-chain Pool calls):
 //   1. The leading `address` param is IGNORED by the contract — every body uses
 //      the immutable `POOL` state var, NOT the calldata arg. `venue.pool` (and
-//      the live_input `source.contract`) therefore bind `$resolved.pool` (a
-//      registered Address placeholder; Sync fills the real per-chain Pool, so it
-//      resolves to the zero-address placeholder on this narrow-scope route path)
-//      — NOT `$args.pool` (the ignored dummy) and NOT `$to` (the WTG, not the
+//      the live_input `source.contract`) therefore bind `$resolved.pool`, which
+//      route_request pre-populates from the known gateway target + chain. It is
+//      NOT `$args.pool` (the ignored dummy) and NOT `$to` (the WTG, not the
 //      Pool).
 //   2. The asset is ALWAYS WETH — `$resolved.weth` (also zero-address placeholder
 //      here). There is no asset arg.
@@ -1954,15 +1953,11 @@ fn t15_aave_set_user_use_reserve_as_collateral_action_value_map() {
 // `live_input_default` skeletons.
 
 const WTG_MAINNET: &str = "0xd01607c3c5ecaba394d8be377a08590149325722";
-const ADDR_ZERO: &str = "0x0000000000000000000000000000000000000000";
-// `$resolved.weth` IS pre-populated by the route handler (declarative_exports
-// `route_request` chain→WETH map) — mainnet 1 → canonical WETH9. So the WETH
-// asset substitutes the REAL address on the route path (NOT a zero
-// placeholder). `$resolved.pool`, by contrast, is NOT pre-populated (the Sync
-// orchestrator fills it later) → it falls through to the Address-typed zero
-// placeholder. These two assertions together prove the watch-point resolution:
-// asset = real WETH, venue.pool = $resolved.pool (zero until Sync wires it).
+// `$resolved.weth` and `$resolved.pool` are both pre-populated by the route
+// handler for this gateway path. The pool comes from the verified gateway
+// deployment, not from the ignored calldata address.
 const WETH_MAINNET: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+const AAVE_POOL_MAINNET: &str = "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2";
 
 // ---------------------------------------------------------------------------
 // t16 — WTG depositETH → LendingAction::Supply (amount = $tx.value)
@@ -2057,9 +2052,7 @@ fn t16_aave_deposit_eth() {
     assert_eq!(body["domain"], "lending");
     assert_eq!(body["action"], "supply");
     assert_eq!(body["venue"]["name"], "aave_v3");
-    // pool/asset bind `$resolved.{pool,weth}` → zero-address placeholder on the
-    // route path (Sync orchestrator not wired here).
-    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["venue"]["pool"], AAVE_POOL_MAINNET);
     assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
     // amount = $tx.value (1 ETH). U256 round-trips as a hex string via alloy.
     assert_eq!(body["amount"], "0xde0b6b3a7640000"); // 1e18
@@ -2163,7 +2156,7 @@ fn t17_aave_withdraw_eth() {
     assert_eq!(body["domain"], "lending");
     assert_eq!(body["action"], "withdraw");
     assert_eq!(body["venue"]["name"], "aave_v3");
-    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["venue"]["pool"], AAVE_POOL_MAINNET);
     assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
     // amount: U256 round-trips as a hex string via alloy.
     assert_eq!(body["amount"], "0x7a120"); // 500_000
@@ -2260,7 +2253,7 @@ fn t18_aave_borrow_eth() {
     assert_eq!(body["domain"], "lending");
     assert_eq!(body["action"], "borrow");
     assert_eq!(body["venue"]["name"], "aave_v3");
-    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["venue"]["pool"], AAVE_POOL_MAINNET);
     assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
     // amount: U256 round-trips as a hex string via alloy.
     assert_eq!(body["amount"], "0x2dc6c0"); // 3_000_000
@@ -2370,7 +2363,7 @@ fn t19_aave_repay_eth() {
     assert_eq!(body["domain"], "lending");
     assert_eq!(body["action"], "repay");
     assert_eq!(body["venue"]["name"], "aave_v3");
-    assert_eq!(body["venue"]["pool"], ADDR_ZERO);
+    assert_eq!(body["venue"]["pool"], AAVE_POOL_MAINNET);
     assert_eq!(body["asset"]["key"]["address"], WETH_MAINNET);
     // amount comes from the calldata arg, NOT $tx.value.
     assert_eq!(body["amount"], "0x1312d0"); // 1_250_000

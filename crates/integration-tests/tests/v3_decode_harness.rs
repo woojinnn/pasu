@@ -284,21 +284,22 @@ fn permit2_invalidate_nonces_decodes_revoke_scope() {
 
 /// Field-level golden for Aave V3 Gateway `withdrawETHWithPermit`.
 ///
-/// The Gateway call carries the concrete Pool address as calldata arg `pool`.
-/// Existing Gateway manifests use `$resolved.pool`, so this pins both the new
-/// selector and the route-context injection that keeps the venue/live-input
-/// target equal to the calldata Pool instead of falling back to zero.
+/// Current verified Gateway deployments ignore the legacy calldata `pool` arg
+/// and call immutable POOL. Existing Gateway manifests use `$resolved.pool`, so
+/// this pins both the new selector and the route-context injection that keeps
+/// the venue/live-input target equal to the canonical Pool instead of trusting
+/// calldata or falling back to zero.
 #[test]
 fn aave_v3_withdraw_eth_with_permit_decodes_pool_and_recipient() {
     let _surface = adapters::load_and_install().expect("install local surface");
 
     const GATEWAY: &str = "0xd01607c3c5ecaba394d8be377a08590149325722";
-    const POOL: &str = "87870bca3f3fd6335c3f4ce8392d69350b4fa4e2";
+    const EXPECTED_POOL: &str = "87870bca3f3fd6335c3f4ce8392d69350b4fa4e2";
     const RECIPIENT: &str = "1111111111111111111111111111111111111111";
     const CALLDATA: &str = concat!(
         "0xd4c40b6c",
         "000000000000000000000000",
-        "87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+        "2222222222222222222222222222222222222222",
         "0000000000000000000000000000000000000000000000000000000000000005",
         "000000000000000000000000",
         "1111111111111111111111111111111111111111",
@@ -319,8 +320,8 @@ fn aave_v3_withdraw_eth_with_permit_decodes_pool_and_recipient() {
         find_object_with_string_field(&env, "name", "aave_v3").expect("Aave venue is present");
     assert_eq!(
         venue.get("pool").and_then(serde_json::Value::as_str),
-        Some(format!("0x{POOL}").as_str()),
-        "Gateway pool arg was not injected into $resolved.pool"
+        Some(format!("0x{EXPECTED_POOL}").as_str()),
+        "Gateway pool resolver did not use the canonical immutable Pool"
     );
     assert_eq!(
         find_string_field(&env, "recipient"),

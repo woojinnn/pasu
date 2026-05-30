@@ -153,7 +153,7 @@
     },
     {
       "intent": "execute(bytes,bytes[],uint256) \u2014 UR v2 (0x66a9)",
-      "expect": "error",
+      "expect": "pass",
       "tx_hash": "0x36F4F2FF72F6CD63538C1EDD6BC37D185D66985EAD6B965FB3B61906883A3E34",
       "chain_id": 1,
       "rpc": {
@@ -165,8 +165,7 @@
           }
         ]
       },
-      "expect_error": "build_multicall_failed",
-      "_note": "UR V4 nested action-stream \u2014 DEFERRED (2026-05-30). Two non-contained decoder gaps: (1) inner V4 SWAP_EXACT_IN/OUT (0x07/0x09) inputs_abi carries PathKey[] nested-tuple-array ((address,uint24,int24,address,bytes)[]) which decode_inputs_abi_tuple's Function::parse synthetic-signature path cannot parse -> whole inner action degrades to Null -> '$inputs.currencyIn' missing. Fix = decode via DynSolType::parse per top-level component instead of Function::parse (shared helper, all opcode-stream manifests need regression). (2) SWAP_*_SINGLE (0x06/0x08) needs pool_id=keccak256(PoolKey) injected in nested ctx via maybe_inject_v4_pool_id (declarative_exports.rs:1699), currently only wired for modifyLiquidities MINT. Both exceed contained-fix bar; baseline stays expect:error."
+      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths."
     },
     {
       "intent": "approve(address,address,uint160,uint48)",
@@ -263,7 +262,7 @@
     },
     {
       "intent": "execute(bytes,bytes[],uint256) (L2 Base spot-check \u2014 per-chain UR address)",
-      "expect": "error",
+      "expect": "pass",
       "tx_hash": "0xEB9775B65004640A77EE0792C4FE4E7A40E768D667350F68598046457A129431",
       "chain_id": 8453,
       "rpc": {
@@ -275,8 +274,7 @@
           }
         ]
       },
-      "expect_error": "build_multicall_failed",
-      "_note": "UR V4 nested action-stream \u2014 DEFERRED (2026-05-30). Two non-contained decoder gaps: (1) inner V4 SWAP_EXACT_IN/OUT (0x07/0x09) inputs_abi carries PathKey[] nested-tuple-array ((address,uint24,int24,address,bytes)[]) which decode_inputs_abi_tuple's Function::parse synthetic-signature path cannot parse -> whole inner action degrades to Null -> '$inputs.currencyIn' missing. Fix = decode via DynSolType::parse per top-level component instead of Function::parse (shared helper, all opcode-stream manifests need regression). (2) SWAP_*_SINGLE (0x06/0x08) needs pool_id=keccak256(PoolKey) injected in nested ctx via maybe_inject_v4_pool_id (declarative_exports.rs:1699), currently only wired for modifyLiquidities MINT. Both exceed contained-fix bar; baseline stays expect:error."
+      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths."
     },
     {
       "intent": "swapExactTokensForTokens (L2 Arbitrum spot-check \u2014 per-chain V2 Router02 address)",
@@ -442,8 +440,7 @@
     },
     {
       "intent": "UniversalRouter.execute(bytes,bytes[],uint256) V4-nested [0x3593564c] (mainnet, command contains 0x10/0x11/0x21)",
-      "expect": "error",
-      "expect_error": "build_multicall_failed",
+      "expect": "pass",
       "tx_hash": "0x321da6717285564809cbf73e652c731470a2c8b74a6c606ea277db140989fd17",
       "chain_id": 1,
       "rpc": {
@@ -455,7 +452,7 @@
           }
         ]
       },
-      "_note": "UR V4 nested action-stream \u2014 DEFERRED (2026-05-30). Two non-contained decoder gaps: (1) inner V4 SWAP_EXACT_IN/OUT (0x07/0x09) inputs_abi carries PathKey[] nested-tuple-array ((address,uint24,int24,address,bytes)[]) which decode_inputs_abi_tuple's Function::parse synthetic-signature path cannot parse -> whole inner action degrades to Null -> '$inputs.currencyIn' missing. Fix = decode via DynSolType::parse per top-level component instead of Function::parse (shared helper, all opcode-stream manifests need regression). (2) SWAP_*_SINGLE (0x06/0x08) needs pool_id=keccak256(PoolKey) injected in nested ctx via maybe_inject_v4_pool_id (declarative_exports.rs:1699), currently only wired for modifyLiquidities MINT. Both exceed contained-fix bar; baseline stays expect:error."
+      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths."
     }
   ]
 }

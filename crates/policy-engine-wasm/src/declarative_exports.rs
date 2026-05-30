@@ -391,11 +391,11 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         //        * `opcode_stream_dispatch` → [`build_multicall_from_opcode_stream`]
         //      any other strategy returns `unsupported_strategy`.
         //
-        // `resolved` / `derived` are empty `BTreeMap`s — the Sync
-        // orchestrator that fills them is M5+. Manifests that reference
-        // `$resolved.<k>` or `$derived.<k>` therefore surface a precise
-        // `unresolved_placeholder` error at this stage, which is the
-        // intended observable behaviour while the resolver layer is wired.
+        // `resolved` is only populated for static, source-grounded values the
+        // route path can know locally (for example WETH, V4 PoolManager, Aave
+        // WTG immutable Pool). Other `$resolved.<k>` / `$derived.<k>` values
+        // still surface a precise `unresolved_placeholder` until Sync wires the
+        // dynamic resolver layer.
         //
         // B.3 — selector-less (bare native transfer) routing. A tx with EMPTY
         // calldata has no 4-byte selector, so the lookup uses the reserved
@@ -515,12 +515,10 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             );
         }
 
-        // Aave WETHGateway-style wrappers carry the concrete Pool address as a
-        // top-level `pool` calldata argument. Existing manifests use
-        // `$resolved.pool` so live-input lookups and venue fields share one
-        // placeholder regardless of whether the call goes directly to Pool or
-        // through a gateway.
-        if let Some(pool) = args_json.get("pool").and_then(serde_json::Value::as_str) {
+        // Aave WrappedTokenGatewayV3 keeps the legacy `pool` calldata argument,
+        // but current verified deployments ignore it and call immutable POOL.
+        // Resolve by known gateway target instead of trusting user calldata.
+        if let Some(pool) = aave_weth_gateway_pool(input.chain_id, &key.to) {
             resolved.insert(
                 "pool".to_owned(),
                 serde_json::Value::String(pool.to_owned()),
@@ -757,6 +755,24 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
     match result {
         Ok(dto) => Envelope::ok(dto).to_json(),
         Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
+    }
+}
+
+fn aave_weth_gateway_pool(chain_id: u64, target: &str) -> Option<&'static str> {
+    match (chain_id, target) {
+        (1, "0xd01607c3c5ecaba394d8be377a08590149325722") => {
+            Some("0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2")
+        }
+        (10, "0x5f2508cae9923b02316254026cd43d7902866725") => {
+            Some("0x794a61358d6845594f94dc1db02a252b5b4814ad")
+        }
+        (8453, "0xa0d9c1e9e48ca30c8d8c3b5d69ff5dc1f6dffc24") => {
+            Some("0xa238dd80c259a72e81d7e4664a9801593f98d1c5")
+        }
+        (42161, "0x5283beced7adf6d003225c13896e536f2d4264ff") => {
+            Some("0x794a61358d6845594f94dc1db02a252b5b4814ad")
+        }
+        _ => None,
     }
 }
 
@@ -1128,10 +1144,9 @@ fn decode_stream_inputs(
 
         let mut decoded_input = per_opcode_body
             .get(&opcode_key)
-            .and_then(|entry| entry.get("inputs_abi"))
-            .and_then(serde_json::Value::as_str)
-            .and_then(|sig| decode_inputs_abi_tuple(sig, &input_bytes).ok())
+            .and_then(|entry| decode_inputs_for_opcode_entry(entry, &input_bytes))
             .unwrap_or(serde_json::Value::Null);
+        maybe_normalize_v4_swap_params(&mut decoded_input, &opcode_key);
         // B.1.c — Uniswap V4 MINT_POSITION carries an INLINE PoolKey
         // (head-flattened currency0/currency1/fee/tickSpacing/hooks). The
         // manifest references `$inputs.pool_id`, but the manifest can't hash,
@@ -1142,6 +1157,106 @@ fn decode_stream_inputs(
         decoded_inputs_array.push(decoded_input);
     }
     Ok(decoded_inputs_array)
+}
+
+fn decode_inputs_for_opcode_entry(
+    entry: &serde_json::Value,
+    input_bytes: &[u8],
+) -> Option<serde_json::Value> {
+    let primary = entry.get("inputs_abi").and_then(serde_json::Value::as_str);
+    let alternatives = entry
+        .get("inputs_abi_alternatives")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str);
+
+    primary
+        .into_iter()
+        .chain(alternatives)
+        .find_map(|sig| decode_inputs_abi_tuple(sig, input_bytes).ok())
+}
+
+/// V4Router swap actions are ABI-decoded as a single top-level `params` tuple
+/// (`abi.decode(input, (ExactInputParams))`). The declarative bodies are more
+/// stable if they can read semantic top-level names, so mirror the deployed
+/// periphery shapes into the old field names after decode.
+fn maybe_normalize_v4_swap_params(decoded: &mut serde_json::Value, opcode_key: &str) {
+    let Some(obj) = decoded.as_object_mut() else {
+        return;
+    };
+    let Some(params) = obj
+        .get("params")
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+    else {
+        return;
+    };
+
+    let mut insert = |name: &str, index: usize| -> Option<()> {
+        obj.insert(name.to_owned(), params.get(index)?.clone());
+        Some(())
+    };
+
+    match opcode_key {
+        // SWAP_EXACT_IN_SINGLE:
+        // mainnet: (poolKey, zeroForOne, amountIn, amountOutMinimum, hookData)
+        // post-#497: (poolKey, zeroForOne, amountIn, amountOutMinimum, minHopPriceX36, hookData)
+        "0x06" => {
+            let _ = insert("poolKey", 0);
+            let _ = insert("zeroForOne", 1);
+            let _ = insert("amountIn", 2);
+            let _ = insert("amountOutMinimum", 3);
+            if let Some(last) = params.last() {
+                obj.insert("hookData".to_owned(), last.clone());
+            }
+        }
+        // SWAP_EXACT_IN:
+        // mainnet: (currencyIn, path, amountIn, amountOutMinimum)
+        // post-#497: (currencyIn, path, minHopPriceX36, amountIn, amountOutMinimum)
+        "0x07" => {
+            let has_min_hop = params.len() == 5;
+            let _ = insert("currencyIn", 0);
+            let _ = insert("path", 1);
+            if has_min_hop {
+                let _ = insert("minHopPriceX36", 2);
+                let _ = insert("amountIn", 3);
+                let _ = insert("amountOutMinimum", 4);
+            } else {
+                let _ = insert("amountIn", 2);
+                let _ = insert("amountOutMinimum", 3);
+            }
+        }
+        // SWAP_EXACT_OUT_SINGLE:
+        // mainnet: (poolKey, zeroForOne, amountOut, amountInMaximum, hookData)
+        // post-#497: (poolKey, zeroForOne, amountOut, amountInMaximum, minHopPriceX36, hookData)
+        "0x08" => {
+            let _ = insert("poolKey", 0);
+            let _ = insert("zeroForOne", 1);
+            let _ = insert("amountOut", 2);
+            let _ = insert("amountInMaximum", 3);
+            if let Some(last) = params.last() {
+                obj.insert("hookData".to_owned(), last.clone());
+            }
+        }
+        // SWAP_EXACT_OUT:
+        // mainnet: (currencyOut, path, amountOut, amountInMaximum)
+        // post-#497: (currencyOut, path, minHopPriceX36, amountOut, amountInMaximum)
+        "0x09" => {
+            let has_min_hop = params.len() == 5;
+            let _ = insert("currencyOut", 0);
+            let _ = insert("path", 1);
+            if has_min_hop {
+                let _ = insert("minHopPriceX36", 2);
+                let _ = insert("amountOut", 3);
+                let _ = insert("amountInMaximum", 4);
+            } else {
+                let _ = insert("amountOut", 2);
+                let _ = insert("amountInMaximum", 3);
+            }
+        }
+        _ => {}
+    }
 }
 
 /// B.1.c.2 — recursive opcode-stream → `ActionBody::Multicall` dispatch.
@@ -1762,13 +1877,22 @@ fn maybe_inject_v4_pool_id(decoded: &mut serde_json::Value) {
         compute_v4_pool_id(c0, c1, fee, spacing, hooks)
     }
 
-    // Top-level (MINT head-flatten) first, then nested `poolKey` (V4_SWAP
-    // SWAP_EXACT_*_SINGLE), which is a positional array.
-    let pool_id = pool_id_from_obj(obj).or_else(|| {
-        obj.get("poolKey")
-            .and_then(serde_json::Value::as_array)
-            .and_then(|arr| pool_id_from_arr(arr))
-    });
+    // Top-level (MINT head-flatten) first, then nested `poolKey` (older
+    // V4_SWAP manifest shape), then the deployed V4Router single-arg `params`
+    // tuple where params[0] is the PoolKey.
+    let pool_id = pool_id_from_obj(obj)
+        .or_else(|| {
+            obj.get("poolKey")
+                .and_then(serde_json::Value::as_array)
+                .and_then(|arr| pool_id_from_arr(arr))
+        })
+        .or_else(|| {
+            obj.get("params")
+                .and_then(serde_json::Value::as_array)
+                .and_then(|params| params.first())
+                .and_then(serde_json::Value::as_array)
+                .and_then(|pool_key| pool_id_from_arr(pool_key))
+        });
     let Some(pool_id) = pool_id else {
         return;
     };
@@ -2076,6 +2200,9 @@ fn build_multicall_recurse_body(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
+    use alloy_json_abi::Function;
+    use alloy_primitives::{Address as AlloyAddress, U256};
     use serde_json::{json, Value};
 
     // ──────────────────────────────────────────────────────────────────────
@@ -2158,5 +2285,137 @@ mod tests {
             parsed["error"]["kind"], "no_declarative_v3_mapper",
             "{parsed}"
         );
+    }
+
+    #[test]
+    fn decode_inputs_abi_tuple_handles_v4_path_key_arrays() {
+        let currency_in = AlloyAddress::ZERO;
+        let currency_out = AlloyAddress::from([0x22; 20]);
+        let hook = AlloyAddress::from([0x33; 20]);
+        let path = DynSolValue::Array(vec![DynSolValue::Tuple(vec![
+            DynSolValue::Address(currency_out),
+            DynSolValue::Uint(U256::from(500_u64), 24),
+            DynSolValue::Int(alloy_primitives::I256::try_from(60_i64).unwrap(), 24),
+            DynSolValue::Address(hook),
+            DynSolValue::Bytes(vec![0xab, 0xcd]),
+        ])]);
+        let encoder =
+            Function::parse("step(address,(address,uint24,int24,address,bytes)[],uint128,uint128)")
+                .unwrap();
+        let encoded = encoder
+            .abi_encode_input(&[
+                DynSolValue::Address(currency_in),
+                path,
+                DynSolValue::Uint(U256::from(1_000_u64), 128),
+                DynSolValue::Uint(U256::from(900_u64), 128),
+            ])
+            .unwrap();
+
+        let decoded = decode_inputs_abi_tuple(
+            "(address currencyIn, (address,uint24,int24,address,bytes)[] path, uint128 amountIn, uint128 amountOutMinimum)",
+            &encoded[4..],
+        )
+        .unwrap();
+
+        assert_eq!(
+            decoded["currencyIn"],
+            json!("0x0000000000000000000000000000000000000000")
+        );
+        assert_eq!(decoded["amountIn"], json!("1000"));
+        assert_eq!(decoded["amountOutMinimum"], json!("900"));
+        assert_eq!(decoded["path"][0][0], json!(format!("{currency_out:?}")));
+        assert_eq!(decoded["path"][0][1], json!(500_u64));
+        assert_eq!(decoded["path"][0][2], json!(60_i64));
+        assert_eq!(decoded["path"][0][3], json!(format!("{hook:?}")));
+        assert_eq!(decoded["path"][0][4], json!("0xabcd"));
+    }
+
+    #[test]
+    fn maybe_inject_v4_pool_id_handles_v4_swap_params_tuple() {
+        let currency0 = AlloyAddress::from([0x11; 20]);
+        let currency1 = AlloyAddress::from([0x22; 20]);
+        let hook = AlloyAddress::from([0x33; 20]);
+        let pool_key = DynSolValue::Tuple(vec![
+            DynSolValue::Address(currency0),
+            DynSolValue::Address(currency1),
+            DynSolValue::Uint(U256::from(500_u64), 24),
+            DynSolValue::Int(alloy_primitives::I256::try_from(60_i64).unwrap(), 24),
+            DynSolValue::Address(hook),
+        ]);
+        let encoder = Function::parse(
+            "step(((address,address,uint24,int24,address),bool,uint128,uint128,bytes))",
+        )
+        .unwrap();
+        let encoded = encoder
+            .abi_encode_input(&[DynSolValue::Tuple(vec![
+                pool_key,
+                DynSolValue::Bool(true),
+                DynSolValue::Uint(U256::from(1_000_u64), 128),
+                DynSolValue::Uint(U256::from(900_u64), 128),
+                DynSolValue::Bytes(Vec::new()),
+            ])])
+            .unwrap();
+
+        let mut decoded = decode_inputs_abi_tuple(
+            "(((address,address,uint24,int24,address),bool,uint128,uint128,bytes) params)",
+            &encoded[4..],
+        )
+        .unwrap();
+        maybe_inject_v4_pool_id(&mut decoded);
+
+        let expected = compute_v4_pool_id(
+            &format!("{currency0:?}"),
+            &format!("{currency1:?}"),
+            &json!(500_u64),
+            &json!(60_i64),
+            &format!("{hook:?}"),
+        )
+        .unwrap();
+        assert_eq!(decoded["pool_id"], json!(expected));
+    }
+
+    #[test]
+    fn decode_stream_inputs_uses_v4_inputs_abi_alternatives_and_normalizes_params() {
+        let currency_in = AlloyAddress::ZERO;
+        let currency_out = AlloyAddress::from([0x22; 20]);
+        let path = DynSolValue::Array(vec![DynSolValue::Tuple(vec![
+            DynSolValue::Address(currency_out),
+            DynSolValue::Uint(U256::from(500_u64), 24),
+            DynSolValue::Int(alloy_primitives::I256::try_from(60_i64).unwrap(), 24),
+            DynSolValue::Address(AlloyAddress::ZERO),
+            DynSolValue::Bytes(Vec::new()),
+        ])]);
+        let encoder = Function::parse(
+            "step((address,(address,uint24,int24,address,bytes)[],uint128,uint128))",
+        )
+        .unwrap();
+        let encoded = encoder
+            .abi_encode_input(&[DynSolValue::Tuple(vec![
+                DynSolValue::Address(currency_in),
+                path,
+                DynSolValue::Uint(U256::from(1_000_u64), 128),
+                DynSolValue::Uint(U256::from(900_u64), 128),
+            ])])
+            .unwrap();
+        let inputs = vec![json!(format!("0x{}", hex::encode(&encoded[4..])))];
+        let mut table = serde_json::Map::new();
+        table.insert(
+            "0x07".to_owned(),
+            json!({
+                "inputs_abi": "((address,(address,uint24,int24,address,bytes)[],uint256[],uint128,uint128) params)",
+                "inputs_abi_alternatives": [
+                    "((address,(address,uint24,int24,address,bytes)[],uint128,uint128) params)"
+                ]
+            }),
+        );
+
+        let decoded = decode_stream_inputs(&table, &[0x07], &inputs, 0xff).unwrap();
+
+        assert_eq!(
+            decoded[0]["currencyIn"],
+            json!("0x0000000000000000000000000000000000000000")
+        );
+        assert_eq!(decoded[0]["amountIn"], json!("1000"));
+        assert_eq!(decoded[0]["amountOutMinimum"], json!("900"));
     }
 }

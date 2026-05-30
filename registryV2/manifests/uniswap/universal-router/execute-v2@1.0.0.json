@@ -237,7 +237,7 @@
       },
       "0x03": {
         "name": "PERMIT2_PERMIT_BATCH",
-        "inputs_abi": "(((address,uint160,uint48,uint48)[] details, address spender, uint256 sigDeadline) permitBatch, bytes signature)",
+        "inputs_abi": "(((address,uint160,uint48,uint48)[],address,uint256) permitBatch, bytes signature)",
         "body": {
           "domain": "token",
           "token": {
@@ -247,14 +247,26 @@
                 "key": {
                   "standard": "erc20",
                   "chain": "$chain",
-                  "address": "$inputs.permitBatch.details[0].token"
+                  "address": "$inputs.permitBatch[0][0][0]"
                 }
               },
-              "spender": "$inputs.permitBatch.spender",
-              "amount": "$inputs.permitBatch.details[0].amount",
-              "expires_at": "$inputs.permitBatch.details[0].expiration",
-              "sig_deadline": "$inputs.permitBatch.sigDeadline",
-              "nonce": "$inputs.permitBatch.details[0].nonce"
+              "spender": "$inputs.permitBatch[1]",
+              "amount": "$inputs.permitBatch[0][0][1]",
+              "expires_at": "$inputs.permitBatch[0][0][2]",
+              "sig_deadline": "$inputs.permitBatch[2]",
+              "nonce": "$inputs.permitBatch[0][0][3]",
+              "live_inputs": {
+                "nonce": {
+                  "source": {
+                    "kind": "onchain_view",
+                    "chain": "$chain",
+                    "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+                    "function": "nonceBitmap(address,uint256)",
+                    "decoder_id": "permit2_nonce_bitmap"
+                  },
+                  "ttl_s": 12
+                }
+              }
             }
           }
         },
@@ -501,7 +513,7 @@
       },
       "0x0a": {
         "name": "PERMIT2_PERMIT",
-        "inputs_abi": "(((address token, uint160 amount, uint48 expiration, uint48 nonce) details, address spender, uint256 sigDeadline) permitSingle, bytes signature)",
+        "inputs_abi": "(((address,uint160,uint48,uint48),address,uint256) permitSingle, bytes signature)",
         "body": {
           "domain": "token",
           "token": {
@@ -511,14 +523,26 @@
                 "key": {
                   "standard": "erc20",
                   "chain": "$chain",
-                  "address": "$inputs.permitSingle.details.token"
+                  "address": "$inputs.permitSingle[0][0]"
                 }
               },
-              "spender": "$inputs.permitSingle.spender",
-              "amount": "$inputs.permitSingle.details.amount",
-              "expires_at": "$inputs.permitSingle.details.expiration",
-              "sig_deadline": "$inputs.permitSingle.sigDeadline",
-              "nonce": "$inputs.permitSingle.details.nonce"
+              "spender": "$inputs.permitSingle[1]",
+              "amount": "$inputs.permitSingle[0][1]",
+              "expires_at": "$inputs.permitSingle[0][2]",
+              "sig_deadline": "$inputs.permitSingle[2]",
+              "nonce": "$inputs.permitSingle[0][3]",
+              "live_inputs": {
+                "nonce": {
+                  "source": {
+                    "kind": "onchain_view",
+                    "chain": "$chain",
+                    "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+                    "function": "nonceBitmap(address,uint256)",
+                    "decoder_id": "permit2_nonce_bitmap"
+                  },
+                  "ttl_s": 12
+                }
+              }
             }
           }
         }
@@ -615,7 +639,10 @@
           "per_opcode_body": {
             "0x06": {
               "name": "SWAP_EXACT_IN_SINGLE",
-              "inputs_abi": "((address,address,uint24,int24,address) poolKey, bool zeroForOne, uint128 amountIn, uint128 amountOutMinimum, bytes hookData)",
+              "inputs_abi": "(((address,address,uint24,int24,address),bool,uint128,uint128,uint256,bytes) params)",
+              "inputs_abi_alternatives": [
+                "(((address,address,uint24,int24,address),bool,uint128,uint128,bytes) params)"
+              ],
               "body": {
                 "domain": "amm",
                 "amm": {
@@ -699,7 +726,10 @@
             },
             "0x07": {
               "name": "SWAP_EXACT_IN",
-              "inputs_abi": "(address currencyIn, (address,uint24,int24,address,bytes)[] path, uint128 amountIn, uint128 amountOutMinimum)",
+              "inputs_abi": "((address,(address,uint24,int24,address,bytes)[],uint256[],uint128,uint128) params)",
+              "inputs_abi_alternatives": [
+                "((address,(address,uint24,int24,address,bytes)[],uint128,uint128) params)"
+              ],
               "body": {
                 "domain": "amm",
                 "amm": {
@@ -709,7 +739,8 @@
                       "name": "uniswap_v4",
                       "chain": "$chain",
                       "pool_id": "unknown",
-                      "pool_manager": "$resolved.pool_manager"
+                      "pool_manager": "$resolved.pool_manager",
+                      "hooks": "$inputs.path[0][3]"
                     },
                     "params": {
                       "token_in": {
@@ -723,7 +754,7 @@
                         "key": {
                           "standard": "erc20",
                           "chain": "$chain",
-                          "address": "unknown"
+                          "address": "$inputs.path[-1][0]"
                         }
                       },
                       "direction": {
@@ -782,7 +813,10 @@
             },
             "0x08": {
               "name": "SWAP_EXACT_OUT_SINGLE",
-              "inputs_abi": "((address,address,uint24,int24,address) poolKey, bool zeroForOne, uint128 amountOut, uint128 amountInMaximum, bytes hookData)",
+              "inputs_abi": "(((address,address,uint24,int24,address),bool,uint128,uint128,uint256,bytes) params)",
+              "inputs_abi_alternatives": [
+                "(((address,address,uint24,int24,address),bool,uint128,uint128,bytes) params)"
+              ],
               "body": {
                 "domain": "amm",
                 "amm": {
@@ -865,7 +899,10 @@
             },
             "0x09": {
               "name": "SWAP_EXACT_OUT",
-              "inputs_abi": "(address currencyOut, (address,uint24,int24,address,bytes)[] path, uint128 amountOut, uint128 amountInMaximum)",
+              "inputs_abi": "((address,(address,uint24,int24,address,bytes)[],uint256[],uint128,uint128) params)",
+              "inputs_abi_alternatives": [
+                "((address,(address,uint24,int24,address,bytes)[],uint128,uint128) params)"
+              ],
               "body": {
                 "domain": "amm",
                 "amm": {
@@ -875,14 +912,15 @@
                       "name": "uniswap_v4",
                       "chain": "$chain",
                       "pool_id": "unknown",
-                      "pool_manager": "$resolved.pool_manager"
+                      "pool_manager": "$resolved.pool_manager",
+                      "hooks": "$inputs.path[0][3]"
                     },
                     "params": {
                       "token_in": {
                         "key": {
                           "standard": "erc20",
                           "chain": "$chain",
-                          "address": "unknown"
+                          "address": "$inputs.path[-1][0]"
                         }
                       },
                       "token_out": {
