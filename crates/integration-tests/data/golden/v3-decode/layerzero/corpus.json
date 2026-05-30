@@ -3,9 +3,11 @@
   "transactions": [
     {
       "intent": "ZRO transfer(to,amount) \u2014 ERC20 op UNCOVERED (no zro token file / no erc20 callkey)",
-      "expect": "error",
-      "chain_id": 1,
+      "expect": "pass",
+      "expect_domain": "token",
+      "_note": "ZRO is an OFT *and* ERC20; transfer now covered via tokens/<chain>/zro.json erc20 auto-enumerate (added 2026-05-30). flipped error->pass",
       "tx_hash": "0x58b5e8c83888be8a49a3c7d8774a870dd7b779ecbb653c4589de26d89eb9a668",
+      "chain_id": 1,
       "rpc": {
         "params": [
           {
@@ -14,14 +16,15 @@
             "data": "0xa9059cbb000000000000000000000000a9d1e08c7793af67e9d92fe308d5697fb81d3e430000000000000000000000000000000000000000000004fba4784c08d9b90000"
           }
         ]
-      },
-      "expect_error": "no_declarative_v3_mapper"
+      }
     },
     {
       "intent": "ZRO approve(spender,amount) \u2014 ERC20 op UNCOVERED",
-      "expect": "error",
-      "chain_id": 1,
+      "expect": "pass",
+      "expect_domain": "token",
+      "_note": "ZRO is an OFT *and* ERC20; approve now covered via tokens/<chain>/zro.json erc20 auto-enumerate (added 2026-05-30). flipped error->pass",
       "tx_hash": "0x11182bfe34c54bc2de020c9ca76f03dcee0eaf6922488a2df4d886b9288eee7f",
+      "chain_id": 1,
       "rpc": {
         "params": [
           {
@@ -30,14 +33,15 @@
             "data": "0x095ea7b3000000000000000000000000111111125421ca6dc452d289314280a0f8842a65ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
           }
         ]
-      },
-      "expect_error": "no_declarative_v3_mapper"
+      }
     },
     {
       "intent": "ZRO transferFrom(from,to,amount) \u2014 ERC20 op UNCOVERED",
-      "expect": "error",
-      "chain_id": 1,
+      "expect": "pass",
+      "expect_domain": "token",
+      "_note": "ZRO is an OFT *and* ERC20; transferFrom now covered via tokens/<chain>/zro.json erc20 auto-enumerate (added 2026-05-30). flipped error->pass",
       "tx_hash": "0xd6923dad809b8d96b8878cc78a47501a665469c9218c2f87d0d5ac7932b45898",
+      "chain_id": 1,
       "rpc": {
         "params": [
           {
@@ -46,8 +50,7 @@
             "data": "0x23b872dd000000000000000000000000b199f8ca5249bb0fdf98bedaccbdabbaea9f2fa00000000000000000000000002a3e01a0cfe03ce1fbfde6ca315018d036c783f200000000000000000000000000000000000000000000032d60bcee0f9fbc8000"
           }
         ]
-      },
-      "expect_error": "no_declarative_v3_mapper"
+      }
     },
     {
       "intent": "ClaimContract claim 0xf9429637 \u2014 COVERED (domain=airdrop)",

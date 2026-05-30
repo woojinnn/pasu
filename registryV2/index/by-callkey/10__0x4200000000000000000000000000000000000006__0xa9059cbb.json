@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "standard/erc20/transfer@1.0.0",
   "manifest_path": "manifests/standard/erc20/transfer@1.0.0.json",
-  "bundle_sha256": "0xb0a9e823bbe3ada334ed59dc9888b4ebde34d624d6fbadabc35220931b6eb336",
+  "bundle_sha256": "0xae698d4d76afbc8f39f415ceee704b3f1bf8d8905bff59c66740d6ef3cddebe6",
   "bundle": {
     "type": "adapter_action",
     "id": "standard/erc20/transfer@1.0.0",
@@ -81,6 +81,7 @@
           "0x5e8c8a7243651db1384c0ddfdbe39761e8e7e51a",
           "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8",
           "0x5f98805a4e8be255a32880fdec7f6728c6568ba0",
+          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
           "0x6b175474e89094c44da98b954eedeac495271d0f",
           "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
           "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
@@ -107,6 +108,7 @@
         "10": [
           "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
           "0x4200000000000000000000000000000000000006",
+          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
           "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58"
         ],
         "8453": [
@@ -118,6 +120,7 @@
           "0x4e65fe4dba92790696d040ac24aa414708f5c0ab",
           "0x50c5725949a6f0c72e6c4a641f24049a917db0cb",
           "0x59dca05b6c26dbd64b5381374aaac5cd05644c28",
+          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
           "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
           "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
           "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
@@ -129,6 +132,7 @@
           "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2"
         ],
         "42161": [
+          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
           "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
           "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
           "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
