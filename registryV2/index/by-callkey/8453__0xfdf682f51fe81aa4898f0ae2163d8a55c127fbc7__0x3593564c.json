@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/universal-router/execute-v2@1.0.0",
   "manifest_path": "manifests/uniswap/universal-router/execute-v2@1.0.0.json",
-  "bundle_sha256": "0x94a33edaa967790fa31c38d50f9d0f336813c02e0ffea0acab000908789efcd9",
+  "bundle_sha256": "0x85253729815431a8a4c6598127909efc656cb8d504c05f47a04f6f0ad9a71879",
   "bundle": {
     "type": "adapter_action",
     "id": "uniswap/universal-router/execute-v2@1.0.0",
@@ -15,9 +15,15 @@
           "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
           "0x4c82d1FbFE28C977cbb58D8C7Ff8FCf9F70A2cca"
         ],
+        "10": [
+          "0x851116d9223fabed8e56c0e6b8ad0c31d98b3507"
+        ],
         "8453": [
           "0x6fF5693b99212Da76ad316178A184AB56D299b43",
           "0xFdf682F51FE81Aa4898F0AE2163d8A55c127fbC7"
+        ],
+        "42161": [
+          "0xa51afafe0263b40edaef0df8781ea9aa03e381a3"
         ]
       }
     },

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/universal-router/execute-v2-no-deadline@1.0.0",
   "manifest_path": "manifests/uniswap/universal-router/execute-v2-no-deadline@1.0.0.json",
-  "bundle_sha256": "0xcf3fb15e5e91146615fd694a81673a72091ff823b1e1460786b11d6a15b7f534",
+  "bundle_sha256": "0x15725405bf10353e31ac57d8dc17d00b63be6d9bd98c38c76c9cd76c4fd99170",
   "bundle": {
     "type": "adapter_action",
     "id": "uniswap/universal-router/execute-v2-no-deadline@1.0.0",
@@ -15,9 +15,15 @@
           "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
           "0x4c82d1FbFE28C977cbb58D8C7Ff8FCf9F70A2cca"
         ],
+        "10": [
+          "0x851116d9223fabed8e56c0e6b8ad0c31d98b3507"
+        ],
         "8453": [
           "0x6fF5693b99212Da76ad316178A184AB56D299b43",
           "0xFdf682F51FE81Aa4898F0AE2163d8A55c127fbC7"
+        ],
+        "42161": [
+          "0xa51afafe0263b40edaef0df8781ea9aa03e381a3"
         ]
       }
     },

@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/permit2/permitBatch@1.0.0",
   "manifest_path": "manifests/uniswap/permit2/permitBatch@1.0.0.json",
-  "bundle_sha256": "0x2355c04d8b2f9ef36086e1160fc1af1abb00bb1f263650dc30f3e2e6816b2989",
+  "bundle_sha256": "0xc0d7c604b2f9351ffd06163d3e2c719cb7bbf477ae4250e5958e63974524c872",
   "bundle": {
     "type": "adapter_action",
     "id": "uniswap/permit2/permitBatch@1.0.0",
@@ -119,7 +119,7 @@
     },
     "emit": {
       "strategy": "array_emit",
-      "array_source": "$args.permitBatch.details",
+      "array_source": "$args.permitBatch[0]",
       "body": {
         "domain": "token",
         "token": {
@@ -129,13 +129,13 @@
               "key": {
                 "standard": "erc20",
                 "chain": "$chain",
-                "address": "$inputs.token"
+                "address": "$inputs[0]"
               }
             },
-            "spender": "$args.permitBatch.spender",
-            "amount": "$inputs.amount",
-            "expires_at": "$inputs.expiration",
-            "sig_deadline": "$args.permitBatch.sigDeadline"
+            "spender": "$args.permitBatch[1]",
+            "amount": "$inputs[1]",
+            "expires_at": "$inputs[2]",
+            "sig_deadline": "$args.permitBatch[2]"
           }
         }
       },
