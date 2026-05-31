@@ -1,8 +1,8 @@
 {
   "contract": "UniswapV2Router02",
-  "chainId": 1,
-  "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-  "snapshot": "v2-router-02-mainnet.abi.json",
+  "chainId": 42161,
+  "address": "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24",
+  "snapshot": "v2-router-02-arbitrum.abi.json",
   "note": "Every external state-changing Router02 function is user-facing swap/liquidity intent and must be covered.",
   "functions": {
     "0xe8e33700": {

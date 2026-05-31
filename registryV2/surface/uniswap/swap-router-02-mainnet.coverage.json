@@ -1,0 +1,175 @@
+{
+  "contract": "SwapRouter02",
+  "chainId": 1,
+  "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+  "snapshot": "swap-router-02-mainnet.abi.json",
+  "note": "Covers user swap entrypoints and self-multicall envelopes; helper payment/self-permit paths are explicit excludes.",
+  "functions": {
+    "0x571ac8b0": {
+      "name": "approveMax",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xcab372ce": {
+      "name": "approveMaxMinusOne",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x639d71a9": {
+      "name": "approveZeroThenMax",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xab3fdd50": {
+      "name": "approveZeroThenMaxMinusOne",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xb3a2af13": {
+      "name": "callPositionManager",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xb858183f": {
+      "name": "exactInput",
+      "decision": "cover",
+      "reason": "user AMM action: V3 exact-input multi-hop swap"
+    },
+    "0x04e45aaf": {
+      "name": "exactInputSingle",
+      "decision": "cover",
+      "reason": "user AMM action: V3 exact-input single-hop swap"
+    },
+    "0x09b81346": {
+      "name": "exactOutput",
+      "decision": "cover",
+      "reason": "user AMM action: V3 exact-output multi-hop swap"
+    },
+    "0x5023b4df": {
+      "name": "exactOutputSingle",
+      "decision": "cover",
+      "reason": "user AMM action: V3 exact-output single-hop swap"
+    },
+    "0xdee00f35": {
+      "name": "getApprovalType",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xf100b205": {
+      "name": "increaseLiquidity",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x11ed56c9": {
+      "name": "mint",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x1f0464d1": {
+      "name": "multicall",
+      "decision": "exclude",
+      "reason": "helper deadline envelope variant not yet routed; safer to leave explicit and excluded"
+    },
+    "0x5ae401dc": {
+      "name": "multicall",
+      "decision": "cover",
+      "reason": "self-multicall envelope with deadline"
+    },
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "cover",
+      "reason": "self-multicall envelope without deadline"
+    },
+    "0xf2d5d56b": {
+      "name": "pull",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x12210e8a": {
+      "name": "refundETH",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xf3995c67": {
+      "name": "selfPermit",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x4659a494": {
+      "name": "selfPermitAllowed",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xa4a78f0c": {
+      "name": "selfPermitAllowedIfNecessary",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xc2e3140a": {
+      "name": "selfPermitIfNecessary",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x472b43f3": {
+      "name": "swapExactTokensForTokens",
+      "decision": "cover",
+      "reason": "user AMM action: V2 exact-input token-to-token swap through SwapRouter02"
+    },
+    "0x42712a67": {
+      "name": "swapTokensForExactTokens",
+      "decision": "cover",
+      "reason": "user AMM action: V2 exact-output token-to-token swap through SwapRouter02"
+    },
+    "0xdf2ab5bb": {
+      "name": "sweepToken",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xe90a182f": {
+      "name": "sweepToken",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x3068c554": {
+      "name": "sweepTokenWithFee",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xe0e189a0": {
+      "name": "sweepTokenWithFee",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xfa461e33": {
+      "name": "uniswapV3SwapCallback",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x49404b7c": {
+      "name": "unwrapWETH9",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x49616997": {
+      "name": "unwrapWETH9",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x9b2c0a37": {
+      "name": "unwrapWETH9WithFee",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0xd4ef38de": {
+      "name": "unwrapWETH9WithFee",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    },
+    "0x1c58db4f": {
+      "name": "wrapETH",
+      "decision": "exclude",
+      "reason": "payment/self-permit/NFT helper or callback path; user intent is covered by swap/multicall manifests"
+    }
+  },
+  "signed_structs": {}
+}

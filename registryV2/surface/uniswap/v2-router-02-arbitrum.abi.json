@@ -1,8 +1,8 @@
 {
   "source": "sourcify",
   "url": "crates/adapters/abi-resolver/data/sourcify.json ; https://developers.uniswap.org/docs/protocols/v2/deployments",
-  "chainId": 1,
-  "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+  "chainId": 42161,
+  "address": "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24",
   "contract": "UniswapV2Router02",
   "fetchedAt": "2026-06-01",
   "note": "Uniswap V2 Router02 ABI snapshot from local Sourcify cache, cross-referenced against official Uniswap deployment documentation.",

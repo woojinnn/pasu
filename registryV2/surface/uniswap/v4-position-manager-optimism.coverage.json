@@ -1,0 +1,95 @@
+{
+  "contract": "V4PositionManager",
+  "chainId": 10,
+  "address": "0x3c3ea4b57a46241e54610e5f022e5c45859a1017",
+  "snapshot": "v4-position-manager-optimism.abi.json",
+  "note": "Covers V4 position action envelopes, V4 pool initialization, and ERC721 position NFT surface.",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "cover",
+      "reason": "standard ERC721 approval on Uniswap V4 position NFT"
+    },
+    "0xf7020405": {
+      "name": "initializePool",
+      "decision": "cover",
+      "reason": "user-visible V4 pool initialize action routed conservatively as Unknown"
+    },
+    "0xdd46508f": {
+      "name": "modifyLiquidities",
+      "decision": "cover",
+      "reason": "user AMM action envelope for V4 position lifecycle actions"
+    },
+    "0x4afe393c": {
+      "name": "modifyLiquiditiesWithoutUnlock",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "cover",
+      "reason": "self-multicall envelope"
+    },
+    "0x0f5730f1": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0x2b67b570": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0x002a3e3a": {
+      "name": "permitBatch",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0x3aea60f0": {
+      "name": "permitForAll",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0x05c1ee20": {
+      "name": "revokeNonce",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0x42842e0e": {
+      "name": "safeTransferFrom",
+      "decision": "cover",
+      "reason": "standard ERC721 safe transfer of Uniswap V4 position NFT"
+    },
+    "0xb88d4fde": {
+      "name": "safeTransferFrom",
+      "decision": "cover",
+      "reason": "standard ERC721 safe transfer with data of Uniswap V4 position NFT"
+    },
+    "0xa22cb465": {
+      "name": "setApprovalForAll",
+      "decision": "cover",
+      "reason": "standard ERC721 operator approval on Uniswap V4 position NFT"
+    },
+    "0x2b9261de": {
+      "name": "subscribe",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "cover",
+      "reason": "standard ERC721 transfer of Uniswap V4 position NFT"
+    },
+    "0x91dd7346": {
+      "name": "unlockCallback",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    },
+    "0xad0b27fb": {
+      "name": "unsubscribe",
+      "decision": "exclude",
+      "reason": "permit/subscription/controller/callback/helper path; direct user intent is covered by modifyLiquidities, multicall, initializePool, or ERC721 manifests"
+    }
+  },
+  "signed_structs": {}
+}

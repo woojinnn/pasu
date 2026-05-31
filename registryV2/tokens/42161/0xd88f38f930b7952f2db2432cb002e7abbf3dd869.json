@@ -1,0 +1,8 @@
+{
+  "erc_kind": "erc721",
+  "chainId": 42161,
+  "address": "0xd88f38f930b7952f2db2432cb002e7abbf3dd869",
+  "collection_name": "Uniswap V4 Positions",
+  "symbol": "UNI-V4-POS",
+  "source": "https://developers.uniswap.org/docs/protocols/v4/deployments"
+}
