@@ -218,3 +218,142 @@ fn morpho_set_authorization_decodes_operator_and_flag() {
         "grant flag (is_authorized) mis-decoded"
     );
 }
+
+/// Recursively find the first value stored under `key` (returns the sub-tree,
+/// not a leaf string — used to scope a later `find_string_field` to one branch).
+fn find_object_by_key<'a>(v: &'a serde_json::Value, key: &str) -> Option<&'a serde_json::Value> {
+    match v {
+        serde_json::Value::Object(m) => {
+            if let Some(found) = m.get(key) {
+                return Some(found);
+            }
+            m.values().find_map(|x| find_object_by_key(x, key))
+        }
+        serde_json::Value::Array(a) => a.iter().find_map(|x| find_object_by_key(x, key)),
+        _ => None,
+    }
+}
+
+/// Field-level golden for Curve StableSwap-NG `exchange` (G3: coin-index → token
+/// resolution via the value-map).
+///
+/// Curve's `exchange` calldata carries int128 pool-coin INDICES (`i`, `j`), NOT
+/// token addresses. The manifest resolves them with `$match $args.i / $cases`,
+/// where the per-pool baked coin list maps index → coin address. The corpus
+/// oracle checks only verdict + top-level domain, so a coin mapped to the wrong
+/// index (or a value-map that fails to resolve) would still pass as `pass`/`amm`
+/// — a SILENT mis-decode of "which token am I selling/buying". This pins it:
+/// on the 2btc pool, `i=0` must resolve `token_in` to coin0 (WBTC) and `j=1`
+/// must resolve `token_out` to coin1 (tBTC).
+#[test]
+fn curve_stableswap_ng_exchange_resolves_coin_index_to_token() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // 2btc pool (coins: WBTC=coin0, tBTC=coin1). Synthetic
+    // exchange(i=0, j=1, _dx=1e8, _min_dy=99e6) — sell WBTC for tBTC.
+    const TO: &str = "0xb7ecb2aa52aa64a717180e030241bc75cd946726";
+    const WBTC: &str = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599";
+    const TBTC: &str = "0x18084fba666a33d37592fa2633fd49a74dd93a88";
+    const CALLDATA: &str = "0x3df02124000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000005e69ec0";
+
+    let env = harness::route::route_calldata(1, TO, "0x3df02124", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    // Scope the address lookup to each branch so token_in vs token_out can't be
+    // confused regardless of map ordering.
+    let token_in = find_object_by_key(&env, "token_in").expect("swap body carries token_in");
+    let token_out = find_object_by_key(&env, "token_out").expect("swap body carries token_out");
+    assert_eq!(
+        find_string_field(token_in, "address").as_deref(),
+        Some(WBTC),
+        "i=0 must resolve token_in to coin0 (WBTC) via the value-map; got {token_in}"
+    );
+    assert_eq!(
+        find_string_field(token_out, "address").as_deref(),
+        Some(TBTC),
+        "j=1 must resolve token_out to coin1 (tBTC) via the value-map; got {token_out}"
+    );
+}
+
+/// Field-level golden for Curve StableSwap-NG `remove_liquidity_one_coin` — the
+/// coin-index value-map in the `PooledBurnOneCoin` (Tier 3) context. `i=1` on the
+/// 2btc pool must resolve `token_out` to coin1 (tBTC), and `lp_token` is the pool
+/// itself (NG pool == LP token). A mis-mapped index would silently withdraw the
+/// wrong coin.
+#[test]
+fn curve_stableswap_ng_one_coin_resolves_coin_index_to_token() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // 2btc (coins: WBTC=0, tBTC=1). remove_liquidity_one_coin(_burn=1e18, i=1, _min=5e7).
+    const TO: &str = "0xb7ecb2aa52aa64a717180e030241bc75cd946726";
+    const TBTC: &str = "0x18084fba666a33d37592fa2633fd49a74dd93a88";
+    const CALLDATA: &str = "0x1a4d01d20000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000002faf080";
+
+    let env = harness::route::route_calldata(1, TO, "0x1a4d01d2", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let token_out = find_object_by_key(&env, "token_out").expect("one_coin body carries token_out");
+    assert_eq!(
+        find_string_field(token_out, "address").as_deref(),
+        Some(TBTC),
+        "i=1 must resolve token_out to coin1 (tBTC) via the value-map; got {token_out}"
+    );
+    let lp_token = find_object_by_key(&env, "lp_token").expect("one_coin body carries lp_token");
+    assert_eq!(
+        find_string_field(lp_token, "address").as_deref(),
+        Some(TO),
+        "NG pool == LP token: lp_token address must be the pool ($to); got {lp_token}"
+    );
+}
+
+/// Field-level golden for Curve StableSwap-NG `add_liquidity` — positional baking.
+/// Curve's `add_liquidity(uint256[2] _amounts, ...)` carries only amounts; the
+/// coins are IMPLICIT (the pool's coin list). The manifest bakes `coins[k]` paired
+/// with `$args._amounts[k]` positionally. On 2btc, `tokens[0]` must be coin0
+/// (WBTC) and `tokens[1]` coin1 (tBTC) — a swapped order would mis-attribute the
+/// deposited amounts.
+#[test]
+fn curve_stableswap_ng_add_liquidity_bakes_pool_coins_in_order() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // 2btc. add_liquidity(_amounts=[1e8, 2e18], _min_mint_amount=1e8). uint256[2] is
+    // fixed-size → encoded inline (no offset).
+    const TO: &str = "0xb7ecb2aa52aa64a717180e030241bc75cd946726";
+    const WBTC: &str = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599";
+    const TBTC: &str = "0x18084fba666a33d37592fa2633fd49a74dd93a88";
+    const CALLDATA: &str = "0x0b4c7e4d0000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000001bc16d674ec800000000000000000000000000000000000000000000000000000000000005f5e100";
+
+    let env = harness::route::route_calldata(1, TO, "0x0b4c7e4d", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let tokens = find_object_by_key(&env, "tokens").expect("add_liquidity body carries tokens");
+    let arr = tokens
+        .as_array()
+        .expect("tokens is an array of [TokenRef, amount]");
+    assert_eq!(
+        arr.len(),
+        2,
+        "2-coin pool must bake exactly 2 tokens; got {tokens}"
+    );
+    assert_eq!(
+        find_string_field(&arr[0], "address").as_deref(),
+        Some(WBTC),
+        "tokens[0] must be coin0 (WBTC); got {}",
+        arr[0]
+    );
+    assert_eq!(
+        find_string_field(&arr[1], "address").as_deref(),
+        Some(TBTC),
+        "tokens[1] must be coin1 (tBTC); got {}",
+        arr[1]
+    );
+}
