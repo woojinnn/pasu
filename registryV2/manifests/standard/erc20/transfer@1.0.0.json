@@ -5,7 +5,8 @@
   "match": {
     "selector": "0xa9059cbb",
     "chain_to_addresses_source": "tokens:erc20",
-    "chain_ids": [1, 10, 8453, 42161]
+    "chain_ids": [1, 10, 8453, 42161],
+    "semantic_token_kind_exclude": ["debt_receipt"]
   },
   "abi_fragment": {
     "function_name": "transfer",

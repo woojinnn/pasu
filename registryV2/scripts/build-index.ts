@@ -53,7 +53,8 @@
  *   3. If `chain_to_addresses_source` present:
  *        - parse "tokens:<kind>" with kind ∈ {erc20, erc721, erc1155}
  *        - for each chainId in `match.chain_ids`, walk `tokens/<chainId>/*.json`
- *          and select addresses whose `erc_kind` field matches
+ *          and select addresses whose `erc_kind` field matches and whose
+ *          semantic `token_kind.kind` is not excluded by the manifest
  *        - build effective `chain_to_addresses`
  *   4. Substitute effective `chain_to_addresses` back into the bundle
  *      (delete `chain_to_addresses_source` and `chain_ids` from the inlined
@@ -77,8 +78,9 @@
  *     erc20/erc721/erc1155) to disambiguate from the semantic `TokenKind`
  *     enum (Base, NativeGas, Wrapped, LpShare, YieldReceipt, ... 10 variants)
  *     declared in `crates/simulation/state/src/token/kind.rs`. The build-index
- *     step only consumes `erc_kind` for auto-enumerate; the semantic
- *     `token_kind` field (if present) is treated as opaque metadata.
+ *     step consumes `erc_kind` for auto-enumerate, and may use semantic
+ *     `token_kind.kind` when a source manifest declares
+ *     `semantic_token_kind_exclude`.
  *
  * Spec references:
  *   - registryV2/docs/SCHEMA_V3.md
@@ -146,6 +148,7 @@ interface BundleMatchSourced {
   selector: Hex;
   chain_to_addresses_source: ChainToAddressesSource;
   chain_ids: ChainId[];
+  semantic_token_kind_exclude?: string[];
   typed_data?: V3TypedData;
 }
 
@@ -382,6 +385,33 @@ function loadTokenMetadata(path: string, expectedChainId: ChainId): TokenMetadat
   return { erc_kind: ercKind as TokenErcKind, chainId, address, ...obj };
 }
 
+function loadTokenMetadataForKind(chainId: ChainId, ercKind: TokenErcKind): TokenMetadata[] {
+  const chainPath = join(TOKENS_DIR, String(chainId));
+  if (!safeExists(chainPath)) return [];
+
+  const out: TokenMetadata[] = [];
+  for (const fname of readdirSync(chainPath)) {
+    if (!fname.endsWith(".json")) continue;
+    const meta = loadTokenMetadata(join(chainPath, fname), chainId);
+    if (meta.erc_kind === ercKind) out.push(meta);
+  }
+  return out.sort((a, b) => a.address.toLowerCase().localeCompare(b.address.toLowerCase()));
+}
+
+function semanticTokenKind(meta: TokenMetadata): string | undefined {
+  const tokenKind = meta.token_kind;
+  if (typeof tokenKind !== "object" || tokenKind === null || Array.isArray(tokenKind)) return undefined;
+  const kind = (tokenKind as Record<string, unknown>).kind;
+  return typeof kind === "string" ? kind : undefined;
+}
+
+function tokenPassesSourceFilter(meta: TokenMetadata, sourced: BundleMatchSourced): boolean {
+  const excluded = sourced.semantic_token_kind_exclude ?? [];
+  if (excluded.length === 0) return true;
+  const kind = semanticTokenKind(meta);
+  return kind === undefined || !excluded.includes(kind);
+}
+
 // ---------------------------------------------------------------------------
 // Bundle parsing + validation
 // ---------------------------------------------------------------------------
@@ -526,6 +556,18 @@ function validateMatchShape(path: string, match: unknown): asserts match is Bund
         );
       }
     }
+    if ("semantic_token_kind_exclude" in m) {
+      const excluded = m.semantic_token_kind_exclude;
+      if (
+        !Array.isArray(excluded) ||
+        excluded.length === 0 ||
+        !excluded.every((x) => typeof x === "string" && x.length > 0)
+      ) {
+        throw new Error(
+          `manifests/: ${path} match.semantic_token_kind_exclude must be a non-empty string array when present`,
+        );
+      }
+    }
   }
 }
 
@@ -632,7 +674,10 @@ function resolveTokenBundle(
         `manifests/: ${manifestPath} match.chain_to_addresses_source references chain ${chainId} but tokens/${chainId}/ does not exist`,
       );
     }
-    const addresses = Array.from(perKind.get(ercKind)!).sort();
+    const addresses = loadTokenMetadataForKind(chainId, ercKind)
+      .filter((meta) => tokenPassesSourceFilter(meta, sourced))
+      .map((meta) => meta.address.toLowerCase())
+      .sort();
     if (addresses.length === 0) {
       console.error(
         `[build-index] WARN ${manifestPath}: chain ${chainId} has no tokens of erc_kind=${ercKind} — 0 callkeys for this (chain, selector)`,

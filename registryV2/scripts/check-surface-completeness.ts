@@ -47,7 +47,9 @@
  * Only (chainId,address) pairs that HAVE a coverage file are enforced. Protocol
  * contracts with manifests but NO snapshot are reported as "ungated" (a visible
  * WARN, never silent — onboarding them is opt-in per protocol). ERC token
- * standards (manifests using `chain_to_addresses_source`) are out of scope.
+ * standards (manifests using `chain_to_addresses_source: "tokens:*"`) are
+ * counted only for already-gated token contracts, so canonical token manifests
+ * can satisfy I2/I3 without turning every token list entry into an ungated WARN.
  *
  * Limits (honest)
  * ---------------
@@ -84,15 +86,19 @@ const REGISTRY_ROOT = process.env.BUILD_INDEX_REGISTRY_ROOT
   : resolve(__dirname, "..");
 const MANIFESTS_DIR = join(REGISTRY_ROOT, "manifests");
 const SURFACE_DIR = join(REGISTRY_ROOT, "surface");
+const TOKENS_DIR = join(REGISTRY_ROOT, "tokens");
 
 const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
+const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const MUTABLE = new Set(["nonpayable", "payable"]);
+const TOKEN_ERC_KINDS = new Set(["erc20", "erc721", "erc1155"]);
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type Hex = string;
+type TokenErcKind = "erc20" | "erc721" | "erc1155";
 
 interface AbiInput {
   name?: string;
@@ -175,11 +181,86 @@ function protocolOf(manifestPath: string): string {
   return seg || "(root)";
 }
 
+function semanticTokenKind(meta: Record<string, unknown>): string | undefined {
+  const tokenKind = meta.token_kind;
+  if (typeof tokenKind !== "object" || tokenKind === null || Array.isArray(tokenKind)) return undefined;
+  const kind = (tokenKind as Record<string, unknown>).kind;
+  return typeof kind === "string" ? kind : undefined;
+}
+
+function tokenPassesSourceFilter(meta: Record<string, unknown>, match: Record<string, unknown>): boolean {
+  const excluded = match.semantic_token_kind_exclude;
+  if (!Array.isArray(excluded) || excluded.length === 0) return true;
+  const kind = semanticTokenKind(meta);
+  return kind === undefined || !excluded.includes(kind);
+}
+
+function readTokenAddresses(chainId: number, ercKind: TokenErcKind, match: Record<string, unknown>): Hex[] {
+  const chainPath = join(TOKENS_DIR, String(chainId));
+  if (!safeExists(chainPath)) return [];
+
+  const addresses: Hex[] = [];
+  for (const fname of readdirSync(chainPath)) {
+    if (!fname.endsWith(".json")) continue;
+    const path = join(chainPath, fname);
+    const obj = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    if (obj.erc_kind !== ercKind) continue;
+    if (obj.chainId !== chainId) continue;
+    if (!tokenPassesSourceFilter(obj, match)) continue;
+    const address = obj.address;
+    if (typeof address === "string" && ADDRESS_RE.test(address)) {
+      addresses.push(address.toLowerCase());
+    }
+  }
+  return addresses.sort();
+}
+
+function collectSourceManifestSurface(
+  path: string,
+  rel: string,
+  obj: any,
+  match: Record<string, unknown>,
+  gatedKeys: ReadonlySet<string>,
+  get: (key: string) => ContractManifests,
+  protocolByKey: Map<string, string>,
+): void {
+  const sourceSpec = match.chain_to_addresses_source;
+  if (typeof sourceSpec !== "string" || !sourceSpec.startsWith("tokens:")) return;
+
+  const ercKind = sourceSpec.slice("tokens:".length);
+  if (!TOKEN_ERC_KINDS.has(ercKind)) return;
+  if (!Array.isArray(match.chain_ids)) return;
+
+  const selector = String(match.selector ?? "").toLowerCase();
+  const abi = obj?.abi_fragment?.abi;
+  const hasConcreteOnchainSelector =
+    SELECTOR_RE.test(selector) &&
+    abi &&
+    typeof abi === "object" &&
+    abi.type === "function" &&
+    toFunctionSelector(abi).toLowerCase() === selector;
+  if (!hasConcreteOnchainSelector) return;
+
+  for (const chainRaw of match.chain_ids) {
+    const chainId = Number(chainRaw);
+    if (!Number.isInteger(chainId)) continue;
+    for (const addr of readTokenAddresses(chainId, ercKind as TokenErcKind, match)) {
+      const key = ckey(chainId, addr);
+      if (!gatedKeys.has(key)) continue;
+      const v = get(key);
+      const arr = v.onchainSelectors.get(selector) ?? [];
+      arr.push(rel);
+      v.onchainSelectors.set(selector, arr);
+      if (!protocolByKey.has(key)) protocolByKey.set(key, protocolOf(path));
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Step 1 — collect the authored manifest surface, grouped per (chainId,address)
 // ---------------------------------------------------------------------------
 
-function collectManifestSurface(): {
+function collectManifestSurface(gatedKeys: ReadonlySet<string>): {
   byContract: Map<string, ContractManifests>;
   protocolByKey: Map<string, string>;
 } {
@@ -206,8 +287,10 @@ function collectManifestSurface(): {
     const m = obj?.match;
     if (!m || typeof m !== "object") continue;
 
-    // ERC token standards auto-enumerate from tokens/ — out of gate scope.
-    if ("chain_to_addresses_source" in m) continue;
+    if ("chain_to_addresses_source" in m) {
+      collectSourceManifestSurface(path, rel, obj, m, gatedKeys, get, protocolByKey);
+      continue;
+    }
     const c2a = m.chain_to_addresses;
     if (!c2a || typeof c2a !== "object") continue;
 
@@ -305,14 +388,18 @@ function main(): void {
   const warnings: string[] = [];
   const summary: string[] = [];
 
-  const { byContract, protocolByKey } = collectManifestSurface();
   const units = loadSurfaceUnits();
   const gatedKeys = new Set<string>();
 
   for (const u of units) {
+    gatedKeys.add(ckey(u.coverage.chainId, u.coverage.address));
+  }
+
+  const { byContract, protocolByKey } = collectManifestSurface(gatedKeys);
+
+  for (const u of units) {
     const { coverage: cov, snapshot: snap, coveragePath } = u;
     const key = ckey(cov.chainId, cov.address);
-    gatedKeys.add(key);
     const label = `${cov.contract ?? snap.contract ?? "?"} [${cov.chainId}/${cov.address}]`;
 
     // snapshot/coverage address agreement

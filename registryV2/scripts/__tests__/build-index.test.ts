@@ -77,10 +77,30 @@ function typedDataDir(root: string): string {
   return join(root, "index", "by-typed-data");
 }
 
+function callkeyDir(root: string): string {
+  return join(root, "index", "by-callkey");
+}
+
 function listTypedData(root: string): string[] {
   const dir = typedDataDir(root);
   if (!existsSync(dir)) return [];
   return readdirSync(dir).sort();
+}
+
+function listCallkeys(root: string): string[] {
+  const dir = callkeyDir(root);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).sort();
+}
+
+function writeToken(root: string, chainId: number, address: string, body: Record<string, unknown>): void {
+  const dir = join(root, "tokens", String(chainId));
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, `${address.toLowerCase()}.json`),
+    JSON.stringify({ erc_kind: "erc20", chainId, address: address.toLowerCase(), ...body }, null, 2),
+    "utf8",
+  );
 }
 
 /** A Permit2-shaped manifest: vc present in every chain_to_addresses entry. */
@@ -334,7 +354,46 @@ describe("build-index by-typed-data emission", () => {
 
     // by-typed-data dir is created (wiped) but empty; by-callkey has the entry.
     expect(listTypedData(root)).toEqual([]);
-    const callkeyDir = join(root, "index", "by-callkey");
-    expect(readdirSync(callkeyDir).length).toBe(1);
+    expect(readdirSync(callkeyDir(root)).length).toBe(1);
+  });
+
+  it("(8) token-source manifests can exclude semantic token kinds such as debt receipts", () => {
+    const plain = "0x1111111111111111111111111111111111111111";
+    const debt = "0x2222222222222222222222222222222222222222";
+    const manifest = {
+      type: "adapter_action",
+      id: "standard/erc20/approve@1.0.0",
+      schema_version: "3",
+      match: {
+        selector: "0x095ea7b3",
+        chain_to_addresses_source: "tokens:erc20",
+        chain_ids: [1],
+        semantic_token_kind_exclude: ["debt_receipt"],
+      },
+      abi_fragment: {
+        function_name: "approve",
+        abi: {
+          name: "approve",
+          type: "function",
+          stateMutability: "nonpayable",
+          inputs: [
+            { name: "spender", type: "address" },
+            { name: "amount", type: "uint256" },
+          ],
+          outputs: [{ name: "", type: "bool" }],
+        },
+      },
+      emit: { strategy: "single_emit" },
+    };
+    const root = track(scaffold({ "approve.json": manifest }));
+    writeToken(root, 1, plain, { token_kind: { kind: "fungible" } });
+    writeToken(root, 1, debt, { token_kind: { kind: "debt_receipt" } });
+
+    const res = runBuild(root);
+
+    expect(res.status, `stderr:\n${res.stderr}`).toBe(0);
+    expect(listCallkeys(root)).toEqual([`1__${plain}__0x095ea7b3.json`]);
+    const entry = JSON.parse(readFileSync(join(callkeyDir(root), `1__${plain}__0x095ea7b3.json`), "utf8"));
+    expect(entry.bundle.match.chain_to_addresses).toEqual({ "1": [plain] });
   });
 });

@@ -105,7 +105,12 @@ must appear under `functions` with an explicit `cover | exclude` + `reason`.
 - **Incremental, never silent.** Only contracts with a snapshot here are
   enforced. Contracts with manifests but no snapshot are reported as a visible
   `UNGATED` WARN (not a failure) — onboard them protocol by protocol.
-- **ERC standards** (`chain_to_addresses_source` manifests) are out of scope.
+- **ERC standards.** `chain_to_addresses_source: "tokens:*"` manifests are
+  counted only for token contracts that already have a `surface/` snapshot, so
+  canonical token manifests can satisfy I2/I3 without producing ungated WARNs
+  for every token-list entry. Source manifests may use
+  `semantic_token_kind_exclude` to avoid applying generic ERC20 actions to
+  semantic token kinds such as non-transferable debt receipts.
 - **Proxy / diamond.** A verified ABI may hide implementation functions. The
   snapshot is ground truth only for the surface it exposes; for proxies, snapshot
   the implementation ABI.
