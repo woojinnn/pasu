@@ -191,8 +191,8 @@
       "name": "Pendle Limit Router",
       "chainId": 1,
       "address": "0x000000000000c9B3E2C3Ec88B1B4c0cD853f4321",
-      "decision": "cover",
-      "reason": "EIP-712 limit-order sign (maker) + on-chain cancel"
+      "decision": "exclude",
+      "reason": "deferred \u2014 limit-order EIP-712 maker-sign + on-chain cancel (separate PendleLimitRouter proxy, off-chain order surface); follow-up phase, not Router-core yield"
     },
     {
       "name": "proxyAdmin",
@@ -492,8 +492,8 @@
       "name": "Pendle Limit Router",
       "chainId": 8453,
       "address": "0x000000000000c9B3E2C3Ec88B1B4c0cD853f4321",
-      "decision": "cover",
-      "reason": "EIP-712 limit-order sign (maker) + on-chain cancel"
+      "decision": "exclude",
+      "reason": "deferred \u2014 limit-order EIP-712 maker-sign + on-chain cancel (separate PendleLimitRouter proxy, off-chain order surface); follow-up phase, not Router-core yield"
     },
     {
       "name": "proxyAdmin",
