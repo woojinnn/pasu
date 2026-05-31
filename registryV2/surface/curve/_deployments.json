@@ -47,6 +47,9 @@
     { "name": "StableSwap-NG Factory", "chainId": 1, "address": "0x6a8cbed756804b16e05e741edabd5cb544ae21bf", "decision": "exclude", "reason": "pool-deployment factory (deploy_plain/meta_pool) — power-user/admin, not a pre-sign value/permission surface" },
     { "name": "Tricrypto-NG Factory", "chainId": 1, "address": "0x0c0e5f2ff0ff18a3be9b835635039256dc4b4963", "decision": "exclude", "reason": "pool-deployment factory — not a pre-sign value/permission surface" },
     { "name": "Twocrypto-NG Factory", "chainId": 1, "address": "0x98ee851a00abee0d95d08cf4ca2bdce32aeaaf7f", "decision": "exclude", "reason": "pool-deployment factory (deploy_pool) — power-user/admin, not a pre-sign value/permission surface; the deployed twocrypto pools themselves are covered above" },
-    { "name": "crvUSD ControllerFactory", "chainId": 1, "address": "0xc9332fdcb1c491dcc683bae86fe3cb70360738bc", "decision": "exclude", "reason": "governance/admin market-creation factory — not user pre-sign surface" }
+    { "name": "crvUSD ControllerFactory", "chainId": 1, "address": "0xc9332fdcb1c491dcc683bae86fe3cb70360738bc", "decision": "exclude", "reason": "governance/admin market-creation factory — not user pre-sign surface" },
+
+    { "name": "StableSwap-NG superOETHb/WETH (Base)", "chainId": 8453, "address": "0x302a94e3c28c290eaf2a4605fc52e11eb915f378", "decision": "cover", "reason": "user AMM surface: exchange/add/remove liquidity (Curve StableSwap-NG on Base; ~$16M, the highest-TVL Curve pool on Base — dynamic uint256[] blueprint, curve_v1 venue)" },
+    { "name": "Tricrypto-NG crvUSD/tBTC/WETH (Base)", "chainId": 8453, "address": "0x6e53131f68a034873b6bfa15502af094ef0c5854", "decision": "exclude", "reason": "deferred: ~$574K Base tricrypto — ABI not 1st-party verifiable (Etherscan v2 gated for chain 8453 on this key tier, not on Sourcify). CurveV2 venue + coins (crvUSD/tBTC/WETH) already in tokens/8453; onboard once a 1st-party Base ABI source is available." }
   ]
 }

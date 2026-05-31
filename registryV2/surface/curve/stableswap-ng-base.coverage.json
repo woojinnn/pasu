@@ -1,0 +1,121 @@
+{
+  "contract": "StableSwap-NG",
+  "chainId": 8453,
+  "addresses": [
+    "0x302a94e3c28c290eaf2a4605fc52e11eb915f378"
+  ],
+  "snapshot": "stableswap-ng-base.abi.json",
+  "note": "Curve StableSwap-NG plain 2-coin pool on Base: superOETHb/WETH (~$16M, the highest-TVL Curve pool on Base). coin0=WETH 0x4200…0006, coin1=superOETHb 0xdbfefd2e…. This Base blueprint uses DYNAMIC uint256[] arrays for add/remove/imbalance (vs the mainnet pools' fixed uint256[2]) — different selectors, same curve_v1 venue + decode (0 core code). Verified ABI = Sourcify (partial match). 10 cover (exchange/add_liquidity/remove_liquidity/remove_liquidity_one_coin/remove_liquidity_imbalance + receiver) · 12 exclude (2 exchange_received router-opt, 1 remove_liquidity claim-admin-fees bool overload, 3 erc20 LP + permit, 6 admin).",
+  "functions": {
+    "0x3df02124": {
+      "name": "exchange(int128,int128,uint256,uint256)",
+      "decision": "cover",
+      "reason": "user swap on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0xddc1f59d": {
+      "name": "exchange(int128,int128,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user swap on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0xb72df5de": {
+      "name": "add_liquidity(uint256[],uint256)",
+      "decision": "cover",
+      "reason": "user add_liquidity on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0xa7256d09": {
+      "name": "add_liquidity(uint256[],uint256,address)",
+      "decision": "cover",
+      "reason": "user add_liquidity on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0xd40ddb8c": {
+      "name": "remove_liquidity(uint256,uint256[])",
+      "decision": "cover",
+      "reason": "user remove_liquidity on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0x5e604cd2": {
+      "name": "remove_liquidity(uint256,uint256[],address)",
+      "decision": "cover",
+      "reason": "user remove_liquidity on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0x1a4d01d2": {
+      "name": "remove_liquidity_one_coin(uint256,int128,uint256)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_one_coin on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0x081579a5": {
+      "name": "remove_liquidity_one_coin(uint256,int128,uint256,address)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_one_coin on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0x7706db75": {
+      "name": "remove_liquidity_imbalance(uint256[],uint256)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_imbalance on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0x4a6e32c6": {
+      "name": "remove_liquidity_imbalance(uint256[],uint256,address)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_imbalance on Curve StableSwap-NG (Base superOETHb/WETH) — int128 coin-index value-map / per-pool baked coins; recipient = receiver arg if present else tx.from."
+    },
+    "0x7e3db030": {
+      "name": "exchange_received(int128,int128,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "router-only pre-funded swap optimization (tokens pre-transferred, no token-pull at this call); the swap intent is covered by exchange. NOT a new permission grant."
+    },
+    "0xafb43012": {
+      "name": "exchange_received(int128,int128,uint256,uint256,address)",
+      "decision": "exclude",
+      "reason": "router-only pre-funded swap optimization (tokens pre-transferred, no token-pull at this call); the swap intent is covered by exchange. NOT a new permission grant."
+    },
+    "0x2969e04a": {
+      "name": "remove_liquidity(uint256,uint256[],address,bool)",
+      "decision": "exclude",
+      "reason": "4th bool arg = _claim_admin_fees toggle; the proportional-withdraw intent is covered by the 2-arg/3-arg remove_liquidity overloads."
+    },
+    "0x30c54085": {
+      "name": "withdraw_admin_fees()",
+      "decision": "exclude",
+      "reason": "keeper/admin — sweep accrued admin fees; not a user-wallet position action."
+    },
+    "0xa9059cbb": {
+      "name": "transfer(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token — analyzed by the erc20 standard adapter (pool registered in tokens/8453/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0x23b872dd": {
+      "name": "transferFrom(address,address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token — analyzed by the erc20 standard adapter (pool registered in tokens/8453/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0x095ea7b3": {
+      "name": "approve(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token — analyzed by the erc20 standard adapter (pool registered in tokens/8453/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0xd505accf": {
+      "name": "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+      "decision": "exclude",
+      "reason": "EIP-2612 permit on the LP token — same as approve: covered by the erc20 standard adapter, not Curve-specific."
+    },
+    "0x3c157e64": {
+      "name": "ramp_A(uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only) — A-ramp / fee / moving-average parameter management; not a user-wallet action."
+    },
+    "0x551a6588": {
+      "name": "stop_ramp_A()",
+      "decision": "exclude",
+      "reason": "admin (owner-only) — A-ramp / fee / moving-average parameter management; not a user-wallet action."
+    },
+    "0x015c2838": {
+      "name": "set_new_fee(uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only) — A-ramp / fee / moving-average parameter management; not a user-wallet action."
+    },
+    "0x65bbea6b": {
+      "name": "set_ma_exp_time(uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only) — A-ramp / fee / moving-average parameter management; not a user-wallet action."
+    }
+  }
+}

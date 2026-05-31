@@ -535,6 +535,86 @@ fn curve_cryptoswap_add_liquidity_bakes_three_coins_in_order() {
     }
 }
 
+/// Field-level golden for Curve StableSwap-NG on BASE (chain 8453) — cross-chain
+/// `chain_to_addresses` + the int128 coin-index value-map on the superOETHb/WETH
+/// pool. Pins that the SAME curve_v1 venue + decode resolves a Base pool: `i=0` →
+/// WETH (coin0), `j=1` → superOETHb (coin1). Demonstrates 0-core-code chain
+/// extension (manifest `chain_to_addresses: {"8453": …}`).
+#[test]
+fn curve_stableswap_ng_base_exchange_resolves_coin_index() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Base superOETHb/WETH pool. exchange(i=0, j=1, _dx=1e18, _min_dy=0.99e18).
+    const TO: &str = "0x302a94e3c28c290eaf2a4605fc52e11eb915f378";
+    const WETH: &str = "0x4200000000000000000000000000000000000006";
+    const SOETH: &str = "0xdbfefd2e8460a6ee4955a68582f85708baea60a3";
+    const CALLDATA: &str = "0x3df02124000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000dbd2fc137a30000";
+
+    let env = harness::route::route_calldata(8453, TO, "0x3df02124", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed on chain 8453: {env}"
+    );
+    let token_in = find_object_by_key(&env, "token_in").expect("swap body carries token_in");
+    let token_out = find_object_by_key(&env, "token_out").expect("swap body carries token_out");
+    assert_eq!(
+        find_string_field(token_in, "address").as_deref(),
+        Some(WETH),
+        "i=0 must resolve token_in to coin0 (WETH) on Base; got {token_in}"
+    );
+    assert_eq!(
+        find_string_field(token_out, "address").as_deref(),
+        Some(SOETH),
+        "j=1 must resolve token_out to coin1 (superOETHb) on Base; got {token_out}"
+    );
+}
+
+/// Field-level golden for Curve StableSwap-NG on Base `add_liquidity` — the DYNAMIC
+/// `uint256[]` array variant (the Base blueprint uses `uint256[]`, NOT the mainnet
+/// pools' fixed `uint256[2]`). Pins that `$args._amounts[k]` positional baking
+/// resolves over a dynamically-encoded array: `tokens[0]` = WETH paired with
+/// `_amounts[0]`, `tokens[1]` = superOETHb paired with `_amounts[1]`.
+#[test]
+fn curve_stableswap_ng_base_add_liquidity_dynamic_array_bakes_coins() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Base superOETHb/WETH. add_liquidity(_amounts=[1e18, 2e18], _min_mint_amount=1).
+    // uint256[] is dynamic → head offset 0x40, then [len=2, 1e18, 2e18].
+    const TO: &str = "0x302a94e3c28c290eaf2a4605fc52e11eb915f378";
+    const WETH: &str = "0x4200000000000000000000000000000000000006";
+    const SOETH: &str = "0xdbfefd2e8460a6ee4955a68582f85708baea60a3";
+    const CALLDATA: &str = "0xb72df5de0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000001bc16d674ec80000";
+
+    let env = harness::route::route_calldata(8453, TO, "0xb72df5de", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let tokens = find_object_by_key(&env, "tokens").expect("add_liquidity body carries tokens");
+    let arr = tokens
+        .as_array()
+        .expect("tokens is an array of [TokenRef, amount]");
+    assert_eq!(
+        arr.len(),
+        2,
+        "2-coin pool must bake exactly 2 tokens; got {tokens}"
+    );
+    assert_eq!(
+        find_string_field(&arr[0], "address").as_deref(),
+        Some(WETH),
+        "tokens[0] must be coin0 (WETH) via dynamic-array baking; got {}",
+        arr[0]
+    );
+    assert_eq!(
+        find_string_field(&arr[1], "address").as_deref(),
+        Some(SOETH),
+        "tokens[1] must be coin1 (superOETHb) via dynamic-array baking; got {}",
+        arr[1]
+    );
+}
+
 /// Field-level golden for Curve crvUSD `create_loan` — the new `LendingVenue::CrvUsd`
 /// venue + the create_loan → `borrow` mapping. On the wstETH market, `create_loan`
 /// must decode to a lending `borrow` whose `asset` is crvUSD (the DEBT token) and
