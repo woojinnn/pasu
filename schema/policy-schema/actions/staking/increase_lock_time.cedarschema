@@ -1,0 +1,23 @@
+// Staking::IncreaseLockTime — extend the unlock time of an existing lock
+// (Curve veCRV `increase_unlock_time(uint256 _unlock_time)`).
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/increase_lock_time.rs`
+// (`IncreaseLockTimeAction`). No LiveInputs.
+
+namespace Staking {
+  type IncreaseLockTimeContext = {
+    meta: Core::ActionMeta,
+    venue: StakeVenue,
+    // New lock expiry, unix seconds (`_unlock_time`), U256 hex.
+    unlockTime: String,
+    custom?: IncreaseLockTimeCustomContext,
+  };
+
+  type IncreaseLockTimeCustomContext = {};
+
+  action "IncreaseLockTime" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: IncreaseLockTimeContext,
+  };
+}

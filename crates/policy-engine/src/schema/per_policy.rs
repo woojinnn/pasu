@@ -42,10 +42,12 @@ use super::{
     PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
     PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
     PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
-    TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA,
-    TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA,
-    TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
-    TOKEN_REVOKE_APPROVAL_SCHEMA,
+    STAKING_CLAIM_REWARDS_SCHEMA, STAKING_GAUGE_DEPOSIT_SCHEMA, STAKING_GAUGE_WITHDRAW_SCHEMA,
+    STAKING_INCREASE_LOCK_AMOUNT_SCHEMA, STAKING_INCREASE_LOCK_TIME_SCHEMA, STAKING_LOCK_SCHEMA,
+    STAKING_UNLOCK_SCHEMA, STAKING_VOTE_FOR_GAUGE_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA,
+    TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA,
+    TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA,
+    TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
 };
 
 /// One row of the action resolver: the `(domain, action_tag)` a trigger can
@@ -354,6 +356,55 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("protocol_authorization"),
         schema_text: PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
         pascal_stub: "ProtocolAuthorization",
+    },
+    // staking
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("claim_rewards"),
+        schema_text: STAKING_CLAIM_REWARDS_SCHEMA,
+        pascal_stub: "ClaimRewards",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("gauge_deposit"),
+        schema_text: STAKING_GAUGE_DEPOSIT_SCHEMA,
+        pascal_stub: "GaugeDeposit",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("gauge_withdraw"),
+        schema_text: STAKING_GAUGE_WITHDRAW_SCHEMA,
+        pascal_stub: "GaugeWithdraw",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("increase_lock_amount"),
+        schema_text: STAKING_INCREASE_LOCK_AMOUNT_SCHEMA,
+        pascal_stub: "IncreaseLockAmount",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("increase_lock_time"),
+        schema_text: STAKING_INCREASE_LOCK_TIME_SCHEMA,
+        pascal_stub: "IncreaseLockTime",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("lock"),
+        schema_text: STAKING_LOCK_SCHEMA,
+        pascal_stub: "Lock",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("unlock"),
+        schema_text: STAKING_UNLOCK_SCHEMA,
+        pascal_stub: "Unlock",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("vote_for_gauge"),
+        schema_text: STAKING_VOTE_FOR_GAUGE_SCHEMA,
+        pascal_stub: "VoteForGauge",
     },
     // token
     ActionEntry {
@@ -851,9 +902,9 @@ mod tests {
                 entry.pascal_stub,
             );
         }
-        // The table covers exactly the 54 shipped actions (multicall + unknown
+        // The table covers exactly the 62 shipped actions (multicall + unknown
         // included). Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 54, "resolver table must have 54 rows");
+        assert_eq!(RESOLVER_TABLE.len(), 62, "resolver table must have 62 rows");
     }
 
     /// A custom_context field whose name collides with one of the matched

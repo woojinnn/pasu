@@ -260,6 +260,25 @@ namespace LiquidStaking {
   };
 }
 
+namespace Staking {
+  // -------------------------------------------------------------------------
+  // StakeVenue — Curve DAO staking / vote-escrow venue identifier. Each variant
+  // is one Curve DAO contract carrying its single contract address.
+  //   - "curve_voting_escrow"    → escrow     (veCRV VotingEscrow)
+  //   - "curve_minter"           → minter     (CRV Minter)
+  //   - "curve_gauge_controller" → controller (GaugeController)
+  //   - "curve_gauge"            → gauge      (per-pool liquidity gauge)
+  // -------------------------------------------------------------------------
+  type StakeVenue = {
+    name: String,                // discriminated by name
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+    escrow?: String,             // curve_voting_escrow
+    minter?: String,             // curve_minter
+    controller?: String,         // curve_gauge_controller
+    gauge?: String,              // curve_gauge
+  };
+}
+
 namespace Launchpad {
   // Vesting curve (Rust `VestCurve`, serde tag = "kind", rename_all = "snake_case").
   //   - "linear"   : no extra fields.

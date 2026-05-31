@@ -91,6 +91,25 @@ const LIQUID_STAKING_UNWRAP_SCHEMA: &str =
 const LIQUID_STAKING_WRAP_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/liquid_staking/wrap.cedarschema");
 
+// staking (alphabetical)
+const STAKING_CLAIM_REWARDS_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/claim_rewards.cedarschema");
+const STAKING_GAUGE_DEPOSIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/gauge_deposit.cedarschema");
+const STAKING_GAUGE_WITHDRAW_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/gauge_withdraw.cedarschema");
+const STAKING_INCREASE_LOCK_AMOUNT_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/staking/increase_lock_amount.cedarschema"
+);
+const STAKING_INCREASE_LOCK_TIME_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/increase_lock_time.cedarschema");
+const STAKING_LOCK_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/lock.cedarschema");
+const STAKING_UNLOCK_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/unlock.cedarschema");
+const STAKING_VOTE_FOR_GAUGE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/vote_for_gauge.cedarschema");
+
 // launchpad (alphabetical)
 const LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/launchpad/claim_allocation.cedarschema");
@@ -203,6 +222,14 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     PERP_PLACE_LIMIT_ORDER_SCHEMA,
     PERP_PLACE_STOP_ORDER_SCHEMA,
     PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+    STAKING_CLAIM_REWARDS_SCHEMA,
+    STAKING_GAUGE_DEPOSIT_SCHEMA,
+    STAKING_GAUGE_WITHDRAW_SCHEMA,
+    STAKING_INCREASE_LOCK_AMOUNT_SCHEMA,
+    STAKING_INCREASE_LOCK_TIME_SCHEMA,
+    STAKING_LOCK_SCHEMA,
+    STAKING_UNLOCK_SCHEMA,
+    STAKING_VOTE_FOR_GAUGE_SCHEMA,
     TOKEN_ERC20_APPROVE_SCHEMA,
     TOKEN_ERC20_PERMIT_SCHEMA,
     TOKEN_ERC20_TRANSFER_SCHEMA,

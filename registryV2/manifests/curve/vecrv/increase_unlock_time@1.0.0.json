@@ -1,0 +1,53 @@
+{
+  "type": "adapter_action",
+  "id": "curve/vecrv/increase_unlock_time@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xeff7a612",
+    "chain_to_addresses": {
+      "1": [
+        "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "increase_unlock_time",
+    "abi": {
+      "name": "increase_unlock_time",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_unlock_time",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "increase_lock_time",
+        "increase_lock_time": {
+          "venue": {
+            "name": "curve_voting_escrow",
+            "chain": "$chain",
+            "escrow": "$to"
+          },
+          "unlock_time": "$args._unlock_time"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "contract": "Curve-Minter",
+  "chainId": 1,
+  "addresses": [
+    "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
+  ],
+  "snapshot": "minter.abi.json",
+  "note": "Curve Curve-Minter mainnet singleton. 4 cover + 0 exclude (admin/keeper).",
+  "functions": {
+    "0x6a627842": {
+      "name": "mint(address)",
+      "decision": "cover",
+      "reason": "user CRV reward mint (staking ClaimRewards) / toggle_approve_mint (permission ProtocolAuthorization, operator). reward token = CRV (baked). toggle is a FLIP — modeled is_authorized:true (grant, the risk-relevant direction); static analysis can't read current state (documented limitation)."
+    },
+    "0xa51e1904": {
+      "name": "mint_many(address[8])",
+      "decision": "cover",
+      "reason": "user CRV reward mint (staking ClaimRewards) / toggle_approve_mint (permission ProtocolAuthorization, operator). reward token = CRV (baked). toggle is a FLIP — modeled is_authorized:true (grant, the risk-relevant direction); static analysis can't read current state (documented limitation)."
+    },
+    "0x27f18ae3": {
+      "name": "mint_for(address,address)",
+      "decision": "cover",
+      "reason": "user CRV reward mint (staking ClaimRewards) / toggle_approve_mint (permission ProtocolAuthorization, operator). reward token = CRV (baked). toggle is a FLIP — modeled is_authorized:true (grant, the risk-relevant direction); static analysis can't read current state (documented limitation)."
+    },
+    "0xdd289d60": {
+      "name": "toggle_approve_mint(address)",
+      "decision": "cover",
+      "reason": "user CRV reward mint (staking ClaimRewards) / toggle_approve_mint (permission ProtocolAuthorization, operator). reward token = CRV (baked). toggle is a FLIP — modeled is_authorized:true (grant, the risk-relevant direction); static analysis can't read current state (documented limitation)."
+    }
+  }
+}

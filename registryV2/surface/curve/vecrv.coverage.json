@@ -1,0 +1,66 @@
+{
+  "contract": "Curve-veCRV-VotingEscrow",
+  "chainId": 1,
+  "addresses": [
+    "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
+  ],
+  "snapshot": "vecrv.abi.json",
+  "note": "Curve Curve-veCRV-VotingEscrow mainnet singleton. 5 cover + 6 exclude (admin/keeper).",
+  "functions": {
+    "0x6b441a40": {
+      "name": "commit_transfer_ownership(address)",
+      "decision": "exclude",
+      "reason": "admin — ownership transfer (2-step commit)."
+    },
+    "0x6a1c05ae": {
+      "name": "apply_transfer_ownership()",
+      "decision": "exclude",
+      "reason": "admin — ownership transfer (2-step apply)."
+    },
+    "0x57f901e2": {
+      "name": "commit_smart_wallet_checker(address)",
+      "decision": "exclude",
+      "reason": "admin — smart-wallet allowlist checker."
+    },
+    "0x8e5b490f": {
+      "name": "apply_smart_wallet_checker()",
+      "decision": "exclude",
+      "reason": "admin — smart-wallet allowlist checker."
+    },
+    "0xc2c4c5c1": {
+      "name": "checkpoint()",
+      "decision": "exclude",
+      "reason": "keeper — no-arg global checkpoint, no user funds."
+    },
+    "0x3a46273e": {
+      "name": "deposit_for(address,uint256)",
+      "decision": "cover",
+      "reason": "user veCRV vote-escrow op (staking domain) — Lock/IncreaseLockAmount/IncreaseLockTime/Unlock, venue=curve_voting_escrow{escrow}. Locked token = CRV (baked)."
+    },
+    "0x65fc3873": {
+      "name": "create_lock(uint256,uint256)",
+      "decision": "cover",
+      "reason": "user veCRV vote-escrow op (staking domain) — Lock/IncreaseLockAmount/IncreaseLockTime/Unlock, venue=curve_voting_escrow{escrow}. Locked token = CRV (baked)."
+    },
+    "0x4957677c": {
+      "name": "increase_amount(uint256)",
+      "decision": "cover",
+      "reason": "user veCRV vote-escrow op (staking domain) — Lock/IncreaseLockAmount/IncreaseLockTime/Unlock, venue=curve_voting_escrow{escrow}. Locked token = CRV (baked)."
+    },
+    "0xeff7a612": {
+      "name": "increase_unlock_time(uint256)",
+      "decision": "cover",
+      "reason": "user veCRV vote-escrow op (staking domain) — Lock/IncreaseLockAmount/IncreaseLockTime/Unlock, venue=curve_voting_escrow{escrow}. Locked token = CRV (baked)."
+    },
+    "0x3ccfd60b": {
+      "name": "withdraw()",
+      "decision": "cover",
+      "reason": "user veCRV vote-escrow op (staking domain) — Lock/IncreaseLockAmount/IncreaseLockTime/Unlock, venue=curve_voting_escrow{escrow}. Locked token = CRV (baked)."
+    },
+    "0x3cebb823": {
+      "name": "changeController(address)",
+      "decision": "exclude",
+      "reason": "admin — controller migration."
+    }
+  }
+}

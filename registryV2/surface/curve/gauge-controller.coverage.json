@@ -1,0 +1,76 @@
+{
+  "contract": "Curve-GaugeController",
+  "chainId": 1,
+  "addresses": [
+    "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb"
+  ],
+  "snapshot": "gauge-controller.abi.json",
+  "note": "Curve Curve-GaugeController mainnet singleton. 1 cover + 12 exclude (admin/keeper).",
+  "functions": {
+    "0x6b441a40": {
+      "name": "commit_transfer_ownership(address)",
+      "decision": "exclude",
+      "reason": "admin — ownership transfer."
+    },
+    "0x6a1c05ae": {
+      "name": "apply_transfer_ownership()",
+      "decision": "exclude",
+      "reason": "admin — ownership transfer."
+    },
+    "0x3a04f900": {
+      "name": "add_gauge(address,int128)",
+      "decision": "exclude",
+      "reason": "admin — register a gauge."
+    },
+    "0x18dfe921": {
+      "name": "add_gauge(address,int128,uint256)",
+      "decision": "exclude",
+      "reason": "admin — register a gauge (with weight)."
+    },
+    "0xc2c4c5c1": {
+      "name": "checkpoint()",
+      "decision": "exclude",
+      "reason": "keeper — global checkpoint."
+    },
+    "0x615e5237": {
+      "name": "checkpoint_gauge(address)",
+      "decision": "exclude",
+      "reason": "keeper — per-gauge checkpoint."
+    },
+    "0x95cfcec3": {
+      "name": "gauge_relative_weight_write(address)",
+      "decision": "exclude",
+      "reason": "keeper — cache relative weight, no user funds."
+    },
+    "0x6472eee1": {
+      "name": "gauge_relative_weight_write(address,uint256)",
+      "decision": "exclude",
+      "reason": "keeper — cache relative weight at time, no user funds."
+    },
+    "0x26e56d5e": {
+      "name": "add_type(string)",
+      "decision": "exclude",
+      "reason": "admin — add a gauge type."
+    },
+    "0x92d0d232": {
+      "name": "add_type(string,uint256)",
+      "decision": "exclude",
+      "reason": "admin — add a gauge type (with weight)."
+    },
+    "0xdb1ca260": {
+      "name": "change_type_weight(int128,uint256)",
+      "decision": "exclude",
+      "reason": "admin — set gauge-type weight."
+    },
+    "0xd4d2646e": {
+      "name": "change_gauge_weight(address,uint256)",
+      "decision": "exclude",
+      "reason": "admin — override a gauge weight."
+    },
+    "0xd7136328": {
+      "name": "vote_for_gauge_weights(address,uint256)",
+      "decision": "cover",
+      "reason": "user gauge-weight vote (staking VoteForGauge), venue=curve_gauge_controller{controller}. weight_bp = _user_weight (0–10000). Moves no funds."
+    }
+  }
+}
