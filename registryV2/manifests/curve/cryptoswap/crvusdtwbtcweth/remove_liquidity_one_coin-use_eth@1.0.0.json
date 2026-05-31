@@ -1,0 +1,116 @@
+{
+  "type": "adapter_action",
+  "id": "curve/cryptoswap/crvusdtwbtcweth/remove_liquidity_one_coin-use_eth@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x8f15b6b5",
+    "chain_to_addresses": {
+      "1": [
+        "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "remove_liquidity_one_coin",
+    "abi": {
+      "name": "remove_liquidity_one_coin",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "token_amount",
+          "type": "uint256"
+        },
+        {
+          "name": "i",
+          "type": "uint256"
+        },
+        {
+          "name": "min_amount",
+          "type": "uint256"
+        },
+        {
+          "name": "use_eth",
+          "type": "bool"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "remove_liquidity",
+        "remove_liquidity": {
+          "venue": {
+            "name": "curve_v2",
+            "chain": "$chain",
+            "pool": "$to"
+          },
+          "params": {
+            "kind": "pooled_burn_one_coin",
+            "lp_token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$to"
+              }
+            },
+            "lp_amount": "$args.token_amount",
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$match": "$args.i",
+                  "$cases": {
+                    "0": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+                    "1": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+                    "2": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+                  }
+                }
+              }
+            },
+            "min_out": "$args.min_amount",
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_v2_balances"
+              },
+              "ttl_s": 12
+            },
+            "fees_owed": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

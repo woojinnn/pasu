@@ -357,3 +357,77 @@ fn curve_stableswap_ng_add_liquidity_bakes_pool_coins_in_order() {
         arr[1]
     );
 }
+
+/// Field-level golden for Curve CryptoSwap-NG (V2) `exchange` — the coin-index
+/// value-map over `uint256` indices (cryptoswap uses `uint256` i/j, NOT the
+/// `int128` of stableswap-ng). `uint256` renders as a decimal STRING
+/// (`args_json::uint_to_json`, >64 bits → string), so the `$cases` keys "0".."2"
+/// match — this pins that the uint256 path resolves like the int128 one. On the
+/// 3-coin crvUSDT/WBTC/WETH pool, `i=1` → WBTC, `j=2` → WETH.
+#[test]
+fn curve_cryptoswap_exchange_resolves_uint256_coin_index() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // crvusdtwbtcweth (coins: USDT=0, WBTC=1, WETH=2). exchange(i=1, j=2, dx=1e8, min_dy=1).
+    const TO: &str = "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4";
+    const WBTC: &str = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599";
+    const WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+    const CALLDATA: &str = "0x5b41b908000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000000000001";
+
+    let env = harness::route::route_calldata(1, TO, "0x5b41b908", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let token_in = find_object_by_key(&env, "token_in").expect("swap body carries token_in");
+    let token_out = find_object_by_key(&env, "token_out").expect("swap body carries token_out");
+    assert_eq!(
+        find_string_field(token_in, "address").as_deref(),
+        Some(WBTC),
+        "i=1 (uint256) must resolve token_in to coin1 (WBTC); got {token_in}"
+    );
+    assert_eq!(
+        find_string_field(token_out, "address").as_deref(),
+        Some(WETH),
+        "j=2 (uint256) must resolve token_out to coin2 (WETH); got {token_out}"
+    );
+}
+
+/// Field-level golden for Curve CryptoSwap-NG `add_liquidity` — 3-coin positional
+/// baking. `add_liquidity(uint256[3] amounts, ...)` carries only amounts; coins
+/// are implicit. On crvUSDT/WBTC/WETH, `tokens[0..2]` must bake to USDT/WBTC/WETH
+/// in coin order.
+#[test]
+fn curve_cryptoswap_add_liquidity_bakes_three_coins_in_order() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // crvusdtwbtcweth. add_liquidity(amounts=[1e6, 2e6, 3e6], min_mint_amount=1).
+    const TO: &str = "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4";
+    const USDT: &str = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+    const WBTC: &str = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599";
+    const WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+    const CALLDATA: &str = "0x4515cef300000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000002dc6c00000000000000000000000000000000000000000000000000000000000000001";
+
+    let env = harness::route::route_calldata(1, TO, "0x4515cef3", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let tokens = find_object_by_key(&env, "tokens").expect("add_liquidity body carries tokens");
+    let arr = tokens.as_array().expect("tokens is an array");
+    assert_eq!(
+        arr.len(),
+        3,
+        "3-coin pool must bake exactly 3 tokens; got {tokens}"
+    );
+    for (idx, want) in [USDT, WBTC, WETH].iter().enumerate() {
+        assert_eq!(
+            find_string_field(&arr[idx], "address").as_deref(),
+            Some(*want),
+            "tokens[{idx}] must be coin{idx}; got {}",
+            arr[idx]
+        );
+    }
+}

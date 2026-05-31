@@ -1,0 +1,155 @@
+{
+  "contract": "Curve-CryptoSwap-NG",
+  "chainId": 1,
+  "addresses": [
+    "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+    "0x2889302a794da87fbf1d6db415c1492194663d13",
+    "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+    "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+    "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193"
+  ],
+  "snapshot": "cryptoswap.abi.json",
+  "note": "Curve CryptoSwap-NG (V2 tricrypto) mainnet pools. 1 shared impl ABI -> 5 pool addresses (factory multi-address). 13 cover (exchange/add/remove/one_coin + useEth/receiver variants) + 15 exclude (3 exchange_underlying/extended deferred, 6 erc20 LP, 6 admin). Base tricrypto-base deferred to Base phase.",
+  "functions": {
+    "0x5b41b908": {
+      "name": "exchange(uint256,uint256,uint256,uint256)",
+      "decision": "cover",
+      "reason": "user exchange on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x394747c5": {
+      "name": "exchange(uint256,uint256,uint256,uint256,bool)",
+      "decision": "cover",
+      "reason": "user exchange on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0xce7d6503": {
+      "name": "exchange(uint256,uint256,uint256,uint256,bool,address)",
+      "decision": "cover",
+      "reason": "user exchange on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x65b2489b": {
+      "name": "exchange_underlying(uint256,uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "deferred: exchange_underlying ETH-unwraps the WETH coin slot (per-pool ETH/WETH index disambiguation needed to avoid mis-decode); exchange_extended is an integrator callback swap. The wrapped-coin swap intent is covered by exchange. NOT a permission grant."
+    },
+    "0xe2ad025a": {
+      "name": "exchange_underlying(uint256,uint256,uint256,uint256,address)",
+      "decision": "exclude",
+      "reason": "deferred: exchange_underlying ETH-unwraps the WETH coin slot (per-pool ETH/WETH index disambiguation needed to avoid mis-decode); exchange_extended is an integrator callback swap. The wrapped-coin swap intent is covered by exchange. NOT a permission grant."
+    },
+    "0xdd96994f": {
+      "name": "exchange_extended(uint256,uint256,uint256,uint256,bool,address,address,bytes32)",
+      "decision": "exclude",
+      "reason": "deferred: exchange_underlying ETH-unwraps the WETH coin slot (per-pool ETH/WETH index disambiguation needed to avoid mis-decode); exchange_extended is an integrator callback swap. The wrapped-coin swap intent is covered by exchange. NOT a permission grant."
+    },
+    "0x4515cef3": {
+      "name": "add_liquidity(uint256[3],uint256)",
+      "decision": "cover",
+      "reason": "user add_liquidity on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x2b6e993a": {
+      "name": "add_liquidity(uint256[3],uint256,bool)",
+      "decision": "cover",
+      "reason": "user add_liquidity on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x5cecb5f7": {
+      "name": "add_liquidity(uint256[3],uint256,bool,address)",
+      "decision": "cover",
+      "reason": "user add_liquidity on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0xecb586a5": {
+      "name": "remove_liquidity(uint256,uint256[3])",
+      "decision": "cover",
+      "reason": "user remove_liquidity on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0xfce64736": {
+      "name": "remove_liquidity(uint256,uint256[3],bool)",
+      "decision": "cover",
+      "reason": "user remove_liquidity on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x1da3d238": {
+      "name": "remove_liquidity(uint256,uint256[3],bool,address)",
+      "decision": "cover",
+      "reason": "user remove_liquidity on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x5cd34780": {
+      "name": "remove_liquidity(uint256,uint256[3],bool,address,bool)",
+      "decision": "cover",
+      "reason": "user remove_liquidity on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0xf1dc3cc9": {
+      "name": "remove_liquidity_one_coin(uint256,uint256,uint256)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_one_coin on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x8f15b6b5": {
+      "name": "remove_liquidity_one_coin(uint256,uint256,uint256,bool)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_one_coin on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x07329bcd": {
+      "name": "remove_liquidity_one_coin(uint256,uint256,uint256,bool,address)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_one_coin on CurveV2 cryptoswap — coin-index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0xc93f49e8": {
+      "name": "claim_admin_fees()",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0x23b872dd": {
+      "name": "transferFrom(address,address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (CryptoSwap pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0xa9059cbb": {
+      "name": "transfer(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (CryptoSwap pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0x095ea7b3": {
+      "name": "approve(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (CryptoSwap pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0x39509351": {
+      "name": "increaseAllowance(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (CryptoSwap pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0xa457c2d7": {
+      "name": "decreaseAllowance(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (CryptoSwap pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0xd505accf": {
+      "name": "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (CryptoSwap pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0x5e248072": {
+      "name": "ramp_A_gamma(uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0x244c7c2e": {
+      "name": "stop_ramp_A_gamma()",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0x4711a4f8": {
+      "name": "commit_new_parameters(uint256,uint256,uint256,uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0x2a7dd7cd": {
+      "name": "apply_new_parameters()",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0x226840fb": {
+      "name": "revert_new_parameters()",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    }
+  }
+}
