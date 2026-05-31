@@ -3,7 +3,7 @@
   "id": "aave/v3/l2SetUserUseReserveAsCollateralPacked@1.0.0",
   "publisher": "aave.eth",
   "schema_version": "3",
-  "note": "Aave V3 Base L2Pool.setUserUseReserveAsCollateral(bytes32) packs reserve index and useAsCollateral. Preserve as Unknown until reserve-index decoding is wired.",
+  "note": "Aave V3 Base L2Pool.setUserUseReserveAsCollateral(bytes32) packs reserve index and useAsCollateral. The V3 WASM route bit-slices args, resolves Base reserve id to asset address, and maps the bool to enable_collateral or disable_collateral.",
   "match": {
     "selector": "0x4d013f03",
     "chain_to_addresses": {
@@ -25,12 +25,59 @@
   "emit": {
     "strategy": "single_emit",
     "body": {
-      "domain": "unknown",
-      "unknown": {
-        "target": "$to",
-        "chain": "$chain",
-        "calldata": "$calldata",
-        "value": "$tx.value"
+      "domain": "lending",
+      "lending": {
+        "$match": "$derived.aave_l2_use_as_collateral",
+        "$cases": {
+          "true": {
+            "action": "enable_collateral",
+            "enable_collateral": {
+              "venue": {
+                "name": "aave_v3",
+                "chain": "$chain",
+                "pool": "$to",
+                "market_id": null
+              },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.aave_l2_asset" } },
+              "on_behalf_of": "$tx.from"
+            }
+          },
+          "false": {
+            "action": "disable_collateral",
+            "disable_collateral": {
+              "venue": {
+                "name": "aave_v3",
+                "chain": "$chain",
+                "pool": "$to",
+                "market_id": null
+              },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.aave_l2_asset" } },
+              "on_behalf_of": "$tx.from"
+            }
+          }
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getReserveData(address)",
+          "decoder_id": "aave_v3_reserve_data"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getUserAccountData(address)",
+          "decoder_id": "aave_v3_user_account_data"
+        },
+        "ttl_s": 12
       }
     }
   },

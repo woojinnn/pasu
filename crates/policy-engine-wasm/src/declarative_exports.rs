@@ -539,6 +539,13 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         // 5-tuple). The single_emit analogue of `maybe_inject_v4_pool_id`.
         let mut derived = BTreeMap::new();
         maybe_inject_morpho_market_id(&args_json, &mut derived);
+        maybe_inject_aave_l2_packed_args(
+            input.chain_id,
+            &key.to,
+            &key.selector,
+            &args_json,
+            &mut derived,
+        );
 
         let ctx = V3MapContext {
             chain: chain.clone(),
@@ -2115,6 +2122,240 @@ fn maybe_inject_morpho_market_id(
     }
     if let Some(id) = compute_morpho_market_id(mp) {
         derived.insert("morpho_market_id".to_owned(), serde_json::Value::String(id));
+    }
+}
+
+fn maybe_inject_aave_l2_packed_args(
+    chain_id: u64,
+    target: &str,
+    selector: &str,
+    args_json: &serde_json::Value,
+    derived: &mut BTreeMap<String, serde_json::Value>,
+) {
+    if !is_aave_l2_base_pool(chain_id, target) {
+        return;
+    }
+
+    match selector {
+        // supply(bytes32) / supplyWithPermit(bytes32,bytes32,bytes32)
+        "0xf7a73840" | "0x680dd47c" => {
+            let Some(args) = aave_l2_bytes32_arg(args_json, "args") else {
+                return;
+            };
+            inject_aave_l2_asset(
+                derived,
+                "aave_l2_asset",
+                chain_id,
+                target,
+                aave_l2_u16(args, 0),
+            );
+            derived.insert(
+                "aave_l2_amount".to_owned(),
+                serde_json::Value::String(aave_l2_bits(args, 16, 128).to_string()),
+            );
+        }
+        // withdraw(bytes32)
+        "0x8e19899e" => {
+            let Some(args) = aave_l2_bytes32_arg(args_json, "args") else {
+                return;
+            };
+            inject_aave_l2_asset(
+                derived,
+                "aave_l2_asset",
+                chain_id,
+                target,
+                aave_l2_u16(args, 0),
+            );
+            let amount = aave_l2_expand_uint128_max(aave_l2_bits(args, 16, 128));
+            derived.insert(
+                "aave_l2_amount".to_owned(),
+                serde_json::Value::String(amount.to_string()),
+            );
+        }
+        // borrow(bytes32)
+        "0xd5eed868" => {
+            let Some(args) = aave_l2_bytes32_arg(args_json, "args") else {
+                return;
+            };
+            inject_aave_l2_asset(
+                derived,
+                "aave_l2_asset",
+                chain_id,
+                target,
+                aave_l2_u16(args, 0),
+            );
+            derived.insert(
+                "aave_l2_amount".to_owned(),
+                serde_json::Value::String(aave_l2_bits(args, 16, 128).to_string()),
+            );
+            derived.insert(
+                "aave_l2_rate_mode".to_owned(),
+                serde_json::Value::Number(serde_json::Number::from(aave_l2_u8(args, 144))),
+            );
+        }
+        // repay(bytes32) / repayWithPermit(bytes32,bytes32,bytes32) / repayWithATokens(bytes32)
+        "0x563dd613" | "0x94b576de" | "0xdc7c0bff" => {
+            let Some(args) = aave_l2_bytes32_arg(args_json, "args") else {
+                return;
+            };
+            inject_aave_l2_asset(
+                derived,
+                "aave_l2_asset",
+                chain_id,
+                target,
+                aave_l2_u16(args, 0),
+            );
+            let amount = aave_l2_expand_uint128_max(aave_l2_bits(args, 16, 128));
+            derived.insert(
+                "aave_l2_amount".to_owned(),
+                serde_json::Value::String(amount.to_string()),
+            );
+            derived.insert(
+                "aave_l2_rate_mode".to_owned(),
+                serde_json::Value::Number(serde_json::Number::from(aave_l2_u8(args, 144))),
+            );
+        }
+        // setUserUseReserveAsCollateral(bytes32)
+        "0x4d013f03" => {
+            let Some(args) = aave_l2_bytes32_arg(args_json, "args") else {
+                return;
+            };
+            inject_aave_l2_asset(
+                derived,
+                "aave_l2_asset",
+                chain_id,
+                target,
+                aave_l2_u16(args, 0),
+            );
+            derived.insert(
+                "aave_l2_use_as_collateral".to_owned(),
+                serde_json::Value::Bool(aave_l2_u8(args, 16) != 0),
+            );
+        }
+        // liquidationCall(bytes32,bytes32)
+        "0xfd21ecff" => {
+            let Some(args1) = aave_l2_bytes32_arg(args_json, "args1") else {
+                return;
+            };
+            let Some(args2) = aave_l2_bytes32_arg(args_json, "args2") else {
+                return;
+            };
+            inject_aave_l2_asset(
+                derived,
+                "aave_l2_collat_asset",
+                chain_id,
+                target,
+                aave_l2_u16(args1, 0),
+            );
+            inject_aave_l2_asset(
+                derived,
+                "aave_l2_debt_asset",
+                chain_id,
+                target,
+                aave_l2_u16(args1, 16),
+            );
+            derived.insert(
+                "aave_l2_user".to_owned(),
+                serde_json::Value::String(aave_l2_address(args1, 32)),
+            );
+            let debt_to_cover = aave_l2_expand_uint128_max(aave_l2_bits(args2, 0, 128));
+            derived.insert(
+                "aave_l2_debt_to_cover".to_owned(),
+                serde_json::Value::String(debt_to_cover.to_string()),
+            );
+            derived.insert(
+                "aave_l2_receive_a_token".to_owned(),
+                serde_json::Value::Bool(aave_l2_u8(args2, 128) != 0),
+            );
+        }
+        _ => {}
+    }
+}
+
+fn is_aave_l2_base_pool(chain_id: u64, target: &str) -> bool {
+    chain_id == 8453 && target.eq_ignore_ascii_case("0xa238dd80c259a72e81d7e4664a9801593f98d1c5")
+}
+
+fn inject_aave_l2_asset(
+    derived: &mut BTreeMap<String, serde_json::Value>,
+    key: &str,
+    chain_id: u64,
+    target: &str,
+    reserve_id: u64,
+) {
+    if let Some(address) = aave_l2_reserve_address(chain_id, target, reserve_id) {
+        derived.insert(
+            key.to_owned(),
+            serde_json::Value::String(address.to_owned()),
+        );
+    }
+}
+
+fn aave_l2_reserve_address(chain_id: u64, target: &str, reserve_id: u64) -> Option<&'static str> {
+    if !is_aave_l2_base_pool(chain_id, target) {
+        return None;
+    }
+
+    // Aave V3 Base Pool `getReservesList()` snapshot, used because L2Pool
+    // packed calldata carries a uint16 reserve id instead of an address.
+    match reserve_id {
+        0 => Some("0x4200000000000000000000000000000000000006"),
+        1 => Some("0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"),
+        2 => Some("0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca"),
+        3 => Some("0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452"),
+        4 => Some("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"),
+        5 => Some("0x04c0599ae5a44757c0af6f9ec3b93da8976c150a"),
+        6 => Some("0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"),
+        7 => Some("0x2416092f143378750bb29b79ed961ab195cceea5"),
+        8 => Some("0x6bb7a212910682dcfdbd5bcbb3e28fb4e8da10ee"),
+        9 => Some("0xedfa23602d0ec14714057867a78d01e94176bea0"),
+        10 => Some("0xecac9c5f704e954931349da37f60e39f515c11c1"),
+        11 => Some("0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"),
+        12 => Some("0x63706e401c06ac8513145b7687a14804d17f814b"),
+        13 => Some("0x236aa50979d5f3de3bd1eeb40e81137f22ab794b"),
+        14 => Some("0x660975730059246a68521a3e2fbd4740173100f5"),
+        _ => None,
+    }
+}
+
+fn aave_l2_bytes32_arg(
+    args_json: &serde_json::Value,
+    name: &str,
+) -> Option<alloy_primitives::U256> {
+    let raw = args_json.get(name)?.as_str()?.strip_prefix("0x")?;
+    if raw.len() != 64 {
+        return None;
+    }
+    let bytes = hex::decode(raw).ok()?;
+    let bytes: [u8; 32] = bytes.try_into().ok()?;
+    Some(alloy_primitives::U256::from_be_bytes(bytes))
+}
+
+fn aave_l2_bits(word: alloy_primitives::U256, shift: usize, bits: usize) -> alloy_primitives::U256 {
+    debug_assert!(bits < 256);
+    let mask = (alloy_primitives::U256::from(1u8) << bits) - alloy_primitives::U256::from(1u8);
+    (word >> shift) & mask
+}
+
+fn aave_l2_u16(word: alloy_primitives::U256, shift: usize) -> u64 {
+    aave_l2_bits(word, shift, 16).to::<u64>()
+}
+
+fn aave_l2_u8(word: alloy_primitives::U256, shift: usize) -> u64 {
+    aave_l2_bits(word, shift, 8).to::<u64>()
+}
+
+fn aave_l2_address(word: alloy_primitives::U256, shift: usize) -> String {
+    let value = aave_l2_bits(word, shift, 160);
+    let bytes = value.to_be_bytes::<32>();
+    format!("0x{}", hex::encode(&bytes[12..32]))
+}
+
+fn aave_l2_expand_uint128_max(amount: alloy_primitives::U256) -> alloy_primitives::U256 {
+    if amount == alloy_primitives::U256::from(u128::MAX) {
+        alloy_primitives::U256::MAX
+    } else {
+        amount
     }
 }
 

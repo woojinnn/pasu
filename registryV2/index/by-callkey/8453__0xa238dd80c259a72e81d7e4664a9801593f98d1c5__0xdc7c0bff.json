@@ -2,13 +2,13 @@
   "matched": true,
   "bundle_id": "aave/v3/l2RepayWithATokensPacked@1.0.0",
   "manifest_path": "manifests/aave/v3/l2-repay-with-atokens-packed@1.0.0.json",
-  "bundle_sha256": "0x10aefd92beac3f9897bd582c351d9dd35c177f63c0268811a0a3f83439865f6c",
+  "bundle_sha256": "0x61e0ea3bd119f7bdbb7f9590f44b5222e7ac721789491d460b8ad8efd97e0ba6",
   "bundle": {
     "type": "adapter_action",
     "id": "aave/v3/l2RepayWithATokensPacked@1.0.0",
     "publisher": "aave.eth",
     "schema_version": "3",
-    "note": "Aave V3 Base L2Pool.repayWithATokens(bytes32) packs reserve index, amount, and rate mode. Preserve as Unknown until reserve-index decoding is wired.",
+    "note": "Aave V3 Base L2Pool.repayWithATokens(bytes32) packs reserve index, amount, and rate mode into bytes32. The V3 WASM route bit-slices args, resolves Base reserve id to asset address, expands uint128.max to uint256.max, and emits RepayAction.use_a_tokens=true.",
     "match": {
       "selector": "0xdc7c0bff",
       "chain_to_addresses": {
@@ -40,12 +40,64 @@
     "emit": {
       "strategy": "single_emit",
       "body": {
-        "domain": "unknown",
-        "unknown": {
-          "target": "$to",
-          "chain": "$chain",
-          "calldata": "$calldata",
-          "value": "$tx.value"
+        "domain": "lending",
+        "lending": {
+          "action": "repay",
+          "repay": {
+            "venue": {
+              "name": "aave_v3",
+              "chain": "$chain",
+              "pool": "$to",
+              "market_id": null
+            },
+            "asset": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$derived.aave_l2_asset"
+              }
+            },
+            "amount": "$derived.aave_l2_amount",
+            "rate_mode": {
+              "$match": "$derived.aave_l2_rate_mode",
+              "$cases": {
+                "1": "stable",
+                "2": "variable"
+              }
+            },
+            "on_behalf_of": "$tx.from",
+            "use_a_tokens": true
+          }
+        }
+      },
+      "live_inputs": {
+        "reserve_state": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getReserveData(address)",
+            "decoder_id": "aave_v3_reserve_data"
+          },
+          "ttl_s": 30
+        },
+        "current_debt": {
+          "source": {
+            "kind": "derived_from",
+            "inputs": [],
+            "calc_id": "aave_v3_current_debt"
+          },
+          "ttl_s": 12
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getUserAccountData(address)",
+            "decoder_id": "aave_v3_user_account_data"
+          },
+          "ttl_s": 12
         }
       }
     },

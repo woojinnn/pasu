@@ -3,7 +3,7 @@
   "id": "aave/v3/l2WithdrawPacked@1.0.0",
   "publisher": "aave.eth",
   "schema_version": "3",
-  "note": "Aave V3 Base L2Pool.withdraw(bytes32) packs reserve index, amount, and recipient. Preserve as Unknown until the V3 declarative route can bit-slice the packed args and resolve reserve index to asset address.",
+  "note": "Aave V3 Base L2Pool.withdraw(bytes32) packs reserve index and amount into bytes32. The V3 WASM route bit-slices args, resolves Base reserve id to asset address, expands uint128.max to uint256.max, and L2Pool uses _msgSender() as recipient.",
   "match": {
     "selector": "0x8e19899e",
     "chain_to_addresses": {
@@ -27,12 +27,50 @@
   "emit": {
     "strategy": "single_emit",
     "body": {
-      "domain": "unknown",
-      "unknown": {
-        "target": "$to",
-        "chain": "$chain",
-        "calldata": "$calldata",
-        "value": "$tx.value"
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name": "aave_v3",
+            "chain": "$chain",
+            "pool": "$to",
+            "market_id": null
+          },
+          "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.aave_l2_asset" } },
+          "amount": "$derived.aave_l2_amount",
+          "recipient": "$tx.from"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getReserveData(address)",
+          "decoder_id": "aave_v3_reserve_data"
+        },
+        "ttl_s": 30
+      },
+      "available_to_withdraw": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "aave_v3_available_to_withdraw"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getUserAccountData(address)",
+          "decoder_id": "aave_v3_user_account_data"
+        },
+        "ttl_s": 12
       }
     }
   },

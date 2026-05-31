@@ -102,6 +102,7 @@ pub enum V3BuildError {
 #[derive(Copy, Clone, Debug)]
 enum FallbackType {
     Address,
+    Bool,
     U32,
     U256,
     Bytes32,
@@ -123,9 +124,18 @@ fn placeholder_type_lookup(rest: &str) -> Option<FallbackType> {
         | "v4_token_in"
         | "v4_token_out"
         | "v4_hooks"
-        | "v4_recipient" => Some(Address),
-        "fee_tier_bp" | "slippage_bp" => Some(U32),
-        "v4_amount_in" | "v4_amount_out_min" | "min_lp_out" => Some(U256),
+        | "v4_recipient"
+        | "aave_l2_asset"
+        | "aave_l2_debt_asset"
+        | "aave_l2_collat_asset"
+        | "aave_l2_user" => Some(Address),
+        "aave_l2_use_as_collateral" | "aave_l2_receive_a_token" => Some(Bool),
+        "fee_tier_bp" | "slippage_bp" | "aave_l2_rate_mode" => Some(U32),
+        "v4_amount_in"
+        | "v4_amount_out_min"
+        | "min_lp_out"
+        | "aave_l2_amount"
+        | "aave_l2_debt_to_cover" => Some(U256),
         "v4_pool_id" => Some(Bytes32),
         _ => None,
     }
@@ -137,6 +147,7 @@ fn zero_value_for(t: FallbackType) -> JsonValue {
         FallbackType::Address => {
             JsonValue::String("0x0000000000000000000000000000000000000000".to_owned())
         }
+        FallbackType::Bool => JsonValue::Bool(false),
         FallbackType::U32 => JsonValue::Number(serde_json::Number::from(0u32)),
         FallbackType::U256 => JsonValue::String("0".to_owned()),
         FallbackType::Bytes32 => JsonValue::String(

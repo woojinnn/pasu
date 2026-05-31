@@ -2,13 +2,13 @@
   "matched": true,
   "bundle_id": "aave/v3/l2BorrowPacked@1.0.0",
   "manifest_path": "manifests/aave/v3/l2-borrow-packed@1.0.0.json",
-  "bundle_sha256": "0x5781058c002b2f30e27b2100b2bb9a2952471f971e9375a70c6d5e93bce20135",
+  "bundle_sha256": "0x8f3fcc83a8cc06464e1dd844e433f47f1be6c1e197387c76dee47f682d4f696f",
   "bundle": {
     "type": "adapter_action",
     "id": "aave/v3/l2BorrowPacked@1.0.0",
     "publisher": "aave.eth",
     "schema_version": "3",
-    "note": "Aave V3 Base L2Pool.borrow(bytes32) packs reserve index, amount, rate mode, referral code, and onBehalfOf into bytes32. Preserve as Unknown until the V3 declarative route can bit-slice the packed args and resolve reserve index to asset address.",
+    "note": "Aave V3 Base L2Pool.borrow(bytes32) packs reserve index, amount, rate mode, and referral code into bytes32. The V3 WASM route bit-slices args, resolves Base reserve id to asset address, and L2Pool uses _msgSender() as onBehalfOf.",
     "match": {
       "selector": "0xd5eed868",
       "chain_to_addresses": {
@@ -35,12 +35,79 @@
     "emit": {
       "strategy": "single_emit",
       "body": {
-        "domain": "unknown",
-        "unknown": {
-          "target": "$to",
-          "chain": "$chain",
-          "calldata": "$calldata",
-          "value": "$tx.value"
+        "domain": "lending",
+        "lending": {
+          "action": "borrow",
+          "borrow": {
+            "venue": {
+              "name": "aave_v3",
+              "chain": "$chain",
+              "pool": "$to",
+              "market_id": null
+            },
+            "asset": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$derived.aave_l2_asset"
+              }
+            },
+            "amount": "$derived.aave_l2_amount",
+            "rate_mode": {
+              "$match": "$derived.aave_l2_rate_mode",
+              "$cases": {
+                "1": "stable",
+                "2": "variable"
+              }
+            },
+            "on_behalf_of": "$tx.from"
+          }
+        }
+      },
+      "live_inputs": {
+        "reserve_state": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getReserveData(address)",
+            "decoder_id": "aave_v3_reserve_data"
+          },
+          "ttl_s": 30
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getUserAccountData(address)",
+            "decoder_id": "aave_v3_user_account_data"
+          },
+          "ttl_s": 12
+        },
+        "asset_price_usd": {
+          "source": {
+            "kind": "oracle_feed",
+            "provider": "chainlink",
+            "feed_id": "AAVE_V3_RESERVE_PRICE"
+          },
+          "ttl_s": 60
+        },
+        "current_borrow_rate": {
+          "source": {
+            "kind": "derived_from",
+            "inputs": [],
+            "calc_id": "aave_v3_borrow_rate"
+          },
+          "ttl_s": 30
+        },
+        "available_liquidity": {
+          "source": {
+            "kind": "derived_from",
+            "inputs": [],
+            "calc_id": "aave_v3_available_liquidity"
+          },
+          "ttl_s": 30
         }
       }
     },

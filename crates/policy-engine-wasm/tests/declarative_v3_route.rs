@@ -885,6 +885,52 @@ const AAVE_V3_VARIABLE_DEBT_USDC_APPROVE_DELEGATION: &str = include_str!(
 const AAVE_V3_VARIABLE_DEBT_USDC_DELEGATION_WITH_SIG: &str = include_str!(
     "../../../registryV2/manifests/aave/v3/variable-debt-usdc-delegation-with-sig@1.0.0.json"
 );
+const AAVE_V3_L2_SUPPLY_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-supply-packed@1.0.0.json");
+const AAVE_V3_L2_SUPPLY_WITH_PERMIT_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-supply-with-permit-packed@1.0.0.json");
+const AAVE_V3_L2_WITHDRAW_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-withdraw-packed@1.0.0.json");
+const AAVE_V3_L2_BORROW_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-borrow-packed@1.0.0.json");
+const AAVE_V3_L2_REPAY_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-repay-packed@1.0.0.json");
+const AAVE_V3_L2_REPAY_WITH_PERMIT_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-repay-with-permit-packed@1.0.0.json");
+const AAVE_V3_L2_REPAY_WITH_ATOKENS_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-repay-with-atokens-packed@1.0.0.json");
+const AAVE_V3_L2_SET_COLLATERAL_PACKED: &str = include_str!(
+    "../../../registryV2/manifests/aave/v3/l2-set-user-use-reserve-as-collateral-packed@1.0.0.json"
+);
+const AAVE_V3_L2_LIQUIDATION_PACKED: &str =
+    include_str!("../../../registryV2/manifests/aave/v3/l2-liquidation-call-packed@1.0.0.json");
+
+const AAVE_V3_BASE_POOL: &str = "0xa238dd80c259a72e81d7e4664a9801593f98d1c5";
+const AAVE_V3_BASE_USDC: &str = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
+const AAVE_V3_BASE_CBETH: &str = "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22";
+const AAVE_V3_BASE_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
+
+fn aave_l2_packed_bytes32(fields: &[(usize, AlloyU256)]) -> DynSolValue {
+    let mut word = AlloyU256::ZERO;
+    for (shift, value) in fields {
+        word |= *value << *shift;
+    }
+    DynSolValue::FixedBytes(alloy_primitives::B256::from(word.to_be_bytes::<32>()), 32)
+}
+
+fn aave_l2_packed_calldata(selector: &str, word: DynSolValue) -> String {
+    encode_calldata(selector, &[word])
+}
+
+fn aave_l2_route(selector: &str, calldata: String) -> Value {
+    route_ok(route_input(
+        8453,
+        AAVE_V3_BASE_POOL,
+        selector,
+        calldata,
+        AAVE_V3_BASE_SUBMITTER,
+    ))
+}
 
 #[test]
 fn t6_aave_variable_debt_usdc_approve_delegation() {
@@ -1040,6 +1086,267 @@ fn t6_aave_variable_debt_usdc_delegation_with_sig_typed_data() {
     );
     assert_eq!(body["amount"], "0x2625a0", "{parsed}");
     assert_eq!(body["rate_mode"], "variable", "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_supply_routes_to_supply() {
+    install_ok(AAVE_V3_L2_SUPPLY_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0xf7a73840",
+        aave_l2_packed_bytes32(&[
+            (0, AlloyU256::from(4u64)),          // Base USDC reserve id
+            (16, AlloyU256::from(1_000_000u64)), // amount
+        ]),
+    );
+
+    let parsed = aave_l2_route("0xf7a73840", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "supply", "{parsed}");
+    assert_eq!(body["venue"]["name"], "aave_v3", "{parsed}");
+    assert_eq!(body["venue"]["pool"], AAVE_V3_BASE_POOL, "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0xf4240", "{parsed}");
+    assert_eq!(body["on_behalf_of"], AAVE_V3_BASE_SUBMITTER, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_supply_with_permit_routes_to_supply() {
+    install_ok(AAVE_V3_L2_SUPPLY_WITH_PERMIT_PACKED);
+
+    let calldata = encode_calldata(
+        "0x680dd47c",
+        &[
+            aave_l2_packed_bytes32(&[
+                (0, AlloyU256::from(4u64)),
+                (16, AlloyU256::from(2_000_000u64)),
+                (160, AlloyU256::from(2_000_000_000u64)),
+                (192, AlloyU256::from(27u64)),
+            ]),
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x11), 32),
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x22), 32),
+        ],
+    );
+
+    let parsed = aave_l2_route("0x680dd47c", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "supply", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x1e8480", "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_withdraw_routes_to_withdraw() {
+    install_ok(AAVE_V3_L2_WITHDRAW_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0x8e19899e",
+        aave_l2_packed_bytes32(&[
+            (0, AlloyU256::from(4u64)),
+            (16, AlloyU256::from(1_500_000u64)),
+        ]),
+    );
+
+    let parsed = aave_l2_route("0x8e19899e", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "withdraw", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x16e360", "{parsed}");
+    assert_eq!(body["recipient"], AAVE_V3_BASE_SUBMITTER, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_borrow_routes_to_borrow() {
+    install_ok(AAVE_V3_L2_BORROW_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0xd5eed868",
+        aave_l2_packed_bytes32(&[
+            (0, AlloyU256::from(4u64)),
+            (16, AlloyU256::from(3_000_000u64)),
+            (144, AlloyU256::from(2u64)),
+        ]),
+    );
+
+    let parsed = aave_l2_route("0xd5eed868", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "borrow", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x2dc6c0", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+    assert_eq!(body["on_behalf_of"], AAVE_V3_BASE_SUBMITTER, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_repay_routes_to_repay() {
+    install_ok(AAVE_V3_L2_REPAY_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0x563dd613",
+        aave_l2_packed_bytes32(&[
+            (0, AlloyU256::from(4u64)),
+            (16, AlloyU256::from(4_000_000u64)),
+            (144, AlloyU256::from(2u64)),
+        ]),
+    );
+
+    let parsed = aave_l2_route("0x563dd613", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "repay", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x3d0900", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+    assert_eq!(body["use_a_tokens"], false, "{parsed}");
+    assert_eq!(body["on_behalf_of"], AAVE_V3_BASE_SUBMITTER, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_repay_with_permit_routes_to_repay() {
+    install_ok(AAVE_V3_L2_REPAY_WITH_PERMIT_PACKED);
+
+    let calldata = encode_calldata(
+        "0x94b576de",
+        &[
+            aave_l2_packed_bytes32(&[
+                (0, AlloyU256::from(4u64)),
+                (16, AlloyU256::from(4_500_000u64)),
+                (144, AlloyU256::from(2u64)),
+                (152, AlloyU256::from(2_000_000_000u64)),
+                (184, AlloyU256::from(27u64)),
+            ]),
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x33), 32),
+            DynSolValue::FixedBytes(alloy_primitives::B256::repeat_byte(0x44), 32),
+        ],
+    );
+
+    let parsed = aave_l2_route("0x94b576de", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "repay", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x44aa20", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+    assert_eq!(body["use_a_tokens"], false, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_repay_with_atokens_routes_to_repay_using_atokens() {
+    install_ok(AAVE_V3_L2_REPAY_WITH_ATOKENS_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0xdc7c0bff",
+        aave_l2_packed_bytes32(&[
+            (0, AlloyU256::from(4u64)),
+            (16, AlloyU256::from(5_000_000u64)),
+            (144, AlloyU256::from(2u64)),
+        ]),
+    );
+
+    let parsed = aave_l2_route("0xdc7c0bff", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "repay", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x4c4b40", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+    assert_eq!(body["use_a_tokens"], true, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_packed_set_collateral_routes_to_enable_or_disable() {
+    install_ok(AAVE_V3_L2_SET_COLLATERAL_PACKED);
+
+    let enable = aave_l2_packed_calldata(
+        "0x4d013f03",
+        aave_l2_packed_bytes32(&[(0, AlloyU256::from(4u64)), (16, AlloyU256::from(1u64))]),
+    );
+    let parsed = aave_l2_route("0x4d013f03", enable);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "enable_collateral", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["on_behalf_of"], AAVE_V3_BASE_SUBMITTER, "{parsed}");
+
+    let disable = aave_l2_packed_calldata(
+        "0x4d013f03",
+        aave_l2_packed_bytes32(&[(0, AlloyU256::from(4u64)), (16, AlloyU256::ZERO)]),
+    );
+    let parsed = aave_l2_route("0x4d013f03", disable);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "disable_collateral", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+}
+
+#[test]
+fn t6_aave_l2_packed_liquidation_routes_to_liquidate() {
+    install_ok(AAVE_V3_L2_LIQUIDATION_PACKED);
+
+    let calldata = encode_calldata(
+        "0xfd21ecff",
+        &[
+            aave_l2_packed_bytes32(&[
+                (0, AlloyU256::from(1u64)), // Base cbETH reserve id
+                (16, AlloyU256::from(4u64)),
+                (32, AlloyU256::from(0xb0b0u64)),
+            ]),
+            aave_l2_packed_bytes32(&[
+                (0, AlloyU256::from(6_000_000u64)),
+                (128, AlloyU256::from(1u64)),
+            ]),
+        ],
+    );
+
+    let parsed = aave_l2_route("0xfd21ecff", calldata);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "liquidate", "{parsed}");
+    assert_eq!(
+        body["collat_asset"]["key"]["address"], AAVE_V3_BASE_CBETH,
+        "{parsed}"
+    );
+    assert_eq!(
+        body["debt_asset"]["key"]["address"], AAVE_V3_BASE_USDC,
+        "{parsed}"
+    );
+    assert_eq!(
+        body["victim"], "0x000000000000000000000000000000000000b0b0",
+        "{parsed}"
+    );
+    assert_eq!(body["debt_to_cover"], "0x5b8d80", "{parsed}");
+    assert_eq!(body["receive_a_token"], true, "{parsed}");
 }
 
 // ---------------------------------------------------------------------------
@@ -3165,7 +3472,10 @@ fn addr(s: &str) -> AlloyAddress {
 #[test]
 fn b1_erc721_transfer_from_routes_to_nft_transfer() {
     let install = install_index_bundle(ERC721_TRANSFER_FROM_INDEX);
-    assert_eq!(install["data"]["bundle_id"], "standard/erc721/transferFrom@1.0.0");
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "standard/erc721/transferFrom@1.0.0"
+    );
 
     let recipient = "0x00000000000000000000000000000000cafef00d";
     let calldata = encode_calldata(
@@ -3179,7 +3489,10 @@ fn b1_erc721_transfer_from_routes_to_nft_transfer() {
     let input = route_input(1, NFPM_MAINNET, "0x23b872dd", calldata, NFPM_SUBMITTER);
 
     let parsed = route_ok(input);
-    assert_eq!(parsed["data"]["decoder_id"], "standard/erc721/transferFrom@1.0.0");
+    assert_eq!(
+        parsed["data"]["decoder_id"],
+        "standard/erc721/transferFrom@1.0.0"
+    );
     let body = &parsed["data"]["actions"][0]["body"];
     assert_eq!(body["domain"], "token", "{parsed}");
     assert_eq!(body["action"], "nft_transfer", "{parsed}");

@@ -2,13 +2,13 @@
   "matched": true,
   "bundle_id": "aave/v3/l2SupplyPacked@1.0.0",
   "manifest_path": "manifests/aave/v3/l2-supply-packed@1.0.0.json",
-  "bundle_sha256": "0xed99e9e76e185021050d55e76f807f9c32ca92be757c1e3dbf90c6a2c7bf0f0c",
+  "bundle_sha256": "0x549f004dd2b0bdd15460c517cfea4439e81d527a0defd53bb21b761bdf95dbc7",
   "bundle": {
     "type": "adapter_action",
     "id": "aave/v3/l2SupplyPacked@1.0.0",
     "publisher": "aave.eth",
     "schema_version": "3",
-    "note": "Aave V3 Base L2Pool.supply(bytes32) packs reserve index, amount, referral code, and onBehalfOf into bytes32. Preserve as Unknown until the V3 declarative route can bit-slice the packed args and resolve reserve index to asset address.",
+    "note": "Aave V3 Base L2Pool.supply(bytes32) packs reserve index, amount, and referral code into bytes32. The V3 WASM route bit-slices args, resolves Base reserve id to asset address, and L2Pool uses _msgSender() as onBehalfOf.",
     "match": {
       "selector": "0xf7a73840",
       "chain_to_addresses": {
@@ -35,12 +35,74 @@
     "emit": {
       "strategy": "single_emit",
       "body": {
-        "domain": "unknown",
-        "unknown": {
-          "target": "$to",
-          "chain": "$chain",
-          "calldata": "$calldata",
-          "value": "$tx.value"
+        "domain": "lending",
+        "lending": {
+          "action": "supply",
+          "supply": {
+            "venue": {
+              "name": "aave_v3",
+              "chain": "$chain",
+              "pool": "$to",
+              "market_id": null
+            },
+            "asset": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$derived.aave_l2_asset"
+              }
+            },
+            "amount": "$derived.aave_l2_amount",
+            "on_behalf_of": "$tx.from"
+          }
+        }
+      },
+      "live_inputs": {
+        "reserve_state": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getReserveData(address)",
+            "decoder_id": "aave_v3_reserve_data"
+          },
+          "ttl_s": 30
+        },
+        "supply_apy": {
+          "source": {
+            "kind": "derived_from",
+            "inputs": [],
+            "calc_id": "aave_v3_supply_apy"
+          },
+          "ttl_s": 30
+        },
+        "a_token_price_usd": {
+          "source": {
+            "kind": "oracle_feed",
+            "provider": "chainlink",
+            "feed_id": "AAVE_V3_RESERVE_PRICE"
+          },
+          "ttl_s": 60
+        },
+        "eligible_as_collat": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getConfiguration(address)",
+            "decoder_id": "aave_v3_reserve_config"
+          },
+          "ttl_s": 60
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getUserAccountData(address)",
+            "decoder_id": "aave_v3_user_account_data"
+          },
+          "ttl_s": 12
         }
       }
     },
