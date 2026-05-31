@@ -5,6 +5,7 @@
 //!
 //! ```text
 //! v3-harness fuzz       [--iterations N] [--seed S] [--json PATH]
+//! v3-harness validate   [--filter <substr>] [--iterations N]
 //! v3-harness coverage
 //! v3-harness replay     --callkey <chain>__<addr>__<selector> [--seed S]
 //! v3-harness corpus     [--root DIR]
@@ -12,7 +13,13 @@
 //! ```
 //!
 //! `fuzz` runs the all-strategy synthetic sweep and prints the report (optionally
-//! dumping the full JSON for CI). `coverage` prints the routable surface broken
+//! dumping the full JSON for CI). `validate` is the **author-time** focused
+//! variant: it synthesizes type-valid inputs for the `--filter`-matched
+//! `single_emit` manifests, routes each through the production decoder, and
+//! fails loud (exit 1) with the exact bundle id + error for any `emit.body` that
+//! does not match the typed `ActionBody` struct — catching the missing/renamed
+//! field class (e.g. `missing field live_inputs`) at author time instead of
+//! decode-test time. `coverage` prints the routable surface broken
 //! down by strategy + the categories deferred to corpus replay. `replay`
 //! reproduces a single `single_emit` case and prints the raw route envelope.
 //! `corpus` replays the committed real-tx corpus. `import-*` convert a Dune or
@@ -33,6 +40,7 @@ fn main() {
     let rest: Vec<String> = args.iter().skip(2).cloned().collect();
     let result = match cmd {
         "fuzz" => cmd_fuzz(&rest),
+        "validate" => cmd_validate(&rest),
         "coverage" => cmd_coverage(),
         "replay" => cmd_replay(&rest),
         "corpus" => cmd_corpus(&rest),
@@ -58,6 +66,7 @@ fn usage() {
         "v3-harness — v3 ActionBody decode harness\n\n\
          USAGE:\n  \
          v3-harness fuzz [--iterations N] [--seed S] [--json PATH]\n  \
+         v3-harness validate [--filter <substr>] [--iterations N]\n  \
          v3-harness coverage\n  \
          v3-harness replay --callkey <chain>__<addr>__<selector> [--seed S]\n  \
          v3-harness corpus [--root DIR]\n  \
@@ -105,6 +114,54 @@ fn cmd_fuzz(args: &[String]) -> Result<()> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+/// Author-time `emit.body` shape validator. Synthesizes type-valid inputs for the
+/// `--filter`-matched `single_emit` manifests, routes each through the production
+/// decoder, and exits 1 (with the exact bundle id + error + repro) if any
+/// `emit.body` fails to build a well-formed `ActionBody`. Reads the built
+/// `registryV2/index/` — run `npm run build` first (the `check:manifest` npm
+/// script chains both).
+fn cmd_validate(args: &[String]) -> Result<()> {
+    let filter = flag(args, "--filter");
+    let iters = flag_u64(args, "--iterations", 24)?;
+    let scope = filter.map_or_else(|| "all".to_owned(), |f| format!("filter=`{f}`"));
+    let verdicts = harness::validate(filter, iters)?;
+    let checked = verdicts.len();
+    let failed: Vec<&harness::ManifestVerdict> = verdicts.iter().filter(|v| !v.ok).collect();
+
+    if failed.is_empty() {
+        println!("validate ({scope}): {checked} single_emit manifest(s) OK, 0 structural errors  [iters/manifest={iters}]");
+        if checked == 0 {
+            eprintln!(
+                "warning: no single_emit manifests matched. Did you `npm run build` after authoring? Is `--filter` right?"
+            );
+        }
+        return Ok(());
+    }
+
+    eprintln!(
+        "validate ({scope}): {} of {checked} manifest(s) FAILED emit.body decode:\n",
+        failed.len()
+    );
+    for v in &failed {
+        eprintln!("  \u{2717} {}", v.bundle_id);
+        eprintln!("      callkey: {}", v.callkey);
+        if let Some(e) = &v.error {
+            eprintln!("      error:   {e}");
+        }
+        if let Some(s) = v.seed {
+            eprintln!(
+                "      repro:   v3-harness replay --callkey {} --seed {s:#x}",
+                v.callkey
+            );
+        }
+    }
+    eprintln!(
+        "\n{} structural error(s). Align emit.body with the typed ActionBody struct, then re-run.",
+        failed.len()
+    );
+    std::process::exit(1);
 }
 
 fn cmd_coverage() -> Result<()> {

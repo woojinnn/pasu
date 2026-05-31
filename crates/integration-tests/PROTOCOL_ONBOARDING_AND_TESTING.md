@@ -113,10 +113,12 @@ raw Tx { chain, to, selector, calldata, value }
    │
    P3 DEVELOP ── 로그 gap 분류 → manifest 수정 or 엔진 확장 or schema 추가 → 회귀
    │
-   P4 LAND ── build-index → corpus flip → cargo test --workspace 0 fail → fmt/clippy → commit
+   P4 LAND ── build-index → check:manifest(emit.body shape) → check:surface → corpus flip → cargo test --workspace 0 fail → fmt/clippy → commit
 ```
 
 **P1 ↔ P2 는 루프다.** 처음엔 TEST 가 "무엇을 작성할지"(discovery), 나중엔 "정확한가"(accuracy). 작은/단순 프로토콜은 ABI 만 보고 P1 부터 시작해도 되고, 크고 복잡한 프로토콜(UR류, batch)은 P2 를 먼저 한 번 돌려 실제 selector/shape 를 보면 rework 가 준다(선택).
+
+**P1 직후 자가검증 — `npm run check:manifest` (emit.body shape build 강제).** manifest 의 `emit.body` 는 Tier 3 `ActionBody` struct 와 **정확히** 일치해야 한다(필드명·variant·venue/param shape·필수 `live_inputs`). 그런데 build-index 는 pass-through라 이 일치를 검사하지 않아서, 예전엔 틀린 shape 를 **decode 테스트가 실패해야** 비로소 알았다(예: `build_action_body_failed: missing field live_inputs`) — 프레임워크가 "한 큐"로 안 돌고 author 가 decode-error 를 보고서야 shape 를 역추정. 이제는 author 직후 `npm run check:manifest`(= build-index → `v3-harness validate`) **한 번**이면, production 디코더로 type-valid 입력을 합성·라우팅해 `emit.body` 가 안 맞는 manifest 를 **bundle id + 정확한 필드 오류 + repro 커맨드**와 함께 exit 1 로 잡는다. 특정 프로토콜만 빠르게: `cargo run --bin v3-harness -- validate --filter <protocol>`. input-의존 아티팩트(`value-map: no case`, array OOB)는 oracle-soft 라 `$args.i` fuzz 가 coin index 범위를 벗어나도 false-positive 안 난다. **이게 §3 의 `check:surface`(research 전수성)와 같은 패턴 — authoring 정확성을 agent 의 trust 에서 build-enforced invariant 로 승격**(틀린 shape = "안 보임"이 아니라 build 실패). 한계: 현재 `single_emit` 전략 한정 — `array_emit`/`opcode_stream`/`typed_data` 는 `fuzz`/`corpus` 가 커버.
 
 ---
 

@@ -98,6 +98,96 @@ pub fn replay(callkey: &str, seed: u64) -> Result<serde_json::Value> {
     }
 }
 
+/// One adapter's author-time structural-validation verdict.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct ManifestVerdict {
+    /// Owning bundle id (== the manifest id, e.g. `curve/stableswap-ng/2btc/exchange@1.0.0`).
+    pub bundle_id: String,
+    /// Routing key the verdict was produced from.
+    pub callkey: String,
+    /// `true` = every synthesized input decoded to a well-formed `ActionBody`.
+    pub ok: bool,
+    /// First hard oracle failure (`<layer>: <detail>`), if any. For a body-shape
+    /// bug this is input-independent (e.g. `ErrorClass: build_action_body_failed:
+    /// missing field \`live_inputs\``).
+    pub error: Option<String>,
+    /// Seed that reproduced the failure (`replay --seed`). Shape bugs reproduce on
+    /// any input, so the printed repro reproduces them regardless of edge/random.
+    pub seed: Option<u64>,
+}
+
+/// **Author-time `emit.body` shape validator** (the build-index header's promised
+/// `validate-emit-body` step, realized against the production decoder).
+///
+/// For each (optionally `filter`-matched) `single_emit` adapter, synthesize
+/// `iters` ABI-typed inputs from its `abi_fragment`, route each through the
+/// production decoder, and judge the envelope. A manifest **fails** if ANY
+/// iteration yields a hard oracle failure — i.e. the `emit.body` template does
+/// not match the typed `ActionBody` struct (missing/renamed field, unknown
+/// variant, wrong venue/param shape, domain drift). Input-dependent artifacts
+/// (`value-map: no case`, array index out of bounds) are oracle-**soft** and
+/// never fail here, so fuzzing `$args.i` over an out-of-range coin index does
+/// not produce a false positive.
+///
+/// `filter`: substring matched against `source_callkey` OR `bundle_id`
+/// (`None` = whole surface). Reads the built `registryV2/index/` — run
+/// `npm run build` (build-index) after authoring, before validating.
+pub fn validate(filter: Option<&str>, iters: u64) -> Result<Vec<ManifestVerdict>> {
+    let surface = adapters::load_and_install()?;
+    let mut out = Vec::new();
+    with_silenced_panics(|| {
+        for call in surface.calls.iter().filter(|c| {
+            c.strategy == adapters::Strategy::SingleEmit
+                && !c.has_typed_data
+                && c.selector != "0x00000000"
+                && filter.map_or(true, |f| {
+                    c.source_callkey.contains(f) || c.bundle_id.contains(f)
+                })
+        }) {
+            let base = encode::fnv1a64(&call.source_callkey);
+            let mut verdict = ManifestVerdict {
+                bundle_id: call.bundle_id.clone(),
+                callkey: call.source_callkey.clone(),
+                ok: true,
+                error: None,
+                seed: None,
+            };
+            for i in 0..iters {
+                let seed = base ^ i;
+                let edge = if i < fuzz::EDGE_ITERS {
+                    fuzz::values::Edge::Edge
+                } else {
+                    fuzz::values::Edge::Random
+                };
+                let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    fuzz::single_emit::fuzz_one(call, seed, edge)
+                }));
+                match res {
+                    // Type-valid input that decoded clean or only soft-errored: keep going.
+                    Ok(Ok((_, judged))) => {
+                        if let oracle::Verdict::Fail { layer, detail } = judged.verdict {
+                            verdict.ok = false;
+                            verdict.error = Some(format!("{layer:?}: {detail}"));
+                            verdict.seed = Some(seed);
+                            break;
+                        }
+                    }
+                    // Harness could not build args for this ABI (a skip, not a finding).
+                    Ok(Err(_)) => {}
+                    Err(_) => {
+                        verdict.ok = false;
+                        verdict.error = Some("route panicked".to_owned());
+                        verdict.seed = Some(seed);
+                        break;
+                    }
+                }
+            }
+            out.push(verdict);
+        }
+    });
+    Ok(out)
+}
+
 /// Run `f` with the panic hook silenced (so per-iteration `catch_unwind`
 /// recoveries don't spam stderr), restoring the previous hook afterwards.
 pub fn with_silenced_panics<R>(f: impl FnOnce() -> R) -> R {
