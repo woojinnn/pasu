@@ -346,6 +346,23 @@
       "remaining ungated WARN count decreased from 49 to 48; uniswap decreased from 22 to 21"
     ]
   },
+  "uniswap_universal_router_v1_rewards_mainnet_surface_gate": {
+    "protocol": "uniswap",
+    "contract": "Universal Router v1 rewards mainnet",
+    "status": "implemented",
+    "completed": [
+      "added surface/uniswap/universal-router-v1-rewards-mainnet.{abi,coverage}.json from the local Sourcify verified ABI cache and official Uniswap universal-router source provenance",
+      "triaged 4 external-mutating selectors: collectRewards(bytes), execute(bytes,bytes[]), and execute(bytes,bytes[],uint256) are COVER; uniswapV3SwapCallback is EXCLUDE as an infra callback",
+      "added uniswap/universal-router/collectRewards@1.0.0 as an Unknown manifest because the LooksRare claim payload is opaque and no precise rewards ActionBody currently exists"
+    ],
+    "evidence": [
+      "npm run build: 972 callkeys + 78 typed-data entries across 172 manifests",
+      "npm run check:surface: PASS with 51 gated contracts; UniversalRouter rewards deployment 4 surface / 3 cover / 1 exclude / 3 on-chain manifests",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 25 passed; corpus 225/225 matched; synthetic fuzz fail=0 panicked=0",
+      "cargo test --workspace: 0 failed",
+      "remaining ungated WARN count decreased from 48 to 47; uniswap decreased from 21 to 20"
+    ]
+  },
   "skipped_or_deferred_action_mapping": [
     {
       "protocol_or_function": "Hyperliquid Core / REST JSON actions",

@@ -1,0 +1,48 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/universal-router/collectRewards@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "_note_mapping": "Universal Router v1 collectRewards(bytes looksRareClaim) claims LooksRare rewards through an opaque encoded payload. There is no precise current rewards/airdrop ActionBody for this payload, and this is not a permission-grant primitive, so the honest defensive mapping is Unknown with raw calldata preserved.",
+  "match": {
+    "selector": "0x709a1cc2",
+    "chain_to_addresses": {
+      "1": [
+        "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "collectRewards",
+    "abi": {
+      "name": "collectRewards",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "looksRareClaim",
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

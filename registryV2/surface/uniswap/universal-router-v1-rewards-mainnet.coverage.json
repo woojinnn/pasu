@@ -1,0 +1,30 @@
+{
+  "contract": "UniversalRouter",
+  "chainId": 1,
+  "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+  "snapshot": "universal-router-v1-rewards-mainnet.abi.json",
+  "note": "Surface-completeness triage for Uniswap Universal Router v1 mainnet rewards deployment. User-facing execute entrypoints are COVER; collectRewards is COVER as opaque Unknown; AMM callback is infra-only and EXCLUDE.",
+  "functions": {
+    "0x709a1cc2": {
+      "name": "collectRewards",
+      "decision": "cover",
+      "reason": "user-facing LooksRare rewards claim with opaque bytes payload; manifest preserves calldata as Unknown rather than forcing an inaccurate rewards ActionBody"
+    },
+    "0x24856bc3": {
+      "name": "execute",
+      "decision": "cover",
+      "reason": "user AMM/action command stream without deadline; decoded by opcode_stream_dispatch manifest"
+    },
+    "0x3593564c": {
+      "name": "execute",
+      "decision": "cover",
+      "reason": "user AMM/action command stream with deadline; decoded by opcode_stream_dispatch manifest"
+    },
+    "0xfa461e33": {
+      "name": "uniswapV3SwapCallback",
+      "decision": "exclude",
+      "reason": "infra callback invoked by pools during swaps; not a pre-sign user entrypoint"
+    }
+  },
+  "signed_structs": {}
+}
