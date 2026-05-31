@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "compound-v3/comet/allow@1.0.0",
   "manifest_path": "manifests/compound-v3/comet/allow@1.0.0.json",
-  "bundle_sha256": "0xe4e890936f067734df8f06cf4a551507fe48e2a7c04e7974e3a2e98e31cdd7e2",
+  "bundle_sha256": "0x88ea5d6f045b7f5bcfc1eec466d4ff5bf6ede19c58e6bc033ef5a889676244a8",
   "bundle": {
     "type": "adapter_action",
     "id": "compound-v3/comet/allow@1.0.0",
@@ -15,6 +15,13 @@
         "1": [
           "0xc3d688b66703497daa19211eedff47f25384cdc3",
           "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
+        ],
+        "8453": [
+          "0x784efeb622244d2348d4f2522f8860b96fbece89",
+          "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+          "0xb125e6687d4313864e53df431d5425969c15eb2f",
+          "0x2c776041ccfe903071af44aa147368a9c8eea518",
+          "0x46e6b214b524310239732d51387075e0e70970bf"
         ]
       }
     },

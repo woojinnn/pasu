@@ -44,6 +44,33 @@
       "cargo test --workspace: 0 failed"
     ]
   },
+  "compound_v3_base_market_expansion": {
+    "protocol": "compound-v3",
+    "contracts": [
+      "Comet cAEROv3 Base",
+      "Comet cUSDbCv3 Base",
+      "Comet cUSDCv3 Base",
+      "Comet cUSDSv3 Base",
+      "Comet cWETHv3 Base"
+    ],
+    "status": "implemented",
+    "completed": [
+      "added surface/compound-v3/comet-base-{aero,usdbc,usdc,usds,weth}.{abi,coverage}.json using Compound official deployments/base/<market>/roots.json + configuration.json provenance and the CometInterface user-facing ABI",
+      "expanded the 15 Comet on-chain manifests from mainnet-only to include Base chain 8453 Comet addresses",
+      "added Base Authorization typed-data manifests for all five Comets keyed by verifying_contract + domain_name",
+      "extended compound_v3_base_asset static resolver for Base cAERO, cUSDbC, cUSDC, cUSDS, and cWETH",
+      "added hand corpus fixtures for Base supply and Authorization typed-data across all five markets",
+      "added field-level golden tests for Base cUSDC base_asset resolution and Base cAERO Authorization permission fields"
+    ],
+    "evidence": [
+      "npm run build: 615 callkeys + 56 typed-data entries across 147 manifests",
+      "npm run check:surface: PASS with 20 gated contracts; each Base Comet has 20 surface / 15 cover / 5 exclude / 15 on-chain manifests / 1 signed-struct",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage: callkeys=615 typed_data_keys=56 unique_bundles=147 install_failures=0",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 175/175 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 20 passed",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "aave_v3_pool_surface_gate": {
     "protocol": "aave",
     "contract": "Aave V3 Pool mainnet",

@@ -1,0 +1,101 @@
+{
+  "matched": true,
+  "bundle_id": "compound-v3/comet/authorization-sign-base-aero@1.0.0",
+  "manifest_path": "manifests/compound-v3/comet/authorization-sign-base-aero@1.0.0.json",
+  "bundle_sha256": "0x5a23b4841c3ae86f694feab12fdc12959506f2a59d32f3b90fa5055f467ac1b0",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "compound-v3/comet/authorization-sign-base-aero@1.0.0",
+    "publisher": "compound.eth",
+    "note": "Compound V3 cAEROv3 Base Comet off-chain Authorization (EIP-712) consumed by allowBySig. Official CometExt.sol typehash: Authorization(address owner,address manager,bool isAllowed,uint256 nonce,uint256 expiry). Domain name is Compound AERO and routing keys on the Base cAEROv3 verifying_contract + primary_type.",
+    "schema_version": "3",
+    "match": {
+      "selector": "0x00000001",
+      "chain_to_addresses": {
+        "8453": [
+          "0x784efeb622244d2348d4f2522f8860b96fbece89"
+        ]
+      },
+      "typed_data": {
+        "domain_name": "Compound AERO",
+        "verifying_contract": "0x784efeb622244d2348d4f2522f8860b96fbece89",
+        "primary_type": "Authorization",
+        "types": {
+          "Authorization": [
+            {
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "name": "manager",
+              "type": "address"
+            },
+            {
+              "name": "isAllowed",
+              "type": "bool"
+            },
+            {
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "name": "expiry",
+              "type": "uint256"
+            }
+          ]
+        }
+      }
+    },
+    "abi_fragment": {
+      "function_name": "Authorization",
+      "abi": {
+        "name": "Authorization",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "manager",
+            "type": "address"
+          },
+          {
+            "name": "isAllowed",
+            "type": "bool"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "expiry",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "set_authorization",
+          "set_authorization": {
+            "chain": "$chain",
+            "protocol": "$to",
+            "authorizer": "$args.owner",
+            "authorized": "$args.manager",
+            "is_authorized": "$args.isAllowed"
+          }
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

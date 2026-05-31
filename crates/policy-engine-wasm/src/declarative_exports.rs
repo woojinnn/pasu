@@ -791,6 +791,21 @@ fn compound_v3_base_asset(chain_id: u64, target: &str) -> Option<&'static str> {
         (1, "0xa17581a9e3356d9a858b789d68b4d866e593ae94") => {
             Some("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
         }
+        (8453, "0x784efeb622244d2348d4f2522f8860b96fbece89") => {
+            Some("0x940181a94a35a4569e4529a3cdfb74e38fd98631")
+        }
+        (8453, "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf") => {
+            Some("0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca")
+        }
+        (8453, "0xb125e6687d4313864e53df431d5425969c15eb2f") => {
+            Some("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913")
+        }
+        (8453, "0x2c776041ccfe903071af44aa147368a9c8eea518") => {
+            Some("0x820c137fa70c8691f0e44dc420a5e53c168921dc")
+        }
+        (8453, "0x46e6b214b524310239732d51387075e0e70970bf") => {
+            Some("0x4200000000000000000000000000000000000006")
+        }
         _ => None,
     }
 }

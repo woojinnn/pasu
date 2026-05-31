@@ -9,6 +9,13 @@
       "1": [
         "0xc3d688b66703497daa19211eedff47f25384cdc3",
         "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
+      ],
+      "8453": [
+        "0x784efeb622244d2348d4f2522f8860b96fbece89",
+        "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+        "0xb125e6687d4313864e53df431d5425969c15eb2f",
+        "0x2c776041ccfe903071af44aa147368a9c8eea518",
+        "0x46e6b214b524310239732d51387075e0e70970bf"
       ]
     }
   },
@@ -19,10 +26,22 @@
       "type": "function",
       "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "from", "type": "address" },
-        { "name": "dst", "type": "address" },
-        { "name": "asset", "type": "address" },
-        { "name": "amount", "type": "uint256" }
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "dst",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
       ],
       "outputs": []
     }
@@ -38,20 +57,71 @@
             "name": "compound_v3",
             "chain": "$chain",
             "comet": "$to",
-            "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } }
+            "base_asset": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$resolved.compound_v3_base_asset"
+              }
+            }
           },
-          "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.asset"
+            }
+          },
           "amount": "$args.amount",
           "on_behalf_of": "$args.dst"
         }
       }
     },
     "live_inputs": {
-      "reserve_state": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "getAssetInfoByAddress(address)", "decoder_id": "compound_v3_asset_info" }, "ttl_s": 30 },
-      "supply_apy": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_supply_apy" }, "ttl_s": 30 },
-      "a_token_price_usd": { "source": { "kind": "oracle_feed", "provider": "chainlink", "feed_id": "COMPOUND_V3_ASSET_PRICE" }, "ttl_s": 60 },
-      "eligible_as_collat": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_eligible_as_collat" }, "ttl_s": 60 },
-      "user_state_before": { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "$to", "function": "userBasic(address)", "decoder_id": "compound_v3_user_basic" }, "ttl_s": 12 }
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getAssetInfoByAddress(address)",
+          "decoder_id": "compound_v3_asset_info"
+        },
+        "ttl_s": 30
+      },
+      "supply_apy": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v3_supply_apy"
+        },
+        "ttl_s": 30
+      },
+      "a_token_price_usd": {
+        "source": {
+          "kind": "oracle_feed",
+          "provider": "chainlink",
+          "feed_id": "COMPOUND_V3_ASSET_PRICE"
+        },
+        "ttl_s": 60
+      },
+      "eligible_as_collat": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v3_eligible_as_collat"
+        },
+        "ttl_s": 60
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "userBasic(address)",
+          "decoder_id": "compound_v3_user_basic"
+        },
+        "ttl_s": 12
+      }
     }
   }
 }
