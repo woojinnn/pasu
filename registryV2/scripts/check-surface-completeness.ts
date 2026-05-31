@@ -32,6 +32,14 @@
  *
  * Invariants (a violation of any is a build FAILURE → exit 1)
  * ----------------------------------------------------------
+ *   I0 inventory      every `cover` contract in surface/<protocol>/_deployments.json
+ *                     (the 1st-party deployment list = contract-level ground truth)
+ *                     MUST have a surface snapshot; every `exclude` MUST have a reason.
+ *                     Catches a CONTRACT research never found — the blind spot of I1
+ *                     and the address-keyed real-tx pull (both bounded by the contract
+ *                     set research produced). Opt-in: no _deployments.json → WARN.
+ *                     Floor: as complete as the official list (a page CAN omit a
+ *                     contract), so weaker than I1 (an ABI cannot omit a function).
  *   I1 completeness   every external-mutating selector in the snapshot
  *                     (type==="function" && stateMutability ∈ {nonpayable,payable})
  *                     MUST have a coverage.functions entry. ← blocks the original miss.
@@ -136,6 +144,30 @@ interface Coverage {
   signed_structs?: Record<string, { decision: "cover" | "exclude"; reason: string }>;
 }
 
+/**
+ * `surface/<protocol>/_deployments.json` — the 1st-party DEPLOYMENT-LIST ground
+ * truth for I0 (contract-inventory completeness). Per-contract snapshots (I1)
+ * only enforce completeness WITHIN contracts you already found; they are blind
+ * to a contract research never found (its address is never snapshotted, and the
+ * adapter-blind real-tx pull queries BY address so its txs never enter a corpus).
+ * This list is the independent source — the official deployment page — that
+ * forces an explicit decision on EVERY deployed contract, the same way the
+ * verified ABI forces a decision on every function.
+ */
+interface DeploymentEntry {
+  name: string;
+  chainId: number;
+  address: Hex;
+  decision: "cover" | "exclude";
+  reason: string;
+}
+interface Deployments {
+  protocol?: string;
+  source?: string;
+  url?: string;
+  contracts: DeploymentEntry[];
+}
+
 /** On-chain + signed-struct manifest surface, grouped per (chainId, address). */
 interface ContractManifests {
   onchainSelectors: Map<string, string[]>; // selector(lc) -> manifest rel-paths
@@ -183,6 +215,14 @@ function protocolOf(manifestPath: string): string {
   const seg = rel.split(/[/\\]/)[0];
   return seg || "(root)";
 }
+
+/** Protocol subdir of a surface path ("surface/lido/x.coverage.json" -> "lido"). */
+function surfaceProtocolOf(coverageRelPath: string): string {
+  const parts = coverageRelPath.replace(/\\/g, "/").split("/"); // ["surface","lido",...]
+  return parts[1] ?? "(root)";
+}
+
+const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
 
 // ---------------------------------------------------------------------------
 // Step 1 — collect the authored manifest surface, grouped per (chainId,address)
@@ -294,6 +334,21 @@ function loadSurfaceUnits(): SurfaceUnit[] {
   return units;
 }
 
+/** Load `surface/<protocol>/_deployments.json` ground-truth lists (I0, opt-in). */
+function loadDeploymentLists(): Map<string, { path: string; deployments: Deployments }> {
+  const out = new Map<string, { path: string; deployments: Deployments }>();
+  if (!safeExists(SURFACE_DIR)) return out;
+  for (const proto of readdirSync(SURFACE_DIR)) {
+    const dir = join(SURFACE_DIR, proto);
+    if (!statSync(dir).isDirectory()) continue;
+    const dpath = join(dir, "_deployments.json");
+    if (!safeExists(dpath)) continue;
+    const deployments = JSON.parse(readFileSync(dpath, "utf8")) as Deployments;
+    out.set(proto, { path: relative(REGISTRY_ROOT, dpath), deployments });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Step 3 — the gate
 // ---------------------------------------------------------------------------
@@ -317,6 +372,7 @@ function main(): void {
   const { byContract, protocolByKey } = collectManifestSurface();
   const units = loadSurfaceUnits();
   const gatedKeys = new Set<string>();
+  const gatedByProtocol = new Map<string, Set<string>>(); // protocol -> ckeys (for I0)
 
   for (const u of units) {
     const { coverage: cov, snapshot: snap, coveragePath } = u;
@@ -337,6 +393,13 @@ function main(): void {
       continue;
     }
     for (const a of effectiveAddresses) gatedKeys.add(ckey(cov.chainId, a));
+    const unitProto = surfaceProtocolOf(coveragePath);
+    let pset = gatedByProtocol.get(unitProto);
+    if (!pset) {
+      pset = new Set<string>();
+      gatedByProtocol.set(unitProto, pset);
+    }
+    for (const a of effectiveAddresses) pset.add(ckey(cov.chainId, a));
 
     // Chain / address agreement. In multi-address mode the snapshot is the
     // shared IMPLEMENTATION ABI (its address is the impl, not a pool), so only
@@ -424,6 +487,69 @@ function main(): void {
     summary.push(
       `  ✓ ${label} (${addrDesc}): ${surface.size} surface · ${cov_n} cover · ${exc_n} exclude · ` +
         `${onchainManifestTotal} on-chain manifests · ${signedManifestTotal} signed-struct`,
+    );
+  }
+
+  // I0 — contract-inventory completeness (per protocol, opt-in via _deployments.json).
+  // Catches a contract research NEVER FOUND — the blind spot of I1 + the
+  // address-keyed real-tx pull (both bounded by the contract set research produced).
+  const deploymentLists = loadDeploymentLists();
+  const protocolsAwaitingInventory = new Set<string>(gatedByProtocol.keys());
+  for (const [proto, { path: dpath, deployments }] of deploymentLists) {
+    protocolsAwaitingInventory.delete(proto);
+    const gated = gatedByProtocol.get(proto) ?? new Set<string>();
+    const contracts = Array.isArray(deployments.contracts) ? deployments.contracts : [];
+    if (contracts.length === 0) {
+      failures.push(`I0 ${dpath}: "contracts" is empty or missing`);
+      continue;
+    }
+    const listed = new Set<string>();
+    let i0cover = 0;
+    let i0excl = 0;
+    for (const c of contracts) {
+      if (!Number.isInteger(c.chainId) || !ADDR_RE.test(String(c.address ?? ""))) {
+        failures.push(`I0 ${dpath}: "${c.name ?? "(noname)"}" needs an integer chainId + 0x+40hex address`);
+        continue;
+      }
+      if (c.decision !== "cover" && c.decision !== "exclude") {
+        failures.push(`I0 ${dpath}: "${c.name}" decision must be cover|exclude, got ${JSON.stringify(c.decision)}`);
+        continue;
+      }
+      const k = ckey(c.chainId, c.address);
+      listed.add(k);
+      if (c.decision === "cover") {
+        i0cover++;
+        if (!gated.has(k)) {
+          failures.push(
+            `I0 ${dpath}: deployment "${c.name}" (${c.chainId}/${c.address}) is COVER but has NO ` +
+              `surface snapshot/coverage — research missed a user-facing contract, or mark it exclude:<reason>`,
+          );
+        }
+      } else {
+        i0excl++;
+        if (!String(c.reason ?? "").trim()) {
+          failures.push(`I0 ${dpath}: deployment "${c.name}" is exclude but has no reason`);
+        }
+      }
+    }
+    // I0' no-stale: a gated contract absent from the deployment list — stale list
+    // or address mismatch. WARN (not fail): the snapshot may legitimately lead.
+    for (const k of gated) {
+      if (!listed.has(k)) {
+        warnings.push(`I0' ${proto}: gated contract ${k} is not in ${dpath} (stale deployment list or address mismatch?)`);
+      }
+    }
+    summary.push(
+      `  ✓ [I0] ${proto}: ${contracts.length} deployed · ${i0cover} cover · ${i0excl} exclude ` +
+        `(contract-inventory enforced vs ${deployments.source ?? "1st-party list"})`,
+    );
+  }
+  // Protocols with surface units but NO deployment list — contract-inventory NOT
+  // enforced (only per-contract function coverage is). Visible WARN, never silent.
+  for (const proto of [...protocolsAwaitingInventory].sort()) {
+    warnings.push(
+      `${proto}: contract-inventory NOT enforced (no surface/${proto}/_deployments.json 1st-party ground truth) — ` +
+        `function coverage is gated per known contract, but a MISSED contract would be invisible`,
     );
   }
 

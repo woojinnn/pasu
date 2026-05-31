@@ -164,7 +164,16 @@ raw Tx { chain, to, selector, calldata, value }
 4. **⚠️ permission-primitive red-flag (반드시 통과)** — `authorize | approve | permit | delegate | setOperator | setApprovalForAll | setAuthorization` 패턴 함수는 **무조건 COVER** (Tier 3 escalate 필요해도). ScopeBall 의 존재 이유(권한 위임 분석)라서 EXCLUDE/Unknown/skip **금지**. on-chain calldata 와 off-chain EIP-712(`*WithSig`/typed-data) **양쪽** 점검 — 둘 다 권한 grant 다. 매핑할 ActionBody 가 없으면 §4a 에서 Tier 3 신규 action 추가(Unknown 으로 떨구지 않음).
 5. **체인 scope** — main chain 1개 + L2 variant. free Etherscan v2 키는 **Base(8453)/Optimism(10) 미지원**(아래 5b) — 그 체인은 Dune 또는 유료키.
 6. **legacy 명시 제외 기록** — 구버전 deploy 제외 결정을 적어둠.
-7. **⚠️ executable gate (산문 → build 강제, 규약의 핵심)** — 위 전수 triage 는 agent 재량에 맡기면 silent 누락이 재발한다(§9 setAuthorization). 그래서 **기계 검증**으로 승격: scratch `research-<protocol>.json` 을 commit 되는 2 artifact 로 — `registryV2/surface/<protocol>/<contract>.abi.json`(1차 출처 verified **전체 ABI** snapshot = manifest·triage 가 거짓말 못 하는 **독립 ground-truth**) + `.coverage.json`(per-selector `COVER`/`EXCLUDE:reason` + `signed_structs`). `npm run check:surface` 가 검사: **I1** snapshot 의 external-mutating selector(`stateMutability∈{nonpayable,payable}`) 전수가 coverage 에 있나(누락 = 원래 miss) · **I2** COVER 는 manifest 보유 · **I3** manifest 는 COVER · **S1/S2** typed-data ↔ `signed_structs`. 위반 = exit 1. coverage·manifest 를 **둘 다** 빠뜨려도 독립 snapshot 이 I1 으로 잡으므로 silent 누락이 *불가능*해진다. 절차·포맷 = `registryV2/surface/README.md`. (이게 §3 의 본질: research-completeness 를 trust 에서 build-enforced invariant 로 — Cedar 등록 누락을 `MissingAction` 이 잡는 것과 같은 패턴.)
+7. **⚠️ executable gate — 함수 차원 (I1~I3, 산문 → build 강제)** — 위 전수 triage 는 agent 재량에 맡기면 silent 누락이 재발한다(§9 setAuthorization). 그래서 **기계 검증**으로 승격: scratch `research-<protocol>.json` 을 commit 되는 2 artifact 로 — `registryV2/surface/<protocol>/<contract>.abi.json`(1차 출처 verified **전체 ABI** snapshot = manifest·triage 가 거짓말 못 하는 **독립 ground-truth**) + `.coverage.json`(per-selector `COVER`/`EXCLUDE:reason` + `signed_structs`). `npm run check:surface` 가 검사: **I1** snapshot 의 external-mutating selector(`stateMutability∈{nonpayable,payable}`) 전수가 coverage 에 있나(누락 = 원래 miss) · **I2** COVER 는 manifest 보유 · **I3** manifest 는 COVER · **S1/S2** typed-data ↔ `signed_structs`. 위반 = exit 1. coverage·manifest 를 **둘 다** 빠뜨려도 독립 snapshot 이 I1 으로 잡으므로 silent 누락이 *불가능*해진다. 절차·포맷 = `registryV2/surface/README.md`. (이게 §3 의 본질: research-completeness 를 trust 에서 build-enforced invariant 로 — Cedar 등록 누락을 `MissingAction` 이 잡는 것과 같은 패턴.)
+
+8. **⚠️ executable gate — 컨트랙트 차원 (I0, 규약 7 의 전제)** — **규약 7(I1)은 "찾은 컨트랙트 *안*의 함수 완비"만 강제한다. 리서치가 통째로 놓친 *컨트랙트*는 못 잡는다** — snapshot 을 안 떴으니 I1 이 돌 대상이 없고, P2 의 실거래 pull 도 **`txlist&address=` 라 그 주소를 query 조차 안 한다**(주소가 리서치 산출물이라, 못 찾은 주소는 테스트도 장님). 즉 **contract-inventory 는 리서치의 single point of failure** 였다. 이를 같은 패턴으로 한 층 위에서 강제: `registryV2/surface/<protocol>/_deployments.json` = **공식 1차 deployment 목록**(= 컨트랙트 인벤토리의 독립 ground-truth, 함수에 대한 verified ABI 와 동형) — 모든 deployed 컨트랙트를 `cover`(snapshot 보유 강제) 또는 `exclude:reason` 로 전수 triage. `check:surface` 의 **I0**: 모든 `cover` 가 surface snapshot 을 갖나(없으면 = user-facing 컨트랙트 누락 → exit 1) · `exclude` 는 reason 보유 · I0′ gated 인데 목록에 없으면 WARN. `_deployments.json` 없는 프로토콜은 **"contract-inventory NOT enforced" WARN**(opt-in, 비파괴). **정직한 floor**: I1 의 ABI 는 함수를 못 빠뜨리지만(존재하면 ABI 에 있음), deployment 페이지는 컨트랙트를 *누락할 수 있다* → I0 는 "공식 목록만큼" 완벽(I1 보다 약함). SPOF 를 "agent 기억"에서 "공식 목록 대비 build diff + 아래 aggregator cross-check"로 옮길 뿐 airtight 는 아니다.
+
+   **`_deployments.json` ground-truth 소스 (1차 우선):**
+   | tier | 소스 | 비고 |
+   |---|---|---|
+   | **1차** | 프로토콜 공식 docs "Deployments/Addresses" 페이지 · 공식 GitHub deploy artifact(`@aave/address-book`, Uniswap deployments JSON, hardhat-deploy `deployments/`, foundry `broadcast/`) · 온체인 registry(Curve `AddressProvider`, Aave `PoolAddressesProvider`) | **I0 목록의 정본.** Lido = `docs.lido.fi/deployed-contracts`(§9.10 실측) |
+   | **2차 (discovery cross-check)** | **DefiLlama-Adapters** GitHub(프로토콜별 컨트랙트 주소 나열 — 강력) · **Dune** `<project>` decoded 네임스페이스/contract registry · **Etherscan/Basescan** address labels·Label Cloud · **Sourcify** verified repo | 1차가 누락한 컨트랙트를 *도전*하는 sweep. 반드시 1차로 재검증 후 `_deployments.json` 등재 |
+   > **단일 완전+권위 레지스트리는 없다**(정직). best = 공식 deploy artifact(1차)를 `_deployments.json` ground-truth 로 + DefiLlama/Dune/Etherscan-labels 를 누락-도전 sweep 으로 교차.
 
 ---
 
@@ -684,7 +693,10 @@ token · amm · lending · airdrop · launchpad · perp · multicall · unknown.
 - 위가 안 맞으면 코드가 또 움직인 것 — §1 표를 `grep -n` 으로 갱신 후 진행.
 
 ### 8.6 completeness self-check (P0/P1 마무리 게이트)
-온보딩 "완료" 선언 전 5문 — 하나라도 No 면 미완. 1~3·5 는 산문 자가점검, **4 가 surface 전수성을 build 로 강제**(enrichment 는 build-gate 불가, 5 가 prose):
+온보딩 "완료" 선언 전 6문 — 하나라도 No 면 미완. 0·4 가 build 강제(컨트랙트·함수 전수성), 1~3·5 는 산문 자가점검(enrichment 는 build-gate 불가, 5 가 prose):
+
+**컨트랙트 인벤토리 (가로의 전제 — P0, §3 규약 8):**
+0. 프로토콜의 **deployed 컨트랙트를 전수**했나? (공식 deploy 목록 1차 + DefiLlama/Dune/Etherscan-labels sweep) — `surface/<protocol>/_deployments.json` 에 모든 컨트랙트를 cover/exclude:reason 으로 적고 **`check:surface` 의 I0 가 PASS** 인가? ⚠️ 이게 빠지면 I1(함수)·실거래 pull(주소 기반) **둘 다 못 잡는** 컨트랙트-레벨 누락이 남는다. floor: 공식 목록만큼만 완벽(§3 규약 8).
 
 **가로 (surface — P0):**
 1. hub 의 **external state-changing 함수를 전수**했나? (block explorer Write 탭 / interface 전체 — "눈에 띄는 것만" 아님)
@@ -859,5 +871,23 @@ Lido(Liquid Staking)는 §4d ENRICHMENT 단계가 **왜 필요한지**를 실증
 **golden = source.function pin**(값은 host): `lido_wrap_expected_wsteth_live_input_is_wired` 가 `find_object_by_key(env,"expected_wsteth")` → `function == "getWstETHByStETH(uint256)"` assert. 검증: workspace 0 fail, v3_decode_harness 35 pass, check:manifest 1022 OK, check:surface PASS. claim_withdrawal(`getWithdrawalStatus` tuple[]) / stake(APR 소스 모호) / request_withdrawal(amounts 이미 token 단위)는 §4d 규칙대로 **사유 명시 defer**.
 
 **교훈**: enrichment 는 게이트로 안 잡힌다(객관 오라클 부재) — author 가 §4d decision-tree + §8.6-5 self-check 로 **작성 시점에** 잡아야 한다. "디코드 성공 + 게이트 green" 은 "사용자가 intent 를 읽는다"를 보장하지 않는다. 추상 단위(shares/index/wrapped/rate)를 가진 모든 새 action 이 이 함정의 후보다.
+
+### 9.10 contract-inventory gate (I0) — "못 찾은 컨트랙트는 테스트도 장님" (§3 규약 8 dogfood)
+
+§3 의 surface gate(I1)와 P2 의 실거래 pull 은 둘 다 **리서치가 찾은 컨트랙트 집합에 갇힌다**: I1 은 snapshot 안 뜬 컨트랙트엔 돌 대상이 없고, 실거래 pull 은 `txlist&address=<리서치가 준 주소>` 라 못 찾은 주소를 query 조차 안 한다. 즉 **컨트랙트-레벨 누락은 두 안전망 다 못 잡는다** — 이건 사용자 지적("dune/etherscan 이 주소 기준이면 리서치가 못 찾은 주소는 테스트로도 못 잡는 거 아니냐")이 정확했던 실제 blind spot.
+
+**처치 = I1 패턴을 한 층 위로 (commit 은 이 절과 함께).** 함수의 ground-truth 가 verified ABI 이듯, **컨트랙트의 ground-truth 는 공식 deployment 목록**. `surface/lido/_deployments.json` 에 `docs.lido.fi/deployed-contracts`(1차, WebFetch)의 **전체 15 컨트랙트**를 전수 triage: stETH/wstETH/WithdrawalQueue = `cover`(snapshot 보유), 나머지 12(Lido impl / Staking Router / Locator / Accounting / Withdrawal Vault / Oracle 3 / DAO Kernel / LDO / Dual Governance / Timelock) = `exclude:reason`(impl-behind-proxy / infra / oracle / governance / standard-ERC20). `check:surface` 의 **I0** 가 모든 cover 의 snapshot 존재를 강제:
+```
+✓ [I0] lido: 15 deployed · 3 cover · 12 exclude (contract-inventory enforced vs docs.lido.fi/deployed-contracts)
+⚠ aave/compound-v3/curve/morpho/uniswap: contract-inventory NOT enforced (no _deployments.json)   ← opt-in WARN, 비파괴
+```
+
+**vacuous 아님을 negative test 로 증명**: `Staking Router`(snapshot 없음)를 `exclude→cover` 로 뒤집자 →
+```
+✗ I0 surface/lido/_deployments.json: deployment "Staking Router (proxy)" (1/0xfddf…2999) is COVER but has NO surface snapshot/coverage — research missed a user-facing contract …   (exit 1)
+```
+즉 리서치가 user-facing 컨트랙트를 놓치고 그걸 cover 로 적으면 build 가 막는다 (되돌려 green).
+
+**정직한 floor**(§3 규약 8): verified ABI 는 함수를 못 빠뜨리지만 deployment 페이지는 컨트랙트를 누락할 수 있다 → I0 는 "공식 목록만큼" 완벽(I1 보다 약함). SPOF 를 "agent 기억"→"공식 목록 + DefiLlama/Dune/Etherscan-labels cross-check"로 옮길 뿐. 그래서 I0 는 opt-in WARN(강제 아님) — 목록을 작성해야 닫힌다.
 
 <!-- 출처: 사용자 설계 세션(V3-only/4-phase/3-tier/hybrid oracle/10k scale) + 코드 grounding(action_builder.rs·declarative_exports.rs·args_json.rs·dto.rs·oracle.rs·corpus.rs·v3_harness.rs·실제 manifest 5종·action/**·DEFECT_CATALOG.md) + §9 dogfood 실측(Morpho Blue 4함수 commit 760af8c + Full-8 보강: collateral 2 + SetAuthorization Tier 3 + off-chain Authorization). 2026-05-31. -->

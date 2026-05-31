@@ -1,0 +1,27 @@
+{
+  "protocol": "lido",
+  "source": "docs.lido.fi/deployed-contracts",
+  "url": "https://docs.lido.fi/deployed-contracts/",
+  "fetchedAt": "2026-05-31",
+  "note": "1st-party deployment list = I0 contract-inventory ground truth. User-pre-sign surface = stETH / wstETH / WithdrawalQueueERC721 (cover); everything else is protocol infra / oracle / governance the user does not sign against pre-sign (exclude). Honest floor: as complete as the official page — a contract the page omits is still invisible.",
+  "contracts": [
+    { "name": "stETH (Lido, proxy)", "chainId": 1, "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84", "decision": "cover", "reason": "user staking-token surface: submit / transferShares / transferSharesFrom" },
+    { "name": "wstETH", "chainId": 1, "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0", "decision": "cover", "reason": "user wrap / unwrap surface" },
+    { "name": "WithdrawalQueueERC721 (unstETH)", "chainId": 1, "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1", "decision": "cover", "reason": "user withdrawal request / claim surface" },
+
+    { "name": "Lido (implementation)", "chainId": 1, "address": "0x6ca84080381e43938476814be61b779a8bb6a600", "decision": "exclude", "reason": "implementation behind the stETH proxy — users call the proxy (covered)" },
+    { "name": "Staking Router (proxy)", "chainId": 1, "address": "0xfddf38947afb03c621c71b06c9c70bce73f12999", "decision": "exclude", "reason": "infra: node-operator-module routing; not a user pre-sign entry point" },
+    { "name": "Lido Locator (proxy)", "chainId": 1, "address": "0xc1d0b3de6792bf6b4b37eccdcc24e45978cfd2eb", "decision": "exclude", "reason": "infra: address registry" },
+    { "name": "Accounting (proxy)", "chainId": 1, "address": "0x23ed611be0e1a820978875c0122f92260804cddf", "decision": "exclude", "reason": "infra: protocol accounting; oracle/keeper-driven" },
+    { "name": "Withdrawal Vault (proxy)", "chainId": 1, "address": "0xb9d7934878b5fb9610b3fe8a5e441e8fad7e293f", "decision": "exclude", "reason": "infra: protocol-internal ETH vault; no user pre-sign entry" },
+
+    { "name": "Accounting Oracle (proxy)", "chainId": 1, "address": "0x852ded011285fe67063a08005c71a85690503cee", "decision": "exclude", "reason": "oracle: report submission by oracle committee, not users" },
+    { "name": "Validators Exit Bus Oracle (proxy)", "chainId": 1, "address": "0x0de4ea0184c2ad0baca7183356aea5b8d5bf5c6e", "decision": "exclude", "reason": "oracle: validator-exit reporting committee" },
+    { "name": "Lazy Oracle (proxy)", "chainId": 1, "address": "0x5db427080200c235f2ae8cd17a7be87921f7ad6c", "decision": "exclude", "reason": "oracle: lazy accounting reports" },
+
+    { "name": "Lido DAO Kernel (proxy)", "chainId": 1, "address": "0xb8ffc3cd6e7cf5a098a1c92f48009765b24088dc", "decision": "exclude", "reason": "governance: Aragon DAO kernel" },
+    { "name": "LDO token", "chainId": 1, "address": "0x5a98fcbea516cf06857215779fd812ca3bef1b32", "decision": "exclude", "reason": "standard ERC-20 governance token — erc20 standard adapter (not Lido-specific surface)" },
+    { "name": "Dual Governance", "chainId": 1, "address": "0xc1db28b3301331277e307fdcff8de28242a4486e", "decision": "exclude", "reason": "governance: proposal flow, not user pre-sign" },
+    { "name": "Emergency Protected Timelock", "chainId": 1, "address": "0xce0425301c85c5ea2a0873a2dee44d78e02d2316", "decision": "exclude", "reason": "governance: timelock executor" }
+  ]
+}

@@ -27,12 +27,47 @@ manifests nor the triage can lie about — the contract's **verified full ABI**,
 fetched once from a 1st-party source and committed here. The snapshot has every
 external function; the gate forces an explicit decision on each.
 
+## Two completeness layers — contracts (I0) and functions (I1~I3)
+
+The gate enforces completeness on **two axes**, because they fail differently:
+
+- **Function coverage (I1~I3)** — *within a contract you found*, did you triage every external function? Ground truth = the verified ABI (cannot omit a function that exists).
+- **Contract inventory (I0)** — did you find *every contract*? Ground truth = the official deployment list. **I1 and the adapter-blind real-tx pull are both blind here**: I1 has nothing to run on a contract you never snapshotted, and the real-tx pull queries `txlist&address=` so a contract whose address research never found is never even fetched. I0 closes that — but only as well as the official list (which *can* omit a contract; honest floor below).
+
 ## Layout
 
 ```
-surface/<protocol>/<contract>.abi.json        ← snapshot (ground truth)
-surface/<protocol>/<contract>.coverage.json   ← triage (decisions)
+surface/<protocol>/_deployments.json          ← I0: 1st-party deployment list (contract inventory)
+surface/<protocol>/<contract>.abi.json        ← snapshot (function ground truth)
+surface/<protocol>/<contract>.coverage.json   ← triage (function decisions)
 ```
+
+### `_deployments.json` — contract inventory (I0 ground truth)
+
+The protocol's **official deployment list** as data. EVERY deployed contract gets
+an explicit `cover` (you will snapshot + triage its functions) or `exclude` (with
+a reason: implementation-behind-proxy / oracle / governance / infra / standard
+token). This is the independent source that forces a decision on each contract —
+the same role the verified ABI plays for functions.
+
+```jsonc
+{
+  "protocol": "lido",
+  "source": "docs.lido.fi/deployed-contracts",     // 1st-party page
+  "url": "https://docs.lido.fi/deployed-contracts/",
+  "fetchedAt": "2026-05-31",
+  "contracts": [
+    { "name": "stETH (Lido, proxy)", "chainId": 1, "address": "0xae7ab9…", "decision": "cover",   "reason": "user staking-token surface" },
+    { "name": "Accounting Oracle",   "chainId": 1, "address": "0x852ded…", "decision": "exclude", "reason": "oracle: committee report, not user pre-sign" }
+    // … every contract on the official page
+  ]
+}
+```
+
+**Where to get the list (1st-party first):**
+- **1차**: official docs Deployments/Addresses page · official GitHub deploy artifacts (`@aave/address-book`, Uniswap deployments JSON, hardhat-deploy `deployments/`, foundry `broadcast/`) · on-chain registries (Curve `AddressProvider`, Aave `PoolAddressesProvider`).
+- **2차 (discovery cross-check, verify against 1차)**: DefiLlama-Adapters GitHub (lists addresses per protocol) · Dune `<project>` decoded namespaces · Etherscan/Basescan address labels / Label Cloud · Sourcify verified repo.
+- No single complete+authoritative registry exists — use the 1st-party deploy artifact as `_deployments.json`, and the aggregators as a sweep to *challenge* it.
 
 ### `<contract>.abi.json` — snapshot
 
@@ -97,13 +132,23 @@ this — they're one address.)
 
 | ID  | Rule | Catches |
 |-----|------|---------|
+| **I0**  | every `_deployments.json` `cover` contract has a surface snapshot; every `exclude` has a reason (opt-in: no `_deployments.json` → visible WARN, contract-inventory not enforced) | a **contract** research never found (invisible to I1 + the address-keyed real-tx pull) |
 | **I1**  | every snapshot external-mutating selector (`type==="function"` && `stateMutability ∈ {nonpayable,payable}`) has a `functions` entry | the original miss — a function nobody triaged |
 | **I1'** | every `functions` key is a real selector that exists in the snapshot | stale / typo'd coverage |
 | **I2**  | every `cover` selector has a manifest at `(chain,address,selector)` — for **each** address in `addresses[]` | triaged-as-cover but adapter never built (at any pool) |
 | **I3**  | every on-chain manifest selector at `(chain,address)` is `cover` here — checked per address | a manifest for a function you marked exclude / never triaged |
 | **S1/S2** | each typed-data manifest `primary_type` ↔ a `signed_structs` cover (both ways) | off-chain EIP-712 grant un-triaged |
 
-## Onboarding a new contract (4 steps)
+## Onboarding a new protocol
+
+**Step 0 — contract inventory (I0).** Before functions, enumerate the protocol's
+*contracts*. Pull the official deployment list (1st-party), challenge it with a
+DefiLlama/Dune/Etherscan-labels sweep, and write `surface/<protocol>/_deployments.json`
+— every contract `cover` or `exclude:reason`. `npm run check:surface` I0 then
+proves no user-facing contract was dropped. (Skip and you get a WARN, not a fail —
+but the contract-inventory blind spot stays open.)
+
+**Then, for each `cover` contract (4 steps):**
 
 1. **Fetch** the verified ABI from a 1st-party source (key is local-only, never
    committed — `crates/integration-tests/.env`):
@@ -134,6 +179,15 @@ this — they're one address.)
 - **Incremental, never silent.** Only contracts with a snapshot here are
   enforced. Contracts with manifests but no snapshot are reported as a visible
   `UNGATED` WARN (not a failure) — onboard them protocol by protocol.
+- **I0 floor — weaker than I1.** A verified ABI cannot omit a function that
+  exists, so I1 is complete-by-construction. A deployment *page* CAN omit a
+  contract, so I0 is only as complete as the official list. I0 moves the
+  single-point-of-failure from "agent's memory" to "official list + aggregator
+  cross-check" — better, not airtight. Cross-check 1st-party against
+  DefiLlama/Dune/Etherscan-labels to narrow it.
+- **I0 is opt-in.** A protocol with no `_deployments.json` gets a visible
+  "contract-inventory NOT enforced" WARN — function coverage is still gated per
+  known contract, but a missed contract stays invisible. Author the list to close it.
 - **ERC standards** (`chain_to_addresses_source` manifests) are out of scope.
 - **Proxy / diamond.** A verified ABI may hide implementation functions. The
   snapshot is ground truth only for the surface it exposes; for proxies, snapshot
