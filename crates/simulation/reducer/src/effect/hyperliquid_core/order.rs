@@ -23,6 +23,11 @@ pub(super) fn apply(
         reduce_only: action.reduce_only,
         tif: action.tif.clone(),
         oid: None,
+        order_type: None,
+        is_trigger: None,
+        trigger_price: None,
+        trigger_condition: None,
+        is_position_tpsl: None,
     };
 
     let mut delta = StateDelta::new();

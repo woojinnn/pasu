@@ -791,6 +791,18 @@ fn parse_hl_open_orders(
                 .unwrap_or(false),
             tif: normalize_tif(value_at(item, &["tif"]).and_then(Value::as_str)),
             oid: value_at(item, &["oid"]).and_then(Value::as_u64),
+            order_type: value_at(item, &["orderType"])
+                .and_then(Value::as_str)
+                .map(str::to_owned),
+            is_trigger: value_at(item, &["isTrigger"]).and_then(Value::as_bool),
+            trigger_price: value_at(item, &["triggerPx"])
+                .filter(|v| !v.is_null())
+                .map(state_decimal_from_value)
+                .transpose()?,
+            trigger_condition: value_at(item, &["triggerCondition"])
+                .and_then(Value::as_str)
+                .map(str::to_owned),
+            is_position_tpsl: value_at(item, &["isPositionTpsl"]).and_then(Value::as_bool),
         });
     }
     Ok(out)

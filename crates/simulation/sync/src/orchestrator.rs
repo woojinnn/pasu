@@ -1102,7 +1102,24 @@ priority = 1
                                 }],
                                 "time": 1710000000123u64
                             }),
-                            ("frontendOpenOrders", Some("xyz")) => json!([]),
+                            ("frontendOpenOrders", Some("xyz")) => json!([{
+                                "timestamp": 1780211477428u64,
+                                "coin": "xyz:SPCX",
+                                "side": "A",
+                                "limitPx": "170.2",
+                                "sz": "0.0",
+                                "oid": 449792035550u64,
+                                "origSz": "0.0",
+                                "cloid": null,
+                                "orderType": "Stop Market",
+                                "tif": null,
+                                "reduceOnly": true,
+                                "triggerCondition": "Price below 185",
+                                "isTrigger": true,
+                                "triggerPx": "185.0",
+                                "children": [],
+                                "isPositionTpsl": true
+                            }]),
                             ("frontendOpenOrders", None) => json!([{
                                 "timestamp": 1710000000124u64,
                                 "coin": "ETH",
@@ -1179,6 +1196,11 @@ priority = 1
                     reduce_only: false,
                     tif: "gtc".to_owned(),
                     oid: Some(1),
+                    order_type: None,
+                    is_trigger: None,
+                    trigger_price: None,
+                    trigger_condition: None,
+                    is_position_tpsl: None,
                 }],
                 leverage_settings: Vec::new(),
                 agents: Vec::new(),
@@ -1206,9 +1228,24 @@ priority = 1
         assert_eq!(account.positions.len(), 2);
         assert_eq!(account.positions[0].symbol.as_deref(), Some("BTC"));
         assert_eq!(account.positions[1].symbol.as_deref(), Some("xyz:SPCX"));
-        assert_eq!(account.open_orders.len(), 1);
+        assert_eq!(account.open_orders.len(), 2);
         assert_eq!(account.open_orders[0].symbol.as_deref(), Some("ETH"));
         assert_eq!(account.open_orders[0].oid, Some(42));
+        assert_eq!(account.open_orders[1].symbol.as_deref(), Some("xyz:SPCX"));
+        assert_eq!(
+            account.open_orders[1].order_type.as_deref(),
+            Some("Stop Market")
+        );
+        assert_eq!(account.open_orders[1].is_trigger, Some(true));
+        assert_eq!(
+            account.open_orders[1].trigger_price,
+            Some(Decimal::new("185"))
+        );
+        assert_eq!(
+            account.open_orders[1].trigger_condition.as_deref(),
+            Some("Price below 185")
+        );
+        assert_eq!(account.open_orders[1].is_position_tpsl, Some(true));
         assert_eq!(account.agents.len(), 1);
     }
 }

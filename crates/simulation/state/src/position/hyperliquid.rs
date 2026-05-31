@@ -97,6 +97,26 @@ pub struct HlOpenOrder {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub oid: Option<u64>,
+    /// Human-readable venue order type, e.g. `"Limit"` or `"Stop Market"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub order_type: Option<String>,
+    /// `true` when the order is a trigger order such as TP/SL.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub is_trigger: Option<bool>,
+    /// Trigger price for TP/SL orders.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub trigger_price: Option<Decimal>,
+    /// Venue-provided trigger condition, e.g. `"Price below 185"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub trigger_condition: Option<String>,
+    /// `true` when this is attached to the position TP/SL controls.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub is_position_tpsl: Option<bool>,
 }
 
 /// A per-asset leverage / margin-mode setting.
@@ -149,6 +169,11 @@ mod tests {
                 reduce_only: true,
                 tif: "ioc".to_owned(),
                 oid: Some(42),
+                order_type: Some("Stop Market".to_owned()),
+                is_trigger: Some(true),
+                trigger_price: Some(Decimal::new("185")),
+                trigger_condition: Some("Price below 185".to_owned()),
+                is_position_tpsl: Some(true),
             }],
             leverage_settings: vec![HlLeverageSetting {
                 asset_index: 0,
