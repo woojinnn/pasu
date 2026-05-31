@@ -1,0 +1,28 @@
+{
+  "id": "conc-token-concentration-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "token-share-after",
+      "method": "portfolio.group_pct",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "group_axis": "token",
+        "asset": "$.action.tokenOut",
+        "basis": "state2"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "portfolioTokenPctAfter",
+          "type": "Decimal",
+          "from": "$.result.pct"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "portfolioTokenPctAfter": "decimal" } }
+}

@@ -309,6 +309,12 @@
           "type": "String",
           "required": true,
           "description": "Lending protocol/venue identifying the position."
+        },
+        "action": {
+          "type": "Action",
+          "required": true,
+          "defaultSelector": "$.action",
+          "description": "The proposed borrow/withdraw — applied via the reducer to produce State₂ before recomputing HF. Without it the method cannot compute the AFTER value."
         }
       },
       "returns": { "kind": "scalar", "type": "decimal", "from": "$.result.healthFactor" },
@@ -317,10 +323,10 @@
     "perp.notional_to_collateral": {
       "name": "perp.notional_to_collateral",
       "status": "planned",
-      "description": "Ratio of perp position notional to total collateral USD. Folds collateral legs (each × price) into a denominator; new-order notional may be included via the reducer. Drives PERP-03 (T3).",
-      "readKind": "fold",
+      "description": "Ratio of the proposed order's notional (size × markPrice) to the account's total collateral USD. SELF-VERIFY: on OpenPosition both inputs live in the action's live_inputs (size, markPrice, userAccountState.totalCollateralUsd) → this is a DERIVED read, not a whole-wallet fold. A cross-position collateral fold is a separate variant. Drives PERP-03.",
+      "readKind": "derived",
       "server": "sim-server",
-      "stateDependency": ["positions(perp).data_json.notional_usd", "positions(perp).data_json.collateral", "token_holdings.price_value"],
+      "stateDependency": ["action.live_inputs.userAccountState.totalCollateralUsd", "action.size", "action.live_inputs.markPrice", "positions(perp).data_json.collateral (cross-position variant only)"],
       "params": {
         "chain_id": {
           "type": "Long",
@@ -332,10 +338,11 @@
           "required": true,
           "defaultSelector": "$.root.from"
         },
-        "market": {
-          "type": "String",
+        "action": {
+          "type": "Action",
           "required": true,
-          "description": "Perp market identifier (e.g. \"ETH-PERP\")."
+          "defaultSelector": "$.action",
+          "description": "The proposed perp order: size × markPrice = notional; userAccountState = collateral denominator."
         }
       },
       "returns": { "kind": "scalar", "type": "decimal", "from": "$.result.ratio" },
@@ -350,18 +357,36 @@
       "server": "sim-server",
       "stateDependency": ["token_holdings.balance_amount", "token_holdings.price_value", "positions.data_json"],
       "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id"
+        },
         "owner": {
           "type": "String",
           "required": true,
           "defaultSelector": "$.root.from"
         },
-        "group": {
+        "group_axis": {
           "type": "String",
           "required": true,
-          "description": "Grouping key — token symbol, BaseCategory, or peg_to.Fiat. Axis decided by ADR-010."
+          "enum_": ["token", "category", "fiat_peg"],
+          "description": "How holdings are grouped to form the share's denominator/numerator."
+        },
+        "asset": {
+          "type": "String",
+          "required": true,
+          "description": "The group key being measured (e.g. the acquired token for group_axis=token)."
+        },
+        "basis": {
+          "type": "String",
+          "required": true,
+          "enum_": ["state1", "state2"],
+          "default": "state2",
+          "description": "state1 = current holdings; state2 = after the action is applied via the reducer."
         }
       },
-      "returns": { "kind": "scalar", "type": "decimal", "from": "$.result.pctAfter" },
+      "returns": { "kind": "scalar", "type": "decimal", "from": "$.result.pct" },
       "origin": "bundled"
     }
   }
