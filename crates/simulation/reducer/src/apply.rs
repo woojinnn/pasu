@@ -43,11 +43,10 @@ impl Reducer for ActionBody {
             Self::Airdrop(a) => a.apply(state, ctx),
             Self::Launchpad(a) => a.apply(state, ctx),
             Self::Perp(a) => a.apply(state, ctx),
-            // Hyperliquid CORE actions are off-chain L1 venue intents (the order
-            // lives on the venue, not the wallet), so there is no EVM/wallet
-            // state delta to simulate — the policy engine still evaluates them
-            // via the lowering path; the reducer simply has nothing to apply.
-            Self::HyperliquidCore(_) => Ok(StateDelta::default()),
+            // Hyperliquid CORE actions record their effect against the wallet's
+            // off-chain Hl account (see effect::hyperliquid_core). No fetch: the
+            // reducer reads only state + ctx; Sync populates the base balance.
+            Self::HyperliquidCore(a) => a.apply(state, ctx),
             Self::Multicall { actions } => apply_multicall(state, ctx, actions),
             Self::Unknown { target, .. } => Err(ReducerError::UnknownAction(format!(
                 "unidentified call to {target:?}"

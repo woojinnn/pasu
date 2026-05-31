@@ -190,6 +190,50 @@ where
     Ok(())
 }
 
+/// Mutate the existing `HyperliquidAccount` position for a wallet.
+///
+/// Same shape as [`upsert_perp_position`] but for `HlAccount`. Looks up the
+/// effective position by `position_id`, applies `mutate`, then pushes a
+/// `PositionChange::Update` carrying the full post-mutation snapshot.
+///
+/// Errors:
+///   - `PositionNotFound` if no position with `position_id` is effective.
+///   - `Invariant` if the position exists but is not a `HyperliquidAccount`.
+pub fn upsert_hl_account<F>(
+    state: &WalletState,
+    delta: &mut StateDelta,
+    position_id: &PositionId,
+    mutate: F,
+) -> ReducerResult<()>
+where
+    F: FnOnce(&mut Position),
+{
+    let existing = effective_position(state, delta, position_id)
+        .ok_or_else(|| ReducerError::PositionNotFound(position_id.clone()))?;
+
+    if !matches!(existing.kind, PositionKind::HyperliquidAccount(_)) {
+        return Err(ReducerError::Invariant(format!(
+            "position {position_id} exists but is not a HyperliquidAccount"
+        )));
+    }
+
+    let mut new_position = existing.clone();
+    mutate(&mut new_position);
+
+    if !matches!(new_position.kind, PositionKind::HyperliquidAccount(_)) {
+        return Err(ReducerError::Invariant(format!(
+            "position {position_id} mutate changed kind away from HyperliquidAccount"
+        )));
+    }
+
+    let patch = snapshot_patch(&new_position);
+    delta.position_changes.push(PositionChange::Update {
+        id: position_id.clone(),
+        patch,
+    });
+    Ok(())
+}
+
 /// Remove a position and emit `PositionChange::Close`.
 ///
 /// Accepts a position that exists in the effective state (i.e. either in
