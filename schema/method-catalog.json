@@ -580,6 +580,148 @@
       },
       "returns": { "kind": "scalar", "type": "decimal", "from": "$.result.pegRatio" },
       "origin": "bundled"
+    },
+    "position.health_factor_with_volatility": {
+      "name": "position.health_factor_with_volatility",
+      "status": "planned",
+      "description": "AAVE-02: post-trade health factor (State₂, same reducer recompute as position.health_factor_after) PLUS the collateral-volatility class of the position's dominant collateral. Emits TWO context fields from one call so a single policy can gate on 'HF in the warn band AND collateral is volatile'. The volatility class is an ExternalInfo tag (stable/volatile) joined onto the refrigerated collateral set.",
+      "readKind": "reducer",
+      "server": "sim-server",
+      "stateDependency": ["positions(lending).data_json.collaterals", "positions(lending).data_json.debts", "positions(lending).data_json.liquidation_threshold", "token_holdings.price_value", "token_holdings.kind (volatility class, ExternalInfo)"],
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "venue": { "type": "String", "required": true, "description": "Lending protocol/venue identifying the position." },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "The proposed borrow/withdraw — applied via the reducer to produce State₂ before recomputing HF." }
+      },
+      "returns": { "kind": "record", "fields": {
+        "healthFactor": { "type": "decimal", "from": "$.result.healthFactor" },
+        "collateralIsVolatile": { "type": "Bool", "from": "$.result.collateralIsVolatile" }
+      } },
+      "origin": "bundled"
+    },
+    "position.ltv_after": {
+      "name": "position.ltv_after",
+      "status": "planned",
+      "description": "AAVE-06: loan-to-value of a lending position AFTER virtually applying the proposed action (State₂), expressed as a decimal ratio (debt_usd / collateral_usd). Reducer recompute_ltv from refrigerated collaterals/debts + price. For eMode-entry policies this is the effective leverage the new category LTV cap is checked against; the policy reads the category cap from the action's base context (categoryConfig.ltvBp).",
+      "readKind": "reducer",
+      "server": "sim-server",
+      "stateDependency": ["positions(lending).data_json.collaterals", "positions(lending).data_json.debts", "token_holdings.price_value"],
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "venue": { "type": "String", "required": true, "description": "Lending protocol/venue identifying the position." },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "The proposed eMode/borrow action — applied via the reducer to produce State₂ before recomputing LTV." }
+      },
+      "returns": { "kind": "scalar", "type": "decimal", "from": "$.result.ltv" },
+      "origin": "bundled"
+    },
+    "position.borrow_fraction_bps": {
+      "name": "position.borrow_fraction_bps",
+      "status": "planned",
+      "description": "AAVE-07: fraction (basis points) of the user's remaining borrow capacity this borrow consumes = borrow_usd / availableBorrowUsd. The base Borrow context carries availableBorrowUsd only as a U256 hex string and amountUsd only as an optional decimal, so the ratio cannot be formed by a pure Cedar action-field read — it needs a derived read that prices the borrow amount and divides by the precomputed UserLendingState.available_borrow_usd.",
+      "readKind": "derived",
+      "server": "sim-server",
+      "stateDependency": ["action.live_inputs.userStateBefore.availableBorrowUsd", "action.amount", "token_holdings.price_value"],
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "The proposed borrow: amount × price = numerator; userStateBefore.availableBorrowUsd = denominator." }
+      },
+      "returns": { "kind": "scalar", "type": "Long", "from": "$.result.bps" },
+      "origin": "bundled"
+    },
+    "reserve.is_siloed": {
+      "name": "reserve.is_siloed",
+      "status": "planned",
+      "description": "AAVE-10: whether the borrow target reserve is configured as siloed (single-asset borrowing). The shipped ReserveState in the lending action context carries utilization / caps / frozen / paused flags but NOT the siloed flag, so this reserve-metadata bit must come from a dedicated read of the reserve config (reserve_state metadata), not a pure action-field.",
+      "readKind": "direct",
+      "server": "sim-server",
+      "stateDependency": ["positions(lending) reserve config (siloed flag); reserve metadata not surfaced as a base context field"],
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "venue": { "type": "String", "required": true, "description": "Lending venue identifying the reserve." },
+        "asset": { "type": "AssetRef", "required": true, "defaultSelector": "$.action.asset" }
+      },
+      "returns": { "kind": "scalar", "type": "Bool", "from": "$.result.isSiloed" },
+      "origin": "bundled"
+    },
+    "reserve.isolation_debt_headroom_bps": {
+      "name": "reserve.isolation_debt_headroom_bps",
+      "status": "planned",
+      "description": "AAVE-11: how close (basis points of the debt ceiling) the isolation-mode total debt would be AFTER this borrow = (isolationModeTotalDebt + borrow_usd) / debtCeiling. The debt ceiling and the protocol-global isolationModeTotalDebt are NOT base context fields — they are reserve/protocol-global metadata — so this proximity must be derived from those externals plus the proposed borrow.",
+      "readKind": "derived",
+      "server": "sim-server",
+      "stateDependency": ["positions(lending).data_json.is_isolated", "reserve metadata: debtCeiling + isolationModeTotalDebt (protocol-global)", "action.amount", "token_holdings.price_value"],
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "venue": { "type": "String", "required": true, "description": "Lending venue identifying the isolated reserve." },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "The proposed borrow whose USD value is added to isolationModeTotalDebt." }
+      },
+      "returns": { "kind": "scalar", "type": "Long", "from": "$.result.headroomBps" },
+      "origin": "bundled"
+    },
+    "reserve.cap_used_bp": {
+      "name": "reserve.cap_used_bp",
+      "status": "planned",
+      "description": "AAVE-12: how full the reserve's supply/borrow cap would be AFTER this action, in basis points = (total + action.amount) / cap. ReserveState surfaces totalSupply/totalBorrow/supplyCap/borrowCap only as U256 hex strings (optional caps), which Cedar cannot compare numerically, so the used-bp ratio must be derived rather than read as an action-field. `cap_kind` selects supply vs borrow.",
+      "readKind": "derived",
+      "server": "sim-server",
+      "stateDependency": ["action.live_inputs.reserveState.totalSupply", "action.live_inputs.reserveState.totalBorrow", "action.live_inputs.reserveState.supplyCap", "action.live_inputs.reserveState.borrowCap", "action.amount"],
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "cap_kind": { "type": "String", "required": true, "enum_": ["supply", "borrow"], "description": "Which cap to measure against (supply for supply actions, borrow for borrow actions)." },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "The proposed supply/borrow whose amount is added to the current total." }
+      },
+      "returns": { "kind": "scalar", "type": "Long", "from": "$.result.capUsedBp" },
+      "origin": "bundled"
+    },
+    "external.lst_price_divergence_bps": {
+      "name": "external.lst_price_divergence_bps",
+      "status": "planned",
+      "description": "AAVE-09: divergence (basis points) between the Aave oracle's price for an LST/LRT collateral and its true market/backing price, read from an external feed. Pairs with token.peg_ratio (depeg) and the action's eMode category to gate high-LTV LST looping. External — not a wallet-state read.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "external LST oracle-vs-market divergence feed (not state DB)",
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "asset": { "type": "AssetRef", "required": true, "description": "The LST/LRT collateral asset whose oracle/market divergence is measured." }
+      },
+      "returns": { "kind": "scalar", "type": "Long", "from": "$.result.divergenceBps" },
+      "origin": "bundled"
+    },
+    "external.repay_swap_slippage_bps": {
+      "name": "external.repay_swap_slippage_bps",
+      "status": "planned",
+      "description": "AAVE-13: realized slippage (basis points, negative = unfavourable) of the embedded swap in a repay-with-collateral / collateral-swap, comparing the calldata's minAmountOut floor against the oracle fair price. The Repay action context carries no swap-floor field, so the floor and the fair price are both read externally (oracle mid-market + decoded calldata).",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "external oracle mid-market price + decoded repay-with-collateral swap floor (not state DB)",
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "The repay-with-collateral action whose embedded swap floor is compared to fair value." }
+      },
+      "returns": { "kind": "scalar", "type": "Long", "from": "$.result.slippageBps" },
+      "origin": "bundled"
+    },
+    "external.oracle_freshness": {
+      "name": "external.oracle_freshness",
+      "status": "planned",
+      "description": "AAVE-14: freshness of the borrow asset's price oracle — whether it is stale (ttl/confidence exceeded or L2 sequencer grace) and its age in seconds. Derived from the price LiveField's synced_at/ttl plus the L2 sequencer-uptime sentinel; surfaced as an external freshness signal rather than a base context field.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "price LiveField synced_at/ttl/confidence + L2 sequencer-uptime sentinel (external freshness signal)",
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "asset": { "type": "AssetRef", "required": true, "defaultSelector": "$.action.asset" }
+      },
+      "returns": { "kind": "record", "fields": {
+        "isStale": { "type": "Bool", "from": "$.result.isStale" },
+        "ageSecs": { "type": "Long", "from": "$.result.ageSecs" }
+      } },
+      "origin": "bundled"
     }
   }
 }

@@ -1,0 +1,42 @@
+{
+  "id": "aave-lst-emode-divergence-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "set_e_mode" } } },
+  "policy_rpc": [
+    {
+      "id": "lst-peg",
+      "method": "token.peg_ratio",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "asset": "$.action.categoryConfig"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "lstPegRatio",
+          "type": "Decimal",
+          "from": "$.result.pegRatio"
+        }
+      ],
+      "optional": true
+    },
+    {
+      "id": "lst-divergence",
+      "method": "external.lst_price_divergence_bps",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "asset": "$.action.categoryConfig"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "lstDivergenceBps",
+          "type": "Long",
+          "from": "$.result.divergenceBps"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "lstPegRatio": "decimal", "lstDivergenceBps": "Long" } }
+}

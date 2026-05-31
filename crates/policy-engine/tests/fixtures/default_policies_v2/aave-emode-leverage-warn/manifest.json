@@ -1,0 +1,27 @@
+{
+  "id": "aave-emode-leverage-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "set_e_mode" } } },
+  "policy_rpc": [
+    {
+      "id": "ltv-after",
+      "method": "position.ltv_after",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "venue": "$.action.venue",
+        "action": "$.action"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "ltvAfter",
+          "type": "Decimal",
+          "from": "$.result.ltv"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "ltvAfter": "decimal" } }
+}

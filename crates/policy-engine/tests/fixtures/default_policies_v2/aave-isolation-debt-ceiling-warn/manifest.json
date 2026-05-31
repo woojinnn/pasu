@@ -1,0 +1,27 @@
+{
+  "id": "aave-isolation-debt-ceiling-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "borrow" } } },
+  "policy_rpc": [
+    {
+      "id": "isolation-headroom",
+      "method": "reserve.isolation_debt_headroom_bps",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "venue": "$.action.venue",
+        "action": "$.action"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "isolationDebtUsedBps",
+          "type": "Long",
+          "from": "$.result.headroomBps"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "isolationDebtUsedBps": "Long" } }
+}

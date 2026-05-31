@@ -1,0 +1,33 @@
+{
+  "id": "aave-hf-band-volatile-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "borrow" } } },
+  "policy_rpc": [
+    {
+      "id": "hf-with-volatility",
+      "method": "position.health_factor_with_volatility",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "venue": "$.action.venue",
+        "action": "$.action"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "healthFactorAfter",
+          "type": "Decimal",
+          "from": "$.result.healthFactor"
+        },
+        {
+          "kind": "context",
+          "field": "collateralIsVolatile",
+          "type": "Bool",
+          "from": "$.result.collateralIsVolatile"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "healthFactorAfter": "decimal", "collateralIsVolatile": "Bool" } }
+}
