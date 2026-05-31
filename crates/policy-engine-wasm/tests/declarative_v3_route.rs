@@ -4710,6 +4710,40 @@ fn t2_permit2_invalidate_unordered_nonces() {
     assert_eq!(body["scope"]["mask"], "0xa", "{parsed}");
 }
 
+const T2_INVALIDATE_ORDERED_V3: &str =
+    include_str!("../../../registryV2/manifests/uniswap/permit2/invalidateNonces@1.0.0.json");
+
+#[test]
+fn t2_permit2_invalidate_ordered_nonces_preserves_new_nonce() {
+    install_ok(T2_INVALIDATE_ORDERED_V3);
+
+    // invalidateNonces(address token, address spender, uint48 newNonce).
+    let token = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    let spender = "0x00000000000000000000000000000000deadbeef";
+    let calldata = encode_calldata(
+        "0x65d9723c",
+        &[
+            DynSolValue::Address(token.parse().unwrap()),
+            DynSolValue::Address(spender.parse().unwrap()),
+            DynSolValue::Uint(AlloyU256::from(42u64), 48),
+        ],
+    );
+    let input = route_input(1, PERMIT2_VC, "0x65d9723c", calldata, T1_SIGNER);
+    let parsed = route_ok(input);
+    assert_eq!(
+        parsed["data"]["decoder_id"], "uniswap/permit2/invalidateNonces@1.0.0",
+        "{parsed}"
+    );
+
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "revoke_approval", "{parsed}");
+    assert_eq!(body["scope"]["kind"], "permit2_ordered_nonce", "{parsed}");
+    assert_eq!(body["scope"]["token"]["key"]["address"], token, "{parsed}");
+    assert_eq!(body["scope"]["spender"], spender, "{parsed}");
+    assert_eq!(body["scope"]["new_nonce"], "0x2a", "{parsed}");
+}
+
 // ---------------------------------------------------------------------------
 // t21 — B.1.c.2 recursive opcode_stream_dispatch: UR execute(V4_SWAP) fully
 // expands the inner V4 action stream into a NESTED Multicall with real values.

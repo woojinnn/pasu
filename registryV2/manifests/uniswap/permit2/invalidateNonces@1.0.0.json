@@ -12,7 +12,7 @@
       "42161": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
     }
   },
-  "note": "Permit2 invalidateNonces(token,spender,newNonce) invalidates ordered allowance nonces for a token/spender pair. This is modeled as a permission revocation for policy purposes; the exact nonce floor is not represented in RevokeScope today.",
+  "note": "Permit2 invalidateNonces(token,spender,newNonce) invalidates ordered allowance nonces for a token/spender pair. Modeled as RevokeScope::Permit2OrderedNonce so policy/UI can show the token, spender, and exact new nonce floor.",
   "abi_fragment": {
     "function_name": "invalidateNonces",
     "abi": {
@@ -35,7 +35,7 @@
         "action": "revoke_approval",
         "revoke_approval": {
           "scope": {
-            "kind": "permit2_lockdown",
+            "kind": "permit2_ordered_nonce",
             "token": {
               "key": {
                 "standard": "erc20",
@@ -43,7 +43,8 @@
                 "address": "$args.token"
               }
             },
-            "spender": "$args.spender"
+            "spender": "$args.spender",
+            "new_nonce": "$args.newNonce"
           }
         }
       }

@@ -9,6 +9,7 @@
 //   - `"nft_set_for_all"`   : `chain` + `contract` + `spender`
 //   - `"permit2_lockdown"`  : `token` + `spender`
 //   - `"permit2_unordered_nonce"` : `chain` + `wordPos` + `mask`
+//   - `"permit2_ordered_nonce"`   : `token` + `spender` + `newNonce`
 //   - `"eip3009_authorization"`   : `token` + `authorizer` + `nonce`
 //
 // Policies typically inspect `scope.kind` and the relevant fields together
@@ -16,11 +17,11 @@
 
 namespace Token {
   type RevokeScope = {
-    // Discriminator: "erc20" | "nft_single_token" | "nft_set_for_all" | "permit2_lockdown" | "permit2_unordered_nonce" | "eip3009_authorization".
+    // Discriminator: "erc20" | "nft_single_token" | "nft_set_for_all" | "permit2_lockdown" | "permit2_unordered_nonce" | "permit2_ordered_nonce" | "eip3009_authorization".
     kind: String,
-    // Token whose allowance is being revoked (erc20, permit2_lockdown).
+    // Token whose allowance/nonce lane is being revoked (erc20, permit2_lockdown, permit2_ordered_nonce).
     token?: Core::TokenRef,
-    // Spender losing the allowance (erc20, nft_set_for_all, permit2_lockdown).
+    // Spender losing the allowance/nonce lane (erc20, nft_set_for_all, permit2_lockdown, permit2_ordered_nonce).
     spender?: String,
     // `TokenKey` identifying the specific NFT (nft_single_token).
     nftKey?: Core::TokenKey,
@@ -32,6 +33,8 @@ namespace Token {
     wordPos?: String,
     // Permit2 unordered nonce bitmap mask (U256 hex; permit2_unordered_nonce).
     mask?: String,
+    // Permit2 ordered allowance nonce floor (U256 hex; permit2_ordered_nonce).
+    newNonce?: String,
     // EIP-3009 authorization signer.
     authorizer?: String,
     // EIP-3009 authorization nonce (bytes32 hex).

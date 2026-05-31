@@ -243,8 +243,8 @@ fn morpho_set_authorization_decodes_operator_and_flag() {
 /// Field-level golden for Permit2 `invalidateNonces`.
 ///
 /// `invalidateNonces(token,spender,newNonce)` is an ordered nonce revocation for
-/// a Permit2 allowance pair. The current ActionBody does not carry the nonce
-/// floor, but it must still surface the token+spender permission being revoked.
+/// a Permit2 allowance pair. It must surface the token+spender lane and the
+/// exact new nonce floor for policy/UI.
 #[test]
 fn permit2_invalidate_nonces_decodes_revoke_scope() {
     let _surface = adapters::load_and_install().expect("install local surface");
@@ -267,8 +267,8 @@ fn permit2_invalidate_nonces_decodes_revoke_scope() {
         Some(true),
         "route did not succeed: {env}"
     );
-    let scope = find_object_with_string_field(&env, "kind", "permit2_lockdown")
-        .expect("revoke_approval carries permit2_lockdown scope");
+    let scope = find_object_with_string_field(&env, "kind", "permit2_ordered_nonce")
+        .expect("revoke_approval carries permit2_ordered_nonce scope");
     let expected_spender = format!("0x{SPENDER}");
     assert_eq!(
         scope.get("spender").and_then(serde_json::Value::as_str),
@@ -280,6 +280,13 @@ fn permit2_invalidate_nonces_decodes_revoke_scope() {
         .and_then(|v| find_string_field(v, "address"))
         .expect("permit2 revoke scope carries token address");
     assert_eq!(token, format!("0x{TOKEN}"), "token mis-decoded");
+    assert_eq!(
+        scope
+            .get("new_nonce")
+            .and_then(serde_json::Value::as_str),
+        Some("0x7"),
+        "new nonce floor mis-decoded"
+    );
 }
 
 /// Field-level golden for Permit2 `invalidateUnorderedNonces`.

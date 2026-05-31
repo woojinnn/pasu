@@ -415,6 +415,12 @@ impl Reducer for RevokeApprovalAction {
                 // yet. The ActionBody still exposes the bitmap coordinates for
                 // policy/UI; simulation has no local approval row to mutate.
             }
+            RevokeScope::Permit2OrderedNonce { .. } => {
+                // Permit2 ordered allowance nonce floors are not tracked in
+                // WalletState yet. The ActionBody still exposes token/spender
+                // and newNonce for policy/UI; simulation has no local approval
+                // row to mutate.
+            }
             RevokeScope::Eip3009Authorization { .. } => {
                 // EIP-3009 authorization nonces are not tracked in WalletState
                 // yet. The ActionBody still exposes the nonce cancellation for
@@ -1039,6 +1045,20 @@ mod tests {
                 chain: ChainId::ethereum_mainnet(),
                 word_pos: U256::from(42u64),
                 mask: U256::from(0xffu64),
+            },
+        };
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert!(delta.is_empty());
+    }
+
+    #[test]
+    fn revoke_approval_permit2_ordered_nonce_is_metadata_only_today() {
+        let state = empty_state();
+        let action = RevokeApprovalAction {
+            scope: RevokeScope::Permit2OrderedNonce {
+                token: usdc_ref(),
+                spender: spender_addr(),
+                new_nonce: U256::from(42u64),
             },
         };
         let delta = action.apply(&state, &ctx()).unwrap();

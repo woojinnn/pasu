@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "uniswap/permit2/invalidateNonces@1.0.0",
   "manifest_path": "manifests/uniswap/permit2/invalidateNonces@1.0.0.json",
-  "bundle_sha256": "0xfa932cccd242b2e23b5a654cf777ab2fd4fae2c6ae6518321550488f68f1ff9a",
+  "bundle_sha256": "0x908236a9c45f932e3c29f95c593723972392b15910a520c8d11c080c824814e1",
   "bundle": {
     "type": "adapter_action",
     "id": "uniswap/permit2/invalidateNonces@1.0.0",
@@ -25,7 +25,7 @@
         ]
       }
     },
-    "note": "Permit2 invalidateNonces(token,spender,newNonce) invalidates ordered allowance nonces for a token/spender pair. This is modeled as a permission revocation for policy purposes; the exact nonce floor is not represented in RevokeScope today.",
+    "note": "Permit2 invalidateNonces(token,spender,newNonce) invalidates ordered allowance nonces for a token/spender pair. Modeled as RevokeScope::Permit2OrderedNonce so policy/UI can show the token, spender, and exact new nonce floor.",
     "abi_fragment": {
       "function_name": "invalidateNonces",
       "abi": {
@@ -57,7 +57,7 @@
           "action": "revoke_approval",
           "revoke_approval": {
             "scope": {
-              "kind": "permit2_lockdown",
+              "kind": "permit2_ordered_nonce",
               "token": {
                 "key": {
                   "standard": "erc20",
@@ -65,7 +65,8 @@
                   "address": "$args.token"
                 }
               },
-              "spender": "$args.spender"
+              "spender": "$args.spender",
+              "new_nonce": "$args.newNonce"
             }
           }
         }

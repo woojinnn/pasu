@@ -27,9 +27,9 @@ pub(crate) fn lower(
     Ok(ctx.lowered(r#"Token::Action::"RevokeApproval""#, Value::Object(m)))
 }
 
-/// Lower a [`RevokeScope`] → discriminated `{ kind, token?, spender?, nftKey?,
-/// chain?, contract? }` (`Token::RevokeScope`). Only the fields a variant carries
-/// are emitted; the rest are omitted (the Cedar record's optionals).
+/// Lower a [`RevokeScope`] → discriminated `Token::RevokeScope`.
+/// Only the fields a variant carries are emitted; the rest are omitted (the
+/// Cedar record's optionals).
 fn lower_revoke_scope(scope: &RevokeScope) -> Value {
     let mut m = Map::new();
     match scope {
@@ -69,6 +69,16 @@ fn lower_revoke_scope(scope: &RevokeScope) -> Value {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("wordPos".into(), Value::String(u256_hex(*word_pos)));
             m.insert("mask".into(), Value::String(u256_hex(*mask)));
+        }
+        RevokeScope::Permit2OrderedNonce {
+            token,
+            spender,
+            new_nonce,
+        } => {
+            m.insert("kind".into(), Value::String("permit2_ordered_nonce".into()));
+            m.insert("token".into(), lower_token_ref(token));
+            m.insert("spender".into(), Value::String(addr(spender)));
+            m.insert("newNonce".into(), Value::String(u256_hex(*new_nonce)));
         }
         RevokeScope::Eip3009Authorization {
             token,
@@ -157,6 +167,17 @@ mod tests {
             chain: ChainId::ethereum_mainnet(),
             word_pos: U256::from(42u64),
             mask: U256::from(0xffu64),
+        });
+    }
+
+    /// `kind = "permit2_ordered_nonce"` carries the token/spender allowance
+    /// lane plus the new ordered nonce floor from Permit2 `invalidateNonces`.
+    #[test]
+    fn revoke_approval_permit2_ordered_nonce_kind_conforms() {
+        assert_scope_conforms(RevokeScope::Permit2OrderedNonce {
+            token: sample_erc20_token(),
+            spender: spender(),
+            new_nonce: U256::from(42u64),
         });
     }
 

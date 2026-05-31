@@ -60,6 +60,17 @@ pub enum RevokeScope {
         #[tsify(type = "string")]
         mask: U256,
     },
+    /// `Permit2` ordered allowance nonce invalidation.
+    Permit2OrderedNonce {
+        /// Underlying token whose token/spender nonce floor is being raised.
+        token: TokenRef,
+        /// Spender whose ordered Permit2 allowance nonces are invalidated.
+        #[tsify(type = "string")]
+        spender: Address,
+        /// New ordered nonce floor (`invalidateNonces` `newNonce`).
+        #[tsify(type = "string")]
+        new_nonce: U256,
+    },
     /// Revoke an EIP-3009 token authorization nonce (`cancelAuthorization`).
     Eip3009Authorization {
         /// Token whose authorization nonce is being cancelled.
