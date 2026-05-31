@@ -293,6 +293,26 @@
     ],
     "surface_gate": "PASS; gated contracts increased from 2 to 6; remaining ungated WARN count decreased from 62 to 58"
   },
+  "uniswap_v2_router02_mainnet_surface_gate": {
+    "protocol": "uniswap",
+    "contract": "Uniswap V2 Router02 mainnet",
+    "status": "implemented",
+    "completed": [
+      "added surface/uniswap/v2-router-02-mainnet.{abi,coverage}.json from the local Sourcify verified ABI cache and official Uniswap v2-periphery router source provenance",
+      "triaged all 17 external state-changing Router02 selectors as COVER because each maps to a user AMM swap/add/remove-liquidity action",
+      "surface gate exposed three missing permit-removal selectors: removeLiquidityWithPermit, removeLiquidityETHWithPermit, and removeLiquidityETHWithPermitSupportingFeeOnTransferTokens",
+      "added V3 manifests for the three permit-removal selectors across mainnet, Base, Arbitrum, and Optimism Router02 deployments",
+      "added hand corpus fixtures for the three new mainnet permit-removal paths"
+    ],
+    "evidence": [
+      "npm run build: 971 callkeys + 78 typed-data entries across 171 manifests",
+      "npm run check:surface: PASS with 46 gated contracts; UniswapV2Router02 mainnet 17 surface / 17 cover / 0 exclude / 17 on-chain manifests",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage: callkeys=971 typed_data_keys=78 unique_bundles=171 install_failures=0",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 225/225 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 25 passed",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "skipped_or_deferred_action_mapping": [
     {
       "protocol_or_function": "Hyperliquid Core / REST JSON actions",

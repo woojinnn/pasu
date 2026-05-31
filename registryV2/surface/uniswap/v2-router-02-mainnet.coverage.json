@@ -1,0 +1,95 @@
+{
+  "contract": "UniswapV2Router02",
+  "chainId": 1,
+  "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+  "snapshot": "v2-router-02-mainnet.abi.json",
+  "note": "Surface-completeness triage for Uniswap V2 Router02 mainnet. Every external state-changing router function is a user AMM action and therefore COVER.",
+  "functions": {
+    "0xe8e33700": {
+      "name": "addLiquidity",
+      "decision": "cover",
+      "reason": "user AMM action: add ERC20/ERC20 V2 liquidity"
+    },
+    "0xf305d719": {
+      "name": "addLiquidityETH",
+      "decision": "cover",
+      "reason": "user AMM action: add ERC20/native V2 liquidity"
+    },
+    "0xbaa2abde": {
+      "name": "removeLiquidity",
+      "decision": "cover",
+      "reason": "user AMM action: remove ERC20/ERC20 V2 liquidity"
+    },
+    "0x02751cec": {
+      "name": "removeLiquidityETH",
+      "decision": "cover",
+      "reason": "user AMM action: remove ERC20/native V2 liquidity"
+    },
+    "0xaf2979eb": {
+      "name": "removeLiquidityETHSupportingFeeOnTransferTokens",
+      "decision": "cover",
+      "reason": "user AMM action: remove ERC20/native V2 liquidity through the fee-on-transfer-aware path"
+    },
+    "0xded9382a": {
+      "name": "removeLiquidityETHWithPermit",
+      "decision": "cover",
+      "reason": "user AMM action: remove ERC20/native V2 liquidity with inline LP permit approval"
+    },
+    "0x5b0d5984": {
+      "name": "removeLiquidityETHWithPermitSupportingFeeOnTransferTokens",
+      "decision": "cover",
+      "reason": "user AMM action: remove ERC20/native V2 liquidity with inline LP permit approval through the fee-on-transfer-aware path"
+    },
+    "0x2195995c": {
+      "name": "removeLiquidityWithPermit",
+      "decision": "cover",
+      "reason": "user AMM action: remove ERC20/ERC20 V2 liquidity with inline LP permit approval"
+    },
+    "0xfb3bdb41": {
+      "name": "swapETHForExactTokens",
+      "decision": "cover",
+      "reason": "user AMM action: exact-output native-to-token V2 swap"
+    },
+    "0x7ff36ab5": {
+      "name": "swapExactETHForTokens",
+      "decision": "cover",
+      "reason": "user AMM action: exact-input native-to-token V2 swap"
+    },
+    "0xb6f9de95": {
+      "name": "swapExactETHForTokensSupportingFeeOnTransferTokens",
+      "decision": "cover",
+      "reason": "user AMM action: exact-input native-to-token V2 swap through the fee-on-transfer-aware path"
+    },
+    "0x18cbafe5": {
+      "name": "swapExactTokensForETH",
+      "decision": "cover",
+      "reason": "user AMM action: exact-input token-to-native V2 swap"
+    },
+    "0x791ac947": {
+      "name": "swapExactTokensForETHSupportingFeeOnTransferTokens",
+      "decision": "cover",
+      "reason": "user AMM action: exact-input token-to-native V2 swap through the fee-on-transfer-aware path"
+    },
+    "0x38ed1739": {
+      "name": "swapExactTokensForTokens",
+      "decision": "cover",
+      "reason": "user AMM action: exact-input token-to-token V2 swap"
+    },
+    "0x5c11d795": {
+      "name": "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+      "decision": "cover",
+      "reason": "user AMM action: exact-input token-to-token V2 swap through the fee-on-transfer-aware path"
+    },
+    "0x4a25d94a": {
+      "name": "swapTokensForExactETH",
+      "decision": "cover",
+      "reason": "user AMM action: exact-output token-to-native V2 swap"
+    },
+    "0x8803dbee": {
+      "name": "swapTokensForExactTokens",
+      "decision": "cover",
+      "reason": "user AMM action: exact-output token-to-token V2 swap"
+    }
+  },
+  "signed_structs": {}
+}

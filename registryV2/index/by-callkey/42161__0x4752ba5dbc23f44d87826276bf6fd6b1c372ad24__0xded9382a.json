@@ -1,0 +1,163 @@
+{
+  "matched": true,
+  "bundle_id": "uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0",
+  "manifest_path": "manifests/uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0.json",
+  "bundle_sha256": "0x765415676f8bf84111b8b8405757a8183b1a7ec3f5a7081a2c6e59e01fde40cb",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0",
+    "publisher": "uniswap.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0xded9382a",
+      "chain_to_addresses": {
+        "1": [
+          "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+        ],
+        "10": [
+          "0x4A7b5Da61326A6379179b40d00F57E5bbDC962c2"
+        ],
+        "8453": [
+          "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"
+        ],
+        "42161": [
+          "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "removeLiquidityETHWithPermit",
+      "abi": {
+        "name": "removeLiquidityETHWithPermit",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "liquidity",
+            "type": "uint256"
+          },
+          {
+            "name": "amountTokenMin",
+            "type": "uint256"
+          },
+          {
+            "name": "amountETHMin",
+            "type": "uint256"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "name": "approveMax",
+            "type": "bool"
+          },
+          {
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "amm",
+        "amm": {
+          "action": "remove_liquidity",
+          "remove_liquidity": {
+            "venue": {
+              "name": "uniswap_v2",
+              "chain": "$chain",
+              "pool": "$resolved.pool",
+              "factory": "$resolved.factory"
+            },
+            "params": {
+              "kind": "pooled_burn",
+              "lp_token": {
+                "key": {
+                  "standard": "erc20",
+                  "chain": "$chain",
+                  "address": "$resolved.pool"
+                }
+              },
+              "lp_amount": "$args.liquidity",
+              "min_out": [
+                [
+                  {
+                    "key": {
+                      "standard": "erc20",
+                      "chain": "$chain",
+                      "address": "$args.token"
+                    }
+                  },
+                  "$args.amountTokenMin"
+                ],
+                [
+                  {
+                    "key": {
+                      "standard": "native",
+                      "chain": "$chain"
+                    }
+                  },
+                  "$args.amountETHMin"
+                ]
+              ],
+              "recipient": "$args.to"
+            },
+            "live_inputs": {
+              "pool_state": {
+                "source": {
+                  "kind": "onchain_view",
+                  "chain": "$chain",
+                  "contract": "$resolved.pool",
+                  "function": "getReserves()",
+                  "decoder_id": "uniswap_v2_get_reserves"
+                },
+                "ttl_s": 12
+              },
+              "fees_owed": {
+                "source": {
+                  "kind": "derived_from",
+                  "inputs": [
+                    {
+                      "scope": "global",
+                      "name": "uniswap_v2_pool_state"
+                    }
+                  ],
+                  "calc_id": "uniswap_v2_price_impact_bp"
+                },
+                "ttl_s": 12
+              }
+            }
+          }
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata",
+        "v2_pool_resolver",
+        "weth_resolver"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}
