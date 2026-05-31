@@ -3218,6 +3218,7 @@ dependencies = [
  "async-trait",
  "axum",
  "base64",
+ "cedar-policy",
  "dotenvy",
  "futures",
  "jsonwebtoken",

@@ -386,6 +386,78 @@ paths:
         "204": { description: Deleted }
         "404": { description: Policy not found }
 
+  /policies/validate:
+    post:
+      tags: [policies]
+      summary: Cedar parse-check (editor live syntax validator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cedar_text]
+              properties:
+                cedar_text: { type: string }
+      responses:
+        "200":
+          description: ValidateResp
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:    { type: boolean }
+                  error: { type: string, nullable: true }
+
+  /policies/{id}/test:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [policies]
+      summary: Evaluate a saved policy against an inline Cedar request (schema-less)
+      description: |
+        Schema-less authoring: the saved policy is parsed via cedar-policy
+        directly (no bundled schema enforced) so editors can experiment
+        with any `principal/action/resource`. Production evaluation in
+        the extension is strictly stricter.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request]
+              properties:
+                request:
+                  type: object
+                  required: [principal, action, resource]
+                  properties:
+                    principal: { type: string, example: 'Wallet::"0xabc"' }
+                    action:    { type: string, example: 'Action::"swap"' }
+                    resource:  { type: string, example: 'Protocol::"0xdef"' }
+                    entities:  { type: array, items: { type: object } }
+                    context:   { type: object }
+      responses:
+        "200":
+          description: TestPolicyResp
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verdict: { type: string, enum: [pass, warn, fail] }
+                  matched:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        policy_id: { type: string }
+                        severity:  { type: string, enum: [deny, warn] }
+                        reason:    { type: string, nullable: true }
+        "400": { description: Parse / entity / context error }
+        "404": { description: Policy not found }
+
   /policy-schema:
     get:
       tags: [policies]

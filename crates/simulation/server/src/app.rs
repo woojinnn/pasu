@@ -29,6 +29,7 @@ use crate::db_store::SqliteExecutionReportStore;
 use crate::dto::{EvaluateRequest, ExecutionReportRequest};
 use crate::events::EventBus;
 use crate::handler::{evaluate, report_execution, HandlerError};
+use crate::cedar_handlers;
 use crate::dashboard_handlers;
 use crate::read_handlers;
 use crate::verdict_handlers;
@@ -175,6 +176,15 @@ pub fn build_router(state: AppState) -> Router {
             get(read_handlers::get_policy)
                 .patch(write_handlers::patch_policy)
                 .delete(write_handlers::delete_policy),
+        )
+        // ---- Phase 4: cedar editor support ----
+        .route(
+            "/policies/validate",
+            post(cedar_handlers::validate_policy),
+        )
+        .route(
+            "/policies/:id/test",
+            post(cedar_handlers::test_policy),
         )
         .route("/policy-schema", get(read_handlers::get_policy_schema))
         .route("/policy-templates", get(read_handlers::get_policy_templates))

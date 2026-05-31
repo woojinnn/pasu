@@ -52,6 +52,16 @@ export {
   type ChainShare,
 } from "./dashboard";
 
+// Phase 4 cedar editor support.
+export {
+  validatePolicy,
+  testPolicy,
+  type ValidateResp,
+  type CedarRequestInput,
+  type TestPolicyResp,
+  type MatchedPolicyDto,
+} from "./cedar";
+
 // Re-export every shared type so consumers can `import { … } from "@scopeball/api-client"`
 // without juggling two packages. (`DashboardSummary` is the live shape
 // from ./dashboard above — the stub in @scopeball/types pre-dates Phase 3
