@@ -54,7 +54,10 @@ fn default_v2_bundles_are_internally_consistent() {
             .unwrap_or_else(|e| panic!("parse {id}/manifest.json: {e}"));
 
         // 1. The manifest id is the bundle directory name (stable on-disk layout).
-        assert_eq!(manifest.id, id, "{id}: manifest id must match its directory name");
+        assert_eq!(
+            manifest.id, id,
+            "{id}: manifest id must match its directory name"
+        );
 
         // 2. Structural invariants (schema_version == 2, unique policy_rpc ids,
         //    every custom_context field fed by some output).
@@ -66,8 +69,9 @@ fn default_v2_bundles_are_internally_consistent() {
         //    synthesizes — the core consistency guarantee for a default bundle.
         let schema = compose_per_policy(&manifest)
             .unwrap_or_else(|e| panic!("{id}: compose_per_policy failed: {e}"));
-        PolicyEngine::build_from_per_policy(&[(policy, schema)])
-            .unwrap_or_else(|e| panic!("{id}: policy.cedar does not compile against its schema: {e}"));
+        PolicyEngine::build_from_per_policy(&[(policy, schema)]).unwrap_or_else(|e| {
+            panic!("{id}: policy.cedar does not compile against its schema: {e}")
+        });
 
         checked += 1;
     }

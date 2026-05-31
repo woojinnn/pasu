@@ -226,8 +226,6 @@ fn tuple_component_types(abi_type: &str) -> Option<Vec<String>> {
     Some(out)
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
