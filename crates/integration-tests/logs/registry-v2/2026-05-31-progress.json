@@ -24,6 +24,26 @@
     ],
     "caveat": "No ETHERSCAN_API_KEY was present in this checkout, so the Compound corpus is hand-encoded from verified ABI shape rather than imported real Etherscan txlist. The surface snapshot itself is committed and check:surface enforces triage completeness."
   },
+  "compound_v3_market_expansion": {
+    "protocol": "compound-v3",
+    "contract": "Comet cWETHv3 mainnet",
+    "status": "implemented",
+    "completed": [
+      "added surface/compound-v3/comet-weth-mainnet.{abi,coverage}.json using Compound official mainnet/weth roots.json + configuration.json provenance and the CometInterface user-facing ABI",
+      "expanded Comet on-chain manifests from cUSDC-only to cUSDC+cWETH for 15 COVER selectors",
+      "added compound_v3_base_asset static resolver so cUSDC decodes with USDC base asset and cWETH decodes with WETH base asset",
+      "added cWETH Authorization typed-data manifest keyed by verifying_contract=0xa17581a9e3356d9a858b789d68b4d866e593ae94 and domain_name=Compound WETH",
+      "added field-level golden tests for cWETH supply base_asset and cWETH Authorization permission fields",
+      "added hand corpus entries for cWETH supply and cWETH Authorization typed-data"
+    ],
+    "evidence": [
+      "npm run build: 514 callkeys + 46 typed-data entries across 120 manifests",
+      "npm run check:surface: PASS with 8 gated contracts; Comet cWETHv3 20 surface / 15 cover / 5 exclude / 1 signed-struct",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 138/138 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 14 passed",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "scenario_c_decode_gap_loop": {
     "protocol": "uniswap",
     "status": "started",

@@ -524,6 +524,12 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                 serde_json::Value::String(pool.to_owned()),
             );
         }
+        if let Some(asset) = compound_v3_base_asset(input.chain_id, &key.to) {
+            resolved.insert(
+                "compound_v3_base_asset".to_owned(),
+                serde_json::Value::String(asset.to_owned()),
+            );
+        }
 
         // Tier-B synthetic derivations the declarative grammar cannot express
         // (it can index/slice but not hash). Morpho Blue's `market_id` =
@@ -776,6 +782,19 @@ fn aave_weth_gateway_pool(chain_id: u64, target: &str) -> Option<&'static str> {
     }
 }
 
+fn compound_v3_base_asset(chain_id: u64, target: &str) -> Option<&'static str> {
+    let target = target.to_ascii_lowercase();
+    match (chain_id, target.as_str()) {
+        (1, "0xc3d688b66703497daa19211eedff47f25384cdc3") => {
+            Some("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+        }
+        (1, "0xa17581a9e3356d9a858b789d68b4d866e593ae94") => {
+            Some("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+        }
+        _ => None,
+    }
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // Phase A.1 — `declarative_route_typed_data_v3_json`
 // ───────────────────────────────────────────────────────────────────────────
@@ -908,6 +927,12 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
             resolved.insert(
                 "weth".to_owned(),
                 serde_json::Value::String(addr.to_owned()),
+            );
+        }
+        if let Some(asset) = compound_v3_base_asset(input.chain_id, &key.verifying_contract) {
+            resolved.insert(
+                "compound_v3_base_asset".to_owned(),
+                serde_json::Value::String(asset.to_owned()),
             );
         }
 

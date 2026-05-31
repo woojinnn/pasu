@@ -1,12 +1,23 @@
 {
   "matched": true,
-  "bundle_id": "standard/erc20/transferFrom@1.0.0",
-  "manifest_path": "manifests/standard/erc20/transferFrom@1.0.0.json",
-  "bundle_sha256": "0xf03b6ab7072b1bc0a6a1c6574e6d96ee6df5c666b7e2e7c6daea1d86fc72e924",
+  "bundle_id": "compound-v3/comet/transferFrom@1.0.0",
+  "manifest_path": "manifests/compound-v3/comet/transferFrom@1.0.0.json",
+  "bundle_sha256": "0x6aa6451d47eb56aceda1c5730b25206718a27a3b94e162687efef7f77e8c3bde",
   "bundle": {
     "type": "adapter_action",
-    "id": "standard/erc20/transferFrom@1.0.0",
+    "id": "compound-v3/comet/transferFrom@1.0.0",
+    "publisher": "compound.eth",
+    "note": "Compound V3 Comet transferFrom(src,dst,amount). The permission check is Comet hasPermission(src,msg.sender); the transfer itself moves base balance, so map to token/erc20_transfer of the base asset. The current TokenAction schema does not carry the source account.",
     "schema_version": "3",
+    "match": {
+      "selector": "0x23b872dd",
+      "chain_to_addresses": {
+        "1": [
+          "0xc3d688b66703497daa19211eedff47f25384cdc3",
+          "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
+        ]
+      }
+    },
     "abi_fragment": {
       "function_name": "transferFrom",
       "abi": {
@@ -15,11 +26,11 @@
         "stateMutability": "nonpayable",
         "inputs": [
           {
-            "name": "from",
+            "name": "src",
             "type": "address"
           },
           {
-            "name": "to",
+            "name": "dst",
             "type": "address"
           },
           {
@@ -46,102 +57,15 @@
               "key": {
                 "standard": "erc20",
                 "chain": "$chain",
-                "address": "$to"
+                "address": "$resolved.compound_v3_base_asset"
               }
             },
-            "recipient": "$args.to",
+            "recipient": "$args.dst",
             "amount": "$args.amount"
           }
         }
       },
       "live_inputs": {}
-    },
-    "requires": {
-      "imperative": [],
-      "adapter_capabilities": [
-        "token_metadata"
-      ],
-      "host_capabilities": [],
-      "extension": ">=0.1.0"
-    },
-    "match": {
-      "selector": "0x23b872dd",
-      "chain_to_addresses": {
-        "1": [
-          "0x018008bfb33d285247a21d44e50697654f754e63",
-          "0x0b925ed163218f6662a35e0f0371ac234f9e9371",
-          "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
-          "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-          "0x23878914efe38d27c4d67ab83ed1b93a74d4086a",
-          "0x35fa164735182de50811e8e2e824cfb9b6118ac2",
-          "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
-          "0x4228f8895c7dda20227f6a5c6751b8ebf19a6ba8",
-          "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
-          "0x4d5f47fa6a74757f35c14fd3a6ef8e3c9bc514e8",
-          "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
-          "0x514910771af9ca656af840dff83e8264ecf986ca",
-          "0x5a98fcbea516cf06857215779fd812ca3bef1b32",
-          "0x5e8422345238f34275888049021821e8e08caa1f",
-          "0x5e8c8a7243651db1384c0ddfdbe39761e8e7e51a",
-          "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8",
-          "0x5f98805a4e8be255a32880fdec7f6728c6568ba0",
-          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
-          "0x6b175474e89094c44da98b954eedeac495271d0f",
-          "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
-          "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
-          "0x72e95b8931767c79ba4eee721354d6e99a61d004",
-          "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-          "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
-          "0x83f20f44975d03b1b09e64809b757c47f942beea",
-          "0x853d955acef822db058eb8505911ed77f175b99e",
-          "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
-          "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-          "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-          "0xac3e018457b222d93114458476f3e3416abbe38f",
-          "0xae78736cd615f374d3085123a210448e74fc6393",
-          "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
-          "0xc00e94cb662c3520282e6f5717214004a7f26888",
-          "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-          "0xc3d688b66703497daa19211eedff47f25384cdc3",
-          "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
-          "0xcf8d0c70c850859266f5c338b38f9d663181c314",
-          "0xd533a949740bb3306d119cc777fa900ba034cd52",
-          "0xdac17f958d2ee523a2206206994597c13d831ec7",
-          "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
-        ],
-        "10": [
-          "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
-          "0x4200000000000000000000000000000000000006",
-          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
-          "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58"
-        ],
-        "8453": [
-          "0x04c0599ae5a44757c0af6f9ec3b93da8976c150a",
-          "0x1dabc36f19909425f654777249815c073e8fd79f",
-          "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
-          "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
-          "0x4200000000000000000000000000000000000006",
-          "0x4e65fe4dba92790696d040ac24aa414708f5c0ab",
-          "0x50c5725949a6f0c72e6c4a641f24049a917db0cb",
-          "0x59dca05b6c26dbd64b5381374aaac5cd05644c28",
-          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
-          "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
-          "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
-          "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
-          "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
-          "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
-          "0xcf3d55c10db69f28fd1a75bd73f3d8a2d9c595ad",
-          "0xd4a0e0b9149bcee3c920d2e00b5de09138fd8bb7",
-          "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
-          "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2"
-        ],
-        "42161": [
-          "0x6985884c4392d348587b19cb9eaaf157f13271cd",
-          "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-          "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
-          "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
-        ]
-      }
     }
   }
 }

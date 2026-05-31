@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "compound-v3/comet/transfer@1.0.0",
   "manifest_path": "manifests/compound-v3/comet/transfer@1.0.0.json",
-  "bundle_sha256": "0x157428d5286e66ed7118a81929b412ca15101a0f0c8fd17b5e065a6c4f0c1a99",
+  "bundle_sha256": "0xd55e49204a52f04cc2b4ce17b5f1dd36b4422d2fd8ef6e06f56b1e9df9a1e6bf",
   "bundle": {
     "type": "adapter_action",
     "id": "compound-v3/comet/transfer@1.0.0",
@@ -13,7 +13,8 @@
       "selector": "0xa9059cbb",
       "chain_to_addresses": {
         "1": [
-          "0xc3d688b66703497daa19211eedff47f25384cdc3"
+          "0xc3d688b66703497daa19211eedff47f25384cdc3",
+          "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
         ]
       }
     },
@@ -52,7 +53,7 @@
               "key": {
                 "standard": "erc20",
                 "chain": "$chain",
-                "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                "address": "$resolved.compound_v3_base_asset"
               }
             },
             "recipient": "$args.dst",
