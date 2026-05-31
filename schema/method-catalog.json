@@ -260,6 +260,72 @@
     }
   },
   "planned": {
+    "approval.unlimited_over_balance": {
+      "name": "approval.unlimited_over_balance",
+      "status": "planned",
+      "_structural_flag": "REAL/implemented in crates/simulation/server/src/facts.rs (sim-server fact host), NOT the policy-rpc daemon. It sits in `planned` only because `methods` is byte-coupled to the daemon (catalog.test.ts drift test). Under ADR-009 (policy-rpc retiring, sim-server = fact host) the structural home for sim-server methods is an open question — see catalog_conformance.rs Task-5 flag.",
+      "description": "GEN-01: is the ERC20 approval to `spender` on `token` unlimited, and how many times the wallet's available balance does the approved amount cover? Emits TWO context fields from one call.",
+      "readKind": "direct",
+      "server": "sim-server",
+      "stateDependency": ["approvals_erc20.is_unlimited", "token_holdings.balance_amount"],
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id"
+        },
+        "owner": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.root.from"
+        },
+        "token": {
+          "type": "AssetRef",
+          "required": true,
+          "defaultSelector": "$.action.token"
+        },
+        "spender": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.spender"
+        },
+        "amount": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.amount"
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "isUnlimited": { "type": "Bool", "from": "$.result.isUnlimited" },
+          "amountOverBalance": { "type": "decimal", "from": "$.result.amountOverBalance" }
+        }
+      },
+      "origin": "bundled"
+    },
+    "external.address_blocklisted": {
+      "name": "external.address_blocklisted",
+      "status": "planned",
+      "description": "GEN-11: is `address` on an external reputation blocklist? Read from an external reputation feed, not the wallet-state DB.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "external reputation feed (not state DB)",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id"
+        },
+        "address": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.recipient"
+        }
+      },
+      "returns": { "kind": "scalar", "type": "Bool", "from": "$.result.blocklisted" },
+      "origin": "bundled"
+    },
     "valuation.asset_usd": {
       "name": "valuation.asset_usd",
       "status": "planned",

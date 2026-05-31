@@ -8,7 +8,8 @@
       "method": "oracle.usd_value",
       "params": {
         "chain_id": "$.root.chain_id",
-        "recipient": "$.action.recipient"
+        "asset": "$.action.tokenIn",
+        "amount": "$.action.amountIn"
       },
       "outputs": [
         {
