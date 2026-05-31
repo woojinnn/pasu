@@ -173,7 +173,24 @@ raw Tx { chain, to, selector, calldata, value }
    |---|---|---|
    | **1차** | 프로토콜 공식 docs "Deployments/Addresses" 페이지 · 공식 GitHub deploy artifact(`@aave/address-book`, Uniswap deployments JSON, hardhat-deploy `deployments/`, foundry `broadcast/`) · 온체인 registry(Curve `AddressProvider`, Aave `PoolAddressesProvider`) | **I0 목록의 정본.** Lido = `docs.lido.fi/deployed-contracts`(§9.10 실측) |
    | **2차 (discovery cross-check)** | **DefiLlama-Adapters** GitHub(프로토콜별 컨트랙트 주소 나열 — 강력) · **Dune** `<project>` decoded 네임스페이스/contract registry · **Etherscan/Basescan** address labels·Label Cloud · **Sourcify** verified repo | 1차가 누락한 컨트랙트를 *도전*하는 sweep. 반드시 1차로 재검증 후 `_deployments.json` 등재 |
-   > **단일 완전+권위 레지스트리는 없다**(정직). best = 공식 deploy artifact(1차)를 `_deployments.json` ground-truth 로 + DefiLlama/Dune/Etherscan-labels 를 누락-도전 sweep 으로 교차.
+   > **단일 완전+권위 레지스트리는 없다**(정직). best = 공식 deploy artifact(1차)를 `_deployments.json` ground-truth 로 + DefiLlama/Dune/Etherscan-labels **+ LLM discovery panel(§3.1)** 을 누락-도전 sweep 으로 교차.
+
+### 3.1 (optional) LLM discovery panel — contract-inventory 폭 보강
+
+P0 contract discovery 는 **다운스트림 안전망이 없는 유일한 완비성 층**이다(I0 floor = "그 컨트랙트가 있는 줄 몰랐다"; I1·실거래 pull 둘 다 리서치가 찾은 주소에 갇힘). 그래서 **discovery 렌즈를 늘리는 것**이 가장 값어치 있는 보강이고, 별도 LLM CLI(gemini / codex / 또 다른 claude)를 §3 규약 8 의 2차 sweep(DefiLlama/Dune/Etherscan-labels) **옆에 또 하나의 렌즈**로 쓸 수 있다. 모델마다 recall 이 달라 서로 놓친 periphery 컨트랙트를 surface 한다.
+
+> **★ 비협상 규율 — LLM = candidate 생성기(untrusted), 1차 fetch + I0/I1 gate = disposer(trusted).** LLM 은 주소·ABI 를 **환각**한다; 모델 N개가 *같은 틀린 주소*에 합의해도 틀린 것이다. **LLM 합의를 ground-truth 로 쓰지 말 것** — 후보만 넓히고, 통과는 항상 1차 출처 fetch + gate 가 시킨다.
+
+**절차 (fan-out → synthesize → verify):**
+1. **fan-out** — 동일 discovery 프롬프트를 가용 CLI 에 headless 로(아래 invocation). 프롬프트 템플릿:
+   > `Protocol: <name>. <chains> 에 배포된, 일반 user(EOA/smart account)가 서명 직전 직접 호출/EIP-712 서명하는 **모든** 컨트랙트를 나열하라. 각: name · chain · address · **1차 출처 URL**(공식 docs "deployments" / 공식 GitHub deploy artifact). 각 컨트랙트의 external state-changing 함수도. 공식 출처만 인용 — 주소 추측 금지, 불확실하면 "unverified" 표기. 표로 출력.`
+2. **synthesize (현 세션)** — 출력들의 union + dedup + **불일치 surface**(모델 A만 언급한 컨트랙트 = 검증 우선 후보).
+3. **verify (gate 가 dispose)** — 각 후보 컨트랙트를 **1차 fetch**(공식 deploy 페이지 / verified ABI) → `surface/<protocol>/_deployments.json` 에 cover/exclude:reason 등재 → `npm run check:surface`(I0/I1). **1차 verify 안 되는 후보는 drop**(LLM 환각 가능). I0 가 "cover 인데 snapshot 없음" 으로 누락을 막는다.
+4. (optional) **adversarial review** — 종합 인벤토리를 한 CLI 에 다시: `"이 목록에서 빠진 user-facing 컨트랙트/함수는? 공식 출처로."` → 새 후보면 3 으로.
+
+**invocation (headless — §8.1 / 별도 확인):** `gemini -p "<프롬프트>"` (auto: `-y`) · `codex exec "<프롬프트>"` (auto: `--full-auto`). 인자 없는 `gemini`/`codex` = interactive REPL → TTY 없는 Bash 에서 hang; 무조건 headless. auth 선행. 긴 run 은 background. **비용 = 호출자 쿼터**(nesting).
+
+> **⚠️ OPTIONAL — portability 원칙**: core P0(1차 fetch + I0/I1 gate)는 **외부 LLM 없이 단독 완결**돼야 한다(gemini/codex 미설치·미인증 fresh-PC vanilla 환경 가정). 이 패널은 **크고 미지의 프로토콜**(I0 blind-spot 위험 큰)에서 discovery 폭을 넓히는 *선택지*일 뿐 — 작고 알려진 프로토콜엔 overkill. 그리고 floor 는 그대로다: **어떤 소스(LLM 포함)도 모르는 컨트랙트는 여전히 invisible** — 렌즈를 늘려 gap 을 좁힐 뿐 닫지 못한다.
 
 ---
 
