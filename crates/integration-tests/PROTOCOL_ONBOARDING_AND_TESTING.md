@@ -2,7 +2,7 @@
   이 문서는 AI 에이전트(Claude Code / Codex 등)가 읽고 그대로 실행하는 매뉴얼이다.
   새 EVM 프로토콜 요청 → 어댑터 전수 작성 → 실거래 디코드 정확성 검증 → 수정 루프.
   대상 경로: V3 ActionBody[] 디코드 단독. 레거시(V1 ActionEnvelope)는 이미 제거됨.
-  gitignore 가 *.md 를 무시(!README.md 만 예외)하므로 이 파일은 untracked — 단일 파일로 전달.
+  본 파일은 crates/integration-tests/*.md tracking 정책에 포함되는 온보딩 문서다.
   마지막 grounding: 2026-05-31 (Lido liquid_staking 온보딩 + enrichment §4d + I0 contract-inventory gate + Permission domain 반영). file:line·도메인 카운트는 작성 시점 기준 — 항상 grep 재확인(코드/도메인 둘 다 늘어난다).
 ───────────────────────────────────────────────────────────────────────── -->
 
@@ -11,6 +11,7 @@
 > **독자 = AI 에이전트.** 이 문서 하나로 새 프로토콜을 온보딩(어댑터 전수 작성)하고, 실거래로 `ActionBody[]` 디코드 정확성을 검증하고, gap 을 고치는 루프를 돌 수 있어야 한다. 세션 컨텍스트 없이도 동작하도록 모든 경로·커맨드·포맷을 embed 했다.
 
 > **📂 인스트럭션 문서 맵** (전부 `crates/integration-tests/`, gitignore 제외=tracked):
+> - **`PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md`** — protocol-agnostic completion model + semantic oracle contract + strict audit skeleton. 새 프로토콜 작업 전 먼저 읽는다.
 > - **이 파일 = spine** — P0~P4 전체 방법론 (research → author → test → develop → land).
 > - **`README.md`** — 하니스 runbook (CLI · 3 입력소스 · Log→Gap→Develop 루프). P2~P4 운용.
 > - **`ACTIONBODY_EXTENSION_GUIDE.md`** — Tier 3 ActionBody Rust/Cedar 확장 (새 domain/action/live_field). §4a·§4d 에서 진입.
@@ -574,8 +575,8 @@ selector 필터(`WHERE ...`)·decoded 테이블·cross-chain·빈도 통계용. 
 ### 5c. Hybrid Oracle (정확성 판정)
 
 **현재 하니스가 하는 것 (oracle.rs `judge`):** shape + domain 까지만.
-- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<simulation_reducer::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS` 10종) / L4 ErrorClass.
-- `VALID_DOMAINS` = token, amm, lending, airdrop, launchpad, liquid_staking, perp, permission, multicall, unknown. (새 domain 추가 시 동기화 — §4a "새 domain" Ⓒ′. 카운트는 `grep -n VALID_DOMAINS oracle.rs` 재확인.)
+- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<simulation_reducer::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS` 11종) / L4 ErrorClass.
+- `VALID_DOMAINS` = token, amm, lending, airdrop, launchpad, liquid_staking, perp, permission, staking, multicall, unknown. (새 domain 추가 시 동기화 — §4a "새 domain" Ⓒ′. 카운트는 `grep -n VALID_DOMAINS oracle.rs` 재확인.)
 - `SOFT_ERROR_KINDS`(tolerate) = no_declarative_v3_mapper, unsupported_strategy_for_typed_data, no_typed_data_mapper.
 - corpus `expect` 는 `expect_domain` 까지만 비교. **`expect_action`/필드값은 미검증**(reserved).
 
@@ -692,7 +693,7 @@ cargo clippy -p policy-engine-integration-tests --all-targets && cargo fmt --all
 **커밋 규율:**
 - **explicit-stage only** (`git add -A` 금지). 대상 = `registryV2/manifests/<p>/**` · (재빌드 후) 해당 `registryV2/index/` 추가분 · Tier 2 Rust · Tier 3 schema · `crates/integration-tests/{logs,data/golden}/**`.
 - **절대 제외**: 무관 churn(browser-extension/index curation 등), `.env`(ETHERSCAN_API_KEY 로컬만).
-- ⚠️ **`cargo fmt --all` 함정**: base 에 unformatted-committed 파일이 있으면(타 세션/머지 잔재) `fmt --all` 이 **내 파일이 아닌 것도 재포맷** → 무관 churn. fmt 후 `git status` 로 내가 안 건드린 파일이 보이면 `git checkout HEAD -- <그 파일>` 로 revert 후 explicit-stage. (실측: Lido enrichment 시 PR 머지 잔재 5파일이 딸려옴.)
+- ⚠️ **`cargo fmt --all` 함정**: base 에 unformatted-committed 파일이 있으면(타 세션/머지 잔재) `fmt --all` 이 **내 파일이 아닌 것도 재포맷** → 무관 churn. fmt 후 `git status` 로 내가 안 건드린 파일이 보이면 stage 하지 않는다. 실제 revert 는 명확히 내가 만든 변경이거나 사용자 승인을 받은 경우에만 한다.
 - 메시지 말미: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 
 ---
@@ -718,7 +719,7 @@ cd registryV2 && npx tsx scripts/build-index.ts && cd ..
 ```
 
 ### 8.2 ActionBody domain 카탈로그 (요약)
-token · amm · lending · airdrop · launchpad · perp · liquid_staking · permission · multicall · unknown (10). (각 domain action 목록 = §4a 표. **작성 전 `<domain>/mod.rs` 직접 확인** — 도메인·스키마 둘 다 확장됨.)
+token · amm · lending · airdrop · launchpad · perp · liquid_staking · permission · staking · multicall · unknown (11). (각 domain action 목록 = §4a 표. **작성 전 `<domain>/mod.rs` 직접 확인** — 도메인·스키마 둘 다 확장됨.)
 
 ### 8.3 알려진 함정 (DEFECT_CATALOG.md, V3 관점)
 - **nested tuple per-component 타입 유실** (D010 류): `[i][j]` 접근 시 uint width 정보 유실 → string 화 → u64 coercion 실패. **Permit2 류는 commit `3f93f5c` 에서 해결**(chained-numeric + coercion). 새 프로토콜 nested-tuple 에서 재발 가능 → 같은 패턴 점검.
