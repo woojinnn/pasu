@@ -39,6 +39,10 @@ const DEFAULT_SYNC_CONFIG: &str = "./scopeball-sync.toml";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Walks up from CWD to find `.env`. Silent if missing — production
+    // deployments inject env vars directly.
+    let _ = dotenvy::dotenv();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()

@@ -13,7 +13,7 @@ use simulation_db::repositories::execution_reports::{
 };
 use simulation_db::repositories::wallets::{self, WalletInsert};
 use simulation_db::{DbError, Pool};
-use simulation_sync::SyncError;
+use simulation_state::store::StoreError;
 
 use crate::dto::{ExecutionReportOutcome, ExecutionReportRequest};
 use crate::store::ExecutionReportStore;
@@ -37,7 +37,7 @@ impl ExecutionReportStore for SqliteExecutionReportStore {
     async fn record_execution_report(
         &self,
         report: ExecutionReportRequest,
-    ) -> Result<(), SyncError> {
+    ) -> Result<(), StoreError> {
         let created_at = unix_now_i64();
         self.pool.with_tx(|tx| {
             let wallet_row_id = match &report.wallet_id {
