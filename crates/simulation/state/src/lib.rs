@@ -44,6 +44,7 @@ pub mod pending;
 pub mod position;
 pub mod primitives;
 pub mod serde_helpers;
+pub mod store;
 pub mod token;
 pub mod wallet;
 
@@ -74,6 +75,7 @@ pub use primitives::{
     Address, BasisPoints, BlockHeight, ChainId, Decimal, Duration, MarketRef, PoolRef, Price,
     ProtocolRef, SignedI256, Spender, Time, VenueRef, Weight, U128, U256,
 };
+pub use store::{StoreError, WalletStore};
 pub use token::{
     Balance, BaseCategory, FiatCurrency, LpShape, NoteKind, PegKind, PegTarget, RangeSpec,
     RateMode, RebaseForm, ShareForm, TokenHolding, TokenId, TokenKey, TokenKind, TokenRef,
@@ -134,6 +136,8 @@ mod smoke {
                 )
                 .with_ttl(Duration::from_secs(60)),
             ),
+            metadata: None,
+            value_usd: None,
             last_synced_at: Time::from_unix(1_738_000_000),
             primitives_source: DataSource::OnchainView {
                 chain: ChainId::ethereum_mainnet(),

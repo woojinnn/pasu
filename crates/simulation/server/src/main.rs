@@ -1,28 +1,48 @@
 //! `simulation-server` binary entry point.
 //!
-//! Starts the axum HTTP service: initializes tracing, wires an
-//! [`InMemoryWalletStore`] or SQLite-backed stores into [`AppState`], builds
-//! the router, and serves on `SIMULATION_SERVER_ADDR` (default
-//! `127.0.0.1:8788`).
+//! Starts the axum HTTP service: initializes tracing, opens the cross-user
+//! identity DB (`~/.scopeball/global.db`), prepares the per-user store
+//! router (`~/.scopeball/users/<id>/scopeball.db`), wires the sync
+//! orchestrator (RPC/oracle/venue fetchers from `scopeball-sync.toml`),
+//! and serves on `SIMULATION_SERVER_ADDR` (default `127.0.0.1:8788`).
+//!
+//! Environment variables:
+//! - `SIMULATION_SERVER_ADDR` — bind address (default `127.0.0.1:8788`).
+//! - `SCOPEBALL_HOME` — overrides `~/.scopeball` (test / sandboxing).
+//! - `SCOPEBALL_SYNC_CONFIG` — path to the sync TOML (default
+//!   `./scopeball-sync.toml`). Required for any RPC/price fetching.
+//! - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`,
+//!   `JWT_SECRET`, `DASHBOARD_URL` — auth config (see `.env.example`).
+//!
+//! The background `Scheduler` from `simulation-sync` is not wired here yet —
+//! sync runs on-demand via `POST /wallets/:addr/sync`. A multi-user-aware
+//! periodic ticker that walks every user's wallets is follow-up work.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use tracing_subscriber::EnvFilter;
 
+use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
-use simulation_server::db_store::SqliteExecutionReportStore;
-use simulation_server::store::{ExecutionReportStore, InMemoryWalletStore};
-use simulation_sync::{
-    Orchestrator, Scheduler, SchedulerConfig, SqliteWalletStore, SyncConfig, WalletStore,
-};
+use simulation_server::events::EventBus;
+use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
 
 /// Default bind address. Port `8788` deliberately differs from the legacy
-/// Node.js policy-rpc host (`8787`) so the two can run side-by-side during the
-/// migration.
+/// Node.js policy-rpc host (`8787`) so the two can run side-by-side during
+/// the migration.
 const DEFAULT_ADDR: &str = "127.0.0.1:8788";
+
+/// Default sync config path. Lives next to the workspace root so the dev
+/// loop is one command (`cargo run -p simulation-server`).
+const DEFAULT_SYNC_CONFIG: &str = "./scopeball-sync.toml";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Walks up from CWD to find `.env`. Silent if missing — production
+    // deployments inject env vars directly.
+    let _ = dotenvy::dotenv();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
@@ -30,24 +50,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    let (wallet_store, execution_reports): (Arc<dyn WalletStore>, Arc<dyn ExecutionReportStore>) =
-        if let Ok(db_path) = std::env::var("SIMULATION_DB_PATH") {
-            let pool = simulation_db::Pool::open(db_path)?;
-            simulation_db::run_migrations(&pool)?;
-            (
-                Arc::new(SqliteWalletStore::new(pool.clone())),
-                Arc::new(SqliteExecutionReportStore::new(pool)),
-            )
-        } else {
-            let store = Arc::new(InMemoryWalletStore::new());
-            (store.clone(), store)
-        };
+    let home = scopeball_home();
+    let global_db_path = home.join("global.db");
+    let users_dir = home.join("users");
+    tracing::info!(
+        global_db = %global_db_path.display(),
+        users_dir = %users_dir.display(),
+        "opening multi-user wallet store"
+    );
 
-    maybe_start_scheduler(wallet_store.clone())?;
+    let global_db = GlobalDb::open(&global_db_path)?;
+    let multi_user = MultiUserStore::new(&users_dir);
+
+    // Sync orchestrator. Load the TOML config; if the file is missing we
+    // boot with an empty config (no RPC providers) — endpoints that
+    // require sync will return 503-ish errors instead of crashing the
+    // whole server at startup, so a dev can run /auth/* alone.
+    let sync_config_path = std::env::var("SCOPEBALL_SYNC_CONFIG")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(DEFAULT_SYNC_CONFIG));
+    let sync_config = match SyncConfig::load_file(&sync_config_path) {
+        Ok(cfg) => {
+            tracing::info!(
+                path = %sync_config_path.display(),
+                "loaded sync config"
+            );
+            cfg
+        }
+        Err(e) => {
+            tracing::warn!(
+                path = %sync_config_path.display(),
+                error = %e,
+                "sync config not loaded — sync endpoints will fail until fixed"
+            );
+            SyncConfig::default()
+        }
+    };
+    let orchestrator = Arc::new(Orchestrator::from_sync_config(&sync_config)?);
+
+    let etherscan = EtherscanClient::from_env();
+    if etherscan.is_some() {
+        tracing::info!("Etherscan token discovery enabled");
+    } else {
+        tracing::info!(
+            "ETHERSCAN_API_KEY not set — POST /wallets will discover the native gas balance only"
+        );
+    }
+
+    let coingecko = CoinGeckoClient::from_env();
+    tracing::info!("CoinGecko token metadata client ready");
 
     let state = AppState {
-        store: wallet_store,
-        execution_reports,
+        multi_user,
+        global_db,
+        event_bus: EventBus::new(),
+        orchestrator,
+        etherscan,
+        coingecko,
     };
     let router = build_router(state);
 
@@ -59,33 +118,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn maybe_start_scheduler(
-    wallet_store: Arc<dyn WalletStore>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let Ok(sync_config_path) = std::env::var("SIMULATION_SYNC_CONFIG") else {
-        return Ok(());
-    };
-    let cfg = SyncConfig::load_file(sync_config_path)?;
-    let orchestrator = Arc::new(Orchestrator::from_sync_config(&cfg)?);
-    let tick_interval = std::env::var("SIMULATION_SYNC_INTERVAL_SECS")
-        .ok()
-        .and_then(|s| s.parse::<u64>().ok())
-        .map(std::time::Duration::from_secs)
-        .unwrap_or_else(|| SchedulerConfig::default().tick_interval);
-    let scheduler = Scheduler::new(
-        orchestrator,
-        wallet_store,
-        SchedulerConfig {
-            tick_interval,
-            ..SchedulerConfig::default()
-        },
-    );
-
-    tokio::spawn(async move {
-        if let Err(err) = scheduler.run_forever().await {
-            tracing::warn!(%err, "simulation sync scheduler stopped");
-        }
-    });
-    tracing::info!(?tick_interval, "simulation sync scheduler started");
-    Ok(())
+fn scopeball_home() -> PathBuf {
+    if let Ok(p) = std::env::var("SCOPEBALL_HOME") {
+        return PathBuf::from(p);
+    }
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    home.join(".scopeball")
 }

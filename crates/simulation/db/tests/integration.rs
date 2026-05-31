@@ -53,6 +53,8 @@ fn build_holding() -> TokenHolding {
             )
             .with_ttl(Duration::from_secs(12)),
         ),
+        metadata: None,
+        value_usd: None,
         last_synced_at: Time::from_unix(1_738_000_000),
         primitives_source: DataSource::UserSupplied,
     }
@@ -278,7 +280,7 @@ fn separate_users_have_separate_files() {
 fn execution_reports_round_trip_and_reconcile_by_wallet() {
     let pool = Pool::open_in_memory();
     run_migrations(&pool).unwrap();
-    assert_eq!(current_version(&pool).unwrap(), Some(7));
+    assert_eq!(current_version(&pool).unwrap(), Some(8));
 
     pool.with_tx(|tx| {
         let wallet_id = wallets::insert(

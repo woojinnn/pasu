@@ -21,6 +21,11 @@ import {
   type PolicyRpcAuditMeta,
 } from "./policy-rpc";
 import {
+  evaluate as scopeballEvaluate,
+  getAccessToken as scopeballGetAccessToken,
+  ServerError as ScopeballServerError,
+} from "./scopeball-auth";
+import {
   getDefaultPolicyBundlesV2,
   loadDefaultPolicySetV2,
 } from "./policies-loader-v2";
@@ -766,6 +771,14 @@ async function tryV2VerdictPath(
         results,
       });
       verdicts.push(verdict);
+
+      // RECORD (Phase 8B): replay the simulation against the Scopeball
+      // server so the action + state-delta land in the authenticated
+      // user's SQLite. Best-effort — the verdict above is the source of
+      // truth for fail-closed decisions; recording is purely for the
+      // dashboard's history view. Skipped silently when the user isn't
+      // signed in to Scopeball.
+      void recordSimulationOnServer({ action, meta, tx });
     } catch (err) {
       // A plan/dispatch throw is a fault, NOT a verdict — the caller fails
       // closed (a flaky WASM/RPC call must not waive a tx through).
@@ -1121,4 +1134,75 @@ function buildConfirmUrl(
     verdict: JSON.stringify(verdict),
   });
   return Browser.runtime.getURL(`confirm.html?${params.toString()}`);
+}
+
+/**
+ * Phase 8B — replay the just-evaluated simulation against the Scopeball
+ * Rust server so the action + state-delta land in the authenticated
+ * user's SQLite.
+ *
+ * Best-effort: failures are logged but never affect the WASM verdict.
+ * Silent skip when the user isn't signed in (no JWT in chrome.storage).
+ *
+ * The server takes the same `(envelopes, eval_context, wallet_id)` triple
+ * the SW already prepared for `dispatchCallsV2`; we wrap it into the
+ * REST DTO shape (`POST /evaluate`) the server expects. The returned
+ * `policyRequest` is discarded — WASM remains the verdict source.
+ *
+ * `wallet_id.chains` defaults to the single tx chain; richer wallet-level
+ * chain sets land when the dashboard's wallet-management UI starts
+ * driving the server's `POST /wallets`.
+ */
+async function recordSimulationOnServer(input: {
+  readonly action: unknown;
+  readonly meta: unknown;
+  readonly tx: {
+    readonly chain_id: string;
+    readonly from: string;
+    readonly to: string;
+  };
+}): Promise<void> {
+  // Skip silently for signed-out users — recording is opt-in via login.
+  const hasToken = await scopeballGetAccessToken().catch(() => null);
+  if (!hasToken) return;
+
+  // Mirror the Rust `EvaluateRequest` shape:
+  //   - wallet_id: from tx.from + tx.chain_id
+  //   - envelopes: the typed action wrapped as { meta, body } (server
+  //                accepts an opaque array; reducer dispatches on body.domain)
+  //   - eval_context: minimal — chain + now + RequestKind::Transaction
+  //   - call_specs: empty (enrichment is rewritten LiveField-first per
+  //                Phase 8B; server-side dispatcher remains intentionally
+  //                unimplemented)
+  const envelope = { meta: input.meta, body: input.action };
+  const evalContext = {
+    chain: input.tx.chain_id,
+    now: Math.floor(Date.now() / 1000),
+    request_kind: "Transaction",
+    simulation_mode: "Predicted",
+  };
+  const walletId = {
+    address: input.tx.from,
+    chains: [input.tx.chain_id],
+  };
+
+  try {
+    await scopeballEvaluate({
+      wallet_id: walletId,
+      envelopes: [envelope as unknown as Record<string, unknown>],
+      eval_context: evalContext,
+      call_specs: [],
+    });
+  } catch (err) {
+    if (err instanceof ScopeballServerError && err.isUnauthorized) {
+      // Token expired between getAccessToken() and the call — swallow.
+      console.debug("[Scopeball] record skipped: server returned 401");
+      return;
+    }
+    console.warn("[Scopeball] record on server failed (non-fatal)", {
+      chain: input.tx.chain_id,
+      from: input.tx.from,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 }

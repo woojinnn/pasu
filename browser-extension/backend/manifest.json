@@ -97,18 +97,21 @@
     "__chrome__service_worker": "js/background.js",
     "__firefox__scripts": ["js/background.js"]
   },
-  "__chrome__permissions": ["storage", "alarms"],
+  "__chrome__permissions": ["storage", "alarms", "identity"],
   "__firefox__permissions": [
     "<all_urls>",
     "http://localhost:8000/*",
     "http://127.0.0.1:8000/*",
+    "http://127.0.0.1:8788/*",
     "storage",
-    "alarms"
+    "alarms",
+    "identity"
   ],
   "__chrome__host_permissions": [
     "<all_urls>",
     "http://localhost:8000/*",
-    "http://127.0.0.1:8000/*"
+    "http://127.0.0.1:8000/*",
+    "http://127.0.0.1:8788/*"
   ],
   "__chrome__content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"

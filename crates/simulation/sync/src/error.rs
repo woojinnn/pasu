@@ -7,6 +7,9 @@ pub enum SyncError {
     #[error("db error: {0}")]
     Db(#[from] simulation_db::error::DbError),
 
+    #[error("store error: {0}")]
+    Store(#[from] simulation_state::store::StoreError),
+
     #[error("fetch failed: source_id={source_id}, reason={reason}")]
     FetchFailed { source_id: String, reason: String },
 

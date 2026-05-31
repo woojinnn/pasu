@@ -8,10 +8,15 @@ publish = false
 [dependencies]
 simulation-state = { workspace = true }
 alloy-primitives = { workspace = true }
+async-trait = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled", "blob"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+# The SQLite store dispatches blocking SQL onto tokio's blocking pool so it
+# can satisfy the async `WalletStore` trait. Inherits the workspace's `full`
+# tokio feature set; no extra features needed.
+tokio = { workspace = true }
 blake3 = "1.5"
 hex = { workspace = true }
 

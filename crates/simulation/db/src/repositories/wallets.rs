@@ -198,6 +198,35 @@ pub fn archive(tx: &Transaction<'_>, wallet_id: i64, at: i64) -> DbResult<bool> 
     Ok(n > 0)
 }
 
+/// Update mutable display fields. `None` arguments leave the column alone.
+pub fn update(
+    tx: &Transaction<'_>,
+    wallet_id: i64,
+    label: Option<Option<&str>>,
+    is_owned: Option<bool>,
+) -> DbResult<bool> {
+    // Two nested Option<>: outer = "field present in PATCH", inner = "value
+    // (can be NULL)". Without this nesting `PATCH {"label": null}` couldn't
+    // explicitly clear the label.
+    if label.is_none() && is_owned.is_none() {
+        return Ok(false);
+    }
+    let mut n = 0usize;
+    if let Some(lbl) = label {
+        n += tx.execute(
+            "UPDATE wallets SET label = ?2 WHERE id = ?1",
+            params![wallet_id, lbl],
+        )?;
+    }
+    if let Some(owned) = is_owned {
+        n += tx.execute(
+            "UPDATE wallets SET is_owned = ?2 WHERE id = ?1",
+            params![wallet_id, i64::from(owned)],
+        )?;
+    }
+    Ok(n > 0)
+}
+
 /// hard delete — wallet + 모든 의존 row (CASCADE) 삭제.
 pub fn delete(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<bool> {
     let n = tx.execute("DELETE FROM wallets WHERE id = ?1", params![wallet_id])?;

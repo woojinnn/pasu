@@ -73,6 +73,14 @@ impl RpcRouter {
         self.multicall.get(chain).copied()
     }
 
+    /// Every chain the router has at least one provider for. Stable
+    /// order (BTreeMap). Used by `POST /wallets` to seed the wallet
+    /// against every configured chain when the caller doesn't pin a
+    /// `chains` set explicitly.
+    pub fn chains(&self) -> impl Iterator<Item = &ChainId> + '_ {
+        self.by_chain.keys()
+    }
+
     async fn record(&self, provider_name: &str, ok: bool) {
         let mut health = self.health.write().await;
         if ok {

@@ -140,6 +140,8 @@ mod tests {
                 },
                 Time::from_unix(1_738_000_000),
             )),
+            metadata: None,
+            value_usd: None,
             last_synced_at: Time::from_unix(1_738_000_000),
             primitives_source: DataSource::UserSupplied,
         };

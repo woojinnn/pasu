@@ -11,7 +11,7 @@ pub mod lp;
 /// `TokenKind` 안에서 다른 토큰을 가리키는 가벼운 ref (`TokenRef`).
 pub mod token_ref;
 
-pub use holding::{Balance, TokenHolding};
+pub use holding::{Balance, TokenHolding, TokenMetadata};
 pub use key::{TokenId, TokenKey};
 pub use kind::{
     BaseCategory, FiatCurrency, NoteKind, PegKind, PegTarget, RateMode, RebaseForm, TokenKind,

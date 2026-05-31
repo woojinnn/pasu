@@ -33,9 +33,26 @@
 #![allow(rustdoc::redundant_explicit_links)]
 #![allow(unknown_lints)]
 #![allow(clippy::duration_suboptimal_units)]
+// Phase 5 auth + multi-user code: pedantic lints handled at follow-up cleanup.
+#![allow(missing_docs)]
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::result_large_err)]
+#![allow(clippy::manual_let_else)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::must_use_candidate)]
 
 pub mod app;
+pub mod auth;
 pub mod db_store;
+pub mod docs;
 pub mod dto;
+pub mod events;
 pub mod handler;
+pub mod read_handlers;
 pub mod store;
+pub mod write_handlers;

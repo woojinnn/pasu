@@ -41,6 +41,58 @@ pub fn upsert(
     Ok(cols.token_hash)
 }
 
+/// Metadata fields for a token — logo/website/description from CoinGecko
+/// (or any future registry). All fields optional so partial updates
+/// don't clobber existing values.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TokenMetadataUpdate {
+    pub logo_url: Option<String>,
+    pub website_url: Option<String>,
+    pub description: Option<String>,
+    pub coingecko_id: Option<String>,
+}
+
+impl TokenMetadataUpdate {
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.logo_url.is_none()
+            && self.website_url.is_none()
+            && self.description.is_none()
+            && self.coingecko_id.is_none()
+    }
+}
+
+/// Update metadata columns for a token. Only non-None fields are
+/// written; existing values for None fields stay put.
+pub fn update_metadata(
+    tx: &Transaction<'_>,
+    token_hash: [u8; 16],
+    md: &TokenMetadataUpdate,
+    synced_at: i64,
+) -> DbResult<bool> {
+    if md.is_empty() {
+        return Ok(false);
+    }
+    let n = tx.execute(
+        "UPDATE tokens SET \
+           logo_url           = COALESCE(?2, logo_url), \
+           website_url        = COALESCE(?3, website_url), \
+           description        = COALESCE(?4, description), \
+           coingecko_id       = COALESCE(?5, coingecko_id), \
+           metadata_synced_at = ?6 \
+         WHERE token_hash = ?1",
+        params![
+            token_hash.to_vec(),
+            md.logo_url,
+            md.website_url,
+            md.description,
+            md.coingecko_id,
+            synced_at,
+        ],
+    )?;
+    Ok(n > 0)
+}
+
 /// hash 로 한 token 의 metadata 가져옴.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TokenRow {
@@ -49,13 +101,20 @@ pub struct TokenRow {
     pub symbol: Option<String>,
     pub decimals: Option<u8>,
     pub first_seen_at: i64,
+    pub logo_url: Option<String>,
+    pub website_url: Option<String>,
+    pub description: Option<String>,
+    pub coingecko_id: Option<String>,
+    pub metadata_synced_at: Option<i64>,
 }
 
 pub fn get(tx: &Transaction<'_>, token_hash: [u8; 16]) -> DbResult<Option<TokenRow>> {
     let row = tx
         .prepare(
             "SELECT standard, chain, address, contract, token_id, symbol_cache, \
-             decimals_cache, first_seen_at FROM tokens WHERE token_hash = ?1",
+             decimals_cache, first_seen_at, logo_url, website_url, description, \
+             coingecko_id, metadata_synced_at \
+             FROM tokens WHERE token_hash = ?1",
         )?
         .query_row(params![token_hash.to_vec()], |r| {
             Ok((
@@ -67,10 +126,28 @@ pub fn get(tx: &Transaction<'_>, token_hash: [u8; 16]) -> DbResult<Option<TokenR
                 r.get::<_, Option<String>>(5)?,
                 r.get::<_, Option<i64>>(6)?,
                 r.get::<_, i64>(7)?,
+                r.get::<_, Option<String>>(8)?,
+                r.get::<_, Option<String>>(9)?,
+                r.get::<_, Option<String>>(10)?,
+                r.get::<_, Option<String>>(11)?,
+                r.get::<_, Option<i64>>(12)?,
             ))
         });
-    let (standard, chain, address, contract, token_id, symbol, decimals, first_seen_at) = match row
-    {
+    let (
+        standard,
+        chain,
+        address,
+        contract,
+        token_id,
+        symbol,
+        decimals,
+        first_seen_at,
+        logo_url,
+        website_url,
+        description,
+        coingecko_id,
+        metadata_synced_at,
+    ) = match row {
         Ok(t) => t,
         Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
         Err(e) => return Err(e.into()),
@@ -91,6 +168,11 @@ pub fn get(tx: &Transaction<'_>, token_hash: [u8; 16]) -> DbResult<Option<TokenR
         symbol,
         decimals: decimals.map(|d| u8::try_from(d).unwrap_or(0)),
         first_seen_at,
+        logo_url,
+        website_url,
+        description,
+        coingecko_id,
+        metadata_synced_at,
     }))
 }
 
@@ -114,6 +196,82 @@ fn leak_static(s: &str) -> DbResult<&'static str> {
 #[must_use]
 pub fn hash(key: &TokenKey) -> [u8; 16] {
     token_hash(key)
+}
+
+/// Every token row in the user's catalog. Drives `GET /tokens`.
+pub fn list_all(tx: &Transaction<'_>) -> DbResult<Vec<TokenRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT token_hash, standard, chain, address, contract, token_id, symbol_cache, \
+         decimals_cache, first_seen_at, logo_url, website_url, description, coingecko_id, \
+         metadata_synced_at \
+         FROM tokens ORDER BY chain, symbol_cache",
+    )?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, Vec<u8>>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, Option<String>>(3)?,
+                r.get::<_, Option<String>>(4)?,
+                r.get::<_, Option<String>>(5)?,
+                r.get::<_, Option<String>>(6)?,
+                r.get::<_, Option<i64>>(7)?,
+                r.get::<_, i64>(8)?,
+                r.get::<_, Option<String>>(9)?,
+                r.get::<_, Option<String>>(10)?,
+                r.get::<_, Option<String>>(11)?,
+                r.get::<_, Option<String>>(12)?,
+                r.get::<_, Option<i64>>(13)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut out = Vec::with_capacity(rows.len());
+    for (
+        token_hash_vec,
+        standard,
+        chain,
+        address,
+        contract,
+        token_id,
+        symbol,
+        decimals,
+        first_seen_at,
+        logo_url,
+        website_url,
+        description,
+        coingecko_id,
+        metadata_synced_at,
+    ) in rows
+    {
+        let mut th = [0u8; 16];
+        let n = token_hash_vec.len().min(16);
+        th[..n].copy_from_slice(&token_hash_vec[..n]);
+
+        let cols = crate::codec::TokenColumns {
+            token_hash: th,
+            standard: leak_static(&standard)?,
+            chain,
+            address,
+            contract,
+            token_id,
+        };
+        let key = crate::codec::decode_token_key(&cols)?;
+        out.push(TokenRow {
+            token_hash: th,
+            key,
+            symbol,
+            decimals: decimals.map(|d| u8::try_from(d).unwrap_or(0)),
+            first_seen_at,
+            logo_url,
+            website_url,
+            description,
+            coingecko_id,
+            metadata_synced_at,
+        });
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

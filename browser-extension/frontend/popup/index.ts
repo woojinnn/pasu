@@ -19,13 +19,133 @@ type CatalogResponse =
   | { ok: true; data: Catalog }
   | { ok: false; error: { kind: string; message: string } };
 
+interface ScopeballMe {
+  user_id: string;
+  email: string;
+}
+type ScopeballAuthStatus =
+  | { kind: 'unknown' }
+  | { kind: 'signed-out' }
+  | { kind: 'signing-in' }
+  | { kind: 'signed-in'; me: ScopeballMe; walletCount: number | null }
+  | { kind: 'error'; message: string };
+
 const state: {
   catalog: Catalog | null;
   searchTerm: string;
   status: 'idle' | 'applying' | 'error';
   errorText: string;
   expanded: Set<string>;
-} = { catalog: null, searchTerm: '', status: 'idle', errorText: '', expanded: new Set() };
+  scopeballAuth: ScopeballAuthStatus;
+} = {
+  catalog: null,
+  searchTerm: '',
+  status: 'idle',
+  errorText: '',
+  expanded: new Set(),
+  scopeballAuth: { kind: 'unknown' },
+};
+
+interface ScopeballEnvelope<T> {
+  ok: boolean;
+  data?: T;
+  error?: { kind: string; message: string };
+}
+
+async function scopeballSend<T>(type: string): Promise<T> {
+  const res = (await Browser.runtime.sendMessage({ type })) as ScopeballEnvelope<T> | undefined;
+  if (!res) throw new Error('empty response from service worker');
+  if (!res.ok) throw new Error(`${res.error?.kind}: ${res.error?.message}`);
+  return res.data as T;
+}
+
+async function refreshScopeballAuth(): Promise<void> {
+  try {
+    const me = await scopeballSend<ScopeballMe | null>('scopeball-auth-status');
+    if (me) {
+      // Wallet count is optional — keep the chip rendering even if the
+      // count fetch fails (e.g. server is down).
+      let walletCount: number | null = null;
+      try {
+        const wallets = await scopeballSend<unknown[]>('scopeball-list-wallets');
+        walletCount = wallets.length;
+      } catch {
+        // leave null
+      }
+      state.scopeballAuth = { kind: 'signed-in', me, walletCount };
+    } else {
+      state.scopeballAuth = { kind: 'signed-out' };
+    }
+  } catch (err) {
+    state.scopeballAuth = { kind: 'error', message: String(err) };
+  }
+  render();
+}
+
+async function scopeballSignIn(): Promise<void> {
+  state.scopeballAuth = { kind: 'signing-in' };
+  render();
+  try {
+    await scopeballSend<ScopeballMe | null>('scopeball-auth-sign-in');
+    await refreshScopeballAuth();
+  } catch (err) {
+    state.scopeballAuth = { kind: 'error', message: String(err) };
+    render();
+  }
+}
+
+async function scopeballSignOut(): Promise<void> {
+  try {
+    await scopeballSend<null>('scopeball-auth-sign-out');
+  } catch (err) {
+    state.scopeballAuth = { kind: 'error', message: String(err) };
+    render();
+    return;
+  }
+  state.scopeballAuth = { kind: 'signed-out' };
+  render();
+}
+
+function renderScopeballAuthStrip(): HTMLDivElement {
+  const auth = state.scopeballAuth;
+  const strip = el('div', { class: 'scopeball-auth-strip' });
+  switch (auth.kind) {
+    case 'unknown':
+      strip.appendChild(el('span', { text: 'Scopeball server: checking…' }));
+      break;
+    case 'signing-in':
+      strip.appendChild(el('span', { text: 'Scopeball server: signing in…' }));
+      break;
+    case 'signed-out': {
+      strip.appendChild(el('span', { text: 'Scopeball server: signed out' }));
+      const btn = el('button', { text: 'Sign in with Google' });
+      btn.addEventListener('click', () => void scopeballSignIn());
+      strip.appendChild(btn);
+      break;
+    }
+    case 'signed-in': {
+      const summary =
+        auth.walletCount === null
+          ? auth.me.email
+          : `${auth.me.email} · ${auth.walletCount} wallet${auth.walletCount === 1 ? '' : 's'}`;
+      strip.appendChild(el('span', { text: `Scopeball: ${summary}` }));
+      const out = el('button', { text: 'Sign out' });
+      out.addEventListener('click', () => void scopeballSignOut());
+      strip.appendChild(out);
+      break;
+    }
+    case 'error': {
+      strip.appendChild(
+        el('span', { class: 'status error', text: `Scopeball error: ${auth.message}` }),
+      );
+      const retry = el('button', { text: 'Retry' });
+      retry.addEventListener('click', () => void refreshScopeballAuth());
+      strip.appendChild(retry);
+      break;
+    }
+  }
+  return strip;
+}
 
 async function fetchCatalog(): Promise<Catalog> {
   // Guard against a wedged service worker — if no response arrives in
@@ -193,6 +313,11 @@ function render(): void {
   if (!root) return;
   root.replaceChildren();
 
+  // Scopeball server auth strip — rendered on every state, including the
+  // initial "Loading…" shell, so the user can sign in before the
+  // catalog finishes loading.
+  root.appendChild(renderScopeballAuthStrip());
+
   if (!state.catalog) {
     const placeholder = state.status === 'error'
       ? `Error: ${state.errorText}`
@@ -305,3 +430,7 @@ void (async () => {
   }
   render();
 })();
+
+// Resolve Scopeball auth status in parallel with the catalog. Failure is
+// non-fatal (the catalog UI works without it).
+void refreshScopeballAuth();

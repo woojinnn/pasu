@@ -466,6 +466,8 @@ mod tests {
             committed: Balance::zero_fungible(),
             approved_to: None,
             price_usd: None,
+            metadata: None,
+            value_usd: None,
             last_synced_at: Time::from_unix(1_000_000),
             primitives_source: DataSource::OnchainView {
                 chain: ChainId::ethereum_mainnet(),
@@ -490,6 +492,8 @@ mod tests {
             committed: Balance::zero_fungible(),
             approved_to: None,
             price_usd: None,
+            metadata: None,
+            value_usd: None,
             last_synced_at: Time::from_unix(1_000_000),
             primitives_source: DataSource::OnchainView {
                 chain: ChainId::ethereum_mainnet(),

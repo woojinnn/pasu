@@ -8,23 +8,24 @@ use super::kind::TokenKind;
 use crate::live_field::{DataSource, LiveField};
 use crate::primitives::{Address, Price, Time, U256};
 
-/// 보유 양 표현. ERC20/Native/ERC1155 는 Fungible 수량, ERC721 은 Owned 만으로 충분.
+/// Representation of a held amount. ERC20/Native/ERC1155 carry a `Fungible`
+/// quantity, while ERC721 only needs `Owned`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "form", rename_all = "snake_case")]
 pub enum Balance {
-    /// ERC20 / Native / ERC1155 — 같은 fungibility 단위 안의 수량.
+    /// ERC20 / Native / ERC1155 — a quantity within the same fungibility unit.
     Fungible {
-        /// base unit 수량 (예: ETH 면 wei).
+        /// Raw on-chain token amount (U256, serialized as a decimal string).
         #[tsify(type = "string")]
         amount: U256,
     },
-    /// ERC721 — 보유 사실 자체로 충분. entry 존재 = owned.
+    /// ERC721 — mere ownership is sufficient; the entry's existence means owned.
     Owned,
 }
 
 impl Balance {
-    /// `U256` 수량으로 `Balance::Fungible` 생성.
+    /// Builds a `Fungible` balance from any value convertible into `U256`.
     pub fn fungible(amount: impl Into<U256>) -> Self {
         Self::Fungible {
             amount: amount.into(),
@@ -57,37 +58,88 @@ impl Balance {
     }
 }
 
-/// 한 fungibility 단위의 보유 상태 + 메타 (kind, symbol, decimals, approval, price).
+/// Off-chain registry metadata for a token (logo, description, etc.).
+/// Sourced from `CoinGecko` (`/coins/{platform}/contract/{address}`) on
+/// first wallet sync; cached in the `tokens` table.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct TokenMetadata {
+    /// CDN URL of the token icon (large/standard variant).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub logo_url: Option<String>,
+    /// Project homepage.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub website_url: Option<String>,
+    /// Short marketing description (may include markdown).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub description: Option<String>,
+    /// `CoinGecko` id (e.g. "usd-coin") so the UI can deep-link if needed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub coingecko_id: Option<String>,
+}
+
+impl TokenMetadata {
+    /// True when every field is `None` — used to skip serialization noise.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.logo_url.is_none()
+            && self.website_url.is_none()
+            && self.description.is_none()
+            && self.coingecko_id.is_none()
+    }
+}
+
+/// Held balance state of a single token (one fungibility unit) for an account.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct TokenHolding {
-    /// 본 holding 의 fungibility 단위 key.
+    /// Identity of the token (chain, standard, address, and optional token id).
     pub key: TokenKey,
-    /// 토큰의 의미 분류 (`TokenKind`).
+    /// Token standard / classification (ERC20, Native, ERC721, ERC1155, ...).
     pub kind: TokenKind,
-    /// 토큰 심볼 (예: "USDC").
+    /// Token symbol (e.g. "USDC", "WETH").
     pub symbol: String,
-    /// ERC721 은 의미 없음 (관례적으로 0).
+    /// Number of decimals; meaningless for ERC721 (conventionally 0).
     pub decimals: u8,
 
-    /// 현재 보유 양.
+    /// Total held balance for this token.
     pub balance: Balance,
-    /// pending 에 묶인 양. §6.1 규칙대로 sync 시 재계산.
+    /// Amount locked by pending changes; recomputed on sync per the §6.1 rules.
     pub committed: Balance,
 
-    /// ERC721 *개별 NFT* 에 대한 approve(tokenId, spender). 그 외 표준에선 None.
+    /// Per-token-id `approve(tokenId, spender)` for an individual ERC721 NFT;
+    /// `None` for all other standards.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional, type = "string")]
     pub approved_to: Option<Address>,
 
-    /// 가격 매김 가능한 자산만 채움.
+    /// USD price, populated only for assets that can be priced.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub price_usd: Option<LiveField<Price>>,
 
-    /// 본 holding 이 마지막으로 sync 된 시각.
+    /// Off-chain registry metadata (logo, website, description). Sourced
+    /// from `CoinGecko` on first wallet sync; `None` for tokens whose
+    /// contract address isn't in `CoinGecko`'s catalog.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub metadata: Option<TokenMetadata>,
+
+    /// Computed USD value (`balance / 10^decimals × price_usd.value`).
+    /// Set by server read handlers before serialization; never
+    /// persisted. Use [`Self::compute_value_usd`] to recompute on the
+    /// fly if you have just the primitives.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub value_usd: Option<Price>,
+
+    /// Timestamp at which this holding's primitive fields were last synced.
     pub last_synced_at: Time,
-    /// `key` / `balance` / `kind` 등 primitive 필드의 출처.
+    /// Provenance of the primitive (on-chain) fields in this holding.
     pub primitives_source: DataSource,
 }
 
@@ -102,5 +154,26 @@ impl TokenHolding {
             }
             _ => None,
         }
+    }
+
+    /// Compute `balance / 10^decimals × price_usd.value` as a Decimal
+    /// string. Returns `None` for non-fungible balances or when price
+    /// data is missing. f64-based — fine for display, not for accounting.
+    #[must_use]
+    pub fn compute_value_usd(&self) -> Option<Price> {
+        let bal = self.balance.as_fungible()?;
+        let price = self.price_usd.as_ref()?;
+        let price_str = price.value.as_str();
+        let price_f: f64 = price_str.parse().ok()?;
+        // U256 → f64 via decimal string; safe for display-scale values.
+        let bal_str = bal.to_string();
+        let bal_f: f64 = bal_str.parse().ok()?;
+        let divisor = 10f64.powi(i32::from(self.decimals));
+        if divisor <= 0.0 {
+            return None;
+        }
+        let value = bal_f / divisor * price_f;
+        // Avoid scientific notation for tiny dust amounts.
+        Some(Price::new(format!("{value:.6}")))
     }
 }

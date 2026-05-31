@@ -199,6 +199,8 @@ mod tests {
                 function: "balanceOf(address)".into(),
                 decoder_id: "erc20_balance".into(),
             },
+            metadata: None,
+            value_usd: None,
         }
     }
 
@@ -239,6 +241,8 @@ mod tests {
                 function: "positions(uint256)".into(),
                 decoder_id: "uniswap_v3_position".into(),
             },
+            metadata: None,
+            value_usd: None,
         }
     }
 
