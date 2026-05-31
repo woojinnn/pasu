@@ -1,16 +1,16 @@
-//! `OrderIntent` — the read-only "order intent" shared by the perp-DEX order
-//! model and the Hyperliquid CORE order model.
+//! `OrderIntent` — the read-only "order intent" shared by two order models.
 //!
 //! ## Why this exists (design note)
 //!
 //! Two order-carrying action models coexist in this crate:
 //!
 //! - [`PlaceLimitOrderAction`](crate::action::perp::PlaceLimitOrderAction) — the
-//!   on-chain-ish perp-DEX model. It carries venue-live inputs (mark price, book,
-//!   account state) that the Sync layer fetches before evaluation, and which the
-//!   reducer reads for safety checks. Those `live_inputs` are **required**.
+//!   on-chain-ish perp-`DEX` model. It carries venue-live inputs (mark price,
+//!   book, account state) that the `Sync` layer fetches before evaluation, and
+//!   which the reducer reads for safety checks. Those `live_inputs` are
+//!   **required**.
 //! - [`HlOrderAction`](crate::action::hyperliquid_core::HlOrderAction) — the thin
-//!   off-chain-L1 model. A Hyperliquid `/exchange` order is a self-describing
+//!   off-chain-`L1` model. A `Hyperliquid` `/exchange` order is a self-describing
 //!   signed payload that physically lacks mark price / account state, so it has
 //!   **no** live inputs and is evaluated with no network fetch.
 //!
@@ -18,8 +18,8 @@
 //! live-inputs safety invariant must not be weakened to "optional" just to host
 //! the off-chain case). This trait is the small, read-only seam that lets callers
 //! — chiefly the policy layer — treat the *order-intrinsic* fields the two models
-//! genuinely share uniformly, WITHOUT collapsing the models, touching their Cedar
-//! schemas, or changing the Sync/reducer pipelines.
+//! genuinely share uniformly, WITHOUT collapsing the models, touching their
+//! `Cedar` schemas, or changing the `Sync`/reducer pipelines.
 //!
 //! It captures only the fields that are present, type-compatible, and meaningful
 //! on **both** models:
@@ -31,17 +31,17 @@
 //! Deliberately NOT included (they diverge between the two models, so a shared
 //! accessor would have to lie or lossily convert):
 //!   - size — perp uses [`SizeSpec`](crate::action::perp::SizeSpec) (a `U256`
-//!     base/quote/leverage discriminant); HL carries a plain [`Decimal`];
-//!   - market identity — perp carries a `MarketRef` symbol, HL carries a numeric
-//!     `asset_index` (+ optionally a resolved symbol).
+//!     base/quote/leverage discriminant); `HL` carries a plain [`Decimal`];
+//!   - market identity — perp carries a `MarketRef` symbol, `HL` carries a
+//!     numeric `asset_index` (+ optionally a resolved symbol).
 //!
-//! Non-order actions (HL `withdraw` / `usd_send` / `approve_agent`, and every
+//! Non-order actions (`HL` `withdraw` / `usd_send` / `approve_agent`, and every
 //! non-`PlaceLimitOrder` perp action) are NOT order intents and do not implement
 //! this trait.
 
 use simulation_state::primitives::Decimal;
 
-/// The order-intrinsic intent shared by the perp and Hyperliquid CORE order
+/// The order-intrinsic intent shared by the perp and `Hyperliquid` `CORE` order
 /// models. Read-only; implementors expose their existing fields, so this adds
 /// **zero** runtime state and is purely a unification seam for callers.
 pub trait OrderIntent {
@@ -56,7 +56,7 @@ pub trait OrderIntent {
 
     /// Normalized time-in-force tag — one of `"gtc"`, `"ioc"`, `"fok"`,
     /// `"post_only"`, `"gtd"`. (Perp maps its [`TimeInForce`] enum to this
-    /// spelling; HL already carries the normalized string.)
+    /// spelling; `HL` already carries the normalized string.)
     ///
     /// [`TimeInForce`]: crate::action::perp::TimeInForce
     fn time_in_force_tag(&self) -> &str;
@@ -118,7 +118,7 @@ mod tests {
     };
     use simulation_state::live_field::{DataSource, LiveField};
     use simulation_state::position::PerpSide;
-    use simulation_state::primitives::{ChainId, Decimal, MarketRef, Price, Time, U256, VenueRef};
+    use simulation_state::primitives::{ChainId, Decimal, MarketRef, Price, Time, VenueRef, U256};
 
     fn live<T>(v: T) -> LiveField<T> {
         LiveField::new(v, DataSource::UserSupplied, Time::from_unix(0))
