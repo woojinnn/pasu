@@ -11,6 +11,7 @@
       ]
     }
   },
+  "note": "Batch variant: array_emit over withdrawals[]. Same as completeQueuedWithdrawal, each Withdrawal's scaledShares (idx 6) — the amount completed — is in protocol-internal scaled-share units (§4d illegible) and intentionally NOT decoded (raw scaled-share is user-illegible; underlying conversion needs a per-strategy rate + slashing scaling factor, array-shaped, not manifest-only). Additionally the parallel receiveAsTokens bool[] is unreachable from array_emit $inputs (cross-array), so receive_as_tokens is omitted here (Option<bool> = None for batch). Per §4d a justified defer, documented so the omission is a decision not a silent drop (§8.6-5); enrichment tracked for the follow-up restaking-enrichment round (see plan).",
   "abi_fragment": {
     "function_name": "completeQueuedWithdrawals",
     "abi": {

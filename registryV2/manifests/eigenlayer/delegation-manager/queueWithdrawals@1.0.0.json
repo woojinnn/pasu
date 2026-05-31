@@ -11,6 +11,7 @@
       ]
     }
   },
+  "note": "queueWithdrawals emits one queue_withdrawal intent per QueuedWithdrawalParams. The decoded depositShares (uint256[]) is in protocol-internal strategy-share units, NOT a user-legible token amount (§4d illegible decoded field). Converting each entry to its underlying token amount requires a per-strategy calldata-arg view (IStrategy.sharesToUnderlyingView(shares)) whose contract is the decoded $args.strategies[i] rather than $to — not expressible with manifest-only onchain_view, and array-shaped. Per §4d this is a justified array/per-strategy defer; the share-to-underlying enrichment is tracked for a follow-up restaking-enrichment round (see plan).",
   "abi_fragment": {
     "function_name": "queueWithdrawals",
     "abi": {

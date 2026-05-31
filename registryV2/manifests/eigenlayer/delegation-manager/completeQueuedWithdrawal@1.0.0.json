@@ -11,6 +11,7 @@
       ]
     }
   },
+  "note": "The Withdrawal tuple also carries scaledShares (uint256[], idx 6) — the amount being completed — but in protocol-internal scaled-share units (§4d illegible). It is intentionally NOT decoded into complete_withdrawal: surfacing the raw scaled-share number would be user-illegible, and converting it to an underlying token amount needs a per-strategy rate (sharesToUnderlyingView over $args.withdrawal[5][i]) plus the withdrawal's slashing-adjusted scaling factor — array-shaped and not expressible with manifest-only onchain_view. Per §4d this is a justified defer (documented here so the omission is a decision, not a silent drop, §8.6-5); enrichment tracked for the follow-up restaking-enrichment round (see plan).",
   "abi_fragment": {
     "function_name": "completeQueuedWithdrawal",
     "abi": {
