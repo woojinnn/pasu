@@ -10,6 +10,14 @@
 
 > **독자 = AI 에이전트.** 이 문서 하나로 새 프로토콜을 온보딩(어댑터 전수 작성)하고, 실거래로 `ActionBody[]` 디코드 정확성을 검증하고, gap 을 고치는 루프를 돌 수 있어야 한다. 세션 컨텍스트 없이도 동작하도록 모든 경로·커맨드·포맷을 embed 했다.
 
+> **📂 인스트럭션 문서 맵** (전부 `crates/integration-tests/`, gitignore 제외=tracked):
+> - **이 파일 = spine** — P0~P4 전체 방법론 (research → author → test → develop → land).
+> - **`README.md`** — 하니스 runbook (CLI · 3 입력소스 · Log→Gap→Develop 루프). P2~P4 운용.
+> - **`ACTIONBODY_EXTENSION_GUIDE.md`** — Tier 3 ActionBody Rust/Cedar 확장 (새 domain/action/live_field). §4a·§4d 에서 진입.
+> - **`registryV2/surface/README.md`** — surface gate(I0/I1) ops + `_deployments.json` 포맷. **gate 데이터 옆에 둠**(co-located, script 가 참조) — 위치만 예외.
+>
+> **♻️ 재진입(idempotent)**: 이 플로우는 **이미 온보딩된 프로토콜을 input 으로 넣어도 동일하게** 돈다 — greenfield 전제 아님. P0 에서 현 `surface/_deployments`·`coverage`·manifest 와 **1차 출처를 다시 diff** → 틀린 곳 수정·빠진 곳 보충, P2 에서 현 corpus 회귀 + 신규 gap 추가. "처음 온보딩" 과 "기존 재검증·보강" 이 같은 커맨드·게이트(§7 check:surface/manifest + corpus)로 수렴한다(§6 루프가 그 엔진).
+
 ---
 
 ## 0. 목적 · 범위 · 비범위

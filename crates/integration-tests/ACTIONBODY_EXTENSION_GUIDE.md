@@ -2,7 +2,7 @@
 
 > `ActionBody` 를 확장하는 정규 절차. 1차 출처 = repo 코드 실측. (도메인 수는 늘어난다 — 현재 10: Token/Amm/Lending/Airdrop/Launchpad/Perp/LiquidStaking/Permission + Multicall/Unknown. `grep -n "pub enum ActionBody" action/mod.rs` 재확인.)
 > 참조 심볼은 `file 의 symbol` 형식 (line 번호는 갱신 시 stale 되므로 보조). 갱신 시 `grep` 으로 재확인.
-> 관련: 무엇을 확장할지(제안) = [`SCHEMA_EXTENSION_PROPOSALS.md`](./SCHEMA_EXTENSION_PROPOSALS.md), 통합 방법론 = [`TIER_AB_PLAYBOOK.md`](./TIER_AB_PLAYBOOK.md).
+> 관련: 온보딩 방법론 spine = `PROTOCOL_ONBOARDING_AND_TESTING.md`(같은 디렉토리; 특히 §4d live_field enrichment 가 본 가이드 §2.5 를 cross-ref). (확장 제안 `SCHEMA_EXTENSION_PROPOSALS.md` · 통합 playbook `TIER_AB_PLAYBOOK.md` 는 gitignored `docs/` 에 있어 fresh clone 엔 없음 — optional.)
 
 ## 0. 확장 축은 둘
 

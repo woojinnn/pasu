@@ -4,7 +4,7 @@ raw Tx (calldata) / EIP-712 typed-data 를 **production 디코더**로 돌려 `A
 
 > **이 README 는 사람 + 에이전트(Claude Code) 둘 다를 위한 runbook 이다.** §6 "Log → Gap → Develop 루프" 가 핵심 — 다른 팀원의 Claude Code 가 이 파일만 읽고 (1) 3-source 입력 생성 → (2) 하니스 실행 + 로그 수집 → (3) 부족한 부분(gap) 자동 분류 → (4) 어디를 고칠지 판단 → (5) 회귀로 닫기 를 **자율 수행**할 수 있도록 작성했다.
 >
-> **범위 — framework 진입점 맵**: 이 README 는 **P3-P4(decode 테스트 + fix 루프)** 담당. 새 프로토콜을 **처음부터 온보딩(P0 research → P1 Tier A/B/3 authoring)** 하려면 같은 디렉토리의 **`PROTOCOL_ONBOARDING_AND_TESTING.md`**(4-phase·3-tier·worked example), Tier 3 ActionBody 확장은 **`docs/ACTIONBODY_EXTENSION_GUIDE.md`**, surface 전수성 gate(어댑터 누락 차단)는 **`registryV2/surface/README.md`**(`npm run check:surface`)를 본다.
+> **범위 — framework 진입점 맵**: 이 README 는 **P3-P4(decode 테스트 + fix 루프)** 담당. 새 프로토콜을 **처음부터 온보딩(P0 research → P1 Tier A/B/3 authoring)** 하려면 **같은 디렉토리**의 **`PROTOCOL_ONBOARDING_AND_TESTING.md`**(4-phase·3-tier·worked example 전체 spine), Tier 3 ActionBody 확장은 같은 디렉토리 **`ACTIONBODY_EXTENSION_GUIDE.md`**, surface 전수성 gate(어댑터 누락 차단)는 **`registryV2/surface/README.md`**(gate 데이터 옆 — `npm run check:surface`)를 본다. **인스트럭션 3종(이 README + ONBOARDING + EXTENSION)은 전부 `crates/integration-tests/` 에 모여 있고 gitignore 에서 제외(tracked)된다.**
 
 ---
 
