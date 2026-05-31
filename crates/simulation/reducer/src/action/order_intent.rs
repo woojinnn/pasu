@@ -42,8 +42,10 @@
 use simulation_state::primitives::Decimal;
 
 /// The order-intrinsic intent shared by the perp and `Hyperliquid` `CORE` order
-/// models. Read-only; implementors expose their existing fields, so this adds
-/// **zero** runtime state and is purely a unification seam for callers.
+/// models.
+///
+/// Read-only; implementors expose their existing fields, so this adds **zero**
+/// runtime state and is purely a unification seam for callers.
 pub trait OrderIntent {
     /// Direction: `true` ⇒ long / buy, `false` ⇒ short / sell.
     fn is_buy(&self) -> bool;
@@ -155,7 +157,7 @@ mod tests {
         }
     }
 
-    /// The equivalent HL order: short, post_only, reduce-only, @ 60000.
+    /// The equivalent HL order: short, `post_only`, reduce-only, @ 60000.
     fn hl_order() -> HlOrderAction {
         HlOrderAction {
             asset_index: 0,
@@ -169,7 +171,8 @@ mod tests {
     }
 
     /// Both models expose the same order intent through the trait, despite their
-    /// different internal field types (PerpSide vs bool, TimeInForce vs String).
+    /// different internal field types (`PerpSide` vs bool, `TimeInForce` vs
+    /// `String`).
     #[test]
     fn both_models_agree_via_trait() {
         let p = perp_order();
@@ -182,7 +185,7 @@ mod tests {
         }
     }
 
-    /// Perp's TimeInForce enum maps to the same normalized tags HL uses.
+    /// Perp's `TimeInForce` enum maps to the same normalized tags `HL` uses.
     #[test]
     fn perp_tif_tags_match_hl_spelling() {
         let mut p = perp_order();
@@ -201,7 +204,7 @@ mod tests {
         assert_eq!(p.time_in_force_tag(), "gtd");
     }
 
-    /// A long HL order reads through as is_buy=true.
+    /// A long `HL` order reads through as `is_buy=true`.
     #[test]
     fn hl_long_is_buy_true() {
         let mut h = hl_order();
