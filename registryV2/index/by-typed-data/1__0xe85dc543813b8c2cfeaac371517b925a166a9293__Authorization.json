@@ -1,0 +1,101 @@
+{
+  "matched": true,
+  "bundle_id": "compound-v3/comet/authorization-sign-mainnet-wbtc@1.0.0",
+  "manifest_path": "manifests/compound-v3/comet/authorization-sign-mainnet-wbtc@1.0.0.json",
+  "bundle_sha256": "0x1308772ffc6f2b6fcad41f51978190726be74bcc4f9f935cbd2546c6262bb14c",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "compound-v3/comet/authorization-sign-mainnet-wbtc@1.0.0",
+    "publisher": "compound.eth",
+    "note": "Compound V3 mainnet cWBTCv3 off-chain Authorization (EIP-712) consumed by allowBySig. Official CometExt.sol typehash: Authorization(address owner,address manager,bool isAllowed,uint256 nonce,uint256 expiry). Domain name is Compound WBTC and routing keys on the mainnet cWBTCv3 verifying_contract + primary_type.",
+    "schema_version": "3",
+    "match": {
+      "selector": "0x00000001",
+      "chain_to_addresses": {
+        "1": [
+          "0xe85dc543813b8c2cfeaac371517b925a166a9293"
+        ]
+      },
+      "typed_data": {
+        "domain_name": "Compound WBTC",
+        "verifying_contract": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
+        "primary_type": "Authorization",
+        "types": {
+          "Authorization": [
+            {
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "name": "manager",
+              "type": "address"
+            },
+            {
+              "name": "isAllowed",
+              "type": "bool"
+            },
+            {
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "name": "expiry",
+              "type": "uint256"
+            }
+          ]
+        }
+      }
+    },
+    "abi_fragment": {
+      "function_name": "Authorization",
+      "abi": {
+        "name": "Authorization",
+        "type": "function",
+        "inputs": [
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "manager",
+            "type": "address"
+          },
+          {
+            "name": "isAllowed",
+            "type": "bool"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "expiry",
+            "type": "uint256"
+          }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "set_authorization",
+          "set_authorization": {
+            "chain": "$chain",
+            "protocol": "$to",
+            "authorizer": "$args.owner",
+            "authorized": "$args.manager",
+            "is_authorized": "$args.isAllowed"
+          }
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

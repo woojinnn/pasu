@@ -791,6 +791,48 @@ fn compound_v3_base_asset(chain_id: u64, target: &str) -> Option<&'static str> {
         (1, "0xa17581a9e3356d9a858b789d68b4d866e593ae94") => {
             Some("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
         }
+        (1, "0x5d409e56d886231adaf00c8775665ad0f9897b56") => {
+            Some("0xdc035d45d973e3ec169d2276ddab16f1e407384f")
+        }
+        (1, "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840") => {
+            Some("0xdac17f958d2ee523a2206206994597c13d831ec7")
+        }
+        (1, "0xe85dc543813b8c2cfeaac371517b925a166a9293") => {
+            Some("0x2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+        }
+        (1, "0x3d0bb1ccab520a66e607822fc55bc921738fafe3") => {
+            Some("0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0")
+        }
+        (137, "0xf25212e676d1f7f89cd72ffee66158f541246445") => {
+            Some("0x2791bca1f2de4661ed88a30c99a7a9449aa84174")
+        }
+        (137, "0xaeb318360f27748acb200ce616e389a6c9409a07") => {
+            Some("0xc2132d05d31c914a87c6611c10748aeb04b58e8f")
+        }
+        (5000, "0x606174f62cd968d8e684c645080fa694c1d7786e") => {
+            Some("0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34")
+        }
+        (59144, "0x8d38a3d6b3c3b7d96d6536da7eef94a9d7dbc991") => {
+            Some("0x176211869ca2b568f2a7d4ee941e073a821ee1ff")
+        }
+        (59144, "0x60f2058379716a64a7a5d29219397e79bc552194") => {
+            Some("0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f")
+        }
+        (534352, "0xb2f97c1bd3bf02f5e74d13f02e3e26f93d77ce44") => {
+            Some("0x06efdbff2a14a7c8e15944d1f4a48f9f95f663a4")
+        }
+        (2020, "0x4006ed4097ee51c09a04c3b0951d28ccf19e6dfe") => {
+            Some("0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5")
+        }
+        (2020, "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0") => {
+            Some("0xe514d9deb7966c8be0ca922de8a064264ea6bcd4")
+        }
+        (130, "0x2c7118c4c88b9841fcf839074c26ae8f035f2921") => {
+            Some("0x078d782b760474a361dda0af3839290b0ef57ad6")
+        }
+        (130, "0x6c987dde50db1dcdd32cd4175778c2a291978e2a") => {
+            Some("0x4200000000000000000000000000000000000006")
+        }
         (8453, "0x784efeb622244d2348d4f2522f8860b96fbece89") => {
             Some("0x940181a94a35a4569e4529a3cdfb74e38fd98631")
         }

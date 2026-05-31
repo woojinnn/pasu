@@ -100,6 +100,42 @@
       "cargo test --workspace: 0 failed"
     ]
   },
+  "compound_v3_remaining_official_market_expansion": {
+    "protocol": "compound-v3",
+    "contracts": [
+      "Comet cUSDSv3 mainnet",
+      "Comet cUSDTv3 mainnet",
+      "Comet cWBTCv3 mainnet",
+      "Comet cWstETHv3 mainnet",
+      "Comet Polygon cUSDCv3",
+      "Comet Polygon cUSDTv3",
+      "Comet Mantle cUSDev3",
+      "Comet Linea cUSDCv3",
+      "Comet Linea cWETHv3",
+      "Comet Scroll cUSDCv3",
+      "Comet Ronin cWETHv3",
+      "Comet Ronin cWRONv3",
+      "Comet Unichain cUSDCv3",
+      "Comet Unichain cWETHv3"
+    ],
+    "status": "implemented",
+    "completed": [
+      "added surface/compound-v3 snapshots for the remaining official production Comet markets using Compound official deployments roots/configuration provenance and the CometInterface user-facing ABI",
+      "expanded the 15 Comet on-chain manifests to include mainnet USDS/USDT/WBTC/wstETH plus Polygon, Mantle, Linea, Scroll, Ronin, and Unichain markets",
+      "added Authorization typed-data manifests for all 14 new Comets keyed by verifying_contract + domain_name",
+      "extended compound_v3_base_asset static resolver for the 14 new Comet base assets",
+      "added hand corpus fixtures for supply and Authorization typed-data across all 14 markets",
+      "added field-level golden tests for mainnet cUSDS base_asset resolution and Unichain cWETH Authorization permission fields"
+    ],
+    "evidence": [
+      "npm run build: 951 callkeys + 77 typed-data entries across 168 manifests",
+      "npm run check:surface: PASS with 41 gated contracts; each new Comet has 20 surface / 15 cover / 5 exclude / 15 on-chain manifests / 1 signed-struct",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage: callkeys=951 typed_data_keys=77 unique_bundles=168 install_failures=0",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 217/217 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 24 passed",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "aave_v3_pool_surface_gate": {
     "protocol": "aave",
     "contract": "Aave V3 Pool mainnet",

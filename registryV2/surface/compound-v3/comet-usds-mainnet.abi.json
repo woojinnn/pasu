@@ -1,0 +1,462 @@
+{
+  "source": "compound-docs+compound-github",
+  "url": "https://raw.githubusercontent.com/compound-finance/comet/main/deployments/mainnet/usds/roots.json; https://raw.githubusercontent.com/compound-finance/comet/main/deployments/mainnet/usds/configuration.json; https://github.com/compound-finance/comet/blob/main/contracts/CometInterface.sol",
+  "chainId": 1,
+  "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
+  "contract": "Comet cUSDSv3",
+  "fetchedAt": "2026-05-31",
+  "note": "Surface snapshot for the mainnet cUSDSv3 Comet proxy users call. Compound official deployments/mainnet/usds/roots.json lists this proxy as comet and configuration.json names Compound USDS / cUSDSv3 with USDS as baseToken. Compound official docs instruct users to interact with the proxy using CometInterface, which combines CometMainInterface and CometExtInterface. This snapshot records that user-facing interface surface for the completeness gate.",
+  "abi": [
+    {
+      "type": "function",
+      "name": "supply",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "supplyTo",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "dst",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "supplyFrom",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "dst",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "transfer",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "dst",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "transferFrom",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "src",
+          "type": "address"
+        },
+        {
+          "name": "dst",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "transferAsset",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "dst",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "transferAssetFrom",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "src",
+          "type": "address"
+        },
+        {
+          "name": "dst",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "withdraw",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "withdrawTo",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "withdrawFrom",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "src",
+          "type": "address"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "approveThis",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "manager",
+          "type": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "withdrawReserves",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "absorb",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "absorber",
+          "type": "address"
+        },
+        {
+          "name": "accounts",
+          "type": "address[]"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "buyCollateral",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address"
+        },
+        {
+          "name": "minAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "baseAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "pause",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "supplyPaused",
+          "type": "bool"
+        },
+        {
+          "name": "transferPaused",
+          "type": "bool"
+        },
+        {
+          "name": "withdrawPaused",
+          "type": "bool"
+        },
+        {
+          "name": "absorbPaused",
+          "type": "bool"
+        },
+        {
+          "name": "buyPaused",
+          "type": "bool"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "accrueAccount",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "initializeStorage",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "allow",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "manager",
+          "type": "address"
+        },
+        {
+          "name": "isAllowed",
+          "type": "bool"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "allowBySig",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "name": "manager",
+          "type": "address"
+        },
+        {
+          "name": "isAllowed",
+          "type": "bool"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256"
+        },
+        {
+          "name": "expiry",
+          "type": "uint256"
+        },
+        {
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "approve",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "baseToken",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "version",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "userNonce",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ]
+    }
+  ]
+}

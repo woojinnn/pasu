@@ -876,3 +876,73 @@ fn compound_v3_arbitrum_weth_authorization_typed_data_decodes_permission_fields(
     assert_eq!(find_string_field(&env, "authorized"), Some(MANAGER.into()));
     assert_eq!(find_bool_field(&env, "is_authorized"), Some(false));
 }
+
+/// Field-level golden for the remaining Compound V3 mainnet market expansion.
+#[test]
+fn compound_v3_mainnet_usds_supply_decodes_usds_asset() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const MAINNET_COMET_USDS: &str = "0x5d409e56d886231adaf00c8775665ad0f9897b56";
+    const MAINNET_USDS: &str = "0xdc035d45d973e3ec169d2276ddab16f1e407384f";
+    const CALLDATA: &str = concat!(
+        "0xf2b9fdb8",
+        "000000000000000000000000",
+        "dc035d45d973e3ec169d2276ddab16f1e407384f",
+        "00000000000000000000000000000000000000000000000000000000000003e8"
+    );
+
+    let env = harness::route::route_calldata(1, MAINNET_COMET_USDS, "0xf2b9fdb8", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "mainnet cUSDSv3 supply route did not succeed: {env}"
+    );
+    let venue = find_object_with_string_field(&env, "name", "compound_v3")
+        .expect("Compound V3 venue is present");
+    assert_eq!(
+        venue.get("comet").and_then(serde_json::Value::as_str),
+        Some(MAINNET_COMET_USDS)
+    );
+    assert_eq!(
+        venue
+            .get("base_asset")
+            .and_then(|v| v.pointer("/key/address"))
+            .and_then(serde_json::Value::as_str),
+        Some(MAINNET_USDS)
+    );
+}
+
+/// Field-level golden for the remaining Compound V3 alt-chain typed-data
+/// expansion.
+#[test]
+fn compound_v3_unichain_weth_authorization_typed_data_decodes_permission_fields() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const TO: &str = "0x6c987dde50db1dcdd32cd4175778c2a291978e2a";
+    const OWNER: &str = "0x4444444444444444444444444444444444444444";
+    const MANAGER: &str = "0x5555555555555555555555555555555555555555";
+    let message = serde_json::json!({
+        "owner": OWNER,
+        "manager": MANAGER,
+        "isAllowed": false,
+        "nonce": "9",
+        "expiry": "9999999999"
+    });
+
+    let env = harness::route::route_typed_data(
+        130,
+        TO,
+        "Authorization",
+        None,
+        Some("Compound WETH"),
+        &message,
+    );
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "Unichain cWETHv3 typed-data route did not succeed: {env}"
+    );
+    assert_eq!(find_string_field(&env, "authorizer"), Some(OWNER.into()));
+    assert_eq!(find_string_field(&env, "authorized"), Some(MANAGER.into()));
+    assert_eq!(find_bool_field(&env, "is_authorized"), Some(false));
+}
