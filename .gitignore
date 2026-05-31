@@ -58,3 +58,8 @@ browser-extension/public/wasm/
 # ACTIONBODY_EXTENSION_GUIDE); this one rule un-ignores every top-level .md there
 # (current + future). Subdir .md (logs/) stay ignored except their own README.md.
 !crates/integration-tests/*.md
+
+# integration-tests per-run harness logs — keep the dir via its README (format
+# guide + curated index), but the actual per-run dumps are local scratch.
+/crates/integration-tests/logs/*
+!/crates/integration-tests/logs/README.md

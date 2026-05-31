@@ -13,11 +13,11 @@ logs/
 
 `<source>` = `synthetic` | `etherscan` | `dune` | `corpus` | `mixed`.
 
-## 왜 `.json` 인가
+## 추적 정책 (gitignore)
 
-- root `.gitignore` 가 `*.md` 를 무시(`README.md` 만 예외) → 로그를 `.md` 로 쓰면 추적 안 됨. `.json` 은 추적된다.
-- 머신 판독(auto-improve 루프가 파싱·diff) + 사람 판독(`summary` 필드) 둘 다 가능.
-- `git diff` 로 실행 간 변화가 그대로 보인다.
+- per-run 로그 파일(`<protocol>/*.json`)은 **gitignore — 로컬 scratch** (clone 에 안 따라옴). 이 `README.md` 만 추적된다 (포맷 가이드 + 아래 큐레이션 인덱스/findings).
+- 로그는 `.json` 으로 쓴다: 머신 판독(auto-improve 루프 파싱·diff) + 사람 판독(`summary` 필드) 둘 다. 로컬에서 직접 diff 로 실행 간 변화 확인.
+- 의미 있는 스냅샷·findings 는 본 README 의 인덱스 표 + 라운드 결과에 **요약해 커밋**한다(원시 로그 대신).
 
 ## 기록 포맷 (한 실행 = 파일 1개)
 
@@ -54,7 +54,7 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- \
 #   README.md §3.B/§3.C 로 corpus 만들고, `corpus` 출력의 got 분포를 집계해 gaps 에 정리.
 ```
 
-> ad-hoc/스크래치 실행은 `logs/scratch/` (gitignore 됨) 에. 커밋하는 로그는 **의미 있는 스냅샷**만.
+> 모든 per-run 로그는 gitignore (로컬 only). 커밋 대상은 본 README 의 인덱스/findings 요약뿐.
 
 ## 인덱스 (프로토콜별 최신)
 
