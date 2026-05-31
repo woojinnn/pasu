@@ -1,0 +1,37 @@
+{
+  "type": "adapter_action",
+  "id": "lido/steth/submit@1.0.0",
+  "publisher": "lido.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xa1903eab",
+    "chain_to_addresses": {
+      "1": ["0xae7ab96520de3a18e5e111b5eaab095312d7fe84"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "submit",
+    "abi": {
+      "name": "submit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [{ "name": "_referral", "type": "address" }],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "stake",
+        "stake": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "amount": "$tx.value",
+          "referral": "$args._referral"
+        }
+      }
+    },
+    "live_inputs": {}
+  }
+}

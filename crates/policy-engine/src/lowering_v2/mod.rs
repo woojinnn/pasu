@@ -42,6 +42,7 @@ mod common;
 mod dispatch;
 mod launchpad;
 mod lending;
+mod liquid_staking;
 mod multicall;
 mod perp;
 mod token;

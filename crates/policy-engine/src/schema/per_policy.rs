@@ -34,13 +34,16 @@ use super::{
     LENDING_BORROW_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
     LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_REPAY_SCHEMA,
     LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA,
-    LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA,
-    PERP_CANCEL_ORDER_SCHEMA, PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA,
-    PERP_CLAIM_FUNDING_SCHEMA, PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA,
-    PERP_INCREASE_POSITION_SCHEMA, PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA,
-    PERP_PLACE_STOP_ORDER_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA,
-    TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA,
-    TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
+    LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA, LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA, LIQUID_STAKING_STAKE_SCHEMA,
+    LIQUID_STAKING_TRANSFER_SHARES_SCHEMA, LIQUID_STAKING_UNWRAP_SCHEMA,
+    LIQUID_STAKING_WRAP_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
+    PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
+    PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
+    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
+    TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA,
+    TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA,
+    TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
     TOKEN_REVOKE_APPROVAL_SCHEMA,
 };
 
@@ -202,6 +205,43 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("set_authorization"),
         schema_text: LENDING_SET_AUTHORIZATION_SCHEMA,
         pascal_stub: "SetAuthorization",
+    },
+    // liquid_staking
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("claim_withdrawal"),
+        schema_text: LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+        pascal_stub: "ClaimWithdrawal",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("request_withdrawal"),
+        schema_text: LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
+        pascal_stub: "RequestWithdrawal",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("stake"),
+        schema_text: LIQUID_STAKING_STAKE_SCHEMA,
+        pascal_stub: "Stake",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("transfer_shares"),
+        schema_text: LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
+        pascal_stub: "TransferShares",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("unwrap"),
+        schema_text: LIQUID_STAKING_UNWRAP_SCHEMA,
+        pascal_stub: "Unwrap",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("wrap"),
+        schema_text: LIQUID_STAKING_WRAP_SCHEMA,
+        pascal_stub: "Wrap",
     },
     // launchpad
     ActionEntry {
@@ -797,9 +837,9 @@ mod tests {
                 entry.pascal_stub,
             );
         }
-        // The table covers exactly the 46 shipped actions (multicall + unknown
+        // The table covers exactly the 52 shipped actions (multicall + unknown
         // included). Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 46, "resolver table must have 46 rows");
+        assert_eq!(RESOLVER_TABLE.len(), 52, "resolver table must have 52 rows");
     }
 
     /// A custom_context field whose name collides with one of the matched

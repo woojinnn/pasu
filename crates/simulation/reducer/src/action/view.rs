@@ -52,6 +52,11 @@ impl ActionBody {
                 action_tag: Some(a.action_tag()),
                 venue_name: a.venue_name(),
             },
+            Self::LiquidStaking(a) => ActionView {
+                domain: "liquid_staking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
             Self::Multicall { .. } => ActionView {
                 domain: "multicall",
                 action_tag: None,

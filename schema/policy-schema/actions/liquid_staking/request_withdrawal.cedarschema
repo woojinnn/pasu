@@ -1,0 +1,28 @@
+// LiquidStaking::RequestWithdrawal — enter the withdrawal queue: burn the
+// staking token and mint withdrawal-request NFTs to `owner`. Models Lido
+// `requestWithdrawals` / `requestWithdrawalsWstETH` (+ `…WithPermit` variants).
+//
+// Rust source: `crates/simulation/reducer/src/action/liquid_staking/request_withdrawal.rs`
+// (`RequestWithdrawalAction`). No LiveInputs.
+
+namespace LiquidStaking {
+  type RequestWithdrawalContext = {
+    meta: Core::ActionMeta,
+    venue: StakingVenue,
+    // Token being queued for withdrawal (stETH or wstETH).
+    token: Core::TokenRef,
+    // Per-request amounts (one withdrawal NFT per element), each U256 hex.
+    amounts: Set<String>,
+    // Owner of the minted withdrawal-request NFTs.
+    owner: String,
+    custom?: RequestWithdrawalCustomContext,
+  };
+
+  type RequestWithdrawalCustomContext = {};
+
+  action "RequestWithdrawal" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RequestWithdrawalContext,
+  };
+}

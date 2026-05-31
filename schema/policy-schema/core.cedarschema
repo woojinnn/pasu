@@ -249,6 +249,17 @@ namespace Lending {
   };
 }
 
+namespace LiquidStaking {
+  // -------------------------------------------------------------------------
+  // StakingVenue — liquid-staking venue identifier.
+  //   - "lido" → no extra fields (stETH / wstETH / WithdrawalQueue singleton set)
+  // -------------------------------------------------------------------------
+  type StakingVenue = {
+    name: String,                // discriminated by name (currently "lido")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
 namespace Launchpad {
   // Vesting curve (Rust `VestCurve`, serde tag = "kind", rename_all = "snake_case").
   //   - "linear"   : no extra fields.

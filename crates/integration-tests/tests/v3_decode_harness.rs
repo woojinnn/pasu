@@ -431,3 +431,99 @@ fn curve_cryptoswap_add_liquidity_bakes_three_coins_in_order() {
         );
     }
 }
+
+/// Field-level golden: a real Lido `submit` must decode to a `liquid_staking`
+/// `stake` whose `amount` equals `msg.value` (manifest `amount = $tx.value`) —
+/// a value the corpus (verdict + domain only) cannot verify. Pins the
+/// `$tx.value` → Stake.amount plumbing and the referral arg decode.
+#[test]
+fn lido_submit_amount_is_msg_value_and_referral() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet submit tx 0x361f764d…: msg.value 9.8 ETH, referral 0x6dc9…3e43.
+    const TO: &str = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
+    const CALLDATA: &str =
+        "0xa1903eab0000000000000000000000006dc9657c2d90d57cadffb64239242d06e6103e43";
+
+    let env = harness::route::route_calldata(1, TO, "0xa1903eab", CALLDATA, "9800000000000000000");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    // U256 renders as lower-hex; 0x88009813ced40000 == 9_800_000_000_000_000_000
+    // == the msg.value passed to route. Pins the $tx.value → Stake.amount plumbing.
+    assert_eq!(
+        find_string_field(&env, "amount").as_deref(),
+        Some("0x88009813ced40000"),
+        "Stake.amount must equal msg.value ($tx.value): {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "referral")
+            .map(|s| s.to_lowercase())
+            .as_deref(),
+        Some("0x6dc9657c2d90d57cadffb64239242d06e6103e43"),
+        "Stake.referral mis-decoded: {env}"
+    );
+}
+
+/// Field-level golden: a real Lido `requestWithdrawals` must decode to a
+/// `liquid_staking` `request_withdrawal` whose `owner` is the NFT beneficiary
+/// and whose `token` is stETH (the burned asset). Pins arg decode + the baked
+/// stETH-vs-wstETH token discriminator.
+#[test]
+fn lido_request_withdrawals_decodes_owner_and_steth_token() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet requestWithdrawals tx 0xf9cdfd1c…: amounts=[2360955914336215],
+    // owner 0xafc9…9a21.
+    const TO: &str = "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1";
+    const CALLDATA: &str = "0xd66810420000000000000000000000000000000000000000000000000000000000000040000000000000000000000000afc98cfd72b91c5da3a35dbd387bdc40dd289a21000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000086346e29ab7d7";
+
+    let env = harness::route::route_calldata(1, TO, "0xd6681042", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "owner")
+            .map(|s| s.to_lowercase())
+            .as_deref(),
+        Some("0xafc98cfd72b91c5da3a35dbd387bdc40dd289a21"),
+        "RequestWithdrawal.owner mis-decoded: {env}"
+    );
+    let token = find_object_by_key(&env, "token").expect("request_withdrawal body carries token");
+    assert_eq!(
+        find_string_field(token, "address")
+            .map(|s| s.to_lowercase())
+            .as_deref(),
+        Some("0xae7ab96520de3a18e5e111b5eaab095312d7fe84"),
+        "requestWithdrawals burns stETH; token must be stETH: {token}"
+    );
+}
+
+/// Field-level golden: a real wstETH `wrap` must decode to a `liquid_staking`
+/// `wrap` whose `amount` is the supplied stETH amount (`$args._stETHAmount`).
+#[test]
+fn lido_wrap_amount_decodes() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet wrap tx 0x3422ad3f…: _stETHAmount = 12948522489883869033.
+    const TO: &str = "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0";
+    const CALLDATA: &str =
+        "0xea598cb0000000000000000000000000000000000000000000000000b3b26499afaf3f69";
+
+    let env = harness::route::route_calldata(1, TO, "0xea598cb0", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    // U256 lower-hex: 0xb3b26499afaf3f69 == 12_948_522_489_883_869_033.
+    assert_eq!(
+        find_string_field(&env, "amount").as_deref(),
+        Some("0xb3b26499afaf3f69"),
+        "Wrap.amount mis-decoded: {env}"
+    );
+}

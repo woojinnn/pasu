@@ -1,0 +1,90 @@
+{
+  "matched": true,
+  "bundle_id": "lido/withdrawal-queue/requestWithdrawalsWithPermit@1.0.0",
+  "manifest_path": "manifests/lido/withdrawal-queue/requestWithdrawalsWithPermit@1.0.0.json",
+  "bundle_sha256": "0x2a79e22f0babddb6c4a8662f42d787b3fc55af9bff1687f20cdac307ac17d8ff",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "lido/withdrawal-queue/requestWithdrawalsWithPermit@1.0.0",
+    "publisher": "lido.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0xacf41e4d",
+      "chain_to_addresses": {
+        "1": [
+          "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "requestWithdrawalsWithPermit",
+      "abi": {
+        "name": "requestWithdrawalsWithPermit",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "_amounts",
+            "type": "uint256[]"
+          },
+          {
+            "name": "_owner",
+            "type": "address"
+          },
+          {
+            "name": "_permit",
+            "type": "tuple",
+            "components": [
+              {
+                "name": "value",
+                "type": "uint256"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "name": "v",
+                "type": "uint8"
+              },
+              {
+                "name": "r",
+                "type": "bytes32"
+              },
+              {
+                "name": "s",
+                "type": "bytes32"
+              }
+            ]
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "liquid_staking",
+        "liquid_staking": {
+          "action": "request_withdrawal",
+          "request_withdrawal": {
+            "venue": {
+              "name": "lido",
+              "chain": "$chain"
+            },
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+              }
+            },
+            "amounts": "$args._amounts",
+            "owner": "$args._owner"
+          }
+        }
+      },
+      "live_inputs": {}
+    }
+  }
+}

@@ -43,6 +43,7 @@ impl Reducer for ActionBody {
             Self::Airdrop(a) => a.apply(state, ctx),
             Self::Launchpad(a) => a.apply(state, ctx),
             Self::Perp(a) => a.apply(state, ctx),
+            Self::LiquidStaking(a) => a.apply(state, ctx),
             Self::Multicall { actions } => apply_multicall(state, ctx, actions),
             Self::Unknown { target, .. } => Err(ReducerError::UnknownAction(format!(
                 "unidentified call to {target:?}"

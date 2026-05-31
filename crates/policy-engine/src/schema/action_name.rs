@@ -100,6 +100,13 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "supply",
     "swap_rate_mode",
     "withdraw",
+    // LiquidStaking (6)
+    "claim_withdrawal",
+    "request_withdrawal",
+    "stake",
+    "transfer_shares",
+    "unwrap",
+    "wrap",
     // Launchpad (5)
     "claim_allocation",
     "claim_vested",
@@ -178,8 +185,9 @@ mod tests {
 
     #[test]
     fn registry_size_matches_phase1() {
-        // 2 Core + 2 Airdrop + 6 Amm + 10 Lending + 5 Launchpad + 11 Perp + 9 Token = 45.
-        assert_eq!(REGISTERED_ACTIONS.len(), 46);
+        // 2 Core + 2 Airdrop + 6 Amm + 11 Lending + 6 LiquidStaking + 5 Launchpad
+        // + 11 Perp + 9 Token = 52.
+        assert_eq!(REGISTERED_ACTIONS.len(), 52);
     }
 
     #[test]

@@ -72,6 +72,23 @@ const LENDING_WITHDRAW_SCHEMA: &str =
 const LENDING_SET_AUTHORIZATION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/set_authorization.cedarschema");
 
+// liquid_staking (alphabetical)
+const LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/liquid_staking/claim_withdrawal.cedarschema"
+);
+const LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/liquid_staking/request_withdrawal.cedarschema"
+);
+const LIQUID_STAKING_STAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/liquid_staking/stake.cedarschema");
+const LIQUID_STAKING_TRANSFER_SHARES_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/liquid_staking/transfer_shares.cedarschema"
+);
+const LIQUID_STAKING_UNWRAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/liquid_staking/unwrap.cedarschema");
+const LIQUID_STAKING_WRAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/liquid_staking/wrap.cedarschema");
+
 // launchpad (alphabetical)
 const LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/launchpad/claim_allocation.cedarschema");
@@ -156,6 +173,12 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     LENDING_SWAP_RATE_MODE_SCHEMA,
     LENDING_WITHDRAW_SCHEMA,
     LENDING_SET_AUTHORIZATION_SCHEMA,
+    LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_STAKE_SCHEMA,
+    LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
+    LIQUID_STAKING_UNWRAP_SCHEMA,
+    LIQUID_STAKING_WRAP_SCHEMA,
     LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA,
     LAUNCHPAD_COMMIT_SCHEMA,

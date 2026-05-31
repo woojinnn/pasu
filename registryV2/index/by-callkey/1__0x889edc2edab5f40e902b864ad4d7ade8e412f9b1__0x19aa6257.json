@@ -1,0 +1,64 @@
+{
+  "matched": true,
+  "bundle_id": "lido/withdrawal-queue/requestWithdrawalsWstETH@1.0.0",
+  "manifest_path": "manifests/lido/withdrawal-queue/requestWithdrawalsWstETH@1.0.0.json",
+  "bundle_sha256": "0xb89e4dc2027eb22e562b8ff279f9a9043370ef934cb588147b8bc19abe39045f",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "lido/withdrawal-queue/requestWithdrawalsWstETH@1.0.0",
+    "publisher": "lido.eth",
+    "schema_version": "3",
+    "match": {
+      "selector": "0x19aa6257",
+      "chain_to_addresses": {
+        "1": [
+          "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "requestWithdrawalsWstETH",
+      "abi": {
+        "name": "requestWithdrawalsWstETH",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "_amounts",
+            "type": "uint256[]"
+          },
+          {
+            "name": "_owner",
+            "type": "address"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "liquid_staking",
+        "liquid_staking": {
+          "action": "request_withdrawal",
+          "request_withdrawal": {
+            "venue": {
+              "name": "lido",
+              "chain": "$chain"
+            },
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+              }
+            },
+            "amounts": "$args._amounts",
+            "owner": "$args._owner"
+          }
+        }
+      },
+      "live_inputs": {}
+    }
+  }
+}

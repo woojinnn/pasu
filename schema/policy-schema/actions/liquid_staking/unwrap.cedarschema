@@ -1,0 +1,23 @@
+// LiquidStaking::Unwrap — unwrap the non-rebasing wrapper (wstETH) back into the
+// rebasing token (stETH). Models wstETH `unwrap(uint256 _wstETHAmount)`.
+//
+// Rust source: `crates/simulation/reducer/src/action/liquid_staking/unwrap.rs`
+// (`UnwrapAction`). No LiveInputs.
+
+namespace LiquidStaking {
+  type UnwrapContext = {
+    meta: Core::ActionMeta,
+    venue: StakingVenue,
+    // Amount of the wrapper to unwrap (wstETH units), U256 hex.
+    amount: String,
+    custom?: UnwrapCustomContext,
+  };
+
+  type UnwrapCustomContext = {};
+
+  action "Unwrap" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: UnwrapContext,
+  };
+}
