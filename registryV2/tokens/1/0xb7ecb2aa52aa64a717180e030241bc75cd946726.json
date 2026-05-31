@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+  "symbol": "2BTC-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: tBTC/WBTC",
+  "source": "https://etherscan.io/token/0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xb7ecb2aa52aa64a717180e030241bc75cd946726"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

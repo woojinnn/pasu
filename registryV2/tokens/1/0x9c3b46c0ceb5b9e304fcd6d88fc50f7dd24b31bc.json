@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+  "symbol": "frxeth-ng-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: frxETH/WETH",
+  "source": "https://etherscan.io/token/0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5e8422345238f34275888049021821e8e08caa1f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}
