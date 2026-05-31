@@ -426,6 +426,39 @@ fn aave_v3_position_manager_permission_decodes_manager_and_flag() {
     assert_eq!(find_bool_field(&renounce, "is_authorized"), Some(false));
 }
 
+/// Field-level golden for Aave V3 variable debt `renounceDelegation`.
+///
+/// `renounceDelegation(delegator)` is a credit-delegation revoke path: the
+/// caller is the delegatee and the resulting borrow allowance becomes zero.
+/// This pins the security-relevant revoke shape instead of treating the debt
+/// token as a disabled ERC20 transfer/approval surface.
+#[test]
+fn aave_v3_variable_debt_renounce_delegation_decodes_zero_allowance() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const VARIABLE_DEBT_USDC: &str = "0x72e95b8931767c79ba4eee721354d6e99a61d004";
+    const FUZZ_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
+    const CALLDATA: &str =
+        "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0";
+
+    let env = harness::route::route_calldata(1, VARIABLE_DEBT_USDC, "0x91fb372d", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "renounceDelegation route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "delegatee"),
+        Some(FUZZ_SUBMITTER.into()),
+        "delegatee should be the caller revoking delegated borrow allowance"
+    );
+    assert_eq!(
+        find_string_field(&env, "amount"),
+        Some("0x0".into()),
+        "renounceDelegation should decode as a zero borrow allowance"
+    );
+}
+
 /// Field-level golden for Aave V3.4+ position-manager execution paths.
 ///
 /// `setUserEModeOnBehalfOf` and

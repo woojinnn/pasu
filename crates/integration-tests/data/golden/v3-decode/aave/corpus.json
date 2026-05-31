@@ -594,6 +594,22 @@
       }
     },
     {
+      "intent": "variableDebtUSDC.renounceDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+            "value": "0",
+            "data": "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0"
+          }
+        ]
+      }
+    },
+    {
       "intent": "variableDebtUSDC DelegationWithSig typed-data hand",
       "expect": "pass",
       "expect_domain": "lending",

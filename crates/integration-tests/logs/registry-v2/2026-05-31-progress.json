@@ -70,6 +70,25 @@
       "cargo test --workspace: 0 failed"
     ]
   },
+  "aave_v3_variable_debt_usdc_surface_gate": {
+    "protocol": "aave",
+    "contract": "Aave V3 variableDebtUSDC mainnet",
+    "status": "implemented",
+    "completed": [
+      "added surface/aave/variable-debt-usdc-mainnet.{abi,coverage}.json from Sourcify verified proxy + VariableDebtTokenInstance implementation metadata",
+      "triaged 12 external-mutating selectors: approveDelegation, delegationWithSig, and renounceDelegation are COVER; pool-only hooks and disabled non-transferable ERC20 compatibility methods are EXCLUDE",
+      "added aave/v3/variableDebtUSDC/renounceDelegation manifest as LendingAction::DelegateBorrow with amount=0 and delegatee=$tx.from",
+      "added hand corpus fixture and field-level golden test for renounceDelegation zero-allowance revoke shape"
+    ],
+    "evidence": [
+      "npm run build: 520 callkeys + 46 typed-data entries across 127 manifests",
+      "npm run check:surface: PASS with AaveVariableDebtUSDC 12 surface / 3 cover / 9 exclude / 3 on-chain manifests / 1 signed-struct",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage: callkeys=520 typed_data_keys=46 unique_bundles=127 install_failures=0",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 145/145 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 17 passed",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "scenario_c_decode_gap_loop": {
     "protocol": "uniswap",
     "status": "started",
