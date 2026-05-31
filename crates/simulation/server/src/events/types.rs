@@ -29,6 +29,9 @@ pub enum Event {
     /// Cedar evaluation produced a non-allow verdict the dashboard
     /// should surface in the activity feed.
     PolicyViolated(PolicyViolation),
+    /// New verdict row persisted via `POST /verdicts`. Drives the
+    /// monitoring page's live findings feed (Phase 2).
+    Finding(FindingEvent),
 }
 
 /// Reference to an in-flight tx without a hash yet.
@@ -80,6 +83,22 @@ pub struct PolicyViolation {
     pub reasons: Vec<String>,
 }
 
+/// Compact `verdicts` row push used by the monitoring page. Full row is
+/// fetched separately via `GET /audit/verdicts?…` — this event is just
+/// the trigger.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FindingEvent {
+    pub id: i64,
+    pub ts: i64,
+    pub wallet: String,
+    pub verdict: String,
+    pub severity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dapp_origin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub policy_name: Option<String>,
+}
+
 impl Event {
     /// Returns the wire `type` discriminator — matches what an SSE client
     /// listens on with `addEventListener(<name>, …)`.
@@ -92,6 +111,7 @@ impl Event {
             Self::TxFailed(_) => "tx_failed",
             Self::WalletSynced(_) => "wallet_synced",
             Self::PolicyViolated(_) => "policy_violated",
+            Self::Finding(_) => "finding",
         }
     }
 }

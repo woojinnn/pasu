@@ -30,6 +30,8 @@ tags:
     description: Tx lifecycle log (state_deltas table)
   - name: policies
     description: Cedar policy CRUD
+  - name: verdicts
+    description: Audit / History / Findings (Phase 2)
   - name: meta
     description: Health, evaluate, events, ops
 
@@ -442,10 +444,176 @@ paths:
                   notes: { type: string, nullable: true }
         "404": { description: Address not in catalog }
 
+  /verdicts:
+    post:
+      tags: [verdicts]
+      summary: Extension submits a verdict after Cedar evaluation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [wallet, verdict, severity]
+              properties:
+                wallet:        { type: string }
+                verdict:       { type: string, enum: [pass, warn, fail] }
+                severity:      { type: string, enum: [deny, warn, info] }
+                delta_id:      { type: integer, nullable: true }
+                policy_id:     { type: integer, nullable: true }
+                dapp_origin:   { type: string }
+                method:        { type: string }
+                decoded_fn:    { type: string }
+                contract:
+                  type: object
+                  properties:
+                    addr:   { type: string }
+                    symbol: { type: string, nullable: true }
+                selector:
+                  type: object
+                  properties:
+                    sig:     { type: string }
+                    decoded: { type: string, nullable: true }
+                policy_name:   { type: string }
+                reason:
+                  type: object
+                  properties:
+                    ko: { type: string, nullable: true }
+                    en: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  ts: { type: integer }
+        "400": { description: Bad request (verdict/severity validation, address shape) }
+        "404": { description: Wallet not tracked for this user }
+
+  /verdicts/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [verdicts]
+      summary: User resolves a warn-level verdict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [trusted, cancelled] }
+      responses:
+        "204": { description: Updated }
+        "400": { description: Bad decision value }
+        "404": { description: Verdict not found }
+
+  /audit/verdicts:
+    get:
+      tags: [verdicts]
+      summary: Filtered verdict log (audit view)
+      parameters:
+        - { name: range,     in: query, schema: { type: string, enum: [1h, 6h, 24h, 7d] } }
+        - { name: since,     in: query, schema: { type: integer, description: "unix sec lower bound" } }
+        - { name: until,     in: query, schema: { type: integer, description: "unix sec upper bound" } }
+        - { name: verdict,   in: query, schema: { type: string, enum: [pass, warn, fail] } }
+        - { name: origin,    in: query, schema: { type: string, description: "dApp hostname exact match" } }
+        - { name: policy_id, in: query, schema: { type: integer } }
+        - { name: wallet,    in: query, schema: { type: string, description: "0x40hex; unknown wallet → empty result" } }
+        - { name: search,    in: query, schema: { type: string, description: "substring across policy_name + reason_*" } }
+        - { name: before,    in: query, schema: { type: integer, description: "cursor — fetch rows with id < before" } }
+        - { name: limit,     in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+      responses:
+        "200":
+          description: VerdictDto[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VerdictDto" }
+
+  /audit/counts:
+    get:
+      tags: [verdicts]
+      summary: Pass/warn/fail counts under the same filter as /audit/verdicts
+      parameters:
+        - { name: range,   in: query, schema: { type: string } }
+        - { name: since,   in: query, schema: { type: integer } }
+        - { name: until,   in: query, schema: { type: integer } }
+        - { name: verdict, in: query, schema: { type: string } }
+        - { name: origin,  in: query, schema: { type: string } }
+        - { name: wallet,  in: query, schema: { type: string } }
+        - { name: search,  in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pass: { type: integer }
+                  warn: { type: integer }
+                  fail: { type: integer }
+
+  /audit/export:
+    get:
+      tags: [verdicts]
+      summary: CSV export of the filtered verdict list
+      parameters:
+        - { name: range,   in: query, schema: { type: string } }
+        - { name: since,   in: query, schema: { type: integer } }
+        - { name: until,   in: query, schema: { type: integer } }
+        - { name: verdict, in: query, schema: { type: string } }
+        - { name: origin,  in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: CSV
+          content:
+            text/csv: { schema: { type: string } }
+
+  /history/verdicts:
+    get:
+      tags: [verdicts]
+      summary: Verdict log (history view — cursor pagination)
+      description: Same row shape as /audit/verdicts; the FE renders sequence + grouping differently.
+      parameters:
+        - { name: before, in: query, schema: { type: integer } }
+        - { name: limit,  in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+      responses:
+        "200":
+          description: VerdictDto[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VerdictDto" }
+
+  /findings/feed:
+    get:
+      tags: [verdicts]
+      summary: Live findings feed (monitoring page)
+      parameters:
+        - { name: since, in: query, schema: { type: integer, description: "unix sec — only rows ts >= since" } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+      responses:
+        "200":
+          description: VerdictDto[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VerdictDto" }
+
   /events/stream:
     get:
       tags: [meta]
-      summary: Server-Sent Events feed (wallet_synced, etc.)
+      summary: Server-Sent Events feed (wallet_synced, finding, etc.)
       description: Auth via `?token=<jwt>` query param (EventSource can't set headers).
       parameters:
         - { name: token, in: query, schema: { type: string } }
@@ -580,3 +748,43 @@ components:
     EvaluateRequest:
       type: object
       description: Pass an Action envelope; reducer applies + Cedar evaluates.
+
+    VerdictDto:
+      type: object
+      description: Cedar policy verdict row (Audit / History / Findings).
+      properties:
+        id:           { type: integer }
+        ts:           { type: integer }
+        wallet:       { type: string, nullable: true }
+        verdict:      { type: string, enum: [pass, warn, fail] }
+        severity:     { type: string, enum: [deny, warn, info] }
+        method:       { type: string, nullable: true }
+        decoded_fn:   { type: string, nullable: true }
+        dapp_origin:  { type: string, nullable: true }
+        contract:
+          type: object
+          nullable: true
+          properties:
+            addr:   { type: string }
+            symbol: { type: string, nullable: true }
+        selector:
+          type: object
+          nullable: true
+          properties:
+            sig:     { type: string }
+            decoded: { type: string, nullable: true }
+        policy:
+          type: object
+          nullable: true
+          properties:
+            id:       { type: integer, nullable: true }
+            name:     { type: string, nullable: true }
+            severity: { type: string, enum: [deny, warn, info] }
+        reason:
+          type: object
+          properties:
+            ko: { type: string, nullable: true }
+            en: { type: string, nullable: true }
+        user_decision: { type: string, nullable: true, enum: [trusted, cancelled, null] }
+        decided_at:    { type: integer, nullable: true }
+        delta_id:      { type: integer, nullable: true }

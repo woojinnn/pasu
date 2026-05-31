@@ -280,7 +280,7 @@ fn separate_users_have_separate_files() {
 fn execution_reports_round_trip_and_reconcile_by_wallet() {
     let pool = Pool::open_in_memory();
     run_migrations(&pool).unwrap();
-    assert_eq!(current_version(&pool).unwrap(), Some(8));
+    assert_eq!(current_version(&pool).unwrap(), Some(9));
 
     pool.with_tx(|tx| {
         let wallet_id = wallets::insert(

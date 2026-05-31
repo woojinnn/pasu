@@ -85,3 +85,21 @@ export {
   type SpenderMeta,
   type SpenderRep,
 } from "./catalog";
+
+// Phase 2 verdict / audit / history / findings.
+export {
+  listAuditVerdicts,
+  getAuditCounts,
+  auditExportUrl,
+  listHistoryVerdicts,
+  listFindings,
+  createVerdict,
+  setVerdictDecision,
+  type VerdictDto,
+  type VerdictListOpts,
+  type VerdictRangeAlias,
+  type CreateVerdictBody,
+  type ContractRef,
+  type SelectorRef,
+  type PolicyRef,
+} from "./verdicts";

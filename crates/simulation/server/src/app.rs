@@ -30,6 +30,7 @@ use crate::dto::{EvaluateRequest, ExecutionReportRequest};
 use crate::events::EventBus;
 use crate::handler::{evaluate, report_execution, HandlerError};
 use crate::read_handlers;
+use crate::verdict_handlers;
 use crate::write_handlers;
 
 /// Shared, cheaply-cloneable application state handed to every handler.
@@ -181,6 +182,17 @@ pub fn build_router(state: AppState) -> Router {
             get(read_handlers::get_example_transactions),
         )
         .route("/spenders/:addr", get(read_handlers::get_spender))
+        // ---- Phase 2: verdict / audit / history / findings ----
+        .route("/verdicts", post(verdict_handlers::create_verdict))
+        .route(
+            "/verdicts/:id",
+            axum::routing::patch(verdict_handlers::patch_verdict),
+        )
+        .route("/audit/verdicts", get(verdict_handlers::list_audit))
+        .route("/audit/counts", get(verdict_handlers::audit_counts))
+        .route("/audit/export", get(verdict_handlers::audit_export))
+        .route("/history/verdicts", get(verdict_handlers::list_history))
+        .route("/findings/feed", get(verdict_handlers::findings_feed))
         .route("/events/stream", get(crate::events::sse_stream))
         .layer(from_fn(require_auth));
 

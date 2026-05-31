@@ -74,6 +74,12 @@ const MIGRATION_008: Migration = Migration {
     sql: include_str!("migrations/008_token_metadata.sql"),
 };
 
+const MIGRATION_009: Migration = Migration {
+    version: 9,
+    description: "verdicts — Cedar policy audit log (Phase 2: audit/history/findings)",
+    sql: include_str!("migrations/009_verdicts.sql"),
+};
+
 /// User-DB schema (one DB file per wallet user). Holds wallet state,
 /// holdings, approvals, etc. — but NOT the global users table.
 const USER_DB_MIGRATIONS: &[Migration] = &[
@@ -85,6 +91,7 @@ const USER_DB_MIGRATIONS: &[Migration] = &[
     MIGRATION_006,
     MIGRATION_007,
     MIGRATION_008,
+    MIGRATION_009,
 ];
 
 /// Global-DB schema (single file shared across users, holds the email →
@@ -188,7 +195,7 @@ mod tests {
         let pool = Pool::open_in_memory();
         assert_eq!(current_version(&pool).unwrap(), None);
         run(&pool).unwrap();
-        assert_eq!(current_version(&pool).unwrap(), Some(8));
+        assert_eq!(current_version(&pool).unwrap(), Some(9));
     }
 
     #[test]
@@ -197,14 +204,14 @@ mod tests {
         run(&pool).unwrap();
         run(&pool).unwrap(); // 두 번째 호출도 OK
         run(&pool).unwrap(); // 세 번째도
-        assert_eq!(current_version(&pool).unwrap(), Some(8));
+        assert_eq!(current_version(&pool).unwrap(), Some(9));
 
         // _schema_migrations 에는 적용된 버전 수 만큼만 row.
         pool.with_conn(|c| {
             let n: i64 = c
                 .query_row("SELECT COUNT(*) FROM _schema_migrations", [], |r| r.get(0))
                 .unwrap();
-            assert_eq!(n, 8);
+            assert_eq!(n, 9);
             Ok(())
         })
         .unwrap();
