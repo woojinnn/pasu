@@ -1147,10 +1147,10 @@ mod tests {
                     }
                 }
             }],
-            "time": 1710000000123u64
+            "time": 1_710_000_000_123_u64
         });
         let open_orders = json!([{
-            "timestamp": 1710000000124u64,
+            "timestamp": 1_710_000_000_124_u64,
             "coin": "ETH",
             "side": "A",
             "limitPx": "3000",
@@ -1165,7 +1165,7 @@ mod tests {
         let agents = json!([{
             "name": "bot",
             "address": "0x1111111111111111111111111111111111111111",
-            "validUntil": 1710000000999u64
+            "validUntil": 1_710_000_000_999_u64
         }]);
         let meta = json!({
             "universe": [
@@ -1420,7 +1420,7 @@ mod tests {
                     }
                 }
             }],
-            "time": 1710000000123u64
+            "time": 1_710_000_000_123_u64
         });
         let account_value = parse_live_input_value(
             "hl_account",
@@ -1454,7 +1454,7 @@ mod tests {
 
         let l2 = json!({
             "coin": "BTC",
-            "time": 1710000000123u64,
+            "time": 1_710_000_000_123_u64,
             "levels": [
                 [{ "px": "59999", "sz": "1" }],
                 [{ "px": "60002", "sz": "1" }]

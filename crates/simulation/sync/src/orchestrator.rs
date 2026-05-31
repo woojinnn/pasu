@@ -640,10 +640,19 @@ fn apply_value(state: &mut WalletState, loc: &FieldLocation, value: Value, now: 
         }
         FieldLocation::PerpLiqPrice { position_id } => {
             if let Some(field) = perp_position_mut(state, position_id).map(|p| &mut p.liq_price) {
-                if let Some(p) = value_to_optional_price(&value) {
-                    field.value = p;
-                    field.synced_at = now;
-                    field.confidence = Some(Confidence::fresh());
+                match &value {
+                    Value::Null => {
+                        field.value = None;
+                        field.synced_at = now;
+                        field.confidence = Some(Confidence::fresh());
+                    }
+                    _ => {
+                        if let Some(p) = value_to_price(&value) {
+                            field.value = Some(p);
+                            field.synced_at = now;
+                            field.confidence = Some(Confidence::fresh());
+                        }
+                    }
                 }
             }
         }
@@ -684,13 +693,6 @@ fn value_to_price(v: &Value) -> Option<Price> {
         Value::String(s) => Some(simulation_state::Decimal::new(s.clone())),
         Value::Number(n) => Some(simulation_state::Decimal::new(n.to_string())),
         _ => None,
-    }
-}
-
-fn value_to_optional_price(v: &Value) -> Option<Option<Price>> {
-    match v {
-        Value::Null => Some(None),
-        _ => value_to_price(v).map(Some),
     }
 }
 
@@ -1063,7 +1065,7 @@ priority = 1
                                         }
                                     }
                                 }],
-                                "time": 1710000000123u64
+                                "time": 1_710_000_000_123_u64
                             }),
                             ("clearinghouseState", None) => json!({
                                 "marginSummary": {
@@ -1100,15 +1102,15 @@ priority = 1
                                         }
                                     }
                                 }],
-                                "time": 1710000000123u64
+                                "time": 1_710_000_000_123_u64
                             }),
                             ("frontendOpenOrders", Some("xyz")) => json!([{
-                                "timestamp": 1780211477428u64,
+                                "timestamp": 1_780_211_477_428_u64,
                                 "coin": "xyz:SPCX",
                                 "side": "A",
                                 "limitPx": "170.2",
                                 "sz": "0.0",
-                                "oid": 449792035550u64,
+                                "oid": 449_792_035_550_u64,
                                 "origSz": "0.0",
                                 "cloid": null,
                                 "orderType": "Stop Market",
@@ -1121,7 +1123,7 @@ priority = 1
                                 "isPositionTpsl": true
                             }]),
                             ("frontendOpenOrders", None) => json!([{
-                                "timestamp": 1710000000124u64,
+                                "timestamp": 1_710_000_000_124_u64,
                                 "coin": "ETH",
                                 "side": "B",
                                 "limitPx": "3000",
@@ -1136,7 +1138,7 @@ priority = 1
                             ("extraAgents", None) => json!([{
                                 "name": "bot",
                                 "address": "0x1111111111111111111111111111111111111111",
-                                "validUntil": 1710000000999u64
+                                "validUntil": 1_710_000_000_999_u64
                             }]),
                             ("meta", Some("xyz")) => json!({
                                 "universe": [
