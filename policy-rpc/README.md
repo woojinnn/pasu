@@ -1,4 +1,15 @@
-# policy-rpc
+# policy-rpc (LEGACY — archived)
+
+> **Status: archived as of Phase 8B (2026-05).** The browser extension no
+> longer requires this server for the default policy set; the new Rust
+> backend at `crates/simulation/server` (`POST /evaluate` on `:8788`)
+> handles wallet-state simulation, and the one default policy that
+> previously called `oracle.usd_value` (`large-swap-usd-warning`) is
+> inert pending a LiveField-first rewrite. The directory is kept for
+> historical reference (one method, `oracle.usd_value`, has a real
+> CoinGecko/Chainlink implementation that the LiveField sync layer
+> may want to mine for fetchers) but the server is not started or
+> tested by the build pipeline.
 
 Reference TypeScript server for policy-specific remote facts.
 

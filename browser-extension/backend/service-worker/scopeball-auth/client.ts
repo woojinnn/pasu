@@ -106,3 +106,36 @@ export async function fetchMe(): Promise<Me | null> {
 export async function listWallets(): Promise<WalletId[]> {
   return request<WalletId[]>("/wallets");
 }
+
+/**
+ * `POST /evaluate` — simulate the given action envelopes against the
+ * authenticated user's wallet state. The new Rust server persists the
+ * resulting delta so the dashboard sees the history; the SW still runs
+ * WASM Cedar for the actual verdict.
+ *
+ * Returns the server's `policyRequest` (state_before / deltas /
+ * state_after) and `diagnostics`. Errors are surfaced as `ServerError`.
+ *
+ * Wire shape mirrors `crates/simulation/server/src/dto.rs`. Types are
+ * kept loose (`Record<string, unknown>`) because the action / context
+ * payloads are opaque to the SW — only the server (and WASM Cedar)
+ * needs to interpret them.
+ */
+export interface EvaluateRequestDto {
+  wallet_id: WalletId;
+  envelopes: ReadonlyArray<Record<string, unknown>>;
+  eval_context: Record<string, unknown>;
+  call_specs?: ReadonlyArray<Record<string, unknown>>;
+}
+
+export interface EvaluateResponseDto {
+  policyRequest: Record<string, unknown>;
+  diagnostics?: ReadonlyArray<Record<string, unknown>>;
+}
+
+export async function evaluate(req: EvaluateRequestDto): Promise<EvaluateResponseDto> {
+  return request<EvaluateResponseDto>("/evaluate", {
+    method: "POST",
+    body: req,
+  });
+}

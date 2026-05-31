@@ -12,9 +12,12 @@ export {
   request,
   fetchMe,
   listWallets,
+  evaluate,
   type Me,
   type WalletId,
   type RequestOptions,
+  type EvaluateRequestDto,
+  type EvaluateResponseDto,
 } from "./client";
 
 export { startGoogleLogin, parseTokensFromUrl } from "./oauthFlow";
