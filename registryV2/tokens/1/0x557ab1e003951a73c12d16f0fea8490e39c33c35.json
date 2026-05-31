@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x557ab1e003951a73c12d16f0fea8490e39c33c35",
+  "symbol": "sreUSD",
+  "decimals": 18,
+  "name": "Savings reUSD",
+  "source": "https://etherscan.io/token/0x557ab1e003951a73c12d16f0fea8490e39c33c35"
+}

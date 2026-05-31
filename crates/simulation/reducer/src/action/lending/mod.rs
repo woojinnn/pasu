@@ -195,6 +195,21 @@ pub enum LendingVenue {
         /// Collateral token of this market.
         collateral: TokenRef,
     },
+    /// `Curve` LlamaLend (`OneWayLendingFactory`) market. Same `Controller`
+    /// interface as crvUSD, but the borrowed asset comes from a permissionless
+    /// ERC-4626 `Vault` (lender deposits) rather than crvUSD minting — distinct
+    /// risk/liquidity profile, so it carries its own venue tag. One `Controller`
+    /// per (collateral, borrowed) market; the borrowed asset is named by the
+    /// action's `asset` field (the top markets all borrow crvUSD).
+    LlamaLend {
+        /// Chain hosting the controller.
+        chain: ChainId,
+        /// `Controller` contract address (one per market).
+        #[tsify(type = "string")]
+        controller: Address,
+        /// Collateral token of this market.
+        collateral: TokenRef,
+    },
 }
 
 impl LendingVenue {
@@ -214,6 +229,7 @@ impl LendingVenue {
             Self::Spark { .. } => "spark",
             Self::Fluid { .. } => "fluid",
             Self::CrvUsd { .. } => "crv_usd",
+            Self::LlamaLend { .. } => "llama_lend",
         }
     }
 }

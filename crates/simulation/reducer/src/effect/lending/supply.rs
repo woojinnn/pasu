@@ -80,9 +80,10 @@ impl Reducer for SupplyAction {
                 morpho_optimizer::asset_to_optimizer_shares(reserve, self.amount)?
             }
             LendingVenue::Fluid { .. } => fluid::asset_to_fluid_shares(reserve, self.amount)?,
-            // crvUSD collateral is held 1:1 by the Controller (no share/rebasing
-            // model) — the deposited collateral amount IS the recorded delta.
-            LendingVenue::CrvUsd { .. } => self.amount,
+            // crvUSD / LlamaLend collateral is held 1:1 by the Controller (no
+            // share/rebasing model) — the deposited collateral amount IS the
+            // recorded delta.
+            LendingVenue::CrvUsd { .. } | LendingVenue::LlamaLend { .. } => self.amount,
             LendingVenue::MorphoBlue { .. } => {
                 // Morpho Blue shares need (total_assets, total_shares) which
                 // `ReserveState` does not yet expose — defer until the sync

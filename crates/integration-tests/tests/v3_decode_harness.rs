@@ -654,6 +654,86 @@ fn curve_crvusd_create_loan_borrows_crvusd_against_collateral() {
     );
 }
 
+/// Field-level golden for Curve LlamaLend `create_loan` — the new
+/// `LendingVenue::LlamaLend` venue (distinct from crvUSD). On the WBTC LlamaLend
+/// market, `create_loan` must decode to a lending `borrow` with `venue.name =
+/// "llama_lend"`, `asset` = crvUSD (the borrowed token), and `venue.collateral` =
+/// WBTC. Pins both the new venue tag and the borrow/collateral split.
+#[test]
+fn curve_llamalend_create_loan_borrows_crvusd_against_collateral() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // WBTC LlamaLend market Controller. create_loan(collateral=1e18, debt=1000e18, N=10).
+    const TO: &str = "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617";
+    const CRVUSD: &str = "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e";
+    const WBTC: &str = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599";
+    const CALLDATA: &str = "0x23cfed030000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000003635c9adc5dea00000000000000000000000000000000000000000000000000000000000000000000a";
+
+    let env = harness::route::route_calldata(1, TO, "0x23cfed03", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let venue = find_object_by_key(&env, "venue").expect("borrow body carries venue");
+    assert_eq!(
+        find_string_field(venue, "name").as_deref(),
+        Some("llama_lend"),
+        "LlamaLend market venue.name must be llama_lend (not crv_usd); got {venue}"
+    );
+    let asset = find_object_by_key(&env, "asset").expect("borrow body carries asset");
+    assert_eq!(
+        find_string_field(asset, "address").as_deref(),
+        Some(CRVUSD),
+        "LlamaLend create_loan must borrow crvUSD; got {asset}"
+    );
+    let collateral =
+        find_object_by_key(venue, "collateral").expect("llama_lend venue carries collateral");
+    assert_eq!(
+        find_string_field(collateral, "address").as_deref(),
+        Some(WBTC),
+        "WBTC market venue.collateral must be WBTC; got {collateral}"
+    );
+}
+
+/// Field-level golden for Curve LlamaLend `approve(address,bool)` — the permission-
+/// delegation primitive (ScopeBall's raison d'être). On a newgen LlamaLend
+/// Controller (sreUSD market), `approve(_spender, _allow)` must decode to a
+/// `permission` / `protocol_authorization` granting the OPERATOR role to
+/// `_spender`, with `is_authorized` reflecting the `_allow` bool. A silent drop
+/// (as "admin") would hide a loan-management authority grant.
+#[test]
+fn curve_llamalend_approve_decodes_operator_authorization() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // sreUSD market Controller (newgen). approve(_spender=0x1111…1111, _allow=true).
+    const TO: &str = "0x4f79fe450a2baf833e8f50340bd230f5a3ecafe9";
+    const SPENDER: &str = "0x1111111111111111111111111111111111111111";
+    const CALLDATA: &str = "0x3d140d2100000000000000000000000011111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000001";
+
+    let env = harness::route::route_calldata(1, TO, "0x3d140d21", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "authorized").as_deref(),
+        Some(SPENDER),
+        "approve must authorize _spender as operator; got {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "permission").as_deref(),
+        Some("operator"),
+        "LlamaLend approve grants the operator permission; got {env}"
+    );
+    assert_eq!(
+        find_object_by_key(&env, "is_authorized").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "_allow=1 must decode is_authorized=true (grant, not revoke); got {env}"
+    );
+}
+
 /// Field-level golden: Curve veCRV `create_lock` must decode to a `staking`
 /// `lock` whose locked `token` is CRV (BAKED by the manifest — not in calldata),
 /// `amount` = `_value`, and `unlock_time` = `_unlock_time`. The corpus

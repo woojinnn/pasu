@@ -1,0 +1,98 @@
+{
+  "type": "adapter_action",
+  "id": "curve/llamalend/sfrxusd/remove_collateral@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xd14ff5b6",
+    "chain_to_addresses": {
+      "1": [
+        "0x3de37c38739dfb83b7a902842bf5393040f7bf50"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "remove_collateral",
+    "abi": {
+      "name": "remove_collateral",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "collateral",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name": "llama_lend",
+            "chain": "$chain",
+            "controller": "$to",
+            "collateral": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "0xcf62f905562626cfcdd2261162a51fd02fc9c5b6"
+              }
+            }
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xcf62f905562626cfcdd2261162a51fd02fc9c5b6"
+            }
+          },
+          "amount": "$args.collateral",
+          "recipient": "$tx.from"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "amm()",
+          "decoder_id": "llamalend_controller_state"
+        },
+        "ttl_s": 30
+      },
+      "available_to_withdraw": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "llamalend_available_collateral"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "user_state(address)",
+          "decoder_id": "llamalend_user_state"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

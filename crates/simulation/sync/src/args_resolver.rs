@@ -89,15 +89,16 @@ const fn lending_venue_pool_address(
     venue: &simulation_reducer::action::lending::LendingVenue,
 ) -> Option<simulation_state::Address> {
     use simulation_reducer::action::lending::LendingVenue::{
-        AaveV2, AaveV3, CompoundV2, CompoundV3, CrvUsd, Fluid, MorphoBlue, MorphoOptimizer, Spark,
+        AaveV2, AaveV3, CompoundV2, CompoundV3, CrvUsd, Fluid, LlamaLend, MorphoBlue,
+        MorphoOptimizer, Spark,
     };
     match venue {
         AaveV3 { pool, .. } | AaveV2 { pool, .. } | Spark { pool, .. } => Some(*pool),
         CompoundV3 { comet, .. } => Some(*comet),
         CompoundV2 { comptroller, .. } => Some(*comptroller),
         MorphoOptimizer { vault, .. } | Fluid { vault, .. } => Some(*vault),
-        // crvUSD: collateral market 당 Controller 1개 = pool.
-        CrvUsd { controller, .. } => Some(*controller),
+        // crvUSD / LlamaLend: market 당 Controller 1개 = pool.
+        CrvUsd { controller, .. } | LlamaLend { controller, .. } => Some(*controller),
         // Morpho Blue 는 single market id 기반, pool address 없음
         MorphoBlue { .. } => None,
     }
