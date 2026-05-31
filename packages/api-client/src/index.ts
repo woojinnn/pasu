@@ -29,16 +29,33 @@ export {
   getWalletState,
   getWalletHoldings,
   getWalletApprovals,
+  getWalletApprovalsWithRisk,
   getWalletBlockHeights,
   patchWallet,
   deleteWallet,
   type WalletId,
   type BlockHeight,
   type WalletState,
+  type ApprovalRisk,
+  type ClassifiedApprovals,
+  type ClassifiedErc20Approval,
+  type ClassifiedSetForAllApproval,
+  type ClassifiedPermit2Approval,
+  type SpenderMetaInline,
 } from "./wallets";
 
+// Phase 3 dashboard summary.
+export {
+  getDashboardSummary,
+  type DashboardSummary,
+  type DashboardWalletSummary,
+  type ChainShare,
+} from "./dashboard";
+
 // Re-export every shared type so consumers can `import { … } from "@scopeball/api-client"`
-// without juggling two packages.
+// without juggling two packages. (`DashboardSummary` is the live shape
+// from ./dashboard above — the stub in @scopeball/types pre-dates Phase 3
+// and will be removed in a follow-up.)
 export type {
   Address,
   ChainId,
@@ -49,7 +66,6 @@ export type {
   TokenMetadata,
   TokenCatalogRow,
   WalletState as WalletStateView,
-  DashboardSummary,
   VerdictRow,
   Verdict,
   I18nString,

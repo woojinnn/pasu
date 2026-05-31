@@ -87,16 +87,185 @@ pub async fn get_holdings(
     }
 }
 
-/// `GET /wallets/:address/approvals` — the full [`ApprovalSet`].
+/// `GET /wallets/:address/approvals[?with_risk=true]`.
+///
+/// Default: returns the raw [`ApprovalSet`] (back-compat).
+/// `?with_risk=true`: returns the classified shape — every approval gets
+/// a `risk[]` tag list (UNLIMITED / KNOWN_VENUE / BLOCKED / OLD) plus
+/// the matching `spender_meta` from the [`crate::spenders::SpenderCatalog`].
 pub async fn get_approvals(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
     Path(address): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<ApprovalsQuery>,
 ) -> Response {
     match load_state(&state.multi_user, &user.user_id, &address).await {
-        Ok(s) => Json::<ApprovalSet>(s.approvals).into_response(),
+        Ok(s) => {
+            if q.with_risk.unwrap_or(false) {
+                let classified = classify_approvals(&s.approvals, &state.spenders);
+                Json(classified).into_response()
+            } else {
+                Json::<ApprovalSet>(s.approvals).into_response()
+            }
+        }
         Err(e) => e,
     }
+}
+
+#[derive(serde::Deserialize, Default)]
+pub struct ApprovalsQuery {
+    #[serde(default)]
+    pub with_risk: Option<bool>,
+}
+
+/// Server-classified shape mirroring `ApprovalSet` but with risk tags.
+#[derive(Serialize)]
+struct ClassifiedApprovals {
+    erc20: Vec<Erc20Approval>,
+    set_for_all: Vec<SetForAllApproval>,
+    permit2: Vec<Permit2Approval>,
+}
+
+#[derive(Serialize)]
+struct Erc20Approval {
+    chain: ChainId,
+    token: String,
+    spender: String,
+    amount: String,
+    is_unlimited: bool,
+    last_set_at: i64,
+    risk: Vec<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    spender_meta: Option<crate::spenders::SpenderMeta>,
+}
+
+#[derive(Serialize)]
+struct SetForAllApproval {
+    chain: ChainId,
+    collection: String,
+    operator: String,
+    risk: Vec<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    spender_meta: Option<crate::spenders::SpenderMeta>,
+}
+
+#[derive(Serialize)]
+struct Permit2Approval {
+    chain: ChainId,
+    token: String,
+    spender: String,
+    amount: String,
+    expiration: i64,
+    nonce: u32,
+    risk: Vec<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    spender_meta: Option<crate::spenders::SpenderMeta>,
+}
+
+/// 90-day staleness threshold — any approval older counts as `OLD`.
+const STALE_AFTER_SECS: i64 = 90 * 24 * 3_600;
+
+fn classify_approvals(
+    set: &ApprovalSet,
+    spenders: &crate::spenders::SpenderCatalog,
+) -> ClassifiedApprovals {
+    use simulation_state::primitives::Time;
+
+    let now = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0),
+    )
+    .unwrap_or(0);
+
+    let _ = Time::from_unix(0); // silence import warning when only used via deref above
+
+    let mut out = ClassifiedApprovals {
+        erc20: Vec::new(),
+        set_for_all: Vec::new(),
+        permit2: Vec::new(),
+    };
+
+    for ((chain, token), per_spender) in &set.erc20 {
+        for (spender, spec) in per_spender {
+            let spender_lower = format!("{spender:#x}");
+            let meta = spenders.get(&spender_lower).cloned();
+            let mut risk: Vec<&'static str> = Vec::new();
+            if spec.is_unlimited {
+                risk.push("UNLIMITED");
+            }
+            match meta.as_ref().map(|m| m.rep) {
+                Some(crate::spenders::SpenderRep::Known) => risk.push("KNOWN_VENUE"),
+                Some(crate::spenders::SpenderRep::Blocked) => risk.push("BLOCKED"),
+                None => {}
+            }
+            let last = i64::try_from(spec.last_set_at.as_unix()).unwrap_or(0);
+            if last > 0 && now - last > STALE_AFTER_SECS {
+                risk.push("OLD");
+            }
+            out.erc20.push(Erc20Approval {
+                chain: chain.clone(),
+                token: format!("{token:#x}"),
+                spender: spender_lower,
+                amount: spec.amount.to_string(),
+                is_unlimited: spec.is_unlimited,
+                last_set_at: last,
+                risk,
+                spender_meta: meta,
+            });
+        }
+    }
+
+    for ((chain, collection), operators) in &set.set_for_all {
+        for operator in operators {
+            let operator_lower = format!("{operator:#x}");
+            let meta = spenders.get(&operator_lower).cloned();
+            // setApprovalForAll always confers full collection access.
+            let mut risk: Vec<&'static str> = vec!["UNLIMITED"];
+            match meta.as_ref().map(|m| m.rep) {
+                Some(crate::spenders::SpenderRep::Known) => risk.push("KNOWN_VENUE"),
+                Some(crate::spenders::SpenderRep::Blocked) => risk.push("BLOCKED"),
+                None => {}
+            }
+            out.set_for_all.push(SetForAllApproval {
+                chain: chain.clone(),
+                collection: format!("{collection:#x}"),
+                operator: operator_lower,
+                risk,
+                spender_meta: meta,
+            });
+        }
+    }
+
+    for ((chain, token, spender), allowance) in &set.permit2 {
+        let spender_lower = format!("{spender:#x}");
+        let meta = spenders.get(&spender_lower).cloned();
+        let mut risk: Vec<&'static str> = Vec::new();
+        if allowance.amount == simulation_state::primitives::U256::MAX {
+            risk.push("UNLIMITED");
+        }
+        match meta.as_ref().map(|m| m.rep) {
+            Some(crate::spenders::SpenderRep::Known) => risk.push("KNOWN_VENUE"),
+            Some(crate::spenders::SpenderRep::Blocked) => risk.push("BLOCKED"),
+            None => {}
+        }
+        let exp = i64::try_from(allowance.expiration.as_unix()).unwrap_or(0);
+        if exp > 0 && exp < now {
+            risk.push("EXPIRED");
+        }
+        out.permit2.push(Permit2Approval {
+            chain: chain.clone(),
+            token: format!("{token:#x}"),
+            spender: spender_lower,
+            amount: allowance.amount.to_string(),
+            expiration: exp,
+            nonce: allowance.nonce,
+            risk,
+            spender_meta: meta,
+        });
+    }
+    out
 }
 
 /// `GET /wallets/:address/block-heights` — per-chain block snapshot.

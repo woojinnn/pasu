@@ -246,12 +246,17 @@ paths:
   /wallets/{address}/approvals:
     parameters:
       - $ref: "#/components/parameters/AddressParam"
+      - { name: with_risk, in: query, schema: { type: boolean, default: false }, description: "Server-classify each approval with risk[] + spender_meta (Phase 3)" }
     get:
       tags: [wallets]
-      summary: Full ApprovalSet (ERC20 + setForAll + Permit2)
+      summary: Full ApprovalSet (raw or classified-with-risk)
       responses:
         "200":
-          description: ApprovalSet
+          description: |
+            Default: ApprovalSet (raw on-chain shape).
+            `?with_risk=true`: ClassifiedApprovals — each entry carries
+            `risk: [UNLIMITED | KNOWN_VENUE | BLOCKED | OLD | EXPIRED][]`
+            plus `spender_meta` from /spenders/:addr when known.
           content:
             application/json:
               schema: { type: object }
@@ -443,6 +448,48 @@ paths:
                   chain: { type: string, nullable: true }
                   notes: { type: string, nullable: true }
         "404": { description: Address not in catalog }
+
+  /dashboard/summary:
+    get:
+      tags: [meta]
+      summary: Workspace aggregate (Home + Monitoring L1 single round-trip)
+      description: |
+        Sums every tracked wallet's portfolio (using each holding's
+        computed `value_usd`), splits by chain, and attaches per-wallet
+        badges (unlimited approval count, pending tx count). Also
+        returns workspace-level counters (wallet_count, policy_count,
+        unresolved_findings).
+      responses:
+        "200":
+          description: DashboardSummary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallet_count: { type: integer }
+                  policy_count: { type: integer }
+                  total_portfolio_usd: { type: string }
+                  chain_breakdown:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        chain: { type: string }
+                        usd:   { type: string }
+                        pct:   { type: number }
+                  wallets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:              { type: integer }
+                        address:         { type: string }
+                        label:           { type: string, nullable: true }
+                        total_usd:       { type: string }
+                        unlimited_count: { type: integer }
+                        pending_count:   { type: integer }
+                  unresolved_findings: { type: integer }
 
   /verdicts:
     post:
