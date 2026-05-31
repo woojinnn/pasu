@@ -24,6 +24,14 @@ sourcify_dump/
 **/dist/
 .vite/
 
+# Yarn 4 (Berry) caches / state — keep .yarn/releases/ committed for repo
+# determinism; ignore the rest.
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+.yarn/build-state.yml
+.pnp.*
+
 # Web-server runtime artifacts (managed by scripts/serve.sh).
 target/web-server.log
 target/web-server.pid

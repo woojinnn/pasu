@@ -1,0 +1,22 @@
+{
+  "name": "scopeball",
+  "private": true,
+  "description": "Scopeball monorepo — Rust backend (crates/), browser extension, and frontend apps.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "web:dev": "yarn workspace @scopeball/web dev",
+    "web:build": "yarn workspace @scopeball/web build",
+    "web:typecheck": "yarn workspace @scopeball/web typecheck",
+    "api-client:typecheck": "yarn workspace @scopeball/api-client typecheck",
+    "types:typecheck": "yarn workspace @scopeball/types typecheck",
+    "typecheck": "run-p api-client:typecheck types:typecheck web:typecheck"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "yarn@4.14.1"
+}

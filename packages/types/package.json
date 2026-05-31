@@ -1,0 +1,18 @@
+{
+  "name": "@scopeball/types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared TypeScript types for scopeball server responses. Hand-maintained today; future work may codegen from Rust DTOs.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
