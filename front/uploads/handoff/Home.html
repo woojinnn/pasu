@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Cloudy Pond · Home</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+
+<style>
+  /* ─── Cloudy Pond tokens ─── */
+  :root {
+    --sage-50:#F8F9F6; --sage-100:#EBF3E8; --sage-200:#D9E9D3; --sage-300:#C5DDBD;
+    --sage-400:#B0D1A4; --sage-500:#9CC58D; --sage-600:#7FA172; --sage-700:#637E59;
+    --sage-800:#44583D; --sage-900:#283523;
+    --slate-50:#EFF0F2; --slate-100:#D7DBDF; --slate-200:#B5BBC4; --slate-300:#9099A5;
+    --slate-400:#697485; --slate-500:#475569; --slate-600:#384455; --slate-700:#2A3441;
+    --slate-800:#1B222C; --slate-900:#0D1118;
+    --cyan-50:#F8F9F9; --cyan-100:#EDF4F6; --cyan-200:#DCEAED; --cyan-300:#CAE0E4;
+    --cyan-400:#B6D4DA; --cyan-500:#A4C9D1; --cyan-600:#85A4AB; --cyan-700:#688186;
+    --cyan-800:#485A5E; --cyan-900:#2B3639;
+    --fog-50:#FEFEFE; --fog-100:#FCFCFC; --fog-200:#FAFAF9; --fog-300:#F7F7F6;
+    --fog-400:#F4F5F3; --fog-500:#F1F2F0; --fog-600:#C5C6C4; --fog-700:#9B9C9A;
+    --fog-800:#6E6E6D; --fog-900:#434343;
+    --pass-50:#F4F9F3; --pass-100:#E4EFE1; --pass-200:#CDE1C5; --pass-300:#B2D1A8;
+    --pass-400:#96C087; --pass-500:#7CB069; --pass-600:#648F55; --pass-700:#4E7041;
+    --pass-800:#354E2C; --pass-900:#1E2E18;
+    --warn-50:#FBF2DF; --warn-100:#F6DFB0; --warn-200:#EEC781; --warn-300:#E3AE56;
+    --warn-400:#DA9D43; --warn-500:#D69238; --warn-600:#AC7529; --warn-700:#80571F;
+    --warn-800:#573C16; --warn-900:#2D210C;
+    --fail-50:#FAEAE6; --fail-100:#F4D9D5; --fail-200:#EDC9C4; --fail-300:#E2ADA5;
+    --fail-400:#D48E85; --fail-500:#C77268; --fail-600:#A25C54; --fail-700:#7F4740;
+    --fail-800:#59302B; --fail-900:#361B18;
+
+    --page: var(--fog-400);
+    --surface: #FFFFFF;
+    --hairline: var(--fog-600);
+    --hairline-soft: #E5E6E3;
+
+    --r-lg: 20px; --r-md: 14px; --r-sm: 10px; --r-input: 12px; --r-pill: 999px;
+    --ff-sans: "IBM Plex Sans KR", "IBM Plex Sans", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --ff-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--slate-500);
+    font-family: var(--ff-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--sage-200); color: var(--slate-900); }
+  button, a { font-family: inherit; }
+
+  /* ════════════ Stage ════════════ */
+  .stage {
+    min-height: 900px;
+    display: grid; place-items: start center;
+    padding: 28px 0;
+    background: var(--fog-500);
+  }
+  .screen {
+    width: 1440px; min-height: 900px;
+    background: var(--page);
+    border-radius: 22px;
+    border: 1px solid var(--hairline);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 2px 8px rgba(15,23,42,0.04);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+  }
+
+  /* ════════════ NAV RAIL ════════════ */
+  .nav-rail {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 64px; background: var(--surface);
+    border-right: 1px solid var(--hairline);
+    z-index: 50;
+    display: flex; flex-direction: column;
+    padding: 14px 0; overflow: hidden;
+    transition: width 240ms cubic-bezier(0.32,0.04,0.2,1), box-shadow 240ms ease;
+  }
+  .nav-rail:hover, .nav-rail:focus-within, .nav-rail.locked { width: 256px; box-shadow: 8px 0 32px rgba(15,23,42,0.06); }
+  .nav-logo { display: flex; align-items: center; gap: 12px; height: 40px; margin: 0 14px 18px; }
+  .nav-logo .mark {
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;
+    border: 1px dashed var(--slate-300);
+    background: repeating-linear-gradient(135deg, var(--fog-300) 0 5px, var(--fog-500) 5px 10px);
+    display: grid; place-items: center;
+    font-family: var(--ff-mono); font-size: 8px; color: var(--slate-500);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .nav-logo .word { font-weight: 700; font-size: 16px; color: var(--slate-900); letter-spacing: -0.01em; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 80ms ease, transform 180ms 80ms ease; }
+  .nav-rail:hover .nav-logo .word, .nav-rail:focus-within .nav-logo .word, .nav-rail.locked .nav-logo .word { opacity: 1; transform: translateX(0); }
+  .nav-cta { height: 40px; margin: 0 14px 10px; border-radius: 10px; background: var(--slate-500); color: var(--fog-50); display: flex; align-items: center; overflow: hidden; }
+  .nav-cta .main { flex: 1; display: flex; align-items: center; gap: 12px; padding: 0 12px; height: 100%; cursor: default; }
+  .nav-cta .main:hover { background: var(--slate-700); }
+  .nav-cta .plus { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-cta .label { font-weight: 600; font-size: 14px; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 80ms ease, transform 180ms 80ms ease; }
+  .nav-cta .caret { width: 36px; height: 100%; display: grid; place-items: center; border-left: 1px solid rgba(255,255,255,0.18); cursor: default; opacity: 0; transition: opacity 180ms 80ms ease; }
+  .nav-cta .caret:hover { background: var(--slate-700); }
+  .nav-cta .caret svg { width: 14px; height: 14px; }
+  .nav-rail:hover .nav-cta .label, .nav-rail:focus-within .nav-cta .label, .nav-rail.locked .nav-cta .label { opacity: 1; transform: translateX(0); }
+  .nav-rail:hover .nav-cta .caret, .nav-rail:focus-within .nav-cta .caret, .nav-rail.locked .nav-cta .caret { opacity: 1; }
+  .nav-ws { height: 40px; margin: 8px 14px 12px; background: var(--fog-300); border: 1px solid var(--hairline); border-radius: 10px; display: flex; align-items: center; gap: 10px; padding: 0 10px; overflow: hidden; }
+  .nav-ws .ws-av { width: 24px; height: 24px; border-radius: 50%; background: var(--cyan-200); color: var(--slate-700); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .nav-ws .ws-label { flex: 1; font-size: 13px; color: var(--slate-700); font-weight: 500; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 100ms ease, transform 180ms 100ms ease; }
+  .nav-ws .ws-label .sub { display: block; font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); font-weight: 500; margin-top: -2px; }
+  .nav-ws .ws-caret { width: 14px; height: 14px; color: var(--slate-400); opacity: 0; transition: opacity 180ms 100ms ease; flex-shrink: 0; }
+  .nav-rail:hover .nav-ws .ws-label, .nav-rail:focus-within .nav-ws .ws-label, .nav-rail.locked .nav-ws .ws-label { opacity: 1; transform: translateX(0); }
+  .nav-rail:hover .nav-ws .ws-caret, .nav-rail:focus-within .nav-ws .ws-caret, .nav-rail.locked .nav-ws .ws-caret { opacity: 1; }
+  .nav-divider { height: 1px; background: var(--hairline-soft); margin: 6px 16px; }
+  .nav-group { padding: 6px 0; display: flex; flex-direction: column; }
+  .nav-item {
+    position: relative; display: flex; align-items: center; gap: 14px;
+    height: 38px; margin: 0 10px; padding: 0 10px;
+    border-radius: 9px; color: var(--slate-500); font-size: 14px; font-weight: 500;
+    cursor: default; text-decoration: none; letter-spacing: -0.005em;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .nav-item:hover { background: var(--fog-300); color: var(--slate-800); }
+  .nav-item.active { background: var(--sage-50); color: var(--slate-900); font-weight: 600; }
+  .nav-item.active::before { content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; background: var(--pass-500); border-radius: 0 2px 2px 0; }
+  .nav-item .icon { width: 20px; height: 20px; display: grid; place-items: center; flex-shrink: 0; }
+  .nav-item .icon svg { width: 18px; height: 18px; }
+  .nav-item .label { flex: 1; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 80ms ease, transform 180ms 80ms ease; }
+  .nav-rail:hover .nav-item .label, .nav-rail:focus-within .nav-item .label, .nav-rail.locked .nav-item .label { opacity: 1; transform: translateX(0); }
+  .nav-item .badge { background: var(--fail-500); color: var(--fog-50); font-family: var(--ff-mono); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: var(--r-pill); opacity: 0; transition: opacity 180ms 100ms ease; }
+  .nav-rail:hover .nav-item .badge, .nav-rail:focus-within .nav-item .badge, .nav-rail.locked .nav-item .badge { opacity: 1; }
+  .nav-item .dot-badge { position: absolute; right: 8px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--fail-500); box-shadow: 0 0 0 2px var(--surface); transition: opacity 120ms ease; }
+  .nav-rail:hover .nav-item .dot-badge, .nav-rail:focus-within .nav-item .dot-badge, .nav-rail.locked .nav-item .dot-badge { opacity: 0; }
+  .nav-bottom { margin-top: auto; padding-top: 8px; }
+  .nav-user { display: flex; align-items: center; gap: 12px; margin: 0 10px; padding: 8px 10px; border-radius: 10px; transition: background 120ms ease; }
+  .nav-user:hover { background: var(--fog-300); }
+  .nav-user .av { width: 28px; height: 28px; border-radius: 50%; background: var(--slate-500); color: var(--fog-50); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .nav-user .meta { flex: 1; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 100ms ease, transform 180ms 100ms ease; overflow: hidden; }
+  .nav-user .meta .nm { font-size: 13px; color: var(--slate-900); font-weight: 600; white-space: nowrap; }
+  .nav-user .meta .em { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); margin-top: -2px; white-space: nowrap; }
+  .nav-rail:hover .nav-user .meta, .nav-rail:focus-within .nav-user .meta, .nav-rail.locked .nav-user .meta { opacity: 1; transform: translateX(0); }
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-cta .label,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-cta .caret,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-ws .ws-label,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-ws .ws-caret,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-item .label,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-item .badge,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-user .meta,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-logo .word { display: none; }
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-cta .main,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-ws,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-item,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-user,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-logo { justify-content: center; padding-left: 0; padding-right: 0; }
+
+  /* ════════════ Content ════════════ */
+  .content { flex: 1; margin-left: 64px; padding: 24px 32px 32px; min-width: 0; }
+
+  /* Topbar */
+  .topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 22px;
+  }
+  .crumb { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--slate-400); }
+  .crumb .here { color: var(--slate-900); font-weight: 700; font-size: 20px; letter-spacing: -0.01em; }
+  .crumb .sep { color: var(--slate-300); }
+  .crumb .addr { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-500); }
+  .search {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-input);
+    padding: 9px 14px;
+    max-width: 380px; width: 100%; margin: 0 auto;
+    color: var(--slate-900);
+  }
+  .search input { border: none; outline: none; background: transparent; width: 100%; font: inherit; }
+  .search input::placeholder { color: var(--slate-300); }
+  .search .kbd { margin-left: auto; font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); background: var(--fog-400); border: 1px solid var(--hairline); border-radius: 5px; padding: 1px 6px; }
+  .dots { display: flex; gap: 8px; align-items: center; }
+  .dot-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    padding: 8px 14px 8px 12px;
+    font-size: 13px; font-weight: 500; color: var(--slate-700);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.pass { background: var(--pass-500); box-shadow: 0 0 0 3px rgba(124,176,105,0.18); }
+  .dot.warn { background: var(--warn-500); box-shadow: 0 0 0 3px rgba(214,146,56,0.18); }
+  .dot.fail { background: var(--fail-500); box-shadow: 0 0 0 3px rgba(199,114,104,0.18); }
+  .icon-btn { width: 38px; height: 38px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--hairline); border-radius: 50%; color: var(--slate-500); cursor: default; position: relative; }
+  .icon-btn:hover { background: var(--fog-300); color: var(--slate-700); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .icon-btn .unread { position: absolute; right: 5px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--fail-500); box-shadow: 0 0 0 2px var(--surface); }
+
+  /* ════════════ SAGE CONTEXT BAR — portfolio ════════════ */
+  .context-bar {
+    position: relative;
+    background: var(--sage-50);
+    border: 1px solid var(--sage-200);
+    border-radius: var(--r-md);
+    padding: 0 22px;
+    height: 56px;
+    display: flex; align-items: center; gap: 18px;
+    overflow: hidden;
+  }
+  .context-bar::after {
+    content: ""; position: absolute;
+    right: -56px; top: -56px;
+    width: 160px; height: 160px;
+    border-radius: 50%; border: 1px solid var(--sage-200);
+    box-shadow:
+      inset 0 0 0 20px var(--sage-50), inset 0 0 0 21px var(--sage-200),
+      inset 0 0 0 46px var(--sage-50), inset 0 0 0 47px var(--sage-200);
+    opacity: 0.7; pointer-events: none;
+  }
+  .context-bar > * { position: relative; z-index: 1; }
+  .context-bar .protected {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--sage-700);
+    background: rgba(255,255,255,0.55); border: 1px solid var(--sage-200);
+    border-radius: var(--r-pill); padding: 5px 11px 5px 8px; white-space: nowrap;
+  }
+  .context-bar .protected .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--pass-500); box-shadow: 0 0 0 3px rgba(124,176,105,0.24); }
+  .context-bar .ctx-sep { width: 1px; height: 18px; background: var(--sage-300); flex-shrink: 0; }
+  .context-bar .wsname { font-weight: 700; color: var(--slate-900); font-size: 14px; white-space: nowrap; }
+  .context-bar .summary { color: var(--slate-700); font-size: 13.5px; white-space: nowrap; }
+  .context-bar .summary b { color: var(--slate-900); font-weight: 700; }
+  .context-bar .summary .mute { color: var(--slate-500); }
+  .context-bar .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .context-bar .since { font-family: var(--ff-mono); font-size: 11.5px; color: var(--sage-800); white-space: nowrap; }
+  .context-bar .ctx-cta {
+    appearance: none; border: 1px solid var(--sage-300); background: transparent;
+    color: var(--sage-800); font-weight: 600; font-size: 12.5px;
+    padding: 6px 12px; border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: default; transition: background 120ms ease;
+  }
+  .context-bar .ctx-cta:hover { background: rgba(255,255,255,0.5); }
+
+  /* ════════════ WALLET LIST ════════════ */
+  .wallets-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 28px 0 14px;
+    padding: 0 2px;
+  }
+  .wallets-head h2 {
+    margin: 0; font-size: 22px; font-weight: 700;
+    color: var(--slate-900); letter-spacing: -0.015em;
+  }
+  .wallets-head h2 .submeta {
+    margin-left: 12px;
+    font-size: 13px; font-weight: 500; color: var(--slate-500);
+  }
+  .wallets-head .controls {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--ff-mono); font-size: 11.5px;
+    color: var(--slate-500); white-space: nowrap;
+  }
+
+  .wallet-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .wallet-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    transition: background 160ms ease, border-color 160ms ease;
+  }
+  .wallet-card.calm { background: var(--sage-50); border-color: var(--sage-200); }
+  .wallet-card.calm:hover { border-color: var(--sage-300); }
+  .wallet-card.alert:hover { border-color: var(--slate-200); }
+
+  /* HEAD — simplified · name + short addr + status pill + pending count */
+  .wallet-head {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 14px 32px 1fr auto auto;
+    column-gap: 14px;
+    align-items: center;
+    cursor: default;
+    user-select: none;
+  }
+  .wallet-head:hover { background: rgba(0,0,0,0.018); }
+  .wallet-card.calm .wallet-head:hover { background: rgba(124,176,105,0.06); }
+  .wallet-card .caret {
+    width: 14px; height: 14px;
+    color: var(--slate-400);
+    transition: transform 220ms cubic-bezier(0.32,0.04,0.2,1), color 120ms ease;
+  }
+  .wallet-card.expanded .caret { transform: rotate(90deg); color: var(--slate-700); }
+  .wallet-card .w-icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: var(--cyan-200); color: var(--slate-700);
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 700; letter-spacing: -0.005em;
+  }
+  .wallet-card.calm .w-icon { background: var(--sage-200); color: var(--sage-900); }
+  .wallet-card .w-id {
+    display: flex; align-items: baseline; gap: 12px;
+    min-width: 0;
+  }
+  .wallet-card .w-id .name {
+    font-size: 16px; font-weight: 700;
+    color: var(--slate-900); letter-spacing: -0.005em;
+    white-space: nowrap;
+  }
+  .wallet-card .w-id .addr {
+    font-family: var(--ff-mono); font-size: 12px;
+    color: var(--slate-400); white-space: nowrap;
+  }
+  .wallet-card .w-status { display: flex; align-items: center; gap: 8px; }
+  .wallet-card .w-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600;
+    padding: 5px 11px 5px 9px;
+    border-radius: var(--r-pill);
+    letter-spacing: -0.005em; white-space: nowrap;
+  }
+  .wallet-card .w-pill .pd { width: 7px; height: 7px; border-radius: 50%; }
+  .wallet-card .w-pill.calm { background: var(--pass-100); color: var(--pass-800); border: 1px solid var(--pass-200); }
+  .wallet-card .w-pill.calm .pd { background: var(--pass-500); }
+  .wallet-card .w-pill.warn { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .wallet-card .w-pill.warn .pd { background: var(--warn-500); }
+  .wallet-card .w-pill.fail { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+  .wallet-card .w-pill.fail .pd { background: var(--fail-500); }
+  .wallet-card .w-pending {
+    font-family: var(--ff-mono); font-size: 12px;
+    color: var(--slate-700); font-weight: 600;
+    background: var(--slate-50); border: 1px solid var(--slate-200);
+    padding: 5px 11px; border-radius: var(--r-pill); white-space: nowrap;
+  }
+  .wallet-card.calm .w-pending { display: none; }
+
+  /* BODY — height cap + internal scroll */
+  .wallet-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 280ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .wallet-card.expanded .wallet-body { grid-template-rows: 1fr; }
+  .wallet-body > .wb-inner { overflow: hidden; min-height: 0; }
+  .wallet-body > .wb-inner > .wb-content {
+    border-top: 1px dashed var(--hairline);
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 18px 20px 16px;
+    display: flex; flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--slate-200) transparent;
+  }
+  .wallet-card.calm .wallet-body > .wb-inner > .wb-content { border-top-color: var(--sage-200); }
+  .wb-content::-webkit-scrollbar { width: 8px; }
+  .wb-content::-webkit-scrollbar-track { background: transparent; }
+  .wb-content::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+  .wb-content::-webkit-scrollbar-thumb:hover { background: var(--slate-300); border: 2px solid transparent; background-clip: content-box; }
+
+  /* ════════ Policy panel — primary inside expanded ════════ */
+  .panel {
+    background: var(--cyan-50);
+    border: 1px solid var(--cyan-100);
+    border-radius: var(--r-md);
+    padding: 16px 18px 14px;
+  }
+  .panel .panel-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .panel .panel-ttl {
+    font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; font-weight: 700;
+    color: var(--slate-500);
+  }
+  .panel .panel-ttl b { color: var(--slate-900); margin-left: 4px; }
+  .panel .panel-meta {
+    font-family: var(--ff-mono); font-size: 11px; color: var(--slate-400);
+    white-space: nowrap;
+  }
+
+  /* Policy items — primary visual element */
+  .policy-list { display: flex; flex-direction: column; }
+  .policy-item {
+    display: grid;
+    grid-template-columns: 14px 1fr auto;
+    column-gap: 12px; align-items: center;
+    padding: 11px 4px;
+    border-bottom: 1px dashed var(--cyan-200);
+  }
+  .policy-item:last-child { border-bottom: 0; padding-bottom: 4px; }
+  .policy-item:first-child { padding-top: 4px; }
+  .policy-item .pd {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--pass-500);
+    box-shadow: 0 0 0 3px rgba(124,176,105,0.18);
+  }
+  .policy-item.warn .pd { background: var(--warn-500); box-shadow: 0 0 0 3px rgba(214,146,56,0.18); }
+  .policy-item.fail .pd { background: var(--fail-500); box-shadow: 0 0 0 3px rgba(199,114,104,0.18); }
+  .policy-item .nm {
+    font-size: 14.5px; font-weight: 600;
+    color: var(--slate-900); letter-spacing: -0.005em;
+  }
+  .policy-item .nm .id {
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--slate-400); font-weight: 500;
+    margin-left: 8px;
+  }
+  .policy-item .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: var(--r-pill);
+    white-space: nowrap;
+  }
+  .policy-item.warn .status-pill { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .policy-item.fail .status-pill { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+
+  /* ════════ Decision panel — secondary ════════ */
+  .panel.decisions { padding: 14px 16px 12px; }
+  .decision-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .decision {
+    background: var(--surface);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    transition: border-color 120ms ease;
+  }
+  .decision:hover { border-color: var(--slate-300); }
+
+  .d-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 12px; align-items: center;
+    padding: 10px 12px;
+    cursor: default; user-select: none;
+  }
+  .d-row:hover { background: var(--fog-300); }
+  .d-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: var(--r-pill);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .decision.fail .d-pill { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+  .decision.warn .d-pill { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .d-pill .pd { width: 6px; height: 6px; border-radius: 50%; }
+  .decision.fail .d-pill .pd { background: var(--fail-500); }
+  .decision.warn .d-pill .pd { background: var(--warn-500); }
+  .d-summary {
+    font-size: 13px; color: var(--slate-900);
+    letter-spacing: -0.005em; line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0;
+  }
+  .d-summary .b { font-weight: 700; }
+  .d-summary .hl { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-700); }
+  .d-age { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-500); white-space: nowrap; }
+  .d-primary {
+    appearance: none; border: 1px solid var(--cyan-300);
+    background: var(--cyan-200); color: var(--slate-900);
+    font: inherit; font-weight: 600; font-size: 12px;
+    padding: 5px 12px 5px 14px;
+    border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: default; white-space: nowrap;
+  }
+  .d-primary:hover { background: var(--cyan-300); }
+  .d-primary .arrow { width: 11px; height: 11px; }
+  .d-caret {
+    width: 11px; height: 11px;
+    color: var(--slate-400);
+    transition: transform 200ms ease;
+  }
+  .decision.expanded .d-caret { transform: rotate(90deg); color: var(--slate-700); }
+
+  .d-detail-pane {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 220ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .decision.expanded .d-detail-pane { grid-template-rows: 1fr; }
+  .d-detail-pane > .d-inner { overflow: hidden; min-height: 0; }
+  .d-detail-pane > .d-inner > .d-content {
+    padding: 10px 14px 14px;
+    border-top: 1px dashed var(--slate-200);
+  }
+  .d-props {
+    margin: 8px 0 12px;
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    column-gap: 12px; row-gap: 5px;
+    font-size: 12px;
+  }
+  .d-props dt {
+    font-family: var(--ff-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--slate-400);
+  }
+  .d-props dd {
+    margin: 0; font-family: var(--ff-mono); font-size: 12px;
+    color: var(--slate-700);
+  }
+  .d-props dd .hl { color: var(--slate-900); font-weight: 600; }
+  .d-props dd .tag-fail { color: var(--fail-700); font-weight: 600; }
+  .d-props dd .tag-warn { color: var(--warn-700); font-weight: 600; }
+  .d-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Empty-decisions quiet line (calm wallets) */
+  .no-decisions {
+    color: var(--sage-700); font-size: 12.5px;
+    font-family: var(--ff-mono);
+    padding: 4px 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .no-decisions::before { content: "✓"; color: var(--sage-700); font-weight: 700; }
+
+  /* Wallet footer meta — demoted metadata (eval count, sync) */
+  .wallet-foot-meta {
+    display: flex; align-items: center; gap: 12px;
+    padding: 4px 6px 2px;
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--slate-400);
+  }
+  .wallet-foot-meta .sep { width: 1px; height: 11px; background: var(--slate-200); }
+  .wallet-foot-meta .live {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--cyan-700);
+  }
+  .wallet-foot-meta .live::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cyan-500);
+    box-shadow: 0 0 0 3px rgba(164,201,209,0.32);
+    animation: cyanPulse 2.4s infinite;
+  }
+  @keyframes cyanPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.4); opacity: 0.55; }
+  }
+
+  /* Buttons */
+  .btn {
+    appearance: none; border: none; font: inherit;
+    font-weight: 600; font-size: 12.5px;
+    padding: 8px 14px;
+    border-radius: var(--r-pill);
+    cursor: default;
+    display: inline-flex; align-items: center; gap: 7px;
+    letter-spacing: -0.005em;
+    transition: background 120ms ease, transform 100ms ease, border-color 120ms ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--sage-500); color: var(--slate-900); }
+  .btn.primary:hover { background: var(--sage-600); }
+  .btn.ghost { background: var(--surface); color: var(--slate-700); border: 1px solid var(--hairline); }
+  .btn.ghost:hover { background: var(--fog-300); border-color: var(--slate-300); }
+
+  /* ─── 임시 허용 toggle switch ─── */
+  .allow-toggle {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 5px 14px 5px 8px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    cursor: default; user-select: none;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--slate-700);
+    letter-spacing: -0.005em;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+  .allow-toggle:hover { background: var(--fog-300); border-color: var(--slate-300); }
+  .allow-toggle input.tg-cb {
+    position: absolute; opacity: 0;
+    width: 1px; height: 1px;
+    pointer-events: none;
+  }
+  .allow-toggle .tg-track {
+    width: 30px; height: 18px;
+    background: var(--slate-300);
+    border-radius: 999px;
+    position: relative; flex-shrink: 0;
+    transition: background 200ms ease;
+  }
+  .allow-toggle .tg-thumb {
+    position: absolute;
+    width: 14px; height: 14px;
+    background: var(--fog-50);
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 200ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .allow-toggle .tg-state {
+    font-family: var(--ff-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .allow-toggle input.tg-cb:focus-visible + .tg-track {
+    outline: 2px solid var(--sage-500);
+    outline-offset: 2px;
+  }
+  /* ON state */
+  .allow-toggle:has(input.tg-cb:checked) {
+    background: var(--sage-50);
+    border-color: var(--sage-400);
+    color: var(--sage-800);
+  }
+  .allow-toggle:has(input.tg-cb:checked) .tg-track { background: var(--sage-500); }
+  .allow-toggle:has(input.tg-cb:checked) .tg-thumb { transform: translateX(12px); }
+  .allow-toggle:has(input.tg-cb:checked) .tg-state { color: var(--sage-700); }
+
+  /* Toast for max-3 limit */
+  .toast {
+    position: fixed; top: 20px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--slate-700); color: var(--fog-50);
+    padding: 12px 20px;
+    border-radius: var(--r-pill);
+    font-size: 13px; font-weight: 500;
+    letter-spacing: -0.005em;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 1000;
+    opacity: 0; pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast .icon { color: var(--warn-300); font-size: 14px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Locale & density */
+  body[data-locale="ko"] [lang="en"] { display: none; }
+  body[data-locale="en"] [lang="ko"] { display: none; }
+  body[data-locale="mix"] [lang="ko"], body[data-locale="mix"] [lang="en"] { display: inline; }
+  body[data-density="compact"] .wallet-head { padding: 12px 16px; }
+  body[data-density="comfy"]   .wallet-head { padding: 20px 24px; }
+</style>
+</head>
+
+<body data-density="regular" data-locale="ko">
+
+<div class="stage">
+<div class="screen" data-screen-label="01 Home">
+
+  <!-- NAV RAIL -->
+  <nav class="nav-rail" tabindex="0" aria-label="Cloudy Pond global nav">
+    <div class="nav-logo">
+      <div class="mark">logo</div>
+      <div class="word">scopeball</div>
+    </div>
+    <div class="nav-cta">
+      <div class="main">
+        <svg class="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="label">새 정책</span>
+      </div>
+      <div class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+    </div>
+    <div class="nav-ws">
+      <span class="ws-av">A</span>
+      <div class="ws-label">Acme<span class="sub">4 wallets · 14 policies</span></div>
+      <svg class="ws-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <a class="nav-item active" href="#" aria-current="page">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+        <span class="label">Home</span>
+      </a>
+      <a class="nav-item" href="#">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        <span class="label">Editor</span>
+      </a>
+      <a class="nav-item" href="#">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span>
+        <span class="label">Library</span>
+      </a>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <a class="nav-item" href="#">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-7"/></svg></span>
+        <span class="label">Audit</span><span class="badge">12</span><span class="dot-badge"></span>
+      </a>
+      <a class="nav-item" href="#">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15c.1.4.3.8.6 1L19 17l-1-1c-.3-.3-.6-.5-1-.6"/></svg></span>
+        <span class="label">Settings</span>
+      </a>
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-user">
+        <span class="av">TY</span>
+        <div class="meta"><div class="nm">Taeyoon Kim</div><div class="em">ty@scopeball.co</div></div>
+      </div>
+    </div>
+  </nav>
+
+
+  <main class="content">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="crumb">
+        <span class="here">Scopeball Home</span>
+        <span class="sep">/</span>
+        <span class="addr">Acme · 4 wallets</span>
+      </div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--slate-300);"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" placeholder="지갑 / 정책 / tx 해시 검색" />
+        <span class="kbd">⌘ K</span>
+      </div>
+      <div class="dots">
+        <span class="dot-chip"><span class="dot pass"></span><span lang="ko">PASS 2</span><span lang="en">2 calm</span></span>
+        <span class="dot-chip"><span class="dot warn"></span><span lang="ko">WARN 2</span><span lang="en">2 review</span></span>
+        <span class="dot-chip"><span class="dot fail"></span><span lang="ko">FAIL 1</span><span lang="en">1 blocked</span></span>
+        <span class="icon-btn" aria-label="notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span class="unread"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Sage context bar — portfolio -->
+    <section class="context-bar" aria-label="portfolio context">
+      <span class="protected">
+        <span class="pulse"></span>
+        <span lang="ko">보호 중</span><span lang="en">Protected</span>
+      </span>
+      <span class="ctx-sep"></span>
+      <span class="wsname">Acme</span>
+      <span class="summary">
+        <span lang="ko"><b>4</b> 지갑 · <b>14</b> 정책 활성 <span class="mute">· 모든 트랜잭션 SDK 평가됨</span></span>
+        <span lang="en"><b>4</b> wallets · <b>14</b> policies active <span class="mute">· all txs evaluated via SDK</span></span>
+      </span>
+      <div class="right">
+        <span class="since">
+          <span lang="ko">오늘 224건 평가</span>
+          <span lang="en">224 evaluated today</span>
+        </span>
+        <button class="ctx-cta">
+          <span lang="ko">지갑 추가</span><span lang="en">Add wallet</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+    </section>
+
+
+    <!-- ════════ WALLET LIST ════════ -->
+    <div class="wallets-head">
+      <h2>
+        <span lang="ko">내 지갑들</span>
+        <span lang="en">Your wallets</span>
+        <span class="submeta">
+          <span lang="ko">4개 · PASS 2 · WARN 2 · FAIL 1</span>
+          <span lang="en">4 wallets · 2 calm · 2 review · 1 blocked</span>
+        </span>
+      </h2>
+      <div class="controls">
+        <span lang="ko">최대 3개 동시 펼침</span>
+        <span lang="en">expand up to 3 at once</span>
+      </div>
+    </div>
+
+    <div class="wallet-list" id="wallets">
+
+      <!-- 1) Main wallet — expanded by default (alert · scrolls internally) -->
+      <article class="wallet-card alert expanded" data-wallet="main">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="true">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">M</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">메인 지갑</span><span lang="en">Main wallet</span></span>
+            <span class="addr">0xA1c4···7e29</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill warn"><span class="pd"></span><span lang="ko">WARN 1</span><span lang="en">1 review</span></span>
+            <span class="w-pill fail"><span class="pd"></span><span lang="ko">FAIL 1</span><span lang="en">1 blocked</span></span>
+          </div>
+          <span class="w-pending">2 <span lang="ko">Pending</span><span lang="en">pending</span></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <!-- Active policies — primary -->
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>5</b></span>
+              <span class="panel-meta">last sync 2m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">일일 송금 한도</span><span lang="en">Daily transfer limit</span><span class="id">rule#daily.limit</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">화이트리스트</span><span lang="en">Allowlist</span><span class="id">rule#allowlist</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">서명 스킴 · EIP-712</span><span lang="en">Signature · EIP-712</span><span class="id">rule#sig.scheme</span></span><span></span></div>
+              <div class="policy-item warn"><span class="pd"></span><span class="nm"><span lang="ko">가스 가드</span><span lang="en">Gas guard</span><span class="id">rule#gas.guard</span></span><span class="status-pill"><span lang="ko">WARN</span><span lang="en">review</span></span></div>
+              <div class="policy-item fail"><span class="pd"></span><span class="nm"><span lang="ko">목적지 블록리스트</span><span lang="en">Destination blocklist</span><span class="id">rule#blocklist</span></span><span class="status-pill"><span lang="ko">FAIL</span><span lang="en">blocked</span></span></div>
+            </div>
+          </section>
+
+          <!-- Decisions — secondary -->
+          <section class="panel decisions">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">Pending</span><span lang="en">Pending decisions</span><b>2</b></span>
+              <span class="panel-meta">apply individual or bulk</span>
+            </div>
+            <div class="decision-list">
+
+              <article class="decision fail">
+                <header class="d-row" role="button" tabindex="0" aria-expanded="false">
+                  <span class="d-pill"><span class="pd"></span><span lang="ko">FAIL</span><span lang="en">Blocked</span></span>
+                  <span class="d-summary">
+                    <span lang="ko"><span class="b">블록리스트 매치</span> · <span class="hl">1.2 ETH</span> → 0x8c5f···a91</span>
+                    <span lang="en"><span class="b">Blocklist match</span> · <span class="hl">1.2 ETH</span> → 0x8c5f···a91</span>
+                  </span>
+                  <span class="d-age">12m ago</span>
+                  <button class="d-primary"><span lang="ko">Editor</span><span lang="en">Editor</span><svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                  <svg class="d-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                </header>
+                <div class="d-detail-pane"><div class="d-inner"><div class="d-content">
+                  <dl class="d-props">
+                    <dt>to</dt><dd><span class="hl">0x8c5f···a91</span></dd>
+                    <dt>value</dt><dd><span class="hl">1.2 ETH</span> ≈ 4,170 USDC</dd>
+                    <dt>matched</dt><dd><span class="tag-fail">rule#blocklist</span></dd>
+                    <dt>source</dt><dd>chainalysis · tier-1 high</dd>
+                  </dl>
+                  <div class="d-actions">
+                    <label class="allow-toggle">
+                      <input type="checkbox" class="tg-cb" />
+                      <span class="tg-track"><span class="tg-thumb"></span></span>
+                      <span class="tg-text"><span lang="ko">임시 허용</span><span lang="en">Temporary allow</span></span>
+                      <span class="tg-state"><span lang="ko">꺼짐</span><span lang="en">off</span></span>
+                    </label>
+                    <button class="btn ghost"><span lang="ko">무시 · FAIL 유지</span><span lang="en">Dismiss · keep blocked</span></button>
+                  </div>
+                </div></div></div>
+              </article>
+
+              <article class="decision warn">
+                <header class="d-row" role="button" tabindex="0" aria-expanded="false">
+                  <span class="d-pill"><span class="pd"></span><span lang="ko">WARN</span><span lang="en">Review</span></span>
+                  <span class="d-summary">
+                    <span lang="ko"><span class="b">가스 스파이크</span> · +38% vs avg · <span class="hl">82 gwei</span></span>
+                    <span lang="en"><span class="b">Gas spike</span> · +38% vs avg · <span class="hl">82 gwei</span></span>
+                  </span>
+                  <span class="d-age">18m ago</span>
+                  <button class="d-primary"><span lang="ko">Editor</span><span lang="en">Editor</span><svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                  <svg class="d-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                </header>
+                <div class="d-detail-pane"><div class="d-inner"><div class="d-content">
+                  <dl class="d-props">
+                    <dt>rule</dt><dd><span class="tag-warn">rule#gas.guard</span></dd>
+                    <dt>peak</dt><dd><span class="hl">82 gwei</span> at 14:02 KST</dd>
+                    <dt>baseline</dt><dd>59 gwei · 24h avg</dd>
+                    <dt>threshold</dt><dd>25% · exceeded by +13pp</dd>
+                  </dl>
+                  <div class="d-actions">
+                    <button class="btn primary"><span lang="ko">지금 승인</span><span lang="en">Approve now</span></button>
+                    <button class="btn ghost"><span lang="ko">임계값 조정</span><span lang="en">Adjust threshold</span></button>
+                    <button class="btn ghost"><span lang="ko">무시</span><span lang="en">Dismiss</span></button>
+                  </div>
+                </div></div></div>
+              </article>
+
+            </div>
+          </section>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">5 정책</span><span lang="en">5 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">137 평가 today</span><span lang="en">137 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 2m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+
+      <!-- 2) Treasury — calm (Sage tone), collapsed -->
+      <article class="wallet-card calm" data-wallet="treasury">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="false">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">T</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">운영 자금 (Treasury)</span><span lang="en">Treasury</span></span>
+            <span class="addr">0xB7d1···3f4a</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill calm"><span class="pd"></span><span lang="ko">PASS</span><span lang="en">Calm</span></span>
+          </div>
+          <span class="w-pending"></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>3</b></span>
+              <span class="panel-meta">last sync 5m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">대량 송금 차단</span><span lang="en">Large transfer block</span><span class="id">rule#large.tx</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">멀티시그 2-of-3</span><span lang="en">Multisig 2-of-3</span><span class="id">rule#multisig</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">서명 스킴 · EIP-712</span><span lang="en">Signature · EIP-712</span><span class="id">rule#sig.scheme</span></span><span></span></div>
+            </div>
+          </section>
+
+          <div class="no-decisions">
+            <span lang="ko">결정 없음 · 모든 트랜잭션 정상 통과</span>
+            <span lang="en">No decisions · all txs passing</span>
+          </div>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">3 정책</span><span lang="en">3 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">41 평가 today</span><span lang="en">41 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 5m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+
+      <!-- 3) Hot wallet — alert (1 review), collapsed -->
+      <article class="wallet-card alert" data-wallet="hot">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="false">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">H</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">빠른 송금 (Hot)</span><span lang="en">Hot wallet</span></span>
+            <span class="addr">0xCe88···91d2</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill warn"><span class="pd"></span><span lang="ko">WARN 1</span><span lang="en">1 review</span></span>
+          </div>
+          <span class="w-pending">1 <span lang="ko">Pending</span><span lang="en">pending</span></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>4</b></span>
+              <span class="panel-meta">last sync 3m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">일일 한도 0.5 ETH</span><span lang="en">Daily limit 0.5 ETH</span><span class="id">rule#daily.limit</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">화이트리스트</span><span lang="en">Allowlist</span><span class="id">rule#allowlist</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">속도 제한</span><span lang="en">Rate limit</span><span class="id">rule#rate</span></span><span></span></div>
+              <div class="policy-item warn"><span class="pd"></span><span class="nm"><span lang="ko">반복 송금 감지</span><span lang="en">Repeat detector</span><span class="id">rule#repeat.detect</span></span><span class="status-pill"><span lang="ko">WARN</span><span lang="en">review</span></span></div>
+            </div>
+          </section>
+
+          <section class="panel decisions">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">Pending</span><span lang="en">Pending decisions</span><b>1</b></span>
+              <span class="panel-meta">apply individual or bulk</span>
+            </div>
+            <div class="decision-list">
+              <article class="decision warn">
+                <header class="d-row" role="button" tabindex="0" aria-expanded="false">
+                  <span class="d-pill"><span class="pd"></span><span lang="ko">WARN</span><span lang="en">Review</span></span>
+                  <span class="d-summary">
+                    <span lang="ko"><span class="b">반복 송금 패턴</span> · 동일 주소 5회 · 0.05 ETH × 5</span>
+                    <span lang="en"><span class="b">Repeat pattern</span> · same address 5× · 0.05 ETH × 5</span>
+                  </span>
+                  <span class="d-age">6m ago</span>
+                  <button class="d-primary"><span lang="ko">Editor</span><span lang="en">Editor</span><svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                  <svg class="d-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                </header>
+                <div class="d-detail-pane"><div class="d-inner"><div class="d-content">
+                  <dl class="d-props">
+                    <dt>rule</dt><dd><span class="tag-warn">rule#repeat.detect</span></dd>
+                    <dt>to</dt><dd><span class="hl">0xDef1···c42a</span></dd>
+                    <dt>volume</dt><dd>0.05 ETH × 5 in 12 min</dd>
+                    <dt>threshold</dt><dd>3× / 10 min · exceeded</dd>
+                  </dl>
+                  <div class="d-actions">
+                    <button class="btn primary"><span lang="ko">패턴 승인</span><span lang="en">Approve pattern</span></button>
+                    <button class="btn ghost"><span lang="ko">차단으로 전환</span><span lang="en">Convert to block</span></button>
+                    <button class="btn ghost"><span lang="ko">무시</span><span lang="en">Dismiss</span></button>
+                  </div>
+                </div></div></div>
+              </article>
+            </div>
+          </section>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">4 정책</span><span lang="en">4 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">23 평가 today</span><span lang="en">23 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 3m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+
+      <!-- 4) Dev wallet — calm (Sage tone), collapsed — demos max-3 -->
+      <article class="wallet-card calm" data-wallet="dev">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="false">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">D</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">개발 (Dev)</span><span lang="en">Dev wallet</span></span>
+            <span class="addr">0xCa12···8b3f</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill calm"><span class="pd"></span><span lang="ko">PASS</span><span lang="en">Calm</span></span>
+          </div>
+          <span class="w-pending"></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>2</b></span>
+              <span class="panel-meta">last sync 11m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">테스트넷 전용</span><span lang="en">Testnet only</span><span class="id">rule#chain.testnet</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">일일 한도 5 ETH</span><span lang="en">Daily limit 5 ETH</span><span class="id">rule#daily.limit</span></span><span></span></div>
+            </div>
+          </section>
+
+          <div class="no-decisions">
+            <span lang="ko">결정 없음 · 테스트 트랜잭션 정상</span>
+            <span lang="en">No decisions · test txs passing</span>
+          </div>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">2 정책</span><span lang="en">2 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">23 평가 today</span><span lang="en">23 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 11m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+    </div><!-- /.wallet-list -->
+
+  </main>
+
+</div><!-- /.screen -->
+</div><!-- /.stage -->
+
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="icon">⚠</span>
+  <span lang="ko">최대 3개 지갑까지 동시에 펼칠 수 있어요</span>
+  <span lang="en">Up to 3 wallets can be expanded at once</span>
+</div>
+
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<div id="tweaks-root"></div>
+
+<script>
+  (function() {
+    const MAX_EXPANDED = 3;
+    const list = document.getElementById('wallets');
+    const toast = document.getElementById('toast');
+    let toastTimer;
+    const showToast = () => {
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+    };
+    // Wallet card toggle
+    list.querySelectorAll('.wallet-card').forEach(card => {
+      const head = card.querySelector('.wallet-head');
+      const toggle = () => {
+        const wasOpen = card.classList.contains('expanded');
+        if (wasOpen) { card.classList.remove('expanded'); head.setAttribute('aria-expanded', 'false'); return; }
+        const openCount = list.querySelectorAll('.wallet-card.expanded').length;
+        if (openCount >= MAX_EXPANDED) { showToast(); return; }
+        card.classList.add('expanded'); head.setAttribute('aria-expanded', 'true');
+      };
+      head.addEventListener('click', toggle);
+      head.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
+    // Decision row toggle (2-stage)
+    document.querySelectorAll('.decision .d-row').forEach(row => {
+      const decision = row.closest('.decision');
+      const toggle = () => {
+        const expanded = decision.classList.toggle('expanded');
+        row.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      };
+      row.addEventListener('click', toggle);
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
+  })();
+</script>
+
+<script type="text/babel">
+  const HOME_TWEAKS = /*EDITMODE-BEGIN*/{
+    "density": "regular",
+    "locale": "ko",
+    "navLocked": false
+  }/*EDITMODE-END*/;
+
+  function HomeTweaks() {
+    const [t, setTweak] = useTweaks(HOME_TWEAKS);
+    React.useEffect(() => {
+      document.body.setAttribute('data-density', t.density);
+      document.body.setAttribute('data-locale', t.locale);
+      const rail = document.querySelector('.nav-rail');
+      if (rail) rail.classList.toggle('locked', !!t.navLocked);
+    }, [t.density, t.locale, t.navLocked]);
+    return (
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Layout" />
+        <TweakRadio label="Density" value={t.density}
+                    options={['compact','regular','comfy']}
+                    onChange={(v) => setTweak('density', v)} />
+        <TweakToggle label="Nav locked-expanded" value={t.navLocked}
+                     onChange={(v) => setTweak('navLocked', v)} />
+        <TweakSection label="Content" />
+        <TweakRadio label="Locale" value={t.locale}
+                    options={['ko','en','mix']}
+                    onChange={(v) => setTweak('locale', v)} />
+      </TweaksPanel>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<HomeTweaks />);
+</script>
+
+</body>
+</html>

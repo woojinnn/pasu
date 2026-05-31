@@ -1,0 +1,552 @@
+{
+  "version": "v0",
+  "rule": "canonical=영문 Cedar 경로 고정 / display=en·ko / 전문용어 음차·원문 유지 / 롱테일은 자동정리",
+  "entries": [
+    {
+      "canonical": "context.recipient",
+      "group": "address",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 12,
+      "display": {
+        "en": "Recipient",
+        "ko": "수신자"
+      },
+      "note": "출력/수령 주소"
+    },
+    {
+      "canonical": "context.spender",
+      "group": "address",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 7,
+      "display": {
+        "en": "Spender",
+        "ko": "지출 승인 대상(spender)"
+      },
+      "note": "approve 받는 컨트랙트"
+    },
+    {
+      "canonical": "context.delegatee",
+      "group": "address",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 2,
+      "display": {
+        "en": "Delegatee",
+        "ko": "위임 대상"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "context.onBehalfOf",
+      "group": "address",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 3,
+      "display": {
+        "en": "On behalf of",
+        "ko": "대리 대상(onBehalfOf)"
+      },
+      "note": "제3자 대리 실행"
+    },
+    {
+      "canonical": "context.contract",
+      "group": "address",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 3,
+      "display": {
+        "en": "Contract",
+        "ko": "컨트랙트 주소"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "meta.from",
+      "group": "address",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 12,
+      "display": {
+        "en": "From (sender)",
+        "ko": "보낸 지갑"
+      },
+      "note": "principal. 동적참조 @meta.from"
+    },
+    {
+      "canonical": "context.venue",
+      "group": "ref",
+      "type": "AmmVenue",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 27,
+      "display": {
+        "en": "Venue",
+        "ko": "베뉴(거래소/풀)"
+      },
+      "note": "27개 액션 공통"
+    },
+    {
+      "canonical": "context.token",
+      "group": "ref",
+      "type": "Core::TokenRef",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 7,
+      "display": {
+        "en": "Token",
+        "ko": "토큰"
+      },
+      "note": "Core::TokenRef"
+    },
+    {
+      "canonical": "context.tokenIn",
+      "group": "ref",
+      "type": "Core::TokenRef",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Token in",
+        "ko": "입력 토큰"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "context.tokenOut",
+      "group": "ref",
+      "type": "Core::TokenRef",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Token out",
+        "ko": "출력 토큰"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "context.asset",
+      "group": "ref",
+      "type": "Core::TokenRef",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 8,
+      "display": {
+        "en": "Asset",
+        "ko": "자산"
+      },
+      "note": "대출 등 대상 토큰"
+    },
+    {
+      "canonical": "context.market",
+      "group": "ref",
+      "type": "MarketRef",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 6,
+      "display": {
+        "en": "Market",
+        "ko": "마켓"
+      },
+      "note": "Perp 마켓"
+    },
+    {
+      "canonical": "context.platform",
+      "group": "ref",
+      "type": "Core::ProtocolRef",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 4,
+      "display": {
+        "en": "Platform",
+        "ko": "플랫폼"
+      },
+      "note": "Core::ProtocolRef"
+    },
+    {
+      "canonical": "context.lpToken",
+      "group": "ref",
+      "type": "Core::TokenRef",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "LP token",
+        "ko": "LP 토큰"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "context.nftKey",
+      "group": "ref",
+      "type": "Core::TokenKey",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 6,
+      "display": {
+        "en": "NFT key",
+        "ko": "NFT 키"
+      },
+      "note": "Core::TokenKey"
+    },
+    {
+      "canonical": "context.amount",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 14,
+      "display": {
+        "en": "Amount",
+        "ko": "수량"
+      },
+      "note": "14개 액션 공통"
+    },
+    {
+      "canonical": "context.amountUsd",
+      "group": "numeric",
+      "type": "decimal",
+      "fieldKind": "primitive",
+      "derived": true,
+      "actions": 11,
+      "display": {
+        "en": "Amount",
+        "ko": "수량"
+      },
+      "note": "파생 USD",
+      "unit": {
+        "en": "USD",
+        "ko": "USD"
+      }
+    },
+    {
+      "canonical": "context.slippageBp",
+      "group": "numeric",
+      "type": "Long",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 5,
+      "display": {
+        "en": "Slippage",
+        "ko": "슬리피지"
+      },
+      "note": "허용 슬리피지",
+      "unit": {
+        "en": "bp",
+        "ko": "bp"
+      }
+    },
+    {
+      "canonical": "context.priceImpactBp",
+      "group": "numeric",
+      "type": "Long",
+      "fieldKind": "primitive",
+      "derived": true,
+      "actions": 1,
+      "display": {
+        "en": "Price impact",
+        "ko": "프라이스 임팩트(bp)"
+      },
+      "note": "",
+      "unit": {
+        "en": "bp",
+        "ko": "bp"
+      }
+    },
+    {
+      "canonical": "context.minAmountOut",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Min amount out",
+        "ko": "최소 출력 수량"
+      },
+      "note": "exact_input 하한"
+    },
+    {
+      "canonical": "context.maxAmountIn",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Max amount in",
+        "ko": "최대 입력 수량"
+      },
+      "note": "exact_output 상한"
+    },
+    {
+      "canonical": "context.minLpOut",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Min LP out",
+        "ko": "최소 LP 수령"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "context.amountDesired",
+      "group": "numeric",
+      "type": "{ a: String, b: String }",
+      "fieldKind": "record",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Amount desired",
+        "ko": "희망 수량"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "context.maxLeverage",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 3,
+      "display": {
+        "en": "Max leverage",
+        "ko": "최대 레버리지"
+      },
+      "note": "Perp"
+    },
+    {
+      "canonical": "context.markPrice",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 7,
+      "display": {
+        "en": "Mark price",
+        "ko": "마크 가격(markPrice)"
+      },
+      "note": ""
+    },
+    {
+      "canonical": "context.size",
+      "group": "numeric",
+      "type": "SizeSpec",
+      "fieldKind": "ref",
+      "derived": false,
+      "actions": 6,
+      "display": {
+        "en": "Size",
+        "ko": "포지션 크기(size)"
+      },
+      "note": "SizeSpec"
+    },
+    {
+      "canonical": "context.sellAmount",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Sell amount",
+        "ko": "매도 수량"
+      },
+      "note": "Intent"
+    },
+    {
+      "canonical": "context.buyMin",
+      "group": "numeric",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Buy min",
+        "ko": "최소 매수량"
+      },
+      "note": "Intent"
+    },
+    {
+      "canonical": "context.direction.kind",
+      "group": "enum",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 6,
+      "display": {
+        "en": "Swap direction",
+        "ko": "스왑 방향"
+      },
+      "note": "exact_input · exact_output"
+    },
+    {
+      "canonical": "context.rateMode",
+      "group": "enum",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 3,
+      "display": {
+        "en": "Rate mode",
+        "ko": "금리 모드"
+      },
+      "note": "고정/변동"
+    },
+    {
+      "canonical": "context.side",
+      "group": "enum",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 3,
+      "display": {
+        "en": "Side",
+        "ko": "방향(롱/숏)"
+      },
+      "note": "Perp"
+    },
+    {
+      "canonical": "context.orderKind",
+      "group": "enum",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 2,
+      "display": {
+        "en": "Order kind",
+        "ko": "주문 종류"
+      },
+      "note": "Intent"
+    },
+    {
+      "canonical": "context.reduceOnly",
+      "group": "enum",
+      "type": "Bool",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 3,
+      "display": {
+        "en": "Reduce only",
+        "ko": "감소 전용(reduceOnly)"
+      },
+      "note": "Bool"
+    },
+    {
+      "canonical": "context.proof",
+      "group": "auth",
+      "type": "Set<String>",
+      "fieldKind": "collection",
+      "derived": false,
+      "actions": 1,
+      "display": {
+        "en": "Merkle proof",
+        "ko": "머클 증명(proof)"
+      },
+      "note": "Set<String>"
+    },
+    {
+      "canonical": "context.positionId",
+      "group": "auth",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": false,
+      "actions": 5,
+      "display": {
+        "en": "Position ID",
+        "ko": "포지션 ID"
+      },
+      "note": "Perp"
+    },
+    {
+      "canonical": "enrichment.validityDeltaSec",
+      "group": "derived",
+      "type": "Long",
+      "fieldKind": "primitive",
+      "derived": true,
+      "actions": null,
+      "display": {
+        "en": "Time to deadline",
+        "ko": "마감까지 남은 시간"
+      },
+      "note": "Host-derived",
+      "unit": {
+        "en": "sec",
+        "ko": "초"
+      }
+    },
+    {
+      "canonical": "enrichment.recipientIsContract",
+      "group": "derived",
+      "type": "Bool",
+      "fieldKind": "primitive",
+      "derived": true,
+      "actions": null,
+      "display": {
+        "en": "Recipient is contract",
+        "ko": "수신자가 컨트랙트"
+      },
+      "note": "Bool, Host-derived"
+    },
+    {
+      "canonical": "enrichment.totalInputUsd",
+      "group": "derived",
+      "type": "decimal",
+      "fieldKind": "primitive",
+      "derived": true,
+      "actions": null,
+      "display": {
+        "en": "Input value",
+        "ko": "입력 가치"
+      },
+      "note": "Host-populated",
+      "unit": {
+        "en": "USD",
+        "ko": "USD"
+      }
+    },
+    {
+      "canonical": "enrichment.effectiveRateVsOracleBps",
+      "group": "derived",
+      "type": "Long",
+      "fieldKind": "primitive",
+      "derived": true,
+      "actions": null,
+      "display": {
+        "en": "Slippage vs oracle",
+        "ko": "오라클 대비 슬리피지"
+      },
+      "note": "oracle",
+      "unit": {
+        "en": "bp",
+        "ko": "bp"
+      }
+    },
+    {
+      "canonical": "context.expectedAmountOut",
+      "group": "derived",
+      "type": "String",
+      "fieldKind": "primitive",
+      "derived": true,
+      "actions": 1,
+      "display": {
+        "en": "Expected out",
+        "ko": "예상 출력"
+      },
+      "note": "LiveField"
+    }
+  ],
+  "unitRule": "단위는 표시이름에서 분리(unit 필드). 칩/블록뷰=이름(단위) 조합, 읽기뷰=값에만 단위 1회. ko 단위: bp·USD 유지, sec→초.",
+  "termPolicy": "전문용어는 음차 유지(프라이스 임팩트·슬리피지·bp·nonce·tick), 구조어만 한글. 직역('가격 충격' 등) 금지."
+}

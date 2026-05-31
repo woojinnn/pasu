@@ -1,0 +1,225 @@
+/* editor-v4-layout.css — Layered/overlay layout transform of v3 editor.
+   Loads AFTER editor-v3.css + editor-v3-styles-2.css; overrides ONLY layout.
+
+   z-order:
+     0  baseline canvas (full-bleed)
+     10 overlay panels (palette / policy / cedar)
+     20 top chrome (topbar, FAB)
+     30 transient overlays (modal, slideover)
+     50 nav rail (collapsed lock; ⌘B opens overlay) */
+
+/* ─── Nav: locked-collapsed in editor, ⌘B → overlay expand ──────────────── */
+.nv { width: 64px; transition: width 220ms cubic-bezier(0.32,0.04,0.2,1), box-shadow 220ms ease; }
+.nv.expanded {
+  width: 256px;
+  box-shadow: 8px 0 32px rgba(15,23,42,0.10);
+}
+.nv .nv-word { display: none; }
+.nv .nv-ws { padding: 7px 0; justify-content: center; }
+.nv .nv-ws-l { display: none; }
+.nv .nv-sect { visibility: hidden; height: 16px; padding: 6px 0; }
+.nv .nv-it { justify-content: center; padding: 0; margin: 0 10px; }
+.nv .nv-lbl, .nv .nv-bdg { display: none; }
+.nv .nv-it.on::before { left: -10px; }
+.nv .nv-um { display: none; }
+.nv .nv-user { justify-content: center; padding: 8px 0; }
+
+.nv.expanded .nv-word { display: block; }
+.nv.expanded .nv-logo { justify-content: flex-start; }
+.nv.expanded .nv-ws { padding: 7px 10px; justify-content: flex-start; }
+.nv.expanded .nv-ws-l { display: block; }
+.nv.expanded .nv-sect { visibility: visible; height: auto; padding: 12px 20px 4px; }
+.nv.expanded .nv-it { justify-content: flex-start; padding: 0 12px; margin: 0; }
+.nv.expanded .nv-lbl, .nv.expanded .nv-bdg { display: inline; }
+.nv.expanded .nv-it.on::before { left: -8px; }
+.nv.expanded .nv-um { display: flex; }
+.nv.expanded .nv-user { justify-content: flex-start; padding: 8px 12px; }
+.nv.expanded .nv-grp { padding: 4px 8px; }
+
+.nv-kbd-hint {
+  position: absolute; left: 0; right: 0; bottom: 8px;
+  text-align: center;
+  font-family: var(--ff-mono); font-size: 9.5px;
+  color: var(--slate-400); letter-spacing: 0.06em;
+  pointer-events: none;
+}
+.nv.expanded .nv-kbd-hint { display: none; }
+
+/* ─── Content host: always offset by 64px (nav collapsed lock); the      */
+/*     expanded nav becomes an overlay and doesn't push content.         */
+#app { flex: 1; display: flex; min-width: 0; }
+.content { margin-left: 64px !important; padding: 12px 12px 12px !important; flex: 1; min-width: 0; }
+
+/* ─── ED ROOT — stacked: topbar / workspace / save-bar ──────────────── */
+.ed-root { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+
+/* ─── WORKSPACE — single layer, canvas baseline, panels overlay ─────── */
+.ws-layer {
+  position: relative;
+  flex: 1; min-height: 0;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+/* Canvas baseline — full-bleed under all overlays */
+.ws-canvas-base {
+  position: absolute; inset: 0;
+  z-index: 0;
+  display: flex;
+}
+.ws-canvas-base .pane.cv-pane {
+  border: 0; border-radius: 0;
+  flex: 1;
+}
+
+/* ─── OVERLAY PANELS (z:10) ─────────────────────────────────────────── */
+/* Each panel is absolutely positioned within .ws-layer. */
+
+.ov-pane {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(15,23,42,0.10), 0 2px 6px rgba(15,23,42,0.04);
+  z-index: 10;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: width 220ms cubic-bezier(0.32,0.04,0.2,1),
+              height 220ms cubic-bezier(0.32,0.04,0.2,1),
+              transform 220ms cubic-bezier(0.32,0.04,0.2,1),
+              opacity 200ms ease;
+}
+
+/* Left palette overlay */
+.ov-pal       { left: 12px; top: 12px; bottom: 12px; width: 248px; }
+.ov-pal.col   { width: 30px; }
+.ov-pal.col .pal-h,
+.ov-pal.col .pal-search,
+.ov-pal.col .pal-scroll,
+.ov-pal.col .pal-foot { display: none; }
+
+/* Right policy test overlay */
+.ov-pt        { right: 12px; top: 12px; bottom: 12px; width: 320px; }
+.ov-pt.col    { width: 30px; }
+.ov-pt.col .pt-h, .ov-pt.col .pt-scroll { display: none; }
+
+/* Bottom Cedar overlay — placed under canvas chrome, width avoids side overlays */
+.ov-cedar {
+  left: 272px; right: 344px; bottom: 12px;
+  height: 220px;
+  background: var(--slate-800);
+  border-color: var(--slate-700);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(15,23,42,0.20), 0 4px 12px rgba(15,23,42,0.10);
+}
+.ov-cedar.col { height: 38px; }
+
+/* If a side panel is collapsed, the bottom strip can extend toward that edge */
+.ov-cedar.left-col  { left: 54px; }
+.ov-cedar.right-col { right: 54px; }
+
+/* ─── EDGE HANDLES (always visible when collapsed) ──────────────────── */
+/* Inside a collapsed overlay, replace content with a vertical handle. */
+.ov-pal.col .edge-handle,
+.ov-pt.col .edge-handle {
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  height: 100%; padding: 14px 0;
+  cursor: pointer;
+  color: var(--slate-500);
+  width: 100%;
+}
+.ov-pal:not(.col) .edge-handle,
+.ov-pt:not(.col) .edge-handle { display: none; }
+
+.edge-handle .eh-top {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.edge-handle .eh-arrow {
+  width: 20px; height: 20px;
+  border: 1px solid var(--hairline); border-radius: 6px;
+  background: var(--surface);
+  display: grid; place-items: center;
+}
+.edge-handle:hover .eh-arrow { background: var(--fog-200); color: var(--slate-800); }
+.edge-handle .eh-lbl {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font-family: var(--ff-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.ov-pt.col .edge-handle .eh-lbl { transform: rotate(180deg); }
+.edge-handle .eh-warn {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--fail-500);
+  box-shadow: 0 0 0 3px rgba(199,114,104,0.22);
+}
+
+/* Bottom strip collapsed handle (horizontal) */
+.ov-cedar.col .cedar-h { display: none; }
+.ov-cedar.col .cedar-body { display: none; }
+.ov-cedar.col .edge-handle-h {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px;
+  height: 100%;
+  cursor: pointer;
+  color: var(--fog-100);
+  font-family: var(--ff-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.ov-cedar:not(.col) .edge-handle-h { display: none; }
+.ov-cedar.col .edge-handle-h:hover { background: var(--slate-700); }
+.ov-cedar.col .edge-handle-h .ehh-arr {
+  width: 20px; height: 20px; border: 1px solid var(--slate-600); border-radius: 6px;
+  background: var(--slate-900); display: grid; place-items: center;
+}
+.ov-cedar.col .edge-handle-h .ehh-meta { margin-left: auto; opacity: 0.7; }
+
+/* Panel headers need a close button (collapse to handle) */
+.pal-h .pal-fold,
+.pt-h .pt-fold,
+.cedar-h .ch-fold { /* already styled in v3 — leave as-is */ }
+
+/* ─── TOPBAR / FAB raise above overlay panels ───────────────────────── */
+.tb { position: relative; z-index: 20; }
+.save-bar { position: relative; z-index: 20; }
+.fab-btn { z-index: 22 !important; }
+.fab-pop { z-index: 23 !important; }
+
+/* Transient overlays (modal, slideover) sit above everything except nav-rail */
+.scrim, .modal, .so-scrim, .so { z-index: 80 !important; }
+.so { z-index: 81 !important; }
+
+/* Nav rail stays topmost */
+.nv { z-index: 50; }
+
+/* ─── Canvas inner — full-bleed look (lighter, since no pane border) ── */
+.ws-canvas-base .cv-pane { box-shadow: none; }
+.ws-canvas-base .cv-stage {
+  /* gentler dot grid + soft fade in corners so overlays sit nicely */
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.6), transparent 200px),
+    radial-gradient(circle at 1px 1px, rgba(15,23,42,0.10) 1px, transparent 1px),
+    radial-gradient(circle at 1px 1px, rgba(15,23,42,0.04) 1px, transparent 1px) 8px 8px;
+  background-size: auto, 16px 16px, 16px 16px;
+  background-color: var(--surface);
+}
+
+/* Slight extra top padding so the corner draft-count chip clears the top edge,
+   since cv-tools sit at top:10 and overlays push down from 12. */
+.ws-canvas-base .cv-stage-inner { padding-top: 56px; }
+
+/* When the cedar strip is open, leave room above it on the canvas tools chips */
+.cv-tools { top: 14px !important; left: 270px !important; right: 340px !important; }
+.ws-layer.left-col .cv-tools { left: 50px !important; }
+.ws-layer.right-col .cv-tools { right: 50px !important; }
+
+/* ─── Make the workspace bg subtle gradient so canvas reads as "ground" */
+.ws-layer { background: var(--surface); border-color: var(--hairline-soft); }
+
+/* ─── Save-bar / cedar-strip width when panel collapsed don't matter   */
+/*     since they're absolute. ───────────────────────────────────────── */
+.cedar-strip { max-height: none; min-height: 0; height: 100%; }
+.ov-cedar .cedar-strip { border: 0; border-radius: 0; }
+.ov-cedar .cedar-body { max-height: none; }

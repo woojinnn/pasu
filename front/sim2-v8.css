@@ -1,0 +1,24 @@
+/* ════════════════════════════════════════════════════════════════════
+   sim2-v8.css — 8차 피드백 (판정·위반 ↔ state 하이라이트). After sim2-v7.css.
+   #1 판정 선택 → 영향 state 하이라이트 (양방향) · #2 클릭=하이라이트, 필터 아님.
+   highlight(seed)는 dim 없이 lit만 — "리스트·state 다 그대로 두고 강조".
+   ════════════════════════════════════════════════════════════════════ */
+
+/* 게이지/잔고 행이 클릭 가능함을 알림 */
+.mgauge { cursor:pointer; }
+
+/* 하이라이트는 강조(lit)만, 흐림(dim) 없음 — 비선택 항목도 그대로 보이게 (#2) */
+.brow.dim, .mgauge.dim, .v2-row.dim, .v2-viol.dim { opacity:1 !important; }
+
+/* 인과 척추: lit 링을 통일감 있게 — 양쪽(판정 ↔ state)이 같은 사이언 강조 */
+.brow.lit { background:var(--cyan-50); box-shadow:inset 0 0 0 1.5px var(--cyan-500); border-radius:9px; }
+.mgauge.lit { border-color:var(--cyan-500); box-shadow:0 0 0 2px rgba(105,162,176,0.32); background:var(--cyan-50); }
+.v2-row.lit { box-shadow:0 0 0 2px var(--cyan-500); border-color:var(--cyan-500); }
+.v2-viol.lit { box-shadow:0 0 0 2px var(--cyan-500); }
+
+/* 포지션 블록 하이라이트 (HF/LTV 연결 시) */
+.pos-sub { transition:border-color 140ms ease, box-shadow 140ms ease, background 140ms ease; }
+.pos-sub.lit { border-color:var(--cyan-500); box-shadow:0 0 0 2px rgba(105,162,176,0.28); background:var(--cyan-50); }
+.pos-sub.lit .pos-summary { background:var(--cyan-100); border-color:var(--cyan-300); color:var(--cyan-800); }
+
+/* 판정 카드 부제: 하이라이트 모드 안내가 잘 읽히게 (이미 .sub 스타일 상속) */

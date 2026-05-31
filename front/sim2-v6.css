@@ -1,0 +1,80 @@
+/* ════════════════════════════════════════════════════════════════════
+   sim2-v6.css — 6차 피드백. Loaded after sim2-v5.css.
+   #1 토큰 잔고를 명세대로 채운 표 한 행 (아이콘·심볼·체인뱃지·USD·정렬) — 압축이 아니라 완성.
+   #2 승인 행 의미를 라벨로 명시.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── #1 잔고 — 컬럼 헤더 ── */
+.balcard { padding:2px 12px 10px; }
+.bal-colhead { display:grid; grid-template-columns:14px 26px minmax(0,1fr) auto; gap:11px; align-items:center;
+  padding:7px 5px 6px; border-bottom:1px solid var(--hairline-soft); font-family:var(--ff-mono); font-size:8px; font-weight:700;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--slate-300); }
+.bal-colhead .c-tok { grid-column:3; } .bal-colhead .c-chg { display:none; } .bal-colhead .c-usd { grid-column:4; text-align:right; }
+
+/* ── #1 잔고 1행 — 표 한 행으로 완성 (값을 채워 빈 공간 제거) ── */
+.brow { border-bottom:1px solid var(--hairline-soft); }
+.brow:last-child { border-bottom:0; }
+.brow-h { display:grid; grid-template-columns:14px 26px minmax(0,1fr) auto auto; align-items:center; gap:11px; padding:9px 5px; cursor:default; }
+.brow:not(.flat) .brow-h, .brow-h[onclick] { }
+.brow-h:hover { background:var(--fog-200); border-radius:8px; }
+.brow.breach { background:var(--fail-50); border-radius:8px; }
+
+.brow-car { width:14px; height:14px; color:var(--slate-300); display:grid; place-items:center; transition:transform 160ms ease; transform:rotate(-90deg); }
+.brow.open .brow-car { transform:rotate(0); }
+
+.tok-ic { width:26px; height:26px; border-radius:50%; flex-shrink:0; display:grid; place-items:center;
+  font-family:var(--ff-mono); font-size:11px; font-weight:700; color:var(--slate-600);
+  background:var(--fog-300); border:1px solid var(--hairline-soft); }
+.tok-ic.native { background:var(--cyan-100); color:var(--cyan-800); border-color:var(--cyan-300); }
+.tok-ic.unk { background:var(--fog-200); color:var(--slate-300); border-style:dashed; }
+
+.tok-id { min-width:0; }
+.tok-id .t1 { display:flex; align-items:center; gap:7px; }
+.tok-id .t1 .sym { font-family:var(--ff-mono); font-size:13.5px; font-weight:700; color:var(--slate-900); white-space:nowrap; }
+.tok-id .t2 { font-family:var(--ff-mono); font-size:9px; color:var(--slate-400); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:0; }
+.tok-id .t2 .floor { color:var(--slate-300); }
+
+.chainbadge { font-family:var(--ff-mono); font-size:8.5px; font-weight:700; color:var(--slate-500); background:var(--fog-200);
+  border:1px solid var(--hairline-soft); border-radius:var(--r-pill); padding:1px 7px; white-space:nowrap; flex-shrink:0; }
+.tok-id .t1 .stale { font-size:7.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--warn-800);
+  background:var(--warn-50); border:1px solid var(--warn-300); border-radius:4px; padding:0 4px; }
+
+/* change column (delta + before→after), right-aligned */
+.brow-change { display:flex; flex-direction:column; align-items:flex-end; justify-content:center; text-align:right; white-space:nowrap; }
+.brow-change .delta { font-family:var(--ff-mono); font-size:15px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
+.brow-change .delta.up { color:var(--pass-600); } .brow-change .delta.down { color:var(--slate-900); }
+.brow-change .delta.zero { color:var(--slate-300); } .brow-change .delta.breach { color:var(--fail-600); }
+.brow-change .ba { font-family:var(--ff-mono); font-size:9.5px; color:var(--slate-400); margin-top:1px; }
+.brow-change .ba b { color:var(--slate-600); font-weight:700; } .brow-change .ba .arr { color:var(--slate-300); margin:0 3px; }
+.brow-change .ba .breach-t { color:var(--fail-600); }
+.brow-change .qty { font-family:var(--ff-mono); font-size:13px; font-weight:600; color:var(--slate-600); font-variant-numeric:tabular-nums; }
+.brow-change .qty .u { color:var(--slate-400); font-weight:500; }
+
+/* USD column — right aligned, line up across rows */
+.brow-usd { font-family:var(--ff-mono); font-size:13px; font-weight:700; color:var(--slate-800); text-align:right; min-width:64px; font-variant-numeric:tabular-nums; }
+.brow-usd .noprice { color:var(--slate-300); }
+
+.brow-body { padding:0 5px 11px 51px; }
+
+/* ── #2 승인 행 — 의미를 라벨로 ── */
+.aprows { padding:6px 11px 11px; display:flex; flex-direction:column; gap:7px; }
+.aprow { padding:10px 11px; border:1px solid var(--hairline-soft); border-radius:11px; display:flex; flex-direction:column; gap:6px; }
+.aprow.unlimited { border-color:var(--fail-300); background:var(--fail-50); }
+.ap-top { display:flex; align-items:center; gap:9px; }
+.ap-ic { width:24px; height:24px; border-radius:7px; flex-shrink:0; display:grid; place-items:center; background:var(--fog-200); color:var(--slate-500); }
+.aprow.unlimited .ap-ic { background:var(--fail-500); color:var(--fog-50); } .ap-ic svg { width:13px; height:13px; }
+.ap-title { flex:1; min-width:0; font-size:13px; font-weight:700; color:var(--slate-900); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ap-limit { font-family:var(--ff-mono); font-size:10px; font-weight:600; color:var(--slate-500); flex-shrink:0; }
+.ap-limit b { color:var(--slate-800); font-weight:700; }
+.ap-limit .unl { display:inline-flex; align-items:center; gap:3px; color:var(--fail-700); background:var(--fail-100); border:1px solid var(--fail-200);
+  border-radius:var(--r-pill); padding:2px 9px; font-weight:700; } .ap-limit .unl svg { width:10px; height:10px; }
+.ap-kv { display:flex; align-items:baseline; gap:9px; font-size:11.5px; padding-left:33px; }
+.ap-kv .k { font-family:var(--ff-mono); font-size:9px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--slate-300); width:46px; flex-shrink:0; }
+.ap-kv .v { color:var(--slate-700); display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0; }
+.ap-kv .v .addr { font-family:var(--ff-mono); font-size:9.5px; color:var(--slate-400); }
+.ap-type { font-family:var(--ff-mono); font-size:9px; font-weight:700; color:var(--cyan-800); background:var(--cyan-100); border:1px solid var(--cyan-300); border-radius:5px; padding:1px 7px; }
+.ap-exp { font-family:var(--ff-mono); font-size:9px; font-weight:700; color:var(--slate-500); background:var(--fog-200); border:1px solid var(--hairline-soft); border-radius:5px; padding:1px 7px; }
+.ap-exp.soon { color:var(--warn-800); background:var(--warn-50); border-color:var(--warn-300); }
+
+/* focus footprint row — chain under sym */
+.fp-id .px { text-transform:none; }

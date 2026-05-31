@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Cloudy Pond · Global nav</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+
+<style>
+  :root {
+    --sage-50:#F8F9F6; --sage-100:#EBF3E8; --sage-200:#D9E9D3; --sage-300:#C5DDBD;
+    --sage-400:#B0D1A4; --sage-500:#9CC58D; --sage-600:#7FA172; --sage-700:#637E59;
+    --sage-800:#44583D; --sage-900:#283523;
+    --slate-50:#EFF0F2; --slate-100:#D7DBDF; --slate-200:#B5BBC4; --slate-300:#9099A5;
+    --slate-400:#697485; --slate-500:#475569; --slate-600:#384455; --slate-700:#2A3441;
+    --slate-800:#1B222C; --slate-900:#0D1118;
+    --cyan-50:#F8F9F9; --cyan-100:#EDF4F6; --cyan-200:#DCEAED; --cyan-300:#CAE0E4;
+    --cyan-400:#B6D4DA; --cyan-500:#A4C9D1; --cyan-600:#85A4AB; --cyan-700:#688186;
+    --cyan-800:#485A5E; --cyan-900:#2B3639;
+    --fog-50:#FEFEFE; --fog-100:#FCFCFC; --fog-200:#FAFAF9; --fog-300:#F7F7F6;
+    --fog-400:#F4F5F3; --fog-500:#F1F2F0; --fog-600:#C5C6C4; --fog-700:#9B9C9A;
+    --fog-800:#6E6E6D; --fog-900:#434343;
+    --pass-500:#7CB069; --pass-700:#4E7041;
+    --warn-500:#D69238; --warn-700:#80571F;
+    --fail-500:#C77268; --fail-700:#7F4740;
+
+    --page: var(--fog-400);
+    --surface: #FFFFFF;
+    --hairline: var(--fog-600);
+    --hairline-soft: #E5E6E3;
+
+    --r-md: 14px; --r-sm: 10px; --r-pill: 999px;
+    --ff-sans: "IBM Plex Sans KR", system-ui, -apple-system, sans-serif;
+    --ff-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--slate-500);
+    font-family: var(--ff-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1440px; margin: 0 auto; padding: 40px 48px; }
+
+  /* Section headers */
+  h1.title { font-size: 28px; font-weight: 700; color: var(--slate-900); margin: 0; letter-spacing: -0.015em; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.18em; font-weight: 700; color: var(--slate-500); text-transform: uppercase; margin-bottom: 6px; }
+  .lede { color: var(--slate-500); font-size: 14px; margin-top: 8px; max-width: 720px; line-height: 1.55; }
+  .section-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin: 48px 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--hairline);
+  }
+  .section-head .ttl { font-size: 11px; letter-spacing: 0.18em; font-weight: 700; color: var(--slate-500); text-transform: uppercase; }
+  .section-head .meta { font-family: var(--ff-mono); font-size: 11.5px; color: var(--slate-400); }
+
+  /* ============================================================
+     Nav rail — the actual component
+     ============================================================ */
+  .nav-rail {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 64px;
+    background: var(--surface);
+    border-right: 1px solid var(--hairline);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 0 14px;
+    overflow: hidden;
+    transition: width 240ms cubic-bezier(0.32, 0.04, 0.2, 1),
+                box-shadow 240ms ease;
+  }
+  .nav-rail:hover,
+  .nav-rail:focus-within,
+  .nav-rail.expanded {
+    width: 256px;
+    box-shadow: 8px 0 32px rgba(15,23,42,0.06);
+  }
+
+  /* Logo block */
+  .nav-logo {
+    display: flex; align-items: center; gap: 12px;
+    height: 40px;
+    margin: 0 14px 18px;
+  }
+  .nav-logo .mark {
+    width: 36px; height: 36px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    border: 1px dashed var(--slate-300);
+    background:
+      repeating-linear-gradient(135deg,
+        var(--fog-300) 0 5px,
+        var(--fog-500) 5px 10px);
+    display: grid; place-items: center;
+    font-family: var(--ff-mono);
+    font-size: 8px;
+    color: var(--slate-500);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .nav-logo .word {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--slate-900);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 180ms 80ms ease, transform 180ms 80ms ease;
+  }
+  .nav-rail:hover .nav-logo .word,
+  .nav-rail:focus-within .nav-logo .word,
+  .nav-rail.expanded .nav-logo .word { opacity: 1; transform: translateX(0); }
+
+  /* Primary action — "새 정책" split button */
+  .nav-cta {
+    height: 40px;
+    margin: 0 14px 10px;
+    border-radius: 10px;
+    background: var(--slate-500);
+    color: var(--fog-50);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    transition: width 240ms cubic-bezier(0.32, 0.04, 0.2, 1);
+  }
+  .nav-cta .main {
+    flex: 1;
+    display: flex; align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    height: 100%;
+    cursor: default;
+  }
+  .nav-cta .main:hover { background: var(--slate-700); }
+  .nav-cta .plus {
+    width: 18px; height: 18px;
+    flex-shrink: 0;
+  }
+  .nav-cta .label {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 180ms 80ms ease, transform 180ms 80ms ease;
+  }
+  .nav-cta .caret {
+    width: 36px; height: 100%;
+    display: grid; place-items: center;
+    border-left: 1px solid rgba(255,255,255,0.18);
+    cursor: default;
+    opacity: 0;
+    transition: opacity 180ms 80ms ease;
+  }
+  .nav-cta .caret:hover { background: var(--slate-700); }
+  .nav-cta .caret svg { width: 14px; height: 14px; }
+  .nav-rail:hover .nav-cta .label,
+  .nav-rail:focus-within .nav-cta .label,
+  .nav-rail.expanded .nav-cta .label { opacity: 1; transform: translateX(0); }
+  .nav-rail:hover .nav-cta .caret,
+  .nav-rail:focus-within .nav-cta .caret,
+  .nav-rail.expanded .nav-cta .caret { opacity: 1; }
+
+  /* Workspace switcher */
+  .nav-ws {
+    height: 40px;
+    margin: 8px 14px 12px;
+    background: var(--fog-300);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    overflow: hidden;
+  }
+  .nav-ws .ws-av {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--cyan-200);
+    color: var(--slate-700);
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .nav-ws .ws-label {
+    flex: 1;
+    font-size: 13px;
+    color: var(--slate-700);
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 180ms 100ms ease, transform 180ms 100ms ease;
+  }
+  .nav-ws .ws-label .sub {
+    display: block;
+    font-family: var(--ff-mono);
+    font-size: 10.5px;
+    color: var(--slate-400);
+    font-weight: 500;
+    margin-top: -2px;
+  }
+  .nav-ws .ws-caret {
+    width: 14px; height: 14px;
+    color: var(--slate-400);
+    opacity: 0;
+    transition: opacity 180ms 100ms ease;
+    flex-shrink: 0;
+  }
+  .nav-rail:hover .nav-ws .ws-label,
+  .nav-rail:focus-within .nav-ws .ws-label,
+  .nav-rail.expanded .nav-ws .ws-label { opacity: 1; transform: translateX(0); }
+  .nav-rail:hover .nav-ws .ws-caret,
+  .nav-rail:focus-within .nav-ws .ws-caret,
+  .nav-rail.expanded .nav-ws .ws-caret { opacity: 1; }
+
+  /* Divider */
+  .nav-divider {
+    height: 1px;
+    background: var(--hairline-soft);
+    margin: 6px 16px;
+  }
+
+  /* Menu group */
+  .nav-group {
+    padding: 6px 0;
+    display: flex; flex-direction: column;
+  }
+  .nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 38px;
+    margin: 0 10px;
+    padding: 0 10px;
+    border-radius: 9px;
+    color: var(--slate-500);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: default;
+    text-decoration: none;
+    letter-spacing: -0.005em;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .nav-item:hover { background: var(--fog-300); color: var(--slate-800); }
+  .nav-item.active {
+    background: var(--sage-50);
+    color: var(--slate-900);
+    font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: "";
+    position: absolute;
+    left: -10px;
+    top: 8px; bottom: 8px;
+    width: 3px;
+    background: var(--pass-500);
+    border-radius: 0 2px 2px 0;
+  }
+  .nav-item .icon {
+    width: 20px; height: 20px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .nav-item .icon svg { width: 18px; height: 18px; }
+  .nav-item .label {
+    flex: 1;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 180ms 80ms ease, transform 180ms 80ms ease;
+  }
+  .nav-rail:hover .nav-item .label,
+  .nav-rail:focus-within .nav-item .label,
+  .nav-rail.expanded .nav-item .label { opacity: 1; transform: translateX(0); }
+
+  .nav-item .badge {
+    background: var(--fail-500);
+    color: var(--fog-50);
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: var(--r-pill);
+    opacity: 0;
+    transition: opacity 180ms 100ms ease;
+  }
+  .nav-rail:hover .nav-item .badge,
+  .nav-rail:focus-within .nav-item .badge,
+  .nav-rail.expanded .nav-item .badge { opacity: 1; }
+  /* Collapsed dot — visible only at rest */
+  .nav-item .dot-badge {
+    position: absolute;
+    right: 8px; top: 6px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--fail-500);
+    box-shadow: 0 0 0 2px var(--surface);
+    transition: opacity 120ms ease;
+  }
+  .nav-rail:hover .nav-item .dot-badge,
+  .nav-rail:focus-within .nav-item .dot-badge,
+  .nav-rail.expanded .nav-item .dot-badge { opacity: 0; }
+
+  /* Bottom: user */
+  .nav-bottom {
+    margin-top: auto;
+    padding-top: 8px;
+  }
+  .nav-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    transition: background 120ms ease;
+  }
+  .nav-user:hover { background: var(--fog-300); }
+  .nav-user .av {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--slate-500);
+    color: var(--fog-50);
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .nav-user .meta {
+    flex: 1;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 180ms 100ms ease, transform 180ms 100ms ease;
+    overflow: hidden;
+  }
+  .nav-user .meta .nm {
+    font-size: 13px;
+    color: var(--slate-900);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .nav-user .meta .em {
+    font-family: var(--ff-mono);
+    font-size: 10.5px;
+    color: var(--slate-400);
+    margin-top: -2px;
+    white-space: nowrap;
+  }
+  .nav-rail:hover .nav-user .meta,
+  .nav-rail:focus-within .nav-user .meta,
+  .nav-rail.expanded .nav-user .meta { opacity: 1; transform: translateX(0); }
+
+  /* ─── Collapsed state: hide labels/caret/badge from layout & center icons ─── */
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-cta .label,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-cta .caret,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-ws .ws-label,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-ws .ws-caret,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-item .label,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-item .badge,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-user .meta,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-logo .word {
+    display: none;
+  }
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-cta .main,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-ws,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-item,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-user,
+  .nav-rail:not(:hover):not(:focus-within):not(.expanded) .nav-logo {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* ============================================================
+     Demo presentation
+     ============================================================ */
+  .demo-frame {
+    position: relative;
+    height: 580px;
+    background: var(--fog-400);
+    border: 1px solid var(--hairline);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 2px 12px rgba(15,23,42,0.04);
+  }
+  .demo-frame .ghost {
+    position: absolute;
+    left: 64px; right: 0; top: 0; bottom: 0;
+    padding: 32px 40px;
+  }
+  .demo-frame .ghost .ghost-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    height: 40px;
+    margin-bottom: 24px;
+  }
+  .demo-frame .ghost .ghost-topbar .crumb { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-400); }
+  .demo-frame .ghost .ghost-topbar .dots { display: flex; gap: 8px; }
+  .demo-frame .ghost .ghost-topbar .dot-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    padding: 5px 10px;
+    font-size: 11.5px;
+    color: var(--slate-500);
+  }
+  .demo-frame .ghost .ghost-topbar .dot-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .demo-frame .ghost .ghost-topbar .dot-chip.pass .dot { background: var(--pass-500); }
+  .demo-frame .ghost .ghost-topbar .dot-chip.warn .dot { background: var(--warn-500); }
+  .demo-frame .ghost .ghost-topbar .dot-chip.fail .dot { background: var(--fail-500); }
+
+  /* Placeholder cards visible behind to show overlay doesn't push */
+  .demo-frame .ghost .ph-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: 16px;
+    height: 80px;
+    color: var(--slate-300);
+    display: grid; place-items: center;
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .demo-frame .ghost .ph-grid {
+    display: grid; grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+  .demo-frame .ghost .ph-stack {
+    display: flex; flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  /* Annotation tag */
+  .anno {
+    position: absolute;
+    background: var(--slate-500);
+    color: var(--fog-50);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: var(--ff-mono);
+    font-size: 10.5px;
+    letter-spacing: 0;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(15,23,42,0.16);
+  }
+  .anno::before {
+    content: "";
+    position: absolute;
+    border: 5px solid transparent;
+  }
+  .anno.left::before { right: 100%; top: 50%; margin-top: -5px; border-right-color: var(--slate-500); }
+  .anno.right::before { left: 100%; top: 50%; margin-top: -5px; border-left-color: var(--slate-500); }
+  .anno.bottom::before { bottom: 100%; left: 50%; margin-left: -5px; border-bottom-color: var(--slate-500); }
+
+  /* Side-by-side reference */
+  .ref-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+  .ref-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .ref-card .label {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--slate-500);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ref-card .label::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--slate-500);
+  }
+  .ref-card .frame {
+    position: relative;
+    height: 460px;
+    background: var(--fog-400);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .ref-card .desc {
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: var(--slate-500);
+    line-height: 1.5;
+  }
+  .ref-card .desc code {
+    font-family: var(--ff-mono);
+    font-size: 11.5px;
+    background: var(--fog-400);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--slate-700);
+  }
+
+  /* Spec table */
+  .spec-table {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .spec-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .spec-table th, .spec-table td {
+    text-align: left;
+    padding: 12px 18px;
+    border-bottom: 1px dashed var(--hairline-soft);
+  }
+  .spec-table th {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--slate-500);
+    background: var(--fog-200);
+  }
+  .spec-table tr:last-child td { border-bottom: 0; }
+  .spec-table td.mono { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-700); }
+  .spec-table .swatch {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    border: 1px solid var(--hairline);
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  /* Editor collision note card */
+  .note-card {
+    background: var(--cyan-50);
+    border: 1px solid var(--cyan-200);
+    border-left: 4px solid var(--cyan-500);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .note-card .ttl {
+    font-weight: 700;
+    color: var(--slate-900);
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .note-card p { margin: 0; color: var(--slate-500); font-size: 13px; line-height: 1.55; }
+  .note-card code {
+    font-family: var(--ff-mono);
+    font-size: 11.5px;
+    background: rgba(255,255,255,0.5);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--slate-700);
+  }
+
+  /* Cycle indicator */
+  .cycle-meta {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    padding: 6px 12px;
+    font-family: var(--ff-mono);
+    font-size: 11.5px;
+    color: var(--slate-500);
+  }
+  .cycle-meta .pulse {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--sage-500);
+    box-shadow: 0 0 0 4px rgba(156,197,141,0.32);
+    animation: pulse 3.4s infinite;
+  }
+  @keyframes pulse {
+    0%, 50% { background: var(--sage-500); }
+    50.1%, 100% { background: var(--cyan-500); }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+  <header style="display:flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+      <div class="eyebrow">Scopeball · global navigation · v0.1</div>
+      <h1 class="title">Cloudy Pond nav rail · rest ↔ hover</h1>
+      <div class="lede">
+        좌측 64px icon-rail이 hover · focus 시 256px overlay로 펼쳐짐. 본문을 *밀지 않고* 떠서 덮음 (push 아님).
+        파란색 active → Sage active로, navy CTA → Slate split 버튼으로 Cloudy Pond 맵핑.
+      </div>
+    </div>
+    <span class="cycle-meta">
+      <span class="pulse"></span>
+      auto-cycling · 3.4s
+    </span>
+  </header>
+
+
+  <!-- ── Section 1: Live cycling demo ── -->
+  <div class="section-head">
+    <span class="ttl">Live demo · auto-cycling</span>
+    <span class="meta">hover ⌥ · or tab key · or click to lock</span>
+  </div>
+
+  <div class="demo-frame">
+
+    <nav class="nav-rail" id="demoRail" tabindex="0" aria-label="Cloudy Pond nav">
+      <!-- LOGO -->
+      <div class="nav-logo">
+        <div class="mark">logo</div>
+        <div class="word">scopeball</div>
+      </div>
+      <!-- PRIMARY ACTION (split) -->
+      <div class="nav-cta">
+        <div class="main">
+          <svg class="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="label">새 정책</span>
+        </div>
+        <div class="caret">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+      <!-- WORKSPACE -->
+      <div class="nav-ws">
+        <span class="ws-av">A</span>
+        <div class="ws-label">
+          Acme
+          <span class="sub">메인 지갑 · 0xA1c4···7e29</span>
+        </div>
+        <svg class="ws-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <!-- MENU group 1 -->
+      <div class="nav-group">
+        <a class="nav-item active" href="#" aria-current="page">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">Home</span>
+        </a>
+        <a class="nav-item" href="#">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+          <span class="label">Editor</span>
+        </a>
+        <a class="nav-item" href="#">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span>
+          <span class="label">Library</span>
+        </a>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <!-- MENU group 2 -->
+      <div class="nav-group">
+        <a class="nav-item" href="#">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-7"/></svg></span>
+          <span class="label">Audit</span>
+          <span class="badge">12</span>
+          <span class="dot-badge"></span>
+        </a>
+        <a class="nav-item" href="#">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .7.4 1.31 1 1.51H21a2 2 0 0 1 0 4h-.09c-.7 0-1.31.4-1.51 1z"/></svg></span>
+          <span class="label">Settings</span>
+        </a>
+      </div>
+
+      <!-- BOTTOM -->
+      <div class="nav-bottom">
+        <div class="nav-user">
+          <span class="av">TY</span>
+          <div class="meta">
+            <div class="nm">Taeyoon Kim</div>
+            <div class="em">ty@scopeball.co</div>
+          </div>
+        </div>
+      </div>
+
+    </nav>
+
+    <!-- Body placeholder behind nav (to show overlay doesn't push) -->
+    <div class="ghost" aria-hidden="true">
+      <div class="ghost-topbar">
+        <span class="crumb">~/home · 0xA1c4···7e29</span>
+        <span class="dots">
+          <span class="dot-chip pass"><span class="dot"></span>3 passing</span>
+          <span class="dot-chip warn"><span class="dot"></span>1 warning</span>
+          <span class="dot-chip fail"><span class="dot"></span>1 failing</span>
+        </span>
+      </div>
+      <div class="ph-grid">
+        <div>
+          <div class="ph-card">hero · 보호 중 · Acme · 메인 지갑</div>
+          <div class="ph-stack">
+            <div class="ph-card" style="height: 160px;">triage · 오늘 결정할 것</div>
+            <div class="ph-card" style="height: 60px;">narrative · 오늘 137건 평가</div>
+          </div>
+        </div>
+        <div>
+          <div class="ph-card" style="height: 256px;">side rail · sync · meta</div>
+        </div>
+      </div>
+    </div>
+
+    <span class="anno right" style="left: 84px; top: 24px;">64px rest · 256px expanded</span>
+    <span class="anno right" style="left: 84px; top: 72px;">overlay (z=50) · 본문 push 아님</span>
+  </div>
+
+
+  <!-- ── Section 2: Side-by-side REST / HOVER ── -->
+  <div class="section-head">
+    <span class="ttl">Reference snapshots · rest · hover</span>
+    <span class="meta">CSS — width 64 → 256 · 240ms cubic-bezier(.32,.04,.2,1)</span>
+  </div>
+
+  <div class="ref-row">
+    <!-- REST -->
+    <div class="ref-card">
+      <div class="label">rest · 64px icon-rail</div>
+      <div class="frame">
+        <nav class="nav-rail" style="width:64px;" aria-hidden="true">
+          <div class="nav-logo"><div class="mark">logo</div><div class="word">scopeball</div></div>
+          <div class="nav-cta">
+            <div class="main"><svg class="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="label">새 정책</span></div>
+            <div class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+          </div>
+          <div class="nav-ws"><span class="ws-av">A</span><div class="ws-label">Acme<span class="sub">메인 지갑</span></div><svg class="ws-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <a class="nav-item active" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span><span class="label">Home</span></a>
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="label">Editor</span></a>
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="label">Library</span></a>
+          </div>
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-7"/></svg></span><span class="label">Audit</span><span class="dot-badge"></span></a>
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15c.1.4.3.8.6 1L19 17l-1-1c-.3-.3-.6-.5-1-.6"/><path d="M4.6 9c.1-.4.3-.8.6-1L4 7l1-1c.3.3.6.5 1 .6"/></svg></span><span class="label">Settings</span></a>
+          </div>
+          <div class="nav-bottom"><div class="nav-user"><span class="av">TY</span><div class="meta"><div class="nm">Taeyoon</div><div class="em">ty@scopeball.co</div></div></div></div>
+        </nav>
+      </div>
+      <div class="desc">
+        <code>width: 64px</code> · 아이콘만. <code>active</code> 항목은 Sage 50 bg + Sage Leaf 3px left-bar.
+        오른쪽 상단 <code>dot-badge</code>로 unread 신호 (Audit 12). 본문은 <code>margin-left: 64px</code>로 시작.
+      </div>
+    </div>
+
+    <!-- HOVER -->
+    <div class="ref-card">
+      <div class="label">hover · 256px overlay</div>
+      <div class="frame">
+        <nav class="nav-rail expanded" style="width:256px;" aria-hidden="true">
+          <div class="nav-logo"><div class="mark">logo</div><div class="word">scopeball</div></div>
+          <div class="nav-cta">
+            <div class="main"><svg class="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="label">새 정책</span></div>
+            <div class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+          </div>
+          <div class="nav-ws"><span class="ws-av">A</span><div class="ws-label">Acme<span class="sub">메인 지갑 · 0xA1c4···7e29</span></div><svg class="ws-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <a class="nav-item active" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span><span class="label">Home</span></a>
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="label">Editor</span></a>
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="label">Library</span></a>
+          </div>
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-7"/></svg></span><span class="label">Audit</span><span class="badge">12</span></a>
+            <a class="nav-item" href="#"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15c.1.4.3.8.6 1L19 17l-1-1c-.3-.3-.6-.5-1-.6"/><path d="M4.6 9c.1-.4.3-.8.6-1L4 7l1-1c.3.3.6.5 1 .6"/></svg></span><span class="label">Settings</span></a>
+          </div>
+          <div class="nav-bottom"><div class="nav-user"><span class="av">TY</span><div class="meta"><div class="nm">Taeyoon Kim</div><div class="em">ty@scopeball.co</div></div></div></div>
+        </nav>
+      </div>
+      <div class="desc">
+        <code>width: 256px</code> · 로고 wordmark + "새 정책" split 버튼 (Slate) + workspace 전환 칩 + 메뉴 라벨.
+        Audit unread는 <code>12</code> 카운트로 확장. 본문은 그대로 64px 기준에서 시작 — overlay가 그 위를 덮음.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── Section 3: Spec table ── -->
+  <div class="section-head">
+    <span class="ttl">Spec · tokens · transitions</span>
+    <span class="meta">cloudy-pond/nav · v0.1</span>
+  </div>
+
+  <div class="spec-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Element</th>
+          <th>Rest</th>
+          <th>Hover / focus / expanded</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Rail width</strong></td>
+          <td class="mono">64px</td>
+          <td class="mono">256px</td>
+          <td>transition <code>240ms cubic-bezier(.32,.04,.2,1)</code></td>
+        </tr>
+        <tr>
+          <td><strong>Surface</strong></td>
+          <td><span class="swatch" style="background:#FFFFFF;"></span>white</td>
+          <td><span class="swatch" style="background:#FFFFFF;"></span>white + 8px 0 32px shadow</td>
+          <td>본문은 <span class="swatch" style="background:var(--fog-400);"></span>Fog 400 유지</td>
+        </tr>
+        <tr>
+          <td><strong>Active item</strong></td>
+          <td><span class="swatch" style="background:var(--sage-50);"></span>Sage 50 bg + <span class="swatch" style="background:var(--pass-500);"></span>3px Sage Leaf left-bar</td>
+          <td>동일</td>
+          <td>모든 상태에서 active 표시 유지 (rest에서도 보이게)</td>
+        </tr>
+        <tr>
+          <td><strong>Primary CTA</strong></td>
+          <td>아이콘 <code>+</code> · <span class="swatch" style="background:var(--slate-500);"></span>Slate 500 36px 캡슐</td>
+          <td>같은 캡슐 + "새 정책" 라벨 + 우측 caret (split)</td>
+          <td>navy → Slate 매핑 · split 동작 유지</td>
+        </tr>
+        <tr>
+          <td><strong>Workspace</strong></td>
+          <td>아바타만 <span class="swatch" style="background:var(--cyan-200);"></span>Cyan 200</td>
+          <td>아바타 + "Acme · 메인 지갑" + 주소 mono</td>
+          <td>Cyan으로 flow/연결 의미 부여 (이전 Home 헤더와 동일 컴포넌트 재사용 가능)</td>
+        </tr>
+        <tr>
+          <td><strong>Label fade</strong></td>
+          <td>opacity 0 · translateX(-6px)</td>
+          <td>opacity 1 · translateX(0) · delay 80ms</td>
+          <td>width 전환보다 80ms 늦게 시작 → 라벨이 "흘러나오는" 느낌</td>
+        </tr>
+        <tr>
+          <td><strong>Badge</strong></td>
+          <td>우상단 8px <span class="swatch" style="background:var(--fail-500);"></span>Clay dot</td>
+          <td>라벨 옆 mono 카운트 (예: 12)</td>
+          <td>collapsed에선 정보 압축 (점만), expanded에선 수치 노출</td>
+        </tr>
+        <tr>
+          <td><strong>Keyboard</strong></td>
+          <td>Tab으로 진입 시 <code>:focus-within</code> 트리거 → 펼침</td>
+          <td>화살표 키로 이동 · Enter activate · Esc로 접기 (포커스 이탈)</td>
+          <td>hover 전용 금지 — focus 만으로도 풀 메뉴 접근 가능</td>
+        </tr>
+        <tr>
+          <td><strong>z-index</strong></td>
+          <td><code>z: 50</code></td>
+          <td><code>z: 50</code></td>
+          <td>본문 위에 떠서 덮음 (overlay). 본문 layout은 64px 기준 고정</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- ── Section 4: Editor collision ── -->
+  <div class="section-head">
+    <span class="ttl">Editor collision · Block palette ↔ nav overlay</span>
+    <span class="meta">제안 · 사용자 OK 받고 적용</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div class="note-card">
+      <div class="ttl">제안 · Editor 진입 시 nav lock-collapsed</div>
+      <p>
+        Editor의 Block palette는 좌측 18% (≈260px @1440). nav overlay가 256px이라 거의 완전히 겹침 —
+        hover로 펼치면 palette 잡을 수 없음. 그래서 <strong>Editor 페이지에서는 nav가 collapsed로 잠김</strong>:
+        rail은 64px 그대로 보이고 hover/focus overlay 비활성. 메뉴 이동은 키보드(<code>⌘+1~5</code>)나
+        rail 아이콘 직접 클릭으로 가능. nav 펼치려면 명시적 <code>⌘+B</code> 토글.
+      </p>
+    </div>
+    <div class="note-card" style="background: var(--fog-300); border-color: var(--hairline); border-left-color: var(--slate-300);">
+      <div class="ttl">대안 · overlay가 palette를 덮음 (택안)</div>
+      <p>
+        nav overlay가 palette 위를 덮되, palette 영역 (좌측 260px)에 마우스가 들어가면 overlay 자동 접힘.
+        펼친 nav에서 항목 클릭하려면 잠시 멈춰야 함 (200ms hover-intent). 더 자연스럽지만 palette 잡을 때
+        nav가 의도와 다르게 펼쳐질 위험. <strong>Editor 빈도 높으면 lock-collapsed 추천</strong>.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+  // Auto-cycle the live demo
+  const rail = document.getElementById('demoRail');
+  let expanded = false;
+  let timer;
+
+  function cycle() {
+    if (rail.matches(':hover, :focus-within')) {
+      // user is interacting — pause auto-cycle, resume next tick
+      return;
+    }
+    expanded = !expanded;
+    rail.classList.toggle('expanded', expanded);
+  }
+  timer = setInterval(cycle, 3400);
+
+  // Click to lock (toggle) — and Esc to clear
+  rail.addEventListener('click', (e) => {
+    if (e.target.closest('a, button, .nav-cta .caret, .nav-ws')) {
+      // do nothing — intercept link clicks
+      e.preventDefault();
+    }
+    rail.classList.toggle('expanded');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') rail.classList.remove('expanded');
+  });
+</script>
+
+</body>
+</html>

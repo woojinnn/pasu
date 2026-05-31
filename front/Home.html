@@ -1,0 +1,2112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Cloudy Pond · Home</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+
+<style>
+  /* ─── Cloudy Pond tokens ─── */
+  :root {
+    --sage-50:#F8F9F6; --sage-100:#EBF3E8; --sage-200:#D9E9D3; --sage-300:#C5DDBD;
+    --sage-400:#B0D1A4; --sage-500:#9CC58D; --sage-600:#7FA172; --sage-700:#637E59;
+    --sage-800:#44583D; --sage-900:#283523;
+    --slate-50:#EFF0F2; --slate-100:#D7DBDF; --slate-200:#B5BBC4; --slate-300:#9099A5;
+    --slate-400:#697485; --slate-500:#475569; --slate-600:#384455; --slate-700:#2A3441;
+    --slate-800:#1B222C; --slate-900:#0D1118;
+    --cyan-50:#F8F9F9; --cyan-100:#EDF4F6; --cyan-200:#DCEAED; --cyan-300:#CAE0E4;
+    --cyan-400:#B6D4DA; --cyan-500:#A4C9D1; --cyan-600:#85A4AB; --cyan-700:#688186;
+    --cyan-800:#485A5E; --cyan-900:#2B3639;
+    --fog-50:#FEFEFE; --fog-100:#FCFCFC; --fog-200:#FAFAF9; --fog-300:#F7F7F6;
+    --fog-400:#F4F5F3; --fog-500:#F1F2F0; --fog-600:#C5C6C4; --fog-700:#9B9C9A;
+    --fog-800:#6E6E6D; --fog-900:#434343;
+    --pass-50:#F4F9F3; --pass-100:#E4EFE1; --pass-200:#CDE1C5; --pass-300:#B2D1A8;
+    --pass-400:#96C087; --pass-500:#7CB069; --pass-600:#648F55; --pass-700:#4E7041;
+    --pass-800:#354E2C; --pass-900:#1E2E18;
+    --warn-50:#FBF2DF; --warn-100:#F6DFB0; --warn-200:#EEC781; --warn-300:#E3AE56;
+    --warn-400:#DA9D43; --warn-500:#D69238; --warn-600:#AC7529; --warn-700:#80571F;
+    --warn-800:#573C16; --warn-900:#2D210C;
+    --fail-50:#FAEAE6; --fail-100:#F4D9D5; --fail-200:#EDC9C4; --fail-300:#E2ADA5;
+    --fail-400:#D48E85; --fail-500:#C77268; --fail-600:#A25C54; --fail-700:#7F4740;
+    --fail-800:#59302B; --fail-900:#361B18;
+
+    --page: var(--fog-400);
+    --surface: #FFFFFF;
+    --hairline: var(--fog-600);
+    --hairline-soft: #E5E6E3;
+
+    --r-lg: 20px; --r-md: 14px; --r-sm: 10px; --r-input: 12px; --r-pill: 999px;
+    --ff-sans: "IBM Plex Sans KR", "IBM Plex Sans", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --ff-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--slate-500);
+    font-family: var(--ff-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--sage-200); color: var(--slate-900); }
+  button, a { font-family: inherit; }
+
+  /* ════════════ Stage ════════════ */
+  .stage {
+    min-height: 900px;
+    display: grid; place-items: start center;
+    padding: 28px 0;
+    background: var(--fog-500);
+  }
+  .screen {
+    width: 1440px; min-height: 900px;
+    background: var(--page);
+    border-radius: 22px;
+    border: 1px solid var(--hairline);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 2px 8px rgba(15,23,42,0.04);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+  }
+
+  /* ════════════ NAV RAIL ════════════ */
+  .nav-rail {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 64px; background: var(--surface);
+    border-right: 1px solid var(--hairline);
+    z-index: 50;
+    display: flex; flex-direction: column;
+    padding: 14px 0; overflow: hidden;
+    transition: width 240ms cubic-bezier(0.32,0.04,0.2,1), box-shadow 240ms ease;
+  }
+  .nav-rail:hover, .nav-rail:focus-within, .nav-rail.locked { width: 256px; box-shadow: 8px 0 32px rgba(15,23,42,0.06); }
+  .nav-logo { display: flex; align-items: center; gap: 12px; height: 40px; margin: 0 14px 18px; }
+  .nav-logo .mark {
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;
+    border: 1px dashed var(--slate-300);
+    background: repeating-linear-gradient(135deg, var(--fog-300) 0 5px, var(--fog-500) 5px 10px);
+    display: grid; place-items: center;
+    font-family: var(--ff-mono); font-size: 8px; color: var(--slate-500);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .nav-logo .word { font-weight: 700; font-size: 16px; color: var(--slate-900); letter-spacing: -0.01em; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 80ms ease, transform 180ms 80ms ease; }
+  .nav-rail:hover .nav-logo .word, .nav-rail:focus-within .nav-logo .word, .nav-rail.locked .nav-logo .word { opacity: 1; transform: translateX(0); }
+  .nav-cta { height: 40px; margin: 0 14px 10px; border-radius: 10px; background: var(--slate-500); color: var(--fog-50); display: flex; align-items: center; overflow: hidden; }
+  .nav-cta .main { flex: 1; display: flex; align-items: center; gap: 12px; padding: 0 12px; height: 100%; cursor: default; }
+  .nav-cta .main:hover { background: var(--slate-700); }
+  .nav-cta .plus { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-cta .label { font-weight: 600; font-size: 14px; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 80ms ease, transform 180ms 80ms ease; }
+  .nav-cta .caret { width: 36px; height: 100%; display: grid; place-items: center; border-left: 1px solid rgba(255,255,255,0.18); cursor: default; opacity: 0; transition: opacity 180ms 80ms ease; }
+  .nav-cta .caret:hover { background: var(--slate-700); }
+  .nav-cta .caret svg { width: 14px; height: 14px; }
+  .nav-rail:hover .nav-cta .label, .nav-rail:focus-within .nav-cta .label, .nav-rail.locked .nav-cta .label { opacity: 1; transform: translateX(0); }
+  .nav-rail:hover .nav-cta .caret, .nav-rail:focus-within .nav-cta .caret, .nav-rail.locked .nav-cta .caret { opacity: 1; }
+  .nav-ws { height: 40px; margin: 8px 14px 12px; background: var(--fog-300); border: 1px solid var(--hairline); border-radius: 10px; display: flex; align-items: center; gap: 10px; padding: 0 10px; overflow: hidden; }
+  .nav-ws .ws-av { width: 24px; height: 24px; border-radius: 50%; background: var(--cyan-200); color: var(--slate-700); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .nav-ws .ws-label { flex: 1; font-size: 13px; color: var(--slate-700); font-weight: 500; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 100ms ease, transform 180ms 100ms ease; }
+  .nav-ws .ws-label .sub { display: block; font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); font-weight: 500; margin-top: -2px; }
+  .nav-ws .ws-caret { width: 14px; height: 14px; color: var(--slate-400); opacity: 0; transition: opacity 180ms 100ms ease; flex-shrink: 0; }
+  .nav-rail:hover .nav-ws .ws-label, .nav-rail:focus-within .nav-ws .ws-label, .nav-rail.locked .nav-ws .ws-label { opacity: 1; transform: translateX(0); }
+  .nav-rail:hover .nav-ws .ws-caret, .nav-rail:focus-within .nav-ws .ws-caret, .nav-rail.locked .nav-ws .ws-caret { opacity: 1; }
+  .nav-divider { height: 1px; background: var(--hairline-soft); margin: 6px 16px; }
+  .nav-group { padding: 6px 0; display: flex; flex-direction: column; }
+  .nav-item {
+    position: relative; display: flex; align-items: center; gap: 14px;
+    height: 38px; margin: 0 10px; padding: 0 10px;
+    border-radius: 9px; color: var(--slate-500); font-size: 14px; font-weight: 500;
+    cursor: default; text-decoration: none; letter-spacing: -0.005em;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .nav-item:hover { background: var(--fog-300); color: var(--slate-800); }
+  .nav-item.active { background: var(--sage-50); color: var(--slate-900); font-weight: 600; }
+  .nav-item.active::before { content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; background: var(--pass-500); border-radius: 0 2px 2px 0; }
+  .nav-item .icon { width: 20px; height: 20px; display: grid; place-items: center; flex-shrink: 0; }
+  .nav-item .icon svg { width: 18px; height: 18px; }
+  .nav-item .label { flex: 1; white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 80ms ease, transform 180ms 80ms ease; }
+  .nav-rail:hover .nav-item .label, .nav-rail:focus-within .nav-item .label, .nav-rail.locked .nav-item .label { opacity: 1; transform: translateX(0); }
+  .nav-item .badge { background: var(--fail-500); color: var(--fog-50); font-family: var(--ff-mono); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: var(--r-pill); opacity: 0; transition: opacity 180ms 100ms ease; }
+  .nav-rail:hover .nav-item .badge, .nav-rail:focus-within .nav-item .badge, .nav-rail.locked .nav-item .badge { opacity: 1; }
+  .nav-item .dot-badge { position: absolute; right: 8px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--fail-500); box-shadow: 0 0 0 2px var(--surface); transition: opacity 120ms ease; }
+  .nav-rail:hover .nav-item .dot-badge, .nav-rail:focus-within .nav-item .dot-badge, .nav-rail.locked .nav-item .dot-badge { opacity: 0; }
+  .nav-bottom { margin-top: auto; padding-top: 8px; }
+  .nav-user { display: flex; align-items: center; gap: 12px; margin: 0 10px; padding: 8px 10px; border-radius: 10px; transition: background 120ms ease; }
+  .nav-user:hover { background: var(--fog-300); }
+  .nav-user .av { width: 28px; height: 28px; border-radius: 50%; background: var(--slate-500); color: var(--fog-50); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .nav-user .meta { flex: 1; opacity: 0; transform: translateX(-6px); transition: opacity 180ms 100ms ease, transform 180ms 100ms ease; overflow: hidden; }
+  .nav-user .meta .nm { font-size: 13px; color: var(--slate-900); font-weight: 600; white-space: nowrap; }
+  .nav-user .meta .em { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); margin-top: -2px; white-space: nowrap; }
+  .nav-rail:hover .nav-user .meta, .nav-rail:focus-within .nav-user .meta, .nav-rail.locked .nav-user .meta { opacity: 1; transform: translateX(0); }
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-cta .label,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-cta .caret,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-ws .ws-label,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-ws .ws-caret,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-item .label,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-item .badge,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-item .soon,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-user .meta,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-logo .word { display: none; }
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-cta .main,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-ws,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-item,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-user,
+  .nav-rail:not(:hover):not(:focus-within):not(.locked) .nav-logo { justify-content: center; padding-left: 0; padding-right: 0; }
+
+  /* ════════════ Content ════════════ */
+  .content { flex: 1; margin-left: 64px; padding: 24px 32px 32px; min-width: 0; }
+
+  /* Topbar */
+  .topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 22px;
+  }
+  .crumb { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--slate-400); }
+  .crumb .here { color: var(--slate-900); font-weight: 700; font-size: 20px; letter-spacing: -0.01em; }
+  .crumb .sep { color: var(--slate-300); }
+  .crumb .addr { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-500); }
+  .search {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-input);
+    padding: 9px 14px;
+    max-width: 380px; width: 100%; margin: 0 auto;
+    color: var(--slate-900);
+  }
+  .search input { border: none; outline: none; background: transparent; width: 100%; font: inherit; }
+  .search input::placeholder { color: var(--slate-300); }
+  .search .kbd { margin-left: auto; font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); background: var(--fog-400); border: 1px solid var(--hairline); border-radius: 5px; padding: 1px 6px; }
+  .dots { display: flex; gap: 8px; align-items: center; }
+  .dot-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    padding: 8px 14px 8px 12px;
+    font-size: 13px; font-weight: 500; color: var(--slate-700);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.pass { background: var(--pass-500); box-shadow: 0 0 0 3px rgba(124,176,105,0.18); }
+  .dot.warn { background: var(--warn-500); box-shadow: 0 0 0 3px rgba(214,146,56,0.18); }
+  .dot.fail { background: var(--fail-500); box-shadow: 0 0 0 3px rgba(199,114,104,0.18); }
+  .icon-btn { width: 38px; height: 38px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--hairline); border-radius: 50%; color: var(--slate-500); cursor: default; position: relative; }
+  .icon-btn:hover { background: var(--fog-300); color: var(--slate-700); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .icon-btn .unread { position: absolute; right: 5px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--fail-500); box-shadow: 0 0 0 2px var(--surface); }
+
+  /* ════════════ SAGE CONTEXT BAR — portfolio ════════════ */
+  .context-bar {
+    position: relative;
+    background: var(--sage-50);
+    border: 1px solid var(--sage-200);
+    border-radius: var(--r-md);
+    padding: 0 22px;
+    height: 56px;
+    display: flex; align-items: center; gap: 18px;
+    overflow: hidden;
+  }
+  .context-bar::after {
+    content: ""; position: absolute;
+    right: -56px; top: -56px;
+    width: 160px; height: 160px;
+    border-radius: 50%; border: 1px solid var(--sage-200);
+    box-shadow:
+      inset 0 0 0 20px var(--sage-50), inset 0 0 0 21px var(--sage-200),
+      inset 0 0 0 46px var(--sage-50), inset 0 0 0 47px var(--sage-200);
+    opacity: 0.7; pointer-events: none;
+  }
+  .context-bar > * { position: relative; z-index: 1; }
+  .context-bar .protected {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--sage-700);
+    background: rgba(255,255,255,0.55); border: 1px solid var(--sage-200);
+    border-radius: var(--r-pill); padding: 5px 11px 5px 8px; white-space: nowrap;
+  }
+  .context-bar .protected .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--pass-500); box-shadow: 0 0 0 3px rgba(124,176,105,0.24); }
+  .context-bar .ctx-sep { width: 1px; height: 18px; background: var(--sage-300); flex-shrink: 0; }
+  .context-bar .wsname { font-weight: 700; color: var(--slate-900); font-size: 14px; white-space: nowrap; }
+  .context-bar .summary { color: var(--slate-700); font-size: 13.5px; white-space: nowrap; }
+  .context-bar .summary b { color: var(--slate-900); font-weight: 700; }
+  .context-bar .summary .mute { color: var(--slate-500); }
+  .context-bar .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .context-bar .since { font-family: var(--ff-mono); font-size: 11.5px; color: var(--sage-800); white-space: nowrap; }
+  .context-bar .ctx-cta {
+    appearance: none; border: 1px solid var(--sage-300); background: transparent;
+    color: var(--sage-800); font-weight: 600; font-size: 12.5px;
+    padding: 6px 12px; border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: default; transition: background 120ms ease;
+  }
+  .context-bar .ctx-cta:hover { background: rgba(255,255,255,0.5); }
+
+  /* ════════════ WALLET LIST ════════════ */
+  .wallets-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 28px 0 14px;
+    padding: 0 2px;
+  }
+  .wallets-head h2 {
+    margin: 0; font-size: 22px; font-weight: 700;
+    color: var(--slate-900); letter-spacing: -0.015em;
+  }
+  .wallets-head h2 .submeta {
+    margin-left: 12px;
+    font-size: 13px; font-weight: 500; color: var(--slate-500);
+  }
+  .wallets-head .controls {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--ff-mono); font-size: 11.5px;
+    color: var(--slate-500); white-space: nowrap;
+  }
+
+  .wallet-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .wallet-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    transition: background 160ms ease, border-color 160ms ease;
+  }
+  .wallet-card.calm { background: var(--sage-50); border-color: var(--sage-200); }
+  .wallet-card.calm:hover { border-color: var(--sage-300); }
+  .wallet-card.alert:hover { border-color: var(--slate-200); }
+
+  /* HEAD — simplified · name + short addr + status pill + pending count */
+  .wallet-head {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 14px 32px 1fr auto auto;
+    column-gap: 14px;
+    align-items: center;
+    cursor: default;
+    user-select: none;
+  }
+  .wallet-head:hover { background: rgba(0,0,0,0.018); }
+  .wallet-card.calm .wallet-head:hover { background: rgba(124,176,105,0.06); }
+  .wallet-card .caret {
+    width: 14px; height: 14px;
+    color: var(--slate-400);
+    transition: transform 220ms cubic-bezier(0.32,0.04,0.2,1), color 120ms ease;
+  }
+  .wallet-card.expanded .caret { transform: rotate(90deg); color: var(--slate-700); }
+  .wallet-card .w-icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: var(--cyan-200); color: var(--slate-700);
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 700; letter-spacing: -0.005em;
+  }
+  .wallet-card.calm .w-icon { background: var(--sage-200); color: var(--sage-900); }
+  .wallet-card .w-id {
+    display: flex; align-items: baseline; gap: 12px;
+    min-width: 0;
+  }
+  .wallet-card .w-id .name {
+    font-size: 16px; font-weight: 700;
+    color: var(--slate-900); letter-spacing: -0.005em;
+    white-space: nowrap;
+  }
+  .wallet-card .w-id .addr {
+    font-family: var(--ff-mono); font-size: 12px;
+    color: var(--slate-400); white-space: nowrap;
+  }
+  .wallet-card .w-status { display: flex; align-items: center; gap: 8px; }
+  .wallet-card .w-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600;
+    padding: 5px 11px 5px 9px;
+    border-radius: var(--r-pill);
+    letter-spacing: -0.005em; white-space: nowrap;
+  }
+  .wallet-card .w-pill .pd { width: 7px; height: 7px; border-radius: 50%; }
+  .wallet-card .w-pill.calm { background: var(--pass-100); color: var(--pass-800); border: 1px solid var(--pass-200); }
+  .wallet-card .w-pill.calm .pd { background: var(--pass-500); }
+  .wallet-card .w-pill.warn { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .wallet-card .w-pill.warn .pd { background: var(--warn-500); }
+  .wallet-card .w-pill.fail { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+  .wallet-card .w-pill.fail .pd { background: var(--fail-500); }
+  .wallet-card .w-pending {
+    font-family: var(--ff-mono); font-size: 12px;
+    color: var(--slate-700); font-weight: 600;
+    background: var(--slate-50); border: 1px solid var(--slate-200);
+    padding: 5px 11px; border-radius: var(--r-pill); white-space: nowrap;
+  }
+  .wallet-card.calm .w-pending { display: none; }
+
+  /* BODY — height cap + internal scroll */
+  .wallet-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 280ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .wallet-card.expanded .wallet-body { grid-template-rows: 1fr; }
+  .wallet-body > .wb-inner { overflow: hidden; min-height: 0; }
+  .wallet-body > .wb-inner > .wb-content {
+    border-top: 1px dashed var(--hairline);
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 18px 20px 16px;
+    display: flex; flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--slate-200) transparent;
+  }
+  .wallet-card.calm .wallet-body > .wb-inner > .wb-content { border-top-color: var(--sage-200); }
+  .wb-content::-webkit-scrollbar { width: 8px; }
+  .wb-content::-webkit-scrollbar-track { background: transparent; }
+  .wb-content::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+  .wb-content::-webkit-scrollbar-thumb:hover { background: var(--slate-300); border: 2px solid transparent; background-clip: content-box; }
+
+  /* ════════ Policy panel — primary inside expanded ════════ */
+  .panel {
+    background: var(--cyan-50);
+    border: 1px solid var(--cyan-100);
+    border-radius: var(--r-md);
+    padding: 16px 18px 14px;
+  }
+  .panel .panel-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .panel .panel-ttl {
+    font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; font-weight: 700;
+    color: var(--slate-500);
+  }
+  .panel .panel-ttl b { color: var(--slate-900); margin-left: 4px; }
+  .panel .panel-meta {
+    font-family: var(--ff-mono); font-size: 11px; color: var(--slate-400);
+    white-space: nowrap;
+  }
+
+  /* Policy items — primary visual element */
+  .policy-list { display: flex; flex-direction: column; }
+  .policy-item {
+    display: grid;
+    grid-template-columns: 14px 1fr auto;
+    column-gap: 12px; align-items: center;
+    padding: 11px 4px;
+    border-bottom: 1px dashed var(--cyan-200);
+  }
+  .policy-item:last-child { border-bottom: 0; padding-bottom: 4px; }
+  .policy-item:first-child { padding-top: 4px; }
+  .policy-item .pd {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--pass-500);
+    box-shadow: 0 0 0 3px rgba(124,176,105,0.18);
+  }
+  .policy-item.warn .pd { background: var(--warn-500); box-shadow: 0 0 0 3px rgba(214,146,56,0.18); }
+  .policy-item.fail .pd { background: var(--fail-500); box-shadow: 0 0 0 3px rgba(199,114,104,0.18); }
+  .policy-item .nm {
+    font-size: 14.5px; font-weight: 600;
+    color: var(--slate-900); letter-spacing: -0.005em;
+  }
+  .policy-item .nm .id {
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--slate-400); font-weight: 500;
+    margin-left: 8px;
+  }
+  .policy-item .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: var(--r-pill);
+    white-space: nowrap;
+  }
+  .policy-item.warn .status-pill { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .policy-item.fail .status-pill { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+
+  /* ════════ Decision panel — secondary ════════ */
+  .panel.decisions { padding: 14px 16px 12px; }
+  .decision-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .decision {
+    background: var(--surface);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    transition: border-color 120ms ease;
+  }
+  .decision:hover { border-color: var(--slate-300); }
+
+  .d-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 12px; align-items: center;
+    padding: 10px 12px;
+    cursor: default; user-select: none;
+  }
+  .d-row:hover { background: var(--fog-300); }
+  .d-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: var(--r-pill);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .decision.fail .d-pill { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+  .decision.warn .d-pill { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .d-pill .pd { width: 6px; height: 6px; border-radius: 50%; }
+  .decision.fail .d-pill .pd { background: var(--fail-500); }
+  .decision.warn .d-pill .pd { background: var(--warn-500); }
+  .d-summary {
+    font-size: 13px; color: var(--slate-900);
+    letter-spacing: -0.005em; line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0;
+  }
+  .d-summary .b { font-weight: 700; }
+  .d-summary .hl { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-700); }
+  .d-age { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-500); white-space: nowrap; }
+  .d-primary {
+    appearance: none; border: 1px solid var(--cyan-300);
+    background: var(--cyan-200); color: var(--slate-900);
+    font: inherit; font-weight: 600; font-size: 12px;
+    padding: 5px 12px 5px 14px;
+    border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: default; white-space: nowrap;
+    text-decoration: none;
+  }
+  .d-primary:hover { background: var(--cyan-300); }
+  .d-primary .arrow { width: 11px; height: 11px; }
+  .d-caret {
+    width: 11px; height: 11px;
+    color: var(--slate-400);
+    transition: transform 200ms ease;
+  }
+  .decision.expanded .d-caret { transform: rotate(90deg); color: var(--slate-700); }
+
+  .d-detail-pane {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 220ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .decision.expanded .d-detail-pane { grid-template-rows: 1fr; }
+  .d-detail-pane > .d-inner { overflow: hidden; min-height: 0; }
+  .d-detail-pane > .d-inner > .d-content {
+    padding: 10px 14px 14px;
+    border-top: 1px dashed var(--slate-200);
+  }
+  .d-props {
+    margin: 8px 0 12px;
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    column-gap: 12px; row-gap: 5px;
+    font-size: 12px;
+  }
+  .d-props dt {
+    font-family: var(--ff-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--slate-400);
+  }
+  .d-props dd {
+    margin: 0; font-family: var(--ff-mono); font-size: 12px;
+    color: var(--slate-700);
+  }
+  .d-props dd .hl { color: var(--slate-900); font-weight: 600; }
+  .d-props dd .tag-fail { color: var(--fail-700); font-weight: 600; }
+  .d-props dd .tag-warn { color: var(--warn-700); font-weight: 600; }
+  .d-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Empty-decisions quiet line (calm wallets) */
+  .no-decisions {
+    color: var(--sage-700); font-size: 12.5px;
+    font-family: var(--ff-mono);
+    padding: 4px 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .no-decisions::before { content: "✓"; color: var(--sage-700); font-weight: 700; }
+
+  /* Wallet footer meta — demoted metadata (eval count, sync) */
+  .wallet-foot-meta {
+    display: flex; align-items: center; gap: 12px;
+    padding: 4px 6px 2px;
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--slate-400);
+  }
+  .wallet-foot-meta .sep { width: 1px; height: 11px; background: var(--slate-200); }
+  .wallet-foot-meta .live {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--cyan-700);
+  }
+  .wallet-foot-meta .live::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cyan-500);
+    box-shadow: 0 0 0 3px rgba(164,201,209,0.32);
+    animation: cyanPulse 2.4s infinite;
+  }
+  @keyframes cyanPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.4); opacity: 0.55; }
+  }
+
+  /* Buttons */
+  .btn {
+    appearance: none; border: none; font: inherit;
+    font-weight: 600; font-size: 12.5px;
+    padding: 8px 14px;
+    border-radius: var(--r-pill);
+    cursor: default;
+    display: inline-flex; align-items: center; gap: 7px;
+    letter-spacing: -0.005em;
+    transition: background 120ms ease, transform 100ms ease, border-color 120ms ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--sage-500); color: var(--slate-900); }
+  .btn.primary:hover { background: var(--sage-600); }
+  .btn.ghost { background: var(--surface); color: var(--slate-700); border: 1px solid var(--hairline); }
+  .btn.ghost:hover { background: var(--fog-300); border-color: var(--slate-300); }
+
+  /* ─── 임시 허용 toggle switch ─── */
+  .allow-toggle {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 5px 14px 5px 8px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    cursor: default; user-select: none;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--slate-700);
+    letter-spacing: -0.005em;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+  .allow-toggle:hover { background: var(--fog-300); border-color: var(--slate-300); }
+  .allow-toggle input.tg-cb {
+    position: absolute; opacity: 0;
+    width: 1px; height: 1px;
+    pointer-events: none;
+  }
+  .allow-toggle .tg-track {
+    width: 30px; height: 18px;
+    background: var(--slate-300);
+    border-radius: 999px;
+    position: relative; flex-shrink: 0;
+    transition: background 200ms ease;
+  }
+  .allow-toggle .tg-thumb {
+    position: absolute;
+    width: 14px; height: 14px;
+    background: var(--fog-50);
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 200ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .allow-toggle .tg-state {
+    font-family: var(--ff-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .allow-toggle input.tg-cb:focus-visible + .tg-track {
+    outline: 2px solid var(--sage-500);
+    outline-offset: 2px;
+  }
+  /* ON state */
+  .allow-toggle:has(input.tg-cb:checked) {
+    background: var(--sage-50);
+    border-color: var(--sage-400);
+    color: var(--sage-800);
+  }
+  .allow-toggle:has(input.tg-cb:checked) .tg-track { background: var(--sage-500); }
+  .allow-toggle:has(input.tg-cb:checked) .tg-thumb { transform: translateX(12px); }
+  .allow-toggle:has(input.tg-cb:checked) .tg-state { color: var(--sage-700); }
+
+  /* Toast for max-3 limit */
+  .toast {
+    position: fixed; top: 20px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--slate-700); color: var(--fog-50);
+    padding: 12px 20px;
+    border-radius: var(--r-pill);
+    font-size: 13px; font-weight: 500;
+    letter-spacing: -0.005em;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 1000;
+    opacity: 0; pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast .icon { color: var(--warn-300); font-size: 14px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Locale & density */
+  body[data-locale="ko"] [lang="en"] { display: none; }
+  body[data-locale="en"] [lang="ko"] { display: none; }
+  body[data-locale="mix"] [lang="ko"], body[data-locale="mix"] [lang="en"] { display: inline; }
+  body[data-density="compact"] .wallet-head { padding: 12px 16px; }
+  body[data-density="comfy"]   .wallet-head { padding: 20px 24px; }
+
+  /* ════════════════════════════════════════════════════
+     OPERATIONAL HUB — drawers · modal · confirm · menus
+     ════════════════════════════════════════════════════ */
+
+  /* Scrim (for right drawer) */
+  .scrim {
+    position: absolute; inset: 0;
+    background: rgba(13,17,24,0.34);
+    opacity: 0; pointer-events: none;
+    transition: opacity 240ms ease;
+    z-index: 55;
+  }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+
+  /* ─── Right slide-in drawer ─── */
+  .drawer {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: 500px; max-width: 90%;
+    background: var(--surface);
+    border-left: 1px solid var(--hairline);
+    box-shadow: -28px 0 64px rgba(15,23,42,0.18);
+    z-index: 60;
+    transform: translateX(102%);
+    transition: transform 340ms cubic-bezier(0.32,0.04,0.2,1);
+    display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-panel { display: none; flex-direction: column; flex: 1; min-height: 0; }
+  .drawer[data-panel="editor"]     .drawer-panel[data-for="editor"],
+  .drawer[data-panel="sim"]        .drawer-panel[data-for="sim"],
+  .drawer[data-panel="monitoring"] .drawer-panel[data-for="monitoring"],
+  .drawer[data-panel="history"]    .drawer-panel[data-for="history"] { display: flex; }
+
+  .drawer-head {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 22px 22px 16px;
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+  .dh-icon {
+    width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+    display: grid; place-items: center;
+  }
+  .dh-icon svg { width: 20px; height: 20px; }
+  .dh-icon.editor     { background: var(--cyan-200); color: var(--slate-700); }
+  .dh-icon.sim        { background: var(--sage-200); color: var(--sage-900); }
+  .dh-icon.monitoring { background: var(--cyan-200); color: var(--cyan-800); }
+  .dh-icon.history    { background: var(--fog-400); color: var(--slate-500); border: 1px solid var(--hairline); }
+  .dh-titles { flex: 1; min-width: 0; }
+  .dh-kicker { font-family: var(--ff-mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--slate-400); }
+  .dh-title { font-size: 19px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.01em; margin-top: 2px; }
+  .dh-sub { font-size: 12.5px; color: var(--slate-500); margin-top: 3px; }
+  .drawer-close {
+    appearance: none; border: 1px solid var(--hairline); background: var(--surface);
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    display: grid; place-items: center; color: var(--slate-500); cursor: default;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .drawer-close:hover { background: var(--fog-300); color: var(--slate-800); }
+  .drawer-close svg { width: 16px; height: 16px; }
+
+  .drawer-body {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 20px 22px 24px;
+    scrollbar-width: thin; scrollbar-color: var(--slate-200) transparent;
+  }
+  .drawer-body::-webkit-scrollbar { width: 8px; }
+  .drawer-body::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+
+  .drawer-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--hairline-soft);
+    background: var(--fog-200);
+  }
+  .foot-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* Deep-link */
+  .deeplink {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; font-weight: 600; color: var(--sage-800);
+    text-decoration: none; letter-spacing: -0.005em;
+    padding: 6px 0; border-bottom: 1px dashed var(--sage-400);
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .deeplink:hover { color: var(--sage-700); border-color: var(--sage-600); }
+  .deeplink svg { width: 13px; height: 13px; }
+
+  /* ─── Forms (quick-create / sim) ─── */
+  .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+  .field > .flabel { font-family: var(--ff-mono); font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate-400); }
+  .input {
+    appearance: none; width: 100%; font: inherit; font-size: 13.5px;
+    padding: 10px 12px; border: 1px solid var(--hairline);
+    border-radius: var(--r-input); background: var(--surface); color: var(--slate-900);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .input::placeholder { color: var(--slate-300); }
+  .input:focus { outline: none; border-color: var(--sage-400); box-shadow: 0 0 0 3px rgba(156,197,141,0.22); }
+  select.input { cursor: default; }
+  .input.mono { font-family: var(--ff-mono); font-size: 12.5px; }
+
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg-opt {
+    appearance: none; font: inherit; font-size: 12.5px; font-weight: 600;
+    padding: 8px 13px; border-radius: var(--r-pill);
+    border: 1px solid var(--hairline); background: var(--surface); color: var(--slate-600);
+    cursor: default; transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+  .seg-opt:hover { background: var(--fog-300); }
+  .seg-opt.active { background: var(--sage-100); border-color: var(--sage-400); color: var(--sage-800); }
+
+  .gate-note {
+    display: flex; align-items: flex-start; gap: 9px;
+    margin-top: 6px; padding: 11px 13px;
+    background: var(--warn-50); border: 1px solid var(--warn-100);
+    border-radius: var(--r-sm);
+    font-size: 12px; color: var(--warn-800); line-height: 1.45;
+  }
+  .gate-note svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; color: var(--warn-600); }
+
+  .form-divider { height: 1px; background: var(--hairline-soft); margin: 4px 0 18px; }
+
+  /* ─── Simulation verdict ─── */
+  .sim-run { width: 100%; justify-content: center; padding: 11px; margin-top: 2px; }
+  .verdict {
+    margin-top: 18px; border-radius: var(--r-md); overflow: hidden;
+    border: 1px solid var(--hairline);
+  }
+  .verdict[hidden] { display: none; }
+  .verdict .v-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 18px;
+  }
+  .verdict .v-badge {
+    font-family: var(--ff-mono); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.12em; padding: 6px 13px; border-radius: var(--r-pill);
+  }
+  .verdict .v-msg { font-size: 13.5px; font-weight: 600; color: var(--slate-900); }
+  .verdict.pass { background: var(--pass-50); border-color: var(--pass-200); }
+  .verdict.pass .v-badge { background: var(--pass-200); color: var(--pass-800); }
+  .verdict.warn { background: var(--warn-50); border-color: var(--warn-200); }
+  .verdict.warn .v-badge { background: var(--warn-200); color: var(--warn-800); }
+  .verdict.fail { background: var(--fail-50); border-color: var(--fail-200); }
+  .verdict.fail .v-badge { background: var(--fail-200); color: var(--fail-800); }
+  .verdict .v-checks { background: var(--surface); border-top: 1px solid var(--hairline-soft); padding: 6px 16px; }
+  .v-check { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: 12.5px; border-bottom: 1px dashed var(--hairline-soft); }
+  .v-check:last-child { border-bottom: 0; }
+  .v-check .vc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .v-check.ok .vc-dot { background: var(--pass-500); }
+  .v-check.no .vc-dot { background: var(--fail-500); }
+  .v-check.rev .vc-dot { background: var(--warn-500); }
+  .v-check .vc-name { color: var(--slate-700); flex: 1; }
+  .v-check .vc-name .id { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-400); margin-left: 6px; }
+  .v-check .vc-tag { font-family: var(--ff-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-400); }
+  .v-note { padding: 11px 16px; background: var(--surface); border-top: 1px solid var(--hairline-soft); font-size: 11.5px; color: var(--slate-500); display: flex; align-items: center; gap: 7px; }
+  .v-note::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--sage-500); }
+
+  /* ─── Monitoring feed ─── */
+  .feed-status {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--ff-mono); font-size: 11.5px; color: var(--cyan-700);
+    margin-bottom: 14px; white-space: nowrap;
+  }
+  .feed-status::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--cyan-500); box-shadow: 0 0 0 3px rgba(164,201,209,0.32);
+    animation: cyanPulse 2.4s infinite;
+  }
+  .feed { display: flex; flex-direction: column; gap: 10px; }
+  .feed-row {
+    display: grid; grid-template-columns: auto 1fr; gap: 10px 12px;
+    padding: 12px 14px; border: 1px solid var(--hairline);
+    border-radius: var(--r-sm); background: var(--surface);
+    transition: opacity 200ms ease, background 160ms ease;
+  }
+  .feed-row.warn { background: var(--warn-50); border-color: var(--warn-200); }
+  .feed-row .fr-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--cyan-500); }
+  .feed-row.warn .fr-dot { background: var(--warn-500); }
+  .feed-row .fr-main { min-width: 0; }
+  .feed-row .fr-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .feed-row .fr-tag { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-500); background: var(--fog-400); border: 1px solid var(--hairline); padding: 1px 7px; border-radius: var(--r-pill); }
+  .feed-row .fr-time { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); margin-left: auto; }
+  .feed-row .fr-msg { font-size: 13px; color: var(--slate-900); letter-spacing: -0.005em; }
+  .feed-row .fr-msg .b { font-weight: 700; }
+  .feed-row .fr-actions { grid-column: 2; display: flex; gap: 8px; margin-top: 9px; }
+  .ack-btn {
+    appearance: none; font: inherit; font-size: 11.5px; font-weight: 600;
+    padding: 5px 12px; border-radius: var(--r-pill);
+    border: 1px solid var(--hairline); background: var(--surface); color: var(--slate-700);
+    cursor: default; transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+  .ack-btn:hover { background: var(--fog-300); }
+  .ack-btn.done { background: var(--sage-50); border-color: var(--sage-300); color: var(--sage-700); }
+  .ack-btn.danger { border-color: var(--fail-200); color: var(--fail-700); background: var(--fail-50); }
+  .ack-btn.danger:hover { background: var(--fail-100); }
+  .feed-row.acked { opacity: 0.55; }
+  .feed-row.acked .fr-actions { display: none; }
+
+  /* ─── History list ─── */
+  .hist-search {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-input); padding: 9px 13px; margin-bottom: 16px;
+  }
+  .hist-search svg { width: 15px; height: 15px; color: var(--slate-300); flex-shrink: 0; }
+  .hist-search input { border: none; outline: none; background: transparent; width: 100%; font: inherit; font-size: 13px; color: var(--slate-900); }
+  .hist-search input::placeholder { color: var(--slate-300); }
+  .hist { display: flex; flex-direction: column; }
+  .hist-row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+    padding: 12px 4px; border-bottom: 1px dashed var(--hairline-soft);
+  }
+  .hist-row:last-child { border-bottom: 0; }
+  .hist-pill {
+    font-family: var(--ff-mono); font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: var(--r-pill); white-space: nowrap;
+  }
+  .hist-pill.pass { background: var(--pass-100); color: var(--pass-800); }
+  .hist-pill.warn { background: var(--warn-100); color: var(--warn-800); }
+  .hist-pill.fail { background: var(--fail-100); color: var(--fail-800); }
+  .hist-pill.info { background: var(--slate-50); color: var(--slate-600); border: 1px solid var(--slate-200); }
+  .hist-row .h-sum { font-size: 13px; color: var(--slate-900); letter-spacing: -0.005em; min-width: 0; }
+  .hist-row .h-sum .mut { color: var(--slate-400); font-family: var(--ff-mono); font-size: 11px; }
+  .hist-row .h-time { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-400); white-space: nowrap; }
+  .hist-empty { padding: 24px 4px; text-align: center; color: var(--slate-400); font-size: 12.5px; }
+
+  /* Per-wallet activity log panel (inside wallet card) */
+  .panel.wlog { background: var(--fog-200); border-color: var(--hairline-soft); }
+  .panel.wlog .hist { margin-top: 2px; }
+  .panel.wlog .hist-row { border-bottom-color: var(--hairline-soft); }
+  .wallet-card.calm .panel.wlog { background: rgba(255,255,255,0.5); border-color: var(--sage-200); }
+
+  /* ─── Modal (new policy / centered) ─── */
+  .modal-wrap, .confirm-wrap {
+    position: fixed; inset: 0; z-index: 65;
+    display: grid; place-items: center; padding: 40px;
+    background: rgba(13,17,24,0.40);
+    opacity: 0; pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  .confirm-wrap { z-index: 75; }
+  .modal-wrap.show, .confirm-wrap.show { opacity: 1; pointer-events: auto; }
+  .modal-card {
+    width: 560px; max-width: 100%; max-height: 86%;
+    background: var(--surface); border-radius: var(--r-lg);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 24px 70px rgba(15,23,42,0.28);
+    display: flex; flex-direction: column; overflow: hidden;
+    transform: translateY(10px) scale(0.985); transition: transform 220ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .modal-wrap.show .modal-card { transform: translateY(0) scale(1); }
+  .modal-card .drawer-body { padding: 22px 24px 8px; }
+
+  /* ─── Confirm gate ─── */
+  .confirm-card {
+    width: 460px; max-width: 100%;
+    background: var(--surface); border-radius: var(--r-lg);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 24px 70px rgba(15,23,42,0.30);
+    overflow: hidden;
+    transform: translateY(10px) scale(0.985); transition: transform 220ms cubic-bezier(0.32,0.04,0.2,1);
+  }
+  .confirm-wrap.show .confirm-card { transform: translateY(0) scale(1); }
+  .cc-head { display: flex; align-items: flex-start; gap: 13px; padding: 22px 22px 14px; }
+  .cc-icon { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center; }
+  .cc-icon svg { width: 20px; height: 20px; }
+  .cc-icon.warn { background: var(--warn-100); color: var(--warn-700); }
+  .cc-icon.fail { background: var(--fail-100); color: var(--fail-700); }
+  .cc-kicker { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fail-600); }
+  .cc-icon.warn ~ div .cc-kicker { color: var(--warn-600); }
+  .cc-title { font-size: 17px; font-weight: 700; color: var(--slate-900); margin-top: 2px; letter-spacing: -0.01em; }
+  .cc-body { padding: 0 22px 18px; }
+  .cc-desc { font-size: 13px; color: var(--slate-600); line-height: 1.55; margin: 0 0 14px; }
+  .blast {
+    border-radius: var(--r-sm); padding: 13px 15px;
+    background: var(--fail-50); border: 1px solid var(--fail-200);
+  }
+  .blast.warn { background: var(--warn-50); border-color: var(--warn-200); }
+  .blast .bl-ttl { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fail-700); margin-bottom: 8px; }
+  .blast.warn .bl-ttl { color: var(--warn-700); }
+  .blast ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .blast li { display: flex; align-items: baseline; gap: 9px; font-size: 12.5px; color: var(--slate-700); }
+  .blast li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--fail-500); flex-shrink: 0; transform: translateY(5px); }
+  .blast.warn li::before { background: var(--warn-500); }
+  .blast li b { color: var(--slate-900); font-weight: 700; font-family: var(--ff-mono); }
+  .cc-foot { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 22px; border-top: 1px solid var(--hairline-soft); background: var(--fog-200); }
+  .btn.danger { background: var(--fail-500); color: var(--fog-50); }
+  .btn.danger:hover { background: var(--fail-600); }
+
+  /* ─── Dropdown menus / popover ─── */
+  .menu {
+    position: absolute; z-index: 80; min-width: 216px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    box-shadow: 0 14px 44px rgba(15,23,42,0.18);
+    padding: 6px;
+    opacity: 0; transform: translateY(-6px); pointer-events: none;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+  .menu.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .menu-label { font-family: var(--ff-mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--slate-400); padding: 7px 9px 5px; }
+  .menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 8px;
+    font-size: 13.5px; color: var(--slate-700); cursor: default;
+    transition: background 110ms ease, color 110ms ease;
+  }
+  .menu-item:hover { background: var(--fog-300); color: var(--slate-900); }
+  .menu-item .mi-icon { width: 17px; height: 17px; flex-shrink: 0; color: var(--slate-400); display: grid; place-items: center; }
+  .menu-item .mi-icon svg { width: 16px; height: 16px; }
+  .menu-item:hover .mi-icon { color: var(--slate-600); }
+  .menu-item .mi-sub { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); margin-top: -1px; }
+  .menu-org { align-items: center; }
+  .menu-org .ws-av, .menu-user .av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .menu-org .ws-av { background: var(--cyan-200); color: var(--slate-700); }
+  .menu-user .av { background: var(--slate-500); color: var(--fog-50); }
+  .menu-item.current { background: var(--sage-50); }
+  .menu-item .check { margin-left: auto; color: var(--pass-600); display: grid; place-items: center; }
+  .menu-item .check svg { width: 15px; height: 15px; }
+  .menu-item.danger { color: var(--fail-700); }
+  .menu-item.danger .mi-icon { color: var(--fail-500); }
+  .menu-item.danger:hover { background: var(--fail-50); color: var(--fail-800); }
+  .menu-divider { height: 1px; background: var(--hairline-soft); margin: 5px 4px; }
+
+  /* ════════════════════════════════════════════════════
+     v3 — Operational hub: Triage queue + Sim/Editor + activity log
+     ════════════════════════════════════════════════════ */
+  .hub { display: grid; grid-template-columns: minmax(0,1.62fr) minmax(0,1fr); gap: 16px; align-items: stretch; margin: 24px 0 6px; }
+  .hub-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  /* Shared card shell for hub blocks */
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md); display: flex; flex-direction: column; overflow: hidden; }
+  .card-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px; border-bottom: 1px solid var(--hairline-soft); }
+  .card-head .ch-icon { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; display: grid; place-items: center; }
+  .card-head .ch-icon svg { width: 18px; height: 18px; }
+  .card-head .ch-icon.sim { background: var(--sage-200); color: var(--sage-900); }
+  .card-head .ch-icon.editor { background: var(--cyan-200); color: var(--slate-700); }
+  .card-head .ch-titles { flex: 1; min-width: 0; }
+  .card-head .ch-kicker { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--slate-400); }
+  .card-head .ch-title { font-size: 16.5px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.01em; margin-top: 1px; }
+  .card-body { padding: 16px 18px; }
+  .card-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--hairline-soft); background: var(--fog-200); }
+
+  /* "전체 →" deep-link button */
+  .full-link {
+    display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+    font-size: 11.5px; font-weight: 600; color: var(--sage-800); text-decoration: none;
+    padding: 6px 11px; border: 1px solid var(--sage-200); background: var(--sage-50);
+    border-radius: var(--r-pill); letter-spacing: -0.005em; white-space: nowrap;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .full-link:hover { background: var(--sage-100); border-color: var(--sage-300); }
+  .full-link svg { width: 12px; height: 12px; }
+
+  /* ─── A · Triage queue (hero, full-width single column) ─── */
+  .triage { border-color: var(--slate-200); margin: 24px 0 0; }
+  .triage-head { display: flex; align-items: center; gap: 14px; padding: 18px 20px 16px; border-bottom: 1px solid var(--hairline-soft); }
+  .triage-head .th-title { font-size: 21px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.018em; white-space: nowrap; }
+  .triage-head .th-title .cnt { color: var(--fail-600); }
+  .triage-head .th-sev { display: flex; align-items: center; gap: 6px; }
+  .sev-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 4px 10px 4px 8px; border-radius: var(--r-pill); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .sev-chip .pd { width: 7px; height: 7px; border-radius: 50%; }
+  .sev-chip.fail { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+  .sev-chip.fail .pd { background: var(--fail-500); }
+  .sev-chip.warn { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .sev-chip.warn .pd { background: var(--warn-500); }
+  .triage-head .th-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .tq-filter {
+    display: none; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--slate-700);
+    background: var(--cyan-100); border: 1px solid var(--cyan-300);
+    border-radius: var(--r-pill); padding: 5px 8px 5px 12px;
+  }
+  .tq-filter.show { display: inline-flex; }
+  .tq-filter .x { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; cursor: default; color: var(--slate-500); }
+  .tq-filter .x:hover { background: rgba(0,0,0,0.06); color: var(--slate-800); }
+  .tq-filter .x svg { width: 12px; height: 12px; }
+
+  .tq-list { display: flex; flex-direction: column; }
+  .tq-row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 8px 14px; align-items: center;
+    padding: 15px 20px; border-bottom: 1px solid var(--hairline-soft);
+    transition: opacity 260ms ease, background 160ms ease;
+  }
+  .tq-row:last-child { border-bottom: 0; }
+  .tq-row .tq-pill {
+    display: inline-flex; align-items: center; gap: 6px; align-self: start; margin-top: 2px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: var(--r-pill); white-space: nowrap;
+  }
+  .tq-pill .pd { width: 6px; height: 6px; border-radius: 50%; }
+  .tq-row.fail .tq-pill { background: var(--fail-100); color: var(--fail-800); border: 1px solid var(--fail-200); }
+  .tq-row.fail .tq-pill .pd { background: var(--fail-500); }
+  .tq-row.warn .tq-pill { background: var(--warn-100); color: var(--warn-800); border: 1px solid var(--warn-200); }
+  .tq-row.warn .tq-pill .pd { background: var(--warn-500); }
+  .tq-main { min-width: 0; }
+  .tq-sum { font-size: 14px; color: var(--slate-900); letter-spacing: -0.005em; line-height: 1.45; }
+  .tq-sum .b { font-weight: 700; }
+  .tq-sum .hl { font-family: var(--ff-mono); font-size: 12.5px; color: var(--slate-700); }
+  .tq-meta { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-400); margin-top: 4px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .tq-meta .wname { color: var(--slate-600); font-weight: 600; white-space: nowrap; }
+  .tq-meta .dotsep { width: 3px; height: 3px; border-radius: 50%; background: var(--slate-300); }
+  .tq-actions { grid-column: 3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .tq-editor {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; letter-spacing: -0.005em; text-decoration: none;
+    padding: 7px 11px 7px 13px; border-radius: var(--r-pill);
+    background: var(--cyan-100); border: 1px solid var(--cyan-300); color: var(--slate-800);
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .tq-editor:hover { background: var(--cyan-200); border-color: var(--cyan-400); }
+  .tq-editor .arrow { width: 12px; height: 12px; }
+  .tq-row.resolved { opacity: 0.5; }
+  .tq-row.resolved .tq-actions { display: none; }
+  .tq-resolved-tag {
+    display: none; font-family: var(--ff-mono); font-size: 11px; font-weight: 600;
+    color: var(--sage-700); align-items: center; gap: 6px;
+  }
+  .tq-resolved-tag::before { content: "✓"; font-weight: 700; }
+  .tq-row.resolved .tq-resolved-tag { display: inline-flex; }
+
+  .tq-empty { display: none; flex-direction: column; align-items: center; gap: 10px; padding: 44px 20px; text-align: center; }
+  .tq-empty .ico { width: 44px; height: 44px; border-radius: 50%; background: var(--pass-100); color: var(--pass-700); display: grid; place-items: center; }
+  .tq-empty .ico svg { width: 22px; height: 22px; }
+  .tq-empty .et { font-size: 14.5px; font-weight: 700; color: var(--slate-700); }
+  .tq-empty .es { font-size: 12.5px; color: var(--slate-400); }
+  .triage.empty .tq-list { display: none; }
+  .triage.empty .tq-empty { display: flex; }
+
+  /* ─── Activity log (read-only, secondary) ─── */
+  .alog .card-head { padding: 13px 18px 11px; }
+  .alog .ch-kicker { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--slate-400); flex: 1; }
+  .alog-list { padding: 4px 18px 10px; }
+
+  /* ─── Sim verdict button full width ─── */
+  .card .sim-run { width: 100%; justify-content: center; padding: 11px; margin-top: 2px; }
+
+  /* ─── Filterable wallet badges (→ triage filter) ─── */
+  .filterable { cursor: default; transition: box-shadow 120ms ease, filter 120ms ease; }
+  .filterable:hover { box-shadow: 0 0 0 3px rgba(105,116,133,0.16); filter: brightness(0.99); }
+
+  /* ─── Inline function widgets (v2) ─── */
+  .widgets-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 26px 0 14px; padding: 0 2px;
+  }
+  .widgets-head h2 { margin: 0; font-size: 22px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.015em; }
+  .widgets-head h2 .submeta { margin-left: 12px; font-size: 13px; font-weight: 500; color: var(--slate-500); }
+  .widgets-head .controls { display: flex; align-items: center; gap: 10px; font-family: var(--ff-mono); font-size: 11.5px; color: var(--slate-500); white-space: nowrap; }
+
+  .widget-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+  body[data-widgets="4col"] .widget-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .widget {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-md); display: flex; flex-direction: column;
+    overflow: hidden; min-width: 0;
+  }
+  .w-head { display: flex; align-items: center; gap: 12px; padding: 15px 16px 13px; border-bottom: 1px solid var(--hairline-soft); }
+  .w-head .dh-icon { width: 34px; height: 34px; border-radius: 9px; }
+  .w-head .dh-icon svg { width: 18px; height: 18px; }
+  .w-head .dh-titles { flex: 1; min-width: 0; }
+  .w-head .dh-kicker { font-size: 10px; }
+  .w-head .dh-title { font-size: 15.5px; margin-top: 1px; }
+  .w-full {
+    display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+    font-size: 11.5px; font-weight: 600; color: var(--sage-800); text-decoration: none;
+    padding: 6px 11px; border: 1px solid var(--sage-200); background: var(--sage-50);
+    border-radius: var(--r-pill); letter-spacing: -0.005em;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .w-full:hover { background: var(--sage-100); border-color: var(--sage-300); }
+  .w-full svg { width: 12px; height: 12px; }
+  .w-body { padding: 16px; flex: 1; min-height: 0; }
+  .w-body.scroll { overflow-y: auto; max-height: 312px; scrollbar-width: thin; scrollbar-color: var(--slate-200) transparent; }
+  .w-body.scroll::-webkit-scrollbar { width: 8px; }
+  .w-body.scroll::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+  .w-body .field:last-of-type { margin-bottom: 0; }
+  .w-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--hairline-soft); background: var(--fog-200); }
+
+  /* Editor inline expand */
+  .w-expand {
+    appearance: none; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--slate-500); background: transparent; border: none; cursor: default;
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; margin-top: 2px;
+  }
+  .w-expand:hover { color: var(--slate-700); }
+  .w-expand svg { width: 13px; height: 13px; transition: transform 220ms cubic-bezier(0.32,0.04,0.2,1); }
+  .w-expand.open svg { transform: rotate(180deg); }
+  .field-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 260ms cubic-bezier(0.32,0.04,0.2,1); }
+  .field-more.open { grid-template-rows: 1fr; }
+  .field-more > .fm-inner { overflow: hidden; min-height: 0; }
+  .field-more > .fm-inner > .fm-pad { padding-top: 16px; }
+  .field-more .field:last-child { margin-bottom: 0; }
+
+  /* ─── Disabled nav item (Settings · 준비 중) ─── */
+  .nav-item.is-disabled { cursor: not-allowed; color: var(--slate-300); }
+  .nav-item.is-disabled:hover { background: transparent; color: var(--slate-300); }
+  .nav-item.is-disabled .icon { opacity: 0.55; }
+  .nav-item .soon {
+    font-family: var(--ff-mono); font-size: 9px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--slate-400); background: var(--fog-400);
+    border: 1px solid var(--hairline); padding: 2px 7px; border-radius: var(--r-pill);
+    opacity: 0; transition: opacity 180ms 100ms ease; white-space: nowrap;
+  }
+  .nav-rail:hover .nav-item .soon, .nav-rail:focus-within .nav-item .soon, .nav-rail.locked .nav-item .soon { opacity: 1; }
+</style>
+</head>
+
+<body data-density="regular" data-locale="ko">
+
+<div class="stage">
+<div class="screen" data-screen-label="01 Home">
+
+  <!-- NAV RAIL -->
+  <nav class="nav-rail" tabindex="0" aria-label="Cloudy Pond global nav">
+    <div class="nav-logo">
+      <div class="mark">logo</div>
+      <div class="word">scopeball</div>
+    </div>
+    <div class="nav-cta">
+      <div class="main" data-action="new-policy">
+        <svg class="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="label">새 정책</span>
+      </div>
+      <div class="caret" data-action="new-policy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+    </div>
+    <div class="nav-ws" data-menu="org" role="button" tabindex="0">
+      <span class="ws-av">A</span>
+      <div class="ws-label">Acme<span class="sub">4 wallets · 14 policies</span></div>
+      <svg class="ws-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <a class="nav-item active" href="#" aria-current="page">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+        <span class="label">Home</span>
+      </a>
+      <a class="nav-item" href="Editor v7.html">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        <span class="label">Editor</span>
+      </a>
+      <a class="nav-item" href="Simulation.html">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5 3.5-5 3.5z"/></svg></span>
+        <span class="label">Simulation</span>
+      </a>
+      <a class="nav-item" href="Monitoring.html">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+        <span class="label">Monitoring</span>
+      </a>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <a class="nav-item" href="History.html">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-7"/></svg></span>
+        <span class="label">History</span><span class="badge">12</span><span class="dot-badge"></span>
+      </a>
+      <a class="nav-item is-disabled" href="#" aria-disabled="true" data-disabled-nav title="준비 중">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15c.1.4.3.8.6 1L19 17l-1-1c-.3-.3-.6-.5-1-.6"/></svg></span>
+        <span class="label">Settings</span><span class="soon">준비 중</span>
+      </a>
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-user" data-menu="user" role="button" tabindex="0">
+        <span class="av">TY</span>
+        <div class="meta"><div class="nm">Taeyoon Kim</div><div class="em">ty@scopeball.co</div></div>
+      </div>
+    </div>
+  </nav>
+
+
+  <main class="content">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="crumb">
+        <span class="here">Scopeball Home</span>
+        <span class="sep">/</span>
+        <span class="addr">Acme · 4 wallets</span>
+      </div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--slate-300);"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" placeholder="지갑 / 정책 / tx 해시 검색" />
+        <span class="kbd">⌘ K</span>
+      </div>
+      <div class="dots">
+        <span class="dot-chip"><span class="dot pass"></span><span lang="ko">PASS 2</span><span lang="en">2 calm</span></span>
+        <span class="dot-chip"><span class="dot warn"></span><span lang="ko">WARN 2</span><span lang="en">2 review</span></span>
+        <span class="dot-chip"><span class="dot fail"></span><span lang="ko">FAIL 1</span><span lang="en">1 blocked</span></span>
+        <span class="icon-btn" aria-label="notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span class="unread"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Sage context bar — portfolio -->
+    <section class="context-bar" aria-label="portfolio context">
+      <span class="protected">
+        <span class="pulse"></span>
+        <span lang="ko">보호 중</span><span lang="en">Protected</span>
+      </span>
+      <span class="ctx-sep"></span>
+      <span class="wsname">Acme</span>
+      <span class="summary">
+        <span lang="ko"><b>4</b> 지갑 · <b>14</b> 정책 활성 <span class="mute">· 모든 트랜잭션 SDK 평가됨</span></span>
+        <span lang="en"><b>4</b> wallets · <b>14</b> policies active <span class="mute">· all txs evaluated via SDK</span></span>
+      </span>
+      <div class="right">
+        <span class="since">
+          <span lang="ko">오늘 224건 평가</span>
+          <span lang="en">224 evaluated today</span>
+        </span>
+        <button class="ctx-cta">
+          <span lang="ko">지갑 추가</span><span lang="en">Add wallet</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+    </section>
+
+
+    <!-- ════════ A · 처리 대기 (global triage queue) ════════ -->
+    <section class="card triage" id="triage">
+      <div class="triage-head">
+        <span class="th-title"><span lang="ko">History <span class="cnt" id="tqCount">3</span>건</span><span lang="en">History · <span class="cnt" id="tqCountEn">3</span></span></span>
+        <div class="th-sev" id="tqSev">
+          <span class="sev-chip fail"><span class="pd"></span>FAIL 1</span>
+          <span class="sev-chip warn"><span class="pd"></span>WARN 2</span>
+        </div>
+        <div class="th-right">
+          <span class="tq-filter" id="tqFilter">
+            <span><span lang="ko">필터</span><span lang="en">Filter</span>: <b id="tqFilterName"></b></span>
+            <span class="x" id="tqFilterClear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          </span>
+        </div>
+      </div>
+      <div class="tq-list" id="tqList">
+
+        <div class="tq-row fail" data-wallet="main">
+          <span class="tq-pill"><span class="pd"></span>FAIL</span>
+          <div class="tq-main">
+            <div class="tq-sum"><span lang="ko"><span class="b">블록리스트 매치</span> · <span class="hl">1.2 ETH</span> → 0x8c5f···a91</span><span lang="en"><span class="b">Blocklist match</span> · <span class="hl">1.2 ETH</span> → 0x8c5f···a91</span></div>
+            <div class="tq-meta"><span class="wname"><span lang="ko">메인 지갑</span><span lang="en">Main</span></span><span class="dotsep"></span>12m ago<span class="dotsep"></span>rule#blocklist<span class="dotsep"></span>chainalysis tier-1</div>
+          </div>
+          <div class="tq-actions">
+            <label class="allow-toggle">
+              <input type="checkbox" class="tg-cb" />
+              <span class="tg-track"><span class="tg-thumb"></span></span>
+              <span class="tg-text"><span lang="ko">임시 허용</span><span lang="en">Temp allow</span></span>
+              <span class="tg-state"><span lang="ko">꺼짐</span><span lang="en">off</span></span>
+            </label>
+            <button class="btn ghost" data-resolve="dismiss"><span lang="ko">무시 · FAIL 유지</span><span lang="en">Dismiss · keep blocked</span></button>
+            <a class="tq-editor" href="Editor v7.html?rule=blocklist">Editor<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+          <span class="tq-resolved-tag"><span lang="ko">처리됨</span><span lang="en">resolved</span></span>
+        </div>
+
+        <div class="tq-row warn" data-wallet="hot">
+          <span class="tq-pill"><span class="pd"></span>WARN</span>
+          <div class="tq-main">
+            <div class="tq-sum"><span lang="ko"><span class="b">반복 송금 패턴</span> · 동일 주소 5회 · <span class="hl">0.05 ETH × 5</span></span><span lang="en"><span class="b">Repeat pattern</span> · same addr 5× · <span class="hl">0.05 ETH × 5</span></span></div>
+            <div class="tq-meta"><span class="wname"><span lang="ko">빠른 송금(Hot)</span><span lang="en">Hot</span></span><span class="dotsep"></span>6m ago<span class="dotsep"></span>rule#repeat.detect</div>
+          </div>
+          <div class="tq-actions">
+            <button class="btn primary" data-resolve="approve"><span lang="ko">패턴 승인</span><span lang="en">Approve</span></button>
+            <button class="btn ghost" data-confirm="block"><span lang="ko">차단으로 전환</span><span lang="en">Convert to block</span></button>
+            <button class="btn ghost" data-resolve="dismiss"><span lang="ko">무시</span><span lang="en">Dismiss</span></button>
+            <a class="tq-editor" href="Editor v7.html?rule=repeat.detect">Editor<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+          <span class="tq-resolved-tag"><span lang="ko">처리됨</span><span lang="en">resolved</span></span>
+        </div>
+
+        <div class="tq-row warn" data-wallet="main">
+          <span class="tq-pill"><span class="pd"></span>WARN</span>
+          <div class="tq-main">
+            <div class="tq-sum"><span lang="ko"><span class="b">가스 스파이크</span> · +38% vs avg · <span class="hl">82 gwei</span></span><span lang="en"><span class="b">Gas spike</span> · +38% vs avg · <span class="hl">82 gwei</span></span></div>
+            <div class="tq-meta"><span class="wname"><span lang="ko">메인 지갑</span><span lang="en">Main</span></span><span class="dotsep"></span>18m ago<span class="dotsep"></span>rule#gas.guard</div>
+          </div>
+          <div class="tq-actions">
+            <button class="btn primary" data-resolve="ack"><span lang="ko">확인</span><span lang="en">Acknowledge</span></button>
+            <button class="btn ghost" data-resolve="dismiss"><span lang="ko">무시</span><span lang="en">Dismiss</span></button>
+            <a class="tq-editor" href="Editor v7.html?rule=gas.guard">Editor<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+          <span class="tq-resolved-tag"><span lang="ko">처리됨</span><span lang="en">resolved</span></span>
+        </div>
+
+      </div>
+      <div class="tq-empty" id="tqEmpty">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+        <span class="et"><span lang="ko">조치할 항목 없음 · 모두 정상</span><span lang="en">All clear · nothing needs action</span></span>
+        <span class="es"><span lang="ko">새 FAIL·WARN이 생기면 여기에 모입니다</span><span lang="en">New FAIL/WARN items collect here</span></span>
+      </div>
+    </section>
+
+
+    <!-- ════════ WALLET LIST ════════ -->
+    <div class="wallets-head">
+      <h2>
+        <span lang="ko">내 지갑들</span>
+        <span lang="en">Your wallets</span>
+        <span class="submeta">
+          <span lang="ko">4개 · PASS 2 · WARN 2 · FAIL 1</span>
+          <span lang="en">4 wallets · 2 calm · 2 review · 1 blocked</span>
+        </span>
+      </h2>
+      <div class="controls">
+        <span lang="ko">최대 3개 동시 펼침</span>
+        <span lang="en">expand up to 3 at once</span>
+      </div>
+    </div>
+
+    <div class="wallet-list" id="wallets">
+
+      <!-- 1) Main wallet — expanded by default (alert · scrolls internally) -->
+      <article class="wallet-card alert expanded" data-wallet="main">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="true">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">M</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">메인 지갑</span><span lang="en">Main wallet</span></span>
+            <span class="addr">0xA1c4···7e29</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill warn filterable" data-filter-wallet="main"><span class="pd"></span><span lang="ko">WARN 1</span><span lang="en">1 review</span></span>
+            <span class="w-pill fail filterable" data-filter-wallet="main"><span class="pd"></span><span lang="ko">FAIL 1</span><span lang="en">1 blocked</span></span>
+          </div>
+          <span class="w-pending filterable" data-filter-wallet="main">2 <span lang="ko">Pending</span><span lang="en">pending</span></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <!-- Active policies — primary -->
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>5</b></span>
+              <span class="panel-meta">last sync 2m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">일일 송금 한도</span><span lang="en">Daily transfer limit</span><span class="id">rule#daily.limit</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">화이트리스트</span><span lang="en">Allowlist</span><span class="id">rule#allowlist</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">서명 스킴 · EIP-712</span><span lang="en">Signature · EIP-712</span><span class="id">rule#sig.scheme</span></span><span></span></div>
+              <div class="policy-item warn"><span class="pd"></span><span class="nm"><span lang="ko">가스 가드</span><span lang="en">Gas guard</span><span class="id">rule#gas.guard</span></span><span class="status-pill"><span lang="ko">WARN</span><span lang="en">review</span></span></div>
+              <div class="policy-item fail"><span class="pd"></span><span class="nm"><span lang="ko">목적지 블록리스트</span><span lang="en">Destination blocklist</span><span class="id">rule#blocklist</span></span><span class="status-pill"><span lang="ko">FAIL</span><span lang="en">blocked</span></span></div>
+            </div>
+          </section>
+
+                    <!-- 활동 로그 (this wallet) -->
+          <section class="panel wlog">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활동 로그</span><span lang="en">Activity log</span><b>4</b></span>
+              <span class="panel-meta">this wallet</span>
+            </div>
+            <div class="hist">
+            <div class="hist-row"><span class="hist-pill fail">FAIL</span><span class="h-sum"><span lang="ko">블록리스트 차단 · 1.2 ETH → 0x8c5f···a91</span><span lang="en">Blocklist block · 1.2 ETH → 0x8c5f···a91</span></span><span class="h-time">12m</span></div>
+            <div class="hist-row"><span class="hist-pill warn">WARN</span><span class="h-sum"><span lang="ko">가스 스파이크 검토 · 82 gwei</span><span lang="en">Gas spike review · 82 gwei</span></span><span class="h-time">18m</span></div>
+            <div class="hist-row"><span class="hist-pill info">ACK</span><span class="h-sum"><span lang="ko">알림 확인 · 가스 가드</span><span lang="en">Alert acked · gas guard</span></span><span class="h-time">5h</span></div>
+            <div class="hist-row"><span class="hist-pill pass">PASS</span><span class="h-sum"><span lang="ko">화이트리스트 송금 · 0.3 ETH</span><span lang="en">Allowlist transfer · 0.3 ETH</span></span><span class="h-time">6h</span></div>
+            </div>
+          </section>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">5 정책</span><span lang="en">5 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">137 평가 today</span><span lang="en">137 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 2m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+
+      <!-- 2) Treasury — calm (Sage tone), collapsed -->
+      <article class="wallet-card calm" data-wallet="treasury">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="false">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">T</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">운영 자금 (Treasury)</span><span lang="en">Treasury</span></span>
+            <span class="addr">0xB7d1···3f4a</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill calm"><span class="pd"></span><span lang="ko">PASS</span><span lang="en">Calm</span></span>
+          </div>
+          <span class="w-pending"></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>3</b></span>
+              <span class="panel-meta">last sync 5m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">대량 송금 차단</span><span lang="en">Large transfer block</span><span class="id">rule#large.tx</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">멀티시그 2-of-3</span><span lang="en">Multisig 2-of-3</span><span class="id">rule#multisig</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">서명 스킴 · EIP-712</span><span lang="en">Signature · EIP-712</span><span class="id">rule#sig.scheme</span></span><span></span></div>
+            </div>
+          </section>
+
+                    <!-- 활동 로그 (this wallet) -->
+          <section class="panel wlog">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활동 로그</span><span lang="en">Activity log</span><b>2</b></span>
+              <span class="panel-meta">this wallet</span>
+            </div>
+            <div class="hist">
+            <div class="hist-row"><span class="hist-pill pass">PASS</span><span class="h-sum"><span lang="ko">멀티시그 2-of-3 서명 완료</span><span lang="en">Multisig 2-of-3 signed</span></span><span class="h-time">2h</span></div>
+            <div class="hist-row"><span class="hist-pill info">EDIT</span><span class="h-sum"><span lang="ko">대량 송금 차단 발행 · rule#large.tx</span><span lang="en">Large-transfer block published · rule#large.tx</span></span><span class="h-time">1d</span></div>
+            </div>
+          </section>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">3 정책</span><span lang="en">3 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">41 평가 today</span><span lang="en">41 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 5m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+
+      <!-- 3) Hot wallet — alert (1 review), collapsed -->
+      <article class="wallet-card alert" data-wallet="hot">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="false">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">H</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">빠른 송금 (Hot)</span><span lang="en">Hot wallet</span></span>
+            <span class="addr">0xCe88···91d2</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill warn filterable" data-filter-wallet="hot"><span class="pd"></span><span lang="ko">WARN 1</span><span lang="en">1 review</span></span>
+          </div>
+          <span class="w-pending filterable" data-filter-wallet="hot">1 <span lang="ko">Pending</span><span lang="en">pending</span></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>4</b></span>
+              <span class="panel-meta">last sync 3m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">일일 한도 0.5 ETH</span><span lang="en">Daily limit 0.5 ETH</span><span class="id">rule#daily.limit</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">화이트리스트</span><span lang="en">Allowlist</span><span class="id">rule#allowlist</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">속도 제한</span><span lang="en">Rate limit</span><span class="id">rule#rate</span></span><span></span></div>
+              <div class="policy-item warn"><span class="pd"></span><span class="nm"><span lang="ko">반복 송금 감지</span><span lang="en">Repeat detector</span><span class="id">rule#repeat.detect</span></span><span class="status-pill"><span lang="ko">WARN</span><span lang="en">review</span></span></div>
+            </div>
+          </section>
+
+                    <!-- 활동 로그 (this wallet) -->
+          <section class="panel wlog">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활동 로그</span><span lang="en">Activity log</span><b>3</b></span>
+              <span class="panel-meta">this wallet</span>
+            </div>
+            <div class="hist">
+            <div class="hist-row"><span class="hist-pill info">EDIT</span><span class="h-sum"><span lang="ko">정책 발행 · rule#daily.limit 0.5 ETH</span><span lang="en">Policy published · rule#daily.limit 0.5 ETH</span></span><span class="h-time">1h</span></div>
+            <div class="hist-row"><span class="hist-pill warn">WARN</span><span class="h-sum"><span lang="ko">반복 송금 패턴 · 동일 주소 5회</span><span lang="en">Repeat pattern · same addr 5×</span></span><span class="h-time">6m</span></div>
+            <div class="hist-row"><span class="hist-pill info">EDIT</span><span class="h-sum"><span lang="ko">초안 저장 · rule#rate</span><span lang="en">Draft saved · rule#rate</span></span><span class="h-time">8h</span></div>
+            </div>
+          </section>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">4 정책</span><span lang="en">4 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">23 평가 today</span><span lang="en">23 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 3m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+
+      <!-- 4) Dev wallet — calm (Sage tone), collapsed — demos max-3 -->
+      <article class="wallet-card calm" data-wallet="dev">
+        <header class="wallet-head" role="button" tabindex="0" aria-expanded="false">
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          <span class="w-icon">D</span>
+          <div class="w-id">
+            <span class="name"><span lang="ko">개발 (Dev)</span><span lang="en">Dev wallet</span></span>
+            <span class="addr">0xCa12···8b3f</span>
+          </div>
+          <div class="w-status">
+            <span class="w-pill calm"><span class="pd"></span><span lang="ko">PASS</span><span lang="en">Calm</span></span>
+          </div>
+          <span class="w-pending"></span>
+        </header>
+        <div class="wallet-body"><div class="wb-inner"><div class="wb-content">
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활성 정책</span><span lang="en">Active policies</span><b>2</b></span>
+              <span class="panel-meta">last sync 11m ago</span>
+            </div>
+            <div class="policy-list">
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">테스트넷 전용</span><span lang="en">Testnet only</span><span class="id">rule#chain.testnet</span></span><span></span></div>
+              <div class="policy-item"><span class="pd"></span><span class="nm"><span lang="ko">일일 한도 5 ETH</span><span lang="en">Daily limit 5 ETH</span><span class="id">rule#daily.limit</span></span><span></span></div>
+            </div>
+          </section>
+
+                    <!-- 활동 로그 (this wallet) -->
+          <section class="panel wlog">
+            <div class="panel-head">
+              <span class="panel-ttl"><span lang="ko">활동 로그</span><span lang="en">Activity log</span><b>2</b></span>
+              <span class="panel-meta">this wallet</span>
+            </div>
+            <div class="hist">
+            <div class="hist-row"><span class="hist-pill pass">PASS</span><span class="h-sum"><span lang="ko">테스트넷 트랜잭션 23건 정상</span><span lang="en">23 testnet txs passing</span></span><span class="h-time">1h</span></div>
+            <div class="hist-row"><span class="hist-pill info">EDIT</span><span class="h-sum"><span lang="ko">일일 한도 5 ETH 발행 · rule#daily.limit</span><span lang="en">Daily limit 5 ETH published · rule#daily.limit</span></span><span class="h-time">2d</span></div>
+            </div>
+          </section>
+
+          <div class="wallet-foot-meta">
+            <span><span lang="ko">2 정책</span><span lang="en">2 policies</span></span>
+            <span class="sep"></span>
+            <span><span lang="ko">23 평가 today</span><span lang="en">23 evaluated today</span></span>
+            <span class="sep"></span>
+            <span class="live"><span lang="ko">실시간 sync</span><span lang="en">live sync</span> · 11m</span>
+          </div>
+
+        </div></div></div>
+      </article>
+
+    </div><!-- /.wallet-list -->
+
+  </main>
+
+</div><!-- /.screen -->
+</div><!-- /.stage -->
+
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="icon">⚠</span>
+  <span class="toast-msg">
+    <span lang="ko">최대 3개 지갑까지 동시에 펼칠 수 있어요</span>
+    <span lang="en">Up to 3 wallets can be expanded at once</span>
+  </span>
+</div>
+
+
+<!-- ════════════════ OPERATIONAL HUB OVERLAYS ════════════════ -->
+
+<!-- (drawer model removed in v2 — functions are now inline widgets in the Home body) -->
+
+
+<!-- ─── + 새 정책 · quick-create modal ─── -->
+<div class="modal-wrap" id="newPolicyModal">
+  <div class="modal-card">
+    <header class="drawer-head">
+      <span class="dh-icon editor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+      <div class="dh-titles">
+        <div class="dh-kicker">Quick-create</div>
+        <div class="dh-title"><span lang="ko">새 정책</span><span lang="en">New policy</span></div>
+        <div class="dh-sub"><span lang="ko">템플릿에서 룰 1개를 생성합니다</span><span lang="en">Create one rule from a template</span></div>
+      </div>
+      <button class="drawer-close" data-close-modal aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </header>
+    <div class="drawer-body">
+      <div class="field">
+        <span class="flabel"><span lang="ko">룰 타입 / Rule type</span><span lang="en">Rule type</span></span>
+        <div class="seg" data-seg>
+          <button class="seg-opt active" data-val="limit"><span lang="ko">한도</span><span lang="en">Limit</span></button>
+          <button class="seg-opt" data-val="allowlist"><span lang="ko">허용목록</span><span lang="en">Allowlist</span></button>
+          <button class="seg-opt" data-val="blocklist"><span lang="ko">차단목록</span><span lang="en">Blocklist</span></button>
+          <button class="seg-opt" data-val="rate"><span lang="ko">속도제한</span><span lang="en">Rate</span></button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="flabel"><span lang="ko">적용 지갑 / Target wallet</span><span lang="en">Target wallet</span></span>
+        <select class="input">
+          <option>메인 지갑 · 0xA1c4···7e29</option>
+          <option>Treasury · 0xB7d1···3f4a</option>
+          <option>Hot · 0xCe88···91d2</option>
+          <option>Dev · 0xCa12···8b3f</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="flabel"><span lang="ko">한도 값 / Limit (ETH)</span><span lang="en">Limit (ETH)</span></span>
+        <input class="input mono" value="0.5" />
+      </div>
+      <div class="field">
+        <span class="flabel"><span lang="ko">주기 / Period</span><span lang="en">Period</span></span>
+        <div class="seg" data-seg>
+          <button class="seg-opt active" data-val="day"><span lang="ko">일</span><span lang="en">Daily</span></button>
+          <button class="seg-opt" data-val="week"><span lang="ko">주</span><span lang="en">Weekly</span></button>
+          <button class="seg-opt" data-val="month"><span lang="ko">월</span><span lang="en">Monthly</span></button>
+        </div>
+      </div>
+      <div class="gate-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span><span lang="ko"><b>적용·발행</b>은 확인 단계를 거칩니다. 초안은 자유롭게 저장하세요.</span><span lang="en"><b>Apply / publish</b> is gated. Drafts save freely.</span></span>
+      </div>
+    </div>
+    <footer class="drawer-foot">
+      <a class="deeplink" href="Editor v7.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span lang="ko">전체 편집</span><span lang="en">Full editor</span></a>
+      <div class="foot-actions">
+        <button class="btn ghost" data-editor-draft data-close-modal-after><span lang="ko">초안 저장</span><span lang="en">Save draft</span></button>
+        <button class="btn primary" data-confirm="apply"><span lang="ko">적용 / 발행</span><span lang="en">Apply / publish</span></button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+
+<!-- ─── Write-confirm gate ─── -->
+<div class="confirm-wrap" id="confirmWrap">
+  <div class="confirm-card">
+    <header class="cc-head">
+      <span class="cc-icon fail" id="ccIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg></span>
+      <div>
+        <div class="cc-kicker">Write · Confirm</div>
+        <div class="cc-title" id="ccTitle">정책 적용</div>
+      </div>
+    </header>
+    <div class="cc-body">
+      <p class="cc-desc" id="ccDesc"></p>
+      <div class="blast" id="ccBlast">
+        <div class="bl-ttl" id="ccBlastTtl">영향 범위 · Blast radius</div>
+        <ul id="ccBlastList"></ul>
+      </div>
+    </div>
+    <footer class="cc-foot">
+      <button class="btn ghost" id="ccCancel"><span lang="ko">취소</span><span lang="en">Cancel</span></button>
+      <button class="btn danger" id="ccConfirm"></button>
+    </footer>
+  </div>
+</div>
+
+
+<!-- ─── Org switcher dropdown ─── -->
+<div class="menu" id="orgMenu" role="menu">
+  <div class="menu-label"><span lang="ko">조직 전환</span><span lang="en">Switch organization</span></div>
+  <div class="menu-item menu-org current" role="menuitem">
+    <span class="ws-av">A</span>
+    <div><div>Acme</div><div class="mi-sub">4 wallets · 14 policies</div></div>
+    <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+  </div>
+  <div class="menu-divider"></div>
+  <div class="menu-item" role="menuitem">
+    <span class="mi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14V14a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.6 8"/></svg></span>
+    <span><span lang="ko">조직 설정</span><span lang="en">Organization settings</span></span>
+  </div>
+</div>
+
+
+<!-- ─── Personal account popover ─── -->
+<div class="menu" id="userMenu" role="menu">
+  <div class="menu-item menu-user" role="menuitem" style="cursor:default;">
+    <span class="av">TY</span>
+    <div><div>Taeyoon Kim</div><div class="mi-sub">ty@scopeball.co</div></div>
+  </div>
+  <div class="menu-divider"></div>
+  <div class="menu-item" role="menuitem">
+    <span class="mi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+    <span><span lang="ko">프로필</span><span lang="en">Profile</span></span>
+  </div>
+  <div class="menu-item" role="menuitem">
+    <span class="mi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14V14a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.6 8"/></svg></span>
+    <span><span lang="ko">설정</span><span lang="en">Settings</span></span>
+  </div>
+  <div class="menu-divider"></div>
+  <div class="menu-item danger" role="menuitem">
+    <span class="mi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg></span>
+    <span><span lang="ko">로그아웃</span><span lang="en">Log out</span></span>
+  </div>
+</div>
+
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<div id="tweaks-root"></div>
+
+<script>
+  (function() {
+    const MAX_EXPANDED = 3;
+    const list = document.getElementById('wallets');
+    const toast = document.getElementById('toast');
+    let toastTimer;
+    const showToast = () => {
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+    };
+    // Wallet card toggle
+    list.querySelectorAll('.wallet-card').forEach(card => {
+      const head = card.querySelector('.wallet-head');
+      const toggle = () => {
+        const wasOpen = card.classList.contains('expanded');
+        if (wasOpen) { card.classList.remove('expanded'); head.setAttribute('aria-expanded', 'false'); return; }
+        const openCount = list.querySelectorAll('.wallet-card.expanded').length;
+        if (openCount >= MAX_EXPANDED) { showToast(); return; }
+        card.classList.add('expanded'); head.setAttribute('aria-expanded', 'true');
+      };
+      head.addEventListener('click', toggle);
+      head.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
+    // Decision row toggle (2-stage)
+    document.querySelectorAll('.decision .d-row').forEach(row => {
+      const decision = row.closest('.decision');
+      const toggle = () => {
+        const expanded = decision.classList.toggle('expanded');
+        row.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      };
+      row.addEventListener('click', toggle);
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
+  })();
+</script>
+
+<script>
+  /* ════════ Operational hub — drawers · modal · confirm · menus ════════ */
+  (function () {
+    const modal   = document.getElementById('newPolicyModal');
+    const confirmWrap = document.getElementById('confirmWrap');
+    const rail    = document.querySelector('.nav-rail');
+    const toastEl = document.getElementById('toast');
+    let toastTimer;
+
+    function toast(ko, en) {
+      const msg = toastEl.querySelector('.toast-msg');
+      if (msg) msg.innerHTML = '<span lang="ko">' + ko + '</span><span lang="en">' + en + '</span>';
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+    }
+
+    /* ─── Editor widget inline expand (추가 옵션) ─── */
+    document.querySelectorAll('[data-expand]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-expand'));
+        if (!target) return;
+        const open = target.classList.toggle('open');
+        btn.classList.toggle('open', open);
+      });
+    });
+
+    /* ─── New-policy modal ─── */
+    function openModal() { closeMenus(); modal.classList.add('show'); }
+    function closeModal() { modal.classList.remove('show'); }
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    modal.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', closeModal));
+    document.querySelectorAll('[data-action="new-policy"]').forEach(el => {
+      el.addEventListener('click', openModal);
+    });
+
+    /* ─── Disabled nav ─── */
+    document.querySelectorAll('[data-disabled-nav]').forEach(el => {
+      el.addEventListener('click', (e) => { e.preventDefault(); });
+    });
+
+    /* ─── Segmented controls ─── */
+    document.querySelectorAll('[data-seg]').forEach(seg => {
+      seg.querySelectorAll('.seg-opt').forEach(opt => {
+        opt.addEventListener('click', () => {
+          seg.querySelectorAll('.seg-opt').forEach(o => o.classList.remove('active'));
+          opt.classList.add('active');
+        });
+      });
+    });
+
+    /* ─── Editor draft (free) ─── */
+    document.querySelectorAll('[data-editor-draft]').forEach(b => {
+      b.addEventListener('click', () => {
+        toast('초안이 저장되었어요', 'Draft saved');
+        if (b.hasAttribute('data-close-modal-after')) closeModal();
+      });
+    });
+
+    /* ─── Write-confirm gate ─── */
+    const presets = {
+      apply: {
+        tone: 'warn',
+        title: { ko: '정책 적용 · 발행', en: 'Apply / publish policy' },
+        desc: { ko: '이 정책을 발행하면 이후 모든 해당 트랜잭션이 즉시 평가됩니다. 자금에 영향을 주는 쓰기 작업입니다.',
+                en: 'Publishing evaluates all matching transactions immediately. This is a fund-affecting write.' },
+        blast: [
+          { ko: '적용 지갑: <b>메인 지갑</b> · 0xA1c4···7e29', en: 'Target: <b>Main wallet</b> · 0xA1c4···7e29' },
+          { ko: '한도 <b>0.5 ETH / 일</b> 즉시 발효', en: 'Limit <b>0.5 ETH / day</b> effective now' },
+          { ko: '발행 후 24시간 내 롤백 가능', en: 'Rollback available within 24h' }
+        ],
+        confirm: { ko: '적용 및 발행', en: 'Apply & publish' },
+        done: { ko: '정책이 적용·발행되었어요', en: 'Policy applied & published' }
+      },
+      block: {
+        tone: 'fail',
+        title: { ko: '차단으로 전환', en: 'Convert to block' },
+        desc: { ko: '이 패턴을 차단 정책으로 전환하면 일치하는 향후 트랜잭션이 거부됩니다. 되돌리려면 정책을 직접 해제해야 합니다.',
+                en: 'Converting this pattern to a block rejects all future matching transactions. Reverting requires manually removing the policy.' },
+        blast: [
+          { ko: '대상: <b>Hot</b> · 반복 송금 패턴 rule#repeat.detect', en: 'Scope: <b>Hot</b> · rule#repeat.detect' },
+          { ko: '동일 주소로의 향후 송금 <b>거부</b>', en: 'Future transfers to that address <b>rejected</b>' },
+          { ko: '진행 중인 대기 트랜잭션 1건 영향', en: 'Affects 1 pending transaction' }
+        ],
+        confirm: { ko: '차단으로 전환', en: 'Convert to block' },
+        done: { ko: '차단 정책으로 전환되었어요', en: 'Converted to a block policy' }
+      }
+    };
+
+    const ccIcon = document.getElementById('ccIcon');
+    const ccTitle = document.getElementById('ccTitle');
+    const ccDesc = document.getElementById('ccDesc');
+    const ccBlast = document.getElementById('ccBlast');
+    const ccBlastList = document.getElementById('ccBlastList');
+    const ccConfirm = document.getElementById('ccConfirm');
+    const ccCancel = document.getElementById('ccCancel');
+    let pendingDone = null;
+    let pendingSource = null;
+
+    function bilingual(obj) { return '<span lang="ko">' + obj.ko + '</span><span lang="en">' + obj.en + '</span>'; }
+
+    function openConfirm(type, source) {
+      const p = presets[type];
+      if (!p) return;
+      ccIcon.className = 'cc-icon ' + p.tone;
+      ccBlast.className = 'blast ' + (p.tone === 'fail' ? '' : 'warn');
+      ccTitle.innerHTML = bilingual(p.title);
+      ccDesc.innerHTML = bilingual(p.desc);
+      ccConfirm.className = 'btn ' + (p.tone === 'fail' ? 'danger' : 'primary');
+      ccConfirm.innerHTML = bilingual(p.confirm);
+      ccBlastList.innerHTML = p.blast.map(b => '<li>' + bilingual(b) + '</li>').join('');
+      pendingDone = p.done;
+      pendingSource = source || null;
+      confirmWrap.classList.add('show');
+    }
+    function closeConfirm() { confirmWrap.classList.remove('show'); }
+    ccCancel.addEventListener('click', closeConfirm);
+    confirmWrap.addEventListener('click', (e) => { if (e.target === confirmWrap) closeConfirm(); });
+    ccConfirm.addEventListener('click', () => {
+      const done = pendingDone;
+      const src = pendingSource;
+      closeConfirm();
+      closeModal();
+      if (src && src.classList.contains('tq-row')) resolveRow(src);
+      else if (src && src.classList.contains('feed-row')) { src.classList.add('acked'); }
+      if (done) toast(done.ko, done.en);
+    });
+
+    document.querySelectorAll('[data-confirm]').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        openConfirm(b.getAttribute('data-confirm'), b.closest('.tq-row') || b.closest('.feed-row'));
+      });
+    });
+
+    /* ─── Simulation dry-run ─── */
+    const simVerdict = document.getElementById('simVerdict');
+    const simBadge = document.getElementById('simBadge');
+    const simMsg = document.getElementById('simMsg');
+    const simChecks = document.getElementById('simChecks');
+    const simRun = document.querySelector('[data-sim-run]');
+    const simReset = document.querySelector('[data-sim-reset]');
+
+    function check(state, nameKo, nameEn, id) {
+      const tag = state === 'ok' ? { ko: '통과', en: 'pass' } : state === 'rev' ? { ko: '검토', en: 'review' } : { ko: '차단', en: 'block' };
+      return '<div class="v-check ' + state + '"><span class="vc-dot"></span><span class="vc-name">' +
+             '<span lang="ko">' + nameKo + '</span><span lang="en">' + nameEn + '</span>' +
+             '<span class="id">' + id + '</span></span><span class="vc-tag">' + bilingual(tag) + '</span></div>';
+    }
+
+    if (simRun) simRun.addEventListener('click', () => {
+      const to = (document.getElementById('simTo').value || '').toLowerCase();
+      const v = parseFloat(document.getElementById('simValue').value) || 0;
+      let status, msg, checks;
+      if (/8c5f|block/.test(to)) {
+        status = 'fail';
+        msg = { ko: '목적지가 블록리스트와 일치 — 차단됩니다', en: 'Destination matches blocklist — blocked' };
+        checks = [check('ok', '화이트리스트', 'Allowlist', 'rule#allowlist'),
+                  check('ok', '서명 스킴 · EIP-712', 'Signature · EIP-712', 'rule#sig.scheme'),
+                  check('no', '목적지 블록리스트', 'Destination blocklist', 'rule#blocklist')];
+      } else if (v >= 1) {
+        status = 'warn';
+        msg = { ko: '일일 한도 초과 — 검토가 필요합니다', en: 'Over daily limit — needs review' };
+        checks = [check('ok', '화이트리스트', 'Allowlist', 'rule#allowlist'),
+                  check('rev', '일일 송금 한도', 'Daily transfer limit', 'rule#daily.limit'),
+                  check('ok', '서명 스킴 · EIP-712', 'Signature · EIP-712', 'rule#sig.scheme')];
+      } else {
+        status = 'pass';
+        msg = { ko: '모든 정책 통과 — 전송 가능', en: 'All policies pass — clear to send' };
+        checks = [check('ok', '화이트리스트', 'Allowlist', 'rule#allowlist'),
+                  check('ok', '일일 송금 한도', 'Daily transfer limit', 'rule#daily.limit'),
+                  check('ok', '서명 스킴 · EIP-712', 'Signature · EIP-712', 'rule#sig.scheme')];
+      }
+      simVerdict.className = 'verdict ' + status;
+      simBadge.textContent = status.toUpperCase();
+      simMsg.innerHTML = bilingual(msg);
+      simChecks.innerHTML = checks.join('');
+      simVerdict.hidden = false;
+    });
+    if (simReset) simReset.addEventListener('click', () => { simVerdict.hidden = true; });
+
+    /* ─── A · Triage queue ─── */
+    const triage = document.getElementById('triage');
+    const tqList = document.getElementById('tqList');
+    const tqCount = document.getElementById('tqCount');
+    const tqCountEn = document.getElementById('tqCountEn');
+    const tqSev = document.getElementById('tqSev');
+    const tqFilter = document.getElementById('tqFilter');
+    const tqFilterName = document.getElementById('tqFilterName');
+    const tqFilterClear = document.getElementById('tqFilterClear');
+    const walletNames = { main:{ko:'메인 지갑',en:'Main'}, hot:{ko:'빠른 송금(Hot)',en:'Hot'}, treasury:{ko:'운영 자금(Treasury)',en:'Treasury'}, dev:{ko:'개발(Dev)',en:'Dev'} };
+
+    function refreshQueue() {
+      const rows = [...tqList.querySelectorAll('.tq-row')];
+      const active = rows.filter(r => r.style.display !== 'none' && !r.classList.contains('resolved'));
+      const fail = active.filter(r => r.classList.contains('fail')).length;
+      const warn = active.filter(r => r.classList.contains('warn')).length;
+      tqCount.textContent = active.length;
+      if (tqCountEn) tqCountEn.textContent = active.length;
+      let sev = '';
+      if (fail) sev += '<span class="sev-chip fail"><span class="pd"></span>FAIL ' + fail + '</span>';
+      if (warn) sev += '<span class="sev-chip warn"><span class="pd"></span>WARN ' + warn + '</span>';
+      tqSev.innerHTML = sev;
+      triage.classList.toggle('empty', active.length === 0);
+    }
+    function resolveRow(row) { if (row) row.classList.add('resolved'); refreshQueue(); }
+
+    tqList.querySelectorAll('[data-resolve]').forEach(b => {
+      b.addEventListener('click', () => {
+        const row = b.closest('.tq-row');
+        const kind = b.getAttribute('data-resolve');
+        const m = { dismiss:{ko:'무시했어요',en:'Dismissed'}, approve:{ko:'패턴을 승인했어요',en:'Pattern approved'}, ack:{ko:'확인했어요',en:'Acknowledged'} }[kind] || {ko:'처리했어요',en:'Done'};
+        resolveRow(row);
+        toast(m.ko, m.en);
+      });
+    });
+
+    /* ─── Wallet badge → filter the queue ─── */
+    function applyFilter(w) {
+      [...tqList.querySelectorAll('.tq-row')].forEach(r => {
+        r.style.display = (!w || r.getAttribute('data-wallet') === w) ? '' : 'none';
+      });
+      if (w) {
+        tqFilter.classList.add('show');
+        const n = walletNames[w] || { ko:w, en:w };
+        tqFilterName.innerHTML = '<span lang="ko">' + n.ko + '</span><span lang="en">' + n.en + '</span>';
+      } else {
+        tqFilter.classList.remove('show');
+      }
+      refreshQueue();
+    }
+    document.querySelectorAll('[data-filter-wallet]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyFilter(el.getAttribute('data-filter-wallet'));
+        const y = triage.getBoundingClientRect().top + window.scrollY - 24;
+        window.scrollTo({ top: y < 0 ? 0 : y, behavior: 'smooth' });
+      });
+    });
+    if (tqFilterClear) tqFilterClear.addEventListener('click', () => applyFilter(null));
+    refreshQueue();
+
+    /* ─── Menus (org switcher · user popover) ─── */
+    const orgMenu = document.getElementById('orgMenu');
+    const userMenu = document.getElementById('userMenu');
+    let openMenuEl = null, restoreLock = false;
+
+    function closeMenus() {
+      [orgMenu, userMenu].forEach(m => m.classList.remove('show'));
+      if (openMenuEl) { rail.classList.toggle('locked', restoreLock); openMenuEl = null; }
+    }
+    function placeMenu(menu, anchor, above) {
+      const a = anchor.getBoundingClientRect();
+      const left = window.scrollX + a.left;
+      menu.style.left = left + 'px';
+      menu.classList.add('show');
+      if (above) {
+        menu.style.top = (window.scrollY + a.top - menu.offsetHeight - 8) + 'px';
+      } else {
+        menu.style.top = (window.scrollY + a.bottom + 8) + 'px';
+      }
+    }
+    function toggleMenu(menu, anchor, above) {
+      if (openMenuEl === menu) { closeMenus(); return; }
+      closeMenus();
+      restoreLock = rail.classList.contains('locked');
+      rail.classList.add('locked');
+      openMenuEl = menu;
+      placeMenu(menu, anchor, above);
+    }
+
+    document.querySelectorAll('[data-menu]').forEach(el => {
+      const which = el.getAttribute('data-menu');
+      const handler = (e) => {
+        e.stopPropagation();
+        if (which === 'org') toggleMenu(orgMenu, el, false);
+        else toggleMenu(userMenu, el, true);
+      };
+      el.addEventListener('click', handler);
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(e); } });
+    });
+    [orgMenu, userMenu].forEach(m => {
+      m.querySelectorAll('.menu-item').forEach(item => {
+        if (item.classList.contains('menu-user')) return;
+        item.addEventListener('click', () => { closeMenus(); });
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (openMenuEl && !openMenuEl.contains(e.target) && !e.target.closest('[data-menu]')) closeMenus();
+    });
+
+    /* ─── Esc closes topmost overlay ─── */
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (confirmWrap.classList.contains('show')) closeConfirm();
+      else if (modal.classList.contains('show')) closeModal();
+      else if (openMenuEl) closeMenus();
+    });
+
+    /* ─── Expose for Tweaks ─── */
+    window.scopeball = { openModal, closeModal };
+  })();
+</script>
+
+<script type="text/babel">
+  const HOME_TWEAKS = /*EDITMODE-BEGIN*/{
+    "density": "regular",
+    "locale": "ko",
+    "navLocked": false,
+    "showPolicy": true,
+    "showCedar": false,
+    "showPalette": true,
+    "navExpanded": false
+  }/*EDITMODE-END*/;
+
+  function HomeTweaks() {
+    const [t, setTweak] = useTweaks(HOME_TWEAKS);
+    React.useEffect(() => {
+      document.body.setAttribute('data-density', t.density);
+      document.body.setAttribute('data-locale', t.locale);
+      const rail = document.querySelector('.nav-rail');
+      if (rail) rail.classList.toggle('locked', !!t.navLocked);
+    }, [t.density, t.locale, t.navLocked]);
+    return (
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Layout" />
+        <TweakRadio label="Density" value={t.density}
+                    options={['compact','regular','comfy']}
+                    onChange={(v) => setTweak('density', v)} />
+        <TweakToggle label="Nav locked-expanded" value={t.navLocked}
+                     onChange={(v) => setTweak('navLocked', v)} />
+        <TweakSection label="Content" />
+        <TweakRadio label="Locale" value={t.locale}
+                    options={['ko','en','mix']}
+                    onChange={(v) => setTweak('locale', v)} />
+      </TweaksPanel>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<HomeTweaks />);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,39 @@
+/* ════════════════════════════════════════════════════════════════════
+   sim2-v7.css — 7차 피드백 (승인·권한 카드 재설계). Loaded after sim2-v6.css.
+   #1 조건부 표시(정책 활성 시 펼침) · #2 1줄 좌측정렬 · 위험만 튀게
+   ════════════════════════════════════════════════════════════════════ */
+
+.aprows { padding:6px 11px 11px; display:flex; flex-direction:column; gap:4px; }
+
+/* 1줄 행: [아이콘] 토큰→spender(주소)  ····  한도  유형(·만료) — 전부 좌측 정렬 */
+.aprow { display:grid; grid-template-columns:22px minmax(0,1fr) auto auto; align-items:center; gap:11px;
+  padding:8px 10px; border:1px solid var(--hairline-soft); border-radius:9px; background:var(--surface);
+  /* 정상 승인 = 차분한 중립. flex-direction/gap 등 v6 컬럼 레이아웃 무효화 */ }
+.aprow.unlimited { border-color:var(--fail-200); }     /* 위험은 한도 칸에서 튀게 — 행 전체를 빨갛게 칠하지 않음 */
+.aprow.soon { border-color:var(--warn-200); }
+
+.aprow .ap-ic { width:22px; height:22px; border-radius:6px; display:grid; place-items:center; flex-shrink:0;
+  background:var(--fog-200); color:var(--slate-400); }
+.aprow .ap-ic.danger { background:var(--fail-100); color:var(--fail-600); }
+.aprow .ap-ic svg { width:12px; height:12px; }
+
+.ap-line { display:flex; align-items:baseline; gap:6px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ap-line .tok { font-size:12.5px; font-weight:700; color:var(--slate-900); flex-shrink:0; }
+.ap-line .arr { color:var(--slate-300); flex-shrink:0; }
+.ap-line .spn { font-size:12px; font-weight:600; color:var(--slate-700); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ap-line .addr { font-family:var(--ff-mono); font-size:9.5px; color:var(--slate-400); flex-shrink:0; }
+
+/* 한도 — 행에서 가장 또렷하게, 우측 정렬 한 칸으로 줄맞춤 */
+.ap-limit { text-align:right; white-space:nowrap; min-width:62px; }
+.ap-limit .ap-unl { display:inline-flex; align-items:center; gap:3px; color:var(--fail-700); background:var(--fail-100);
+  border:1px solid var(--fail-200); border-radius:var(--r-pill); padding:2px 9px; font-size:10px; font-weight:700; }
+.ap-limit .ap-unl svg { width:10px; height:10px; }
+.ap-limit .ap-amt { font-family:var(--ff-mono); font-size:11.5px; font-weight:700; color:var(--slate-700); }
+
+/* 유형 — 차분한 태그, 만료 inline (임박만 황색) */
+.ap-type-cell { white-space:nowrap; }
+.ap-type { font-family:var(--ff-mono); font-size:9px; font-weight:700; color:var(--slate-500); background:var(--fog-200);
+  border:1px solid var(--hairline-soft); border-radius:5px; padding:2px 7px; }
+.ap-type .ap-exp { color:var(--slate-400); font-weight:600; }
+.ap-type .ap-exp.soon { color:var(--warn-800); }
+.aprow.soon .ap-type { color:var(--warn-800); background:var(--warn-50); border-color:var(--warn-300); }
