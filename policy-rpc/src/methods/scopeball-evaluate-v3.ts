@@ -46,10 +46,6 @@ export const scopeballEvaluateV3Catalog: MethodCatalogEntry = {
   name: "scopeball.evaluate_v3",
   description:
     "Phase 5D mock — echo (envelopes, eval_context, wallet_id) back as policyRequest.actions with empty state_before / deltas / state_after. Real implementation arrives in Phase 6 (reducer + state sync).",
-  readKind: "reducer",
-  server: "sim-server",
-  stateDependency:
-    "whole-wallet state (holdings/approvals/positions) folded through the reducer to produce State₂ (mock today; Phase 6 wires the real reducer)",
   params: {
     wallet_id: {
       type: "String",

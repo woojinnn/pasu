@@ -1,13 +1,17 @@
-// Drift detection: the bundled `schema/method-catalog.json` MUST stay
-// in lockstep with the live daemon catalog (`createMethodRegistry`).
-// If they diverge, the dashboard's manifest editor will surface options
-// the daemon can't actually serve (or miss options the daemon can).
+// Drift detection: the bundled `schema/method-catalog.json` must stay in
+// lockstep with the live daemon catalog (`createMethodRegistry`) on the
+// OPERATIONAL contract (name/description/params/returns/origin). If they
+// diverge, the dashboard's manifest editor will surface options the daemon
+// can't actually serve (or miss options the daemon can).
+//
+// The JSON's forward-looking SEMANTIC fields (readKind/server/stateDependency,
+// ADR-009 sim-server enrichment) are JSON-only and excluded from the compare
+// (see DOC_ONLY_FIELDS) — policy-rpc is being retired, so the daemon does not
+// carry them.
 //
 // The fix when this test fails is one of:
-//   1. Update `schema/method-catalog.json` to match the daemon (most common).
+//   1. Update `schema/method-catalog.json` operational fields to match daemon.
 //   2. Roll back the daemon-side catalog change.
-// `node scripts/regen-method-catalog.mjs` (Step 1f, separate PR) will
-// automate (1) eventually; for now hand-edit the JSON.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -71,17 +75,27 @@ describe("MethodCatalog bundled JSON ↔ daemon catalog", () => {
   });
 });
 
+// Forward-looking SEMANTIC fields that live ONLY in
+// `schema/method-catalog.json` (read-kind, serving host, state dependency).
+// They document the sim-server fact host (ADR-009); the legacy policy-rpc
+// daemon does NOT set them and is being retired, so the catalog's enrichment
+// is decoupled from the daemon. The drift test compares only the OPERATIONAL
+// contract the daemon owns, so these keys are excluded from the comparison.
+const DOC_ONLY_FIELDS = new Set(["readKind", "server", "stateDependency"]);
+
 /**
  * Sort keys + drop undefineds so deep-equality comparison is stable
  * across the daemon's in-memory shape (where TypeScript may include
  * optional fields as `undefined`) and the JSON shape (where they're
- * absent).
+ * absent). Also drops the JSON-only `DOC_ONLY_FIELDS` so the bundled
+ * catalog may carry richer documentation than the daemon.
  */
 function normalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalize);
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+      if (DOC_ONLY_FIELDS.has(k)) continue;
       const v = (value as Record<string, unknown>)[k];
       if (v === undefined) continue;
       out[k] = normalize(v);

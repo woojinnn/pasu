@@ -34,10 +34,6 @@ const USD_DECIMAL_PLACES = 4;
 export const oracleUsdValueCatalog: MethodCatalogEntry = {
   name: "oracle.usd_value",
   description: "Convert a token amount to its USD valuation via a price oracle.",
-  readKind: "external",
-  server: "external",
-  stateDependency:
-    "external price feed (coingecko/chainlink); under ADR-009 this resolves to the DIRECT read of token_holdings.price_value (LiveField) instead of a live oracle call",
   params: {
     chain_id: {
       type: "Long",
