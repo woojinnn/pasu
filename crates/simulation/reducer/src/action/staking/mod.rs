@@ -134,6 +134,15 @@ pub enum StakeVenue {
         #[tsify(type = "string")]
         gauge: Address,
     },
+    /// Curve `FeeDistributor` — distributes protocol fees (3CRV / crvUSD) to
+    /// veCRV lockers; a user `claim()`s their accrued share.
+    CurveFeeDistributor {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// `FeeDistributor` contract address.
+        #[tsify(type = "string")]
+        distributor: Address,
+    },
 }
 
 impl StakeVenue {
@@ -148,6 +157,7 @@ impl StakeVenue {
             Self::CurveMinter { .. } => "curve_minter",
             Self::CurveGaugeController { .. } => "curve_gauge_controller",
             Self::CurveGauge { .. } => "curve_gauge",
+            Self::CurveFeeDistributor { .. } => "curve_fee_distributor",
         }
     }
 }

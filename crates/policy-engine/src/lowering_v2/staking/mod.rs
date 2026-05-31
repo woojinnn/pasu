@@ -62,6 +62,10 @@ pub(crate) fn lower_stake_venue(venue: &StakeVenue) -> Value {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("gauge".into(), Value::String(addr(gauge)));
         }
+        StakeVenue::CurveFeeDistributor { chain, distributor } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("distributor".into(), Value::String(addr(distributor)));
+        }
     }
     Value::Object(m)
 }

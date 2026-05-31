@@ -29,8 +29,8 @@
     { "name": "GaugeController", "chainId": 1, "address": "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb", "decision": "cover", "reason": "user governance surface: vote_for_gauge_weights" },
 
     { "name": "CRV token (ERC-20)", "chainId": 1, "address": "0xd533a949740bb3306d119cc777fa900ba034cd52", "decision": "exclude", "reason": "standard ERC-20 — covered by tokens:erc20 auto-enumerate adapter (out of surface-gate scope)" },
-    { "name": "FeeDistributor (3CRV)", "chainId": 1, "address": "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc", "decision": "exclude", "reason": "deferred: 3CRV fee-claim surface (claim/claim_many) — follow-up onboarding round" },
-    { "name": "FeeDistributor (crvUSD)", "chainId": 1, "address": "0xd16d5ec345dd86fb63c6a9c43c517210f1027914", "decision": "exclude", "reason": "deferred: crvUSD fee-claim surface (claim/claim_many) — follow-up onboarding round" },
+    { "name": "FeeDistributor (3CRV)", "chainId": 1, "address": "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc", "decision": "cover", "reason": "user fee claim: claim()/claim(address) → staking ClaimRewards (curve_fee_distributor venue)" },
+    { "name": "FeeDistributor (crvUSD)", "chainId": 1, "address": "0xd16d5ec345dd86fb63c6a9c43c517210f1027914", "decision": "cover", "reason": "user fee claim: claim()/claim(address) → staking ClaimRewards (curve_fee_distributor venue)" },
     { "name": "CurveRouter v1.0 (router-ng)", "chainId": 1, "address": "0xf0d4c12a5768d806021f80a262b4d39d26c58b8d", "decision": "cover", "reason": "user AMM surface: aggregator route swap (exchange ×3) — token_out via $fn curve_route_last_token" },
     { "name": "CurveRouter v1.1 (router-ng)", "chainId": 1, "address": "0x16c6521dff6bab339122a0fe25a9116693265353", "decision": "cover", "reason": "user AMM surface: aggregator route swap (exchange ×3) — token_out via $fn curve_route_last_token" },
     { "name": "CurveRouter v1.2 (router-ng)", "chainId": 1, "address": "0x45312ea0eff7e09c83cbe249fa1d7598c4c8cd4e", "decision": "cover", "reason": "user AMM surface: aggregator route swap (exchange ×3) — token_out via $fn curve_route_last_token" },

@@ -575,6 +575,44 @@ fn curve_vecrv_create_lock_locks_crv_for_unlock_time() {
     );
 }
 
+/// Field-level golden: Curve FeeDistributor `claim(address)` must decode to a
+/// `staking` `claim_rewards` on the new `curve_fee_distributor` venue, with
+/// `distributor = tx.to` and `on_behalf_of = $args._addr` (the beneficiary).
+#[test]
+fn curve_fee_distributor_claim_for_decodes_venue_and_beneficiary() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet tx 0x4452dd94… on the crvUSD FeeDistributor:
+    // claim(_addr = 0x4986d3b5…).
+    const TO: &str = "0xd16d5ec345dd86fb63c6a9c43c517210f1027914";
+    const BENEFICIARY: &str = "0x4986d3b5160032ab7df0fac9503f6a2360f3f888";
+    const CALLDATA: &str =
+        "0x1e83409a0000000000000000000000004986d3b5160032ab7df0fac9503f6a2360f3f888";
+
+    let env = harness::route::route_calldata(1, TO, "0x1e83409a", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let venue = find_object_by_key(&env, "venue").expect("claim_rewards carries venue");
+    assert_eq!(
+        find_string_field(venue, "name").as_deref(),
+        Some("curve_fee_distributor"),
+        "venue must be curve_fee_distributor; got {venue}"
+    );
+    assert_eq!(
+        find_string_field(venue, "distributor").as_deref(),
+        Some(TO),
+        "distributor must be tx.to; got {venue}"
+    );
+    assert_eq!(
+        find_string_field(&env, "on_behalf_of").as_deref(),
+        Some(BENEFICIARY),
+        "on_behalf_of must resolve to $args._addr"
+    );
+}
+
 /// Field-level golden: Curve Minter `mint_for` must decode to a `staking`
 /// `claim_rewards` whose `gauges` carries the calldata gauge, `on_behalf_of`
 /// is `_for`, and `reward_token` is CRV (baked).
