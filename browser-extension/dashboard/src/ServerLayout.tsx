@@ -36,6 +36,8 @@ export function ServerLayout() {
         <nav style={{ display: "flex", gap: 4 }}>
           <Brand />
           <NavBtn to="/server/wallets" label="Wallets" />
+          <NavBtn to="/server/transactions" label="Transactions" />
+          <NavBtn to="/server/policies" label="Policies" />
           <NavBtn to="/server/activity" label="Activity" />
           <NavBtn to="/server/me" label="Me" />
         </nav>

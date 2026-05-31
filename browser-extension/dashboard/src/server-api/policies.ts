@@ -1,31 +1,23 @@
 /**
- * Typed wrappers for `/policies/...` server endpoints.
- *
- * Phase 7 ships stubs — the server-side endpoints (`GET /policies`,
- * `POST /policies`, etc.) land in a follow-up because the manifest
- * storage layer (Phase 5 `user_policies` table) doesn't have HTTP
- * surface yet. The shapes below are the contract the dashboard expects
- * once the server catches up.
+ * `/policies` — Cedar policies in the user's `user_policies` table.
+ * Phase 9+ endpoint; the Rust server returns the full row including
+ * cedar_text + severity flags.
  */
 
 import { request } from "./client";
 
 export interface InstalledPolicy {
-  policy_id: string;
-  manifest_id: string;
+  id: number;
   name: string;
+  description: string | null;
+  cedar_text: string;
+  severity: string; // "deny" | "warn" | "info"
   enabled: boolean;
-  installed_at: number;
+  created_at: number;
+  updated_at: number;
 }
 
-/** `GET /policies` — list installed policies. Will return [] until the
- * server side lands. */
+/** `GET /policies` — every installed Cedar policy for the user. */
 export async function listPolicies(): Promise<InstalledPolicy[]> {
-  try {
-    return await request<InstalledPolicy[]>("/policies");
-  } catch (e) {
-    // 404 = endpoint not yet implemented — degrade to empty list so the
-    // page renders.
-    return [];
-  }
+  return request<InstalledPolicy[]>("/policies");
 }

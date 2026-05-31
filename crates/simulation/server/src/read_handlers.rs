@@ -19,6 +19,8 @@ use simulation_state::primitives::{Address, BlockHeight, ChainId};
 use simulation_state::token::{TokenHolding, TokenKey};
 use simulation_state::{WalletId, WalletState, WalletStore};
 
+use simulation_db::repositories::{deltas, user_policies, wallets as wallets_repo};
+
 use crate::app::AppState;
 use crate::auth::AuthUser;
 
@@ -162,4 +164,166 @@ fn open_store_error(reason: &str) -> Response {
         format!("open user store: {reason}"),
     )
         .into_response()
+}
+
+// ---------- /transactions ----------
+
+/// One row in the response. Fields mirror `simulation_db::DeltaRow` but
+/// JSON-shaped fields are deserialized so the client doesn't have to
+/// double-parse. `realized_delta` is omitted when null.
+#[derive(Serialize)]
+struct TxRow {
+    id: i64,
+    source: String,
+    status: String,
+    created_at: i64,
+    signed_at: Option<i64>,
+    confirmed_at: Option<i64>,
+    action_domain: String,
+    action_kind: String,
+    submitter: String,
+    tx_hash: Option<String>,
+    predicted_verdict: Option<String>,
+    action: serde_json::Value,
+    predicted_delta: Option<serde_json::Value>,
+    realized_delta: Option<serde_json::Value>,
+}
+
+/// `GET /transactions?wallet=<address>&limit=<n>` — tx lifecycle log
+/// from the `state_deltas` table for the authenticated user. When
+/// `wallet` is omitted, returns deltas across every wallet in the
+/// user's DB (up to `limit`, default 50, max 500).
+pub async fn list_transactions(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    axum::extract::Query(query): axum::extract::Query<TxQuery>,
+) -> Response {
+    let store = match state.multi_user.for_user(&user.user_id) {
+        Ok(s) => s,
+        Err(e) => return open_store_error(&e.to_string()),
+    };
+    let limit = query.limit.unwrap_or(50).clamp(1, 500);
+
+    // We need the wallet's i64 pk; the DeltaRow loader takes pk, not
+    // address. Either filter by a specific wallet (when `wallet` is
+    // set) or union across every wallet of the user.
+    let pool = store.pool().clone();
+    let wallet_filter = query.wallet.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        pool.with_tx(|tx| {
+            let walls = wallets_repo::list_active(tx)?;
+            let candidates: Vec<i64> = match wallet_filter.as_deref() {
+                Some(addr_filter) => {
+                    let needle = addr_filter.to_lowercase();
+                    walls
+                        .into_iter()
+                        .filter(|w| w.address == needle)
+                        .map(|w| w.id)
+                        .collect()
+                }
+                None => walls.into_iter().map(|w| w.id).collect(),
+            };
+            let mut out: Vec<TxRow> = Vec::new();
+            for wid in candidates {
+                let rows = deltas::list_recent(tx, wid, limit)?;
+                for r in rows {
+                    out.push(delta_row_to_dto(r));
+                }
+            }
+            out.sort_by_key(|r| std::cmp::Reverse(r.created_at));
+            out.truncate(usize::try_from(limit).unwrap_or(50));
+            Ok(out)
+        })
+    })
+    .await;
+
+    match result {
+        Ok(Ok(rows)) => Json(rows).into_response(),
+        Ok(Err(e)) => internal_str(&format!("list_transactions: {e}")),
+        Err(e) => internal_str(&format!("join: {e}")),
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct TxQuery {
+    pub wallet: Option<String>,
+    pub limit: Option<i64>,
+}
+
+fn delta_row_to_dto(r: simulation_db::repositories::DeltaRow) -> TxRow {
+    TxRow {
+        id: r.id,
+        source: r.source,
+        status: r.status,
+        created_at: r.created_at,
+        signed_at: r.signed_at,
+        confirmed_at: r.confirmed_at,
+        action_domain: r.action_domain,
+        action_kind: r.action_kind,
+        submitter: r.submitter,
+        tx_hash: r.tx_hash,
+        predicted_verdict: r.predicted_verdict,
+        action: serde_json::from_str(&r.action_json).unwrap_or(serde_json::Value::Null),
+        predicted_delta: r
+            .predicted_delta_json
+            .and_then(|s| serde_json::from_str(&s).ok()),
+        realized_delta: r
+            .realized_delta_json
+            .and_then(|s| serde_json::from_str(&s).ok()),
+    }
+}
+
+fn internal_str(reason: &str) -> Response {
+    (StatusCode::INTERNAL_SERVER_ERROR, reason.to_owned()).into_response()
+}
+
+// ---------- /policies ----------
+
+#[derive(Serialize)]
+struct PolicyRow {
+    id: i64,
+    name: String,
+    description: Option<String>,
+    cedar_text: String,
+    severity: String,
+    enabled: bool,
+    created_at: i64,
+    updated_at: i64,
+}
+
+/// `GET /policies` — every Cedar policy installed in the user's
+/// `user_policies` table. Empty list for a fresh user.
+pub async fn list_policies(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+) -> Response {
+    let store = match state.multi_user.for_user(&user.user_id) {
+        Ok(s) => s,
+        Err(e) => return open_store_error(&e.to_string()),
+    };
+    let pool = store.pool().clone();
+    let result = tokio::task::spawn_blocking(move || {
+        pool.with_tx(|tx| {
+            user_policies::list_all(tx).map(|rows| {
+                rows.into_iter()
+                    .map(|r| PolicyRow {
+                        id: r.id,
+                        name: r.name,
+                        description: r.description,
+                        cedar_text: r.cedar_text,
+                        severity: r.severity,
+                        enabled: r.enabled,
+                        created_at: r.created_at,
+                        updated_at: r.updated_at,
+                    })
+                    .collect::<Vec<_>>()
+            })
+        })
+    })
+    .await;
+    match result {
+        Ok(Ok(rows)) => Json(rows).into_response(),
+        Ok(Err(e)) => internal_str(&format!("list_policies: {e}")),
+        Err(e) => internal_str(&format!("join: {e}")),
+    }
 }

@@ -36,3 +36,5 @@ export {
 } from "./wallets";
 
 export { listPolicies, type InstalledPolicy } from "./policies";
+
+export { listTransactions, type TxRow } from "./transactions";

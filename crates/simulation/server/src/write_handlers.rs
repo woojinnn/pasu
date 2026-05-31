@@ -19,8 +19,8 @@ use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 
-use simulation_state::live_field::DataSource;
-use simulation_state::primitives::{Address, ChainId, Time};
+use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
+use simulation_state::primitives::{Address, ChainId, Duration, Price, Time};
 use simulation_state::token::{Balance, TokenHolding, TokenKind};
 use simulation_state::{WalletId, WalletState, WalletStore};
 use simulation_sync::{discovery, DiscoveredToken, Orchestrator};
@@ -206,9 +206,15 @@ async fn seed_holdings(
 }
 
 /// Convert a `DiscoveredToken` into a `TokenHolding` ready to land in
-/// `WalletState.tokens`. `primitives_source` points back at the
-/// `eth_call balanceOf(...)` (or `eth_getBalance` for native) so the
-/// orchestrator can refresh the balance on subsequent ticks.
+/// `WalletState.tokens`. Two source pointers are set:
+///   - `primitives_source` → on-chain balance (`eth_getBalance` for
+///     native, `balanceOf(address)` for ERC-20). The orchestrator's
+///     refresh loop uses this to keep `balance` current.
+///   - `price_usd: LiveField<Price>` → Chainlink USD feed when the
+///     symbol maps to a known feed (USDC, ETH, WBTC, …). `synced_at`
+///     starts at unix epoch 0 so the orchestrator picks it up on the
+///     next refresh and fills in a real price. Unknown symbols get
+///     `None` (the orchestrator skips them).
 fn discovered_to_holding(tok: DiscoveredToken, chain: &ChainId) -> TokenHolding {
     use simulation_state::token::TokenKey;
     let primitives_source = match &tok.key {
@@ -226,6 +232,17 @@ fn discovered_to_holding(tok: DiscoveredToken, chain: &ChainId) -> TokenHolding 
         },
         _ => DataSource::UserSupplied,
     };
+    let price_usd = chainlink_feed_for(&tok.symbol).map(|feed_id| {
+        LiveField::new(
+            Price::new("0"),
+            DataSource::OracleFeed {
+                provider: OracleProvider::Chainlink,
+                feed_id: feed_id.to_string(),
+            },
+            Time::from_unix(0), // never synced — orchestrator picks up on first tick
+        )
+        .with_ttl(Duration::from_secs(60))
+    });
     TokenHolding {
         key: tok.key,
         kind: TokenKind::Unknown,
@@ -234,9 +251,24 @@ fn discovered_to_holding(tok: DiscoveredToken, chain: &ChainId) -> TokenHolding 
         balance: Balance::fungible(tok.balance),
         committed: Balance::zero_fungible(),
         approved_to: None,
-        price_usd: None,
+        price_usd,
         last_synced_at: Time::from_unix(unix_now_u64()),
         primitives_source,
+    }
+}
+
+/// Map a token symbol to its canonical Chainlink USD feed id. Returns
+/// `None` for symbols without a wired feed — the orchestrator's
+/// Chainlink registry decides per-chain availability separately.
+fn chainlink_feed_for(symbol: &str) -> Option<&'static str> {
+    // Wrapper tokens share the underlying asset's feed.
+    match symbol.to_uppercase().as_str() {
+        "ETH" | "WETH" | "STETH" | "WSTETH" => Some("ETH/USD"),
+        "BTC" | "WBTC" => Some("WBTC/USD"),
+        "USDC" | "USDC.E" | "USDBC" => Some("USDC/USD"),
+        "USDT" => Some("USDT/USD"),
+        "DAI" => Some("DAI/USD"),
+        _ => None,
     }
 }
 

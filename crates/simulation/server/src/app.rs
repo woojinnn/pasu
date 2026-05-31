@@ -133,6 +133,8 @@ pub fn build_router(state: AppState) -> Router {
             "/wallets/:address/block-heights",
             get(read_handlers::get_block_heights),
         )
+        .route("/transactions", get(read_handlers::list_transactions))
+        .route("/policies", get(read_handlers::list_policies))
         .route("/events/stream", get(crate::events::sse_stream))
         .layer(from_fn(require_auth));
 
