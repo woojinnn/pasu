@@ -97,6 +97,11 @@ fn install_ok(manifest: &str) -> Value {
     parsed
 }
 
+fn install_index_bundle(index: &str) -> Value {
+    let parsed: Value = serde_json::from_str(index).unwrap();
+    install_ok(&parsed["bundle"].to_string())
+}
+
 fn route_ok(input: String) -> Value {
     let out = declarative_route_request_v3_json(input);
     let parsed: Value = serde_json::from_str(&out).unwrap();
@@ -3141,6 +3146,12 @@ const NFPM_COLLECT_V3: &str =
     include_str!("../../../registryV2/manifests/uniswap/v3-nfpm/collect@1.0.0.json");
 const NFPM_BURN_V3: &str =
     include_str!("../../../registryV2/manifests/uniswap/v3-nfpm/burn@1.0.0.json");
+const ERC721_TRANSFER_FROM_INDEX: &str = include_str!(
+    "../../../registryV2/index/by-callkey/1__0xc36442b4a4522e871399cd717abdd847ab11fe88__0x23b872dd.json"
+);
+const ERC721_SAFE_TRANSFER_FROM_BYTES_INDEX: &str = include_str!(
+    "../../../registryV2/index/by-callkey/1__0xc36442b4a4522e871399cd717abdd847ab11fe88__0xb88d4fde.json"
+);
 
 const NFPM_MAINNET: &str = "0xc36442b4a4522e871399cd717abdd847ab11fe88";
 const NFPM_TOKEN0: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"; // USDC
@@ -3149,6 +3160,69 @@ const NFPM_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
 
 fn addr(s: &str) -> AlloyAddress {
     s.parse::<AlloyAddress>().unwrap()
+}
+
+#[test]
+fn b1_erc721_transfer_from_routes_to_nft_transfer() {
+    let install = install_index_bundle(ERC721_TRANSFER_FROM_INDEX);
+    assert_eq!(install["data"]["bundle_id"], "standard/erc721/transferFrom@1.0.0");
+
+    let recipient = "0x00000000000000000000000000000000cafef00d";
+    let calldata = encode_calldata(
+        "0x23b872dd",
+        &[
+            DynSolValue::Address(addr(NFPM_SUBMITTER)),
+            DynSolValue::Address(addr(recipient)),
+            DynSolValue::Uint(AlloyU256::from(424_242u64), 256),
+        ],
+    );
+    let input = route_input(1, NFPM_MAINNET, "0x23b872dd", calldata, NFPM_SUBMITTER);
+
+    let parsed = route_ok(input);
+    assert_eq!(parsed["data"]["decoder_id"], "standard/erc721/transferFrom@1.0.0");
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "nft_transfer", "{parsed}");
+    assert_eq!(body["nft_key"]["standard"], "erc721", "{parsed}");
+    assert_eq!(body["nft_key"]["contract"], NFPM_MAINNET, "{parsed}");
+    assert_eq!(body["nft_key"]["token_id"], "0x67932", "{parsed}");
+    assert_eq!(body["recipient"], recipient, "{parsed}");
+    assert!(body["amount"].is_null(), "{parsed}");
+}
+
+#[test]
+fn b1_erc721_safe_transfer_from_bytes_routes_to_nft_transfer() {
+    let install = install_index_bundle(ERC721_SAFE_TRANSFER_FROM_BYTES_INDEX);
+    assert_eq!(
+        install["data"]["bundle_id"],
+        "standard/erc721/safeTransferFrom-bytes@1.0.0"
+    );
+
+    let recipient = "0x00000000000000000000000000000000cafef00d";
+    let calldata = encode_calldata(
+        "0xb88d4fde",
+        &[
+            DynSolValue::Address(addr(NFPM_SUBMITTER)),
+            DynSolValue::Address(addr(recipient)),
+            DynSolValue::Uint(AlloyU256::from(424_242u64), 256),
+            DynSolValue::Bytes(vec![0xde, 0xad, 0xbe, 0xef]),
+        ],
+    );
+    let input = route_input(1, NFPM_MAINNET, "0xb88d4fde", calldata, NFPM_SUBMITTER);
+
+    let parsed = route_ok(input);
+    assert_eq!(
+        parsed["data"]["decoder_id"],
+        "standard/erc721/safeTransferFrom-bytes@1.0.0"
+    );
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "nft_transfer", "{parsed}");
+    assert_eq!(body["nft_key"]["standard"], "erc721", "{parsed}");
+    assert_eq!(body["nft_key"]["contract"], NFPM_MAINNET, "{parsed}");
+    assert_eq!(body["nft_key"]["token_id"], "0x67932", "{parsed}");
+    assert_eq!(body["recipient"], recipient, "{parsed}");
+    assert!(body["amount"].is_null(), "{parsed}");
 }
 
 // ---------------------------------------------------------------------------

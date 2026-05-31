@@ -1,0 +1,70 @@
+{
+  "matched": true,
+  "bundle_id": "standard/erc721/transferFrom@1.0.0",
+  "manifest_path": "manifests/standard/erc721/transferFrom@1.0.0.json",
+  "bundle_sha256": "0x54af670e521e6bc64aaa4519f81a6bc5307097553a3f1100c3736c0a1731fccd",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "standard/erc721/transferFrom@1.0.0",
+    "schema_version": "3",
+    "abi_fragment": {
+      "function_name": "transferFrom",
+      "abi": {
+        "name": "transferFrom",
+        "type": "function",
+        "stateMutability": "payable",
+        "inputs": [
+          {
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "token",
+        "token": {
+          "action": "nft_transfer",
+          "nft_transfer": {
+            "nft_key": {
+              "standard": "erc721",
+              "chain": "$chain",
+              "contract": "$to",
+              "token_id": "$args.tokenId"
+            },
+            "recipient": "$args.to",
+            "amount": null
+          }
+        }
+      },
+      "live_inputs": {}
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    },
+    "match": {
+      "selector": "0x23b872dd",
+      "chain_to_addresses": {
+        "1": [
+          "0xc36442b4a4522e871399cd717abdd847ab11fe88"
+        ]
+      }
+    }
+  }
+}

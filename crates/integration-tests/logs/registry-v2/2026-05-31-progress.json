@@ -381,6 +381,23 @@
       "remaining ungated WARN count decreased from 47 to 46; uniswap decreased from 20 to 19"
     ]
   },
+  "standard_erc721_transfer_gap": {
+    "protocol": "standard",
+    "status": "implemented",
+    "completed": [
+      "added standard/erc721/transferFrom@1.0.0 for selector 0x23b872dd",
+      "added standard/erc721/safeTransferFrom-bytes@1.0.0 for selector 0xb88d4fde",
+      "pinned both routes with generated-index tests against the Uniswap V3 NFPM ERC721 position token, so token-source expansion is exercised as runtime sees it"
+    ],
+    "evidence": [
+      "RED: cargo test -p policy-engine-wasm --test declarative_v3_route b1_erc721 -- --nocapture failed before manifests/indexes existed, then failed with no_declarative_v3_mapper when direct token-source manifests were installed without generated index expansion",
+      "npm run build: 975 callkeys + 78 typed-data entries across 174 manifests",
+      "cargo test -p policy-engine-wasm --test declarative_v3_route b1_erc721 -- --nocapture: 2 passed",
+      "npm run check:surface: PASS with 52 gated contracts",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 25 passed; corpus 225/225 matched; synthetic fuzz fail=0 panicked=0",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "skipped_or_deferred_action_mapping": [
     {
       "protocol_or_function": "Hyperliquid Core / REST JSON actions",
