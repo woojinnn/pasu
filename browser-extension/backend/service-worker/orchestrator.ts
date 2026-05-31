@@ -478,6 +478,15 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
                     : v3Outcome.cause,
               }),
       });
+      // Pretty-printed dump so the decoded ActionBody[] is readable as text in
+      // DevTools (the object above collapses to `[{…}]`). Hex string fields
+      // (amounts/addresses) serialize cleanly — no BigInt in the v3 envelope.
+      if (v3Outcome.kind === "hit") {
+        console.info(
+          `[Scopeball] decoded ActionBody[] (${v3Outcome.value.actions.length})\n` +
+            JSON.stringify(v3Outcome.value.actions, null, 2),
+        );
+      }
     } catch (err) {
       console.warn("[Scopeball] declarative-route-v3 threw", {
         requestId: message.requestId,
