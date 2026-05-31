@@ -1,5 +1,6 @@
 //! `hl_withdraw` reducer — record a USDC withdrawal (decision B: always record
-//! the outflow intent; also decrement `perp_usdc` when a base balance exists).
+//! the outflow intent; also decrement `perp_usdc` only when a real (synced)
+//! balance is present (`Some`). An unsynced (`None`) account records intent only.
 
 use simulation_state::position::{HlAccount, PositionKind};
 use simulation_state::primitives::Decimal;
