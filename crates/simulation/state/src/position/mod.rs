@@ -4,12 +4,14 @@ use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 pub mod airdrop;
+pub mod hyperliquid;
 pub mod launchpad;
 pub mod lending;
 pub mod perp;
 pub mod vesting;
 
 pub use airdrop::{AirdropClaim, ClaimStatus, MerkleProof};
+pub use hyperliquid::{HlAccount, HlAgentApproval, HlLeverageSetting, HlOpenOrder, HlPosition};
 pub use launchpad::LaunchpadAllocation;
 pub use lending::{EModeCategory, LendingAccount};
 pub use perp::{MarginMode, PerpPosition, PerpSide};
@@ -57,4 +59,6 @@ pub enum PositionKind {
     LaunchpadAllocation(LaunchpadAllocation),
     /// A token vesting schedule (locked/unlocking allocation over time).
     VestingSchedule(VestingSchedule),
+    /// A wallet's Hyperliquid L1 account state (off-chain ledger).
+    HyperliquidAccount(HlAccount),
 }
