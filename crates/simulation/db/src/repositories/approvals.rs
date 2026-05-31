@@ -99,6 +99,25 @@ pub mod erc20 {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(rows)
     }
+
+    /// Total ERC-20 + setForAll grants the wallet has where the allowance
+    /// is the U256 max. Drives the dashboard "unlimited approvals" badge.
+    pub fn count_unlimited_for_wallet(
+        tx: &Transaction<'_>,
+        wallet_id: i64,
+    ) -> DbResult<i64> {
+        let erc20: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM approvals_erc20 WHERE wallet_id = ?1 AND is_unlimited = 1",
+            params![wallet_id],
+            |r| r.get(0),
+        )?;
+        let sfa: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM approvals_set_for_all WHERE wallet_id = ?1",
+            params![wallet_id],
+            |r| r.get(0),
+        )?;
+        Ok(erc20 + sfa)
+    }
 }
 
 // ---------------------------------------------------------------------------

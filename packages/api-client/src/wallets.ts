@@ -36,6 +36,64 @@ export async function getWalletApprovals(address: Address): Promise<unknown> {
   return request<unknown>(`/wallets/${address}/approvals`);
 }
 
+export type ApprovalRisk =
+  | "UNLIMITED"
+  | "KNOWN_VENUE"
+  | "BLOCKED"
+  | "OLD"
+  | "EXPIRED";
+
+export interface SpenderMetaInline {
+  addr: Address;
+  label: string;
+  rep: "known" | "blocked";
+  chain?: string;
+  notes?: string;
+}
+
+export interface ClassifiedErc20Approval {
+  chain: ChainId;
+  token: Address;
+  spender: Address;
+  amount: string;
+  is_unlimited: boolean;
+  last_set_at: number;
+  risk: ApprovalRisk[];
+  spender_meta?: SpenderMetaInline;
+}
+
+export interface ClassifiedSetForAllApproval {
+  chain: ChainId;
+  collection: Address;
+  operator: Address;
+  risk: ApprovalRisk[];
+  spender_meta?: SpenderMetaInline;
+}
+
+export interface ClassifiedPermit2Approval {
+  chain: ChainId;
+  token: Address;
+  spender: Address;
+  amount: string;
+  expiration: number;
+  nonce: number;
+  risk: ApprovalRisk[];
+  spender_meta?: SpenderMetaInline;
+}
+
+export interface ClassifiedApprovals {
+  erc20: ClassifiedErc20Approval[];
+  set_for_all: ClassifiedSetForAllApproval[];
+  permit2: ClassifiedPermit2Approval[];
+}
+
+/** `GET /wallets/:addr/approvals?with_risk=true` — server-classified shape with risk tags. */
+export async function getWalletApprovalsWithRisk(
+  address: Address,
+): Promise<ClassifiedApprovals> {
+  return request<ClassifiedApprovals>(`/wallets/${address}/approvals?with_risk=true`);
+}
+
 /** `GET /wallets/:addr/block-heights` — per-chain block height list. */
 export async function getWalletBlockHeights(
   address: Address,
