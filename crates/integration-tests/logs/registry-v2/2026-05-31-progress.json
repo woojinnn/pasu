@@ -162,6 +162,31 @@
       "cargo test --workspace: 0 failed"
     ]
   },
+  "aave_v3_weth_gateway_multichain_surface_gate": {
+    "protocol": "aave",
+    "contracts": [
+      "Aave V3 WrappedTokenGateway Optimism",
+      "Aave V3 WrappedTokenGateway Base",
+      "Aave V3 WrappedTokenGateway Arbitrum"
+    ],
+    "status": "implemented",
+    "completed": [
+      "added surface/aave/weth-gateway-{optimism,base,arbitrum}.{abi,coverage}.json from Sourcify full_match verified WrappedTokenGateway metadata",
+      "triaged the same 9 external-mutating selectors per chain as mainnet: borrowETH, depositETH, repayETH, withdrawETH, withdrawETHWithPermit are COVER; ownership/emergency recovery methods are EXCLUDE",
+      "kept existing aave/v3 Gateway manifests unchanged; they already covered Optimism/Base/Arbitrum chain_to_addresses",
+      "added hand corpus fixtures for depositETH on Optimism, Base, and Arbitrum",
+      "added field-level golden test pinning Base Gateway immutable Pool resolution and Base WETH resolution"
+    ],
+    "deferred": [
+      "Aave Pool contracts on Optimism/Base/Arbitrum remain ungated because L2Pool packed bytes32 selectors need bit-slice and reserve-index decoding before full surface enforcement"
+    ],
+    "evidence": [
+      "npm run check:surface: PASS with 44 gated contracts; Aave ungated count reduced from 6 to 3",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage: callkeys=951 typed_data_keys=77 unique_bundles=168 install_failures=0",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 220/220 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 25 passed"
+    ]
+  },
   "aave_v3_variable_debt_usdc_surface_gate": {
     "protocol": "aave",
     "contract": "Aave V3 variableDebtUSDC mainnet",
@@ -267,7 +292,7 @@
     },
     {
       "protocol_or_function": "Aave V3 flashLoan / L2 packed Pool args",
-      "reason": "Mainnet Pool surface is now gated and position-manager/simple lending verbs are covered. FlashLoan still needs a dedicated lending flash-loan action and multi-asset mapping; L2 Pool packed bytes32 args require bit-slice/reserve-index decoding."
+      "reason": "Mainnet Pool and multichain WrappedTokenGateway surfaces are now gated. FlashLoan still needs a dedicated lending flash-loan action and multi-asset mapping; Optimism/Base/Arbitrum Pool surfaces remain ungated because L2 packed bytes32 args require bit-slice/reserve-index decoding."
     },
     {
       "protocol_or_function": "Permit2 PermitTransferFrom typed-data",

@@ -371,6 +371,57 @@ fn aave_v3_withdraw_eth_with_permit_decodes_pool_and_recipient() {
     );
 }
 
+/// Field-level golden for non-mainnet Aave V3 Gateway static resolution.
+///
+/// Base uses a different Pool and wrapped-native address from mainnet. This
+/// pins that the route context injects both values locally and still ignores
+/// the legacy calldata `pool` argument.
+#[test]
+fn aave_v3_base_deposit_eth_decodes_gateway_pool_and_weth() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const GATEWAY: &str = "0xa0d9c1e9e48ca30c8d8c3b5d69ff5dc1f6dffc24";
+    const EXPECTED_POOL: &str = "0xa238dd80c259a72e81d7e4664a9801593f98d1c5";
+    const EXPECTED_WETH: &str = "0x4200000000000000000000000000000000000006";
+    const ON_BEHALF_OF: &str = "0x1111111111111111111111111111111111111111";
+    const CALLDATA: &str = concat!(
+        "0x474cf53d",
+        "000000000000000000000000",
+        "2222222222222222222222222222222222222222",
+        "000000000000000000000000",
+        "1111111111111111111111111111111111111111",
+        "0000000000000000000000000000000000000000000000000000000000000000"
+    );
+
+    let env = harness::route::route_calldata(8453, GATEWAY, "0x474cf53d", CALLDATA, "1");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+
+    let venue =
+        find_object_with_string_field(&env, "name", "aave_v3").expect("Aave venue is present");
+    assert_eq!(
+        venue.get("pool").and_then(serde_json::Value::as_str),
+        Some(EXPECTED_POOL),
+        "Base Gateway pool resolver did not use the canonical immutable Pool"
+    );
+    assert_eq!(
+        find_string_field(&env, "on_behalf_of"),
+        Some(ON_BEHALF_OF.to_owned()),
+        "depositETH on_behalf_of mis-decoded"
+    );
+
+    let asset =
+        find_object_with_string_field(&env, "standard", "erc20").expect("supply asset present");
+    assert_eq!(
+        asset.get("address").and_then(serde_json::Value::as_str),
+        Some(EXPECTED_WETH),
+        "Base Gateway should decode wrapped-native as Base WETH"
+    );
+}
+
 /// Field-level golden for Aave V3.4+ `approvePositionManager` and
 /// `renouncePositionManagerRole`.
 ///
