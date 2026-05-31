@@ -173,6 +173,86 @@ mod tests {
     }
 
     #[test]
+    fn migration_006_preserves_existing_position_rows() {
+        use crate::repositories::positions::{list_for_wallet, upsert, PositionInsert};
+        use crate::repositories::wallets::{insert as insert_wallet, WalletInsert};
+        use serde_json::json;
+        use simulation_state::primitives::ChainId;
+
+        let pool = Pool::open_in_memory();
+        // run() creates _schema_migrations before its loop; apply_one does not.
+        pool.with_conn(|c| {
+            c.execute_batch(SCHEMA_MIGRATIONS_TABLE)?;
+            Ok(())
+        })
+        .unwrap();
+        // Apply 001..=005 only: positions exists with the OLD (pre-006) CHECK.
+        for m in &[
+            MIGRATION_001,
+            MIGRATION_002,
+            MIGRATION_003,
+            MIGRATION_004,
+            MIGRATION_005,
+        ] {
+            apply_one(&pool, m).unwrap();
+        }
+
+        // Stage one OLD-kind row with a DISTINCT value in every column.
+        let (wallet_id, staged_id) = pool
+            .with_tx(|tx| {
+                let w = insert_wallet(
+                    tx,
+                    &WalletInsert {
+                        address: "0xowner".into(),
+                        label: None,
+                        is_owned: true,
+                        created_at: 1_700_000_000,
+                        chains: vec![ChainId::ethereum_mainnet()],
+                    },
+                )?;
+                let pid = upsert(
+                    tx,
+                    &PositionInsert {
+                        wallet_id: w,
+                        position_id: "POS_ID".into(),
+                        protocol: "PROTO".into(),
+                        chain: Some("eip155:1".into()),
+                        kind: "perp_position".into(),
+                        market: Some("MKT".into()),
+                        summary: Some("SUM".into()),
+                        data: json!({ "marker": "DATA_MARKER" }),
+                        primitives_synced_at: 1_738_111_222,
+                        primitives_source: json!({ "src": "SOURCE_MARKER" }),
+                    },
+                )?;
+                Ok((w, pid))
+            })
+            .unwrap();
+
+        // Migration under test: rebuild + copy.
+        apply_one(&pool, &MIGRATION_006).unwrap();
+
+        // Every field must survive the INSERT...SELECT, in the correct column.
+        pool.with_tx(|tx| {
+            let rows = list_for_wallet(tx, wallet_id)?;
+            assert_eq!(rows.len(), 1, "row count must survive rebuild");
+            let r = &rows[0];
+            assert_eq!(r.id, staged_id, "PK preserved");
+            assert_eq!(r.position_id, "POS_ID");
+            assert_eq!(r.protocol, "PROTO");
+            assert_eq!(r.chain.as_deref(), Some("eip155:1"));
+            assert_eq!(r.kind, "perp_position");
+            assert_eq!(r.market.as_deref(), Some("MKT"));
+            assert_eq!(r.summary.as_deref(), Some("SUM"));
+            assert!(r.data_json.contains("DATA_MARKER"));
+            assert_eq!(r.primitives_synced_at, 1_738_111_222);
+            assert!(r.primitives_source_json.contains("SOURCE_MARKER"));
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    #[test]
     fn creates_expected_tables() {
         let pool = Pool::open_in_memory();
         run(&pool).unwrap();

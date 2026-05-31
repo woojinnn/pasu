@@ -9,19 +9,28 @@
 CREATE TABLE positions_new (
   id                       INTEGER PRIMARY KEY AUTOINCREMENT,
   wallet_id                INTEGER NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
-  position_id              TEXT    NOT NULL,
-  protocol                 TEXT    NOT NULL,
-  chain                    TEXT,
+
+  -- 식별
+  position_id              TEXT    NOT NULL,             -- protocol 이 부여한 id 또는 우리가 생성
+  protocol                 TEXT    NOT NULL,             -- "aave-v3" / "hyperliquid" / "uniswapx" 등
+  chain                    TEXT,                          -- "eip155:1" 또는 NULL (off-chain venue)
   kind                     TEXT    NOT NULL CHECK(kind IN (
     'lending_account', 'perp_position',
     'airdrop_claim', 'launchpad_allocation', 'vesting_schedule',
     'hyperliquid_account'
   )),
-  market                   TEXT,
-  summary                  TEXT,
+
+  -- 검색 / UI 헤더에 빠르게 노출할 필드
+  market                   TEXT,                          -- "ETH-USD" / "USDC pool" / "ARB airdrop"
+  summary                  TEXT,                          -- "long 5x, HF 1.92" 같은 1줄 요약
+
+  -- variant-specific data 통째 (Rust 의 PositionKind variant payload)
   data_json                TEXT    NOT NULL,
-  primitives_synced_at     INTEGER NOT NULL,
-  primitives_source_json   TEXT    NOT NULL,
+
+  -- 메타
+  primitives_synced_at     INTEGER NOT NULL,              -- unix sec
+  primitives_source_json   TEXT    NOT NULL,              -- DataSource JSON
+
   UNIQUE(wallet_id, protocol, position_id, chain)
 );
 
