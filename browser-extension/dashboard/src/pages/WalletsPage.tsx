@@ -20,9 +20,12 @@ export function WalletsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Add-wallet form state.
+  // Add-wallet form state. `chains` is intentionally optional — the
+  // server defaults to every chain in scopeball-sync.toml when empty.
+  // Advanced users can pin a subset; most users don't think in CAIP-2.
   const [addr, setAddr] = useState("");
-  const [chains, setChains] = useState("eip155:1");
+  const [chains, setChains] = useState("");
+  const [advanced, setAdvanced] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -44,7 +47,11 @@ export function WalletsPage() {
     setAddError(null);
     setBusy("add");
     try {
-      const chainList = chains.split(",").map((s) => s.trim()).filter(Boolean);
+      // Empty chains array → server defaults to every configured chain.
+      const chainList = chains
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const resp = await request<AddWalletResp>("/wallets", {
         method: "POST",
         body: { address: addr.trim(), chains: chainList },
@@ -92,17 +99,29 @@ export function WalletsPage() {
               style={input}
             />
           </label>
-          <label style={lbl}>
-            Chains (CAIP-2, comma-separated)
-            <input
-              type="text"
-              placeholder="eip155:1, eip155:42161"
-              value={chains}
-              onChange={(e) => setChains(e.target.value)}
-              required
-              style={input}
-            />
-          </label>
+          <div style={{ fontSize: 11, opacity: 0.6 }}>
+            Tracked across every chain the server has RPC for (Ethereum,
+            Arbitrum, Base). {" "}
+            <button
+              type="button"
+              onClick={() => setAdvanced((a) => !a)}
+              style={inlineLink}
+            >
+              {advanced ? "Hide advanced" : "Advanced — pin chains"}
+            </button>
+          </div>
+          {advanced && (
+            <label style={lbl}>
+              Chains (CAIP-2, comma-separated; blank = all)
+              <input
+                type="text"
+                placeholder="eip155:1, eip155:42161"
+                value={chains}
+                onChange={(e) => setChains(e.target.value)}
+                style={input}
+              />
+            </label>
+          )}
           <button type="submit" disabled={busy === "add"} style={primaryBtn}>
             {busy === "add" ? "Adding…" : "POST /wallets"}
           </button>
@@ -206,4 +225,13 @@ const smallBtnLink: React.CSSProperties = {
   background: "white",
   color: "#0066cc",
   textDecoration: "none",
+};
+const inlineLink: React.CSSProperties = {
+  background: "transparent",
+  border: "none",
+  color: "#0066cc",
+  cursor: "pointer",
+  padding: 0,
+  fontSize: 11,
+  textDecoration: "underline",
 };

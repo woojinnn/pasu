@@ -82,7 +82,12 @@ async fn post_wallets_persists_and_returns_id() {
 }
 
 #[tokio::test]
-async fn post_wallets_rejects_missing_chains() {
+async fn post_wallets_rejects_when_no_chains_configurable() {
+    // Test setup uses an empty SyncConfig — the router has zero
+    // chains. Empty `chains: []` triggers the auto-default path,
+    // which also yields zero chains here, so we expect 400 with a
+    // clear error rather than a silent successful add against
+    // nothing.
     let (addr, _mu, token) = spawn_server().await;
     let body = serde_json::json!({
         "address": "0x000000000000000000000000000000000000a01c",

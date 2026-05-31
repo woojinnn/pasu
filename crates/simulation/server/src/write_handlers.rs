@@ -35,6 +35,14 @@ pub struct AddWalletReq {
     /// 0x address (case-insensitive — we store lower-cased internally).
     pub address: String,
     /// CAIP-2 chain ids (e.g. `["eip155:1", "eip155:42161"]`).
+    ///
+    /// Optional. When omitted or empty the server tracks the wallet
+    /// against **every** chain the sync config (`scopeball-sync.toml`)
+    /// has an RPC provider for. Multicall keeps the per-chain RPC
+    /// cost flat (2 calls per chain regardless of token count), so
+    /// "all chains" is cheap and matches the typical user mental
+    /// model of an EVM address being shared across chains.
+    #[serde(default)]
     pub chains: Vec<String>,
     /// Optional human-friendly label.
     #[serde(default)]
@@ -65,7 +73,7 @@ pub async fn add_wallet(
     Extension(user): Extension<AuthUser>,
     Json(req): Json<AddWalletReq>,
 ) -> Response {
-    let id = match build_wallet_id(&req) {
+    let id = match build_wallet_id(&req, &state) {
         Ok(id) => id,
         Err(e) => return e,
     };
@@ -302,13 +310,25 @@ async fn run_sync(
         .map_err(|e| format!("save after sync: {e}"))
 }
 
-fn build_wallet_id(req: &AddWalletReq) -> Result<WalletId, Response> {
+fn build_wallet_id(req: &AddWalletReq, state: &AppState) -> Result<WalletId, Response> {
     let address = Address::from_str(&req.address)
         .map_err(|e| bad_request(&format!("invalid address `{}`: {e}", req.address)))?;
-    if req.chains.is_empty() {
-        return Err(bad_request("at least one chain required"));
+    let chains: Vec<ChainId> = if req.chains.is_empty() {
+        // Default — every chain the sync config has an RPC for. Better
+        // UX than asking the user for CAIP-2 strings, and Multicall
+        // keeps the per-chain cost flat.
+        match state.orchestrator.router_arc() {
+            Some(router) => router.chains().cloned().collect(),
+            None => Vec::new(),
+        }
+    } else {
+        req.chains.iter().cloned().map(ChainId::new).collect()
+    };
+    if chains.is_empty() {
+        return Err(bad_request(
+            "no chains configured on the server — set up scopeball-sync.toml or pass `chains` explicitly",
+        ));
     }
-    let chains: Vec<ChainId> = req.chains.iter().cloned().map(ChainId::new).collect();
     Ok(WalletId::new(address, chains))
 }
 
