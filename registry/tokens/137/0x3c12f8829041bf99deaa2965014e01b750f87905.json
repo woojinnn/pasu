@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x3c12f8829041bf99deaa2965014e01b750f87905",
-  "symbol": "TTAJ",
-  "decimals": 18,
-  "name": "TTAJ"
-}

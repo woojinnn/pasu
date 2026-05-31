@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 81457,
-  "address": "0xba0dda8762c24da9487f5fa026a9b64b695a07ea",
-  "symbol": "OX",
-  "decimals": 18,
-  "name": "OX Coin"
-}

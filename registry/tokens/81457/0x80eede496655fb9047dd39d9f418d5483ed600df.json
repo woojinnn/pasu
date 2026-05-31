@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 81457,
-  "address": "0x80eede496655fb9047dd39d9f418d5483ed600df",
-  "symbol": "frxUSD",
-  "decimals": 18,
-  "name": "Frax USD"
-}

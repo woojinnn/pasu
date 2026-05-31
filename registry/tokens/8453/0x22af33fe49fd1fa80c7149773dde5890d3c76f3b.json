@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
-  "symbol": "BNKR",
-  "decimals": 18,
-  "name": "BankrCoin"
-}

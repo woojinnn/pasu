@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x2c72d25530191ebd244eb6325e1892480b0e6e28",
-  "symbol": "AIPF",
-  "decimals": 18,
-  "name": "AI Powered Finance"
-}

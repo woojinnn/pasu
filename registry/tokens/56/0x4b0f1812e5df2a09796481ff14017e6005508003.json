@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0x4b0f1812e5df2a09796481ff14017e6005508003",
-  "symbol": "TWT",
-  "decimals": 18,
-  "name": "Trust Wallet"
-}

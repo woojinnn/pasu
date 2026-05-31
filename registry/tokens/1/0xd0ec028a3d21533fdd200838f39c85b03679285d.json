@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xd0ec028a3d21533fdd200838f39c85b03679285d",
-  "symbol": "NEWT",
-  "decimals": 18,
-  "name": "Newton"
-}

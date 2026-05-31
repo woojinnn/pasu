@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 10,
-  "address": "0x1610e3c85dd44af31ed7f33a63642012dca0c5a5",
-  "symbol": "msETH",
-  "decimals": 18,
-  "name": "Metronome Synth ETH"
-}

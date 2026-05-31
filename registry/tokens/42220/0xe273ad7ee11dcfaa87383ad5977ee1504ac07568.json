@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0xe273ad7ee11dcfaa87383ad5977ee1504ac07568",
-  "symbol": "mCEUR",
-  "decimals": 18,
-  "name": "Moola interest bearing CEUR"
-}

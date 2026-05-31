@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x45d9831d8751b2325f3dbf48db748723726e1c8c",
-  "symbol": "EVA",
-  "decimals": 18,
-  "name": "EverValueCoin"
-}

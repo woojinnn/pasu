@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x5576d6ed9181f2225aff5282ac0ed29f755437ea",
-  "symbol": "SERV",
-  "decimals": 18,
-  "name": "OpenServ"
-}

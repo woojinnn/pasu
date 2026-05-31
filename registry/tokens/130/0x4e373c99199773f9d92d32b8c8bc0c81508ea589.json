@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x4e373c99199773f9d92d32b8c8bc0c81508ea589",
-  "symbol": "BAT",
-  "decimals": 18,
-  "name": "Basic Attention Token"
-}

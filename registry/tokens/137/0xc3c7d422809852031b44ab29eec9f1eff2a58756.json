@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xc3c7d422809852031b44ab29eec9f1eff2a58756",
-  "symbol": "LDO",
-  "decimals": 18,
-  "name": "Lido DAO Token (PoS)"
-}

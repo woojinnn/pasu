@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x6f32725f82bbb06ffdc04974db437fec1d7af1af",
-  "symbol": "FX",
-  "decimals": 18,
-  "name": "Function X"
-}

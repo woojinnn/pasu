@@ -37,6 +37,10 @@ crates/*-wasm/pkg-tsify-test/
 browser-extension/backend/wasm/
 browser-extension/public/wasm/
 
+# Legacy v1/v2 `registry/` tree — moved out of the repo. Runtime + harness load
+# `registryV2/` only; this tree is dead weight. Kept locally at ~/Desktop/registry.
+/registry/
+
 # Markdown docs, research + audit notes — only README.md stays tracked.
 *.md
 !README.md

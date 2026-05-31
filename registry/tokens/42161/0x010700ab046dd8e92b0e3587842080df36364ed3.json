@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x010700ab046dd8e92b0e3587842080df36364ed3",
-  "symbol": "K",
-  "decimals": 18,
-  "name": "Kinto"
-}

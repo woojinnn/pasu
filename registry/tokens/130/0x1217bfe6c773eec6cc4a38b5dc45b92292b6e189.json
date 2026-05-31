@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x1217bfe6c773eec6cc4a38b5dc45b92292b6e189",
-  "symbol": "oUSDT",
-  "decimals": 6,
-  "name": "OpenUSDT"
-}

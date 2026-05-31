@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x10f109379e231d5c294ee6a5f9abb2f8b40a8dd1",
-  "symbol": "MUSD",
-  "decimals": 18,
-  "name": "mStable USD"
-}

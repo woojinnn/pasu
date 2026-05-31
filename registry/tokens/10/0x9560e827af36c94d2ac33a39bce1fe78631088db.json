@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 10,
-  "address": "0x9560e827af36c94d2ac33a39bce1fe78631088db",
-  "symbol": "VELO",
-  "decimals": 18,
-  "name": "VelodromeV2"
-}

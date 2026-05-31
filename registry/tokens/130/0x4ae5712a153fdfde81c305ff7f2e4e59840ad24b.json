@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x4ae5712a153fdfde81c305ff7f2e4e59840ad24b",
-  "symbol": "GHST",
-  "decimals": 18,
-  "name": "Aavegotchi"
-}

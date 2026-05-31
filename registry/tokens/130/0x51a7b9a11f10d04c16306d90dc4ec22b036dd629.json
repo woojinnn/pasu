@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x51a7b9a11f10d04c16306d90dc4ec22b036dd629",
-  "symbol": "SPX",
-  "decimals": 8,
-  "name": "SPX6900"
-}

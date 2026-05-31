@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x8ef0686f380dd07f3e2121831839371922720708",
-  "symbol": "JASMY",
-  "decimals": 18,
-  "name": "JasmyCoin"
-}

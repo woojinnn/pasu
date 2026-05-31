@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x09b8903abf2ea0721e34427353988c2f43c6d64f",
-  "symbol": "LIQ",
-  "decimals": 18,
-  "name": "LIQUID"
-}

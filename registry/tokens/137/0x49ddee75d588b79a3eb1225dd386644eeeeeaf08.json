@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x49ddee75d588b79a3eb1225dd386644eeeeeaf08",
-  "symbol": "EBCC",
-  "decimals": 18,
-  "name": "EBCC_coin"
-}

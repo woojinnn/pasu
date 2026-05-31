@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x4b355de6ea44711f0353ed89545705395a30d7fb",
-  "symbol": "ASH",
-  "decimals": 18,
-  "name": "ASH"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xdbf31df14b66535af65aac99c32e9ea844e14501",
-  "symbol": "renBTC",
-  "decimals": 8,
-  "name": "renBTC"
-}

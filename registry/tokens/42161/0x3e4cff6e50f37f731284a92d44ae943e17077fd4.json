@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x3e4cff6e50f37f731284a92d44ae943e17077fd4",
-  "symbol": "ELON",
-  "decimals": 18,
-  "name": "Dogelon Mars"
-}

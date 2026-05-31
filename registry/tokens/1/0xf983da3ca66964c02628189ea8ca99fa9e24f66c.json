@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xf983da3ca66964c02628189ea8ca99fa9e24f66c",
-  "symbol": "WANLOG",
-  "decimals": 12,
-  "name": "Wrapped Analog One Token"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x30a25cc9c9eade4d4d9e9349be6e68c3411367d3",
-  "symbol": "PTB",
-  "decimals": 18,
-  "name": "Portal to Bitcoin"
-}

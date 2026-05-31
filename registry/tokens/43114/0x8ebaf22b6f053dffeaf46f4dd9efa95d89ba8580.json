@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 43114,
-  "address": "0x8ebaf22b6f053dffeaf46f4dd9efa95d89ba8580",
-  "symbol": "UNI.e",
-  "decimals": 18,
-  "name": "UNI.e Token"
-}

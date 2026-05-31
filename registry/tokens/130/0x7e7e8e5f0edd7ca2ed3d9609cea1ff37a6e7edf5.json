@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x7e7e8e5f0edd7ca2ed3d9609cea1ff37a6e7edf5",
-  "symbol": "ZRX",
-  "decimals": 18,
-  "name": "0x Protocol Token"
-}

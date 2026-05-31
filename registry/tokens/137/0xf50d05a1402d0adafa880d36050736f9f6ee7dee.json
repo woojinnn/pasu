@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xf50d05a1402d0adafa880d36050736f9f6ee7dee",
-  "symbol": "INST",
-  "decimals": 18,
-  "name": "Instadapp (PoS)"
-}

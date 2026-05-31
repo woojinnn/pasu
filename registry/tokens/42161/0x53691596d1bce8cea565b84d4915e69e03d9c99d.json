@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x53691596d1bce8cea565b84d4915e69e03d9c99d",
-  "symbol": "ACX",
-  "decimals": 18,
-  "name": "Across Protocol Token"
-}

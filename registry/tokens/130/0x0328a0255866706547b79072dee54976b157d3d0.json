@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x0328a0255866706547b79072dee54976b157d3d0",
-  "symbol": "GFI",
-  "decimals": 18,
-  "name": "Goldfinch"
-}

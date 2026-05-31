@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0xe93307b8faa1c9d5cae6f9fe96f91549fb651a20",
-  "symbol": "OTM",
-  "decimals": 18,
-  "name": "Ontomir Chain"
-}

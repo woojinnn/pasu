@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x13646e0e2d768d31b75d1a1e375e3e17f18567f2",
-  "symbol": "NWS",
-  "decimals": 18,
-  "name": "Nodewaves"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x720cd16b011b987da3518fbf38c3071d4f0d1495",
-  "symbol": "FLUX",
-  "decimals": 18,
-  "name": "Flux"
-}

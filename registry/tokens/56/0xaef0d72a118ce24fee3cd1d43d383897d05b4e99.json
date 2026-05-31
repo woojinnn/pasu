@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0xaef0d72a118ce24fee3cd1d43d383897d05b4e99",
-  "symbol": "WIN",
-  "decimals": 18,
-  "name": "WINk"
-}

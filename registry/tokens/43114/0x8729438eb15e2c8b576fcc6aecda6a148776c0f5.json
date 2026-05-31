@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 43114,
-  "address": "0x8729438eb15e2c8b576fcc6aecda6a148776c0f5",
-  "symbol": "QI",
-  "decimals": 18,
-  "name": "BENQI"
-}

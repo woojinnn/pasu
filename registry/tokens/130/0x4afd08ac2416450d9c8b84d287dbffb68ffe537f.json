@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x4afd08ac2416450d9c8b84d287dbffb68ffe537f",
-  "symbol": "VGX",
-  "decimals": 8,
-  "name": "Voyager Token"
-}

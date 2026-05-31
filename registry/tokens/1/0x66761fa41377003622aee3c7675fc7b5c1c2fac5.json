@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x66761fa41377003622aee3c7675fc7b5c1c2fac5",
-  "symbol": "CPOOL",
-  "decimals": 18,
-  "name": "Clearpool"
-}

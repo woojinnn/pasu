@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xe60e9b2e68297d5df6b383fee787b7fb92c2f8af",
-  "symbol": "CUBE",
-  "decimals": 8,
-  "name": "Somnium Space CUBEs"
-}

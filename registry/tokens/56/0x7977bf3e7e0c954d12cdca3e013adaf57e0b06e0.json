@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0x7977bf3e7e0c954d12cdca3e013adaf57e0b06e0",
-  "symbol": "OPN",
-  "decimals": 18,
-  "name": "OPINION"
-}

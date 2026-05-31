@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 10,
-  "address": "0xec6adef5e1006bb305bb1975333e8fc4071295bf",
-  "symbol": "CTSI",
-  "decimals": 18,
-  "name": "Cartesi"
-}

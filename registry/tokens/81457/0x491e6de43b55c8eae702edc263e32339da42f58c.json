@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 81457,
-  "address": "0x491e6de43b55c8eae702edc263e32339da42f58c",
-  "symbol": "ESE",
-  "decimals": 18,
-  "name": "Eesee"
-}

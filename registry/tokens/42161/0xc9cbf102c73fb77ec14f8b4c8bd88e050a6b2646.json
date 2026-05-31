@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0xc9cbf102c73fb77ec14f8b4c8bd88e050a6b2646",
-  "symbol": "ALPHA",
-  "decimals": 18,
-  "name": "Alpha Venture DAO"
-}

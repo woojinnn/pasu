@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0xd21d29b38374528675c34936bf7d5dd693d2a577",
-  "symbol": "PRQ",
-  "decimals": 18,
-  "name": "Parsiq Token"
-}

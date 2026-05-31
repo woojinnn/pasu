@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x1f9bd96ddb4bd07d6061f8933e9ba9ede9967550",
-  "symbol": "BOBA",
-  "decimals": 18,
-  "name": "Boba Network"
-}

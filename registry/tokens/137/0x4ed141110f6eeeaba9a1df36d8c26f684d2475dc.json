@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
-  "symbol": "BRZ",
-  "decimals": 18,
-  "name": "BRZ Token"
-}

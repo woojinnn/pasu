@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x88b1cd4b430d95b406e382c3cdbae54697a0286e",
-  "symbol": "waBasGHO",
-  "decimals": 18,
-  "name": "Wrapped Aave Base GHO"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0x56b6fb708fc5732dec1afc8d8556423a2edccbd6",
-  "symbol": "EOS",
-  "decimals": 18,
-  "name": "EOS Token"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x0caadd427a6feb5b5fc1137eb05aa7ddd9c08ce9",
-  "symbol": "VEE",
-  "decimals": 18,
-  "name": "Vee Token"
-}

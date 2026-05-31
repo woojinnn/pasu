@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0xaf37e8b6c9ed7f6318979f56fc287d76c30847ff",
-  "symbol": "XAUt0",
-  "decimals": 6,
-  "name": "XAUt0"
-}

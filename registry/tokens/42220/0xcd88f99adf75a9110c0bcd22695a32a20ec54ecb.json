@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0xcd88f99adf75a9110c0bcd22695a32a20ec54ecb",
-  "symbol": "SELFCLAW",
-  "decimals": 18,
-  "name": "SelfClaw"
-}

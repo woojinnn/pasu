@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0xcc42724c6683b7e57334c4e856f4c9965ed682bd",
-  "symbol": "MATIC",
-  "decimals": 18,
-  "name": "Matic Token"
-}

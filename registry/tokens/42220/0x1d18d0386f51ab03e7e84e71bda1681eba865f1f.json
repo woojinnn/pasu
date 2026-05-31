@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0x1d18d0386f51ab03e7e84e71bda1681eba865f1f",
-  "symbol": "JMPT",
-  "decimals": 18,
-  "name": "JumpToken"
-}

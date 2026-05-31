@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xd815958f92e6abe63437bce166e97027f8e6cac2",
-  "symbol": "QUICK",
-  "decimals": 18,
-  "name": "Quickswap"
-}

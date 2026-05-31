@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x52bf54eb4210f588320f3e4c151bca81f84a3201",
-  "symbol": "YFI",
-  "decimals": 18,
-  "name": "yearn finance"
-}

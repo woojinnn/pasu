@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xaaaa68f5d1f7855954ecb361d4b9ff3127cfefa7",
-  "symbol": "AG",
-  "decimals": 18,
-  "name": "Aegis"
-}

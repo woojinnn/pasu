@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xd084b83c305dafd76ae3e1b4e1f1fe2ecccb3988",
-  "symbol": "TVK",
-  "decimals": 18,
-  "name": "The Virtua Kolect"
-}

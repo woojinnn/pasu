@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44",
-  "symbol": "KP3R",
-  "decimals": 18,
-  "name": "Keep3rV1"
-}

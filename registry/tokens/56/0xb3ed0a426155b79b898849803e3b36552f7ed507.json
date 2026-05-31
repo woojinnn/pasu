@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0xb3ed0a426155b79b898849803e3b36552f7ed507",
-  "symbol": "PENDLE",
-  "decimals": 18,
-  "name": "Pendle"
-}

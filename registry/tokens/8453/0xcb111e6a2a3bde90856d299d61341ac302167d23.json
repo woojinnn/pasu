@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0xcb111e6a2a3bde90856d299d61341ac302167d23",
-  "symbol": "CBMEGA",
-  "decimals": 18,
-  "name": "Coinbase Wrapped MEGA"
-}
