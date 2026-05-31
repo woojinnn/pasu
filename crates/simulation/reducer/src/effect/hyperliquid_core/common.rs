@@ -65,6 +65,7 @@ pub(super) fn decimal_sub_nonneg(lhs: &Decimal, rhs: &Decimal) -> ReducerResult<
 }
 
 /// `lhs + rhs` on two state-side decimals via `rust_decimal`.
+/// Errors on parse failure of either operand.
 // removed when task 7 wires it
 #[allow(dead_code)]
 pub(super) fn decimal_add(lhs: &Decimal, rhs: &Decimal) -> ReducerResult<Decimal> {
