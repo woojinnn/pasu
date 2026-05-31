@@ -1,0 +1,98 @@
+{
+  "type": "adapter_action",
+  "id": "pendle/router-v4/addLiquidityDualSyAndPt@1.0.0",
+  "publisher": "pendle",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x97ee279e",
+    "chain_to_addresses": {
+      "1": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ],
+      "8453": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "addLiquidityDualSyAndPt",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "market",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netSyDesired",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netPtDesired",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minLpOut",
+          "type": "uint256"
+        }
+      ],
+      "name": "addLiquidityDualSyAndPt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "netLpOut",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netSyUsed",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netPtUsed",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "yield",
+      "yield": {
+        "action": "add_market_liquidity",
+        "add_market_liquidity": {
+          "venue": {
+            "name": "pendle_v2",
+            "chain": "$chain"
+          },
+          "market": "$args.market",
+          "kind": "dual_sy_and_pt",
+          "net_token_in": "0x0",
+          "net_pt_in": "$args.netPtDesired",
+          "net_sy_in": "$args.netSyDesired",
+          "min_lp_out": "$args.minLpOut",
+          "recipient": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "type": "adapter_action",
+  "id": "pendle/router-v4/addLiquiditySingleTokenKeepYt@1.0.0",
+  "publisher": "pendle",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x3dbe1c55",
+    "chain_to_addresses": {
+      "1": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ],
+      "8453": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "addLiquiditySingleTokenKeepYt",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "market",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minLpOut",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minYtOut",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "tokenIn",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "netTokenIn",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "tokenMintSy",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "pendleSwap",
+              "type": "address"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "enum SwapType",
+                  "name": "swapType",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "address",
+                  "name": "extRouter",
+                  "type": "address"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "extCalldata",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "needScale",
+                  "type": "bool"
+                }
+              ],
+              "internalType": "struct SwapData",
+              "name": "swapData",
+              "type": "tuple"
+            }
+          ],
+          "internalType": "struct TokenInput",
+          "name": "input",
+          "type": "tuple"
+        }
+      ],
+      "name": "addLiquiditySingleTokenKeepYt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "netLpOut",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netYtOut",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netSyMintPy",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netSyInterm",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "yield",
+      "yield": {
+        "action": "add_market_liquidity",
+        "add_market_liquidity": {
+          "venue": {
+            "name": "pendle_v2",
+            "chain": "$chain"
+          },
+          "market": "$args.market",
+          "kind": "single_token_keep_yt",
+          "external_token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.input[0]"
+            }
+          },
+          "net_token_in": "$args.input[1]",
+          "net_pt_in": "0x0",
+          "net_sy_in": "0x0",
+          "min_lp_out": "$args.minLpOut",
+          "recipient": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

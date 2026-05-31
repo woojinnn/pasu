@@ -1,0 +1,80 @@
+{
+  "type": "adapter_action",
+  "id": "pendle/router-v4/mintPyFromSy@1.0.0",
+  "publisher": "pendle",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x1a8631b2",
+    "chain_to_addresses": {
+      "1": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ],
+      "8453": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mintPyFromSy",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "YT",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netSyIn",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minPyOut",
+          "type": "uint256"
+        }
+      ],
+      "name": "mintPyFromSy",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "netPyOut",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "yield",
+      "yield": {
+        "action": "mint_py",
+        "mint_py": {
+          "venue": {
+            "name": "pendle_v2",
+            "chain": "$chain"
+          },
+          "yt": "$args.YT",
+          "net_input": "$args.netSyIn",
+          "min_py_out": "$args.minPyOut",
+          "recipient": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
