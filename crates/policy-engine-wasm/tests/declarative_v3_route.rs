@@ -909,6 +909,11 @@ const AAVE_V3_BASE_POOL: &str = "0xa238dd80c259a72e81d7e4664a9801593f98d1c5";
 const AAVE_V3_BASE_USDC: &str = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 const AAVE_V3_BASE_CBETH: &str = "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22";
 const AAVE_V3_BASE_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
+const AAVE_V3_ARBITRUM_POOL: &str = "0x794a61358d6845594f94dc1db02a252b5b4814ad";
+const AAVE_V3_ARBITRUM_AAVE: &str = "0xba5ddd1f9d7f570dc94a51479a000e3bce967196";
+const AAVE_V3_ARBITRUM_USDC: &str = "0xaf88d065e77c8cc2239327c5edb3a432268e5831";
+const AAVE_V3_ARBITRUM_ARB: &str = "0x912ce59144191c1204e64559fe8253a0e49e6548";
+const AAVE_V3_ARBITRUM_SUBMITTER: &str = "0x000000000000000000000000000000000000a421";
 
 fn aave_l2_packed_bytes32(fields: &[(usize, AlloyU256)]) -> DynSolValue {
     let mut word = AlloyU256::ZERO;
@@ -923,13 +928,23 @@ fn aave_l2_packed_calldata(selector: &str, word: DynSolValue) -> String {
 }
 
 fn aave_l2_route(selector: &str, calldata: String) -> Value {
-    route_ok(route_input(
+    aave_l2_route_on(
         8453,
         AAVE_V3_BASE_POOL,
         selector,
         calldata,
         AAVE_V3_BASE_SUBMITTER,
-    ))
+    )
+}
+
+fn aave_l2_route_on(
+    chain_id: u64,
+    pool: &str,
+    selector: &str,
+    calldata: String,
+    submitter: &str,
+) -> Value {
+    route_ok(route_input(chain_id, pool, selector, calldata, submitter))
 }
 
 #[test]
@@ -1308,6 +1323,99 @@ fn t6_aave_l2_packed_set_collateral_routes_to_enable_or_disable() {
         body["asset"]["key"]["address"], AAVE_V3_BASE_USDC,
         "{parsed}"
     );
+}
+
+#[test]
+fn t6_aave_l2_arbitrum_packed_set_collateral_routes_to_disable() {
+    install_ok(AAVE_V3_L2_SET_COLLATERAL_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0x4d013f03",
+        aave_l2_packed_bytes32(&[(0, AlloyU256::from(6u64)), (16, AlloyU256::ZERO)]),
+    );
+
+    let parsed = aave_l2_route_on(
+        42161,
+        AAVE_V3_ARBITRUM_POOL,
+        "0x4d013f03",
+        calldata,
+        AAVE_V3_ARBITRUM_SUBMITTER,
+    );
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "disable_collateral", "{parsed}");
+    assert_eq!(body["venue"]["pool"], AAVE_V3_ARBITRUM_POOL, "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_ARBITRUM_AAVE,
+        "{parsed}"
+    );
+    assert_eq!(body["on_behalf_of"], AAVE_V3_ARBITRUM_SUBMITTER, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_arbitrum_packed_withdraw_routes_max_arb() {
+    install_ok(AAVE_V3_L2_WITHDRAW_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0x8e19899e",
+        aave_l2_packed_bytes32(&[
+            (0, AlloyU256::from(14u64)),
+            (16, (AlloyU256::from(1u64) << 128) - AlloyU256::from(1u64)),
+        ]),
+    );
+
+    let parsed = aave_l2_route_on(
+        42161,
+        AAVE_V3_ARBITRUM_POOL,
+        "0x8e19899e",
+        calldata,
+        AAVE_V3_ARBITRUM_SUBMITTER,
+    );
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "withdraw", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_ARBITRUM_ARB,
+        "{parsed}"
+    );
+    assert_eq!(
+        body["amount"], "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "{parsed}"
+    );
+    assert_eq!(body["recipient"], AAVE_V3_ARBITRUM_SUBMITTER, "{parsed}");
+}
+
+#[test]
+fn t6_aave_l2_arbitrum_packed_repay_routes_usdc() {
+    install_ok(AAVE_V3_L2_REPAY_PACKED);
+
+    let calldata = aave_l2_packed_calldata(
+        "0x563dd613",
+        aave_l2_packed_bytes32(&[
+            (0, AlloyU256::from(12u64)),
+            (16, AlloyU256::from(4_000_000u64)),
+            (144, AlloyU256::from(2u64)),
+        ]),
+    );
+
+    let parsed = aave_l2_route_on(
+        42161,
+        AAVE_V3_ARBITRUM_POOL,
+        "0x563dd613",
+        calldata,
+        AAVE_V3_ARBITRUM_SUBMITTER,
+    );
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "lending", "{parsed}");
+    assert_eq!(body["action"], "repay", "{parsed}");
+    assert_eq!(
+        body["asset"]["key"]["address"], AAVE_V3_ARBITRUM_USDC,
+        "{parsed}"
+    );
+    assert_eq!(body["amount"], "0x3d0900", "{parsed}");
+    assert_eq!(body["rate_mode"], "variable", "{parsed}");
+    assert_eq!(body["use_a_tokens"], false, "{parsed}");
+    assert_eq!(body["on_behalf_of"], AAVE_V3_ARBITRUM_SUBMITTER, "{parsed}");
 }
 
 #[test]

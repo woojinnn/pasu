@@ -1,5 +1,5 @@
 {
-  "_comment": "Aave V3 real-tx corpus. Source: Etherscan v2 txlist 2026-05-30, free key (only chain 1 + 42161 accessible). chain1 Pool 0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2 + chain1 WrappedTokenGatewayV3 0xd01607c3c5ecaba394d8be377a08590149325722 + chain42161 Pool 0x794a61358d6845594f94dc1db02a252b5b4814ad. Covered verbose-ABI selectors expect pass/lending. L2Pool packed-args (bytes32 CalldataLogic) selectors expect error/no_declarative_v3_mapper - manifest gap; asset is uint16 reserve-index not address, needs onchain getReserveAddressById + bit-field strategy. Hand fixtures cover Sourcify-verified WrappedTokenGateway withdrawETHWithPermit and official Aave v3-core debt-token credit-delegation signature paths not observed in the sampled txlist.",
+  "_comment": "Aave V3 real-tx corpus. Source: Etherscan v2 txlist 2026-05-30, free key (only chain 1 + 42161 accessible). chain1 Pool 0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2 + chain1 WrappedTokenGatewayV3 0xd01607c3c5ecaba394d8be377a08590149325722 + chain42161 Pool 0x794a61358d6845594f94dc1db02a252b5b4814ad. Covered verbose-ABI selectors expect pass/lending. L2Pool packed-args (bytes32 CalldataLogic) on Base + Arbitrum expect pass/lending; asset is uint16 reserve-index resolved from on-chain getReservesList() snapshots plus bit-field strategy. Hand fixtures cover Sourcify-verified WrappedTokenGateway withdrawETHWithPermit and official Aave v3-core debt-token credit-delegation signature paths not observed in the sampled txlist.",
   "transactions": [
     {
       "intent": "setUserEMode",
@@ -371,8 +371,8 @@
     },
     {
       "intent": "L2Pool.setUserUseReserveAsCollateral(bytes32)",
-      "expect": "error",
-      "expect_error": "no_declarative_v3_mapper",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0x08545d81c189bf2ebdea3bd9d33d0adababfed92eaf8e72f7c6aed1e9b11ecbe",
       "chain_id": 42161,
       "rpc": {
@@ -387,8 +387,8 @@
     },
     {
       "intent": "L2Pool.withdraw(bytes32)",
-      "expect": "error",
-      "expect_error": "no_declarative_v3_mapper",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0x5e5458b2a717cbbf6503d2706448b8df6bfac21bdc1256dc143d2764dee9416c",
       "chain_id": 42161,
       "rpc": {
@@ -467,8 +467,8 @@
     },
     {
       "intent": "L2Pool.withdraw(bytes32)",
-      "expect": "error",
-      "expect_error": "no_declarative_v3_mapper",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0x12c885a197b6be6e36ae79c63b7ef0d3e875e2022a48adedf61a9e5be04cf9c8",
       "chain_id": 42161,
       "rpc": {
@@ -515,8 +515,8 @@
     },
     {
       "intent": "L2Pool.repay(bytes32)",
-      "expect": "error",
-      "expect_error": "no_declarative_v3_mapper",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0x7b9a789440f20f526d9b41986a703e88b37dc0630ca71ee2b89942b3531be208",
       "chain_id": 42161,
       "rpc": {
@@ -531,8 +531,8 @@
     },
     {
       "intent": "L2Pool.repay(bytes32)",
-      "expect": "error",
-      "expect_error": "no_declarative_v3_mapper",
+      "expect": "pass",
+      "expect_domain": "lending",
       "tx_hash": "0x4a95b63bc13a6b2dc2c764f95ca1e59cc9b58174d99b808d60b33bb08cfa9e98",
       "chain_id": 42161,
       "rpc": {

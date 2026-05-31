@@ -2133,7 +2133,7 @@ fn maybe_inject_aave_l2_packed_args(
     args_json: &serde_json::Value,
     derived: &mut BTreeMap<String, serde_json::Value>,
 ) {
-    if !is_aave_l2_base_pool(chain_id, target) {
+    if !is_aave_l2_pool(chain_id, target) {
         return;
     }
 
@@ -2273,8 +2273,12 @@ fn maybe_inject_aave_l2_packed_args(
     }
 }
 
-fn is_aave_l2_base_pool(chain_id: u64, target: &str) -> bool {
-    chain_id == 8453 && target.eq_ignore_ascii_case("0xa238dd80c259a72e81d7e4664a9801593f98d1c5")
+fn is_aave_l2_pool(chain_id: u64, target: &str) -> bool {
+    match chain_id {
+        8453 => target.eq_ignore_ascii_case("0xa238dd80c259a72e81d7e4664a9801593f98d1c5"),
+        42161 => target.eq_ignore_ascii_case("0x794a61358d6845594f94dc1db02a252b5b4814ad"),
+        _ => false,
+    }
 }
 
 fn inject_aave_l2_asset(
@@ -2293,28 +2297,54 @@ fn inject_aave_l2_asset(
 }
 
 fn aave_l2_reserve_address(chain_id: u64, target: &str, reserve_id: u64) -> Option<&'static str> {
-    if !is_aave_l2_base_pool(chain_id, target) {
+    if !is_aave_l2_pool(chain_id, target) {
         return None;
     }
 
-    // Aave V3 Base Pool `getReservesList()` snapshot, used because L2Pool
-    // packed calldata carries a uint16 reserve id instead of an address.
-    match reserve_id {
-        0 => Some("0x4200000000000000000000000000000000000006"),
-        1 => Some("0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"),
-        2 => Some("0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca"),
-        3 => Some("0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452"),
-        4 => Some("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"),
-        5 => Some("0x04c0599ae5a44757c0af6f9ec3b93da8976c150a"),
-        6 => Some("0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"),
-        7 => Some("0x2416092f143378750bb29b79ed961ab195cceea5"),
-        8 => Some("0x6bb7a212910682dcfdbd5bcbb3e28fb4e8da10ee"),
-        9 => Some("0xedfa23602d0ec14714057867a78d01e94176bea0"),
-        10 => Some("0xecac9c5f704e954931349da37f60e39f515c11c1"),
-        11 => Some("0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"),
-        12 => Some("0x63706e401c06ac8513145b7687a14804d17f814b"),
-        13 => Some("0x236aa50979d5f3de3bd1eeb40e81137f22ab794b"),
-        14 => Some("0x660975730059246a68521a3e2fbd4740173100f5"),
+    // Aave V3 L2Pool packed calldata carries a uint16 reserve id instead of
+    // an address. These snapshots come from the pool's `getReservesList()`.
+    match chain_id {
+        8453 => match reserve_id {
+            0 => Some("0x4200000000000000000000000000000000000006"),
+            1 => Some("0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"),
+            2 => Some("0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca"),
+            3 => Some("0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452"),
+            4 => Some("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"),
+            5 => Some("0x04c0599ae5a44757c0af6f9ec3b93da8976c150a"),
+            6 => Some("0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"),
+            7 => Some("0x2416092f143378750bb29b79ed961ab195cceea5"),
+            8 => Some("0x6bb7a212910682dcfdbd5bcbb3e28fb4e8da10ee"),
+            9 => Some("0xedfa23602d0ec14714057867a78d01e94176bea0"),
+            10 => Some("0xecac9c5f704e954931349da37f60e39f515c11c1"),
+            11 => Some("0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"),
+            12 => Some("0x63706e401c06ac8513145b7687a14804d17f814b"),
+            13 => Some("0x236aa50979d5f3de3bd1eeb40e81137f22ab794b"),
+            14 => Some("0x660975730059246a68521a3e2fbd4740173100f5"),
+            _ => None,
+        },
+        42161 => match reserve_id {
+            0 => Some("0xda10009cbd5d07dd0cecc66161fc93d7c9000da1"),
+            1 => Some("0xf97f4df75117a78c1a5a0dbb814af92458539fb4"),
+            2 => Some("0xff970a61a04b1ca14834a43f5de4533ebddb5cc8"),
+            3 => Some("0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f"),
+            4 => Some("0x82af49447d8a07e3bd95bd0d56f35241523fbab1"),
+            5 => Some("0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"),
+            6 => Some("0xba5ddd1f9d7f570dc94a51479a000e3bce967196"),
+            7 => Some("0xd22a58f79e9481d1a88e00c343885a588b34b68b"),
+            8 => Some("0x5979d7b546e38e414f7e9822514be443a4800529"),
+            9 => Some("0x3f56e0c36d275367b8c502090edf38289b3dea0d"),
+            10 => Some("0xec70dcb4a1efa46b8f2d97c310c9c4790ba5ffa8"),
+            11 => Some("0x93b346b6bc2548da6a1e7d98e9a421b42541425b"),
+            12 => Some("0xaf88d065e77c8cc2239327c5edb3a432268e5831"),
+            13 => Some("0x17fc002b466eec40dae837fc4be5c67993ddbd6f"),
+            14 => Some("0x912ce59144191c1204e64559fe8253a0e49e6548"),
+            15 => Some("0x35751007a407ca6feffe80b3cb397736d2cf4dbe"),
+            16 => Some("0x7dff72693f6a4149b17e7c6314655f6a9f7c8b33"),
+            17 => Some("0x2416092f143378750bb29b79ed961ab195cceea5"),
+            18 => Some("0x4186bfc76e2e237523cbc30fd220fe055156b41f"),
+            19 => Some("0x6c84a8f1c29108f47a79964b5fe888d4f4d0de40"),
+            _ => None,
+        },
         _ => None,
     }
 }
