@@ -177,6 +177,18 @@ pub enum LendingVenue {
         #[tsify(type = "string")]
         vault: Address,
     },
+    /// `Curve` crvUSD lending market. One `Controller` per collateral token;
+    /// the debt asset is always crvUSD. (`create_loan`/`borrow_more` deposit the
+    /// market's `collateral` and mint crvUSD debt.)
+    CrvUsd {
+        /// Chain hosting the controller.
+        chain: ChainId,
+        /// `Controller` contract address (one per collateral market).
+        #[tsify(type = "string")]
+        controller: Address,
+        /// Collateral token of this market.
+        collateral: TokenRef,
+    },
 }
 
 impl LendingVenue {
@@ -195,6 +207,7 @@ impl LendingVenue {
             Self::MorphoOptimizer { .. } => "morpho_optimizer",
             Self::Spark { .. } => "spark",
             Self::Fluid { .. } => "fluid",
+            Self::CrvUsd { .. } => "crv_usd",
         }
     }
 }

@@ -68,6 +68,8 @@ fn lending_venue_pool_address(
         CompoundV3 { comet, .. } => Some(*comet),
         CompoundV2 { comptroller, .. } => Some(*comptroller),
         MorphoOptimizer { vault, .. } | Fluid { vault, .. } => Some(*vault),
+        // crvUSD: collateral market 당 Controller 1개 = pool.
+        CrvUsd { controller, .. } => Some(*controller),
         // Morpho Blue 는 single market id 기반, pool address 없음
         MorphoBlue { .. } => None,
     }

@@ -95,6 +95,16 @@ pub(crate) fn lower_lending_venue(venue: &LendingVenue) -> Value {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("vault".into(), Value::String(addr(vault)));
         }
+        // crvUSD: the per-collateral `Controller` is the venue's pool. The
+        // collateral token is carried on the Rust venue for the reducer but is
+        // not needed by Cedar policies (the controller address identifies the
+        // market), so only `{ chain, pool }` is lowered.
+        LendingVenue::CrvUsd {
+            chain, controller, ..
+        } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("pool".into(), Value::String(addr(controller)));
+        }
     }
     Value::Object(m)
 }

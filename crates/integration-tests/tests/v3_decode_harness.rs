@@ -432,6 +432,45 @@ fn curve_cryptoswap_add_liquidity_bakes_three_coins_in_order() {
     }
 }
 
+/// Field-level golden for Curve crvUSD `create_loan` — the new `LendingVenue::CrvUsd`
+/// venue + the create_loan → `borrow` mapping. On the wstETH market, `create_loan`
+/// must decode to a lending `borrow` whose `asset` is crvUSD (the DEBT token) and
+/// whose `venue.collateral` is wstETH (the market's collateral). Baking the
+/// collateral as the borrowed asset (or vice-versa) would silently misreport what
+/// the user is borrowing vs depositing — exactly what a scope analyzer must get right.
+#[test]
+fn curve_crvusd_create_loan_borrows_crvusd_against_collateral() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // wstETH market Controller. create_loan(collateral=1e18, debt=1000e18, N=10).
+    const TO: &str = "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce";
+    const CRVUSD: &str = "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e";
+    const WSTETH: &str = "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0";
+    const CALLDATA: &str = "0x23cfed030000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000003635c9adc5dea00000000000000000000000000000000000000000000000000000000000000000000a";
+
+    let env = harness::route::route_calldata(1, TO, "0x23cfed03", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    // The borrowed asset is crvUSD (debt), NOT the collateral.
+    let asset = find_object_by_key(&env, "asset").expect("borrow body carries asset");
+    assert_eq!(
+        find_string_field(asset, "address").as_deref(),
+        Some(CRVUSD),
+        "create_loan must borrow crvUSD; got {asset}"
+    );
+    // The crv_usd venue names the market's collateral (wstETH).
+    let collateral =
+        find_object_by_key(&env, "collateral").expect("crv_usd venue carries collateral");
+    assert_eq!(
+        find_string_field(collateral, "address").as_deref(),
+        Some(WSTETH),
+        "wstETH market venue.collateral must be wstETH; got {collateral}"
+    );
+}
+
 /// Field-level golden: a real Lido `submit` must decode to a `liquid_staking`
 /// `stake` whose `amount` equals `msg.value` (manifest `amount = $tx.value`) —
 /// a value the corpus (verdict + domain only) cannot verify. Pins the
