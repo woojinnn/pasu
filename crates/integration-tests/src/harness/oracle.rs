@@ -49,7 +49,7 @@ pub enum OracleLayer {
     Envelope,
     /// `data.actions` did not re-type into `Vec<Action>`.
     TypedRoundTrip,
-    /// An emitted domain tag is not one of the 8 valid domains.
+    /// An emitted domain tag is not one of the valid domains.
     Domain,
     /// `ok:false` with a hard engine error.
     ErrorClass,
