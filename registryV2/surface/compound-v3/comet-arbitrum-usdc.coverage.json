@@ -1,0 +1,115 @@
+{
+  "contract": "Comet Arbitrum cUSDCv3 USDC",
+  "chainId": 42161,
+  "address": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+  "snapshot": "comet-arbitrum-usdc.abi.json",
+  "note": "Compound V3 Comet Arbitrum cUSDCv3 USDC surface triage. Address provenance: Compound official deployments/arbitrum/usdc/roots.json and configuration.json. User-facing ABI provenance: Compound official CometInterface/CometMainInterface/CometExtInterface. Permission primitives allow/allowBySig/approve/approveThis are COVER by the manual red-flag rule.",
+  "functions": {
+    "0xf2b9fdb8": {
+      "name": "supply",
+      "decision": "cover",
+      "reason": "user position: supply an asset to Comet; base asset supply can also repay debt according to Comet docs"
+    },
+    "0x4232cd63": {
+      "name": "supplyTo",
+      "decision": "cover",
+      "reason": "user position: supply an asset and credit a destination account"
+    },
+    "0x90323177": {
+      "name": "supplyFrom",
+      "decision": "cover",
+      "reason": "manager path: supply from an authorized source account to a destination account"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "cover",
+      "reason": "user fund move: transfer base-token balance inside Comet"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "cover",
+      "reason": "manager path: transfer base-token balance from an authorized source account"
+    },
+    "0x439e2e45": {
+      "name": "transferAsset",
+      "decision": "cover",
+      "reason": "user fund move: transfer collateral balance inside Comet"
+    },
+    "0xc1ee2c18": {
+      "name": "transferAssetFrom",
+      "decision": "cover",
+      "reason": "manager path: transfer collateral balance from an authorized source account"
+    },
+    "0xf3fef3a3": {
+      "name": "withdraw",
+      "decision": "cover",
+      "reason": "user position: withdraw collateral or base asset; withdrawing base may open/increase borrow depending on account state"
+    },
+    "0xc3b35a7e": {
+      "name": "withdrawTo",
+      "decision": "cover",
+      "reason": "user position: withdraw collateral/base asset to an explicit recipient"
+    },
+    "0x26441318": {
+      "name": "withdrawFrom",
+      "decision": "cover",
+      "reason": "manager path: withdraw collateral/base asset from an authorized source account"
+    },
+    "0xad14777c": {
+      "name": "approveThis",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: governor-only, but grants an external manager allowance over an asset held by Comet; approve-pattern red-flag"
+    },
+    "0xe478795d": {
+      "name": "withdrawReserves",
+      "decision": "exclude",
+      "reason": "governance (governor-only) reserve withdrawal, not a user wallet position action"
+    },
+    "0xc3cecfd2": {
+      "name": "absorb",
+      "decision": "exclude",
+      "reason": "keeper/liquidator path: absorbs underwater accounts, not the protected user's own pre-sign position action"
+    },
+    "0xe4e6e779": {
+      "name": "buyCollateral",
+      "decision": "cover",
+      "reason": "user fund move: buys discounted collateral from protocol reserves using base asset"
+    },
+    "0x44c35d07": {
+      "name": "pause",
+      "decision": "exclude",
+      "reason": "governance/guardian pause controls, not a user fund or permission action"
+    },
+    "0xbfe69c8d": {
+      "name": "accrueAccount",
+      "decision": "exclude",
+      "reason": "infra: permissionless interest/rewards accrual, moves no caller funds and grants no permission"
+    },
+    "0x1c9f7fb9": {
+      "name": "initializeStorage",
+      "decision": "exclude",
+      "reason": "infra/proxy initialization path; one-time setup, not a user wallet action"
+    },
+    "0x110496e5": {
+      "name": "allow",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: grants/revokes manager authority over all caller Comet positions"
+    },
+    "0xbb24d994": {
+      "name": "allowBySig",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: on-chain submission of EIP-712 Authorization for manager authority"
+    },
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: Comet's ERC20 approve is binary allow/revoke and grants spender manager authority over all owner assets"
+    }
+  },
+  "signed_structs": {
+    "Authorization": {
+      "decision": "cover",
+      "reason": "off-chain EIP-712 message a user signs for allowBySig; grants/revokes manager authority over all Comet positions"
+    }
+  }
+}

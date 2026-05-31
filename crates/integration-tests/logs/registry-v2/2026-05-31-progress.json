@@ -71,6 +71,35 @@
       "cargo test --workspace: 0 failed"
     ]
   },
+  "compound_v3_optimism_arbitrum_market_expansion": {
+    "protocol": "compound-v3",
+    "contracts": [
+      "Comet cUSDCv3 Optimism",
+      "Comet cUSDTv3 Optimism",
+      "Comet cWETHv3 Optimism",
+      "Comet cUSDCv3 Arbitrum USDC.e",
+      "Comet cUSDCv3 Arbitrum USDC",
+      "Comet cUSDTv3 Arbitrum",
+      "Comet cWETHv3 Arbitrum"
+    ],
+    "status": "implemented",
+    "completed": [
+      "added surface/compound-v3/comet-optimism-{usdc,usdt,weth}.{abi,coverage}.json and surface/compound-v3/comet-arbitrum-{usdc-e,usdc,usdt,weth}.{abi,coverage}.json using Compound official deployments/<chain>/<market>/roots.json + configuration.json provenance and the CometInterface user-facing ABI",
+      "expanded the 15 Comet on-chain manifests to include Optimism chain 10 and Arbitrum chain 42161 Comet addresses",
+      "added Optimism and Arbitrum Authorization typed-data manifests for all seven Comets keyed by verifying_contract + domain_name",
+      "extended compound_v3_base_asset static resolver for Optimism cUSDC/cUSDT/cWETH and Arbitrum cUSDC.e/cUSDC/cUSDT/cWETH",
+      "added hand corpus fixtures for Optimism and Arbitrum supply plus Authorization typed-data across all seven markets",
+      "added field-level golden tests for Optimism cUSDT base_asset resolution and Arbitrum cWETH Authorization permission fields"
+    ],
+    "evidence": [
+      "npm run build: 727 callkeys + 63 typed-data entries across 154 manifests",
+      "npm run check:surface: PASS with 27 gated contracts; each new Optimism/Arbitrum Comet has 20 surface / 15 cover / 5 exclude / 15 on-chain manifests / 1 signed-struct",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage: callkeys=727 typed_data_keys=63 unique_bundles=154 install_failures=0",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 189/189 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 22 passed",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "aave_v3_pool_surface_gate": {
     "protocol": "aave",
     "contract": "Aave V3 Pool mainnet",

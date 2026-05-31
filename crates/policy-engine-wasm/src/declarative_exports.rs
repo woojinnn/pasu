@@ -806,6 +806,27 @@ fn compound_v3_base_asset(chain_id: u64, target: &str) -> Option<&'static str> {
         (8453, "0x46e6b214b524310239732d51387075e0e70970bf") => {
             Some("0x4200000000000000000000000000000000000006")
         }
+        (10, "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb") => {
+            Some("0x0b2c639c533813f4aa9d7837caf62653d097ff85")
+        }
+        (10, "0x995e394b8b2437ac8ce61ee0bc610d617962b214") => {
+            Some("0x94b008aa00579c1307b0ef2c499ad98a8ce58e58")
+        }
+        (10, "0xe36a30d249f7761327fd973001a32010b521b6fd") => {
+            Some("0x4200000000000000000000000000000000000006")
+        }
+        (42161, "0xa5edbdd9646f8dff606d7448e414884c7d905dca") => {
+            Some("0xff970a61a04b1ca14834a43f5de4533ebddb5cc8")
+        }
+        (42161, "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf") => {
+            Some("0xaf88d065e77c8cc2239327c5edb3a432268e5831")
+        }
+        (42161, "0xd98be00b5d27fc98112bde293e487f8d4ca57d07") => {
+            Some("0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9")
+        }
+        (42161, "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486") => {
+            Some("0x82af49447d8a07e3bd95bd0d56f35241523fbab1")
+        }
         _ => None,
     }
 }

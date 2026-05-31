@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "compound-v3/comet/transfer@1.0.0",
   "manifest_path": "manifests/compound-v3/comet/transfer@1.0.0.json",
-  "bundle_sha256": "0x27a3b7d5fdd1c12cd5dca15197f2126627dbfc02ceda8b04e2ba0ba64043afce",
+  "bundle_sha256": "0xb8d53671b47c7bd17486d0118a11170c13d8254149d0a7cd96b73d64b58f551f",
   "bundle": {
     "type": "adapter_action",
     "id": "compound-v3/comet/transfer@1.0.0",
@@ -16,12 +16,23 @@
           "0xc3d688b66703497daa19211eedff47f25384cdc3",
           "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
         ],
+        "10": [
+          "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
+          "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
+          "0xe36a30d249f7761327fd973001a32010b521b6fd"
+        ],
         "8453": [
           "0x784efeb622244d2348d4f2522f8860b96fbece89",
           "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
           "0xb125e6687d4313864e53df431d5425969c15eb2f",
           "0x2c776041ccfe903071af44aa147368a9c8eea518",
           "0x46e6b214b524310239732d51387075e0e70970bf"
+        ],
+        "42161": [
+          "0xa5edbdd9646f8dff606d7448e414884c7d905dca",
+          "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+          "0xd98be00b5d27fc98112bde293e487f8d4ca57d07",
+          "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486"
         ]
       }
     },
