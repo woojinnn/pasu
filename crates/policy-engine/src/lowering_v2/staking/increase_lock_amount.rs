@@ -42,12 +42,14 @@ mod tests {
     use super::super::test_support::{assert_conforms, crv, onchain_meta, other, vecrv_venue};
 
     fn body(on_behalf: bool) -> ActionBody {
-        ActionBody::Staking(StakingAction::IncreaseLockAmount(IncreaseLockAmountAction {
-            venue: vecrv_venue(),
-            token: crv(),
-            amount: U256::from(5_000_000_000_000_000_000u64),
-            on_behalf_of: if on_behalf { Some(other()) } else { None },
-        }))
+        ActionBody::Staking(StakingAction::IncreaseLockAmount(
+            IncreaseLockAmountAction {
+                venue: vecrv_venue(),
+                token: crv(),
+                amount: U256::from(5_000_000_000_000_000_000u64),
+                on_behalf_of: if on_behalf { Some(other()) } else { None },
+            },
+        ))
     }
 
     #[test]

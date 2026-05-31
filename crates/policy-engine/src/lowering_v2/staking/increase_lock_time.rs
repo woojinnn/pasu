@@ -22,7 +22,10 @@ pub(crate) fn lower(
     let mut m = Map::new();
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_stake_venue(&action.venue));
-    m.insert("unlockTime".into(), Value::String(u256_hex(action.unlock_time)));
+    m.insert(
+        "unlockTime".into(),
+        Value::String(u256_hex(action.unlock_time)),
+    );
 
     Ok(ctx.lowered(r#"Staking::Action::"IncreaseLockTime""#, Value::Object(m)))
 }
