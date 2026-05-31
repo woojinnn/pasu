@@ -61,6 +61,8 @@ fn walk_body(
                 walk_body(child, i, now, stale, stats);
             }
         }
+        // Restaking round-1 actions carry no live inputs (no walk needed).
+        ActionBody::Restaking(_) => {}
         ActionBody::Unknown { .. } => {}
     }
 }
@@ -91,7 +93,7 @@ pub fn apply_value_to_action(
         ActionBody::Perp(p) => perp::apply(p, slot, value, now),
         ActionBody::Permission(p) => permission::apply(p, slot, value, now),
         ActionBody::LiquidStaking(ls) => liquid_staking::apply(ls, slot, value, now),
-        ActionBody::Multicall { .. } | ActionBody::Unknown { .. } => {}
+        ActionBody::Restaking(_) | ActionBody::Multicall { .. } | ActionBody::Unknown { .. } => {}
     }
 }
 
