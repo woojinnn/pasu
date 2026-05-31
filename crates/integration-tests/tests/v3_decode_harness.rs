@@ -1378,3 +1378,55 @@ fn compound_v3_unichain_weth_authorization_typed_data_decodes_permission_fields(
     assert_eq!(find_string_field(&env, "authorized"), Some(MANAGER.into()));
     assert_eq!(find_bool_field(&env, "is_authorized"), Some(false));
 }
+
+/// Field-level golden for Pendle `swapExactTokenForPt` (yield-domain positional
+/// mapping).
+///
+/// `corpus_replay`'s oracle checks only the verdict + top-level `domain` — never
+/// the body field VALUES. A positional mis-map (market vs receiver swapped, the
+/// `direction` constant wrong, or `external_token` pointing at the wrong
+/// `TokenInput` slot) would still pass corpus as `pass`/`yield` — a silent
+/// mis-decode (the §9.4 lesson). This pins, from a real mainnet swap, the
+/// security-relevant fields: which market, which direction, who receives, and
+/// that `external_token` is the calldata `TokenInput.tokenIn` (`$args.input[0]`).
+#[test]
+fn pendle_swap_exact_token_for_pt_decodes_market_direction_token_recipient() {
+    // R1: install + route on the same thread.
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet tx 0x008bb93a4cd627b2f6f93ca5f4ac4415208ca09e0db82999638ff1a747a50dad
+    // on Router V4: swapExactTokenForPt(receiver=0xf1bfd60e…, market=0x3c53fae2…,
+    // minPtOut, guessPtOut, TokenInput{tokenIn=0x38eeb52f…, …}, limit).
+    const TO: &str = "0x888888888889758f76e7103c6cbf23abbf58f946";
+    const CALLDATA: &str = "0xc81f847a000000000000000000000000f1bfd60ece3b5b4d1472a3b00543c5912111b07a0000000000000000000000003c53fae231ad3c0408a8b6d33138bbff1caec3300000000000000000000000000000000000000000000001b5acd5dca234e455070000000000000000000000000000000000000000000000db0e7f06a4b959ef9e0000000000000000000000000000000000000000000001b84daa4a3b916c1da80000000000000000000000000000000000000000000001b61cfe0d4972b3df3d000000000000000000000000000000000000000000000000000000000000001e000000000000000000000000000000000000000000000000000000e8d4a510000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000028000000000000000000000000038eeb52f0771140d10c4e9a9a72349a329fe8a6a00000000000000000000000000000000000000000000013c469edbe3eedbe28900000000000000000000000038eeb52f0771140d10c4e9a9a72349a329fe8a6a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
+    let env = harness::route::route_calldata(1, TO, "0xc81f847a", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "market").as_deref(),
+        Some("0x3c53fae231ad3c0408a8b6d33138bbff1caec330"),
+        "market mis-decoded (must be calldata arg[1])"
+    );
+    assert_eq!(
+        find_string_field(&env, "direction").as_deref(),
+        Some("token_for_pt"),
+        "PT swap direction constant mis-set"
+    );
+    assert_eq!(
+        find_string_field(&env, "recipient").as_deref(),
+        Some("0xf1bfd60ece3b5b4d1472a3b00543c5912111b07a"),
+        "recipient mis-decoded (must be calldata arg[0])"
+    );
+    // external_token = TokenInput.tokenIn (input[0]) — the only nested AssetRef.
+    let ext = find_object_by_key(&env, "external_token")
+        .expect("token_for_pt swap carries external_token");
+    assert_eq!(
+        find_string_field(ext, "address").as_deref(),
+        Some("0x38eeb52f0771140d10c4e9a9a72349a329fe8a6a"),
+        "external_token must be the calldata TokenInput.tokenIn"
+    );
+}
