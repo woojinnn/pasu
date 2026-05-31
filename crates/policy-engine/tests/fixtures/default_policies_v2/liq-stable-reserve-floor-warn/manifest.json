@@ -1,0 +1,23 @@
+{
+  "id": "liq-stable-reserve-floor-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "stable-reserve-after",
+      "method": "portfolio.group_pct",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "group_axis": "category",
+        "asset": "stable",
+        "basis": "state2"
+      },
+      "outputs": [
+        { "kind": "context", "field": "stableReservePctAfter", "type": "Decimal", "from": "$.result.pct" }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "stableReservePctAfter": "decimal" } }
+}

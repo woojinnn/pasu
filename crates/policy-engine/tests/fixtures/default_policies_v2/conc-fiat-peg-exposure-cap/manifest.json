@@ -1,0 +1,23 @@
+{
+  "id": "conc-fiat-peg-exposure-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "fiat-peg-share-after",
+      "method": "portfolio.group_pct",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "group_axis": "fiat_peg",
+        "asset": "$.action.tokenOut",
+        "basis": "state2"
+      },
+      "outputs": [
+        { "kind": "context", "field": "fiatPegPctAfter", "type": "Decimal", "from": "$.result.pct" }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "fiatPegPctAfter": "decimal" } }
+}
