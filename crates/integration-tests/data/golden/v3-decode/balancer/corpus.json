@@ -1,5 +1,5 @@
 {
-  "_comment": "Balancer V2 Vault real-tx corpus. Source: Etherscan v2 txlist for Vault 0xBA12222222228d8Ba445958a75a0704d566BF2C8 on chains 1/42161/137, latest ~100 tx/chain, selector-agnostic, pulled 2026-05-30. Covered today: swap (0x52bbbe29) -> pass/amm via balancer/v2/vault-swap@1.0.0; setRelayerApproval (0xfa6e671d) -> pass/permission via balancer/v2/vault-set-relayer-approval@1.0.0. Remaining uncovered Vault fns are soft no_declarative_v3_mapper, pinned here as expect=error to lock the gap; flip to expect=pass + expect_domain when the corresponding manifest lands. Remaining fns + how to add: batchSwap 0x945bcec9 (TIER B - cross-array assets[swaps[i].assetInIndex], named in array_emit.rs as canonical fallback); exitPool 0x8bdb3913 & joinPool 0xb95cac28 (need dynamic array zip + userData enum-tag decode for faithful LP action). Zero hard decoder failures in the original 300-tx sample.",
+  "_comment": "Balancer V2 Vault real-tx corpus. Source: Etherscan v2 txlist for Vault 0xBA12222222228d8Ba445958a75a0704d566BF2C8 on chains 1/42161/137, latest ~100 tx/chain, selector-agnostic, pulled 2026-05-30. Covered today: swap (0x52bbbe29) -> pass/amm via balancer/v2/vault-swap@1.0.0; setRelayerApproval (0xfa6e671d) -> pass/permission via balancer/v2/vault-set-relayer-approval@1.0.0. Remaining uncovered Vault fns are soft no_declarative_v3_mapper, pinned here as expect=error to lock the gap; flip to expect=pass + expect_domain when the corresponding manifest lands. Remaining fns + how to add: batchSwap 0x945bcec9 (TIER B - cross-array assets[swaps[i].assetInIndex], named in array_emit.rs as canonical fallback); exitPool 0x8bdb3913 & joinPool 0xb95cac28 (need dynamic array zip + userData enum-tag decode for faithful LP action). Zero hard decoder failures in the original 300-tx sample. Balancer V3 Router v2 direct swap samples added 2026-06-01 from Dune queries 7623992 (Base exact-in) and 7624000 (Base exact-out): swapSingleTokenExactIn 0x750283bc and swapSingleTokenExactOut 0x94e86ef8 both route to amm.",
   "transactions": [
     {
       "intent": "swap",
@@ -224,6 +224,40 @@
         ]
       },
       "expect_domain": "permission"
+    },
+    {
+      "intent": "v3_router_swapSingleTokenExactIn",
+      "expect": "pass",
+      "tx_hash": "0xf7849df52615ba78357b377c895176d7ce89a1cac8e34b1a5629cb5cd41f9c8a",
+      "chain_id": 8453,
+      "source": "dune:7623992",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3f170631ed9821ca51a59d996ab095162438dc10",
+            "value": "1000000000000000",
+            "data": "0x750283bc000000000000000000000000434c116a43da9bb2d706616239c979f37a8d94c90000000000000000000000004200000000000000000000000000000000000006000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda0291300000000000000000000000000000000000000000000000000038d7ea4c6800000000000000000000000000000000000000000000000000000000000001e647a000000000000000000000000000000000000000000000000001fffffffffffff000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm"
+    },
+    {
+      "intent": "v3_router_swapSingleTokenExactOut",
+      "expect": "pass",
+      "tx_hash": "0xb22d3cf05b30ef06466875aa75a921ec797f8e1e0df765b79230dd37faa3b48a",
+      "chain_id": 8453,
+      "source": "dune:7624000",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3f170631ed9821ca51a59d996ab095162438dc10",
+            "value": "0",
+            "data": "0x94e86ef80000000000000000000000005b8521eed1fc9beeb7f63324c76d48d70e40839b0000000000000000000000004200000000000000000000000000000000000006000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda0291300000000000000000000000000000000000000000000000000000000000000640000000000000000000000000000000000000000000000000000000a1ec9065e000000000000000000000000000000000000000000000000001fffffffffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm"
     }
   ]
 }
