@@ -151,4 +151,22 @@ mod tests {
         let delta = multi.apply(&state, &eval_ctx()).unwrap();
         assert!(delta.is_empty());
     }
+
+    #[test]
+    fn hyperliquid_core_is_not_a_no_op() {
+        use crate::action::hyperliquid_core::{HlWithdrawAction, HyperliquidCoreAction};
+        use simulation_state::primitives::{Address, Decimal};
+
+        let state = empty_state();
+        let body = ActionBody::HyperliquidCore(HyperliquidCoreAction::Withdraw(HlWithdrawAction {
+            destination: Address::from([0xde; 20]),
+            amount: Decimal::new("1000"),
+        }));
+        let delta = body.apply(&state, &eval_ctx()).unwrap();
+        assert!(
+            !delta.is_empty(),
+            "HL action must now produce a non-empty delta"
+        );
+        assert_eq!(delta.position_changes.len(), 1);
+    }
 }

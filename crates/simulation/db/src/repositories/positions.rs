@@ -231,4 +231,44 @@ mod tests {
         })
         .unwrap();
     }
+
+    #[test]
+    fn hl_account_position_round_trips_no_migration() {
+        let pool = fresh_pool();
+        pool.with_tx(|tx| {
+            let w = ins_wallet(tx, "0xowner");
+            upsert(
+                tx,
+                &PositionInsert {
+                    wallet_id: w,
+                    position_id: "hyperliquid/account".into(),
+                    protocol: "hyperliquid".into(),
+                    chain: None,
+                    kind: "hyperliquid_account".into(),
+                    market: None,
+                    summary: Some("perp_usdc 600, 1 open order".into()),
+                    data: json!({
+                        "perp_usdc": "600",
+                        "pending_outflow": "400",
+                        "positions": [],
+                        "open_orders": [{
+                            "asset_index": 0, "is_buy": true, "price": "60000",
+                            "size": "0.1", "reduce_only": false, "tif": "gtc"
+                        }],
+                        "leverage_settings": [],
+                        "agents": []
+                    }),
+                    primitives_synced_at: 1_738_000_000,
+                    primitives_source: json!({"kind":"user_supplied"}),
+                },
+            )?;
+            let rows = list_for_wallet(tx, w)?;
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].kind, "hyperliquid_account");
+            // Fractional size survives the JSON column unchanged.
+            assert!(rows[0].data_json.contains("\"0.1\""));
+            Ok(())
+        })
+        .unwrap();
+    }
 }
