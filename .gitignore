@@ -41,6 +41,11 @@ browser-extension/public/wasm/
 # `registryV2/` only; this tree is dead weight. Kept locally at ~/Desktop/registry.
 /registry/
 
+# Generated registry index — output of `registryV2/scripts/build-index.ts`
+# (`cd registryV2 && npm run build`). Regenerated locally and in CI (rust job's
+# "Build registry index" step) from registryV2/{manifests,tokens}; never committed.
+/registryV2/index/
+
 # Markdown docs, research + audit notes — only README.md stays tracked.
 *.md
 !README.md
