@@ -1,0 +1,16 @@
+{
+  "contract": "PermissionController",
+  "chainId": 1,
+  "address": "0x25e5f8b1e7adf44518d35d5b2271f114e081f0e5",
+  "snapshot": "permission-controller.abi.json",
+  "note": "Surface triage for EigenLayer PermissionController (v1.12.0 impl 0x36dd260a...eed2; NEW in ELIP-002). This contract IS a permission-delegation primitive: it lets an account grant admins and selector-scoped appointees to act on its behalf across EigenLayer core. EVERY function is user-callable and permission-related — ALL cover (ScopeBall's raison d'etre). No off-chain signed structs.",
+  "functions": {
+    "0x950d806e": { "name": "setAppointee",       "decision": "cover", "reason": "PERMISSION-GRANT primitive — account grants `appointee` the right to call `target.selector` on the account's behalf (address account, address appointee, address target, bytes4 selector). Selector-scoped delegation of call authority. The single most security-critical EigenLayer grant for ScopeBall; never exclude." },
+    "0x06641201": { "name": "removeAppointee",    "decision": "cover", "reason": "PERMISSION-GRANT — revoke an appointee's (target,selector) right (address account, address appointee, address target, bytes4 selector). Revocation of delegated authority; cover (permission state change)." },
+    "0xeb5a4e87": { "name": "addPendingAdmin",    "decision": "cover", "reason": "PERMISSION-GRANT — propose a new admin for an account (address account, address admin). Admins control the account's whole EigenLayer permission set; the most powerful grant. Cover." },
+    "0x628806ef": { "name": "acceptAdmin",        "decision": "cover", "reason": "PERMISSION-GRANT — pending admin accepts admin rights over an account (address account). Completes an admin delegation; cover." },
+    "0x4f906cf9": { "name": "removePendingAdmin", "decision": "cover", "reason": "PERMISSION-GRANT — cancel a pending admin proposal (address account, address admin). Permission state change; cover." },
+    "0x268959e5": { "name": "removeAdmin",        "decision": "cover", "reason": "PERMISSION-GRANT — remove an existing admin from an account (address account, address admin). Revokes top-level delegated authority; cover." }
+  },
+  "signed_structs": {}
+}

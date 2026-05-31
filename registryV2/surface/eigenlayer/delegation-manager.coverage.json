@@ -1,0 +1,95 @@
+{
+  "contract": "DelegationManager",
+  "chainId": 1,
+  "address": "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a",
+  "snapshot": "delegation-manager.abi.json",
+  "note": "Surface triage for EigenLayer DelegationManager (v1.12.0 impl 0xe7022a...bce75, post-ELIP-002). EVERY external-mutating selector in the snapshot appears here with explicit cover|exclude (gate I1). Delegation + queued-withdrawal lifecycle is the heart of the restaking permission surface. signed_structs holds the off-chain DelegationApproval EIP-712 grant.",
+  "functions": {
+    "0xeea9064b": {
+      "name": "delegateTo",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive — staker delegates ALL deposited restaking shares to an operator. (address operator, SignatureWithExpiry approverSignatureAndExpiry, bytes32 approverSalt). ScopeBall's core target; never exclude."
+    },
+    "0xa33a3433": {
+      "name": "redelegate",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive (NEW, ELIP-003) — atomically undelegate from current operator and delegate to a new one. Same risk surface as delegateTo."
+    },
+    "0xda8be864": {
+      "name": "undelegate",
+      "decision": "cover",
+      "reason": "user action — undelegate from operator; queues a withdrawal of all delegated shares. Revokes the delegation grant."
+    },
+    "0x0dd8dd02": {
+      "name": "queueWithdrawals",
+      "decision": "cover",
+      "reason": "user-fund-move — queue withdrawal of staked shares (QueuedWithdrawalParams[] {strategies, depositShares, withdrawer}). Post-ELIP-002 shape (depositShares, no nonce in input). Start of the withdraw flow."
+    },
+    "0xe4cc3f90": {
+      "name": "completeQueuedWithdrawal",
+      "decision": "cover",
+      "reason": "user-fund-move — complete a single queued withdrawal (Withdrawal struct, tokens[], receiveAsTokens). Releases funds back to the staker."
+    },
+    "0x9435bb43": {
+      "name": "completeQueuedWithdrawals",
+      "decision": "cover",
+      "reason": "user-fund-move — batch complete queued withdrawals (Withdrawal[], tokens[][], receiveAsTokens[])."
+    },
+    "0x2aa6d888": {
+      "name": "registerAsOperator",
+      "decision": "cover",
+      "reason": "permission/role — caller registers as an EigenLayer operator (initDelegationApprover, allocationDelay, metadataURI). Operators are users; this is an operator pre-sign onboarding action."
+    },
+    "0x54b7c96c": {
+      "name": "modifyOperatorDetails",
+      "decision": "cover",
+      "reason": "permission-grant — operator sets its delegationApprover (who must co-sign stakers delegating to it). (address operator, address newDelegationApprover). Changes who can approve delegations = permission config."
+    },
+    "0x78296ec5": {
+      "name": "updateOperatorMetadataURI",
+      "decision": "exclude",
+      "reason": "DEFERRED/cosmetic — updateOperatorMetadataURI only changes the operator's metadata URI string; no fund-move and no permission/scope change. Out of round-1 scope (operator metadata)."
+    },
+    "0x60a0d1ce": {
+      "name": "decreaseDelegatedShares",
+      "decision": "exclude",
+      "reason": "infra/onlyEigenPodManager — internal share accounting callback when beacon-chain balance decreases. Not user-callable."
+    },
+    "0x3c651cf2": {
+      "name": "increaseDelegatedShares",
+      "decision": "exclude",
+      "reason": "infra/onlyStrategyManagerOrEigenPodManager — internal share accounting callback on deposit. Not user-callable directly."
+    },
+    "0x5ae679a7": {
+      "name": "slashOperatorShares",
+      "decision": "exclude",
+      "reason": "infra/onlyAllocationManager — burns slashed operator shares; invoked by AllocationManager during slashing, not by a wallet."
+    },
+    "0xfe4b84df": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "infra — proxy initializer (onlyInitializing). One-time deploy."
+    },
+    "0x136439dd": {
+      "name": "pause",
+      "decision": "exclude",
+      "reason": "governance — onlyPauser bitmap pause."
+    },
+    "0x595c6a67": {
+      "name": "pauseAll",
+      "decision": "exclude",
+      "reason": "governance — onlyPauser pause everything."
+    },
+    "0xfabc1cbc": {
+      "name": "unpause",
+      "decision": "exclude",
+      "reason": "governance — onlyUnpauser."
+    }
+  },
+  "signed_structs": {
+    "DelegationApproval": {
+      "decision": "cover",
+      "reason": "off-chain EIP-712 message the operator's delegationApprover SIGNS to authorize a specific staker delegating to the operator. typehash DelegationApproval(address delegationApprover,address staker,address operator,bytes32 salt,uint256 expiry) (0x14bde674...2dad, from verified DelegationManagerStorage.sol). Domain {name:'EigenLayer', version:'1', chainId:1, verifyingContract: DelegationManager proxy}. Consumed by delegateTo's approverSignatureAndExpiry param — a permission grant gating who may delegate, ScopeBall's core off-chain target."
+    }
+  }
+}
