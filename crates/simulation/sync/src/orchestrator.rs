@@ -975,8 +975,9 @@ priority = 1
 
         use serde_json::{json, Value};
         use simulation_state::{
-            DataSource, Decimal, HlAccount, HlOpenOrder, Position, PositionKind, ProtocolRef,
-            Time as T, WalletId,
+            DataSource, Decimal, HlAccount, HlBorrowLendAccount, HlBorrowLendBalance,
+            HlBorrowLendTokenState, HlOpenOrder, HlSpotBalance, HlStakingAccount, HlVaultEquity,
+            Position, PositionKind, ProtocolRef, Time as T, WalletId,
         };
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::{TcpListener, TcpStream};
@@ -1140,6 +1141,42 @@ priority = 1
                                 "address": "0x1111111111111111111111111111111111111111",
                                 "validUntil": 1_710_000_000_999_u64
                             }]),
+                            ("spotClearinghouseState", None) => json!({
+                                "balances": [{
+                                    "coin": "USDC",
+                                    "token": 0,
+                                    "total": "1125.961894",
+                                    "hold": "1077.497057",
+                                    "entryNtl": "0.0"
+                                }],
+                                "tokenToAvailableAfterMaintenance": [[0, "48.464837"]]
+                            }),
+                            ("delegatorSummary", None) => json!({
+                                "delegated": "0.0",
+                                "undelegated": "0.0",
+                                "totalPendingWithdrawal": "46.84529183",
+                                "nPendingWithdrawals": 1
+                            }),
+                            ("delegations", None) => json!([]),
+                            ("userVaultEquities", None) => json!([{
+                                "vaultAddress": "0x3333333333333333333333333333333333333333",
+                                "equity": "742500.082809",
+                                "lockedUntilTimestamp": 1_741_132_800_000_u64
+                            }]),
+                            ("borrowLendUserState", None) => json!({
+                                "tokenToState": [[
+                                    0,
+                                    {
+                                        "borrow": { "basis": "0.0", "value": "0.0" },
+                                        "supply": {
+                                            "basis": "44.69295862",
+                                            "value": "44.69692314"
+                                        }
+                                    }
+                                ]],
+                                "health": "healthy",
+                                "healthFactor": null
+                            }),
                             ("meta", Some("xyz")) => json!({
                                 "universe": [
                                     { "name": "xyz:SPCX", "maxLeverage": 5, "szDecimals": 2 }
@@ -1204,8 +1241,42 @@ priority = 1
                     trigger_condition: None,
                     is_position_tpsl: None,
                 }],
-                leverage_settings: Vec::new(),
-                agents: Vec::new(),
+                spot_balances: vec![HlSpotBalance {
+                    coin: "OLD".to_owned(),
+                    token: 999,
+                    total: Decimal::new("1"),
+                    hold: Decimal::new("1"),
+                    entry_ntl: Decimal::new("1"),
+                    available_after_maintenance: None,
+                }],
+                staking: Some(HlStakingAccount {
+                    delegated: Decimal::new("1"),
+                    undelegated: Decimal::new("1"),
+                    total_pending_withdrawal: Decimal::new("1"),
+                    n_pending_withdrawals: 1,
+                    delegations: Vec::new(),
+                }),
+                vault_equities: vec![HlVaultEquity {
+                    vault_address: Address::from([0x99; 20]),
+                    equity: Decimal::new("1"),
+                    locked_until_timestamp: None,
+                }],
+                borrow_lend: Some(HlBorrowLendAccount {
+                    token_states: vec![HlBorrowLendTokenState {
+                        token: 999,
+                        borrow: HlBorrowLendBalance {
+                            basis: Decimal::new("1"),
+                            value: Decimal::new("1"),
+                        },
+                        supply: HlBorrowLendBalance {
+                            basis: Decimal::new("1"),
+                            value: Decimal::new("1"),
+                        },
+                    }],
+                    health: Some("old".to_owned()),
+                    health_factor: Some(Decimal::new("1")),
+                }),
+                ..HlAccount::default()
             }),
             primitives_synced_at: T::from_unix(0),
             primitives_source: DataSource::UserSupplied,
@@ -1248,6 +1319,35 @@ priority = 1
             Some("Price below 185")
         );
         assert_eq!(account.open_orders[1].is_position_tpsl, Some(true));
+        assert_eq!(account.spot_balances.len(), 1);
+        assert_eq!(account.spot_balances[0].coin, "USDC");
+        assert_eq!(
+            account.spot_balances[0].available_after_maintenance,
+            Some(Decimal::new("48.464837"))
+        );
+        let staking = account.staking.as_ref().unwrap();
+        assert_eq!(
+            staking.total_pending_withdrawal,
+            Decimal::new("46.84529183")
+        );
+        assert_eq!(staking.n_pending_withdrawals, 1);
+        assert!(staking.delegations.is_empty());
+        assert_eq!(account.vault_equities.len(), 1);
+        assert_eq!(
+            account.vault_equities[0].equity,
+            Decimal::new("742500.082809")
+        );
+        assert_eq!(
+            account.vault_equities[0].locked_until_timestamp,
+            Some(1_741_132_800_000_u64)
+        );
+        let borrow_lend = account.borrow_lend.as_ref().unwrap();
+        assert_eq!(borrow_lend.health.as_deref(), Some("healthy"));
+        assert_eq!(borrow_lend.token_states.len(), 1);
+        assert_eq!(
+            borrow_lend.token_states[0].supply.value,
+            Decimal::new("44.69692314")
+        );
         assert_eq!(account.agents.len(), 1);
     }
 }

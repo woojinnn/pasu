@@ -1,4 +1,4 @@
-//! Hyperliquid REST fetcher — mark price, funding rate, open orders.
+//! Hyperliquid REST fetcher — mark price, funding rate, open orders, account primitives.
 //!
 //! API: <https://api.hyperliquid.xyz/info>  (POST JSON body)
 //!
@@ -6,6 +6,10 @@
 //! - `hl_all_mids`         → 전체 mark price (key=coin symbol, val=price string)
 //! - `hl_funding`          → 각 perp 의 funding rate
 //! - `hl_open_orders`      → 한 유저의 미체결 주문 lifecycle 추적
+//! - `hl_spot_account`     → spot token balances
+//! - `hl_staking_summary`  → staking summary
+//! - `hl_vault_equities`   → per-vault user equity
+//! - `hl_borrow_lend`      → borrow/lend user state
 //!
 //! body 는 endpoint URL 옆에 별도로 들고와야 하지만, `parser_id` 가 같으면 body 구조도
 //! 같다는 가정 하에 간단한 매핑 테이블로 처리.
@@ -20,7 +24,9 @@ use serde_json::{json, Value};
 
 use simulation_reducer::action::perp::PerpAccountState;
 use simulation_state::position::{
-    HlAccount, HlAgentApproval, HlLeverageSetting, HlOpenOrder, HlPosition,
+    HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance, HlBorrowLendTokenState,
+    HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance, HlStakingAccount,
+    HlStakingDelegation, HlVaultEquity,
 };
 use simulation_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
 
@@ -163,6 +169,66 @@ impl HyperliquidFetcher {
         .await
     }
 
+    pub async fn fetch_spot_clearinghouse_state(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> Result<Value, SyncError> {
+        self.fetch_info(
+            endpoint,
+            json!({ "type": "spotClearinghouseState", "user": hl_user(user) }),
+        )
+        .await
+    }
+
+    pub async fn fetch_delegator_summary(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> Result<Value, SyncError> {
+        self.fetch_info(
+            endpoint,
+            json!({ "type": "delegatorSummary", "user": hl_user(user) }),
+        )
+        .await
+    }
+
+    pub async fn fetch_delegations(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> Result<Value, SyncError> {
+        self.fetch_info(
+            endpoint,
+            json!({ "type": "delegations", "user": hl_user(user) }),
+        )
+        .await
+    }
+
+    pub async fn fetch_user_vault_equities(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> Result<Value, SyncError> {
+        self.fetch_info(
+            endpoint,
+            json!({ "type": "userVaultEquities", "user": hl_user(user) }),
+        )
+        .await
+    }
+
+    pub async fn fetch_borrow_lend_user_state(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> Result<Value, SyncError> {
+        self.fetch_info(
+            endpoint,
+            json!({ "type": "borrowLendUserState", "user": hl_user(user) }),
+        )
+        .await
+    }
+
     async fn fetch_meta_for_dex(
         &self,
         endpoint: &str,
@@ -211,6 +277,20 @@ impl HyperliquidFetcher {
                 merge_hl_account(&mut account, extra);
             }
         }
+
+        let spot = self.fetch_spot_clearinghouse_state(endpoint, user).await?;
+        let staking_summary = self.fetch_delegator_summary(endpoint, user).await?;
+        let delegations = self.fetch_delegations(endpoint, user).await?;
+        let vault_equities = self.fetch_user_vault_equities(endpoint, user).await?;
+        let borrow_lend = self.fetch_borrow_lend_user_state(endpoint, user).await?;
+        apply_hl_account_primitives(
+            &mut account,
+            &spot,
+            &staking_summary,
+            &delegations,
+            &vault_equities,
+            &borrow_lend,
+        )?;
 
         Ok(account)
     }
@@ -354,6 +434,10 @@ pub(crate) fn parse_account_snapshot(
         pending_outflow: Decimal::new("0"),
         positions,
         open_orders,
+        spot_balances: Vec::new(),
+        staking: None,
+        vault_equities: Vec::new(),
+        borrow_lend: None,
         leverage_settings,
         agents,
     })
@@ -364,6 +448,14 @@ fn merge_hl_account(target: &mut HlAccount, extra: HlAccount) {
         .or_else(|| Some(Decimal::new("0")));
     target.positions.extend(extra.positions);
     target.open_orders.extend(extra.open_orders);
+    target.spot_balances.extend(extra.spot_balances);
+    if target.staking.is_none() {
+        target.staking = extra.staking;
+    }
+    target.vault_equities.extend(extra.vault_equities);
+    if target.borrow_lend.is_none() {
+        target.borrow_lend = extra.borrow_lend;
+    }
     target.leverage_settings.extend(extra.leverage_settings);
     target.agents.extend(extra.agents);
 }
@@ -378,6 +470,182 @@ fn add_optional_decimals(lhs: Option<Decimal>, rhs: Option<Decimal>) -> Option<D
         (Some(lhs), None) | (None, Some(lhs)) => Some(lhs),
         (None, None) => None,
     }
+}
+
+fn apply_hl_account_primitives(
+    account: &mut HlAccount,
+    spot: &Value,
+    staking_summary: &Value,
+    delegations: &Value,
+    vault_equities: &Value,
+    borrow_lend: &Value,
+) -> Result<(), SyncError> {
+    account.spot_balances = parse_hl_spot_balances(spot)?;
+    account.staking = Some(parse_hl_staking_account(staking_summary, delegations)?);
+    account.vault_equities = parse_hl_vault_equities(vault_equities)?;
+    account.borrow_lend = Some(parse_hl_borrow_lend_account(borrow_lend)?);
+    Ok(())
+}
+
+fn parse_hl_spot_balances(spot: &Value) -> Result<Vec<HlSpotBalance>, SyncError> {
+    let mut available = HashMap::new();
+    if let Some(items) =
+        value_at(spot, &["tokenToAvailableAfterMaintenance"]).and_then(Value::as_array)
+    {
+        for item in items {
+            let pair = item
+                .as_array()
+                .ok_or_else(|| sync_error("tokenToAvailableAfterMaintenance item not array"))?;
+            let token = u32_from_value(
+                pair.first()
+                    .ok_or_else(|| sync_error("available item missing token"))?,
+                "available token",
+            )?;
+            let amount = state_decimal_from_value(
+                pair.get(1)
+                    .ok_or_else(|| sync_error("available item missing amount"))?,
+            )?;
+            available.insert(token, amount);
+        }
+    }
+
+    let mut out = Vec::new();
+    let Some(items) = value_at(spot, &["balances"]).and_then(Value::as_array) else {
+        return Ok(out);
+    };
+    for item in items {
+        let token = u32_at(item, &["token"])?;
+        out.push(HlSpotBalance {
+            coin: string_at(item, &["coin"])?,
+            token,
+            total: decimal_at(item, &["total"])?,
+            hold: decimal_at(item, &["hold"])?,
+            entry_ntl: decimal_at(item, &["entryNtl"])?,
+            available_after_maintenance: available.remove(&token),
+        });
+    }
+    Ok(out)
+}
+
+fn parse_hl_staking_account(
+    summary: &Value,
+    delegations: &Value,
+) -> Result<HlStakingAccount, SyncError> {
+    Ok(HlStakingAccount {
+        delegated: decimal_at(summary, &["delegated"])?,
+        undelegated: decimal_at(summary, &["undelegated"])?,
+        total_pending_withdrawal: decimal_at(summary, &["totalPendingWithdrawal"])?,
+        n_pending_withdrawals: u32_at(summary, &["nPendingWithdrawals"])?,
+        delegations: parse_hl_staking_delegations(delegations)?,
+    })
+}
+
+fn parse_hl_staking_delegations(
+    delegations: &Value,
+) -> Result<Vec<HlStakingDelegation>, SyncError> {
+    let mut out = Vec::new();
+    let Some(items) = delegations.as_array() else {
+        return Ok(out);
+    };
+    for item in items {
+        let validator = string_at(item, &["validator"])?;
+        out.push(HlStakingDelegation {
+            validator: Address::from_str(&validator)
+                .map_err(|e| sync_error(format!("validator address {validator}: {e}")))?,
+            amount: decimal_at(item, &["amount"])?,
+            locked_until_timestamp: value_at(item, &["lockedUntilTimestamp"])
+                .filter(|v| !v.is_null())
+                .and_then(Value::as_u64),
+        });
+    }
+    Ok(out)
+}
+
+fn parse_hl_vault_equities(vault_equities: &Value) -> Result<Vec<HlVaultEquity>, SyncError> {
+    let mut out = Vec::new();
+    let Some(items) = vault_equities.as_array() else {
+        return Ok(out);
+    };
+    for item in items {
+        let vault_address = string_at(item, &["vaultAddress"])?;
+        out.push(HlVaultEquity {
+            vault_address: Address::from_str(&vault_address)
+                .map_err(|e| sync_error(format!("vault address {vault_address}: {e}")))?,
+            equity: decimal_at(item, &["equity"])?,
+            locked_until_timestamp: value_at(item, &["lockedUntilTimestamp"])
+                .filter(|v| !v.is_null())
+                .and_then(Value::as_u64),
+        });
+    }
+    Ok(out)
+}
+
+fn parse_hl_borrow_lend_account(borrow_lend: &Value) -> Result<HlBorrowLendAccount, SyncError> {
+    let mut token_states = Vec::new();
+    if let Some(items) = value_at(borrow_lend, &["tokenToState"]).and_then(Value::as_array) {
+        for item in items {
+            let pair = item
+                .as_array()
+                .ok_or_else(|| sync_error("tokenToState item not array"))?;
+            let token = u32_from_value(
+                pair.first()
+                    .ok_or_else(|| sync_error("tokenToState item missing token"))?,
+                "borrow/lend token",
+            )?;
+            let state = pair
+                .get(1)
+                .ok_or_else(|| sync_error("tokenToState item missing state"))?;
+            token_states.push(HlBorrowLendTokenState {
+                token,
+                borrow: parse_hl_borrow_lend_balance(
+                    value_at(state, &["borrow"])
+                        .ok_or_else(|| sync_error("borrow/lend token missing borrow"))?,
+                )?,
+                supply: parse_hl_borrow_lend_balance(
+                    value_at(state, &["supply"])
+                        .ok_or_else(|| sync_error("borrow/lend token missing supply"))?,
+                )?,
+            });
+        }
+    }
+
+    Ok(HlBorrowLendAccount {
+        token_states,
+        health: value_at(borrow_lend, &["health"])
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        health_factor: value_at(borrow_lend, &["healthFactor"])
+            .filter(|v| !v.is_null())
+            .map(state_decimal_from_value)
+            .transpose()?,
+    })
+}
+
+fn parse_hl_borrow_lend_balance(balance: &Value) -> Result<HlBorrowLendBalance, SyncError> {
+    Ok(HlBorrowLendBalance {
+        basis: decimal_at(balance, &["basis"])?,
+        value: decimal_at(balance, &["value"])?,
+    })
+}
+
+fn decimal_at(obj: &Value, path: &[&str]) -> Result<Decimal, SyncError> {
+    state_decimal_from_value(
+        value_at(obj, path).ok_or_else(|| sync_error(format!("missing {}", path.join("."))))?,
+    )
+}
+
+fn u32_at(obj: &Value, path: &[&str]) -> Result<u32, SyncError> {
+    u32_from_value(
+        value_at(obj, path).ok_or_else(|| sync_error(format!("missing {}", path.join("."))))?,
+        &path.join("."),
+    )
+}
+
+fn u32_from_value(value: &Value, label: &str) -> Result<u32, SyncError> {
+    let raw = value
+        .as_u64()
+        .ok_or_else(|| sync_error(format!("{label} is not an unsigned integer")))?;
+    u32::try_from(raw).map_err(|e| sync_error(format!("{label} {raw}: {e}")))
 }
 
 fn payload_for_parser(
@@ -401,6 +669,11 @@ fn payload_for_parser(
             json!({ "type": "clearinghouseState", "user": hl_user(user) }),
             dex.as_deref(),
         )),
+        "hl_spot_account" => Ok(json!({ "type": "spotClearinghouseState", "user": hl_user(user) })),
+        "hl_staking_summary" => Ok(json!({ "type": "delegatorSummary", "user": hl_user(user) })),
+        "hl_staking_delegations" => Ok(json!({ "type": "delegations", "user": hl_user(user) })),
+        "hl_vault_equities" => Ok(json!({ "type": "userVaultEquities", "user": hl_user(user) })),
+        "hl_borrow_lend" => Ok(json!({ "type": "borrowLendUserState", "user": hl_user(user) })),
         "hl_fees" => Ok(json!({ "type": "userFees", "user": hl_user(user) })),
         "hl_l2_book" => {
             let Some(symbol) = market_symbol else {
@@ -1200,6 +1473,110 @@ mod tests {
     }
 
     #[test]
+    fn parses_non_aggregate_account_primitives_from_hyperliquid_payloads() {
+        let mut acct = HlAccount::default();
+        let spot = json!({
+            "balances": [
+                {
+                    "coin": "USDC",
+                    "token": 0,
+                    "total": "1125.961894",
+                    "hold": "1077.497057",
+                    "entryNtl": "0.0"
+                },
+                {
+                    "coin": "USDT0",
+                    "token": 268,
+                    "total": "0.446687",
+                    "hold": "0.0",
+                    "entryNtl": "0.446687"
+                }
+            ],
+            "tokenToAvailableAfterMaintenance": [[0, "48.464837"], [268, "0.446687"]]
+        });
+        let staking_summary = json!({
+            "delegated": "0.0",
+            "undelegated": "0.0",
+            "totalPendingWithdrawal": "46.84529183",
+            "nPendingWithdrawals": 1
+        });
+        let delegations = json!([{
+            "validator": "0x2222222222222222222222222222222222222222",
+            "amount": "47.0",
+            "lockedUntilTimestamp": 1_735_466_781_353_u64
+        }]);
+        let vaults = json!([{
+            "vaultAddress": "0x3333333333333333333333333333333333333333",
+            "equity": "742500.082809",
+            "lockedUntilTimestamp": 1_741_132_800_000_u64
+        }]);
+        let borrow_lend = json!({
+            "tokenToState": [[
+                0,
+                {
+                    "borrow": { "basis": "0.0", "value": "0.0" },
+                    "supply": {
+                        "basis": "44.69295862",
+                        "value": "44.69692314"
+                    }
+                }
+            ]],
+            "health": "healthy",
+            "healthFactor": null
+        });
+
+        apply_hl_account_primitives(
+            &mut acct,
+            &spot,
+            &staking_summary,
+            &delegations,
+            &vaults,
+            &borrow_lend,
+        )
+        .unwrap();
+
+        assert_eq!(acct.spot_balances.len(), 2);
+        assert_eq!(acct.spot_balances[0].coin, "USDC");
+        assert_eq!(acct.spot_balances[0].token, 0);
+        assert_eq!(acct.spot_balances[0].total, Decimal::new("1125.961894"));
+        assert_eq!(acct.spot_balances[0].hold, Decimal::new("1077.497057"));
+        assert_eq!(acct.spot_balances[0].entry_ntl, Decimal::new("0"));
+        assert_eq!(
+            acct.spot_balances[0].available_after_maintenance,
+            Some(Decimal::new("48.464837"))
+        );
+        assert_eq!(acct.spot_balances[1].coin, "USDT0");
+        assert_eq!(
+            acct.spot_balances[1].available_after_maintenance,
+            Some(Decimal::new("0.446687"))
+        );
+
+        let staking = acct.staking.as_ref().unwrap();
+        assert_eq!(
+            staking.total_pending_withdrawal,
+            Decimal::new("46.84529183")
+        );
+        assert_eq!(staking.n_pending_withdrawals, 1);
+        assert_eq!(staking.delegations.len(), 1);
+        assert_eq!(staking.delegations[0].amount, Decimal::new("47"));
+
+        assert_eq!(acct.vault_equities.len(), 1);
+        assert_eq!(acct.vault_equities[0].equity, Decimal::new("742500.082809"));
+        assert_eq!(
+            acct.vault_equities[0].locked_until_timestamp,
+            Some(1_741_132_800_000_u64)
+        );
+
+        let borrow_lend = acct.borrow_lend.as_ref().unwrap();
+        assert_eq!(borrow_lend.health.as_deref(), Some("healthy"));
+        assert_eq!(borrow_lend.token_states.len(), 1);
+        assert_eq!(
+            borrow_lend.token_states[0].supply.value,
+            Decimal::new("44.69692314")
+        );
+    }
+
+    #[test]
     fn extracts_hyperliquid_live_values_from_info_payloads() {
         let mids = json!({ "BTC": "60001" });
         assert_eq!(parse_all_mids_value(&mids, "BTC").unwrap(), json!("60001"));
@@ -1300,6 +1677,42 @@ mod tests {
         assert_eq!(
             payload_for_parser(endpoint, "hl_l2_book", &user, Some("xyz:SPCX")).unwrap(),
             json!({ "type": "l2Book", "coin": "xyz:SPCX" })
+        );
+        assert_eq!(
+            payload_for_parser(endpoint, "hl_spot_account", &user, Some("xyz:SPCX")).unwrap(),
+            json!({
+                "type": "spotClearinghouseState",
+                "user": "0x2222222222222222222222222222222222222222"
+            })
+        );
+        assert_eq!(
+            payload_for_parser(endpoint, "hl_staking_summary", &user, Some("xyz:SPCX")).unwrap(),
+            json!({
+                "type": "delegatorSummary",
+                "user": "0x2222222222222222222222222222222222222222"
+            })
+        );
+        assert_eq!(
+            payload_for_parser(endpoint, "hl_staking_delegations", &user, Some("xyz:SPCX"))
+                .unwrap(),
+            json!({
+                "type": "delegations",
+                "user": "0x2222222222222222222222222222222222222222"
+            })
+        );
+        assert_eq!(
+            payload_for_parser(endpoint, "hl_vault_equities", &user, Some("xyz:SPCX")).unwrap(),
+            json!({
+                "type": "userVaultEquities",
+                "user": "0x2222222222222222222222222222222222222222"
+            })
+        );
+        assert_eq!(
+            payload_for_parser(endpoint, "hl_borrow_lend", &user, Some("xyz:SPCX")).unwrap(),
+            json!({
+                "type": "borrowLendUserState",
+                "user": "0x2222222222222222222222222222222222222222"
+            })
         );
         assert_eq!(
             payload_for_parser(

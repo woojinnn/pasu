@@ -255,6 +255,37 @@ mod tests {
                             "asset_index": 0, "is_buy": true, "price": "60000",
                             "size": "0.1", "reduce_only": false, "tif": "gtc"
                         }],
+                        "spot_balances": [{
+                            "coin": "USDC",
+                            "token": 0,
+                            "total": "1125.961894",
+                            "hold": "1077.497057",
+                            "entry_ntl": "0",
+                            "available_after_maintenance": "48.464837"
+                        }],
+                        "staking": {
+                            "delegated": "0",
+                            "undelegated": "0",
+                            "total_pending_withdrawal": "46.84529183",
+                            "n_pending_withdrawals": 1,
+                            "delegations": []
+                        },
+                        "vault_equities": [{
+                            "vault_address": "0x3333333333333333333333333333333333333333",
+                            "equity": "742500.082809",
+                            "locked_until_timestamp": 1_741_132_800_000_u64
+                        }],
+                        "borrow_lend": {
+                            "token_states": [{
+                                "token": 0,
+                                "borrow": { "basis": "0", "value": "0" },
+                                "supply": {
+                                    "basis": "44.69295862",
+                                    "value": "44.69692314"
+                                }
+                            }],
+                            "health": "healthy"
+                        },
                         "leverage_settings": [],
                         "agents": []
                     }),
@@ -267,6 +298,10 @@ mod tests {
             assert_eq!(rows[0].kind, "hyperliquid_account");
             // Fractional size survives the JSON column unchanged.
             assert!(rows[0].data_json.contains("\"0.1\""));
+            assert!(rows[0].data_json.contains("spot_balances"));
+            assert!(rows[0].data_json.contains("total_pending_withdrawal"));
+            assert!(rows[0].data_json.contains("vault_equities"));
+            assert!(rows[0].data_json.contains("borrow_lend"));
             Ok(())
         })
         .unwrap();

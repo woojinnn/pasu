@@ -11,7 +11,11 @@ pub mod perp;
 pub mod vesting;
 
 pub use airdrop::{AirdropClaim, ClaimStatus, MerkleProof};
-pub use hyperliquid::{HlAccount, HlAgentApproval, HlLeverageSetting, HlOpenOrder, HlPosition};
+pub use hyperliquid::{
+    HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance, HlBorrowLendTokenState,
+    HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance, HlStakingAccount,
+    HlStakingDelegation, HlVaultEquity,
+};
 pub use launchpad::LaunchpadAllocation;
 pub use lending::{EModeCategory, LendingAccount};
 pub use perp::{MarginMode, PerpPosition, PerpSide};

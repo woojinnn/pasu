@@ -64,10 +64,11 @@ pub use pending::{
     PendingTx, PerpOrderKind,
 };
 pub use position::{
-    AirdropClaim, ClaimStatus, EModeCategory, HlAccount, HlAgentApproval, HlLeverageSetting,
-    HlOpenOrder, HlPosition, LaunchpadAllocation, LendingAccount, MarginMode, MerkleProof,
-    PerpPosition, PerpSide, Position, PositionId, PositionKind, VestCurve, VestSchedule,
-    VestingSchedule,
+    AirdropClaim, ClaimStatus, EModeCategory, HlAccount, HlAgentApproval, HlBorrowLendAccount,
+    HlBorrowLendBalance, HlBorrowLendTokenState, HlLeverageSetting, HlOpenOrder, HlPosition,
+    HlSpotBalance, HlStakingAccount, HlStakingDelegation, HlVaultEquity, LaunchpadAllocation,
+    LendingAccount, MarginMode, MerkleProof, PerpPosition, PerpSide, Position, PositionId,
+    PositionKind, VestCurve, VestSchedule, VestingSchedule,
 };
 pub use primitives::{
     Address, BasisPoints, BlockHeight, ChainId, Decimal, Duration, MarketRef, PoolRef, Price,

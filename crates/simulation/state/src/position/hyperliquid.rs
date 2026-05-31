@@ -36,6 +36,20 @@ pub struct HlAccount {
     pub positions: Vec<HlPosition>,
     /// Resting (unfilled) open orders — order intents.
     pub open_orders: Vec<HlOpenOrder>,
+    /// Spot-account token balances from `spotClearinghouseState`.
+    #[serde(default)]
+    pub spot_balances: Vec<HlSpotBalance>,
+    /// Staking-account primitive state from `delegatorSummary` + `delegations`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub staking: Option<HlStakingAccount>,
+    /// Vault deposit equities from `userVaultEquities`.
+    #[serde(default)]
+    pub vault_equities: Vec<HlVaultEquity>,
+    /// Borrow/lend primitive state from `borrowLendUserState`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub borrow_lend: Option<HlBorrowLendAccount>,
     /// Per-asset leverage / margin-mode settings.
     pub leverage_settings: Vec<HlLeverageSetting>,
     /// Delegated agent (API) wallets.
@@ -49,6 +63,10 @@ impl Default for HlAccount {
             pending_outflow: Decimal::new("0"),
             positions: Vec::new(),
             open_orders: Vec::new(),
+            spot_balances: Vec::new(),
+            staking: None,
+            vault_equities: Vec::new(),
+            borrow_lend: None,
             leverage_settings: Vec::new(),
             agents: Vec::new(),
         }
@@ -119,6 +137,110 @@ pub struct HlOpenOrder {
     pub is_position_tpsl: Option<bool>,
 }
 
+/// A spot-account token balance.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlSpotBalance {
+    /// Human-readable token symbol from Hyperliquid, e.g. `"USDC"` or `"HYPE"`.
+    pub coin: String,
+    /// `HyperCore` token index.
+    pub token: u32,
+    /// Total token balance.
+    pub total: Decimal,
+    /// Amount reserved by open spot orders or maintenance constraints.
+    pub hold: Decimal,
+    /// Venue-provided entry notional for the token balance.
+    pub entry_ntl: Decimal,
+    /// Available balance after maintenance, keyed by token index when supplied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub available_after_maintenance: Option<Decimal>,
+}
+
+/// A staking-account snapshot.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlStakingAccount {
+    /// HYPE currently delegated to validators.
+    pub delegated: Decimal,
+    /// HYPE in the staking account but not delegated.
+    pub undelegated: Decimal,
+    /// HYPE queued for withdrawal from staking.
+    pub total_pending_withdrawal: Decimal,
+    /// Number of pending withdrawal entries.
+    pub n_pending_withdrawals: u32,
+    /// Per-validator delegation positions.
+    pub delegations: Vec<HlStakingDelegation>,
+}
+
+/// A single validator delegation.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlStakingDelegation {
+    /// Validator address.
+    #[tsify(type = "string")]
+    pub validator: Address,
+    /// Delegated HYPE amount.
+    pub amount: Decimal,
+    /// Millisecond timestamp until which the delegation is locked, if present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub locked_until_timestamp: Option<u64>,
+}
+
+/// A user's equity in a vault.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlVaultEquity {
+    /// Vault address.
+    #[tsify(type = "string")]
+    pub vault_address: Address,
+    /// Venue-reported user equity in the vault.
+    pub equity: Decimal,
+    /// Millisecond timestamp at which the equity unlocks, if supplied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub locked_until_timestamp: Option<u64>,
+}
+
+/// Borrow/lend account primitives.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlBorrowLendAccount {
+    /// Per-token borrow/supply state.
+    pub token_states: Vec<HlBorrowLendTokenState>,
+    /// Venue health string, e.g. `"healthy"`, when supplied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub health: Option<String>,
+    /// Venue health factor, if non-null.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub health_factor: Option<Decimal>,
+}
+
+/// Borrow/lend state for one token.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlBorrowLendTokenState {
+    /// `HyperCore` token index.
+    pub token: u32,
+    /// Borrow primitive.
+    pub borrow: HlBorrowLendBalance,
+    /// Supply primitive.
+    pub supply: HlBorrowLendBalance,
+}
+
+/// Borrow/lend side amounts for one token.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlBorrowLendBalance {
+    /// Principal/basis amount.
+    pub basis: Decimal,
+    /// Present value amount.
+    pub value: Decimal,
+}
+
 /// A per-asset leverage / margin-mode setting.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -175,6 +297,45 @@ mod tests {
                 trigger_condition: Some("Price below 185".to_owned()),
                 is_position_tpsl: Some(true),
             }],
+            spot_balances: vec![HlSpotBalance {
+                coin: "USDC".to_owned(),
+                token: 0,
+                total: Decimal::new("1125.961894"),
+                hold: Decimal::new("1077.497057"),
+                entry_ntl: Decimal::new("0.0"),
+                available_after_maintenance: Some(Decimal::new("48.464837")),
+            }],
+            staking: Some(HlStakingAccount {
+                delegated: Decimal::new("0.0"),
+                undelegated: Decimal::new("0.0"),
+                total_pending_withdrawal: Decimal::new("46.84529183"),
+                n_pending_withdrawals: 1,
+                delegations: vec![HlStakingDelegation {
+                    validator: Address::from([0x22; 20]),
+                    amount: Decimal::new("47.0"),
+                    locked_until_timestamp: Some(1_735_466_781_353_u64),
+                }],
+            }),
+            vault_equities: vec![HlVaultEquity {
+                vault_address: Address::from([0x33; 20]),
+                equity: Decimal::new("742500.082809"),
+                locked_until_timestamp: Some(1_741_132_800_000_u64),
+            }],
+            borrow_lend: Some(HlBorrowLendAccount {
+                token_states: vec![HlBorrowLendTokenState {
+                    token: 0,
+                    borrow: HlBorrowLendBalance {
+                        basis: Decimal::new("0.0"),
+                        value: Decimal::new("0.0"),
+                    },
+                    supply: HlBorrowLendBalance {
+                        basis: Decimal::new("44.69295862"),
+                        value: Decimal::new("44.69692314"),
+                    },
+                }],
+                health: Some("healthy".to_owned()),
+                health_factor: None,
+            }),
             leverage_settings: vec![HlLeverageSetting {
                 asset_index: 0,
                 is_cross: true,
@@ -202,6 +363,10 @@ mod tests {
         assert_eq!(acct.pending_outflow, Decimal::new("0"));
         assert!(acct.positions.is_empty());
         assert!(acct.open_orders.is_empty());
+        assert!(acct.spot_balances.is_empty());
+        assert!(acct.staking.is_none());
+        assert!(acct.vault_equities.is_empty());
+        assert!(acct.borrow_lend.is_none());
         assert!(acct.leverage_settings.is_empty());
         assert!(acct.agents.is_empty());
     }
