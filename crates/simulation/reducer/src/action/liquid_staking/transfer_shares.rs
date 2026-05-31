@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use simulation_state::primitives::{Address, U256};
+use simulation_state::LiveField;
 
 use super::StakingVenue;
 
@@ -29,4 +30,16 @@ pub struct TransferSharesAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional, type = "string")]
     pub from: Option<Address>,
+    /// Live inputs fetched at simulation time.
+    pub live_inputs: TransferSharesLiveInputs,
+}
+
+/// Live-fetched inputs for a `TransferSharesAction`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct TransferSharesLiveInputs {
+    /// Pooled ETH (stETH balance) the transferred shares correspond to:
+    /// stETH `getPooledEthByShares(shares)`. Turns the abstract `shares` unit
+    /// into the stETH amount the recipient actually receives.
+    pub pooled_eth: LiveField<U256>,
 }

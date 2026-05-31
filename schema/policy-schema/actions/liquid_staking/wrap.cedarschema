@@ -2,7 +2,8 @@
 // non-rebasing wrapper (wstETH). Models wstETH `wrap(uint256 _stETHAmount)`.
 //
 // Rust source: `crates/simulation/reducer/src/action/liquid_staking/wrap.rs`
-// (`WrapAction`). No LiveInputs.
+// (`WrapAction` + `WrapLiveInputs`). `LiveField<T>` is inlined as the underlying
+// `T` at the policy layer (source/ttl/synced_at metadata is not exposed).
 
 namespace LiquidStaking {
   type WrapContext = {
@@ -10,6 +11,9 @@ namespace LiquidStaking {
     venue: StakingVenue,
     // Amount of the rebasing token to wrap (stETH units), U256 hex.
     amount: String,
+    // wstETH the wrap is expected to mint (getWstETHByStETH), U256 hex.
+    // Host-populated live field.
+    expectedWsteth: String,
     custom?: WrapCustomContext,
   };
 

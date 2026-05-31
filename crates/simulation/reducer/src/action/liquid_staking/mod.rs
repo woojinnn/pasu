@@ -3,9 +3,11 @@
 //!
 //! New domain (extension-guide axis 1). Mirrors the `lending` layout: a venue
 //! enum (`StakingVenue`) + per-action structs + `action_tag()` / `venue_name()`.
-//! Actions carry **no** `LiveField` inputs yet (cf. `lending::SetAuthorization`)
-//! — the `ActionBody` is a faithful static decode of the on-chain intent;
-//! rate/APR/exchange-rate enrichment is deferred to a later pass.
+//! The exchange-rate conversions (`wrap` / `unwrap` / `transfer_shares`) carry a
+//! `LiveField` input each — the host fills the wstETH/stETH/pooled-ETH amount so
+//! the user sees the concrete value behind the abstract wrapper/shares unit. The
+//! remaining actions (`stake` / `request_withdrawal` / `claim_withdrawal`) are
+//! still faithful static decodes; their enrichment is deferred to a later pass.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;

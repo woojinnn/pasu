@@ -2,7 +2,8 @@
 // rebasing token (stETH). Models wstETH `unwrap(uint256 _wstETHAmount)`.
 //
 // Rust source: `crates/simulation/reducer/src/action/liquid_staking/unwrap.rs`
-// (`UnwrapAction`). No LiveInputs.
+// (`UnwrapAction` + `UnwrapLiveInputs`). `LiveField<T>` is inlined as the
+// underlying `T` at the policy layer (source/ttl/synced_at metadata is not exposed).
 
 namespace LiquidStaking {
   type UnwrapContext = {
@@ -10,6 +11,9 @@ namespace LiquidStaking {
     venue: StakingVenue,
     // Amount of the wrapper to unwrap (wstETH units), U256 hex.
     amount: String,
+    // stETH the unwrap is expected to return (getStETHByWstETH), U256 hex.
+    // Host-populated live field.
+    expectedSteth: String,
     custom?: UnwrapCustomContext,
   };
 

@@ -567,6 +567,39 @@ fn lido_wrap_amount_decodes() {
     );
 }
 
+/// Field-level golden: a real wstETH `wrap` must decode with the `expected_wsteth`
+/// live-input plumbing wired end-to-end — the manifest `onchain_view` source
+/// (`getWstETHByStETH(uint256)`) survives the action_builder → reducer-struct →
+/// env serialization so the host can later fill the concrete wstETH amount.
+///
+/// The VALUE is host-populated (skeleton `0` here), so this pins the SOURCE view
+/// fn, not the value: a manifest that drops the live_inputs block, mis-names the
+/// view, or whose `WrapLiveInputs` field stops round-tripping would fail here
+/// while `corpus_replay` (verdict + domain only) stays green.
+#[test]
+fn lido_wrap_expected_wsteth_live_input_is_wired() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Same real mainnet wrap tx 0x3422ad3f… as `lido_wrap_amount_decodes`.
+    const TO: &str = "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0";
+    const CALLDATA: &str =
+        "0xea598cb0000000000000000000000000000000000000000000000000b3b26499afaf3f69";
+
+    let env = harness::route::route_calldata(1, TO, "0xea598cb0", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let live = find_object_by_key(&env, "expected_wsteth")
+        .expect("wrap body carries the expected_wsteth live field");
+    assert_eq!(
+        find_string_field(live, "function").as_deref(),
+        Some("getWstETHByStETH(uint256)"),
+        "expected_wsteth onchain_view source fn mis-wired: {env}"
+    );
+}
+
 /// Recursively find the first object containing `"<field>": "<expected>"`.
 fn find_object_with_string_field<'a>(
     v: &'a serde_json::Value,

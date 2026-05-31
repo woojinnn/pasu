@@ -938,6 +938,16 @@ fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -
         | (Some("lending"), Some("disable_collateral"), "user_state_before") => {
             lending_user_state_skeleton()
         }
+        // -------- Liquid Staking (Lido) --------
+        //
+        // Single-`uint256` exchange-rate views. Each `LiveField<U256>` rejects
+        // `null` (the `U256` deserialiser); the host fills the real value at
+        // sync time, so the skeleton is a `"0"` placeholder.
+        (Some("liquid_staking"), Some("wrap"), "expected_wsteth") => JsonValue::String("0".into()),
+        (Some("liquid_staking"), Some("unwrap"), "expected_steth") => JsonValue::String("0".into()),
+        (Some("liquid_staking"), Some("transfer_shares"), "pooled_eth") => {
+            JsonValue::String("0".into())
+        }
         // Fallback — null lets the per-field type's `Option<T>` (if any) take
         // over; for stricter types serde reports a clear error pointing at the
         // missing catalog entry.

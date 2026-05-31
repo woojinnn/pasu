@@ -35,6 +35,17 @@
         }
       }
     },
-    "live_inputs": {}
+    "live_inputs": {
+      "pooled_eth": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getPooledEthByShares(uint256)",
+          "decoder_id": "lido_pooled_eth_by_shares"
+        },
+        "ttl_s": 30
+      }
+    }
   }
 }

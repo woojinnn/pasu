@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use simulation_state::primitives::U256;
+use simulation_state::LiveField;
 
 use super::StakingVenue;
 
@@ -19,4 +20,15 @@ pub struct WrapAction {
     /// Amount of the rebasing token to wrap (stETH units).
     #[tsify(type = "string")]
     pub amount: U256,
+    /// Live inputs fetched at simulation time.
+    pub live_inputs: WrapLiveInputs,
+}
+
+/// Live-fetched inputs for a `WrapAction`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct WrapLiveInputs {
+    /// wstETH the wrap is expected to mint: wstETH `getWstETHByStETH(amount)`.
+    /// Lets the user see the concrete wrapper amount behind the abstract input.
+    pub expected_wsteth: LiveField<U256>,
 }

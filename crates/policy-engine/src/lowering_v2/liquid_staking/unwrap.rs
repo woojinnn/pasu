@@ -8,7 +8,10 @@ use super::super::common::cedar::u256_hex;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::lower_staking_venue;
 
-/// Lower a `LiquidStaking::Unwrap` action. No live inputs.
+/// Lower a `LiquidStaking::Unwrap` action.
+///
+/// `expectedSteth` is the host-populated live field — the stETH the unwrap
+/// returns (`getStETHByWstETH(amount)`), shown so the user sees the output.
 ///
 /// # Errors
 ///
@@ -23,6 +26,10 @@ pub(crate) fn lower(
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_staking_venue(&action.venue));
     m.insert("amount".into(), Value::String(u256_hex(action.amount)));
+    m.insert(
+        "expectedSteth".into(),
+        Value::String(u256_hex(action.live_inputs.expected_steth.value)),
+    );
 
     Ok(ctx.lowered(r#"LiquidStaking::Action::"Unwrap""#, Value::Object(m)))
 }
@@ -30,17 +37,22 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use simulation_reducer::action::liquid_staking::{LiquidStakingAction, UnwrapAction};
+    use simulation_reducer::action::liquid_staking::{
+        LiquidStakingAction, UnwrapAction, UnwrapLiveInputs,
+    };
     use simulation_reducer::action::ActionBody;
     use simulation_state::primitives::U256;
 
-    use super::super::test_support::{lido_venue, onchain_meta};
+    use super::super::test_support::{lido_venue, live_u256, onchain_meta};
 
     #[test]
     fn unwrap_conforms() {
         let body = ActionBody::LiquidStaking(LiquidStakingAction::Unwrap(UnwrapAction {
             venue: lido_venue(),
             amount: U256::from(250_000_000_000_000_000u64),
+            live_inputs: UnwrapLiveInputs {
+                expected_steth: live_u256(),
+            },
         }));
         super::super::test_support::assert_conforms("unwrap", &body, &onchain_meta());
     }

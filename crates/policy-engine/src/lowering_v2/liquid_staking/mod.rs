@@ -92,6 +92,12 @@ pub(crate) mod test_support {
         }
     }
 
+    /// Skeleton `LiveField<U256>` for conform tests — host fills the value in
+    /// production; here `U256::ZERO` exercises the host-populated live-field path.
+    pub(crate) fn live_u256() -> LiveField<U256> {
+        LiveField::new(U256::ZERO, oracle_src(), now())
+    }
+
     /// stETH `TokenRef` on Ethereum mainnet.
     pub(crate) fn steth() -> TokenRef {
         TokenRef {

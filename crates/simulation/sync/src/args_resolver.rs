@@ -16,10 +16,11 @@
 //! 나머지는 후속 패스. 기본값 = 빈 args (인자 없는 함수).
 
 use simulation_reducer::action::lending::LendingAction;
+use simulation_reducer::action::liquid_staking::LiquidStakingAction;
 use simulation_reducer::action::{Action, ActionBody};
 use simulation_state::WalletState;
 
-use crate::fetchers::decoder::encode_address;
+use crate::fetchers::decoder::{encode_address, encode_u256};
 use crate::walker::ActionSlot;
 
 /// 한 slot 이 필요로 하는 ABI 인자를 인코딩. 인자 없는 함수면 빈 벡터.
@@ -52,6 +53,30 @@ pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) ->
         // ─── Aave Supply (같은 패턴, 후속에서 wire-up) ───
         // ActionSlot::LendingSupplyReserveState  → getReserveData(asset)
         // ActionSlot::LendingSupplyUserState     → getUserAccountData(user)
+
+        // ─── Lido Liquid Staking (단일 uint256 환산 view) ───
+        // wstETH getWstETHByStETH(amount) — wrap 이 받을 wstETH
+        ActionSlot::LiquidStakingWrapExpectedWsteth => {
+            if let ActionBody::LiquidStaking(LiquidStakingAction::Wrap(w)) = &action.body {
+                return encode_u256(w.amount).to_vec();
+            }
+            Vec::new()
+        }
+        // wstETH getStETHByWstETH(amount) — unwrap 이 돌려줄 stETH
+        ActionSlot::LiquidStakingUnwrapExpectedSteth => {
+            if let ActionBody::LiquidStaking(LiquidStakingAction::Unwrap(u)) = &action.body {
+                return encode_u256(u.amount).to_vec();
+            }
+            Vec::new()
+        }
+        // stETH getPooledEthByShares(shares) — 전송 shares 의 stETH 환산
+        ActionSlot::LiquidStakingTransferSharesPooledEth => {
+            if let ActionBody::LiquidStaking(LiquidStakingAction::TransferShares(t)) = &action.body
+            {
+                return encode_u256(t.shares).to_vec();
+            }
+            Vec::new()
+        }
 
         // 그 외 slot 은 args 없음 (Chainlink, no-arg 함수 등)
         _ => Vec::new(),

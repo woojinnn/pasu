@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "lido/steth/transferSharesFrom@1.0.0",
   "manifest_path": "manifests/lido/steth/transferSharesFrom@1.0.0.json",
-  "bundle_sha256": "0xf69b67f3bba1773909256b5eacbcae08d8733c4317f871536588f893a7ac2034",
+  "bundle_sha256": "0x642cd4de89adc91a686b2e434b32946bba5521baa7f30dd7b8f8c2794306c621",
   "bundle": {
     "type": "adapter_action",
     "id": "lido/steth/transferSharesFrom@1.0.0",
@@ -56,7 +56,18 @@
           }
         }
       },
-      "live_inputs": {}
+      "live_inputs": {
+        "pooled_eth": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getPooledEthByShares(uint256)",
+            "decoder_id": "lido_pooled_eth_by_shares"
+          },
+          "ttl_s": 30
+        }
+      }
     }
   }
 }

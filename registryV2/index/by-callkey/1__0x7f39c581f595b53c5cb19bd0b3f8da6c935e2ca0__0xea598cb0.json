@@ -2,7 +2,7 @@
   "matched": true,
   "bundle_id": "lido/wsteth/wrap@1.0.0",
   "manifest_path": "manifests/lido/wsteth/wrap@1.0.0.json",
-  "bundle_sha256": "0x3604575b375a311e1418be6ddca3be5712250afb939b29332e9b932a27477629",
+  "bundle_sha256": "0x8c3fd06d85d60fbc08c5bae74baf6b0a3ba6e02a65075379a7d1a75460dbc59c",
   "bundle": {
     "type": "adapter_action",
     "id": "lido/wsteth/wrap@1.0.0",
@@ -46,7 +46,18 @@
           }
         }
       },
-      "live_inputs": {}
+      "live_inputs": {
+        "expected_wsteth": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getWstETHByStETH(uint256)",
+            "decoder_id": "lido_wsteth_by_steth"
+          },
+          "ttl_s": 30
+        }
+      }
     }
   }
 }

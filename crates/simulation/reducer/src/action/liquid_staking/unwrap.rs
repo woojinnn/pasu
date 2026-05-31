@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use simulation_state::primitives::U256;
+use simulation_state::LiveField;
 
 use super::StakingVenue;
 
@@ -19,4 +20,15 @@ pub struct UnwrapAction {
     /// Amount of the wrapper to unwrap (wstETH units).
     #[tsify(type = "string")]
     pub amount: U256,
+    /// Live inputs fetched at simulation time.
+    pub live_inputs: UnwrapLiveInputs,
+}
+
+/// Live-fetched inputs for an `UnwrapAction`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct UnwrapLiveInputs {
+    /// stETH the unwrap is expected to return: wstETH `getStETHByWstETH(amount)`.
+    /// Lets the user see the concrete rebasing-token amount behind the input.
+    pub expected_steth: LiveField<U256>,
 }

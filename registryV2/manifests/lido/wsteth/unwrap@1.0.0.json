@@ -31,6 +31,17 @@
         }
       }
     },
-    "live_inputs": {}
+    "live_inputs": {
+      "expected_steth": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getStETHByWstETH(uint256)",
+          "decoder_id": "lido_steth_by_wsteth"
+        },
+        "ttl_s": 30
+      }
+    }
   }
 }

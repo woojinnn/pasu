@@ -174,6 +174,11 @@ pub enum ActionSlot {
     PerpPlaceStopMarkPrice,
     PerpPlaceStopUserAccountState,
     PerpClaimFundingClaimable,
+
+    // ───────── Liquid Staking ─────────
+    LiquidStakingWrapExpectedWsteth,
+    LiquidStakingUnwrapExpectedSteth,
+    LiquidStakingTransferSharesPooledEth,
 }
 
 #[derive(Clone, Debug)]
