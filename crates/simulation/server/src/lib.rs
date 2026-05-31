@@ -33,5 +33,6 @@
 
 pub mod app;
 pub mod dto;
+pub mod facts;
 pub mod handler;
 pub mod store;

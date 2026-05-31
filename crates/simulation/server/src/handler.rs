@@ -106,20 +106,41 @@ pub async fn evaluate(
 
     store.save(&state).await?;
 
-    // TODO(prep): enrichment-call execution. `req.call_specs` (the manifest's
-    // planned enrichment calls) must be dispatched here to populate
-    // `PolicyRequest::results` keyed by `CallSpec::call_id` — the Rust
-    // equivalent of the Node.js policy-rpc host-capabilities / method-dispatch
-    // layer. That executor (method registry + per-method enrichment) does not
-    // exist in Rust yet, so `results` is empty for now and `optional` call
-    // failures are not yet surfaced as diagnostics.
-    let results = BTreeMap::new();
+    // Enrichment-call execution: dispatch each planned `call_spec` against the
+    // simulated `state_after` (the *state/reducer* facts this sim-server owns;
+    // oracle/external facts belong to the separate policy-rpc host). Each result
+    // is keyed by `call_id` for the extension's `evaluate_action_v2_json`
+    // materialize step. A failed call is surfaced as a diagnostic and simply
+    // absent from `results` — the extension's materialize layer then applies the
+    // v2 fail-open contract (optional → skip; required → SystemFail), so the
+    // server stays fail-open and never decides the verdict.
+    let mut results = BTreeMap::new();
+    let mut diagnostics = Vec::new();
+    for spec in &req.call_specs {
+        match crate::facts::dispatch(&spec.method, &spec.params, &state) {
+            Ok(value) => {
+                results.insert(spec.call_id.clone(), value);
+            }
+            Err(err) => {
+                diagnostics.push(Diagnostic {
+                    level: if spec.optional { "warn" } else { "error" }.to_owned(),
+                    message: format!("enrichment call `{}` failed: {err}", spec.call_id),
+                    call_id: Some(spec.call_id.clone()),
+                });
+            }
+        }
+    }
 
     let note = if req.envelopes.is_empty() {
         "simulated 0 envelopes (state echoed)".to_owned()
     } else {
         format!("simulated {} envelope(s)", req.envelopes.len())
     };
+    diagnostics.push(Diagnostic {
+        level: "info".to_owned(),
+        message: note,
+        call_id: None,
+    });
 
     Ok(EvaluateResponse {
         policy_request: PolicyRequest {
@@ -129,11 +150,7 @@ pub async fn evaluate(
             state_after: state,
             results,
         },
-        diagnostics: vec![Diagnostic {
-            level: "info".to_owned(),
-            message: note,
-            call_id: None,
-        }],
+        diagnostics,
     })
 }
 
@@ -144,10 +161,10 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::{Address, BlockHeight, ChainId, Time};
+    use simulation_state::primitives::{Address, BlockHeight, ChainId, Time, U256};
     use simulation_state::{RequestKind, WalletId, WalletState};
 
-    use crate::dto::EvaluateRequest;
+    use crate::dto::{CallSpec, EvaluateRequest};
     use crate::store::InMemoryWalletStore;
 
     fn sample_wallet_id() -> WalletId {
@@ -217,5 +234,105 @@ mod tests {
         let resp = evaluate(&store, empty_envelope_request()).await.unwrap();
         assert_eq!(resp.policy_request.state_before, WalletState::new(id));
         assert!(resp.policy_request.deltas.is_empty());
+    }
+
+    const GEN01_TOKEN: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    const GEN01_SPENDER: &str = "0x00000000000000000000000000000000deadbeef";
+
+    /// Seed a wallet holding the token with an UNLIMITED ERC20 approval to a
+    /// spender, then `/evaluate` with the GEN-01 `approval-shape` `call_spec` and
+    /// confirm the executed result reports `isUnlimited == true` keyed by
+    /// `call_id`. This exercises the full handler enrichment path (simulate →
+    /// dispatch facts → results) the route serves.
+    #[tokio::test]
+    async fn evaluate_executes_gen01_approval_fact_against_seeded_state() {
+        use simulation_state::approval::AllowanceSpec;
+
+        let store = InMemoryWalletStore::new();
+        let mut state = WalletState::new(sample_wallet_id());
+        let chain = ChainId::ethereum_mainnet();
+        let token = Address::from_str(GEN01_TOKEN).unwrap();
+        state.approvals.erc20.insert(
+            (chain.clone(), token),
+            [(
+                Address::from_str(GEN01_SPENDER).unwrap(),
+                AllowanceSpec::unlimited(Time::from_unix(1_700_000_000)),
+            )]
+            .into_iter()
+            .collect(),
+        );
+        store.seed(state);
+
+        let max_hex = format!("{:#x}", U256::MAX);
+        let req = EvaluateRequest {
+            wallet_id: sample_wallet_id(),
+            envelopes: Vec::new(),
+            eval_context: simulation_state::EvalContext::new(
+                chain.clone(),
+                Time::from_unix(1_700_000_000),
+                RequestKind::Transaction,
+            ),
+            call_specs: vec![CallSpec {
+                manifest_id: "unlimited-approval-deny".to_owned(),
+                call_id: "approval-shape".to_owned(),
+                method: "approval.unlimited_over_balance".to_owned(),
+                params: serde_json::json!({
+                    "chain_id": chain.to_string(),
+                    "owner": "0x000000000000000000000000000000000000a01c",
+                    "token": { "key": { "standard": "erc20", "chain": chain.to_string(), "address": GEN01_TOKEN } },
+                    "spender": GEN01_SPENDER,
+                    "amount": max_hex,
+                }),
+                outputs: Vec::new(),
+                optional: false,
+            }],
+        };
+
+        let resp = evaluate(&store, req).await.unwrap();
+        let result = resp
+            .policy_request
+            .results
+            .get("approval-shape")
+            .expect("approval-shape result present");
+        assert_eq!(result["isUnlimited"], serde_json::json!(true));
+        // The over-balance score is a 4-dp decimal string.
+        assert!(result["amountOverBalance"].is_string());
+    }
+
+    /// An UNKNOWN enrichment method does not fail the request: the result is
+    /// absent and the failure is surfaced as a diagnostic (fail-open — the
+    /// extension's materialize layer decides required-vs-optional).
+    #[tokio::test]
+    async fn evaluate_surfaces_unknown_method_as_diagnostic() {
+        let store = InMemoryWalletStore::new();
+        store.seed(WalletState::new(sample_wallet_id()));
+
+        let chain = ChainId::ethereum_mainnet();
+        let req = EvaluateRequest {
+            wallet_id: sample_wallet_id(),
+            envelopes: Vec::new(),
+            eval_context: simulation_state::EvalContext::new(
+                chain,
+                Time::from_unix(1_700_000_000),
+                RequestKind::Transaction,
+            ),
+            call_specs: vec![CallSpec {
+                manifest_id: "x".to_owned(),
+                call_id: "x::oracle".to_owned(),
+                method: "oracle.usd_value".to_owned(),
+                params: serde_json::json!({}),
+                outputs: Vec::new(),
+                optional: true,
+            }],
+        };
+
+        let resp = evaluate(&store, req).await.unwrap();
+        assert!(resp.policy_request.results.is_empty());
+        assert!(
+            resp.diagnostics
+                .iter()
+                .any(|d| d.call_id.as_deref() == Some("x::oracle") && d.level == "warn"),
+            "expected a warn diagnostic for the unknown optional call"
+        );
     }
 }

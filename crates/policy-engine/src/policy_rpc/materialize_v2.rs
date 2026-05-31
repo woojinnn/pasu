@@ -524,4 +524,220 @@ mod tests {
             "3500 USD input must warn, got {verdict:?}"
         );
     }
+
+    // ---------------------------------------------------------------------
+    // End-to-end: GEN-01 unlimited ERC20 approval → Fail. Lowers an
+    // `Erc20Approve`, plans the `approval.unlimited_over_balance` enrichment,
+    // injects a MOCK rpc result, materializes it into context.custom, then
+    // evaluates the shipped `unlimited-approval-deny` policy (`@severity("deny")`
+    // → Verdict::Fail). Mirrors the swap end-to-end above and the shipped
+    // fixture at tests/fixtures/default_policies_v2/unlimited-approval-deny.
+    // ---------------------------------------------------------------------
+
+    /// The GEN-01 deny manifest, identical to the shipped fixture.
+    fn unlimited_approval_manifest() -> ManifestV2 {
+        serde_json::from_value(json!({
+            "id": "unlimited-approval-deny",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
+            "policy_rpc": [{
+                "id": "approval-shape",
+                "method": "approval.unlimited_over_balance",
+                "params": {
+                    "chain_id": "$.root.chain_id",
+                    "owner": "$.root.from",
+                    "token": "$.action.token",
+                    "spender": "$.action.spender",
+                    "amount": "$.action.amount"
+                },
+                "outputs": [
+                    {
+                        "kind": "context", "field": "approvalIsUnlimited",
+                        "type": "Bool", "from": "$.result.isUnlimited"
+                    },
+                    {
+                        "kind": "context", "field": "approvalAmountOverBalance",
+                        "type": "Decimal", "from": "$.result.amountOverBalance"
+                    }
+                ]
+            }],
+            "custom_context": {
+                "fields": {
+                    "approvalIsUnlimited": "Bool",
+                    "approvalAmountOverBalance": "decimal"
+                }
+            }
+        }))
+        .expect("manifest parses")
+    }
+
+    /// The GEN-01 deny policy, identical to the shipped fixture's `policy.cedar`
+    /// (allowlist inlined as a set literal for this slice — design proposal F#2;
+    /// the single entry is the canonical Permit2 contract).
+    const GEN01_POLICY: &str = "@id(\"unlimited-approval-deny\")\n@severity(\"deny\")\n\
+        forbid(principal, action == Token::Action::\"Erc20Approve\", resource)\n\
+        when { context has custom && context.custom has approvalIsUnlimited \
+        && context.custom.approvalIsUnlimited \
+        && !([\"0x000000000022d473030f116ddee9f6b43ac78ba3\"].contains(context.spender)) };\n";
+
+    /// Build an `Erc20Approve` ActionBody for `spender` with `amount`, plus an
+    /// on-chain meta. The token is USDC on Ethereum mainnet.
+    fn approve_sample(
+        spender: &str,
+        amount: simulation_state::primitives::U256,
+    ) -> (
+        simulation_reducer::action::ActionBody,
+        simulation_reducer::action::ActionMeta,
+    ) {
+        use std::str::FromStr;
+
+        use simulation_reducer::action::token::{Erc20ApproveAction, TokenAction};
+        use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
+        use simulation_state::live_field::{DataSource, OracleProvider};
+        use simulation_state::primitives::{Address, ChainId, Time, U256};
+        use simulation_state::token::{TokenKey, TokenRef};
+        use simulation_state::LiveField;
+
+        let now = Time::from_unix(1_738_000_000);
+        let user = Address::from_str("0x000000000000000000000000000000000000a01c").unwrap();
+        let chain = ChainId::ethereum_mainnet();
+        let token = TokenRef {
+            key: TokenKey::Erc20 {
+                chain: chain.clone(),
+                address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+            },
+        };
+        let body = ActionBody::Token(TokenAction::Erc20Approve(Erc20ApproveAction {
+            token,
+            spender: Address::from_str(spender).unwrap(),
+            amount,
+        }));
+        let meta = ActionMeta {
+            submitted_at: now,
+            submitter: user,
+            nature: ActionNature::OnchainTx {
+                chain,
+                nonce: 7,
+                gas_limit: U256::from(120_000u64),
+                gas_price: LiveField::new(
+                    U256::from(100_000_000u64),
+                    DataSource::OracleFeed {
+                        provider: OracleProvider::Pyth,
+                        feed_id: "ETH/USD".into(),
+                    },
+                    now,
+                ),
+                value: U256::ZERO,
+            },
+        };
+        (body, meta)
+    }
+
+    /// Run the full lower → plan → materialize → evaluate path for the GEN-01
+    /// policy against an `Erc20Approve` to `spender`, injecting `mock_result`
+    /// as the `approval-shape` rpc payload. Returns the verdict.
+    fn evaluate_gen01(
+        spender: &str,
+        amount: simulation_state::primitives::U256,
+        mock_result: Value,
+    ) -> crate::policy::Verdict {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        const FROM: &str = "0x000000000000000000000000000000000000a01c";
+        const TO: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+
+        let (body, meta) = approve_sample(spender, amount);
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let view = body.view();
+        let tx = TxView {
+            chain_id: "eip155:1",
+            from: FROM,
+            to: TO,
+        };
+        let manifest = unlimited_approval_manifest();
+
+        let planned = plan_policy_rpc_v2(
+            std::slice::from_ref(&manifest),
+            &view,
+            &lowered.context,
+            &tx,
+        )
+        .unwrap();
+        assert_eq!(planned.len(), 1);
+        assert_eq!(
+            planned[0].call_id,
+            "unlimited-approval-deny::approval-shape"
+        );
+
+        let mut context = lowered.context.clone();
+        let mut results = BTreeMap::new();
+        results.insert(planned[0].call_id.clone(), mock_result);
+        materialize_v2(&mut context, &planned, &results).unwrap();
+
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let engine = crate::policy::PolicyEngine::build_from_per_policy(&[(
+            GEN01_POLICY.to_owned(),
+            schema_text,
+        )])
+        .unwrap();
+        engine
+            .evaluate(
+                &lowered.principal,
+                &lowered.action_uid,
+                &lowered.resource,
+                &json!([]),
+                &context,
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn gen01_unlimited_approval_to_non_allowlisted_spender_fails() {
+        use simulation_state::primitives::U256;
+
+        // Non-allowlisted spender + enriched isUnlimited=true → deny → Fail.
+        let verdict = evaluate_gen01(
+            "0x00000000000000000000000000000000deadbeef",
+            U256::MAX,
+            json!({ "isUnlimited": true, "amountOverBalance": "5.0000" }),
+        );
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Fail(_)),
+            "unlimited approval to a non-allowlisted spender must Fail, got {verdict:?}"
+        );
+    }
+
+    #[test]
+    fn gen01_bounded_approval_passes() {
+        use simulation_state::primitives::U256;
+
+        // Negative case A: enriched isUnlimited=false → the deny guard is not
+        // met → Pass (no forbid fires).
+        let verdict = evaluate_gen01(
+            "0x00000000000000000000000000000000deadbeef",
+            U256::from(1_000_000_000u64),
+            json!({ "isUnlimited": false, "amountOverBalance": "0.5000" }),
+        );
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Pass),
+            "bounded approval must Pass, got {verdict:?}"
+        );
+    }
+
+    #[test]
+    fn gen01_unlimited_approval_to_allowlisted_spender_passes() {
+        use simulation_state::primitives::U256;
+
+        // Negative case B: spender == the inlined allowlisted Permit2 contract,
+        // so even an unlimited approval is exempt → Pass.
+        let verdict = evaluate_gen01(
+            "0x000000000022d473030f116ddee9f6b43ac78ba3",
+            U256::MAX,
+            json!({ "isUnlimited": true, "amountOverBalance": "5.0000" }),
+        );
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Pass),
+            "unlimited approval to an allowlisted spender must Pass, got {verdict:?}"
+        );
+    }
 }
