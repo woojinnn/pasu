@@ -1,0 +1,7 @@
+{
+  "id": "hl-no-short-perp",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "hl_order" } } },
+  "policy_rpc": [],
+  "custom_context": { "fields": {} }
+}

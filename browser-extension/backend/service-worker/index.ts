@@ -24,6 +24,9 @@ const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
   RequestType.TYPED_SIGNATURE,
   RequestType.UNTYPED_SIGNATURE,
+  // Without this, the SW silently drops venue-order messages (no verdict ever
+  // posts back) and the fetch hook times out → the order would slip through.
+  RequestType.VENUE_ORDER,
 ]);
 
 console.log("Scopeball SW alive at", new Date().toISOString());
@@ -116,7 +119,14 @@ async function bootSequence(): Promise<void> {
   // Best-effort like the surrounding stages: a failure here logs and leaves
   // the cache empty (the loader returns `[]`); it must never brick boot.
   try {
-    await loadDefaultPolicySetV2();
+    const v2 = await loadDefaultPolicySetV2();
+    // Visible boot proof: which v2 deny/warn bundles are actually loaded into
+    // this SW. If this logs `[]`, the policy asset failed to fetch (check the
+    // warning above) and nothing will be enforced.
+    console.log(
+      `[Scopeball] v2 default policies loaded (${v2.length}):`,
+      v2.map((b) => b.id),
+    );
   } catch (err) {
     console.warn("[Scopeball] v2 default policy load failed:", err);
   }

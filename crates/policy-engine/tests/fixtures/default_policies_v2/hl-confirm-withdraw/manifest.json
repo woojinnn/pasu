@@ -1,0 +1,7 @@
+{
+  "id": "hl-confirm-withdraw",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "hl_withdraw" } } },
+  "policy_rpc": [],
+  "custom_context": { "fields": {} }
+}

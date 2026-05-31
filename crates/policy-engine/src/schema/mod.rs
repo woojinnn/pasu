@@ -128,6 +128,20 @@ const TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA: &str = include_str!(
 const TOKEN_REVOKE_APPROVAL_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/revoke_approval.cedarschema");
 
+// hyperliquid_core (alphabetical) — the thin off-chain L1 action model.
+const HL_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/order.cedarschema");
+const HL_UPDATE_LEVERAGE_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/update_leverage.cedarschema"
+);
+const HL_WITHDRAW_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/withdraw.cedarschema");
+const HL_USD_SEND_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/usd_send.cedarschema");
+const HL_APPROVE_AGENT_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/approve_agent.cedarschema"
+);
+
 /// Ordered list of all shipped cedarschema files. The merge in
 /// [`base_schema_text`] preserves this order so the resulting per-namespace
 /// blocks have deterministic field ordering.
@@ -178,6 +192,11 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     TOKEN_PERMIT2_APPROVE_SCHEMA,
     TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
     TOKEN_REVOKE_APPROVAL_SCHEMA,
+    HL_ORDER_SCHEMA,
+    HL_UPDATE_LEVERAGE_SCHEMA,
+    HL_WITHDRAW_SCHEMA,
+    HL_USD_SEND_SCHEMA,
+    HL_APPROVE_AGENT_SCHEMA,
 ];
 
 /// Composes the shipped core and action Cedar schemas.
@@ -665,6 +684,13 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("permit2_approve", "Permit2ApproveContext"),
     ("permit2_sign_allowance", "Permit2SignAllowanceContext"),
     ("revoke_approval", "RevokeApprovalContext"),
+    // hyperliquid_core (alphabetical) — `hl_`-prefixed tags keep these globally
+    // unique (notably `withdraw` is already a Lending tag).
+    ("hl_approve_agent", "HlApproveAgentContext"),
+    ("hl_order", "HlOrderContext"),
+    ("hl_update_leverage", "HlUpdateLeverageContext"),
+    ("hl_usd_send", "HlUsdSendContext"),
+    ("hl_withdraw", "HlWithdrawContext"),
 ];
 
 #[cfg(test)]

@@ -52,6 +52,9 @@ fn walk_body(
         ActionBody::Airdrop(a) => airdrop::walk(a, action_index, now, stale, stats),
         ActionBody::Launchpad(l) => launchpad::walk(l, action_index, now, stale, stats),
         ActionBody::Perp(p) => perp::walk(p, action_index, now, stale, stats),
+        // Hyperliquid CORE actions carry NO live inputs (they are self-describing
+        // order/transfer intents), so there is nothing to refresh — like Unknown.
+        ActionBody::HyperliquidCore(_) => {}
         ActionBody::Multicall { actions } => {
             for (i, child) in actions.iter().enumerate() {
                 walk_body(child, i, now, stale, stats);
@@ -85,7 +88,10 @@ pub fn apply_value_to_action(
         ActionBody::Airdrop(a) => airdrop::apply(a, slot, value, now),
         ActionBody::Launchpad(l) => launchpad::apply(l, slot, value, now),
         ActionBody::Perp(p) => perp::apply(p, slot, value, now),
-        ActionBody::Multicall { .. } | ActionBody::Unknown { .. } => {}
+        // No live inputs on Hyperliquid CORE actions → nothing to apply.
+        ActionBody::HyperliquidCore(_)
+        | ActionBody::Multicall { .. }
+        | ActionBody::Unknown { .. } => {}
     }
 }
 

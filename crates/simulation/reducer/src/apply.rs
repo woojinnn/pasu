@@ -43,6 +43,10 @@ impl Reducer for ActionBody {
             Self::Airdrop(a) => a.apply(state, ctx),
             Self::Launchpad(a) => a.apply(state, ctx),
             Self::Perp(a) => a.apply(state, ctx),
+            // Hyperliquid CORE actions record their effect against the wallet's
+            // off-chain Hl account (see effect::hyperliquid_core). No fetch: the
+            // reducer reads only state + ctx; Sync populates the base balance.
+            Self::HyperliquidCore(a) => a.apply(state, ctx),
             Self::Multicall { actions } => apply_multicall(state, ctx, actions),
             Self::Unknown { target, .. } => Err(ReducerError::UnknownAction(format!(
                 "unidentified call to {target:?}"
@@ -146,5 +150,23 @@ mod tests {
         };
         let delta = multi.apply(&state, &eval_ctx()).unwrap();
         assert!(delta.is_empty());
+    }
+
+    #[test]
+    fn hyperliquid_core_is_not_a_no_op() {
+        use crate::action::hyperliquid_core::{HlWithdrawAction, HyperliquidCoreAction};
+        use simulation_state::primitives::{Address, Decimal};
+
+        let state = empty_state();
+        let body = ActionBody::HyperliquidCore(HyperliquidCoreAction::Withdraw(HlWithdrawAction {
+            destination: Address::from([0xde; 20]),
+            amount: Decimal::new("1000"),
+        }));
+        let delta = body.apply(&state, &eval_ctx()).unwrap();
+        assert!(
+            !delta.is_empty(),
+            "HL action must now produce a non-empty delta"
+        );
+        assert_eq!(delta.position_changes.len(), 1);
     }
 }

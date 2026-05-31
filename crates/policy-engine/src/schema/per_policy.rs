@@ -29,18 +29,19 @@ use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA,
-    LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA,
-    LENDING_BORROW_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
-    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_REPAY_SCHEMA,
-    LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA,
-    LENDING_WITHDRAW_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
-    PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
-    PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
-    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
-    TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA,
-    TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA,
-    TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
+    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_ORDER_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA,
+    HL_USD_SEND_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
+    LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
+    LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
+    LENDING_DISABLE_COLLATERAL_SCHEMA, LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA,
+    LENDING_REPAY_SCHEMA, LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA,
+    LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA,
+    PERP_CANCEL_ORDER_SCHEMA, PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA,
+    PERP_CLAIM_FUNDING_SCHEMA, PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA,
+    PERP_INCREASE_POSITION_SCHEMA, PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA,
+    PERP_PLACE_STOP_ORDER_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA,
+    TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA,
+    TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
     TOKEN_REVOKE_APPROVAL_SCHEMA,
 };
 
@@ -349,6 +350,37 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("revoke_approval"),
         schema_text: TOKEN_REVOKE_APPROVAL_SCHEMA,
         pascal_stub: "RevokeApproval",
+    },
+    // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_order"),
+        schema_text: HL_ORDER_SCHEMA,
+        pascal_stub: "HlOrder",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_update_leverage"),
+        schema_text: HL_UPDATE_LEVERAGE_SCHEMA,
+        pascal_stub: "HlUpdateLeverage",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_withdraw"),
+        schema_text: HL_WITHDRAW_SCHEMA,
+        pascal_stub: "HlWithdraw",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_usd_send"),
+        schema_text: HL_USD_SEND_SCHEMA,
+        pascal_stub: "HlUsdSend",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_approve_agent"),
+        schema_text: HL_APPROVE_AGENT_SCHEMA,
+        pascal_stub: "HlApproveAgent",
     },
 ];
 
@@ -791,9 +823,10 @@ mod tests {
                 entry.pascal_stub,
             );
         }
-        // The table covers exactly the 45 shipped actions (multicall + unknown
-        // included). Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 45, "resolver table must have 45 rows");
+        // The table covers exactly the 50 shipped actions (multicall + unknown +
+        // 5 hyperliquid_core included). Guards against a row being dropped or
+        // duplicated.
+        assert_eq!(RESOLVER_TABLE.len(), 50, "resolver table must have 50 rows");
     }
 
     /// A `custom_context` field whose name collides with one of the matched

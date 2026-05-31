@@ -32,6 +32,12 @@ export function generateRequestId(data: MessageData): string {
       return objectHash(data.typedData as object);
     case RequestType.UNTYPED_SIGNATURE:
       return objectHash({ message: data.message });
+    case RequestType.VENUE_ORDER:
+      return objectHash({
+        venue: data.venue,
+        endpoint: data.endpoint,
+        hlAction: data.hlAction,
+      });
     case "raw-transaction-advisory":
       return objectHash({
         hostname: data.hostname,

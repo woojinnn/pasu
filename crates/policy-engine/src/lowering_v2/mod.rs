@@ -40,6 +40,7 @@ mod airdrop;
 mod amm;
 mod common;
 mod dispatch;
+mod hyperliquid_core;
 mod launchpad;
 mod lending;
 mod multicall;
