@@ -1,0 +1,25 @@
+// Restaking::Redelegate — atomically undelegate and delegate to a new operator
+// (EigenLayer DelegationManager `redelegate`, ELIP-003).
+//
+// Rust source: `crates/simulation/reducer/src/action/restaking/redelegate.rs`
+// (`RedelegateAction`). No LiveInputs.
+
+namespace Restaking {
+  type RedelegateContext = {
+    meta: Core::ActionMeta,
+    venue: RestakingVenue,
+    // New operator receiving the delegation (undelegates from the current one).
+    newOperator: String,
+    // bytes32 approver-signature de-collision salt (hex).
+    approverSalt: String,
+    custom?: RedelegateCustomContext,
+  };
+
+  type RedelegateCustomContext = {};
+
+  action "Redelegate" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RedelegateContext,
+  };
+}

@@ -1,0 +1,27 @@
+// Restaking::RegisterOperator — register the caller as an EigenLayer operator
+// (DelegationManager `registerAsOperator`).
+//
+// Rust source: `crates/simulation/reducer/src/action/restaking/register_operator.rs`
+// (`RegisterOperatorAction`). No LiveInputs.
+
+namespace Restaking {
+  type RegisterOperatorContext = {
+    meta: Core::ActionMeta,
+    venue: RestakingVenue,
+    // Initial delegation approver (zero address = no approver required).
+    delegationApprover: String,
+    // Operator allocation/slashing delay (blocks), uint32.
+    allocationDelay: Long,
+    // Operator metadata URI.
+    metadataUri: String,
+    custom?: RegisterOperatorCustomContext,
+  };
+
+  type RegisterOperatorCustomContext = {};
+
+  action "RegisterOperator" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RegisterOperatorContext,
+  };
+}

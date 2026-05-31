@@ -22,6 +22,7 @@ pub mod lending;
 pub mod liquid_staking;
 pub mod permission;
 pub mod perp;
+pub mod restaking;
 pub mod token;
 pub mod view;
 
@@ -32,6 +33,7 @@ pub use lending::LendingAction;
 pub use liquid_staking::LiquidStakingAction;
 pub use permission::PermissionAction;
 pub use perp::PerpAction;
+pub use restaking::RestakingAction;
 pub use token::TokenAction;
 pub use view::ActionView;
 
@@ -159,6 +161,8 @@ pub enum ActionBody {
     LiquidStaking(LiquidStakingAction),
     /// Protocol permission-domain action (manager/operator/relayer grants).
     Permission(PermissionAction),
+    /// Restaking-domain action (delegate, deposit, queue/complete withdrawal, ...).
+    Restaking(RestakingAction),
 
     /// Batched multi-call (e.g. `Uniswap Universal Router`, `Aave`).
     Multicall {
