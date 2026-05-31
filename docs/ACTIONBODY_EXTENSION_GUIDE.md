@@ -161,6 +161,8 @@ mod tests {
 
 축 1/2 가 **새 action/domain** 을 만드는 거라면, 이건 **이미 있는 action** 에 host-populated `LiveField<T>` 를 하나 더 다는 것이다. 디코드된 필드가 추상 단위(shares/내부 index/wrapped 수량/rate)라 사용자에게 안 읽힐 때 환산값을 보여주려고 한다. **왜·언제 하는지 = `PROTOCOL_ONBOARDING_AND_TESTING.md §4d`(enrichment decision-tree + self-check). 여기는 어떻게.** 정본 미러 = `lending::supply`(`SupplyLiveInputs`).
 
+> ⚠️ **아래 스니펫은 `T = U256` 사례다.** `T` 가 `Decimal`/`bool`/struct/tuple 이면 ④ skeleton·② apply coercion·⑤ lowering·cedar type 이 다르다 — `§4d 의 live_field 타입별 매핑표` 참조(`SupplyLiveInputs` 가 U256/Decimal/bool/struct 변종 전부 보유).
+
 핵심 갈림: live_field 의 source view 가 **calldata 인자를 쓰나?**
 - 인자 없는 view / oracle / derived → manifest `live_inputs.source` 만(⑤). Rust 0.
 - **calldata 인자 필요한 view** (`getPooledEthByShares(shares)`) → `DataSource::OnchainView` 에 args 필드 없음 → 아래 ②③ Tier B 필수.
