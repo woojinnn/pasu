@@ -2119,11 +2119,13 @@ fn maybe_inject_morpho_market_id(
 /// `multicall_recurse` (Cat D) — flatten a self-`multicall(bytes[])` into one
 /// [`v3_action::ActionBody::Multicall`].
 ///
-/// `self_array_bytes_last_arg`: the inner sub-calls live in the single `bytes[]`
+/// `self_array_bytes_last_arg`: the inner sub-calls live in a `bytes[]`
 /// argument (SwapRouter02 `multicall(uint256 deadline, bytes[] data)` has a
 /// leading non-array `deadline`; NFPM / V4 PositionManager `multicall(bytes[]
 /// data)` has only the array). [`args_to_json`] renders that `bytes[]` as a JSON
-/// array of `"0x.."` strings, so we pick the SOLE array-valued arg.
+/// array of `"0x.."` strings, so the common case picks the sole array-valued
+/// arg. Wrappers with sibling array args can set `emit.recurse_arg` to the
+/// decoded argument name that holds child calldata.
 ///
 /// Each inner leg targets the SAME `to`. We resolve + decode + build it by
 /// RE-ENTERING [`declarative_route_request_v3_json`] (the public entrypoint), so
@@ -2161,28 +2163,48 @@ fn build_multicall_recurse_body(
         ));
     }
 
-    // self_array_bytes_last_arg → exactly one array-valued argument (the
-    // `bytes[]`). A `uint256 deadline` sibling renders as a decimal string, never
-    // an array, so the array arg is unambiguous for every real shape.
-    let array_args: Vec<&serde_json::Value> = args_json
-        .as_object()
-        .map(|obj| obj.values().filter(|v| v.is_array()).collect())
-        .unwrap_or_default();
-    let inner_calls = match array_args.as_slice() {
-        [single] => single.as_array().expect("filtered is_array"),
-        [] => {
-            return Err(EngineErrorDto::new(
-                "build_multicall_failed",
-                "multicall_recurse: no bytes[] array argument".to_string(),
-            ));
-        }
-        _ => {
-            return Err(EngineErrorDto::new(
-                "build_multicall_failed",
-                "multicall_recurse: ambiguous (multiple array arguments)".to_string(),
-            ));
-        }
-    };
+    let inner_calls_value =
+        if let Some(recurse_arg) = emit.get("recurse_arg").and_then(serde_json::Value::as_str) {
+            args_json.get(recurse_arg).ok_or_else(|| {
+                EngineErrorDto::new(
+                    "build_multicall_failed",
+                    format!("multicall_recurse: recurse_arg {recurse_arg:?} not found"),
+                )
+            })?
+        } else {
+            // self_array_bytes_last_arg → exactly one array-valued argument (the
+            // `bytes[]`). A `uint256 deadline` sibling renders as a decimal string,
+            // never an array, so the array arg is unambiguous for every existing
+            // simple multicall shape.
+            let Some(obj) = args_json.as_object() else {
+                return Err(EngineErrorDto::new(
+                    "build_multicall_failed",
+                    "multicall_recurse: no bytes[] array argument".to_string(),
+                ));
+            };
+            let mut array_args = obj.values().filter(|v| v.is_array());
+            match (array_args.next(), array_args.next()) {
+                (Some(single), None) => single,
+                (None, _) => {
+                    return Err(EngineErrorDto::new(
+                        "build_multicall_failed",
+                        "multicall_recurse: no bytes[] array argument".to_string(),
+                    ));
+                }
+                (Some(_), Some(_)) => {
+                    return Err(EngineErrorDto::new(
+                        "build_multicall_failed",
+                        "multicall_recurse: ambiguous (multiple array arguments)".to_string(),
+                    ));
+                }
+            }
+        };
+    let inner_calls = inner_calls_value.as_array().ok_or_else(|| {
+        EngineErrorDto::new(
+            "build_multicall_failed",
+            "multicall_recurse: selected argument is not a bytes[] array".to_string(),
+        )
+    })?;
 
     if inner_calls.len() > MAX_MULTICALL_CHILDREN {
         return Err(EngineErrorDto::new(
@@ -2386,6 +2408,109 @@ mod tests {
             parsed["error"]["kind"], "no_declarative_v3_mapper",
             "{parsed}"
         );
+    }
+
+    #[test]
+    fn multicall_recurse_uses_explicit_recurse_arg_when_sibling_arrays_exist() {
+        let router = "0x000000000000000000000000000000000000babe";
+        let submitter = "0x000000000000000000000000000000000000aaaa";
+        let child_fn = Function::parse("foo(uint256)").unwrap();
+        let child_calldata = child_fn
+            .abi_encode_input(&[DynSolValue::Uint(U256::from(123_u64), 256)])
+            .unwrap();
+        let child_selector = format!("0x{}", hex::encode(&child_calldata[0..4]));
+        let child_hex = format!("0x{}", hex::encode(&child_calldata));
+
+        let child_bundle = json!({
+            "type": "adapter_action",
+            "id": "test/multicall-recurse-child@1.0.0",
+            "publisher": "test",
+            "schema_version": "3",
+            "match": {
+                "selector": child_selector,
+                "chain_to_addresses": { "1": [router] }
+            },
+            "abi_fragment": {
+                "function_name": "foo",
+                "abi": {
+                    "name": "foo",
+                    "type": "function",
+                    "stateMutability": "nonpayable",
+                    "inputs": [{ "name": "amount", "type": "uint256" }],
+                    "outputs": []
+                }
+            },
+            "emit": {
+                "strategy": "single_emit",
+                "body": {
+                    "domain": "unknown",
+                    "unknown": {
+                        "target": "$to",
+                        "chain": "$chain",
+                        "calldata": "$calldata",
+                        "value": "$tx.value"
+                    }
+                }
+            },
+            "requires": {
+                "imperative": [],
+                "adapter_capabilities": [],
+                "host_capabilities": [],
+                "extension": ">=0.1.0"
+            }
+        });
+        let installed: Value =
+            serde_json::from_str(&declarative_install_v3_json(child_bundle.to_string())).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        let args = json!({
+            "permitBatch": [],
+            "permitSignatures": [],
+            "permit2Batch": {
+                "details": [],
+                "spender": "0x0000000000000000000000000000000000000000",
+                "sigDeadline": "0"
+            },
+            "permit2Signature": "0x",
+            "multicallData": [child_hex]
+        });
+
+        let ambiguous = build_multicall_recurse_body(
+            1,
+            router,
+            submitter,
+            1_700_000_000,
+            &args,
+            &json!({
+                "strategy": "multicall_recurse",
+                "recurse_rule_id": "self_array_bytes_last_arg",
+                "max_depth": 3
+            }),
+        )
+        .unwrap_err();
+        assert!(
+            ambiguous.message.contains("ambiguous"),
+            "expected ambiguous sibling-array error, got {ambiguous:?}"
+        );
+
+        let body = build_multicall_recurse_body(
+            1,
+            router,
+            submitter,
+            1_700_000_000,
+            &args,
+            &json!({
+                "strategy": "multicall_recurse",
+                "recurse_rule_id": "self_array_bytes_last_arg",
+                "recurse_arg": "multicallData",
+                "max_depth": 3
+            }),
+        )
+        .unwrap();
+        let body_json = serde_json::to_value(body).unwrap();
+        assert_eq!(body_json["domain"], "multicall", "{body_json}");
+        assert_eq!(body_json["actions"].as_array().unwrap().len(), 1);
+        assert_eq!(body_json["actions"][0]["domain"], "unknown", "{body_json}");
     }
 
     #[test]
