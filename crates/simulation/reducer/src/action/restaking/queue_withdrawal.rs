@@ -7,7 +7,9 @@ use simulation_state::primitives::{Address, U256};
 
 use super::RestakingVenue;
 
-/// Queue a withdrawal. Models one DelegationManager
+/// Queue a withdrawal.
+///
+/// Models one `DelegationManager`
 /// `queueWithdrawals(QueuedWithdrawalParams[])` element
 /// `{address[] strategies, uint256[] depositShares, address withdrawer}`
 /// (post-ELIP-002 shape). `deposit_shares` is the protocol's internal share

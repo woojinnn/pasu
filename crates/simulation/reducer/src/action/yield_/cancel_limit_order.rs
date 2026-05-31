@@ -22,7 +22,7 @@ pub enum CancelKind {
 /// as maker — self-scoped (you can only cancel your own). The pre-sign surface
 /// is just "you are cancelling one / a batch of your limit orders"; the per-order
 /// `Order` payload is not modeled (low-risk self-revocation, and `cancelBatch`'s
-/// array length is not expressible in the single_emit DSL).
+/// array length is not expressible in the `single_emit` DSL).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct CancelLimitOrderAction {

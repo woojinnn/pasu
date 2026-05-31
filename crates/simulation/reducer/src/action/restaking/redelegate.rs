@@ -7,7 +7,9 @@ use simulation_state::primitives::Address;
 
 use super::RestakingVenue;
 
-/// Redelegate to a new operator (ELIP-003). Models DelegationManager
+/// Redelegate to a new operator (ELIP-003).
+///
+/// Models `DelegationManager`
 /// `redelegate(address newOperator, SignatureWithExpiry newOperatorApproverSig, bytes32 approverSalt)`:
 /// undelegates from the current operator and delegates to `new_operator` in one
 /// call — the same total-share delegation risk as `delegateTo`.

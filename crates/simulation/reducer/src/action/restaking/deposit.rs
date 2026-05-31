@@ -8,7 +8,9 @@ use simulation_state::token::TokenRef;
 
 use super::RestakingVenue;
 
-/// Deposit into a strategy. Models StrategyManager
+/// Deposit into a strategy.
+///
+/// Models `StrategyManager`
 /// `depositIntoStrategy(address strategy, address token, uint256 amount)` and
 /// the off-chain `Deposit` EIP-712 (`depositIntoStrategyWithSignature`). `amount`
 /// is in `token` units (user-legible); the minted shares are implied by the

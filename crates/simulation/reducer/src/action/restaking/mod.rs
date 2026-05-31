@@ -1,4 +1,4 @@
-//! `RestakingAction` — EigenLayer restaking: operator delegation, strategy
+//! `RestakingAction` — `EigenLayer` restaking: operator delegation, strategy
 //! share deposits, the queued-withdrawal lifecycle, and operator registration.
 //!
 //! New domain (extension-guide axis 1). Mirrors the `liquid_staking` layout: a
@@ -28,7 +28,7 @@ pub use self::redelegate::*;
 pub use self::register_operator::*;
 pub use self::undelegate::*;
 
-/// User-level restaking actions across supported venues (currently EigenLayer).
+/// User-level restaking actions across supported venues (currently `EigenLayer`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "action", rename_all = "snake_case")]
@@ -47,7 +47,7 @@ pub enum RestakingAction {
     QueueWithdrawal(QueueWithdrawalAction),
     /// Complete a queued withdrawal, releasing funds (`completeQueuedWithdrawal(s)`).
     CompleteWithdrawal(CompleteWithdrawalAction),
-    /// Register the caller as an EigenLayer operator (`registerAsOperator`).
+    /// Register the caller as an `EigenLayer` operator (`registerAsOperator`).
     RegisterOperator(RegisterOperatorAction),
 }
 
@@ -90,8 +90,8 @@ impl RestakingAction {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "name", rename_all = "snake_case")]
 pub enum RestakingVenue {
-    /// `EigenLayer` deployment on a given chain (DelegationManager /
-    /// StrategyManager / EigenPodManager set).
+    /// `EigenLayer` deployment on a given chain (`DelegationManager` /
+    /// `StrategyManager` / `EigenPodManager` set).
     #[serde(rename = "eigenlayer")]
     EigenLayer {
         /// Chain hosting the `EigenLayer` deployment.

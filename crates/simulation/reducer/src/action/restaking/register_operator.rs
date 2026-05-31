@@ -1,4 +1,4 @@
-//! `RegisterOperatorAction` — register the caller as an EigenLayer operator.
+//! `RegisterOperatorAction` — register the caller as an `EigenLayer` operator.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -7,7 +7,9 @@ use simulation_state::primitives::Address;
 
 use super::RestakingVenue;
 
-/// Register as an operator. Models DelegationManager
+/// Register as an operator.
+///
+/// Models `DelegationManager`
 /// `registerAsOperator(address initDelegationApprover, uint32 allocationDelay, string metadataURI)`.
 /// `delegation_approver` is who must co-sign stakers delegating to this operator
 /// (zero = open); `allocation_delay` is the operator's allocation/slashing delay.

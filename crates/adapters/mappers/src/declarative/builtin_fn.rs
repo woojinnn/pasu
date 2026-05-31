@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn route_hash_is_deterministic_and_32_bytes() {
         let r = route(&[A, POOL1, B]);
-        let h1 = route_hash(&[r.clone()]).unwrap();
+        let h1 = route_hash(std::slice::from_ref(&r)).unwrap();
         let h2 = route_hash(&[r]).unwrap();
         assert_eq!(h1, h2);
         let s = h1.as_str().unwrap();

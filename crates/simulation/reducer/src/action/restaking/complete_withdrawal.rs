@@ -7,7 +7,9 @@ use simulation_state::primitives::Address;
 
 use super::RestakingVenue;
 
-/// Complete a queued withdrawal. Models DelegationManager
+/// Complete a queued withdrawal.
+///
+/// Models `DelegationManager`
 /// `completeQueuedWithdrawal(Withdrawal, address[] tokens, bool receiveAsTokens)`
 /// (and the batch `completeQueuedWithdrawals`). Carries the user-legible subset
 /// of the `Withdrawal` struct: `staker`, `withdrawer`, the `strategies`, and

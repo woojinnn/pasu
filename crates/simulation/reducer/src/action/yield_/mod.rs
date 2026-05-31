@@ -13,7 +13,7 @@
 //! Action tags are deliberately Pendle/yield-specific (`pt_swap`, `yt_swap`,
 //! `add_market_liquidity`, …) rather than the generic `swap`/`add_liquidity`:
 //! `REGISTERED_ACTIONS` requires globally-unique bare tags (composer/
-//! manifest_fragment look up by bare name), and the unique names are also more
+//! `manifest_fragment` look up by bare name), and the unique names are also more
 //! user-legible ("buy PT to maturity" ≠ a generic AMM trade).
 //!
 //! The four market-based actions (`pt_swap`, `yt_swap`, `add_market_liquidity`,
@@ -81,7 +81,7 @@ pub enum YieldAction {
     RedeemSy(RedeemSyAction),
     /// Claim accrued interest + rewards (`redeemDueInterestAndRewards`).
     ClaimYield(ClaimYieldAction),
-    /// Off-chain EIP-712 maker-sign of a Pendle limit `Order` (PendleLimitRouter).
+    /// Off-chain EIP-712 maker-sign of a Pendle limit `Order` (`PendleLimitRouter`).
     SignLimitOrder(SignLimitOrderAction),
     /// Cancel the maker's own limit order(s) (`cancelSingle`/`cancelBatch`).
     CancelLimitOrder(CancelLimitOrderAction),
@@ -132,7 +132,9 @@ impl YieldAction {
 // Venue
 // ---------------------------------------------------------------------------
 
-/// Yield-tokenization venue identifier. Carries protocol + chain identity only;
+/// Yield-tokenization venue identifier.
+///
+/// Carries protocol + chain identity only;
 /// the specific market / YT / SY contract is an action field (the locator
 /// varies per action — market for swaps/liquidity, YT for PY mint/redeem, SY for
 /// SY mint/redeem).

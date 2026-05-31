@@ -195,7 +195,7 @@ pub enum LendingVenue {
         /// Collateral token of this market.
         collateral: TokenRef,
     },
-    /// `Curve` LlamaLend (`OneWayLendingFactory`) market. Same `Controller`
+    /// `Curve` `LlamaLend` (`OneWayLendingFactory`) market. Same `Controller`
     /// interface as crvUSD, but the borrowed asset comes from a permissionless
     /// ERC-4626 `Vault` (lender deposits) rather than crvUSD minting — distinct
     /// risk/liquidity profile, so it carries its own venue tag. One `Controller`

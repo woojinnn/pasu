@@ -7,7 +7,9 @@ use simulation_state::primitives::Address;
 
 use super::RestakingVenue;
 
-/// Delegate to an operator. Models DelegationManager
+/// Delegate to an operator.
+///
+/// Models `DelegationManager`
 /// `delegateTo(address operator, SignatureWithExpiry approverSignatureAndExpiry, bytes32 approverSalt)`.
 /// `operator` receives delegated validation power over ALL of the staker's
 /// restaked shares; `approver_salt` de-collides the operator-approver EIP-712
