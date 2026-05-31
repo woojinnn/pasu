@@ -1,10 +1,14 @@
-//! The core simulation handler — load → simulate → save.
+//! The core simulation handler — load canonical state → simulate prediction.
 //!
 //! Given an [`EvaluateRequest`], this loads the wallet's `state_before` via the
 //! [`WalletStore`] boundary, folds each request `envelope` through
 //! [`simulation_reducer::apply`] + `apply_delta` to produce one delta per
-//! action and a final `state_after`, persists the result, and returns the
+//! action and a final predicted `state_after`, and returns the
 //! [`EvaluateResponse`] the extension's Cedar layer consumes.
+//!
+//! Important boundary: reducer deltas are *predictions* for policy evaluation,
+//! not authoritative ledger facts. Canonical wallet state is updated by sync /
+//! receipt / venue reconciliation, not by `evaluate`.
 
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -15,7 +19,11 @@ use simulation_reducer::error::ReducerError;
 use simulation_reducer::helpers::delta::apply_delta;
 use simulation_sync::{SyncError, WalletStore};
 
-use crate::dto::{Diagnostic, EvaluateRequest, EvaluateResponse, PolicyRequest};
+use crate::dto::{
+    Diagnostic, EvaluateRequest, EvaluateResponse, ExecutionReportOutcome, ExecutionReportRequest,
+    ExecutionReportResponse, PolicyRequest,
+};
+use crate::store::ExecutionReportStore;
 
 /// Error surfaced by [`evaluate`].
 ///
@@ -26,7 +34,7 @@ use crate::dto::{Diagnostic, EvaluateRequest, EvaluateResponse, PolicyRequest};
 pub enum HandlerError {
     /// A reducer rejected an action (invalid for the current state).
     Reducer(ReducerError),
-    /// The wallet store failed to load or save state.
+    /// The wallet store failed to load state or record execution metadata.
     Store(SyncError),
 }
 
@@ -60,17 +68,25 @@ impl From<SyncError> for HandlerError {
     }
 }
 
-/// Simulates the request's action envelopes over the wallet's stored state.
+/// Simulates the request's action envelopes over the wallet's canonical state.
 ///
 /// Loads `state_before` from `store`, applies each envelope in order through
-/// the reducer (one [`simulation_state::StateDelta`] per action), persists the
-/// resulting `state_after`, and returns the [`EvaluateResponse`].
+/// the reducer (one [`simulation_state::StateDelta`] per action), folds those
+/// deltas into an in-memory predicted `state_after`, and returns the
+/// [`EvaluateResponse`].
+///
+/// This function deliberately does **not** call [`WalletStore::save`] with the
+/// predicted state. A policy verdict says "this would be allowed"; it does not
+/// prove the browser extension reached the wallet confirmation screen, that the
+/// wallet signed, that an on-chain transaction landed, or that an off-chain
+/// venue accepted the request. Authoritative sync/report reconciliation owns
+/// canonical mutation.
 ///
 /// # Errors
 ///
-/// Returns [`HandlerError::Store`] if loading or saving the wallet state fails,
-/// or [`HandlerError::Reducer`] if any action cannot be applied to the
-/// (running) state.
+/// Returns [`HandlerError::Store`] if loading wallet state fails, or
+/// [`HandlerError::Reducer`] if any action cannot be applied to the running
+/// predicted state.
 pub async fn evaluate(
     store: &dyn WalletStore,
     req: EvaluateRequest,
@@ -104,8 +120,6 @@ pub async fn evaluate(
         deltas.push(delta);
     }
 
-    store.save(&state).await?;
-
     // TODO(prep): enrichment-call execution. `req.call_specs` (the manifest's
     // planned enrichment calls) must be dispatched here to populate
     // `PolicyRequest::results` keyed by `CallSpec::call_id` — the Rust
@@ -137,6 +151,69 @@ pub async fn evaluate(
     })
 }
 
+/// Records a post-policy execution lifecycle report.
+///
+/// The report endpoint is deliberately *not* a state writer. It records facts
+/// such as "wallet signed", "transaction submitted", or "Hyperliquid accepted
+/// this order request" so a reconciliation loop can later compare them with
+/// authoritative chain receipts or venue snapshots. Until that reconciliation
+/// happens, canonical [`simulation_state::WalletState`] remains unchanged.
+///
+/// This matters for browser-extension correctness: a policy allow verdict does
+/// not prove that the wallet UI was shown, the user signed, a transaction
+/// landed, or a venue accepted an off-chain request.
+///
+/// # Errors
+///
+/// Returns [`HandlerError::Store`] if the report store cannot record the event.
+pub async fn report_execution(
+    store: &dyn ExecutionReportStore,
+    req: ExecutionReportRequest,
+) -> Result<ExecutionReportResponse, HandlerError> {
+    let message = execution_report_message(&req.outcome).to_owned();
+    store.record_execution_report(req).await?;
+
+    Ok(ExecutionReportResponse {
+        accepted: true,
+        canonical_state_updated: false,
+        diagnostics: vec![Diagnostic {
+            level: "info".to_owned(),
+            message,
+            call_id: None,
+        }],
+    })
+}
+
+#[must_use]
+fn execution_report_message(outcome: &ExecutionReportOutcome) -> &'static str {
+    match outcome {
+        ExecutionReportOutcome::WalletRejected { .. } => {
+            "wallet rejection recorded; no canonical state update"
+        }
+        ExecutionReportOutcome::WalletSigned { .. } => {
+            "wallet signature recorded; canonical state waits for submission and sync"
+        }
+        ExecutionReportOutcome::OnchainSubmitted { .. } => {
+            "on-chain submission recorded; canonical state waits for receipt sync"
+        }
+        ExecutionReportOutcome::OnchainConfirmed { .. } => {
+            "on-chain confirmation recorded; canonical state waits for receipt reconciliation"
+        }
+        ExecutionReportOutcome::VenueSubmitted { .. } => {
+            "venue submission recorded; canonical state waits for venue sync"
+        }
+        ExecutionReportOutcome::VenueAccepted { .. } => {
+            "venue acceptance recorded; canonical state waits for venue sync"
+        }
+        ExecutionReportOutcome::VenueRejected { .. } => {
+            "venue rejection recorded; no canonical state update"
+        }
+        ExecutionReportOutcome::Failed { .. } => {
+            "execution failure recorded; no canonical state update"
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -144,10 +221,13 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::{Address, BlockHeight, ChainId, Time};
+    use simulation_reducer::action::hyperliquid_core::{HlOrderAction, HyperliquidCoreAction};
+    use simulation_reducer::{Action, ActionBody, ActionMeta, ActionNature, Eip712Domain};
+    use simulation_state::position::PositionKind;
+    use simulation_state::primitives::{Address, BlockHeight, ChainId, Decimal, Time};
     use simulation_state::{RequestKind, WalletId, WalletState};
 
-    use crate::dto::EvaluateRequest;
+    use crate::dto::{EvaluateRequest, ExecutionReportOutcome, ExecutionReportRequest};
     use crate::store::InMemoryWalletStore;
 
     fn sample_wallet_id() -> WalletId {
@@ -184,8 +264,43 @@ mod tests {
         }
     }
 
-    /// load → echo → save plumbing: a seeded wallet with empty `envelopes`
-    /// returns its state unchanged, with no deltas and no results.
+    fn hyperliquid_order_action() -> Action {
+        Action {
+            meta: ActionMeta {
+                submitted_at: Time::from_unix(1_700_000_000),
+                submitter: sample_wallet_id().address,
+                nature: ActionNature::OffchainSig {
+                    domain: Eip712Domain {
+                        name: "Hyperliquid".to_owned(),
+                        version: None,
+                        chain_id: None,
+                        verifying_contract: None,
+                        salt: None,
+                    },
+                    deadline: Time::from_unix(1_700_000_600),
+                    nonce_key: None,
+                },
+            },
+            body: ActionBody::HyperliquidCore(HyperliquidCoreAction::Order(HlOrderAction {
+                asset_index: 0,
+                symbol: Some("BTC".to_owned()),
+                is_buy: true,
+                price: Decimal::new("60000"),
+                size: Decimal::new("0.1"),
+                reduce_only: false,
+                tif: "gtc".to_owned(),
+            })),
+        }
+    }
+
+    fn request_with_envelope(action: Action) -> EvaluateRequest {
+        let mut req = empty_envelope_request();
+        req.envelopes.push(action);
+        req
+    }
+
+    /// load → echo plumbing: a seeded wallet with empty `envelopes` returns its
+    /// state unchanged, with no deltas and no results.
     #[tokio::test]
     async fn empty_envelopes_echo_seeded_state() {
         let store = InMemoryWalletStore::new();
@@ -199,7 +314,8 @@ mod tests {
         assert!(resp.policy_request.deltas.is_empty());
         assert!(resp.policy_request.results.is_empty());
 
-        // The save path persisted the (unchanged) state.
+        // `evaluate` leaves canonical state unchanged; sync/report
+        // reconciliation is the only writer of durable wallet state.
         assert_eq!(store.load(&sample_wallet_id()).await.unwrap(), seeded);
     }
 
@@ -217,5 +333,66 @@ mod tests {
         let resp = evaluate(&store, empty_envelope_request()).await.unwrap();
         assert_eq!(resp.policy_request.state_before, WalletState::new(id));
         assert!(resp.policy_request.deltas.is_empty());
+    }
+
+    /// `evaluate` is allowed to fold deltas into an in-memory predicted
+    /// `state_after`, but it must not persist that prediction as canonical
+    /// wallet state. The real ledger/venue sync path owns canonical mutation.
+    #[tokio::test]
+    async fn evaluate_returns_predicted_state_without_persisting_it() {
+        let store = InMemoryWalletStore::new();
+        let seeded = non_trivial_state();
+        store.seed(seeded.clone());
+
+        let resp = evaluate(&store, request_with_envelope(hyperliquid_order_action()))
+            .await
+            .unwrap();
+
+        assert_eq!(resp.policy_request.state_before, seeded);
+        assert_eq!(resp.policy_request.deltas.len(), 1);
+        assert_eq!(resp.policy_request.state_after.positions.len(), 1);
+        match &resp.policy_request.state_after.positions[0].kind {
+            PositionKind::HyperliquidAccount(account) => {
+                assert_eq!(account.open_orders.len(), 1);
+                assert_eq!(account.open_orders[0].symbol.as_deref(), Some("BTC"));
+            }
+            other => panic!("expected Hyperliquid account prediction, got {other:?}"),
+        }
+
+        assert_eq!(
+            store.load(&sample_wallet_id()).await.unwrap(),
+            seeded,
+            "canonical state must wait for authoritative sync/report reconciliation"
+        );
+    }
+
+    /// Hyperliquid CORE orders may be sent with an already-authorized venue
+    /// agent key, so the extension can report venue acceptance without any
+    /// MetaMask-style wallet signature callback. The server records that
+    /// lifecycle event but still leaves canonical state to venue sync.
+    #[tokio::test]
+    async fn execution_report_accepts_venue_flow_without_wallet_signature() {
+        let store = InMemoryWalletStore::new();
+        let report = ExecutionReportRequest {
+            wallet_id: Some(sample_wallet_id()),
+            evaluation_id: Some("hl-eval-1".to_owned()),
+            action_index: Some(0),
+            outcome: ExecutionReportOutcome::VenueAccepted {
+                venue: "hyperliquid".to_owned(),
+                venue_order_id: Some("987654321".to_owned()),
+                client_order_id: None,
+            },
+            metadata: BTreeMap::new(),
+        };
+
+        let resp = report_execution(&store, report.clone()).await.unwrap();
+
+        assert!(resp.accepted);
+        assert!(!resp.canonical_state_updated);
+        assert!(resp
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("venue sync")));
+        assert_eq!(store.execution_reports(), vec![report]);
     }
 }

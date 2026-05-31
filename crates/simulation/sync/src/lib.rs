@@ -106,6 +106,7 @@ pub mod args_resolver;
 pub mod batcher;
 pub mod calc;
 pub mod config;
+pub mod db_store;
 pub mod error;
 pub mod fetchers;
 pub mod manifest_v2;
@@ -127,6 +128,7 @@ pub use config::{
     PythConfig, PythFeedConfig, RestAuthConfig, RestFeedConfig, RestOracleConfig, SyncConfig,
     VenuesConfig,
 };
+pub use db_store::SqliteWalletStore;
 pub use error::{SyncError, SyncResult};
 pub use fetchers::abi_decoder::{AbiDecoder, AbiTypeRegistry};
 pub use fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};

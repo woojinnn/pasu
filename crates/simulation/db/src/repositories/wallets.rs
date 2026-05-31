@@ -170,6 +170,25 @@ pub fn list_chains(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec<ChainId
     Ok(rows)
 }
 
+/// Replace the tracked chain set for an existing wallet.
+pub fn replace_chains(
+    tx: &Transaction<'_>,
+    wallet_id: i64,
+    chains: impl IntoIterator<Item = ChainId>,
+) -> DbResult<()> {
+    tx.execute(
+        "DELETE FROM wallet_chains WHERE wallet_id = ?1",
+        params![wallet_id],
+    )?;
+    for chain in chains {
+        tx.execute(
+            "INSERT INTO wallet_chains (wallet_id, chain) VALUES (?1, ?2)",
+            params![wallet_id, chain.to_string()],
+        )?;
+    }
+    Ok(())
+}
+
 /// soft delete — `archived_at` 만 채움.
 pub fn archive(tx: &Transaction<'_>, wallet_id: i64, at: i64) -> DbResult<bool> {
     let n = tx.execute(

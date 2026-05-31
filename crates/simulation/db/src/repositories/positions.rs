@@ -83,6 +83,14 @@ pub fn delete(tx: &Transaction<'_>, id: i64) -> DbResult<bool> {
     Ok(n > 0)
 }
 
+pub fn delete_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<usize> {
+    let n = tx.execute(
+        "DELETE FROM positions WHERE wallet_id = ?1",
+        params![wallet_id],
+    )?;
+    Ok(n)
+}
+
 pub fn list_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec<PositionRow>> {
     let mut stmt = tx.prepare(
         "SELECT id, wallet_id, position_id, protocol, chain, kind, market, summary, \

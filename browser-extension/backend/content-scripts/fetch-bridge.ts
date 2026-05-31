@@ -14,8 +14,15 @@
 import { WindowPostMessageStream } from "@metamask/post-message-stream";
 import Browser from "webextension-polyfill";
 import { Identifier } from "@lib/identifier";
-import { sendToPortAndAwaitResponse } from "@lib/messages";
-import type { Message, StreamResponse } from "@lib/types";
+import {
+  sendToPortAndAwaitResponse,
+  sendToPortAndDisregard,
+} from "@lib/messages";
+import {
+  isExecutionReport,
+  type Message,
+  type StreamResponse,
+} from "@lib/types";
 
 const stream = new WindowPostMessageStream({
   name: Identifier.FETCH_CONTENT_SCRIPT,
@@ -57,6 +64,12 @@ stream.on("data", async (message: Message) => {
     ...message.data,
     hostname: location.hostname,
   };
+  if (isExecutionReport({ ...message, data })) {
+    sendToPortAndDisregard(port, data);
+    port.disconnect();
+    return;
+  }
+
   port.onMessage.addListener((msg: { kind?: string; requestId?: string }) => {
     if (msg?.kind === "awaiting-user" && msg.requestId === message.requestId) {
       stream.write({ requestId: message.requestId, kind: "awaiting-user" });

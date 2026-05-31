@@ -244,6 +244,15 @@ pub fn delete(tx: &Transaction<'_>, wallet_id: i64, token_key: &TokenKey) -> DbR
     Ok(n > 0)
 }
 
+/// Remove all holdings for a wallet before writing a fresh snapshot.
+pub fn delete_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<usize> {
+    let n = tx.execute(
+        "DELETE FROM token_holdings WHERE wallet_id = ?1",
+        params![wallet_id],
+    )?;
+    Ok(n)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -38,6 +38,13 @@ export function generateRequestId(data: MessageData): string {
         endpoint: data.endpoint,
         hlAction: data.hlAction,
       });
+    case RequestType.EXECUTION_REPORT:
+      return objectHash({
+        wallet_id: data.wallet_id,
+        evaluation_id: data.evaluation_id,
+        action_index: data.action_index,
+        outcome: data.outcome,
+      });
     case "raw-transaction-advisory":
       return objectHash({
         hostname: data.hostname,
@@ -49,6 +56,18 @@ export function generateRequestId(data: MessageData): string {
         providerName: data.providerName,
       });
   }
+}
+
+export function sendToStreamAndDisregard(
+  stream: WindowPostMessageStream,
+  data: MessageData,
+): void {
+  const requestId = generateRequestId(data);
+  const messageStream = stream as Duplex<
+    StreamResponse,
+    { requestId: string; data: MessageData }
+  >;
+  messageStream.write({ requestId, data });
 }
 
 export function sendToStreamAndAwaitResponse(

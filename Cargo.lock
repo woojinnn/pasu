@@ -3116,6 +3116,7 @@ dependencies = [
  "axum",
  "serde",
  "serde_json",
+ "simulation-db",
  "simulation-reducer",
  "simulation-state",
  "simulation-sync",

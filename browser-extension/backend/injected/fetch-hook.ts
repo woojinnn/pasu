@@ -38,9 +38,16 @@
 
 import { WindowPostMessageStream } from "@metamask/post-message-stream";
 import { Identifier } from "@lib/identifier";
-import { sendToStreamAndAwaitResponse } from "@lib/messages";
-import type { MessageData } from "@lib/types";
-import { matchVenue, parseHyperliquidExchangeOrders } from "./hl-exchange-parse";
+import {
+  sendToStreamAndAwaitResponse,
+  sendToStreamAndDisregard,
+} from "@lib/messages";
+import type { MessageData, VenueOrderPayload } from "@lib/types";
+import { buildHyperliquidExecutionReport } from "./hl-execution-report";
+import {
+  matchVenue,
+  parseHyperliquidExchangeOrders,
+} from "./hl-exchange-parse";
 
 const FETCH_INSTALL_STATE = Symbol.for(
   "__scopeball_fetch_hook_install_state__",
@@ -84,19 +91,24 @@ function install(): void {
     }
   }
 
-  // Evaluate every order in a POST body; return false if ANY is denied
-  // (deny-closed for batches). A non-order body is allowed (out of scope).
-  async function evaluateBody(
+  function parseVenuePayloads(
     url: string,
     venue: string,
     body: unknown,
-  ): Promise<boolean> {
-    const payloads = parseHyperliquidExchangeOrders(
+  ): VenueOrderPayload[] | null {
+    return parseHyperliquidExchangeOrders(
       venue,
       url,
       location.hostname,
       body,
-    );
+    ) as VenueOrderPayload[] | null;
+  }
+
+  // Evaluate every order in a POST body; return false if ANY is denied
+  // (deny-closed for batches).
+  async function evaluatePayloads(
+    payloads: VenueOrderPayload[],
+  ): Promise<boolean> {
     if (!payloads) return true; // not an order action → out of scope, allow
     for (const payload of payloads) {
       const ok = await sendToStreamAndAwaitResponse(
@@ -108,10 +120,79 @@ function install(): void {
     return true;
   }
 
+  function emitExecutionReports(
+    payloads: VenueOrderPayload[],
+    observation: {
+      httpStatus: number;
+      responseJson?: unknown;
+      responseText?: string;
+    },
+  ): void {
+    for (const [statusIndex, payload] of payloads.entries()) {
+      sendToStreamAndDisregard(
+        stream,
+        buildHyperliquidExecutionReport(payload, {
+          ...observation,
+          statusIndex,
+        }) as MessageData,
+      );
+    }
+  }
+
+  async function reportFetchResponse(
+    response: Response,
+    payloads: VenueOrderPayload[],
+  ): Promise<void> {
+    let responseJson: unknown;
+    let responseText: string | undefined;
+    try {
+      responseText = await response.text();
+      if (responseText) responseJson = JSON.parse(responseText);
+    } catch {
+      // Reporting must never affect the dApp response path.
+    }
+    const observation: {
+      httpStatus: number;
+      responseJson?: unknown;
+      responseText?: string;
+    } = {
+      httpStatus: response.status,
+    };
+    if (responseJson !== undefined) observation.responseJson = responseJson;
+    if (responseText !== undefined) observation.responseText = responseText;
+    emitExecutionReports(payloads, observation);
+  }
+
+  function reportXhrResponse(
+    xhr: XMLHttpRequest,
+    payloads: VenueOrderPayload[],
+  ): void {
+    let responseText: string | undefined;
+    let responseJson: unknown;
+    try {
+      responseText =
+        typeof xhr.responseText === "string" ? xhr.responseText : undefined;
+      if (responseText) responseJson = JSON.parse(responseText);
+    } catch {
+      // Reporting must never affect XHR event delivery.
+    }
+    const observation: {
+      httpStatus: number;
+      responseJson?: unknown;
+      responseText?: string;
+    } = {
+      httpStatus: xhr.status || 0,
+    };
+    if (responseJson !== undefined) observation.responseJson = responseJson;
+    if (responseText !== undefined) observation.responseText = responseText;
+    emitExecutionReports(payloads, observation);
+  }
+
   // ── fetch ─────────────────────────────────────────────────────────────────
   const originalFetch = window.fetch;
   window.fetch = new Proxy(originalFetch, {
     apply: async (target, thisArg, args: Parameters<typeof fetch>) => {
+      let allowedPayloads: VenueOrderPayload[] | null = null;
       try {
         const [input, init] = args;
         const url =
@@ -138,11 +219,14 @@ function install(): void {
                 ? await input.clone().text()
                 : null;
           if (body != null) {
-            const allowed = await evaluateBody(url, venue, body);
+            const payloads = parseVenuePayloads(url, venue, body);
+            if (!payloads) return Reflect.apply(target, thisArg, args);
+            const allowed = await evaluatePayloads(payloads);
             recordVerdict(url, venue, allowed);
             if (!allowed) {
               throw new Error("Scopeball: venue order blocked by policy");
             }
+            allowedPayloads = payloads;
           }
         }
       } catch (err) {
@@ -169,7 +253,25 @@ function install(): void {
         }
         console.warn("[Scopeball] fetch-hook non-fatal error", err);
       }
-      return Reflect.apply(target, thisArg, args);
+      try {
+        const response = (await Reflect.apply(
+          target,
+          thisArg,
+          args,
+        )) as Response;
+        if (allowedPayloads) {
+          void reportFetchResponse(response.clone(), allowedPayloads);
+        }
+        return response;
+      } catch (err) {
+        if (allowedPayloads) {
+          emitExecutionReports(allowedPayloads, {
+            httpStatus: 0,
+            responseText: err instanceof Error ? err.message : String(err),
+          });
+        }
+        throw err;
+      }
     },
   });
 
@@ -204,7 +306,10 @@ function install(): void {
       );
     } as typeof proto.open;
 
-    proto.send = function (this: XMLHttpRequest, body?: Document | BodyInit | null) {
+    proto.send = function (
+      this: XMLHttpRequest,
+      body?: Document | BodyInit | null,
+    ) {
       const meta = (this as unknown as Record<PropertyKey, unknown>)[
         XHR_META
       ] as XhrMeta | undefined;
@@ -228,19 +333,35 @@ function install(): void {
       const { url, venue } = meta;
       void (async () => {
         let allowed = true;
+        let payloads: VenueOrderPayload[] | null = null;
         try {
-          allowed = await evaluateBody(url, venue, body);
+          payloads = parseVenuePayloads(url, venue, body);
+          allowed = payloads ? await evaluatePayloads(payloads) : true;
         } catch (err) {
           // Fail-CLOSED (D6): a fault while evaluating a venue order (bridge
           // down, parse throw, SW unreachable, …) must BLOCK, not waive the
           // order through. This is a venue-order POST (guarded above), so a
           // failed verdict path defaults to deny — matching the fetch path and
           // the SW lifecycle's deny-closed contract.
-          console.error("[Scopeball] xhr-hook fault — blocking (fail-closed)", err);
+          console.error(
+            "[Scopeball] xhr-hook fault — blocking (fail-closed)",
+            err,
+          );
           allowed = false;
         }
         recordVerdict(url, venue, allowed);
         if (allowed) {
+          if (payloads) {
+            const reportedPayloads = payloads;
+            let reported = false;
+            const reportOnce = () => {
+              if (reported) return;
+              reported = true;
+              reportXhrResponse(xhr, reportedPayloads);
+            };
+            xhr.addEventListener("loadend", reportOnce);
+            xhr.addEventListener("error", reportOnce);
+          }
           originalSend.call(xhr, body);
           return;
         }
@@ -263,8 +384,9 @@ function install(): void {
 try {
   // Beacon (before any guard) so a probe can confirm the MAIN-world script
   // actually executed in the page realm, independent of install success.
-  (window as unknown as Record<PropertyKey, unknown>).__scopeball_fetch_hook_loaded__ =
-    true;
+  (
+    window as unknown as Record<PropertyKey, unknown>
+  ).__scopeball_fetch_hook_loaded__ = true;
 } catch {
   /* no window (SW/node) — ignore */
 }
@@ -273,7 +395,9 @@ try {
   install();
 } catch (err) {
   try {
-    (window as unknown as Record<PropertyKey, unknown>).__scopeball_fetch_hook_error__ =
+    (
+      window as unknown as Record<PropertyKey, unknown>
+    ).__scopeball_fetch_hook_error__ =
       err instanceof Error ? err.message : String(err);
   } catch {
     /* ignore */

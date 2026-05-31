@@ -1,24 +1,24 @@
 import Browser from "webextension-polyfill";
 import { Identifier } from "@lib/identifier";
-import {
-  handleDashboardRequest,
-  isDashboardRequest,
-} from "./dashboard/api";
-import {
-  handleManifestRequest,
-  isManifestRequest,
-} from "./manifests/handlers";
+import { handleDashboardRequest, isDashboardRequest } from "./dashboard/api";
+import { handleManifestRequest, isManifestRequest } from "./manifests/handlers";
 import { hydrateManifests } from "./manifests/hydrate";
 import { migrateAdapterLoaderStorageKey } from "./manifests/adapter-loader-storage-migration";
 import { detectPendingMigrations } from "./manifests/migration-detector";
 import { decideMessage } from "./orchestrator";
+import { reportExecutionOutcome } from "./execution-report";
 import {
   ensureDefaultPoliciesInstalled,
   reinstallAllPolicies,
 } from "./policies-loader";
 import { loadDefaultPolicySetV2 } from "./policies-loader-v2";
 import { applyEnabledIds, getCatalog } from "./policy-selection";
-import { RequestType, type Message, type MessageResponse } from "@lib/types";
+import {
+  isExecutionReport,
+  RequestType,
+  type Message,
+  type MessageResponse,
+} from "@lib/types";
 
 const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
@@ -152,6 +152,11 @@ async function handleMessage(
   }
   if (message.data.type === "provider-frozen-warning") {
     console.error("[Scopeball] provider frozen", message.data);
+    return;
+  }
+
+  if (isExecutionReport(message)) {
+    await reportExecutionOutcome(message.data);
     return;
   }
 

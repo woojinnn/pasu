@@ -59,5 +59,6 @@ pub mod pool;
 pub mod repositories;
 
 pub use error::{DbError, DbResult};
+pub use migrate::current_version;
 pub use migrate::run as run_migrations;
 pub use pool::Pool;

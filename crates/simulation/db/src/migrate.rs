@@ -62,6 +62,12 @@ const MIGRATION_006: Migration = Migration {
     sql: include_str!("migrations/006_hyperliquid_account_kind.sql"),
 };
 
+const MIGRATION_007: Migration = Migration {
+    version: 7,
+    description: "execution_reports — post-policy wallet/chain/venue lifecycle audit",
+    sql: include_str!("migrations/007_execution_reports.sql"),
+};
+
 const ALL_MIGRATIONS: &[Migration] = &[
     MIGRATION_001,
     MIGRATION_002,
@@ -69,6 +75,7 @@ const ALL_MIGRATIONS: &[Migration] = &[
     MIGRATION_004,
     MIGRATION_005,
     MIGRATION_006,
+    MIGRATION_007,
 ];
 
 /// 모든 migration 을 멱등하게 적용. 이미 적용된 버전은 skip.
@@ -149,8 +156,7 @@ mod tests {
         let pool = Pool::open_in_memory();
         assert_eq!(current_version(&pool).unwrap(), None);
         run(&pool).unwrap();
-        // Phase 2: 002 까지 적용.
-        assert_eq!(current_version(&pool).unwrap(), Some(6));
+        assert_eq!(current_version(&pool).unwrap(), Some(7));
     }
 
     #[test]
@@ -159,14 +165,14 @@ mod tests {
         run(&pool).unwrap();
         run(&pool).unwrap(); // 두 번째 호출도 OK
         run(&pool).unwrap(); // 세 번째도
-        assert_eq!(current_version(&pool).unwrap(), Some(6));
+        assert_eq!(current_version(&pool).unwrap(), Some(7));
 
         // _schema_migrations 에는 적용된 버전 수 만큼만 row.
         pool.with_conn(|c| {
             let n: i64 = c
                 .query_row("SELECT COUNT(*) FROM _schema_migrations", [], |r| r.get(0))
                 .unwrap();
-            assert_eq!(n, 6);
+            assert_eq!(n, 7);
             Ok(())
         })
         .unwrap();

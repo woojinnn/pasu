@@ -9,6 +9,7 @@ export enum RequestType {
   // `window.ethereum` — the dApp signs with an agent key and POSTs directly —
   // so it is captured by the MAIN-world fetch hook, not the provider proxy.
   VENUE_ORDER = "venue-order",
+  EXECUTION_REPORT = "execution-report",
 }
 
 export interface TransactionPayload {
@@ -100,6 +101,52 @@ export interface VenueOrderPayload {
   hlAction: VenueActionWire;
   /** Resolved asset symbol (e.g. `"BTC-USD"`); `undefined` until meta resolves. */
   symbol?: string;
+  /**
+   * Optional wallet attribution. Hyperliquid agent-key exchange requests do not
+   * always reveal the master account in the request body, so the response hook
+   * may report without this field and let a later venue sync reconcile state.
+   */
+  wallet_id?: WalletIdWire;
+}
+
+export interface WalletIdWire {
+  address: string;
+  chains: string[];
+}
+
+export type ExecutionReportOutcome =
+  | { kind: "wallet_rejected"; reason?: string }
+  | { kind: "wallet_signed"; signature: string }
+  | { kind: "onchain_submitted"; chain: string; tx_hash: string }
+  | {
+      kind: "onchain_confirmed";
+      chain: string;
+      tx_hash: string;
+      block_number?: number;
+    }
+  | {
+      kind: "venue_submitted";
+      venue: string;
+      client_order_id?: string;
+    }
+  | {
+      kind: "venue_accepted";
+      venue: string;
+      venue_order_id?: string;
+      client_order_id?: string;
+    }
+  | { kind: "venue_rejected"; venue: string; reason: string }
+  | { kind: "failed"; reason: string };
+
+export interface ExecutionReportPayload {
+  type: RequestType.EXECUTION_REPORT;
+  hostname: string;
+  bypassed?: boolean;
+  wallet_id?: WalletIdWire;
+  evaluation_id?: string;
+  action_index?: number;
+  outcome: ExecutionReportOutcome;
+  metadata?: Record<string, unknown>;
 }
 
 export interface RawTransactionAdvisoryPayload {
@@ -119,6 +166,7 @@ export type MessageData =
   | TypedSignaturePayload
   | UntypedSignaturePayload
   | VenueOrderPayload
+  | ExecutionReportPayload
   | RawTransactionAdvisoryPayload
   | FrozenProviderWarningPayload;
 
@@ -158,3 +206,8 @@ export const isVenueOrder = (
   message: Message,
 ): message is Message & { data: VenueOrderPayload } =>
   message.data.type === RequestType.VENUE_ORDER;
+
+export const isExecutionReport = (
+  message: Message,
+): message is Message & { data: ExecutionReportPayload } =>
+  message.data.type === RequestType.EXECUTION_REPORT;

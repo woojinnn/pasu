@@ -17,9 +17,12 @@
 //! request/response shapes the extension and backend agree on, matching +
 //! extending the legacy Node.js `scopeball.evaluate_v3` contract — plus the
 //! axum [`app`] (router + shared state), the [`handler`] that simulates action
-//! envelopes over wallet state (load → reduce → save), and the wallet-store
-//! boundary ([`store`]). Live-input refresh and enrichment-call execution are
-//! marked `TODO(prep)` and land in subsequent tasks.
+//! envelopes over canonical wallet state (load → reduce → predicted response),
+//! and the store boundaries ([`store`], [`db_store`]). Post-policy execution reports are
+//! recorded separately from wallet state so wallet/chain/venue callbacks cannot
+//! be mistaken for authoritative state. Live-input refresh, enrichment-call
+//! execution, and report reconciliation are marked `TODO(prep)` and land in
+//! subsequent tasks.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
@@ -32,6 +35,7 @@
 #![allow(clippy::duration_suboptimal_units)]
 
 pub mod app;
+pub mod db_store;
 pub mod dto;
 pub mod handler;
 pub mod store;
