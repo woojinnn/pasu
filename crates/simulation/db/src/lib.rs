@@ -57,8 +57,11 @@ pub mod error;
 pub mod migrate;
 pub mod pool;
 pub mod repositories;
+pub mod stores;
+pub mod views;
 
 pub use error::{DbError, DbResult};
 pub use migrate::current_version;
 pub use migrate::run as run_migrations;
 pub use pool::Pool;
+pub use stores::{GlobalDb, MultiUserStore, SqliteWalletStore, User};

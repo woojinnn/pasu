@@ -77,7 +77,7 @@ pub fn upsert(tx: &Transaction<'_>, wallet_id: i64, holding: &TokenHolding) -> D
 /// `TokenKind::default()` (없으면 fallback) 대신 caller 가 hydrate.
 ///
 /// 반환은 (`token_hash`, `symbol_cache`, `decimals_cache`, `balance_cols`, `committed_cols`,
-/// `approved_to`, `price_cols`, `last_synced_at`, `primitives_source`).
+/// `approved_to`, `price_cols`, `last_synced_at`, `primitives_source`, metadata 컬럼들).
 #[allow(clippy::type_complexity)]
 pub fn raw_list_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec<HoldingRowRaw>> {
     let mut stmt = tx.prepare(
@@ -87,7 +87,8 @@ pub fn raw_list_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec
                 h.committed_form, h.committed_amount, \
                 h.approved_to, \
                 h.price_value, h.price_synced_at, h.price_ttl_sec, h.price_confidence_bp, h.price_source_json, \
-                h.last_synced_at, h.primitives_source_json \
+                h.last_synced_at, h.primitives_source_json, \
+                t.logo_url, t.website_url, t.description, t.coingecko_id \
          FROM token_holdings h \
          JOIN tokens t ON h.token_hash = t.token_hash \
          WHERE h.wallet_id = ?1 \
@@ -116,6 +117,10 @@ pub fn raw_list_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec
                 price_source_json: r.get::<_, Option<String>>(17)?,
                 last_synced_at: r.get::<_, i64>(18)?,
                 primitives_source_json: r.get::<_, String>(19)?,
+                logo_url: r.get::<_, Option<String>>(20)?,
+                website_url: r.get::<_, Option<String>>(21)?,
+                description: r.get::<_, Option<String>>(22)?,
+                coingecko_id: r.get::<_, Option<String>>(23)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -153,6 +158,10 @@ pub struct HoldingRowRaw {
     pub price_source_json: Option<String>,
     pub last_synced_at: i64,
     pub primitives_source_json: String,
+    pub logo_url: Option<String>,
+    pub website_url: Option<String>,
+    pub description: Option<String>,
+    pub coingecko_id: Option<String>,
 }
 
 impl HoldingRowRaw {
@@ -216,6 +225,20 @@ impl HoldingRowRaw {
         let last_synced_at = u64::try_from(self.last_synced_at)
             .map_err(|_| DbError::Invariant("last_synced_at negative".into()))?;
 
+        let metadata = {
+            let md = simulation_state::token::TokenMetadata {
+                logo_url: self.logo_url,
+                website_url: self.website_url,
+                description: self.description,
+                coingecko_id: self.coingecko_id,
+            };
+            if md.is_empty() {
+                None
+            } else {
+                Some(md)
+            }
+        };
+
         Ok(TokenHolding {
             key,
             kind,
@@ -227,6 +250,8 @@ impl HoldingRowRaw {
             committed,
             approved_to,
             price_usd,
+            metadata,
+            value_usd: None,
             last_synced_at: simulation_state::primitives::Time::from_unix(last_synced_at),
             primitives_source,
         })
@@ -303,6 +328,8 @@ mod tests {
                 )
                 .with_ttl(Duration::from_secs(12)),
             ),
+            metadata: None,
+            value_usd: None,
             last_synced_at: Time::from_unix(1_738_000_000),
             primitives_source: DataSource::UserSupplied,
         }

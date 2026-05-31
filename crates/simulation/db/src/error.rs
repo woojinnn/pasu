@@ -21,3 +21,12 @@ pub enum DbError {
 }
 
 pub type DbResult<T> = Result<T, DbError>;
+
+/// `DbError` bubbles into `StoreError::Backend` for callers that operate
+/// against the `WalletStore` trait — the trait stays narrow and DB
+/// errors keep their full Display string in the message body.
+impl From<DbError> for simulation_state::store::StoreError {
+    fn from(e: DbError) -> Self {
+        Self::Backend(e.to_string())
+    }
+}

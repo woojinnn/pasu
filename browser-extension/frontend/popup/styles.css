@@ -225,3 +225,21 @@ main {
 .status.error {
   color: var(--deny);
 }
+
+/* Scopeball server (Rust policy-rpc) auth strip. Sits above the catalog. */
+.scopeball-auth-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--card);
+  border-bottom: 1px solid #2a2a35;
+}
+
+.scopeball-auth-strip button {
+  font-size: 11px;
+  padding: 2px 8px;
+}

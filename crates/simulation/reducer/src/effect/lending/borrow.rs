@@ -175,6 +175,8 @@ mod tests {
             committed: Balance::zero_fungible(),
             approved_to: None,
             price_usd: None,
+            metadata: None,
+            value_usd: None,
             last_synced_at: now(),
             primitives_source: DataSource::UserSupplied,
         }

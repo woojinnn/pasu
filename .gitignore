@@ -31,6 +31,11 @@ target/web-server.pid
 # Claude Code per-developer settings (worktree isolation overrides, etc.)
 .claude/
 
+# Secret env vars (OAuth, JWT) — NEVER commit. See .env.example for layout.
+.env
+.env.local
+.env.*.local
+
 # wasm-pack artifacts (produced by scripts/wasm-build*.sh and copied into consumers).
 crates/*-wasm/pkg/
 crates/*-wasm/pkg-tsify-test/
@@ -41,3 +46,4 @@ browser-extension/public/wasm/
 *.md
 !README.md
 /docs/
+.scopeball-runtime/

@@ -1,4 +1,4 @@
-//! SQLite-backed [`WalletStore`](crate::scheduler::WalletStore).
+//! SQLite-backed [`WalletStore`].
 //!
 //! The scheduler needs a durable place to load and save authoritative snapshots.
 //! This store uses the existing normalized `simulation-db` tables rather than
@@ -11,13 +11,11 @@ use simulation_db::repositories::{
     block_heights, execution_reports, holdings, positions, tokens, wallets,
 };
 use simulation_db::{DbError, Pool};
+use simulation_state::store::StoreError;
 use simulation_state::{
     Address, ChainId, DataSource, Position, PositionKind, ProtocolRef, Time, TokenKind, WalletId,
-    WalletState,
+    WalletState, WalletStore,
 };
-
-use crate::error::SyncError;
-use crate::scheduler::WalletStore;
 
 /// SQLite-backed wallet state store for scheduler/server production wiring.
 #[derive(Clone, Debug)]
@@ -35,7 +33,7 @@ impl SqliteWalletStore {
 
 #[async_trait]
 impl WalletStore for SqliteWalletStore {
-    async fn list_wallets(&self) -> Result<Vec<WalletId>, SyncError> {
+    async fn list_wallets(&self) -> Result<Vec<WalletId>, StoreError> {
         let wallets = self.pool.with_tx(wallets::list_active)?;
         wallets
             .into_iter()
@@ -46,7 +44,7 @@ impl WalletStore for SqliteWalletStore {
             .collect()
     }
 
-    async fn load(&self, id: &WalletId) -> Result<WalletState, SyncError> {
+    async fn load(&self, id: &WalletId) -> Result<WalletState, StoreError> {
         let address = id.address.to_string().to_lowercase();
         let state = self.pool.with_tx(|tx| {
             let Some(wallet) = wallets::get_by_address(tx, &address)? else {
@@ -77,7 +75,7 @@ impl WalletStore for SqliteWalletStore {
         Ok(state)
     }
 
-    async fn save(&self, state: &WalletState) -> Result<(), SyncError> {
+    async fn save(&self, state: &WalletState) -> Result<(), StoreError> {
         let created_at = unix_now_i64();
         self.pool.with_tx(|tx| {
             let address = state.wallet_id.address.to_string().to_lowercase();
@@ -123,7 +121,7 @@ impl WalletStore for SqliteWalletStore {
         Ok(())
     }
 
-    async fn reconcile_reports(&self, id: &WalletId, now: Time) -> Result<usize, SyncError> {
+    async fn reconcile_reports(&self, id: &WalletId, now: Time) -> Result<usize, StoreError> {
         let address = id.address.to_string().to_lowercase();
         let reconciled = self.pool.with_tx(|tx| {
             let Some(wallet) = wallets::get_by_address(tx, &address)? else {
@@ -186,10 +184,10 @@ fn position_kind_name(kind: &PositionKind) -> &'static str {
     }
 }
 
-fn parse_address(address: &str) -> Result<Address, SyncError> {
+fn parse_address(address: &str) -> Result<Address, StoreError> {
     address
         .parse::<Address>()
-        .map_err(|e| SyncError::Db(DbError::Invariant(format!("wallet address: {e}"))))
+        .map_err(|e| StoreError::Backend(format!("wallet address: {e}")))
 }
 
 fn unix_now_i64() -> i64 {

@@ -68,7 +68,15 @@ const MIGRATION_007: Migration = Migration {
     sql: include_str!("migrations/007_execution_reports.sql"),
 };
 
-const ALL_MIGRATIONS: &[Migration] = &[
+const MIGRATION_008: Migration = Migration {
+    version: 8,
+    description: "tokens metadata — logo / website / description / coingecko id (Phase 10)",
+    sql: include_str!("migrations/008_token_metadata.sql"),
+};
+
+/// User-DB schema (one DB file per wallet user). Holds wallet state,
+/// holdings, approvals, etc. — but NOT the global users table.
+const USER_DB_MIGRATIONS: &[Migration] = &[
     MIGRATION_001,
     MIGRATION_002,
     MIGRATION_003,
@@ -76,16 +84,40 @@ const ALL_MIGRATIONS: &[Migration] = &[
     MIGRATION_005,
     MIGRATION_006,
     MIGRATION_007,
+    MIGRATION_008,
 ];
 
-/// 모든 migration 을 멱등하게 적용. 이미 적용된 버전은 skip.
+/// Global-DB schema (single file shared across users, holds the email →
+/// user_id mapping). Disjoint from `USER_DB_MIGRATIONS` so neither DB
+/// pollutes the other with irrelevant tables.
+const MIGRATION_006_USERS: Migration = Migration {
+    version: 6,
+    description: "global users table — email/user_id mapping (Phase 4.2)",
+    sql: include_str!("migrations/006_users.sql"),
+};
+
+const GLOBAL_DB_MIGRATIONS: &[Migration] = &[MIGRATION_006_USERS];
+
+/// Apply every user-DB migration. Idempotent — versions already in
+/// `_schema_migrations` are skipped.
+///
+/// Use [`run_global`] for the global users DB.
 pub fn run(pool: &Pool) -> DbResult<()> {
+    apply_set(pool, USER_DB_MIGRATIONS)
+}
+
+/// Apply every global-DB migration (the users table and any future
+/// cross-user schema).
+pub fn run_global(pool: &Pool) -> DbResult<()> {
+    apply_set(pool, GLOBAL_DB_MIGRATIONS)
+}
+
+fn apply_set(pool: &Pool, migrations: &[Migration]) -> DbResult<()> {
     pool.with_conn(|c| {
         c.execute_batch(SCHEMA_MIGRATIONS_TABLE)?;
         Ok(())
     })?;
-
-    for m in ALL_MIGRATIONS {
+    for m in migrations {
         apply_one(pool, m)?;
     }
     Ok(())
@@ -156,7 +188,7 @@ mod tests {
         let pool = Pool::open_in_memory();
         assert_eq!(current_version(&pool).unwrap(), None);
         run(&pool).unwrap();
-        assert_eq!(current_version(&pool).unwrap(), Some(7));
+        assert_eq!(current_version(&pool).unwrap(), Some(8));
     }
 
     #[test]
@@ -165,14 +197,14 @@ mod tests {
         run(&pool).unwrap();
         run(&pool).unwrap(); // 두 번째 호출도 OK
         run(&pool).unwrap(); // 세 번째도
-        assert_eq!(current_version(&pool).unwrap(), Some(7));
+        assert_eq!(current_version(&pool).unwrap(), Some(8));
 
         // _schema_migrations 에는 적용된 버전 수 만큼만 row.
         pool.with_conn(|c| {
             let n: i64 = c
                 .query_row("SELECT COUNT(*) FROM _schema_migrations", [], |r| r.get(0))
                 .unwrap();
-            assert_eq!(n, 7);
+            assert_eq!(n, 8);
             Ok(())
         })
         .unwrap();

@@ -373,6 +373,8 @@ mod tests {
                 )
                 .with_ttl(Duration::from_secs(60)),
             ),
+            metadata: None,
+            value_usd: None,
             last_synced_at: Time::from_unix(synced_at),
             primitives_source: DataSource::OnchainView {
                 chain: ChainId::ethereum_mainnet(),

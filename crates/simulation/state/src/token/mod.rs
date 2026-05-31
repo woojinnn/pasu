@@ -6,7 +6,7 @@ pub mod kind;
 pub mod lp;
 pub mod token_ref;
 
-pub use holding::{Balance, TokenHolding};
+pub use holding::{Balance, TokenHolding, TokenMetadata};
 pub use key::{TokenId, TokenKey};
 pub use kind::{
     BaseCategory, FiatCurrency, NoteKind, PegKind, PegTarget, RateMode, RebaseForm, TokenKind,

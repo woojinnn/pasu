@@ -107,6 +107,7 @@ pub mod batcher;
 pub mod calc;
 pub mod config;
 pub mod db_store;
+pub mod discovery;
 pub mod error;
 pub mod fetchers;
 pub mod manifest_v2;
@@ -129,6 +130,9 @@ pub use config::{
     VenuesConfig,
 };
 pub use db_store::SqliteWalletStore;
+pub use discovery::{
+    discover_top_tokens, fetch_native_balance, CoinGeckoClient, DiscoveredToken, EtherscanClient,
+};
 pub use error::{SyncError, SyncResult};
 pub use fetchers::abi_decoder::{AbiDecoder, AbiTypeRegistry};
 pub use fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
@@ -141,7 +145,10 @@ pub use manifest_v2::{
 pub use orchestrator::{HyperliquidAccountReport, Orchestrator, RefreshReport};
 pub use primitives_sync::PrimitivesReport;
 pub use resolver::{resolve_field, resolve_inputs, GlobalValues};
-pub use scheduler::{Scheduler, SchedulerConfig, TickReport, WalletStore};
+pub use scheduler::{Scheduler, SchedulerConfig, TickReport};
+// Re-export from simulation-state for callers that previously imported the
+// trait from `simulation-sync` (which is where it used to live).
+pub use simulation_state::{StoreError, WalletStore};
 pub use subscription::{BlockSubscription, NewBlock, PollingBlockSubscription};
 pub use topo::{topological_sort, DepNode};
 pub use walker::{walk_stale, ActionSlot, FieldLocation, StaleField, WalkStats};

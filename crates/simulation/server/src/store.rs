@@ -15,8 +15,8 @@ use std::sync::Mutex;
 
 use async_trait::async_trait;
 
-use simulation_state::{WalletId, WalletState};
-use simulation_sync::{SyncError, WalletStore};
+use simulation_state::store::StoreError;
+use simulation_state::{WalletId, WalletState, WalletStore};
 
 use crate::dto::ExecutionReportRequest;
 
@@ -33,11 +33,11 @@ pub trait ExecutionReportStore: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Returns [`SyncError`] when the backing store cannot record the report.
+    /// Returns [`StoreError`] when the backing store cannot record the report.
     async fn record_execution_report(
         &self,
         report: ExecutionReportRequest,
-    ) -> Result<(), SyncError>;
+    ) -> Result<(), StoreError>;
 }
 
 /// A process-local [`WalletStore`] backed by `Mutex`-protected collections.
@@ -94,7 +94,7 @@ impl InMemoryWalletStore {
 
 #[async_trait]
 impl WalletStore for InMemoryWalletStore {
-    async fn list_wallets(&self) -> Result<Vec<WalletId>, SyncError> {
+    async fn list_wallets(&self) -> Result<Vec<WalletId>, StoreError> {
         Ok(self
             .wallets
             .lock()
@@ -110,7 +110,7 @@ impl WalletStore for InMemoryWalletStore {
     /// Evaluation callers must not persist their predictions; authoritative
     /// sync/reconciliation callers use [`WalletStore::save`] when they have real
     /// ledger or venue state.
-    async fn load(&self, id: &WalletId) -> Result<WalletState, SyncError> {
+    async fn load(&self, id: &WalletId) -> Result<WalletState, StoreError> {
         Ok(self
             .wallets
             .lock()
@@ -120,7 +120,7 @@ impl WalletStore for InMemoryWalletStore {
             .unwrap_or_else(|| WalletState::new(id.clone())))
     }
 
-    async fn save(&self, state: &WalletState) -> Result<(), SyncError> {
+    async fn save(&self, state: &WalletState) -> Result<(), StoreError> {
         self.wallets
             .lock()
             .expect("InMemoryWalletStore mutex poisoned")
@@ -134,7 +134,7 @@ impl ExecutionReportStore for InMemoryWalletStore {
     async fn record_execution_report(
         &self,
         report: ExecutionReportRequest,
-    ) -> Result<(), SyncError> {
+    ) -> Result<(), StoreError> {
         self.execution_reports
             .lock()
             .expect("InMemoryWalletStore mutex poisoned")

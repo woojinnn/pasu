@@ -10,7 +10,7 @@ use tsify_next::Tsify;
 use crate::approval::ApprovalSet;
 use crate::pending::PendingTx;
 use crate::position::Position;
-use crate::primitives::{Address, BlockHeight, ChainId};
+use crate::primitives::{Address, BlockHeight, ChainId, Price};
 use crate::token::{TokenHolding, TokenKey};
 
 /// Wallet identity: an account address plus the set of tracked chains.
@@ -67,6 +67,13 @@ pub struct WalletState {
     #[serde(default)]
     #[tsify(type = "Array<[ChainId, BlockHeight]>")]
     pub block_heights: BTreeMap<ChainId, BlockHeight>,
+
+    /// Sum of every `tokens[*].value_usd` — populated by server read
+    /// handlers before serialization, never persisted. `None` when no
+    /// holding has a USD price.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub portfolio_value_usd: Option<Price>,
 }
 
 impl WalletState {
@@ -80,7 +87,33 @@ impl WalletState {
             positions: Vec::new(),
             pending: Vec::new(),
             block_heights: BTreeMap::new(),
+            portfolio_value_usd: None,
         }
+    }
+
+    /// Populate `tokens[*].value_usd` and the top-level
+    /// `portfolio_value_usd` from the existing balance + price fields.
+    /// Idempotent; safe to call multiple times. Server read handlers use
+    /// this before JSON-encoding so the UI doesn't have to recompute.
+    pub fn populate_computed_values(&mut self) {
+        let mut total = 0f64;
+        let mut any = false;
+        for holding in self.tokens.values_mut() {
+            if let Some(v) = holding.compute_value_usd() {
+                if let Ok(f) = v.as_str().parse::<f64>() {
+                    total += f;
+                    any = true;
+                }
+                holding.value_usd = Some(v);
+            } else {
+                holding.value_usd = None;
+            }
+        }
+        self.portfolio_value_usd = if any {
+            Some(Price::new(format!("{total:.6}")))
+        } else {
+            None
+        };
     }
 
     /// Policy-view helper: spendable balance of a token (balance - committed).

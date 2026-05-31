@@ -1,0 +1,509 @@
+openapi: 3.0.3
+info:
+  title: Scopeball Policy-RPC API
+  description: |
+    Backend for the Scopeball wallet simulator + Cedar policy enforcement
+    system. Public routes (`/health`, `/docs`, `/openapi.yaml`, `/auth/*`)
+    are open; everything else requires `Authorization: Bearer <jwt>` where
+    the JWT is obtained from the Google OAuth flow.
+
+    Notes:
+    - Addresses are accepted in any case and stored as lowercase `0x…`.
+    - Chain ids use CAIP-2 (e.g. `eip155:1`, `eip155:42161`, `eip155:8453`).
+    - Token amounts (`balance`, `committed`) are U256 decimal strings.
+    - Prices (`price_usd.value`, `value_usd`, `portfolio_value_usd`) are
+      formatted Decimal strings with 6 fractional digits.
+  version: "0.1.0"
+
+servers:
+  - url: http://127.0.0.1:8788
+    description: Local dev
+
+tags:
+  - name: auth
+    description: Google OAuth + JWT lifecycle
+  - name: wallets
+    description: Wallet identity + state CRUD
+  - name: tokens
+    description: Token catalog (logo / website / description)
+  - name: transactions
+    description: Tx lifecycle log (state_deltas table)
+  - name: policies
+    description: Cedar policy CRUD
+  - name: meta
+    description: Health, evaluate, events, ops
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [meta]
+      summary: Liveness probe
+      security: []
+      responses:
+        "200":
+          description: Server is up
+          content:
+            text/plain:
+              schema: { type: string, example: ok }
+
+  /docs:
+    get:
+      tags: [meta]
+      summary: This Swagger UI page
+      security: []
+      responses:
+        "200":
+          description: HTML page
+          content:
+            text/html:
+              schema: { type: string }
+
+  /openapi.yaml:
+    get:
+      tags: [meta]
+      summary: This OpenAPI 3.0 spec (YAML)
+      security: []
+      responses:
+        "200":
+          description: YAML document
+          content:
+            application/yaml:
+              schema: { type: string }
+
+  /auth/google:
+    get:
+      tags: [auth]
+      summary: Start Google OAuth — redirects to Google consent screen
+      security: []
+      responses:
+        "302":
+          description: Redirect to Google
+
+  /auth/google/callback:
+    get:
+      tags: [auth]
+      summary: Google OAuth callback — exchanges code → JWT
+      security: []
+      parameters:
+        - { name: code,  in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "302":
+          description: Redirect to dashboard with `#token=<jwt>`
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Echo the authenticated user
+      responses:
+        "200":
+          description: AuthUser
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id: { type: string, example: "google:117234567890" }
+                  email:   { type: string, example: "alice@gmail.com" }
+
+  /evaluate:
+    post:
+      tags: [meta]
+      summary: Simulate Action(s) against the wallet's state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvaluateRequest" }
+      responses:
+        "200":
+          description: Simulation result
+          content:
+            application/json:
+              schema: { type: object }
+        "422":
+          description: Reducer rejected the action
+        "500":
+          description: Store error
+
+  /wallets:
+    get:
+      tags: [wallets]
+      summary: List every wallet for the authenticated user
+      responses:
+        "200":
+          description: WalletId[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WalletId" }
+    post:
+      tags: [wallets]
+      summary: Start tracking a new wallet
+      description: |
+        Discovers native gas + ERC-20 balances (via Etherscan when
+        `ETHERSCAN_API_KEY` is set, otherwise hardcoded top-N catalog)
+        and triggers a first sync. CoinGecko metadata backfill runs
+        synchronously for up to 12 newly-seen tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [address]
+              properties:
+                address: { type: string, example: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045" }
+                chains:
+                  type: array
+                  description: CAIP-2 ids. Omit to track every chain in the sync config.
+                  items: { type: string }
+                  example: ["eip155:1", "eip155:42161"]
+                label: { type: string, nullable: true, example: "vitalik watch" }
+      responses:
+        "200":
+          description: Wallet created or already present
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallet_id: { $ref: "#/components/schemas/WalletId" }
+                  synced: { type: boolean }
+                  discovered: { type: integer, description: "Newly seeded TokenHolding count" }
+                  error: { type: string, nullable: true }
+
+  /wallets/{address}:
+    parameters:
+      - $ref: "#/components/parameters/AddressParam"
+    patch:
+      tags: [wallets]
+      summary: Update mutable wallet fields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string, nullable: true, description: "Pass null to clear" }
+                is_owned: { type: boolean }
+      responses:
+        "204": { description: Updated }
+        "404": { description: Wallet not tracked }
+    delete:
+      tags: [wallets]
+      summary: Archive (soft-delete) the wallet
+      responses:
+        "204": { description: Archived }
+        "404": { description: Wallet not tracked or already archived }
+
+  /wallets/{address}/sync:
+    parameters:
+      - $ref: "#/components/parameters/AddressParam"
+    post:
+      tags: [wallets]
+      summary: Force a refresh against live RPC/oracle sources
+      responses:
+        "204": { description: Sync completed }
+        "404": { description: Wallet not tracked }
+        "500": { description: Sync error }
+
+  /wallets/{address}/state:
+    parameters:
+      - $ref: "#/components/parameters/AddressParam"
+    get:
+      tags: [wallets]
+      summary: Full WalletState snapshot (tokens + approvals + positions + pending + portfolio value)
+      responses:
+        "200":
+          description: WalletState (with computed `value_usd` per token + top-level `portfolio_value_usd`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WalletState" }
+
+  /wallets/{address}/holdings:
+    parameters:
+      - $ref: "#/components/parameters/AddressParam"
+    get:
+      tags: [wallets]
+      summary: Token holdings (array form)
+      responses:
+        "200":
+          description: TokenHolding[] (with computed `value_usd`)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TokenHolding" }
+
+  /wallets/{address}/approvals:
+    parameters:
+      - $ref: "#/components/parameters/AddressParam"
+    get:
+      tags: [wallets]
+      summary: Full ApprovalSet (ERC20 + setForAll + Permit2)
+      responses:
+        "200":
+          description: ApprovalSet
+          content:
+            application/json:
+              schema: { type: object }
+
+  /wallets/{address}/block-heights:
+    parameters:
+      - $ref: "#/components/parameters/AddressParam"
+    get:
+      tags: [wallets]
+      summary: Per-chain sync block snapshot
+      responses:
+        "200":
+          description: BlockHeight rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    chain:  { type: string, example: "eip155:1" }
+                    number: { type: integer, example: 19000000 }
+                    time:   { type: integer, example: 1700000000 }
+
+  /tokens:
+    get:
+      tags: [tokens]
+      summary: Token catalog (every token row, with metadata when known)
+      responses:
+        "200":
+          description: TokenCatalogRow[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TokenCatalogRow" }
+
+  /transactions:
+    get:
+      tags: [transactions]
+      summary: Recent tx lifecycle log (`state_deltas` rows)
+      parameters:
+        - { name: wallet, in: query, schema: { type: string }, description: "0x… filter (optional; defaults to all wallets)" }
+        - { name: limit,  in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+      responses:
+        "200":
+          description: TxRow[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TxRow" }
+
+  /policies:
+    get:
+      tags: [policies]
+      summary: List every Cedar policy installed in the user's DB
+      responses:
+        "200":
+          description: PolicyRow[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PolicyRow" }
+    post:
+      tags: [policies]
+      summary: Install a new Cedar policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, cedar_text, severity]
+              properties:
+                name: { type: string, example: "Cap large USDC sends" }
+                description: { type: string, nullable: true }
+                cedar_text: { type: string }
+                severity: { type: string, enum: [deny, warn, info] }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  created_at: { type: integer }
+
+  /policies/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [policies]
+      summary: Update mutable policy fields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string, nullable: true }
+                cedar_text: { type: string }
+                severity: { type: string, enum: [deny, warn, info] }
+                enabled: { type: boolean }
+      responses:
+        "204": { description: Updated }
+        "404": { description: Policy not found }
+    delete:
+      tags: [policies]
+      summary: Drop a policy row
+      responses:
+        "204": { description: Deleted }
+        "404": { description: Policy not found }
+
+  /events/stream:
+    get:
+      tags: [meta]
+      summary: Server-Sent Events feed (wallet_synced, etc.)
+      description: Auth via `?token=<jwt>` query param (EventSource can't set headers).
+      parameters:
+        - { name: token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: SSE stream
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AddressParam:
+      name: address
+      in: path
+      required: true
+      schema: { type: string }
+      example: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"
+
+  schemas:
+    WalletId:
+      type: object
+      properties:
+        address: { type: string, example: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045" }
+        chains:
+          type: array
+          items: { type: string, example: "eip155:1" }
+
+    LiveFieldPrice:
+      type: object
+      description: A USD price with provenance + freshness.
+      properties:
+        value: { type: string, example: "0.99955" }
+        synced_at: { type: integer }
+        ttl_sec:   { type: integer }
+        confidence_bp: { type: integer, nullable: true }
+        source: { type: object }
+
+    TokenMetadata:
+      type: object
+      properties:
+        logo_url: { type: string, nullable: true }
+        website_url: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        coingecko_id: { type: string, nullable: true }
+
+    TokenHolding:
+      type: object
+      properties:
+        key: { type: object, description: "TokenKey enum (Native | Erc20 | Erc721 | Erc1155)" }
+        kind: { type: object }
+        symbol: { type: string }
+        decimals: { type: integer }
+        balance: { type: object }
+        committed: { type: object }
+        approved_to: { type: string, nullable: true }
+        price_usd: { $ref: "#/components/schemas/LiveFieldPrice" }
+        metadata:  { $ref: "#/components/schemas/TokenMetadata" }
+        value_usd:
+          type: string
+          nullable: true
+          description: "balance / 10^decimals × price_usd.value (computed server-side, not persisted)"
+        last_synced_at: { type: integer }
+        primitives_source: { type: object }
+
+    WalletState:
+      type: object
+      properties:
+        wallet_id: { $ref: "#/components/schemas/WalletId" }
+        tokens:
+          type: array
+          description: "Pairs of [TokenKey, TokenHolding]"
+          items: { type: array, items: { type: object } }
+        approvals: { type: object }
+        positions: { type: array, items: { type: object } }
+        pending:   { type: array, items: { type: object } }
+        block_heights:
+          type: array
+          items: { type: array, items: { type: object } }
+        portfolio_value_usd:
+          type: string
+          nullable: true
+          description: "Sum of every holding's value_usd. Server-computed."
+
+    TokenCatalogRow:
+      type: object
+      properties:
+        token_hash:   { type: string, example: "0x6f5d8a..." }
+        key:          { type: object }
+        symbol:       { type: string, nullable: true }
+        decimals:     { type: integer, nullable: true }
+        first_seen_at: { type: integer }
+        logo_url:     { type: string, nullable: true }
+        website_url:  { type: string, nullable: true }
+        description:  { type: string, nullable: true }
+        coingecko_id: { type: string, nullable: true }
+        metadata_synced_at: { type: integer, nullable: true }
+
+    TxRow:
+      type: object
+      properties:
+        id:               { type: integer }
+        source:           { type: string, enum: [live, backfill] }
+        status:           { type: string }
+        created_at:       { type: integer }
+        signed_at:        { type: integer, nullable: true }
+        confirmed_at:     { type: integer, nullable: true }
+        action_domain:    { type: string }
+        action_kind:      { type: string }
+        submitter:        { type: string }
+        tx_hash:          { type: string, nullable: true }
+        predicted_verdict: { type: string, nullable: true }
+        action:           { type: object }
+        predicted_delta:  { type: object, nullable: true }
+        realized_delta:   { type: object, nullable: true }
+
+    PolicyRow:
+      type: object
+      properties:
+        id:          { type: integer }
+        name:        { type: string }
+        description: { type: string, nullable: true }
+        cedar_text:  { type: string }
+        severity:    { type: string }
+        enabled:     { type: boolean }
+        created_at:  { type: integer }
+        updated_at:  { type: integer }
+
+    EvaluateRequest:
+      type: object
+      description: Pass an Action envelope; reducer applies + Cedar evaluates.

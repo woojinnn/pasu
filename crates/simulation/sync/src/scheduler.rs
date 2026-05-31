@@ -10,29 +10,12 @@
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use async_trait::async_trait;
 use tokio::sync::watch;
 
-use simulation_state::{Time, WalletId, WalletState};
+use simulation_state::{Time, WalletStore};
 
 use crate::error::SyncError;
 use crate::orchestrator::{Orchestrator, RefreshReport};
-
-/// scheduler 가 의존하는 외부 store interface.
-///
-/// `simulation-db` 가 SQLite-backed impl, 테스트에선 in-memory impl.
-#[async_trait]
-pub trait WalletStore: Send + Sync {
-    async fn list_wallets(&self) -> Result<Vec<WalletId>, SyncError>;
-    async fn load(&self, id: &WalletId) -> Result<WalletState, SyncError>;
-    async fn save(&self, state: &WalletState) -> Result<(), SyncError>;
-    /// Mark execution reports reconciled after an authoritative chain/venue
-    /// snapshot has been saved. Stores without report persistence can keep the
-    /// default no-op implementation.
-    async fn reconcile_reports(&self, _id: &WalletId, _now: Time) -> Result<usize, SyncError> {
-        Ok(0)
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct SchedulerConfig {
@@ -246,6 +229,8 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Mutex;
 
+    use async_trait::async_trait;
+    use simulation_state::store::StoreError;
     use simulation_state::{Address, ChainId, WalletId, WalletState};
 
     struct MemStore {
@@ -254,21 +239,18 @@ mod tests {
 
     #[async_trait]
     impl WalletStore for MemStore {
-        async fn list_wallets(&self) -> Result<Vec<WalletId>, SyncError> {
+        async fn list_wallets(&self) -> Result<Vec<WalletId>, StoreError> {
             Ok(self.wallets.lock().unwrap().keys().cloned().collect())
         }
-        async fn load(&self, id: &WalletId) -> Result<WalletState, SyncError> {
+        async fn load(&self, id: &WalletId) -> Result<WalletState, StoreError> {
             self.wallets
                 .lock()
                 .unwrap()
                 .get(id)
                 .cloned()
-                .ok_or_else(|| SyncError::FetchFailed {
-                    source_id: "memstore".into(),
-                    reason: format!("not found: {}", id.address),
-                })
+                .ok_or_else(|| StoreError::NotFound(id.clone()))
         }
-        async fn save(&self, state: &WalletState) -> Result<(), SyncError> {
+        async fn save(&self, state: &WalletState) -> Result<(), StoreError> {
             self.wallets
                 .lock()
                 .unwrap()

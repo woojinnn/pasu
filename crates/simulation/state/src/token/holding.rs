@@ -58,6 +58,41 @@ impl Balance {
     }
 }
 
+/// Off-chain registry metadata for a token (logo, description, etc.).
+/// Sourced from `CoinGecko` (`/coins/{platform}/contract/{address}`) on
+/// first wallet sync; cached in the `tokens` table.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct TokenMetadata {
+    /// CDN URL of the token icon (large/standard variant).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub logo_url: Option<String>,
+    /// Project homepage.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub website_url: Option<String>,
+    /// Short marketing description (may include markdown).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub description: Option<String>,
+    /// `CoinGecko` id (e.g. "usd-coin") so the UI can deep-link if needed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub coingecko_id: Option<String>,
+}
+
+impl TokenMetadata {
+    /// True when every field is `None` — used to skip serialization noise.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.logo_url.is_none()
+            && self.website_url.is_none()
+            && self.description.is_none()
+            && self.coingecko_id.is_none()
+    }
+}
+
 /// Held balance state of a single token (one fungibility unit) for an account.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -87,6 +122,21 @@ pub struct TokenHolding {
     #[tsify(optional)]
     pub price_usd: Option<LiveField<Price>>,
 
+    /// Off-chain registry metadata (logo, website, description). Sourced
+    /// from `CoinGecko` on first wallet sync; `None` for tokens whose
+    /// contract address isn't in `CoinGecko`'s catalog.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub metadata: Option<TokenMetadata>,
+
+    /// Computed USD value (`balance / 10^decimals × price_usd.value`).
+    /// Set by server read handlers before serialization; never
+    /// persisted. Use [`Self::compute_value_usd`] to recompute on the
+    /// fly if you have just the primitives.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub value_usd: Option<Price>,
+
     /// Timestamp at which this holding's primitive fields were last synced.
     pub last_synced_at: Time,
     /// Provenance of the primitive (on-chain) fields in this holding.
@@ -104,5 +154,26 @@ impl TokenHolding {
             }
             _ => None,
         }
+    }
+
+    /// Compute `balance / 10^decimals × price_usd.value` as a Decimal
+    /// string. Returns `None` for non-fungible balances or when price
+    /// data is missing. f64-based — fine for display, not for accounting.
+    #[must_use]
+    pub fn compute_value_usd(&self) -> Option<Price> {
+        let bal = self.balance.as_fungible()?;
+        let price = self.price_usd.as_ref()?;
+        let price_str = price.value.as_str();
+        let price_f: f64 = price_str.parse().ok()?;
+        // U256 → f64 via decimal string; safe for display-scale values.
+        let bal_str = bal.to_string();
+        let bal_f: f64 = bal_str.parse().ok()?;
+        let divisor = 10f64.powi(i32::from(self.decimals));
+        if divisor <= 0.0 {
+            return None;
+        }
+        let value = bal_f / divisor * price_f;
+        // Avoid scientific notation for tiny dust amounts.
+        Some(Price::new(format!("{value:.6}")))
     }
 }
