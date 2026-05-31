@@ -1,0 +1,82 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/redelegate@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xa33a3433",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "redelegate",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOperator",
+          "type": "address"
+        },
+        {
+          "components": [
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiry",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct ISignatureUtilsMixinTypes.SignatureWithExpiry",
+          "name": "newOperatorApproverSig",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "approverSalt",
+          "type": "bytes32"
+        }
+      ],
+      "name": "redelegate",
+      "outputs": [
+        {
+          "internalType": "bytes32[]",
+          "name": "withdrawalRoots",
+          "type": "bytes32[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "redelegate",
+        "redelegate": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "new_operator": "$args.newOperator",
+          "approver_salt": "$args.approverSalt"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

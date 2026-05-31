@@ -1,0 +1,103 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/completeQueuedWithdrawals@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x9435bb43",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "completeQueuedWithdrawals",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "staker",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "delegatedTo",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "withdrawer",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint32",
+              "name": "startBlock",
+              "type": "uint32"
+            },
+            {
+              "internalType": "contract IStrategy[]",
+              "name": "strategies",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "scaledShares",
+              "type": "uint256[]"
+            }
+          ],
+          "internalType": "struct IDelegationManagerTypes.Withdrawal[]",
+          "name": "withdrawals",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "contract IERC20[][]",
+          "name": "tokens",
+          "type": "address[][]"
+        },
+        {
+          "internalType": "bool[]",
+          "name": "receiveAsTokens",
+          "type": "bool[]"
+        }
+      ],
+      "name": "completeQueuedWithdrawals",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.withdrawals",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "complete_withdrawal",
+        "complete_withdrawal": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "staker": "$inputs[0]",
+          "withdrawer": "$inputs[2]",
+          "strategies": "$inputs[5]"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

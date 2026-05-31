@@ -1,0 +1,65 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/registerAsOperator@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x2aa6d888",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "registerAsOperator",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "initDelegationApprover",
+          "type": "address"
+        },
+        {
+          "internalType": "uint32",
+          "name": "allocationDelay",
+          "type": "uint32"
+        },
+        {
+          "internalType": "string",
+          "name": "metadataURI",
+          "type": "string"
+        }
+      ],
+      "name": "registerAsOperator",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "register_operator",
+        "register_operator": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "delegation_approver": "$args.initDelegationApprover",
+          "allocation_delay": "$args.allocationDelay",
+          "metadata_uri": "$args.metadataURI"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

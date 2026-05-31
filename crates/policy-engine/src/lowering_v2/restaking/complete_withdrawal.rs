@@ -33,10 +33,9 @@ pub(crate) fn lower(
                 .collect(),
         ),
     );
-    m.insert(
-        "receiveAsTokens".into(),
-        Value::Bool(action.receive_as_tokens),
-    );
+    if let Some(receive_as_tokens) = action.receive_as_tokens {
+        m.insert("receiveAsTokens".into(), Value::Bool(receive_as_tokens));
+    }
 
     Ok(ctx.lowered(
         r#"Restaking::Action::"CompleteWithdrawal""#,
@@ -52,17 +51,34 @@ mod tests {
 
     use super::super::test_support::{eigenlayer_venue, onchain_meta, other};
 
-    #[test]
-    fn complete_withdrawal_conforms() {
-        let body = ActionBody::Restaking(RestakingAction::CompleteWithdrawal(
+    fn body(receive_as_tokens: Option<bool>) -> ActionBody {
+        ActionBody::Restaking(RestakingAction::CompleteWithdrawal(
             CompleteWithdrawalAction {
                 venue: eigenlayer_venue(),
                 staker: other(),
                 withdrawer: other(),
                 strategies: vec![other()],
-                receive_as_tokens: true,
+                receive_as_tokens,
             },
-        ));
-        super::super::test_support::assert_conforms("complete_withdrawal", &body, &onchain_meta());
+        ))
+    }
+
+    #[test]
+    fn complete_withdrawal_single_conforms() {
+        super::super::test_support::assert_conforms(
+            "complete_withdrawal",
+            &body(Some(true)),
+            &onchain_meta(),
+        );
+    }
+
+    #[test]
+    fn complete_withdrawal_batch_conforms() {
+        // Batch (`completeQueuedWithdrawals`): per-element receiveAsTokens omitted.
+        super::super::test_support::assert_conforms(
+            "complete_withdrawal",
+            &body(None),
+            &onchain_meta(),
+        );
     }
 }

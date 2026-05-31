@@ -1,0 +1,112 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/strategy-manager/deposit-sign@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "1": [
+        "0x858646372cc42e1a627fce94aa7a7033e7cf075a"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "EigenLayer",
+      "verifying_contract": "0x858646372cc42e1a627fce94aa7a7033e7cf075a",
+      "primary_type": "Deposit",
+      "types": {
+        "Deposit": [
+          {
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "name": "strategy",
+            "type": "address"
+          },
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "expiry",
+            "type": "uint256"
+          }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "Deposit",
+    "abi": {
+      "name": "Deposit",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "staker",
+          "type": "address"
+        },
+        {
+          "name": "strategy",
+          "type": "address"
+        },
+        {
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256"
+        },
+        {
+          "name": "expiry",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "deposit",
+        "deposit": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "strategy": "$args.strategy",
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.token"
+            }
+          },
+          "amount": "$args.amount",
+          "staker": "$args.staker"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

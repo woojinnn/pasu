@@ -1,0 +1,61 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/rewards-coordinator/setClaimerForEarner@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xf22cef85",
+    "chain_to_addresses": {
+      "1": [
+        "0x7750d328b314effa365a0402ccfd489b80b0adda"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setClaimerFor",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "earner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "claimer",
+          "type": "address"
+        }
+      ],
+      "name": "setClaimerFor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "eigenlayer",
+          "authorizer": "$args.earner",
+          "authorized": "$args.claimer",
+          "is_authorized": true,
+          "permission": "delegate",
+          "permission_label": "rewards_claimer"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

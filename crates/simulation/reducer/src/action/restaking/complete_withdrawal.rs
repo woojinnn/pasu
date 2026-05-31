@@ -27,5 +27,9 @@ pub struct CompleteWithdrawalAction {
     #[tsify(type = "string[]")]
     pub strategies: Vec<Address>,
     /// `true` = receive underlying tokens; `false` = re-deposit as shares.
-    pub receive_as_tokens: bool,
+    /// `None` for the batch `completeQueuedWithdrawals`, where the per-withdrawal
+    /// flag is a parallel `bool[]` not reachable per-element from `array_emit`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub receive_as_tokens: Option<bool>,
 }
