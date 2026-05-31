@@ -1,0 +1,5 @@
+{
+  "id": "liq-swap-price-impact-warning",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } }
+}

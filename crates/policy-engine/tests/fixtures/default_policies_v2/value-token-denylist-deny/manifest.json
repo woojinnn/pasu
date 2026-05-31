@@ -1,0 +1,5 @@
+{
+  "id": "value-token-denylist-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } }
+}
