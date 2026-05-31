@@ -35,17 +35,17 @@
 crates/integration-tests/src/harness/
 ├─ corpus.rs              # existing: corpus replay + expect verdict
 ├─ oracle.rs              # existing: envelope/type/domain/error class
-├─ semantic.rs            # planned: generic expect_body assertion engine
+├─ semantic.rs            # implemented: generic expect_body assertion engine
 ├─ projection.rs          # planned: selector-level independent expected-field projection
 ├─ semantic_lints.rs      # planned: zero/unresolved/high-risk-field lints
 ├─ audit.rs               # planned: protocol-level strict audit aggregator
 └─ fixtures.rs            # optional: reusable JSON pointer/action find helpers
 
 crates/integration-tests/src/bin/v3_harness.rs
-├─ corpus                 # existing; should call semantic assertions when present
+├─ corpus                 # existing; calls semantic assertions when present
 ├─ validate               # existing; single_emit now, strategy-aware later
 ├─ coverage               # existing
-├─ import-*               # existing; should normalize RPC hex quantities
+├─ import-*               # existing; normalizes RPC hex quantities
 └─ audit                  # planned: protocol strict gate wrapper
 ```
 
@@ -89,7 +89,7 @@ Protocol-agnostic matcher set:
 | `len` | array/string length equals `value` |
 | `nonzero_address` | `0x` + 40 hex 이고 all-zero 아님 |
 | `hex_eq` | case-insensitive hex equality |
-| `u256_hex_eq` | decimal/hex input 을 canonical lower-hex 로 비교 |
+| `u256_hex_eq` | decimal/hex input 을 U256 numeric equality 로 비교 |
 
 Rust skeleton:
 
@@ -126,7 +126,7 @@ Implementation rule:
 
 - `expect_body` 실패는 corpus outcome `matched=false`.
 - failure detail 은 `path`, `op`, expected, actual 을 포함한다.
-- path dialect 는 우선 JSON Pointer subset 을 권장한다. `$` dotted syntax 를 지원하더라도 내부에서는 pointer 로 normalize 한다.
+- path dialect 는 JSON Pointer(`/...`), `$` dotted/index(`$.data.actions[0]`), recursive field(`$..address`) 를 지원한다.
 - assertion engine 은 `ActionBody` schema 를 몰라야 한다. JSON 만 본다.
 
 ### 1.2 Projection data contract
@@ -385,8 +385,8 @@ Corpus rules:
    - one failure/excluded example if intentionally unsupported
 4. Add `expect_body` for semantic-critical fields.
 5. `tx_hash` is preferred for real txs.
-6. `value` must be decimal wei until import normalizer lands.
-7. For RPC proxy exports, convert hex quantities before committing.
+6. `value` must be decimal wei in committed corpus.
+7. `v3-harness import-*` normalizes RPC proxy hex quantities before writing corpus JSON.
 
 Projection rules:
 
@@ -552,4 +552,3 @@ A protocol is onboarded only when all of these are true:
 - Any WARN/defer has a reason and owner.
 
 If any item is not proven by current files or command output, the protocol is not done.
-

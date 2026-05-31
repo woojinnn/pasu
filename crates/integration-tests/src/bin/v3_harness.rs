@@ -27,6 +27,7 @@
 
 use std::collections::BTreeMap;
 
+use alloy_primitives::U256;
 use anyhow::{anyhow, Context, Result};
 
 use policy_engine_integration_tests::harness::{self, adapters};
@@ -84,15 +85,61 @@ fn flag<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
 
 fn flag_u64(args: &[String], name: &str, default: u64) -> Result<u64> {
     flag(args, name)
-        .map(|v| {
-            // accept 0x-prefixed hex or decimal
-            v.strip_prefix("0x").map_or_else(
-                || v.parse::<u64>().map_err(|e| anyhow!("{name}: {e}")),
-                |h| u64::from_str_radix(h, 16).map_err(|e| anyhow!("{name}: {e}")),
-            )
-        })
+        .map(|v| parse_u64_quantity(v).map_err(|e| anyhow!("{name}: {e}")))
         .transpose()
         .map(|o| o.unwrap_or(default))
+}
+
+fn parse_u64_quantity(value: &str) -> Result<u64> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(anyhow!("empty quantity"));
+    }
+    if let Some(hex) = strip_hex_prefix(value) {
+        let hex = if hex.is_empty() { "0" } else { hex };
+        return u64::from_str_radix(hex, 16).map_err(|e| anyhow!("invalid hex `{value}`: {e}"));
+    }
+    value
+        .parse::<u64>()
+        .map_err(|e| anyhow!("invalid decimal `{value}`: {e}"))
+}
+
+fn parse_json_u64_quantity(value: &serde_json::Value) -> Result<u64> {
+    match value {
+        serde_json::Value::Number(n) => n.as_u64().ok_or_else(|| anyhow!("invalid u64 `{n}`")),
+        serde_json::Value::String(s) => parse_u64_quantity(s),
+        other => Err(anyhow!("invalid u64 quantity type: {other}")),
+    }
+}
+
+fn normalize_quantity_string(value: &str) -> Result<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Ok("0".to_owned());
+    }
+    Ok(parse_u256_quantity(value)?.to_string())
+}
+
+fn parse_u256_quantity(value: &str) -> Result<U256> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(anyhow!("empty quantity"));
+    }
+    if let Some(hex) = strip_hex_prefix(value) {
+        let hex = if hex.is_empty() { "0" } else { hex };
+        return U256::from_str_radix(hex, 16)
+            .map_err(|e| anyhow!("invalid U256 hex `{value}`: {e}"));
+    }
+    if !value.chars().all(|c| c.is_ascii_digit()) {
+        return Err(anyhow!("invalid U256 decimal `{value}`"));
+    }
+    U256::from_str_radix(value, 10).map_err(|e| anyhow!("invalid U256 decimal `{value}`: {e}"))
+}
+
+fn strip_hex_prefix(value: &str) -> Option<&str> {
+    value
+        .strip_prefix("0x")
+        .or_else(|| value.strip_prefix("0X"))
 }
 
 fn cmd_fuzz(args: &[String]) -> Result<()> {
@@ -244,9 +291,10 @@ fn cmd_corpus(args: &[String]) -> Result<()> {
 ///
 /// Maps the column names shared by both sources (`hash`/`tx_hash`,
 /// `to`/`to_address`/`contract_address`, `data`/`input`/`calldata`, `value`,
-/// `chain_id`). The result needs `expect`/`expect_domain` annotation by hand
-/// (defaulted to `"pass"`). Backs the `import-dune`/`import-etherscan`/`import`
-/// subcommands (identical conversion — the source only differs in wrapper shape).
+/// `chain_id`). Hex RPC quantities are normalized to decimal corpus strings.
+/// The result needs `expect`/`expect_domain` annotation by hand (defaulted to
+/// `"pass"`). Backs the `import-dune`/`import-etherscan`/`import` subcommands
+/// (identical conversion — the source only differs in wrapper shape).
 fn cmd_import(args: &[String]) -> Result<()> {
     let path = args
         .iter()
@@ -294,12 +342,16 @@ fn cmd_import(args: &[String]) -> Result<()> {
         let Some(data) = pick(row, &["data", "input", "calldata"]) else {
             continue;
         };
+        let tx_hash = pick(row, &["hash", "tx_hash"]).unwrap_or_default();
         let chain = row
             .get("chain_id")
-            .and_then(serde_json::Value::as_u64)
+            .map(parse_json_u64_quantity)
+            .transpose()
+            .with_context(|| format!("normalize chain_id for {}", tx_hash_or_unknown(&tx_hash)))?
             .unwrap_or(default_chain);
-        let value = pick(row, &["value"]).unwrap_or_else(|| "0".to_owned());
-        let tx_hash = pick(row, &["hash", "tx_hash"]).unwrap_or_default();
+        let value_raw = pick(row, &["value"]).unwrap_or_else(|| "0".to_owned());
+        let value = normalize_quantity_string(&value_raw)
+            .with_context(|| format!("normalize value for {}", tx_hash_or_unknown(&tx_hash)))?;
         txs.push(serde_json::json!({
             "expect": "pass",
             "tx_hash": tx_hash,
@@ -318,4 +370,39 @@ fn cmd_import(args: &[String]) -> Result<()> {
         println!("{out}");
     }
     Ok(())
+}
+
+fn tx_hash_or_unknown(tx_hash: &str) -> &str {
+    if tx_hash.is_empty() {
+        "<unknown>"
+    } else {
+        tx_hash
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{normalize_quantity_string, parse_json_u64_quantity, parse_u64_quantity};
+
+    #[test]
+    fn normalizes_hex_value_to_decimal() {
+        assert_eq!(
+            normalize_quantity_string("0x5af3107a4000").unwrap(),
+            "100000000000000"
+        );
+    }
+
+    #[test]
+    fn normalizes_decimal_leading_zeroes() {
+        assert_eq!(normalize_quantity_string("00042").unwrap(), "42");
+    }
+
+    #[test]
+    fn parses_hex_chain_id() {
+        assert_eq!(parse_u64_quantity("0x2105").unwrap(), 8453);
+        assert_eq!(
+            parse_json_u64_quantity(&serde_json::json!("0x2105")).unwrap(),
+            8453
+        );
+    }
 }

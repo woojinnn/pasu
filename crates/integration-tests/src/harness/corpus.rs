@@ -12,6 +12,8 @@
 //! { "expect": "pass" | "excluded" | "error",
 //!   "expect_domain": "amm",            // optional: top-level body.domain
 //!   "expect_action": "swap",           // optional: flat action tag
+//!   "expect_body": [                   // optional: protocol-agnostic field assertions
+//!     {"path":"$.data.actions[0].body.domain","op":"equals","value":"amm"} ],
 //!   "expect_error": "decode_failed",   // optional: only when expect=="error"
 //!   "chain_id": 1, "tx_hash": "0x..",
 //!   "rpc": { "params": [{ "from","to","value","data" }] },
@@ -28,6 +30,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::harness::oracle::{judge, Judged, Verdict};
+use crate::harness::semantic::{self, BodyAssertion};
 use crate::harness::{adapters, route};
 
 #[derive(Debug, Deserialize)]
@@ -44,6 +47,8 @@ struct CorpusTx {
     expect_domain: Option<String>,
     #[serde(default)]
     expect_action: Option<String>,
+    #[serde(default)]
+    expect_body: Vec<BodyAssertion>,
     #[serde(default)]
     expect_error: Option<String>,
     #[serde(default)]
@@ -187,7 +192,7 @@ fn run_tx(tx: &CorpusTx, source: &str) -> CorpusOutcome {
     };
 
     let judged = judge(&env);
-    let (matched, got) = check_expect(tx, &judged);
+    let (matched, got) = check_expect(tx, &judged, &env);
     CorpusOutcome {
         label,
         source: source.to_owned(),
@@ -201,7 +206,7 @@ fn top_domain(judged: &Judged) -> Option<&str> {
     judged.domains.first().map(String::as_str)
 }
 
-fn check_expect(tx: &CorpusTx, judged: &Judged) -> (bool, String) {
+fn check_expect(tx: &CorpusTx, judged: &Judged, envelope: &Value) -> (bool, String) {
     match tx.expect.as_str() {
         "pass" => match &judged.verdict {
             Verdict::Pass => {
@@ -214,6 +219,11 @@ fn check_expect(tx: &CorpusTx, judged: &Judged) -> (bool, String) {
                     }
                 }
                 let _ = &tx.expect_action; // reserved (flat action tag) — pinned via domain for now
+                if !tx.expect_body.is_empty() {
+                    if let Err(e) = semantic::check_expect_body(envelope, &tx.expect_body) {
+                        return (false, format!("pass but expect_body failed: {e}"));
+                    }
+                }
                 (true, "pass".to_owned())
             }
             Verdict::SoftError { kind } => (false, format!("soft({kind}) — expected pass")),

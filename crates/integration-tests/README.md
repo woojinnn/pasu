@@ -50,7 +50,7 @@ C. Dune 실거래       ─┘  / td        fuzz/*    : 전략별 합성 (4종) 
 ```
 
 - **2 front-end** — `tests/v3_decode_harness.rs` (deterministic CI gate = **4 structural + protocol 별 field-level golden 다수**; 총수는 늘어남 → 측정 `grep "test result"`) + `src/bin/v3_harness.rs` (CLI, 무제한 fuzz + 리포트).
-- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<simulation_reducer::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(`VALID_DOMAINS`, 현재 11종; `staking` 포함) → L4 soft/hard error class.
+- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<simulation_reducer::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(`VALID_DOMAINS`, 현재 12종; `restaking`/`staking` 포함) → L4 soft/hard error class.
 - **⚠️ R1 (필독)** — WASM v3 install state 는 **thread-local**. install 과 route 는 **반드시 동일 OS 스레드**에서. 각 test fn 이 스스로 install 한다. 새 헬퍼를 만들 때 install→route 를 같은 함수 안에서 호출할 것.
 
 ---
@@ -186,6 +186,9 @@ error histogram:
     { "intent": "swapExactTokensForTokens",       // 사람용 라벨 (선택)
       "expect": "pass",                            // "pass" | "excluded" | "error"
       "expect_domain": "amm",                      // (선택) top-level body.domain
+      "expect_body": [                             // (선택) field-level semantic assertions
+        { "path": "$.data.actions[0].body.domain", "op": "equals", "value": "amm" }
+      ],
       "expect_error": "decode_failed",             // (expect=="error" 일 때만)
       "tx_hash": "0x..",  "chain_id": 1,           // tx_hash 선택
       "rpc": { "params": [ { "to": "0x..", "value": "0", "data": "0x.." } ] } },
@@ -202,11 +205,13 @@ error histogram:
 
 | `expect` | 통과 조건 |
 |---|---|
-| `pass` | `ok:true` + (지정 시) top domain == `expect_domain` |
+| `pass` | `ok:true` + (지정 시) top domain == `expect_domain` + (지정 시) `expect_body` 전부 통과 |
 | `excluded` | `ok:true` + top domain == `unknown` (의도적 out-of-scope / off-chain 정상 출력의 양성 검증) |
 | `error` | verdict 가 Fail/Soft + (지정 시) `error.kind` == `expect_error` |
 
-`value` 는 **10진수 wei** 문자열. `corpus` 명령이 root 와 1-depth 하위 디렉토리의 모든 `corpus.json` 을 walk 한다.
+`expect_body` 는 JSON Pointer(`/...`), `$` dotted/index path(`$.data.actions[0]`), recursive field path(`$..address`)를 지원한다. op 는 `exists`, `absent`, `equals`, `not_equals`, `one_of`, `contains`, `len`, `nonzero_address`, `hex_eq`, `u256_hex_eq`.
+
+`value` 는 corpus 내부에서 **10진수 wei** 문자열이어야 한다. `v3-harness import-*` 는 Etherscan `eth_getTransactionByHash` 같은 `0x` quantity 입력을 10진수로 정규화한다. `corpus` 명령이 root 와 1-depth 하위 디렉토리의 모든 `corpus.json` 을 walk 한다.
 
 ---
 
@@ -314,7 +319,7 @@ crates/integration-tests/
 ### oracle 계층 / domain
 
 - L1 envelope(`ok`) → L2 typed round-trip(`Vec<Action>`) → L3 domain validity → L4 error class.
-- domain (`VALID_DOMAINS`, 현재 **11종** — 측정 `grep -n VALID_DOMAINS src/harness/oracle.rs`): `token` / `amm` / `lending` / `airdrop` / `launchpad` / `liquid_staking` / `perp` / `permission` / `staking` / `multicall` / `unknown`. `unknown` 은 **실패가 아니라 metric**(off-chain 등 정상 출력 포함).
+- domain (`VALID_DOMAINS`, 현재 **12종** — 측정 `grep -n VALID_DOMAINS src/harness/oracle.rs`): `token` / `amm` / `lending` / `airdrop` / `launchpad` / `liquid_staking` / `perp` / `permission` / `restaking` / `staking` / `multicall` / `unknown`. `unknown` 은 **실패가 아니라 metric**(off-chain 등 정상 출력 포함).
 
 ### 환경변수
 

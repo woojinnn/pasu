@@ -32,6 +32,7 @@ pub mod oracle;
 pub mod prng;
 pub mod report;
 pub mod route;
+pub mod semantic;
 
 use anyhow::Result;
 
