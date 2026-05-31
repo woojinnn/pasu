@@ -3,8 +3,7 @@
 //! Phase 1 (action-types) trimmed this module to the v3 path. The legacy v1
 //! interpreter (`eval`, `builtin_fn`, `single_emit`, `multicall`,
 //! `opcode_stream`, `enum_tagged`, `array_emit`, `mapper::DeclarativeMapper`)
-//! has been removed alongside the v1 `Mapper` trait it produced
-//! `ActionEnvelope`s for.
+//! has been removed alongside the v1 `Mapper` trait.
 //!
 //! Module layout:
 //! ```text

@@ -12,7 +12,7 @@ serde_json.workspace = true
 # v3 ActionBody decode harness (src/harness/** + src/bin/v3_harness.rs).
 # These must be normal deps (not dev) because the lib module + CLI bin consume
 # them; the test target inherits them transitively.
-policy-engine-wasm = { path = "../policy-engine-wasm" }
+policy-engine-wasm = { path = "../policy-engine-wasm", version = "0.1.0" }
 simulation-reducer.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-json-abi.workspace = true

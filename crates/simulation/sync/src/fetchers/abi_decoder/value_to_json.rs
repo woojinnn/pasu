@@ -5,7 +5,7 @@
 //! Tuple/Array 는 JSON Array, Address 는 hex string 등.
 
 use alloy_dyn_abi::DynSolValue;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 /// 한 `DynSolValue` 를 `serde_json::Value` 로.
 pub fn dyn_to_json(v: &DynSolValue) -> Value {
@@ -21,7 +21,7 @@ pub fn dyn_to_json(v: &DynSolValue) -> Value {
         DynSolValue::FixedBytes(bytes, _len) => {
             Value::String(format!("0x{}", hex::encode(bytes.as_slice())))
         }
-        DynSolValue::Address(addr) => Value::String(format!("{:#x}", addr)),
+        DynSolValue::Address(addr) => Value::String(format!("{addr:#x}")),
         DynSolValue::Function(f) => Value::String(format!("0x{}", hex::encode(f.as_slice()))),
 
         DynSolValue::Bytes(bytes) => Value::String(format!("0x{}", hex::encode(bytes))),

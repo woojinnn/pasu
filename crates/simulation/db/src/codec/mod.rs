@@ -2,10 +2,10 @@
 //!
 //! Phase 1 의 대상:
 //! * [`token_key`] — `TokenKey` enum → 16-byte hash + 평탄 컬럼 (standard / chain
-//!   / address / contract / token_id)
-//! * [`balance`] — `Balance` enum → (form_tag, amount_decimal_string)
-//! * [`live_field`] — `LiveField<Price>` → 평탄 컬럼 (value/synced_at/ttl/conf)
-//!   + DataSource JSON
+//!   / address / contract / `token_id`)
+//! * [`balance`] — `Balance` enum → (`form_tag`, `amount_decimal_string`)
+//! * [`live_field`] — `LiveField<Price>` → 평탄 컬럼 (`value/synced_at/ttl/conf`)
+//!   + `DataSource` JSON
 
 pub mod balance;
 pub mod live_field;

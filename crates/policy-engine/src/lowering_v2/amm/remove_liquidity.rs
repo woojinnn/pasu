@@ -183,7 +183,7 @@ mod tests {
             ticks: vec![],
         };
         let nft_key = TokenKey::Erc721 {
-            chain: chain.clone(),
+            chain,
             contract: Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
             token_id: U256::from(98765u64),
         };
@@ -221,7 +221,7 @@ mod tests {
             ticks: vec![],
         };
         let nft_key = TokenKey::Erc721 {
-            chain: chain.clone(),
+            chain,
             contract: Address::from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88").unwrap(),
             token_id: U256::from(98765u64),
         };

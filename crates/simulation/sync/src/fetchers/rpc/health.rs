@@ -11,23 +11,15 @@ pub struct HealthTracker {
     config: FailoverConfig,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct ProviderHealth {
     consecutive_failures: u32,
     /// 이 시각 이전에는 unhealthy 로 본다.
     unhealthy_until: Option<Instant>,
 }
 
-impl Default for ProviderHealth {
-    fn default() -> Self {
-        Self {
-            consecutive_failures: 0,
-            unhealthy_until: None,
-        }
-    }
-}
-
 impl HealthTracker {
+    #[must_use]
     pub fn new(config: FailoverConfig) -> Self {
         Self {
             states: HashMap::new(),
@@ -35,10 +27,11 @@ impl HealthTracker {
         }
     }
 
+    #[must_use]
     pub fn is_unhealthy(&self, provider: &str) -> bool {
         let now = Instant::now();
         match self.states.get(provider) {
-            Some(s) => s.unhealthy_until.map_or(false, |t| now < t),
+            Some(s) => s.unhealthy_until.is_some_and(|t| now < t),
             None => false,
         }
     }

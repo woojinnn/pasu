@@ -85,12 +85,12 @@ export interface MulticallHandlerResult {
    * v3 actions surfaced from the WASM result. Always a `V3ActionLike[]`
    * — single-emit bundles return one element; multicall_recurse
    * bundles return a `[{ body: { domain: "multicall", actions: [...] }}]`
-   * envelope. Phase 4D keeps both shapes side-by-side so the audit
+   * action node. Phase 4D keeps both shapes side-by-side so the audit
    * surface doesn't have to choose.
    */
   actions: V3ActionLike[];
   /**
-   * Flattened children — leaves of any nested `Multicall` envelopes,
+   * Flattened children — leaves of any nested `Multicall` actions,
    * in DFS order. Empty when the root is a single-emit (non-multicall)
    * action. Used by the upcoming Cedar v3 pipeline to evaluate each
    * child action independently.
@@ -114,7 +114,7 @@ export interface MulticallHandlerResult {
  * `tryDeclarativeRouteV3` into a normalised handler result.
  *
  * - `kind === "hit"` → walks the actions list, identifies any
- *   `Multicall` envelopes, and produces a flat children list for
+ *   `Multicall` actions, and produces a flat children list for
  *   downstream consumers.
  * - `kind === "miss"` / `"fault"` → returns `null`; orchestrator falls
  *   through to the static path (Phase 5 makes this the verdict
@@ -155,7 +155,7 @@ export function handleV3Outcome(
 
 /**
  * DFS over an `ActionBody`-like tree. Leaves (non-multicall bodies)
- * are appended to `out`; `Multicall` envelopes are descended into.
+ * are appended to `out`; `Multicall` actions are descended into.
  * Returns the maximum nesting depth observed (0 for a leaf).
  *
  * The walker is structural — it relies only on the `domain ===

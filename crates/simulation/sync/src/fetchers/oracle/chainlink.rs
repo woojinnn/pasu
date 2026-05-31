@@ -1,4 +1,4 @@
-//! Chainlink AggregatorV3 — feed_id 는 (chain, feed contract address) pair.
+//! Chainlink `AggregatorV3` — `feed_id` 는 (chain, feed contract address) pair.
 //!
 //! ABI: `latestRoundData()` returns
 //!   (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
@@ -32,14 +32,15 @@ pub struct ChainlinkFeed {
 /// Chainlink feed 카탈로그.
 ///
 /// 키는 `(chain, feed_id)`. `DataSource::OracleFeed` 가 아직 chain 을 carry
-/// 하지 않아 [`lookup`] 은 feed_id 만으로도 찾을 수 있도록 fallback path 를
-/// 두고 있다 (향후 OracleFeed 가 chain 을 받게 되면 fallback 제거 예정).
+/// 하지 않아 [`lookup`] 은 `feed_id` 만으로도 찾을 수 있도록 fallback path 를
+/// 두고 있다 (향후 `OracleFeed` 가 chain 을 받게 되면 fallback 제거 예정).
 #[derive(Default)]
 pub struct ChainlinkFeedRegistry {
     by_chain_id: HashMap<(ChainId, String), ChainlinkFeed>,
 }
 
 impl ChainlinkFeedRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -50,6 +51,7 @@ impl ChainlinkFeedRegistry {
     }
 
     /// Strict lookup — `(chain, feed_id)` exact match.
+    #[must_use]
     pub fn lookup_on(&self, chain: &ChainId, id: &str) -> Option<&ChainlinkFeed> {
         self.by_chain_id.get(&(chain.clone(), id.to_string()))
     }
@@ -57,8 +59,9 @@ impl ChainlinkFeedRegistry {
     /// chain 모르는 호출자용 fallback.
     ///
     /// 같은 `feed_id` 가 여러 chain 에 등록되어 있으면 어느 것이 반환될지
-    /// HashMap 순회 순서에 달려있다. `DataSource::OracleFeed` 에 chain 필드가
+    /// `HashMap` 순회 순서에 달려있다. `DataSource::OracleFeed` 에 chain 필드가
     /// 추가되면 본 메서드는 deprecated 되고 `lookup_on` 만 사용.
+    #[must_use]
     pub fn lookup(&self, id: &str) -> Option<&ChainlinkFeed> {
         self.by_chain_id
             .iter()
@@ -67,7 +70,8 @@ impl ChainlinkFeedRegistry {
     }
 
     /// [`ChainlinkConfig`] (= `scopeball-sync.toml` 의 `[oracles.chainlink]`)
-    /// 의 모든 (chain, feed_id) 를 등록.
+    /// 의 모든 (chain, `feed_id`) 를 등록.
+    #[must_use]
     pub fn from_config(cfg: &ChainlinkConfig) -> Self {
         let mut r = Self::new();
         for (chain, chain_cfg) in &cfg.chains {
@@ -88,6 +92,7 @@ impl ChainlinkFeedRegistry {
     /// 실 운영에서는 [`Self::from_config`] 를 사용. 본 helper 는 config 로딩
     /// 없이 동작 검증이 필요한 inline 테스트용으로만 남김.
     #[cfg(test)]
+    #[must_use]
     pub fn with_mainnet_defaults() -> Self {
         use std::str::FromStr;
         let mut r = Self::new();
@@ -112,7 +117,7 @@ impl ChainlinkFeedRegistry {
     }
 }
 
-/// Chainlink AggregatorV3 fetcher.
+/// Chainlink `AggregatorV3` fetcher.
 pub struct ChainlinkFetcher {
     router: Arc<RpcRouter>,
     registry: ChainlinkFeedRegistry,
@@ -121,6 +126,7 @@ pub struct ChainlinkFetcher {
 impl ChainlinkFetcher {
     /// 빈 registry 로 시작. 실 사용 전에 [`Self::with_registry`] 또는
     /// [`Self::from_sync_config`] 로 feed 들을 주입해야 함.
+    #[must_use]
     pub fn new(router: Arc<RpcRouter>) -> Self {
         Self {
             router,
@@ -128,11 +134,13 @@ impl ChainlinkFetcher {
         }
     }
 
-    pub fn with_registry(router: Arc<RpcRouter>, registry: ChainlinkFeedRegistry) -> Self {
+    #[must_use]
+    pub const fn with_registry(router: Arc<RpcRouter>, registry: ChainlinkFeedRegistry) -> Self {
         Self { router, registry }
     }
 
     /// `scopeball-sync.toml` 의 `[oracles.chainlink]` 섹션을 바로 주입.
+    #[must_use]
     pub fn from_sync_config(router: Arc<RpcRouter>, cfg: &ChainlinkConfig) -> Self {
         Self {
             router,
@@ -140,11 +148,11 @@ impl ChainlinkFetcher {
         }
     }
 
-    pub fn registry_mut(&mut self) -> &mut ChainlinkFeedRegistry {
+    pub const fn registry_mut(&mut self) -> &mut ChainlinkFeedRegistry {
         &mut self.registry
     }
 
-    /// DataSource::OracleFeed { provider: Chainlink, feed_id: "USDC/USD" } 처리.
+    /// `DataSource::OracleFeed` { provider: Chainlink, `feed_id`: "USDC/USD" } 처리.
     pub async fn fetch_price(&self, source: &DataSource) -> Result<Decimal, SyncError> {
         let feed_id = match source {
             DataSource::OracleFeed { feed_id, .. } => feed_id.clone(),
@@ -160,7 +168,7 @@ impl ChainlinkFetcher {
             .lookup(&feed_id)
             .ok_or_else(|| SyncError::FetchFailed {
                 source_id: "chainlink".into(),
-                reason: format!("unknown feed_id: {}", feed_id),
+                reason: format!("unknown feed_id: {feed_id}"),
             })?;
 
         // latestRoundData() selector = first 4 bytes of keccak("latestRoundData()")
@@ -215,7 +223,7 @@ fn scale_to_decimal(answer: I256, decimals: u8) -> Decimal {
     };
     let trimmed = trim_trailing_zeros(&scaled);
     let final_str = if negative {
-        format!("-{}", trimmed)
+        format!("-{trimmed}")
     } else {
         trimmed.to_string()
     };

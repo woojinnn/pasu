@@ -1,13 +1,13 @@
 //! Token 도메인 walk + apply.
 //!
 //! Wired: Erc20Permit.nonce, Permit2SignAllowance.nonce.
-//! 나머지 token action 들 (approve/transfer/...) 은 live_inputs 없음 → no-op.
+//! 나머지 token action 들 (approve/transfer/...) 은 `live_inputs` 없음 → no-op.
 
 use serde_json::Value;
 
 use simulation_reducer::action::token::{Erc20PermitAction, Permit2SignAction};
 use simulation_reducer::action::TokenAction;
-use simulation_state::{Time, U256};
+use simulation_state::Time;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 

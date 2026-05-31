@@ -1,4 +1,4 @@
-//! Multicall3 wrapper — N 개의 eth_call 을 1 개로 묶음.
+//! Multicall3 wrapper — N 개의 `eth_call` 을 1 개로 묶음.
 //!
 //! Multicall3 컨트랙트 (모든 주요 chain 에 동일 주소
 //! `0xcA11bde05977b3631167028862bE2a173976CA11` 로 배포) 의
@@ -46,7 +46,8 @@ pub struct Multicall {
 }
 
 impl Multicall {
-    pub fn new(router: std::sync::Arc<RpcRouter>) -> Self {
+    #[must_use]
+    pub const fn new(router: std::sync::Arc<RpcRouter>) -> Self {
         Self { router }
     }
 
@@ -62,7 +63,7 @@ impl Multicall {
             .multicall_addr(chain)
             .ok_or_else(|| SyncError::FetchFailed {
                 source_id: "multicall".into(),
-                reason: format!("no multicall3 address configured for {}", chain),
+                reason: format!("no multicall3 address configured for {chain}"),
             })?;
 
         let calldata = encode_aggregate3_calldata(&calls);
@@ -138,7 +139,7 @@ fn encode_aggregate3_calldata(calls: &[Call3]) -> Vec<u8> {
 /// ```
 fn encode_call3_element(call: &Call3) -> Vec<u8> {
     let bytes_len = call.call_data.len();
-    let bytes_padded = ((bytes_len + 31) / 32) * 32;
+    let bytes_padded = bytes_len.div_ceil(32) * 32;
     let mut buf = Vec::with_capacity(96 + 32 + bytes_padded);
 
     // target address (20 bytes 를 32 bytes 로 left-pad)
@@ -153,13 +154,13 @@ fn encode_call3_element(call: &Call3) -> Vec<u8> {
     buf.extend_from_slice(&call.call_data);
     let pad = bytes_padded - bytes_len;
     if pad > 0 {
-        buf.extend(std::iter::repeat(0u8).take(pad));
+        buf.extend(std::iter::repeat_n(0u8, pad));
     }
 
     buf
 }
 
-fn u256_to_32bytes(v: U256) -> [u8; 32] {
+const fn u256_to_32bytes(v: U256) -> [u8; 32] {
     let mut out = [0u8; 32];
     let be = v.to_be_bytes::<32>();
     out.copy_from_slice(&be);
@@ -172,7 +173,7 @@ fn address_to_32bytes(addr: Address) -> [u8; 32] {
     out
 }
 
-fn bool_to_32bytes(b: bool) -> [u8; 32] {
+const fn bool_to_32bytes(b: bool) -> [u8; 32] {
     let mut out = [0u8; 32];
     if b {
         out[31] = 1;
@@ -227,7 +228,7 @@ fn decode_aggregate3_returndata(data: &[u8]) -> Result<Vec<Call3Result>, SyncErr
         if data.len() < elem_start + 96 {
             return Err(SyncError::FetchFailed {
                 source_id: "multicall".into(),
-                reason: format!("returnData truncated at element {}", i),
+                reason: format!("returnData truncated at element {i}"),
             });
         }
         let success = data[elem_start + 31] != 0;
@@ -235,7 +236,7 @@ fn decode_aggregate3_returndata(data: &[u8]) -> Result<Vec<Call3Result>, SyncErr
         if data.len() < elem_start + 96 + bytes_len {
             return Err(SyncError::FetchFailed {
                 source_id: "multicall".into(),
-                reason: format!("returnData truncated at element {} bytes", i),
+                reason: format!("returnData truncated at element {i} bytes"),
             });
         }
         let body = data[elem_start + 96..elem_start + 96 + bytes_len].to_vec();

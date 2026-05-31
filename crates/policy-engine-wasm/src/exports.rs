@@ -16,6 +16,7 @@ use policy_engine::schema::{
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
+#[allow(dead_code)]
 pub struct EngineState {
     pub policies: PolicyEngine,
     pub manifest_set_hash: String,

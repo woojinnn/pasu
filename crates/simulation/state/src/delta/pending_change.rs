@@ -1,4 +1,4 @@
-//! PendingChange — 한 pending 의 Add/Update/Remove.
+//! `PendingChange` — the Add/Update/Remove operations applied to a single pending tx.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -6,52 +6,52 @@ use tsify_next::Tsify;
 use crate::pending::{PendingId, PendingStatus, PendingTx};
 use crate::primitives::Decimal;
 
-/// pending 이 wallet 에서 제거되는 사유.
+/// Reason a pending tx is being removed from the pending set.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PendingRemoveReason {
-    /// pending 이 체결됐다.
+    /// The pending tx was fully filled / executed on-chain.
     Filled,
-    /// 사용자가 명시적으로 취소했다.
+    /// The pending tx was cancelled by the user.
     Cancelled,
-    /// deadline 이 지났다.
+    /// The pending tx passed its validity window without being filled.
     Expired,
-    /// 같은 nonce / orderId 로 재서명되어 대체됐다.
+    /// The pending tx was replaced by a newer tx (e.g. nonce reuse).
     Replaced,
-    /// 다른 action 이 본 pending 을 무효화했다.
+    /// The pending tx was superseded by another change and is no longer relevant.
     SuperSeded,
 }
 
-/// 한 pending (서명-only 이벤트) 의 추가 / 갱신 / 제거 변경.
+/// A single mutation to the pending set: add, update, or remove a pending tx.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PendingChange {
-    /// 새 pending 추가 (서명-only 이벤트). `PendingTx` 가 `StateDelta` 를 안에 들고 있어
-    /// 재귀 — `Box` 로 끊음.
+    /// Add a new pending tx (a signed-only event). `PendingTx` transitively holds a
+    /// `StateDelta`, so the payload is boxed to break the recursive type.
     Add {
-        /// 새로 추가될 pending 전체.
+        /// The pending tx being added to the pending set.
         pending: Box<PendingTx>,
     },
 
-    /// lifecycle 갱신.
+    /// Update the lifecycle of an existing pending tx.
     Update {
-        /// 대상 pending 식별자.
+        /// Identifier of the pending tx to update.
         id: PendingId,
-        /// 새 lifecycle 상태.
+        /// New lifecycle status for the pending tx.
         status: PendingStatus,
-        /// partial fill 진행 비율 (0..=1). 미해당이면 `None`.
+        /// Amount filled so far, present when the tx is partially filled.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[tsify(optional)]
         partial_fill: Option<Decimal>,
     },
 
-    /// pending 을 wallet 에서 제거.
+    /// Remove an existing pending tx from the pending set.
     Remove {
-        /// 제거 대상 pending 식별자.
+        /// Identifier of the pending tx to remove.
         id: PendingId,
-        /// 제거 사유.
+        /// Reason the pending tx is being removed.
         reason: PendingRemoveReason,
     },
 }

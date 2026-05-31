@@ -20,7 +20,7 @@ impl ActionBody {
     /// the `serde` discriminants the corresponding JSON would carry, so a policy
     /// trigger can match them against raw field values without re-serializing.
     #[must_use]
-    pub fn view(&self) -> ActionView<'_> {
+    pub const fn view(&self) -> ActionView<'_> {
         match self {
             Self::Token(a) => ActionView {
                 domain: "token",
@@ -64,6 +64,16 @@ impl ActionBody {
             },
             Self::Yield(a) => ActionView {
                 domain: "yield",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Staking(a) => ActionView {
+                domain: "staking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::HyperliquidCore(a) => ActionView {
+                domain: "hyperliquid_core",
                 action_tag: Some(a.action_tag()),
                 venue_name: a.venue_name(),
             },

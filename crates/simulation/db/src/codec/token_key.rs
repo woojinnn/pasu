@@ -2,7 +2,7 @@
 //!
 //! hash 는 `BLAKE3(canonical_json(TokenKey))[..16]`. 같은 enum value 는 항상
 //! 같은 hash 를 갖도록 serde 가 결정적으로 직렬화 한다는 보장이 필요한데, 우리
-//! TokenKey 의 모든 필드 (`ChainId`/`Address`/`U256`) 는 String 기반 / 순서가
+//! `TokenKey` 의 모든 필드 (`ChainId`/`Address`/`U256`) 는 String 기반 / 순서가
 //! 결정적이라 안전.
 
 use std::str::FromStr;

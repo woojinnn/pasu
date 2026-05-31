@@ -1,0 +1,26 @@
+// Staking::GaugeDeposit — stake LP into a Curve liquidity gauge
+// (gauge `deposit(uint256)` / `deposit(uint256,address)` / `deposit(uint256,address,bool)`).
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/gauge_deposit.rs`
+// (`GaugeDepositAction`). No LiveInputs. The staked LP is identified by the
+// gauge venue (StakeVenue.gauge).
+
+namespace Staking {
+  type GaugeDepositContext = {
+    meta: Core::ActionMeta,
+    venue: StakeVenue,
+    // Amount of LP staked (`_value`), U256 hex.
+    amount: String,
+    // Account credited with the stake (`_addr`); omitted ⇒ submitter.
+    onBehalfOf?: String,
+    custom?: GaugeDepositCustomContext,
+  };
+
+  type GaugeDepositCustomContext = {};
+
+  action "GaugeDeposit" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: GaugeDepositContext,
+  };
+}

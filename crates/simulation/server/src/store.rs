@@ -1,9 +1,14 @@
-//! In-memory [`WalletStore`] — the DEV/TEST persistence backend.
+//! In-memory stores — the DEV/TEST persistence backend.
 //!
 //! This is **not** the production store. The DB owner provides the SQLite-backed
 //! [`WalletStore`] impl in the `simulation-db` crate; this crate wires that in
 //! later. Until then, [`InMemoryWalletStore`] lets the server run end-to-end
-//! (load → simulate → save) against an in-process map.
+//! against in-process maps/vectors.
+//!
+//! The wallet-state map and execution-report log are intentionally separate.
+//! Simulation predictions are not authoritative wallet state; execution reports
+//! record what happened after policy approval so a DB-backed reconciler can
+//! later confirm them against chain receipts or venue snapshots.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -13,7 +18,29 @@ use async_trait::async_trait;
 use simulation_state::{WalletId, WalletState};
 use simulation_sync::{SyncError, WalletStore};
 
-/// A process-local [`WalletStore`] backed by a `Mutex<HashMap<..>>`.
+use crate::dto::ExecutionReportRequest;
+
+/// Records post-policy execution lifecycle events.
+///
+/// This boundary is separate from [`WalletStore`] because an execution report is
+/// not, by itself, authoritative state. For example, a Hyperliquid venue
+/// acceptance proves the venue saw an order request, but canonical open orders,
+/// fills, and balances still come from a later venue sync snapshot.
+#[async_trait]
+#[allow(clippy::module_name_repetitions)]
+pub trait ExecutionReportStore: Send + Sync {
+    /// Persist one execution report for audit/reconciliation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SyncError`] when the backing store cannot record the report.
+    async fn record_execution_report(
+        &self,
+        report: ExecutionReportRequest,
+    ) -> Result<(), SyncError>;
+}
+
+/// A process-local [`WalletStore`] backed by `Mutex`-protected collections.
 ///
 /// Intended for development and tests. State lives only for the lifetime of the
 /// process; restart loses everything. Swap for the DB owner's `SQLite` store in
@@ -21,6 +48,7 @@ use simulation_sync::{SyncError, WalletStore};
 #[derive(Debug, Default)]
 pub struct InMemoryWalletStore {
     wallets: Mutex<HashMap<WalletId, WalletState>>,
+    execution_reports: Mutex<Vec<ExecutionReportRequest>>,
 }
 
 impl InMemoryWalletStore {
@@ -45,6 +73,23 @@ impl InMemoryWalletStore {
             .expect("InMemoryWalletStore mutex poisoned")
             .insert(state.wallet_id.clone(), state);
     }
+
+    /// Returns a snapshot of recorded execution reports.
+    ///
+    /// Test/dev helper only. Production code should read reports from its DB
+    /// implementation of [`ExecutionReportStore`].
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the internal mutex was poisoned by a prior panic while a
+    /// lock was held — which cannot happen in normal operation.
+    #[must_use]
+    pub fn execution_reports(&self) -> Vec<ExecutionReportRequest> {
+        self.execution_reports
+            .lock()
+            .expect("InMemoryWalletStore mutex poisoned")
+            .clone()
+    }
 }
 
 #[async_trait]
@@ -61,8 +106,10 @@ impl WalletStore for InMemoryWalletStore {
 
     /// Returns the stored state, or — for a wallet never seen before — a fresh
     /// empty [`WalletState::new`] for that id. This "first-seen" behavior lets a
-    /// brand-new wallet simulate against empty state rather than erroring; the
-    /// caller persists the result via [`WalletStore::save`].
+    /// brand-new wallet simulate against empty state rather than erroring.
+    /// Evaluation callers must not persist their predictions; authoritative
+    /// sync/reconciliation callers use [`WalletStore::save`] when they have real
+    /// ledger or venue state.
     async fn load(&self, id: &WalletId) -> Result<WalletState, SyncError> {
         Ok(self
             .wallets
@@ -78,6 +125,20 @@ impl WalletStore for InMemoryWalletStore {
             .lock()
             .expect("InMemoryWalletStore mutex poisoned")
             .insert(state.wallet_id.clone(), state.clone());
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl ExecutionReportStore for InMemoryWalletStore {
+    async fn record_execution_report(
+        &self,
+        report: ExecutionReportRequest,
+    ) -> Result<(), SyncError> {
+        self.execution_reports
+            .lock()
+            .expect("InMemoryWalletStore mutex poisoned")
+            .push(report);
         Ok(())
     }
 }

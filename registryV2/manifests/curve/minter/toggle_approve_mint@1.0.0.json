@@ -1,0 +1,53 @@
+{
+  "type": "adapter_action",
+  "id": "curve/minter/toggle_approve_mint@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xdd289d60",
+    "chain_to_addresses": {
+      "1": [
+        "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "toggle_approve_mint",
+    "abi": {
+      "name": "toggle_approve_mint",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "minting_user",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "curve_minter",
+          "permission": "operator",
+          "authorized": "$args.minting_user",
+          "is_authorized": true
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

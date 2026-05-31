@@ -1,6 +1,6 @@
-//! State walker — `WalletState` 를 traverse 하면서 LiveField 위치/소스를 모두 수집.
+//! State walker — `WalletState` 를 traverse 하면서 `LiveField` 위치/소스를 모두 수집.
 //!
-//! 각 LiveField 는 _location_ (어디 박혀있는지) + _source_ (어디서 가져오나) + _staleness_
+//! 각 `LiveField` 는 _location_ (어디 박혀있는지) + _source_ (어디서 가져오나) + _staleness_
 //! 정보를 들고 있다. orchestrator 가 이 walker 결과 → batcher 로 묶어 → fetcher 로 fetch.
 //!
 //! "stale" 판정은 `LiveField.is_stale(now)` 활용. ttl 없으면 안전하게 stale 로 봄
@@ -8,11 +8,11 @@
 
 use simulation_state::{DataSource, LiveField, Time, WalletState};
 
-/// LiveField 가 어디에 있는지의 경로.
+/// `LiveField` 가 어디에 있는지의 경로.
 ///
 /// 두 종류:
-/// * `Wallet*` — `WalletState` 안의 LiveField (sync 주기/event-trigger 로 갱신)
-/// * `Action { ix, slot }` — `Action.body.*.live_inputs` 안의 LiveField
+/// * `Wallet*` — `WalletState` 안의 `LiveField` (sync 주기/event-trigger 로 갱신)
+/// * `Action { ix, slot }` — `Action.body.*.live_inputs` 안의 `LiveField`
 ///   (정책 평가 직전 [`Orchestrator::refresh_action`] 으로 갱신)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FieldLocation {
@@ -197,7 +197,8 @@ pub struct WalkStats {
     pub fresh_count: usize,
 }
 
-/// `state` 안의 모든 LiveField 를 수집. 이 중 stale 한 것만 반환.
+/// `state` 안의 모든 `LiveField` 를 수집. 이 중 stale 한 것만 반환.
+#[must_use]
 pub fn walk_stale(state: &WalletState, now: Time) -> (Vec<StaleField>, WalkStats) {
     let mut stale = Vec::new();
     let mut stats = WalkStats::default();
@@ -329,7 +330,7 @@ fn check_and_push<T>(
     }
 }
 
-/// 가격 (price) 같은 구체 타입의 LiveField.
+/// 가격 (price) 같은 구체 타입의 `LiveField`.
 fn is_field_stale(f: &LiveField<simulation_state::Price>, now: Time) -> bool {
     f.is_stale(now)
 }
@@ -420,11 +421,10 @@ mod tests {
                 let lower = token_key_json.to_lowercase();
                 assert!(
                     lower.contains("dac17"),
-                    "expected USDT address in {}",
-                    token_key_json
+                    "expected USDT address in {token_key_json}"
                 );
             }
-            other => panic!("expected TokenPrice, got {:?}", other),
+            other => panic!("expected TokenPrice, got {other:?}"),
         }
     }
 

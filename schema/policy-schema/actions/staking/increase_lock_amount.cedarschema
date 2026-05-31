@@ -1,0 +1,27 @@
+// Staking::IncreaseLockAmount — add tokens to an existing vote-escrow lock
+// (Curve veCRV `increase_amount(uint256)` / `deposit_for(address,uint256)`).
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/increase_lock_amount.rs`
+// (`IncreaseLockAmountAction`). No LiveInputs.
+
+namespace Staking {
+  type IncreaseLockAmountContext = {
+    meta: Core::ActionMeta,
+    venue: StakeVenue,
+    // Token added to the lock (e.g. CRV).
+    token: Core::TokenRef,
+    // Amount added (`_value`), U256 hex.
+    amount: String,
+    // Beneficiary whose lock is increased (`deposit_for._addr`); omitted ⇒ submitter.
+    onBehalfOf?: String,
+    custom?: IncreaseLockAmountCustomContext,
+  };
+
+  type IncreaseLockAmountCustomContext = {};
+
+  action "IncreaseLockAmount" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: IncreaseLockAmountContext,
+  };
+}

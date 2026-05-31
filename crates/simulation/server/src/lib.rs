@@ -4,7 +4,7 @@
 //!
 //! The browser extension decodes calldata/signature into an `Action`, reads the
 //! policy manifest to decide which enrichment calls are needed (the *planning*
-//! step), and POSTs `{wallet, Action(s), eval_context, call-specs}` here. This
+//! step), and POSTs `{wallet_id, actions, eval_context, call_specs}` here. This
 //! backend **executes** those calls (via `simulation-sync`) and **simulates**
 //! the action(s) over the wallet's state (via `simulation-reducer`, persisted
 //! through `simulation-db`), returning the resulting **state / statediff /
@@ -14,19 +14,28 @@
 //! # Status
 //!
 //! This crate provides the service **DTO contract** ([`dto`]) — the
-//! request/response shapes the extension and backend agree on, matching +
-//! extending the legacy Node.js `scopeball.evaluate_v3` contract — plus the
+//! request/response shapes the extension and backend agree on, matching the
+//! action-model `scopeball.evaluate_v3` contract — plus the
 //! axum [`app`] (router + shared state), the [`handler`] that simulates action
-//! envelopes over wallet state (load → reduce → save), and the wallet-store
-//! boundary ([`store`]). Live-input refresh and enrichment-call execution are
-//! marked `TODO(prep)` and land in subsequent tasks.
+//! arrays over canonical wallet state (load → reduce → predicted response),
+//! and the store boundaries ([`store`], [`db_store`]). Post-policy execution reports are
+//! recorded separately from wallet state so wallet/chain/venue callbacks cannot
+//! be mistaken for authoritative state. Live-input refresh, enrichment-call
+//! execution, and report reconciliation are marked `TODO(prep)` and land in
+//! subsequent tasks.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
+#![allow(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::private_intra_doc_links)]
+#![allow(rustdoc::redundant_explicit_links)]
+#![allow(unknown_lints)]
+#![allow(clippy::duration_suboptimal_units)]
 
 pub mod app;
+pub mod db_store;
 pub mod dto;
 pub mod handler;
 pub mod store;

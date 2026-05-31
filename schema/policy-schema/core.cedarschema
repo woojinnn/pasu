@@ -260,6 +260,25 @@ namespace LiquidStaking {
   };
 }
 
+namespace Staking {
+  // -------------------------------------------------------------------------
+  // StakeVenue — Curve DAO staking / vote-escrow venue identifier. Each variant
+  // is one Curve DAO contract carrying its single contract address.
+  //   - "curve_voting_escrow"    → escrow     (veCRV VotingEscrow)
+  //   - "curve_minter"           → minter     (CRV Minter)
+  //   - "curve_gauge_controller" → controller (GaugeController)
+  //   - "curve_gauge"            → gauge      (per-pool liquidity gauge)
+  // -------------------------------------------------------------------------
+  type StakeVenue = {
+    name: String,                // discriminated by name
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+    escrow?: String,             // curve_voting_escrow
+    minter?: String,             // curve_minter
+    controller?: String,         // curve_gauge_controller
+    gauge?: String,              // curve_gauge
+  };
+}
+
 namespace Launchpad {
   // Vesting curve (Rust `VestCurve`, serde tag = "kind", rename_all = "snake_case").
   //   - "linear"   : no extra fields.
@@ -366,5 +385,27 @@ namespace Yield {
   type YieldVenue = {
     name: String,                // discriminated by name (currently "pendle_v2")
     chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
+namespace HyperliquidCore {
+  // Shared types for the thin Hyperliquid CORE action model (off-chain L1
+  // orders / leverage / fund movement intercepted from `/exchange`). Hoisted
+  // here — like the Perp shared types above — because Cedar 4.10 rejects
+  // duplicate `type` declarations within a namespace, and each per-action
+  // `.cedarschema` re-opens `namespace HyperliquidCore` to add only its own
+  // context + action.
+
+  // Venue identifier — always `{ name: "hyperliquid" }` for this domain, so a
+  // policy can scope every CORE action with `context.venue.name == "hyperliquid"`.
+  type HlVenue = {
+    name: String,
+  };
+
+  // Market an order / leverage action targets. `symbol` falls back to
+  // `ASSET-<assetIndex>` until the venue meta cache resolves the numeric index.
+  type HlMarket = {
+    symbol: String,
+    assetIndex: Long,
   };
 }

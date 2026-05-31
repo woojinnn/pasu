@@ -1,7 +1,7 @@
 //! Decoder registry — `decoder_id` → 결과 bytes 를 Rust `serde_json::Value` 로 변환.
 //!
 //! `DataSource::OnchainView` 의 결과 (`eth_call` returndata) 는 ABI-encoded bytes 다.
-//! 이를 LiveField 의 `value` 로 쓰려면 의미 있는 타입으로 풀어야 한다. decoder 별로
+//! 이를 `LiveField` 의 `value` 로 쓰려면 의미 있는 타입으로 풀어야 한다. decoder 별로
 //! 풀이 방식이 다르므로 registry 패턴.
 //!
 //! 같은 패턴이 selector encoding 에도 필요 — `function` 문자열 → 4-byte selector.
@@ -16,6 +16,7 @@ use crate::error::SyncError;
 // ============ Selector encoding ============
 
 /// "balanceOf(address)" → [0x70, 0xa0, 0x82, 0x31]
+#[must_use]
 pub fn function_selector(signature: &str) -> [u8; 4] {
     let hash = keccak256(signature.as_bytes());
     let mut out = [0u8; 4];
@@ -24,6 +25,7 @@ pub fn function_selector(signature: &str) -> [u8; 4] {
 }
 
 /// `signature` 의 selector + ABI 인코딩된 인자 = calldata.
+#[must_use]
 pub fn encode_call(signature: &str, args_encoded: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(4 + args_encoded.len());
     out.extend_from_slice(&function_selector(signature));
@@ -32,6 +34,7 @@ pub fn encode_call(signature: &str, args_encoded: &[u8]) -> Vec<u8> {
 }
 
 /// 단일 Address 를 ABI 32-byte 로 (left-pad).
+#[must_use]
 pub fn encode_address(addr: Address) -> [u8; 32] {
     let mut out = [0u8; 32];
     out[12..].copy_from_slice(addr.as_slice());
@@ -39,7 +42,8 @@ pub fn encode_address(addr: Address) -> [u8; 32] {
 }
 
 /// 단일 U256 을 ABI 32-byte 로 (big-endian).
-pub fn encode_u256(v: U256) -> [u8; 32] {
+#[must_use]
+pub const fn encode_u256(v: U256) -> [u8; 32] {
     v.to_be_bytes::<32>()
 }
 
@@ -53,6 +57,7 @@ pub struct DecoderRegistry {
 }
 
 impl DecoderRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

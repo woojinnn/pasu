@@ -1,4 +1,4 @@
-//! TokenChange — 한 토큰에 대한 변경 한 줄.
+//! `TokenChange` — a single change line describing one mutation to one token.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -7,71 +7,71 @@ use crate::approval::AllowanceSpec;
 use crate::primitives::{Address, SignedI256, Spender};
 use crate::token::{TokenKey, TokenKind};
 
-/// approval 의 어떤 scope 를 회수하는지.
+/// Which approval scope is being revoked.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum ApprovalScope {
-    /// ERC20 `approve(spender, amount)`.
+    /// ERC20 per-spender allowance.
     Erc20,
-    /// ERC721 / ERC1155 `setApprovalForAll(operator, bool)`.
+    /// ERC721/ERC1155 operator approval (setApprovalForAll).
     SetForAll,
-    /// Permit2 `approve` / `permit` 로 부여된 권한.
+    /// Permit2 allowance.
     Permit2,
     /// ERC721 per-token (`tokens[k].approved_to`).
     Erc721Token,
 }
 
-/// 한 토큰에 대한 변경 한 줄 (잔고 증감 / approval 부여 / 회수 / mint).
+/// A single mutation to one token's state (balance or approval).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TokenChange {
-    /// 잔고 증감. delta 음수 = 차감.
+    /// Balance increase or decrease; a negative `delta` is a debit.
     BalanceDelta {
-        /// 대상 토큰.
+        /// Fungibility-unit identifier of the affected token.
         key: TokenKey,
-        /// 잔고 증감 (음수 = 차감) base unit.
+        /// Signed balance change; negative means the balance is reduced.
         #[tsify(type = "string")]
         delta: SignedI256,
     },
 
-    /// approve / `set_for_all` / permit2 추가.
+    /// Grants or raises an approval (ERC20 approve / setApprovalForAll / Permit2).
     ApprovalSet {
-        /// 권한이 부여된 토큰.
+        /// Fungibility-unit identifier of the approved token.
         key: TokenKey,
-        /// 권한을 받는 spender 주소.
+        /// Address being granted spending rights.
         #[tsify(type = "string")]
         spender: Spender,
-        /// 새로 설정된 한도 / 만료.
+        /// Allowance amount and metadata granted to the spender.
         allowance: AllowanceSpec,
     },
 
-    /// 권한 회수.
+    /// Revokes a previously granted approval.
     ApprovalRevoke {
-        /// 권한이 회수된 토큰.
+        /// Fungibility-unit identifier of the token whose approval is revoked.
         key: TokenKey,
-        /// 권한을 잃은 spender 주소.
+        /// Address whose spending rights are being revoked.
         #[tsify(type = "string")]
         spender: Spender,
-        /// 회수된 권한의 scope.
+        /// Which approval scope is being revoked.
         scope: ApprovalScope,
     },
 
     /// ERC721 per-token approve(tokenId, spender).
     Erc721ApprovedTo {
-        /// 대상 NFT (token id 포함).
+        /// Fungibility-unit identifier of the ERC721 token being approved.
         key: TokenKey,
-        /// 새 spender (None = 회수).
+        /// Newly approved address, or `None` to clear the approval.
         #[tsify(optional, type = "string")]
         spender: Option<Address>,
     },
 
-    /// 처음 보는 토큰이 결과로 생긴 경우 (kind hint 동봉).
+    /// A previously unseen token appears as a result (carries a kind hint).
     Mint {
-        /// 새로 발견된 토큰.
+        /// Fungibility-unit identifier of the newly minted token.
         key: TokenKey,
-        /// 분류 hint — wallet 에 holding 을 처음 만들 때 사용.
+        /// Hint describing the token's kind (ERC20, ERC721, etc.).
         kind_hint: TokenKind,
     },
 }

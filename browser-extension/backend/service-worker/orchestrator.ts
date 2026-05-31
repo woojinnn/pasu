@@ -20,14 +20,19 @@ import {
   formatAuditMatched,
   type PolicyRpcAuditMeta,
 } from "./policy-rpc";
-import { getDefaultPolicyBundlesV2 } from "./policies-loader-v2";
+import {
+  getDefaultPolicyBundlesV2,
+  loadDefaultPolicySetV2,
+} from "./policies-loader-v2";
 import type { MatchedPolicyDto, VerdictDto } from "./wasm-bridge.types";
 import {
   isTransaction,
   isTypedSignature,
   isUntypedSignature,
+  isVenueOrder,
   type Message,
 } from "@lib/types";
+import { hlOrderToAction, HL_TO_SENTINEL } from "./hl-order-to-action";
 
 /**
  * Phase 4A — submission-shape classifier. Maps the SW `Message` envelope
@@ -51,7 +56,9 @@ export type ActionNatureKind = "onchain_tx" | "offchain_sig" | "untyped_sig";
 
 export function classifyMessage(message: Message): ActionNatureKind {
   if (isTransaction(message)) return "onchain_tx";
-  if (isTypedSignature(message)) return "offchain_sig";
+  // A venue order is an off-chain signed action (agent-key signature over the
+  // order, POSTed to the venue) — same nature bucket as a typed signature.
+  if (isTypedSignature(message) || isVenueOrder(message)) return "offchain_sig";
   return "untyped_sig";
 }
 
@@ -93,8 +100,8 @@ export interface DeclarativeV3AuditMeta {
  * `"declarative-v2"` ⇒ the v3 route hit with a real (non-`Unknown`)
  *   `ActionBody`, and the verdict was driven by the stateless v2 pipeline
  *   (`plan_action_rpc_v2_json` → host dispatch → `evaluate_action_v2_json`).
- *   This is the ONLY real verdict driver for transactions after the v1
- *   declarative-envelope + static paths were removed.
+ *   This is the ONLY real verdict driver for transactions after the legacy
+ *   declarative/static fallbacks were removed.
  * `"fail_closed"` ⇒ no decoder produced an evaluable verdict, so the engine
  *   fails closed with a warn-and-proceed verdict. Covers: a v3 route
  *   miss/fault, a v3 hit whose bodies were all `Unknown`, zero v2 bundles
@@ -173,7 +180,14 @@ async function decideInner(
     const { result: lifecycle } = await withTimeout(
       runLifecycle(message),
       HARD_TIMEOUT_MS,
-      { verdict: buildTimeoutVerdict(), verdictSource: "fail_closed" as const },
+      {
+        // Deny-closed for venue orders: a timeout must BLOCK, not offer a
+        // warn-and-proceed (the tx/sig paths keep the approvable warn).
+        verdict: isVenueOrder(message)
+          ? venueDenyVerdict("engine timeout")
+          : buildTimeoutVerdict(),
+        verdictSource: "fail_closed" as const,
+      },
     );
     const { verdict } = lifecycle;
 
@@ -381,6 +395,14 @@ function logDecision(message: Message, verdict: VerdictDto): void {
 }
 
 async function runLifecycle(message: Message): Promise<LifecycleResult> {
+  // Venue order (Hyperliquid `/exchange`, …) — its own v2 path. It never
+  // carries EVM calldata, so it does NOT go through the `tryDeclarativeRouteV3`
+  // (calldata-decode) branch below; instead the order JSON is converted to an
+  // `ActionBody::Perp` directly and evaluated by the same stateless v2 pipeline.
+  if (isVenueOrder(message)) {
+    return venueOrderLifecycle(message);
+  }
+
   // Phase 4A classifier — `nature` lets us tell the v3 path apart at a
   // glance (audit telemetry + the upcoming v3 verdict driver). Untyped
   // sigs short-circuit just as before; the new classifier doesn't move
@@ -401,8 +423,8 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   }
 
   // Phase 4B → Phase 1/P3 — v3 route. Calls the WASM v3 entry to decode the
-  // tx into the PDF-FSM `Action[]` tree. After the v1 declarative-envelope
-  // and static paths were removed this is the SOLE input the verdict is
+  // tx into the PDF-FSM `Action[]` tree. After the legacy declarative/static
+  // fallbacks were removed this is the SOLE input the verdict is
   // driven from (via the v2 pipeline below). Failures here must never throw
   // out of the lifecycle — we fence the call and fail closed downstream.
   let declarativeV3Meta: DeclarativeV3AuditMeta | undefined;
@@ -456,6 +478,15 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
                     : v3Outcome.cause,
               }),
       });
+      // Pretty-printed dump so the decoded ActionBody[] is readable as text in
+      // DevTools (the object above collapses to `[{…}]`). Hex string fields
+      // (amounts/addresses) serialize cleanly — no BigInt in the v3 envelope.
+      if (v3Outcome.kind === "hit") {
+        console.info(
+          `[Scopeball] decoded ActionBody[] (${v3Outcome.value.actions.length})\n` +
+            JSON.stringify(v3Outcome.value.actions, null, 2),
+        );
+      }
     } catch (err) {
       console.warn("[Scopeball] declarative-route-v3 threw", {
         requestId: message.requestId,
@@ -481,7 +512,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   // Phase 1 / P2 — v2 (ActionBody-model) verdict path. When the v3 route HIT
   // with one or more real (non-`Unknown`) `ActionBody` elements, the
   // stateless v2 pipeline drives the verdict. This is the ONLY real verdict
-  // driver after the v1 declarative-envelope + static paths were removed.
+  // driver after the legacy declarative/static fallbacks were removed.
   // Fail-safe: `tryV2VerdictPath` returns `undefined` (NOT a Fail verdict —
   // that is a real verdict we honour) when there is no real action, no v2
   // bundle, or a plan/dispatch throw; the lifecycle then fails closed below
@@ -519,8 +550,8 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   //     the SignAdapter (Phase 4C) lands, so it always lands here.
   // Rather than waive the request through, we emit a warn verdict that the
   // user must explicitly approve via the verdict window (mirrors the untyped
-  // signature short-circuit). This replaces the deleted v1 declarative-
-  // envelope + static `evaluateWithPolicyRpc` fallback.
+  // signature short-circuit). This replaces the deleted legacy
+  // `evaluateWithPolicyRpc` fallback.
   console.info("[Scopeball] declarative-verdict", {
     requestId: message.requestId,
     verdictSource: "fail_closed",
@@ -566,6 +597,121 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
  * itself never throws for policy/system faults (always `ok: true`, Fail
  * inside).
  */
+/**
+ * Venue-order (e.g. Hyperliquid `/exchange`) verdict lifecycle.
+ *
+ * Mirrors {@link tryV2VerdictPath} but sources the `ActionBody` from
+ * {@link hlOrderToAction} instead of an EVM calldata decode, and is
+ * **deny-closed**: unlike the tx path (which falls through to a *warn* the user
+ * can approve when a decoder/plan fails), any conversion / plan / dispatch /
+ * evaluate fault here resolves to a `fail` verdict. A venue order we cannot
+ * fully evaluate must be blocked, not waved through.
+ *
+ * `pass` is still returned when no policy matched (you cannot deny without a
+ * policy) and the real engine `fail` / `warn` verdicts are honoured verbatim.
+ */
+async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
+  const nature: ActionNatureKind = "offchain_sig";
+  if (!isVenueOrder(message)) {
+    // Unreachable (caller guards), but keeps the type narrow + fail-closed.
+    return { verdict: venueDenyVerdict("not a venue order"), verdictSource: "fail_closed" };
+  }
+
+  let action: Record<string, unknown>;
+  let meta: Record<string, unknown>;
+  try {
+    ({ action, meta } = hlOrderToAction(message.data));
+  } catch (err) {
+    // Malformed order wire → deny-closed (do NOT let an unparseable order pass).
+    console.warn("[Scopeball] venue-order convert threw", {
+      requestId: message.requestId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      verdict: venueDenyVerdict("order could not be decoded"),
+      verdictSource: "fail_closed",
+      declarativeV3: { outcome: "fault", nature, reason: "convert_failed" },
+    };
+  }
+
+  // Ensure the v2 bundle cache is warmed before reading it. SW boot warms it
+  // fire-and-forget; awaiting the idempotent loader here closes the race where
+  // a venue order arriving pre-boot would see [] and (wrongly) baseline-pass a
+  // policy-relevant order. The loader returns the cached set on warm calls.
+  await loadDefaultPolicySetV2();
+  const bundles = getDefaultPolicyBundlesV2();
+  // No policies loaded ⇒ baseline pass: blocking requires an explicit deny
+  // policy (matches the engine's permit-baseline). This is NOT a fault.
+  if (bundles.length === 0) {
+    return {
+      verdict: { kind: "pass" },
+      verdictSource: "declarative-v2",
+      declarativeV3: { outcome: "miss", nature, reason: "no_v2_bundles" },
+    };
+  }
+  const manifests = bundles.map((b) => b.manifest);
+
+  const tx = {
+    chain_id: "hl-mainnet",
+    from: String(meta.submitter ?? HL_TO_SENTINEL),
+    to: HL_TO_SENTINEL,
+  } as const;
+  const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
+
+  try {
+    // PLAN: HL deny conditions read base context, so the planned set is usually
+    // empty (no policy-RPC). Only dispatch when there is something to fetch, so
+    // the common case needs no policy-rpc server.
+    const planned = await planActionRpcV2({ manifests, action, meta, tx });
+    const results =
+      planned.length > 0 ? await dispatchCallsV2(planned, policyRpcUrl) : {};
+    const verdict = await evaluateActionV2({ action, meta, tx, bundles, results });
+    console.info("[Scopeball] venue-order-verdict", {
+      requestId: message.requestId,
+      venue: message.data.venue,
+      verdict: verdict.kind,
+      matched: verdict.matched?.map((m) => ({ id: m.policy_id, severity: m.severity })) ?? [],
+    });
+    return {
+      verdict,
+      verdictSource: "declarative-v2",
+      declarativeV3: {
+        outcome: "hit",
+        nature,
+        decoder_id: "hl_order",
+        action_count: 1,
+      },
+    };
+  } catch (err) {
+    // A plan/dispatch/evaluate throw is a fault → deny-closed (a flaky
+    // WASM/RPC call must NOT waive a venue order through).
+    console.warn("[Scopeball] venue-order-verdict threw", {
+      requestId: message.requestId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      verdict: venueDenyVerdict("policy evaluation failed"),
+      verdictSource: "fail_closed",
+      declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
+    };
+  }
+}
+
+/** Synthetic deny verdict for the venue-order deny-closed paths. */
+function venueDenyVerdict(reason: string): VerdictDto {
+  return {
+    kind: "fail",
+    matched: [
+      {
+        policy_id: "__venue::deny_closed",
+        reason: `Venue order blocked (fail-closed): ${reason}`,
+        severity: "deny",
+        origin: "engine_error",
+      },
+    ],
+  };
+}
+
 async function tryV2VerdictPath(
   message: Message,
   actions: Record<string, unknown>[],
@@ -723,6 +869,23 @@ function redactEnvelope(message: Message): unknown {
       )?.domain?.verifyingContract,
     };
   }
+  if (isVenueOrder(message)) {
+    const a = message.data.hlAction;
+    // Redacted audit envelope: action kind + venue only. For order legs include
+    // side/reduceOnly; NEVER persist destination addresses or amounts for the
+    // fund-movement actions.
+    return {
+      venue: message.data.venue,
+      action: a.kind,
+      ...(a.kind === "order"
+        ? {
+            symbol: message.data.symbol,
+            side: a.order.b ? "long" : "short",
+            reduceOnly: a.order.r ?? false,
+          }
+        : {}),
+    };
+  }
   return {};
 }
 
@@ -762,8 +925,8 @@ function unsupportedUntypedSignatureVerdict(): VerdictDto {
  * for every typed signature (no v3 route exists for it until the SignAdapter
  * lands). `kind: "warn"` so `decideInner` opens the verdict window and requires
  * the user to explicitly proceed (mirrors `unsupportedUntypedSignatureVerdict`),
- * rather than silently waiving the request through as the deleted v1 static
- * `evaluateWithPolicyRpc` fallback would have.
+   * rather than silently waiving the request through as the deleted legacy
+   * `evaluateWithPolicyRpc` fallback would have.
  */
 function noDecoderVerdict(): VerdictDto {
   return {

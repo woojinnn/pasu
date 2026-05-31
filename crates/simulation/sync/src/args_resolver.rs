@@ -1,4 +1,4 @@
-//! Action 의 OnchainView LiveField 들이 필요로 하는 ABI 인자를 동적으로 인코딩.
+//! Action 의 `OnchainView` `LiveField` 들이 필요로 하는 ABI 인자를 동적으로 인코딩.
 //!
 //! 배경:
 //! `DataSource::OnchainView { contract, function, decoder_id }` 자체에는 args 가
@@ -24,6 +24,7 @@ use crate::fetchers::decoder::{encode_address, encode_u256};
 use crate::walker::ActionSlot;
 
 /// 한 slot 이 필요로 하는 ABI 인자를 인코딩. 인자 없는 함수면 빈 벡터.
+#[must_use]
 pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) -> Vec<u8> {
     match slot {
         // ─── Aave Borrow ───
@@ -84,10 +85,12 @@ pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) ->
 }
 
 /// `LendingVenue` 의 pool 주소 추출 (Aave/Compound/Morpho/...).
-fn lending_venue_pool_address(
+const fn lending_venue_pool_address(
     venue: &simulation_reducer::action::lending::LendingVenue,
 ) -> Option<simulation_state::Address> {
-    use simulation_reducer::action::lending::LendingVenue::*;
+    use simulation_reducer::action::lending::LendingVenue::{
+        AaveV2, AaveV3, CompoundV2, CompoundV3, CrvUsd, Fluid, MorphoBlue, MorphoOptimizer, Spark,
+    };
     match venue {
         AaveV3 { pool, .. } | AaveV2 { pool, .. } | Spark { pool, .. } => Some(*pool),
         CompoundV3 { comet, .. } => Some(*comet),
@@ -100,8 +103,8 @@ fn lending_venue_pool_address(
     }
 }
 
-/// TokenRef → 그 토큰의 ERC20 address. Native/NFT 면 None.
-fn token_ref_to_address(
+/// `TokenRef` → 그 토큰의 ERC20 address. Native/NFT 면 None.
+const fn token_ref_to_address(
     token_ref: &simulation_state::TokenRef,
 ) -> Option<simulation_state::Address> {
     use simulation_state::TokenKey;

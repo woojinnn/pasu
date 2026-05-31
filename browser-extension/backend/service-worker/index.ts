@@ -1,29 +1,32 @@
 import Browser from "webextension-polyfill";
 import { Identifier } from "@lib/identifier";
-import {
-  handleDashboardRequest,
-  isDashboardRequest,
-} from "./dashboard/api";
-import {
-  handleManifestRequest,
-  isManifestRequest,
-} from "./manifests/handlers";
+import { handleDashboardRequest, isDashboardRequest } from "./dashboard/api";
+import { handleManifestRequest, isManifestRequest } from "./manifests/handlers";
 import { hydrateManifests } from "./manifests/hydrate";
 import { migrateAdapterLoaderStorageKey } from "./manifests/adapter-loader-storage-migration";
 import { detectPendingMigrations } from "./manifests/migration-detector";
 import { decideMessage } from "./orchestrator";
+import { reportExecutionOutcome } from "./execution-report";
 import {
   ensureDefaultPoliciesInstalled,
   reinstallAllPolicies,
 } from "./policies-loader";
 import { loadDefaultPolicySetV2 } from "./policies-loader-v2";
 import { applyEnabledIds, getCatalog } from "./policy-selection";
-import { RequestType, type Message, type MessageResponse } from "@lib/types";
+import {
+  isExecutionReport,
+  RequestType,
+  type Message,
+  type MessageResponse,
+} from "@lib/types";
 
 const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
   RequestType.TYPED_SIGNATURE,
   RequestType.UNTYPED_SIGNATURE,
+  // Without this, the SW silently drops venue-order messages (no verdict ever
+  // posts back) and the fetch hook times out → the order would slip through.
+  RequestType.VENUE_ORDER,
 ]);
 
 console.log("Scopeball SW alive at", new Date().toISOString());
@@ -126,7 +129,14 @@ async function bootSequence(): Promise<void> {
   // Best-effort like the surrounding stages: a failure here logs and leaves
   // the cache empty (the loader returns `[]`); it must never brick boot.
   try {
-    await loadDefaultPolicySetV2();
+    const v2 = await loadDefaultPolicySetV2();
+    // Visible boot proof: which v2 deny/warn bundles are actually loaded into
+    // this SW. If this logs `[]`, the policy asset failed to fetch (check the
+    // warning above) and nothing will be enforced.
+    console.log(
+      `[Scopeball] v2 default policies loaded (${v2.length}):`,
+      v2.map((b) => b.id),
+    );
   } catch (err) {
     console.warn("[Scopeball] v2 default policy load failed:", err);
   }
@@ -152,6 +162,11 @@ async function handleMessage(
   }
   if (message.data.type === "provider-frozen-warning") {
     console.error("[Scopeball] provider frozen", message.data);
+    return;
+  }
+
+  if (isExecutionReport(message)) {
+    await reportExecutionOutcome(message.data);
     return;
   }
 

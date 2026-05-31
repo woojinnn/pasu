@@ -15,10 +15,12 @@
 
 pub mod airdrop;
 pub mod amm;
+pub mod hyperliquid_core;
 pub mod launchpad;
 pub mod lending;
 pub mod liquid_staking;
 pub mod permission;
 pub mod perp;
+pub mod staking;
 pub mod token;
 pub mod yield_;

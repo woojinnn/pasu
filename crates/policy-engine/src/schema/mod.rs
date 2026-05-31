@@ -116,6 +116,25 @@ const YIELD_SIGN_LIMIT_ORDER_SCHEMA: &str =
 const YIELD_YT_SWAP_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/yield/yt_swap.cedarschema");
 
+// staking (alphabetical)
+const STAKING_CLAIM_REWARDS_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/claim_rewards.cedarschema");
+const STAKING_GAUGE_DEPOSIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/gauge_deposit.cedarschema");
+const STAKING_GAUGE_WITHDRAW_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/gauge_withdraw.cedarschema");
+const STAKING_INCREASE_LOCK_AMOUNT_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/staking/increase_lock_amount.cedarschema"
+);
+const STAKING_INCREASE_LOCK_TIME_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/increase_lock_time.cedarschema");
+const STAKING_LOCK_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/lock.cedarschema");
+const STAKING_UNLOCK_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/unlock.cedarschema");
+const STAKING_VOTE_FOR_GAUGE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/vote_for_gauge.cedarschema");
+
 // launchpad (alphabetical)
 const LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/launchpad/claim_allocation.cedarschema");
@@ -179,6 +198,20 @@ const TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA: &str = include_str!(
 const TOKEN_REVOKE_APPROVAL_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/revoke_approval.cedarschema");
 
+// hyperliquid_core (alphabetical) — the thin off-chain L1 action model.
+const HL_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/order.cedarschema");
+const HL_UPDATE_LEVERAGE_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/update_leverage.cedarschema"
+);
+const HL_WITHDRAW_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/withdraw.cedarschema");
+const HL_USD_SEND_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/usd_send.cedarschema");
+const HL_APPROVE_AGENT_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/approve_agent.cedarschema"
+);
+
 /// Ordered list of all shipped cedarschema files. The merge in
 /// [`base_schema_text`] preserves this order so the resulting per-namespace
 /// blocks have deterministic field ordering.
@@ -239,6 +272,14 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     PERP_PLACE_LIMIT_ORDER_SCHEMA,
     PERP_PLACE_STOP_ORDER_SCHEMA,
     PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+    STAKING_CLAIM_REWARDS_SCHEMA,
+    STAKING_GAUGE_DEPOSIT_SCHEMA,
+    STAKING_GAUGE_WITHDRAW_SCHEMA,
+    STAKING_INCREASE_LOCK_AMOUNT_SCHEMA,
+    STAKING_INCREASE_LOCK_TIME_SCHEMA,
+    STAKING_LOCK_SCHEMA,
+    STAKING_UNLOCK_SCHEMA,
+    STAKING_VOTE_FOR_GAUGE_SCHEMA,
     TOKEN_ERC20_APPROVE_SCHEMA,
     TOKEN_ERC20_PERMIT_SCHEMA,
     TOKEN_ERC20_TRANSFER_SCHEMA,
@@ -248,6 +289,11 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     TOKEN_PERMIT2_APPROVE_SCHEMA,
     TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
     TOKEN_REVOKE_APPROVAL_SCHEMA,
+    HL_ORDER_SCHEMA,
+    HL_UPDATE_LEVERAGE_SCHEMA,
+    HL_WITHDRAW_SCHEMA,
+    HL_USD_SEND_SCHEMA,
+    HL_APPROVE_AGENT_SCHEMA,
 ];
 
 /// Composes the shipped core and action Cedar schemas.
@@ -385,9 +431,9 @@ pub(crate) fn merge_namespace_blocks(inputs: &[&str]) -> String {
     let mut top_level = String::new();
 
     for text in inputs {
-        let (toplevel, blocks) = split_top_level_and_namespaces(text);
-        if !toplevel.trim().is_empty() {
-            top_level.push_str(&toplevel);
+        let (top, blocks) = split_top_level_and_namespaces(text);
+        if !top.trim().is_empty() {
+            top_level.push_str(&top);
             top_level.push('\n');
         }
         for (name, body) in blocks {
@@ -401,7 +447,8 @@ pub(crate) fn merge_namespace_blocks(inputs: &[&str]) -> String {
     let mut out = top_level;
     for name in order {
         let body = bodies.remove(&name).unwrap_or_default();
-        out.push_str(&format!("namespace {name} {{\n"));
+        use std::fmt::Write;
+        let _ = write!(out, "namespace {name} {{\n");
         out.push_str(&body);
         out.push_str("\n}\n\n");
     }
@@ -674,69 +721,6 @@ fn canonical_type(type_name: &str) -> Result<&'static str, PolicyRpcError> {
     }
 }
 
-#[cfg(test)]
-mod base_schema_tests {
-    //! Smoke tests that confirm the concatenated `base_schema_text()` parses
-    //! as a valid Cedar 4.10 schema. This guards against:
-    //!   - namespace block syntax errors,
-    //!   - cross-namespace `Core::<Type>` references that don't resolve,
-    //!   - duplicate type declarations within the same namespace,
-    //!   - typos in entity / action / type names.
-    //!
-    //! These tests fire on every `cargo test -p policy-engine` and catch
-    //! schema-file regressions before they reach downstream consumers.
-
-    use super::base_schema_text;
-
-    #[test]
-    fn base_schema_parses() {
-        let text = base_schema_text();
-        let result = cedar_policy::Schema::from_cedarschema_str(&text);
-        assert!(
-            result.is_ok(),
-            "base_schema_text() failed to parse as Cedar schema: {:?}",
-            result.err()
-        );
-    }
-
-    #[test]
-    fn base_schema_declares_all_registered_actions() {
-        // Every entry in `REGISTERED_ACTIONS` whose snake_case name maps to a
-        // Phase 1 action (i.e., has a corresponding `.cedarschema` in the new
-        // tree) must have its Cedar action declaration in the parsed schema.
-        // Legacy-only entries (mint_liquidity_nft, flash_loan, etc.) are
-        // expected to be absent — they live only in -old/ and are validated by
-        // `extension_manifests_validate.rs`.
-        let text = base_schema_text();
-        let (schema, _warnings) =
-            cedar_policy::Schema::from_cedarschema_str(&text).expect("base schema parses");
-
-        // Cedar 4.10 renders action EntityUids as `<Namespace>::Action::"<Name>"`.
-        // Spot-check one action per namespace.
-        let phase1_action_ids = &[
-            r#"Core::Action::"Multicall""#,
-            r#"Core::Action::"Unknown""#,
-            r#"Airdrop::Action::"Claim""#,
-            r#"Amm::Action::"Swap""#,
-            r#"Lending::Action::"Supply""#,
-            r#"Launchpad::Action::"Commit""#,
-            r#"Perp::Action::"OpenPosition""#,
-            r#"Permission::Action::"ProtocolAuthorization""#,
-            r#"Token::Action::"Erc20Approve""#,
-        ];
-        // Cedar 4.10's Schema::actions() yields EntityUids whose Display form
-        // includes both the entity type (Action) and the id; we match against
-        // the rendered string.
-        let declared: Vec<String> = schema.actions().map(|a| a.to_string()).collect();
-        for id in phase1_action_ids {
-            assert!(
-                declared.iter().any(|d| d.contains(id)),
-                "expected action `{id}` declared in base schema; got: {declared:?}"
-            );
-        }
-    }
-}
-
 /// Action-name → bare context type name (without namespace prefix).
 ///
 /// Bare names are used because [`type_block`] performs a simple text search
@@ -799,4 +783,77 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("permit2_approve", "Permit2ApproveContext"),
     ("permit2_sign_allowance", "Permit2SignAllowanceContext"),
     ("revoke_approval", "RevokeApprovalContext"),
+    // hyperliquid_core (alphabetical) — `hl_`-prefixed tags keep these globally
+    // unique (notably `withdraw` is already a Lending tag).
+    ("hl_approve_agent", "HlApproveAgentContext"),
+    ("hl_order", "HlOrderContext"),
+    ("hl_update_leverage", "HlUpdateLeverageContext"),
+    ("hl_usd_send", "HlUsdSendContext"),
+    ("hl_withdraw", "HlWithdrawContext"),
 ];
+
+#[cfg(test)]
+mod base_schema_tests {
+    //! Smoke tests that confirm the concatenated `base_schema_text()` parses
+    //! as a valid Cedar 4.10 schema. This guards against:
+    //!   - namespace block syntax errors,
+    //!   - cross-namespace `Core::<Type>` references that don't resolve,
+    //!   - duplicate type declarations within the same namespace,
+    //!   - typos in entity / action / type names.
+    //!
+    //! These tests fire on every `cargo test -p policy-engine` and catch
+    //! schema-file regressions before they reach downstream consumers.
+
+    use super::base_schema_text;
+
+    #[test]
+    fn base_schema_parses() {
+        let text = base_schema_text();
+        let result = cedar_policy::Schema::from_cedarschema_str(&text);
+        assert!(
+            result.is_ok(),
+            "base_schema_text() failed to parse as Cedar schema: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn base_schema_declares_all_registered_actions() {
+        // Every entry in `REGISTERED_ACTIONS` whose snake_case name maps to a
+        // Phase 1 action (i.e., has a corresponding `.cedarschema` in the new
+        // tree) must have its Cedar action declaration in the parsed schema.
+        // Legacy-only entries (mint_liquidity_nft, flash_loan, etc.) are
+        // expected to be absent — they live only in -old/ and are validated by
+        // `extension_manifests_validate.rs`.
+        let text = base_schema_text();
+        let (schema, _warnings) =
+            cedar_policy::Schema::from_cedarschema_str(&text).expect("base schema parses");
+
+        // Cedar 4.10 renders action EntityUids as `<Namespace>::Action::"<Name>"`.
+        // Spot-check one action per namespace.
+        let phase1_action_ids = &[
+            r#"Core::Action::"Multicall""#,
+            r#"Core::Action::"Unknown""#,
+            r#"Airdrop::Action::"Claim""#,
+            r#"Amm::Action::"Swap""#,
+            r#"Lending::Action::"Supply""#,
+            r#"Launchpad::Action::"Commit""#,
+            r#"Perp::Action::"OpenPosition""#,
+            r#"Permission::Action::"ProtocolAuthorization""#,
+            r#"Token::Action::"Erc20Approve""#,
+        ];
+        // Cedar 4.10's Schema::actions() yields EntityUids whose Display form
+        // includes both the entity type (Action) and the id; we match against
+        // the rendered string.
+        let declared: Vec<String> = schema
+            .actions()
+            .map(std::string::ToString::to_string)
+            .collect();
+        for id in phase1_action_ids {
+            assert!(
+                declared.iter().any(|d| d.contains(id)),
+                "expected action `{id}` declared in base schema; got: {declared:?}"
+            );
+        }
+    }
+}

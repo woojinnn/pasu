@@ -2,7 +2,7 @@
 //
 // Pins the wire shape the SW client (`policy-rpc.ts::evaluateV3`)
 // expects: `policyRequest.actions` echoes the caller-supplied
-// envelopes; `state_before` / `deltas` / `state_after` are empty;
+// actions; `state_before` / `deltas` / `state_after` are empty;
 // `diagnostics` is `[]`. Phase 6 swaps the body for the real reducer +
 // state-sync — these tests will tighten then.
 
@@ -20,14 +20,14 @@ describe("scopeball.evaluate_v3 (Phase 5D echo mock)", () => {
     expect(entry.origin).toBe("bundled");
     expect(Object.keys(entry.params)).toEqual([
       "wallet_id",
-      "envelopes",
+      "actions",
       "eval_context",
     ]);
   });
 
-  it("echoes envelopes into policyRequest.actions and returns empty state fields", async () => {
+  it("echoes actions into policyRequest.actions and returns empty state fields", async () => {
     const fn = createScopeballEvaluateV3Method();
-    const envelopes = [
+    const actions = [
       { meta: { submitter: "0xaaaa" }, body: { domain: "token", action: "erc20_approve" } },
       { meta: { submitter: "0xaaaa" }, body: { domain: "amm", action: "swap" } },
     ];
@@ -40,13 +40,13 @@ describe("scopeball.evaluate_v3 (Phase 5D echo mock)", () => {
 
     const result = await fn({
       wallet_id: walletId,
-      envelopes,
+      actions,
       eval_context: evalContext,
     });
 
     expect(result).toEqual({
       policyRequest: {
-        actions: envelopes,
+        actions,
         state_before: {},
         deltas: [],
         state_after: {},
@@ -66,21 +66,21 @@ describe("scopeball.evaluate_v3 (Phase 5D echo mock)", () => {
   it("rejects missing required fields", async () => {
     const fn = createScopeballEvaluateV3Method();
     await expect(
-      fn({ envelopes: [], eval_context: {} }),
+      fn({ actions: [], eval_context: {} }),
     ).rejects.toThrow(/wallet_id is required/);
     await expect(
       fn({ wallet_id: {}, eval_context: {} }),
-    ).rejects.toThrow(/envelopes must be an array/);
+    ).rejects.toThrow(/actions must be an array/);
     await expect(
-      fn({ wallet_id: {}, envelopes: [], eval_context: undefined }),
+      fn({ wallet_id: {}, actions: [], eval_context: undefined }),
     ).rejects.toThrow(/eval_context is required/);
   });
 
-  it("rejects non-array envelopes", async () => {
+  it("rejects non-array actions", async () => {
     const fn = createScopeballEvaluateV3Method();
     await expect(
-      fn({ wallet_id: {}, envelopes: {}, eval_context: {} }),
-    ).rejects.toThrow(/envelopes must be an array/);
+      fn({ wallet_id: {}, actions: {}, eval_context: {} }),
+    ).rejects.toThrow(/actions must be an array/);
   });
 
   it("registry.execute round-trips through the echo method", async () => {
@@ -90,7 +90,7 @@ describe("scopeball.evaluate_v3 (Phase 5D echo mock)", () => {
       method: "scopeball.evaluate_v3",
       params: {
         wallet_id: { address: "0xbeef", chains: ["eip155:8453"] },
-        envelopes: [],
+        actions: [],
         eval_context: { chain: "eip155:8453", clock: 0, request_kind: "Transaction" },
       },
     });

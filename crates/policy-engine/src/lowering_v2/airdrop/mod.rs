@@ -98,7 +98,7 @@ pub(crate) mod test_support {
         let (schema, _w) = cedar_policy::Schema::from_cedarschema_str(&schema_text).unwrap();
         let lowered = lower_action(body, meta, &TxMeta { from: FROM, to: TO }).unwrap();
         let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
-        cedar_policy::Context::from_json_value(lowered.context.clone(), Some((&schema, &uid)))
+        cedar_policy::Context::from_json_value(lowered.context, Some((&schema, &uid)))
             .unwrap_or_else(|e| panic!("{tag} context must conform: {e:?}"));
     }
 }

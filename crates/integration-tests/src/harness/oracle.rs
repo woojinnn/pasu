@@ -18,8 +18,8 @@
 use serde_json::Value;
 use simulation_reducer::action::Action;
 
-/// The 11 valid `ActionBody` domains (serde `domain` tags).
-pub const VALID_DOMAINS: [&str; 11] = [
+/// The 12 valid `ActionBody` domains (serde `domain` tags).
+pub const VALID_DOMAINS: [&str; 12] = [
     "token",
     "amm",
     "lending",
@@ -29,6 +29,7 @@ pub const VALID_DOMAINS: [&str; 11] = [
     "perp",
     "permission",
     "yield",
+    "staking",
     "multicall",
     "unknown",
 ];

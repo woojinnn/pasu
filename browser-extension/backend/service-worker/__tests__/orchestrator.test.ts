@@ -66,6 +66,9 @@ const mocks = vi.hoisted(() => {
     getDefaultPolicyBundlesV2: vi.fn<() => unknown[]>(() => [
       { policy: "forbid(...);", manifest: { id: "high-slippage-warning", schema_version: 2 } },
     ]),
+    loadDefaultPolicySetV2: vi.fn<(...args: unknown[]) => Promise<unknown>>(
+      async () => [],
+    ),
     tryDeclarativeRouteV3: vi.fn<
       (...args: unknown[]) => Promise<unknown>
     >(async () => ({
@@ -139,6 +142,7 @@ vi.mock("../wasm-bridge", () => ({
 }));
 vi.mock("../policies-loader-v2", () => ({
   getDefaultPolicyBundlesV2: mocks.getDefaultPolicyBundlesV2,
+  loadDefaultPolicySetV2: mocks.loadDefaultPolicySetV2,
 }));
 vi.mock("../policy-rpc", () => ({
   dispatchCallsV2: mocks.dispatchCallsV2,
@@ -375,7 +379,7 @@ describe("orchestrator", () => {
   });
 
   // ── Phase 1 / P3 — FAIL-CLOSED tail ──────────────────────────────────
-  // Every case the deleted v1 declarative-envelope + static path used to
+  // Every case the deleted legacy declarative/static path used to
   // catch now emits the `__engine::no_decoder` warn verdict, which requires
   // the user to explicitly proceed. The v2 plan/evaluate path never runs.
 

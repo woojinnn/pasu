@@ -25,7 +25,7 @@ impl PermissionAction {
 
     /// Protocol family label, used by policy triggers as a venue-like name.
     #[must_use]
-    pub fn venue_name(&self) -> Option<&str> {
+    pub const fn venue_name(&self) -> Option<&str> {
         match self {
             Self::ProtocolAuthorization(a) => Some(a.protocol_name.as_str()),
         }

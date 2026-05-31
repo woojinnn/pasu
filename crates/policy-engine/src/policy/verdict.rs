@@ -89,7 +89,7 @@ pub enum Severity {
 /// Origin of the Cedar `PolicyRequest` that caused a policy match.
 ///
 /// Describes which lowering layer produced the returned match (currently
-/// always `Action` for the envelope-driven pipeline).
+/// always `Action` for the ActionBody-driven pipeline).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PolicyRequestOrigin {
     /// Request originated from an action-level policy request.

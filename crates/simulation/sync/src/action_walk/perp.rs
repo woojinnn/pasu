@@ -1,9 +1,9 @@
 //! Perp 도메인 walk + apply.
 //!
-//! Wired: Open/Close/Increase/Decrease (10+4+10+4), AdjustMargin (2),
-//!        ChangeLeverage (3), ChangeMarginMode (2), PlaceLimit (4),
-//!        PlaceStop (2), ClaimFunding (1). 총 42 slots.
-//! CancelOrder 는 live_inputs 없음.
+//! Wired: Open/Close/Increase/Decrease (10+4+10+4), `AdjustMargin` (2),
+//!        `ChangeLeverage` (3), `ChangeMarginMode` (2), `PlaceLimit` (4),
+//!        `PlaceStop` (2), `ClaimFunding` (1). 총 42 slots.
+//! `CancelOrder` 는 `live_inputs` 없음.
 
 use serde_json::Value;
 
@@ -752,14 +752,14 @@ fn apply_place_stop(p: &mut PlaceStopOrderAction, slot: &ActionSlot, value: Valu
 
 fn apply_claim_funding(c: &mut ClaimFundingAction, slot: &ActionSlot, value: Value, now: Time) {
     let li = &mut c.live_inputs;
-    if let ActionSlot::PerpClaimFundingClaimable = slot {
+    if matches!(slot, ActionSlot::PerpClaimFundingClaimable) {
         if let Ok(v) = serde_json::from_value(value) {
             set_field(&mut li.claimable, v, now);
         }
     }
 }
 
-/// SignedI256 변환 — decimal-string 또는 i64 number.
+/// `SignedI256` 변환 — decimal-string 또는 i64 number.
 fn value_to_i256(v: &Value) -> Option<SignedI256> {
     use std::str::FromStr;
     match v {

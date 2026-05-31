@@ -1,24 +1,24 @@
-//! `LiveField` 의 신선도/품질 메타.
+//! Freshness and quality metadata for a `LiveField`.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use crate::primitives::BasisPoints;
 
-/// `LiveField` 의 신선도 / 품질 메타.
+/// Confidence metadata describing how trustworthy a `LiveField` value is.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct Confidence {
-    /// oracle deviation, venue precision 등. basis points.
+    /// Combined uncertainty (e.g. oracle deviation, venue precision) in basis points.
     pub deviation_bp: BasisPoints,
-    /// ttl 초과 여부 — Sync orchestrator 가 채움.
+    /// Whether the value has exceeded its TTL; populated by the Sync orchestrator.
     pub is_stale: bool,
 }
 
 impl Confidence {
-    /// deviation 0 + 신선 (not stale) 한 `Confidence`.
+    /// Returns a fully fresh `Confidence` with zero deviation and not stale.
     #[must_use]
-    pub fn fresh() -> Self {
+    pub const fn fresh() -> Self {
         Self {
             deviation_bp: 0,
             is_stale: false,

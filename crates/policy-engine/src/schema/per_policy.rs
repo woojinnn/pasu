@@ -29,26 +29,31 @@ use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA,
-    LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA,
-    LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
-    LENDING_DISABLE_COLLATERAL_SCHEMA, LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA,
-    LENDING_REPAY_SCHEMA, LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA,
-    LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA,
-    LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA, LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
-    LIQUID_STAKING_STAKE_SCHEMA, LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
-    LIQUID_STAKING_UNWRAP_SCHEMA, LIQUID_STAKING_WRAP_SCHEMA,
-    PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
-    PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
-    PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
-    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
-    TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA,
-    TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA,
-    TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
-    TOKEN_REVOKE_APPROVAL_SCHEMA, YIELD_ADD_MARKET_LIQUIDITY_SCHEMA,
-    YIELD_CANCEL_LIMIT_ORDER_SCHEMA, YIELD_CLAIM_YIELD_SCHEMA, YIELD_MINT_PY_SCHEMA,
-    YIELD_MINT_SY_SCHEMA, YIELD_PT_SWAP_SCHEMA, YIELD_REDEEM_PY_SCHEMA, YIELD_REDEEM_SY_SCHEMA,
-    YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA, YIELD_SIGN_LIMIT_ORDER_SCHEMA, YIELD_YT_SWAP_SCHEMA,
+    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_ORDER_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA,
+    HL_USD_SEND_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
+    LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
+    LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA,
+    LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
+    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_REPAY_SCHEMA,
+    LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA,
+    LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA, LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA, LIQUID_STAKING_STAKE_SCHEMA,
+    LIQUID_STAKING_TRANSFER_SHARES_SCHEMA, LIQUID_STAKING_UNWRAP_SCHEMA,
+    LIQUID_STAKING_WRAP_SCHEMA, PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+    PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA, PERP_CHANGE_LEVERAGE_SCHEMA,
+    PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA, PERP_CLOSE_POSITION_SCHEMA,
+    PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA, PERP_OPEN_POSITION_SCHEMA,
+    PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA, STAKING_CLAIM_REWARDS_SCHEMA,
+    STAKING_GAUGE_DEPOSIT_SCHEMA, STAKING_GAUGE_WITHDRAW_SCHEMA,
+    STAKING_INCREASE_LOCK_AMOUNT_SCHEMA, STAKING_INCREASE_LOCK_TIME_SCHEMA, STAKING_LOCK_SCHEMA,
+    STAKING_UNLOCK_SCHEMA, STAKING_VOTE_FOR_GAUGE_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA,
+    TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA,
+    TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA,
+    TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
+    YIELD_ADD_MARKET_LIQUIDITY_SCHEMA, YIELD_CANCEL_LIMIT_ORDER_SCHEMA, YIELD_CLAIM_YIELD_SCHEMA,
+    YIELD_MINT_PY_SCHEMA, YIELD_MINT_SY_SCHEMA, YIELD_PT_SWAP_SCHEMA, YIELD_REDEEM_PY_SCHEMA,
+    YIELD_REDEEM_SY_SCHEMA, YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA, YIELD_SIGN_LIMIT_ORDER_SCHEMA,
+    YIELD_YT_SWAP_SCHEMA,
 };
 
 /// One row of the action resolver: the `(domain, action_tag)` a trigger can
@@ -425,6 +430,55 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         schema_text: PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
         pascal_stub: "ProtocolAuthorization",
     },
+    // staking
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("claim_rewards"),
+        schema_text: STAKING_CLAIM_REWARDS_SCHEMA,
+        pascal_stub: "ClaimRewards",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("gauge_deposit"),
+        schema_text: STAKING_GAUGE_DEPOSIT_SCHEMA,
+        pascal_stub: "GaugeDeposit",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("gauge_withdraw"),
+        schema_text: STAKING_GAUGE_WITHDRAW_SCHEMA,
+        pascal_stub: "GaugeWithdraw",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("increase_lock_amount"),
+        schema_text: STAKING_INCREASE_LOCK_AMOUNT_SCHEMA,
+        pascal_stub: "IncreaseLockAmount",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("increase_lock_time"),
+        schema_text: STAKING_INCREASE_LOCK_TIME_SCHEMA,
+        pascal_stub: "IncreaseLockTime",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("lock"),
+        schema_text: STAKING_LOCK_SCHEMA,
+        pascal_stub: "Lock",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("unlock"),
+        schema_text: STAKING_UNLOCK_SCHEMA,
+        pascal_stub: "Unlock",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("vote_for_gauge"),
+        schema_text: STAKING_VOTE_FOR_GAUGE_SCHEMA,
+        pascal_stub: "VoteForGauge",
+    },
     // token
     ActionEntry {
         domain: "token",
@@ -479,6 +533,37 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("revoke_approval"),
         schema_text: TOKEN_REVOKE_APPROVAL_SCHEMA,
         pascal_stub: "RevokeApproval",
+    },
+    // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_order"),
+        schema_text: HL_ORDER_SCHEMA,
+        pascal_stub: "HlOrder",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_update_leverage"),
+        schema_text: HL_UPDATE_LEVERAGE_SCHEMA,
+        pascal_stub: "HlUpdateLeverage",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_withdraw"),
+        schema_text: HL_WITHDRAW_SCHEMA,
+        pascal_stub: "HlWithdraw",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_usd_send"),
+        schema_text: HL_USD_SEND_SCHEMA,
+        pascal_stub: "HlUsdSend",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_approve_agent"),
+        schema_text: HL_APPROVE_AGENT_SCHEMA,
+        pascal_stub: "HlApproveAgent",
     },
 ];
 
@@ -685,7 +770,7 @@ fn normalize_type(raw: &str) -> &str {
 /// reached via `context.custom.<field>` or `context.custom has <field>` must be
 /// declared in [`ManifestV2::custom_context`].
 ///
-/// Pragmatic PoC: a textual scan (not a full Cedar AST walk) — sufficient
+/// Pragmatic `PoC`: a textual scan (not a full Cedar AST walk) — sufficient
 /// because custom fields are always reached through the literal `context.custom`
 /// path. A bundle author who writes that path inside a comment for an
 /// undeclared field would get a false positive (documented; don't do that).
@@ -807,7 +892,7 @@ mod tests {
         assert!(!text.contains("AddLiquidityContext"));
     }
 
-    /// Same trigger, but no custom_context → the swap stub is left untouched
+    /// Same trigger, but no `custom_context` → the swap stub is left untouched
     /// and the schema still parses.
     #[test]
     fn empty_custom_context_leaves_stub() {
@@ -907,7 +992,7 @@ mod tests {
     /// `type <Stub>CustomContext = {};`. This fires loudly if a row points a
     /// stub at the wrong schema file (the kind of mistake no
     /// parse-only test catches, because the stub-replacement path only runs
-    /// when a manifest declares custom_context).
+    /// when a manifest declares `custom_context`).
     #[test]
     fn resolver_table_stubs_exist() {
         for entry in RESOLVER_TABLE {
@@ -921,12 +1006,13 @@ mod tests {
                 entry.pascal_stub,
             );
         }
-        // The table covers exactly the 63 shipped actions (multicall + unknown
-        // included). Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 65, "resolver table must have 65 rows");
+        // Union of feat/registry-v2 (67: + 8 staking + 5 hyperliquid_core) and the
+        // 11 Pendle `yield` rows = 78 shipped actions (multicall + unknown included).
+        // Guards against a row being dropped or duplicated.
+        assert_eq!(RESOLVER_TABLE.len(), 78, "resolver table must have 78 rows");
     }
 
-    /// A custom_context field whose name collides with one of the matched
+    /// A `custom_context` field whose name collides with one of the matched
     /// action's base context fields must be rejected with
     /// [`PolicyRpcError::Schema`] (mirroring the unified composer's Rule 4).
     /// `recipient` is a declared base field of `SwapContext`.

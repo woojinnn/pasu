@@ -12,7 +12,7 @@
 // merge). Those are Phase 6's responsibility. To unblock the SW round-
 // trip today this method is an echo:
 //
-//   - `policyRequest.actions`      = caller-supplied `envelopes`
+//   - `policyRequest.actions`      = caller-supplied `actions`
 //   - `policyRequest.state_before` = {}
 //   - `policyRequest.deltas`       = []
 //   - `policyRequest.state_after`  = {}
@@ -45,7 +45,7 @@ import type { MethodCatalogEntry } from "./catalog.js";
 export const scopeballEvaluateV3Catalog: MethodCatalogEntry = {
   name: "scopeball.evaluate_v3",
   description:
-    "Phase 5D mock — echo (envelopes, eval_context, wallet_id) back as policyRequest.actions with empty state_before / deltas / state_after. Real implementation arrives in Phase 6 (reducer + state sync).",
+    "Phase 5D mock — echo (actions, eval_context, wallet_id) back as policyRequest.actions with empty state_before / deltas / state_after. Real implementation arrives in Phase 6 (reducer + state sync).",
   params: {
     wallet_id: {
       type: "String",
@@ -53,17 +53,17 @@ export const scopeballEvaluateV3Catalog: MethodCatalogEntry = {
       description:
         "WalletId (address + chains). Carried verbatim by the mock; Phase 6 will key state persistence off this.",
     },
-    envelopes: {
+    actions: {
       type: "String",
       required: true,
       description:
-        "List of caller-built Action envelopes (typed PDF FSM ActionBody). The mock echoes these into policyRequest.actions.",
+        "List of caller-built Actions (typed PDF FSM ActionBody plus ActionMeta). The mock echoes these into policyRequest.actions.",
     },
     eval_context: {
       type: "String",
       required: true,
       description:
-        "EvalContext (chain + clock + RequestKind + SimulationMode + envelope_index).",
+        "EvalContext (chain + clock + RequestKind + SimulationMode + action_index).",
     },
   },
   returns: { kind: "record", type: "UsdValuation" },
@@ -81,7 +81,7 @@ export const scopeballEvaluateV3Catalog: MethodCatalogEntry = {
  */
 interface EvaluateV3Params {
   wallet_id: JsonValue;
-  envelopes: JsonValue;
+  actions: JsonValue;
   eval_context: JsonValue;
 }
 
@@ -92,17 +92,17 @@ function parseEvaluateV3Params(value: unknown): EvaluateV3Params {
       "scopeball.evaluate_v3 params must be an object",
     );
   }
-  const { wallet_id, envelopes, eval_context } = value;
+  const { wallet_id, actions, eval_context } = value;
   if (wallet_id === undefined) {
     throw new RpcMethodError(
       "invalid_params",
       "scopeball.evaluate_v3.params.wallet_id is required",
     );
   }
-  if (!Array.isArray(envelopes)) {
+  if (!Array.isArray(actions)) {
     throw new RpcMethodError(
       "invalid_params",
-      "scopeball.evaluate_v3.params.envelopes must be an array",
+      "scopeball.evaluate_v3.params.actions must be an array",
     );
   }
   if (eval_context === undefined) {
@@ -113,7 +113,7 @@ function parseEvaluateV3Params(value: unknown): EvaluateV3Params {
   }
   return {
     wallet_id: wallet_id as JsonValue,
-    envelopes: envelopes as JsonValue,
+    actions: actions as JsonValue,
     eval_context: eval_context as JsonValue,
   };
 }
@@ -135,7 +135,7 @@ export function createScopeballEvaluateV3Method(): (
     // entry — which is itself a Phase 5B stub, so the round-trip is
     // observability-only at present.
     const policyRequest: JsonObject = {
-      actions: parsed.envelopes,
+      actions: parsed.actions,
       state_before: {},
       deltas: [],
       state_after: {},

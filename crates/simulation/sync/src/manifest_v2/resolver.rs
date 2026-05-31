@@ -25,6 +25,7 @@ pub struct ResolveContext {
 }
 
 impl ResolveContext {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -110,7 +111,7 @@ fn resolve_string(s: &str, ctx: &ResolveContext) -> Result<Value, SyncError> {
                 _ => {
                     return Err(SyncError::FetchFailed {
                         source_id: "manifest_v2".into(),
-                        reason: format!("unknown scope: ${}", scope),
+                        reason: format!("unknown scope: ${scope}"),
                     });
                 }
             };
@@ -119,14 +120,14 @@ fn resolve_string(s: &str, ctx: &ResolveContext) -> Result<Value, SyncError> {
                 .cloned()
                 .ok_or_else(|| SyncError::FetchFailed {
                     source_id: "manifest_v2".into(),
-                    reason: format!("${}.{} not in ResolveContext", scope, field),
+                    reason: format!("${scope}.{field} not in ResolveContext"),
                 });
         }
     }
 
     Err(SyncError::FetchFailed {
         source_id: "manifest_v2".into(),
-        reason: format!("unrecognized placeholder: {}", s),
+        reason: format!("unrecognized placeholder: {s}"),
     })
 }
 
@@ -181,7 +182,7 @@ mod tests {
         let ctx = ResolveContext::new();
         let v = Value::String("$nonexistent.field".into());
         let err = resolve_placeholders(&v, &ctx).unwrap_err();
-        assert!(format!("{}", err).contains("unknown scope"));
+        assert!(format!("{err}").contains("unknown scope"));
     }
 
     #[test]
@@ -189,7 +190,7 @@ mod tests {
         let ctx = ResolveContext::new(); // chain 없음
         let v = Value::String("$chain".into());
         let err = resolve_placeholders(&v, &ctx).unwrap_err();
-        assert!(format!("{}", err).contains("$chain referenced"));
+        assert!(format!("{err}").contains("$chain referenced"));
     }
 
     #[test]

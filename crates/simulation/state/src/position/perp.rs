@@ -1,4 +1,4 @@
-//! PerpPosition — Hyperliquid / GMX V2 / dYdX V4 등의 오픈 포지션.
+//! `PerpPosition` — Hyperliquid / GMX V2 / dYdX V4 등의 오픈 포지션.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;

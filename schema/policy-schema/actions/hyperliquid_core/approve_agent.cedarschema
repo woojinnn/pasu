@@ -1,0 +1,29 @@
+// HyperliquidCore::HlApproveAgent — a Hyperliquid `{"type":"approveAgent"}`.
+//
+// Authorizes an agent (API) wallet to sign actions on the account's behalf —
+// the delegation step behind "Enable trading". A high-risk action guarded in
+// v1 (an approved agent can place orders without further prompts).
+
+namespace HyperliquidCore {
+  type HlApproveAgentContext = {
+    // Common envelope.
+    meta: Core::ActionMeta,
+    // Always `{ name: "hyperliquid" }`.
+    venue: HlVenue,
+    // Agent (API) wallet being authorized (lowercase 0x-hex).
+    agentAddress: String,
+    // Optional human-readable agent name.
+    agentName?: String,
+    // Manifest-extensible slot.
+    custom?: HlApproveAgentCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type HlApproveAgentCustomContext = {};
+
+  action "HlApproveAgent" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: HlApproveAgentContext,
+  };
+}

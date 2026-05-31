@@ -41,19 +41,21 @@ impl Default for AbiDecoder {
 }
 
 impl AbiDecoder {
-    pub fn new(types: AbiTypeRegistry, mappers: MapperRegistry) -> Self {
+    #[must_use]
+    pub const fn new(types: AbiTypeRegistry, mappers: MapperRegistry) -> Self {
         Self { types, mappers }
     }
 
-    pub fn types_mut(&mut self) -> &mut AbiTypeRegistry {
+    pub const fn types_mut(&mut self) -> &mut AbiTypeRegistry {
         &mut self.types
     }
 
-    pub fn mappers_mut(&mut self) -> &mut MapperRegistry {
+    pub const fn mappers_mut(&mut self) -> &mut MapperRegistry {
         &mut self.mappers
     }
 
     /// `decoder_id` 가 known ABI 시그니처인지.
+    #[must_use]
     pub fn knows(&self, decoder_id: &str) -> bool {
         self.types.get(decoder_id).is_some()
     }
@@ -69,11 +71,11 @@ impl AbiDecoder {
         let ty = self
             .types
             .get(decoder_id)
-            .ok_or_else(|| SyncError::UnknownDecoder(format!("abi_decoder: {}", decoder_id)))?;
+            .ok_or_else(|| SyncError::UnknownDecoder(format!("abi_decoder: {decoder_id}")))?;
 
         let decoded = ty.abi_decode(data).map_err(|e| SyncError::FetchFailed {
             source_id: "abi_decoder".into(),
-            reason: format!("abi decode '{}': {}", decoder_id, e),
+            reason: format!("abi decode '{decoder_id}': {e}"),
         })?;
 
         let raw = if let alloy_dyn_abi::DynSolValue::Tuple(items) = &decoded {
@@ -87,6 +89,7 @@ impl AbiDecoder {
     }
 
     /// `decoder_id` 의 ABI 시그니처 (debugging 용).
+    #[must_use]
     pub fn signature_of(&self, decoder_id: &str) -> Option<&DynSolType> {
         self.types.get(decoder_id)
     }
@@ -95,7 +98,6 @@ impl AbiDecoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::U256;
 
     #[test]
     fn decodes_single_uint256() {

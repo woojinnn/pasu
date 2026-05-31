@@ -140,9 +140,7 @@ pub fn validate(filter: Option<&str>, iters: u64) -> Result<Vec<ManifestVerdict>
             c.strategy == adapters::Strategy::SingleEmit
                 && !c.has_typed_data
                 && c.selector != "0x00000000"
-                && filter.map_or(true, |f| {
-                    c.source_callkey.contains(f) || c.bundle_id.contains(f)
-                })
+                && filter.is_none_or(|f| c.source_callkey.contains(f) || c.bundle_id.contains(f))
         }) {
             let base = encode::fnv1a64(&call.source_callkey);
             let mut verdict = ManifestVerdict {

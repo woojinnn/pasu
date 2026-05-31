@@ -1,0 +1,7 @@
+{
+  "id": "hl-confirm-usd-send",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "hl_usd_send" } } },
+  "policy_rpc": [],
+  "custom_context": { "fields": {} }
+}

@@ -1,4 +1,4 @@
-//! PendingKind — 서명-only / 미체결 entry 의 4 가지 형태.
+//! `PendingKind` — the four shapes of signature-only / unsettled pending entries.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -7,12 +7,12 @@ use crate::position::PerpSide;
 use crate::primitives::{Address, MarketRef, Price, Time, VenueRef, U256};
 use crate::token::TokenRef;
 
-/// `UniswapX` / `CowSwap` / 1inch Fusion 등 오프체인 매칭 주문의 종류.
+/// Kind of off-chain-matched order (`UniswapX` / `CowSwap` / 1inch Fusion, etc.).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum OrderKind {
-    /// Dutch auction (`UniswapX` 등).
+    /// Dutch auction order whose price decays over time (e.g. `UniswapX`).
     Dutch,
     /// 단순 limit order.
     Limit,
@@ -40,7 +40,7 @@ pub enum PerpOrderKind {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PendingKind {
-    /// `UniswapX`, `CowSwap`, 1inch Fusion, Bebop, OKX RFQ 등.
+    /// Off-chain-matched limit order (`UniswapX`, `CowSwap`, 1inch Fusion, Bebop, OKX RFQ, etc.).
     OffchainLimitOrder {
         /// 주문을 매칭할 venue.
         venue: VenueRef,

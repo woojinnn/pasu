@@ -15,22 +15,9 @@ export interface PolicyRpcCallDto {
   readonly params: unknown;
 }
 
-export interface PolicyRpcRootDto {
-  readonly chain_id: number;
-  readonly from: string;
-  readonly to: string;
-  readonly value_wei: string;
-  readonly block_timestamp?: number;
-}
-
-export interface PolicyRpcPlanDto {
+export interface PolicyRpcBatchRequestDto {
   readonly request_id: string;
-  readonly root: PolicyRpcRootDto;
-  readonly envelopes: readonly unknown[];
   readonly calls: readonly PolicyRpcCallDto[];
-  readonly manifest_set_hash: string;
-  readonly schema_hash: string;
-  readonly diagnostics: readonly string[];
 }
 
 export interface PolicyRpcResponseDto {
@@ -38,28 +25,10 @@ export interface PolicyRpcResponseDto {
   readonly results: readonly unknown[];
 }
 
-export interface PlanPolicyRpcInputDto {
-  readonly request_id: string;
-  readonly raw_request: {
-    readonly method: string;
-    readonly params: unknown;
-    readonly chain_id: number;
-    readonly block_timestamp?: number;
-  };
-  readonly manifests: readonly unknown[];
-}
-
-export interface EvaluatePolicyRpcInputDto {
-  readonly plan: PolicyRpcPlanDto;
-  readonly rpc_response: PolicyRpcResponseDto;
-  readonly manifests: readonly unknown[];
-}
-
 // ── v2 (ActionBody-model) policy-RPC DTOs ──────────────────────────────────
 // Mirror `crates/policy-engine-wasm/src/action_eval_exports.rs`. The v2 model
 // is stateless: manifests + bundles arrive inline per call. `chain_id` here is
-// a CAIP-2 STRING (e.g. `"eip155:1"`), NOT a number — distinct from the v1
-// `PolicyRpcRootDto.chain_id`.
+// a CAIP-2 STRING (e.g. `"eip155:1"`), NOT a number.
 
 /**
  * Tx-level routing fields for the v2 exports. Mirrors the Rust `TxInput`
@@ -192,77 +161,6 @@ export function parseVerdict(value: unknown): VerdictDto {
   };
 }
 
-export function parsePolicyRpcPlan(value: unknown): PolicyRpcPlanDto {
-  const record = requireRecord(value, "plan_policy_rpc", "$");
-  const root = requireRecord(
-    requireField(record, "root", "$.root", "plan_policy_rpc"),
-    "plan_policy_rpc",
-    "$.root",
-  );
-  return {
-    request_id: requireString(
-      record,
-      "request_id",
-      "$.request_id",
-      "plan_policy_rpc",
-    ),
-    root: {
-      chain_id: requireNumber(root, "chain_id", "$.root.chain_id"),
-      from: requireString(root, "from", "$.root.from", "plan_policy_rpc"),
-      to: requireString(root, "to", "$.root.to", "plan_policy_rpc"),
-      value_wei: requireString(
-        root,
-        "value_wei",
-        "$.root.value_wei",
-        "plan_policy_rpc",
-      ),
-      ...(hasOwn(root, "block_timestamp")
-        ? {
-            block_timestamp: requireNumber(
-              root,
-              "block_timestamp",
-              "$.root.block_timestamp",
-            ),
-          }
-        : {}),
-    },
-    envelopes: parseUnknownArray(record, "envelopes", "$.envelopes"),
-    calls: parseArrayField(
-      record,
-      "calls",
-      "$.calls",
-      "plan_policy_rpc",
-      parsePolicyRpcCall,
-    ),
-    manifest_set_hash: requireString(
-      record,
-      "manifest_set_hash",
-      "$.manifest_set_hash",
-      "plan_policy_rpc",
-    ),
-    schema_hash: requireString(
-      record,
-      "schema_hash",
-      "$.schema_hash",
-      "plan_policy_rpc",
-    ),
-    diagnostics: parseStringArray(record, "diagnostics", "$.diagnostics"),
-  };
-}
-
-function parsePolicyRpcCall(
-  value: unknown,
-  path: string,
-  exportName: string,
-): PolicyRpcCallDto {
-  const record = requireRecord(value, exportName, path);
-  return {
-    id: requireString(record, "id", `${path}.id`, exportName),
-    method: requireString(record, "method", `${path}.method`, exportName),
-    params: requireField(record, "params", `${path}.params`, exportName),
-  };
-}
-
 function parseMatchedPolicy(
   value: unknown,
   path: string,
@@ -354,40 +252,6 @@ function requireNullableString(
   const value = requireField(record, key, path, exportName);
   if (value === null || typeof value === "string") return value;
   fail(exportName, path, "expected string or null", value);
-}
-
-function requireNumber(
-  record: JsonRecord,
-  key: string,
-  path: string,
-): number {
-  const value = requireField(record, key, path, "plan_policy_rpc");
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  fail("plan_policy_rpc", path, "expected finite number", value);
-}
-
-function parseUnknownArray(
-  record: JsonRecord,
-  key: string,
-  path: string,
-): readonly unknown[] {
-  const value = requireField(record, key, path, "plan_policy_rpc");
-  if (Array.isArray(value)) return value;
-  fail("plan_policy_rpc", path, "expected array", value);
-}
-
-function parseStringArray(
-  record: JsonRecord,
-  key: string,
-  path: string,
-): readonly string[] {
-  const value = parseUnknownArray(record, key, path);
-  for (const [index, item] of value.entries()) {
-    if (typeof item !== "string") {
-      fail("plan_policy_rpc", `${path}[${index}]`, "expected string", item);
-    }
-  }
-  return value as readonly string[];
 }
 
 function requireOneOf<const T extends readonly string[]>(

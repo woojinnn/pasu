@@ -6,11 +6,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-/// 한 pending 의 추가 / 갱신 / 제거 이벤트.
 pub mod pending_change;
-/// 한 포지션의 Open / Update / Close 이벤트.
 pub mod position_change;
-/// 한 토큰의 잔고 / approval 변경 이벤트.
 pub mod token_change;
 
 pub use pending_change::{PendingChange, PendingRemoveReason};
@@ -20,35 +17,39 @@ pub use token_change::{ApprovalScope, TokenChange};
 use crate::primitives::U256;
 use crate::token::TokenRef;
 
-/// Action 한 건이 만드는 변화의 묶음 (token / position / pending) + 가스.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+/// Typed change log produced by a reducer for a single action.
+///
+/// Bundles all state mutations an action causes so policies can inspect both the
+/// current state and the resulting delta together.
 pub struct StateDelta {
-    /// 본 action 이 만든 토큰 잔고 / approval 변경 list.
+    /// Token-level changes (balance deltas, approvals) caused by the action.
     #[serde(default)]
     pub token_changes: Vec<TokenChange>,
-    /// 본 action 이 만든 포지션 (Open / Update / Close) 이벤트 list.
+    /// Position-level changes (open / update / close) caused by the action.
     #[serde(default)]
     pub position_changes: Vec<PositionChange>,
-    /// 본 action 이 만든 pending (서명-only) lifecycle 이벤트 list.
+    /// Pending-entry changes (add / update / remove) caused by the action.
     #[serde(default)]
     pub pending_changes: Vec<PendingChange>,
-    /// 가스 결제 (transaction 인 경우만).
+    /// Gas payment for the action, present only when it is a transaction
+    /// (the token paid in and the amount).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional, type = "[TokenRef, string]")]
     pub gas_paid: Option<(TokenRef, U256)>,
 }
 
 impl StateDelta {
-    /// 빈 `StateDelta`.
+    /// Creates an empty `StateDelta` with no changes recorded.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// 모든 변경 list 와 가스 결제가 비어 있는지.
+    /// Returns `true` when the delta records no changes of any kind.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.token_changes.is_empty()
             && self.position_changes.is_empty()
             && self.pending_changes.is_empty()

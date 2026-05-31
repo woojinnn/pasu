@@ -11,7 +11,7 @@
 //!
 //! 지원 가격 형태:
 //! * `Value::Number` — 그대로 문자열화.
-//! * `Value::String` — 그대로 사용 (CoinMarketCap 처럼 string 으로 주는 경우).
+//! * `Value::String` — 그대로 사용 (`CoinMarketCap` 처럼 string 으로 주는 경우).
 //! 그 외는 `FetchFailed`.
 
 use std::collections::HashMap;
@@ -26,7 +26,7 @@ use crate::config::RestOracleConfig;
 use crate::error::SyncError;
 use crate::fetchers::oracle::PriceFetcher;
 
-/// 한 REST oracle (예: CoinGecko) 의 fetcher.
+/// 한 REST oracle (예: `CoinGecko`) 의 fetcher.
 #[derive(Debug)]
 pub struct RestJsonOracleFetcher {
     /// 에러 메시지 / 로깅용 — provider 의 canonical name.
@@ -35,7 +35,7 @@ pub struct RestJsonOracleFetcher {
     base_url: String,
     /// `(header_name, value)` — value 는 생성 시점에 env 에서 한 번 resolve.
     auth: Option<(String, String)>,
-    /// feed_id → (path, json_pointer).
+    /// `feed_id` → (path, `json_pointer`).
     feeds: HashMap<String, RestFeedSpec>,
 }
 
@@ -48,10 +48,10 @@ struct RestFeedSpec {
 impl RestJsonOracleFetcher {
     /// `scopeball-sync.toml` 의 `[oracles.rest.<name>]` 한 블록을 받아 build.
     ///
-    /// `name` 은 dispatch HashMap 의 키 ( = `OracleProvider::Other(name)` 와 매칭).
+    /// `name` 은 dispatch `HashMap` 의 키 ( = `OracleProvider::Other(name)` 와 매칭).
     /// 일반적으로 TOML 의 섹션 이름과 같다 (예: `"coingecko"`).
     ///
-    /// auth.env_var 가 비어있거나 환경변수가 없으면 인증 없이 호출.
+    /// `auth.env_var` 가 비어있거나 환경변수가 없으면 인증 없이 호출.
     pub fn from_sync_config(name: impl Into<String>, cfg: &RestOracleConfig) -> Self {
         let auth = cfg.auth.as_ref().and_then(|a| {
             let value = std::env::var(&a.env_var).ok()?;

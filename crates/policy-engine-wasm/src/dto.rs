@@ -169,8 +169,8 @@ pub struct DeclarativeInstallResultDto {
 /// Input for `declarative_route_request_v3_json`.
 ///
 /// This is the v3 (PDF FSM spec) route entry that emits the new hierarchical
-/// `simulation_reducer::action::Action` tree (the legacy flat
-/// `ActionEnvelope` route was removed in the Phase 1 action restructure).
+/// `simulation_reducer::action::Action` tree (the legacy flat action route was
+/// removed in the Phase 1 action restructure).
 ///
 /// The wire shape mirrors the SW orchestrator's [`decideMessage`] output:
 ///   * `chain_id`/`to`/`selector`/`calldata` — registry-v2 callkey + raw

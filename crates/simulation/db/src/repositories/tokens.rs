@@ -109,7 +109,7 @@ fn leak_static(s: &str) -> DbResult<&'static str> {
     }
 }
 
-/// hash 만 결정적이므로 `hash()` 헬퍼 노출 — 테스트 / 외부 호출자가 token_hash
+/// hash 만 결정적이므로 `hash()` 헬퍼 노출 — 테스트 / 외부 호출자가 `token_hash`
 /// 미리 계산할 때 사용.
 #[must_use]
 pub fn hash(key: &TokenKey) -> [u8; 16] {

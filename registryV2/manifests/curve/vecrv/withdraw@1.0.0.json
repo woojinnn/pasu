@@ -1,0 +1,54 @@
+{
+  "type": "adapter_action",
+  "id": "curve/vecrv/withdraw@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x3ccfd60b",
+    "chain_to_addresses": {
+      "1": [
+        "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "unlock",
+        "unlock": {
+          "venue": {
+            "name": "curve_voting_escrow",
+            "chain": "$chain",
+            "escrow": "$to"
+          },
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

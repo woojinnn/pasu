@@ -240,8 +240,9 @@ export interface MulticallRecurse {
 }
 
 /**
- * Array fan-out — one ABI tuple-array argument → N ActionEnvelopes, one per
- * element (Phase 7B, Permit2 batch overloads). Generalises `single_emit`:
+ * Legacy typed array fan-out shape. Runtime v3 manifests use
+ * `strategy: "array_emit"` plus raw `emit.body` templates. Generalises
+ * `single_emit`:
  * the field tree is built once per array element with a synthetic `element`
  * arg (and optional `parallel_paths` rows) bound to the current index.
  */

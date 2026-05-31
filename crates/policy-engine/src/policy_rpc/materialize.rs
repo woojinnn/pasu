@@ -1,8 +1,7 @@
 //! Policy-rpc system-failure verdict synthesis.
 //!
-//! The v1 `apply_rpc_results` projection path (which materialized
-//! `ActionEnvelope`-keyed RPC results into Cedar contexts) was removed in the
-//! Phase 1 action restructure. The v2 path lives in
+//! The old `apply_rpc_results` projection path was removed in the Phase 1 action
+//! restructure. The active ActionBody materialization path lives in
 //! [`super::materialize_v2`]. The two surviving items below — the synthetic
 //! [`SYSTEM_POLICY_ID`] and [`system_fail_verdict`] — are model-neutral and
 //! shared by the v2 WASM evaluation surface.

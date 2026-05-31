@@ -1,4 +1,4 @@
-//! TokenHolding — 한 fungibility 단위의 보유 상태.
+//! `TokenHolding` — the held balance state for a single fungibility unit.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -31,20 +31,23 @@ impl Balance {
         }
     }
 
-    /// 0 수량의 `Balance::Fungible` 생성.
-    pub fn zero_fungible() -> Self {
+    /// Builds a `Fungible` balance with a zero amount.
+    #[must_use]
+    pub const fn zero_fungible() -> Self {
         Self::Fungible { amount: U256::ZERO }
     }
 
-    /// `Fungible` 일 때 수량 반환. `Owned` 면 `None`.
-    pub fn as_fungible(&self) -> Option<U256> {
+    /// Returns the fungible amount, or `None` for an `Owned` (ERC721) balance.
+    #[must_use]
+    pub const fn as_fungible(&self) -> Option<U256> {
         match self {
             Self::Fungible { amount } => Some(*amount),
             Self::Owned => None,
         }
     }
 
-    /// `Fungible` 0 인지 (다른 variant 는 항상 false).
+    /// Returns `true` when the fungible amount is zero; always `false` for `Owned`.
+    #[must_use]
     pub fn is_zero(&self) -> bool {
         match self {
             Self::Fungible { amount } => amount.is_zero(),
@@ -89,9 +92,10 @@ pub struct TokenHolding {
 }
 
 impl TokenHolding {
-    /// 정책 view 헬퍼 — committed 를 뺀 사용 가능 잔액.
-    /// Owned 인 경우 의미가 없으므로 None.
-    pub fn available(&self) -> Option<U256> {
+    /// Policy-view helper — the spendable balance, i.e. `balance` minus
+    /// `committed`. Returns `None` for `Owned`, where the notion is meaningless.
+    #[must_use]
+    pub const fn available(&self) -> Option<U256> {
         match (&self.balance, &self.committed) {
             (Balance::Fungible { amount: bal }, Balance::Fungible { amount: cmt }) => {
                 Some(bal.saturating_sub(*cmt))

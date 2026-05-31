@@ -141,10 +141,10 @@ thread_local! {
 // M2 — `declarative_install_v3_json`
 // ───────────────────────────────────────────────────────────────────────────
 //
-// Parallel to `declarative_install_json` (v1) but stores the raw manifest in
-// `DECLARATIVE_V3_STATE` so [`declarative_route_request_v3_json`] can route
+// Stores the raw manifest in `DECLARATIVE_V3_STATE` so
+// [`declarative_route_request_v3_json`] can route
 // against the v3 `emit.body` / `emit.live_inputs` / `emit.per_opcode_body`
-// templates. The v1 install path is untouched.
+// templates.
 //
 // The v3 install validates only the structural envelope:
 //   * `bundle.id`         — required, non-empty string. Used as decoder_id.
@@ -294,9 +294,8 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
 //     adapters-v3 crate). The stub is enough to wire the SW orchestrator
 //     and round-trip through Cedar without blocking on the full mapping.
 //
-// Legacy `declarative_route_request_json` stays untouched — Phase 4 keeps
-// both entries in parallel so the existing SW path (envelope-driven Cedar
-// pipeline) continues to function during cutover.
+// The active route entry emits the ActionBody tree directly; no legacy
+// declarative route is installed in parallel.
 
 /// Phase 4B — v3 orchestrator entry emitting the PDF FSM `Action` tree.
 ///
@@ -380,12 +379,11 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         // Pipeline:
         //   1. Look the callkey up in `DECLARATIVE_V3_STATE.bridge` — miss
         //      surfaces a `no_declarative_v3_mapper` error so the SW caller
-        //      can either fall through to the v1 path or surface the gap.
+        //      can fail closed or surface the gap.
         //   2. Decode the raw calldata against the manifest's
-        //      `abi_fragment.abi` (same JSON-ABI helper v1 uses).
+        //      `abi_fragment.abi`.
         //   3. Build a [`V3MapContext`] from the request + the decoded args
-        //      (`args_to_json` mirrors the v1 eval convention so M3 / M4 do
-        //      not have to learn a second arg shape).
+        //      (`args_to_json` keeps the stable decoded-args JSON shape).
         //   4. Dispatch on `emit.strategy`:
         //        * `single_emit`            → [`build_action_body`]
         //        * `opcode_stream_dispatch` → [`build_multicall_from_opcode_stream`]

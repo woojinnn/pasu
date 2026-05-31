@@ -4833,7 +4833,7 @@ const B5_BALANCER_VAULT_SWAP_V3: &str = r#"{
 }"#;
 
 /// Build `Vault.swap` calldata for the given `kind` (0 = GIVEN_IN, 1 = GIVEN_OUT)
-/// + route it, returning the resolved `body` JSON. `amount` / `limit` are
+/// then route it, returning the resolved `body` JSON. `amount` / `limit` are
 /// load-bearing — they map to amount_in/min_amount_out (GIVEN_IN) or
 /// max_amount_in/amount_out (GIVEN_OUT).
 fn route_balancer_swap(kind: u8, amount: u64, limit: u64) -> Value {

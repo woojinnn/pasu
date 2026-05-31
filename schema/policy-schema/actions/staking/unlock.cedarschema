@@ -1,0 +1,23 @@
+// Staking::Unlock — withdraw an expired vote-escrow lock (Curve veCRV
+// `withdraw()`), releasing the locked token.
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/unlock.rs`
+// (`UnlockAction`). No LiveInputs.
+
+namespace Staking {
+  type UnlockContext = {
+    meta: Core::ActionMeta,
+    venue: StakeVenue,
+    // Token released by the withdrawal (e.g. CRV).
+    token: Core::TokenRef,
+    custom?: UnlockCustomContext,
+  };
+
+  type UnlockCustomContext = {};
+
+  action "Unlock" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: UnlockContext,
+  };
+}
