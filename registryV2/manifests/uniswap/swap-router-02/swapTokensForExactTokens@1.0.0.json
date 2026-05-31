@@ -1,10 +1,10 @@
 {
   "type": "adapter_action",
-  "id": "uniswap/swap-router-02/exactOutputSingle@1.0.0",
+  "id": "uniswap/swap-router-02/swapTokensForExactTokens@1.0.0",
   "publisher": "uniswap.eth",
   "schema_version": "3",
   "match": {
-    "selector": "0x5023b4df",
+    "selector": "0x42712a67",
     "chain_to_addresses": {
       "1": [
         "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
@@ -21,44 +21,27 @@
     }
   },
   "abi_fragment": {
-    "function_name": "exactOutputSingle",
+    "function_name": "swapTokensForExactTokens",
     "abi": {
-      "name": "exactOutputSingle",
+      "name": "swapTokensForExactTokens",
       "type": "function",
+      "stateMutability": "payable",
       "inputs": [
         {
-          "name": "params",
-          "type": "tuple",
-          "components": [
-            {
-              "name": "tokenIn",
-              "type": "address"
-            },
-            {
-              "name": "tokenOut",
-              "type": "address"
-            },
-            {
-              "name": "fee",
-              "type": "uint24"
-            },
-            {
-              "name": "recipient",
-              "type": "address"
-            },
-            {
-              "name": "amountOut",
-              "type": "uint256"
-            },
-            {
-              "name": "amountInMaximum",
-              "type": "uint256"
-            },
-            {
-              "name": "sqrtPriceLimitX96",
-              "type": "uint160"
-            }
-          ]
+          "name": "amountOut",
+          "type": "uint256"
+        },
+        {
+          "name": "amountInMax",
+          "type": "uint256"
+        },
+        {
+          "name": "path",
+          "type": "address[]"
+        },
+        {
+          "name": "to",
+          "type": "address"
         }
       ]
     }
@@ -71,32 +54,32 @@
         "action": "swap",
         "swap": {
           "venue": {
-            "name": "uniswap_v3",
+            "name": "uniswap_v2",
             "chain": "$chain",
             "pool": "$resolved.pool",
-            "fee_tier_bp": "$args.fee"
+            "factory": "$resolved.factory"
           },
           "params": {
             "token_in": {
               "key": {
                 "standard": "erc20",
                 "chain": "$chain",
-                "address": "$args.tokenIn"
+                "address": "$args.path[0]"
               }
             },
             "token_out": {
               "key": {
                 "standard": "erc20",
                 "chain": "$chain",
-                "address": "$args.tokenOut"
+                "address": "$args.path[-1]"
               }
             },
             "direction": {
               "kind": "exact_output",
               "amount_out": "$args.amountOut",
-              "max_amount_in": "$args.amountInMaximum"
+              "max_amount_in": "$args.amountInMax"
             },
-            "recipient": "$args.recipient",
+            "recipient": "$args.to",
             "slippage_bp": "$derived.slippage_bp"
           },
           "live_inputs": {
@@ -105,18 +88,23 @@
                 "kind": "onchain_view",
                 "chain": "$chain",
                 "contract": "$resolved.pool",
-                "function": "slot0()",
-                "decoder_id": "uniswap_v3_slot0"
+                "function": "getReserves()",
+                "decoder_id": "uniswap_v2_get_reserves"
               },
               "ttl_s": 12
             },
             "expected_amount_out": {
               "source": {
-                "kind": "venue_api",
-                "endpoint": "https://api.uniswap.org/v2/quote",
-                "parser_id": "uniswapx_quote"
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "uniswap_v2_pool_state"
+                  }
+                ],
+                "calc_id": "uniswap_v2_price_impact_bp"
               },
-              "ttl_s": 6
+              "ttl_s": 12
             },
             "price_impact_bp": {
               "source": {
@@ -124,10 +112,10 @@
                 "inputs": [
                   {
                     "scope": "global",
-                    "name": "uniswap_v3_pool_state"
+                    "name": "uniswap_v2_pool_state"
                   }
                 ],
-                "calc_id": "uniswap_v3_price_impact_bp"
+                "calc_id": "uniswap_v2_price_impact_bp"
               },
               "ttl_s": 12
             },
@@ -148,7 +136,7 @@
     "imperative": [],
     "adapter_capabilities": [
       "token_metadata",
-      "v3_pool_resolver"
+      "v2_pool_resolver"
     ],
     "host_capabilities": [],
     "extension": ">=0.1.0"

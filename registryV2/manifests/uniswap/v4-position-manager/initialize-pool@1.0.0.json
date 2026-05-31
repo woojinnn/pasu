@@ -1,0 +1,99 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v4-position-manager/initialize-pool@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "V4 pool initialization is surfaced but intentionally conservative until a first-class initialize-pool ActionBody exists.",
+  "match": {
+    "selector": "0xf7020405",
+    "chain_to_addresses": {
+      "1": [
+        "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"
+      ],
+      "10": [
+        "0x3C3Ea4B57a46241e54610e5f022E5c45859A1017"
+      ],
+      "8453": [
+        "0x7C5f5A4bBd8fD63184577525326123B519429bDc"
+      ],
+      "42161": [
+        "0xd88F38F930b7952f2DB2432Cb002E7abbF3dD869"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "initializePool",
+    "abi": {
+      "type": "function",
+      "name": "initializePool",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "tuple",
+          "internalType": "struct PoolKey",
+          "components": [
+            {
+              "name": "currency0",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "currency1",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "fee",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "tickSpacing",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "hooks",
+              "type": "address",
+              "internalType": "contract IHooks"
+            }
+          ]
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ],
+      "stateMutability": "payable"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata",
+      "v4_pool_resolver"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

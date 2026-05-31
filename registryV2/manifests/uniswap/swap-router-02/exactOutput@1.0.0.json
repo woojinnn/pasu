@@ -1,10 +1,10 @@
 {
   "type": "adapter_action",
-  "id": "uniswap/swap-router-02/exactOutputSingle@1.0.0",
+  "id": "uniswap/swap-router-02/exactOutput@1.0.0",
   "publisher": "uniswap.eth",
   "schema_version": "3",
   "match": {
-    "selector": "0x5023b4df",
+    "selector": "0x09b81346",
     "chain_to_addresses": {
       "1": [
         "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
@@ -21,46 +21,47 @@
     }
   },
   "abi_fragment": {
-    "function_name": "exactOutputSingle",
+    "function_name": "exactOutput",
     "abi": {
-      "name": "exactOutputSingle",
-      "type": "function",
       "inputs": [
         {
-          "name": "params",
-          "type": "tuple",
           "components": [
             {
-              "name": "tokenIn",
-              "type": "address"
+              "internalType": "bytes",
+              "name": "path",
+              "type": "bytes"
             },
             {
-              "name": "tokenOut",
-              "type": "address"
-            },
-            {
-              "name": "fee",
-              "type": "uint24"
-            },
-            {
+              "internalType": "address",
               "name": "recipient",
               "type": "address"
             },
             {
+              "internalType": "uint256",
               "name": "amountOut",
               "type": "uint256"
             },
             {
+              "internalType": "uint256",
               "name": "amountInMaximum",
               "type": "uint256"
-            },
-            {
-              "name": "sqrtPriceLimitX96",
-              "type": "uint160"
             }
-          ]
+          ],
+          "internalType": "struct IV3SwapRouter.ExactOutputParams",
+          "name": "params",
+          "type": "tuple"
         }
-      ]
+      ],
+      "name": "exactOutput",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "amountIn",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
     }
   },
   "emit": {
@@ -74,21 +75,21 @@
             "name": "uniswap_v3",
             "chain": "$chain",
             "pool": "$resolved.pool",
-            "fee_tier_bp": "$args.fee"
+            "fee_tier_bp": "$derived.fee_tier_bp"
           },
           "params": {
             "token_in": {
               "key": {
                 "standard": "erc20",
                 "chain": "$chain",
-                "address": "$args.tokenIn"
+                "address": "$derived.v3_path_last_token"
               }
             },
             "token_out": {
               "key": {
                 "standard": "erc20",
                 "chain": "$chain",
-                "address": "$args.tokenOut"
+                "address": "$derived.v3_path_first_token"
               }
             },
             "direction": {

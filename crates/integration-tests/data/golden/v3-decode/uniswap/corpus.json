@@ -420,8 +420,7 @@
     },
     {
       "intent": "PoolManager(V4).initialize(PoolKey,uint160) [0x6276cbbe]",
-      "expect": "error",
-      "expect_error": "no_declarative_v3_mapper",
+      "expect": "pass",
       "tx_hash": "0xfb842bb8476965e0e1e271f0eb453dacdd92750680bb723568601aa72f55f057",
       "chain_id": 1,
       "rpc": {
@@ -433,7 +432,7 @@
           }
         ]
       },
-      "_note": "NO MANIFEST. Genuine new authoring (pool-manager dir has swap.json/unlock.json only, selectors absent from real traffic). DOMINANT direct-PoolManager call (79/80). Likely declarative single_emit over (PoolKey,sqrtPriceX96)."
+      "_note": "Covered by uniswap/v4-pool-manager/initialize@1.0.0 as ActionBody::Unknown. No first-class initialize-pool AMM body exists yet, so routing is explicit and conservative rather than a mapper miss."
     },
     {
       "intent": "PositionManager(V4).multicall(bytes[]) [0xac9650d8]",

@@ -10,15 +10,17 @@
         "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
         "0x4c82d1FbFE28C977cbb58D8C7Ff8FCf9F70A2cca"
       ],
+      "10": [
+        "0x851116D9223fabED8E56C0E6b8Ad0c31d98B3507",
+        "0x8B844F726710Dc1D16328C6825cb7E97Cb89D6b2"
+      ],
       "8453": [
         "0x6fF5693b99212Da76ad316178A184AB56D299b43",
         "0xFdf682F51FE81Aa4898F0AE2163d8A55c127fbC7"
       ],
       "42161": [
-        "0xa51afafe0263b40edaef0df8781ea9aa03e381a3"
-      ],
-      "10": [
-        "0x851116d9223fabed8e56c0e6b8ad0c31d98b3507"
+        "0xa51afafe0263b40edaef0df8781ea9aa03e381a3",
+        "0x8B844F726710Dc1D16328C6825cb7E97Cb89D6b2"
       ]
     }
   },
@@ -270,7 +272,7 @@
             }
           }
         },
-        "_note": "Batch entries beyond index [0] require array_emit expansion \u2014 Phase 3F first batch emits only the lead entry; multi-entry expansion is a follow-up."
+        "_note": "Batch entries beyond index [0] require array_emit expansion — Phase 3F first batch emits only the lead entry; multi-entry expansion is a follow-up."
       },
       "0x04": {
         "name": "SWEEP",
@@ -292,7 +294,7 @@
             }
           }
         },
-        "_note": "SWEEP semantics: transfer min(routerBalance, amountMin) to recipient. ActionBody emits amountMin as a lower-bound \u2014 actual amount resolved at simulation time."
+        "_note": "SWEEP semantics: transfer min(routerBalance, amountMin) to recipient. ActionBody emits amountMin as a lower-bound — actual amount resolved at simulation time."
       },
       "0x05": {
         "name": "TRANSFER",
@@ -335,7 +337,7 @@
             }
           }
         },
-        "_note": "PAY_PORTION semantics: transfer (routerBalance * bips / 10000) to recipient. amount field holds bips (basis points), not an absolute token amount \u2014 sync orchestrator must resolve actual amount from routerBalance."
+        "_note": "PAY_PORTION semantics: transfer (routerBalance * bips / 10000) to recipient. amount field holds bips (basis points), not an absolute token amount — sync orchestrator must resolve actual amount from routerBalance."
       },
       "0x08": {
         "name": "V2_SWAP_EXACT_IN",
@@ -567,7 +569,7 @@
             }
           }
         },
-        "_note": "WRAP_ETH wraps msg.value ETH to WETH and forwards to recipient. ActionBody has no native Wrap variant \u2014 modelled as Erc20Transfer of WETH (open_question: schema extension needed for native\u2194wrapped conversion semantics)."
+        "_note": "WRAP_ETH wraps msg.value ETH to WETH and forwards to recipient. ActionBody has no native Wrap variant — modelled as Erc20Transfer of WETH (open_question: schema extension needed for native↔wrapped conversion semantics)."
       },
       "0x0c": {
         "name": "UNWRAP_WETH",
@@ -589,7 +591,7 @@
             }
           }
         },
-        "_note": "UNWRAP_WETH unwraps router's WETH balance to ETH (recipient receives native). Same schema limitation as WRAP_ETH \u2014 see open_question on native\u2194wrapped semantics."
+        "_note": "UNWRAP_WETH unwraps router's WETH balance to ETH (recipient receives native). Same schema limitation as WRAP_ETH — see open_question on native↔wrapped semantics."
       },
       "0x0d": {
         "name": "PERMIT2_TRANSFER_FROM_BATCH",
@@ -611,7 +613,7 @@
             }
           }
         },
-        "_note": "Batch transfer \u2014 Phase 3F first batch emits only the lead entry [0]. Multi-entry array_emit expansion is a follow-up (same as PERMIT2_PERMIT_BATCH 0x03)."
+        "_note": "Batch transfer — Phase 3F first batch emits only the lead entry [0]. Multi-entry array_emit expansion is a follow-up (same as PERMIT2_PERMIT_BATCH 0x03)."
       },
       "0x0e": {
         "name": "BALANCE_CHECK_ERC20",
@@ -631,7 +633,7 @@
         "name": "V4_SWAP",
         "inputs_abi": "(bytes actions, bytes[] params)",
         "nested": {
-          "_note": "B.1.c.2 \u2014 V4_SWAP input (bytes actions, bytes[] params) is ITSELF a v4-periphery action stream. Recurse into a child Multicall of the inner V4 swap/settle/take legs. Action opcode ids + struct shapes are 1\ucc28-sourced from Uniswap v4-periphery src/libraries/Actions.sol + src/interfaces/IV4Router.sol @ commit 2827167f8b (the last revision before per-hop minHopPriceX36 was added \u2014 matching the deployed Universal Router struct shape). PoolKey is the inline head-flattened (currency0,currency1,fee,tickSpacing,hooks); $inputs.pool_id is computed in Rust (keccak256 of the PoolKey). Action ids NOT carried by a UR V4_SWAP (liquidity 0x00-0x03, WRAP/UNWRAP 0x15/0x16, etc.) are intentionally omitted and fall through unknown_opcode_policy=warn.",
+          "_note": "B.1.c.2 — V4_SWAP input (bytes actions, bytes[] params) is ITSELF a v4-periphery action stream. Recurse into a child Multicall of the inner V4 swap/settle/take legs. Action opcode ids + struct shapes are 1차-sourced from Uniswap v4-periphery src/libraries/Actions.sol + src/interfaces/IV4Router.sol @ commit 2827167f8b (the last revision before per-hop minHopPriceX36 was added — matching the deployed Universal Router struct shape). PoolKey is the inline head-flattened (currency0,currency1,fee,tickSpacing,hooks); $inputs.pool_id is computed in Rust (keccak256 of the PoolKey). Action ids NOT carried by a UR V4_SWAP (liquidity 0x00-0x03, WRAP/UNWRAP 0x15/0x16, etc.) are intentionally omitted and fall through unknown_opcode_policy=warn.",
           "inner_actions_source": "$inputs.actions",
           "inner_params_source": "$inputs.params",
           "mask": "0xff",
@@ -722,7 +724,7 @@
                   }
                 }
               },
-              "_note": "zeroForOne true \u21d2 currency0\u2192currency1 (modelled as token_in=currency0); the reducer reads zeroForOne via $inputs to orient direction. token_in/out shown for the zeroForOne=true canonical case."
+              "_note": "zeroForOne true ⇒ currency0→currency1 (modelled as token_in=currency0); the reducer reads zeroForOne via $inputs to orient direction. token_in/out shown for the zeroForOne=true canonical case."
             },
             "0x07": {
               "name": "SWAP_EXACT_IN",
@@ -1034,7 +1036,7 @@
         "name": "EXECUTE_SUB_PLAN",
         "inputs_abi": "(bytes commands, bytes[] inputs)",
         "nested": {
-          "_note": "B.1.c.2 \u2014 EXECUTE_SUB_PLAN (Commands.sol 0x21 @ Uniswap/universal-router) input is (bytes commands, bytes[] inputs) via Dispatcher.decodeCommandsAndInputs \u2014 a nested UR command stream executed atomically (reverts of the sub-plan don't revert the parent). Recurse into the SAME UR opcode table. JSON can't self-$ref, so this carries the high-value inner opcodes (V3/V2 swaps + V4_SWAP, which itself nests one level deeper \u2014 exercising multi-level recursion + max_depth). Other inner opcodes fall through unknown_opcode_policy=warn; bump coverage by mirroring more of the parent table if a real sub-plan needs it.",
+          "_note": "B.1.c.2 — EXECUTE_SUB_PLAN (Commands.sol 0x21 @ Uniswap/universal-router) input is (bytes commands, bytes[] inputs) via Dispatcher.decodeCommandsAndInputs — a nested UR command stream executed atomically (reverts of the sub-plan don't revert the parent). Recurse into the SAME UR opcode table. JSON can't self-$ref, so this carries the high-value inner opcodes (V3/V2 swaps + V4_SWAP, which itself nests one level deeper — exercising multi-level recursion + max_depth). Other inner opcodes fall through unknown_opcode_policy=warn; bump coverage by mirroring more of the parent table if a real sub-plan needs it.",
           "inner_actions_source": "$inputs.commands",
           "inner_params_source": "$inputs.inputs",
           "mask": "0x7f",

@@ -6,8 +6,18 @@
   "match": {
     "selector": "0x5ae401dc",
     "chain_to_addresses": {
-      "1":    ["0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"],
-      "8453": ["0x2626664c2603336E57B271c5C0b26F421741e481"]
+      "1": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ],
+      "10": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ],
+      "8453": [
+        "0x2626664c2603336E57B271c5C0b26F421741e481"
+      ],
+      "42161": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ]
     }
   },
   "abi_fragment": {
@@ -17,8 +27,14 @@
       "type": "function",
       "stateMutability": "payable",
       "inputs": [
-        { "name": "deadline", "type": "uint256" },
-        { "name": "data", "type": "bytes[]" }
+        {
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes[]"
+        }
       ]
     }
   },
@@ -28,7 +44,9 @@
     "max_depth": 3
   },
   "requires": {
-    "imperative": ["multicall-recurse@^1.0"],
+    "imperative": [
+      "multicall-recurse@^1.0"
+    ],
     "adapter_capabilities": [],
     "host_capabilities": [],
     "extension": ">=0.1.0"

@@ -7,18 +7,21 @@
     "selector": "0x3593564c",
     "chain_to_addresses": {
       "1": [
-        "0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B",
-        "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD"
-      ],
-      "8453": [
-        "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-        "0xeC8B0F7Ffe3ae75d7FfAb09429e3675bb63503e4"
-      ],
-      "42161": [
-        "0x5E325eDA8064b456f4781070C0738d849c824258"
+        "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af",
+        "0x4c82d1FbFE28C977cbb58D8C7Ff8FCf9F70A2cca",
+        "0x3fC91A3afd70395CD496C647d5a6CC9D4B2b7FAD"
       ],
       "10": [
-        "0xCb1355ff08Ab38bBCE60111F1bb2B784bE25D7e8"
+        "0x851116D9223fabED8E56C0E6b8Ad0c31d98B3507",
+        "0x8B844F726710Dc1D16328C6825cb7E97Cb89D6b2"
+      ],
+      "8453": [
+        "0x6fF5693b99212Da76ad316178A184AB56D299b43",
+        "0xFdf682F51FE81Aa4898F0AE2163d8A55c127fbC7"
+      ],
+      "42161": [
+        "0xa51afafe0263b40edaef0df8781ea9aa03e381a3",
+        "0x8B844F726710Dc1D16328C6825cb7E97Cb89D6b2"
       ]
     }
   },
@@ -237,7 +240,7 @@
       },
       "0x03": {
         "name": "PERMIT2_PERMIT_BATCH",
-        "inputs_abi": "(((address,uint160,uint48,uint48)[] details, address spender, uint256 sigDeadline) permitBatch, bytes signature)",
+        "inputs_abi": "(((address,uint160,uint48,uint48)[],address,uint256) permitBatch, bytes signature)",
         "body": {
           "domain": "token",
           "token": {
@@ -247,18 +250,30 @@
                 "key": {
                   "standard": "erc20",
                   "chain": "$chain",
-                  "address": "$inputs.permitBatch.details[0].token"
+                  "address": "$inputs.permitBatch[0][0][0]"
                 }
               },
-              "spender": "$inputs.permitBatch.spender",
-              "amount": "$inputs.permitBatch.details[0].amount",
-              "expires_at": "$inputs.permitBatch.details[0].expiration",
-              "sig_deadline": "$inputs.permitBatch.sigDeadline",
-              "nonce": "$inputs.permitBatch.details[0].nonce"
+              "spender": "$inputs.permitBatch[1]",
+              "amount": "$inputs.permitBatch[0][0][1]",
+              "expires_at": "$inputs.permitBatch[0][0][2]",
+              "sig_deadline": "$inputs.permitBatch[2]",
+              "nonce": "$inputs.permitBatch[0][0][3]",
+              "live_inputs": {
+                "nonce": {
+                  "source": {
+                    "kind": "onchain_view",
+                    "chain": "$chain",
+                    "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+                    "function": "nonceBitmap(address,uint256)",
+                    "decoder_id": "permit2_nonce_bitmap"
+                  },
+                  "ttl_s": 12
+                }
+              }
             }
           }
         },
-        "_note": "Batch entries beyond index [0] require array_emit expansion \u2014 Phase 3F first batch emits only the lead entry; multi-entry expansion is a follow-up."
+        "_note": "Batch entries beyond index [0] require array_emit expansion — Phase 3F first batch emits only the lead entry; multi-entry expansion is a follow-up."
       },
       "0x04": {
         "name": "SWEEP",
@@ -280,7 +295,7 @@
             }
           }
         },
-        "_note": "SWEEP semantics: transfer min(routerBalance, amountMin) to recipient. ActionBody emits amountMin as a lower-bound \u2014 actual amount resolved at simulation time."
+        "_note": "SWEEP semantics: transfer min(routerBalance, amountMin) to recipient. ActionBody emits amountMin as a lower-bound — actual amount resolved at simulation time."
       },
       "0x05": {
         "name": "TRANSFER",
@@ -323,7 +338,7 @@
             }
           }
         },
-        "_note": "PAY_PORTION semantics: transfer (routerBalance * bips / 10000) to recipient. amount field holds bips (basis points), not an absolute token amount \u2014 sync orchestrator must resolve actual amount from routerBalance."
+        "_note": "PAY_PORTION semantics: transfer (routerBalance * bips / 10000) to recipient. amount field holds bips (basis points), not an absolute token amount — sync orchestrator must resolve actual amount from routerBalance."
       },
       "0x08": {
         "name": "V2_SWAP_EXACT_IN",
@@ -501,7 +516,7 @@
       },
       "0x0a": {
         "name": "PERMIT2_PERMIT",
-        "inputs_abi": "(((address token, uint160 amount, uint48 expiration, uint48 nonce) details, address spender, uint256 sigDeadline) permitSingle, bytes signature)",
+        "inputs_abi": "(((address,uint160,uint48,uint48),address,uint256) permitSingle, bytes signature)",
         "body": {
           "domain": "token",
           "token": {
@@ -511,14 +526,26 @@
                 "key": {
                   "standard": "erc20",
                   "chain": "$chain",
-                  "address": "$inputs.permitSingle.details.token"
+                  "address": "$inputs.permitSingle[0][0]"
                 }
               },
-              "spender": "$inputs.permitSingle.spender",
-              "amount": "$inputs.permitSingle.details.amount",
-              "expires_at": "$inputs.permitSingle.details.expiration",
-              "sig_deadline": "$inputs.permitSingle.sigDeadline",
-              "nonce": "$inputs.permitSingle.details.nonce"
+              "spender": "$inputs.permitSingle[1]",
+              "amount": "$inputs.permitSingle[0][1]",
+              "expires_at": "$inputs.permitSingle[0][2]",
+              "sig_deadline": "$inputs.permitSingle[2]",
+              "nonce": "$inputs.permitSingle[0][3]",
+              "live_inputs": {
+                "nonce": {
+                  "source": {
+                    "kind": "onchain_view",
+                    "chain": "$chain",
+                    "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+                    "function": "nonceBitmap(address,uint256)",
+                    "decoder_id": "permit2_nonce_bitmap"
+                  },
+                  "ttl_s": 12
+                }
+              }
             }
           }
         }
@@ -543,7 +570,7 @@
             }
           }
         },
-        "_note": "WRAP_ETH wraps msg.value ETH to WETH and forwards to recipient. ActionBody has no native Wrap variant \u2014 modelled as Erc20Transfer of WETH (open_question: schema extension needed for native\u2194wrapped conversion semantics)."
+        "_note": "WRAP_ETH wraps msg.value ETH to WETH and forwards to recipient. ActionBody has no native Wrap variant — modelled as Erc20Transfer of WETH (open_question: schema extension needed for native↔wrapped conversion semantics)."
       },
       "0x0c": {
         "name": "UNWRAP_WETH",
@@ -565,7 +592,7 @@
             }
           }
         },
-        "_note": "UNWRAP_WETH unwraps router's WETH balance to ETH (recipient receives native). Same schema limitation as WRAP_ETH \u2014 see open_question on native\u2194wrapped semantics."
+        "_note": "UNWRAP_WETH unwraps router's WETH balance to ETH (recipient receives native). Same schema limitation as WRAP_ETH — see open_question on native↔wrapped semantics."
       },
       "0x0d": {
         "name": "PERMIT2_TRANSFER_FROM_BATCH",
@@ -587,7 +614,7 @@
             }
           }
         },
-        "_note": "Batch transfer \u2014 Phase 3F first batch emits only the lead entry [0]. Multi-entry array_emit expansion is a follow-up (same as PERMIT2_PERMIT_BATCH 0x03)."
+        "_note": "Batch transfer — Phase 3F first batch emits only the lead entry [0]. Multi-entry array_emit expansion is a follow-up (same as PERMIT2_PERMIT_BATCH 0x03)."
       },
       "0x0e": {
         "name": "BALANCE_CHECK_ERC20",

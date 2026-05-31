@@ -537,6 +537,7 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         // 5-tuple). The single_emit analogue of `maybe_inject_v4_pool_id`.
         let mut derived = BTreeMap::new();
         maybe_inject_morpho_market_id(&args_json, &mut derived);
+        maybe_inject_uniswap_v3_path(&args_json, &mut derived);
 
         let ctx = V3MapContext {
             chain: chain.clone(),
@@ -2116,6 +2117,44 @@ fn maybe_inject_morpho_market_id(
     }
 }
 
+/// Uniswap V3 SwapRouter `exactInput` / `exactOutput` carry a packed `bytes path`
+/// in top-level args. The declarative grammar can reference derived placeholders
+/// but cannot unpack `[token20][fee3]...`; inject the stable endpoints and first
+/// hop fee so direct SwapRouter02 manifests can stay declarative.
+fn maybe_inject_uniswap_v3_path(
+    args_json: &serde_json::Value,
+    derived: &mut BTreeMap<String, serde_json::Value>,
+) {
+    let Some(path) = args_json.get("path").and_then(serde_json::Value::as_str) else {
+        return;
+    };
+    let path = path.strip_prefix("0x").unwrap_or(path);
+    let Ok(bytes) = hex::decode(path) else {
+        return;
+    };
+    let Ok((tokens, fees)) = abi_resolver::subdecode::protocols::uniswap_v3::decode_v3_path(&bytes)
+    else {
+        return;
+    };
+    let (Some(first), Some(last)) = (tokens.first(), tokens.last()) else {
+        return;
+    };
+    derived.insert(
+        "v3_path_first_token".to_owned(),
+        serde_json::Value::String(format!("0x{}", hex::encode(first.0))),
+    );
+    derived.insert(
+        "v3_path_last_token".to_owned(),
+        serde_json::Value::String(format!("0x{}", hex::encode(last.0))),
+    );
+    if let Some(fee) = fees.first() {
+        derived.insert(
+            "fee_tier_bp".to_owned(),
+            serde_json::Value::Number(serde_json::Number::from(*fee)),
+        );
+    }
+}
+
 /// `multicall_recurse` (Cat D) — flatten a self-`multicall(bytes[])` into one
 /// [`v3_action::ActionBody::Multicall`].
 ///
@@ -2473,6 +2512,30 @@ mod tests {
         )
         .unwrap();
         assert_eq!(decoded["pool_id"], json!(expected));
+    }
+
+    #[test]
+    fn maybe_inject_uniswap_v3_path_extracts_endpoints_and_fee() {
+        let mut path = Vec::new();
+        path.extend_from_slice(&[0x11; 20]);
+        path.extend_from_slice(&[0x00, 0x01, 0xf4]);
+        path.extend_from_slice(&[0x22; 20]);
+        path.extend_from_slice(&[0x00, 0x0b, 0xb8]);
+        path.extend_from_slice(&[0x33; 20]);
+
+        let args = json!({ "path": format!("0x{}", hex::encode(path)) });
+        let mut derived = BTreeMap::new();
+        maybe_inject_uniswap_v3_path(&args, &mut derived);
+
+        assert_eq!(
+            derived["v3_path_first_token"],
+            json!("0x1111111111111111111111111111111111111111")
+        );
+        assert_eq!(
+            derived["v3_path_last_token"],
+            json!("0x3333333333333333333333333333333333333333")
+        );
+        assert_eq!(derived["fee_tier_bp"], json!(500_u64));
     }
 
     #[test]
