@@ -17,6 +17,8 @@ use tsify_next::Tsify;
 use simulation_state::primitives::{Address, ChainId};
 
 pub mod claim_rewards;
+pub mod gauge_deposit;
+pub mod gauge_withdraw;
 pub mod increase_lock_amount;
 pub mod increase_lock_time;
 pub mod lock;
@@ -24,6 +26,8 @@ pub mod unlock;
 pub mod vote_for_gauge;
 
 pub use self::claim_rewards::*;
+pub use self::gauge_deposit::*;
+pub use self::gauge_withdraw::*;
 pub use self::increase_lock_amount::*;
 pub use self::increase_lock_time::*;
 pub use self::lock::*;
@@ -47,6 +51,10 @@ pub enum StakingAction {
     ClaimRewards(ClaimRewardsAction),
     /// Allocate vote-escrow weight to a gauge (`GaugeController.vote_for_gauge_weights`).
     VoteForGauge(VoteForGaugeAction),
+    /// Stake LP into a Curve liquidity gauge (gauge `deposit`).
+    GaugeDeposit(GaugeDepositAction),
+    /// Unstake LP from a Curve liquidity gauge (gauge `withdraw`).
+    GaugeWithdraw(GaugeWithdrawAction),
 }
 
 impl StakingAction {
@@ -63,6 +71,8 @@ impl StakingAction {
             Self::Unlock(_) => "unlock",
             Self::ClaimRewards(_) => "claim_rewards",
             Self::VoteForGauge(_) => "vote_for_gauge",
+            Self::GaugeDeposit(_) => "gauge_deposit",
+            Self::GaugeWithdraw(_) => "gauge_withdraw",
         }
     }
 
@@ -76,6 +86,8 @@ impl StakingAction {
             Self::Unlock(a) => Some(a.venue.name()),
             Self::ClaimRewards(a) => Some(a.venue.name()),
             Self::VoteForGauge(a) => Some(a.venue.name()),
+            Self::GaugeDeposit(a) => Some(a.venue.name()),
+            Self::GaugeWithdraw(a) => Some(a.venue.name()),
         }
     }
 }

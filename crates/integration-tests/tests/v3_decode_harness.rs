@@ -529,7 +529,8 @@ fn curve_minter_mint_for_claims_crv_from_gauge_on_behalf() {
         Some(true),
         "route did not succeed: {env}"
     );
-    let reward = find_object_by_key(&env, "reward_token").expect("claim_rewards carries reward_token");
+    let reward =
+        find_object_by_key(&env, "reward_token").expect("claim_rewards carries reward_token");
     assert_eq!(
         find_string_field(reward, "address").as_deref(),
         Some(CRV),
@@ -590,7 +591,8 @@ fn curve_minter_toggle_approve_decodes_permission_grant() {
     // Minter. toggle_approve_mint(minting_user=0x..b02d).
     const TO: &str = "0xd061d61a4d941c39e5453435b6345dc261c2fce0";
     const USER: &str = "0x000000000000000000000000000000000000b02d";
-    const CALLDATA: &str = "0xdd289d60000000000000000000000000000000000000000000000000000000000000b02d";
+    const CALLDATA: &str =
+        "0xdd289d60000000000000000000000000000000000000000000000000000000000000b02d";
 
     let env = harness::route::route_calldata(1, TO, "0xdd289d60", CALLDATA, "0");
     assert_eq!(
@@ -612,6 +614,80 @@ fn curve_minter_toggle_approve_decodes_permission_grant() {
         find_string_field(&env, "protocol_name").as_deref(),
         Some("curve_minter"),
         "protocol_name must be curve_minter"
+    );
+}
+
+/// Field-level golden: Curve gauge `deposit(uint256, address)` must decode to a
+/// `staking` `gauge_deposit` whose venue gauge is the routed contract, `amount`
+/// = `_value`, and `on_behalf_of` = `_addr`. The staked LP is identified by the
+/// gauge venue (no separate token field). Decoded from a multi-address manifest
+/// (one manifest covering all 8 onboarded pool gauges).
+#[test]
+fn curve_gauge_deposit_for_credits_addr() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // WBTC+tBTC (2btc) pool gauge. deposit(_value=2e18, _addr=0x..b02d).
+    const TO: &str = "0x5010263ac1978297f56048c7d2b02316a3435404";
+    const ADDR: &str = "0x000000000000000000000000000000000000b02d";
+    const CALLDATA: &str = "0x6e553f650000000000000000000000000000000000000000000000001bc16d674ec80000000000000000000000000000000000000000000000000000000000000000b02d";
+
+    let env = harness::route::route_calldata(1, TO, "0x6e553f65", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "gauge").as_deref(),
+        Some(TO),
+        "gauge venue must be the routed gauge (multi-address $to)"
+    );
+    assert_eq!(
+        find_string_field(&env, "amount").as_deref(),
+        Some("0x1bc16d674ec80000"),
+        "deposit amount must equal _value (2e18)"
+    );
+    assert_eq!(
+        find_string_field(&env, "on_behalf_of").as_deref(),
+        Some(ADDR),
+        "deposit on_behalf_of must equal _addr"
+    );
+}
+
+/// Field-level golden: Curve gauge `claim_rewards(address, address)` must decode
+/// to a `staking` `claim_rewards` with NO `reward_token` (a gauge pays a
+/// configured multi-reward set, not statically known) and empty `gauges` (the
+/// gauge IS the venue), carrying `on_behalf_of` = `_addr` and `recipient` =
+/// `_receiver`. This is the gauge claim path, distinct from a Minter CRV mint.
+#[test]
+fn curve_gauge_claim_rewards_to_recipient() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const TO: &str = "0x5010263ac1978297f56048c7d2b02316a3435404";
+    const ADDR: &str = "0x000000000000000000000000000000000000b02d";
+    const RECV: &str = "0x000000000000000000000000000000000000c0de";
+    const CALLDATA: &str = "0x9faceb1b000000000000000000000000000000000000000000000000000000000000b02d000000000000000000000000000000000000000000000000000000000000c0de";
+
+    let env = harness::route::route_calldata(1, TO, "0x9faceb1b", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "on_behalf_of").as_deref(),
+        Some(ADDR),
+        "claim on_behalf_of must equal _addr"
+    );
+    assert_eq!(
+        find_string_field(&env, "recipient").as_deref(),
+        Some(RECV),
+        "claim recipient must equal _receiver"
+    );
+    // A gauge's own claim carries no reward_token (unlike the Minter's CRV mint).
+    assert!(
+        find_object_by_key(&env, "reward_token").is_none(),
+        "gauge claim_rewards must omit reward_token; got {env}"
     );
 }
 

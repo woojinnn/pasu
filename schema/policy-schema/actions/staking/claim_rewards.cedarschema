@@ -8,12 +8,15 @@ namespace Staking {
   type ClaimRewardsContext = {
     meta: Core::ActionMeta,
     venue: StakeVenue,
-    // Reward token minted (CRV).
-    rewardToken: Core::TokenRef,
-    // Gauge address(es) the rewards are minted from (one or many), each a hex address.
+    // Reward token (CRV for the Minter); omitted for a gauge's multi-reward claim_rewards.
+    rewardToken?: Core::TokenRef,
+    // Gauge address(es) rewards are minted from (Minter mint/mint_many); empty for a
+    // gauge's own claim_rewards (the gauge is the venue). Each a hex address.
     gauges: Set<String>,
-    // Beneficiary receiving the minted rewards (`mint_for._for`); omitted ⇒ submitter.
+    // Beneficiary whose rewards are claimed (`mint_for._for` / `claim_rewards(_addr)`).
     onBehalfOf?: String,
+    // Explicit payout recipient (gauge `claim_rewards(_addr, _receiver)`).
+    recipient?: String,
     custom?: ClaimRewardsCustomContext,
   };
 

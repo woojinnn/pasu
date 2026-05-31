@@ -10,6 +10,8 @@ use super::common::cedar::addr;
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
 mod claim_rewards;
+mod gauge_deposit;
+mod gauge_withdraw;
 mod increase_lock_amount;
 mod increase_lock_time;
 mod lock;
@@ -33,6 +35,8 @@ pub(crate) fn lower(
         StakingAction::Unlock(a) => unlock::lower(a, ctx),
         StakingAction::ClaimRewards(a) => claim_rewards::lower(a, ctx),
         StakingAction::VoteForGauge(a) => vote_for_gauge::lower(a, ctx),
+        StakingAction::GaugeDeposit(a) => gauge_deposit::lower(a, ctx),
+        StakingAction::GaugeWithdraw(a) => gauge_withdraw::lower(a, ctx),
     }
 }
 
@@ -121,6 +125,14 @@ pub(crate) mod test_support {
         StakeVenue::CurveGaugeController {
             chain: ChainId::ethereum_mainnet(),
             controller: Address::from_str("0x2f50d538606fa9edd2b11e2446beb18c9d5846bb").unwrap(),
+        }
+    }
+
+    /// A Curve liquidity gauge venue (2btc pool gauge) on Ethereum mainnet.
+    pub(crate) fn gauge_venue() -> StakeVenue {
+        StakeVenue::CurveGauge {
+            chain: ChainId::ethereum_mainnet(),
+            gauge: Address::from_str("0x5010263ac1978297f56048c7d2b02316a3435404").unwrap(),
         }
     }
 

@@ -1,0 +1,128 @@
+{
+  "contract": "Curve-LiquidityGauge",
+  "chainId": 1,
+  "addresses": [
+    "0x96424e6b5eaafe0c3b36ca82068d574d44be4e3c",
+    "0xea012f5b25fa0d8e46123b85f585d0a5075e96b5",
+    "0x60d3d7ebbc44dc810a743703184f062d00e6db7e",
+    "0x8d867bef70c6733ff25cc0d1caa8aa6c38b24817",
+    "0x1e4b83f6bfe9dbeb6d5b92a5237e5c18a44176f4",
+    "0x4e21418095d32d15c6e2b96a9910772613a50d50",
+    "0x5010263ac1978297f56048c7d2b02316a3435404",
+    "0xf29fff074f5cf755b55fbb3eb10a29203ac91ea2"
+  ],
+  "snapshot": "gauge.abi.json",
+  "note": "Curve liquidity gauges — 8 mainnet pool gauges (tied to onboarded pools). 8 cover + 14 exclude (ERC20 gauge-token / admin / keeper). Multi-address (H1).",
+  "functions": {
+    "0xc4d66de8": {
+      "name": "initialize(address)",
+      "decision": "exclude",
+      "reason": "factory init, not a user op."
+    },
+    "0x4b820093": {
+      "name": "user_checkpoint(address)",
+      "decision": "exclude",
+      "reason": "keeper — boost checkpoint."
+    },
+    "0x33134583": {
+      "name": "claimable_tokens(address)",
+      "decision": "exclude",
+      "reason": "view-like (state-updating getter), not a user write."
+    },
+    "0xbdf98116": {
+      "name": "set_rewards_receiver(address)",
+      "decision": "exclude",
+      "reason": "user config (reward forwarding); low-value, deferred."
+    },
+    "0xe6f1daf2": {
+      "name": "claim_rewards()",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0x84e9bd7e": {
+      "name": "claim_rewards(address)",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0x9faceb1b": {
+      "name": "claim_rewards(address,address)",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0x96c55175": {
+      "name": "kick(address)",
+      "decision": "exclude",
+      "reason": "keeper — kick a stale boost."
+    },
+    "0xb6b55f25": {
+      "name": "deposit(uint256)",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0x6e553f65": {
+      "name": "deposit(uint256,address)",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0x83df6747": {
+      "name": "deposit(uint256,address,bool)",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0x2e1a7d4d": {
+      "name": "withdraw(uint256)",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0x38d07436": {
+      "name": "withdraw(uint256,bool)",
+      "decision": "cover",
+      "reason": "user gauge stake/unstake/claim (staking domain) — GaugeDeposit/GaugeWithdraw (LP identified by gauge venue) / ClaimRewards (gauge multi-reward, no reward_token). Multi-address: one manifest covers all 8 pool gauges."
+    },
+    "0xa9059cbb": {
+      "name": "transfer(address,uint256)",
+      "decision": "exclude",
+      "reason": "ERC20 gauge-token transfer — token domain."
+    },
+    "0x23b872dd": {
+      "name": "transferFrom(address,address,uint256)",
+      "decision": "exclude",
+      "reason": "ERC20 gauge-token transferFrom — token domain."
+    },
+    "0x095ea7b3": {
+      "name": "approve(address,uint256)",
+      "decision": "exclude",
+      "reason": "ERC20 gauge-token approve — token domain."
+    },
+    "0x39509351": {
+      "name": "increaseAllowance(address,uint256)",
+      "decision": "exclude",
+      "reason": "ERC20 allowance — token domain."
+    },
+    "0xa457c2d7": {
+      "name": "decreaseAllowance(address,uint256)",
+      "decision": "exclude",
+      "reason": "ERC20 allowance — token domain."
+    },
+    "0xe8de0d4d": {
+      "name": "add_reward(address,address)",
+      "decision": "exclude",
+      "reason": "reward-manager admin."
+    },
+    "0x058a3a24": {
+      "name": "set_reward_distributor(address,address)",
+      "decision": "exclude",
+      "reason": "reward-manager admin."
+    },
+    "0x93f7aa67": {
+      "name": "deposit_reward_token(address,uint256)",
+      "decision": "exclude",
+      "reason": "reward-distributor admin (funds the reward stream)."
+    },
+    "0x90b22997": {
+      "name": "set_killed(bool)",
+      "decision": "exclude",
+      "reason": "admin — kill switch."
+    }
+  }
+}
