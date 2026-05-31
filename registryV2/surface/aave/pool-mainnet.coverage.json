@@ -1,0 +1,184 @@
+{
+  "contract": "Aave V3 Pool",
+  "chainId": 1,
+  "address": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+  "snapshot": "pool-mainnet.abi.json",
+  "functions": {
+    "0xb8caa7c5": {
+      "name": "approvePositionManager",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive — grants/revokes a position manager that can toggle collateral and eMode on behalf of the user."
+    },
+    "0xa415bcad": {
+      "name": "borrow",
+      "decision": "cover",
+      "reason": "user position: borrow reserve asset"
+    },
+    "0x7b75d7f4": {
+      "name": "configureEModeCategory",
+      "decision": "exclude",
+      "reason": "governance/pool-configurator operation, not a user pre-sign action"
+    },
+    "0xff72158a": {
+      "name": "configureEModeCategoryBorrowableBitmap",
+      "decision": "exclude",
+      "reason": "governance/pool-configurator operation, not a user pre-sign action"
+    },
+    "0x92380ecb": {
+      "name": "configureEModeCategoryCollateralBitmap",
+      "decision": "exclude",
+      "reason": "governance/pool-configurator operation, not a user pre-sign action"
+    },
+    "0x10870f75": {
+      "name": "configureEModeCategoryLtvzeroBitmap",
+      "decision": "exclude",
+      "reason": "governance/pool-configurator operation, not a user pre-sign action"
+    },
+    "0xe8eda9df": {
+      "name": "deposit",
+      "decision": "cover",
+      "reason": "deprecated alias of supply; user position: supply reserve asset"
+    },
+    "0x63c9b860": {
+      "name": "dropReserve",
+      "decision": "exclude",
+      "reason": "pool-configurator reserve administration"
+    },
+    "0xa1d2f3c4": {
+      "name": "eliminateReserveDeficit",
+      "decision": "exclude",
+      "reason": "Umbrella/bad-debt reserve maintenance path, not a normal user wallet action"
+    },
+    "0x12772993": {
+      "name": "finalizeTransfer",
+      "decision": "exclude",
+      "reason": "aToken callback/infra path, only callable by the reserve aToken"
+    },
+    "0xab9c4b5d": {
+      "name": "flashLoan",
+      "decision": "exclude",
+      "reason": "keeper/integrator atomic flash-loan path; no standing wallet-position ActionBody yet (deferred flash_loan action)"
+    },
+    "0x42b0b77c": {
+      "name": "flashLoanSimple",
+      "decision": "exclude",
+      "reason": "keeper/integrator atomic flash-loan path; no standing wallet-position ActionBody yet (deferred flash_loan action)"
+    },
+    "0x932f12c8": {
+      "name": "initReserve",
+      "decision": "exclude",
+      "reason": "pool-configurator reserve administration"
+    },
+    "0xc4d66de8": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "proxy initialization / deployment-time operation"
+    },
+    "0x00a718a9": {
+      "name": "liquidationCall",
+      "decision": "cover",
+      "reason": "liquidation action already modeled by LendingAction::Liquidate"
+    },
+    "0x9cd19996": {
+      "name": "mintToTreasury",
+      "decision": "exclude",
+      "reason": "protocol maintenance: mint accrued reserve factor to treasury"
+    },
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "cover",
+      "reason": "user-visible batching wrapper; recursively decodes inner Pool calls"
+    },
+    "0xfea149a6": {
+      "name": "renouncePositionManagerRole",
+      "decision": "cover",
+      "reason": "permission revoke primitive — caller revokes its own position-manager authorization for a user"
+    },
+    "0x573ade81": {
+      "name": "repay",
+      "decision": "cover",
+      "reason": "user position: repay reserve debt"
+    },
+    "0x2dad97d4": {
+      "name": "repayWithATokens",
+      "decision": "cover",
+      "reason": "user position: repay reserve debt using aTokens"
+    },
+    "0xee3e210b": {
+      "name": "repayWithPermit",
+      "decision": "cover",
+      "reason": "user position: repay reserve debt with bundled ERC-2612 permit"
+    },
+    "0xcea9d26f": {
+      "name": "rescueTokens",
+      "decision": "exclude",
+      "reason": "pool admin emergency token rescue"
+    },
+    "0xe43e88a1": {
+      "name": "resetIsolationModeTotalDebt",
+      "decision": "exclude",
+      "reason": "pool-configurator isolation-mode accounting maintenance"
+    },
+    "0xf51e435b": {
+      "name": "setConfiguration",
+      "decision": "exclude",
+      "reason": "pool-configurator reserve administration"
+    },
+    "0xb1a99e26": {
+      "name": "setLiquidationGracePeriod",
+      "decision": "exclude",
+      "reason": "pool-configurator/governance risk-parameter operation"
+    },
+    "0x28530a47": {
+      "name": "setUserEMode",
+      "decision": "cover",
+      "reason": "user position: set Aave eMode category"
+    },
+    "0x4ba06814": {
+      "name": "setUserEModeOnBehalfOf",
+      "decision": "cover",
+      "reason": "position-manager execution path for user eMode category; ActionBody carries on_behalf_of"
+    },
+    "0x5a3b74b9": {
+      "name": "setUserUseReserveAsCollateral",
+      "decision": "cover",
+      "reason": "user position: enable/disable collateral usage for a reserve"
+    },
+    "0x972b35fa": {
+      "name": "setUserUseReserveAsCollateralOnBehalfOf",
+      "decision": "cover",
+      "reason": "position-manager execution path for user collateral toggle; ActionBody carries on_behalf_of"
+    },
+    "0x617ba037": {
+      "name": "supply",
+      "decision": "cover",
+      "reason": "user position: supply reserve asset"
+    },
+    "0x02c205f0": {
+      "name": "supplyWithPermit",
+      "decision": "cover",
+      "reason": "user position: supply reserve asset with bundled ERC-2612 permit"
+    },
+    "0xab2b51f6": {
+      "name": "syncIndexesState",
+      "decision": "exclude",
+      "reason": "pool-configurator interest-index maintenance"
+    },
+    "0x98c7da4e": {
+      "name": "syncRatesState",
+      "decision": "exclude",
+      "reason": "pool-configurator interest-rate maintenance"
+    },
+    "0x9c1d5f00": {
+      "name": "updateFlashloanPremium",
+      "decision": "exclude",
+      "reason": "pool-configurator flash-loan fee configuration"
+    },
+    "0x69328dec": {
+      "name": "withdraw",
+      "decision": "cover",
+      "reason": "user position: withdraw supplied reserve asset"
+    }
+  },
+  "signed_structs": {}
+}

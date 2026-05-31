@@ -12,6 +12,8 @@ namespace Lending {
     venue: LendingVenue,
     // Asset whose collateral flag is being disabled.
     asset: Core::TokenRef,
+    // Account whose collateral flag is changed; absent means the submitter.
+    onBehalfOf?: String,
     // Live inputs (flattened from LiveField<T>).
     reserveState: ReserveState,
     userStateBefore: UserLendingState,

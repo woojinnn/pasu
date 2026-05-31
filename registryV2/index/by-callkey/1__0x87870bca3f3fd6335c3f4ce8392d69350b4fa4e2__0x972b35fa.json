@@ -1,0 +1,123 @@
+{
+  "matched": true,
+  "bundle_id": "aave/v3/setUserUseReserveAsCollateralOnBehalfOf@1.0.0",
+  "manifest_path": "manifests/aave/v3/set-user-use-reserve-as-collateral-on-behalf-of@1.0.0.json",
+  "bundle_sha256": "0x237af43f9b6500db8235032a5d5354526939e250d99cca63287943732b9f6d23",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "aave/v3/setUserUseReserveAsCollateralOnBehalfOf@1.0.0",
+    "publisher": "aave.eth",
+    "schema_version": "3",
+    "note": "Aave V3.4+ Pool.setUserUseReserveAsCollateralOnBehalfOf(asset,useAsCollateral,onBehalfOf). This is the position-manager execution path for the same collateral toggle; `on_behalf_of` preserves the affected account.",
+    "match": {
+      "selector": "0x972b35fa",
+      "chain_to_addresses": {
+        "1": [
+          "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "setUserUseReserveAsCollateralOnBehalfOf",
+      "abi": {
+        "name": "setUserUseReserveAsCollateralOnBehalfOf",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "asset",
+            "type": "address"
+          },
+          {
+            "name": "useAsCollateral",
+            "type": "bool"
+          },
+          {
+            "name": "onBehalfOf",
+            "type": "address"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "$match": "$args.useAsCollateral",
+          "$cases": {
+            "true": {
+              "action": "enable_collateral",
+              "enable_collateral": {
+                "venue": {
+                  "name": "aave_v3",
+                  "chain": "$chain",
+                  "pool": "$to",
+                  "market_id": null
+                },
+                "asset": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$args.asset"
+                  }
+                },
+                "on_behalf_of": "$args.onBehalfOf"
+              }
+            },
+            "false": {
+              "action": "disable_collateral",
+              "disable_collateral": {
+                "venue": {
+                  "name": "aave_v3",
+                  "chain": "$chain",
+                  "pool": "$to",
+                  "market_id": null
+                },
+                "asset": {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$args.asset"
+                  }
+                },
+                "on_behalf_of": "$args.onBehalfOf"
+              }
+            }
+          }
+        }
+      },
+      "live_inputs": {
+        "reserve_state": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getReserveData(address)",
+            "decoder_id": "aave_v3_reserve_data"
+          },
+          "ttl_s": 30
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getUserAccountData(address)",
+            "decoder_id": "aave_v3_user_account_data"
+          },
+          "ttl_s": 12
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

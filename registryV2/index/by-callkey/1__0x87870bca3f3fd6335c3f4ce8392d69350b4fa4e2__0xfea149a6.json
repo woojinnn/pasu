@@ -1,0 +1,52 @@
+{
+  "matched": true,
+  "bundle_id": "aave/v3/renouncePositionManagerRole@1.0.0",
+  "manifest_path": "manifests/aave/v3/renounce-position-manager-role@1.0.0.json",
+  "bundle_sha256": "0x2d5c476ea6bfc48ffe35e4f2e539e818255166c864ce68a1e63087af042fc680",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "aave/v3/renouncePositionManagerRole@1.0.0",
+    "publisher": "aave.eth",
+    "schema_version": "3",
+    "note": "Aave V3.4+ Pool.renouncePositionManagerRole(user). The caller revokes its own position-manager permission for `user`; model as the same account-wide lending authorization primitive with authorizer=user, authorized=tx.from, is_authorized=false.",
+    "match": {
+      "selector": "0xfea149a6",
+      "chain_to_addresses": {
+        "1": [
+          "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "renouncePositionManagerRole",
+      "abi": {
+        "name": "renouncePositionManagerRole",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "user",
+            "type": "address"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "set_authorization",
+          "set_authorization": {
+            "chain": "$chain",
+            "protocol": "$to",
+            "authorizer": "$args.user",
+            "authorized": "$tx.from",
+            "is_authorized": false
+          }
+        }
+      }
+    }
+  }
+}

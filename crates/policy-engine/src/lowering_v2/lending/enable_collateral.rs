@@ -42,6 +42,7 @@ mod tests {
         let action = LendingAction::EnableCollateral(SetCollateralAction {
             venue: venue(),
             asset: usdc(),
+            on_behalf_of: None,
             live_inputs: SetCollateralLiveInputs {
                 reserve_state: live(reserve_state()),
                 user_state_before: live(user_state()),

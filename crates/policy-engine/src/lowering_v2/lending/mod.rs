@@ -175,6 +175,9 @@ pub(crate) fn lower_set_collateral_context(
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_lending_venue(&action.venue));
     m.insert("asset".into(), lower_token_ref(&action.asset));
+    if let Some(on_behalf_of) = &action.on_behalf_of {
+        m.insert("onBehalfOf".into(), Value::String(addr(on_behalf_of)));
+    }
     m.insert(
         "reserveState".into(),
         lower_reserve_state(&action.live_inputs.reserve_state.value),

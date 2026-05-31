@@ -1,0 +1,41 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/approvePositionManager@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave V3.4+ Pool.approvePositionManager(positionManager,approve). Official Aave V3 Origin IPool states this grants the position manager permission to call setUserUseReserveAsCollateralOnBehalfOf and setUserEModeOnBehalfOf for the user, so this is a permission-delegation primitive and must be COVER.",
+  "match": {
+    "selector": "0xb8caa7c5",
+    "chain_to_addresses": {
+      "1": ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "approvePositionManager",
+    "abi": {
+      "name": "approvePositionManager",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "positionManager", "type": "address" },
+        { "name": "approve", "type": "bool" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "set_authorization",
+        "set_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "authorized": "$args.positionManager",
+          "is_authorized": "$args.approve"
+        }
+      }
+    }
+  }
+}

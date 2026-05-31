@@ -42,6 +42,7 @@ mod tests {
         let action = LendingAction::DisableCollateral(SetCollateralAction {
             venue: venue(),
             asset: weth(),
+            on_behalf_of: None,
             live_inputs: SetCollateralLiveInputs {
                 reserve_state: live(reserve_state()),
                 user_state_before: live(user_state()),

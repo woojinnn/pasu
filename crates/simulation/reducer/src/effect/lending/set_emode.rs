@@ -178,6 +178,7 @@ mod tests {
         SetEModeAction {
             venue: aave_v3_venue(),
             category_id,
+            on_behalf_of: None,
             live_inputs: SetEModeLiveInputs {
                 category_config: LiveField::new(
                     EModeConfig {

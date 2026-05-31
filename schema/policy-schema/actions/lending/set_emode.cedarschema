@@ -21,6 +21,8 @@ namespace Lending {
     venue: LendingVenue,
     // Target category id; 0 = disable e-mode.
     categoryId: Long,
+    // Account whose e-mode is changed; absent means the submitter.
+    onBehalfOf?: String,
     // Live inputs (flattened from LiveField<T>).
     categoryConfig: EModeConfig,
     userStateBefore: UserLendingState,

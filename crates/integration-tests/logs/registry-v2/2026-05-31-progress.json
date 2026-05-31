@@ -44,6 +44,32 @@
       "cargo test --workspace: 0 failed"
     ]
   },
+  "aave_v3_pool_surface_gate": {
+    "protocol": "aave",
+    "contract": "Aave V3 Pool mainnet",
+    "status": "implemented",
+    "completed": [
+      "added surface/aave/pool-mainnet.{abi,coverage}.json with 35 external-mutating selectors: 16 COVER and 19 EXCLUDE",
+      "added mainnet Pool manifests for approvePositionManager, renouncePositionManagerRole, deposit, multicall, setUserEModeOnBehalfOf, and setUserUseReserveAsCollateralOnBehalfOf",
+      "extended SetEModeAction and SetCollateralAction with optional on_behalf_of so position-manager execution paths preserve the affected account",
+      "lowered optional onBehalfOf into set_e_mode / enable_collateral / disable_collateral Cedar contexts",
+      "removed current mainnet Pool from the legacy swapBorrowRateMode manifest because the v3.4+ mainnet Pool surface no longer exposes that selector",
+      "added field-level golden tests for Aave position-manager permission grants/revokes and onBehalfOf position actions",
+      "added hand corpus fixtures for the six new Aave Pool COVER selectors"
+    ],
+    "deferred": [
+      "flashLoan/flashLoanSimple are fully triaged as EXCLUDE for this gate: they need a dedicated lending flash_loan ActionBody before structured policy support",
+      "L2Pool packed bytes32 args remain deferred because they require bit-slice decoding and reserve-index to asset resolution"
+    ],
+    "evidence": [
+      "npm run build: 519 callkeys + 46 typed-data entries across 126 manifests",
+      "npm run check:surface: PASS with Aave V3 Pool 35 surface / 16 cover / 19 exclude / 16 on-chain manifests",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage: callkeys=519 typed_data_keys=46 unique_bundles=126 install_failures=0",
+      "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus: 144/144 matched",
+      "cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture: 16 passed",
+      "cargo test --workspace: 0 failed"
+    ]
+  },
   "scenario_c_decode_gap_loop": {
     "protocol": "uniswap",
     "status": "started",
@@ -104,7 +130,7 @@
     },
     {
       "protocol_or_function": "Aave V3 flashLoan / L2 packed Pool args",
-      "reason": "FlashLoan needs a dedicated lending flash-loan action and multi-asset mapping; L2 Pool packed bytes32 args require bit-slice/reserve-index decoding. Existing simple lending verbs remain covered by manifests."
+      "reason": "Mainnet Pool surface is now gated and position-manager/simple lending verbs are covered. FlashLoan still needs a dedicated lending flash-loan action and multi-asset mapping; L2 Pool packed bytes32 args require bit-slice/reserve-index decoding."
     },
     {
       "protocol_or_function": "Permit2 PermitTransferFrom typed-data",

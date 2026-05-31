@@ -3,11 +3,10 @@
   "id": "aave/v3/swapBorrowRateMode@1.0.0",
   "publisher": "aave.eth",
   "schema_version": "3",
-  "note": "Aave V3 Pool.swapBorrowRateMode(asset, interestRateMode). Per the Aave V3 IPool NatSpec the interestRateMode arg is 'The current interest rate mode of the position being swapped: 1 for Stable, 2 for Variable' — i.e. the mode being swapped FROM. BorrowLogic.executeSwapBorrowRateMode burns the named-mode debt and mints the OTHER mode, so SwapRateModeAction.new_mode (the mode AFTER the swap) is the COMPLEMENT of the arg: arg 1 (STABLE) -> new_mode variable; arg 2 (VARIABLE) -> new_mode stable.",
+  "note": "Aave V3 Pool.swapBorrowRateMode(asset, interestRateMode). Per the legacy Aave V3 IPool NatSpec the interestRateMode arg is 'The current interest rate mode of the position being swapped: 1 for Stable, 2 for Variable' — i.e. the mode being swapped FROM. BorrowLogic.executeSwapBorrowRateMode burns the named-mode debt and mints the OTHER mode, so SwapRateModeAction.new_mode (the mode AFTER the swap) is the COMPLEMENT of the arg: arg 1 (STABLE) -> new_mode variable; arg 2 (VARIABLE) -> new_mode stable. Mainnet Pool v3.4+ no longer exposes this selector, so chain 1 is intentionally absent from this manifest and enforced by surface/aave/pool-mainnet.",
   "match": {
     "selector": "0x94ba89a2",
     "chain_to_addresses": {
-      "1":     ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"],
       "10":    ["0x794a61358d6845594f94dc1db02a252b5b4814ad"],
       "8453":  ["0xa238dd80c259a72e81d7e4664a9801593f98d1c5"],
       "42161": ["0x794a61358d6845594f94dc1db02a252b5b4814ad"]

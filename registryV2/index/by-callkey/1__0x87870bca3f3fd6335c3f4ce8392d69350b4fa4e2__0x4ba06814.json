@@ -1,0 +1,89 @@
+{
+  "matched": true,
+  "bundle_id": "aave/v3/setUserEModeOnBehalfOf@1.0.0",
+  "manifest_path": "manifests/aave/v3/set-user-emode-on-behalf-of@1.0.0.json",
+  "bundle_sha256": "0x7b3f1f5f2a4a6bdddf80000f6be96f0775077dba118ea5c98b784fc1a52af906",
+  "bundle": {
+    "type": "adapter_action",
+    "id": "aave/v3/setUserEModeOnBehalfOf@1.0.0",
+    "publisher": "aave.eth",
+    "schema_version": "3",
+    "note": "Aave V3.4+ Pool.setUserEModeOnBehalfOf(categoryId,onBehalfOf). This is the position-manager execution path for the same user-facing eMode toggle; `on_behalf_of` preserves the affected account.",
+    "match": {
+      "selector": "0x4ba06814",
+      "chain_to_addresses": {
+        "1": [
+          "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"
+        ]
+      }
+    },
+    "abi_fragment": {
+      "function_name": "setUserEModeOnBehalfOf",
+      "abi": {
+        "name": "setUserEModeOnBehalfOf",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+          {
+            "name": "categoryId",
+            "type": "uint8"
+          },
+          {
+            "name": "onBehalfOf",
+            "type": "address"
+          }
+        ],
+        "outputs": []
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "lending",
+        "lending": {
+          "action": "set_e_mode",
+          "set_e_mode": {
+            "venue": {
+              "name": "aave_v3",
+              "chain": "$chain",
+              "pool": "$to",
+              "market_id": null
+            },
+            "category_id": "$args.categoryId",
+            "on_behalf_of": "$args.onBehalfOf"
+          }
+        }
+      },
+      "live_inputs": {
+        "category_config": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getEModeCategoryData(uint8)",
+            "decoder_id": "aave_v3_emode_category"
+          },
+          "ttl_s": 60
+        },
+        "user_state_before": {
+          "source": {
+            "kind": "onchain_view",
+            "chain": "$chain",
+            "contract": "$to",
+            "function": "getUserAccountData(address)",
+            "decoder_id": "aave_v3_user_account_data"
+          },
+          "ttl_s": 12
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": [
+        "token_metadata"
+      ],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+}

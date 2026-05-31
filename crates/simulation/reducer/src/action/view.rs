@@ -550,6 +550,7 @@ mod tests {
                     market_id: None,
                 },
                 category_id: 1,
+                on_behalf_of: None,
                 live_inputs: lending::SetEModeLiveInputs {
                     category_config: simulation_state::LiveField::new(
                         lending::EModeConfig {

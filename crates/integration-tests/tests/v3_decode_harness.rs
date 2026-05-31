@@ -371,6 +371,121 @@ fn aave_v3_withdraw_eth_with_permit_decodes_pool_and_recipient() {
     );
 }
 
+/// Field-level golden for Aave V3.4+ `approvePositionManager` and
+/// `renouncePositionManagerRole`.
+///
+/// These are permission primitives, not ordinary lending balance changes.
+/// The surface gate keeps them COVER; this test pins the security-critical
+/// authorized manager, grant/revoke flag, and explicit authorizer where present.
+#[test]
+fn aave_v3_position_manager_permission_decodes_manager_and_flag() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const POOL: &str = "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2";
+    const MANAGER: &str = "1111111111111111111111111111111111111111";
+    const USER: &str = "2222222222222222222222222222222222222222";
+    const FUZZ_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
+    const APPROVE_CALLDATA: &str = concat!(
+        "0xb8caa7c5",
+        "000000000000000000000000",
+        "1111111111111111111111111111111111111111",
+        "0000000000000000000000000000000000000000000000000000000000000001"
+    );
+    const RENOUNCE_CALLDATA: &str = concat!(
+        "0xfea149a6",
+        "000000000000000000000000",
+        "2222222222222222222222222222222222222222"
+    );
+
+    let approve = harness::route::route_calldata(1, POOL, "0xb8caa7c5", APPROVE_CALLDATA, "0");
+    assert_eq!(
+        approve.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "approvePositionManager route did not succeed: {approve}"
+    );
+    assert_eq!(
+        find_string_field(&approve, "authorized"),
+        Some(format!("0x{MANAGER}"))
+    );
+    assert_eq!(find_bool_field(&approve, "is_authorized"), Some(true));
+
+    let renounce = harness::route::route_calldata(1, POOL, "0xfea149a6", RENOUNCE_CALLDATA, "0");
+    assert_eq!(
+        renounce.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "renouncePositionManagerRole route did not succeed: {renounce}"
+    );
+    assert_eq!(
+        find_string_field(&renounce, "authorizer"),
+        Some(format!("0x{USER}"))
+    );
+    assert_eq!(
+        find_string_field(&renounce, "authorized"),
+        Some(FUZZ_SUBMITTER.into())
+    );
+    assert_eq!(find_bool_field(&renounce, "is_authorized"), Some(false));
+}
+
+/// Field-level golden for Aave V3.4+ position-manager execution paths.
+///
+/// `setUserEModeOnBehalfOf` and
+/// `setUserUseReserveAsCollateralOnBehalfOf` are the same user-position actions
+/// as their direct variants, but the affected user is explicit. The optional
+/// `on_behalf_of` field prevents the decoder from silently attributing the
+/// manager's action to the manager's own account.
+#[test]
+fn aave_v3_on_behalf_position_actions_decode_target_account() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const POOL: &str = "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2";
+    const USER: &str = "2222222222222222222222222222222222222222";
+    const SET_EMODE_CALLDATA: &str = concat!(
+        "0x4ba06814",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+        "000000000000000000000000",
+        "2222222222222222222222222222222222222222"
+    );
+    const DISABLE_COLLATERAL_CALLDATA: &str = concat!(
+        "0x972b35fa",
+        "000000000000000000000000",
+        "c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "000000000000000000000000",
+        "2222222222222222222222222222222222222222"
+    );
+
+    let set_emode = harness::route::route_calldata(1, POOL, "0x4ba06814", SET_EMODE_CALLDATA, "0");
+    assert_eq!(
+        set_emode.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "setUserEModeOnBehalfOf route did not succeed: {set_emode}"
+    );
+    assert_eq!(
+        find_string_field(&set_emode, "on_behalf_of"),
+        Some(format!("0x{USER}"))
+    );
+
+    let disable_collateral =
+        harness::route::route_calldata(1, POOL, "0x972b35fa", DISABLE_COLLATERAL_CALLDATA, "0");
+    assert_eq!(
+        disable_collateral
+            .get("ok")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "setUserUseReserveAsCollateralOnBehalfOf route did not succeed: {disable_collateral}"
+    );
+    let body = find_object_with_string_field(&disable_collateral, "action", "disable_collateral")
+        .expect("collateral off action is decoded");
+    assert!(
+        body.get("asset").is_some(),
+        "expected flattened disable_collateral body: {disable_collateral}"
+    );
+    assert_eq!(
+        find_string_field(&disable_collateral, "on_behalf_of"),
+        Some(format!("0x{USER}"))
+    );
+}
+
 /// Field-level golden for Compound V3 Comet `allow`.
 ///
 /// Comet `allow(manager,isAllowed)` is account-wide manager authorization, so it
