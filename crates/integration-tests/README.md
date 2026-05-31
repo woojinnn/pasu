@@ -49,8 +49,8 @@ C. Dune 실거래       ─┘  / td        fuzz/*    : 전략별 합성 (4종) 
                                     route     : declarative_*_v3_json 호출 ◄──┘
 ```
 
-- **2 front-end** — `tests/v3_decode_harness.rs` (deterministic CI gate, 4 test) + `src/bin/v3_harness.rs` (CLI, 무제한 fuzz + 리포트).
-- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<simulation_reducer::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(8종) → L4 soft/hard error class.
+- **2 front-end** — `tests/v3_decode_harness.rs` (deterministic CI gate = **4 structural + protocol 별 field-level golden 다수**; 총수는 늘어남 → 측정 `grep "test result"`) + `src/bin/v3_harness.rs` (CLI, 무제한 fuzz + 리포트).
+- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<simulation_reducer::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(`VALID_DOMAINS`, 현재 10종) → L4 soft/hard error class.
 - **⚠️ R1 (필독)** — WASM v3 install state 는 **thread-local**. install 과 route 는 **반드시 동일 OS 스레드**에서. 각 test fn 이 스스로 install 한다. 새 헬퍼를 만들 때 install→route 를 같은 함수 안에서 호출할 것.
 
 ---
@@ -63,12 +63,14 @@ C. Dune 실거래       ─┘  / td        fuzz/*    : 전략별 합성 (4종) 
 
 **A-1. 머신 생성 (기본 fuzzing).** manifest 의 `abi_inputs` 를 읽어 ABI-aware 랜덤 값을 만든다. seed = `fnv1a64(callkey) ^ global_seed ^ iter` (position-stable, 재현 가능). 전략 4종을 모두 sweep:
 
-| 전략 | 대상 | callkey 수(현재) |
+| 전략 | 대상 | callkey 수 |
 |---|---|---|
-| `single_emit` | flat ABI args (대부분) | 385 |
-| `opcode_stream_dispatch` | UniversalRouter `(bytes commands, bytes[] inputs)` | 20 |
-| `array_emit` | Permit2 batch 등 배열 | 9 |
-| `tagged_dispatch` | HyperLiquid CoreWriter | 2 |
+| `single_emit` | flat ABI args (대부분) | 측정: `v3-harness coverage` |
+| `opcode_stream_dispatch` | UniversalRouter `(bytes commands, bytes[] inputs)` | (per-strategy 분포) |
+| `array_emit` | Permit2 batch 등 배열 | ↑ |
+| `tagged_dispatch` | HyperLiquid CoreWriter | ↑ |
+
+> callkey 수는 manifest 가 늘수록 drift 한다 — 하드코딩 대신 `v3-harness coverage` 로 측정(strategy 별 분포 출력).
 
 각 callkey 의 첫 `EDGE_ITERS=4` 회는 boundary 값(0 / max / empty / single-element)을 주입한다.
 
@@ -283,7 +285,7 @@ crates/integration-tests/
 │     ├─ report.rs                    히스토그램 + 재현 가능한 failures[]
 │     ├─ corpus.rs                    실거래 corpus 로더 + expect 검증
 │     └─ fuzz/{mod,values,single_emit,opcode_stream,tagged_dispatch,typed_data}.rs
-├─ tests/v3_decode_harness.rs         deterministic CI gate (4 test)
+├─ tests/v3_decode_harness.rs         deterministic CI gate (4 structural + field-level golden 다수)
 └─ data/golden/v3-decode/
    ├─ uniswap/corpus.json             실거래 (Dune-sourced)
    └─ _edge-cases/corpus.json         손수 조립한 boundary 케이스
@@ -311,7 +313,7 @@ crates/integration-tests/
 ### oracle 계층 / domain
 
 - L1 envelope(`ok`) → L2 typed round-trip(`Vec<Action>`) → L3 domain validity → L4 error class.
-- 8 domain: `token` / `amm` / `lending` / `airdrop` / `launchpad` / `perp` / `multicall` / `unknown`. `unknown` 은 **실패가 아니라 metric**(off-chain 등 정상 출력 포함).
+- domain (`VALID_DOMAINS`, 현재 **10종** — 측정 `grep -n VALID_DOMAINS src/harness/oracle.rs`): `token` / `amm` / `lending` / `airdrop` / `launchpad` / `liquid_staking` / `perp` / `permission` / `multicall` / `unknown`. `unknown` 은 **실패가 아니라 metric**(off-chain 등 정상 출력 포함).
 
 ### 환경변수
 
@@ -325,4 +327,4 @@ crates/integration-tests/
 - **typed-data EIP-712 합성은 hard 검증 불가** — calldata 는 canonical ABI 바이트라 "type-valid → 무조건 디코드" 를 hard 로 걸 수 있지만, typed-data 는 JSON message 객체라 표현이 모호하다(uint string-vs-number coercion, 재귀 type-graph). 합성 실패는 `typed_data_synthesis_limited` soft 로 강등하고, **실서명 corpus 로 양성 검증**한다.
 - **합성 cut 영역** — UniswapX witness order, UniversalRouter V4 deep-nested(0x10/0x21 modifyLiquidities), native-transfer sentinel `0x00000000` 은 합성하지 않고 **corpus-only**.
 - **live pull 은 키/네트워크 필요** — gate test 자체는 commit 된 corpus 만 쓰는 offline 경로다. Etherscan 은 BYO 키, Dune 은 MCP/UI export. import-* 는 parse-only(네트워크 X).
-- **현재 corpus** — `data/golden/v3-decode/<protocol>/corpus.json` 에 8 디렉토리 tracked: uniswap · morpho · aave · balancer · hyperliquid · layerzero · uniswapx + `_edge-cases`. 실거래 비중은 protocol 마다 다르다(uniswap·morpho 가 두꺼움). 부족분은 §3 B/C 로 실거래 추가, domain 별 미커버는 `coverage` 로 확인.
+- **현재 corpus** — `data/golden/v3-decode/<protocol>/corpus.json` (측정: `ls data/golden/v3-decode/`; 작성 시점 = aave · aave-origin · balancer · compound-v3 · hyperliquid · layerzero · lido · morpho · uniswap · uniswapx + `_edge-cases`). 실거래 비중은 protocol 마다 다르다(uniswap·morpho 가 두꺼움). 부족분은 §3 B/C 로 실거래 추가, domain 별 미커버는 `coverage` 로 확인.

@@ -1,6 +1,6 @@
 # ActionBody 확장 가이드 — 두 축 (domain / sub-action) recipe
 
-> `ActionBody` (PDF FSM spec, 8 domain) 를 확장하는 정규 절차. 1차 출처 = repo 코드 실측.
+> `ActionBody` 를 확장하는 정규 절차. 1차 출처 = repo 코드 실측. (도메인 수는 늘어난다 — 현재 10: Token/Amm/Lending/Airdrop/Launchpad/Perp/LiquidStaking/Permission + Multicall/Unknown. `grep -n "pub enum ActionBody" action/mod.rs` 재확인.)
 > 참조 심볼은 `file 의 symbol` 형식 (line 번호는 갱신 시 stale 되므로 보조). 갱신 시 `grep` 으로 재확인.
 > 관련: 무엇을 확장할지(제안) = [`SCHEMA_EXTENSION_PROPOSALS.md`](./SCHEMA_EXTENSION_PROPOSALS.md), 통합 방법론 = [`TIER_AB_PLAYBOOK.md`](./TIER_AB_PLAYBOOK.md).
 
@@ -299,7 +299,7 @@ ActionBody::OffchainExchange(a) => super::offchain_exchange::lower(a, &ctx),   /
 
 ## 5. Decision rule — 언제 무엇을
 
-1. **기존 8 domain 중 하나의 의미에 맞음 → sub-action.** (예: 신규 perp 주문 타입 → `PerpAction` variant.)
+1. **기존 domain(현재 8: token/amm/lending/airdrop/launchpad/perp/liquid_staking/permission) 중 하나의 의미에 맞음 → sub-action.** (예: 신규 perp 주문 타입 → `PerpAction` variant.)
 2. **어디에도 안 맞고 구조화 가치 > 비용 → 새 domain.** Cedar policy 작성자에게 새 namespace 를 노출하는 큰 결정이므로 표현 이득이 분명할 때만.
 3. **가치 < 비용 또는 1차 출처 불충분 → `Unknown` + metadata 유지.** B.3 HyperLiquid 선례 (off-chain L1 action / perp order 가 8-domain 으로 faithful 표현 불가 → `$calldata` 보존한 `Unknown`, mislabel 회피). scope analyzer 로서 과장하지 않는 것이 정직.
 

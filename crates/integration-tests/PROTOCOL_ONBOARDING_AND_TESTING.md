@@ -3,7 +3,7 @@
   새 EVM 프로토콜 요청 → 어댑터 전수 작성 → 실거래 디코드 정확성 검증 → 수정 루프.
   대상 경로: V3 ActionBody[] 디코드 단독. 레거시(V1 ActionEnvelope)는 이미 제거됨.
   gitignore 가 *.md 를 무시(!README.md 만 예외)하므로 이 파일은 untracked — 단일 파일로 전달.
-  마지막 grounding: 2026-05-30 (commit 956e5df 시점). file:line 은 작성 시점 기준 — 항상 grep 재확인.
+  마지막 grounding: 2026-05-31 (Lido liquid_staking 온보딩 + enrichment §4d + I0 contract-inventory gate + Permission domain 반영). file:line·도메인 카운트는 작성 시점 기준 — 항상 grep 재확인(코드/도메인 둘 다 늘어난다).
 ───────────────────────────────────────────────────────────────────────── -->
 
 # ScopeBall — 신규 프로토콜 온보딩 & V3 디코드 테스트 매뉴얼
@@ -197,8 +197,8 @@ raw Tx { chain, to, selector, calldata, value }
 
 #### ActionBody 카탈로그 (현재 — `simulation/reducer/src/action/`, serde `tag="domain"`)
 
-최상위 9 variant (`action/mod.rs`):
-`Token` · `Amm` · `Lending` · `Airdrop` · `Launchpad` · `Perp` · `LiquidStaking` · `Multicall { actions: Vec<ActionBody> }` · `Unknown { target, chain, calldata, value }`
+최상위 10 variant (`action/mod.rs` — **작성 전 `grep -n "pub enum ActionBody"` 로 카운트 재확인**, 늘어난다):
+`Token` · `Amm` · `Lending` · `Airdrop` · `Launchpad` · `Perp` · `LiquidStaking` · `Permission` · `Multicall { actions: Vec<ActionBody> }` · `Unknown { target, chain, calldata, value }`
 
 각 domain 의 action (`tag="action"`, snake_case). **작성 전 해당 `<domain>/mod.rs` 를 직접 읽어 현재 variant/필드 재확인**(스키마는 늘 확장된다):
 
@@ -211,6 +211,7 @@ raw Tx { chain, to, selector, calldata, value }
 | **launchpad** | `launchpad/mod.rs` | commit, claim_allocation, claim_vested, refund, withdraw_commit |
 | **perp** | `perp/mod.rs` | open_position, close_position, increase_position, decrease_position, adjust_margin, change_leverage, change_margin_mode, place_limit_order, place_stop_order, cancel_order, claim_funding |
 | **liquid_staking** | `liquid_staking/mod.rs` | stake, wrap, unwrap, request_withdrawal, claim_withdrawal, transfer_shares |
+| **permission** | `permission/mod.rs` | protocol_authorization (operator/relayer 권한 위임 — Compound `allow`/Balancer relayer 등 protocol-specific grant) |
 
 각 action 의 필드 예 (`token/erc20_approve.rs`):
 ```rust
@@ -504,7 +505,7 @@ seed 기본 `0x5C09EBA1`. corpus root 기본 `data/golden/v3-decode/`.
 ```
 value/gas_* 는 **10진 문자열**. 하니스 조립 = `harness/route.rs:15` `route_calldata`.
 
-**게이트 4 test** (`tests/v3_decode_harness.rs`): `surface_installs_clean`(≥300 callkey · ≥50 bundle · 0 install-fail) / `synthetic_fuzz_single_emit`(0 hard) / `corpus_replay` / `synthetic_fuzz_all_strategies`(0 hard).
+**게이트** (`tests/v3_decode_harness.rs`) = **4 structural + protocol 별 field-level golden 다수** (총수는 늘어난다 — 측정: `cargo test --test v3_decode_harness 2>&1 | grep "test result"`). 4 structural: `surface_installs_clean`(≥300 callkey · ≥50 bundle · 0 install-fail) / `synthetic_fuzz_single_emit`(0 hard) / `corpus_replay` / `synthetic_fuzz_all_strategies`(0 hard). 나머지 = hash/derived/live 필드를 pin 하는 golden(§9·§9.9·§9.10 류, corpus 가 못 보는 값).
 
 **R1 (필수):** install state 는 thread-local → install 과 route 는 **같은 thread**. 새 헬퍼는 install→route 를 한 함수에서.
 
@@ -534,8 +535,8 @@ selector 필터(`WHERE ...`)·decoded 테이블·cross-chain·빈도 통계용. 
 ### 5c. Hybrid Oracle (정확성 판정)
 
 **현재 하니스가 하는 것 (oracle.rs `judge`):** shape + domain 까지만.
-- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<simulation_reducer::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS` 8종) / L4 ErrorClass.
-- `VALID_DOMAINS` = token, amm, lending, airdrop, launchpad, perp, multicall, unknown.
+- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<simulation_reducer::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS` 10종) / L4 ErrorClass.
+- `VALID_DOMAINS` = token, amm, lending, airdrop, launchpad, liquid_staking, perp, permission, multicall, unknown. (새 domain 추가 시 동기화 — §4a "새 domain" Ⓒ′. 카운트는 `grep -n VALID_DOMAINS oracle.rs` 재확인.)
 - `SOFT_ERROR_KINDS`(tolerate) = no_declarative_v3_mapper, unsupported_strategy_for_typed_data, no_typed_data_mapper.
 - corpus `expect` 는 `expect_domain` 까지만 비교. **`expect_action`/필드값은 미검증**(reserved).
 
@@ -669,7 +670,7 @@ cd registryV2 && npx tsx scripts/build-index.ts && cd ..
 ```
 
 ### 8.2 ActionBody domain 카탈로그 (요약)
-token · amm · lending · airdrop · launchpad · perp · multicall · unknown. (각 domain action 목록 = §4a 표. **작성 전 `<domain>/mod.rs` 직접 확인** — 스키마 확장됨.)
+token · amm · lending · airdrop · launchpad · perp · liquid_staking · permission · multicall · unknown (10). (각 domain action 목록 = §4a 표. **작성 전 `<domain>/mod.rs` 직접 확인** — 도메인·스키마 둘 다 확장됨.)
 
 ### 8.3 알려진 함정 (DEFECT_CATALOG.md, V3 관점)
 - **nested tuple per-component 타입 유실** (D010 류): `[i][j]` 접근 시 uint width 정보 유실 → string 화 → u64 coercion 실패. **Permit2 류는 commit `3f93f5c` 에서 해결**(chained-numeric + coercion). 새 프로토콜 nested-tuple 에서 재발 가능 → 같은 패턴 점검.
