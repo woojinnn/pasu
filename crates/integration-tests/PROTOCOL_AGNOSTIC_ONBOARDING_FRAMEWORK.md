@@ -283,7 +283,7 @@ Steps:
    - Dune decoded namespace
    - Etherscan/Basescan labels
    - Sourcify verified repo
-   - optional LLM discovery panel, candidate-only
+   - Codex current-session research + Claude Code headless research, candidate-only
 3. For every deployed contract, mark:
    - `cover`: user/EOA/smart-account can call or sign it pre-transaction
    - `exclude`: infra, oracle, admin, keeper, implementation-only, standard token already covered
@@ -298,6 +298,24 @@ Command:
 cd registryV2
 npm run check:surface
 ```
+
+Dual-agent rule:
+
+1. Current Codex session performs P0 research from official/verified sources.
+2. Claude Code receives the same discovery prompt via headless CLI, for example:
+   ```bash
+   claude -p "<P0 discovery prompt>" --add-dir /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
+   ```
+3. Merge Codex ∪ Claude ∪ official deployment list ∪ secondary sweeps.
+4. Any Codex-only or Claude-only candidate is high-priority for 1st-source verification.
+5. LLM output never becomes ground truth. Only official deployment artifacts, verified ABI snapshots, and `check:surface` dispose candidates.
+
+Action-model preflight:
+
+- `crates/simulation/reducer/src/action` is an intent catalog, not a protocol list.
+- If a protocol maps cleanly to existing domains/actions, no Tier 3 work is needed.
+- If a COVER selector has user-risk semantics that no existing action can express, add/extend Tier 3 `ActionBody` before authoring manifests.
+- Permission grants/revokes are never hidden behind `Unknown`; add a dedicated action when needed.
 
 Protocol-agnostic red flags that must be `cover` unless a standard adapter explicitly owns them:
 
@@ -372,6 +390,28 @@ Semantic-critical fields by domain:
 | `unknown` | reason: intentionally unsupported or non-user operation |
 
 If a field appears in this table and no oracle pins it, the selector is `untested_semantic`.
+
+Synthetic test floor:
+
+1. Run full-surface fuzz with a fixed seed and JSON log.
+   ```bash
+   target/debug/v3-harness coverage
+   target/debug/v3-harness fuzz --iterations 5000 --seed 0x5C09EBA1 \
+     --json crates/integration-tests/logs/<protocol>/YYYY-MM-DD-synthetic.json
+   ```
+2. Replay every hard failure by callkey + seed before editing.
+3. Add hand edges for every permission/value-bearing/nested/array/opcode/typed-data selector.
+4. Edge menu: zero/one/max amount, finite/max/revoke permission, recipient sender/third-party, empty/singleton/multi arrays, malformed/truncated calldata, unsupported opcode, malformed path bytes, nested supported+unsupported child mix.
+5. Edge `pass` entries must pin semantic-critical fields with `expect_body`; edge `error` entries must pin `expect_error`.
+
+Real-tx floor:
+
+1. Etherscan is the bulk lane. One `txlist` API call can return up to 10,000 tx, so the default target is **10,000 tx/protocol**, not 10,000 API calls.
+2. Use `.env` `ETHERSCAN_API_KEY`; daily 100,000-call capacity is a safety budget, not a spending target.
+3. Fetch adapter-blind by P0 cover addresses, stratified by selector and block range. Do not choose txs by existing manifests.
+4. Every COVER selector should have real tx sample >= 1, or an explicit low-traffic/absent note.
+5. Dune is the gap lane for Etherscan-free unsupported chains, decoded namespaces, selector stats, and cross-chain joins. Before relying on it, run MCP calibration: usage baseline, LIMIT 100/1000/5000 probe, partition WHERE, credit delta log.
+6. Commit only dedup representative corpus/golden entries; keep raw 10k+ dumps out of git.
 
 ### P3. Corpus and Projection Authoring
 

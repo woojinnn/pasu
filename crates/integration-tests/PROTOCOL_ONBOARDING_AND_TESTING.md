@@ -43,6 +43,28 @@ ScopeBall = EVM 권한 위임을 **서명 직전**에 정적 분석하는 브라
 3. **막히는 경우는 없다.** 매핑 불가 함수는 `ActionBody::Unknown`(warn/deny)으로 떨어진다 → 디코드가 멈추지 않음. 단 **존재하지 않는 domain/action 을 target 하는 manifest 는 hard-fail** 한다(아래 4a).
 4. **모든 사실 진술은 1차 출처.** 컨트랙트 주소/ABI 는 공식 docs · Sourcify · Etherscan/BaseScan verified 페이지에서만. 추측 주소 금지.
 
+### 0.1 Action model preflight — `crates/simulation/reducer/src/action` 에 없는 의미
+
+`crates/simulation/reducer/src/action` 은 **프로토콜 목록이 아니라 protocol-agnostic intent catalog** 다. 예를 들어 Uniswap 전용 `ActionBody::Uniswap` 이 없어도 Uniswap swap 은 `amm`, Permit2 는 `permission`/`token`, router nesting 은 `multicall` 로 매핑된다. 따라서 "프로토콜이 action dir 에 없다" 는 그 자체로 문제가 아니다. 문제는 **그 프로토콜의 user-facing 함수 의미를 기존 domain/action 이 정확히 표현할 수 있느냐**다.
+
+P0 리서치로 COVER selector 를 찾은 직후, P1 manifest 작성 전에 아래 gate 를 먼저 통과한다:
+
+```text
+COVER selector 의미가 기존 ActionBody 로 표현됨?
+  YES → 기존 domain/action 으로 P1 manifest 작성
+  NO, fund-move/permission/user-risk 의미임 → Tier 3 ActionBody 확장 선행
+  NO, user-facing safety 의미가 낮거나 opaque/admin/keeper임 → EXCLUDE 또는 Unknown, reason 필수
+```
+
+Tier 3 선행이 필요한 경우 순서:
+1. **normalized intent spec 작성** — user 가 서명 직전에 알아야 하는 의미를 protocol-independent field 로 정의. 예: authorizer, spender/operator, asset, amount, recipient, market/pool, expiry, grant/revoke flag, live conversion source.
+2. **기존 domain 확장 우선** — 새 protocol 전용 domain 을 만들기 전에 `token`/`amm`/`lending`/`permission`/`staking` 등 기존 domain 의 새 action 으로 충분한지 검토.
+3. **새 domain 은 마지막 선택** — 기존 domain 으로 의미가 왜곡되거나 정책/UX/위험 모델이 완전히 다를 때만 추가.
+4. **권한 grant 는 Unknown 금지** — `approve/permit/authorize/delegate/operator/allow` 류는 맞는 Action 이 없으면 Tier 3 를 추가한다. ScopeBall 핵심 surface 라서 "표현 안 됨"을 이유로 skip 하지 않는다.
+5. **`ACTIONBODY_EXTENSION_GUIDE.md` 먼저 실행** — Rust ActionBody, reducer/view, VALID_DOMAINS, Cedar/lowering, TS/export, conformance/golden 를 동기화한 뒤 manifest 를 작성한다.
+
+즉 P0 자체는 여전히 먼저 돈다. 다만 COVER selector 의 의미가 현재 Action catalog 에 없으면 **P1 manifest 보다 Tier 3 schema design/extension 이 선행**된다. 존재하지 않는 domain/action 을 manifest 가 target 하면 production decoder 가 hard-fail 하므로 schema-first 가 안전하다.
+
 ---
 
 ## 1. 코드베이스 지도 (V3 hot path)
@@ -194,22 +216,27 @@ raw Tx { chain, to, selector, calldata, value }
    | **2차 (discovery cross-check)** | **DefiLlama-Adapters** GitHub(프로토콜별 컨트랙트 주소 나열 — 강력) · **Dune** `<project>` decoded 네임스페이스/contract registry · **Etherscan/Basescan** address labels·Label Cloud · **Sourcify** verified repo | 1차가 누락한 컨트랙트를 *도전*하는 sweep. 반드시 1차로 재검증 후 `_deployments.json` 등재 |
    > **단일 완전+권위 레지스트리는 없다**(정직). best = 공식 deploy artifact(1차)를 `_deployments.json` ground-truth 로 + DefiLlama/Dune/Etherscan-labels **+ LLM discovery panel(§3.1)** 을 누락-도전 sweep 으로 교차.
 
-### 3.1 (optional) LLM discovery panel — contract-inventory 폭 보강
+### 3.1 P0 dual-agent research panel — Codex + Claude Code
 
-P0 contract discovery 는 **다운스트림 안전망이 없는 유일한 완비성 층**이다(I0 floor = "그 컨트랙트가 있는 줄 몰랐다"; I1·실거래 pull 둘 다 리서치가 찾은 주소에 갇힘). 그래서 **discovery 렌즈를 늘리는 것**이 가장 값어치 있는 보강이고, 별도 LLM CLI(gemini / codex / 또 다른 claude)를 §3 규약 8 의 2차 sweep(DefiLlama/Dune/Etherscan-labels) **옆에 또 하나의 렌즈**로 쓸 수 있다. 모델마다 recall 이 달라 서로 놓친 periphery 컨트랙트를 surface 한다.
+P0 contract discovery 는 **다운스트림 안전망이 없는 유일한 완비성 층**이다(I0 floor = "그 컨트랙트가 있는 줄 몰랐다"; I1·실거래 pull 둘 다 리서치가 찾은 주소에 갇힘). 그래서 새/복잡/멀티컨트랙트 프로토콜은 **현재 Codex 세션과 Claude Code 에 같은 리서치를 병렬 수행**시킨 뒤, 현 세션이 두 결과를 통합·검증한다. 이미 온보딩된 프로토콜도 동일하다: "이미 있음"을 믿지 말고 두 리서치 결과와 현재 `surface/`·manifest 를 diff 한다.
 
 > **★ 비협상 규율 — LLM = candidate 생성기(untrusted), 1차 fetch + I0/I1 gate = disposer(trusted).** LLM 은 주소·ABI 를 **환각**한다; 모델 N개가 *같은 틀린 주소*에 합의해도 틀린 것이다. **LLM 합의를 ground-truth 로 쓰지 말 것** — 후보만 넓히고, 통과는 항상 1차 출처 fetch + gate 가 시킨다.
 
 **절차 (fan-out → synthesize → verify):**
-1. **fan-out** — 동일 discovery 프롬프트를 가용 CLI 에 headless 로(아래 invocation). 프롬프트 템플릿:
+1. **Codex 현 세션 리서치** — 공식 docs/GitHub/Sourcify/Etherscan/Dune namespace 를 읽고 candidate contract/function inventory 작성.
+2. **Claude Code 병렬 리서치** — 같은 프롬프트를 Claude Code headless 로 실행. 예:
+   ```bash
+   claude -p "<P0 discovery prompt>" --add-dir /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
+   ```
+   Claude 결과는 바로 신뢰하지 않고 `/tmp/p0-<protocol>-claude.md` 같은 scratch 로만 보관한다(커밋 금지).
+3. **동일 discovery 프롬프트** — 두 agent 모두 아래 정보만 요구한다:
    > `Protocol: <name>. <chains> 에 배포된, 일반 user(EOA/smart account)가 서명 직전 직접 호출/EIP-712 서명하는 **모든** 컨트랙트를 나열하라. 각: name · chain · address · **1차 출처 URL**(공식 docs "deployments" / 공식 GitHub deploy artifact). 각 컨트랙트의 external state-changing 함수도. 공식 출처만 인용 — 주소 추측 금지, 불확실하면 "unverified" 표기. 표로 출력.`
-2. **synthesize (현 세션)** — 출력들의 union + dedup + **불일치 surface**(모델 A만 언급한 컨트랙트 = 검증 우선 후보).
-3. **verify (gate 가 dispose)** — 각 후보 컨트랙트를 **1차 fetch**(공식 deploy 페이지 / verified ABI) → `surface/<protocol>/_deployments.json` 에 cover/exclude:reason 등재 → `npm run check:surface`(I0/I1). **1차 verify 안 되는 후보는 drop**(LLM 환각 가능). I0 가 "cover 인데 snapshot 없음" 으로 누락을 막는다.
-4. (optional) **adversarial review** — 종합 인벤토리를 한 CLI 에 다시: `"이 목록에서 빠진 user-facing 컨트랙트/함수는? 공식 출처로."` → 새 후보면 3 으로.
+4. **synthesize (현 세션)** — Codex 결과 ∪ Claude 결과 ∪ 공식 deploy list ∪ DefiLlama/Dune/Etherscan-label sweep 을 dedup. 한쪽 agent 만 언급한 컨트랙트/함수는 **검증 우선 후보**로 표시한다.
+5. **verify (gate 가 dispose)** — 각 후보 컨트랙트를 **1차 fetch**(공식 deploy page/GitHub artifact/verified ABI) → `surface/<protocol>/_deployments.json` 에 cover/exclude:reason 등재 → cover 는 `.abi.json` snapshot + `.coverage.json` triage 작성 → `npm run check:surface`(I0/I1). **1차 verify 안 되는 후보는 drop**.
+6. **adversarial review** — 통합 인벤토리를 Claude 또는 Codex 에 다시 던져 `"이 목록에서 빠진 user-facing 컨트랙트/함수는? 공식 출처로."` 를 묻는다. 새 후보가 나오면 5 로 되돌린다.
+7. **P0 로그** — `crates/integration-tests/logs/<protocol>/YYYY-MM-DD-p0-research.json` 에 source list, Codex-only 후보, Claude-only 후보, dropped-unverified 후보, final cover/exclude count 를 기록한다.
 
-**invocation (headless — §8.1 / 별도 확인):** `gemini -p "<프롬프트>"` (auto: `-y`) · `codex exec "<프롬프트>"` (auto: `--full-auto`). 인자 없는 `gemini`/`codex` = interactive REPL → TTY 없는 Bash 에서 hang; 무조건 headless. auth 선행. 긴 run 은 background. **비용 = 호출자 쿼터**(nesting).
-
-> **⚠️ OPTIONAL — portability 원칙**: core P0(1차 fetch + I0/I1 gate)는 **외부 LLM 없이 단독 완결**돼야 한다(gemini/codex 미설치·미인증 fresh-PC vanilla 환경 가정). 이 패널은 **크고 미지의 프로토콜**(I0 blind-spot 위험 큰)에서 discovery 폭을 넓히는 *선택지*일 뿐 — 작고 알려진 프로토콜엔 overkill. 그리고 floor 는 그대로다: **어떤 소스(LLM 포함)도 모르는 컨트랙트는 여전히 invisible** — 렌즈를 늘려 gap 을 좁힐 뿐 닫지 못한다.
+**portability 원칙:** core P0(1차 fetch + I0/I1 gate)는 외부 LLM 없이도 단독 완결돼야 한다. Claude Code panel 은 recall 을 높이는 렌즈이지 trust anchor 가 아니다. 어떤 소스(LLM 포함)도 모르는 컨트랙트는 여전히 invisible 이므로, 최종 완비성 floor 는 `_deployments.json` 의 1차 출처 + gate 범위만큼이다.
 
 ---
 
@@ -545,12 +572,48 @@ value/gas_* 는 **10진 문자열**. 하니스 조립 = `harness/route.rs:15` `r
 
 **R1 (필수):** install state 는 thread-local → install 과 route 는 **같은 thread**. 새 헬퍼는 install→route 를 한 함수에서.
 
+#### P2 synthetic — random fuzz + edge synthesis
+
+목표 = **내가 고른 real tx 가 아니라, authored adapter surface 전체가 임의 입력과 boundary 입력에서 production decoder 를 깨지 않는지** 확인한다. Synthetic 은 입력값을 우리가 만들기 때문에 `amount`, `recipient`, `spender`, array length, opcode 같은 plumbing 을 inverse-check 하기 좋다.
+
+**기본 random fuzz loop:**
+```bash
+cd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
+cargo build -p policy-engine-integration-tests --bin v3-harness
+
+target/debug/v3-harness coverage
+target/debug/v3-harness fuzz --iterations 5000 --seed 0x5C09EBA1 \
+  --json crates/integration-tests/logs/<protocol>/$(date +%F)-synthetic.json
+```
+
+해석:
+- hard failure 0 이 기본 gate. soft error 는 `oracle.rs` 의 `SOFT_ERROR_KINDS` 와 shape-artifact 규칙에 들어갈 때만 허용.
+- 실패가 난 callkey 는 `target/debug/v3-harness replay --callkey <chain>__<addr>__<selector> --seed <seed>` 로 raw envelope 를 재현한다.
+- protocol filter 가 없더라도 전체 surface 를 돌린다. protocol scoped run 이 필요하면 로그에서 `<protocol>` callkey 만 분리하거나 `validate --filter <protocol>` 를 author-time shape gate 로 병행한다.
+
+**필수 edge synthesis:** random 은 boundary 를 우연히 충분히 맞히지 못한다. 모든 COVER selector 중 permission/value-bearing/nested/array/opcode/typed-data 는 hand edge 를 최소 1개 이상 만든다. 현재 자동 edge 주입이 부족하면 `data/golden/v3-decode/_edge-cases/corpus.json` 또는 `<protocol>/corpus.json` 에 대표만 추가한다.
+
+Protocol-agnostic edge menu:
+- **amount/value**: zero, one, max uint256, exact native `msg.value`, value=0 with payable calldata, value>0 with nonpayable-like path.
+- **permission**: allowance zero revoke, max allowance grant, finite allowance, operator true/false, nonce invalidation min/max, expiry 0/max.
+- **address role**: recipient == sender, recipient third-party, owner/on_behalf_of third-party, spender/operator nonzero, zero address only if protocol explicitly allows or expected error 로 pin.
+- **array/tuple**: empty array expected error, singleton, two items, max practical small N, mismatched parallel array lengths expected error.
+- **router/nested**: one child, multiple children, unsupported helper child, mixed supported/unsupported child, truncated inner calldata expected error.
+- **opcode/discriminant**: first/last known opcode, unknown opcode expected error/excluded, enum discriminant out of case expected soft artifact only if would-revert.
+- **path bytes**: shortest valid path, multi-hop path, malformed length expected error.
+- **deadline/time**: expired-looking timestamp and far-future timestamp only if decoder should preserve not evaluate.
+
+Edge corpus rule:
+- committed corpus 는 대표 case 만 보관한다. raw random dump 금지.
+- every permission/value-bearing selector must have at least one edge entry or field-level golden.
+- edge `expect:"pass"` 는 `expect_body` 로 semantic-critical field 를 pin 한다. edge `expect:"error"` 는 `expect_error` 를 pin 한다.
+
 ### 5b. 데이터 fetch (real-tx, adapter-BLIND)
 
 목표 = **어댑터를 무시하고** 프로토콜의 실거래를 무작위로 받아 디코드가 정확한지 본다(어댑터 보고 tx 고르지 않음).
 
 #### Etherscan txlist (bulk 주력)
-**한 콜이 최대 10,000 tx 를 반환하고 각 tx 의 `input` 필드 = calldata** 다. 즉 10,000 tx ≈ 콜 1~2번 (tx당 콜 아님).
+**한 API call 이 최대 10,000 tx 를 반환하고 각 tx 의 `input` 필드 = calldata** 다. 즉 목표는 **프로토콜당 최소 10,000 tx**, 10,000 API call 이 아니다. `.env` 의 Etherscan API 기준 일 100,000 call 여유가 있어도 무작정 call 을 태우지 않는다. call budget 은 address × block-window 수로 기록하고, 10k tx 와 selector/shape 포화가 먼저다.
 ```bash
 set -a; source crates/integration-tests/.env; set +a   # ETHERSCAN_API_KEY (commit 금지)
 curl -s "https://api.etherscan.io/v2/api?chainid=1&module=account&action=txlist&address=<ADDR>&page=1&offset=10000&sort=desc&apikey=$ETHERSCAN_API_KEY" -o /tmp/es.json
@@ -562,12 +625,26 @@ target/debug/v3-harness corpus --root /tmp/v3probe        # 격리 probe
 - **제약:** ① 주소당 한 쿼리 window 가 최대 10,000 record → 더 깊이는 `startblock/endblock` block-range 페이지네이션. ② free tier rate ~5 req/s(무시 가능), 100,000 calls/day(과잉). ③ **free tier 가 Base(8453)/Optimism(10) 등 거부**("Free API access is not supported for this chain") → 그 체인은 Dune/유료. ④ recency bias(sort=desc).
 - proxy `eth_getTransactionByHash` 는 value 가 16진 → corpus 는 10진 필요. **txlist 권장.**
 
+**Etherscan run policy (per protocol):**
+1. P0 의 `cover` contract address 별로 txlist 를 adapter-blind 하게 가져온다. manifest selector 를 보고 고르지 않는다.
+2. 최소 floor = **10,000 tx/protocol** 또는 selector×shape 포화. 단 모든 COVER selector 는 real tx sample ≥1 을 우선한다.
+3. recency-only bias 를 줄이려면 `sort=desc` 한 번으로 끝내지 말고, 필요한 경우 `startblock/endblock` 을 여러 window 로 나눈다.
+4. raw export 는 `/tmp` 또는 `logs/<protocol>/raw-*` scratch 로만 둔다. committed corpus 는 dedup representative + failure/excluded/high-value pass 만.
+5. P2 로그에 `api_calls_used`, `raw_txs_seen`, `unique_selectors_seen`, `covered_selectors_with_real_tx`, `low_traffic_or_absent_selectors` 를 기록한다.
+
 #### Dune (핀포인트 보완 — 조건부)
 selector 필터(`WHERE ...`)·decoded 테이블·cross-chain·빈도 통계용. credit 기반(community plan **2,500 credit/월**; `getUsage`(또는 MCP `mcp__dune__getUsage`)로 확인 — billing period 월간, **일일 캡 아님**).
 - **실측 비용 (2026-05-31, `community_fluid_engine_v2`)**: pruned pinpoint 쿼리(`block_time ≥ now()-interval '1' day` + `to=` 필터, LIMIT 50, **`performance:"free"`**) = **0.007 credit/execution** (응답 `result_preview.resultMetadata.executionCostCredits` + usage delta 2중 확인). → 2,500 / 0.007 ≈ **~35만 쿼리/월** = **credit 은 pinpoint 의 binding constraint 아님**.
 - **★ 비용 = datapoints *scanned***: 0.007 은 (a) free 엔진 + (b) **파티션 컬럼(`block_time`/`block_date`/`block_number`)에 WHERE → partition pruning** 덕. **partition 필터를 빼면 풀스캔 → 한 쿼리가 수백~수천 credit** 태워 월 예산 즉사(`LIMIT` 있어도 스캔 후 자름). **항상 partition WHERE + 좁은 window + free 엔진.**
 - **프로토콜당 할당**: ration 불필요 — 수십 pruned 쿼리 = ~0.1~2 credit/protocol. **tripwire ~25 credit/protocol**(초과 = partition 필터 누락 풀스캔 의심 → 즉시 점검). 2,500 의 대부분은 *실수 방어 buffer*.
 - **lane**: bulk 볼륨은 Etherscan(credit 무관). Dune 은 **free-Etherscan 미지원 체인(Base 8453 / OP 10)** · cross-chain join · decoded 테이블 · selector 빈도 통계 — 여기서만 Dune 이 유일(§5d C).
+
+**Dune MCP calibration (first run per environment):**
+1. `getUsage` 로 credit baseline 을 기록한다.
+2. free engine + partition WHERE + narrow window 로 `LIMIT 100`, `LIMIT 1000`, `LIMIT 5000` probe 를 실행해 rows/sec, result cap, credit delta 를 기록한다.
+3. 같은 쿼리에서 partition WHERE 를 넓히기 전 `EXPLAIN`/metadata 또는 usage delta 를 확인한다. credit jump 가 보이면 즉시 중단.
+4. P2 로그에 `dune_rows_returned`, `executionCostCredits`, `usage_delta`, `window`, `chain`, `selector_filter` 를 남긴다.
+5. Dune target 은 "Etherscan 이 못 하는 chain/selector 에 real tx ≥1" 이 1차다. MCP/free tier 로 10k tx 를 안정적으로 가져올 수 있음이 probe 로 확인된 경우에만 Dune 도 bulk 로 사용한다.
 
 #### Stratify (무작정 N 늘리지 말 것)
 버그는 **(selector × arg-shape) 커버**에서 나온다. 10,000 random 이면 selector 20종 프로토콜의 shape 를 거의 포화시킨다. 같은 N 이라도 **selector 전수 + block-range 분산**이 recency-only 보다 낫다. **포화 지표**: "1,000건당 새 distinct shape 수" → 0 에 수렴하면 stop(더 돌리면 compute 낭비). raw 영속화 금지 — **실패 + dedup 대표만** corpus 로.
@@ -620,9 +697,9 @@ N tx (selector 20종):
 
 | 소스 | 하한 (lower bound) | stop 조건 | 디테일 |
 |---|---|---|---|
-| **A 합성** | 모든 COVER callkey 가 machine fuzz(4 전략) + callkey별 `EDGE_ITERS=4` boundary 자동 주입; **permission·value-bearing selector 마다 hand-edge ≥1** (infinite-approval / zero-amount / empty / truncated calldata) | callkey별 shape 포화 | A-1 ABI-aware seeded(`fnv(callkey)^seed^iter`, 재현) + A-2 `_edge-cases/corpus.json` 손수(§5b A-2 README) |
-| **B Etherscan** (bulk 주력) | free-지원 체인(mainnet 등): **모든 COVER selector 가 real-tx decoded sample ≥1** (저트래픽/부재면 corpus `_note` 로 "low-traffic/absent" 명기) · 기본 target **10,000 tx/protocol** stratified | shape 포화 **또는** 10k 도달 | txlist 10k/call·adapter-blind·**selector 전수 + block-range 분산**(recency-only 지양) |
-| **C Dune** (조건부) | **필수 조건**: 프로토콜이 free-Etherscan 미지원 체인(Base/OP)에 배포 **또는** cross-chain/decoded-stats 필요 → 그 chain/selector 의 real-tx ≥1. **그 외엔 optional**(skip 가능, Etherscan 으로 충분) | 해당 chain/selector real-tx 확보 | pruned 쿼리(partition WHERE+좁은 window+free 엔진, 0.007/q·§5b) — 프로토콜당 ~수 credit |
+| **A 합성** | 모든 COVER callkey 가 machine fuzz(4 전략) + protocol-agnostic edge menu 적용; **permission·value-bearing selector 마다 hand-edge ≥1** (infinite-approval / zero-amount / empty / truncated calldata) | callkey별 shape 포화 | seeded fuzz(`--seed`, 재현) + A-2 `_edge-cases/corpus.json` 손수(§5a P2 synthetic) |
+| **B Etherscan** (bulk 주력) | free-지원 체인(mainnet 등): **모든 COVER selector 가 real-tx decoded sample ≥1** (저트래픽/부재면 corpus `_note` 로 "low-traffic/absent" 명기) · 기본 target **10,000 tx/protocol** stratified | shape 포화 **또는** 10k tx 도달 | txlist 최대 10k tx/API call · adapter-blind · **selector 전수 + block-range 분산**(recency-only 지양) · api_calls_used 로그 |
+| **C Dune** (조건부) | **필수 조건**: 프로토콜이 free-Etherscan 미지원 체인(Base/OP)에 배포 **또는** cross-chain/decoded-stats 필요 → 그 chain/selector 의 real-tx ≥1. **그 외엔 optional**(skip 가능, Etherscan 으로 충분) | 해당 chain/selector real-tx 확보, 또는 calibration 이 bulk 가능 입증 | MCP calibration 먼저: usage baseline/delta + LIMIT 100/1000/5000 probe + partition WHERE. bulk 는 안전 확인 후 |
 
 - **B vs C 분담**: 볼륨·기본 10k 는 **B**(무료, credit 무관). **C** 는 B 가 *못 하는 갭*(Base/OP·cross-chain·decoded)만 — credit 은 충분하나 partition 규율 필수(§5b).
 - compute/fetch/authoring 다 N 에 거의 무관 → 위 floor 넘겨 올려도 되나, **shape 포화면 marginal 가치 0**(더 돌리면 compute/credit 낭비).

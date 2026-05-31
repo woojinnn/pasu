@@ -13,6 +13,52 @@
 
 직렬화 형태는 **이중 internally-tagged flat**: `ActionBody::Perp(PerpAction::OpenPosition(..))` → `{"domain":"perp","action":"open_position", ...payload}`. manifest 의 `emit.body` 는 가독성 위해 **nested-twice** (`{domain:"perp", perp:{action:"open_position", open_position:{...}}}`) 로 쓰고, `action_builder.rs` 의 `flatten_body` 가 flat 으로 normalize 한다.
 
+## 0.1 ActionBody → lowering_v2 → cedarschema 계약
+
+Tier 3 확장은 `ActionBody` Rust 타입만 추가하면 끝이 아니다. `ActionBody` 는 **디코더/시뮬레이터가 이해하는 normalized intent schema** 이고, 정책 엔진은 그 타입을 직접 읽지 않는다. 정책 엔진은 `lowering_v2` 가 만든 Cedar request context 를 읽고, 그 context shape 는 `schema/policy-schema/actions/**/*.cedarschema` 가 정의한다.
+
+```text
+raw tx / typed-data
+  → manifest/Tier1 + builder/Tier2
+  → ActionBody                         crates/simulation/reducer/src/action/**
+  → lowering_v2::lower_action          crates/policy-engine/src/lowering_v2/**
+  → LoweredAction {
+       principal: Wallet::"<tx.from>",
+       action_uid: <Namespace>::Action::"<PascalAction>",
+       resource: Protocol::"<tx.to>",
+       context: { ... }                must conform to .cedarschema
+     }
+  → Cedar policy engine
+```
+
+따라서 새 action/field 를 추가할 때 책임은 셋으로 분리된다:
+
+| 레이어 | 위치 | 책임 |
+|---|---|---|
+| **ActionBody schema** | `crates/simulation/reducer/src/action/<domain>/**` | tx 의미를 protocol-agnostic intent 로 표현. Rust/serde/tsify source-of-truth. |
+| **lowering** | `crates/policy-engine/src/lowering_v2/<domain>/<action>.rs` | `ActionBody` payload 를 Cedar context JSON 으로 변환. camelCase, U256 hex, optional omit, `LiveField<T>.value` flatten. |
+| **cedarschema** | `schema/policy-schema/actions/<domain>/<action>.cedarschema` | Cedar 가 정책에서 읽을 action/context 타입 선언. `action "<Pascal>" appliesTo { principal: Wallet, resource: Protocol, context: <Context> }`. |
+
+예: `AmmAction::Swap(SwapAction)` 은 `action/amm/swap.rs` 에 Rust schema 가 있고, `lowering_v2/amm/swap.rs` 가 `Amm::Action::"Swap"` + `Amm::SwapContext` JSON 을 만들며, `schema/policy-schema/actions/amm/swap.cedarschema` 가 `SwapContext` 필드를 선언한다. 셋 중 하나라도 필드명/타입/필수성/uid 가 어긋나면 policy strict validation 이 실패하거나, 더 위험하게 policy 작성자가 필요한 필드를 못 본다.
+
+lowering 규칙:
+- Rust `snake_case` → Cedar `camelCase` 를 손으로 매핑한다. `serde_json::to_value` 로 blind 변환 금지.
+- `U256`/`U128` 는 lower-hex string(`"0x..."`), `Address` 는 lowercase `0x...`.
+- `Long` 은 JSON number 로 emit 한다.
+- Rust enum/union 은 Cedar 에서 `{ kind: "...", ... }` 또는 `{ name: "...", ... }` discriminated record 로 표현한다.
+- `LiveField<T>` 는 `.value` 만 노출한다. source/ttl/synced_at metadata 는 policy context 에 노출하지 않는다.
+- optional 은 `null` 로 emit 하지 말고 absent 면 생략한다.
+- every action context 는 `meta: Core::ActionMeta` 를 포함한다.
+- `ctx.lowered(r#"<Namespace>::Action::"<PascalAction>""#, Value::Object(context))` 의 action uid 는 cedarschema 의 `action "<PascalAction>"` 와 정확히 맞아야 한다.
+
+cedarschema 규칙:
+- `core.cedarschema` 는 `Wallet`, `Protocol`, `Core::TokenRef`, `Core::ActionMeta`, `Amm::AmmVenue` 같은 shared type 을 제공한다.
+- action file 은 자기 namespace 안에 `<Action>Context`, `<Action>CustomContext = {};`, `action "<PascalAction>" appliesTo ...` 를 정의한다.
+- `custom?: <Action>CustomContext` 는 manifest `custom_context` 주입 슬롯이다. base field 와 custom field 충돌은 `compose_per_policy` 가 거부한다.
+- Cedar 4.10 은 enum/union/generic 이 없으므로, Rust 타입을 그대로 옮기는 게 아니라 Cedar-compatible projection 을 설계해야 한다.
+
+conformance rule: 새/변경 action 은 leaf lowering test 에서 `lower_action` 결과의 `context` 를 실제 `compose_per_policy` schema 로 strict validate 해야 한다. 이 테스트가 ActionBody ↔ lowering ↔ cedarschema drift 를 잡는 최종 안전망이다.
+
 ## 1. Compile-coupling map (확장 비용의 본질)
 
 확장 touchpoint 는 세 부류다:

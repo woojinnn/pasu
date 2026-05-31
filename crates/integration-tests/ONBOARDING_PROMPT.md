@@ -37,13 +37,17 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  새 domain 같은 큰 설계만 ExitPlanMode 로 plan 1회 받고 자율 진행.
 
 [진행 P0→P4]
- P0 1차출처로 컨트랙트 인벤토리 전수 → surface/<PROTOCOL>/_deployments.json(I0) +
+ P0 1차출처로 컨트랙트 인벤토리 전수. 현 Codex 세션 리서치 + Claude Code headless
+    (`claude -p ... --add-dir <repo>`) 에 같은 P0 discovery prompt 병렬 실행 →
+    union/diff 통합 → 1차출처 verify. surface/<PROTOCOL>/_deployments.json(I0) +
     <contract>.{abi,coverage}.json(I1~I3) → npm run check:surface PASS.
-    (선택 §3.1: gemini/codex CLI 로 contract discovery 폭 보강 — candidate-only, 1차 verify 필수.)
+    LLM 결과는 candidate-only, 1차 verify 필수.
  P1 함수마다 schema(§4a)→manifest(§4b)→engine(§4c)→enrich(§4d: 추상 단위면 환산 live_field).
     npm run check:manifest.
- P2 synthetic fuzz + Etherscan(bulk 10k) + Dune(Base/OP·cross-chain pinpoint, free 엔진 +
-    partition WHERE) — §5d 소스별 하한 준수. semantic-critical 필드는
+ P2 synthetic fuzz(random 5000+ fixed seed) + hand edge synthesis(permission/value/nested/array/opcode)
+    + Etherscan bulk 최소 10,000 tx/protocol(10,000 API call 아님; txlist 최대 10k tx/call)
+    + Dune MCP calibration 후 Base/OP·cross-chain pinpoint(free 엔진 + partition WHERE).
+    §5d 소스별 하한 준수. semantic-critical 필드는
     PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK 기준으로 expect_body/projection/field-level golden 중 하나로 pin.
  P3 gap 분류→manifest/decoder/harness 처치→회귀(§6).
  P4 build-index → check:manifest → check:surface → cargo test --workspace 0 fail →
