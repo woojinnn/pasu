@@ -10,6 +10,7 @@ use simulation_reducer::action::yield_::{YieldAction, YieldVenue};
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
 mod add_market_liquidity;
+mod cancel_limit_order;
 mod claim_yield;
 mod mint_py;
 mod mint_sy;
@@ -17,6 +18,7 @@ mod pt_swap;
 mod redeem_py;
 mod redeem_sy;
 mod remove_market_liquidity;
+mod sign_limit_order;
 mod yt_swap;
 
 /// Dispatch a [`YieldAction`] to its per-action lowering.
@@ -36,6 +38,8 @@ pub(crate) fn lower(action: &YieldAction, ctx: &LowerCtx<'_>) -> Result<LoweredA
         YieldAction::MintSy(a) => mint_sy::lower(a, ctx),
         YieldAction::RedeemSy(a) => redeem_sy::lower(a, ctx),
         YieldAction::ClaimYield(a) => claim_yield::lower(a, ctx),
+        YieldAction::SignLimitOrder(a) => sign_limit_order::lower(a, ctx),
+        YieldAction::CancelLimitOrder(a) => cancel_limit_order::lower(a, ctx),
     }
 }
 

@@ -1471,3 +1471,75 @@ fn pendle_swap_market_enrichment_live_inputs_wired() {
     find_object_with_string_field(&env, "function", "expiry()")
         .expect("market enrichment carries an expiry() onchain_view source");
 }
+
+/// Field-level golden for the Pendle off-chain limit-order sign (P1d).
+///
+/// The maker signs an EIP-712 `Order` against `PendleLimitRouter` (domain
+/// `"Pendle Limit Order Protocol"` v1, primary_type `Order`). The typed-data
+/// route reshapes the message into `args.order.*` (wrap rule) and runs the same
+/// emit-rule the calldata path uses. This pins the security-relevant fields: the
+/// `orderType` uint8 → discriminant value-map (`0` → `"sy_for_pt"`), who the
+/// maker is, which YT (market identity) is traded, and the SY token side.
+/// `corpus_replay` cannot see these (verdict + domain only) — a value-map miss or
+/// a positional mis-map would pass corpus as `pass`/`yield`.
+#[test]
+fn pendle_sign_limit_order_typed_data_decodes_order_fields() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const VC: &str = "0x000000000000c9b3e2c3ec88b1b4c0cd853f4321";
+    const TOKEN: &str = "0x1111111111111111111111111111111111111111"; // SY token side
+    const YT: &str = "0x2222222222222222222222222222222222222222";
+    const MAKER: &str = "0x3333333333333333333333333333333333333333";
+    const RECEIVER: &str = "0x4444444444444444444444444444444444444444";
+    let message = serde_json::json!({
+        "salt": "1",
+        "expiry": "9999999999",
+        "nonce": "0",
+        "orderType": 0,
+        "token": TOKEN,
+        "YT": YT,
+        "maker": MAKER,
+        "receiver": RECEIVER,
+        "makingAmount": "1000000000",
+        "lnImpliedRate": "0",
+        "failSafeRate": "0",
+        "permit": "0x"
+    });
+
+    let env = harness::route::route_typed_data(
+        1,
+        VC,
+        "Order",
+        None,
+        Some("Pendle Limit Order Protocol"),
+        &message,
+    );
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "typed-data route did not succeed: {env}"
+    );
+    // orderType uint8 `0` → "sy_for_pt" via the discriminant value-map.
+    assert_eq!(
+        find_string_field(&env, "order_type"),
+        Some("sy_for_pt".into()),
+        "orderType value-map mis-decoded: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "maker"),
+        Some(MAKER.into()),
+        "Order.maker mis-decoded"
+    );
+    assert_eq!(
+        find_string_field(&env, "yt"),
+        Some(YT.into()),
+        "Order.YT mis-decoded"
+    );
+    // SY token side is wrapped as an ERC20 TokenRef.
+    let tok = find_object_by_key(&env, "token").expect("sign carries the SY token side");
+    assert_eq!(
+        find_string_field(tok, "address"),
+        Some(TOKEN.into()),
+        "Order.token (SY side) mis-decoded"
+    );
+}

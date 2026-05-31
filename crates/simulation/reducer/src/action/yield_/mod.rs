@@ -33,6 +33,7 @@ use simulation_state::primitives::{Address, ChainId, U256};
 use simulation_state::LiveField;
 
 pub mod add_market_liquidity;
+pub mod cancel_limit_order;
 pub mod claim_yield;
 pub mod mint_py;
 pub mod mint_sy;
@@ -40,9 +41,11 @@ pub mod pt_swap;
 pub mod redeem_py;
 pub mod redeem_sy;
 pub mod remove_market_liquidity;
+pub mod sign_limit_order;
 pub mod yt_swap;
 
 pub use self::add_market_liquidity::*;
+pub use self::cancel_limit_order::*;
 pub use self::claim_yield::*;
 pub use self::mint_py::*;
 pub use self::mint_sy::*;
@@ -50,6 +53,7 @@ pub use self::pt_swap::*;
 pub use self::redeem_py::*;
 pub use self::redeem_sy::*;
 pub use self::remove_market_liquidity::*;
+pub use self::sign_limit_order::*;
 pub use self::yt_swap::*;
 
 /// User-level yield-tokenization actions across supported venues (Pendle V2).
@@ -77,6 +81,10 @@ pub enum YieldAction {
     RedeemSy(RedeemSyAction),
     /// Claim accrued interest + rewards (`redeemDueInterestAndRewards`).
     ClaimYield(ClaimYieldAction),
+    /// Off-chain EIP-712 maker-sign of a Pendle limit `Order` (PendleLimitRouter).
+    SignLimitOrder(SignLimitOrderAction),
+    /// Cancel the maker's own limit order(s) (`cancelSingle`/`cancelBatch`).
+    CancelLimitOrder(CancelLimitOrderAction),
 }
 
 impl YieldAction {
@@ -96,6 +104,8 @@ impl YieldAction {
             Self::MintSy(_) => "mint_sy",
             Self::RedeemSy(_) => "redeem_sy",
             Self::ClaimYield(_) => "claim_yield",
+            Self::SignLimitOrder(_) => "sign_limit_order",
+            Self::CancelLimitOrder(_) => "cancel_limit_order",
         }
     }
 
@@ -112,6 +122,8 @@ impl YieldAction {
             Self::MintSy(a) => Some(a.venue.name()),
             Self::RedeemSy(a) => Some(a.venue.name()),
             Self::ClaimYield(a) => Some(a.venue.name()),
+            Self::SignLimitOrder(a) => Some(a.venue.name()),
+            Self::CancelLimitOrder(a) => Some(a.venue.name()),
         }
     }
 }

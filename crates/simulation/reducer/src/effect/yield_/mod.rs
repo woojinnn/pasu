@@ -10,8 +10,9 @@
 use simulation_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::yield_::{
-    AddMarketLiquidityAction, ClaimYieldAction, MintPyAction, MintSyAction, PtSwapAction,
-    RedeemPyAction, RedeemSyAction, RemoveMarketLiquidityAction, YieldAction, YtSwapAction,
+    AddMarketLiquidityAction, CancelLimitOrderAction, ClaimYieldAction, MintPyAction, MintSyAction,
+    PtSwapAction, RedeemPyAction, RedeemSyAction, RemoveMarketLiquidityAction,
+    SignLimitOrderAction, YieldAction, YtSwapAction,
 };
 use crate::apply::Reducer;
 use crate::error::ReducerResult;
@@ -28,6 +29,8 @@ impl Reducer for YieldAction {
             Self::MintSy(a) => a.apply(state, ctx),
             Self::RedeemSy(a) => a.apply(state, ctx),
             Self::ClaimYield(a) => a.apply(state, ctx),
+            Self::SignLimitOrder(a) => a.apply(state, ctx),
+            Self::CancelLimitOrder(a) => a.apply(state, ctx),
         }
     }
 }
@@ -81,6 +84,18 @@ impl Reducer for RedeemSyAction {
 }
 
 impl Reducer for ClaimYieldAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        Ok(StateDelta::new())
+    }
+}
+
+impl Reducer for SignLimitOrderAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        Ok(StateDelta::new())
+    }
+}
+
+impl Reducer for CancelLimitOrderAction {
     fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
         Ok(StateDelta::new())
     }

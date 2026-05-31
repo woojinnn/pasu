@@ -94,6 +94,8 @@ const LIQUID_STAKING_WRAP_SCHEMA: &str =
 // yield (alphabetical)
 const YIELD_ADD_MARKET_LIQUIDITY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/yield/add_market_liquidity.cedarschema");
+const YIELD_CANCEL_LIMIT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/cancel_limit_order.cedarschema");
 const YIELD_CLAIM_YIELD_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/yield/claim_yield.cedarschema");
 const YIELD_MINT_PY_SCHEMA: &str =
@@ -109,6 +111,8 @@ const YIELD_REDEEM_SY_SCHEMA: &str =
 const YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/yield/remove_market_liquidity.cedarschema"
 );
+const YIELD_SIGN_LIMIT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/sign_limit_order.cedarschema");
 const YIELD_YT_SWAP_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/yield/yt_swap.cedarschema");
 
@@ -208,6 +212,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     LIQUID_STAKING_UNWRAP_SCHEMA,
     LIQUID_STAKING_WRAP_SCHEMA,
     YIELD_ADD_MARKET_LIQUIDITY_SCHEMA,
+    YIELD_CANCEL_LIMIT_ORDER_SCHEMA,
     YIELD_CLAIM_YIELD_SCHEMA,
     YIELD_MINT_PY_SCHEMA,
     YIELD_MINT_SY_SCHEMA,
@@ -215,6 +220,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     YIELD_REDEEM_PY_SCHEMA,
     YIELD_REDEEM_SY_SCHEMA,
     YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA,
+    YIELD_SIGN_LIMIT_ORDER_SCHEMA,
     YIELD_YT_SWAP_SCHEMA,
     LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA,

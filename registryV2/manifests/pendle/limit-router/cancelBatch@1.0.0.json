@@ -1,0 +1,120 @@
+{
+  "type": "adapter_action",
+  "id": "pendle/limit-router/cancelBatch@1.0.0",
+  "publisher": "pendle",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xf1d4deb3",
+    "chain_to_addresses": {
+      "1": [
+        "0x000000000000c9b3e2c3ec88b1b4c0cd853f4321"
+      ],
+      "8453": [
+        "0x000000000000c9b3e2c3ec88b1b4c0cd853f4321"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "cancelBatch",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "salt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiry",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "enum IPLimitOrderType.OrderType",
+              "name": "orderType",
+              "type": "uint8"
+            },
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "YT",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "maker",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "receiver",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "makingAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lnImpliedRate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "failSafeRate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "permit",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct Order[]",
+          "name": "orders",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "cancelBatch",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "yield",
+      "yield": {
+        "action": "cancel_limit_order",
+        "cancel_limit_order": {
+          "venue": {
+            "name": "pendle_v2",
+            "chain": "$chain"
+          },
+          "kind": "batch"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

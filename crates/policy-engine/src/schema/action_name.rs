@@ -108,8 +108,9 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "transfer_shares",
     "unwrap",
     "wrap",
-    // Yield (9)
+    // Yield (11)
     "add_market_liquidity",
+    "cancel_limit_order",
     "claim_yield",
     "mint_py",
     "mint_sy",
@@ -117,6 +118,7 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "redeem_py",
     "redeem_sy",
     "remove_market_liquidity",
+    "sign_limit_order",
     "yt_swap",
     // Launchpad (5)
     "claim_allocation",
@@ -200,7 +202,7 @@ mod tests {
     fn registry_size_matches_phase1() {
         // 2 Core + 2 Airdrop + 6 Amm + 12 Lending + 6 LiquidStaking + 9 Yield
         // + 5 Launchpad + 11 Perp + 9 Token + 1 Permission = 63.
-        assert_eq!(REGISTERED_ACTIONS.len(), 63);
+        assert_eq!(REGISTERED_ACTIONS.len(), 65);
     }
 
     #[test]
