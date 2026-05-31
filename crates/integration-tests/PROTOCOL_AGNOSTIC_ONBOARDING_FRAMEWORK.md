@@ -2,7 +2,8 @@
 
 > 목적: 새 프로토콜마다 다시 생각하지 않도록, **프로토콜 독립 코드 골격과 실행 인스트럭션**을 고정한다. 이 문서는 구현 전체를 한 번에 끝내는 계획이 아니라, 어떤 프로토콜에도 반복 적용할 수 있는 framework contract 이다.
 >
-> 범위: V3 `ActionBody[]` 디코드 경로만. 레거시 `ActionEnvelope` 경로는 고려하지 않는다.
+> 범위: V3 `ActionBody[]` 디코드 경로가 중심이다. 레거시 `ActionEnvelope` 경로는 고려하지 않는다.
+> 단, 실제 product verdict path 는 decoded `ActionBody` 를 `lowering_v2` → per-policy schema/Cedar evaluation 으로 넘긴다. 새 domain/action/live field 를 추가하면 downstream policy contract 까지 같은 온보딩 범위로 본다.
 
 ---
 
@@ -14,7 +15,8 @@
 |---|---|---|---|
 | **Surface** | user-facing contract/function/signature 를 빠뜨리지 않았나? | `registryV2/surface/**` + `check:surface` | `_deployments.json`, ABI snapshot, coverage 보강 |
 | **Shape** | manifest 가 실제 `ActionBody` 타입으로 round-trip 되나? | `v3-harness validate`, `oracle.rs` typed round-trip | manifest/Tier3 schema/lowering 수정 |
-| **Semantic** | token, amount, recipient, spender, pool, path, live source 가 맞나? | `expect_body`, projection, field-level golden | assertion/projection 추가 후 decoder 수정 |
+| **Semantic** | token, amount, recipient, spender, pool, path, live source 가 맞나? | `expect_body`, field-level golden, future projection | assertion/projection 추가 후 decoder 수정 |
+| **Policy contract** | decoded action 이 runtime policy model 로 내려가나? | `lowering_v2`, `schema/per_policy.rs`, Cedar schema/action registration tests | lowering/schema/cedarschema 등록 |
 | **Production path** | production WASM export 로 같은 결과가 나오나? | `route_calldata` / `route_typed_data` 직접 호출 | WASM/export/loader 경계 수정 |
 
 중요한 원칙:
@@ -48,6 +50,8 @@ crates/integration-tests/src/bin/v3_harness.rs
 ├─ import-*               # existing; normalizes RPC hex quantities
 └─ audit                  # planned: protocol strict gate wrapper
 ```
+
+현재 구현된 CLI 는 `fuzz`, `validate`, `coverage`, `replay`, `corpus`, `import-*` 이다. `projection.rs`, `semantic_lints.rs`, `audit.rs` 와 `audit --strict` 는 설계 목표이며 아직 실행 가능한 gate 로 취급하지 않는다. 현 landing 은 아래 §3/P5 의 manual gate 조합으로 수행한다.
 
 ### 1.1 `expect_body` data contract
 
@@ -201,7 +205,7 @@ No suppression without reason.
 
 ### 1.4 Protocol audit command
 
-Target CLI:
+Future target CLI, not implemented locally yet:
 
 ```bash
 cargo run -p policy-engine-integration-tests --bin v3-harness -- audit \
@@ -209,13 +213,27 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- audit \
   --strict
 ```
 
+Current manual equivalent:
+
+```bash
+cd registryV2
+npm run build
+npm run check:surface
+npm run check:manifest
+cd ..
+cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage
+cargo run -p policy-engine-integration-tests --bin v3-harness -- fuzz --iterations <N>
+cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus
+cargo test -p policy-engine-integration-tests --test v3_decode_harness
+```
+
 Audit stages:
 
 1. build or verify `registryV2/index` freshness.
 2. `check:surface --strict-protocol <protocol>`.
 3. `validate --filter <protocol> --strategy all`.
-4. `corpus --protocol <protocol> --expect-body --projections`.
-5. semantic lints in strict mode.
+4. protocol-filtered corpus with required `expect_body` / future projections.
+5. semantic lints in strict mode once implemented.
 6. coverage report: selectors with no real tx, no edge, no projection, no body assertions.
 7. single JSON summary under `crates/integration-tests/logs/<protocol>/YYYY-MM-DD-audit.json`.
 
@@ -260,6 +278,41 @@ Do not create protocol-specific harness code unless the protocol truly needs a n
 ---
 
 ## 3. End-to-End Onboarding Instructions
+
+### Worktree and Commit Discipline
+
+Start every protocol onboarding in a dedicated branch inside the requested worktree. If the user provides an onboarding worktree/cwd, run `git switch -c feat/<protocol>-onboarding` there first, or switch to that branch if it already exists. If no worktree is provided, create one with `git worktree add -b feat/<protocol>-onboarding ../<dir> <base>`.
+
+Commit at the end of each phase, or each smaller reviewable contract/function batch when a phase is large. Use explicit staging only (`git add <file>`), never blanket `git add -A`. Sub-agents and Claude Code produce candidate results; the main session owns verification and commits.
+
+Do not merge the onboarding branch back into the base worktree automatically after the framework is complete. Merge only when the user explicitly requests it.
+
+### Agent Orchestration
+
+Protocol onboarding is too long for one linear context. Use sub-agents or Claude Code for independent work packets, but treat every result as untrusted until verified by the main session.
+
+Default split:
+
+- P0 contract discovery: Codex + Claude Code independent discovery, then union/diff/1st-source verification.
+- P0 token inventory: separate token-surface pass using `crates/integration-tests/TOKEN_INVENTORY_GUIDE.md`.
+- P1 selector authoring: selector batches, especially permission/fund-move selectors.
+- P1 Tier3 design: new `ActionBody` / `lowering_v2` / `cedarschema` changes require independent review before landing.
+- P2 synthetic: independent edge-case matrix and fuzz seed plan.
+- P2 real tx: Etherscan/Dune pull + verdict bucketing by source.
+- P3 gap triage: independent root-cause classification for hard failures.
+- P4 audit: "what is still missing?" review against source docs and local gates.
+
+Sub-agent prompt requirements:
+
+- include repo path, branch/worktree, phase, exact scope, non-goals
+- list required docs and exact files/symbols to inspect
+- name existing implementations to mirror
+- define output format and expected artifact paths
+- include guardrails: first-party sources, no unrelated churn, no commits, uncertain items marked unverified
+
+Merge rule:
+
+- Main session compares Codex/sub-agent outputs, records disagreements, verifies accepted items against local code or first-party sources, then runs the relevant gate. No sub-agent output is copied blindly.
 
 ### P0. Contract Inventory
 
@@ -310,12 +363,48 @@ Dual-agent rule:
 4. Any Codex-only or Claude-only candidate is high-priority for 1st-source verification.
 5. LLM output never becomes ground truth. Only official deployment artifacts, verified ABI snapshots, and `check:surface` dispose candidates.
 
+### P0.5. Token Inventory
+
+Goal: no protocol-issued or protocol-critical token is invisible to ERC standard auto-enumeration.
+
+Required artifacts:
+
+- `registryV2/tokens/<chainId>/<lowercase-address>.json` for every in-scope token.
+- P0 log note for large protocols that intentionally batch long-tail pools/tokens.
+
+Use `crates/integration-tests/TOKEN_INVENTORY_GUIDE.md` as the source instruction. Token inventory is required when the protocol has any of:
+
+- fungible LP/pool share tokens (Curve, Balancer, Aerodrome, Uniswap V2)
+- receipt/share tokens (Compound cTokens, Aave aTokens, ERC4626 vault shares)
+- debt tokens
+- governance/base tokens directly used by protocol flows
+- pool underlyings referenced by ActionBody fields or token_kind metadata
+- NFT position-manager collections (collection-level only; never enumerate token_id instances)
+
+Rules:
+
+- Token JSON is the input for `tokens:erc20` / `tokens:erc721` / `tokens:erc1155` manifests. Missing token JSON means standard ERC calls to that address may have no callkey.
+- Research token metadata from static first-party sources: official token list, official pool list, official address-book, verified explorer token page. Do not use ad-hoc RPC reads for symbol/decimals.
+- Register underlyings recursively when a `token_kind` references them.
+- For Curve-like protocols, covered pools require their LP token and underlying tokens. Long-tail pools can be deferred only with an explicit batch boundary in the P0 log.
+- After token edits, run `cd registryV2 && npm run build` or `npx tsx scripts/build-index.ts`.
+
 Action-model preflight:
 
 - `crates/simulation/reducer/src/action` is an intent catalog, not a protocol list.
 - If a protocol maps cleanly to existing domains/actions, no Tier 3 work is needed.
 - If a COVER selector has user-risk semantics that no existing action can express, add/extend Tier 3 `ActionBody` before authoring manifests.
 - Permission grants/revokes are never hidden behind `Unknown`; add a dedicated action when needed.
+
+Tier 3 deliverables are not only Rust `ActionBody` structs. A new action is complete only when all downstream contracts exist:
+
+- `crates/simulation/reducer/src/action/<domain>/**` — protocol-agnostic intent schema.
+- reducer/effect/view/sync touchpoints — exhaustive state and action walking still compile and preserve semantics.
+- `crates/policy-engine/src/lowering_v2/<domain>/<action>.rs` — converts `ActionBody` into Cedar request context.
+- `schema/policy-schema/actions/<domain>/<action>.cedarschema` — policy-visible context/action declaration.
+- `crates/policy-engine/src/schema/{mod.rs,action_name.rs,per_policy.rs}` — manual schema registration and resolver table entry.
+- leaf lowering conformance test — strict-validates `lower_action` output against `compose_per_policy`.
+- manifest + corpus/golden — proves actual calldata/typed-data reaches the new action shape.
 
 Protocol-agnostic red flags that must be `cover` unless a standard adapter explicitly owns them:
 
@@ -366,9 +455,9 @@ Every COVER selector gets at least one semantic oracle class.
 
 | selector kind | required oracle |
 |---|---|
-| simple flat mapping | projection preferred |
-| permission grant/revoke | `expect_body` or projection for authorizer/authorized/spender/flag |
-| token/asset amount movement | projection for asset + amount + recipient/on_behalf_of |
+| simple flat mapping | `expect_body` now; projection preferred after executor lands |
+| permission grant/revoke | `expect_body` now; future projection for authorizer/authorized/spender/flag |
+| token/asset amount movement | `expect_body` now; future projection for asset + amount + recipient/on_behalf_of |
 | router/nested/multicall | curated corpus with `expect_body` for every meaningful child action |
 | hash/ID derived field | field-level golden or projection with independent derivation |
 | live input source | `expect_body` for source metadata/function name |
@@ -406,12 +495,15 @@ Synthetic test floor:
 
 Real-tx floor:
 
-1. Etherscan is the bulk lane. One `txlist` API call can return up to 10,000 tx, so the default target is **10,000 tx/protocol**, not 10,000 API calls.
+1. Etherscan API/MCP is the bulk lane. One `txlist` API call currently can return up to 10,000 tx, so the default target is **10,000 tx/protocol**, not 10,000 API calls. Re-check the current Etherscan docs before each onboarding; Free tier record limits are scheduled to drop to 1,000/request on 2026-07-01.
 2. Use `.env` `ETHERSCAN_API_KEY`; daily 100,000-call capacity is a safety budget, not a spending target.
 3. Fetch adapter-blind by P0 cover addresses, stratified by selector and block range. Do not choose txs by existing manifests.
 4. Every COVER selector should have real tx sample >= 1, or an explicit low-traffic/absent note.
-5. Dune is the gap lane for Etherscan-free unsupported chains, decoded namespaces, selector stats, and cross-chain joins. Before relying on it, run MCP calibration: usage baseline, LIMIT 100/1000/5000 probe, partition WHERE, credit delta log.
-6. Commit only dedup representative corpus/golden entries; keep raw 10k+ dumps out of git.
+5. Dune MCP/API is the gap lane for Free-tier Etherscan txlist gaps such as Base/OP, decoded namespaces, selector stats, and cross-chain joins. Before relying on it, run MCP calibration: usage baseline, LIMIT 100/1000/5000 probe, partition WHERE, credit delta log.
+6. If Etherscan or Dune is unavailable, do not mark P2 real-tx complete. Record `blocked_external_data`, completed synthetic/golden scope, and the addresses/selectors to replay once the tool is connected.
+7. Commit only dedup representative corpus/golden entries; keep raw 10k+ dumps out of git.
+
+Tool connection hints: Etherscan remote MCP is `https://mcp.etherscan.io/mcp` with bearer-token auth from `ETHERSCAN_API_KEY`. Dune remote MCP is `https://api.dune.com/mcp/v1` with OAuth or API-key auth. Never commit keys or raw external dumps.
 
 ### P3. Corpus and Projection Authoring
 
@@ -468,6 +560,13 @@ npm run check:surface
 npm run check:manifest
 cd ..
 
+cd browser-extension
+node .yarn/releases/yarn-4.14.1.cjs vitest run --root ../registryV2 scripts/__tests__/build-index.test.ts
+cd ..
+
+cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage
+cargo run -p policy-engine-integration-tests --bin v3-harness -- fuzz --iterations <N>
+cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus
 cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture
 cargo test --workspace
 ```
@@ -477,6 +576,11 @@ If Tier 2/Tier 3/WASM-facing code changed:
 ```bash
 ./scripts/wasm-build.sh
 ```
+
+Current product-path caveats to check explicitly:
+
+- EIP-712 typed-data manifests can pass registry/WASM/harness tests while browser orchestration may still mark typed signatures as not routed. Treat typed-data support as harness-proven, product-unproven unless the extension route is exercised.
+- Native-transfer sentinel `0x00000000` is valid in WASM/harness corpus, but selector-less calldata can miss earlier in the extension TypeScript route. Do not claim production native-transfer support without checking that boundary.
 
 Completion evidence must include:
 
@@ -530,7 +634,8 @@ If existing ActionBody is insufficient, propose exact Tier3 extension touchpoint
 If generic builder is insufficient, propose exact Tier2 extension point.
 
 Add or specify semantic oracle:
-- expect_body assertions or projection fields for all semantic-critical fields.
+- expect_body assertions or field-level Rust golden for all semantic-critical fields.
+- Projection fields are acceptable only after the projection executor exists.
 
 Run or report:
 - cd registryV2 && npm run build && npm run check:manifest
@@ -540,7 +645,7 @@ Run or report:
 
 ```text
 Repo: /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
-Task: Build semantic corpus/projection for <PROTOCOL> selector <SELECTOR>.
+Task: Build semantic corpus / field oracle for <PROTOCOL> selector <SELECTOR>.
 
 Read:
 - crates/integration-tests/PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md
@@ -549,9 +654,9 @@ Read:
 Collect representative real txs from Etherscan/Dune if available.
 Create/extend crates/integration-tests/data/golden/v3-decode/<protocol>/corpus.json.
 For each pass entry, add expect_domain and expect_body for token/amount/recipient/spender/pool/fee/live-source fields.
-If selector is simple enough, create projection spec instead of per-tx repetition.
+If selector is simple enough, note future projection spec candidates, but do not treat them as executable until projection support exists.
 
-Do not mark semantic-critical selector done without expect_body or projection.
+Do not mark semantic-critical selector done without expect_body or field-level golden. Projection can replace this only after implementation.
 ```
 
 ---
@@ -564,9 +669,9 @@ Recommended order:
 
 1. Add `expect_body` engine as optional and keep all existing corpus green.
 2. Add `expect_body` only to newly found regressions and high-risk selectors.
-3. Add projections for simple/high-volume selectors.
-4. Add semantic lints in warn mode.
-5. Enable `audit --protocol <p> --strict` for one protocol.
+3. Add projections for simple/high-volume selectors once projection support exists.
+4. Add semantic lints in warn mode once lint support exists.
+5. Enable `audit --protocol <p> --strict` for one protocol once the audit CLI exists.
 6. Once a protocol has zero strict gaps, document it as strict-migrated.
 
 Existing corpus without `expect_body` is legacy-valid but not semantically complete. Treat it as coverage evidence, not correctness evidence.
@@ -582,7 +687,7 @@ A protocol is onboarded only when all of these are true:
 - `check:surface` has no failures for the protocol.
 - Every COVER selector has manifest or documented Tier B/Tier 3 implementation.
 - Every COVER selector has at least one semantic oracle:
-  - projection, or
+  - projection when implemented, or
   - `expect_body`, or
   - field-level Rust golden for cases that cannot be represented yet.
 - Every permission/value-bearing selector has a hand edge case.

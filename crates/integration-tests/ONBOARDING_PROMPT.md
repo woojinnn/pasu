@@ -11,18 +11,30 @@ ScopeBall 의 V3 ActionBody 디코드 경로에 <PROTOCOL> 를 온보딩하라.
 repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
 
 [작업 워크플로 — 먼저 셋업]
- · 온보딩은 양이 크고 다단계다. **새 worktree + 브랜치**에서 작업하라:
+ · 온보딩은 양이 크고 다단계다. **요청받은 worktree 에서 전용 브랜치를 먼저 만들고** 작업하라.
+   사용자가 온보딩용 worktree/cwd 를 지정했으면 그 안에서:
+   git switch -c feat/<PROTOCOL>-onboarding
+   (이미 있으면 git switch feat/<PROTOCOL>-onboarding)
+   사용자가 별도 worktree 를 지정하지 않았을 때만 새 worktree + 브랜치를 만든다:
    git worktree add -b feat/<PROTOCOL>-onboarding ../scopeball-<PROTOCOL> <base>
    (base = 현 온보딩 base 브랜치. 그 브랜치가 다른 worktree 에 점유/dirty 면 그 worktree 비접촉.)
-   완료·검증 후 base 로 머지(FF 가능하면 FF).
+   완료·검증 후에도 base/worktree 머지는 사용자가 명시적으로 요청할 때만 진행.
  · **각 phase(P0/P1/P2/P3/P4, 또는 더 잘게 컨트랙트·함수군별)가 끝나면 explicit-stage 커밋**
    (git add <파일>, git add -A 금지; 메시지 말미 Co-Authored-By). 중간 유실 방지 + 회귀 지점.
- · **sub-agent 적극 활용** — 한 세션에 다 못 담는다. fan-out 가능한 작업은 분할:
-   P0 컨트랙트별 research/discovery · P1 함수(selector)별 manifest · P2 소스별 corpus pull ·
-   surface snapshot per-contract. 메인 세션 = 종합·검증·게이트·커밋.
+ · P2 real-tx 시작 전 외부 데이터 lane 연결 확인:
+   Etherscan API/MCP(`ETHERSCAN_API_KEY`, `https://mcp.etherscan.io/mcp`) +
+   Dune MCP/API(`https://api.dune.com/mcp/v1`). 키는 로컬 설정만, repo commit 금지.
+ · **sub-agent / Claude Code 적극 활용** — 한 세션에 다 못 담는다. fan-out 가능한 작업은 분할:
+   P0 컨트랙트별 research/discovery · P0 token-surface research · P1 함수(selector)별 manifest ·
+   P1 Tier3/lowering/cedarschema review · P2 synthetic edge matrix · P2 소스별 corpus pull/verdict ·
+   P3 gap triage · surface snapshot per-contract. 메인 세션 = 종합·검증·게이트·커밋.
+   P0 외에도 새 ActionBody/Tier3, permission/fund-move selector, synthetic edge, real-tx verdict,
+   hard decoder gap 은 Claude Code 2nd-opinion 을 받아 union/diff 후 검증.
  · **sub-agent 프롬프트는 self-contained·디테일하게** (sub-agent 는 이 세션 컨텍스트 없음):
-   repo/branch/cwd/worktree 경로 + 읽을 문서 + 정확한 대상 파일·심볼·좌표 + 미러할 기존 선례
-   + 정확한 산출물·게이트 + 가드레일을 전부 embed. 면밀할수록 rework 가 준다.
+   repo/branch/cwd/worktree 경로 + phase/목표/non-goal + 읽을 문서 + 정확한 대상 파일·심볼·좌표
+   + 미러할 기존 선례 + 정확한 산출물·출력 포맷·게이트 + 가드레일(1차출처, 무관 churn 금지,
+   commit 금지, 불확실 항목은 unverified 표기)을 전부 embed. 결과는 candidate-only —
+   메인 세션이 실제 코드/1차출처/gate 로 검증 후 반영.
 
 [먼저 읽어라 — 인스트럭션, 방법론 1차 source-of-truth. 전부 crates/integration-tests/]
  1. PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md — protocol-agnostic completion model,
@@ -33,24 +45,34 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
                                          §8.6 self-check·§9 worked example
  4. ACTIONBODY_EXTENSION_GUIDE.md      — Tier3 확장(새 domain/action/live_field)
  5. registryV2/surface/README.md       — surface gate(I0/I1) + _deployments.json
+ 6. TOKEN_INVENTORY_GUIDE.md           — protocol token-surface / registryV2/tokens 작성
  읽고 큰 틀 파악 후 스스로 판단해 자율 실행(매 단계 confirm 요청 X).
  새 domain 같은 큰 설계만 ExitPlanMode 로 plan 1회 받고 자율 진행.
 
 [진행 P0→P4]
- P0 1차출처로 컨트랙트 인벤토리 전수. 현 Codex 세션 리서치 + Claude Code headless
+ P0 1차출처로 컨트랙트 인벤토리 + token-surface 전수. 현 Codex 세션 리서치 + Claude Code headless
     (`claude -p ... --add-dir <repo>`) 에 같은 P0 discovery prompt 병렬 실행 →
     union/diff 통합 → 1차출처 verify. surface/<PROTOCOL>/_deployments.json(I0) +
     <contract>.{abi,coverage}.json(I1~I3) → npm run check:surface PASS.
-    LLM 결과는 candidate-only, 1차 verify 필수.
+    LLM 결과는 candidate-only, 1차 verify 필수. 프로토콜이 LP/share/receipt/debt/governance/base token 을
+    만들거나 직접 다루면 TOKEN_INVENTORY_GUIDE.md 기준으로
+    registryV2/tokens/<chain>/<addr>.json 등록/보강. Curve 같은 pool-heavy 프로토콜은
+    covered pool 의 LP token + underlyings 를 포함하고, long-tail 제외분은 P0 로그에 명시.
  P1 함수마다 schema(§4a)→manifest(§4b)→engine(§4c)→enrich(§4d: 추상 단위면 환산 live_field).
+    Tier3 필요 시 ActionBody + effect/view/sync + lowering_v2 + cedarschema +
+    schema registration + conformance test 를 먼저 완성한 뒤 manifest 작성.
     npm run check:manifest.
  P2 synthetic fuzz(random 5000+ fixed seed) + hand edge synthesis(permission/value/nested/array/opcode)
-    + Etherscan bulk 최소 10,000 tx/protocol(10,000 API call 아님; txlist 최대 10k tx/call)
-    + Dune MCP calibration 후 Base/OP·cross-chain pinpoint(free 엔진 + partition WHERE).
+    + Etherscan API/MCP bulk 최소 10,000 tx/protocol(10,000 API call 아님; 현재 txlist 최대 10k tx/call,
+      2026-07-01 이후 Free tier 는 1k/request 예정이라 현재 docs 재확인)
+    + Dune MCP/API calibration 후 Base/OP·cross-chain pinpoint(free 엔진 + partition WHERE).
+    Etherscan/Dune 연결 없으면 P2 real-tx complete 선언 금지 — blocked_external_data 와 재실행 대상 기록.
     §5d 소스별 하한 준수. semantic-critical 필드는
-    PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK 기준으로 expect_body/projection/field-level golden 중 하나로 pin.
+    PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK 기준으로 expect_body 또는 field-level golden 으로 pin
+    (projection 은 하니스 구현 후 사용).
  P3 gap 분류→manifest/decoder/harness 처치→회귀(§6).
- P4 build-index → check:manifest → check:surface → cargo test --workspace 0 fail →
+ P4 build-index → registryV2 build-index vitest → check:manifest → check:surface →
+    v3-harness coverage/fuzz/corpus → cargo test --workspace 0 fail →
     wasm-build → clippy/fmt(변경 crate) → explicit-stage 커밋.
 
 [♻️ <PROTOCOL> 가 이미 온보딩돼 있으면] greenfield 아님 — 재검증:
@@ -64,5 +86,5 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  · 출력 한국어(기술용어 영어), 정직한 한계, 작업/결정에 sequential-thinking.
 
 산출: <PROTOCOL> manifest + (필요시)Tier3 + surface gate PASS + corpus/golden + workspace green.
- phase 별 커밋 + 완료 후 worktree 머지.
+ phase 별 커밋. 완료 후 worktree/base 머지는 사용자가 명시적으로 요청할 때만 진행.
 ```

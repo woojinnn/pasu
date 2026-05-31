@@ -1,6 +1,6 @@
 # ActionBody 확장 가이드 — 두 축 (domain / sub-action) recipe
 
-> `ActionBody` 를 확장하는 정규 절차. 1차 출처 = repo 코드 실측. (도메인 수는 늘어난다 — 현재 12: Token/Amm/Lending/Airdrop/Launchpad/Perp/LiquidStaking/Permission/Restaking/Staking + Multicall/Unknown. `grep -n "pub enum ActionBody" action/mod.rs` 재확인.)
+> `ActionBody` 를 확장하는 정규 절차. 1차 출처 = repo 코드 실측. 도메인 수는 늘어난다 — 작성 전 `grep -n "pub enum ActionBody" crates/simulation/reducer/src/action/mod.rs` 와 대상 `action/<domain>/mod.rs` 를 직접 재확인.
 > 참조 심볼은 `file 의 symbol` 형식 (line 번호는 갱신 시 stale 되므로 보조). 갱신 시 `grep` 으로 재확인.
 > 관련: 온보딩 방법론 spine = `PROTOCOL_ONBOARDING_AND_TESTING.md`(같은 디렉토리; 특히 §4d live_field enrichment 가 본 가이드 §2.5 를 cross-ref). (확장 제안 `SCHEMA_EXTENSION_PROPOSALS.md` · 통합 playbook `TIER_AB_PLAYBOOK.md` 는 gitignored `docs/` 에 있어 fresh clone 엔 없음 — optional.)
 
@@ -281,7 +281,7 @@ m.insert("expectedWsteth".into(), Value::String(u256_hex(action.live_inputs.expe
 
 ## 3. 축 1 — 새 domain 추가
 
-`OffchainExchange` domain (B.3 HyperLiquid deferred) 예. **각 sub-action 마다 축 2 의 ①~⑦ 를 반복** + 최상위 3곳:
+`OffchainExchange` 같은 새 off-chain venue domain 을 추가하는 가상 예. **각 sub-action 마다 축 2 의 ①~⑦ 를 반복** + 최상위 3곳:
 
 **⓪ domain enum 신규** · `action/offchain_exchange/mod.rs`
 ```rust
@@ -345,11 +345,11 @@ ActionBody::OffchainExchange(a) => super::offchain_exchange::lower(a, &ctx),   /
 
 ## 5. Decision rule — 언제 무엇을
 
-1. **기존 domain(현재 8: token/amm/lending/airdrop/launchpad/perp/liquid_staking/permission) 중 하나의 의미에 맞음 → sub-action.** (예: 신규 perp 주문 타입 → `PerpAction` variant.)
+1. **기존 domain(`action/mod.rs` 에서 현재 목록 직접 확인) 중 하나의 의미에 맞음 → sub-action.** (예: 신규 perp 주문 타입 → `PerpAction` variant.)
 2. **어디에도 안 맞고 구조화 가치 > 비용 → 새 domain.** Cedar policy 작성자에게 새 namespace 를 노출하는 큰 결정이므로 표현 이득이 분명할 때만.
-3. **가치 < 비용 또는 1차 출처 불충분 → `Unknown` + metadata 유지.** B.3 HyperLiquid 선례 (off-chain L1 action / perp order 가 8-domain 으로 faithful 표현 불가 → `$calldata` 보존한 `Unknown`, mislabel 회피). scope analyzer 로서 과장하지 않는 것이 정직.
+3. **가치 < 비용 또는 1차 출처 불충분 → `Unknown` + metadata 유지.** opaque/admin/출처 불충분 호출을 억지 domain 으로 포장하지 않는다. scope analyzer 로서 과장하지 않는 것이 정직하다. 단, 나중에 구조화 가치가 생겨 domain/action 이 추가되면 기존 `Unknown` corpus/manifest 는 새 action 으로 마이그레이션한다.
 
-> deferred 후보 (`SCHEMA_EXTENSION_PROPOSALS.md`): `OffchainExchange` domain (HyperLiquid REST L1 + bridge/staking/account ops) + perp `live_input_default` catalog (perp order 필드 채움). 둘 다 위 rule 2 의 "구조화 가치 > 비용" 재평가 후 진입.
+> deferred 후보 (`SCHEMA_EXTENSION_PROPOSALS.md`): 새 off-chain exchange domain, venue-specific live_input catalog 등. 둘 다 위 rule 2 의 "구조화 가치 > 비용" 재평가 후 진입.
 
 ## 6. 검증
 
