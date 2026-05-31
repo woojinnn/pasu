@@ -33,6 +33,8 @@ const REGISTRY_V2_ROOT = resolve(SCRIPTS_DIR, "..");
 const TSX_BIN = join(REGISTRY_V2_ROOT, "node_modules", ".bin", "tsx");
 
 const PERMIT2 = "0x000000000022d473030f116ddee9f6b43ac78ba3";
+const ERC20_TOKEN = "0x1111111111111111111111111111111111111111";
+const ERC721_TOKEN = "0x2222222222222222222222222222222222222222";
 
 interface RunResult {
   status: number;
@@ -77,10 +79,51 @@ function typedDataDir(root: string): string {
   return join(root, "index", "by-typed-data");
 }
 
+function callkeyDir(root: string): string {
+  return join(root, "index", "by-callkey");
+}
+
 function listTypedData(root: string): string[] {
   const dir = typedDataDir(root);
   if (!existsSync(dir)) return [];
   return readdirSync(dir).sort();
+}
+
+function listCallkeys(root: string): string[] {
+  const dir = callkeyDir(root);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).sort();
+}
+
+function writeToken(
+  root: string,
+  chainId: number,
+  address: string,
+  ercKind: "erc20" | "erc721" | "erc1155" | "native",
+  overrides: Record<string, unknown> = {},
+): void {
+  const dir = join(root, "tokens", String(chainId));
+  mkdirSync(dir, { recursive: true });
+  const lower = address.toLowerCase();
+  writeFileSync(
+    join(dir, `${lower}.json`),
+    JSON.stringify(
+      {
+        erc_kind: ercKind,
+        chainId,
+        address: lower,
+        symbol: "TEST",
+        decimals: ercKind === "erc20" ? 18 : 0,
+        name: "Test Token",
+        source: "https://example.invalid/test-token",
+        token_kind: { kind: "unknown" },
+        ...overrides,
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
 }
 
 /** A Permit2-shaped manifest: vc present in every chain_to_addresses entry. */
@@ -107,6 +150,32 @@ function permit2Manifest(overrides: Record<string, unknown> = {}): Record<string
             { name: "sigDeadline", type: "uint256" },
           ],
         },
+      },
+    },
+    emit: { strategy: "single_emit" },
+    ...overrides,
+  };
+}
+
+function erc20TransferManifest(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    type: "adapter_action",
+    id: "standard/erc20/transfer@1.0.0",
+    schema_version: "3",
+    match: {
+      selector: "0xa9059cbb",
+      chain_to_addresses_source: "tokens:erc20",
+      chain_ids: [1],
+    },
+    abi_fragment: {
+      function_name: "transfer",
+      abi: {
+        type: "function",
+        name: "transfer",
+        inputs: [
+          { name: "to", type: "address" },
+          { name: "amount", type: "uint256" },
+        ],
       },
     },
     emit: { strategy: "single_emit" },
@@ -317,6 +386,18 @@ describe("build-index by-typed-data emission", () => {
     );
   });
 
+  it("(8) rejects duplicate typed-data keys before overwrite", () => {
+    const manifestA = permit2Manifest({ id: "uniswap/permit2/a@1.0.0" });
+    const manifestB = permit2Manifest({ id: "uniswap/permit2/b@1.0.0" });
+    const root = track(scaffold({ "a.json": manifestA, "b.json": manifestB }));
+    const res = runBuild(root);
+
+    expect(res.status).not.toBe(0);
+    const combined = res.stderr + res.stdout;
+    expect(combined).toMatch(/duplicate typed-data index key/);
+    expect(combined).toMatch(/PermitSingle/);
+  });
+
   it("(4) emits NO by-typed-data entry when a manifest has no typed_data", () => {
     const plain = {
       type: "adapter_action",
@@ -334,7 +415,45 @@ describe("build-index by-typed-data emission", () => {
 
     // by-typed-data dir is created (wiped) but empty; by-callkey has the entry.
     expect(listTypedData(root)).toEqual([]);
-    const callkeyDir = join(root, "index", "by-callkey");
-    expect(readdirSync(callkeyDir).length).toBe(1);
+    expect(listCallkeys(root).length).toBe(1);
+  });
+});
+
+describe("build-index token source expansion", () => {
+  it("expands tokens:erc20 into concrete callkeys and strips source-only fields", () => {
+    const root = track(scaffold({ "transfer.json": erc20TransferManifest() }));
+    writeToken(root, 1, ERC20_TOKEN, "erc20", { symbol: "T20" });
+    writeToken(root, 1, ERC721_TOKEN, "erc721", { symbol: "NFT" });
+
+    const res = runBuild(root);
+    expect(res.status, `stderr:\n${res.stderr}`).toBe(0);
+
+    expect(listCallkeys(root)).toEqual([`1__${ERC20_TOKEN}__0xa9059cbb.json`]);
+
+    const entry = JSON.parse(
+      readFileSync(join(callkeyDir(root), `1__${ERC20_TOKEN}__0xa9059cbb.json`), "utf8"),
+    );
+    expect(entry.bundle.match.chain_to_addresses).toEqual({ "1": [ERC20_TOKEN] });
+    expect("chain_to_addresses_source" in entry.bundle.match).toBe(false);
+    expect("chain_ids" in entry.bundle.match).toBe(false);
+  });
+
+  it("rejects tokens:erc20 when the requested chain has no token directory", () => {
+    const root = track(scaffold({ "transfer.json": erc20TransferManifest() }));
+    const res = runBuild(root);
+
+    expect(res.status).not.toBe(0);
+    const combined = res.stderr + res.stdout;
+    expect(combined).toMatch(/tokens\/1\/ does not exist/);
+  });
+
+  it("rejects token metadata whose chainId disagrees with its directory", () => {
+    const root = track(scaffold({ "transfer.json": erc20TransferManifest() }));
+    writeToken(root, 1, ERC20_TOKEN, "erc20", { chainId: 8453 });
+
+    const res = runBuild(root);
+    expect(res.status).not.toBe(0);
+    const combined = res.stderr + res.stdout;
+    expect(combined).toMatch(/chainId field \(8453\) does not match directory \(1\)/);
   });
 });

@@ -27,7 +27,7 @@
  *
  *       // mode B — auto-enumerate from `tokens/<chainId>/<addr>.json`
  *       // (ERC20 / ERC721 / ERC1155 standard manifests)
- *       "chain_to_addresses_source": "tokens:erc20" | "tokens:erc721" | "tokens:erc1155",
+ *       "chain_to_addresses_source": "tokens:erc20" | "tokens:erc721" | "tokens:erc1155" | "tokens:native",
  *       "chain_ids": [<chainId>, ...]
  *     },
  *
@@ -506,7 +506,7 @@ function validateMatchShape(path: string, match: unknown): asserts match is Bund
       TOKEN_ERC_KINDS.has(parts[1] as TokenErcKind);
     const isProtocolSource = PROTOCOL_SOURCE_KINDS.has(sourceSpec as ProtocolSourceKind);
     if (!isTokenSource && !isProtocolSource) {
-      const tokenList = `"tokens:erc20" | "tokens:erc721" | "tokens:erc1155"`;
+      const tokenList = `"tokens:erc20" | "tokens:erc721" | "tokens:erc1155" | "tokens:native"`;
       const protocolList = Array.from(PROTOCOL_SOURCE_KINDS)
         .map((k) => `"${k}"`)
         .join(" | ");
@@ -855,6 +855,12 @@ async function main(): Promise<void> {
         for (const [chainKey] of pairs) {
           const chainId = Number(chainKey);
           const fname = typedDataFilename(chainId, td.verifying_contract, td.primary_type, td.witness_type);
+          const outPath = join(INDEX_BY_TYPED_DATA_DIR, fname);
+          if (safeExists(outPath)) {
+            throw new Error(
+              `manifests/: ${manifestPath} duplicate typed-data index key ${fname} — add witness_type or split the routing surface`,
+            );
+          }
           const entry: IndexEntry = {
             matched: true,
             bundle_id: resolved.id,
@@ -862,7 +868,7 @@ async function main(): Promise<void> {
             bundle_sha256: bundleSha256,
             bundle: resolved,
           };
-          writeFileSync(join(INDEX_BY_TYPED_DATA_DIR, fname), JSON.stringify(entry, null, 2) + "\n", "utf8");
+          writeFileSync(outPath, JSON.stringify(entry, null, 2) + "\n", "utf8");
           totalTypedDataEntries++;
         }
       }
