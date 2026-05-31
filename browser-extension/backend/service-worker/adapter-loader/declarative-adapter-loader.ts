@@ -112,6 +112,35 @@ export interface InstallDeclarativeV3Result {
   bundle: V3Bundle;
 }
 
+/**
+ * Phase A.1 — EIP-712 typed-data routing key. The 3-tuple
+ * `(chainId, verifyingContract, primaryType)` selects a manifest in the
+ * `by-typed-data/` index; the optional `witnessType` is the 4th routing-key
+ * segment that de-collides Permit2 `permitWitnessTransferFrom` orders
+ * (UniswapX intent orders etc. all share `(chain, Permit2, primaryType)`).
+ */
+export interface TypedDataMatchKey {
+  chainId: number;
+  /** EIP-712 `verifyingContract`, any case — normalised internally. */
+  verifyingContract: string;
+  /** EIP-712 `primaryType` discriminator. */
+  primaryType: string;
+  /** Optional 4th routing-key segment — the EIP-712 `witness` struct's type. */
+  witnessType?: string;
+}
+
+/**
+ * Result of {@link installDeclarativeBundleV3ByTypedData}. Flattened to a
+ * boolean + reason so the SW sig-router maps a miss to a transparent `null`
+ * fall-through (the orchestrator preserves the observability-only audit row).
+ * `bundleId` is present iff `ok`.
+ */
+export interface InstallDeclarativeV3ByTypedDataResult {
+  ok: boolean;
+  bundleId?: string;
+  reason?: string;
+}
+
 const DEFAULT_REGISTRY_BASE_URL =
   typeof process !== "undefined" && process.env?.REGISTRY_BASE_URL
     ? process.env.REGISTRY_BASE_URL
@@ -133,6 +162,30 @@ function v3CallkeyUrl(
 ): string {
   const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
   return `${base}/index/by-callkey/${chainId}__${to.toLowerCase()}__${selector.toLowerCase()}.json`;
+}
+
+function v3TypedDataCacheKey(key: TypedDataMatchKey): string {
+  const witnessSuffix =
+    key.witnessType !== undefined ? `__${key.witnessType}` : "";
+  return `td:${key.chainId}__${key.verifyingContract.toLowerCase()}__${key.primaryType}${witnessSuffix}`;
+}
+
+/**
+ * Build the `by-typed-data/` index URL. MUST mirror build-index's
+ * `typedDataFilename` byte-for-byte — `primaryType` / `witnessType` colons
+ * escaped to `__` (EIP-712 types like HyperLiquid's
+ * `HyperliquidTransaction:UsdSend`), `verifyingContract` lowercased, and the
+ * `witnessType` 4th segment omitted when absent — or the live SW 404s against
+ * the generated index file.
+ */
+function v3TypedDataUrl(baseUrl: string, key: TypedDataMatchKey): string {
+  const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  const ptEscaped = key.primaryType.replace(/:/g, "__");
+  let file = `${key.chainId}__${key.verifyingContract.toLowerCase()}__${ptEscaped}`;
+  if (key.witnessType !== undefined) {
+    file += `__${key.witnessType.replace(/:/g, "__")}`;
+  }
+  return `${base}/index/by-typed-data/${file}.json`;
 }
 
 /**
@@ -373,6 +426,133 @@ export async function installDeclarativeBundleV3(
 }
 
 const v3CachedBundleByCallKey = new Map<string, V3Bundle>();
+
+/**
+ * Phase A.1 — hydrate + install the v3 bundle for an EIP-712 typed-data key
+ * `(chainId, verifyingContract, primaryType[, witnessType])` so a subsequent
+ * `declarative_route_typed_data_v3_json` finds it. The install populates the
+ * WASM typed_data bridge the same `declarative_install_v3_json` call backs for
+ * the callkey path — there is no separate typed-data install primitive.
+ *
+ * Mirrors {@link installDeclarativeBundleV3} but fetches the `by-typed-data/`
+ * index (URL via {@link v3TypedDataUrl}) instead of `by-callkey/`, and returns
+ * a flattened `{ ok, bundleId?, reason? }` so the sig router treats ANY
+ * miss/fault as a `null` fall-through. A single bad publisher must not brick
+ * the sign path, so fetch / parse / install faults all return
+ * `{ ok: false, reason }` rather than throw. Memory cache only — a typed-data
+ * install is cheap to re-fetch on SW cold start and the WASM install is
+ * idempotent; the shared caches are reused under the `td:`-prefixed key so
+ * they cannot collide with the `v3:` callkey entries.
+ */
+export async function installDeclarativeBundleV3ByTypedData(
+  key: TypedDataMatchKey,
+  options: { baseUrl?: string; fetchImpl?: typeof fetch } = {},
+): Promise<InstallDeclarativeV3ByTypedDataResult> {
+  const cacheKey = v3TypedDataCacheKey(key);
+  const cached = v3InstallCache.get(cacheKey);
+  if (cached) {
+    console.info(
+      "[Scopeball] installDeclarativeBundleV3ByTypedData cache-hit",
+      {
+        typedDataKey: cacheKey,
+        bundleId: cached.bundle_id,
+        decoderId: cached.decoder_id,
+      },
+    );
+    return { ok: true, bundleId: cached.bundle_id };
+  }
+
+  const baseUrl = options.baseUrl ?? DEFAULT_REGISTRY_BASE_URL;
+  const doFetch = options.fetchImpl ?? fetch;
+  const url = v3TypedDataUrl(baseUrl, key);
+
+  let response: Response;
+  try {
+    response = await doFetch(url);
+  } catch (err) {
+    console.warn(
+      "[Scopeball] installDeclarativeBundleV3ByTypedData fetch failed",
+      {
+        typedDataKey: cacheKey,
+        message: err instanceof Error ? err.message : err,
+      },
+    );
+    return { ok: false, reason: "fetch_failed" };
+  }
+
+  if (response.status === 404) {
+    return { ok: false, reason: "manifest_not_found" };
+  }
+  if (!response.ok) {
+    return { ok: false, reason: `fetch_status_${response.status}` };
+  }
+
+  let parsedResponse: DeclarativeRegistryV3Response;
+  try {
+    parsedResponse = (await response.json()) as DeclarativeRegistryV3Response;
+  } catch (err) {
+    console.warn(
+      "[Scopeball] installDeclarativeBundleV3ByTypedData json parse failed",
+      {
+        typedDataKey: cacheKey,
+        message: err instanceof Error ? err.message : err,
+      },
+    );
+    return { ok: false, reason: "fetch_json_failed" };
+  }
+
+  if (!parsedResponse || parsedResponse.matched !== true) {
+    return { ok: false, reason: "manifest_not_found" };
+  }
+
+  let parsedBundle: V3Bundle | null;
+  try {
+    parsedBundle = parseBundleV3(parsedResponse.bundle);
+  } catch (err) {
+    if (err instanceof BundleParseError) {
+      console.warn(
+        "[Scopeball] installDeclarativeBundleV3ByTypedData parse failed",
+        { typedDataKey: cacheKey, message: err.message },
+      );
+      return { ok: false, reason: "parse_failed" };
+    }
+    throw err;
+  }
+  if (parsedBundle === null) {
+    return { ok: false, reason: "not_v3_bundle" };
+  }
+
+  const bundleJson = JSON.stringify(parsedResponse.bundle);
+  let installed: DeclarativeInstallResult;
+  try {
+    installed = await declarativeInstallV3(bundleJson);
+  } catch (err) {
+    console.warn(
+      "[Scopeball] installDeclarativeBundleV3ByTypedData install failed",
+      {
+        typedDataKey: cacheKey,
+        message: err instanceof Error ? err.message : err,
+      },
+    );
+    return { ok: false, reason: "install_failed" };
+  }
+
+  v3InstallCache.set(cacheKey, installed);
+  v3CachedBundleByCallKey.set(cacheKey, parsedBundle);
+  v3InstalledBundleIds.add(installed.bundle_id);
+
+  console.info(
+    "[Scopeball] installDeclarativeBundleV3ByTypedData fresh-install",
+    {
+      typedDataKey: cacheKey,
+      url,
+      bundleId: installed.bundle_id,
+      decoderId: installed.decoder_id,
+    },
+  );
+
+  return { ok: true, bundleId: installed.bundle_id };
+}
 
 /**
  * Test helper — drops the v3 install cache so successive vitest cases run
