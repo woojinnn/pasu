@@ -14,13 +14,21 @@ use crate::primitives::{Address, Decimal};
 /// A wallet's entire Hyperliquid L1 account state.
 ///
 /// `Default` is implemented manually (NOT derived) because [`Decimal`] does not
-/// derive `Default` — and a hand-written impl lets `perp_usdc` / `pending_outflow`
-/// default to a meaningful `"0"` rather than an empty string.
+/// derive `Default` — and a hand-written impl lets `pending_outflow` default to a
+/// meaningful `"0"` (rather than an empty string) while `perp_usdc` defaults to
+/// `None` (balance not yet synced).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct HlAccount {
     /// Perp-account USDC margin balance. Moves on withdraw / `usd_send` / fills.
-    pub perp_usdc: Decimal,
+    ///
+    /// `None` = balance not synced / unknown (what the reducer always produces
+    /// today, since HL account Sync is out of scope). `Some(x)` = a real synced
+    /// balance (only a future Sync layer sets this). The withdraw underflow guard
+    /// fires only on `Some`; an unsynced (`None`) account has no balance to check.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub perp_usdc: Option<Decimal>,
     /// Cumulative USDC outflow intent recorded by withdraw / `usd_send`, kept
     /// even when no base balance is known (so a no-fetch caller still sees it).
     pub pending_outflow: Decimal,
@@ -37,7 +45,7 @@ pub struct HlAccount {
 impl Default for HlAccount {
     fn default() -> Self {
         Self {
-            perp_usdc: Decimal::new("0"),
+            perp_usdc: None,
             pending_outflow: Decimal::new("0"),
             positions: Vec::new(),
             open_orders: Vec::new(),
@@ -123,7 +131,7 @@ mod tests {
     #[test]
     fn hl_account_round_trips_through_json() {
         let acct = HlAccount {
-            perp_usdc: Decimal::new("1000.5"),
+            perp_usdc: Some(Decimal::new("1000.5")),
             pending_outflow: Decimal::new("0"),
             positions: vec![HlPosition {
                 asset_index: 0,
@@ -163,9 +171,9 @@ mod tests {
     }
 
     #[test]
-    fn hl_account_default_is_zero_and_empty() {
+    fn hl_account_default_is_unsynced_and_empty() {
         let acct = HlAccount::default();
-        assert_eq!(acct.perp_usdc, Decimal::new("0"));
+        assert_eq!(acct.perp_usdc, None);
         assert_eq!(acct.pending_outflow, Decimal::new("0"));
         assert!(acct.positions.is_empty());
         assert!(acct.open_orders.is_empty());

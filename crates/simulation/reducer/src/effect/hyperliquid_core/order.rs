@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn order_on_existing_base_appends_open_order() {
         let base = HlAccount {
-            perp_usdc: Decimal::new("500"),
+            perp_usdc: Some(Decimal::new("500")),
             open_orders: vec![],
             ..HlAccount::default()
         };
@@ -141,6 +141,6 @@ mod tests {
         assert_eq!(acct.open_orders.len(), 1); // append landed
         assert_eq!(acct.open_orders[0].price, Decimal::new("60000"));
         assert!(!acct.open_orders[0].is_buy); // order(false)
-        assert_eq!(acct.perp_usdc, Decimal::new("500")); // merge, not replace
+        assert_eq!(acct.perp_usdc, Some(Decimal::new("500"))); // merge, not replace
     }
 }
