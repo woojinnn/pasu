@@ -1,4 +1,4 @@
-//! PositionChange — 한 포지션에 대한 Open/Update/Close.
+//! `PositionChange` — the Open/Update/Close delta applied to a single position.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -6,36 +6,36 @@ use tsify_next::Tsify;
 
 use crate::position::{Position, PositionId};
 
-/// 부분 갱신 패치. 필드별 변화를 JSON 으로 들고 다닌다 (variant 마다 다르므로).
+/// Partial-update patch carrying per-field changes as JSON (since the shape varies per change).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct PositionPatch {
-    /// 변경된 필드 path → 새 값. 예: `{ "health_factor.value": "0.762",
-    /// "collaterals[+]": [USDC, 1000] }`.
+    /// Map of changed field path to its new value.
+    /// e.g. { "`health_factor.value"`: "0.762", "collaterals[+]": [USDC, 1000] }
     #[tsify(type = "unknown")]
     pub fields: Value,
 }
 
-/// 한 포지션의 Open / Update / Close 이벤트.
+/// A change to a single position: opening a new one, updating an existing one, or closing one.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PositionChange {
-    /// 신규 포지션 추가.
+    /// A new position was opened.
     Open {
-        /// 추가될 포지션 전체.
+        /// The full position being opened.
         position: Position,
     },
-    /// 기존 포지션 부분 갱신.
+    /// An existing position was modified.
     Update {
-        /// 갱신될 포지션 식별자.
+        /// Identifier of the position being updated.
         id: PositionId,
-        /// 변경된 필드 / 새 값.
+        /// Patch describing the changed fields and their new values.
         patch: PositionPatch,
     },
-    /// 기존 포지션 종료.
+    /// An existing position was closed.
     Close {
-        /// 닫을 포지션 식별자.
+        /// Identifier of the position being closed.
         id: PositionId,
     },
 }

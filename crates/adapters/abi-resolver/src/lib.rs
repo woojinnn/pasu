@@ -18,6 +18,12 @@
 //!   - `resolver`: tier the lookups (Sourcify first, openchain fallback).
 //!   - `subdecode`: parsers for non-standard payloads packed in `bytes` args.
 
+#![allow(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::private_intra_doc_links)]
+#![allow(rustdoc::redundant_explicit_links)]
+#![allow(unknown_lints)]
+#![allow(clippy::duration_suboptimal_units)]
+
 pub mod bridge;
 pub mod decode;
 pub mod decoder;

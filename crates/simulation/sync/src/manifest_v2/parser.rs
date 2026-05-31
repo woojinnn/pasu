@@ -1,4 +1,4 @@
-//! V2 manifest 의 `live_inputs` JSON → 우리 LiveField source 모양.
+//! V2 manifest 의 `live_inputs` JSON → 우리 `LiveField` source 모양.
 //!
 //! 파싱은 두 단계:
 //! 1. `live_inputs` 안 각 슬롯의 source 를 JSON 그대로 들고 옴 ([`LiveInputSpec`])
@@ -54,7 +54,7 @@ pub fn parse_live_inputs(manifest_subtree: &Value) -> Result<LiveInputsSpec, Syn
         let spec: LiveInputSpec =
             serde_json::from_value(slot_json.clone()).map_err(|e| SyncError::FetchFailed {
                 source_id: "manifest_v2".into(),
-                reason: format!("live_inputs[{}] parse: {}", slot_name, e),
+                reason: format!("live_inputs[{slot_name}] parse: {e}"),
             })?;
         out.insert(slot_name.clone(), spec);
     }
@@ -113,7 +113,7 @@ mod tests {
     fn missing_live_inputs_errors() {
         let manifest = json!({ "match": {}, "abi_fragment": {} });
         let err = parse_live_inputs(&manifest).unwrap_err();
-        let msg = format!("{}", err);
+        let msg = format!("{err}");
         assert!(msg.contains("missing 'live_inputs'"));
     }
 
@@ -121,6 +121,6 @@ mod tests {
     fn live_inputs_not_object_errors() {
         let manifest = json!({ "live_inputs": [] });
         let err = parse_live_inputs(&manifest).unwrap_err();
-        assert!(format!("{}", err).contains("not an object"));
+        assert!(format!("{err}").contains("not an object"));
     }
 }

@@ -1,14 +1,14 @@
-//! SQLite Connection wrapper.
+//! `SQLite` Connection wrapper.
 //!
 //! Phase 1 에서는 진짜 connection pool 이 아니라 `Arc<Mutex<Connection>>` 한 개.
-//! 사용자당 1 DB 라 동시 writer 가 1명이고, SQLite WAL mode 가 다중 reader 를
+//! 사용자당 1 DB 라 동시 writer 가 1명이고, `SQLite` WAL mode 가 다중 reader 를
 //! lock 없이 처리하므로 단일 connection 으로 충분하다.
 //!
 //! `Pool::open` 시:
 //! 1. 부모 디렉토리 자동 생성
 //! 2. WAL mode 활성화
-//! 3. foreign_keys ON
-//! 4. busy_timeout 5초 (다른 process 가 잡고 있어도 잠시 대기)
+//! 3. `foreign_keys` ON
+//! 4. `busy_timeout` 5초 (다른 process 가 잡고 있어도 잠시 대기)
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -82,6 +82,7 @@ impl Pool {
 
     /// `BEGIN IMMEDIATE` 트랜잭션 하나 잡고 closure 실행.
     /// closure 가 `Ok` 반환 → `COMMIT`, `Err` 반환 → `ROLLBACK`.
+    #[allow(clippy::significant_drop_tightening)] // guard 는 tx 끝까지 살아있어야 함
     pub fn with_tx<R>(&self, f: impl FnOnce(&Transaction<'_>) -> DbResult<R>) -> DbResult<R> {
         let mut guard = self.conn.lock().expect("pool mutex poisoned");
         let tx = guard.transaction()?;

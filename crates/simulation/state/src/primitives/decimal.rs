@@ -1,34 +1,37 @@
-//! 숫자 타입 alias.
+//! Numeric type aliases.
 //!
-//! - `U256`, `I256` 는 alloy-primitives 그대로.
-//! - `Decimal` 은 가격/비율/HF/leverage 등 소수가 필요한 곳에 사용. 현재는 문자열로
-//!   표현 (uint256 의 정밀도와 소수 양쪽을 안전하게 다루기 위해). 후속에서
-//!   `rust_decimal` 등으로 교체 가능.
-//! - `Price` 는 의미적 alias (값 자체는 Decimal).
+//! - `U256`, `I256` are re-exported as-is from alloy-primitives.
+//! - `Decimal` is used wherever fractional values are needed, such as prices,
+//!   ratios, health factor, and leverage. It is currently represented as a
+//!   string so that both uint256 precision and decimal fractions can be handled
+//!   safely; it may later be swapped for something like `rust_decimal`.
+//! - `Price` is a semantic alias (the underlying value is a `Decimal`).
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 pub use alloy_primitives::{I256 as SignedI256, U128, U256};
 
-/// 소수 표기를 안전하게 다루기 위한 newtype. 내부는 decimal-문자열.
+/// Newtype for safely handling decimal notation; internally a decimal string.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(transparent)]
 pub struct Decimal(pub String);
 
 impl Decimal {
-    /// 임의 문자열로부터 `Decimal` 생성. 호출자가 decimal 표기인지 보증.
+    /// Creates a `Decimal` from any value convertible into a `String`.
     pub fn new(s: impl Into<String>) -> Self {
         Self(s.into())
     }
 
-    /// 0 을 표현하는 `Decimal`.
+    /// Returns the `Decimal` representing zero (`"0"`).
+    #[must_use]
     pub fn zero() -> Self {
         Self("0".into())
     }
 
-    /// 내부 decimal 문자열에 대한 borrow.
+    /// Borrows the underlying decimal string.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -52,11 +55,11 @@ impl std::fmt::Display for Decimal {
     }
 }
 
-/// 가격 — Decimal alias. denom 은 별도로 명시 필요.
+/// Price — alias for `Decimal`. The denomination must be specified separately.
 pub type Price = Decimal;
 
-/// basis point (1bp = 0.01%). u32 면 충분.
+/// Basis points (1 bp = 0.01%); `u32` is wide enough.
 pub type BasisPoints = u32;
 
-/// fee tier 등 부호 없는 비율 표기.
+/// Unsigned ratio notation, e.g. for fee tiers.
 pub type Weight = u32;

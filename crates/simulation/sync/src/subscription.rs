@@ -1,6 +1,6 @@
 //! WebSocket subscription 스켈레톤 — 효율 ↑ 의 운영 단계 옵션.
 //!
-//! Polling 기반 sync 가 자리잡은 후, 핵심 LiveField (블록 헤드, mark_price 등) 만
+//! Polling 기반 sync 가 자리잡은 후, 핵심 `LiveField` (블록 헤드, `mark_price` 등) 만
 //! subscription 으로 업그레이드 → RPC 호출 50-80% 절감.
 //!
 //! 본 모듈은 trait + dummy poll 기반 impl + 미래의 WebSocket impl 의 자리만 잡음.
@@ -48,10 +48,11 @@ pub struct PollingBlockSubscription {
     interval: Duration,
     last_seen: Option<u64>,
     rx: mpsc::Receiver<NewBlock>,
-    _task: tokio::task::JoinHandle<()>,
+    task: tokio::task::JoinHandle<()>,
 }
 
 impl PollingBlockSubscription {
+    #[must_use]
     pub fn new(router: Arc<RpcRouter>, chain: ChainId, interval: Duration) -> Self {
         let (tx, rx) = mpsc::channel::<NewBlock>(16);
         let r = router.clone();
@@ -86,7 +87,7 @@ impl PollingBlockSubscription {
             interval,
             last_seen: None,
             rx,
-            _task: task,
+            task,
         }
     }
 }
@@ -97,7 +98,7 @@ impl BlockSubscription for PollingBlockSubscription {
         self.rx.recv().await
     }
     fn stop(&mut self) {
-        self._task.abort();
+        self.task.abort();
     }
 }
 
@@ -105,7 +106,7 @@ impl BlockSubscription for PollingBlockSubscription {
 ///
 /// 동작 예정:
 /// 1. provider 가 `ws: true` 인 endpoint 와 `eth_subscribe newHeads`
-/// 2. 새 헤드 도착 시 NewBlock 채널로 push
+/// 2. 새 헤드 도착 시 `NewBlock` 채널로 push
 /// 3. WebSocket 끊김 시 자동 재연결
 ///
 /// 의존성: `tokio-tungstenite` 또는 `alloy-provider`. 둘 다 추가 build cost 가
@@ -125,9 +126,9 @@ impl WsBlockSubscription {
     }
 }
 
-/// 미사용 필드 경고 회피 — 후속에서 의존 router/chain/interval/last_seen 사용 예정.
+/// 미사용 필드 경고 회피 — 후속에서 의존 `router/chain/interval/last_seen` 사용 예정.
 #[allow(dead_code)]
-fn _polling_fields_marker(s: &PollingBlockSubscription) {
+const fn _polling_fields_marker(s: &PollingBlockSubscription) {
     let _ = (&s.router, &s.chain, s.interval, s.last_seen);
 }
 

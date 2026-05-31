@@ -16,7 +16,7 @@ pub struct UserProfile {
     pub created_at: i64,
 }
 
-/// 새 user_profile 을 INSERT. 이미 있으면 [`DbError::Invariant`].
+/// 새 `user_profile` 을 INSERT. 이미 있으면 [`DbError::Invariant`].
 pub fn insert(tx: &Transaction<'_>, p: &UserProfile) -> DbResult<()> {
     let settings_str = serde_json::to_string(&p.settings)?;
     let res = tx.execute(
@@ -44,7 +44,7 @@ pub fn insert(tx: &Transaction<'_>, p: &UserProfile) -> DbResult<()> {
     }
 }
 
-/// user_profile 이 있으면 UPDATE, 없으면 INSERT.
+/// `user_profile` 이 있으면 UPDATE, 없으면 INSERT.
 pub fn upsert(tx: &Transaction<'_>, p: &UserProfile) -> DbResult<()> {
     let settings_str = serde_json::to_string(&p.settings)?;
     tx.execute(
@@ -66,7 +66,7 @@ pub fn upsert(tx: &Transaction<'_>, p: &UserProfile) -> DbResult<()> {
     Ok(())
 }
 
-/// 단일 user_profile row 를 가져옴. 없으면 None.
+/// 단일 `user_profile` row 를 가져옴. 없으면 None.
 pub fn get(tx: &Transaction<'_>) -> DbResult<Option<UserProfile>> {
     let mut stmt = tx.prepare(
         "SELECT user_id, email, display_name, settings_json, created_at \

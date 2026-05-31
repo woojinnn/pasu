@@ -1,6 +1,6 @@
-//! `DerivedFrom` LiveField 의 계산 함수 등록부.
+//! `DerivedFrom` `LiveField` 의 계산 함수 등록부.
 //!
-//! 각 `calc_id` 마다 함수 하나. 입력은 `FieldRef` 가 가리키는 다른 LiveField 들의
+//! 각 `calc_id` 마다 함수 하나. 입력은 `FieldRef` 가 가리키는 다른 `LiveField` 들의
 //! 현재 값 (또는 state 의 직접 필드), 출력은 새 value.
 //!
 //! 위상정렬은 `topo` 모듈이 담당 — 여기는 단순 함수 registry.
@@ -13,14 +13,14 @@ use simulation_state::WalletState;
 
 use crate::error::SyncError;
 
-/// 한 calc 호출의 컨텍스트 — DerivedFrom 의 inputs 값들을 미리 resolve 한 결과 +
+/// 한 calc 호출의 컨텍스트 — `DerivedFrom` 의 inputs 값들을 미리 resolve 한 결과 +
 /// 전체 state (필요 시 직접 참조).
 pub struct CalcContext<'a> {
     pub state: &'a WalletState,
     pub inputs: Vec<Value>,
 }
 
-pub type CalcFn = fn(&CalcContext) -> Result<Value, SyncError>;
+pub type CalcFn = fn(&CalcContext<'_>) -> Result<Value, SyncError>;
 
 #[derive(Default)]
 pub struct CalcRegistry {
@@ -28,6 +28,7 @@ pub struct CalcRegistry {
 }
 
 impl CalcRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -44,7 +45,7 @@ impl CalcRegistry {
         self.by_id.insert(id.to_string(), f);
     }
 
-    pub fn run(&self, calc_id: &str, ctx: &CalcContext) -> Result<Value, SyncError> {
+    pub fn run(&self, calc_id: &str, ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
         let f = self
             .by_id
             .get(calc_id)
@@ -53,8 +54,9 @@ impl CalcRegistry {
         f(ctx)
     }
 
+    #[must_use]
     pub fn known_ids(&self) -> Vec<&str> {
-        self.by_id.keys().map(|s| s.as_str()).collect()
+        self.by_id.keys().map(std::string::String::as_str).collect()
     }
 }
 
@@ -68,7 +70,7 @@ impl CalcRegistry {
 ///   2: liquidation threshold (0..1), decimal-string
 ///
 /// 결과: HF decimal-string. debt 가 0 이면 매우 큰 값 ("1e18").
-fn aave_hf(ctx: &CalcContext) -> Result<Value, SyncError> {
+fn aave_hf(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
     if ctx.inputs.len() < 3 {
         return Err(SyncError::DeriveFailed {
             calc_id: "aave_hf".into(),
@@ -87,10 +89,10 @@ fn aave_hf(ctx: &CalcContext) -> Result<Value, SyncError> {
     Ok(Value::String(format_decimal(hf)))
 }
 
-/// Perp unrealized PnL = (mark - entry) * size * side_sign
+/// Perp unrealized `PnL` = (mark - entry) * size * `side_sign`
 ///
 /// inputs: 0=entry, 1=mark, 2=size, 3=side ("long" | "short")
-fn perp_pnl(ctx: &CalcContext) -> Result<Value, SyncError> {
+fn perp_pnl(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
     if ctx.inputs.len() < 4 {
         return Err(SyncError::DeriveFailed {
             calc_id: "perp_pnl".into(),
@@ -107,10 +109,10 @@ fn perp_pnl(ctx: &CalcContext) -> Result<Value, SyncError> {
     Ok(Value::String(format_decimal(pnl)))
 }
 
-/// 청산가 = entry * (1 - 1/leverage * maintenance_factor)
+/// 청산가 = entry * (1 - 1/leverage * `maintenance_factor`)
 ///
-/// inputs: 0=entry, 1=leverage, 2=maintenance_factor (보통 0.95), 3=side
-fn perp_liq_price(ctx: &CalcContext) -> Result<Value, SyncError> {
+/// inputs: 0=entry, 1=leverage, `2=maintenance_factor` (보통 0.95), 3=side
+fn perp_liq_price(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
     if ctx.inputs.len() < 4 {
         return Err(SyncError::DeriveFailed {
             calc_id: "perp_liq_price".into(),
@@ -128,7 +130,7 @@ fn perp_liq_price(ctx: &CalcContext) -> Result<Value, SyncError> {
             reason: "leverage cannot be 0".into(),
         });
     }
-    let factor = 1.0 - (1.0 / leverage) * maint;
+    let factor = (1.0 / leverage).mul_add(-maint, 1.0);
     let liq = if side == "short" {
         entry * (2.0 - factor)
     } else {
@@ -143,15 +145,15 @@ fn parse_decimal_f64(v: &Value, name: &str) -> Result<f64, SyncError> {
     match v {
         Value::String(s) => s.parse::<f64>().map_err(|e| SyncError::DeriveFailed {
             calc_id: "calc".into(),
-            reason: format!("{}: parse f64 from '{}': {}", name, s, e),
+            reason: format!("{name}: parse f64 from '{s}': {e}"),
         }),
         Value::Number(n) => n.as_f64().ok_or_else(|| SyncError::DeriveFailed {
             calc_id: "calc".into(),
-            reason: format!("{}: number not convertible to f64", name),
+            reason: format!("{name}: number not convertible to f64"),
         }),
         _ => Err(SyncError::DeriveFailed {
             calc_id: "calc".into(),
-            reason: format!("{}: expected number or string", name),
+            reason: format!("{name}: expected number or string"),
         }),
     }
 }
@@ -159,10 +161,10 @@ fn parse_decimal_f64(v: &Value, name: &str) -> Result<f64, SyncError> {
 fn format_decimal(v: f64) -> String {
     if v.abs() >= 1e15 {
         // 매우 큰 값 — 과학표기 회피하지 않음.
-        format!("{:e}", v)
+        format!("{v:e}")
     } else {
         // 너무 짧으면 정수, 아니면 소수 8 자리까지 trim.
-        let s = format!("{:.8}", v);
+        let s = format!("{v:.8}");
         trim_trailing_zeros(&s).to_string()
     }
 }
@@ -212,7 +214,7 @@ mod tests {
         };
         let v = aave_hf(&ctx).unwrap();
         if let Value::String(s) = v {
-            assert!(s.starts_with("1e18") || s.contains("e"));
+            assert!(s.starts_with("1e18") || s.contains('e'));
         } else {
             panic!("expected string");
         }
@@ -254,7 +256,7 @@ mod tests {
     fn registry_known_ids() {
         let r = CalcRegistry::with_builtins();
         let mut ids = r.known_ids();
-        ids.sort();
+        ids.sort_unstable();
         assert_eq!(ids, vec!["aave_hf", "perp_liq_price", "perp_pnl"]);
     }
 

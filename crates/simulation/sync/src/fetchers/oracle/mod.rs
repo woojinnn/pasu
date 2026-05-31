@@ -1,8 +1,8 @@
 //! Oracle provider 별 구현.
 //!
-//! 공통 인터페이스 [`PriceFetcher`] 를 두고, on-chain (Chainlink, RedStone proxy 등)
-//! 과 off-chain REST ([`RestJsonOracleFetcher`] — CoinGecko / Pyth Hermes /
-//! CoinMarketCap 등) 가 모두 같은 trait 을 impl 한다.
+//! 공통 인터페이스 [`PriceFetcher`] 를 두고, on-chain (Chainlink, `RedStone` proxy 등)
+//! 과 off-chain REST ([`RestJsonOracleFetcher`] — `CoinGecko` / Pyth Hermes /
+//! `CoinMarketCap` 등) 가 모두 같은 trait 을 impl 한다.
 //!
 //! Orchestrator 는 `HashMap<provider_name, Arc<dyn PriceFetcher>>` 로 dispatch
 //! 하므로, 새 REST provider 추가는 `scopeball-sync.toml` 의
@@ -29,7 +29,7 @@ pub trait PriceFetcher: Send + Sync {
     async fn fetch_price(&self, source: &DataSource) -> Result<Decimal, SyncError>;
 }
 
-/// `OracleProvider` enum 을 dispatch HashMap 의 키로 쓸 수 있도록 정규화한다.
+/// `OracleProvider` enum 을 dispatch `HashMap` 의 키로 쓸 수 있도록 정규화한다.
 ///
 /// - `Chainlink` → `"chainlink"`
 /// - `Pyth`      → `"pyth"`

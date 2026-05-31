@@ -10,8 +10,9 @@
 pub use alloy_primitives::Address;
 
 /// "0x...40hex" lowercase 문자열로 정규화한다.
+#[must_use]
 pub fn lowercase_hex(addr: &Address) -> String {
-    format!("{:#x}", addr)
+    format!("{addr:#x}")
 }
 
 /// spender 는 의미상 Address 와 같지만, approval 컨텍스트에서 명시적으로 구분.

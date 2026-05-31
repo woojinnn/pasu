@@ -61,8 +61,9 @@ pub struct PendingLifecycle {
 }
 
 impl PendingLifecycle {
-    /// committed 합산에 들어가는 활성 상태인지.
-    pub fn is_active_or_partial(&self) -> bool {
+    /// Whether the status counts toward committed totals (active or partially filled).
+    #[must_use]
+    pub const fn is_active_or_partial(&self) -> bool {
         matches!(
             self.status,
             PendingStatus::Active | PendingStatus::PartiallyFilled

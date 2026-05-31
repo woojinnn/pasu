@@ -31,8 +31,9 @@ pub mod token;
 
 // ─────────────────────── walk 진입점 ───────────────────────
 
-/// `action` 안의 stale LiveField 들 수집. 단일 액션이면 action_index=0,
+/// `action` 안의 stale `LiveField` 들 수집. 단일 액션이면 `action_index=0`,
 /// `Multicall` 자식들은 0..N 순서로 부여.
+#[must_use]
 pub fn walk_action_stale(action: &Action, now: Time) -> (Vec<StaleField>, WalkStats) {
     let mut stale = Vec::new();
     let mut stats = WalkStats::default();
@@ -56,6 +57,9 @@ fn walk_body(
         ActionBody::Perp(p) => perp::walk(p, action_index, now, stale, stats),
         ActionBody::LiquidStaking(ls) => liquid_staking::walk(ls, action_index, now, stale, stats),
         ActionBody::Permission(p) => permission::walk(p, action_index, now, stale, stats),
+        // Hyperliquid CORE actions carry NO live inputs (they are self-describing
+        // order/transfer intents), so there is nothing to refresh — like Unknown.
+        ActionBody::HyperliquidCore(_) => {}
         ActionBody::Multicall { actions } => {
             for (i, child) in actions.iter().enumerate() {
                 walk_body(child, i, now, stale, stats);
@@ -67,7 +71,7 @@ fn walk_body(
 
 // ─────────────────────── apply 진입점 ───────────────────────
 
-/// fetched `value` 를 Action 의 해당 LiveField 슬롯에 in-place 로 적용.
+/// fetched `value` 를 Action 의 해당 `LiveField` 슬롯에 in-place 로 적용.
 /// `slot` variant 별 dispatch. 알 수 없는 슬롯이거나 값 형식 mismatch 면 no-op.
 pub fn apply_value_to_action(
     action: &mut Action,
@@ -91,7 +95,10 @@ pub fn apply_value_to_action(
         ActionBody::Perp(p) => perp::apply(p, slot, value, now),
         ActionBody::Permission(p) => permission::apply(p, slot, value, now),
         ActionBody::LiquidStaking(ls) => liquid_staking::apply(ls, slot, value, now),
-        ActionBody::Multicall { .. } | ActionBody::Unknown { .. } => {}
+        // No live inputs on Hyperliquid CORE actions → nothing to apply.
+        ActionBody::HyperliquidCore(_)
+        | ActionBody::Multicall { .. }
+        | ActionBody::Unknown { .. } => {}
     }
 }
 

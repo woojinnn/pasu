@@ -3,16 +3,16 @@
 //!
 //! ## Two coexisting forms
 //!
-//! 1. **snake_case bare action name** — used internally by composer /
-//!    manifest_fragment paths. `REGISTERED_ACTIONS` is the Phase 1 action set
-//!    derived from `ActionBody`'s domain enums.
+//! 1. **`snake_case` bare action name** — used internally by composer /
+//!    `manifest_fragment` paths. `REGISTERED_ACTIONS` is the Phase 1 action set
+//!    derived from `ActionBody`'s domain enums (59 entries).
 //!
 //! 2. **`<Namespace>::<PascalCaseAction>`** — the fully-qualified Cedar action
 //!    id under the namespace migration. Composed via [`namespace_action_id`].
 //!    The Cedar context type id is `<Namespace>::<PascalCase>Context` via
 //!    [`namespace_context_type_id`].
 //!
-//! The composer/manifest_fragment paths continue to operate on bare PascalCase
+//! The `composer/manifest_fragment` paths continue to operate on bare `PascalCase`
 //! type names (e.g. `SwapCustomContext`) — text search in the concatenated
 //! `base_schema_text()` finds them inside their namespace block. Migrating
 //! those paths to namespace-qualified ids is tracked as follow-up work.
@@ -38,7 +38,7 @@ pub fn snake_to_pascal(s: &str) -> String {
 }
 
 /// Compose a fully-qualified Cedar action id (`<Namespace>::<PascalCaseAction>`)
-/// from a snake_case namespace / action pair.
+/// from a `snake_case` namespace / action pair.
 ///
 /// ```
 /// # use policy_engine::schema::action_name::namespace_action_id;
@@ -51,7 +51,7 @@ pub fn namespace_action_id(domain: &str, action: &str) -> String {
     format!("{}::{}", snake_to_pascal(domain), snake_to_pascal(action))
 }
 
-/// Compose the bare PascalCase context type name for an action
+/// Compose the bare `PascalCase` context type name for an action
 /// (`<PascalCase>Context`). For the fully-qualified Cedar id including the
 /// namespace prefix, use [`namespace_context_type_id`].
 #[must_use]
@@ -69,7 +69,7 @@ pub fn namespace_context_type_id(domain: &str, action: &str) -> String {
     )
 }
 
-/// Phase 1 snake_case action set — produced by `ActionBody`'s
+/// Phase 1 `snake_case` action set (59 entries) — produced by `ActionBody`'s
 /// domain enums. Each maps to a `.cedarschema` file under
 /// `schema/policy-schema/actions/{token,amm,lending,airdrop,launchpad,perp,permission}/`
 /// and to a Cedar action id `<Namespace>::<PascalCase>` (via
@@ -138,6 +138,13 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "permit2_approve",
     "permit2_sign_allowance",
     "revoke_approval",
+    // HyperliquidCore (5) — thin off-chain L1 action model. `hl_`-prefixed so
+    // the tags stay globally unique (e.g. `withdraw` already exists in Lending).
+    "hl_order",
+    "hl_update_leverage",
+    "hl_withdraw",
+    "hl_usd_send",
+    "hl_approve_agent",
 ];
 
 #[cfg(test)]
@@ -189,8 +196,8 @@ mod tests {
     #[test]
     fn registry_size_matches_phase1() {
         // 2 Core + 2 Airdrop + 6 Amm + 12 Lending + 6 LiquidStaking + 5 Launchpad
-        // + 11 Perp + 9 Token + 1 Permission = 54.
-        assert_eq!(REGISTERED_ACTIONS.len(), 54);
+        // + 11 Perp + 1 Permission + 9 Token + 5 HyperliquidCore = 59.
+        assert_eq!(REGISTERED_ACTIONS.len(), 59);
     }
 
     #[test]

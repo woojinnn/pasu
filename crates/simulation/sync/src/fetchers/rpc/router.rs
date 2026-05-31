@@ -18,7 +18,7 @@ use super::providers::PublicRpcProvider;
 use super::{BlockTag, EthCallRequest, RpcProvider};
 use crate::error::SyncError;
 
-/// 한 RpcRouter 는 여러 chain × 여러 provider 를 모두 관할.
+/// 한 `RpcRouter` 는 여러 chain × 여러 provider 를 모두 관할.
 pub struct RpcRouter {
     /// chain → priority 순 provider 목록.
     by_chain: BTreeMap<ChainId, Vec<Arc<dyn RpcProvider>>>,
@@ -35,6 +35,7 @@ impl std::fmt::Debug for RpcRouter {
                 "multicall_chains",
                 &self.multicall.keys().collect::<Vec<_>>(),
             )
+            .field("health", &"<HealthTracker>")
             .finish()
     }
 }
@@ -67,6 +68,7 @@ impl RpcRouter {
         })
     }
 
+    #[must_use]
     pub fn multicall_addr(&self, chain: &ChainId) -> Option<Address> {
         self.multicall.get(chain).copied()
     }
@@ -92,7 +94,7 @@ impl RpcRouter {
             .get(chain)
             .ok_or_else(|| SyncError::FetchFailed {
                 source_id: "router".into(),
-                reason: format!("no providers for chain {}", chain),
+                reason: format!("no providers for chain {chain}"),
             })?;
 
         let mut last_err: Option<SyncError> = None;
@@ -114,7 +116,7 @@ impl RpcRouter {
         }
         Err(last_err.unwrap_or_else(|| SyncError::FetchFailed {
             source_id: "router".into(),
-            reason: format!("all providers failed for chain {}", chain),
+            reason: format!("all providers failed for chain {chain}"),
         }))
     }
 
@@ -155,6 +157,19 @@ impl RpcRouter {
             .await
     }
 
+    pub async fn eth_get_transaction_receipt(
+        &self,
+        chain: &ChainId,
+        tx_hash: &str,
+    ) -> Result<Option<super::TxReceipt>, SyncError> {
+        let hash = tx_hash.to_string();
+        self.try_all(chain, move |p| {
+            let h = hash.clone();
+            async move { p.eth_get_transaction_receipt(&h).await }
+        })
+        .await
+    }
+
     /// 안 healthy 한 provider 까지 한 번씩 강제 ping. cron 으로 호출.
     pub async fn health_sweep(&self) -> Vec<(String, Result<(), SyncError>)> {
         let mut results = Vec::new();
@@ -181,7 +196,7 @@ fn instantiate_provider(
         // "quicknode" => Ok(Arc::new(QuickNodeProvider::new(...))),
         other => Err(SyncError::FetchFailed {
             source_id: "router".into(),
-            reason: format!("unknown provider kind: {}", other),
+            reason: format!("unknown provider kind: {other}"),
         }),
     }
 }
@@ -224,7 +239,7 @@ priority = 1
 "#;
         let cfg = RpcConfig::load_str(toml_text).unwrap();
         let err = RpcRouter::from_config(cfg).unwrap_err();
-        let msg = format!("{}", err);
+        let msg = format!("{err}");
         assert!(msg.contains("unknown provider kind"));
     }
 }

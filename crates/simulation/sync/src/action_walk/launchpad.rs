@@ -1,7 +1,7 @@
 //! Launchpad 도메인 walk + apply.
 //!
-//! Wired: Commit (4), ClaimAllocation (3), ClaimVested (2), Refund (2),
-//!        WithdrawCommit (2). 총 13 slots.
+//! Wired: Commit (4), `ClaimAllocation` (3), `ClaimVested` (2), Refund (2),
+//!        `WithdrawCommit` (2). 총 13 slots.
 
 use serde_json::Value;
 

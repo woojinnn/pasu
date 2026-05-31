@@ -1,4 +1,4 @@
-//! OnchainView fetcher — `DataSource::OnchainView` 처리.
+//! `OnchainView` fetcher — `DataSource::OnchainView` 처리.
 //!
 //! 한 번 호출:  `eth_call(contract, function, args)` → decoder 로 풀기 → Value
 //! 배치 호출:   Multicall3 의 `aggregate3` 로 N 개를 1 RPC 호출에.
@@ -17,7 +17,7 @@ use super::rpc::multicall::{Call3, Multicall};
 use super::rpc::{BlockTag, EthCallRequest, RpcRouter};
 use crate::error::SyncError;
 
-/// 한 OnchainView 호출의 calldata + 메타. router 가 알아야 할 것만.
+/// 한 `OnchainView` 호출의 calldata + 메타. router 가 알아야 할 것만.
 #[derive(Clone, Debug)]
 pub struct OnchainCall {
     pub chain: ChainId,
@@ -50,7 +50,7 @@ impl OnchainCall {
             }
             other => Err(SyncError::FetchFailed {
                 source_id: "onchain_fetcher".into(),
-                reason: format!("expected OnchainView, got {:?}", other),
+                reason: format!("expected OnchainView, got {other:?}"),
             }),
         }
     }
@@ -71,6 +71,7 @@ pub struct OnchainViewFetcher {
 }
 
 impl OnchainViewFetcher {
+    #[must_use]
     pub fn new(router: Arc<RpcRouter>) -> Self {
         let multicall = Multicall::new(router.clone());
         Self {
@@ -81,6 +82,7 @@ impl OnchainViewFetcher {
         }
     }
 
+    #[must_use]
     pub fn with_decoders(router: Arc<RpcRouter>, decoders: DecoderRegistry) -> Self {
         let multicall = Multicall::new(router.clone());
         Self {
@@ -91,16 +93,16 @@ impl OnchainViewFetcher {
         }
     }
 
-    pub fn decoders_mut(&mut self) -> &mut DecoderRegistry {
+    pub const fn decoders_mut(&mut self) -> &mut DecoderRegistry {
         &mut self.decoders
     }
 
-    pub fn abi_decoder_mut(&mut self) -> &mut super::abi_decoder::AbiDecoder {
+    pub const fn abi_decoder_mut(&mut self) -> &mut super::abi_decoder::AbiDecoder {
         &mut self.abi_decoder
     }
 
-    /// `decoder_id` 를 풀 디코더 결정: 먼저 손코딩 DecoderRegistry,
-    /// 모르면 AbiDecoder (alloy-dyn-abi) 로 fallback.
+    /// `decoder_id` 를 풀 디코더 결정: 먼저 손코딩 `DecoderRegistry`,
+    /// 모르면 `AbiDecoder` (alloy-dyn-abi) 로 fallback.
     fn decode_any(&self, decoder_id: &str, data: &[u8]) -> Result<Value, SyncError> {
         // 1) 빠른 path — 단순 디코더 (u256, erc20_balance 등)
         if let Ok(v) = self.decoders.decode(decoder_id, data) {
@@ -176,7 +178,7 @@ impl OnchainViewFetcher {
                 Err(e) => out.push(OnchainOutcome {
                     success: false,
                     value: None,
-                    error: Some(format!("{}", e)),
+                    error: Some(format!("{e}")),
                 }),
             }
         }

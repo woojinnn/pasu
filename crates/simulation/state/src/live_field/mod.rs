@@ -1,15 +1,13 @@
-//! `LiveField` — 외부/유도 데이터의 wrapper. spec §7.
+//! `LiveField` — wrapper for externally sourced or derived data. See spec §7.
 //!
-//! state 안에 박혀 살면서, Sync Orchestrator (또는 `DerivedFrom` 의 경우 reducer)
-//! 가 `value` / `synced_at` / `confidence` 를 in-place 로 갱신한다.
-//! `source` 와 `ttl` 은 불변 (어디서 가져오는지의 명세).
+//! It lives embedded inside the state; the Sync orchestrator (or a reducer in
+//! the `DerivedFrom` case) updates `value` / `synced_at` / `confidence` in place.
+//! `source` and `ttl` are immutable (the specification of where the data comes from).
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-/// LiveField 의 신선도 / 품질 메타 (`Confidence`).
 pub mod freshness;
-/// LiveField 의 출처 (`DataSource`, `FieldRef`, 보조 enum).
 pub mod source;
 
 pub use freshness::Confidence;
@@ -20,29 +18,31 @@ pub use source::{
 
 use crate::primitives::{Duration, Time};
 
-/// 외부 / 유도 데이터 wrapper — value + source + 신선도.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+/// Wrapper holding an externally sourced or derived value together with its
+/// provenance and freshness metadata.
 pub struct LiveField<T> {
-    /// 본 필드의 현재 값.
+    /// The current value, updated in place by the Sync orchestrator or reducer.
     pub value: T,
-    /// 본 필드의 출처 (어디서 가져오는지의 명세).
+    /// Immutable specification of where this value is fetched/derived from.
     pub source: DataSource,
-    /// 본 값이 마지막으로 sync 된 시각.
+    /// Timestamp of the most recent successful sync of `value`.
     pub synced_at: Time,
-    /// 권장 갱신 주기. None = orchestrator 기본값.
+    /// Recommended refresh interval. `None` means use the orchestrator default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional, type = "Duration")]
     pub ttl: Option<Duration>,
-    /// 신선도 / 품질 메타. Sync orchestrator 가 채움.
+    /// Optional freshness/quality metadata for the current value.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub confidence: Option<Confidence>,
 }
 
 impl<T> LiveField<T> {
-    /// value / source / `synced_at` 으로 `LiveField` 생성. ttl / confidence 는 `None`.
-    pub fn new(value: T, source: DataSource, synced_at: Time) -> Self {
+    /// Builds a `LiveField` from a value, its source, and a sync timestamp,
+    /// leaving `ttl` and `confidence` unset.
+    pub const fn new(value: T, source: DataSource, synced_at: Time) -> Self {
         Self {
             value,
             source,
@@ -52,26 +52,27 @@ impl<T> LiveField<T> {
         }
     }
 
-    /// `ttl` 을 채워 반환하는 builder.
-    pub fn with_ttl(mut self, ttl: Duration) -> Self {
+    /// Returns the field with its recommended refresh interval (`ttl`) set.
+    pub const fn with_ttl(mut self, ttl: Duration) -> Self {
         self.ttl = Some(ttl);
         self
     }
 
-    /// `confidence` 를 채워 반환하는 builder.
-    pub fn with_confidence(mut self, c: Confidence) -> Self {
+    /// Returns the field with its `confidence` metadata attached.
+    pub const fn with_confidence(mut self, c: Confidence) -> Self {
         self.confidence = Some(c);
         self
     }
 
-    /// `now` 기준 ttl 안에 갱신됐는지. ttl 이 없으면 항상 true.
-    pub fn fresh_within(&self, now: Time, window: Duration) -> bool {
+    /// Whether the value was synced within `window` of `now` (by age in seconds).
+    pub const fn fresh_within(&self, now: Time, window: Duration) -> bool {
         let age = now.since(self.synced_at);
         age.as_secs() <= window.as_secs()
     }
 
-    /// ttl 이 정의돼 있으면 그것 기준 stale 판정.
-    pub fn is_stale(&self, now: Time) -> bool {
+    /// Whether the value is stale: judged against `ttl` if set, otherwise against
+    /// the `confidence` staleness flag, defaulting to fresh when neither is present.
+    pub const fn is_stale(&self, now: Time) -> bool {
         if let Some(ttl) = self.ttl {
             now.since(self.synced_at).as_secs() > ttl.as_secs()
         } else if let Some(c) = &self.confidence {

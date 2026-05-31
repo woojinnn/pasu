@@ -11,8 +11,9 @@ publish = false
 # policy-engine dependency: the extension owns Cedar evaluation.
 simulation-state.workspace = true
 simulation-reducer.workspace = true
-# Wallet-state persistence boundary: the service reaches the DB ONLY through
-# `simulation_sync::WalletStore`, never the `simulation-db` crate directly.
+simulation-db = { path = "../db", version = "0.1.0" }
+# Wallet-state persistence stays behind `simulation_sync::WalletStore`; the
+# server uses `simulation-db` directly only for execution-report persistence.
 simulation-sync.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -20,4 +20,7 @@ function injectScript(url: string): void {
 // keep the script-tag fallback for MV2 builds.
 if (Browser.runtime.getManifest().manifest_version !== 3) {
   injectScript("js/injected/proxy-injected-providers.js");
+  // Same MV2 fallback for the venue-order fetch hook (Chrome MV3 injects it
+  // via the manifest `world: "MAIN"` entry instead).
+  injectScript("js/injected/fetch-hook.js");
 }

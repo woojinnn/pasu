@@ -43,17 +43,19 @@ pub enum BlockTag {
 }
 
 impl BlockTag {
-    pub fn latest() -> Self {
+    #[must_use]
+    pub const fn latest() -> Self {
         Self::Latest
     }
 
     /// JSON-RPC 의 block parameter 문자열.
+    #[must_use]
     pub fn as_param(&self) -> String {
         match self {
             Self::Latest => "latest".into(),
             Self::Pending => "pending".into(),
             Self::Earliest => "earliest".into(),
-            Self::Number(n) => format!("0x{:x}", n),
+            Self::Number(n) => format!("0x{n:x}"),
         }
     }
 }

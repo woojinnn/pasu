@@ -1,7 +1,7 @@
-//! `WalletState` — 한 지갑의 온체인 사실 스냅샷. spec §3.
+//! `WalletState` — on-chain fact snapshot of a single wallet. spec §3.
 //!
-//! Sync Orchestrator 가 `LiveField` 를 갱신하고, Reducer 가 action 적용 시
-//! in-place 로 수정한다.
+//! The Sync Orchestrator refreshes the `LiveField`s, and the Reducer mutates
+//! the state in place when applying an action.
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -13,22 +13,23 @@ use crate::position::Position;
 use crate::primitives::{Address, BlockHeight, ChainId};
 use crate::token::{TokenHolding, TokenKey};
 
-/// (account address, 추적 chain set).
-/// EVM 은 address 가 chain 간 공통이라 single Address.
-/// 비-EVM 추가 시 (예: Solana) confederate identity 가 필요 — 후속.
+/// Wallet identity: an account address plus the set of tracked chains.
+///
+/// On EVM the address is shared across chains, so a single `Address` suffices.
+/// Adding non-EVM chains (e.g. Solana) would require a federated identity — future work.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WalletId {
-    /// EVM account address (lowercase hex).
+    /// Account address (shared across all EVM chains).
     #[tsify(type = "string")]
     pub address: Address,
-    /// 본 지갑이 추적하는 chain 집합 (CAIP-2 id).
+    /// Set of chains being tracked for this account.
     #[tsify(type = "Array<ChainId>")]
     pub chains: BTreeSet<ChainId>,
 }
 
 impl WalletId {
-    /// address 와 추적 chain iterator 로부터 `WalletId` 생성.
+    /// Builds a `WalletId` from an address and a set of tracked chains.
     pub fn new(address: Address, chains: impl IntoIterator<Item = ChainId>) -> Self {
         Self {
             address,
@@ -37,39 +38,40 @@ impl WalletId {
     }
 }
 
-/// 한 지갑의 모든 온체인 사실 (잔고 / approval / position / pending / 블록 헤더) 스냅샷.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+/// On-chain fact snapshot for a single wallet (spec §3).
 pub struct WalletState {
-    /// 본 지갑의 식별자.
+    /// Identity (address + tracked chains) this snapshot belongs to.
     pub wallet_id: WalletId,
 
-    /// per-instance fungibility 단위로 holding 1개.
-    /// (`TokenKey` 가 enum 이라 JSON object key 로 못 쓰므로 pairs 로 직렬화.)
+    /// One holding per fungibility instance.
+    /// (`TokenKey` is an enum, so it can't be a JSON object key; serialized as pairs.)
     #[serde(default, with = "crate::serde_helpers::map_as_pairs")]
     #[tsify(type = "Array<[TokenKey, TokenHolding]>")]
     pub tokens: BTreeMap<TokenKey, TokenHolding>,
 
-    /// scope 별로 분리된 wallet-level 권한 컬렉션.
+    /// Wallet-level approvals, partitioned by scope.
     #[serde(default)]
     pub approvals: ApprovalSet,
 
-    /// 토큰 형태가 아닌 protocol-tracked 권리/상태.
+    /// Protocol-tracked rights/state that are not held as tokens.
     #[serde(default)]
     pub positions: Vec<Position>,
 
-    /// 서명-only / 미체결 entries.
+    /// Signature-only / unsettled entries.
     #[serde(default)]
     pub pending: Vec<PendingTx>,
 
-    /// 마지막 sync 시점의 체인별 블록.
+    /// Per-chain block at the last sync point.
     #[serde(default)]
     #[tsify(type = "Array<[ChainId, BlockHeight]>")]
     pub block_heights: BTreeMap<ChainId, BlockHeight>,
 }
 
 impl WalletState {
-    /// 비어 있는 `WalletState` 생성.
+    /// Creates an empty `WalletState` for the given wallet identity.
+    #[must_use]
     pub fn new(wallet_id: WalletId) -> Self {
         Self {
             wallet_id,
@@ -81,13 +83,16 @@ impl WalletState {
         }
     }
 
-    /// 정책 view 헬퍼 — 특정 토큰의 사용 가능 잔액 (balance - committed).
-    /// Owned NFT 같은 경우 None.
+    /// Policy-view helper: spendable balance of a token (balance - committed).
+    /// Returns `None` for holdings without a spendable amount, e.g. owned NFTs.
+    #[must_use]
     pub fn available_balance(&self, key: &TokenKey) -> Option<crate::primitives::U256> {
-        self.tokens.get(key).and_then(|h| h.available())
+        self.tokens
+            .get(key)
+            .and_then(super::token::holding::TokenHolding::available)
     }
 
-    /// 한 spender 에 부여된 모든 approval 을 평탄하게 walk (cross-chain 정책용).
+    /// Flatly walks every approval granted to a single spender (for cross-chain policy).
     pub fn all_approvals_to<'a>(
         &'a self,
         spender: &'a crate::primitives::Spender,
@@ -127,26 +132,26 @@ impl WalletState {
     }
 }
 
-/// `all_approvals_to` walker 결과.
+/// One result yielded by the `all_approvals_to` walker.
 #[derive(Debug)]
 pub enum ApprovalEntry<'a> {
-    /// ERC20 한도 1건.
+    /// An ERC-20 token allowance granted to the spender.
     Erc20 {
-        /// 권한이 부여된 토큰의 (chain, contract).
+        /// Token contract the allowance applies to.
         contract: crate::approval::ContractAddrKey,
-        /// 권한 한도 / 만료.
+        /// The allowance amount/spec granted on that contract.
         spec: &'a crate::approval::AllowanceSpec,
     },
-    /// ERC721 / 1155 `setApprovalForAll` 1건.
+    /// A collection-wide (set-for-all) operator approval.
     SetForAll {
-        /// 권한이 부여된 NFT / 1155 의 (chain, contract).
+        /// Token contract the operator is approved for.
         contract: crate::approval::ContractAddrKey,
     },
-    /// Permit2 한도 1건.
+    /// A Permit2 allowance entry.
     Permit2 {
-        /// (chain, token contract, spender) 트리플.
+        /// Composite key (token, spender, ...) identifying the Permit2 grant.
         key: crate::approval::SpenderKey,
-        /// Permit2 한도 / 만료 / nonce.
+        /// The Permit2 allowance (amount + expiration + nonce) for that key.
         allowance: &'a crate::approval::Permit2Allowance,
     },
 }

@@ -1,5 +1,5 @@
 //! Action-triggered refresh — 한 액션을 평가하기 직전에 그 액션이 건드릴
-//! LiveField 들만 골라서 즉시 sync.
+//! `LiveField` 들만 골라서 즉시 sync.
 //!
 //! 호출 패턴:
 //! ```ignore
@@ -8,7 +8,7 @@
 //! // 이제 정책 평가 가능 — 관련 가격 / HF 신선함 보장
 //! ```
 //!
-//! action 자체의 구조 (ActionEnvelope) 는 action-schema 의 책임. 이 모듈은 action →
+//! action 자체의 구조 (`ActionEnvelope`) 는 action-schema 의 책임. 이 모듈은 action →
 //! scope 변환을 위한 작은 도우미만 제공하고, scope 만 보고 refresh 수행.
 
 use std::collections::HashSet;
@@ -31,6 +31,7 @@ pub struct ActionScope {
 }
 
 impl ActionScope {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -57,6 +58,7 @@ impl ActionScope {
         self
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.tokens.is_empty()
             && self.lending_positions.is_empty()
@@ -64,7 +66,8 @@ impl ActionScope {
     }
 }
 
-/// scope 에 해당하는 LiveField 만 stale list 로 모은다. walker 와 비슷하지만 더 좁음.
+/// scope 에 해당하는 `LiveField` 만 stale list 로 모은다. walker 와 비슷하지만 더 좁음.
+#[must_use]
 pub fn walk_scope(state: &WalletState, scope: &ActionScope) -> (Vec<StaleField>, WalkStats) {
     let mut stale = Vec::new();
     let mut stats = WalkStats::default();
@@ -223,7 +226,7 @@ impl Orchestrator {
                     report.fields_updated += ok;
                     report.fields_failed += fail;
                 }
-                Err(e) => report.errors.push(format!("{}", e)),
+                Err(e) => report.errors.push(format!("{e}")),
             }
         }
         Ok(report)

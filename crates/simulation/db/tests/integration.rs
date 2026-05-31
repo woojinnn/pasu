@@ -8,10 +8,13 @@ use alloy_primitives::{Address, U256};
 use std::str::FromStr;
 
 use simulation_db::repositories::deltas::{DeltaInsert, DeltaSource, DeltaStatus};
+use simulation_db::repositories::execution_reports::{
+    ExecutionReportInsert, OutcomeKind, ReportStage,
+};
 use simulation_db::repositories::profile::UserProfile;
 use simulation_db::repositories::wallets::WalletInsert;
-use simulation_db::repositories::{deltas, holdings, profile, tokens, wallets};
-use simulation_db::{run_migrations, Pool};
+use simulation_db::repositories::{deltas, execution_reports, holdings, profile, tokens, wallets};
+use simulation_db::{current_version, run_migrations, Pool};
 use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
 use simulation_state::primitives::{ChainId, Duration, Price, Time};
 use simulation_state::token::{
@@ -266,6 +269,113 @@ fn separate_users_have_separate_files() {
         let w = wallets::list_active(tx)?;
         assert_eq!(w.len(), 1);
         assert_eq!(w[0].address, "0xbob");
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn execution_reports_round_trip_and_reconcile_by_wallet() {
+    let pool = Pool::open_in_memory();
+    run_migrations(&pool).unwrap();
+    assert_eq!(current_version(&pool).unwrap(), Some(7));
+
+    pool.with_tx(|tx| {
+        let wallet_id = wallets::insert(
+            tx,
+            &WalletInsert {
+                address: "0x362e7e9e630481631d7c804dfe50e24b53250925".into(),
+                label: Some("hl".into()),
+                is_owned: true,
+                created_at: 1_700_000_000,
+                chains: vec![ChainId::ethereum_mainnet()],
+            },
+        )?;
+
+        let report_id = execution_reports::insert(
+            tx,
+            &ExecutionReportInsert {
+                wallet_id: Some(wallet_id),
+                evaluation_id: Some("eval-hl-1".into()),
+                action_index: Some(0),
+                stage: ReportStage::Venue,
+                outcome_kind: OutcomeKind::VenueAccepted,
+                chain: None,
+                tx_hash: None,
+                signature: None,
+                venue: Some("hyperliquid".into()),
+                venue_order_id: Some("987654321".into()),
+                client_order_id: Some("0xcloid".into()),
+                reason: None,
+                raw_json: serde_json::json!({"kind":"venue_accepted"}),
+                metadata_json: serde_json::json!({"source":"fetch-hook"}),
+                created_at: 1_738_000_000,
+            },
+        )?;
+        assert!(report_id > 0);
+
+        // Hyperliquid agent-key requests can be observed before the extension
+        // knows the master wallet. Keep those audit facts, but do not reconcile
+        // them against a wallet snapshot until they are attributed.
+        execution_reports::insert(
+            tx,
+            &ExecutionReportInsert {
+                wallet_id: None,
+                evaluation_id: Some("eval-hl-unattributed".into()),
+                action_index: None,
+                stage: ReportStage::Venue,
+                outcome_kind: OutcomeKind::VenueRejected,
+                chain: None,
+                tx_hash: None,
+                signature: None,
+                venue: Some("hyperliquid".into()),
+                venue_order_id: None,
+                client_order_id: None,
+                reason: Some("bad signature".into()),
+                raw_json: serde_json::json!({"kind":"venue_rejected"}),
+                metadata_json: serde_json::json!({}),
+                created_at: 1_738_000_001,
+            },
+        )?;
+        // Simulates a report that arrives during the same scheduler tick after
+        // the authoritative snapshot time. It must remain unreconciled until a
+        // later sync can actually observe it.
+        execution_reports::insert(
+            tx,
+            &ExecutionReportInsert {
+                wallet_id: Some(wallet_id),
+                evaluation_id: Some("eval-hl-raced".into()),
+                action_index: Some(1),
+                stage: ReportStage::Venue,
+                outcome_kind: OutcomeKind::VenueAccepted,
+                chain: None,
+                tx_hash: None,
+                signature: None,
+                venue: Some("hyperliquid".into()),
+                venue_order_id: Some("987654322".into()),
+                client_order_id: None,
+                reason: None,
+                raw_json: serde_json::json!({"kind":"venue_accepted"}),
+                metadata_json: serde_json::json!({"source":"fetch-hook"}),
+                created_at: 1_738_000_030,
+            },
+        )?;
+
+        let pending = execution_reports::list_unreconciled_for_wallet(tx, wallet_id)?;
+        assert_eq!(pending.len(), 2);
+        assert_eq!(pending[0].outcome_kind, "venue_accepted");
+        assert_eq!(pending[0].venue.as_deref(), Some("hyperliquid"));
+
+        let reconciled =
+            execution_reports::mark_reconciled_for_wallet(tx, wallet_id, 1_738_000_030)?;
+        assert_eq!(reconciled, 1);
+        let still_pending = execution_reports::list_unreconciled_for_wallet(tx, wallet_id)?;
+        assert_eq!(still_pending.len(), 1);
+        assert_eq!(
+            still_pending[0].evaluation_id.as_deref(),
+            Some("eval-hl-raced")
+        );
+        assert_eq!(execution_reports::count_unreconciled(tx)?, 2);
         Ok(())
     })
     .unwrap();

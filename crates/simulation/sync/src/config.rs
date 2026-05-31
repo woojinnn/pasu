@@ -87,7 +87,7 @@ impl SyncConfig {
 /// 오라클 카탈로그.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct OraclesConfig {
-    /// On-chain Chainlink AggregatorV3 feed 목록 (chain → feeds).
+    /// On-chain Chainlink `AggregatorV3` feed 목록 (chain → feeds).
     #[serde(default)]
     pub chainlink: ChainlinkConfig,
 
@@ -95,16 +95,16 @@ pub struct OraclesConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pyth: Option<PythConfig>,
 
-    /// Generic REST JSON oracles — CoinGecko / CoinMarketCap / Pyth Hermes 등.
+    /// Generic REST JSON oracles — `CoinGecko` / `CoinMarketCap` / Pyth Hermes 등.
     ///
-    /// 키는 provider 의 canonical name (소문자 snake_case). 같은 이름이
+    /// 키는 provider 의 canonical name (소문자 `snake_case`). 같은 이름이
     /// `DataSource::OracleFeed.provider` 의 `OracleProvider::Other(name)` 와
     /// 매칭돼 dispatch.
     #[serde(default)]
     pub rest: BTreeMap<String, RestOracleConfig>,
 }
 
-/// Chainlink feed catalog — chain 별로 (feed_id → contract address).
+/// Chainlink feed catalog — chain 별로 (`feed_id` → contract address).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ChainlinkConfig {
     /// chain id (CAIP-2) → 해당 체인의 feed 들.
@@ -115,7 +115,7 @@ pub struct ChainlinkConfig {
 /// 한 체인의 Chainlink feed 목록.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ChainlinkChainConfig {
-    /// feed_id (`"USDC/USD"` 등) → feed metadata.
+    /// `feed_id` (`"USDC/USD"` 등) → feed metadata.
     #[serde(default)]
     pub feeds: BTreeMap<String, ChainlinkFeedConfig>,
 }
@@ -123,7 +123,7 @@ pub struct ChainlinkChainConfig {
 /// 한 Chainlink feed 의 contract metadata.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChainlinkFeedConfig {
-    /// AggregatorV3 contract 주소.
+    /// `AggregatorV3` contract 주소.
     pub address: Address,
     /// `decimals()` 반환값. 대부분 8 — 생략 시 default 8.
     #[serde(default = "default_chainlink_decimals")]
@@ -134,12 +134,12 @@ const fn default_chainlink_decimals() -> u8 {
     8
 }
 
-/// Pyth Hermes (https://hermes.pyth.network) REST API + price feed id 카탈로그.
+/// Pyth Hermes (<https://hermes.pyth.network>) REST API + price feed id 카탈로그.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PythConfig {
     /// Hermes base URL.
     pub endpoint: String,
-    /// feed_id (`"ETH/USD"` 등) → Pyth price feed id (32-byte hex).
+    /// `feed_id` (`"ETH/USD"` 등) → Pyth price feed id (32-byte hex).
     #[serde(default)]
     pub feeds: BTreeMap<String, PythFeedConfig>,
 }
@@ -155,10 +155,10 @@ pub struct PythFeedConfig {
 // Generic REST JSON oracle
 // ---------------------------------------------------------------------------
 
-/// 한 REST JSON oracle provider (CoinGecko / CoinMarketCap / Pyth Hermes ...)
+/// 한 REST JSON oracle provider (`CoinGecko` / `CoinMarketCap` / Pyth Hermes ...)
 /// 의 endpoint + 인증 + feed catalog.
 ///
-/// Generic `RestJsonOracleFetcher` 가 이 설정만 받으면 fetch_price 가능 —
+/// Generic `RestJsonOracleFetcher` 가 이 설정만 받으면 `fetch_price` 가능 —
 /// 새 provider 추가는 본 섹션 한 블록만 늘리면 된다 (Rust 코드 변경 0).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RestOracleConfig {
@@ -173,7 +173,7 @@ pub struct RestOracleConfig {
     #[serde(default = "default_rest_timeout_sec")]
     pub timeout_sec: u64,
 
-    /// feed_id (`"USDC/USD"` 등) → path + JSON pointer.
+    /// `feed_id` (`"USDC/USD"` 등) → path + JSON pointer.
     #[serde(default)]
     pub feeds: BTreeMap<String, RestFeedConfig>,
 }

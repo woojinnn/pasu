@@ -1,7 +1,7 @@
 //! `approvals_erc20` / `approvals_set_for_all` / `approvals_permit2` CRUD.
 //!
 //! 세 종류가 같이 살지만 데이터 모양이 다 다르므로 3개 sub-module 로 분리.
-//! 각각 (wallet_id, chain, contract, [spender|operator]) 복합키 sparse 테이블.
+//! 각각 (`wallet_id`, chain, contract, [spender|operator]) 복합키 sparse 테이블.
 
 use rusqlite::{params, Transaction};
 

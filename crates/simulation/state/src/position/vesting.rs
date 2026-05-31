@@ -1,7 +1,7 @@
-//! VestingSchedule — 일반 vesting (option, team grant, OTC unlock 등) +
-//! VestSchedule 공통 타입.
+//! `VestingSchedule` — generic vesting (options, team grants, OTC unlocks, etc.)
+//! plus the shared `VestSchedule` type.
 //!
-//! LaunchpadAllocation 도 VestSchedule 을 재사용한다.
+//! `LaunchpadAllocation` also reuses `VestSchedule`.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -9,61 +9,61 @@ use tsify_next::Tsify;
 use crate::primitives::{ProtocolRef, Time, U256};
 use crate::token::TokenRef;
 
-/// vesting unlock 곡선 형태.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+/// Shape of the unlock curve that governs how vested tokens become available over time.
 pub enum VestCurve {
-    /// 일정 비율 선형 unlock.
+    /// Linear unlock at a constant rate over the vesting period.
     Linear,
-    /// 시점-수량 쌍의 step function.
+    /// Step function defined by explicit (time, cumulative-amount) points.
     Stepped {
-        /// (시각, 누적 unlock 양) pair list.
+        /// Ordered unlock checkpoints as (timestamp, cumulative unlocked amount) pairs.
         #[tsify(type = "Array<[Time, string]>")]
         points: Vec<(Time, U256)>,
     },
-    /// 위 두 가지에 안 맞는 vesting 곡선.
+    /// Vesting curve that does not fit the linear or stepped shapes, described free-form.
     Custom {
-        /// 사람이 읽을 곡선 설명 (display 용).
+        /// Human-readable description of the custom unlock behavior.
         description: String,
     },
 }
 
-/// vesting 일정의 메타 (start / cliff / end / curve / total).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+/// Common parameters describing a single vesting schedule, shared across vesting and allocation types.
 pub struct VestSchedule {
-    /// vesting 시작 시각.
+    /// Timestamp at which vesting begins.
     pub start: Time,
-    /// cliff 시각. 없는 vesting 은 `None`.
+    /// Optional cliff timestamp before which nothing unlocks.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub cliff: Option<Time>,
-    /// vesting 종료 시각. 무기한 vesting 은 `None`.
+    /// Optional timestamp at which vesting completes; `None` for open-ended schedules.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub end: Option<Time>,
-    /// unlock 곡선.
+    /// Shape of the unlock curve applied between `start` and `end`.
     pub curve: VestCurve,
-    /// 본 일정으로 vest 되는 총량.
+    /// Total token amount covered by this schedule (raw on-chain units).
     #[tsify(type = "string")]
     pub total: U256,
 }
 
-/// 일반 vesting position (option / team grant / OTC unlock 등).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+/// A vesting grant held by a position, tracking its schedule and claim progress.
 pub struct VestingSchedule {
-    /// vest 를 부여한 entity (프로토콜 / 단체).
+    /// Protocol or entity that granted the vesting allocation.
     pub granter: ProtocolRef,
-    /// vest 대상 토큰.
+    /// Token being vested.
     pub token: TokenRef,
-    /// vesting 일정 본체.
+    /// Schedule parameters governing how the grant unlocks.
     pub schedule: VestSchedule,
-    /// 누적으로 청구된 양.
+    /// Amount already claimed so far (raw on-chain units).
     #[tsify(type = "string")]
     pub claimed: U256,
-    /// 지금 청구 가능한 양.
+    /// Amount currently claimable at the present time (raw on-chain units).
     #[tsify(type = "string")]
     pub claimable_now: U256,
 }

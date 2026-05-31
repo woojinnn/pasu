@@ -17,7 +17,7 @@ use crate::error::{DbError, DbResult};
 
 use simulation_state::token::TokenKind;
 
-/// (wallet_id, token_key) 의 holding 을 INSERT or REPLACE.
+/// (`wallet_id`, `token_key`) 의 holding 을 INSERT or REPLACE.
 ///
 /// 호출 전에 `tokens.upsert` 로 token catalog 가 보장되어야 함 (FK).
 pub fn upsert(tx: &Transaction<'_>, wallet_id: i64, holding: &TokenHolding) -> DbResult<()> {
@@ -76,8 +76,8 @@ pub fn upsert(tx: &Transaction<'_>, wallet_id: i64, holding: &TokenHolding) -> D
 /// 별도 카탈로그에서 보충하거나 placeholder 로 채워야 함. Phase 1 은 단순화 —
 /// `TokenKind::default()` (없으면 fallback) 대신 caller 가 hydrate.
 ///
-/// 반환은 (token_hash, symbol_cache, decimals_cache, balance_cols, committed_cols,
-/// approved_to, price_cols, last_synced_at, primitives_source).
+/// 반환은 (`token_hash`, `symbol_cache`, `decimals_cache`, `balance_cols`, `committed_cols`,
+/// `approved_to`, `price_cols`, `last_synced_at`, `primitives_source`).
 #[allow(clippy::type_complexity)]
 pub fn raw_list_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec<HoldingRowRaw>> {
     let mut stmt = tx.prepare(
@@ -96,7 +96,7 @@ pub fn raw_list_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec
     let rows = stmt
         .query_map(params![wallet_id], |r| {
             Ok(HoldingRowRaw {
-                token_hash: vec_to_hash(r.get::<_, Vec<u8>>(0)?),
+                token_hash: vec_to_hash(&r.get::<_, Vec<u8>>(0)?),
                 standard: r.get::<_, String>(1)?,
                 chain: r.get::<_, String>(2)?,
                 address: r.get::<_, Option<String>>(3)?,
@@ -122,7 +122,7 @@ pub fn raw_list_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<Vec
     Ok(rows)
 }
 
-fn vec_to_hash(v: Vec<u8>) -> [u8; 16] {
+fn vec_to_hash(v: &[u8]) -> [u8; 16] {
     let mut h = [0u8; 16];
     let n = v.len().min(16);
     h[..n].copy_from_slice(&v[..n]);
@@ -233,7 +233,7 @@ impl HoldingRowRaw {
     }
 }
 
-/// 한 (wallet_id, token_hash) 삭제.
+/// 한 (`wallet_id`, `token_hash`) 삭제.
 pub fn delete(tx: &Transaction<'_>, wallet_id: i64, token_key: &TokenKey) -> DbResult<bool> {
     let th = token_hash(token_key);
     let _ = encode_token_key(token_key); // silence unused
@@ -242,6 +242,15 @@ pub fn delete(tx: &Transaction<'_>, wallet_id: i64, token_key: &TokenKey) -> DbR
         params![wallet_id, th.to_vec()],
     )?;
     Ok(n > 0)
+}
+
+/// Remove all holdings for a wallet before writing a fresh snapshot.
+pub fn delete_for_wallet(tx: &Transaction<'_>, wallet_id: i64) -> DbResult<usize> {
+    let n = tx.execute(
+        "DELETE FROM token_holdings WHERE wallet_id = ?1",
+        params![wallet_id],
+    )?;
+    Ok(n)
 }
 
 #[cfg(test)]
@@ -271,7 +280,7 @@ mod tests {
 
     fn sample_holding(key: TokenKey) -> TokenHolding {
         TokenHolding {
-            key: key.clone(),
+            key,
             kind: TokenKind::Base {
                 category: BaseCategory::Stable,
                 peg_to: Some(PegTarget::Fiat(FiatCurrency::Usd)),

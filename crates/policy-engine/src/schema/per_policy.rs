@@ -29,23 +29,24 @@ use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA,
-    LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA,
-    LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
-    LENDING_DISABLE_COLLATERAL_SCHEMA, LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA,
-    LENDING_REPAY_SCHEMA, LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA,
-    LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA,
-    LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA, LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
-    LIQUID_STAKING_STAKE_SCHEMA, LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
-    LIQUID_STAKING_UNWRAP_SCHEMA, LIQUID_STAKING_WRAP_SCHEMA,
-    PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
-    PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
-    PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
-    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
-    TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA,
-    TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA,
-    TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
-    TOKEN_REVOKE_APPROVAL_SCHEMA,
+    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_ORDER_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA,
+    HL_USD_SEND_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
+    LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
+    LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA,
+    LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
+    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_REPAY_SCHEMA,
+    LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA,
+    LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA, LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA, LIQUID_STAKING_STAKE_SCHEMA,
+    LIQUID_STAKING_TRANSFER_SHARES_SCHEMA, LIQUID_STAKING_UNWRAP_SCHEMA,
+    LIQUID_STAKING_WRAP_SCHEMA, PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+    PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA, PERP_CHANGE_LEVERAGE_SCHEMA,
+    PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA, PERP_CLOSE_POSITION_SCHEMA,
+    PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA, PERP_OPEN_POSITION_SCHEMA,
+    PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA,
+    TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA,
+    TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA,
+    TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
 };
 
 /// One row of the action resolver: the `(domain, action_tag)` a trigger can
@@ -410,6 +411,37 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         schema_text: TOKEN_REVOKE_APPROVAL_SCHEMA,
         pascal_stub: "RevokeApproval",
     },
+    // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_order"),
+        schema_text: HL_ORDER_SCHEMA,
+        pascal_stub: "HlOrder",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_update_leverage"),
+        schema_text: HL_UPDATE_LEVERAGE_SCHEMA,
+        pascal_stub: "HlUpdateLeverage",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_withdraw"),
+        schema_text: HL_WITHDRAW_SCHEMA,
+        pascal_stub: "HlWithdraw",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_usd_send"),
+        schema_text: HL_USD_SEND_SCHEMA,
+        pascal_stub: "HlUsdSend",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_approve_agent"),
+        schema_text: HL_APPROVE_AGENT_SCHEMA,
+        pascal_stub: "HlApproveAgent",
+    },
 ];
 
 /// Synthesize an isolated per-policy `.cedarschema` for one bundle.
@@ -615,7 +647,7 @@ fn normalize_type(raw: &str) -> &str {
 /// reached via `context.custom.<field>` or `context.custom has <field>` must be
 /// declared in [`ManifestV2::custom_context`].
 ///
-/// Pragmatic PoC: a textual scan (not a full Cedar AST walk) — sufficient
+/// Pragmatic `PoC`: a textual scan (not a full Cedar AST walk) — sufficient
 /// because custom fields are always reached through the literal `context.custom`
 /// path. A bundle author who writes that path inside a comment for an
 /// undeclared field would get a false positive (documented; don't do that).
@@ -737,7 +769,7 @@ mod tests {
         assert!(!text.contains("AddLiquidityContext"));
     }
 
-    /// Same trigger, but no custom_context → the swap stub is left untouched
+    /// Same trigger, but no `custom_context` → the swap stub is left untouched
     /// and the schema still parses.
     #[test]
     fn empty_custom_context_leaves_stub() {
@@ -837,7 +869,7 @@ mod tests {
     /// `type <Stub>CustomContext = {};`. This fires loudly if a row points a
     /// stub at the wrong schema file (the kind of mistake no
     /// parse-only test catches, because the stub-replacement path only runs
-    /// when a manifest declares custom_context).
+    /// when a manifest declares `custom_context`).
     #[test]
     fn resolver_table_stubs_exist() {
         for entry in RESOLVER_TABLE {
@@ -851,12 +883,13 @@ mod tests {
                 entry.pascal_stub,
             );
         }
-        // The table covers exactly the 54 shipped actions (multicall + unknown
-        // included). Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 54, "resolver table must have 54 rows");
+        // The table covers exactly the 59 shipped actions (multicall + unknown +
+        // 6 liquid_staking + 1 permission + 5 hyperliquid_core included). Guards
+        // against a row being dropped or duplicated.
+        assert_eq!(RESOLVER_TABLE.len(), 59, "resolver table must have 59 rows");
     }
 
-    /// A custom_context field whose name collides with one of the matched
+    /// A `custom_context` field whose name collides with one of the matched
     /// action's base context fields must be rejected with
     /// [`PolicyRpcError::Schema`] (mirroring the unified composer's Rule 4).
     /// `recipient` is a declared base field of `SwapContext`.

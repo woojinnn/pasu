@@ -59,7 +59,7 @@ pub struct ProviderConfig {
 /// failover 전략 + 헬스 정책.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FailoverConfig {
-    /// "priority" | "round_robin" — 지금은 priority 만 구현.
+    /// "priority" | "`round_robin`" — 지금은 priority 만 구현.
     #[serde(default = "default_strategy")]
     pub strategy: String,
     /// 한 요청에 대해 시도할 최대 provider 수.
@@ -91,16 +91,16 @@ impl Default for FailoverConfig {
 fn default_strategy() -> String {
     "priority".into()
 }
-fn default_retry_attempts() -> u32 {
+const fn default_retry_attempts() -> u32 {
     3
 }
-fn default_retry_delay_ms() -> u64 {
+const fn default_retry_delay_ms() -> u64 {
     200
 }
-fn default_mark_unhealthy_after() -> u32 {
+const fn default_mark_unhealthy_after() -> u32 {
     5
 }
-fn default_unhealthy_cooldown_sec() -> u64 {
+const fn default_unhealthy_cooldown_sec() -> u64 {
     60
 }
 
@@ -116,13 +116,14 @@ impl RpcConfig {
 
     pub fn load_str(text: &str) -> Result<Self, SyncError> {
         let expanded = crate::config::expand_env_vars(text);
-        let cfg: RpcConfig = toml::from_str(&expanded).map_err(|e| SyncError::FetchFailed {
+        let cfg: Self = toml::from_str(&expanded).map_err(|e| SyncError::FetchFailed {
             source_id: "config_toml".into(),
             reason: e.to_string(),
         })?;
         Ok(cfg)
     }
 
+    #[must_use]
     pub fn chain(&self, chain: &ChainId) -> Option<&ChainConfig> {
         self.chains.get(chain)
     }

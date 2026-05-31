@@ -98,6 +98,12 @@ const pageConfig = {
       "injected",
       "proxy-injected-providers.ts",
     ),
+    "injected/fetch-hook": path.join(backendDir, "injected", "fetch-hook.ts"),
+    "content-scripts/fetch-bridge": path.join(
+      backendDir,
+      "content-scripts",
+      "fetch-bridge.ts",
+    ),
     "confirm/index": path.join(frontendDir, "confirm", "index.ts"),
     "popup/index": path.join(frontendDir, "popup", "index.ts"),
     manifest: path.join(backendDir, "manifest.json"),

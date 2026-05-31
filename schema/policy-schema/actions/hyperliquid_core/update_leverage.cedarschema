@@ -1,0 +1,29 @@
+// HyperliquidCore::HlUpdateLeverage — a Hyperliquid `{"type":"updateLeverage"}`.
+//
+// Changes the leverage multiplier (and cross/isolated mode) for one market.
+
+namespace HyperliquidCore {
+  type HlUpdateLeverageContext = {
+    // Common envelope.
+    meta: Core::ActionMeta,
+    // Always `{ name: "hyperliquid" }`.
+    venue: HlVenue,
+    // Market whose leverage is changing.
+    market: HlMarket,
+    // Cross (`true`) vs isolated (`false`) margin.
+    isCross: Bool,
+    // New leverage multiplier.
+    leverage: Long,
+    // Manifest-extensible slot.
+    custom?: HlUpdateLeverageCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type HlUpdateLeverageCustomContext = {};
+
+  action "HlUpdateLeverage" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: HlUpdateLeverageContext,
+  };
+}

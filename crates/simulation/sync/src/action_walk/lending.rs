@@ -1,8 +1,8 @@
 //! Lending 도메인의 walk + apply.
 //!
-//! Wired: Supply, Withdraw, Borrow, Repay, SwapRateMode, SetEMode,
-//!        EnableCollateral, DisableCollateral, Liquidate.
-//! DelegateBorrow / SetAuthorization / BuyCollateral have no live_inputs → no-op.
+//! Wired: Supply, Withdraw, Borrow, Repay, `SwapRateMode`, `SetEMode`,
+//!        `EnableCollateral`, `DisableCollateral`, Liquidate.
+//! `DelegateBorrow` 는 `live_inputs` 없음 → no-op.
 
 use serde_json::Value;
 

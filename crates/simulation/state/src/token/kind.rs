@@ -1,4 +1,4 @@
-//! TokenKind — 의미 분류 (10 variants). spec §4.3.
+//! `TokenKind` — semantic classification (10 variants). spec §4.3.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -7,214 +7,214 @@ use super::lp::{LpShape, ShareForm};
 use super::token_ref::TokenRef;
 use crate::primitives::{PoolRef, ProtocolRef, Time, U256};
 
-/// 가격 매김 / peg 의 기준이 되는 법정화폐.
+/// Off-chain fiat currency a token may be pegged to.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum FiatCurrency {
-    /// 미국 달러.
+    /// United States dollar.
     Usd,
-    /// 유로.
+    /// Euro.
     Eur,
-    /// 한국 원.
+    /// South Korean won.
     Krw,
-    /// 일본 엔.
+    /// Japanese yen.
     Jpy,
-    /// 영국 파운드.
+    /// British pound sterling.
     Gbp,
 }
 
-/// peg 의 대상 — 법정화폐 또는 다른 온체인 자산.
+/// The reference asset a pegged token tracks.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PegTarget {
-    /// 오프체인 법정화폐 (USDC → USD 등).
+    /// Off-chain fiat currency (e.g. USDC → USD).
     Fiat(FiatCurrency),
-    /// 온체인 자산 (WETH → ETH).
+    /// On-chain asset (e.g. WETH → ETH).
     Token(TokenRef),
 }
 
-/// 기초 자산의 sub-category.
+/// Broad category of a base (non-derivative) asset.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum BaseCategory {
-    /// 스테이블코인 (USDC, USDT, DAI 등).
+    /// Stablecoin pegged to a low-volatility reference.
     Stable,
-    /// 변동성 자산 (WBTC, WETH 등 — non-stable).
+    /// Volatile, free-floating asset.
     Volatile,
-    /// gas asset 의 ERC20 wrapper (WETH, WSOL).
+    /// ERC20 wrapper of a gas asset (WETH, WSOL).
     NativeWrap,
-    /// governance token (UNI, COMP). 모든 governance 매칭은 이 패턴으로.
+    /// Governance token (UNI, COMP). All governance matching uses this pattern.
     Governance {
-        /// governance 가 속한 프로토콜 식별자.
+        /// Protocol whose governance this token controls.
         protocol: ProtocolRef,
     },
 }
 
-/// peg 의 안정성 / 메커니즘 분류.
+/// How tightly a wrapped token tracks its underlying asset.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PegKind {
-    /// 1:1 hard peg (담보 / 발행 직접 통제).
+    /// Strictly redeemable 1:1 peg.
     HardPeg,
-    /// 시장 균형으로 유지되는 soft peg.
+    /// Market-maintained peg that may deviate from par.
     SoftPeg,
-    /// rebase 메커니즘으로 동기화 (stETH, aToken 등).
+    /// Balance grows over time via rebasing.
     Rebasing,
 }
 
-/// yield 영수증의 잔고 동기화 방식.
+/// How yield accrual is reflected for a yield-bearing receipt.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum RebaseForm {
-    /// 잔고 자체가 rebase (aToken v2 등).
+    /// Holder balance increases as yield accrues (aToken style).
     Rebasing,
-    /// 잔고 고정 + index 곱셈으로 가치 표현 (cToken, aToken v3 등).
+    /// Balance is fixed; value accrues via a rising exchange index (cToken style).
     Index,
 }
 
-/// 부채 영수증의 이자율 모드.
+/// Interest rate model applied to a debt receipt.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum RateMode {
-    /// 가변 이자율.
+    /// Floating market-driven rate.
     Variable,
-    /// 안정 (rebalance 가능) 이자율.
+    /// Stable rate that may be rebalanced.
     Stable,
-    /// 고정 이자율 (만기 fixed).
+    /// Locked fixed rate.
     Fixed,
 }
 
-/// Stake / lock 자산이 언제 풀리는지.
+/// When a staked / locked asset becomes withdrawable.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum UnlockSchedule {
-    /// 단일 시각에 unlock (esGMX 등).
+    /// Unlocks fully at a single point in time (e.g. esGMX).
     Cliff {
-        /// 잠금이 해제되는 시각.
+        /// Timestamp at which the asset unlocks.
         unlock_at: Time,
     },
-    /// 선형 unlock (vesting 비슷).
+    /// Unlocks linearly over a window (vesting-like).
     Linear {
-        /// 선형 unlock 시작 시각.
+        /// Start of the linear unlock window.
         start: Time,
-        /// 선형 unlock 종료 시각.
+        /// End of the linear unlock window.
         end: Time,
     },
-    /// 사용자 개시 후 cooldown.
+    /// Unlocks after a cooldown initiated by the user.
     Cooldown {
-        /// 사용자 개시 후 인출 가능까지 대기 초.
+        /// Cooldown duration in seconds before withdrawal is allowed.
         cooldown_secs: u64,
     },
 }
 
-/// Pendle 형 만기 토큰의 sub-kind.
+/// Which leg of a maturity instrument a note represents.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum NoteKind {
-    /// 원금 토큰 (Pendle PT).
+    /// Principal token (Pendle PT).
     Principal,
-    /// 이자 토큰 (Pendle YT).
+    /// Yield token (Pendle YT).
     Yield,
 }
 
-/// 토큰의 의미 분류. 정책 패턴 매칭의 핵심.
+/// Semantic classification of a token; the core of policy pattern matching.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TokenKind {
-    /// 기초 자산 (USDC, USDT, WBTC, WETH, UNI 등).
+    /// Base asset (USDC, USDT, WBTC, WETH, UNI, etc.).
     Base {
-        /// 기초 자산 sub-category.
+        /// Broad category of the base asset.
         category: BaseCategory,
-        /// peg 대상 (스테이블 / wrapped 자산 한정). 비-peg 자산은 `None`.
+        /// Optional peg target if the asset tracks a reference.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         peg_to: Option<PegTarget>,
     },
 
-    /// 진짜 native (ETH, SOL). Gas 전용 정책을 위해 분리.
+    /// True native gas asset (ETH, SOL). Separated to enable gas-only policies.
     NativeGas,
 
-    /// 1:1/유사 페그 wrapper (stETH, wstETH 등). yield + smart-contract 리스크.
+    /// 1:1 / near-peg wrapper (stETH, wstETH, etc.); carries yield + smart-contract risk.
     Wrapped {
-        /// wrapper 의 기초 자산.
+        /// Underlying asset being wrapped.
         underlying: TokenRef,
-        /// peg 의 메커니즘.
+        /// How tightly the wrapper tracks its underlying.
         peg_kind: PegKind,
     },
 
     /// LP share — Pooled / Concentrated / Custom.
     LpShare {
-        /// LP 가 속한 pool.
+        /// Pool the share belongs to.
         pool: PoolRef,
-        /// pool 의 기초 자산 list.
+        /// Underlying assets backing the share.
         underlyings: Vec<TokenRef>,
-        /// share 가 fungible 인지 NFT 인지.
+        /// Form of the LP share representation.
         share_form: ShareForm,
-        /// share 의 가격 분포 모양.
+        /// Liquidity shape (e.g. pooled vs concentrated range).
         shape: LpShape,
     },
 
-    /// 대출 영수증 (aUSDC, cUSDC) — "내가 빌려준 게 있다".
+    /// Lending receipt (aUSDC, cUSDC) — "I have lent something out".
     YieldReceipt {
-        /// yield 가 속한 프로토콜.
+        /// Lending protocol that issued the receipt.
         protocol: ProtocolRef,
-        /// 영수증의 기초 자산.
+        /// Underlying asset that was supplied.
         underlying: TokenRef,
-        /// 잔고가 rebase / index 중 어느 방식으로 동기화되는지.
+        /// How yield accrual is reflected.
         rebase_form: RebaseForm,
     },
 
-    /// 부채 영수증 (variableDebtUSDC) — "내가 빌린 게 있다".
+    /// Debt receipt (variableDebtUSDC) — "I have borrowed something".
     DebtReceipt {
-        /// 부채가 속한 프로토콜.
+        /// Lending protocol that issued the debt token.
         protocol: ProtocolRef,
-        /// 부채의 기초 자산.
+        /// Underlying asset that was borrowed.
         underlying: TokenRef,
-        /// 이자율 모드.
+        /// Interest rate model applied to the debt.
         rate_mode: RateMode,
     },
 
-    /// 락업/스테이킹 영수증 (stkAAVE, esGMX, ve토큰).
+    /// Lockup / staking receipt (stkAAVE, esGMX, ve-tokens).
     StakeReceipt {
-        /// stake 가 속한 프로토콜.
+        /// Protocol the asset is staked / locked in.
         protocol: ProtocolRef,
-        /// stake 의 기초 자산.
+        /// Underlying asset that was staked.
         underlying: TokenRef,
-        /// 잠금 해제 일정. 일정 없는 즉시 인출 가능 자산은 `None`.
+        /// Optional schedule describing when the asset unlocks.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         unlock: Option<UnlockSchedule>,
-        /// 본 stake 가 부여하는 voting power (ve 토큰 등). 비투표 자산은 `None`.
+        /// Optional voting power conferred by the stake (raw U256).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[tsify(optional, type = "string")]
         voting_power: Option<U256>,
     },
 
-    /// 에어드랍/포인트 클레임권 (잔고형으로 발급된 경우만).
+    /// Airdrop / points claim entitlement (only when issued as a balance).
     PointsToken {
-        /// 포인트를 발행한 프로토콜.
+        /// Protocol that is the source of the points.
         source: ProtocolRef,
     },
 
-    /// 만기 자산 (Pendle PT/YT 등).
+    /// Maturity-dated asset (Pendle PT/YT, etc.).
     MaturityNote {
-        /// 만기 토큰이 속한 프로토콜.
+        /// Protocol that issued the maturity note.
         protocol: ProtocolRef,
-        /// 만기 토큰의 기초 자산.
+        /// Underlying asset of the note.
         underlying: TokenRef,
-        /// 만기 시각.
+        /// Maturity timestamp.
         maturity: Time,
-        /// Principal (PT) / Yield (YT) 구분.
+        /// Which leg (principal or yield) the note represents.
         note_kind: NoteKind,
     },
 
-    /// 처음 보는 토큰 — policy 기본값 "경고".
+    /// Unrecognized token — policy default is "warn".
     Unknown,
 }

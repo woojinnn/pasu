@@ -1,0 +1,39 @@
+// HyperliquidCore::HlOrder — a Hyperliquid `/exchange` `{"type":"order"}` leg.
+//
+// Off-chain L1 order signed by an agent key and POSTed to the venue (never
+// through `window.ethereum`). Carries only order-intrinsic fields — NO live
+// inputs (mark price / book / account state). Numeric fields are decimal
+// STRINGS (fractional-safe; Cedar's `decimal` caps at 4 dp, HL prices exceed
+// that), so policies match on side / venue / symbol / tif, not magnitude.
+
+namespace HyperliquidCore {
+  type HlOrderContext = {
+    // Common envelope.
+    meta: Core::ActionMeta,
+    // Always `{ name: "hyperliquid" }`.
+    venue: HlVenue,
+    // Market the order targets.
+    market: HlMarket,
+    // "long" (isBuy) or "short".
+    side: String,
+    // Limit price (decimal string).
+    price: String,
+    // Size in base units (decimal string).
+    size: String,
+    // Reduce-only flag.
+    reduceOnly: Bool,
+    // Time-in-force: "gtc" | "ioc" | "post_only".
+    tif: String,
+    // Manifest-extensible slot.
+    custom?: HlOrderCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type HlOrderCustomContext = {};
+
+  action "HlOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: HlOrderContext,
+  };
+}

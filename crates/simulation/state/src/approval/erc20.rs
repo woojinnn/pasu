@@ -1,26 +1,26 @@
-//! ERC20 allowance — (owner, chain, token contract, spender) 의 spender 별 한도.
+//! ERC20 allowance — the per-spender limit keyed by (owner, chain, token contract, spender).
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use crate::primitives::{Time, U256};
 
-/// ERC20 `approve` 로 spender 에게 부여된 한도.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+/// An ERC20 approval limit granted to a single spender.
 pub struct AllowanceSpec {
-    /// 한도 base unit (예: ETH 면 wei).
+    /// Raw approved allowance amount (U256, serialized as a string).
     #[tsify(type = "string")]
     pub amount: U256,
-    /// 2^256-1 또는 `sufficiently_high` 한도. 정책의 빠른 검사용.
+    /// Whether the allowance is effectively unlimited (2^256-1 or a sufficiently high cap); used for fast policy checks.
     pub is_unlimited: bool,
-    /// 본 한도가 마지막으로 설정된 시각.
+    /// Timestamp of the most recent `approve` that set this allowance.
     pub last_set_at: Time,
 }
 
 impl AllowanceSpec {
-    /// 정해진 한도와 시각으로 `AllowanceSpec` 생성. `is_unlimited` 는
-    /// `amount == U256::MAX` 일 때 자동 true.
+    /// Creates an allowance for the given amount, marking it unlimited when the amount equals `U256::MAX`.
+    #[must_use]
     pub fn new(amount: U256, last_set_at: Time) -> Self {
         Self {
             amount,
@@ -29,8 +29,9 @@ impl AllowanceSpec {
         }
     }
 
-    /// 무한 한도 (`U256::MAX`) `AllowanceSpec` 생성.
-    pub fn unlimited(last_set_at: Time) -> Self {
+    /// Creates an explicitly unlimited allowance set to `U256::MAX`.
+    #[must_use]
+    pub const fn unlimited(last_set_at: Time) -> Self {
         Self {
             amount: U256::MAX,
             is_unlimited: true,

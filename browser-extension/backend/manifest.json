@@ -37,10 +37,23 @@
       "run_at": "document_start"
     },
     {
+      "matches": [
+        "https://app.hyperliquid.xyz/*",
+        "https://hyperliquid.xyz/*",
+        "https://*.hyperliquid.xyz/*",
+        "https://*.hyperliquid-testnet.xyz/*"
+      ],
+      "js": ["js/injected/fetch-hook.js"],
+      "__chrome__world": "MAIN",
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
       "matches": ["<all_urls>"],
       "js": [
         "js/content-scripts/inject-scripts.js",
         "js/content-scripts/window-ethereum-messages.js",
+        "js/content-scripts/fetch-bridge.js",
         "js/content-scripts/bypass-check.js"
       ],
       "all_frames": true,
@@ -58,21 +71,27 @@
       "matches": ["<all_urls>"],
       "resources": [
         "js/injected/proxy-injected-providers.js",
+        "js/injected/fetch-hook.js",
         "js/confirm/index.js",
         "confirm.html",
         "wasm/policy_engine_wasm_bg.wasm",
         "default-policies/schema.cedarschema",
-        "default-policies/policy-set.json"
+        "default-policies/policy-set.json",
+        "default-policies/policy-set-v2.json",
+        "seed-bundles/*.json"
       ]
     }
   ],
   "__firefox__web_accessible_resources": [
     "js/injected/proxy-injected-providers.js",
+    "js/injected/fetch-hook.js",
     "js/confirm/index.js",
     "confirm.html",
     "wasm/policy_engine_wasm_bg.wasm",
     "default-policies/schema.cedarschema",
-    "default-policies/policy-set.json"
+    "default-policies/policy-set.json",
+    "default-policies/policy-set-v2.json",
+    "seed-bundles/*.json"
   ],
   "background": {
     "__chrome__service_worker": "js/background.js",

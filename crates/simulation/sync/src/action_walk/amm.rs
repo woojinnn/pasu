@@ -1,8 +1,8 @@
 //! AMM 도메인 walk + apply.
 //!
-//! Wired: Swap (4), AddLiquidity (2), RemoveLiquidity (2), CollectFees (1),
-//!        SignIntentOrder (2). 총 11 slots.
-//! CancelIntentOrder 는 live_inputs 없음.
+//! Wired: Swap (4), `AddLiquidity` (2), `RemoveLiquidity` (2), `CollectFees` (1),
+//!        `SignIntentOrder` (2). 총 11 slots.
+//! `CancelIntentOrder` 는 `live_inputs` 없음.
 
 use serde_json::Value;
 
@@ -232,7 +232,7 @@ fn apply_remove(r: &mut RemoveLiquidityAction, slot: &ActionSlot, value: Value, 
 
 fn apply_collect(c: &mut CollectFeesAction, slot: &ActionSlot, value: Value, now: Time) {
     let li = &mut c.live_inputs;
-    if let ActionSlot::AmmCollectFeesOwed = slot {
+    if matches!(slot, ActionSlot::AmmCollectFeesOwed) {
         if let Ok(v) = serde_json::from_value(value) {
             set_field(&mut li.fees_owed, v, now);
         }

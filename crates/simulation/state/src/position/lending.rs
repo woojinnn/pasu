@@ -1,4 +1,4 @@
-//! LendingAccount — 한 lending market 에서의 *계정 집계*.
+//! `LendingAccount` — 한 lending market 에서의 *계정 집계*.
 //!
 //! 개별 supply/borrow 의 ERC20 잔고 (aUSDC, variableDebtUSDC) 는 tokens 안에 살고,
 //! 여기서는 그 위의 집계 메타 (HF, LTV, emode, isolation) 만 담는다. spec §5.

@@ -1,24 +1,26 @@
-//! TokenRef — TokenKind 안에서 다른 토큰을 가리키는 가벼운 식별자.
+//! `TokenRef` — a lightweight identifier pointing to another token from within a `TokenKind`.
 //!
-//! 본체 holding 은 외부 `tokens` map 에 있으므로, kind 안에서는 key 만 들고 다닌다.
-//! (예: aUSDC.kind = YieldReceipt { underlying: TokenRef(USDC.key) })
+//! The actual holding lives in the external `tokens` map, so a kind only carries
+//! the key (e.g. `aUSDC.kind = YieldReceipt { underlying: TokenRef(USDC.key) }`).
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use super::key::TokenKey;
 
-/// `TokenKind` 안에서 다른 토큰을 가리키는 가벼운 ref.
+/// Lightweight reference to another token, holding only its [`TokenKey`] while the
+/// actual holding stays in the external `tokens` map.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct TokenRef {
-    /// 가리키는 토큰의 fungibility 단위 key.
+    /// Key of the referenced token in the `tokens` map.
     pub key: TokenKey,
 }
 
 impl TokenRef {
-    /// `TokenKey` 로부터 `TokenRef` 생성.
-    pub fn new(key: TokenKey) -> Self {
+    /// Creates a `TokenRef` referencing the token identified by `key`.
+    #[must_use]
+    pub const fn new(key: TokenKey) -> Self {
         Self { key }
     }
 }

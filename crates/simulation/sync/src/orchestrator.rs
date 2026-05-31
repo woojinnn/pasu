@@ -1,12 +1,12 @@
 //! Orchestrator — walker + batcher + fetchers 를 묶어 한 `WalletState` 를 신선화.
 //!
 //! 일반 흐름:
-//! 1. [`walk_stale`] 로 stale LiveField 수집
+//! 1. [`walk_stale`] 로 stale `LiveField` 수집
 //! 2. [`batch_by_source`] 로 source 별 묶음
 //! 3. 각 batch 를 해당 fetcher 로 dispatch
-//! 4. 결과 (`Value`) 를 다시 state 의 LiveField 에 write back
+//! 4. 결과 (`Value`) 를 다시 state 의 `LiveField` 에 write back
 //!
-//! Phase 4 에선 OnchainView 만 wired up. 나머지 (Oracle/Venue/Registry/Derived) 는
+//! Phase 4 에선 `OnchainView` 만 wired up. 나머지 (Oracle/Venue/Registry/Derived) 는
 //! 후속 phase 에서 차례로.
 
 use std::collections::HashMap;
@@ -14,7 +14,11 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use simulation_state::{Confidence, LiveField, PositionKind, Price, Time, WalletState};
+use simulation_reducer::action::{Action, ActionBody, PerpAction};
+use simulation_state::{
+    Confidence, DataSource, LiveField, Position, PositionKind, Price, ProtocolRef, SignedI256,
+    Time, WalletState,
+};
 
 use crate::batcher::{batch_by_source, BatchKind, FetchBatch};
 use crate::calc::{CalcContext, CalcRegistry};
@@ -34,9 +38,16 @@ pub struct RefreshReport {
     pub errors: Vec<String>,
 }
 
+/// Hyperliquid account snapshot refresh 결과.
+#[derive(Debug, Default, Clone)]
+pub struct HyperliquidAccountReport {
+    pub account_updated: bool,
+    pub errors: Vec<String>,
+}
+
 pub struct Orchestrator {
     onchain: OnchainViewFetcher,
-    /// provider_key → fetcher. `provider_key` 는
+    /// `provider_key` → fetcher. `provider_key` 는
     /// [`crate::fetchers::oracle::provider_key`] 로 정규화된 문자열.
     /// 예: `"chainlink"`, `"coingecko"`, `"pyth"`, `"redstone"`, ...
     ///
@@ -45,14 +56,15 @@ pub struct Orchestrator {
     registry: Option<RegistryFetcher>,
     hyperliquid: Option<HyperliquidFetcher>,
     calc: CalcRegistry,
-    /// Global LiveField 값 (gas_price, eth_usd 등). DerivedFrom 의 Global FieldRef
+    /// Global `LiveField` 값 (`gas_price`, `eth_usd` 등). `DerivedFrom` 의 Global `FieldRef`
     /// resolve 에 사용. scheduler/sync 가 주기적으로 갱신.
     globals: crate::resolver::GlobalValues,
-    /// primitives sync (balance/block_height/approval) 용 직접 router 접근.
+    /// primitives sync (`balance/block_height/approval`) 용 직접 router 접근.
     router: Option<Arc<crate::RpcRouter>>,
 }
 
 impl Orchestrator {
+    #[must_use]
     pub fn new(onchain: OnchainViewFetcher) -> Self {
         Self {
             onchain,
@@ -65,7 +77,7 @@ impl Orchestrator {
         }
     }
 
-    /// Global LiveField 값 갱신 (gas_price, eth_usd 등).
+    /// Global `LiveField` 값 갱신 (`gas_price`, `eth_usd` 등).
     pub fn set_global(&mut self, name: impl Into<String>, value: serde_json::Value) {
         self.globals.insert(name.into(), value);
     }
@@ -75,7 +87,13 @@ impl Orchestrator {
         self.router.clone()
     }
 
-    /// 임의 provider name 에 PriceFetcher 등록. dispatch 시 [`provider_key`] 가
+    /// 외부에서 (예: receipt watcher) 직접 RPC 호출이 필요할 때.
+    #[must_use]
+    pub fn router_arc(&self) -> Option<Arc<crate::RpcRouter>> {
+        self.router.clone()
+    }
+
+    /// 임의 provider name 에 `PriceFetcher` 등록. dispatch 시 [`provider_key`] 가
     /// 반환하는 문자열과 일치해야 매칭됨.
     pub fn with_price_fetcher(
         mut self,
@@ -87,20 +105,24 @@ impl Orchestrator {
     }
 
     /// Chainlink fetcher 를 "chainlink" 키로 등록.
+    #[must_use]
     pub fn with_chainlink(self, chainlink: ChainlinkFetcher) -> Self {
         self.with_price_fetcher("chainlink", Arc::new(chainlink))
     }
 
+    #[must_use]
     pub fn with_registry(mut self, registry: RegistryFetcher) -> Self {
         self.registry = Some(registry);
         self
     }
 
+    #[must_use]
     pub fn with_hyperliquid(mut self, hl: HyperliquidFetcher) -> Self {
         self.hyperliquid = Some(hl);
         self
     }
 
+    #[must_use]
     pub fn with_calc(mut self, calc: CalcRegistry) -> Self {
         self.calc = calc;
         self
@@ -108,6 +130,7 @@ impl Orchestrator {
 
     /// router 만으로 minimal 구성 — Chainlink registry 와 Hyperliquid endpoint 는
     /// 기본값. 실 운영에서는 [`Self::from_sync_config`] 사용 권장.
+    #[must_use]
     pub fn from_rpc_router(router: Arc<crate::RpcRouter>) -> Self {
         let onchain = OnchainViewFetcher::new(router.clone());
         let chainlink = ChainlinkFetcher::new(router.clone());
@@ -163,7 +186,7 @@ impl Orchestrator {
         })
     }
 
-    /// 주어진 OracleFeed source 에 매핑되는 PriceFetcher 를 반환.
+    /// 주어진 `OracleFeed` source 에 매핑되는 `PriceFetcher` 를 반환.
     fn price_fetcher_for(
         &self,
         source: &simulation_state::DataSource,
@@ -176,7 +199,7 @@ impl Orchestrator {
         }
     }
 
-    /// `state` 안의 모든 stale LiveField 를 `now` 기준으로 갱신.
+    /// `state` 안의 모든 stale `LiveField` 를 `now` 기준으로 갱신.
     pub async fn refresh(
         &self,
         state: &mut WalletState,
@@ -200,14 +223,45 @@ impl Orchestrator {
                     report.fields_failed += fail;
                 }
                 Err(e) => {
-                    report.errors.push(format!("{}", e));
+                    report.errors.push(format!("{e}"));
                 }
             }
         }
         Ok(report)
     }
 
-    /// `action` 안의 모든 stale LiveField 를 갱신. wallet refresh 와 같은 인프라
+    /// Hyperliquid L1 계정 전체를 venue snapshot 기준으로 갱신.
+    ///
+    /// 이 경로는 reducer가 기록한 pending intent보다 venue state를 우선한다. 따라서
+    /// 주문이 체결되거나 취소되면 다음 snapshot에서 `open_orders`, `positions`,
+    /// `perp_usdc`, `agents`가 Hyperliquid 응답 기준으로 교체된다.
+    pub async fn sync_hyperliquid_account(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<HyperliquidAccountReport, SyncError> {
+        let Some(hl) = self.hyperliquid.as_ref() else {
+            return Ok(HyperliquidAccountReport {
+                account_updated: false,
+                errors: vec!["hyperliquid fetcher is not configured".into()],
+            });
+        };
+
+        let user = state.wallet_id.address;
+        let account = hl.fetch_account_snapshot("", &user).await?;
+        let source = DataSource::VenueApi {
+            endpoint: hl.info_endpoint(),
+            parser_id: "hl_account".into(),
+            auth: None,
+        };
+        upsert_hyperliquid_account(state, account, source, now)?;
+        Ok(HyperliquidAccountReport {
+            account_updated: true,
+            errors: Vec::new(),
+        })
+    }
+
+    /// `action` 안의 모든 stale `LiveField` 를 갱신. wallet refresh 와 같은 인프라
     /// (walker → batcher → fetcher) 를 재사용하되 walker 와 apply 만 Action 측.
     ///
     /// `state` 는 read-only context — fetcher 가 wallet 정보 (address 등) 가 필요할 때 참고.
@@ -238,7 +292,7 @@ impl Orchestrator {
                     report.fields_failed += fail;
                 }
                 Err(e) => {
-                    report.errors.push(format!("{}", e));
+                    report.errors.push(format!("{e}"));
                 }
             }
         }
@@ -249,7 +303,7 @@ impl Orchestrator {
         &self,
         batch: FetchBatch,
         action: &mut simulation_reducer::action::Action,
-        _state: &WalletState,
+        state: &WalletState,
         now: Time,
     ) -> Result<(usize, usize), SyncError> {
         // 같은 fetcher 들을 호출하되, 결과를 apply_value_to_action 으로 적용.
@@ -286,7 +340,7 @@ impl Orchestrator {
                     .map(|item| {
                         let args = match &item.location {
                             crate::walker::FieldLocation::Action { slot, .. } => {
-                                crate::args_resolver::resolve_args(slot, action, _state)
+                                crate::args_resolver::resolve_args(slot, action, state)
                             }
                             _ => Vec::new(),
                         };
@@ -335,7 +389,7 @@ impl Orchestrator {
                 }
             }
             BatchKind::Venue { endpoint } => {
-                let is_hl = endpoint.contains("hyperliquid");
+                let is_hl = is_hyperliquid_endpoint(endpoint);
                 let Some(hl) = (if is_hl {
                     self.hyperliquid.as_ref()
                 } else {
@@ -344,7 +398,21 @@ impl Orchestrator {
                     return Ok((0, batch.items.len()));
                 };
                 for item in batch.items {
-                    match hl.fetch(&item.source).await {
+                    let FieldLocation::Action { slot, .. } = &item.location else {
+                        fail += 1;
+                        continue;
+                    };
+                    let market_symbol =
+                        action_market_symbol(action, state, &item.location).unwrap_or_default();
+                    match hl
+                        .fetch_action_value(
+                            &item.source,
+                            slot,
+                            &market_symbol,
+                            &state.wallet_id.address,
+                        )
+                        .await
+                    {
                         Ok(v) => {
                             crate::action_walk::apply_value_to_action(
                                 action,
@@ -487,8 +555,7 @@ impl Orchestrator {
             BatchKind::Venue { endpoint } => {
                 // 지금은 Hyperliquid 만 지원 — endpoint 가 hyperliquid 면 dispatch.
                 // 향후 GMX/dYdX 추가 시 endpoint 패턴 매칭으로 분기.
-                let is_hl = endpoint.contains("hyperliquid")
-                    || endpoint == "https://api.hyperliquid.xyz/info";
+                let is_hl = is_hyperliquid_endpoint(&endpoint);
                 let hl = if is_hl {
                     self.hyperliquid.as_ref()
                 } else {
@@ -501,7 +568,19 @@ impl Orchestrator {
                 let mut ok = 0;
                 let mut fail = 0;
                 for item in batch.items {
-                    match hl.fetch(&item.source).await {
+                    let fetched = match state_market_symbol(state, &item.location) {
+                        Some(market_symbol) => {
+                            hl.fetch_state_value(
+                                &item.source,
+                                &item.location,
+                                &market_symbol,
+                                &state.wallet_id.address,
+                            )
+                            .await
+                        }
+                        None => hl.fetch(&item.source).await,
+                    };
+                    match fetched {
                         Ok(value) => {
                             apply_value(state, &item.location, value, now);
                             ok += 1;
@@ -517,7 +596,7 @@ impl Orchestrator {
     }
 }
 
-/// 갱신된 `value` 를 state 의 해당 LiveField.value/synced_at 으로 반영.
+/// 갱신된 `value` 를 state 의 해당 `LiveField.value/synced_at` 으로 반영.
 ///
 /// 실패해도 상위에서 errors 에 누적할 뿐. state 자체는 일관성 유지.
 fn apply_value(state: &mut WalletState, loc: &FieldLocation, value: Value, now: Time) {
@@ -551,7 +630,7 @@ fn apply_value(state: &mut WalletState, loc: &FieldLocation, value: Value, now: 
             }
         }
         FieldLocation::PerpMarkPrice { position_id } => {
-            if let Some(price) = perp_field_mut(state, position_id, PerpMetric::Mark) {
+            if let Some(price) = perp_position_mut(state, position_id).map(|p| &mut p.mark_price) {
                 if let Some(p) = value_to_price(&value) {
                     price.value = p;
                     price.synced_at = now;
@@ -559,12 +638,49 @@ fn apply_value(state: &mut WalletState, loc: &FieldLocation, value: Value, now: 
                 }
             }
         }
-        // 나머지 perp 필드는 후속 phase 에서 dispatch 추가
-        FieldLocation::PerpLiqPrice { .. }
-        | FieldLocation::PerpUnrealizedPnl { .. }
-        | FieldLocation::PerpFundingOwed { .. }
-        | FieldLocation::PerpLeverage { .. } => {
-            // TODO Phase 8: venue fetcher 결과 처리
+        FieldLocation::PerpLiqPrice { position_id } => {
+            if let Some(field) = perp_position_mut(state, position_id).map(|p| &mut p.liq_price) {
+                match &value {
+                    Value::Null => {
+                        field.value = None;
+                        field.synced_at = now;
+                        field.confidence = Some(Confidence::fresh());
+                    }
+                    _ => {
+                        if let Some(p) = value_to_price(&value) {
+                            field.value = Some(p);
+                            field.synced_at = now;
+                            field.confidence = Some(Confidence::fresh());
+                        }
+                    }
+                }
+            }
+        }
+        FieldLocation::PerpUnrealizedPnl { position_id } => {
+            if let Some(field) =
+                perp_position_mut(state, position_id).map(|p| &mut p.unrealized_pnl)
+            {
+                if let Some(v) = value_to_i256(&value) {
+                    field.value = v;
+                    field.synced_at = now;
+                    field.confidence = Some(Confidence::fresh());
+                }
+            }
+        }
+        FieldLocation::PerpFundingOwed { position_id } => {
+            if let Some(field) = perp_position_mut(state, position_id).map(|p| &mut p.funding_owed)
+            {
+                if let Some(v) = value_to_i256(&value) {
+                    field.value = v;
+                    field.synced_at = now;
+                    field.confidence = Some(Confidence::fresh());
+                }
+            }
+        }
+        FieldLocation::PerpLeverage { position_id } => {
+            if let Some(field) = perp_position_mut(state, position_id).map(|p| &mut p.leverage) {
+                set_decimal(field, &value, now);
+            }
         }
         // Action 측 슬롯은 apply_value_to_action 이 별도로 처리.
         // 여기서는 무시 (refresh_action 흐름에서 dispatch 됨).
@@ -576,6 +692,15 @@ fn value_to_price(v: &Value) -> Option<Price> {
     match v {
         Value::String(s) => Some(simulation_state::Decimal::new(s.clone())),
         Value::Number(n) => Some(simulation_state::Decimal::new(n.to_string())),
+        _ => None,
+    }
+}
+
+fn value_to_i256(v: &Value) -> Option<SignedI256> {
+    use std::str::FromStr;
+    match v {
+        Value::String(s) => SignedI256::from_str(s).ok(),
+        Value::Number(n) => n.as_i64().and_then(|i| SignedI256::try_from(i).ok()),
         _ => None,
     }
 }
@@ -610,22 +735,120 @@ fn lending_field_mut<'a>(
     }
 }
 
-enum PerpMetric {
-    Mark,
-}
-
-fn perp_field_mut<'a>(
+fn perp_position_mut<'a>(
     state: &'a mut WalletState,
     position_id: &str,
-    metric: PerpMetric,
-) -> Option<&'a mut LiveField<Price>> {
+) -> Option<&'a mut simulation_state::PerpPosition> {
     let pos = state.positions.iter_mut().find(|p| p.id == position_id)?;
     match &mut pos.kind {
-        PositionKind::PerpPosition(p) => match metric {
-            PerpMetric::Mark => Some(&mut p.mark_price),
-        },
+        PositionKind::PerpPosition(p) => Some(p),
         _ => None,
     }
+}
+
+const HL_ACCOUNT_ID: &str = "hyperliquid/account";
+
+fn upsert_hyperliquid_account(
+    state: &mut WalletState,
+    account: simulation_state::HlAccount,
+    source: DataSource,
+    now: Time,
+) -> Result<(), SyncError> {
+    let position = Position {
+        id: HL_ACCOUNT_ID.to_owned(),
+        protocol: ProtocolRef::new("hyperliquid"),
+        chain: None,
+        kind: PositionKind::HyperliquidAccount(account),
+        primitives_synced_at: now,
+        primitives_source: source,
+    };
+
+    if let Some(existing) = state.positions.iter_mut().find(|p| p.id == HL_ACCOUNT_ID) {
+        if !matches!(existing.kind, PositionKind::HyperliquidAccount(_)) {
+            return Err(SyncError::FetchFailed {
+                source_id: "hyperliquid".into(),
+                reason: format!("{HL_ACCOUNT_ID} exists but is not a HyperliquidAccount"),
+            });
+        }
+        *existing = position;
+    } else {
+        state.positions.push(position);
+    }
+    Ok(())
+}
+
+fn is_hyperliquid_endpoint(endpoint: &str) -> bool {
+    endpoint.is_empty()
+        || endpoint.contains("hyperliquid")
+        || endpoint == "https://api.hyperliquid.xyz/info"
+}
+
+fn state_market_symbol(state: &WalletState, location: &FieldLocation) -> Option<String> {
+    match location {
+        FieldLocation::PerpMarkPrice { position_id }
+        | FieldLocation::PerpLiqPrice { position_id }
+        | FieldLocation::PerpUnrealizedPnl { position_id }
+        | FieldLocation::PerpFundingOwed { position_id }
+        | FieldLocation::PerpLeverage { position_id } => state
+            .positions
+            .iter()
+            .find(|p| p.id == *position_id)
+            .and_then(|p| match &p.kind {
+                PositionKind::PerpPosition(perp) => Some(perp.market.symbol.clone()),
+                _ => None,
+            }),
+        _ => None,
+    }
+}
+
+fn action_market_symbol(
+    action: &Action,
+    state: &WalletState,
+    location: &FieldLocation,
+) -> Option<String> {
+    let FieldLocation::Action { action_index, .. } = location else {
+        return None;
+    };
+    let body = body_at_index(&action.body, *action_index)?;
+    let ActionBody::Perp(perp) = body else {
+        return None;
+    };
+    perp_action_market_symbol(perp, state)
+}
+
+fn body_at_index(body: &ActionBody, index: usize) -> Option<&ActionBody> {
+    match body {
+        ActionBody::Multicall { actions } => actions.get(index),
+        single if index == 0 => Some(single),
+        _ => None,
+    }
+}
+
+fn perp_action_market_symbol(perp: &PerpAction, state: &WalletState) -> Option<String> {
+    match perp {
+        PerpAction::OpenPosition(a) => Some(a.market.symbol.clone()),
+        PerpAction::ClosePosition(a) => state_position_market_symbol(state, &a.position_id),
+        PerpAction::IncreasePosition(a) => state_position_market_symbol(state, &a.position_id),
+        PerpAction::DecreasePosition(a) => state_position_market_symbol(state, &a.position_id),
+        PerpAction::AdjustMargin(a) => state_position_market_symbol(state, &a.position_id),
+        PerpAction::ChangeLeverage(a) => Some(a.market.symbol.clone()),
+        PerpAction::ChangeMarginMode(a) => Some(a.market.symbol.clone()),
+        PerpAction::PlaceLimitOrder(a) => Some(a.market.symbol.clone()),
+        PerpAction::PlaceStopOrder(a) => Some(a.market.symbol.clone()),
+        PerpAction::CancelOrder(_) => None,
+        PerpAction::ClaimFunding(a) => a.market.as_ref().map(|m| m.symbol.clone()),
+    }
+}
+
+fn state_position_market_symbol(state: &WalletState, position_id: &str) -> Option<String> {
+    state
+        .positions
+        .iter()
+        .find(|p| p.id == position_id)
+        .and_then(|p| match &p.kind {
+            PositionKind::PerpPosition(perp) => Some(perp.market.symbol.clone()),
+            _ => None,
+        })
 }
 
 #[cfg(test)]
@@ -659,7 +882,7 @@ priority = 1
         assert_eq!(report.batches_processed, 0);
     }
 
-    /// DerivedFrom HF 가 Global FieldRef inputs 로부터 실제 계산되는지 end-to-end.
+    /// `DerivedFrom` HF 가 Global `FieldRef` inputs 로부터 실제 계산되는지 end-to-end.
     /// RPC 호출 없음 — Derived batch 만 처리.
     #[tokio::test]
     async fn derived_hf_computes_from_globals() {
@@ -744,5 +967,387 @@ priority = 1
         } else {
             panic!("expected lending account");
         }
+    }
+
+    #[tokio::test]
+    async fn sync_hyperliquid_account_replaces_local_account_with_snapshot() {
+        use std::str::FromStr;
+
+        use serde_json::{json, Value};
+        use simulation_state::{
+            DataSource, Decimal, HlAccount, HlBorrowLendAccount, HlBorrowLendBalance,
+            HlBorrowLendTokenState, HlOpenOrder, HlSpotBalance, HlStakingAccount, HlVaultEquity,
+            Position, PositionKind, ProtocolRef, Time as T, WalletId,
+        };
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::{TcpListener, TcpStream};
+
+        async fn read_request_json(stream: &mut TcpStream) -> Value {
+            let mut buf = Vec::new();
+            let mut tmp = [0u8; 1024];
+            loop {
+                let n = stream.read(&mut tmp).await.unwrap();
+                assert!(n > 0, "connection closed before request body");
+                buf.extend_from_slice(&tmp[..n]);
+                let Some(header_end) = buf.windows(4).position(|w| w == b"\r\n\r\n").map(|i| i + 4)
+                else {
+                    continue;
+                };
+                let headers = String::from_utf8_lossy(&buf[..header_end]);
+                let len = headers
+                    .lines()
+                    .find_map(|line| {
+                        let lower = line.to_ascii_lowercase();
+                        lower
+                            .strip_prefix("content-length:")
+                            .and_then(|s| s.trim().parse::<usize>().ok())
+                    })
+                    .unwrap_or(0);
+                if buf.len() >= header_end + len {
+                    return serde_json::from_slice(&buf[header_end..header_end + len]).unwrap();
+                }
+            }
+        }
+
+        async fn write_json(stream: &mut TcpStream, body: Value) {
+            let body = body.to_string();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).await.unwrap();
+        }
+
+        async fn spawn_hl_info_server() -> String {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            tokio::spawn(async move {
+                loop {
+                    let Ok((mut stream, _)) = listener.accept().await else {
+                        break;
+                    };
+                    tokio::spawn(async move {
+                        let req = read_request_json(&mut stream).await;
+                        let dex = req.get("dex").and_then(Value::as_str);
+                        let body = match (req["type"].as_str().unwrap_or_default(), dex) {
+                            ("clearinghouseState", Some("xyz")) => json!({
+                                "marginSummary": {
+                                    "accountValue": "1077.754757",
+                                    "totalNtlPos": "5257.5954",
+                                    "totalRawUsd": "-4179.840643",
+                                    "totalMarginUsed": "1077.754757"
+                                },
+                                "crossMarginSummary": {
+                                    "accountValue": "1077.754757",
+                                    "totalNtlPos": "5257.5954",
+                                    "totalRawUsd": "-4179.840643",
+                                    "totalMarginUsed": "1077.754757"
+                                },
+                                "crossMaintenanceMarginUsed": "0",
+                                "withdrawable": "0",
+                                "assetPositions": [{
+                                    "type": "oneWay",
+                                    "position": {
+                                        "coin": "xyz:SPCX",
+                                        "szi": "25.77",
+                                        "leverage": { "type": "isolated", "value": 5, "rawUsd": "-4179.840643" },
+                                        "entryPx": "202.74",
+                                        "positionValue": "5257.5954",
+                                        "unrealizedPnl": "32.9856",
+                                        "returnOnEquity": "0.033",
+                                        "liquidationPx": "180.2199216574",
+                                        "marginUsed": "1077.754757",
+                                        "maxLeverage": 5,
+                                        "cumFunding": {
+                                            "allTime": "0.003908",
+                                            "sinceOpen": "0.003908",
+                                            "sinceChange": "0.003908"
+                                        }
+                                    }
+                                }],
+                                "time": 1_710_000_000_123_u64
+                            }),
+                            ("clearinghouseState", None) => json!({
+                                "marginSummary": {
+                                    "accountValue": "1000",
+                                    "totalNtlPos": "6000",
+                                    "totalRawUsd": "1000",
+                                    "totalMarginUsed": "200"
+                                },
+                                "crossMarginSummary": {
+                                    "accountValue": "1000",
+                                    "totalNtlPos": "6000",
+                                    "totalRawUsd": "1000",
+                                    "totalMarginUsed": "200"
+                                },
+                                "crossMaintenanceMarginUsed": "50",
+                                "withdrawable": "800",
+                                "assetPositions": [{
+                                    "type": "oneWay",
+                                    "position": {
+                                        "coin": "BTC",
+                                        "szi": "0.1",
+                                        "leverage": { "type": "cross", "value": 5 },
+                                        "entryPx": "60000",
+                                        "positionValue": "6000",
+                                        "unrealizedPnl": "12",
+                                        "returnOnEquity": "0.02",
+                                        "liquidationPx": "50000",
+                                        "marginUsed": "1200",
+                                        "maxLeverage": 50,
+                                        "cumFunding": {
+                                            "allTime": "-1",
+                                            "sinceOpen": "-1",
+                                            "sinceChange": "0"
+                                        }
+                                    }
+                                }],
+                                "time": 1_710_000_000_123_u64
+                            }),
+                            ("frontendOpenOrders", Some("xyz")) => json!([{
+                                "timestamp": 1_780_211_477_428_u64,
+                                "coin": "xyz:SPCX",
+                                "side": "A",
+                                "limitPx": "170.2",
+                                "sz": "0.0",
+                                "oid": 449_792_035_550_u64,
+                                "origSz": "0.0",
+                                "cloid": null,
+                                "orderType": "Stop Market",
+                                "tif": null,
+                                "reduceOnly": true,
+                                "triggerCondition": "Price below 185",
+                                "isTrigger": true,
+                                "triggerPx": "185.0",
+                                "children": [],
+                                "isPositionTpsl": true
+                            }]),
+                            ("frontendOpenOrders", None) => json!([{
+                                "timestamp": 1_710_000_000_124_u64,
+                                "coin": "ETH",
+                                "side": "B",
+                                "limitPx": "3000",
+                                "sz": "0.25",
+                                "oid": 42,
+                                "origSz": "0.25",
+                                "cloid": null,
+                                "orderType": "Limit",
+                                "tif": "Gtc",
+                                "reduceOnly": false
+                            }]),
+                            ("extraAgents", None) => json!([{
+                                "name": "bot",
+                                "address": "0x1111111111111111111111111111111111111111",
+                                "validUntil": 1_710_000_000_999_u64
+                            }]),
+                            ("spotClearinghouseState", None) => json!({
+                                "balances": [{
+                                    "coin": "USDC",
+                                    "token": 0,
+                                    "total": "1125.961894",
+                                    "hold": "1077.497057",
+                                    "entryNtl": "0.0"
+                                }],
+                                "tokenToAvailableAfterMaintenance": [[0, "48.464837"]]
+                            }),
+                            ("delegatorSummary", None) => json!({
+                                "delegated": "0.0",
+                                "undelegated": "0.0",
+                                "totalPendingWithdrawal": "46.84529183",
+                                "nPendingWithdrawals": 1
+                            }),
+                            ("delegations", None) => json!([]),
+                            ("userVaultEquities", None) => json!([{
+                                "vaultAddress": "0x3333333333333333333333333333333333333333",
+                                "equity": "742500.082809",
+                                "lockedUntilTimestamp": 1_741_132_800_000_u64
+                            }]),
+                            ("borrowLendUserState", None) => json!({
+                                "tokenToState": [[
+                                    0,
+                                    {
+                                        "borrow": { "basis": "0.0", "value": "0.0" },
+                                        "supply": {
+                                            "basis": "44.69295862",
+                                            "value": "44.69692314"
+                                        }
+                                    }
+                                ]],
+                                "health": "healthy",
+                                "healthFactor": null
+                            }),
+                            ("meta", Some("xyz")) => json!({
+                                "universe": [
+                                    { "name": "xyz:SPCX", "maxLeverage": 5, "szDecimals": 2 }
+                                ],
+                                "collateralToken": 0
+                            }),
+                            ("meta", None) => json!({
+                                "universe": [
+                                    { "name": "BTC", "maxLeverage": 50, "szDecimals": 5 },
+                                    { "name": "ETH", "maxLeverage": 25, "szDecimals": 4 }
+                                ],
+                                "collateralToken": 0
+                            }),
+                            ("perpDexs", None) => json!([{ "name": "xyz", "fullName": "XYZ" }]),
+                            (other, dex) => panic!("unexpected info request: {other}/{dex:?}"),
+                        };
+                        write_json(&mut stream, body).await;
+                    });
+                }
+            });
+            format!("http://{addr}")
+        }
+
+        let toml = r#"
+[chains."eip155:1"]
+[[chains."eip155:1".providers]]
+name = "publicnode"
+kind = "public"
+url = "https://ethereum-rpc.publicnode.com"
+priority = 1
+"#;
+        let cfg = crate::RpcConfig::load_str(toml).unwrap();
+        let router = std::sync::Arc::new(crate::RpcRouter::from_config(cfg).unwrap());
+        let base_url = spawn_hl_info_server().await;
+        let orch = Orchestrator::from_rpc_router(router)
+            .with_hyperliquid(crate::fetchers::HyperliquidFetcher::with_base_url(base_url));
+
+        let now = T::from_unix(10_000);
+        let user = Address::from_str("0x2222222222222222222222222222222222222222").unwrap();
+        let mut state =
+            simulation_state::WalletState::new(WalletId::new(user, [ChainId::ethereum_mainnet()]));
+        state.positions.push(Position {
+            id: HL_ACCOUNT_ID.to_owned(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(HlAccount {
+                perp_usdc: Some(Decimal::new("10")),
+                pending_outflow: Decimal::new("99"),
+                positions: Vec::new(),
+                open_orders: vec![HlOpenOrder {
+                    asset_index: 99,
+                    symbol: Some("OLD".to_owned()),
+                    is_buy: false,
+                    price: Decimal::new("1"),
+                    size: Decimal::new("1"),
+                    reduce_only: false,
+                    tif: "gtc".to_owned(),
+                    oid: Some(1),
+                    order_type: None,
+                    is_trigger: None,
+                    trigger_price: None,
+                    trigger_condition: None,
+                    is_position_tpsl: None,
+                }],
+                spot_balances: vec![HlSpotBalance {
+                    coin: "OLD".to_owned(),
+                    token: 999,
+                    total: Decimal::new("1"),
+                    hold: Decimal::new("1"),
+                    entry_ntl: Decimal::new("1"),
+                    available_after_maintenance: None,
+                }],
+                staking: Some(HlStakingAccount {
+                    delegated: Decimal::new("1"),
+                    undelegated: Decimal::new("1"),
+                    total_pending_withdrawal: Decimal::new("1"),
+                    n_pending_withdrawals: 1,
+                    delegations: Vec::new(),
+                }),
+                vault_equities: vec![HlVaultEquity {
+                    vault_address: Address::from([0x99; 20]),
+                    equity: Decimal::new("1"),
+                    locked_until_timestamp: None,
+                }],
+                borrow_lend: Some(HlBorrowLendAccount {
+                    token_states: vec![HlBorrowLendTokenState {
+                        token: 999,
+                        borrow: HlBorrowLendBalance {
+                            basis: Decimal::new("1"),
+                            value: Decimal::new("1"),
+                        },
+                        supply: HlBorrowLendBalance {
+                            basis: Decimal::new("1"),
+                            value: Decimal::new("1"),
+                        },
+                    }],
+                    health: Some("old".to_owned()),
+                    health_factor: Some(Decimal::new("1")),
+                }),
+                ..HlAccount::default()
+            }),
+            primitives_synced_at: T::from_unix(0),
+            primitives_source: DataSource::UserSupplied,
+        });
+
+        let report = orch
+            .sync_hyperliquid_account(&mut state, now)
+            .await
+            .unwrap();
+        assert!(report.account_updated);
+
+        let account = state
+            .positions
+            .iter()
+            .find_map(|p| match &p.kind {
+                PositionKind::HyperliquidAccount(a) if p.id == HL_ACCOUNT_ID => Some(a),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(account.perp_usdc, Some(Decimal::new("800")));
+        assert_eq!(account.pending_outflow, Decimal::new("0"));
+        assert_eq!(account.positions.len(), 2);
+        assert_eq!(account.positions[0].symbol.as_deref(), Some("BTC"));
+        assert_eq!(account.positions[1].symbol.as_deref(), Some("xyz:SPCX"));
+        assert_eq!(account.open_orders.len(), 2);
+        assert_eq!(account.open_orders[0].symbol.as_deref(), Some("ETH"));
+        assert_eq!(account.open_orders[0].oid, Some(42));
+        assert_eq!(account.open_orders[1].symbol.as_deref(), Some("xyz:SPCX"));
+        assert_eq!(
+            account.open_orders[1].order_type.as_deref(),
+            Some("Stop Market")
+        );
+        assert_eq!(account.open_orders[1].is_trigger, Some(true));
+        assert_eq!(
+            account.open_orders[1].trigger_price,
+            Some(Decimal::new("185"))
+        );
+        assert_eq!(
+            account.open_orders[1].trigger_condition.as_deref(),
+            Some("Price below 185")
+        );
+        assert_eq!(account.open_orders[1].is_position_tpsl, Some(true));
+        assert_eq!(account.spot_balances.len(), 1);
+        assert_eq!(account.spot_balances[0].coin, "USDC");
+        assert_eq!(
+            account.spot_balances[0].available_after_maintenance,
+            Some(Decimal::new("48.464837"))
+        );
+        let staking = account.staking.as_ref().unwrap();
+        assert_eq!(
+            staking.total_pending_withdrawal,
+            Decimal::new("46.84529183")
+        );
+        assert_eq!(staking.n_pending_withdrawals, 1);
+        assert!(staking.delegations.is_empty());
+        assert_eq!(account.vault_equities.len(), 1);
+        assert_eq!(
+            account.vault_equities[0].equity,
+            Decimal::new("742500.082809")
+        );
+        assert_eq!(
+            account.vault_equities[0].locked_until_timestamp,
+            Some(1_741_132_800_000_u64)
+        );
+        let borrow_lend = account.borrow_lend.as_ref().unwrap();
+        assert_eq!(borrow_lend.health.as_deref(), Some("healthy"));
+        assert_eq!(borrow_lend.token_states.len(), 1);
+        assert_eq!(
+            borrow_lend.token_states[0].supply.value,
+            Decimal::new("44.69692314")
+        );
+        assert_eq!(account.agents.len(), 1);
     }
 }

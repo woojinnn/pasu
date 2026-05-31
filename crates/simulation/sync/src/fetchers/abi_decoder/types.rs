@@ -22,6 +22,7 @@ pub struct AbiTypeRegistry {
 pub type ParseError = String;
 
 impl AbiTypeRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -32,11 +33,13 @@ impl AbiTypeRegistry {
         Ok(())
     }
 
+    #[must_use]
     pub fn get(&self, id: &str) -> Option<&DynSolType> {
         self.by_id.get(id)
     }
 
     /// 자주 쓰는 ABI 타입 일괄 등록. 새 protocol 추가 시 여기에 한 줄.
+    #[must_use]
     pub fn with_builtins() -> Self {
         let mut r = Self::new();
 
@@ -101,8 +104,9 @@ impl AbiTypeRegistry {
         r
     }
 
+    #[must_use]
     pub fn known_ids(&self) -> Vec<&str> {
-        self.by_id.keys().map(|s| s.as_str()).collect()
+        self.by_id.keys().map(std::string::String::as_str).collect()
     }
 }
 

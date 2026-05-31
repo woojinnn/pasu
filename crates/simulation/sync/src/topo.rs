@@ -1,10 +1,10 @@
-//! DerivedFrom dependency 그래프의 위상정렬.
+//! `DerivedFrom` dependency 그래프의 위상정렬.
 //!
-//! DerivedFrom 은 다른 LiveField 들의 값을 input 으로 받는다 (예: aave_hf 는
-//! collateral_value, debt_value, liq_threshold 에 의존). 따라서 sync 가 derived
+//! `DerivedFrom` 은 다른 `LiveField` 들의 값을 input 으로 받는다 (예: `aave_hf` 는
+//! `collateral_value`, `debt_value`, `liq_threshold` 에 의존). 따라서 sync 가 derived
 //! 들을 처리할 때:
-//!   1. input 으로 쓰이는 source-of-truth 필드 (OnchainView, OracleFeed 등) 먼저 갱신
-//!   2. DerivedFrom 들끼리는 의존 관계 따라 위상정렬 후 차례로 계산
+//!   1. input 으로 쓰이는 source-of-truth 필드 (`OnchainView`, `OracleFeed` 등) 먼저 갱신
+//!   2. `DerivedFrom` 들끼리는 의존 관계 따라 위상정렬 후 차례로 계산
 //!
 //! Kahn's algorithm 으로 단순 구현. cycle 이 있으면 `SyncError::CyclicDeps`.
 

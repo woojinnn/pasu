@@ -1,6 +1,6 @@
 //! `pending_txs` CRUD — offchain signature ledger.
 //!
-//! state_deltas.status='pending' (mempool 의 onchain tx) 과 다름: 여기는 서명만
+//! `state_deltas.status`='pending' (mempool 의 onchain tx) 과 다름: 여기는 서명만
 //! 했고 매처/리졸버/다른 서명자를 기다리는 의도.
 
 use rusqlite::{params, Transaction};

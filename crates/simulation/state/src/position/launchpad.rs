@@ -1,4 +1,4 @@
-//! LaunchpadAllocation — Binance Launchpad / DAO Maker / Buidlpad 등의
+//! `LaunchpadAllocation` — Binance Launchpad / DAO Maker / Buidlpad 등의
 //! 청약 + vest 통합 표현.
 
 use serde::{Deserialize, Serialize};
