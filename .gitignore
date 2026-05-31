@@ -46,3 +46,4 @@ browser-extension/public/wasm/
 *.md
 !README.md
 /docs/
+.scopeball-runtime/

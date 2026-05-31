@@ -19,7 +19,7 @@ use tower_http::cors::CorsLayer;
 use std::sync::Arc;
 
 use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_sync::Orchestrator;
+use simulation_sync::{EtherscanClient, Orchestrator};
 
 use crate::auth::{require_auth, AuthUser};
 use crate::dto::EvaluateRequest;
@@ -41,6 +41,10 @@ pub struct AppState {
     /// `scopeball-sync.toml`. Shared across handlers so we don't re-open
     /// HTTP connection pools on every request.
     pub orchestrator: Arc<Orchestrator>,
+    /// Optional Etherscan V2 client — `None` when `ETHERSCAN_API_KEY`
+    /// isn't set. `POST /wallets` uses it (when present) to discover
+    /// every ERC-20 a wallet holds; absent it falls back to native-only.
+    pub etherscan: Option<EtherscanClient>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -51,6 +55,10 @@ impl std::fmt::Debug for AppState {
             .field("global_db", &self.global_db)
             .field("event_bus", &self.event_bus)
             .field("orchestrator", &"<Orchestrator>")
+            .field(
+                "etherscan",
+                &self.etherscan.as_ref().map(|_| "<EtherscanClient>"),
+            )
             .finish()
     }
 }

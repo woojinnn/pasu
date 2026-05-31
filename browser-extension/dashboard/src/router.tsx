@@ -12,10 +12,13 @@ import { OnboardingPage } from "./pages/onboarding";
 
 import { AuthProvider } from "./hooks/useAuth";
 import { RequireAuth } from "./RequireAuth";
+import { ServerLayout } from "./ServerLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { WalletsPage } from "./pages/WalletsPage";
+import { WalletDetailPage } from "./pages/WalletDetailPage";
 import { ActivityPage } from "./pages/ActivityPage";
+import { MePage } from "./pages/MePage";
 
 // Standalone Vite app at localhost:5174 — BrowserRouter only.
 // Extension-bundling is a future concern (M-5, deferred).
@@ -26,14 +29,23 @@ const router = createBrowserRouter([
   { path: "/auth/callback", element: <AuthCallbackPage /> },
 
   // Server-aware (policy-rpc) subtree. Gated by `<RequireAuth>` so
-  // anonymous users bounce to /login.
+  // anonymous users bounce to /login. `<ServerLayout>` provides the
+  // shared nav bar across all /server/* pages.
   {
     path: "/server",
     element: <RequireAuth />,
     children: [
-      { index: true, element: <Navigate to="/server/wallets" replace /> },
-      { path: "wallets", element: <WalletsPage /> },
-      { path: "activity", element: <ActivityPage /> },
+      {
+        path: "",
+        element: <ServerLayout />,
+        children: [
+          { index: true, element: <Navigate to="/server/wallets" replace /> },
+          { path: "wallets", element: <WalletsPage /> },
+          { path: "wallets/:address", element: <WalletDetailPage /> },
+          { path: "activity", element: <ActivityPage /> },
+          { path: "me", element: <MePage /> },
+        ],
+      },
     ],
   },
 

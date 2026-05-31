@@ -22,7 +22,7 @@ use tracing_subscriber::EnvFilter;
 use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::events::EventBus;
-use simulation_sync::{Orchestrator, SyncConfig};
+use simulation_sync::{EtherscanClient, Orchestrator, SyncConfig};
 
 /// Default bind address. Port `8788` deliberately differs from the legacy
 /// Node.js policy-rpc host (`8787`) so the two can run side-by-side during
@@ -80,11 +80,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let orchestrator = Arc::new(Orchestrator::from_sync_config(&sync_config)?);
 
+    let etherscan = EtherscanClient::from_env();
+    if etherscan.is_some() {
+        tracing::info!("Etherscan token discovery enabled");
+    } else {
+        tracing::info!(
+            "ETHERSCAN_API_KEY not set — POST /wallets will discover the native gas balance only"
+        );
+    }
+
     let state = AppState {
         multi_user,
         global_db,
         event_bus: EventBus::new(),
         orchestrator,
+        etherscan,
     };
     let router = build_router(state);
 

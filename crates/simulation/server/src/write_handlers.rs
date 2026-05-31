@@ -19,9 +19,11 @@ use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 
+use simulation_state::live_field::DataSource;
 use simulation_state::primitives::{Address, ChainId, Time};
+use simulation_state::token::{Balance, TokenHolding, TokenKind};
 use simulation_state::{WalletId, WalletState, WalletStore};
-use simulation_sync::Orchestrator;
+use simulation_sync::{discovery, DiscoveredToken, Orchestrator};
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
@@ -46,6 +48,10 @@ pub struct AddWalletResp {
     /// True when the auto-sync after add succeeded; false if it was
     /// skipped (no orchestrator) or errored (logged in `error`).
     pub synced: bool,
+    /// How many TokenHolding rows were seeded for a brand-new wallet
+    /// (0 for an already-tracked wallet, also 0 when discovery fails).
+    #[serde(default)]
+    pub discovered: usize,
     /// Non-fatal sync error message — caller can retry with /sync.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -69,17 +75,42 @@ pub async fn add_wallet(
         Err(e) => return internal(&format!("open user store: {e}")),
     };
 
-    // Seed an empty WalletState if the wallet isn't already known.
+    // Seed: if the wallet is brand-new, discover what it holds (native
+    // gas + ERC-20s via Etherscan when configured) and pre-populate the
+    // state so the orchestrator's price refresh has something to walk.
+    // For already-known wallets this is a no-op — the existing holdings
+    // stay put.
     let existing = match store.load(&id).await {
         Ok(s) => s,
         Err(e) => return internal(&format!("load: {e}")),
     };
-    if existing == WalletState::new(id.clone()) {
-        // Truly new — persist the empty shell so future loads are O(1).
-        if let Err(e) = store.save(&existing).await {
+    let is_new = existing == WalletState::new(id.clone());
+    let discovered_count = if is_new {
+        let mut seeded = existing.clone();
+        let n = match seed_holdings(&mut seeded, &id, &state).await {
+            Ok(n) => n,
+            Err(e) => {
+                // Discovery is best-effort. Save the empty state and let
+                // the user POST /sync later or live with native-only.
+                if let Err(save_err) = store.save(&existing).await {
+                    return internal(&format!("save: {save_err}"));
+                }
+                return Json(AddWalletResp {
+                    wallet_id: id,
+                    synced: false,
+                    discovered: 0,
+                    error: Some(format!("discovery: {e}")),
+                })
+                .into_response();
+            }
+        };
+        if let Err(e) = store.save(&seeded).await {
             return internal(&format!("save: {e}"));
         }
-    }
+        n
+    } else {
+        0
+    };
 
     // Best-effort sync. Failures here aren't fatal — the caller can
     // POST /sync later, and stale state is better than no wallet row.
@@ -102,9 +133,98 @@ pub async fn add_wallet(
     Json(AddWalletResp {
         wallet_id: id,
         synced,
+        discovered: discovered_count,
         error: sync_err,
     })
     .into_response()
+}
+
+/// Discover what tokens this wallet holds and seed empty
+/// `TokenHolding` rows for each. The orchestrator's price refresh
+/// fills in USD prices in a subsequent pass.
+///
+/// Order per chain:
+///   1. Native gas balance via `eth_getBalance` (always, no key needed).
+///   2. ERC-20 balances via Etherscan V2 when `etherscan` is set.
+///
+/// Returns the total count of newly-seeded holdings.
+async fn seed_holdings(
+    state_out: &mut WalletState,
+    id: &WalletId,
+    app: &AppState,
+) -> Result<usize, String> {
+    let router = app
+        .orchestrator
+        .router_arc()
+        .ok_or_else(|| "orchestrator has no RpcRouter (sync config missing?)".to_string())?;
+
+    let mut count = 0usize;
+    for chain in &id.chains {
+        // 1. Native gas balance.
+        match discovery::fetch_native_balance(&router, chain, id.address).await {
+            Ok(tok) => {
+                state_out
+                    .tokens
+                    .insert(tok.key.clone(), discovered_to_holding(tok, chain));
+                count += 1;
+            }
+            Err(e) => return Err(format!("native {chain}: {e}")),
+        }
+
+        // 2. ERC-20 via Etherscan (optional).
+        if let Some(es) = app.etherscan.as_ref() {
+            match es.list_erc20_balances(chain, id.address).await {
+                Ok(rows) => {
+                    for tok in rows {
+                        if tok.balance.is_zero() {
+                            continue;
+                        }
+                        state_out
+                            .tokens
+                            .insert(tok.key.clone(), discovered_to_holding(tok, chain));
+                        count += 1;
+                    }
+                }
+                Err(e) => return Err(format!("etherscan {chain}: {e}")),
+            }
+        }
+    }
+    Ok(count)
+}
+
+/// Convert a `DiscoveredToken` into a `TokenHolding` ready to land in
+/// `WalletState.tokens`. `primitives_source` points back at the
+/// `eth_call balanceOf(...)` (or `eth_getBalance` for native) so the
+/// orchestrator can refresh the balance on subsequent ticks.
+fn discovered_to_holding(tok: DiscoveredToken, chain: &ChainId) -> TokenHolding {
+    use simulation_state::token::TokenKey;
+    let primitives_source = match &tok.key {
+        TokenKey::Native { .. } => DataSource::OnchainView {
+            chain: chain.clone(),
+            contract: Address::ZERO,
+            function: "eth_getBalance".into(),
+            decoder_id: "eth_balance".into(),
+        },
+        TokenKey::Erc20 { address, .. } => DataSource::OnchainView {
+            chain: chain.clone(),
+            contract: *address,
+            function: "balanceOf(address)".into(),
+            decoder_id: "erc20_balance".into(),
+        },
+        _ => DataSource::UserSupplied,
+    };
+    TokenHolding {
+        key: tok.key,
+        kind: TokenKind::Unknown,
+        symbol: tok.symbol,
+        decimals: tok.decimals,
+        balance: Balance::fungible(tok.balance),
+        committed: Balance::zero_fungible(),
+        approved_to: None,
+        price_usd: None,
+        last_synced_at: Time::from_unix(unix_now_u64()),
+        primitives_source,
+    }
 }
 
 /// `POST /wallets/:address/sync` — force a refresh against live RPC/oracle

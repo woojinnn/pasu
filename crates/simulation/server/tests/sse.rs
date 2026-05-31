@@ -37,6 +37,7 @@ async fn spawn_server() -> (std::net::SocketAddr, EventBus) {
         global_db,
         event_bus: bus.clone(),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
+        etherscan: None,
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

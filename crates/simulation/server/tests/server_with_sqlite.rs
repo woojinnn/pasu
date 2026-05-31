@@ -61,6 +61,7 @@ fn spawn_state() -> (AppState, tempfile::TempDir) {
             global_db,
             event_bus: simulation_server::events::EventBus::new(),
             orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
+            etherscan: None,
         },
         tmp,
     )
