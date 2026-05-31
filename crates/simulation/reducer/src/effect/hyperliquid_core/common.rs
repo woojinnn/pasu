@@ -42,8 +42,6 @@ pub(super) fn find_hl_account(state: &WalletState) -> Option<HlAccount> {
 
 /// `lhs - rhs` on two state-side decimals via `rust_decimal`. Errors on parse
 /// failure or when the result is negative (an underflow the caller must handle).
-// removed when task 7 wires it
-#[allow(dead_code)]
 pub(super) fn decimal_sub_nonneg(lhs: &Decimal, rhs: &Decimal) -> ReducerResult<Decimal> {
     let l = RustDecimal::from_str(lhs.as_str()).map_err(|e| {
         ReducerError::Invariant(format!("HL decimal parse {:?}: {e}", lhs.as_str()))
@@ -62,8 +60,6 @@ pub(super) fn decimal_sub_nonneg(lhs: &Decimal, rhs: &Decimal) -> ReducerResult<
 
 /// `lhs + rhs` on two state-side decimals via `rust_decimal`.
 /// Errors on parse failure of either operand.
-// removed when task 7 wires it
-#[allow(dead_code)]
 pub(super) fn decimal_add(lhs: &Decimal, rhs: &Decimal) -> ReducerResult<Decimal> {
     let l = RustDecimal::from_str(lhs.as_str()).map_err(|e| {
         ReducerError::Invariant(format!("HL decimal parse {:?}: {e}", lhs.as_str()))
