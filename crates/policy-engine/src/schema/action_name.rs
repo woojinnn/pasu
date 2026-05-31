@@ -128,6 +128,14 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "place_stop_order",
     // Permission (1)
     "protocol_authorization",
+    // Restaking (7) — `delegate` already listed above under Airdrop, so `delegate_to`
+    "complete_withdrawal",
+    "delegate_to",
+    "deposit",
+    "queue_withdrawal",
+    "redelegate",
+    "register_operator",
+    "undelegate",
     // Staking (8)
     "claim_rewards",
     "gauge_deposit",
@@ -205,8 +213,9 @@ mod tests {
     #[test]
     fn registry_size_matches_phase1() {
         // 2 Core + 2 Airdrop + 6 Amm + 12 Lending + 6 LiquidStaking + 5 Launchpad
-        // + 11 Perp + 9 Token + 1 Permission + 8 Staking + 5 HyperliquidCore = 67.
-        assert_eq!(REGISTERED_ACTIONS.len(), 67);
+        // + 11 Perp + 9 Token + 1 Permission + 7 Restaking + 8 Staking
+        // + 5 HyperliquidCore = 74.
+        assert_eq!(REGISTERED_ACTIONS.len(), 74);
     }
 
     #[test]

@@ -1,0 +1,193 @@
+{
+  "protocol": "eigenlayer",
+  "category": "restaking",
+  "source": "github:Layr-Labs/eigenlayer-contracts script/configs/mainnet/mainnet-addresses.config.json (proxy addrs) + README deployments table (current release v1.12.0) + live EIP-1967 impl-slot reads (impl ABI source of truth, post-ELIP-002 slashing/redelegation)",
+  "url": "https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/script/configs/mainnet/mainnet-addresses.config.json",
+  "fetchedAt": "2026-05-31",
+  "note": "I0 contract-inventory ground truth for EigenLayer restaking core on mainnet (chain 1). Proxy addresses are stable across releases and come from the official Layr-Labs deploy config; the README deployments table confirms current mainnet release = v1.12.0 (post ELIP-002 slashing/redelegation + ELIP-003). The config JSON in script/configs/ is a v1.4.1 snapshot whose IMPL addresses are stale — every impl address below was re-resolved live via EIP-1967 slot 0x360894...382bbc (eth_getStorageAt) and is the v1.12.0 impl ABI source. Each COVER contract records BOTH the user-called proxy address AND the impl address the verified ABI was fetched from. cover = user (staker/operator) pre-sign surface; exclude = implementation-behind-proxy / governance multisig / oracle / infra / standard-token / legacy. Honest floor: as complete as the official Layr-Labs config + README table; cross-checked against on-chain impl slots. EigenPod is a per-user UpgradeableBeacon proxy (createPod deploys one per staker) — single shared impl ABI, address is per-user so coverage uses the beacon-impl ABI without a fixed user address.",
+  "contracts": [
+    {
+      "name": "DelegationManager (proxy)",
+      "chainId": 1,
+      "address": "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a",
+      "impl": "0xe7022a128acd4c6cad7aff6fa874d61f984bce75",
+      "decision": "cover",
+      "reason": "user delegation + withdrawal surface: delegateTo / redelegate / undelegate / queueWithdrawals / completeQueuedWithdrawal(s) / registerAsOperator / modifyOperatorDetails / updateOperatorMetadataURI. Holds the staker->operator delegation + DelegationApproval EIP-712 grant. ScopeBall's core permission-delegation target."
+    },
+    {
+      "name": "StrategyManager (proxy)",
+      "chainId": 1,
+      "address": "0x858646372cc42e1a627fce94aa7a7033e7cf075a",
+      "impl": "0x88582996b70fdd7c4f16e3fde7b53858fce0d394",
+      "decision": "cover",
+      "reason": "user LST deposit surface: depositIntoStrategy / depositIntoStrategyWithSignature (Deposit EIP-712). Entry point for restaking liquid-staking-token shares."
+    },
+    {
+      "name": "EigenPodManager (proxy)",
+      "chainId": 1,
+      "address": "0x91e677b07f7af907ec9a428aafa9fc14a0d3a338",
+      "impl": "0xd22dd829779adbf3869fb224f703452f7f95e9db",
+      "decision": "exclude",
+      "reason": "DEFERRED to native-pod round — native beacon-chain restaking (createPod / stake 32ETH validator deposit). Pairs with per-user EigenPod (no singleton manifest target) + SSZ checkpoint proofs. Out of round-1 LST-deposit + delegation scope."
+    },
+    {
+      "name": "EigenPodBeacon (UpgradeableBeacon for per-user EigenPod)",
+      "chainId": 1,
+      "address": "0x5a2a4f2f3c18f09179b6703e63d9edd165909073",
+      "impl": "0x53cc2d82e08370fe1e44a96f69cec7d5b54ae868",
+      "decision": "exclude",
+      "reason": "DEFERRED to native-pod round — per-user beacon proxy (createPod deploys one per staker), NO singleton address → no per-(chain,address) manifest target; verbs need complex SSZ beacon proofs. Out of round-1 scope."
+    },
+    {
+      "name": "AllocationManager (proxy)",
+      "chainId": 1,
+      "address": "0x948a420b8cc1d6bfd0b6087c2e7c344a2cd0bc39",
+      "impl": "0xda2a68d318a571dd550f2ecbcb09bf50497e97c4",
+      "decision": "exclude",
+      "reason": "DEFERRED to operator-AVS round — operator allocation/slashing surface (modifyAllocations / registerForOperatorSets / setAllocationDelay …). Narrower operator-AVS persona, no staker pre-sign. Out of round-1 delegation+permission scope."
+    },
+    {
+      "name": "PermissionController (proxy)",
+      "chainId": 1,
+      "address": "0x25e5f8b1e7adf44518d35d5b2271f114e081f0e5",
+      "impl": "0x36dd260abf606172875e6b5b7a96b435dc74eed2",
+      "decision": "cover",
+      "reason": "NEW post-ELIP-002 contract. PERMISSION-DELEGATION primitive contract: setAppointee / addPendingAdmin / acceptAdmin / removeAdmin / removeAppointee. Grants third parties scoped (selector-level) call rights over an account's EigenLayer actions. ScopeBall's raison d'etre — always cover."
+    },
+    {
+      "name": "AVSDirectory (proxy)",
+      "chainId": 1,
+      "address": "0x135dda560e946695d6f155dacafc6f1f25c1f5af",
+      "impl": "0xcd35cef328b496fa9d70a8d7c34ef3434614862b",
+      "decision": "exclude",
+      "reason": "DEFERRED to operator-AVS round — legacy M2 operator↔AVS registration (registerOperatorToAVS + OperatorAVSRegistration EIP-712), superseded by AllocationManager operator-sets. Operator-AVS persona. Out of round-1 scope."
+    },
+    {
+      "name": "RewardsCoordinator (proxy)",
+      "chainId": 1,
+      "address": "0x7750d328b314effa365a0402ccfd489b80b0adda",
+      "impl": "0xa0673c53980665a706352412d2538ba005403c26",
+      "decision": "cover",
+      "reason": "user/operator permission + claim surface: setClaimerFor (delegate who can claim your rewards = permission-grant), setOperatorAVSSplit / setOperatorPISplit / setOperatorSetSplit (operator fee config), processClaim(s). The reward-submission creators are AVS/admin-side (excluded per-fn in coverage)."
+    },
+    {
+      "name": "StrategyBaseTVLLimits (LST strategy, 12 deployed: stETH/rETH/cbETH/ETHx/ankrETH/oETH/osETH/swETH/wBETH/sfrxETH/lsETH/mETH)",
+      "chainId": 1,
+      "address": "0x93c4b944d05dfe6df7645a86cd2206016c51564d",
+      "impl": "0xb427e2eb4bb33ee3f1ee72dc9e347e8625a72230",
+      "decision": "exclude",
+      "reason": "infra: users deposit via StrategyManager.depositIntoStrategy (covered), NOT by calling the strategy directly. Strategy.deposit/withdraw are onlyStrategyManager; setTVLLimits is governance. No user pre-sign entry point. (Strategy addresses still enumerated in tokens/ for share<->underlying enrichment.)"
+    },
+    {
+      "name": "EigenStrategy (EIGEN token strategy)",
+      "chainId": 1,
+      "address": "0xacb55c530acdb2849e6d4f36992cd8c9d50ed8f7",
+      "impl": "0x509aadb99487182b21ff4e9e7eb362a9ea8e8f40",
+      "decision": "exclude",
+      "reason": "infra: EIGEN-specific strategy; same as StrategyBaseTVLLimits — deposits routed through StrategyManager, direct calls are onlyStrategyManager/governance."
+    },
+    {
+      "name": "StrategyFactory (proxy)",
+      "chainId": 1,
+      "address": "0x5e4c39ad7a3e881585e383db9827eb4811f6f647",
+      "impl": "0x315bcd0f31ef8b1124382f3acab3913f791c09e7",
+      "decision": "exclude",
+      "reason": "infra/governance: permissionless/owner strategy deployment (deployNewStrategy / whitelist mgmt). Not a staker/operator pre-sign fund-move or permission grant."
+    },
+    {
+      "name": "Slasher (proxy)",
+      "chainId": 1,
+      "address": "0xd92145c07f8ed1d392c1b88017934e301cc1c3cd",
+      "impl": "0xf3234220163a757edf1e11a8a085638d9b236614",
+      "decision": "exclude",
+      "reason": "infra/keeper: AVS/protocol slashing executor (post-ELIP-002 slashing is initiated via AllocationManager.slashOperator by AVS). Not a user pre-sign surface."
+    },
+    {
+      "name": "AVSDirectory impl",
+      "chainId": 1,
+      "address": "0xcd35cef328b496fa9d70a8d7c34ef3434614862b",
+      "decision": "exclude",
+      "reason": "implementation behind the AVSDirectory proxy — users call the proxy (covered)."
+    },
+    {
+      "name": "DelayedWithdrawalRouter (proxy, deprecated)",
+      "chainId": 1,
+      "address": "0x7fe7e9cc0f274d2435ad5d56d5fa73e47f6a23d8",
+      "impl": "0x4bb6731b02314d40abbffbc4540f508874014226",
+      "decision": "exclude",
+      "reason": "legacy/deprecated: M1 delayed-withdrawal router for native ETH; superseded by EigenPod checkpoint proofs in M2+. Retained on-chain but not the current user pre-sign withdrawal path."
+    },
+    {
+      "name": "EIGEN token (proxy, ERC-20)",
+      "chainId": 1,
+      "address": "0xec53bf9167f50cdeb3ae105f56099aaab9061f83",
+      "impl": "0x2c4a81e257381f87f5a5c4bd525116466d972e50",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (+EIP-2612 permit) wrapper token — analyzed by the tokens:erc20 standard adapter auto-enumerate, not an EigenLayer-specific surface. EIGEN-specific wrap/unwrap (bEIGEN) is governance/token-mechanics, not restaking pre-sign."
+    },
+    {
+      "name": "bEIGEN token (proxy, ERC-20)",
+      "chainId": 1,
+      "address": "0x83e9115d334d248ce39a6f36144aeab5b3456e75",
+      "impl": "0xf2b225815f70c9b327dc9db758a36c92a4279b17",
+      "decision": "exclude",
+      "reason": "standard ERC-20 backing token for EIGEN — tokens:erc20 standard adapter. Not restaking surface."
+    },
+    {
+      "name": "BeaconChainOracle (EIP-4788 beacon roots / Beacon Oracle)",
+      "chainId": 1,
+      "address": "0x343907185b71adf0eba9567538314396aa985442",
+      "decision": "exclude",
+      "reason": "oracle: beacon-chain block-root provider for EigenPod proofs. Read-only/keeper, not user pre-sign."
+    },
+    {
+      "name": "eigenLayerProxyAdmin",
+      "chainId": 1,
+      "address": "0x8b9566ada63b64d1e1dcf1418b43fd1433b72444",
+      "decision": "exclude",
+      "reason": "governance: ProxyAdmin (upgrade authority). Owner-only."
+    },
+    {
+      "name": "eigenLayerPauserReg",
+      "chainId": 1,
+      "address": "0x0c431c66f4de941d089625e5b423d00707977060",
+      "decision": "exclude",
+      "reason": "governance/infra: pauser registry. Multisig-only."
+    },
+    {
+      "name": "Timelock",
+      "chainId": 1,
+      "address": "0xa6db1a8c5a981d1536266d2a393c5f8ddb210eaf",
+      "decision": "exclude",
+      "reason": "governance: upgrade/ops timelock. Not user pre-sign."
+    },
+    {
+      "name": "CommunityMultisig",
+      "chainId": 1,
+      "address": "0xfea47018d632a77ba579846c840d5706705dc598",
+      "decision": "exclude",
+      "reason": "governance multisig."
+    },
+    {
+      "name": "ExecutorMultisig",
+      "chainId": 1,
+      "address": "0x369e6f597e22eab55ffb173c6d9cd234bd699111",
+      "decision": "exclude",
+      "reason": "governance multisig (executor)."
+    },
+    {
+      "name": "OperationsMultisig",
+      "chainId": 1,
+      "address": "0xbe1685c81aa44ff9fb319dd389addd9374383e90",
+      "decision": "exclude",
+      "reason": "governance multisig (operations)."
+    },
+    {
+      "name": "PauserMultisig",
+      "chainId": 1,
+      "address": "0x5050389572f2d220ad927ccbea0d406831012390",
+      "decision": "exclude",
+      "reason": "governance multisig (pauser)."
+    }
+  ]
+}

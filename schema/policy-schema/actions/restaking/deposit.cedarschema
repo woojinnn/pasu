@@ -1,0 +1,29 @@
+// Restaking::Deposit — deposit an ERC-20 (LST) into a strategy for restaking
+// shares (EigenLayer StrategyManager `depositIntoStrategy` / off-chain Deposit).
+//
+// Rust source: `crates/simulation/reducer/src/action/restaking/deposit.rs`
+// (`DepositAction`). No LiveInputs (amount is in token units = user-legible).
+
+namespace Restaking {
+  type DepositContext = {
+    meta: Core::ActionMeta,
+    venue: RestakingVenue,
+    // Strategy contract receiving the deposit.
+    strategy: String,
+    // Underlying ERC-20 (LST) being deposited.
+    token: Core::TokenRef,
+    // Amount deposited, in token units (U256 hex).
+    amount: String,
+    // Staker on whose behalf the deposit is made (signature variant); omitted ⇒ the submitter.
+    staker?: String,
+    custom?: DepositCustomContext,
+  };
+
+  type DepositCustomContext = {};
+
+  action "Deposit" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: DepositContext,
+  };
+}

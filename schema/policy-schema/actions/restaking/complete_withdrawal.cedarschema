@@ -1,0 +1,31 @@
+// Restaking::CompleteWithdrawal — complete a queued withdrawal, releasing funds
+// (EigenLayer DelegationManager `completeQueuedWithdrawal(s)`).
+//
+// Rust source: `crates/simulation/reducer/src/action/restaking/complete_withdrawal.rs`
+// (`CompleteWithdrawalAction`). No LiveInputs.
+
+namespace Restaking {
+  type CompleteWithdrawalContext = {
+    meta: Core::ActionMeta,
+    venue: RestakingVenue,
+    // Original staker of the withdrawal.
+    staker: String,
+    // Address completing the withdrawal and receiving the funds.
+    withdrawer: String,
+    // Strategies whose shares are being withdrawn.
+    strategies: Set<String>,
+    // true = receive underlying tokens; false = re-deposit as shares.
+    // Omitted for the batch completeQueuedWithdrawals (parallel bool[] not
+    // reachable per-element from array_emit).
+    receiveAsTokens?: Bool,
+    custom?: CompleteWithdrawalCustomContext,
+  };
+
+  type CompleteWithdrawalCustomContext = {};
+
+  action "CompleteWithdrawal" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: CompleteWithdrawalContext,
+  };
+}

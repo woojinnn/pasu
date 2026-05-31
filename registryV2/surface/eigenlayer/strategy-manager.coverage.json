@@ -1,0 +1,105 @@
+{
+  "contract": "StrategyManager",
+  "chainId": 1,
+  "address": "0x858646372cc42e1a627fce94aa7a7033e7cf075a",
+  "snapshot": "strategy-manager.abi.json",
+  "note": "Surface triage for EigenLayer StrategyManager (v1.12.0 impl 0x88582996...0d394). LST deposit entry point. signed_structs holds the off-chain Deposit EIP-712 grant consumed by depositIntoStrategyWithSignature.",
+  "functions": {
+    "0xe7a050aa": {
+      "name": "depositIntoStrategy",
+      "decision": "cover",
+      "reason": "user-fund-move — deposit ERC-20 LST into a strategy, minting restaking shares to caller. (address strategy, address token, uint256 amount). Core restaking deposit."
+    },
+    "0x32e89ace": {
+      "name": "depositIntoStrategyWithSignature",
+      "decision": "exclude",
+      "reason": "relayer-submit — depositIntoStrategyWithSignature is submitted by a relayer; the staker's risk is captured at the off-chain `Deposit` EIP-712 sign (signed_structs.Deposit, COVER). Same as Morpho setAuthorizationWithSig precedent. On-chain calldata excluded; off-chain sign covered."
+    },
+    "0x50ff7225": {
+      "name": "addShares",
+      "decision": "exclude",
+      "reason": "infra/onlyDelegationManager — internal share crediting on withdrawal completion. Not user-callable."
+    },
+    "0x724af423": {
+      "name": "removeDepositShares",
+      "decision": "exclude",
+      "reason": "infra/onlyDelegationManager — internal share removal when queueing withdrawal. Not user-callable."
+    },
+    "0x2eae418c": {
+      "name": "withdrawSharesAsTokens",
+      "decision": "exclude",
+      "reason": "infra/onlyDelegationManager — internal: redeem shares to underlying tokens during completeQueuedWithdrawal. Not user-callable."
+    },
+    "0x4b6d5d6e": {
+      "name": "burnShares",
+      "decision": "exclude",
+      "reason": "infra — burns shares of a slashed/redistributed strategy; protocol accounting, not a wallet action."
+    },
+    "0x88c10299": {
+      "name": "clearBurnOrRedistributableShares",
+      "decision": "exclude",
+      "reason": "infra/keeper — clears the burn-or-redistribute queue for an operator set; slashing settlement plumbing."
+    },
+    "0x2d44def6": {
+      "name": "clearBurnOrRedistributableSharesByStrategy",
+      "decision": "exclude",
+      "reason": "infra/keeper — per-strategy variant of burn/redistribute clearing."
+    },
+    "0x3fb99ca5": {
+      "name": "increaseBurnOrRedistributableShares",
+      "decision": "exclude",
+      "reason": "infra/onlyDelegationManager — records slashed shares to be burned/redistributed. Not user-callable."
+    },
+    "0x5de08ff2": {
+      "name": "addStrategiesToDepositWhitelist",
+      "decision": "exclude",
+      "reason": "governance — onlyStrategyWhitelister; adds strategies to the deposit whitelist."
+    },
+    "0xb5d8b5b8": {
+      "name": "removeStrategiesFromDepositWhitelist",
+      "decision": "exclude",
+      "reason": "governance — onlyStrategyWhitelister."
+    },
+    "0xc6656702": {
+      "name": "setStrategyWhitelister",
+      "decision": "exclude",
+      "reason": "governance — onlyOwner; set the whitelister role."
+    },
+    "0x1794bb3c": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "infra — proxy initializer."
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "governance — Ownable."
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "governance — Ownable."
+    },
+    "0x136439dd": {
+      "name": "pause",
+      "decision": "exclude",
+      "reason": "governance — onlyPauser."
+    },
+    "0x595c6a67": {
+      "name": "pauseAll",
+      "decision": "exclude",
+      "reason": "governance — onlyPauser."
+    },
+    "0xfabc1cbc": {
+      "name": "unpause",
+      "decision": "exclude",
+      "reason": "governance — onlyUnpauser."
+    }
+  },
+  "signed_structs": {
+    "Deposit": {
+      "decision": "cover",
+      "reason": "off-chain EIP-712 message a staker SIGNS to authorize depositIntoStrategyWithSignature on their behalf. typehash Deposit(address staker,address strategy,address token,uint256 amount,uint256 nonce,uint256 expiry) — VERIFIED against live on-chain DEPOSIT_TYPEHASH 0x4337f82d...9224. Domain {name:'EigenLayer', version:'1', chainId:1, verifyingContract: StrategyManager proxy}. Grants a relayer the right to move the staker's tokens into a strategy — an off-chain fund-move authorization."
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/permission-controller/setAppointee@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x950d806e",
+    "chain_to_addresses": {
+      "1": [
+        "0x25e5f8b1e7adf44518d35d5b2271f114e081f0e5"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setAppointee",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "appointee",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes4",
+          "name": "selector",
+          "type": "bytes4"
+        }
+      ],
+      "name": "setAppointee",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "eigenlayer",
+          "authorizer": "$args.account",
+          "authorized": "$args.appointee",
+          "is_authorized": true,
+          "permission": "delegate",
+          "permission_label": "$args.target"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

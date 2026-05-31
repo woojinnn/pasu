@@ -25,12 +25,14 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
    + 정확한 산출물·게이트 + 가드레일을 전부 embed. 면밀할수록 rework 가 준다.
 
 [먼저 읽어라 — 인스트럭션, 방법론 1차 source-of-truth. 전부 crates/integration-tests/]
- 1. README.md                          — 하니스 runbook (CLI·3 입력소스·Log→Gap→Develop 루프)
- 2. PROTOCOL_ONBOARDING_AND_TESTING.md — spine. P0~P4 전체 + 문서맵·§2.1 워크플로·♻️재진입·
+ 1. PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md — protocol-agnostic completion model,
+                                         semantic oracle contract, strict audit skeleton
+ 2. README.md                          — 하니스 runbook (CLI·3 입력소스·Log→Gap→Develop 루프)
+ 3. PROTOCOL_ONBOARDING_AND_TESTING.md — spine. P0~P4 전체 + 문서맵·§2.1 워크플로·♻️재진입·
                                          §3.1 LLM discovery panel·§4d enrichment·§5d 소스별 하한·
                                          §8.6 self-check·§9 worked example
- 3. ACTIONBODY_EXTENSION_GUIDE.md      — Tier3 확장(새 domain/action/live_field)
- 4. registryV2/surface/README.md       — surface gate(I0/I1) + _deployments.json
+ 4. ACTIONBODY_EXTENSION_GUIDE.md      — Tier3 확장(새 domain/action/live_field)
+ 5. registryV2/surface/README.md       — surface gate(I0/I1) + _deployments.json
  읽고 큰 틀 파악 후 스스로 판단해 자율 실행(매 단계 confirm 요청 X).
  새 domain 같은 큰 설계만 ExitPlanMode 로 plan 1회 받고 자율 진행.
 
@@ -41,7 +43,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  P1 함수마다 schema(§4a)→manifest(§4b)→engine(§4c)→enrich(§4d: 추상 단위면 환산 live_field).
     npm run check:manifest.
  P2 synthetic fuzz + Etherscan(bulk 10k) + Dune(Base/OP·cross-chain pinpoint, free 엔진 +
-    partition WHERE) — §5d 소스별 하한 준수. corpus + hash/derived/live 필드 field-level golden.
+    partition WHERE) — §5d 소스별 하한 준수. semantic-critical 필드는
+    PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK 기준으로 expect_body/projection/field-level golden 중 하나로 pin.
  P3 gap 분류→manifest/decoder/harness 처치→회귀(§6).
  P4 build-index → check:manifest → check:surface → cargo test --workspace 0 fail →
     wasm-build → clippy/fmt(변경 crate) → explicit-stage 커밋.
@@ -53,7 +56,7 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
 [가드레일 — 절대]
  explicit-stage(git add <파일>, git add -A 금지) · 무관 churn·.env(ETHERSCAN_API_KEY 로컬) 비접촉
  · 주소/ABI 는 1차 출처(Etherscan/Sourcify/공식 GitHub verified)만, 추측·블로그 금지
- · cargo fmt --all 후 내가 안 건드린 파일 재포맷되면 git checkout HEAD -- 로 revert
+ · cargo fmt --all 후 내가 안 건드린 파일 재포맷되면 stage 하지 말고, 실제 revert 는 명확히 내 변경 파일이거나 사용자 승인 받은 경우만
  · 출력 한국어(기술용어 영어), 정직한 한계, 작업/결정에 sequential-thinking.
 
 산출: <PROTOCOL> manifest + (필요시)Tier3 + surface gate PASS + corpus/golden + workspace green.

@@ -4,7 +4,7 @@ raw Tx (calldata) / EIP-712 typed-data 를 **production 디코더**로 돌려 `A
 
 > **이 README 는 사람 + 에이전트(Claude Code) 둘 다를 위한 runbook 이다.** §6 "Log → Gap → Develop 루프" 가 핵심 — 다른 팀원의 Claude Code 가 이 파일만 읽고 (1) 3-source 입력 생성 → (2) 하니스 실행 + 로그 수집 → (3) 부족한 부분(gap) 자동 분류 → (4) 어디를 고칠지 판단 → (5) 회귀로 닫기 를 **자율 수행**할 수 있도록 작성했다.
 >
-> **범위 — framework 진입점 맵**: 이 README 는 **P3-P4(decode 테스트 + fix 루프)** 담당. 새 프로토콜을 **처음부터 온보딩(P0 research → P1 Tier A/B/3 authoring)** 하려면 **같은 디렉토리**의 **`PROTOCOL_ONBOARDING_AND_TESTING.md`**(4-phase·3-tier·worked example 전체 spine), Tier 3 ActionBody 확장은 같은 디렉토리 **`ACTIONBODY_EXTENSION_GUIDE.md`**, surface 전수성 gate(어댑터 누락 차단)는 **`registryV2/surface/README.md`**(gate 데이터 옆 — `npm run check:surface`)를 본다. **인스트럭션 3종(이 README + ONBOARDING + EXTENSION)은 전부 `crates/integration-tests/` 에 모여 있고 gitignore 에서 제외(tracked)된다.**
+> **범위 — framework 진입점 맵**: 이 README 는 **P3-P4(decode 테스트 + fix 루프)** 담당. 새 프로토콜을 **처음부터 온보딩(P0 research → P1 Tier A/B/3 authoring)** 하려면 먼저 **`PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md`**(프로토콜 독립 completion model + semantic oracle contract)를 읽고, 세부 실행은 **`PROTOCOL_ONBOARDING_AND_TESTING.md`**(4-phase·3-tier·worked example 전체 spine), Tier 3 ActionBody 확장은 **`ACTIONBODY_EXTENSION_GUIDE.md`**, surface 전수성 gate(어댑터 누락 차단)는 **`registryV2/surface/README.md`**(gate 데이터 옆 — `npm run check:surface`)를 본다. **인스트럭션 문서는 전부 tracked 파일이다.**
 
 ---
 
@@ -50,7 +50,7 @@ C. Dune 실거래       ─┘  / td        fuzz/*    : 전략별 합성 (4종) 
 ```
 
 - **2 front-end** — `tests/v3_decode_harness.rs` (deterministic CI gate = **4 structural + protocol 별 field-level golden 다수**; 총수는 늘어남 → 측정 `grep "test result"`) + `src/bin/v3_harness.rs` (CLI, 무제한 fuzz + 리포트).
-- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<simulation_reducer::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(`VALID_DOMAINS`, 현재 10종) → L4 soft/hard error class.
+- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<simulation_reducer::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(`VALID_DOMAINS`, 현재 11종; `staking` 포함) → L4 soft/hard error class.
 - **⚠️ R1 (필독)** — WASM v3 install state 는 **thread-local**. install 과 route 는 **반드시 동일 OS 스레드**에서. 각 test fn 이 스스로 install 한다. 새 헬퍼를 만들 때 install→route 를 같은 함수 안에서 호출할 것.
 
 ---
@@ -314,7 +314,7 @@ crates/integration-tests/
 ### oracle 계층 / domain
 
 - L1 envelope(`ok`) → L2 typed round-trip(`Vec<Action>`) → L3 domain validity → L4 error class.
-- domain (`VALID_DOMAINS`, 현재 **10종** — 측정 `grep -n VALID_DOMAINS src/harness/oracle.rs`): `token` / `amm` / `lending` / `airdrop` / `launchpad` / `liquid_staking` / `perp` / `permission` / `multicall` / `unknown`. `unknown` 은 **실패가 아니라 metric**(off-chain 등 정상 출력 포함).
+- domain (`VALID_DOMAINS`, 현재 **11종** — 측정 `grep -n VALID_DOMAINS src/harness/oracle.rs`): `token` / `amm` / `lending` / `airdrop` / `launchpad` / `liquid_staking` / `perp` / `permission` / `staking` / `multicall` / `unknown`. `unknown` 은 **실패가 아니라 metric**(off-chain 등 정상 출력 포함).
 
 ### 환경변수
 

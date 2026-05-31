@@ -24,6 +24,7 @@ pub mod liquid_staking;
 pub mod order_intent;
 pub mod permission;
 pub mod perp;
+pub mod restaking;
 pub mod staking;
 pub mod token;
 pub mod view;
@@ -37,6 +38,7 @@ pub use liquid_staking::LiquidStakingAction;
 pub use order_intent::OrderIntent;
 pub use permission::PermissionAction;
 pub use perp::PerpAction;
+pub use restaking::RestakingAction;
 pub use staking::StakingAction;
 pub use token::TokenAction;
 pub use view::ActionView;
@@ -165,6 +167,8 @@ pub enum ActionBody {
     LiquidStaking(LiquidStakingAction),
     /// Protocol permission-domain action (manager/operator/relayer grants).
     Permission(PermissionAction),
+    /// Restaking-domain action (delegate, deposit, queue/complete withdrawal, ...).
+    Restaking(RestakingAction),
     /// Staking / vote-escrow-domain action (veCRV lock, claim rewards, gauge vote, ...).
     Staking(StakingAction),
     /// Hyperliquid CORE action (off-chain L1 order / leverage / fund movement),

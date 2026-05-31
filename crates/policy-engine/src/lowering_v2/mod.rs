@@ -46,6 +46,7 @@ mod liquid_staking;
 mod multicall;
 mod permission;
 mod perp;
+mod restaking;
 mod staking;
 mod token;
 mod unknown;

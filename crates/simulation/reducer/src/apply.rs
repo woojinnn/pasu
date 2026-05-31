@@ -45,6 +45,7 @@ impl Reducer for ActionBody {
             Self::Perp(a) => a.apply(state, ctx),
             Self::LiquidStaking(a) => a.apply(state, ctx),
             Self::Permission(a) => a.apply(state, ctx),
+            Self::Restaking(a) => a.apply(state, ctx),
             Self::Staking(a) => a.apply(state, ctx),
             // Hyperliquid CORE actions record their effect against the wallet's
             // off-chain Hl account (see effect::hyperliquid_core). No fetch: the

@@ -1,0 +1,61 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/modifyOperatorDetails@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x54b7c96c",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "modifyOperatorDetails",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "operator",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "newDelegationApprover",
+          "type": "address"
+        }
+      ],
+      "name": "modifyOperatorDetails",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "eigenlayer",
+          "authorizer": "$args.operator",
+          "authorized": "$args.newDelegationApprover",
+          "is_authorized": true,
+          "permission": "delegate",
+          "permission_label": "delegation_approver"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

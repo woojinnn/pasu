@@ -151,6 +151,24 @@ const PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/permission/protocol_authorization.cedarschema"
 );
 
+// restaking (alphabetical)
+const RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/restaking/complete_withdrawal.cedarschema"
+);
+const RESTAKING_DELEGATE_TO_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/delegate_to.cedarschema");
+const RESTAKING_DEPOSIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/deposit.cedarschema");
+const RESTAKING_QUEUE_WITHDRAWAL_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/queue_withdrawal.cedarschema");
+const RESTAKING_REDELEGATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/redelegate.cedarschema");
+const RESTAKING_REGISTER_OPERATOR_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/restaking/register_operator.cedarschema"
+);
+const RESTAKING_UNDELEGATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/undelegate.cedarschema");
+
 // token (alphabetical)
 const TOKEN_ERC20_APPROVE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/erc20_approve.cedarschema");
@@ -236,6 +254,13 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     PERP_PLACE_LIMIT_ORDER_SCHEMA,
     PERP_PLACE_STOP_ORDER_SCHEMA,
     PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+    RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA,
+    RESTAKING_DELEGATE_TO_SCHEMA,
+    RESTAKING_DEPOSIT_SCHEMA,
+    RESTAKING_QUEUE_WITHDRAWAL_SCHEMA,
+    RESTAKING_REDELEGATE_SCHEMA,
+    RESTAKING_REGISTER_OPERATOR_SCHEMA,
+    RESTAKING_UNDELEGATE_SCHEMA,
     STAKING_CLAIM_REWARDS_SCHEMA,
     STAKING_GAUGE_DEPOSIT_SCHEMA,
     STAKING_GAUGE_WITHDRAW_SCHEMA,

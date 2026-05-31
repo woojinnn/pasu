@@ -1899,3 +1899,226 @@ fn compound_v3_unichain_weth_authorization_typed_data_decodes_permission_fields(
     assert_eq!(find_string_field(&env, "authorized"), Some(MANAGER.into()));
     assert_eq!(find_bool_field(&env, "is_authorized"), Some(false));
 }
+
+// ---------------------------------------------------------------------------
+// EigenLayer (restaking) field-level goldens. The corpus oracle checks only
+// verdict + top-level domain; these pin the decoded field VALUES (operator,
+// strategies, withdrawer, permission grant) that a wrong emit would silently
+// mis-decode — including the array_emit (queueWithdrawals) and nested-tuple
+// (completeQueuedWithdrawal `$args.withdrawal[i]`) cases the single_emit
+// `check:manifest` validate does NOT cover.
+// ---------------------------------------------------------------------------
+
+const EL_DM: &str = "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a";
+const EL_SM: &str = "0x858646372cc42e1a627fce94aa7a7033e7cf075a";
+const EL_PC: &str = "0x25e5f8b1e7adf44518d35d5b2271f114e081f0e5";
+
+/// Real mainnet `delegateTo` 0x6defd3f6…: delegate to operator 0x8c81d590….
+#[test]
+fn eigenlayer_delegate_to_decodes_operator() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+    const CALLDATA: &str = "0xeea9064b0000000000000000000000008c81d590cc94ca2451c4bde24c598193da74a57500000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    let env = harness::route::route_calldata(1, EL_DM, "0xeea9064b", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "delegateTo route did not succeed: {env}"
+    );
+    assert_eq!(find_string_field(&env, "domain"), Some("restaking".into()));
+    assert_eq!(
+        find_string_field(&env, "action"),
+        Some("delegate_to".into())
+    );
+    assert_eq!(
+        find_string_field(&env, "operator"),
+        Some("0x8c81d590cc94ca2451c4bde24c598193da74a575".into()),
+        "delegateTo operator mis-decoded"
+    );
+}
+
+/// Real mainnet `queueWithdrawals` 0xd00d0ca0…: array_emit over one
+/// QueuedWithdrawalParams → a Multicall wrapping a `restaking.queue_withdrawal`
+/// whose `withdrawer`, `strategies[]` come from the inner tuple via `$inputs[i]`.
+#[test]
+fn eigenlayer_queue_withdrawals_array_emit_decodes_multicall() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+    const CALLDATA: &str = "0x0dd8dd02000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000ba3053d3e075a8037d4c01b1ca08aa1cbe508e840000000000000000000000000000000000000000000000000000000000000001000000000000000000000000beac0eeeeeeeeeeeeeeeeeeeeeeeeeeeeeebeac000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000b339ee5c9cff800";
+    let env = harness::route::route_calldata(1, EL_DM, "0x0dd8dd02", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "queueWithdrawals route did not succeed: {env}"
+    );
+    // array_emit expands params[] into a Multicall; inner is restaking.queue_withdrawal.
+    assert_eq!(find_string_field(&env, "domain"), Some("multicall".into()));
+    assert_eq!(
+        find_string_field(&env, "action"),
+        Some("queue_withdrawal".into())
+    );
+    assert_eq!(
+        find_string_field(&env, "withdrawer"),
+        Some("0xba3053d3e075a8037d4c01b1ca08aa1cbe508e84".into()),
+        "queue_withdrawal withdrawer mis-decoded"
+    );
+    let strategies =
+        find_object_by_key(&env, "strategies").expect("queue_withdrawal has strategies");
+    assert_eq!(
+        strategies
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(serde_json::Value::as_str),
+        Some("0xbeac0eeeeeeeeeeeeeeeeeeeeeeeeeeeeeebeac0"),
+        "strategies[0] (native beacon-ETH strategy sentinel) mis-decoded"
+    );
+}
+
+/// Real mainnet `completeQueuedWithdrawal` 0x3b386866…: the nested `Withdrawal`
+/// tuple's `staker` (component 0) and `strategies` (component 5) are pulled via
+/// chained-numeric `$args.withdrawal[i]`.
+#[test]
+fn eigenlayer_complete_queued_withdrawal_decodes_nested_tuple() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+    const CALLDATA: &str = "0xe4cc3f90000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000001c00000000000000000000000000000000000000000000000000000000000000001000000000000000000000000aa0cbae2dd290f8aed1b672ebe2e197fd969628b0000000000000000000000003601bda2b72628da309ab9df7d310ada38cae44c000000000000000000000000aa0cbae2dd290f8aed1b672ebe2e197fd969628b00000000000000000000000000000000000000000000000000000000000000ab00000000000000000000000000000000000000000000000000000000017f270e00000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000beac0eeeeeeeeeeeeeeeeeeeeeeeeeeeeeebeac000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000003fedc53618828c0000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000";
+    let env = harness::route::route_calldata(1, EL_DM, "0xe4cc3f90", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "completeQueuedWithdrawal route did not succeed: {env}"
+    );
+    assert_eq!(find_string_field(&env, "domain"), Some("restaking".into()));
+    assert_eq!(
+        find_string_field(&env, "action"),
+        Some("complete_withdrawal".into())
+    );
+    assert_eq!(
+        find_string_field(&env, "staker"),
+        Some("0xaa0cbae2dd290f8aed1b672ebe2e197fd969628b".into()),
+        "Withdrawal.staker (component 0) mis-decoded"
+    );
+    assert_eq!(find_bool_field(&env, "receive_as_tokens"), Some(true));
+    let strategies =
+        find_object_by_key(&env, "strategies").expect("complete_withdrawal has strategies");
+    assert_eq!(
+        strategies
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(serde_json::Value::as_str),
+        Some("0xbeac0eeeeeeeeeeeeeeeeeeeeeeeeeeeeeebeac0"),
+        "Withdrawal.strategies[0] (component 5) mis-decoded"
+    );
+}
+
+/// Real mainnet `depositIntoStrategy` 0xb175325c…: stETH strategy + stETH token.
+#[test]
+fn eigenlayer_deposit_into_strategy_decodes_strategy_and_token() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+    const STETH_STRATEGY: &str = "0x93c4b944d05dfe6df7645a86cd2206016c51564d";
+    const STETH: &str = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
+    const CALLDATA: &str = "0xe7a050aa00000000000000000000000093c4b944d05dfe6df7645a86cd2206016c51564d000000000000000000000000ae7ab96520de3a18e5e111b5eaab095312d7fe8400000000000000000000000000000000000000000000000000af87f5a3404400";
+    let env = harness::route::route_calldata(1, EL_SM, "0xe7a050aa", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "depositIntoStrategy route did not succeed: {env}"
+    );
+    assert_eq!(find_string_field(&env, "domain"), Some("restaking".into()));
+    assert_eq!(find_string_field(&env, "action"), Some("deposit".into()));
+    assert_eq!(
+        find_string_field(&env, "strategy"),
+        Some(STETH_STRATEGY.into())
+    );
+    let token = find_object_by_key(&env, "token").expect("deposit has token");
+    assert_eq!(
+        token
+            .pointer("/key/address")
+            .and_then(serde_json::Value::as_str),
+        Some(STETH),
+        "deposit token (stETH) mis-decoded"
+    );
+}
+
+/// Real mainnet `setAppointee` 0x9739f464…: account grants appointee a
+/// selector-scoped call right → permission.protocol_authorization grant.
+#[test]
+fn eigenlayer_set_appointee_decodes_grant() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+    const ACCOUNT: &str = "0xf07f83ff977dd004060f00ecefb80a9f92775098";
+    const APPOINTEE: &str = "0x54bb392508d458cbf1e48c59d44ffbc93f912329";
+    const CALLDATA: &str = "0x950d806e000000000000000000000000f07f83ff977dd004060f00ecefb80a9f9277509800000000000000000000000054bb392508d458cbf1e48c59d44ffbc93f912329000000000000000000000000948a420b8cc1d6bfd0b6087c2e7c344a2cd0bc393635205700000000000000000000000000000000000000000000000000000000";
+    let env = harness::route::route_calldata(1, EL_PC, "0x950d806e", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "setAppointee route did not succeed: {env}"
+    );
+    assert_eq!(find_string_field(&env, "domain"), Some("permission".into()));
+    assert_eq!(find_string_field(&env, "authorizer"), Some(ACCOUNT.into()));
+    assert_eq!(
+        find_string_field(&env, "authorized"),
+        Some(APPOINTEE.into())
+    );
+    assert_eq!(find_bool_field(&env, "is_authorized"), Some(true));
+}
+
+/// Off-chain `Deposit` EIP-712 (StrategyManager): the staker authorizes a
+/// deposit on their behalf → restaking.deposit with the signed strategy/token.
+#[test]
+fn eigenlayer_deposit_typed_data_decodes_strategy_token_staker() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+    const STAKER: &str = "0x1111111111111111111111111111111111111111";
+    const STRATEGY: &str = "0x93c4b944d05dfe6df7645a86cd2206016c51564d";
+    const TOKEN: &str = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
+    let message = serde_json::json!({
+        "staker": STAKER,
+        "strategy": STRATEGY,
+        "token": TOKEN,
+        "amount": "1000000000000000000",
+        "nonce": "0",
+        "expiry": "9999999999"
+    });
+    let env =
+        harness::route::route_typed_data(1, EL_SM, "Deposit", None, Some("EigenLayer"), &message);
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "Deposit typed-data route did not succeed: {env}"
+    );
+    assert_eq!(find_string_field(&env, "domain"), Some("restaking".into()));
+    assert_eq!(find_string_field(&env, "action"), Some("deposit".into()));
+    assert_eq!(find_string_field(&env, "strategy"), Some(STRATEGY.into()));
+    assert_eq!(find_string_field(&env, "staker"), Some(STAKER.into()));
+}
+
+/// Off-chain `DelegationApproval` EIP-712 (DelegationManager): the operator's
+/// delegationApprover authorizes a specific staker→operator delegation →
+/// permission.protocol_authorization (authorizer = approver, authorized = staker).
+#[test]
+fn eigenlayer_delegation_approval_typed_data_decodes_grant() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+    const APPROVER: &str = "0x2222222222222222222222222222222222222222";
+    const STAKER: &str = "0x3333333333333333333333333333333333333333";
+    let message = serde_json::json!({
+        "delegationApprover": APPROVER,
+        "staker": STAKER,
+        "operator": "0x4444444444444444444444444444444444444444",
+        "salt": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "expiry": "9999999999"
+    });
+    let env = harness::route::route_typed_data(
+        1,
+        EL_DM,
+        "DelegationApproval",
+        None,
+        Some("EigenLayer"),
+        &message,
+    );
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "DelegationApproval typed-data route did not succeed: {env}"
+    );
+    assert_eq!(find_string_field(&env, "domain"), Some("permission".into()));
+    assert_eq!(find_string_field(&env, "authorizer"), Some(APPROVER.into()));
+    assert_eq!(find_string_field(&env, "authorized"), Some(STAKER.into()));
+    assert_eq!(find_bool_field(&env, "is_authorized"), Some(true));
+}

@@ -260,6 +260,18 @@ namespace LiquidStaking {
   };
 }
 
+namespace Restaking {
+  // -------------------------------------------------------------------------
+  // RestakingVenue — restaking venue identifier.
+  //   - "eigenlayer" → no extra fields (DelegationManager / StrategyManager /
+  //     EigenPodManager singleton set on the chain)
+  // -------------------------------------------------------------------------
+  type RestakingVenue = {
+    name: String,                // discriminated by name (currently "eigenlayer")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
 namespace Staking {
   // -------------------------------------------------------------------------
   // StakeVenue — Curve DAO staking / vote-escrow venue identifier. Each variant

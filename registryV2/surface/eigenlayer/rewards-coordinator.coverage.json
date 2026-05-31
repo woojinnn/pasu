@@ -1,0 +1,155 @@
+{
+  "contract": "RewardsCoordinator",
+  "chainId": 1,
+  "address": "0x7750d328b314effa365a0402ccfd489b80b0adda",
+  "snapshot": "rewards-coordinator.abi.json",
+  "note": "Surface triage for EigenLayer RewardsCoordinator (v1.12.0 impl 0xa0673c53...3c26). User/operator permission + claim surface (setClaimerFor = permission-grant; operator split config; processClaim). The many create*RewardsSubmission functions are AVS/admin-side reward funding (exclude). No EIP-712 typehashes — setClaimerFor is on-chain only; signed_structs empty.",
+  "functions": {
+    "0xa0169ddd": {
+      "name": "setClaimerFor(address)",
+      "decision": "cover",
+      "reason": "PERMISSION-GRANT — earner designates a claimer allowed to call processClaim and receive their rewards (address claimer). Delegates reward-claim authority over the caller's earnings. ScopeBall permission primitive; never exclude."
+    },
+    "0xf22cef85": {
+      "name": "setClaimerFor(address,address)",
+      "decision": "cover",
+      "reason": "PERMISSION-GRANT — set claimer on behalf of an earner (address earner, address claimer); callable by the earner or its PermissionController appointee. Same delegation of reward-claim authority; cover."
+    },
+    "0xdcbb03b3": {
+      "name": "setOperatorAVSSplit",
+      "decision": "exclude",
+      "reason": "DEFERRED to operator-AVS round — setOperatorAVSSplit is operator fee config for a specific AVS; operator-AVS persona. Out of round-1 delegation+permission scope."
+    },
+    "0xb3dbb0e0": {
+      "name": "setOperatorPISplit",
+      "decision": "exclude",
+      "reason": "DEFERRED to operator-AVS round — setOperatorPISplit operator fee config (Programmatic Incentives). Operator-economic, out of round-1 scope."
+    },
+    "0xf74e8eac": {
+      "name": "setOperatorSetSplit",
+      "decision": "exclude",
+      "reason": "DEFERRED to operator-AVS round — setOperatorSetSplit operator fee config for an operator set. Operator-economic, out of round-1 scope."
+    },
+    "0x3ccc861d": {
+      "name": "processClaim",
+      "decision": "exclude",
+      "reason": "DEFERRED — processClaim is a Merkle-proof reward claim (RewardsMerkleClaim struct: tokenLeaves + proofs). Complex proof shape; deferred to a rewards-claim round. Round-1 covers setClaimerFor (the permission grant) only."
+    },
+    "0x4596021c": {
+      "name": "processClaims",
+      "decision": "exclude",
+      "reason": "DEFERRED — processClaims batch Merkle-proof reward claim (RewardsMerkleClaim[]). Same complex proof shape; deferred with processClaim."
+    },
+    "0xfce36c7d": {
+      "name": "createAVSRewardsSubmission",
+      "decision": "exclude",
+      "reason": "AVS funding — AVS deposits reward tokens to distribute to its operators/stakers (RewardsSubmission[]). Caller is the AVS funding rewards, not a staker/operator claiming. Exclude (AVS-side fund deposit)."
+    },
+    "0x7282a352": {
+      "name": "createEigenDARewardsSubmission",
+      "decision": "exclude",
+      "reason": "AVS funding — EigenDA-specific reward submission. AVS-side."
+    },
+    "0x9cb9a5fa": {
+      "name": "createOperatorDirectedAVSRewardsSubmission",
+      "decision": "exclude",
+      "reason": "AVS funding — operator-directed AVS reward submission. AVS-side."
+    },
+    "0x0ca29899": {
+      "name": "createOperatorDirectedOperatorSetRewardsSubmission",
+      "decision": "exclude",
+      "reason": "AVS funding — operator-directed operator-set reward submission. AVS-side."
+    },
+    "0xff9f6cce": {
+      "name": "createRewardsForAllEarners",
+      "decision": "exclude",
+      "reason": "admin funding — onlyRewardsForAllSubmitter; rewards for all earners. Admin/whitelisted submitter."
+    },
+    "0x36af41fa": {
+      "name": "createRewardsForAllSubmission",
+      "decision": "exclude",
+      "reason": "admin funding — onlyRewardsForAllSubmitter. Admin/whitelisted."
+    },
+    "0x8cb0ae1b": {
+      "name": "createTotalStakeRewardsSubmission",
+      "decision": "exclude",
+      "reason": "AVS/admin funding — total-stake reward submission. AVS/admin-side."
+    },
+    "0x7ae30583": {
+      "name": "createUniqueStakeRewardsSubmission",
+      "decision": "exclude",
+      "reason": "AVS/admin funding — unique-stake reward submission. AVS/admin-side."
+    },
+    "0x3efe1db6": {
+      "name": "submitRoot",
+      "decision": "exclude",
+      "reason": "infra/onlyRewardsUpdater — submit a new distribution Merkle root. Keeper/updater role, not user."
+    },
+    "0xf96abf2e": {
+      "name": "disableRoot",
+      "decision": "exclude",
+      "reason": "governance/onlyRewardsUpdater — disable a bad root. Admin/keeper."
+    },
+    "0x58baaa3e": {
+      "name": "setActivationDelay",
+      "decision": "exclude",
+      "reason": "governance — onlyOwner; set root activation delay."
+    },
+    "0xa50a1d9c": {
+      "name": "setDefaultOperatorSplit",
+      "decision": "exclude",
+      "reason": "governance — onlyOwner; set protocol default operator split."
+    },
+    "0xe74b981b": {
+      "name": "setFeeRecipient",
+      "decision": "exclude",
+      "reason": "governance — onlyOwner; set protocol fee recipient."
+    },
+    "0x8d424f49": {
+      "name": "setOptInForProtocolFee",
+      "decision": "exclude",
+      "reason": "AVS/admin config — opt an AVS in/out of protocol fee (address, bool). AVS-admin side, not staker/operator pre-sign."
+    },
+    "0x0eb38345": {
+      "name": "setRewardsForAllSubmitter",
+      "decision": "exclude",
+      "reason": "governance — onlyOwner; whitelist a rewards-for-all submitter."
+    },
+    "0x863cb9a9": {
+      "name": "setRewardsUpdater",
+      "decision": "exclude",
+      "reason": "governance — onlyOwner; set the rewards-updater role."
+    },
+    "0xacad7299": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "infra — proxy initializer."
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "governance — Ownable."
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "governance — Ownable."
+    },
+    "0x136439dd": {
+      "name": "pause",
+      "decision": "exclude",
+      "reason": "governance — onlyPauser."
+    },
+    "0x595c6a67": {
+      "name": "pauseAll",
+      "decision": "exclude",
+      "reason": "governance — onlyPauser."
+    },
+    "0xfabc1cbc": {
+      "name": "unpause",
+      "decision": "exclude",
+      "reason": "governance — onlyUnpauser."
+    }
+  },
+  "signed_structs": {}
+}
