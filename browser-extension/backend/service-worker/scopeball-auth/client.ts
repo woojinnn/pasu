@@ -1,0 +1,108 @@
+/**
+ * Thin fetch wrapper for the Scopeball (Rust) policy-rpc server,
+ * service-worker edition.
+ *
+ * Mirrors `browser-extension/dashboard/src/server-api/client.ts` but:
+ * - Reads the JWT from `tokenStore` (chrome.storage) instead of
+ *   `localStorage` (which doesn't exist in a service worker).
+ * - Doesn't carry the dashboard's `urlWithTokenQuery` SSE helper —
+ *   the extension never opens SSE.
+ *
+ * The server URL is taken from `SCOPEBALL_SERVER_URL` at build time
+ * (webpack DefinePlugin in Phase 9) and falls back to the local-dev
+ * default.
+ */
+
+import { getAccessToken } from "./tokenStore";
+
+declare const SCOPEBALL_SERVER_URL: string | undefined;
+
+export const SERVER_BASE_URL =
+  (typeof SCOPEBALL_SERVER_URL !== "undefined" && SCOPEBALL_SERVER_URL) ||
+  "http://127.0.0.1:8788";
+
+export class ServerError extends Error {
+  public readonly status: number;
+  public readonly body: unknown;
+  constructor(status: number, message: string, body: unknown) {
+    super(message);
+    this.name = "ServerError";
+    this.status = status;
+    this.body = body;
+  }
+  get isUnauthorized(): boolean {
+    return this.status === 401;
+  }
+}
+
+export interface RequestOptions {
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  body?: unknown;
+  token?: string | null;
+  noAuth?: boolean;
+  signal?: AbortSignal;
+}
+
+/** Core request primitive. Returns parsed JSON. Throws `ServerError`. */
+export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const url = path.startsWith("http") ? path : `${SERVER_BASE_URL}${path}`;
+  const headers: Record<string, string> = {};
+  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+
+  if (!opts.noAuth) {
+    const token = opts.token ?? (await getAccessToken());
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const init: RequestInit = {
+    method: opts.method ?? "GET",
+    headers,
+  };
+  if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
+  if (opts.signal !== undefined) init.signal = opts.signal;
+  const res = await fetch(url, init);
+
+  if (!res.ok) {
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      try {
+        body = await res.text();
+      } catch {
+        /* leave body null */
+      }
+    }
+    throw new ServerError(res.status, `${res.status} ${res.statusText}`, body);
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+// ---------- typed helpers ----------
+
+export interface Me {
+  user_id: string;
+  email: string;
+}
+
+export interface WalletId {
+  address: string;
+  chains: string[];
+}
+
+/** `GET /auth/me` — current user (or `null` if no token / 401). */
+export async function fetchMe(): Promise<Me | null> {
+  if (!(await getAccessToken())) return null;
+  try {
+    return await request<Me>("/auth/me");
+  } catch (e) {
+    if (e instanceof ServerError && e.isUnauthorized) return null;
+    throw e;
+  }
+}
+
+/** `GET /wallets` — user's tracked wallets. */
+export async function listWallets(): Promise<WalletId[]> {
+  return request<WalletId[]>("/wallets");
+}

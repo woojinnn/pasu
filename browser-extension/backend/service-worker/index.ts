@@ -19,6 +19,14 @@ import {
 import { loadDefaultPolicySetV2 } from "./policies-loader-v2";
 import { applyEnabledIds, getCatalog } from "./policy-selection";
 import { RequestType, type Message, type MessageResponse } from "@lib/types";
+import {
+  clearTokens,
+  fetchMe,
+  listWallets,
+  startGoogleLogin,
+  type Me,
+  type WalletId,
+} from "./scopeball-auth";
 
 const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
@@ -188,7 +196,25 @@ interface SetEnabledIdsRequest {
   type: "set-enabled-ids";
   ids: string[];
 }
-type PopupRequest = PolicyCatalogRequest | SetEnabledIdsRequest;
+interface ScopeballAuthStatusRequest {
+  type: "scopeball-auth-status";
+}
+interface ScopeballAuthSignInRequest {
+  type: "scopeball-auth-sign-in";
+}
+interface ScopeballAuthSignOutRequest {
+  type: "scopeball-auth-sign-out";
+}
+interface ScopeballListWalletsRequest {
+  type: "scopeball-list-wallets";
+}
+type PopupRequest =
+  | PolicyCatalogRequest
+  | SetEnabledIdsRequest
+  | ScopeballAuthStatusRequest
+  | ScopeballAuthSignInRequest
+  | ScopeballAuthSignOutRequest
+  | ScopeballListWalletsRequest;
 
 // webextension-polyfill's listener type accepts `true | void | Promise<any>`,
 // not `boolean`. Returning `undefined` (bare `return;`) closes the channel
@@ -230,6 +256,62 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "manifest_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    // Scopeball (Rust server) auth — separate from the legacy 8787 path.
+    // Each handler returns `{ ok, data | error }` so the popup can match
+    // uniformly.
+    if (req.type === "scopeball-auth-status") {
+      void fetchMe()
+        .then((me: Me | null) => sendResponse({ ok: true, data: me }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "scopeball_auth_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    if (req.type === "scopeball-auth-sign-in") {
+      void startGoogleLogin()
+        .then(async () => {
+          const me = await fetchMe();
+          sendResponse({ ok: true, data: me });
+        })
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "scopeball_sign_in_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    if (req.type === "scopeball-auth-sign-out") {
+      void clearTokens()
+        .then(() => sendResponse({ ok: true, data: null }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "scopeball_sign_out_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    if (req.type === "scopeball-list-wallets") {
+      void listWallets()
+        .then((wallets: WalletId[]) =>
+          sendResponse({ ok: true, data: wallets }),
+        )
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "scopeball_list_wallets_failed", message: String(err) },
           }),
         );
       return true;
