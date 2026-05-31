@@ -1,14 +1,14 @@
 {
   "matched": true,
-  "bundle_id": "uniswapx/cancel-order/cancel@1.0.0",
-  "manifest_path": "manifests/uniswapx/cancel-order/cancel@1.0.0.json",
-  "bundle_sha256": "0x505f8ba276634af9ffae4294c9d7e420e9fa9f16602942113133e618dccdc691",
+  "bundle_id": "uniswap/permit2/invalidateUnorderedNonces@1.0.0",
+  "manifest_path": "manifests/uniswap/permit2/invalidateUnorderedNonces@1.0.0.json",
+  "bundle_sha256": "0x03501f40a03f44a455bfe6cd849c500ab1798c0b03bea11a330e9bc6490be35c",
   "bundle": {
     "type": "adapter_action",
-    "id": "uniswapx/cancel-order/cancel@1.0.0",
+    "id": "uniswap/permit2/invalidateUnorderedNonces@1.0.0",
     "publisher": "uniswap.eth",
     "schema_version": "3",
-    "note": "UniswapX order cancellation = on-chain Permit2 invalidateUnorderedNonces(uint256 wordPos,uint256 mask) (selector 0x3ff9dcb1) against canonical Permit2 — UniswapX orders use Permit2 SignatureTransfer UNORDERED nonces, so cancel flips bits in nonceBitmap[swapper][wordPos], reverting the order's permitWitnessTransferFrom (research §3.4). This is CALLDATA (not a typed-data signature). MODELING APPROXIMATIONS: (1) cancel is Permit2-nonce-word granular, NOT per-order — one invalidateUnorderedNonces invalidates a whole 256-nonce word, so venue.reactor=$to (canonical Permit2, a venue-agnostic placeholder — not a specific UniswapX reactor) and order_hash=$args.wordPos (the invalidated nonce WORD, not a real 32-byte order hash); (2) signature omitted (None) — this is an on-chain tx, not a signed cancel. CancelIntentOrderAction.order_hash is typed String so the decimal wordPos serializes directly. Chains where UniswapX reactors deploy: mainnet/base/optimism/arbitrum.",
+    "note": "Permit2 invalidateUnorderedNonces(uint256 wordPos,uint256 mask). Official source: Uniswap Permit2 AllowanceTransfer contract. This revokes unordered nonce bitmap bits used by SignatureTransfer flows, including UniswapX PermitWitnessTransferFrom orders. It is modeled as Token::RevokeApproval with scope.kind=permit2_unordered_nonce so policy/UI can explain the nonce-word revoke directly instead of pretending wordPos is an order hash.",
     "match": {
       "selector": "0x3ff9dcb1",
       "chain_to_addresses": {
@@ -31,6 +31,7 @@
       "abi": {
         "name": "invalidateUnorderedNonces",
         "type": "function",
+        "stateMutability": "nonpayable",
         "inputs": [
           {
             "name": "wordPos",
@@ -40,22 +41,23 @@
             "name": "mask",
             "type": "uint256"
           }
-        ]
+        ],
+        "outputs": []
       }
     },
     "emit": {
       "strategy": "single_emit",
       "body": {
-        "domain": "amm",
-        "amm": {
-          "action": "cancel_intent_order",
-          "cancel_intent_order": {
-            "venue": {
-              "name": "uniswap_x",
+        "domain": "token",
+        "token": {
+          "action": "revoke_approval",
+          "revoke_approval": {
+            "scope": {
+              "kind": "permit2_unordered_nonce",
               "chain": "$chain",
-              "reactor": "$to"
-            },
-            "order_hash": "$args.wordPos"
+              "word_pos": "$args.wordPos",
+              "mask": "$args.mask"
+            }
           }
         }
       }

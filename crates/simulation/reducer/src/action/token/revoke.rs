@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId};
+use simulation_state::primitives::{Address, ChainId, U256};
 use simulation_state::token::{TokenKey, TokenRef};
 
 /// Revoke a previously granted approval, scoped via `RevokeScope`.
@@ -48,5 +48,16 @@ pub enum RevokeScope {
         /// Spender losing the `Permit2` allowance.
         #[tsify(type = "string")]
         spender: Address,
+    },
+    /// `Permit2` unordered nonce bitmap invalidation.
+    Permit2UnorderedNonce {
+        /// Chain on which the canonical `Permit2` contract lives.
+        chain: ChainId,
+        /// Permit2 unordered nonce word position.
+        #[tsify(type = "string")]
+        word_pos: U256,
+        /// Bit mask of unordered nonces invalidated in `word_pos`.
+        #[tsify(type = "string")]
+        mask: U256,
     },
 }

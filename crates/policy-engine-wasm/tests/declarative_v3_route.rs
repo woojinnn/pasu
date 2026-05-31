@@ -4283,20 +4283,20 @@ fn t2_uniswapx_priority_sign_intent_order() {
 }
 
 // ---------------------------------------------------------------------------
-// T2.5 — cancel: Permit2 invalidateUnorderedNonces CALLDATA → cancel_intent_order
+// T2.5 — Permit2 invalidateUnorderedNonces CALLDATA → revoke_approval
 // ---------------------------------------------------------------------------
 //
 // Cancellation is an on-chain Permit2 `invalidateUnorderedNonces(uint256,uint256)`
-// call (selector 0x3ff9dcb1), NOT a typed-data signature. Permit2-nonce-word
-// granular (not per-order): venue.reactor = $to (Permit2, venue-agnostic
-// placeholder), order_hash = $args.wordPos (the invalidated nonce word, not a
-// real 32-byte order hash). Calldata path → named `$args.wordPos` access.
+// call (selector 0x3ff9dcb1), NOT a typed-data signature. This is Permit2
+// nonce-word granular, not per-order, so the token-domain revoke scope carries
+// the bitmap coordinates directly.
 
-const T2_CANCEL_V3: &str =
-    include_str!("../../../registryV2/manifests/uniswapx/cancel-order/cancel@1.0.0.json");
+const T2_CANCEL_V3: &str = include_str!(
+    "../../../registryV2/manifests/uniswap/permit2/invalidateUnorderedNonces@1.0.0.json"
+);
 
 #[test]
-fn t2_uniswapx_cancel_invalidate_unordered_nonces() {
+fn t2_permit2_invalidate_unordered_nonces() {
     install_ok(T2_CANCEL_V3);
 
     // invalidateUnorderedNonces(uint256 wordPos, uint256 mask).
@@ -4310,22 +4310,17 @@ fn t2_uniswapx_cancel_invalidate_unordered_nonces() {
     let input = route_input(1, PERMIT2_VC, "0x3ff9dcb1", calldata, T1_SIGNER);
     let parsed = route_ok(input);
     assert_eq!(
-        parsed["data"]["decoder_id"], "uniswapx/cancel-order/cancel@1.0.0",
+        parsed["data"]["decoder_id"], "uniswap/permit2/invalidateUnorderedNonces@1.0.0",
         "{parsed}"
     );
 
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "amm", "{parsed}");
-    assert_eq!(body["action"], "cancel_intent_order", "{parsed}");
-    assert_eq!(body["venue"]["name"], "uniswap_x", "{parsed}");
-    // reactor = $to (Permit2, lowercased).
-    assert_eq!(body["venue"]["reactor"], PERMIT2_VC, "{parsed}");
-    assert_eq!(body["venue"]["chain"], "eip155:1", "{parsed}");
-    // order_hash = $args.wordPos. CancelIntentOrderAction.order_hash is a
-    // String; a uint256 arg renders as a DECIMAL string ("7"), not hex.
-    assert_eq!(body["order_hash"], "7", "{parsed}");
-    // signature omitted (None) → absent from the body.
-    assert!(body.get("signature").is_none(), "{parsed}");
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "revoke_approval", "{parsed}");
+    assert_eq!(body["scope"]["kind"], "permit2_unordered_nonce", "{parsed}");
+    assert_eq!(body["scope"]["chain"], "eip155:1", "{parsed}");
+    assert_eq!(body["scope"]["word_pos"], "0x7", "{parsed}");
+    assert_eq!(body["scope"]["mask"], "0xa", "{parsed}");
 }
 
 // ---------------------------------------------------------------------------

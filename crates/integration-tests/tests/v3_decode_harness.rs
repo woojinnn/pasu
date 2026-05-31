@@ -282,6 +282,47 @@ fn permit2_invalidate_nonces_decodes_revoke_scope() {
     assert_eq!(token, format!("0x{TOKEN}"), "token mis-decoded");
 }
 
+/// Field-level golden for Permit2 `invalidateUnorderedNonces`.
+///
+/// Unordered nonce invalidation is bitmap-scoped, not token/spender-scoped.
+/// It should surface as a Permit2 nonce revoke scope rather than an AMM order
+/// cancel with `wordPos` pretending to be an order hash.
+#[test]
+fn permit2_invalidate_unordered_nonces_decodes_bitmap_scope() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    const TO: &str = "0x000000000022d473030f116ddee9f6b43ac78ba3";
+    const CALLDATA: &str = concat!(
+        "0x3ff9dcb1",
+        "0000000000000000000000000000000000000000000000000000000000000007",
+        "000000000000000000000000000000000000000000000000000000000000000a"
+    );
+
+    let env = harness::route::route_calldata(1, TO, "0x3ff9dcb1", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let scope = find_object_with_string_field(&env, "kind", "permit2_unordered_nonce")
+        .expect("revoke_approval carries permit2_unordered_nonce scope");
+    assert_eq!(
+        scope.get("chain").and_then(serde_json::Value::as_str),
+        Some("eip155:1"),
+        "chain mis-decoded"
+    );
+    assert_eq!(
+        scope.get("word_pos").and_then(serde_json::Value::as_str),
+        Some("0x7"),
+        "word_pos mis-decoded"
+    );
+    assert_eq!(
+        scope.get("mask").and_then(serde_json::Value::as_str),
+        Some("0xa"),
+        "mask mis-decoded"
+    );
+}
+
 /// Field-level golden for Aave V3 Gateway `withdrawETHWithPermit`.
 ///
 /// Current verified Gateway deployments ignore the legacy calldata `pool` arg

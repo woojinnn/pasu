@@ -246,6 +246,22 @@
       }
     },
     {
+      "intent": "Permit2.invalidateUnorderedNonces(uint256,uint256) hand",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "source": "hand-encoded from Permit2 surface ABI; bitmap nonce revocation",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+            "value": "0",
+            "data": "0x3ff9dcb10000000000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000000000000000000000000000a"
+          }
+        ]
+      }
+    },
+    {
       "intent": "swapExactTokensForTokens (L2 Base spot-check \u2014 per-chain V2 Router02 address)",
       "expect": "pass",
       "tx_hash": "0xB35A641D0A6306D85DF98B20F98F5E8D4813DD8ACDFE5769ABCD65BDFFDECEB1",

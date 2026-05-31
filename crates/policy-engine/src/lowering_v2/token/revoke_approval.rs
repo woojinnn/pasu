@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 
 use simulation_reducer::action::token::{RevokeApprovalAction, RevokeScope};
 
-use super::super::common::cedar::addr;
+use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::{lower_token_key, lower_token_ref};
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
@@ -57,6 +57,19 @@ fn lower_revoke_scope(scope: &RevokeScope) -> Value {
             m.insert("token".into(), lower_token_ref(token));
             m.insert("spender".into(), Value::String(addr(spender)));
         }
+        RevokeScope::Permit2UnorderedNonce {
+            chain,
+            word_pos,
+            mask,
+        } => {
+            m.insert(
+                "kind".into(),
+                Value::String("permit2_unordered_nonce".into()),
+            );
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("wordPos".into(), Value::String(u256_hex(*word_pos)));
+            m.insert("mask".into(), Value::String(u256_hex(*mask)));
+        }
     }
     Value::Object(m)
 }
@@ -71,7 +84,7 @@ fn lower_revoke_scope(scope: &RevokeScope) -> Value {
 mod tests {
     use simulation_reducer::action::token::{RevokeApprovalAction, RevokeScope, TokenAction};
     use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::ChainId;
+    use simulation_state::primitives::{ChainId, U256};
 
     use super::super::test_support::{
         nft_contract, onchain_meta, sample_erc1155_key, sample_erc20_token, sample_nft_key, spender,
@@ -123,6 +136,17 @@ mod tests {
         assert_scope_conforms(RevokeScope::Permit2Lockdown {
             token: sample_erc20_token(),
             spender: spender(),
+        });
+    }
+
+    /// `kind = "permit2_unordered_nonce"` carries the bitmap location Permit2
+    /// invalidates. No token/spender is known for this nonce class.
+    #[test]
+    fn revoke_approval_permit2_unordered_nonce_kind_conforms() {
+        assert_scope_conforms(RevokeScope::Permit2UnorderedNonce {
+            chain: ChainId::ethereum_mainnet(),
+            word_pos: U256::from(42u64),
+            mask: U256::from(0xffu64),
         });
     }
 }

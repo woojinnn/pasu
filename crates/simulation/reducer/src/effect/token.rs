@@ -364,6 +364,11 @@ impl Reducer for RevokeApprovalAction {
             RevokeScope::Permit2Lockdown { token, spender } => {
                 helpers::approval::revoke_permit2_allowance(state, &mut delta, token, *spender)?;
             }
+            RevokeScope::Permit2UnorderedNonce { .. } => {
+                // Permit2 unordered nonce bitmaps are not tracked in WalletState
+                // yet. The ActionBody still exposes the bitmap coordinates for
+                // policy/UI; simulation has no local approval row to mutate.
+            }
         }
         Ok(delta)
     }
@@ -909,6 +914,20 @@ mod tests {
         };
         assert_eq!(*key, usdc_ref().key);
         assert_eq!(*scope, TcApprovalScope::Permit2);
+    }
+
+    #[test]
+    fn revoke_approval_permit2_unordered_nonce_is_metadata_only_today() {
+        let state = empty_state();
+        let action = RevokeApprovalAction {
+            scope: RevokeScope::Permit2UnorderedNonce {
+                chain: ChainId::ethereum_mainnet(),
+                word_pos: U256::from(42u64),
+                mask: U256::from(0xffu64),
+            },
+        };
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert!(delta.is_empty());
     }
 
     // ---------- Dispatcher ----------
