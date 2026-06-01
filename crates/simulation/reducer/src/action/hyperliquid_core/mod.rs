@@ -48,6 +48,13 @@ pub enum HyperliquidCoreAction {
     /// (`{"type":"approveAgent"}`).
     #[serde(rename = "hl_approve_agent")]
     ApproveAgent(HlApproveAgentAction),
+    /// Any `/exchange` action not explicitly modeled above. Carries only the raw
+    /// wire `type` string so a policy can gate or surface unrecognized actions
+    /// (`HlUnknown` — policy default: warn / deny). Closes the silent-allow gap:
+    /// every non-benign `/exchange` action reaches the engine rather than passing
+    /// through unevaluated.
+    #[serde(rename = "hl_unknown")]
+    Unknown(HlUnknownAction),
 }
 
 impl HyperliquidCoreAction {
@@ -60,6 +67,7 @@ impl HyperliquidCoreAction {
             Self::Withdraw(_) => "hl_withdraw",
             Self::UsdSend(_) => "hl_usd_send",
             Self::ApproveAgent(_) => "hl_approve_agent",
+            Self::Unknown(_) => "hl_unknown",
         }
     }
 
@@ -145,6 +153,18 @@ pub struct HlApproveAgentAction {
     pub agent_name: Option<String>,
 }
 
+/// Catch-all for an `/exchange` action not explicitly modeled.
+///
+/// Holds only the raw wire `type` string (`{"type":"<actionType>"}`) — no
+/// per-action fields — so a policy can `forbid`/`warn` on
+/// `HyperliquidCore::Action::"HlUnknown"` or scope on `context.actionType`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlUnknownAction {
+    /// The raw `/exchange` wire `type` string (e.g. `"convertToMultiSigUser"`).
+    pub action_type: String,
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
@@ -185,6 +205,9 @@ mod tests {
             HyperliquidCoreAction::ApproveAgent(HlApproveAgentAction {
                 agent_address: Address::from([0x33; 20]),
                 agent_name: None,
+            }),
+            HyperliquidCoreAction::Unknown(HlUnknownAction {
+                action_type: "convertToMultiSigUser".to_owned(),
             }),
         ];
         for c in cases {

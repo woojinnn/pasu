@@ -27,6 +27,10 @@ impl Reducer for HyperliquidCoreAction {
             Self::Withdraw(a) => withdraw::apply(a, state, ctx),
             Self::UsdSend(a) => usd_send::apply(a, state, ctx),
             Self::ApproveAgent(a) => approve_agent::apply(a, state, ctx),
+            // The catch-all carries no per-action fields, so its balance effect
+            // is unknown — record a no-op delta. (The verdict path does not call
+            // `Reducer::apply`; this layer feeds the simulation track only.)
+            Self::Unknown(_) => Ok(StateDelta::new()),
         }
     }
 }

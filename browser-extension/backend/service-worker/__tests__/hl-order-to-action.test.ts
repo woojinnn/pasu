@@ -133,4 +133,15 @@ describe("hlOrderToAction", () => {
     ).action;
     expect(noName.agent_name).toBeUndefined();
   });
+
+  it("converts the hl_unknown catch-all (raw wire type only)", () => {
+    const { action } = hlOrderToAction(
+      payload({ kind: "unknown", actionType: "convertToMultiSigUser" }),
+    );
+    expect(action).toEqual({
+      domain: "hyperliquid_core",
+      action: "hl_unknown",
+      action_type: "convertToMultiSigUser",
+    });
+  });
 });

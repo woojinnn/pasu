@@ -15,6 +15,7 @@ use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
 mod approve_agent;
 mod order;
+mod unknown;
 mod update_leverage;
 mod usd_send;
 mod withdraw;
@@ -35,6 +36,7 @@ pub(crate) fn lower(
         HyperliquidCoreAction::Withdraw(a) => withdraw::lower(a, ctx),
         HyperliquidCoreAction::UsdSend(a) => usd_send::lower(a, ctx),
         HyperliquidCoreAction::ApproveAgent(a) => approve_agent::lower(a, ctx),
+        HyperliquidCoreAction::Unknown(a) => unknown::lower(a, ctx),
     }
 }
 

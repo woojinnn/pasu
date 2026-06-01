@@ -103,6 +103,12 @@ function actionBody(
       if (a.agentName !== undefined) body.agent_name = a.agentName;
       return body;
     }
+    case "unknown":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_unknown",
+        action_type: a.actionType,
+      };
   }
 }
 

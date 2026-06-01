@@ -167,13 +167,14 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "permit2_approve",
     "permit2_sign_allowance",
     "revoke_approval",
-    // HyperliquidCore (5) — thin off-chain L1 action model. `hl_`-prefixed so
+    // HyperliquidCore (6) — thin off-chain L1 action model. `hl_`-prefixed so
     // the tags stay globally unique (e.g. `withdraw` already exists in Lending).
     "hl_order",
     "hl_update_leverage",
     "hl_withdraw",
     "hl_usd_send",
     "hl_approve_agent",
+    "hl_unknown",
 ];
 
 #[cfg(test)]
@@ -227,8 +228,8 @@ mod tests {
         // Union of feat/registry-v2 (74: + 7 Restaking + 8 Staking + 5 HyperliquidCore)
         // and the 11 Pendle `yield` rows (pt_swap / yt_swap / add+remove_market_liquidity
         // / mint_py / redeem_py / mint_sy / redeem_sy / claim_yield / sign_limit_order
-        // / cancel_limit_order) = 85.
-        assert_eq!(REGISTERED_ACTIONS.len(), 85);
+        // / cancel_limit_order) = 85, plus the HyperliquidCore `hl_unknown` catch-all = 86.
+        assert_eq!(REGISTERED_ACTIONS.len(), 86);
     }
 
     #[test]

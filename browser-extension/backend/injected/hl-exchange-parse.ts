@@ -6,10 +6,18 @@
  * it is trivially unit-testable and so importing it never triggers the
  * MAIN-world `fetch` install side effect in `fetch-hook.ts`.
  *
- * v1 guards the high-risk subset — `order`, `updateLeverage`, and the three
- * fund-movement / delegation actions (`withdraw3`, `usdSend`, `approveAgent`).
- * Every other action type (cancel, batchModify, info, …) returns `null` and is
- * passed through untouched.
+ * Guards the full high-risk CORE surface: orders (`order` / `twapOrder`),
+ * leverage / margin (`updateLeverage` / `updateIsolatedMargin`), every
+ * fund-movement (`withdraw3` / `usdSend` / `spotSend` / `sendAsset` /
+ * `sendToEvmWithData` / `usdClassTransfer` / `vaultTransfer` /
+ * `subAccountTransfer` / `cDeposit` / `cWithdraw`) and permission / delegation
+ * (`approveAgent` / `approveBuilderFee` / `tokenDelegate`).
+ *
+ * Anything else routes through the `hl_unknown` catch-all UNLESS it is in
+ * {@link BENIGN_PASS_THROUGH} (high-frequency, fund-/permission-neutral actions
+ * like `cancel` / `modify` / `scheduleCancel`), which returns `null` and passes
+ * through unevaluated. So a fund- or permission-moving action we have not
+ * explicitly modeled can never silently pass the venue.
  */
 import {
   RequestType,
@@ -38,6 +46,31 @@ export const VENUE_MATCHERS: { test: (url: string) => boolean; venue: string }[]
 export function matchVenue(url: string): string | undefined {
   return VENUE_MATCHERS.find((m) => m.test(url))?.venue;
 }
+
+/**
+ * `/exchange` action types that move no funds and grant no permission, and that
+ * the live app POSTs at high frequency (order lifecycle / admin). These pass
+ * through unevaluated (`null`) rather than routing to the `hl_unknown` catch-all
+ * — gating them would add SW + WASM round-trips per cancel/modify with no
+ * security value. Everything NOT here and NOT explicitly modeled becomes
+ * `hl_unknown`, so a novel fund / permission action is never silently allowed.
+ */
+const BENIGN_PASS_THROUGH: ReadonlySet<string> = new Set([
+  "cancel",
+  "cancelByCloid",
+  "modify",
+  "batchModify",
+  "twapCancel",
+  "scheduleCancel",
+  "noop",
+  "reserveRequestWeight",
+  "setReferrer",
+  "createSubAccount",
+  "subAccountModify",
+  "vaultModify",
+  "spotUser",
+  "evmUserModify",
+]);
 
 /** Coerce an unknown to a plain object, or `undefined`. */
 function asObject(v: unknown): Record<string, unknown> | undefined {
@@ -182,7 +215,12 @@ export function parseHyperliquidExchangeOrders(
     }
 
     default:
-      // Out of scope (cancel / batchModify / info / …) — pass through.
-      return null;
+      // BENIGN_PASS_THROUGH (cancel / modify / schedule / admin) is high-frequency
+      // and moves no funds / grants no permission → return null (out of scope, not
+      // evaluated). EVERY OTHER unrecognized type falls to the `hl_unknown`
+      // catch-all so a fund / permission action we have not modeled can never pass
+      // the venue unevaluated (closes the silent-allow gap).
+      if (BENIGN_PASS_THROUGH.has(action.type)) return null;
+      return one({ kind: "unknown", actionType: action.type });
   }
 }

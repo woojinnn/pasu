@@ -250,3 +250,55 @@ fn shipped_seed_policy_allows_modest_leverage() {
         "10x leverage must PASS the >20x confirm: {parsed}"
     );
 }
+
+/// A HyperliquidCore `hl_unknown` catch-all action JSON — the
+/// `hl-order-to-action.ts` shape for an `/exchange` action with no explicit
+/// model.
+fn unknown_action(action_type: &str) -> Value {
+    json!({
+        "domain": "hyperliquid_core",
+        "action": "hl_unknown",
+        "action_type": action_type
+    })
+}
+
+/// COVERAGE-GAP PROOF: an `/exchange` action we do not model
+/// (`convertToMultiSigUser`) reaches the engine as `hl_unknown` and a deny rule
+/// BLOCKS it — proving an unmodeled action can be gated, not silently allowed.
+#[test]
+fn unknown_hl_action_can_be_denied() {
+    const DENY_UNKNOWN: &str = "\
+@id(\"hl/deny-unknown\")\n\
+@severity(\"deny\")\n\
+@reason(\"Unrecognized Hyperliquid action blocked by policy\")\n\
+forbid(principal, action == HyperliquidCore::Action::\"HlUnknown\", resource)\n\
+when { context.venue.name == \"hyperliquid\" };\n";
+    let parsed = run(
+        unknown_action("convertToMultiSigUser"),
+        json!([{ "policy": DENY_UNKNOWN, "manifest": manifest("hl_unknown") }]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "fail",
+        "an unmodeled HL action must be DENIABLE via hl_unknown: {parsed}"
+    );
+}
+
+/// SHIPPED-SEED PROOF: the shipped `hl-confirm-unknown` bundle FLAGS an unmodeled
+/// action for confirmation (`warn`) through the entry point.
+#[test]
+fn shipped_seed_policy_confirms_unknown_hl_action() {
+    let parsed = run(
+        unknown_action("perpDeploy"),
+        json!([seed_bundle("hl-confirm-unknown")]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "warn",
+        "the shipped confirm-unknown policy must WARN: {parsed}"
+    );
+    assert_eq!(
+        parsed["data"]["verdict"]["matched"][0]["policy_id"], "hl-confirm-unknown",
+        "matched policy must be the shipped seed id: {parsed}"
+    );
+}

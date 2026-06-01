@@ -79,7 +79,16 @@ export type VenueActionWire =
     }
   | { kind: "withdraw"; destination: string; amount: string }
   | { kind: "usd_send"; destination: string; amount: string }
-  | { kind: "approve_agent"; agentAddress: string; agentName?: string };
+  | { kind: "approve_agent"; agentAddress: string; agentName?: string }
+  | {
+      /**
+       * Catch-all for an `/exchange` action with no explicit model. Carries only
+       * the raw wire `type` string so the engine can gate / surface it (maps to
+       * `ActionBody::HyperliquidCore(HlUnknown)` — policy default warn / deny).
+       */
+      kind: "unknown";
+      actionType: string;
+    };
 
 /**
  * An off-chain venue action intercepted from a network POST. Carries one parsed

@@ -229,6 +229,8 @@ const HL_USD_SEND_SCHEMA: &str =
 const HL_APPROVE_AGENT_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/approve_agent.cedarschema"
 );
+const HL_UNKNOWN_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/unknown.cedarschema");
 
 /// Ordered list of all shipped cedarschema files. The merge in
 /// [`base_schema_text`] preserves this order so the resulting per-namespace
@@ -319,6 +321,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     HL_WITHDRAW_SCHEMA,
     HL_USD_SEND_SCHEMA,
     HL_APPROVE_AGENT_SCHEMA,
+    HL_UNKNOWN_SCHEMA,
 ];
 
 /// Composes the shipped core and action Cedar schemas.
@@ -812,6 +815,7 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     // unique (notably `withdraw` is already a Lending tag).
     ("hl_approve_agent", "HlApproveAgentContext"),
     ("hl_order", "HlOrderContext"),
+    ("hl_unknown", "HlUnknownContext"),
     ("hl_update_leverage", "HlUpdateLeverageContext"),
     ("hl_usd_send", "HlUsdSendContext"),
     ("hl_withdraw", "HlWithdrawContext"),
