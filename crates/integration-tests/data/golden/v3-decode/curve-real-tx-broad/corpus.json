@@ -5,6 +5,14 @@
       "intent": "StableSwap-NG crvUSD/Frax remove_liquidity",
       "expect": "pass",
       "expect_domain": "amm",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "remove_liquidity" },
+        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "curve_v1" },
+        { "path": "$.data.actions[0].body.venue.pool", "op": "hex_eq", "value": "0x0cd6f267b2086bea681e922e19d40512511be538" },
+        { "path": "$.data.actions[0].body.params.lp_amount", "op": "u256_hex_eq", "value": "0x8a9f24eb763050b6" },
+        { "path": "$.data.actions[0].body.params.min_out[0][0].key.address", "op": "hex_eq", "value": "0x853d955acef822db058eb8505911ed77f175b99e" },
+        { "path": "$.data.actions[0].body.params.min_out[1][0].key.address", "op": "hex_eq", "value": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" }
+      ],
       "tx_hash": "0xfdca11065053f0a5d239ffe20f7a2633112ffc357aaf8cb655286daf778f2ed9",
       "chain_id": 1,
       "rpc": {
@@ -21,6 +29,14 @@
       "intent": "CryptoSwap-NG crvUSDTWBTCWETH remove_liquidity(use_eth)",
       "expect": "pass",
       "expect_domain": "amm",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "remove_liquidity" },
+        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "curve_v2" },
+        { "path": "$.data.actions[0].body.venue.pool", "op": "hex_eq", "value": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4" },
+        { "path": "$.data.actions[0].body.params.lp_amount", "op": "u256_hex_eq", "value": "0x56bc75e2d63100000" },
+        { "path": "$.data.actions[0].body.params.min_out", "op": "len", "value": 3 },
+        { "path": "$.data.actions[0].body.params.min_out[2][0].key.address", "op": "hex_eq", "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" }
+      ],
       "tx_hash": "0x08cd484b7ad8a801deeabf71e390b0328a59dcf773f6a16a460c1857117c6848",
       "chain_id": 1,
       "rpc": {
@@ -37,6 +53,11 @@
       "intent": "Curve gauge 2BTC-f deposit",
       "expect": "pass",
       "expect_domain": "staking",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "gauge_deposit" },
+        { "path": "$.data.actions[0].body.venue.gauge", "op": "hex_eq", "value": "0x5010263ac1978297f56048c7d2b02316a3435404" },
+        { "path": "$.data.actions[0].body.amount", "op": "u256_hex_eq", "value": "0xdada85c59962156" }
+      ],
       "tx_hash": "0x1531cc927a7b5eff6d9c6468ed3f922c8eecda01e8af4e0ef5f3c5daabdbe16e",
       "chain_id": 1,
       "rpc": {
@@ -53,6 +74,11 @@
       "intent": "Curve gauge 2BTC-f withdraw",
       "expect": "pass",
       "expect_domain": "staking",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "gauge_withdraw" },
+        { "path": "$.data.actions[0].body.venue.gauge", "op": "hex_eq", "value": "0x5010263ac1978297f56048c7d2b02316a3435404" },
+        { "path": "$.data.actions[0].body.amount", "op": "u256_hex_eq", "value": "0x5f7bfb7957c850" }
+      ],
       "tx_hash": "0x007bbfdf14a11d0a860380cfe60077e10544ca271ab3ee6d9f9f7fdd3baf4e9f",
       "chain_id": 1,
       "rpc": {
@@ -69,6 +95,13 @@
       "intent": "veCRV create_lock",
       "expect": "pass",
       "expect_domain": "staking",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "lock" },
+        { "path": "$.data.actions[0].body.venue.escrow", "op": "hex_eq", "value": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
+        { "path": "$.data.actions[0].body.token.key.address", "op": "hex_eq", "value": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
+        { "path": "$.data.actions[0].body.amount", "op": "u256_hex_eq", "value": "0xa968163f0a57b400000" },
+        { "path": "$.data.actions[0].body.unlock_time", "op": "u256_hex_eq", "value": "0x6a95f562" }
+      ],
       "tx_hash": "0xfadfb2cfda0ab29cdac3fe8026ac20edc64e25a59359d41f49248197d7a9c195",
       "chain_id": 1,
       "rpc": {
@@ -85,6 +118,12 @@
       "intent": "veCRV increase_amount",
       "expect": "pass",
       "expect_domain": "staking",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "increase_lock_amount" },
+        { "path": "$.data.actions[0].body.venue.escrow", "op": "hex_eq", "value": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2" },
+        { "path": "$.data.actions[0].body.token.key.address", "op": "hex_eq", "value": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
+        { "path": "$.data.actions[0].body.amount", "op": "u256_hex_eq", "value": "0x37c1950c45d47bc9089" }
+      ],
       "tx_hash": "0xdc7d31676253370bb4d5e765297f37b7a4df6b9781f97feab1b52abc9cf97df4",
       "chain_id": 1,
       "rpc": {
@@ -101,6 +140,12 @@
       "intent": "Curve Minter mint from gauge",
       "expect": "pass",
       "expect_domain": "staking",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "claim_rewards" },
+        { "path": "$.data.actions[0].body.venue.minter", "op": "hex_eq", "value": "0xd061d61a4d941c39e5453435b6345dc261c2fce0" },
+        { "path": "$.data.actions[0].body.reward_token.key.address", "op": "hex_eq", "value": "0xd533a949740bb3306d119cc777fa900ba034cd52" },
+        { "path": "$.data.actions[0].body.gauges[0]", "op": "hex_eq", "value": "0xbc89cd85491d81c6ad2954e6d0362ee29fca8f53" }
+      ],
       "tx_hash": "0xafc600fe945fa17e939a2d48068f01b631b740865e8362d475928af53208ba9a",
       "chain_id": 1,
       "rpc": {
@@ -117,6 +162,14 @@
       "intent": "crvUSD WBTC controller repay(use_eth=false)",
       "expect": "pass",
       "expect_domain": "lending",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "repay" },
+        { "path": "$.data.actions[0].body.venue.controller", "op": "hex_eq", "value": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67" },
+        { "path": "$.data.actions[0].body.asset.key.address", "op": "hex_eq", "value": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
+        { "path": "$.data.actions[0].body.amount", "op": "u256_hex_eq", "value": "0x2262d61f0ad32a5ff16f" },
+        { "path": "$.data.actions[0].body.on_behalf_of", "op": "hex_eq", "value": "0x3a8315e25378ce9fc0d3279b26ec0576de52c0ff" },
+        { "path": "$.data.actions[0].body.use_a_tokens", "op": "equals", "value": false }
+      ],
       "tx_hash": "0x01bdc2dadee04e59fcfe32416b6e733a4b367cc1d3e9e255ee183e61c6d0049a",
       "chain_id": 1,
       "rpc": {

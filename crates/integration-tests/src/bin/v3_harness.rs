@@ -4,11 +4,11 @@
 //! surface — no browser, no WASM runtime, no RPC. Subcommands:
 //!
 //! ```text
-//! v3-harness fuzz       [--iterations N] [--seed S] [--json PATH]
+//! v3-harness fuzz       [--iterations N] [--seed S] [--filter <substr>] [--json PATH]
 //! v3-harness validate   [--filter <substr>] [--iterations N]
 //! v3-harness coverage
 //! v3-harness replay     --callkey <chain>__<addr>__<selector> [--seed S]
-//! v3-harness corpus     [--root DIR] [--filter <substr>] [--require-expect-body]
+//! v3-harness corpus     [--root DIR] [--filter <substr>] [--require-expect-body] [--json PATH]
 //! v3-harness import-dune|import-etherscan|import <export.json> [--chain N] [--out PATH]
 //! ```
 //!
@@ -69,11 +69,11 @@ fn usage() {
     eprintln!(
         "v3-harness — v3 ActionBody decode harness\n\n\
          USAGE:\n  \
-         v3-harness fuzz [--iterations N] [--seed S] [--json PATH]\n  \
+         v3-harness fuzz [--iterations N] [--seed S] [--filter <substr>] [--json PATH]\n  \
          v3-harness validate [--filter <substr>] [--iterations N]\n  \
          v3-harness coverage\n  \
          v3-harness replay --callkey <chain>__<addr>__<selector> [--seed S]\n  \
-         v3-harness corpus [--root DIR] [--filter <substr>] [--require-expect-body]\n  \
+         v3-harness corpus [--root DIR] [--filter <substr>] [--require-expect-body] [--json PATH]\n  \
          v3-harness import-dune|import-etherscan|import <export.json> [--chain N] [--out PATH]"
     );
 }
@@ -148,8 +148,10 @@ fn strip_hex_prefix(value: &str) -> Option<&str> {
 fn cmd_fuzz(args: &[String]) -> Result<()> {
     let iters = flag_u64(args, "--iterations", DEFAULT_ITERS)?;
     let seed = flag_u64(args, "--seed", DEFAULT_SEED)?;
-    eprintln!("fuzzing all strategies: seed={seed:#x} iterations/callkey={iters}");
-    let report = harness::run_synthetic_all(seed, iters)?;
+    let filter = flag(args, "--filter");
+    let scope = filter.unwrap_or("all");
+    eprintln!("fuzzing all strategies: seed={seed:#x} iterations/callkey={iters} filter={scope}");
+    let report = harness::run_synthetic_all_filtered(seed, iters, filter)?;
     println!("{}", report.summary());
     if let Some(path) = flag(args, "--json") {
         let json = serde_json::to_string_pretty(&report).context("serialize report")?;
@@ -161,6 +163,10 @@ fn cmd_fuzz(args: &[String]) -> Result<()> {
             "\n{} HARD FAILURE(S) — see report above",
             report.hard_failures()
         );
+        std::process::exit(1);
+    }
+    if filter.is_some() && report.total == 0 {
+        eprintln!("error: fuzz filter `{scope}` matched no routable entries");
         std::process::exit(1);
     }
     Ok(())
@@ -268,6 +274,25 @@ fn cmd_corpus(args: &[String]) -> Result<()> {
     let source_filter = flag(args, "--filter");
     let require_expect_body = args.iter().any(|a| a == "--require-expect-body");
     let outcomes = harness::corpus::run_corpus_filtered(&root, source_filter)?;
+    if let Some(path) = flag(args, "--json") {
+        let rows: Vec<serde_json::Value> = outcomes
+            .iter()
+            .map(|o| {
+                serde_json::json!({
+                    "source": o.source,
+                    "label": o.label,
+                    "expect": o.expect,
+                    "got": o.got,
+                    "matched": o.matched,
+                    "expect_body_assertions": o.expect_body_assertions,
+                    "envelope": o.envelope,
+                })
+            })
+            .collect();
+        let json = serde_json::to_string_pretty(&rows).context("serialize corpus outcomes")?;
+        std::fs::write(path, json).with_context(|| format!("write {path}"))?;
+        eprintln!("wrote JSON corpus outcomes to {path}");
+    }
     let total = outcomes.len();
     let matched = outcomes.iter().filter(|o| o.matched).count();
     let pass_total = outcomes.iter().filter(|o| o.expect == "pass").count();

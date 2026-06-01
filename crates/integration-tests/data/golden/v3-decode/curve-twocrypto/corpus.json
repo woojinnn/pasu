@@ -5,6 +5,15 @@
       "intent": "exchange crvUSD->cbBTC (i=0, j=1) on twocrypto crvUSD/cbBTC pool",
       "expect": "pass",
       "expect_domain": "amm",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "swap" },
+        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "curve_v2" },
+        { "path": "$.data.actions[0].body.venue.pool", "op": "hex_eq", "value": "0x862cb4e988fb66e72f128d1183829f8c05b6c6a0" },
+        { "path": "$.data.actions[0].body.params.token_in.key.address", "op": "hex_eq", "value": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e" },
+        { "path": "$.data.actions[0].body.params.token_out.key.address", "op": "hex_eq", "value": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf" },
+        { "path": "$.data.actions[0].body.params.direction.amount_in", "op": "u256_hex_eq", "value": "0x3231ee7c5f69365a" },
+        { "path": "$.data.actions[0].body.params.direction.min_amount_out", "op": "u256_hex_eq", "value": "0x0" }
+      ],
       "tx_hash": "0x08d406f5d1606605c8c61f79ed8e1090394327dbe3861ddd25c2bb6ceeac3e84",
       "chain_id": 1,
       "rpc": {

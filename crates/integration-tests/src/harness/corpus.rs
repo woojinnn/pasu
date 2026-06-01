@@ -103,6 +103,8 @@ pub struct CorpusOutcome {
     pub matched: bool,
     /// Number of field-level semantic assertions attached to this corpus entry.
     pub expect_body_assertions: usize,
+    /// Raw routed envelope used by semantic assertions.
+    pub envelope: Value,
 }
 
 /// Run every `corpus.json` under `root`, returning per-entry outcomes.
@@ -191,6 +193,7 @@ fn run_tx(tx: &CorpusTx, source: &str) -> CorpusOutcome {
                 got: "no rpc params".to_owned(),
                 matched: false,
                 expect_body_assertions: tx.expect_body.len(),
+                envelope: Value::Null,
             };
         };
         let selector = if p.data.len() >= 10 {
@@ -207,6 +210,7 @@ fn run_tx(tx: &CorpusTx, source: &str) -> CorpusOutcome {
             got: "entry has neither rpc nor typed_data".to_owned(),
             matched: false,
             expect_body_assertions: tx.expect_body.len(),
+            envelope: Value::Null,
         };
     };
 
@@ -219,6 +223,7 @@ fn run_tx(tx: &CorpusTx, source: &str) -> CorpusOutcome {
         got,
         matched,
         expect_body_assertions: tx.expect_body.len(),
+        envelope: env,
     }
 }
 

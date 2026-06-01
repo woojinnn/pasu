@@ -5,6 +5,16 @@
       "intent": "exchange CRV->USDC (1-hop, swap_type 1, +receiver)",
       "expect": "pass",
       "expect_domain": "amm",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "swap" },
+        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "aggregator_route" },
+        { "path": "$.data.actions[0].body.venue.router", "op": "hex_eq", "value": "0x45312ea0eff7e09c83cbe249fa1d7598c4c8cd4e" },
+        { "path": "$.data.actions[0].body.params.token_in.key.address", "op": "hex_eq", "value": "0xaf5191b0de278c7286d6c7cc6ab6bb8a73ba2cd6" },
+        { "path": "$.data.actions[0].body.params.token_out.key.address", "op": "hex_eq", "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
+        { "path": "$.data.actions[0].body.params.direction.amount_in", "op": "u256_hex_eq", "value": "0x10f0cf064dd59200000" },
+        { "path": "$.data.actions[0].body.params.direction.min_amount_out", "op": "u256_hex_eq", "value": "0x48d26643" },
+        { "path": "$.data.actions[0].body.params.recipient", "op": "hex_eq", "value": "0x8b65363a01510490fba03cea97b14c73b7ee8f75" }
+      ],
       "tx_hash": "0x1a464128d8fecb26d802a0f3d68c8abec7efc648de58caa52116feb22827ccab",
       "chain_id": 1,
       "rpc": {

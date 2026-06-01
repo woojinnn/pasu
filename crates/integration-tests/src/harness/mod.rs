@@ -60,12 +60,50 @@ pub fn run_synthetic_single_emit(global_seed: u64, iters: u64) -> Result<report:
 /// Run **all** strategy fuzzers (single_emit + opcode_stream + tagged_dispatch +
 /// typed_data) over the whole local surface with a fixed `global_seed`.
 pub fn run_synthetic_all(global_seed: u64, iters: u64) -> Result<report::Report> {
+    run_synthetic_all_filtered(global_seed, iters, None)
+}
+
+/// Run all strategy fuzzers over a filtered local surface.
+///
+/// `filter`: case-insensitive substring matched against callkeys, typed-data
+/// keys, or bundle ids. This keeps protocol onboarding fuzz runs scoped and
+/// replayable without changing the registry surface that gets installed.
+pub fn run_synthetic_all_filtered(
+    global_seed: u64,
+    iters: u64,
+    filter: Option<&str>,
+) -> Result<report::Report> {
     let surface = adapters::load_and_install()?;
+    let surface = filter_surface(surface, filter);
     let mut report = report::Report::default();
     with_silenced_panics(|| {
         fuzz::fuzz_all(&surface, global_seed, iters, &mut report);
     });
     Ok(report)
+}
+
+fn filter_surface(
+    mut surface: adapters::RoutableSurface,
+    filter: Option<&str>,
+) -> adapters::RoutableSurface {
+    let Some(filter) = filter else {
+        return surface;
+    };
+    let filter = filter.to_ascii_lowercase();
+    surface.calls.retain(|c| {
+        c.source_callkey.contains(&filter) || c.bundle_id.to_ascii_lowercase().contains(&filter)
+    });
+    surface.typed.retain(|t| {
+        t.source_key.to_ascii_lowercase().contains(&filter)
+            || t.bundle_id.to_ascii_lowercase().contains(&filter)
+    });
+    surface.total_callkeys = surface.calls.len();
+    surface.total_typed_keys = surface.typed.len();
+    surface.installed_bundle_ids.retain(|id| {
+        surface.calls.iter().any(|c| c.bundle_id == *id)
+            || surface.typed.iter().any(|t| t.bundle_id == *id)
+    });
+    surface
 }
 
 /// Replay one `single_emit` callkey at a fixed seed, returning the raw route

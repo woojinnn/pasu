@@ -123,7 +123,7 @@ pub struct RoutableTypedData {
 }
 
 /// The full routable surface plus install bookkeeping.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct RoutableSurface {
     /// One per `by-callkey` entry.
     pub calls: Vec<RoutableCall>,
