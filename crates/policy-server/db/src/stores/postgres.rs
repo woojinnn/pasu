@@ -8,8 +8,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use sqlx::postgres::PgPoolOptions;
-use sqlx::{PgPool, Row};
+use sqlx_core::error::Error as SqlxError;
+use sqlx_core::migrate::Migrator;
+use sqlx_core::query::query;
+use sqlx_core::row::Row;
+use sqlx_postgres::{PgPool, PgPoolOptions, PgRow};
 
 use simulation_state::primitives::ChainId;
 use simulation_state::store::{StoreError, WalletStore};
@@ -17,8 +20,14 @@ use simulation_state::{WalletId, WalletState};
 
 use crate::error::{DbError, DbResult};
 
-/// Versioned PostgreSQL schema migrations embedded at compile time.
-pub static POSTGRES_MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+/// Location of the versioned PostgreSQL schema migrations.
+///
+/// Keep migrations as runtime files instead of using `sqlx::migrate!()`.
+/// The macro pulls in SQLx's macro crate, which currently exposes optional
+/// MySQL dependencies to `cargo audit` even though this server is Postgres-only.
+fn postgres_migrations_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations")
+}
 
 /// A row from the `users` table.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -83,7 +92,7 @@ pub struct PostgresWalletStore {
 
 impl PostgresGlobalDb {
     /// Connect to PostgreSQL, apply migrations, and return the global store.
-    pub async fn connect(database_url: &str) -> Result<Self, sqlx::Error> {
+    pub async fn connect(database_url: &str) -> Result<Self, SqlxError> {
         let pool = connect_pool(database_url).await?;
         let db = Self::new(pool);
         db.migrate().await?;
@@ -99,16 +108,18 @@ impl PostgresGlobalDb {
     /// Compatibility constructor for integration tests that still pass a
     /// filesystem path. The path is ignored; it creates a lazy PostgreSQL pool
     /// from `TEST_DATABASE_URL`.
-    pub fn open(_path: impl AsRef<Path>) -> Result<Self, sqlx::Error> {
+    pub fn open(_path: impl AsRef<Path>) -> Result<Self, SqlxError> {
         Ok(Self::new(lazy_test_pool()?))
     }
 
     /// Apply the initial Postgres schema.
-    pub async fn migrate(&self) -> Result<(), sqlx::Error> {
-        POSTGRES_MIGRATOR
+    pub async fn migrate(&self) -> Result<(), SqlxError> {
+        Migrator::new(postgres_migrations_path())
+            .await
+            .map_err(|e| SqlxError::Protocol(e.to_string()))?
             .run(&self.pool)
             .await
-            .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+            .map_err(|e| SqlxError::Protocol(e.to_string()))?;
         Ok(())
     }
 
@@ -117,7 +128,7 @@ impl PostgresGlobalDb {
         let email = email.to_lowercase();
         let user_id = derive_user_id(&email);
         let now = unix_now_or_default();
-        sqlx::query(
+        query(
             "INSERT INTO users (user_id, email, provider, created_at, last_login_at)
              VALUES ($1, $2, $3, $4, $4)
              ON CONFLICT(email) DO UPDATE SET last_login_at = excluded.last_login_at",
@@ -135,7 +146,7 @@ impl PostgresGlobalDb {
     /// Look up a user by email.
     pub async fn get_user_by_email(&self, email: &str) -> DbResult<Option<PostgresUser>> {
         let email = email.to_lowercase();
-        sqlx::query(
+        query(
             "SELECT user_id, email, provider, created_at, last_login_at
              FROM users WHERE email = $1",
         )
@@ -148,7 +159,7 @@ impl PostgresGlobalDb {
 
     /// Look up a user by stable user id.
     pub async fn get_user_by_id(&self, user_id: &str) -> DbResult<Option<PostgresUser>> {
-        sqlx::query(
+        query(
             "SELECT user_id, email, provider, created_at, last_login_at
              FROM users WHERE user_id = $1",
         )
@@ -161,7 +172,7 @@ impl PostgresGlobalDb {
 
     /// Return every known OAuth user in deterministic order.
     pub async fn list_users(&self) -> DbResult<Vec<PostgresUser>> {
-        sqlx::query(
+        query(
             "SELECT user_id, email, provider, created_at, last_login_at
              FROM users ORDER BY email",
         )
@@ -229,7 +240,7 @@ impl PostgresWalletStore {
 
     /// Return active wallet metadata for dashboard/list views.
     pub async fn list_wallet_metadata(&self) -> Result<Vec<PostgresWalletMetadata>, StoreError> {
-        let rows = sqlx::query(
+        let rows = query(
             "SELECT address, chains, label, owned, archived
              FROM wallets
              WHERE user_id = $1 AND archived = FALSE
@@ -252,7 +263,7 @@ impl PostgresWalletStore {
         label: Option<Option<String>>,
         owned: Option<bool>,
     ) -> Result<bool, StoreError> {
-        let existing = sqlx::query(
+        let existing = query(
             "SELECT label, owned FROM wallets
              WHERE user_id = $1 AND address = $2 AND archived = FALSE",
         )
@@ -270,7 +281,7 @@ impl PostgresWalletStore {
         let next_owned = owned.unwrap_or(current_owned);
         let now = unix_now_or_default();
 
-        sqlx::query(
+        query(
             "UPDATE wallets
              SET label = $1, owned = $2, updated_at = $3
              WHERE user_id = $4 AND address = $5 AND archived = FALSE",
@@ -288,7 +299,7 @@ impl PostgresWalletStore {
 
     /// Soft-delete a wallet from active views. The state row is kept for audit/recovery.
     pub async fn archive_wallet(&self, address: &str, now: i64) -> Result<bool, StoreError> {
-        let result = sqlx::query(
+        let result = query(
             "UPDATE wallets
              SET archived = TRUE, updated_at = $1
              WHERE user_id = $2 AND address = $3 AND archived = FALSE",
@@ -306,7 +317,7 @@ impl PostgresWalletStore {
 #[async_trait]
 impl WalletStore for PostgresWalletStore {
     async fn list_wallets(&self) -> Result<Vec<WalletId>, StoreError> {
-        let rows = sqlx::query(
+        let rows = query(
             "SELECT address, chains FROM wallets
              WHERE user_id = $1 AND archived = FALSE
              ORDER BY address",
@@ -332,13 +343,12 @@ impl WalletStore for PostgresWalletStore {
 
     async fn load(&self, id: &WalletId) -> Result<WalletState, StoreError> {
         let address = format!("{:#x}", id.address);
-        let row =
-            sqlx::query("SELECT state_json FROM wallet_states WHERE user_id = $1 AND address = $2")
-                .bind(&self.user_id)
-                .bind(address)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| StoreError::Backend(e.to_string()))?;
+        let row = query("SELECT state_json FROM wallet_states WHERE user_id = $1 AND address = $2")
+            .bind(&self.user_id)
+            .bind(address)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| StoreError::Backend(e.to_string()))?;
 
         row.map_or_else(
             || Ok(WalletState::new(id.clone())),
@@ -362,7 +372,7 @@ impl WalletStore for PostgresWalletStore {
             .begin()
             .await
             .map_err(|e| StoreError::Backend(e.to_string()))?;
-        sqlx::query(
+        query(
             "INSERT INTO wallets (user_id, address, chains, owned, created_at, updated_at)
              VALUES ($1, $2, $3, TRUE, $4, $4)
              ON CONFLICT(user_id, address) DO UPDATE
@@ -378,7 +388,7 @@ impl WalletStore for PostgresWalletStore {
         .await
         .map_err(|e| StoreError::Backend(e.to_string()))?;
 
-        sqlx::query(
+        query(
             "INSERT INTO wallet_states (user_id, address, state_json, updated_at)
              VALUES ($1, $2, $3, $4)
              ON CONFLICT(user_id, address) DO UPDATE
@@ -398,9 +408,7 @@ impl WalletStore for PostgresWalletStore {
     }
 }
 
-fn row_to_wallet_metadata(
-    row: sqlx::postgres::PgRow,
-) -> Result<PostgresWalletMetadata, StoreError> {
+fn row_to_wallet_metadata(row: PgRow) -> Result<PostgresWalletMetadata, StoreError> {
     let chains_value: serde_json::Value = row.get("chains");
     let chains = serde_json::from_value::<Vec<ChainId>>(chains_value)
         .map_err(|e| StoreError::Backend(e.to_string()))?;
@@ -421,25 +429,25 @@ fn unix_now_or_default() -> i64 {
 }
 
 /// Connect to PostgreSQL with the default policy-server pool settings.
-pub async fn connect_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
+pub async fn connect_pool(database_url: &str) -> Result<PgPool, SqlxError> {
     PgPoolOptions::new()
         .max_connections(10)
         .connect(database_url)
         .await
 }
 
-fn lazy_test_pool() -> Result<PgPool, sqlx::Error> {
+fn lazy_test_pool() -> Result<PgPool, SqlxError> {
     let url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
         "postgres://scopeball:scopeball@127.0.0.1:5432/scopeball_test".to_owned()
     });
     PgPoolOptions::new().max_connections(5).connect_lazy(&url)
 }
 
-fn row_to_user(row: Option<sqlx::postgres::PgRow>) -> Option<PostgresUser> {
+fn row_to_user(row: Option<PgRow>) -> Option<PostgresUser> {
     row.map(row_to_required_user)
 }
 
-fn row_to_required_user(row: sqlx::postgres::PgRow) -> PostgresUser {
+fn row_to_required_user(row: PgRow) -> PostgresUser {
     PostgresUser {
         user_id: row.get("user_id"),
         email: row.get("email"),
@@ -462,7 +470,7 @@ pub fn derive_user_id(email_lower: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{derive_user_id, POSTGRES_MIGRATOR};
+    use super::{derive_user_id, postgres_migrations_path};
 
     #[test]
     fn derive_user_id_is_deterministic_and_canonical() {
@@ -474,13 +482,9 @@ mod tests {
     }
 
     #[test]
-    fn postgres_migrator_embeds_initial_schema() {
-        let migrations = POSTGRES_MIGRATOR.iter().collect::<Vec<_>>();
-        assert_eq!(migrations.len(), 1);
-        assert_eq!(migrations[0].version, 1);
-        assert_eq!(migrations[0].description, "initial");
-        assert!(migrations[0]
-            .sql
-            .contains("CREATE TABLE IF NOT EXISTS users"));
+    fn postgres_migrations_include_initial_schema() {
+        let initial = postgres_migrations_path().join("0001_initial.sql");
+        let sql = std::fs::read_to_string(initial).expect("initial migration exists");
+        assert!(sql.contains("CREATE TABLE IF NOT EXISTS users"));
     }
 }

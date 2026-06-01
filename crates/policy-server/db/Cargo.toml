@@ -14,4 +14,5 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 blake3 = "1.5"
 hex = { workspace = true }
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "json", "chrono", "uuid"] }
+sqlx-core = { version = "=0.8.6", default-features = false, features = ["_rt-tokio", "_tls-rustls-ring-webpki", "json", "migrate"] }
+sqlx-postgres = { version = "=0.8.6", default-features = false, features = ["chrono", "json", "migrate", "uuid"] }

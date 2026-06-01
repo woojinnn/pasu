@@ -1,5 +1,6 @@
 use simulation_db::stores::{PostgresGlobalDb, PostgresWalletStore};
 use simulation_state::{WalletId, WalletState, WalletStore};
+use sqlx_postgres::PgPool;
 
 #[tokio::test]
 async fn postgres_wallet_store_round_trips_state() {
@@ -7,7 +8,7 @@ async fn postgres_wallet_store_round_trips_state() {
         Ok(url) => url,
         Err(_) => return,
     };
-    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let pool = PgPool::connect(&url).await.unwrap();
     let global = PostgresGlobalDb::new(pool.clone());
     global.migrate().await.unwrap();
 
