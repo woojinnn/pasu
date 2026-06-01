@@ -165,14 +165,13 @@ function ContextBar({
       </span>
       <span className="sep" />
       <span className="summary">
-        <b>{summary.wallet_count}</b> 지갑 · <b>{summary.policy_count}</b> 정책 활성
+        <b>{summary.wallet_count}</b> 지갑
         <span className="mute"> · 포트폴리오 ${totalUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
       </span>
       <div className="right">
         {todayTotal !== null && (
           <span className="since">오늘 {todayTotal}건 평가</span>
         )}
-        <span className="since">미해결 finding {summary.unresolved_findings}건</span>
         <button className="ctx-cta" type="button" onClick={onAddWallet}>
           지갑 추가 +
         </button>
@@ -655,4 +654,3 @@ function timeAgo(unixSec: number): string {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
-

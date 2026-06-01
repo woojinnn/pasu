@@ -60,5 +60,4 @@ pub mod events;
 pub mod handler;
 pub mod read_handlers;
 pub mod store;
-pub mod verdict_handlers;
 pub mod write_handlers;

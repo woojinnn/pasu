@@ -12,4 +12,4 @@ pub mod types;
 
 pub use bus::EventBus;
 pub use sse::stream as sse_stream;
-pub use types::{Event, PolicyViolation, TxConfirmed, TxRef, TxRefWithHash, WalletSync};
+pub use types::{Event, TxConfirmed, TxRef, TxRefWithHash, WalletSync};

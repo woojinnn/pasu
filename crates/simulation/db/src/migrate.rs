@@ -52,7 +52,7 @@ const MIGRATION_004: Migration = Migration {
 
 const MIGRATION_005: Migration = Migration {
     version: 5,
-    description: "user_policies — Cedar policy text storage (Phase 5)",
+    description: "tombstone — policies are extension-local",
     sql: include_str!("migrations/005_user_policies.sql"),
 };
 
@@ -76,7 +76,7 @@ const MIGRATION_008: Migration = Migration {
 
 const MIGRATION_009: Migration = Migration {
     version: 9,
-    description: "verdicts — Cedar policy audit log (Phase 2: audit/history/findings)",
+    description: "tombstone — verdict/audit history is extension-local",
     sql: include_str!("migrations/009_verdicts.sql"),
 };
 
@@ -321,6 +321,28 @@ mod tests {
                     )
                     .unwrap();
                 assert_eq!(n, 1, "table {table} should exist");
+            }
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn does_not_create_extension_local_policy_or_verdict_tables() {
+        let pool = Pool::open_in_memory();
+        run(&pool).unwrap();
+        let absent = ["user_policies", "verdicts"];
+        pool.with_conn(|c| {
+            for table in absent {
+                let n: i64 = c
+                    .query_row(
+                        "SELECT COUNT(*) FROM sqlite_master \
+                         WHERE type='table' AND name=?1",
+                        [table],
+                        |r| r.get(0),
+                    )
+                    .unwrap();
+                assert_eq!(n, 0, "table {table} should not be server-managed");
             }
             Ok(())
         })

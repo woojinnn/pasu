@@ -1,9 +1,11 @@
 openapi: 3.0.3
 info:
-  title: Scopeball Policy-RPC API
+  title: Scopeball Simulation API
   description: |
-    Backend for the Scopeball wallet simulator + Cedar policy enforcement
-    system. Public routes (`/health`, `/docs`, `/openapi.yaml`, `/auth/*`)
+    Backend for the Scopeball wallet simulator. Cedar policy installation,
+    policy evaluation, verdict history, audit views, and finding feeds are
+    browser-extension local state. Public routes (`/health`, `/docs`,
+    `/openapi.yaml`, `/auth/*`)
     are open; everything else requires `Authorization: Bearer <jwt>` where
     the JWT is obtained from the Google OAuth flow.
 
@@ -28,10 +30,6 @@ tags:
     description: Token catalog (logo / website / description)
   - name: transactions
     description: Tx lifecycle log (state_deltas table)
-  - name: policies
-    description: Cedar policy CRUD
-  - name: verdicts
-    description: Audit / History / Findings (Phase 2)
   - name: meta
     description: Health, evaluate, events, ops
 
@@ -310,195 +308,6 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/TxRow" }
 
-  /policies:
-    get:
-      tags: [policies]
-      summary: List every Cedar policy installed in the user's DB
-      responses:
-        "200":
-          description: PolicyRow[]
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/PolicyRow" }
-    post:
-      tags: [policies]
-      summary: Install a new Cedar policy
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, cedar_text, severity]
-              properties:
-                name: { type: string, example: "Cap large USDC sends" }
-                description: { type: string, nullable: true }
-                cedar_text: { type: string }
-                severity: { type: string, enum: [deny, warn, info] }
-      responses:
-        "200":
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id: { type: integer }
-                  created_at: { type: integer }
-
-  /policies/{id}:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    get:
-      tags: [policies]
-      summary: Single Cedar policy row
-      responses:
-        "200":
-          description: PolicyRow
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PolicyRow" }
-        "404": { description: Policy not found }
-    patch:
-      tags: [policies]
-      summary: Update mutable policy fields
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name: { type: string }
-                description: { type: string, nullable: true }
-                cedar_text: { type: string }
-                severity: { type: string, enum: [deny, warn, info] }
-                enabled: { type: boolean }
-      responses:
-        "204": { description: Updated }
-        "404": { description: Policy not found }
-    delete:
-      tags: [policies]
-      summary: Drop a policy row
-      responses:
-        "204": { description: Deleted }
-        "404": { description: Policy not found }
-
-  /policies/validate:
-    post:
-      tags: [policies]
-      summary: Cedar parse-check (editor live syntax validator)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [cedar_text]
-              properties:
-                cedar_text: { type: string }
-      responses:
-        "200":
-          description: ValidateResp
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:    { type: boolean }
-                  error: { type: string, nullable: true }
-
-  /policies/{id}/test:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    post:
-      tags: [policies]
-      summary: Evaluate a saved policy against an inline Cedar request (schema-less)
-      description: |
-        Schema-less authoring: the saved policy is parsed via cedar-policy
-        directly (no bundled schema enforced) so editors can experiment
-        with any `principal/action/resource`. Production evaluation in
-        the extension is strictly stricter.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [request]
-              properties:
-                request:
-                  type: object
-                  required: [principal, action, resource]
-                  properties:
-                    principal: { type: string, example: 'Wallet::"0xabc"' }
-                    action:    { type: string, example: 'Action::"swap"' }
-                    resource:  { type: string, example: 'Protocol::"0xdef"' }
-                    entities:  { type: array, items: { type: object } }
-                    context:   { type: object }
-      responses:
-        "200":
-          description: TestPolicyResp
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  verdict: { type: string, enum: [pass, warn, fail] }
-                  matched:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        policy_id: { type: string }
-                        severity:  { type: string, enum: [deny, warn] }
-                        reason:    { type: string, nullable: true }
-        "400": { description: Parse / entity / context error }
-        "404": { description: Policy not found }
-
-  /policy-schema:
-    get:
-      tags: [policies]
-      summary: Block-coding catalog (predicates / ops / actions)
-      description: |
-        Static JSON used by the editor's block palette. Includes
-        Korean + English labels per predicate; the FE picks the locale
-        it wants. Cacheable (5 min).
-      responses:
-        "200":
-          description: PolicySchema
-          content:
-            application/json:
-              schema: { type: object }
-
-  /policy-templates:
-    get:
-      tags: [policies]
-      summary: Starter Cedar policy library (HF guard, slippage cap, etc.)
-      responses:
-        "200":
-          description: PolicyTemplate[]
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { type: object }
-
-  /examples/transactions:
-    get:
-      tags: [meta]
-      summary: Fixture action envelopes used by editor/simulation pages
-      responses:
-        "200":
-          description: ExampleTransaction[]
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { type: object }
-
   /spenders/{addr}:
     parameters:
       - { name: addr, in: path, required: true, schema: { type: string }, example: "0xe592427a0aece92de3edee1f18e0157c05861564" }
@@ -528,9 +337,9 @@ paths:
       description: |
         Sums every tracked wallet's portfolio (using each holding's
         computed `value_usd`), splits by chain, and attaches per-wallet
-        badges (unlimited approval count, pending tx count). Also
-        returns workspace-level counters (wallet_count, policy_count,
-        unresolved_findings).
+        badges (unlimited approval count, pending tx count). Policy and
+        verdict counters are extension-local and are not returned by this
+        API.
       responses:
         "200":
           description: DashboardSummary
@@ -540,7 +349,6 @@ paths:
                 type: object
                 properties:
                   wallet_count: { type: integer }
-                  policy_count: { type: integer }
                   total_portfolio_usd: { type: string }
                   chain_breakdown:
                     type: array
@@ -561,178 +369,11 @@ paths:
                         total_usd:       { type: string }
                         unlimited_count: { type: integer }
                         pending_count:   { type: integer }
-                  unresolved_findings: { type: integer }
-
-  /verdicts:
-    post:
-      tags: [verdicts]
-      summary: Extension submits a verdict after Cedar evaluation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [wallet, verdict, severity]
-              properties:
-                wallet:        { type: string }
-                verdict:       { type: string, enum: [pass, warn, fail] }
-                severity:      { type: string, enum: [deny, warn, info] }
-                delta_id:      { type: integer, nullable: true }
-                policy_id:     { type: integer, nullable: true }
-                dapp_origin:   { type: string }
-                method:        { type: string }
-                decoded_fn:    { type: string }
-                contract:
-                  type: object
-                  properties:
-                    addr:   { type: string }
-                    symbol: { type: string, nullable: true }
-                selector:
-                  type: object
-                  properties:
-                    sig:     { type: string }
-                    decoded: { type: string, nullable: true }
-                policy_name:   { type: string }
-                reason:
-                  type: object
-                  properties:
-                    ko: { type: string, nullable: true }
-                    en: { type: string, nullable: true }
-      responses:
-        "200":
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id: { type: integer }
-                  ts: { type: integer }
-        "400": { description: Bad request (verdict/severity validation, address shape) }
-        "404": { description: Wallet not tracked for this user }
-
-  /verdicts/{id}:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    patch:
-      tags: [verdicts]
-      summary: User resolves a warn-level verdict
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [decision]
-              properties:
-                decision: { type: string, enum: [trusted, cancelled] }
-      responses:
-        "204": { description: Updated }
-        "400": { description: Bad decision value }
-        "404": { description: Verdict not found }
-
-  /audit/verdicts:
-    get:
-      tags: [verdicts]
-      summary: Filtered verdict log (audit view)
-      parameters:
-        - { name: range,     in: query, schema: { type: string, enum: [1h, 6h, 24h, 7d] } }
-        - { name: since,     in: query, schema: { type: integer, description: "unix sec lower bound" } }
-        - { name: until,     in: query, schema: { type: integer, description: "unix sec upper bound" } }
-        - { name: verdict,   in: query, schema: { type: string, enum: [pass, warn, fail] } }
-        - { name: origin,    in: query, schema: { type: string, description: "dApp hostname exact match" } }
-        - { name: policy_id, in: query, schema: { type: integer } }
-        - { name: wallet,    in: query, schema: { type: string, description: "0x40hex; unknown wallet → empty result" } }
-        - { name: search,    in: query, schema: { type: string, description: "substring across policy_name + reason_*" } }
-        - { name: before,    in: query, schema: { type: integer, description: "cursor — fetch rows with id < before" } }
-        - { name: limit,     in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
-      responses:
-        "200":
-          description: VerdictDto[]
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/VerdictDto" }
-
-  /audit/counts:
-    get:
-      tags: [verdicts]
-      summary: Pass/warn/fail counts under the same filter as /audit/verdicts
-      parameters:
-        - { name: range,   in: query, schema: { type: string } }
-        - { name: since,   in: query, schema: { type: integer } }
-        - { name: until,   in: query, schema: { type: integer } }
-        - { name: verdict, in: query, schema: { type: string } }
-        - { name: origin,  in: query, schema: { type: string } }
-        - { name: wallet,  in: query, schema: { type: string } }
-        - { name: search,  in: query, schema: { type: string } }
-      responses:
-        "200":
-          description: Counts
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  pass: { type: integer }
-                  warn: { type: integer }
-                  fail: { type: integer }
-
-  /audit/export:
-    get:
-      tags: [verdicts]
-      summary: CSV export of the filtered verdict list
-      parameters:
-        - { name: range,   in: query, schema: { type: string } }
-        - { name: since,   in: query, schema: { type: integer } }
-        - { name: until,   in: query, schema: { type: integer } }
-        - { name: verdict, in: query, schema: { type: string } }
-        - { name: origin,  in: query, schema: { type: string } }
-      responses:
-        "200":
-          description: CSV
-          content:
-            text/csv: { schema: { type: string } }
-
-  /history/verdicts:
-    get:
-      tags: [verdicts]
-      summary: Verdict log (history view — cursor pagination)
-      description: Same row shape as /audit/verdicts; the FE renders sequence + grouping differently.
-      parameters:
-        - { name: before, in: query, schema: { type: integer } }
-        - { name: limit,  in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
-      responses:
-        "200":
-          description: VerdictDto[]
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/VerdictDto" }
-
-  /findings/feed:
-    get:
-      tags: [verdicts]
-      summary: Live findings feed (monitoring page)
-      parameters:
-        - { name: since, in: query, schema: { type: integer, description: "unix sec — only rows ts >= since" } }
-        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
-      responses:
-        "200":
-          description: VerdictDto[]
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/VerdictDto" }
 
   /events/stream:
     get:
       tags: [meta]
-      summary: Server-Sent Events feed (wallet_synced, finding, etc.)
+      summary: Server-Sent Events feed (wallet sync and tx lifecycle)
       description: Auth via `?token=<jwt>` query param (EventSource can't set headers).
       parameters:
         - { name: token, in: query, schema: { type: string } }
@@ -852,58 +493,6 @@ components:
         predicted_delta:  { type: object, nullable: true }
         realized_delta:   { type: object, nullable: true }
 
-    PolicyRow:
-      type: object
-      properties:
-        id:          { type: integer }
-        name:        { type: string }
-        description: { type: string, nullable: true }
-        cedar_text:  { type: string }
-        severity:    { type: string }
-        enabled:     { type: boolean }
-        created_at:  { type: integer }
-        updated_at:  { type: integer }
-
     EvaluateRequest:
       type: object
-      description: Pass an Action envelope; reducer applies + Cedar evaluates.
-
-    VerdictDto:
-      type: object
-      description: Cedar policy verdict row (Audit / History / Findings).
-      properties:
-        id:           { type: integer }
-        ts:           { type: integer }
-        wallet:       { type: string, nullable: true }
-        verdict:      { type: string, enum: [pass, warn, fail] }
-        severity:     { type: string, enum: [deny, warn, info] }
-        method:       { type: string, nullable: true }
-        decoded_fn:   { type: string, nullable: true }
-        dapp_origin:  { type: string, nullable: true }
-        contract:
-          type: object
-          nullable: true
-          properties:
-            addr:   { type: string }
-            symbol: { type: string, nullable: true }
-        selector:
-          type: object
-          nullable: true
-          properties:
-            sig:     { type: string }
-            decoded: { type: string, nullable: true }
-        policy:
-          type: object
-          nullable: true
-          properties:
-            id:       { type: integer, nullable: true }
-            name:     { type: string, nullable: true }
-            severity: { type: string, enum: [deny, warn, info] }
-        reason:
-          type: object
-          properties:
-            ko: { type: string, nullable: true }
-            en: { type: string, nullable: true }
-        user_decision: { type: string, nullable: true, enum: [trusted, cancelled, null] }
-        decided_at:    { type: integer, nullable: true }
-        delta_id:      { type: integer, nullable: true }
+      description: Pass an Action envelope; reducer returns simulated state and deltas.
