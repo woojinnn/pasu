@@ -30,17 +30,6 @@ export function NavRail() {
         <div className="word">scopeball</div>
       </div>
 
-      <button
-        className="nav-cta"
-        onClick={() => navigate("/editor?new=1")}
-        title="Editor에서 새 정책 만들기"
-      >
-        <svg className="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        <span className="label">새 정책</span>
-      </button>
-
       <div className="nav-divider" />
 
       <div className="nav-group">

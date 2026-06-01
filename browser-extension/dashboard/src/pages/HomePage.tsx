@@ -209,7 +209,7 @@ function TriageCard({
     <section className="card triage">
       <div className="triage-head">
         <span className="title">
-          처리 대기 <span className="cnt">{unresolved.length}건</span>
+          처리 대기 <span className="cnt">{loading ? "…" : `${unresolved.length}건`}</span>
         </span>
         <div className="sev-row">
           {fail.length > 0 && <span className="sev-pill fail"><span className="pd" />FAIL {fail.length}</span>}
@@ -219,10 +219,7 @@ function TriageCard({
 
       {error ? <div className="err-banner">finding 불러오기 실패: {String(error)}</div> : null}
       {loading && (
-        <div className="tq-list">
-          <div className="skeleton" style={{ height: 56 }} />
-          <div className="skeleton" style={{ height: 56 }} />
-        </div>
+        <div className="tq-loading">불러오는 중…</div>
       )}
 
       {!loading && unresolved.length === 0 && (

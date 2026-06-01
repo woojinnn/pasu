@@ -336,6 +336,13 @@
   font-family: var(--ff-mono); color: var(--slate-500);
 }
 
+/* triage / list loading text */
+.tq-loading {
+  padding: 18px 14px; text-align: center;
+  font-size: 13px; color: var(--slate-400);
+  background: var(--fog-100); border-radius: var(--r-sm);
+}
+
 /* loading / error skeletons */
 .skeleton {
   background: var(--fog-300); border-radius: var(--r-sm);
