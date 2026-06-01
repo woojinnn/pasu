@@ -60,7 +60,7 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- \
 
 | protocol | 최신 로그 | total | pass | soft(커버리지) | hard(디코더) |
 |---|---|---|---|---|---|
-| uniswap | `uniswap/2026-05-30-coverage.json` | 700 | 302 | 325 (**migration-gap** registry→registryV2 + FoT/V4) | 73 (Permit2/V4 nested) |
+| uniswap | 2026-06-01 Etherscan keyed covered-selector scratch + Dune probe | 4,471 | 4,471 | 0 | 0 |
 | aave | `aave/2026-05-30-etherscan.json` | 300 | * | L2Pool packed (31% Arb) | 0 |
 | balancer | `balancer/2026-05-30-etherscan.json` | 300 | 94 | 204 (batchSwap/join/exit) | 0 |
 | hyperliquid | `hyperliquid/2026-05-30-etherscan.json` | 160 | 5+ | 2 (infra, out-of-scope) | 0 |
@@ -71,6 +71,46 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- \
 **최신 synthetic sweep:** `_synthetic/2026-05-31-synthetic.json` — 2,410,000 probes, 2,183,381 pass, 226,619 soft, **0 fail / 0 panic**. `soft`는 synthesis/model-limit 분류이며, fresh hard decoder regression은 없었다.
 
 새 로그를 추가하면 이 표 한 줄을 갱신한다.
+
+## 2026-06-01 Uniswap P2 real-tx 보강
+
+**요약:** earlier green state was not enough for P2 real-tx completeness: it used
+official deployment docs, npm ABIs, Sourcify/local ABI cache, and the existing
+golden corpus, but did not run a fresh Etherscan+Dune real-tx lane. Re-run now:
+
+- **Etherscan MCP:** mainnet `txlist` samples for V2 Router02 and SwapRouter02,
+  then public RPC hydration to exact `to/value/input`. Initial scratch replay:
+  `cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus --root /tmp/scopeball-uniswap-etherscan`
+  -> `10/10` pass.
+- **Etherscan API v2 keyed:** loaded `ETHERSCAN_API_KEY` from the original
+  integration-test `.env` without committing or printing the secret. Queried the
+  33 Uniswap cover contracts from `_deployments.json` at offset 300. Raw
+  expected-pass scratch found 4,792 unique txs across mainnet+Arbitrum:
+  `4,692/4,792` matched. The 100 misses classified to 99 no-index/excluded
+  selectors (mostly Permit2 `transferFrom` and low-level V4 PoolManager
+  flash-accounting surface) plus 1 failed malformed on-chain tx. Filtering to
+  successful txs whose callkey exists in `registryV2/index/by-callkey` produced
+  `/tmp/scopeball-uniswap-etherscan-keyed-covered`, replayed at `4,471/4,471`
+  pass. Optimism/Base Etherscan API calls still returned plan-limit
+  `Free API access is not supported for this chain`, so L2 coverage there came
+  from the Dune+RPC lane below.
+- **Dune MCP:** `dex.trades` partitioned query `7625591`, filtered to covered
+  Uniswap router/manager `tx_to` across Ethereum/Base/Arbitrum/Optimism. Cost:
+  `0.41` credit, 40 rows, 39 unique hydrated calldata rows. Scratch replay:
+  `cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus --root /tmp/scopeball-uniswap-realtx`
+  -> `39/39` pass.
+- **Committed representative rows:** 12 Dune-derived real txs were appended to
+  `data/golden/v3-decode/uniswap/corpus.json`, covering Optimism V2, Arbitrum
+  SwapRouter02 exactInput path, Base SwapRouter02 multicall/FoT/UniversalRouter,
+  Ethereum UniversalRouter 2.1.1/v2, and V3/V4 position NFT transfer paths.
+- **Claude Code 2nd-opinion:** headless audit ran candidate-only with hooks
+  disabled. Valid findings left as follow-up: Universal Router opcode branch
+  breadth, direct Permit2 transfer/signature-transfer surfaces, more V3
+  `exactOutput`/alt multicall real txs, and deeper V4 PositionManager/PoolManager
+  action-stream coverage.
+
+Remaining known gaps are corpus breadth gaps, not fresh hard decoder failures in
+the sampled real-tx lane.
 
 ## 2026-05-30 커버리지 확장 라운드 — 처치 결과
 
