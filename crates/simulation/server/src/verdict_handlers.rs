@@ -232,10 +232,7 @@ pub struct PolicyRef {
     pub severity: String,
 }
 
-fn row_to_dto(
-    r: verdicts::VerdictRow,
-    wallet_addr: Option<String>,
-) -> VerdictDto {
+fn row_to_dto(r: verdicts::VerdictRow, wallet_addr: Option<String>) -> VerdictDto {
     let contract = r.contract_addr.as_ref().map(|addr| ContractDto {
         addr: addr.clone(),
         symbol: r.contract_symbol.clone(),
@@ -281,7 +278,13 @@ async fn resolve_filter(
     q: &VerdictListQuery,
     state: &AppState,
     user_id: &str,
-) -> Result<(verdicts::VerdictFilter, std::collections::HashMap<i64, String>), Response> {
+) -> Result<
+    (
+        verdicts::VerdictFilter,
+        std::collections::HashMap<i64, String>,
+    ),
+    Response,
+> {
     let store = state
         .multi_user
         .for_user(user_id)
@@ -296,9 +299,11 @@ async fn resolve_filter(
                 "6h" => 6 * 3_600,
                 "24h" => 24 * 3_600,
                 "7d" => 7 * 24 * 3_600,
-                other => return Err(bad_request(&format!(
-                    "range `{other}` not one of: 1h | 6h | 24h | 7d"
-                ))),
+                other => {
+                    return Err(bad_request(&format!(
+                        "range `{other}` not one of: 1h | 6h | 24h | 7d"
+                    )))
+                }
             };
             (Some(now - secs), Some(now))
         }
@@ -308,12 +313,11 @@ async fn resolve_filter(
     // Resolve `wallet=0x…` query → wallet_id PK (so deletions / address
     // re-use are handled correctly).
     let wallet_filter_addr = q.wallet.clone();
-    let wallets_index = tokio::task::spawn_blocking(move || {
-        pool.with_tx(wallets_repo::list_active)
-    })
-    .await
-    .map_err(|e| internal(&format!("join: {e}")))?
-    .map_err(|e| internal(&format!("list_active: {e}")))?;
+    let wallets_index =
+        tokio::task::spawn_blocking(move || pool.with_tx(wallets_repo::list_active))
+            .await
+            .map_err(|e| internal(&format!("join: {e}")))?
+            .map_err(|e| internal(&format!("list_active: {e}")))?;
 
     let mut by_id: std::collections::HashMap<i64, String> = std::collections::HashMap::new();
     let mut wallet_id_filter: Option<i64> = None;
@@ -322,7 +326,10 @@ async fn resolve_filter(
     }
     if let Some(addr_q) = wallet_filter_addr {
         let needle = addr_q.to_lowercase();
-        wallet_id_filter = wallets_index.iter().find(|w| w.address == needle).map(|w| w.id);
+        wallet_id_filter = wallets_index
+            .iter()
+            .find(|w| w.address == needle)
+            .map(|w| w.id);
         if wallet_id_filter.is_none() {
             // Caller filtered by an address the user doesn't own → empty
             // result. Express via an impossible filter so the SQL still

@@ -155,7 +155,11 @@ pub async fn get_summary(
         .map(|(chain, usd)| ChainShare {
             chain,
             usd: fmt6(usd),
-            pct: if total > 0.0 { (usd / total) * 100.0 } else { 0.0 },
+            pct: if total > 0.0 {
+                (usd / total) * 100.0
+            } else {
+                0.0
+            },
         })
         .collect();
 

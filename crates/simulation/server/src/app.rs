@@ -25,12 +25,12 @@ use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator};
 
 use crate::auth::{require_auth, AuthUser};
+use crate::cedar_handlers;
+use crate::dashboard_handlers;
 use crate::db_store::SqliteExecutionReportStore;
 use crate::dto::{EvaluateRequest, ExecutionReportRequest};
 use crate::events::EventBus;
 use crate::handler::{evaluate, report_execution, HandlerError};
-use crate::cedar_handlers;
-use crate::dashboard_handlers;
 use crate::phase5_handlers;
 use crate::read_handlers;
 use crate::verdict_handlers;
@@ -77,7 +77,10 @@ impl std::fmt::Debug for AppState {
                 &self.etherscan.as_ref().map(|_| "<EtherscanClient>"),
             )
             .field("coingecko", &"<CoinGeckoClient>")
-            .field("spenders", &format_args!("<{} entries>", self.spenders.len()))
+            .field(
+                "spenders",
+                &format_args!("<{} entries>", self.spenders.len()),
+            )
             .finish()
     }
 }
@@ -179,16 +182,13 @@ pub fn build_router(state: AppState) -> Router {
                 .delete(write_handlers::delete_policy),
         )
         // ---- Phase 4: cedar editor support ----
-        .route(
-            "/policies/validate",
-            post(cedar_handlers::validate_policy),
-        )
-        .route(
-            "/policies/:id/test",
-            post(cedar_handlers::test_policy),
-        )
+        .route("/policies/validate", post(cedar_handlers::validate_policy))
+        .route("/policies/:id/test", post(cedar_handlers::test_policy))
         .route("/policy-schema", get(read_handlers::get_policy_schema))
-        .route("/policy-templates", get(read_handlers::get_policy_templates))
+        .route(
+            "/policy-templates",
+            get(read_handlers::get_policy_templates),
+        )
         .route(
             "/examples/transactions",
             get(read_handlers::get_example_transactions),
@@ -210,10 +210,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/events/stream", get(crate::events::sse_stream))
         // ---- Phase 5: tx decode + revoke plan + sequence simulation ----
         .route("/tx/decode", post(phase5_handlers::decode_tx))
-        .route(
-            "/approvals/revoke-plan",
-            post(phase5_handlers::revoke_plan),
-        )
+        .route("/approvals/revoke-plan", post(phase5_handlers::revoke_plan))
         .route(
             "/simulate/sequence",
             post(phase5_handlers::simulate_sequence),

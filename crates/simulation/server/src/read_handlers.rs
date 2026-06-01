@@ -640,10 +640,7 @@ pub async fn get_example_transactions() -> Response {
 /// `GET /spenders/:addr` — known-contract reputation lookup. Returns
 /// 404 for addresses outside the catalog so callers can distinguish
 /// "unknown" from "explicitly blocked".
-pub async fn get_spender(
-    State(state): State<AppState>,
-    Path(addr): Path<String>,
-) -> Response {
+pub async fn get_spender(State(state): State<AppState>, Path(addr): Path<String>) -> Response {
     let Ok(parsed) = Address::from_str(&addr) else {
         return (StatusCode::BAD_REQUEST, format!("invalid address `{addr}`")).into_response();
     };

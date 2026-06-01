@@ -16,8 +16,8 @@ pub struct VerdictInsert {
     pub delta_id: Option<i64>,
     pub wallet_id: i64,
     pub policy_id: Option<i64>,
-    pub severity: String,       // "deny" | "warn" | "info"
-    pub verdict: String,        // "pass" | "warn" | "fail"
+    pub severity: String, // "deny" | "warn" | "info"
+    pub verdict: String,  // "pass" | "warn" | "fail"
     pub ts: i64,
     pub dapp_origin: Option<String>,
     pub method: Option<String>,
@@ -90,12 +90,7 @@ pub fn insert(tx: &Transaction<'_>, v: &VerdictInsert) -> DbResult<i64> {
 
 /// Set the user's decision on a `warn` row. Idempotent — re-setting the
 /// same value just updates `decided_at`.
-pub fn set_decision(
-    tx: &Transaction<'_>,
-    id: i64,
-    decision: &str,
-    now: i64,
-) -> DbResult<bool> {
+pub fn set_decision(tx: &Transaction<'_>, id: i64, decision: &str, now: i64) -> DbResult<bool> {
     let n = tx.execute(
         "UPDATE verdicts SET user_decision = ?2, decided_at = ?3 WHERE id = ?1",
         params![id, decision, now],
@@ -158,7 +153,10 @@ pub fn list_filtered(tx: &Transaction<'_>, f: &VerdictFilter) -> DbResult<Vec<Ve
         SELECT_COLS = SELECT_COLS,
         limit_idx = params_vec.len() + 1
     );
-    let mut bound: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+    let mut bound: Vec<&dyn rusqlite::ToSql> = params_vec
+        .iter()
+        .map(|s| s as &dyn rusqlite::ToSql)
+        .collect();
     bound.push(&f.limit);
     let mut stmt = tx.prepare(&sql)?;
     let rows = stmt
@@ -177,12 +175,13 @@ pub struct VerdictCounts {
 
 pub fn count_by_verdict(tx: &Transaction<'_>, f: &VerdictFilter) -> DbResult<VerdictCounts> {
     let (where_sql, params_vec) = build_where(f);
-    let sql = format!(
-        "SELECT verdict, COUNT(*) FROM verdicts {where_sql} GROUP BY verdict"
-    );
+    let sql = format!("SELECT verdict, COUNT(*) FROM verdicts {where_sql} GROUP BY verdict");
     let mut stmt = tx.prepare(&sql)?;
     let mut counts = VerdictCounts::default();
-    let bound: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+    let bound: Vec<&dyn rusqlite::ToSql> = params_vec
+        .iter()
+        .map(|s| s as &dyn rusqlite::ToSql)
+        .collect();
     let mut rows = stmt.query(bound.as_slice())?;
     while let Some(r) = rows.next()? {
         let verdict: String = r.get(0)?;
@@ -309,7 +308,11 @@ mod tests {
             delta_id: None,
             wallet_id: wid,
             policy_id: None,
-            severity: if verdict == "fail" { "deny".into() } else { "warn".into() },
+            severity: if verdict == "fail" {
+                "deny".into()
+            } else {
+                "warn".into()
+            },
             verdict: verdict.into(),
             ts,
             dapp_origin: Some(origin.into()),
@@ -330,7 +333,10 @@ mod tests {
         let pool = fresh_pool();
         pool.with_tx(|tx| {
             let wid = seed_wallet(tx, "0xa");
-            let id = insert(tx, &sample_verdict(wid, "warn", "app.uniswap.org", 1_730_000_000))?;
+            let id = insert(
+                tx,
+                &sample_verdict(wid, "warn", "app.uniswap.org", 1_730_000_000),
+            )?;
             let row = get(tx, id)?.unwrap();
             assert_eq!(row.verdict, "warn");
             assert_eq!(row.dapp_origin.as_deref(), Some("app.uniswap.org"));
@@ -350,10 +356,22 @@ mod tests {
         let pool = fresh_pool();
         pool.with_tx(|tx| {
             let wid = seed_wallet(tx, "0xa");
-            insert(tx, &sample_verdict(wid, "fail", "uniswap.org", 1_730_000_000))?;
-            insert(tx, &sample_verdict(wid, "warn", "uniswap.org", 1_730_000_100))?;
-            insert(tx, &sample_verdict(wid, "pass", "opensea.io",  1_730_000_200))?;
-            insert(tx, &sample_verdict(wid, "fail", "opensea.io",  1_730_000_300))?;
+            insert(
+                tx,
+                &sample_verdict(wid, "fail", "uniswap.org", 1_730_000_000),
+            )?;
+            insert(
+                tx,
+                &sample_verdict(wid, "warn", "uniswap.org", 1_730_000_100),
+            )?;
+            insert(
+                tx,
+                &sample_verdict(wid, "pass", "opensea.io", 1_730_000_200),
+            )?;
+            insert(
+                tx,
+                &sample_verdict(wid, "fail", "opensea.io", 1_730_000_300),
+            )?;
 
             // Filter: verdict=fail
             let rows = list_filtered(
@@ -393,8 +411,21 @@ mod tests {
             insert(tx, &sample_verdict(wid, "warn", "a.com", 3))?;
             insert(tx, &sample_verdict(wid, "fail", "a.com", 4))?;
 
-            let counts = count_by_verdict(tx, &VerdictFilter { limit: 50, ..Default::default() })?;
-            assert_eq!(counts, VerdictCounts { pass: 2, warn: 1, fail: 1 });
+            let counts = count_by_verdict(
+                tx,
+                &VerdictFilter {
+                    limit: 50,
+                    ..Default::default()
+                },
+            )?;
+            assert_eq!(
+                counts,
+                VerdictCounts {
+                    pass: 2,
+                    warn: 1,
+                    fail: 1
+                }
+            );
             Ok(())
         })
         .unwrap();
@@ -409,7 +440,13 @@ mod tests {
             for ts in 0..10 {
                 ids.push(insert(tx, &sample_verdict(wid, "pass", "a.com", ts))?);
             }
-            let first_page = list_filtered(tx, &VerdictFilter { limit: 3, ..Default::default() })?;
+            let first_page = list_filtered(
+                tx,
+                &VerdictFilter {
+                    limit: 3,
+                    ..Default::default()
+                },
+            )?;
             assert_eq!(first_page.len(), 3);
             assert_eq!(first_page[0].id, ids[9]);
             assert_eq!(first_page[2].id, ids[7]);

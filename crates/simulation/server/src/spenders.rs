@@ -122,9 +122,7 @@ struct SpenderEntry {
 }
 
 fn is_valid_addr(s: &str) -> bool {
-    s.len() == 42
-        && s.starts_with("0x")
-        && s[2..].chars().all(|c| c.is_ascii_hexdigit())
+    s.len() == 42 && s.starts_with("0x") && s[2..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 #[cfg(test)]

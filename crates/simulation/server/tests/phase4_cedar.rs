@@ -19,7 +19,12 @@ fn mint_token(user_id: &str) -> String {
     issue(user_id, "test@example.com", TokenType::Access, None).unwrap()
 }
 
-async fn spawn_server() -> (std::net::SocketAddr, MultiUserStore, tempfile::TempDir, String) {
+async fn spawn_server() -> (
+    std::net::SocketAddr,
+    MultiUserStore,
+    tempfile::TempDir,
+    String,
+) {
     let tmp = tempfile::tempdir().unwrap();
     let global_db = GlobalDb::open(tmp.path().join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(tmp.path().join("users"));

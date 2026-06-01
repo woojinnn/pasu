@@ -23,7 +23,12 @@ fn mint_token(user_id: &str) -> String {
     issue(user_id, "test@example.com", TokenType::Access, None).unwrap()
 }
 
-async fn spawn_server() -> (std::net::SocketAddr, MultiUserStore, tempfile::TempDir, String) {
+async fn spawn_server() -> (
+    std::net::SocketAddr,
+    MultiUserStore,
+    tempfile::TempDir,
+    String,
+) {
     let tmp = tempfile::tempdir().unwrap();
     let global_db = GlobalDb::open(tmp.path().join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(tmp.path().join("users"));
@@ -202,7 +207,12 @@ async fn audit_export_csv_header_and_row() {
         .await
         .unwrap();
     assert_eq!(resp.status(), 200);
-    let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+    let ct = resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap();
     assert!(ct.starts_with("text/csv"));
     let text = resp.text().await.unwrap();
     assert!(text.starts_with("id,ts,wallet,verdict,severity"));
@@ -334,7 +344,9 @@ async fn history_cursor_paginates() {
 
     let cursor = page1.last().unwrap()["id"].as_i64().unwrap();
     let page2: Vec<serde_json::Value> = client
-        .get(format!("http://{addr}/history/verdicts?limit=2&before={cursor}"))
+        .get(format!(
+            "http://{addr}/history/verdicts?limit=2&before={cursor}"
+        ))
         .bearer_auth(&token)
         .send()
         .await

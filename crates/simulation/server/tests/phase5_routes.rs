@@ -246,5 +246,7 @@ async fn simulate_sequence_fails_when_forbid_policy_matches() {
     assert_eq!(body["overall"], "fail");
     assert_eq!(body["steps"][0]["verdict"], "fail");
     let outcomes = body["steps"][0]["policy_results"].as_array().unwrap();
-    assert!(outcomes.iter().any(|o| o["decision"] == "deny" && o["severity"] == "deny"));
+    assert!(outcomes
+        .iter()
+        .any(|o| o["decision"] == "deny" && o["severity"] == "deny"));
 }

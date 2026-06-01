@@ -277,7 +277,10 @@ const SELECTORS: &[(&str, SelectorEntry)] = &[
 
 fn lookup_selector(selector: &str) -> Option<&'static SelectorEntry> {
     let needle = selector.to_lowercase();
-    SELECTORS.iter().find(|(sel, _)| *sel == needle).map(|(_, e)| e)
+    SELECTORS
+        .iter()
+        .find(|(sel, _)| *sel == needle)
+        .map(|(_, e)| e)
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -454,9 +457,10 @@ pub async fn simulate_sequence(
     let parsed: Vec<(i64, String, String, PolicySet)> = {
         let mut out = Vec::with_capacity(policies.len());
         for p in &policies {
-            match PolicySet::from_str(&p.cedar_text) {
-                Ok(ps) => out.push((p.id, p.name.clone(), p.severity.clone(), ps)),
-                Err(_) => continue, // skip unparseable; surface elsewhere via /policies/validate
+            // Skip unparseable rows silently here; they're surfaced via
+            // `/policies/validate` when the editor saves them.
+            if let Ok(ps) = PolicySet::from_str(&p.cedar_text) {
+                out.push((p.id, p.name.clone(), p.severity.clone(), ps));
             }
         }
         out

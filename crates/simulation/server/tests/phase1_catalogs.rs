@@ -78,7 +78,12 @@ async fn policy_schema_serves_static_json() {
         .await
         .unwrap();
     assert_eq!(resp.status(), 200);
-    let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+    let ct = resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap();
     assert!(ct.starts_with("application/json"));
     let body: serde_json::Value = resp.json().await.unwrap();
     assert!(body.get("actions").is_some());

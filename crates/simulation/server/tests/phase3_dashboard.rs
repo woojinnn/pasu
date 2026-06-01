@@ -24,7 +24,14 @@ fn mint_token(user_id: &str) -> String {
     issue(user_id, "test@example.com", TokenType::Access, None).unwrap()
 }
 
-async fn spawn_server(spenders: SpenderCatalog) -> (std::net::SocketAddr, MultiUserStore, tempfile::TempDir, String) {
+async fn spawn_server(
+    spenders: SpenderCatalog,
+) -> (
+    std::net::SocketAddr,
+    MultiUserStore,
+    tempfile::TempDir,
+    String,
+) {
     let tmp = tempfile::tempdir().unwrap();
     let global_db = GlobalDb::open(tmp.path().join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(tmp.path().join("users"));
@@ -146,7 +153,11 @@ async fn dashboard_summary_aggregates_portfolio() {
         .unwrap();
 
     assert_eq!(body["wallet_count"], 1);
-    let total: f64 = body["total_portfolio_usd"].as_str().unwrap().parse().unwrap();
+    let total: f64 = body["total_portfolio_usd"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
     assert!(total > 9999.0 && total < 10002.0, "total {total}");
     let chains = body["chain_breakdown"].as_array().unwrap();
     assert_eq!(chains.len(), 1);
@@ -197,7 +208,12 @@ async fn approvals_with_risk_returns_classified_shape() {
     let erc20 = body["erc20"].as_array().unwrap();
     assert_eq!(erc20.len(), 1);
     let row = &erc20[0];
-    let risk: Vec<&str> = row["risk"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+    let risk: Vec<&str> = row["risk"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
     assert!(risk.contains(&"UNLIMITED"));
     assert!(risk.contains(&"KNOWN_VENUE"));
     assert_eq!(row["spender_meta"]["label"], "Uniswap V3 SwapRouter");
