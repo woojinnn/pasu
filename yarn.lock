@@ -621,12 +621,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@scopeball/cedar-wasm@workspace:*, @scopeball/cedar-wasm@workspace:crates/cedar-wasm-lite/pkg":
-  version: 0.0.0-use.local
-  resolution: "@scopeball/cedar-wasm@workspace:crates/cedar-wasm-lite/pkg"
-  languageName: unknown
-  linkType: soft
-
 "@scopeball/types@workspace:*, @scopeball/types@workspace:packages/types":
   version: 0.0.0-use.local
   resolution: "@scopeball/types@workspace:packages/types"
@@ -640,7 +634,6 @@ __metadata:
   resolution: "@scopeball/web@workspace:apps/web"
   dependencies:
     "@scopeball/api-client": "workspace:*"
-    "@scopeball/cedar-wasm": "workspace:*"
     "@scopeball/types": "workspace:*"
     "@tanstack/react-query": "npm:^5.59.0"
     "@types/react": "npm:^18.3.3"

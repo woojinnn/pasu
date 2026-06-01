@@ -8,7 +8,6 @@ codegen-units = 1
 [workspace]
 resolver = "2"
 members = [
-    "crates/cedar-wasm-lite",
     "crates/policy-engine",
     "crates/policy-engine-wasm",
     "crates/integration-tests",

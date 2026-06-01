@@ -27,6 +27,11 @@ alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 abi-resolver.workspace = true
 policy-engine.workspace = true
+# Direct cedar-policy dep for the editor-facing exports
+# (`cedar_exports.rs`). policy-engine itself already pulls cedar in,
+# but exposing parse + Authorizer directly avoids leaking the
+# engine's schema-attached evaluation path into the editor surface.
+cedar-policy.workspace = true
 mappers.workspace = true
 serde.workspace = true
 serde_json.workspace = true
