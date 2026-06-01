@@ -9,12 +9,15 @@
 
 use std::sync::Arc;
 
+use axum::routing::post;
+use axum::{Json, Router};
+use serde_json::{json, Value};
 use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::auth::jwt::{issue, TokenType};
 use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_state::{WalletId, WalletStore};
-use simulation_sync::{Orchestrator, SyncConfig};
+use simulation_state::{Decimal, PositionKind, WalletId, WalletState, WalletStore};
+use simulation_sync::{HyperliquidConfig, Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -28,6 +31,13 @@ fn mint_token(user_id: &str) -> String {
 }
 
 async fn spawn_server() -> (std::net::SocketAddr, MultiUserStore, String) {
+    spawn_server_with_orchestrator(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap())
+        .await
+}
+
+async fn spawn_server_with_orchestrator(
+    orchestrator: Orchestrator,
+) -> (std::net::SocketAddr, MultiUserStore, String) {
     ensure_jwt_secret();
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.keep();
@@ -39,7 +49,7 @@ async fn spawn_server() -> (std::net::SocketAddr, MultiUserStore, String) {
         global_db,
         event_bus: event_bus.clone(),
         publisher: Arc::new(LocalEventPublisher::new(event_bus)),
-        orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
+        orchestrator: Arc::new(orchestrator),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),
     };
@@ -51,6 +61,85 @@ async fn spawn_server() -> (std::net::SocketAddr, MultiUserStore, String) {
     });
     let token = mint_token("u_write_alice");
     (addr, multi_user, token)
+}
+
+async fn spawn_hyperliquid_info_server(withdrawable: &'static str) -> String {
+    let app = Router::new().route(
+        "/info",
+        post(move |Json(req): Json<Value>| async move {
+            Json(hyperliquid_info_response(&req, withdrawable))
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+    format!("http://{addr}")
+}
+
+fn hyperliquid_info_response(req: &Value, withdrawable: &str) -> Value {
+    match req["type"].as_str().unwrap_or_default() {
+        "clearinghouseState" => json!({
+            "marginSummary": {
+                "accountValue": withdrawable,
+                "totalNtlPos": "0",
+                "totalRawUsd": withdrawable,
+                "totalMarginUsed": "0"
+            },
+            "crossMarginSummary": {
+                "accountValue": withdrawable,
+                "totalNtlPos": "0",
+                "totalRawUsd": withdrawable,
+                "totalMarginUsed": "0"
+            },
+            "withdrawable": withdrawable,
+            "assetPositions": [],
+            "time": 1_710_000_000_123_u64
+        }),
+        "frontendOpenOrders" | "extraAgents" | "perpDexs" | "delegations" | "userVaultEquities" => {
+            json!([])
+        }
+        "spotClearinghouseState" => json!({
+            "balances": [],
+            "tokenToAvailableAfterMaintenance": []
+        }),
+        "delegatorSummary" => json!({
+            "delegated": "0",
+            "undelegated": "0",
+            "totalPendingWithdrawal": "0",
+            "nPendingWithdrawals": 0
+        }),
+        "borrowLendUserState" => json!({
+            "tokenToState": [],
+            "health": "healthy",
+            "healthFactor": null
+        }),
+        "meta" => json!({
+            "universe": [],
+            "collateralToken": 0
+        }),
+        other => panic!("unexpected Hyperliquid info request: {other}"),
+    }
+}
+
+fn hyperliquid_perp_usdc(state: &WalletState) -> Option<Decimal> {
+    state
+        .positions
+        .iter()
+        .find_map(|position| match &position.kind {
+            PositionKind::HyperliquidAccount(account) => account.perp_usdc.clone(),
+            _ => None,
+        })
+}
+
+async fn spawn_server_with_hyperliquid(
+    withdrawable: &'static str,
+) -> (std::net::SocketAddr, MultiUserStore, String) {
+    let endpoint = spawn_hyperliquid_info_server(withdrawable).await;
+    let mut sync_config = SyncConfig::default();
+    sync_config.venues.hyperliquid = Some(HyperliquidConfig { endpoint });
+    spawn_server_with_orchestrator(Orchestrator::from_sync_config(&sync_config).unwrap()).await
 }
 
 #[tokio::test]
@@ -83,6 +172,30 @@ async fn post_wallets_persists_and_returns_id() {
     let store = mu.for_user("u_write_alice").unwrap();
     let wallets = store.list_wallets().await.unwrap();
     assert_eq!(wallets.len(), 1);
+}
+
+#[tokio::test]
+async fn post_wallets_runs_hyperliquid_account_sync() {
+    let (addr, mu, token) = spawn_server_with_hyperliquid("123.45").await;
+    let body = serde_json::json!({
+        "address": "0x000000000000000000000000000000000000a01c",
+        "chains": ["eip155:1"],
+        "label": "main",
+    });
+
+    let resp = reqwest::Client::new()
+        .post(format!("http://{addr}/wallets"))
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+
+    let store = mu.for_user("u_write_alice").unwrap();
+    let wallets = store.list_wallets().await.unwrap();
+    let state = store.load(&wallets[0]).await.unwrap();
+    assert_eq!(hyperliquid_perp_usdc(&state), Some(Decimal::new("123.45")));
 }
 
 #[tokio::test]
@@ -159,4 +272,27 @@ async fn sync_known_wallet_returns_204() {
         .await
         .unwrap();
     assert_eq!(resp.status(), 204);
+}
+
+#[tokio::test]
+async fn sync_known_wallet_runs_hyperliquid_account_sync() {
+    let (addr, mu, token) = spawn_server_with_hyperliquid("456.78").await;
+    let store = mu.for_user("u_write_alice").unwrap();
+    let id = WalletId::new(
+        std::str::FromStr::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
+        [simulation_state::primitives::ChainId::ethereum_mainnet()],
+    );
+    store.save(&WalletState::new(id.clone())).await.unwrap();
+
+    let addr_lower = format!("{:#x}", id.address);
+    let resp = reqwest::Client::new()
+        .post(format!("http://{addr}/wallets/{addr_lower}/sync"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 204);
+
+    let state = store.load(&id).await.unwrap();
+    assert_eq!(hyperliquid_perp_usdc(&state), Some(Decimal::new("456.78")));
 }

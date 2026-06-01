@@ -93,23 +93,21 @@ pub async fn add_wallet(
         Err(e) => return internal(&format!("load: {e}")),
     };
     let is_new = existing == WalletState::new(id.clone());
+    let mut discovery_err = None;
     let discovered_count = if is_new {
         let mut seeded = existing.clone();
         let n = match seed_holdings(&mut seeded, &id, &state).await {
             Ok(n) => n,
             Err(e) => {
-                // Discovery is best-effort. Save the empty state and let
-                // the user POST /sync later or live with native-only.
+                // Discovery is best-effort. Save the empty state, but still
+                // continue into `run_sync`: venue snapshots such as
+                // Hyperliquid are independent from token discovery and should
+                // be visible immediately after adding a wallet.
                 if let Err(save_err) = store.save(&existing).await {
                     return internal(&format!("save: {save_err}"));
                 }
-                return Json(AddWalletResp {
-                    wallet_id: id,
-                    synced: false,
-                    discovered: 0,
-                    error: Some(format!("discovery: {e}")),
-                })
-                .into_response();
+                discovery_err = Some(format!("discovery: {e}"));
+                0
             }
         };
         if let Err(e) = store.save(&seeded).await {
@@ -141,11 +139,18 @@ pub async fn add_wallet(
         Err(e) => (false, Some(e)),
     };
 
+    let error = match (discovery_err, sync_err) {
+        (Some(discovery), Some(sync)) => Some(format!("{discovery}; sync: {sync}")),
+        (Some(discovery), None) => Some(discovery),
+        (None, Some(sync)) => Some(sync),
+        (None, None) => None,
+    };
+
     Json(AddWalletResp {
         wallet_id: id,
         synced,
         discovered: discovered_count,
-        error: sync_err,
+        error,
     })
     .into_response()
 }

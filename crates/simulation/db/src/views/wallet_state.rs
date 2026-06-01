@@ -1,10 +1,9 @@
 //! `WalletState` ↔ SQLite: assemble / persist a whole wallet snapshot.
 //!
 //! Spans `wallets` + `wallet_chains` + `token_holdings` + `approvals_*` +
-//! `block_heights`, composed inside a single transaction. **Positions and
-//! `pending_txs` are not yet bridged** — the in-memory types are rich enums
-//! and the DB tables are generic; that mapping is left to a follow-up so
-//! Phase 1 unblocks the server↔DB wiring.
+//! `block_heights` + `positions`, composed inside a single transaction.
+//! **`pending_txs` are not yet bridged** — execution reports are persisted
+//! separately and reconciled after authoritative sync.
 //!
 //! `TokenKind` is also not stored in the DB (it is policy/sync metadata, not
 //! on-chain fact). On load, holdings come back as [`TokenKind::Unknown`]; the
@@ -22,9 +21,11 @@ use std::str::FromStr;
 use rusqlite::{params, Transaction};
 
 use simulation_state::approval::{AllowanceSpec, ApprovalSet, Permit2Allowance};
-use simulation_state::primitives::{Address, BlockHeight, ChainId, Spender, Time, U256};
+use simulation_state::primitives::{
+    Address, BlockHeight, ChainId, ProtocolRef, Spender, Time, U256,
+};
 use simulation_state::token::{TokenHolding, TokenKey, TokenKind};
-use simulation_state::{WalletId, WalletState};
+use simulation_state::{DataSource, Position, PositionKind, WalletId, WalletState};
 
 use crate::error::{DbError, DbResult};
 use crate::repositories;
@@ -46,14 +47,13 @@ pub fn load_wallet_state(tx: &Transaction<'_>, id: &WalletId) -> DbResult<Wallet
     let tokens = load_tokens(tx, wallet_pk)?;
     let approvals = load_approvals(tx, wallet_pk)?;
     let block_heights = load_block_heights(tx, wallet_pk)?;
+    let positions = load_positions(tx, wallet_pk)?;
 
-    // Positions and pending are not yet bridged from the rich enum types to
-    // the generic DB tables — left empty intentionally (see module doc).
     Ok(WalletState {
         wallet_id: id.clone(),
         tokens,
         approvals,
-        positions: Vec::new(),
+        positions,
         pending: Vec::new(),
         block_heights,
         portfolio_value_usd: None,
@@ -85,6 +85,7 @@ pub fn save_wallet_state(tx: &Transaction<'_>, state: &WalletState) -> DbResult<
     save_tokens(tx, wallet_pk, &state.tokens)?;
     save_approvals(tx, wallet_pk, &state.approvals)?;
     save_block_heights(tx, wallet_pk, &state.block_heights)?;
+    save_positions(tx, wallet_pk, &state.positions)?;
     Ok(())
 }
 
@@ -327,6 +328,69 @@ fn save_block_heights(
     Ok(())
 }
 
+// ============ positions ============
+
+fn load_positions(tx: &Transaction<'_>, wallet_pk: i64) -> DbResult<Vec<Position>> {
+    repositories::positions::list_for_wallet(tx, wallet_pk)?
+        .into_iter()
+        .map(position_from_row)
+        .collect()
+}
+
+fn save_positions(tx: &Transaction<'_>, wallet_pk: i64, positions: &[Position]) -> DbResult<()> {
+    repositories::positions::delete_for_wallet(tx, wallet_pk)?;
+    for position in positions {
+        repositories::positions::upsert(tx, &position_to_insert(wallet_pk, position)?)?;
+    }
+    Ok(())
+}
+
+fn position_to_insert(
+    wallet_pk: i64,
+    position: &Position,
+) -> DbResult<repositories::positions::PositionInsert> {
+    let primitives_synced_at = i64::try_from(position.primitives_synced_at.as_unix())
+        .map_err(|_| DbError::Invariant("position synced_at overflow".into()))?;
+    Ok(repositories::positions::PositionInsert {
+        wallet_id: wallet_pk,
+        position_id: position.id.clone(),
+        protocol: position.protocol.name.clone(),
+        chain: position.chain.as_ref().map(ToString::to_string),
+        kind: position_kind_name(&position.kind).to_owned(),
+        market: position.protocol.market.clone(),
+        summary: None,
+        data: serde_json::to_value(&position.kind)?,
+        primitives_synced_at,
+        primitives_source: serde_json::to_value(&position.primitives_source)?,
+    })
+}
+
+fn position_from_row(row: repositories::positions::PositionRow) -> DbResult<Position> {
+    let kind = serde_json::from_str::<PositionKind>(&row.data_json)?;
+    let primitives_source = serde_json::from_str::<DataSource>(&row.primitives_source_json)?;
+    let synced_at = u64::try_from(row.primitives_synced_at)
+        .map_err(|_| DbError::Invariant("position synced_at negative".into()))?;
+    Ok(Position {
+        id: row.position_id,
+        protocol: ProtocolRef::new(row.protocol),
+        chain: row.chain.map(ChainId::from),
+        kind,
+        primitives_synced_at: Time::from_unix(synced_at),
+        primitives_source,
+    })
+}
+
+const fn position_kind_name(kind: &PositionKind) -> &'static str {
+    match kind {
+        PositionKind::LendingAccount(_) => "lending_account",
+        PositionKind::PerpPosition(_) => "perp_position",
+        PositionKind::AirdropClaim(_) => "airdrop_claim",
+        PositionKind::LaunchpadAllocation(_) => "launchpad_allocation",
+        PositionKind::VestingSchedule(_) => "vesting_schedule",
+        PositionKind::HyperliquidAccount(_) => "hyperliquid_account",
+    }
+}
+
 // ============ small helpers ============
 
 fn parse_address(s: &str, what: &str) -> DbResult<Address> {
@@ -392,6 +456,28 @@ mod tests {
         pool.with_tx(|tx| save_wallet_state(tx, &seed)).unwrap();
         let back = pool.with_tx(|tx| load_wallet_state(tx, &id)).unwrap();
         assert_eq!(back.block_heights, seed.block_heights);
+    }
+
+    #[test]
+    fn positions_round_trip() {
+        let pool = fresh_pool();
+        let id = sample_wallet_id();
+        let mut seed = WalletState::new(id.clone());
+        seed.positions.push(Position {
+            id: "hyperliquid/account".into(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(simulation_state::HlAccount {
+                perp_usdc: Some(simulation_state::Decimal::new("123.45")),
+                ..simulation_state::HlAccount::default()
+            }),
+            primitives_synced_at: Time::from_unix(1_710_000_000),
+            primitives_source: DataSource::UserSupplied,
+        });
+
+        pool.with_tx(|tx| save_wallet_state(tx, &seed)).unwrap();
+        let back = pool.with_tx(|tx| load_wallet_state(tx, &id)).unwrap();
+        assert_eq!(back.positions, seed.positions);
     }
 
     #[test]
