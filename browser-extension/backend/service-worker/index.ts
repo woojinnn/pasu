@@ -27,6 +27,11 @@ import {
   type Me,
   type WalletId,
 } from "./scopeball-auth";
+import {
+  simulatePolicySequence,
+  testPolicyText,
+  validatePolicyText,
+} from "./wasm-bridge";
 
 const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
@@ -223,13 +228,37 @@ interface ScopeballAuthSignOutRequest {
 interface ScopeballListWalletsRequest {
   type: "scopeball-list-wallets";
 }
+/** apps/web Editor + Simulation pages route Cedar through the
+ *  service worker rather than bundling wasm themselves. Three
+ *  request variants map 1-1 to the new exports in
+ *  `crates/policy-engine-wasm/src/cedar_exports.rs`. */
+interface CedarValidateRequest {
+  type: "cedar-validate";
+  text: string;
+}
+interface CedarTestRequest {
+  type: "cedar-test";
+  text: string;
+  // Pre-serialized JSON of `CedarRequestInput` so the wasm boundary
+  // stays string-in / string-out and the FE doesn't have to know
+  // the rust dto shape exactly.
+  request_json: string;
+}
+interface CedarSimulateRequest {
+  type: "cedar-simulate";
+  steps_json: string;
+  policies_json: string;
+}
 type PopupRequest =
   | PolicyCatalogRequest
   | SetEnabledIdsRequest
   | ScopeballAuthStatusRequest
   | ScopeballAuthSignInRequest
   | ScopeballAuthSignOutRequest
-  | ScopeballListWalletsRequest;
+  | ScopeballListWalletsRequest
+  | CedarValidateRequest
+  | CedarTestRequest
+  | CedarSimulateRequest;
 
 // webextension-polyfill's listener type accepts `true | void | Promise<any>`,
 // not `boolean`. Returning `undefined` (bare `return;`) closes the channel
@@ -249,6 +278,45 @@ Browser.runtime.onMessage.addListener(
           }),
         );
       return true; // keep the channel open for the async response
+    }
+
+    // apps/web Cedar editor / simulation. Three message types, all
+    // forwarded to policy-engine-wasm cedar_exports. Return value is
+    // the raw JSON string the wasm produces — the FE parses.
+    if (req.type === "cedar-validate") {
+      void validatePolicyText((req as CedarValidateRequest).text)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "cedar_validate_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "cedar-test") {
+      const r = req as CedarTestRequest;
+      void testPolicyText(r.text, r.request_json)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "cedar_test_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "cedar-simulate") {
+      const r = req as CedarSimulateRequest;
+      void simulatePolicySequence(r.steps_json, r.policies_json)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "cedar_simulate_failed", message: String(err) },
+          }),
+        );
+      return true;
     }
 
     if (isDashboardRequest(req)) {

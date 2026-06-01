@@ -44,6 +44,13 @@ interface WasmExports {
   preview_custom_schema_json(input_json: string): string;
   preview_installed_schema_json(): string;
   get_alias_table_json(): string;
+  // Editor / Simulation page exports — schema-less Cedar parse +
+  // Authorizer over ad-hoc requests. `apps/web` posts message via
+  // dashboard-bridge → service-worker calls these. Contract:
+  // `crates/policy-engine-wasm/src/cedar_exports.rs`.
+  validate_policy_text(text: string): string;
+  test_policy_text(text: string, request_json: string): string;
+  simulate_policy_sequence(steps_json: string, policies_json: string): string;
 }
 
 /**
@@ -397,4 +404,31 @@ export async function evaluateActionV2(
       })) ?? [],
   });
   return verdict;
+}
+
+// ── Cedar editor exports (apps/web dashboard) ───────────────────────────
+
+/** Cedar parse-check. JSON shape matches `crates/policy-engine-wasm
+ *  /src/cedar_exports.rs::ValidateResp`. */
+export async function validatePolicyText(text: string): Promise<string> {
+  const exports = await load();
+  return exports.validate_policy_text(text);
+}
+
+/** Cedar Authorizer over a single ad-hoc request. The arguments are
+ *  passed through as JSON strings; the caller owns the shape (matches
+ *  `cedar_exports.rs::CedarRequestInput`). Return is a JSON-serialized
+ *  `TestResp`. */
+export async function testPolicyText(text: string, requestJson: string): Promise<string> {
+  const exports = await load();
+  return exports.test_policy_text(text, requestJson);
+}
+
+/** Fan-out: N steps × M policies → JSON `SequenceResp`. */
+export async function simulatePolicySequence(
+  stepsJson: string,
+  policiesJson: string,
+): Promise<string> {
+  const exports = await load();
+  return exports.simulate_policy_sequence(stepsJson, policiesJson);
 }

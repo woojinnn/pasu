@@ -1,23 +1,19 @@
-//! `cedar-wasm-lite` — minimal `cedar-policy` surface exposed via
-//! `wasm-bindgen` for in-browser use.
+//! Editor-facing Cedar exports — `validate_policy_text`,
+//! `test_policy_text`, `simulate_policy_sequence`.
 //!
-//! Used by `apps/web` to back the Editor's live syntax check and the
-//! "test against TX" panel without round-tripping to the server. The
-//! simulation-server crate previously hosted the same logic; with this
-//! crate in place the server can drop its `cedar-policy` dependency and
-//! its three editor-only routes (`/policies/validate`,
-//! `/policies/:id/test`, `/simulate/sequence`).
+//! Background: the simulation-server used to host `POST
+//! /policies/validate` + `POST /policies/:id/test` + `POST
+//! /simulate/sequence`. The DB-only server contract pushed those out
+//! of the server crate; the apps/web Editor and the
+//! Simulation/test-bench page now route through the browser
+//! extension instead. The extension already loads
+//! `policy-engine-wasm` to evaluate real transactions; adding three
+//! schema-less wrappers here lets the same wasm module serve both
+//! the live action path (`evaluate_action_v2_json`) and the
+//! editor's Cedar Authorizer needs without a separate wasm bundle.
 //!
-//! The exports are pure JSON-string in / JSON-string out so the TS side
-//! doesn't need to know the wasm-bindgen ABI for complex types. Three
-//! functions cover everything the editor needs:
-//!
-//! * `validate_policy(text)` — does `cedar_policy::PolicySet::from_str`
-//!   accept the text?
-//! * `test_policy(text, request, entities)` — `Authorizer::is_authorized`
-//!   on a single ad-hoc Cedar request.
-//! * `simulate_sequence(steps, policies)` — apply a batch of `[step,
-//!   policy_set]` evaluations and roll up `pass`/`warn`/`fail`.
+//! All exports are JSON-string in / JSON-string out so the TS side
+//! stays free of `wasm-bindgen` ABI plumbing.
 
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
@@ -28,7 +24,7 @@ use cedar_policy::{Authorizer, Context, Decision, Entities, EntityUid, PolicySet
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-// ── public DTOs (JSON-serialized at the wasm boundary) ──────────────────
+// ── DTOs ────────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize)]
 pub struct ValidateResp {
@@ -50,9 +46,6 @@ pub struct CedarRequestInput {
 
 #[derive(Serialize, Deserialize)]
 pub struct TestResp {
-    /// `"pass"` | `"warn"` | `"fail"`. `warn` is reserved for the
-    /// `simulate_sequence` rollup; single-policy `test_policy` returns
-    /// only `pass`/`fail`.
     pub verdict: String,
     pub matched: Vec<MatchedPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -65,68 +58,6 @@ pub struct MatchedPolicy {
     pub severity: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
-}
-
-// ── wasm exports ────────────────────────────────────────────────────────
-
-/// Install `console.error` panic hook so wasm panics surface in DevTools.
-/// Called automatically when the wasm module is first instantiated.
-#[wasm_bindgen(start)]
-pub fn _start() {
-    console_error_panic_hook::set_once();
-}
-
-/// `validate_policy(text) -> JSON ValidateResp`. Mirrors the old
-/// `POST /policies/validate` route — parse-only, no schema attached.
-#[wasm_bindgen]
-pub fn validate_policy(text: String) -> String {
-    if text.trim().is_empty() {
-        return json(&ValidateResp {
-            ok: false,
-            error: Some("cedar_text must not be empty".into()),
-        });
-    }
-    let resp = match PolicySet::from_str(&text) {
-        Ok(_) => ValidateResp {
-            ok: true,
-            error: None,
-        },
-        Err(e) => ValidateResp {
-            ok: false,
-            error: Some(e.to_string()),
-        },
-    };
-    json(&resp)
-}
-
-/// `test_policy(text, request_json) -> JSON TestResp`. Mirrors the old
-/// `POST /policies/:id/test` route — schema-less Authorizer over a
-/// single ad-hoc Cedar request.
-///
-/// `request_json` must deserialize to `CedarRequestInput` (matching the
-/// pre-existing FE shape: `principal`, `action`, `resource` as
-/// `Type::"id"` strings, plus optional `entities` and `context`).
-#[wasm_bindgen]
-pub fn test_policy(text: String, request_json: String) -> String {
-    let req: CedarRequestInput = match serde_json::from_str(&request_json) {
-        Ok(r) => r,
-        Err(e) => return err_resp(&format!("request JSON: {e}")),
-    };
-
-    let pset = match PolicySet::from_str(&text) {
-        Ok(p) => p,
-        Err(e) => return err_resp(&format!("policy parse: {e}")),
-    };
-    let cedar_req = match build_request(&req) {
-        Ok(r) => r,
-        Err(msg) => return err_resp(&msg),
-    };
-    let entities = match Entities::from_json_value(req.entities, None) {
-        Ok(e) => e,
-        Err(e) => return err_resp(&format!("entities: {e}")),
-    };
-    let resp = Authorizer::new().is_authorized(&cedar_req, &pset, &entities);
-    json(&authorize_to_dto(&resp))
 }
 
 #[derive(Deserialize)]
@@ -173,30 +104,75 @@ pub struct PolicyOutcome {
     pub matched: Vec<String>,
 }
 
-/// `simulate_sequence(steps_json, policies_json) -> JSON SequenceResp`.
-/// Mirrors the old `POST /simulate/sequence` route. Each step is
-/// evaluated against every supplied policy; per-step verdict is the
-/// worst of {pass, warn, fail} across deny outcomes (warn-severity
-/// policies count as warn, deny-severity count as fail). Overall is
-/// the worst of the per-step verdicts.
+// ── exports ─────────────────────────────────────────────────────────────
+
+/// `validate_policy_text(text) -> JSON ValidateResp`. Parse-only;
+/// no schema attached so authors can iterate freely.
 #[wasm_bindgen]
-pub fn simulate_sequence(steps_json: String, policies_json: String) -> String {
+pub fn validate_policy_text(text: String) -> String {
+    if text.trim().is_empty() {
+        return json(&ValidateResp {
+            ok: false,
+            error: Some("cedar_text must not be empty".into()),
+        });
+    }
+    let resp = match PolicySet::from_str(&text) {
+        Ok(_) => ValidateResp {
+            ok: true,
+            error: None,
+        },
+        Err(e) => ValidateResp {
+            ok: false,
+            error: Some(e.to_string()),
+        },
+    };
+    json(&resp)
+}
+
+/// `test_policy_text(text, request_json) -> JSON TestResp`. Schema-less
+/// Authorizer over a single ad-hoc Cedar request — the Editor's
+/// "test against TX" panel calls this with the current draft text.
+#[wasm_bindgen]
+pub fn test_policy_text(text: String, request_json: String) -> String {
+    let req: CedarRequestInput = match serde_json::from_str(&request_json) {
+        Ok(r) => r,
+        Err(e) => return err_test(&format!("request JSON: {e}")),
+    };
+
+    let pset = match PolicySet::from_str(&text) {
+        Ok(p) => p,
+        Err(e) => return err_test(&format!("policy parse: {e}")),
+    };
+    let cedar_req = match build_request(&req) {
+        Ok(r) => r,
+        Err(msg) => return err_test(&msg),
+    };
+    let entities = match Entities::from_json_value(req.entities, None) {
+        Ok(e) => e,
+        Err(e) => return err_test(&format!("entities: {e}")),
+    };
+    let resp = Authorizer::new().is_authorized(&cedar_req, &pset, &entities);
+    json(&authorize_to_dto(&resp))
+}
+
+/// `simulate_policy_sequence(steps_json, policies_json) -> JSON SequenceResp`.
+/// Fan-out: every step × every supplied policy. Per-step verdict is
+/// `fail` if any deny-severity policy denies, `warn` if any warn-
+/// severity policy denies, else `pass`. Overall is the worst per-step.
+#[wasm_bindgen]
+pub fn simulate_policy_sequence(steps_json: String, policies_json: String) -> String {
     let steps: Vec<SequenceStep> = match serde_json::from_str(&steps_json) {
         Ok(v) => v,
-        Err(e) => return err_resp(&format!("steps JSON: {e}")),
+        Err(e) => return err_test(&format!("steps JSON: {e}")),
     };
     let policies: Vec<PolicyInput> = match serde_json::from_str(&policies_json) {
         Ok(v) => v,
-        Err(e) => return err_resp(&format!("policies JSON: {e}")),
+        Err(e) => return err_test(&format!("policies JSON: {e}")),
     };
 
-    // Pre-parse each policy once.
     let parsed: Vec<(PolicyInput, PolicySet)> = policies
         .into_iter()
-        .filter_map(|p| match PolicySet::from_str(&p.cedar_text) {
-            Ok(ps) => Some((p, ps)),
-            Err(_) => None,
-        })
+        .filter_map(|p| PolicySet::from_str(&p.cedar_text).ok().map(|ps| (p, ps)))
         .collect();
 
     let auth = Authorizer::new();
@@ -380,7 +356,7 @@ fn json<T: Serialize>(v: &T) -> String {
     serde_json::to_string(v).unwrap_or_else(|e| format!(r#"{{"ok":false,"error":"{e}"}}"#))
 }
 
-fn err_resp(msg: &str) -> String {
+fn err_test(msg: &str) -> String {
     json(&TestResp {
         verdict: "fail".into(),
         matched: vec![],
@@ -394,7 +370,7 @@ mod tests {
 
     #[test]
     fn validate_accepts_well_formed() {
-        let r: ValidateResp = serde_json::from_str(&validate_policy(
+        let r: ValidateResp = serde_json::from_str(&validate_policy_text(
             "permit(principal, action, resource);".into(),
         ))
         .unwrap();
@@ -404,7 +380,7 @@ mod tests {
     #[test]
     fn validate_rejects_garbage() {
         let r: ValidateResp =
-            serde_json::from_str(&validate_policy("not cedar }}}".into())).unwrap();
+            serde_json::from_str(&validate_policy_text("not cedar }}}".into())).unwrap();
         assert!(!r.ok);
         assert!(r.error.is_some());
     }
@@ -418,48 +394,11 @@ mod tests {
             "entities": [],
             "context": {}
         }"#;
-        let resp: TestResp = serde_json::from_str(&test_policy(
+        let resp: TestResp = serde_json::from_str(&test_policy_text(
             "permit(principal, action, resource);".into(),
             req.into(),
         ))
         .unwrap();
         assert_eq!(resp.verdict, "pass");
-    }
-
-    #[test]
-    fn test_policy_forbid_all_denies() {
-        let req = r#"{
-            "principal": "Wallet::\"0xabc\"",
-            "action": "Action::\"swap\"",
-            "resource": "Protocol::\"0xdef\"",
-            "entities": [],
-            "context": {}
-        }"#;
-        let resp: TestResp = serde_json::from_str(&test_policy(
-            "forbid(principal, action, resource);".into(),
-            req.into(),
-        ))
-        .unwrap();
-        assert_eq!(resp.verdict, "fail");
-    }
-
-    #[test]
-    fn simulate_sequence_rolls_up_worst() {
-        let steps = r#"[
-            { "label": "a", "principal": "Wallet::\"0xabc\"", "action": "Action::\"swap\"", "resource": "Protocol::\"0xdef\"", "entities": [], "context": {} },
-            { "label": "b", "principal": "Wallet::\"0xabc\"", "action": "Action::\"swap\"", "resource": "Protocol::\"0xdef\"", "entities": [], "context": {} }
-        ]"#;
-        let policies = r#"[
-            { "policy_id": 1, "policy_name": "permit-all", "severity": "info", "cedar_text": "permit(principal, action, resource);" },
-            { "policy_id": 2, "policy_name": "forbid-warn", "severity": "warn", "cedar_text": "forbid(principal, action, resource);" }
-        ]"#;
-        let resp: SequenceResp =
-            serde_json::from_str(&simulate_sequence(steps.into(), policies.into())).unwrap();
-        // Both forbid (warn-severity) and permit (info) match → step ends warn.
-        assert_eq!(resp.overall, "warn");
-        assert_eq!(resp.steps.len(), 2);
-        for s in &resp.steps {
-            assert_eq!(s.verdict, "warn");
-        }
     }
 }

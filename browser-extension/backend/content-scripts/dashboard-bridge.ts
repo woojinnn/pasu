@@ -16,6 +16,10 @@ const BROADCAST_ID = "__broadcast__";
 const DASHBOARD_ORIGINS = new Set([
   "http://localhost:5174",
   "http://127.0.0.1:5174",
+  // apps/web (new dashboard) — uses the same bridge for Cedar
+  // editor + simulation requests routed to policy-engine-wasm.
+  "http://localhost:5175",
+  "http://127.0.0.1:5175",
 ]);
 
 function originAllowed(origin: string): boolean {

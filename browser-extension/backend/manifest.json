@@ -60,7 +60,12 @@
       "run_at": "document_start"
     },
     {
-      "matches": ["http://localhost:5174/*", "http://127.0.0.1:5174/*"],
+      "matches": [
+        "http://localhost:5174/*",
+        "http://127.0.0.1:5174/*",
+        "http://localhost:5175/*",
+        "http://127.0.0.1:5175/*"
+      ],
       "js": ["js/content-scripts/dashboard-bridge.js"],
       "all_frames": false,
       "run_at": "document_idle"
