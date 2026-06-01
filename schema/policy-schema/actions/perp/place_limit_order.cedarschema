@@ -1,6 +1,6 @@
 // Perp::PlaceLimitOrder — place a limit order on the venue's orderbook.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/place_limit.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/place_limit.rs`
 // (`PlaceLimitOrderAction` + `PlaceLimitLiveInputs`).
 //
 // `TimeInForce` is a discriminated record (Gtc/Ioc/Fok/PostOnly/Gtd). `Gtd`

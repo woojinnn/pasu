@@ -1,8 +1,8 @@
 // Launchpad::Commit — `LaunchpadAction::Commit` (subscribes funds to a sale).
 //
-// Rust source: `crates/simulation/reducer/src/action/launchpad/commit.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/launchpad/commit.rs`
 // (`CommitAction` + `CommitLiveInputs`); `SaleState` is defined in
-// `crates/simulation/reducer/src/action/launchpad/mod.rs`.
+// `crates/policy-server/asset-model/action/src/launchpad/mod.rs`.
 //
 // Amount is exposed through the 3-layer projection:
 //   - `amount`     : String   — raw U256 hex (canonical wire value).

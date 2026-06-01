@@ -1,99 +1,94 @@
-/* Scopeball design tokens — see Scopeball v2.2 spec §7. */
-
+/**
+ * Cloudy Pond design tokens — ported from front/scopeball-v3/Home.html.
+ * One source of truth; pages import this and consume the CSS vars.
+ */
 :root {
-  /* Frog Green primary ramp (§7-2) */
-  --green-50: #f4f8eb;
-  --green-100: #deecc4;
-  --green-200: #c1dd92;
-  --green-400: #90c03c;
-  --green-600: #5d7c27;
-  --green-800: #394c18;
-  --green-900: #24300f;
+  --sage-50:#F8F9F6; --sage-100:#EBF3E8; --sage-200:#D9E9D3; --sage-300:#C5DDBD;
+  --sage-400:#B0D1A4; --sage-500:#9CC58D; --sage-600:#7FA172; --sage-700:#637E59;
+  --sage-800:#44583D; --sage-900:#283523;
+  --slate-50:#EFF0F2; --slate-100:#D7DBDF; --slate-200:#B5BBC4; --slate-300:#9099A5;
+  --slate-400:#697485; --slate-500:#475569; --slate-600:#384455; --slate-700:#2A3441;
+  --slate-800:#1B222C; --slate-900:#0D1118;
+  --cyan-50:#F8F9F9; --cyan-100:#EDF4F6; --cyan-200:#DCEAED; --cyan-300:#CAE0E4;
+  --cyan-400:#B6D4DA; --cyan-500:#A4C9D1; --cyan-600:#85A4AB; --cyan-700:#688186;
+  --cyan-800:#485A5E; --cyan-900:#2B3639;
+  --fog-50:#FEFEFE; --fog-100:#FCFCFC; --fog-200:#FAFAF9; --fog-300:#F7F7F6;
+  --fog-400:#F4F5F3; --fog-500:#F1F2F0; --fog-600:#C5C6C4; --fog-700:#9B9C9A;
+  --fog-800:#6E6E6D; --fog-900:#434343;
+  --pass-50:#F4F9F3; --pass-100:#E4EFE1; --pass-200:#CDE1C5; --pass-300:#B2D1A8;
+  --pass-400:#96C087; --pass-500:#7CB069; --pass-600:#648F55; --pass-700:#4E7041;
+  --pass-800:#354E2C; --pass-900:#1E2E18;
+  --warn-50:#FBF2DF; --warn-100:#F6DFB0; --warn-200:#EEC781; --warn-300:#E3AE56;
+  --warn-400:#DA9D43; --warn-500:#D69238; --warn-600:#AC7529; --warn-700:#80571F;
+  --warn-800:#573C16; --warn-900:#2D210C;
+  --fail-50:#FAEAE6; --fail-100:#F4D9D5; --fail-200:#EDC9C4; --fail-300:#E2ADA5;
+  --fail-400:#D48E85; --fail-500:#C77268; --fail-600:#A25C54; --fail-700:#7F4740;
+  --fail-800:#59302B; --fail-900:#361B18;
 
-  /* Eye Gold (Warn) */
-  --gold-50: #fdf5e7;
-  --gold-100: #f9e1b7;
-  --gold-400: #efa830;
-  --gold-600: #ae710c;
-  --gold-800: #6b4607;
+  --page: var(--fog-400);
+  --surface: #FFFFFF;
+  --hairline: var(--fog-600);
+  --hairline-soft: #E5E6E3;
 
-  /* Blush Coral (Fail) */
-  --coral-50: #faecea;
-  --coral-100: #f0c8c1;
-  --coral-400: #e49c90;
-  --coral-600: #c2442f;
-  --coral-800: #772a1d;
-
-  /* Neutrals (§7-3) */
-  --surface-primary: #ffffff;
-  --surface-secondary: #f4f8eb;
-  --text-primary: #24300f;
-  --text-secondary: #5d7c27;
-  --text-tertiary: #6b8a5c;
-
-  /* Radius (§7-5) */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 36px;
-  --radius-pill: 999px;
-
-  /* Shadow (§7-6) — green tone, never neutral grey. */
-  --shadow-card:
-    0 30px 60px -20px rgba(83, 144, 67, 0.28),
-    0 10px 22px -8px rgba(83, 144, 67, 0.18),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.7);
-  --shadow-subtle: 0 4px 12px -4px rgba(83, 144, 67, 0.12);
-  --shadow-popover: 0 12px 32px -8px rgba(83, 144, 67, 0.22);
-
-  /* Spacing (§7-8) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
-
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Apple SD Gothic Neo",
-    sans-serif;
+  --r-lg: 20px; --r-md: 14px; --r-sm: 10px; --r-input: 12px; --r-pill: 999px;
+  --ff-sans: "IBM Plex Sans KR", "IBM Plex Sans", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --ff-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; min-height: 100vh; }
 body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  color: var(--text-primary);
+  background: var(--page);
+  color: var(--slate-500);
+  font-family: var(--ff-sans);
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  background: radial-gradient(
-    120% 80% at 50% 0%,
-    #f6fbf3 0%,
-    #e3f1d6 100%
-  );
+}
+#root { display: flex; flex-direction: column; }
+::selection { background: var(--sage-200); color: var(--slate-900); }
+button, a, input, select, textarea { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+
+/* shared dot indicators */
+.dot { display:inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.dot.pass { background: var(--pass-500); box-shadow: 0 0 0 3px rgba(124,176,105,0.18); }
+.dot.warn { background: var(--warn-500); box-shadow: 0 0 0 3px rgba(214,146,56,0.18); }
+.dot.fail { background: var(--fail-500); box-shadow: 0 0 0 3px rgba(199,114,104,0.18); }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--pass-500); box-shadow: 0 0 0 3px rgba(124,176,105,0.18); }
+
+/* shared severity pill */
+.sev-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--ff-mono); font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: var(--r-pill);
+  letter-spacing: 0.02em;
+}
+.sev-pill .pd { width: 7px; height: 7px; border-radius: 50%; }
+.sev-pill.pass { background: var(--pass-100); color: var(--pass-800); }
+.sev-pill.pass .pd { background: var(--pass-500); }
+.sev-pill.warn { background: var(--warn-100); color: var(--warn-800); }
+.sev-pill.warn .pd { background: var(--warn-500); }
+.sev-pill.fail { background: var(--fail-100); color: var(--fail-800); }
+.sev-pill.fail .pd { background: var(--fail-500); }
+.sev-pill.info { background: var(--cyan-100); color: var(--cyan-800); }
+.sev-pill.info .pd { background: var(--cyan-600); }
+
+/* shared count chip (topbar pass/warn/fail) */
+.dot-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  padding: 8px 14px 8px 12px;
+  font-size: 13px; font-weight: 500; color: var(--slate-700);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
-#root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: 1px solid transparent;
-  font-weight: 500;
-  transition:
-    background 120ms ease,
-    transform 120ms ease;
-}
-button:active {
-  transform: scale(0.98);
+/* shared card surface */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 18px;
 }

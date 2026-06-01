@@ -1,6 +1,6 @@
 // Lending::Withdraw — withdraw a previously supplied asset.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/withdraw.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/withdraw.rs`
 // (`WithdrawAction` + `WithdrawLiveInputs`). `amount == U256::MAX` encodes
 // "withdraw maximum available".
 

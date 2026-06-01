@@ -25,6 +25,7 @@ import {
   type RevokeItem,
   type RevokePlanResp,
 } from "../tools/revoke-plan";
+import { Topbar } from "../shell/Topbar";
 import "./monitoring.css";
 
 /**
@@ -144,6 +145,14 @@ export function MonitoringPage() {
 
   return (
     <>
+      <Topbar
+        here="Monitoring"
+        subtitle={
+          isL2
+            ? `${selectedWallet?.label ?? shortAddr(sel)}`
+            : `${wallets.length} wallets · ${summaryQ.data?.chain_breakdown.length ?? 0} chains`
+        }
+      />
       <WalletSwitch sel={sel} setSel={setSelectionAndUrl} wallets={wallets} loading={summaryQ.isLoading} />
 
       {!isL2 && <SummaryBar agg={aggregateSummary} loading={summaryQ.isLoading} />}

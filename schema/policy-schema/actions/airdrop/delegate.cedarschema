@@ -1,6 +1,6 @@
 // Airdrop::Delegate — delegate governance voting power of a governance token.
 //
-// Rust source: `crates/simulation/reducer/src/action/airdrop/delegate.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/airdrop/delegate.rs`
 // (`DelegateGovernanceAction` + `DelegateLiveInputs`).
 //
 // Models the ERC20Votes/Comp-style `delegate(address)` call used by tokens

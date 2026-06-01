@@ -23,6 +23,7 @@ import {
   type TestPolicyResp,
   type ValidateResp,
 } from "../cedar";
+import { Topbar } from "../shell/Topbar";
 import "./editor.css";
 
 /**
@@ -157,6 +158,10 @@ export function EditorPage() {
 
   return (
     <>
+      <Topbar
+        here="Policy Editor"
+        subtitle={listQ.data ? `${listQ.data.length} policies` : "…"}
+      />
       <div className="editor-layout">
         <aside className="policy-side">
           <div className="side-head">

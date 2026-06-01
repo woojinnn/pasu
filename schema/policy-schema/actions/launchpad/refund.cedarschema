@@ -1,6 +1,6 @@
 // Launchpad::Refund — `LaunchpadAction::Refund` (oversubscription / failed sale).
 //
-// Rust source: `crates/simulation/reducer/src/action/launchpad/refund.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/launchpad/refund.rs`
 // (`RefundAction` + `RefundLiveInputs`).
 //
 // Amount is exposed through the 3-layer projection

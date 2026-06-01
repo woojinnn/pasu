@@ -1,6 +1,6 @@
 // Perp::ClaimFunding — claim accrued funding payments from one or all markets.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/claim_funding.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/claim_funding.rs`
 // (`ClaimFundingAction` + `ClaimFundingLiveInputs`).
 //
 // `market` is optional — `None` means claim from all markets. `claimable` is

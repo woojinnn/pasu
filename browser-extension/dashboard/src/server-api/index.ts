@@ -86,14 +86,14 @@ export {
   type ChainShare,
 } from "./dashboard";
 
-// Phase 2 verdict / audit / history / findings.
+// Phase 2 verdict / audit / history / findings — now backed by
+// chrome.storage.local via the extension bridge.
 export {
   listAuditVerdicts,
   getAuditCounts,
-  auditExportUrl,
+  exportAuditCsv,
   listHistoryVerdicts,
   listFindings,
-  createVerdict,
   setVerdictDecision,
   type VerdictDto,
   type VerdictListOpts,
@@ -103,6 +103,12 @@ export {
   type SelectorRef,
   type PolicyRef,
 } from "./verdicts";
+
+export {
+  sendToExtension,
+  ExtensionBridgeError,
+  ExtensionBridgeTimeout,
+} from "./extension-bridge";
 
 // Shared primitive types — kept in one file (./types) to mirror the
 // Rust DTOs. Re-exported here so consumer pages can

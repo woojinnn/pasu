@@ -1,6 +1,6 @@
 // Lending::Repay — repay an outstanding debt position.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/repay.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/repay.rs`
 // (`RepayAction` + `RepayLiveInputs`). `amount == U256::MAX` encodes
 // "full repay". `useATokens` is the Aave V3 flag to repay directly from
 // the aToken balance.

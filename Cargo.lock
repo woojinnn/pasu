@@ -3505,19 +3505,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "simulation-action"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "simulation-state",
+ "tsify-next",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "simulation-db"
 version = "0.1.0"
 dependencies = [
- "alloy-primitives",
  "async-trait",
  "blake3",
  "hex",
- "rusqlite",
  "serde",
  "serde_json",
  "simulation-state",
  "sqlx",
- "tempfile",
  "thiserror",
  "tokio",
 ]
@@ -3529,6 +3537,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_json",
+ "simulation-action",
  "simulation-state",
  "thiserror",
  "tsify-next",
@@ -3592,7 +3601,6 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_json",
- "simulation-db",
  "simulation-reducer",
  "simulation-state",
  "thiserror",

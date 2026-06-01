@@ -1,12 +1,28 @@
 /**
- * `/verdicts` + `/audit` + `/history` + `/findings` — Cedar policy audit log.
+ * Verdict log client — chrome.storage.local-backed via the extension bridge.
  *
- * Read flow: the editor / audit / history / monitoring pages all fetch
- * the same row shape (`VerdictDto`) with different filters.
+ * The server-side `/verdicts`, `/audit/*`, `/history/verdicts`,
+ * `/findings/feed`, and `PATCH /verdicts/:id` endpoints have been retired.
+ * The SW now owns the audit log in `chrome.storage.local` (see
+ * `browser-extension/backend/service-worker/verdict-storage.ts`).
  *
- * Write flow: the extension posts a verdict after it locally evaluates a
- * Cedar policy bundle (`POST /verdicts`). The dashboard sets the user's
- * resolution on a `warn` row via `PATCH /verdicts/:id`.
+ * This module keeps the same EXPORTED function names + signatures the
+ * dashboard's React Query hooks use — only the implementation switched from
+ * `fetch` to `sendToExtension`.
+ *
+ * Notable contract change: `id` is now a UUID string (assigned by
+ * `crypto.randomUUID` inside the SW), not an autoincrement i64. Pages and
+ * components that previously typed `id: number` were updated alongside.
+ *
+ * Removed:
+ * - `createVerdict` — the SW writes verdicts itself at the end of
+ *   `decideMessage`. The dashboard no longer POSTs verdicts.
+ *
+ * Changed:
+ * - `auditExportUrl(opts) → string` is now `exportAuditCsv(opts) → Promise<Blob>`
+ *   because the URL was an authenticated server route; the SW now hands back
+ *   the CSV body directly. Caller wraps the Blob in a `URL.createObjectURL`
+ *   anchor download.
  */
 
 import type {
@@ -17,7 +33,7 @@ import type {
   Verdict,
 } from "./types";
 
-import { request } from "./client";
+import { sendToExtension } from "./extension-bridge";
 
 // ---------- shared dto ----------
 
@@ -38,7 +54,8 @@ export interface PolicyRef {
 }
 
 export interface VerdictDto {
-  id: number;
+  /** UUID string assigned by the SW at append time (replaces the old DB autoincrement). */
+  id: string;
   ts: UnixSeconds;
   wallet: Address | null;
   verdict: Verdict;
@@ -71,55 +88,106 @@ export interface VerdictListOpts {
   wallet?: Address;
   /** Substring search across policy_name + reason_en + reason_ko. */
   search?: string;
-  /** Cursor — fetch rows with `id < before`. Newest-first ordering. */
-  before?: number;
+  /** Cursor — fetch rows older than this unix-seconds timestamp. */
+  before?: UnixSeconds;
   /** Default 50, max 500. */
   limit?: number;
 }
 
-function buildQuery(opts: VerdictListOpts): string {
-  const params = new URLSearchParams();
-  for (const [k, v] of Object.entries(opts)) {
-    if (v === undefined || v === null) continue;
-    params.set(k, String(v));
+// ---------- read endpoints (bridge-routed) ----------
+//
+// Browser-page context (no extension installed) → these calls would hang
+// for the bridge default 10s before timing out, leaving every verdict
+// view stuck on "불러오는 중…". We short-circuit with a 800 ms probe:
+// if the bridge can't answer in that window, return a safe empty value
+// so React Query lands on a clean empty state instead of an error.
+const BRIDGE_PROBE_MS = 800;
+async function safeBridge<T>(payload: unknown, fallback: T): Promise<T> {
+  try {
+    return await sendToExtension<T>(payload, BRIDGE_PROBE_MS);
+  } catch {
+    return fallback;
   }
-  const qs = params.toString();
-  return qs ? `?${qs}` : "";
 }
 
-// ---------- read endpoints ----------
-
-/** `GET /audit/verdicts` — filtered list. Default newest-first, limit 50. */
-export async function listAuditVerdicts(opts: VerdictListOpts = {}): Promise<VerdictDto[]> {
-  return request<VerdictDto[]>(`/audit/verdicts${buildQuery(opts)}`);
+/** Filtered list. Default newest-first; the SW applies `opts.limit`. */
+export async function listAuditVerdicts(
+  opts: VerdictListOpts = {},
+): Promise<VerdictDto[]> {
+  return safeBridge<VerdictDto[]>({ type: "verdicts:list", opts }, []);
 }
 
-/** `GET /audit/counts` — pass/warn/fail summary under the same filter. */
+/** Pass/warn/fail summary under the same filter as `listAuditVerdicts`. */
 export async function getAuditCounts(
   opts: VerdictListOpts = {},
 ): Promise<{ pass: number; warn: number; fail: number }> {
-  return request<{ pass: number; warn: number; fail: number }>(
-    `/audit/counts${buildQuery(opts)}`,
+  return safeBridge<{ pass: number; warn: number; fail: number }>(
+    { type: "verdicts:count", opts },
+    { pass: 0, warn: 0, fail: 0 },
   );
 }
 
-/** `GET /audit/export` — CSV download (caller handles save / blob). */
-export function auditExportUrl(opts: VerdictListOpts = {}): string {
-  return `/audit/export${buildQuery(opts)}`;
+/**
+ * Fetch the filtered slice as CSV and wrap in a Blob. Callers create an
+ * object URL + anchor download. (Replaces the old `auditExportUrl`, which
+ * returned a server route the page opened directly.)
+ *
+ * Unlike the list/count calls, this one stays on the long 10 s timeout
+ * and surfaces failures — the user explicitly clicked "Export CSV", so
+ * silent fallback to an empty file would be confusing.
+ */
+export async function exportAuditCsv(
+  opts: VerdictListOpts = {},
+): Promise<Blob> {
+  const { csv } = await sendToExtension<{ csv: string }>({
+    type: "verdicts:export-csv",
+    opts,
+  });
+  return new Blob([csv], { type: "text/csv;charset=utf-8" });
 }
 
-/** `GET /history/verdicts` — same shape as audit, paginated via `before` cursor. */
-export async function listHistoryVerdicts(opts: VerdictListOpts = {}): Promise<VerdictDto[]> {
-  return request<VerdictDto[]>(`/history/verdicts${buildQuery(opts)}`);
+/** Same row shape as audit, paginated via `before` cursor. */
+export async function listHistoryVerdicts(
+  opts: VerdictListOpts = {},
+): Promise<VerdictDto[]> {
+  return safeBridge<VerdictDto[]>(
+    { type: "verdicts:list", opts: { ...opts, before: opts.before } },
+    [],
+  );
 }
 
-/** `GET /findings/feed` — recent stream for the monitoring page. */
-export async function listFindings(opts: VerdictListOpts = {}): Promise<VerdictDto[]> {
-  return request<VerdictDto[]>(`/findings/feed${buildQuery(opts)}`);
+/** Recent stream for the monitoring page. Defaults to limit 20. */
+export async function listFindings(
+  opts: VerdictListOpts = {},
+): Promise<VerdictDto[]> {
+  return safeBridge<VerdictDto[]>(
+    { type: "verdicts:list", opts: { ...opts, limit: opts.limit ?? 20 } },
+    [],
+  );
 }
 
-// ---------- write endpoints ----------
+// ---------- write endpoint ----------
 
+/**
+ * Resolve a `warn` row's user decision. Id changed from `number` to `string`
+ * to match the SW's UUID assignment.
+ */
+export async function setVerdictDecision(
+  id: string,
+  decision: "trusted" | "cancelled",
+): Promise<void> {
+  await sendToExtension<{ updated: boolean }>({
+    type: "verdicts:set-decision",
+    id,
+    decision,
+  });
+}
+
+// ---------- re-exports for code that still imports the old shapes ----------
+
+/** Kept for callers that imported the verdict-creation request body type.
+ *  The dashboard no longer creates verdicts directly (the SW does), so this
+ *  is documentation-only — left as a typed comment of the historical shape. */
 export interface CreateVerdictBody {
   wallet: Address;
   verdict: Verdict;
@@ -133,25 +201,4 @@ export interface CreateVerdictBody {
   selector?: SelectorRef;
   policy_name?: string;
   reason?: I18nString | { ko?: string; en?: string };
-}
-
-/** `POST /verdicts` — extension submits after Cedar evaluation. */
-export async function createVerdict(
-  body: CreateVerdictBody,
-): Promise<{ id: number; ts: UnixSeconds }> {
-  return request<{ id: number; ts: UnixSeconds }>("/verdicts", {
-    method: "POST",
-    body,
-  });
-}
-
-/** `PATCH /verdicts/:id` — user resolves a `warn` row. */
-export async function setVerdictDecision(
-  id: number,
-  decision: "trusted" | "cancelled",
-): Promise<void> {
-  await request<void>(`/verdicts/${id}`, {
-    method: "PATCH",
-    body: { decision },
-  });
 }

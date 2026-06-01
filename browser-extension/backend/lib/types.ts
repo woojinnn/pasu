@@ -116,6 +116,7 @@ export interface WalletIdWire {
 
 export type ExecutionReportOutcome =
   | { kind: "wallet_rejected"; reason?: string }
+  | { kind: "wallet_confirmed"; method: string }
   | { kind: "wallet_signed"; signature: string }
   | { kind: "onchain_submitted"; chain: string; tx_hash: string }
   | {

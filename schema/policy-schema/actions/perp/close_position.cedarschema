@@ -1,6 +1,6 @@
 // Perp::ClosePosition — close (fully or partially) an existing perpetual position.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/close.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/close.rs`
 // (`ClosePerpAction` + `ClosePerpLiveInputs`).
 //
 // `size` is optional: `None` ≡ full close. `unrealizedPnlNow` and

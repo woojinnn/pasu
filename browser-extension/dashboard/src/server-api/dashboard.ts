@@ -3,8 +3,6 @@
  *
  * Single round-trip: total USD across every tracked wallet, per-chain
  * breakdown, per-wallet badges (unlimited approvals + pending tx counts).
- * Policy/verdict counters are extension-local and are not returned by the
- * simulation server.
  */
 
 import type { Address, ChainId, Decimal } from "./types";
@@ -32,6 +30,10 @@ export interface DashboardSummary {
   total_portfolio_usd: Decimal;
   chain_breakdown: ChainShare[];
   wallets: DashboardWalletSummary[];
+  // `unresolved_findings` was removed when the verdict log moved to
+  // chrome.storage.local. The dashboard now reads that counter directly via
+  // `verdicts:count`. Pages that previously displayed it should call
+  // `getAuditCounts({ verdict: "warn" })` and filter for `user_decision === null`.
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {

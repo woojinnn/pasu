@@ -1,6 +1,6 @@
 // Lending::SetEMode — select an Aave V3 e-mode category for the user.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/set_emode.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/set_emode.rs`
 // (`SetEModeAction` + `SetEModeLiveInputs` + `EModeConfig`). `categoryId == 0`
 // disables e-mode. `EModeCategory` in the state crate is a `u8` alias, so the
 // optional `categoryCode` field is exposed as `Long`.

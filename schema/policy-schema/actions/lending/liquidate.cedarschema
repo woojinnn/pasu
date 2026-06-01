@@ -1,6 +1,6 @@
 // Lending::Liquidate — liquidate an unhealthy position.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/liquidate.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/liquidate.rs`
 // (`LiquidateAction` + `LiquidateLiveInputs`). Typically not invoked from a
 // user wallet, but included for completeness. `receiveAToken` is the Aave V3
 // option to receive seized collateral as aToken instead of underlying.
