@@ -214,6 +214,97 @@ export function parseHyperliquidExchangeOrders(
       return one(a);
     }
 
+    case "spotSend": {
+      if (
+        typeof action.destination !== "string" ||
+        typeof action.token !== "string" ||
+        action.amount === undefined
+      ) {
+        return null;
+      }
+      return one({
+        kind: "spot_send",
+        destination: action.destination,
+        token: action.token,
+        amount: String(action.amount),
+      });
+    }
+
+    case "usdClassTransfer": {
+      if (action.amount === undefined) return null;
+      return one({
+        kind: "usd_class_transfer",
+        amount: String(action.amount),
+        toPerp: action.toPerp === true,
+      });
+    }
+
+    case "sendAsset": {
+      if (typeof action.destination !== "string" || action.amount === undefined) {
+        return null;
+      }
+      return one({
+        kind: "send_asset",
+        destination: action.destination,
+        sourceDex: typeof action.sourceDex === "string" ? action.sourceDex : "",
+        destinationDex:
+          typeof action.destinationDex === "string" ? action.destinationDex : "",
+        token: typeof action.token === "string" ? action.token : "",
+        amount: String(action.amount),
+      });
+    }
+
+    case "sendToEvmWithData": {
+      if (
+        typeof action.destinationRecipient !== "string" ||
+        action.amount === undefined
+      ) {
+        return null;
+      }
+      return one({
+        kind: "send_to_evm_with_data",
+        token: typeof action.token === "string" ? action.token : "",
+        amount: String(action.amount),
+        sourceDex: typeof action.sourceDex === "string" ? action.sourceDex : "",
+        destinationRecipient: action.destinationRecipient,
+        data: typeof action.data === "string" ? action.data : "",
+      });
+    }
+
+    case "cDeposit": {
+      if (action.wei === undefined) return null;
+      return one({ kind: "c_deposit", wei: String(action.wei) });
+    }
+
+    case "cWithdraw": {
+      if (action.wei === undefined) return null;
+      return one({ kind: "c_withdraw", wei: String(action.wei) });
+    }
+
+    case "vaultTransfer": {
+      if (typeof action.vaultAddress !== "string" || action.usd === undefined) {
+        return null;
+      }
+      return one({
+        kind: "vault_transfer",
+        vaultAddress: action.vaultAddress,
+        isDeposit: action.isDeposit === true,
+        usd: String(action.usd),
+      });
+    }
+
+    case "subAccountTransfer": {
+      if (typeof action.subAccountUser !== "string" || action.usd === undefined) {
+        return null;
+      }
+      return one({
+        kind: "sub_account_transfer",
+        subAccountUser: action.subAccountUser,
+        isDeposit: action.isDeposit === true,
+        usd: String(action.usd),
+      });
+    }
+
     default:
       // BENIGN_PASS_THROUGH (cancel / modify / schedule / admin) is high-frequency
       // and moves no funds / grants no permission → return null (out of scope, not

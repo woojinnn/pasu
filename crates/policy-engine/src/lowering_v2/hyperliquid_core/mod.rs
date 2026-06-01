@@ -14,10 +14,18 @@ use simulation_reducer::action::hyperliquid_core::HyperliquidCoreAction;
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
 mod approve_agent;
+mod c_deposit;
+mod c_withdraw;
 mod order;
+mod send_asset;
+mod send_to_evm_with_data;
+mod spot_send;
+mod sub_account_transfer;
 mod unknown;
 mod update_leverage;
+mod usd_class_transfer;
 mod usd_send;
+mod vault_transfer;
 mod withdraw;
 
 /// Dispatch a [`HyperliquidCoreAction`] to its per-action lowering.
@@ -36,6 +44,14 @@ pub(crate) fn lower(
         HyperliquidCoreAction::Withdraw(a) => withdraw::lower(a, ctx),
         HyperliquidCoreAction::UsdSend(a) => usd_send::lower(a, ctx),
         HyperliquidCoreAction::ApproveAgent(a) => approve_agent::lower(a, ctx),
+        HyperliquidCoreAction::SpotSend(a) => spot_send::lower(a, ctx),
+        HyperliquidCoreAction::UsdClassTransfer(a) => usd_class_transfer::lower(a, ctx),
+        HyperliquidCoreAction::SendAsset(a) => send_asset::lower(a, ctx),
+        HyperliquidCoreAction::SendToEvmWithData(a) => send_to_evm_with_data::lower(a, ctx),
+        HyperliquidCoreAction::CDeposit(a) => c_deposit::lower(a, ctx),
+        HyperliquidCoreAction::CWithdraw(a) => c_withdraw::lower(a, ctx),
+        HyperliquidCoreAction::VaultTransfer(a) => vault_transfer::lower(a, ctx),
+        HyperliquidCoreAction::SubAccountTransfer(a) => sub_account_transfer::lower(a, ctx),
         HyperliquidCoreAction::Unknown(a) => unknown::lower(a, ctx),
     }
 }

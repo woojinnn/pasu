@@ -48,6 +48,32 @@ pub enum HyperliquidCoreAction {
     /// (`{"type":"approveAgent"}`).
     #[serde(rename = "hl_approve_agent")]
     ApproveAgent(HlApproveAgentAction),
+    /// Transfer a spot token off the account (`{"type":"spotSend"}`).
+    #[serde(rename = "hl_spot_send")]
+    SpotSend(HlSpotSendAction),
+    /// Move balance between the perp and spot wallets
+    /// (`{"type":"usdClassTransfer"}`).
+    #[serde(rename = "hl_usd_class_transfer")]
+    UsdClassTransfer(HlUsdClassTransferAction),
+    /// Send a token across DEXes / accounts (`{"type":"sendAsset"}`).
+    #[serde(rename = "hl_send_asset")]
+    SendAsset(HlSendAssetAction),
+    /// Bridge a token to an EVM recipient with arbitrary calldata
+    /// (`{"type":"sendToEvmWithData"}`). Highest-risk fund movement.
+    #[serde(rename = "hl_send_to_evm_with_data")]
+    SendToEvmWithData(HlSendToEvmWithDataAction),
+    /// Deposit into HYPE staking (`{"type":"cDeposit"}`).
+    #[serde(rename = "hl_c_deposit")]
+    CDeposit(HlCDepositAction),
+    /// Withdraw from HYPE staking (`{"type":"cWithdraw"}`).
+    #[serde(rename = "hl_c_withdraw")]
+    CWithdraw(HlCWithdrawAction),
+    /// Deposit into / withdraw from a vault (`{"type":"vaultTransfer"}`).
+    #[serde(rename = "hl_vault_transfer")]
+    VaultTransfer(HlVaultTransferAction),
+    /// Move USDC to / from a sub-account (`{"type":"subAccountTransfer"}`).
+    #[serde(rename = "hl_sub_account_transfer")]
+    SubAccountTransfer(HlSubAccountTransferAction),
     /// Any `/exchange` action not explicitly modeled above. Carries only the raw
     /// wire `type` string so a policy can gate or surface unrecognized actions
     /// (`HlUnknown` — policy default: warn / deny). Closes the silent-allow gap:
@@ -67,6 +93,14 @@ impl HyperliquidCoreAction {
             Self::Withdraw(_) => "hl_withdraw",
             Self::UsdSend(_) => "hl_usd_send",
             Self::ApproveAgent(_) => "hl_approve_agent",
+            Self::SpotSend(_) => "hl_spot_send",
+            Self::UsdClassTransfer(_) => "hl_usd_class_transfer",
+            Self::SendAsset(_) => "hl_send_asset",
+            Self::SendToEvmWithData(_) => "hl_send_to_evm_with_data",
+            Self::CDeposit(_) => "hl_c_deposit",
+            Self::CWithdraw(_) => "hl_c_withdraw",
+            Self::VaultTransfer(_) => "hl_vault_transfer",
+            Self::SubAccountTransfer(_) => "hl_sub_account_transfer",
             Self::Unknown(_) => "hl_unknown",
         }
     }
@@ -153,6 +187,108 @@ pub struct HlApproveAgentAction {
     pub agent_name: Option<String>,
 }
 
+/// Spot token transfer off the account: `{"type":"spotSend"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlSpotSendAction {
+    /// Recipient address (`destination`).
+    #[tsify(type = "string")]
+    pub destination: Address,
+    /// Token identifier (`token`), e.g. `"USDC:0x..."`.
+    pub token: String,
+    /// Amount (`amount`), a decimal value held as a string.
+    pub amount: Decimal,
+}
+
+/// Move balance between the perp and spot wallets: `{"type":"usdClassTransfer"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlUsdClassTransferAction {
+    /// USDC amount (`amount`), a decimal value held as a string.
+    pub amount: Decimal,
+    /// `toPerp` — `true` ⇒ spot → perp, `false` ⇒ perp → spot.
+    pub to_perp: bool,
+}
+
+/// Send a token across DEXes / accounts: `{"type":"sendAsset"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlSendAssetAction {
+    /// Recipient address (`destination`).
+    #[tsify(type = "string")]
+    pub destination: Address,
+    /// Source DEX name (`sourceDex`).
+    pub source_dex: String,
+    /// Destination DEX name (`destinationDex`).
+    pub destination_dex: String,
+    /// Token identifier (`token`).
+    pub token: String,
+    /// Amount (`amount`), a decimal value held as a string.
+    pub amount: Decimal,
+}
+
+/// Bridge a token to an EVM recipient with arbitrary calldata.
+///
+/// `{"type":"sendToEvmWithData"}` — the highest-risk fund movement: funds leave
+/// `HyperCore` for an arbitrary EVM address with attacker-controllable `data`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlSendToEvmWithDataAction {
+    /// Token identifier (`token`).
+    pub token: String,
+    /// Amount (`amount`), a decimal value held as a string.
+    pub amount: Decimal,
+    /// Source DEX name (`sourceDex`).
+    pub source_dex: String,
+    /// EVM recipient address (`destinationRecipient`).
+    #[tsify(type = "string")]
+    pub destination_recipient: Address,
+    /// Raw calldata forwarded to the recipient (`data`), 0x-hex.
+    pub data: String,
+}
+
+/// Deposit into HYPE staking: `{"type":"cDeposit"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlCDepositAction {
+    /// Amount in token wei (`wei`), a decimal value held as a string.
+    pub wei: Decimal,
+}
+
+/// Withdraw from HYPE staking: `{"type":"cWithdraw"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlCWithdrawAction {
+    /// Amount in token wei (`wei`), a decimal value held as a string.
+    pub wei: Decimal,
+}
+
+/// Vault deposit / withdrawal: `{"type":"vaultTransfer"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlVaultTransferAction {
+    /// Vault address (`vaultAddress`).
+    #[tsify(type = "string")]
+    pub vault_address: Address,
+    /// `isDeposit` — `true` ⇒ deposit into vault, `false` ⇒ withdraw.
+    pub is_deposit: bool,
+    /// USD amount (`usd`), a decimal value held as a string.
+    pub usd: Decimal,
+}
+
+/// Sub-account USDC transfer: `{"type":"subAccountTransfer"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlSubAccountTransferAction {
+    /// Sub-account address (`subAccountUser`).
+    #[tsify(type = "string")]
+    pub sub_account_user: Address,
+    /// `isDeposit` — `true` ⇒ fund the sub-account, `false` ⇒ pull from it.
+    pub is_deposit: bool,
+    /// USD amount (`usd`), a decimal value held as a string.
+    pub usd: Decimal,
+}
+
 /// Catch-all for an `/exchange` action not explicitly modeled.
 ///
 /// Holds only the raw wire `type` string (`{"type":"<actionType>"}`) — no
@@ -205,6 +341,45 @@ mod tests {
             HyperliquidCoreAction::ApproveAgent(HlApproveAgentAction {
                 agent_address: Address::from([0x33; 20]),
                 agent_name: None,
+            }),
+            HyperliquidCoreAction::SpotSend(HlSpotSendAction {
+                destination: Address::from([0x44; 20]),
+                token: "USDC:0xdeadbeef".to_owned(),
+                amount: Decimal::new("500"),
+            }),
+            HyperliquidCoreAction::UsdClassTransfer(HlUsdClassTransferAction {
+                amount: Decimal::new("100"),
+                to_perp: true,
+            }),
+            HyperliquidCoreAction::SendAsset(HlSendAssetAction {
+                destination: Address::from([0x55; 20]),
+                source_dex: String::new(),
+                destination_dex: "perp".to_owned(),
+                token: "USDC".to_owned(),
+                amount: Decimal::new("25"),
+            }),
+            HyperliquidCoreAction::SendToEvmWithData(HlSendToEvmWithDataAction {
+                token: "USDC".to_owned(),
+                amount: Decimal::new("1"),
+                source_dex: String::new(),
+                destination_recipient: Address::from([0x66; 20]),
+                data: "0x".to_owned(),
+            }),
+            HyperliquidCoreAction::CDeposit(HlCDepositAction {
+                wei: Decimal::new("1000000000"),
+            }),
+            HyperliquidCoreAction::CWithdraw(HlCWithdrawAction {
+                wei: Decimal::new("1000000000"),
+            }),
+            HyperliquidCoreAction::VaultTransfer(HlVaultTransferAction {
+                vault_address: Address::from([0x77; 20]),
+                is_deposit: true,
+                usd: Decimal::new("250"),
+            }),
+            HyperliquidCoreAction::SubAccountTransfer(HlSubAccountTransferAction {
+                sub_account_user: Address::from([0x88; 20]),
+                is_deposit: false,
+                usd: Decimal::new("75"),
             }),
             HyperliquidCoreAction::Unknown(HlUnknownAction {
                 action_type: "convertToMultiSigUser".to_owned(),

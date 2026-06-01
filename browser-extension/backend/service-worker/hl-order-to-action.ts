@@ -103,6 +103,69 @@ function actionBody(
       if (a.agentName !== undefined) body.agent_name = a.agentName;
       return body;
     }
+    case "spot_send":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_spot_send",
+        destination: a.destination,
+        token: a.token,
+        amount: String(a.amount),
+      };
+    case "usd_class_transfer":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_usd_class_transfer",
+        amount: String(a.amount),
+        to_perp: a.toPerp,
+      };
+    case "send_asset":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_send_asset",
+        destination: a.destination,
+        source_dex: a.sourceDex,
+        destination_dex: a.destinationDex,
+        token: a.token,
+        amount: String(a.amount),
+      };
+    case "send_to_evm_with_data":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_send_to_evm_with_data",
+        token: a.token,
+        amount: String(a.amount),
+        source_dex: a.sourceDex,
+        destination_recipient: a.destinationRecipient,
+        data: a.data,
+      };
+    case "c_deposit":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_c_deposit",
+        wei: String(a.wei),
+      };
+    case "c_withdraw":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_c_withdraw",
+        wei: String(a.wei),
+      };
+    case "vault_transfer":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_vault_transfer",
+        vault_address: a.vaultAddress,
+        is_deposit: a.isDeposit,
+        usd: String(a.usd),
+      };
+    case "sub_account_transfer":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_sub_account_transfer",
+        sub_account_user: a.subAccountUser,
+        is_deposit: a.isDeposit,
+        usd: String(a.usd),
+      };
     case "unknown":
       return {
         domain: "hyperliquid_core",

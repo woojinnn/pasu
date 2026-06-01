@@ -80,6 +80,33 @@ export type VenueActionWire =
   | { kind: "withdraw"; destination: string; amount: string }
   | { kind: "usd_send"; destination: string; amount: string }
   | { kind: "approve_agent"; agentAddress: string; agentName?: string }
+  | { kind: "spot_send"; destination: string; token: string; amount: string }
+  | { kind: "usd_class_transfer"; amount: string; toPerp: boolean }
+  | {
+      kind: "send_asset";
+      destination: string;
+      sourceDex: string;
+      destinationDex: string;
+      token: string;
+      amount: string;
+    }
+  | {
+      kind: "send_to_evm_with_data";
+      token: string;
+      amount: string;
+      sourceDex: string;
+      destinationRecipient: string;
+      data: string;
+    }
+  | { kind: "c_deposit"; wei: string }
+  | { kind: "c_withdraw"; wei: string }
+  | { kind: "vault_transfer"; vaultAddress: string; isDeposit: boolean; usd: string }
+  | {
+      kind: "sub_account_transfer";
+      subAccountUser: string;
+      isDeposit: boolean;
+      usd: string;
+    }
   | {
       /**
        * Catch-all for an `/exchange` action with no explicit model. Carries only

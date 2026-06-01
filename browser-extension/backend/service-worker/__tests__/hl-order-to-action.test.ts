@@ -134,6 +134,64 @@ describe("hlOrderToAction", () => {
     expect(noName.agent_name).toBeUndefined();
   });
 
+  it("converts spotSend (spot token fund movement)", () => {
+    const { action } = hlOrderToAction(
+      payload({
+        kind: "spot_send",
+        destination: "0x000000000000000000000000000000000000bEEF",
+        token: "USDC:0xc1fb593aeffbeb02f85e0308e9956a90",
+        amount: "500.25",
+      }),
+    );
+    expect(action).toEqual({
+      domain: "hyperliquid_core",
+      action: "hl_spot_send",
+      destination: "0x000000000000000000000000000000000000bEEF",
+      token: "USDC:0xc1fb593aeffbeb02f85e0308e9956a90",
+      amount: "500.25",
+    });
+  });
+
+  it("converts sendToEvmWithData (preserves recipient + raw data)", () => {
+    const { action } = hlOrderToAction(
+      payload({
+        kind: "send_to_evm_with_data",
+        token: "USDC",
+        amount: "1000",
+        sourceDex: "",
+        destinationRecipient: "0x000000000000000000000000000000000000dEaD",
+        data: "0xdeadbeef",
+      }),
+    );
+    expect(action).toEqual({
+      domain: "hyperliquid_core",
+      action: "hl_send_to_evm_with_data",
+      token: "USDC",
+      amount: "1000",
+      source_dex: "",
+      destination_recipient: "0x000000000000000000000000000000000000dEaD",
+      data: "0xdeadbeef",
+    });
+  });
+
+  it("converts vaultTransfer (carries isDeposit + usd)", () => {
+    const { action } = hlOrderToAction(
+      payload({
+        kind: "vault_transfer",
+        vaultAddress: "0x000000000000000000000000000000000000dEaD",
+        isDeposit: true,
+        usd: "250",
+      }),
+    );
+    expect(action).toEqual({
+      domain: "hyperliquid_core",
+      action: "hl_vault_transfer",
+      vault_address: "0x000000000000000000000000000000000000dEaD",
+      is_deposit: true,
+      usd: "250",
+    });
+  });
+
   it("converts the hl_unknown catch-all (raw wire type only)", () => {
     const { action } = hlOrderToAction(
       payload({ kind: "unknown", actionType: "convertToMultiSigUser" }),

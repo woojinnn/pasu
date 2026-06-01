@@ -231,6 +231,28 @@ const HL_APPROVE_AGENT_SCHEMA: &str = include_str!(
 );
 const HL_UNKNOWN_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/unknown.cedarschema");
+const HL_SPOT_SEND_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/spot_send.cedarschema");
+const HL_USD_CLASS_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/usd_class_transfer.cedarschema"
+);
+const HL_SEND_ASSET_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/send_asset.cedarschema"
+);
+const HL_SEND_TO_EVM_WITH_DATA_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/send_to_evm_with_data.cedarschema"
+);
+const HL_C_DEPOSIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/c_deposit.cedarschema");
+const HL_C_WITHDRAW_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/c_withdraw.cedarschema"
+);
+const HL_VAULT_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/vault_transfer.cedarschema"
+);
+const HL_SUB_ACCOUNT_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/sub_account_transfer.cedarschema"
+);
 
 /// Ordered list of all shipped cedarschema files. The merge in
 /// [`base_schema_text`] preserves this order so the resulting per-namespace
@@ -322,6 +344,14 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     HL_USD_SEND_SCHEMA,
     HL_APPROVE_AGENT_SCHEMA,
     HL_UNKNOWN_SCHEMA,
+    HL_SPOT_SEND_SCHEMA,
+    HL_USD_CLASS_TRANSFER_SCHEMA,
+    HL_SEND_ASSET_SCHEMA,
+    HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
+    HL_C_DEPOSIT_SCHEMA,
+    HL_C_WITHDRAW_SCHEMA,
+    HL_VAULT_TRANSFER_SCHEMA,
+    HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
 ];
 
 /// Composes the shipped core and action Cedar schemas.
@@ -814,10 +844,18 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     // hyperliquid_core (alphabetical) — `hl_`-prefixed tags keep these globally
     // unique (notably `withdraw` is already a Lending tag).
     ("hl_approve_agent", "HlApproveAgentContext"),
+    ("hl_c_deposit", "HlCDepositContext"),
+    ("hl_c_withdraw", "HlCWithdrawContext"),
     ("hl_order", "HlOrderContext"),
+    ("hl_send_asset", "HlSendAssetContext"),
+    ("hl_send_to_evm_with_data", "HlSendToEvmWithDataContext"),
+    ("hl_spot_send", "HlSpotSendContext"),
+    ("hl_sub_account_transfer", "HlSubAccountTransferContext"),
     ("hl_unknown", "HlUnknownContext"),
     ("hl_update_leverage", "HlUpdateLeverageContext"),
+    ("hl_usd_class_transfer", "HlUsdClassTransferContext"),
     ("hl_usd_send", "HlUsdSendContext"),
+    ("hl_vault_transfer", "HlVaultTransferContext"),
     ("hl_withdraw", "HlWithdrawContext"),
 ];
 

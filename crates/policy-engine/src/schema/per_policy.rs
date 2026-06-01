@@ -29,8 +29,10 @@ use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_ORDER_SCHEMA, HL_UNKNOWN_SCHEMA,
-    HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_SEND_SCHEMA, HL_WITHDRAW_SCHEMA,
+    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_C_DEPOSIT_SCHEMA, HL_C_WITHDRAW_SCHEMA,
+    HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA, HL_SEND_TO_EVM_WITH_DATA_SCHEMA, HL_SPOT_SEND_SCHEMA,
+    HL_SUB_ACCOUNT_TRANSFER_SCHEMA, HL_UNKNOWN_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA,
+    HL_USD_CLASS_TRANSFER_SCHEMA, HL_USD_SEND_SCHEMA, HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA,
     LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA,
     LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA,
     LENDING_BUY_COLLATERAL_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
@@ -617,6 +619,54 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         schema_text: HL_UNKNOWN_SCHEMA,
         pascal_stub: "HlUnknown",
     },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_spot_send"),
+        schema_text: HL_SPOT_SEND_SCHEMA,
+        pascal_stub: "HlSpotSend",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_usd_class_transfer"),
+        schema_text: HL_USD_CLASS_TRANSFER_SCHEMA,
+        pascal_stub: "HlUsdClassTransfer",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_send_asset"),
+        schema_text: HL_SEND_ASSET_SCHEMA,
+        pascal_stub: "HlSendAsset",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_send_to_evm_with_data"),
+        schema_text: HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
+        pascal_stub: "HlSendToEvmWithData",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_c_deposit"),
+        schema_text: HL_C_DEPOSIT_SCHEMA,
+        pascal_stub: "HlCDeposit",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_c_withdraw"),
+        schema_text: HL_C_WITHDRAW_SCHEMA,
+        pascal_stub: "HlCWithdraw",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_vault_transfer"),
+        schema_text: HL_VAULT_TRANSFER_SCHEMA,
+        pascal_stub: "HlVaultTransfer",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_sub_account_transfer"),
+        schema_text: HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
+        pascal_stub: "HlSubAccountTransfer",
+    },
 ];
 
 /// Synthesize an isolated per-policy `.cedarschema` for one bundle.
@@ -1060,9 +1110,10 @@ mod tests {
         }
         // Union of feat/registry-v2 (74: + 7 restaking + 8 staking + 5 hyperliquid_core)
         // and the 11 Pendle `yield` rows = 85 shipped actions (multicall + unknown
-        // included), plus the HyperliquidCore `hl_unknown` catch-all = 86.
+        // included), plus 9 more HyperliquidCore actions (the `hl_unknown`
+        // catch-all + 8 fund-movement actions) = 94.
         // Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 86, "resolver table must have 86 rows");
+        assert_eq!(RESOLVER_TABLE.len(), 94, "resolver table must have 94 rows");
     }
 
     /// A `custom_context` field whose name collides with one of the matched

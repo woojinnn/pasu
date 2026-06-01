@@ -284,6 +284,38 @@ when { context.venue.name == \"hyperliquid\" };\n";
     );
 }
 
+/// FUND-MOVEMENT PROOF: a modeled `sendToEvmWithData` (bridge a token to an
+/// arbitrary EVM recipient with calldata — the highest-risk fund movement) is
+/// DENIED by a policy scoping on the recipient. Proves the P2 fund-movement
+/// surface reaches the engine with its fields intact.
+#[test]
+fn send_to_evm_with_data_can_be_denied_on_recipient() {
+    const DENY_BRIDGE: &str = "\
+@id(\"hl/deny-evm-bridge\")\n\
+@severity(\"deny\")\n\
+@reason(\"Bridging funds to an unapproved EVM recipient is blocked\")\n\
+forbid(principal, action == HyperliquidCore::Action::\"HlSendToEvmWithData\", resource)\n\
+when { context.destinationRecipient == \"0x000000000000000000000000000000000000dead\" };\n";
+    let action = json!({
+        "domain": "hyperliquid_core",
+        "action": "hl_send_to_evm_with_data",
+        "token": "USDC",
+        "amount": "1000",
+        "source_dex": "",
+        "destination_recipient": "0x000000000000000000000000000000000000dead",
+        "data": "0xdeadbeef"
+    });
+    let parsed = run(
+        action,
+        json!([{ "policy": DENY_BRIDGE, "manifest": manifest("hl_send_to_evm_with_data") }]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "fail",
+        "a bridge to the denied recipient must be BLOCKED: {parsed}"
+    );
+}
+
 /// SHIPPED-SEED PROOF: the shipped `hl-confirm-unknown` bundle FLAGS an unmodeled
 /// action for confirmation (`warn`) through the entry point.
 #[test]
