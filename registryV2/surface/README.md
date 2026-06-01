@@ -38,6 +38,8 @@ The gate enforces completeness on **two axes**, because they fail differently:
 
 ```
 surface/<protocol>/_deployments.json          ← I0: 1st-party deployment list (contract inventory)
+surface/<protocol>/_address_universe.json     ← U0: factory/pool/vault child address universe (optional but mandatory for pool-heavy onboarding)
+surface/<protocol>/_pool_universe.json        ← U0 alias for pool-specific protocols
 surface/<protocol>/<contract>.abi.json        ← snapshot (function ground truth)
 surface/<protocol>/<contract>.coverage.json   ← triage (function decisions)
 ```
@@ -128,6 +130,55 @@ this — they're one address.)
 }
 ```
 
+### `_address_universe.json` / `_pool_universe.json` — child address universe
+
+For protocols where users directly call many factory-created or registry-listed
+children (Curve pools, Balancer pools, lending vault factories, pair factories),
+contract inventory alone is not enough. The registry routes by exact
+`(chainId,to,selector)`, so a missing child address is a production miss even
+when the ABI and selector are already known.
+
+Use `_address_universe.json` for generic child universes, or `_pool_universe.json`
+when "pool" is the natural protocol term. The checker is protocol-agnostic:
+
+```jsonc
+{
+  "protocol": "curve",
+  "kind": "pool",
+  "source": "Curve public API getPools/all/ethereum",
+  "source_count": 2260,
+  "batch_boundary": "ethereum:getPools/all snapshot 2026-06-01",
+  "candidates": [
+    {
+      "chainId": 1,
+      "address": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+      "decision": "defer",
+      "reason": "legacy StableSwap-v1 batch; not in this onboarding slice",
+      "batch": "curve-legacy-stableswap-v1"
+    },
+    {
+      "chainId": 1,
+      "address": "0x16c6521dff6bab339122a0fe25a9116693265353",
+      "decision": "cover",
+      "reason": "RouterNG user swap entrypoint"
+    }
+  ]
+}
+```
+
+Run:
+
+```bash
+npm run check:universe
+npm run check:universe -- --protocol curve
+npm run check:universe -- --protocol curve --require-cover-linkage
+```
+
+`--protocol <name>` fails if that protocol has no universe artifact. Use it in
+onboarding P0/P4 for pool/factory/vault-heavy protocols. `--require-cover-linkage`
+is the P4 form: it additionally requires every `cover` address to have generated
+`index/by-callkey` entries after `npm run build`.
+
 ## Invariants (any violation → `npm run check:surface` exits 1)
 
 | ID  | Rule | Catches |
@@ -138,6 +189,7 @@ this — they're one address.)
 | **I2**  | every `cover` selector has a manifest at `(chain,address,selector)` — for **each** address in `addresses[]` | triaged-as-cover but adapter never built (at any pool) |
 | **I3**  | every on-chain manifest selector at `(chain,address)` is `cover` here — checked per address | a manifest for a function you marked exclude / never triaged |
 | **S1/S2** | each typed-data manifest `primary_type` ↔ a `signed_structs` cover (both ways) | off-chain EIP-712 grant un-triaged |
+| **U0** | every candidate in `_address_universe.json` / `_pool_universe.json` has `cover | exclude | defer` + reason; optional P4 linkage checks every cover address has generated callkeys | representative-pool onboarding disguised as full protocol support |
 
 ## Onboarding a new protocol
 

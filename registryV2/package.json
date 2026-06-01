@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsx scripts/build-index.ts",
+    "check:universe": "tsx scripts/check-address-universe.ts",
     "check:surface": "tsx scripts/check-surface-completeness.ts",
     "check:manifest": "tsx scripts/build-index.ts && cargo run --quiet --bin v3-harness -- validate",
     "typecheck": "tsc --noEmit",

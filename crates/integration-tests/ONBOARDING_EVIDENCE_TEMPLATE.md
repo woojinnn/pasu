@@ -29,6 +29,7 @@
 | pool-heavy/factory universe artifact is machine-readable, nonzero, and committed, or explicitly not applicable | pending | |
 | every pool/factory child address in universe dispositioned as cover/exclude/defer with reason and batch boundary | pending | |
 | concrete manifest vs protocol source resolver/generator strategy decided for pool universe | pending | |
+| `npm run check:universe -- --protocol <protocol>` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | pending | |
 | token-surface inventory completed or explicitly scoped out | pending | |
 | `registryV2/surface/<protocol>/_deployments.json` updated if applicable | pending | |
 | `npm run check:surface` output recorded | pending | |
@@ -96,6 +97,7 @@
 | registryV2 build-index vitest output recorded | pending | |
 | `npm run check:manifest` output recorded | pending | |
 | `npm run check:surface` output recorded | pending | |
+| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | pending | |
 | v3-harness coverage/fuzz/corpus outputs recorded | pending | |
 | protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
 | `cargo test --workspace` output recorded | pending | |

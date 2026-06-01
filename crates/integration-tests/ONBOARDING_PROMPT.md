@@ -76,6 +76,9 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     concrete manifest vs protocol source resolver/generator 결정을 evidence.md 에 남긴다.
     pool-heavy/factory 는 machine-readable universe artifact 를 남긴다. source count 가 0 이거나
     tx pull target address count 가 0 이면 성공으로 치지 말고 필터/schema 버그로 보고 즉시 수정한다.
+    pool/factory/vault-heavy 프로토콜은 `registryV2/surface/<PROTOCOL>/_address_universe.json`
+    또는 `_pool_universe.json` 을 작성하고
+    `cd registryV2 && npm run check:universe -- --protocol <PROTOCOL>` 를 실행한다.
     P0 를 완료했다고 말하기 전 evidence.md 에 Claude/sub-agent 명령, 결과 요약, Codex-only/Claude-only/dropped
     후보, 1차출처 검증 disposition, pool universe disposition(해당 시), check:surface 출력이 기록되어 있어야 한다.
  P1 함수마다 schema(§4a)→manifest(§4b)→engine(§4c)→enrich(§4d: 추상 단위면 환산 live_field).
@@ -100,6 +103,7 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     (projection 은 하니스 구현 후 사용).
  P3 gap 분류(`unknown_protocol_address` 포함)→manifest/decoder/harness/P0 universe 처치→회귀(§6).
  P4 build-index → registryV2 build-index vitest → check:manifest → check:surface →
+    pool/factory/vault-heavy 라면 `npm run check:universe -- --protocol <PROTOCOL> --require-cover-linkage` →
     v3-harness coverage/fuzz/corpus → cargo test --workspace 0 fail →
     wasm-build → clippy/fmt(변경 crate) → check-onboarding-evidence --phase all →
     explicit-stage 커밋.

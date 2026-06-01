@@ -405,6 +405,9 @@ Required artifacts:
 - machine-readable artifact with a nonzero source count. A zero-count universe
   or zero-target tx pull is a filter/schema bug until proven otherwise; do not
   accept it as evidence.
+- committed `registryV2/surface/<protocol>/_address_universe.json` or
+  `_pool_universe.json`, validated with
+  `npm run check:universe -- --protocol <protocol>`.
 - disposition table: every candidate address is `cover`, `exclude`, or `defer`
   with reason.
 - if only a subset is concretely covered, a batch boundary plus explicit
@@ -632,6 +635,7 @@ cd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
 cd registryV2
 npm run build
 npm run check:surface
+npm run check:universe -- --protocol <protocol> --require-cover-linkage
 npm run check:manifest
 cd ..
 
