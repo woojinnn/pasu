@@ -181,7 +181,8 @@ pub fn build_router_with_config(state: AppState, config: ServerConfig) -> Router
         .route("/docs", get(crate::docs::docs_html))
         .route("/openapi.yaml", get(crate::docs::openapi_yaml))
         .route("/auth/google", get(crate::auth::start_google_login))
-        .route("/auth/google/callback", get(crate::auth::google_callback));
+        .route("/auth/google/callback", get(crate::auth::google_callback))
+        .route("/auth/refresh", post(crate::auth::refresh_token));
 
     public
         .merge(protected)

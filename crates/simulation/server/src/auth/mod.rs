@@ -16,4 +16,4 @@ pub mod oauth;
 
 pub use jwt::{issue, verify, AuthError, Claims, UserId};
 pub use middleware::{require_auth, AuthUser};
-pub use oauth::{google_callback, start_google_login};
+pub use oauth::{google_callback, refresh_token, start_google_login};

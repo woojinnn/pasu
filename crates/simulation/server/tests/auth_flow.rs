@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, build_router_with_config, AppState};
-use simulation_server::auth::jwt::{issue, TokenType};
+use simulation_server::auth::jwt::{issue, verify, TokenType};
 use simulation_server::config::ServerConfig;
 use simulation_sync::{Orchestrator, SyncConfig};
 
@@ -117,6 +117,28 @@ async fn refresh_token_cannot_access_protected_routes() {
         .await
         .unwrap();
     assert_eq!(resp.status(), 401);
+}
+
+#[tokio::test]
+async fn refresh_token_mints_new_access_token() {
+    ensure_jwt_secret();
+    let addr = spawn_server().await;
+    let refresh = issue("u_x", "x@example.com", TokenType::Refresh, None).unwrap();
+
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/auth/refresh"))
+        .json(&serde_json::json!({ "refresh_token": refresh }))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(res.status(), 200);
+    let json: serde_json::Value = res.json().await.unwrap();
+    let access = json["access_token"].as_str().unwrap();
+    let claims = verify(access).unwrap();
+    assert_eq!(claims.sub, "u_x");
+    assert!(claims.is_access());
+    assert!(json["refresh_token"].as_str().is_some());
 }
 
 #[tokio::test]
