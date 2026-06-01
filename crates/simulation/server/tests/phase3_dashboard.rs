@@ -6,7 +6,6 @@ use std::sync::Arc;
 use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::auth::jwt::{issue, TokenType};
-use simulation_server::spenders::SpenderCatalog;
 use simulation_state::approval::{AllowanceSpec, ApprovalSet};
 use simulation_state::primitives::{Address, ChainId, Time, U256};
 use simulation_state::token::{Balance, TokenHolding, TokenKey, TokenKind};
@@ -24,9 +23,7 @@ fn mint_token(user_id: &str) -> String {
     issue(user_id, "test@example.com", TokenType::Access, None).unwrap()
 }
 
-async fn spawn_server(
-    spenders: SpenderCatalog,
-) -> (
+async fn spawn_server() -> (
     std::net::SocketAddr,
     MultiUserStore,
     tempfile::TempDir,
@@ -42,7 +39,6 @@ async fn spawn_server(
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),
-        spenders,
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -125,21 +121,9 @@ async fn seed_state_with_holding(multi_user: &MultiUserStore, user_id: &str) {
     store.save(&s).await.unwrap();
 }
 
-fn known_uniswap_catalog() -> SpenderCatalog {
-    let toml = r#"
-[[spenders]]
-addr  = "0xe592427a0aece92de3edee1f18e0157c05861564"
-label = "Uniswap V3 SwapRouter"
-rep   = "known"
-"#;
-    let (cat, warnings) = SpenderCatalog::from_toml(toml).unwrap();
-    assert!(warnings.is_empty());
-    cat
-}
-
 #[tokio::test]
 async fn dashboard_summary_aggregates_portfolio() {
-    let (addr, mu, _tmp, token) = spawn_server(SpenderCatalog::empty()).await;
+    let (addr, mu, _tmp, token) = spawn_server().await;
     seed_state_with_holding(&mu, "u_test_alice").await;
 
     let body: serde_json::Value = reqwest::Client::new()
@@ -173,7 +157,7 @@ async fn dashboard_summary_aggregates_portfolio() {
 
 #[tokio::test]
 async fn dashboard_summary_empty_when_no_wallets() {
-    let (addr, _mu, _tmp, token) = spawn_server(SpenderCatalog::empty()).await;
+    let (addr, _mu, _tmp, token) = spawn_server().await;
     let body: serde_json::Value = reqwest::Client::new()
         .get(format!("http://{addr}/dashboard/summary"))
         .bearer_auth(&token)
@@ -190,7 +174,7 @@ async fn dashboard_summary_empty_when_no_wallets() {
 
 #[tokio::test]
 async fn approvals_with_risk_returns_classified_shape() {
-    let (addr, mu, _tmp, token) = spawn_server(known_uniswap_catalog()).await;
+    let (addr, mu, _tmp, token) = spawn_server().await;
     seed_state_with_holding(&mu, "u_test_alice").await;
 
     let body: serde_json::Value = reqwest::Client::new()
@@ -214,15 +198,15 @@ async fn approvals_with_risk_returns_classified_shape() {
         .iter()
         .map(|v| v.as_str().unwrap())
         .collect();
+    // Spender catalog removed → only UNLIMITED remains (KNOWN_VENUE
+    // tag and spender_meta field no longer emitted).
     assert!(risk.contains(&"UNLIMITED"));
-    assert!(risk.contains(&"KNOWN_VENUE"));
-    assert_eq!(row["spender_meta"]["label"], "Uniswap V3 SwapRouter");
-    assert_eq!(row["spender_meta"]["rep"], "known");
+    assert!(row.get("spender_meta").is_none());
 }
 
 #[tokio::test]
 async fn approvals_default_returns_raw_shape() {
-    let (addr, mu, _tmp, token) = spawn_server(known_uniswap_catalog()).await;
+    let (addr, mu, _tmp, token) = spawn_server().await;
     seed_state_with_holding(&mu, "u_test_alice").await;
 
     let body: serde_json::Value = reqwest::Client::new()

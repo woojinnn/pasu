@@ -91,8 +91,9 @@ pub async fn get_holdings(
 ///
 /// Default: returns the raw [`ApprovalSet`] (back-compat).
 /// `?with_risk=true`: returns the classified shape — every approval gets
-/// a `risk[]` tag list (UNLIMITED / KNOWN_VENUE / BLOCKED / OLD) plus
-/// the matching `spender_meta` from the [`crate::spenders::SpenderCatalog`].
+/// a `risk[]` tag list (UNLIMITED / OLD / EXPIRED). Spender labels +
+/// KNOWN_VENUE/BLOCKED tags are no longer included on the server; that
+/// data is operator-managed and lives in the (future) registry.
 pub async fn get_approvals(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
@@ -102,7 +103,7 @@ pub async fn get_approvals(
     match load_state(&state.multi_user, &user.user_id, &address).await {
         Ok(s) => {
             if q.with_risk.unwrap_or(false) {
-                let classified = classify_approvals(&s.approvals, &state.spenders);
+                let classified = classify_approvals(&s.approvals);
                 Json(classified).into_response()
             } else {
                 Json::<ApprovalSet>(s.approvals).into_response()
@@ -135,8 +136,6 @@ struct Erc20Approval {
     is_unlimited: bool,
     last_set_at: i64,
     risk: Vec<&'static str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    spender_meta: Option<crate::spenders::SpenderMeta>,
 }
 
 #[derive(Serialize)]
@@ -145,8 +144,6 @@ struct SetForAllApproval {
     collection: String,
     operator: String,
     risk: Vec<&'static str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    spender_meta: Option<crate::spenders::SpenderMeta>,
 }
 
 #[derive(Serialize)]
@@ -158,17 +155,12 @@ struct Permit2Approval {
     expiration: i64,
     nonce: u32,
     risk: Vec<&'static str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    spender_meta: Option<crate::spenders::SpenderMeta>,
 }
 
 /// 90-day staleness threshold — any approval older counts as `OLD`.
 const STALE_AFTER_SECS: i64 = 90 * 24 * 3_600;
 
-fn classify_approvals(
-    set: &ApprovalSet,
-    spenders: &crate::spenders::SpenderCatalog,
-) -> ClassifiedApprovals {
+fn classify_approvals(set: &ApprovalSet) -> ClassifiedApprovals {
     use simulation_state::primitives::Time;
 
     let now = i64::try_from(
@@ -189,15 +181,9 @@ fn classify_approvals(
     for ((chain, token), per_spender) in &set.erc20 {
         for (spender, spec) in per_spender {
             let spender_lower = format!("{spender:#x}");
-            let meta = spenders.get(&spender_lower).cloned();
             let mut risk: Vec<&'static str> = Vec::new();
             if spec.is_unlimited {
                 risk.push("UNLIMITED");
-            }
-            match meta.as_ref().map(|m| m.rep) {
-                Some(crate::spenders::SpenderRep::Known) => risk.push("KNOWN_VENUE"),
-                Some(crate::spenders::SpenderRep::Blocked) => risk.push("BLOCKED"),
-                None => {}
             }
             let last = i64::try_from(spec.last_set_at.as_unix()).unwrap_or(0);
             if last > 0 && now - last > STALE_AFTER_SECS {
@@ -211,7 +197,6 @@ fn classify_approvals(
                 is_unlimited: spec.is_unlimited,
                 last_set_at: last,
                 risk,
-                spender_meta: meta,
             });
         }
     }
@@ -219,35 +204,22 @@ fn classify_approvals(
     for ((chain, collection), operators) in &set.set_for_all {
         for operator in operators {
             let operator_lower = format!("{operator:#x}");
-            let meta = spenders.get(&operator_lower).cloned();
             // setApprovalForAll always confers full collection access.
-            let mut risk: Vec<&'static str> = vec!["UNLIMITED"];
-            match meta.as_ref().map(|m| m.rep) {
-                Some(crate::spenders::SpenderRep::Known) => risk.push("KNOWN_VENUE"),
-                Some(crate::spenders::SpenderRep::Blocked) => risk.push("BLOCKED"),
-                None => {}
-            }
+            let risk: Vec<&'static str> = vec!["UNLIMITED"];
             out.set_for_all.push(SetForAllApproval {
                 chain: chain.clone(),
                 collection: format!("{collection:#x}"),
                 operator: operator_lower,
                 risk,
-                spender_meta: meta,
             });
         }
     }
 
     for ((chain, token, spender), allowance) in &set.permit2 {
         let spender_lower = format!("{spender:#x}");
-        let meta = spenders.get(&spender_lower).cloned();
         let mut risk: Vec<&'static str> = Vec::new();
         if allowance.amount == simulation_state::primitives::U256::MAX {
             risk.push("UNLIMITED");
-        }
-        match meta.as_ref().map(|m| m.rep) {
-            Some(crate::spenders::SpenderRep::Known) => risk.push("KNOWN_VENUE"),
-            Some(crate::spenders::SpenderRep::Blocked) => risk.push("BLOCKED"),
-            None => {}
         }
         let exp = i64::try_from(allowance.expiration.as_unix()).unwrap_or(0);
         if exp > 0 && exp < now {
@@ -261,7 +233,6 @@ fn classify_approvals(
             expiration: exp,
             nonce: allowance.nonce,
             risk,
-            spender_meta: meta,
         });
     }
     out
@@ -634,20 +605,6 @@ pub async fn get_policy_templates() -> Response {
 pub async fn get_example_transactions() -> Response {
     static EXAMPLES: &str = include_str!("../static/example-transactions.json");
     static_json(EXAMPLES)
-}
-
-/// `GET /spenders/:addr` — known-contract reputation lookup. Returns
-/// 404 for addresses outside the catalog so callers can distinguish
-/// "unknown" from "explicitly blocked".
-pub async fn get_spender(State(state): State<AppState>, Path(addr): Path<String>) -> Response {
-    let Ok(parsed) = Address::from_str(&addr) else {
-        return (StatusCode::BAD_REQUEST, format!("invalid address `{addr}`")).into_response();
-    };
-    let lower = format!("{parsed:#x}");
-    match state.spenders.get(&lower) {
-        Some(meta) => Json(meta).into_response(),
-        None => (StatusCode::NOT_FOUND, "spender not in catalog").into_response(),
-    }
 }
 
 fn static_json(body: &'static str) -> Response {

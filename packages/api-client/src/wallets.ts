@@ -64,20 +64,16 @@ export async function getWalletApprovals(address: Address): Promise<unknown> {
   return request<unknown>(`/wallets/${address}/approvals`);
 }
 
+/** Server risk tags. KNOWN_VENUE / BLOCKED depended on the now-removed
+ *  spender label catalog; today the server emits UNLIMITED / OLD /
+ *  EXPIRED only. Kept in the union for forward-compat in case the
+ *  registry-driven catalog comes back. */
 export type ApprovalRisk =
   | "UNLIMITED"
   | "KNOWN_VENUE"
   | "BLOCKED"
   | "OLD"
   | "EXPIRED";
-
-export interface SpenderMetaInline {
-  addr: Address;
-  label: string;
-  rep: "known" | "blocked";
-  chain?: string;
-  notes?: string;
-}
 
 export interface ClassifiedErc20Approval {
   chain: ChainId;
@@ -87,7 +83,6 @@ export interface ClassifiedErc20Approval {
   is_unlimited: boolean;
   last_set_at: number;
   risk: ApprovalRisk[];
-  spender_meta?: SpenderMetaInline;
 }
 
 export interface ClassifiedSetForAllApproval {
@@ -95,7 +90,6 @@ export interface ClassifiedSetForAllApproval {
   collection: Address;
   operator: Address;
   risk: ApprovalRisk[];
-  spender_meta?: SpenderMetaInline;
 }
 
 export interface ClassifiedPermit2Approval {
@@ -106,7 +100,6 @@ export interface ClassifiedPermit2Approval {
   expiration: number;
   nonce: number;
   risk: ApprovalRisk[];
-  spender_meta?: SpenderMetaInline;
 }
 
 export interface ClassifiedApprovals {

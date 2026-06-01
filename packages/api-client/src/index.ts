@@ -45,7 +45,6 @@ export {
   type ClassifiedErc20Approval,
   type ClassifiedSetForAllApproval,
   type ClassifiedPermit2Approval,
-  type SpenderMetaInline,
 } from "./wallets";
 
 // Phase 3 dashboard summary.

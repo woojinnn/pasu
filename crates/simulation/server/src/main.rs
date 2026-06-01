@@ -11,8 +11,6 @@
 //! - `SCOPEBALL_HOME` — overrides `~/.scopeball` (test / sandboxing).
 //! - `SCOPEBALL_SYNC_CONFIG` — path to the sync TOML (default
 //!   `./scopeball-sync.toml`). Required for any RPC/price fetching.
-//! - `SCOPEBALL_SPENDERS_CONFIG` — path to the spender reputation TOML
-//!   (default `./scopeball-spenders.toml`). Missing file = empty catalog.
 //! - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`,
 //!   `JWT_SECRET`, `DASHBOARD_URL` — auth config (see `.env.example`).
 //!
@@ -28,7 +26,6 @@ use tracing_subscriber::EnvFilter;
 use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::events::EventBus;
-use simulation_server::spenders::SpenderCatalog;
 use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
 
 /// Default bind address. Port `8788` deliberately differs from the legacy
@@ -39,9 +36,6 @@ const DEFAULT_ADDR: &str = "127.0.0.1:8788";
 /// Default sync config path. Lives next to the workspace root so the dev
 /// loop is one command (`cargo run -p simulation-server`).
 const DEFAULT_SYNC_CONFIG: &str = "./scopeball-sync.toml";
-
-/// Default spender catalog path.
-const DEFAULT_SPENDERS_CONFIG: &str = "./scopeball-spenders.toml";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -106,31 +100,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let coingecko = CoinGeckoClient::from_env();
     tracing::info!("CoinGecko token metadata client ready");
 
-    let spenders_path = std::env::var("SCOPEBALL_SPENDERS_CONFIG")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from(DEFAULT_SPENDERS_CONFIG));
-    let spenders = match SpenderCatalog::from_path(&spenders_path) {
-        Ok((cat, warnings)) => {
-            for w in &warnings {
-                tracing::warn!(path = %spenders_path.display(), warning = %w, "spender catalog row skipped");
-            }
-            tracing::info!(
-                path = %spenders_path.display(),
-                entries = cat.len(),
-                "loaded spender catalog"
-            );
-            cat
-        }
-        Err(e) => {
-            tracing::warn!(
-                path = %spenders_path.display(),
-                error = %e,
-                "spender catalog not loaded — /spenders/:addr will return 404 for every address"
-            );
-            SpenderCatalog::empty()
-        }
-    };
-
     let state = AppState {
         multi_user,
         global_db,
@@ -138,7 +107,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         orchestrator,
         etherscan,
         coingecko,
-        spenders,
     };
     let router = build_router(state);
 
