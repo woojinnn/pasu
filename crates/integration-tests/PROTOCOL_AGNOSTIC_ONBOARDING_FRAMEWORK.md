@@ -244,6 +244,7 @@ Audit bucket vocabulary:
 | `correct` | routed + shape + semantic assertions/projection pass | done |
 | `untested_semantic` | shape pass but no semantic oracle for critical fields | add `expect_body` or projection |
 | `mis_decoded` | semantic assertion/projection fails | fix manifest/Tier2/Tier3 |
+| `unknown_protocol_address` | known protocol selector hits an address outside the P0 universe/surface | reopen P0 universe, add cover/exclude/defer, then manifest/resolver if COVER |
 | `uncovered` | no mapper / Unknown where COVER expected | add manifest/wrapper |
 | `decode_error` | hard builder/serde/decode failure | fix ABI/emit/engine |
 | `excluded` | explicit non-user or out-of-scope | keep reason |
@@ -295,8 +296,8 @@ Every phase is evidence-gated. Before saying a phase is complete, update `crates
 
 | phase | cannot complete until |
 |---|---|
-| P0 research | Codex + Claude/sub-agent discovery, first-party disposition, token-surface inventory, surface artifact, and `check:surface` evidence are recorded |
-| P1 authoring | every COVER selector has ActionBody/Tier3 mapping, red-flag review, manifest/Tier3 artifact list, live_field/enrichment decision, and manifest validation evidence |
+| P0 research | Codex + Claude/sub-agent discovery, first-party disposition, pool/factory address universe disposition if applicable, token-surface inventory, surface artifact, and `check:surface` evidence are recorded |
+| P1 authoring | every COVER selector has ActionBody/Tier3 mapping, red-flag review, manifest/Tier3 artifact list, live_field/enrichment decision, remote method disposition, and manifest validation evidence |
 | P2 test corpus | synthetic fuzz/edge evidence and Etherscan+Dune real-tx evidence are recorded, or the exact external-data blocker is recorded |
 | P3 develop | all P2 gaps are bucketed, every fix maps back to a gap/selector/tx/seed, reruns are recorded, and remaining gaps have disposition |
 | P4 land | full landing gate outputs, staged file list, commit hash, remaining WARN/defer list, and no-auto-merge statement are recorded |
@@ -304,10 +305,10 @@ Every phase is evidence-gated. Before saying a phase is complete, update `crates
 Before any phase-complete claim, run:
 
 ```bash
-rg -n '^\|.*\|\s*(pending|todo|skipped)\s*\|' crates/integration-tests/onboarding/<protocol>/evidence.md
+cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- <protocol> --phase <p0|p1|p2|p3|p4|all>
 ```
 
-If this prints a mandatory row for the phase being claimed, the phase is incomplete. `blocked` is allowed only with a concrete blocker row and next action.
+If this fails for the phase being claimed, the phase is incomplete. `blocked` is allowed only with a concrete artifact and at least one concrete Blockers table row.
 
 ### Agent Orchestration
 
@@ -384,6 +385,44 @@ Dual-agent rule:
 3. Merge Codex ∪ Claude ∪ official deployment list ∪ secondary sweeps.
 4. Any Codex-only or Claude-only candidate is high-priority for 1st-source verification.
 5. LLM output never becomes ground truth. Only official deployment artifacts, verified ABI snapshots, and `check:surface` dispose candidates.
+
+### P0.1. Pool / Factory Address Universe
+
+Goal: pool-heavy protocols do not silently degrade into "representative pool"
+onboarding.
+
+This section is mandatory for protocols where users call many factory-created
+or registry-listed child contracts directly, including Curve, Balancer,
+Aerodrome, Uniswap V2-style pairs, lending vault factories, and similar
+pool/vault universes.
+
+Required artifacts:
+
+- address-universe source: official pool list, factory event range, on-chain
+  registry/address provider, verified deployment artifact, or Dune decoded
+  namespace query.
+- retrieval command/query and count.
+- disposition table: every candidate address is `cover`, `exclude`, or `defer`
+  with reason.
+- if only a subset is concretely covered, a batch boundary plus explicit
+  decision: manual concrete manifests now, protocol source resolver/generator
+  now, or deferred resolver/generator follow-up.
+
+Rules:
+
+- Do not let "covered pool" define the universe. Build the candidate universe
+  first, then decide cover/exclude/defer.
+- For exact callkey registries, every missing child address is a production miss
+  even when the selector and ABI are already supported.
+- If the protocol has thousands of pools, batching is allowed only with an
+  explicit boundary such as chain, factory, creation block range, official list
+  page, TVL cutoff, or product family. "Top pools" without a reproducible source
+  and deferred remainder is not a complete P0.
+- If a generated/source resolver can safely enumerate the universe, prefer it
+  over hand-maintaining large `chain_to_addresses` arrays. If not implemented,
+  record why manual concrete coverage is acceptable for the batch.
+- Unknown to-addresses observed later with known protocol selectors are P0/P2
+  hard gaps, not ordinary low-traffic misses.
 
 ### P0.5. Token Inventory
 
@@ -470,6 +509,10 @@ Required notes in every non-trivial manifest:
 - any skipped side effect
 - any static `$resolved` or `$derived` assumption
 - live input defer reason if `live_inputs` is empty but user readability is not obvious
+- required remote policy-RPC/live/enrichment methods, with one disposition:
+  local handler exists, configured endpoint was tested, or explicit blocker.
+  The old in-repo Node `policy-rpc/` service no longer exists, so catalog
+  presence alone is not evidence that a remote method will work.
 
 ### P2. Semantic Oracle Assignment
 
@@ -520,10 +563,16 @@ Real-tx floor:
 1. Etherscan API/MCP is the bulk lane. One `txlist` API call currently can return up to 10,000 tx, so the default target is **10,000 tx/protocol**, not 10,000 API calls. Re-check the current Etherscan docs before each onboarding; Free tier record limits are scheduled to drop to 1,000/request on 2026-07-01.
 2. Use `.env` `ETHERSCAN_API_KEY`; daily 100,000-call capacity is a safety budget, not a spending target.
 3. Fetch adapter-blind by P0 cover addresses, stratified by selector and block range. Do not choose txs by existing manifests.
+   For pool-heavy/factory protocols, also sweep the P0 candidate/universe
+   addresses or run selector/address stats over the whole universe. Do not limit
+   real-tx sampling to the subset already selected for concrete manifests.
 4. Every COVER selector should have real tx sample >= 1, or an explicit low-traffic/absent note.
-5. Dune MCP/API is the gap lane for Free-tier Etherscan txlist gaps such as Base/OP, decoded namespaces, selector stats, and cross-chain joins. Before relying on it, run MCP calibration: usage baseline, LIMIT 100/1000/5000 probe, partition WHERE, credit delta log.
-6. If Etherscan or Dune is unavailable, do not mark P2 real-tx complete. Record `blocked_external_data`, completed synthetic/golden scope, and the addresses/selectors to replay once the tool is connected.
-7. Commit only dedup representative corpus/golden entries; keep raw 10k+ dumps out of git.
+5. If a tx uses a known protocol selector against an address absent from the
+   P0 universe/surface/registry, bucket it as `unknown_protocol_address` and
+   return to P0/P1. Do not hide it as a generic `no_declarative_v3_mapper`.
+6. Dune MCP/API is the gap lane for Free-tier Etherscan txlist gaps such as Base/OP, decoded namespaces, selector stats, and cross-chain joins. Before relying on it, run MCP calibration: usage baseline, LIMIT 100/1000/5000 probe, partition WHERE, credit delta log.
+7. If Etherscan or Dune is unavailable, do not mark P2 real-tx complete. Record `blocked_external_data`, completed synthetic/golden scope, and the addresses/selectors to replay once the tool is connected.
+8. Commit only dedup representative corpus/golden entries; keep raw 10k+ dumps out of git.
 
 Tool connection hints: Etherscan remote MCP is `https://mcp.etherscan.io/mcp` with bearer-token auth from `ETHERSCAN_API_KEY`. Dune remote MCP is `https://api.dune.com/mcp/v1` with OAuth or API-key auth. Never commit keys or raw external dumps.
 
@@ -564,10 +613,11 @@ uncovered          -> author manifest or mark EXCLUDE with reason
 decode_error       -> fix abi_fragment, strategy, placeholder, or Tier2 builder
 mis_decoded        -> fix emit mapping, resolver, derivation, or ActionBody schema
 untested_semantic  -> add expect_body/projection/field-level golden
+unknown_protocol_address -> reopen P0 universe and cover/exclude/defer address
 excluded           -> keep if reason still valid against primary source
 ```
 
-No protocol moves to done while any COVER selector is `uncovered`, `decode_error`, `mis_decoded`, or `untested_semantic`.
+No protocol moves to done while any COVER selector is `uncovered`, `decode_error`, `mis_decoded`, `untested_semantic`, or `unknown_protocol_address`.
 
 ### P4. Landing Gate
 
@@ -591,6 +641,7 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- fuzz --iteratio
 cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus
 cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --nocapture
 cargo test --workspace
+cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- <protocol> --phase all
 ```
 
 If Tier 2/Tier 3/WASM-facing code changed:
@@ -603,6 +654,10 @@ Current product-path caveats to check explicitly:
 
 - EIP-712 typed-data manifests can pass registry/WASM/harness tests while browser orchestration may still mark typed signatures as not routed. Treat typed-data support as harness-proven, product-unproven unless the extension route is exercised.
 - Native-transfer sentinel `0x00000000` is valid in WASM/harness corpus, but selector-less calldata can miss earlier in the extension TypeScript route. Do not claim production native-transfer support without checking that boundary.
+- Required remote policy-RPC/live/enrichment methods fail closed when no
+  endpoint supplies them. The standalone Node `policy-rpc/` package has been
+  removed from this worktree; do not claim those methods are production-ready
+  unless a local handler or configured endpoint was tested.
 
 Completion evidence must include:
 
@@ -612,13 +667,14 @@ Completion evidence must include:
 - gate output
 - remaining WARNs, if any, explicitly scoped outside the protocol or justified
 - any deferred selector/action with reason and issue/follow-up
-- P0 Claude Code/sub-agent command or agent id, output summary, union/diff disposition, and first-party verification result
-- P1 authoring evidence: per-COVER selector ActionBody/Tier3 mapping, permission/fund-movement red-flag review, manifest file list, live_field/enrichment decision, Tier3 downstream artifact list if applicable, `check:manifest` output
+- P0 Claude Code/sub-agent command or agent id, output summary, union/diff disposition, first-party verification result, and pool/factory address-universe disposition if applicable
+- P1 authoring evidence: per-COVER selector ActionBody/Tier3 mapping, permission/fund-movement red-flag review, manifest file list, live_field/enrichment decision, required remote method disposition, Tier3 downstream artifact list if applicable, `check:manifest` output
 - P2 synthetic evidence: fuzz seed/iteration command, fixed edge matrix, pass/error corpus disposition
-- P2 Etherscan evidence: txlist command/query, api call count, raw tx count, unique selector count, per-COVER-selector real tx coverage
-- P2 Dune evidence: usage baseline, query id/SQL summary with partition WHERE, rows returned, credit cost or usage delta, selected tx hashes
+- P2 Etherscan evidence: txlist command/query, api call count, raw tx count, unique selector count, per-COVER-selector real tx coverage, pool/factory candidate-universe sweep if applicable
+- P2 Dune evidence: usage baseline, query id/SQL summary with partition WHERE, rows returned, credit cost or usage delta, selected tx hashes, selector/address stats for pool-heavy gaps if applicable
 - P3 develop evidence: gap buckets, fix-to-gap mapping, rerun output, corpus `expect` flips/exclusions, remaining defer/blocker disposition
 - P4 land evidence: `registryV2 npm run build`, build-index vitest, `check:manifest`, `check:surface`, v3-harness coverage/fuzz/corpus, workspace test output, wasm/fmt/clippy/typecheck outputs where applicable, staged file list, commit hash
+- check-onboarding-evidence `--phase all` pass output
 - explicit statement that no base/worktree merge was performed unless the user requested it
 - explicit `blocked_external_data` entry if Etherscan/Dune/Claude Code could not be used
 

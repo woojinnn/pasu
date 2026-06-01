@@ -168,7 +168,7 @@ raw Tx { chain, to, selector, calldata, value }
 5. **중요 구간은 Claude Code 2nd-opinion 을 쓴다.** P0 contract/token discovery 는 필수. 그 외에도 (a) 새 domain/action/live_field 를 추가하는 Tier3 설계, (b) 권한 grant·fund movement selector 매핑, (c) P2 synthetic edge-case 설계, (d) P2 real-tx corpus verdict 분류, (e) 반복되는 hard decoder gap 의 root-cause triage 는 Claude Code 또는 독립 sub-agent 에 같은 입력을 주고 결과를 합친다.
 6. **sub-agent 프롬프트는 self-contained·디테일하게.** sub-agent 는 **이 세션의 컨텍스트가 없다** → 프롬프트에 (a) repo·branch·cwd·worktree 경로 (b) 현재 목표/phase 와 non-goal (c) 읽을 인스트럭션 문서 (d) 정확한 대상 파일·심볼·좌표 + **미러할 기존 선례**(예: "`lending::supply` 전 경로 복제") (e) 정확한 산출물·출력 포맷·통과할 게이트 (f) 가드레일(explicit-stage·1차출처·무관 churn 금지·수정 권한 범위)을 **전부 embed**. 면밀할수록 rework 가 준다(fresh-PC self-contained 원칙과 동형).
 7. **sub-agent 결과는 candidate-only 다.** 메인 세션이 반드시 (a) 실제 코드/문서/1차 출처와 대조, (b) Codex 결과와 sub-agent 결과의 diff 정리, (c) 불일치 항목의 disposition(accept/drop/defer + 이유), (d) build/test gate 로 검증을 수행한다. sub-agent 산출물을 검증 없이 복사하거나 커밋하지 않는다.
-8. **증거 ledger 없으면 완료가 아니다.** `crates/integration-tests/ONBOARDING_EVIDENCE_TEMPLATE.md` 를 `crates/integration-tests/onboarding/<protocol>/evidence.md` 로 복사해 채운다. P0/P1/P2/P3/P4 각 mandatory row 가 `done` 또는 구체적 `blocked` 가 아니면 해당 phase 를 완료로 말하지 않는다. 완료 선언 전 `rg -n '^\|.*\|\s*(pending|todo|skipped)\s*\|' crates/integration-tests/onboarding/<protocol>/evidence.md` 를 실행해 대상 phase pending row 가 없어야 한다. 사용자가 "했냐?"라고 물었을 때 "안 했습니다"가 아니라, ledger 의 명령·결과·카운트·blocker 로 답해야 한다.
+8. **증거 ledger 없으면 완료가 아니다.** `crates/integration-tests/ONBOARDING_EVIDENCE_TEMPLATE.md` 를 `crates/integration-tests/onboarding/<protocol>/evidence.md` 로 복사해 채운다. P0/P1/P2/P3/P4 각 mandatory row 가 `done` 또는 구체적 `blocked` 가 아니면 해당 phase 를 완료로 말하지 않는다. 완료 선언 전 `cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- <protocol> --phase <p0|p1|p2|p3|p4|all>` 을 실행해 대상 phase gate 가 PASS 해야 한다. 사용자가 "했냐?"라고 물었을 때 "안 했습니다"가 아니라, ledger 의 명령·결과·카운트·blocker 로 답해야 한다.
 
 ### 2.1a 외부 데이터 도구 요구사항 (P2 real-tx)
 
@@ -191,19 +191,19 @@ P2 real-tx 는 실제 on-chain corpus 로 검증하는 단계라서 로컬 코�
 
 | phase | 완료 전 필수 증거 |
 |---|---|
-| P0 research | Claude Code/sub-agent exact command or agent id, result summary, Codex-only candidates, Claude-only candidates, dropped-unverified candidates, final first-party disposition, `check:surface` output |
-| P1 author | per-COVER selector ActionBody/Tier3 mapping, permission/fund-movement red-flag review, manifest file list, enrichment/live_field decision, Tier3 downstream files/tests if applicable, `check:manifest` or protocol-filtered validate output |
+| P0 research | Claude Code/sub-agent exact command or agent id, result summary, Codex-only candidates, Claude-only candidates, dropped-unverified candidates, final first-party disposition, pool/factory address-universe source/query/count + cover/exclude/defer disposition if applicable, `check:surface` output |
+| P1 author | per-COVER selector ActionBody/Tier3 mapping, permission/fund-movement red-flag review, manifest file list, enrichment/live_field decision, required remote policy-RPC/live/enrichment method local-handler/configured-endpoint/blocker disposition, Tier3 downstream files/tests if applicable, `check:manifest` or protocol-filtered validate output |
 | P2 synthetic | fuzz seed/iteration command, fixed edge matrix, pass/error corpus disposition |
-| P2 real-tx Etherscan | MCP/API availability, adapter-blind txlist command/query, api_calls_used, raw_txs_seen, unique_selectors_seen, per-COVER-selector sample coverage, representative corpus/golden disposition |
-| P2 real-tx Dune | MCP/API availability, usage baseline, query id/SQL summary with partition WHERE, rows returned, executionCostCredits or usage delta, selected tx hashes or explicit blocker |
-| P3 develop | every gap bucketed, each fix tied to gap id/selector/tx/seed, P2 rerun output after fix, corpus expect flips/exclusions justified, remaining gaps dispositioned |
-| P4 final | exact changed files, build-index vitest/check:manifest/check:surface/v3-harness/cargo/wasm/fmt-clippy-typecheck outputs as applicable, staged file list, commit hash, remaining WARNs, explicit deferred selectors/actions with reason, no merge unless user requested |
+| P2 real-tx Etherscan | MCP/API availability, adapter-blind txlist command/query, api_calls_used, raw_txs_seen, unique_selectors_seen, per-COVER-selector sample coverage, pool/factory candidate-universe sweep if applicable, unknown_protocol_address gaps, representative corpus/golden disposition |
+| P2 real-tx Dune | MCP/API availability, usage baseline, query id/SQL summary with partition WHERE, rows returned, executionCostCredits or usage delta, selected tx hashes or explicit blocker; for pool-heavy/factory protocols, Dune selector/address stats over candidate universe when Etherscan cannot cover it |
+| P3 develop | every gap bucketed including unknown_protocol_address, each fix tied to gap id/selector/tx/seed, P2 rerun output after fix, corpus expect flips/exclusions justified, remaining gaps dispositioned |
+| P4 final | exact changed files, build-index vitest/check:manifest/check:surface/v3-harness/cargo/wasm/fmt-clippy-typecheck outputs as applicable, `check-onboarding-evidence --phase all` pass output, staged file list, commit hash, remaining WARNs, explicit deferred selectors/actions with reason, no merge unless user requested |
 
 ### 2.2 sub-agent / Claude Code orchestration
 
 | phase | 분할하기 좋은 작업 | 독립 검토/병합 규칙 |
 |---|---|---|
-| P0 contract | contract/deployment discovery, ABI/surface snapshot, coverage triage | Codex ∪ Claude ∪ 공식 deploy list 를 합친 뒤 1차 출처 + `check:surface` 로 dispose |
+| P0 contract | contract/deployment discovery, pool/factory address-universe discovery, ABI/surface snapshot, coverage triage | Codex ∪ Claude ∪ 공식 deploy/pool list 를 합친 뒤 1차 출처 + `check:surface` 로 dispose. pool-heavy 프로토콜은 universe 를 먼저 닫고 그 뒤 cover/exclude/defer |
 | P0 token | LP/share/receipt/debt/governance/base token inventory, underlying ref 확인 | `crates/integration-tests/TOKEN_INVENTORY_GUIDE.md` 기준. token JSON 은 ERC 표준 callkey 입력이므로 누락 후보를 P2 token tx miss 와 대조 |
 | P1 selector | selector batch 별 ActionBody mapping, manifest emit, permission red-flag scan | 권한 grant/fund movement 는 Claude Code 2nd-opinion 권장. mapping 이유와 skipped side-effect 를 manifest note 로 남김 |
 | P1 Tier3 | 새 action/domain/live_field 설계, lowering_v2, cedarschema, schema registration | 구현 전 독립 설계 리뷰. `ActionBody → lowering_v2 → cedarschema` 필드명/타입/action uid diff 를 반드시 검증 |
@@ -665,6 +665,8 @@ cargo test -p policy-engine-integration-tests --test v3_decode_harness -- --noca
 # CLI 빌드(병렬 build-lock 회피 시 prebuilt 직접 호출):
 cargo build -p policy-engine-integration-tests --bin v3-harness
 #   → target/debug/v3-harness <sub>
+cargo build -p policy-engine-integration-tests --bin check-onboarding-evidence
+#   → target/debug/check-onboarding-evidence <protocol> --phase all
 ```
 
 **CLI 서브커맨드** (`src/bin/v3_harness.rs`):
@@ -676,6 +678,13 @@ v3-harness corpus [--root DIR]                              # 실거래 corpus r
 v3-harness import-etherscan|import-dune|import <export.json> [--chain N] [--out PATH]  # parse-only
 ```
 seed 기본 `0x5C09EBA1`. corpus root 기본 `data/golden/v3-decode/`.
+
+**Evidence gate CLI** (`src/bin/check_onboarding_evidence.rs`):
+```bash
+check-onboarding-evidence <protocol> [--phase all|p0|p1|p2|p3|p4]
+check-onboarding-evidence --path <evidence.md> [--phase all|p0|p1|p2|p3|p4]
+```
+`done`/`blocked` 만 phase row status 로 허용한다. 둘 다 artifact/summary cell 이 필요하고, `blocked` row 가 있으면 Blockers table 의 concrete row 도 필요하다.
 
 **입력 DTO** (`dto.rs:198-227`, `DeclarativeRouteRequestV3InputDto`):
 ```jsonc

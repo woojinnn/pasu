@@ -33,3 +33,7 @@ walkdir = "2"
 [[bin]]
 name = "v3-harness"
 path = "src/bin/v3_harness.rs"
+
+[[bin]]
+name = "check-onboarding-evidence"
+path = "src/bin/check_onboarding_evidence.rs"

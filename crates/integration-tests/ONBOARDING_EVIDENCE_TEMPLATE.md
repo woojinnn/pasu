@@ -25,6 +25,9 @@
 | Claude/sub-agent-only candidates listed | pending | |
 | dropped-unverified candidates listed with reason | pending | |
 | final contract inventory verified against first-party sources | pending | |
+| pool-heavy/factory protocol address universe source/query/count recorded, or explicitly not applicable | pending | |
+| every pool/factory child address in universe dispositioned as cover/exclude/defer with reason and batch boundary | pending | |
+| concrete manifest vs protocol source resolver/generator strategy decided for pool universe | pending | |
 | token-surface inventory completed or explicitly scoped out | pending | |
 | `registryV2/surface/<protocol>/_deployments.json` updated if applicable | pending | |
 | `npm run check:surface` output recorded | pending | |
@@ -37,6 +40,7 @@
 | permission/fund-movement/red-flag selector review recorded | pending | |
 | manifest files added/changed listed | pending | |
 | enrichment/live_field decision recorded for every COVER action | pending | |
+| required remote policy-RPC/live/enrichment methods have local handler, configured endpoint test, or explicit blocker | pending | |
 | Tier3 not needed or full Tier3 downstream contract completed | pending | |
 | Tier3 files listed if applicable: ActionBody/effect/view/sync/lowering_v2/cedarschema/schema registration/conformance test | pending | |
 | `npm run check:manifest` or protocol-filtered validate output recorded | pending | |
@@ -61,6 +65,8 @@
 | Etherscan `raw_txs_seen` recorded | pending | |
 | Etherscan `unique_selectors_seen` recorded | pending | |
 | Etherscan real tx coverage per COVER selector recorded | pending | |
+| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | pending | |
+| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | pending | |
 | Dune MCP/API availability checked | pending | |
 | Dune usage baseline recorded | pending | |
 | Dune calibration/query executed with partition WHERE or explicitly blocked | pending | |
@@ -72,7 +78,7 @@
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| all P2 hard/soft/misdecoded/excluded gaps bucketed | pending | |
+| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | pending | |
 | each fix tied to a gap id, selector, tx hash, or synthetic seed | pending | |
 | manifest/decoder/Tier3/harness change list recorded | pending | |
 | P2 rerun after fixes recorded | pending | |
@@ -105,4 +111,8 @@ If a mandatory item cannot be completed, write `blocked` rather than `done`.
 
 ## Final Completion Claim
 
-Do not write "onboarding complete" unless every mandatory P0/P1/P2/P3/P4 row is `done` or has a concrete, user-visible `blocked` disposition.
+Do not write "onboarding complete" unless every mandatory P0/P1/P2/P3/P4 row is `done` or has a concrete, user-visible `blocked` disposition and this command passes:
+
+```bash
+cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- <protocol> --phase all
+```

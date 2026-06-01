@@ -28,8 +28,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  · **증거 없으면 완료 아님** — `crates/integration-tests/ONBOARDING_EVIDENCE_TEMPLATE.md` 를
    `crates/integration-tests/onboarding/<PROTOCOL>/evidence.md` 로 복사해 채운다. P0/P1/P2/P3/P4 각 행이
    `done` 또는 구체적 `blocked` 가 아니면 phase/온보딩 완료 선언 금지.
-   phase 완료 선언 전 `rg -n '^\|.*\|\s*(pending|todo|skipped)\s*\|' crates/integration-tests/onboarding/<PROTOCOL>/evidence.md`
-   를 실행하고, 대상 phase 의 mandatory row 가 출력되면 incomplete 로 남긴다.
+   phase 완료 선언 전 `cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- <PROTOCOL> --phase <p0|p1|p2|p3|p4|all>`
+   를 실행하고, 실패하면 incomplete 로 남긴다.
    사용자가 나중에 "Claude Code에 시켰냐?", "Etherscan/Dune real tx 돌렸냐?"라고 물었을 때
    evidence.md 의 명령·결과·카운트로 답할 수 있어야 한다. 못 했으면 사과하지 말고 incomplete/blocked 로 남기고 계속 처리.
  · P2 real-tx 시작 전 외부 데이터 lane 연결 확인:
@@ -70,14 +70,19 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     만들거나 직접 다루면 TOKEN_INVENTORY_GUIDE.md 기준으로
     registryV2/tokens/<chain>/<addr>.json 등록/보강. Curve 같은 pool-heavy 프로토콜은
     covered pool 의 LP token + underlyings 를 포함하고, long-tail 제외분은 P0 로그에 명시.
+    factory/pool-heavy 프로토콜은 먼저 공식 pool list/factory/registry/Dune decoded stats 로
+    address universe 를 만들고 source/query/count 를 기록한다. universe 의 모든 pool/factory child 주소는
+    cover/exclude/defer 로 disposition 해야 하며, 일부만 concrete 로 커버할 경우 batch boundary 와
+    concrete manifest vs protocol source resolver/generator 결정을 evidence.md 에 남긴다.
     P0 를 완료했다고 말하기 전 evidence.md 에 Claude/sub-agent 명령, 결과 요약, Codex-only/Claude-only/dropped
-    후보, 1차출처 검증 disposition, check:surface 출력이 기록되어 있어야 한다.
+    후보, 1차출처 검증 disposition, pool universe disposition(해당 시), check:surface 출력이 기록되어 있어야 한다.
  P1 함수마다 schema(§4a)→manifest(§4b)→engine(§4c)→enrich(§4d: 추상 단위면 환산 live_field).
     Tier3 필요 시 ActionBody + effect/view/sync + lowering_v2 + cedarschema +
     schema registration + conformance test 를 먼저 완성한 뒤 manifest 작성.
     npm run check:manifest.
     P1 완료 전 evidence.md 에 COVER selector→ActionBody/Tier3 mapping, permission/fund-move red-flag review,
-    manifest 파일 목록, live_field/enrichment 결정, Tier3 downstream 산출물(해당 시), check:manifest 출력 기록.
+    manifest 파일 목록, live_field/enrichment 결정, required remote policy-RPC/live/enrichment method 의
+    local handler/configured endpoint test/blocker, Tier3 downstream 산출물(해당 시), check:manifest 출력 기록.
  P2 synthetic fuzz(random 5000+ fixed seed) + hand edge synthesis(permission/value/nested/array/opcode)
     + Etherscan API/MCP bulk 최소 10,000 tx/protocol(10,000 API call 아님; 현재 txlist 최대 10k tx/call,
       2026-07-01 이후 Free tier 는 1k/request 예정이라 현재 docs 재확인)
@@ -85,13 +90,16 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     Etherscan/Dune 연결 없으면 P2 real-tx complete 선언 금지 — blocked_external_data 와 재실행 대상 기록.
     P2 real-tx 를 완료했다고 말하기 전 evidence.md 에 Etherscan api_calls/raw_txs/unique_selectors/selector coverage,
     Dune usage baseline/query/rows/credit delta/selected tx hashes 가 기록되어 있어야 한다.
+    pool-heavy/factory 프로토콜은 selected cover 주소만이 아니라 P0 candidate/universe 주소도 sweep 한다.
+    known protocol selector 로 보이는데 to-address 가 registry/surface 에 없으면 P0/P2 hard gap 으로 버킷팅한다.
     §5d 소스별 하한 준수. semantic-critical 필드는
     PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK 기준으로 expect_body 또는 field-level golden 으로 pin
     (projection 은 하니스 구현 후 사용).
- P3 gap 분류→manifest/decoder/harness 처치→회귀(§6).
+ P3 gap 분류(`unknown_protocol_address` 포함)→manifest/decoder/harness/P0 universe 처치→회귀(§6).
  P4 build-index → registryV2 build-index vitest → check:manifest → check:surface →
     v3-harness coverage/fuzz/corpus → cargo test --workspace 0 fail →
-    wasm-build → clippy/fmt(변경 crate) → explicit-stage 커밋.
+    wasm-build → clippy/fmt(변경 crate) → check-onboarding-evidence --phase all →
+    explicit-stage 커밋.
     P3/P4 완료 전 evidence.md 에 gap bucket, fix↔gap mapping, rerun 결과, corpus expect flip/disposition,
     모든 land gate 출력, staged file list, commit hash, 남은 WARN/defer 를 기록.
 

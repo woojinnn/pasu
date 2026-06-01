@@ -190,12 +190,15 @@ Current build-index enforcement is intentionally shallow: it validates JSON obje
 For Curve onboarding, research and register:
 
 - CRV and crvUSD when in chain scope
+- Curve pool address universe first: official pool list/factory/registry/Dune
+  decoded stats source, retrieval query/command, count, and cover/exclude/defer
+  disposition. Do not let "covered pool" define the universe.
 - every covered pool's LP token/pool token
 - every covered pool's underlying coins
 - gauge/stake/Convex-style receipt tokens when the onboarding scope includes user-held staking/gauge flows
 - long-tail pool exclusions or deferred batches in the P0 log
 
-Curve pool contracts are often ERC20 LP tokens themselves. Treat them like Compound cTokens at the inventory level: user-held protocol-issued share/receipt contracts must be in the token registry so ERC standard calls can route.
+Curve pool contracts are often ERC20 LP tokens themselves. Treat them like Compound cTokens at the inventory level: user-held protocol-issued share/receipt contracts must be in the token registry so ERC standard calls can route. Missing pool addresses are also missing standard ERC callkeys, because the registry resolves exact `(chainId, to, selector)` entries.
 
 ## Validation
 
