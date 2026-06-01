@@ -46,6 +46,8 @@ time = { version = "0.3", default-features = false, features = ["std"] }
 # Loads `.env` at startup so OAuth/JWT config doesn't need to be exported
 # manually in every dev shell.
 dotenvy = "0.15"
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
 tempfile = "3"

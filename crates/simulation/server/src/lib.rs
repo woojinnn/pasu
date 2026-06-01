@@ -53,6 +53,7 @@
 pub mod app;
 pub mod auth;
 pub mod config;
+pub mod coordination;
 pub mod dashboard_handlers;
 pub mod db_store;
 pub mod docs;
