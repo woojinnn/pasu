@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x35fa164735182de50811e8e2e824cfb9b6118ac2",
+  "symbol": "eETH",
+  "decimals": 18,
+  "name": "ether.fi ETH",
+  "source": "https://etherscan.io/token/0x35fa164735182de50811e8e2e824cfb9b6118ac2",
+  "token_kind": {
+    "kind": "wrapped",
+    "underlying": {
+      "key": { "standard": "native", "chain": "eip155:1" }
+    },
+    "peg_kind": "rebasing"
+  }
+}

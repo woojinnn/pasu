@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbd3f9814eb946e617f1d774a6762cdbec0bf087a",
+  "symbol": "liUSD-13w",
+  "decimals": 18,
+  "name": "Locked iUSD - 13 weeks",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

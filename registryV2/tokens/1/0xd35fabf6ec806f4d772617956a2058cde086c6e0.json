@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd35fabf6ec806f4d772617956a2058cde086c6e0",
+  "symbol": "crvIncbETH",
+  "decimals": 18,
+  "name": "IncbETH/cbETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd35fabf6ec806f4d772617956a2058cde086c6e0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbf19eead55a6b100667f04f8fbc5371e03e8ab2e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbe9895146f7af43049ca1c1ae358b0541ea49704"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x06ac09ca29369e2483533eb68dfe0a4d4143543d",
+  "symbol": "JPTXJPYMWK",
+  "decimals": 18,
+  "name": "CJPY/TXJP/YMWK",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x06ac09ca29369e2483533eb68dfe0a4d4143543d"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1cfa5641c01406ab8ac350ded7d735ec41298372"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x961dd84059505d59f82ce4fb87d3c09bec65301d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x15dac05c93e1c5f31a29547340997ba9f6ec4f87"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

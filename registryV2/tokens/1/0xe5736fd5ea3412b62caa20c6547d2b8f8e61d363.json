@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe5736fd5ea3412b62caa20c6547d2b8f8e61d363",
+  "symbol": "cbdETH",
+  "decimals": 18,
+  "name": "Curve Bonds DAO ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

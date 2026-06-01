@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc8dc874fb5a5a310830bdd8b22b1485ac1cd4c64",
+  "symbol": "weth-usdt",
+  "decimals": 18,
+  "name": "WETH/USDT Curve StableNG",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc8dc874fb5a5a310830bdd8b22b1485ac1cd4c64"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

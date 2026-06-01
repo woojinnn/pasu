@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x26c358f7c5fedb20a6ddef108cd91efb6b8da0cb",
+  "symbol": "USDSM",
+  "decimals": 18,
+  "name": "USDSM",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xde495223f7cd7ee0cde1addbd6836046bbdf3ad3",
+  "symbol": "USDS3CRV3CRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory USD Metapool: USDS/3CRV",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xde495223f7cd7ee0cde1addbd6836046bbdf3ad3"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x45fdb1b92a649fb6a64ef1511d3ba5bf60044838"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6c3f90f043a72fa612cbac8115ee7e52bde6e490"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

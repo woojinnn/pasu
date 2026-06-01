@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x571815bf910147ba02c4c5cb71689f98ba44b45a",
+  "symbol": "cbBTCPUSSY",
+  "decimals": 18,
+  "name": "CoinBaseBitCoin/PussyFinancial",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x571815bf910147ba02c4c5cb71689f98ba44b45a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x839aed139f6364b16cc519fc3c2aa6030e067beb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

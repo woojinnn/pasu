@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x000000096cb3d4007fc2b79b935c4540c5c2d745",
+  "symbol": "jUSD",
+  "decimals": 18,
+  "name": "Jigsaw USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

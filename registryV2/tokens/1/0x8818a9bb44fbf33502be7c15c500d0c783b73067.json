@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8818a9bb44fbf33502be7c15c500d0c783b73067",
+  "symbol": "ibJPY+sJPY-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: ibJPY/sJPY",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8818a9bb44fbf33502be7c15c500d0c783b73067"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5555f75e3d5278082200fb451d1b6ba946d8e13b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf6b1c627e95bfc3c1b4c9b825a032ff0fbf3e07d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

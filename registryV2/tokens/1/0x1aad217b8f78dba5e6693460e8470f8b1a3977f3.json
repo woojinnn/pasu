@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1aad217b8f78dba5e6693460e8470f8b1a3977f3",
+  "symbol": "STRCx",
+  "decimals": 18,
+  "name": "Strategy PP Variable xStock",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

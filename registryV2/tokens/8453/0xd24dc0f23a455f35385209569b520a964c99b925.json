@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd24dc0f23a455f35385209569b520a964c99b925",
+  "symbol": "GLcbEthL3",
+  "decimals": 18,
+  "name": "gazelle&lion/cbETH/Lionz0.8,3",
+  "source": "https://api.curve.fi/api/getPools/base/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xd24dc0f23a455f35385209569b520a964c99b925"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x7d09eccd9b9172c855a07eb1ab5edb44c62de394"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x0923fca6975f9e688a7c0d58d8e2afd1376fc552"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

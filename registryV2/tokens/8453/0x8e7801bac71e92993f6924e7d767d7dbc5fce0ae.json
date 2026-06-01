@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8e7801bac71e92993f6924e7d767d7dbc5fce0ae",
+  "symbol": "sdSPECTRA",
+  "decimals": 18,
+  "name": "Stake DAO SPECTRA",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,15 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x236aa50979d5f3de3bd1eeb40e81137f22ab794b",
+  "symbol": "tBTC",
+  "decimals": 18,
+  "name": "Base tBTC v2",
+  "source": "https://basescan.org/token/0x236aa50979d5f3de3bd1eeb40e81137f22ab794b",
+  "token_kind": {
+    "kind": "base",
+    "category": {
+      "kind": "volatile"
+    }
+  }
+}

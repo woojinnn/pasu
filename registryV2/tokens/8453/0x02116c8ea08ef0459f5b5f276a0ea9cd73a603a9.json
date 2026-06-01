@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x02116c8ea08ef0459f5b5f276a0ea9cd73a603a9",
+  "symbol": "XAGBTC",
+  "decimals": 18,
+  "name": "Silver / cbBTC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x02116c8ea08ef0459f5b5f276a0ea9cd73a603a9"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x272af4cbbeab7c9d57959768658938816db5068b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

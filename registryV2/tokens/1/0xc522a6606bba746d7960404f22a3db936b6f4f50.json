@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc522a6606bba746d7960404f22a3db936b6f4f50",
+  "symbol": "reusdscrv",
+  "decimals": 18,
+  "name": "reUSD/scrvUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc522a6606bba746d7960404f22a3db936b6f4f50"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x57ab1e0003f623289cd798b1824be09a793e4bec"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0655977feb2f289a4ab78af67bab0d17aab84367"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

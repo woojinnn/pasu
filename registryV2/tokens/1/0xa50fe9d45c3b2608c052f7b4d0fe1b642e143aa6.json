@@ -1,0 +1,60 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa50fe9d45c3b2608c052f7b4d0fe1b642e143aa6",
+  "symbol": "trenSTETH",
+  "decimals": 18,
+  "name": "Total Rewards Enhanced stETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xa50fe9d45c3b2608c052f7b4d0fe1b642e143aa6"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbeef69ac7870777598a04b2bd4771c71212e6abc"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x84631c0d0081fde56deb72f6de77abbbf6a9f93a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5fd13359ba15a84b76f7f87568309040176167cd"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7a4effd87c2f3c55ca251080b1343b605f327e3a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

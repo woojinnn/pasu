@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xc4fc8cf76883094404ddb875d2af15d1f5aa8053",
-  "symbol": "IMX",
-  "decimals": 18,
-  "name": "Immutable X"
-}

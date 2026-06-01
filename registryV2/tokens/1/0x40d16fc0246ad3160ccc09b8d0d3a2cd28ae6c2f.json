@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f",
+  "symbol": "GHO",
+  "decimals": 18,
+  "name": "Gho Token",
+  "source": "https://etherscan.io/token/0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

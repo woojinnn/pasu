@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa8544ac03917a5483359685adf59af09d19b24c5",
+  "symbol": "CoinMarket",
+  "decimals": 18,
+  "name": "CMC/ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xa8544ac03917a5483359685adf59af09d19b24c5"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x739ac509a1c83f1a481a67a07c7a9ad5ad9543fd"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

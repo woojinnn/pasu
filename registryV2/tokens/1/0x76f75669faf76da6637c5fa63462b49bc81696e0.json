@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x76f75669faf76da6637c5fa63462b49bc81696e0",
+  "symbol": "cvxprismLP",
+  "decimals": 18,
+  "name": "cvxPrisma/Prisma",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x76f75669faf76da6637c5fa63462b49bc81696e0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x34635280737b5bfe6c7dc2fc3065d60d66e78185"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xda47862a83dac0c112ba89c6abc2159b95afd71c"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xfbf3c16676055776ab9b286492d8f13e30e2e763",
+  "symbol": "yb-WBTC",
+  "decimals": 18,
+  "name": "Yield Basis liquidity for WBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

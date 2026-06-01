@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9ca41a2dab3cee15308998868ca644e2e3be5c59",
+  "symbol": "dfx2CAD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: dfxCAD/CADC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9ca41a2dab3cee15308998868ca644e2e3be5c59"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xfe32747d0251ba92bcb80b6d16c8257ecf25ab1c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xcadc0acd4b445166f12d2c07eac6e2544fbe2eef"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

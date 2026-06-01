@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x4c7c165d7f223e8446b4effd33d02b6f86dc5653",
+  "symbol": "WETH/DAI",
+  "decimals": 18,
+  "name": "WETH/DAI",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x4c7c165d7f223e8446b4effd33d02b6f86dc5653"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x4200000000000000000000000000000000000006"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

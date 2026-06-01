@@ -1,0 +1,149 @@
+{
+  "_comment": "Lido liquid_staking real-tx corpus (Etherscan mainnet, adapter-blind sample). expect=pass+liquid_staking. Field-level value checks live in v3_decode_harness.rs goldens (corpus only verifies verdict+domain).",
+  "transactions": [
+    {
+      "intent": "submit",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x361f764d74cc0628f94591238892b3058cfbe7970f97f95ac62dc3496b241171",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+            "value": "9800000000000000000",
+            "data": "0xa1903eab0000000000000000000000006dc9657c2d90d57cadffb64239242d06e6103e43"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "wrap",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x3422ad3f65b421b13dea9de1bdc3d6f9e22d8649ab473313c0432829966d21ca",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+            "value": "0",
+            "data": "0xea598cb0000000000000000000000000000000000000000000000000b3b26499afaf3f69"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "unwrap",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x0de246bd123e6c6ea0eeffd37a67bc9d63475fec9f702068b00f21b3d573267b",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+            "value": "0",
+            "data": "0xde0e9a3e000000000000000000000000000000000000000000000000226c6a3c70ff3b9a"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "claimWithdrawals",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x88f3c654f6e6b5dd56580615172f39d8c7a7c1fa311116d7d91fef83ccb8b76a",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xe3afe0a3000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000001eabf00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000457"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "requestWithdrawalsWithPermit",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x33a2f163b76cfbba6249f4702c75aec9b34ad39fa6fab1204639103f0ff8771f",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xacf41e4d00000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000cc9eb059623ca6687897c40e55c5b5b5a09f73f80000000000000000000000000000000000000000000000007edf11bda615641b000000000000000000000000000000000000000000000000000000006a1cf28f000000000000000000000000000000000000000000000000000000000000001c88d091dd824698f6b3234580f0e0d3abed8c7b7733842f9468a7b494fa30af03076a4cc1c83672c93da7029a7f1e0cd93abe4e1d881765757cc90ca775720dec00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000007edf11bda615641b"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "requestWithdrawalsWstETHWithPermit",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x1e43b47aecb559b2c0b25229dd459b0afc5de6795b30eaba854c1cd03826d7df",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0x7951b76f00000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000c7f9e94843c24b847695c04b2e556a66ddcd44de000000000000000000000000000000000000000000000001a0556e39bff311eb000000000000000000000000000000000000000000000000000000006a1cd737000000000000000000000000000000000000000000000000000000000000001c8965370804abe83cad8c54ec6bf335fbe8b9302ecc1e9901a0c6c1b2d42128c9597ae22fa2a804060e13687d32263d3ba3bf32ae2758ae0b12b58d6a91799e730000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000001a0556e39bff311eb"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "requestWithdrawals",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0xf9cdfd1cb5ad3640b8fe529bc0e71677582b14062fe09a1d0655cfbb3ab3857d",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xd66810420000000000000000000000000000000000000000000000000000000000000040000000000000000000000000afc98cfd72b91c5da3a35dbd387bdc40dd289a21000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000086346e29ab7d7"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "claimWithdrawal",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0xf2d136649892cd186c9e67d9d1e584a511c31440efe14b3a635d73e11f94f5ee",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xf8444436000000000000000000000000000000000000000000000000000000000001eb2f"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "requestWithdrawalsWstETH",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x6420f0a2c8556db242b83fc67cbdcdabab99c71bbac07902b58875d9814e2249",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0x19aa625700000000000000000000000000000000000000000000000000000000000000400000000000000000000000008e01dc1a08ddf5a47ca992ba389ae290bc6362bc0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000002b39d1477c3aa0"
+          }
+        ]
+      }
+    }
+  ]
+}

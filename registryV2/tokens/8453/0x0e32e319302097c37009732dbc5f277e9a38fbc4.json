@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x0e32e319302097c37009732dbc5f277e9a38fbc4",
+  "symbol": "USDT",
+  "decimals": 18,
+  "name": "USDT",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

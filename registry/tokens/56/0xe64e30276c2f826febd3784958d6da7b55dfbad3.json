@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0xe64e30276c2f826febd3784958d6da7b55dfbad3",
-  "symbol": "SWFTC",
-  "decimals": 18,
-  "name": "SwftCoin"
-}

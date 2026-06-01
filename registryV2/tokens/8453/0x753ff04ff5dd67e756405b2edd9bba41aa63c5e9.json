@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x753ff04ff5dd67e756405b2edd9bba41aa63c5e9",
+  "symbol": "mooAeromsUSD-USDC",
+  "decimals": 18,
+  "name": "Moo Aero msUSD-USDC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

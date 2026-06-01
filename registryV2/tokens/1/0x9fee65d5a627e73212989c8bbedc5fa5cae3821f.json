@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9fee65d5a627e73212989c8bbedc5fa5cae3821f",
+  "symbol": "BobrCRV",
+  "decimals": 18,
+  "name": "BobrCRV/CRV/crvUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9fee65d5a627e73212989c8bbedc5fa5cae3821f"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x8f22779662ad253844013d8e99eccb4d80e31417"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

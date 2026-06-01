@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf1839becaf586814d022f16cdb3504ff8d8ff361",
+  "symbol": "liUSD-2w",
+  "decimals": 18,
+  "name": "Locked iUSD - 2 weeks",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

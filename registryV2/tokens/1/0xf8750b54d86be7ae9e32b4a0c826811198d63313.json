@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf8750b54d86be7ae9e32b4a0c826811198d63313",
+  "symbol": "USDX",
+  "decimals": 18,
+  "name": "Hex Trust USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

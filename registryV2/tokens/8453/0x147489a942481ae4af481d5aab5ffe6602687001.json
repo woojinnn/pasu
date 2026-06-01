@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x147489a942481ae4af481d5aab5ffe6602687001",
+  "symbol": "CRVsp",
+  "decimals": 18,
+  "name": "stCurveCSP",
+  "source": "https://api.curve.fi/api/getPools/base/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x147489a942481ae4af481d5aab5ffe6602687001"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x8ee73c484a26e0a5df2ee2a4960b789967dd0415"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xb0bc7d9d1bc233069c1c0c86b0dc0af31d1de989"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xbe1936a67f503e0eaf2434b0cf9f4e3d7100008a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

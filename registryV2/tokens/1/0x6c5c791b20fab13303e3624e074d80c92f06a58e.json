@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6c5c791b20fab13303e3624e074d80c92f06a58e",
+  "symbol": "CMPTUSDC",
+  "decimals": 18,
+  "name": "CMPT/USDC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6c5c791b20fab13303e3624e074d80c92f06a58e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x21c0359ac200483a38360378bf50f61d7c0e8495"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

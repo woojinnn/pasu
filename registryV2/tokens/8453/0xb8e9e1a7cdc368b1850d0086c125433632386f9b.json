@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xb8e9e1a7cdc368b1850d0086c125433632386f9b",
+  "symbol": "BOLD",
+  "decimals": 18,
+  "name": "BOLD Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

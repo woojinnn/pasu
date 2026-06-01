@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xfb9a265b5a1f52d97838ec7274a0b1442efacc87",
+  "symbol": "aETHb-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Pool: Ankr Reward-Earning Staked ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xfb9a265b5a1f52d97838ec7274a0b1442efacc87"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd01ef7c0a5d8c432fc2d1a85c66cf2327362e5c6"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

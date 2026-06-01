@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xca7601fd83db9b5d322d42a418bd6d81b4e4938e",
+  "symbol": "rwa-gho-t2",
+  "decimals": 18,
+  "name": "test2-ynRWAx-GHO",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xca7601fd83db9b5d322d42a418bd6d81b4e4938e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x01ba69727e2860b37bc1a2bd56999c1afb4c15d8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

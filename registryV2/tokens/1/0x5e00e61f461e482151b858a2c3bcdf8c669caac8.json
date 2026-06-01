@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5e00e61f461e482151b858a2c3bcdf8c669caac8",
+  "symbol": "ABDS/WBTC",
+  "decimals": 18,
+  "name": "ABDS/WBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x5e00e61f461e482151b858a2c3bcdf8c669caac8"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb56aaac80c931161548a49181c9e000a19489c44"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

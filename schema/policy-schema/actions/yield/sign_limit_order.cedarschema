@@ -1,0 +1,40 @@
+// Yield::SignLimitOrder — off-chain EIP-712 maker-sign of a Pendle limit Order
+// (PendleLimitRouter, domain "Pendle Limit Order Protocol" v1).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/sign_limit_order.rs`
+// (`SignLimitOrderAction`). `YieldVenue` is defined in core.cedarschema.
+
+namespace Yield {
+  type SignLimitOrderContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // Order direction (Order.orderType):
+    // "sy_for_pt" | "pt_for_sy" | "sy_for_yt" | "yt_for_sy".
+    orderType: String,
+    // SY token side of the order (Order.token).
+    token: Core::TokenRef,
+    // Yield Token identifying the market (Order.YT), address.
+    yt: String,
+    // Order maker / signer (Order.maker), address.
+    maker: String,
+    // Output recipient (Order.receiver), address.
+    receiver: String,
+    // Amount the maker commits (Order.makingAmount), U256 hex.
+    makingAmount: String,
+    // Order expiry as a unix timestamp (Order.expiry), U256 hex.
+    expiry: String,
+    // Manifest-extensible slot.
+    custom?: SignLimitOrderCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type SignLimitOrderCustomContext = {};
+
+  action "SignLimitOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: SignLimitOrderContext,
+  };
+}

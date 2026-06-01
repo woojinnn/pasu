@@ -1,0 +1,61 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/permit2/lockdown@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xcc53287f",
+    "chain_to_addresses": {
+      "1":     ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "10":    ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "8453":  ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "42161": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "lockdown",
+    "abi": {
+      "name": "lockdown",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "approvals",
+          "type": "tuple[]",
+          "components": [
+            { "name": "token", "type": "address" },
+            { "name": "spender", "type": "address" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.approvals",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "revoke_approval",
+        "revoke_approval": {
+          "scope": {
+            "kind": "permit2_lockdown",
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$inputs.[0]"
+              }
+            },
+            "spender": "$inputs.[1]"
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

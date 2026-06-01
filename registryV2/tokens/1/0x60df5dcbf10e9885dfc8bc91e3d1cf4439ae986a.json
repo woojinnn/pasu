@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x60df5dcbf10e9885dfc8bc91e3d1cf4439ae986a",
+  "symbol": "EETHCRVUSD",
+  "decimals": 18,
+  "name": "EGOETH/crvUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x60df5dcbf10e9885dfc8bc91e3d1cf4439ae986a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5ed748f4a6b16af0ac1c4bb45f7e2a1bcb9d72af"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

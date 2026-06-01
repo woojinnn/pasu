@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe1385fdd5ffb10081cd52c56584f25efa9084015",
+  "symbol": "HOODx",
+  "decimals": 18,
+  "name": "Robinhood xStock",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

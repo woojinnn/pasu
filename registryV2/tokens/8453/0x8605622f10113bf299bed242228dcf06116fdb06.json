@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8605622f10113bf299bed242228dcf06116fdb06",
+  "symbol": "cyCRVsp20k",
+  "decimals": 18,
+  "name": "CurveYield CRV Stablepool",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x8605622f10113bf299bed242228dcf06116fdb06"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xaf16c06aa672d35d94641f966e82d0eb4dbf8f80"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x8ee73c484a26e0a5df2ee2a4960b789967dd0415"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9cda6701ebe6e16e1d6e74130ae9feaad527e1c2",
+  "symbol": "LQLTDAIB",
+  "decimals": 18,
+  "name": "LQLT DAI BSWAP",
+  "source": "https://api.curve.fi/api/getPools/base/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x9cda6701ebe6e16e1d6e74130ae9feaad527e1c2"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x82c626453623d6a8eb3217ecb9b23cce3c9a2b51"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x78a087d713be963bf307b18f2ff8122ef9a63ae9"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

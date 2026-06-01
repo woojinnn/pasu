@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbb2568deeb365b8b89ef7f9b53e86b34cd5d0490",
+  "symbol": "CVXfrxETH-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: CVX/frxETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6e855d08f2984516c40c4246a385ba4a2edfcd0a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5e8422345238f34275888049021821e8e08caa1f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

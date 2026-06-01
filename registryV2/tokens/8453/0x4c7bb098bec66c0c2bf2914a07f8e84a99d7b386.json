@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x4c7bb098bec66c0c2bf2914a07f8e84a99d7b386",
+  "symbol": "qwe",
+  "decimals": 18,
+  "name": "qwe",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x4c7bb098bec66c0c2bf2914a07f8e84a99d7b386"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xeb466342c4d449bc9f53a865d5cb90586f405215"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

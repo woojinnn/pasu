@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
+  "symbol": "variableDebtEthwstETH",
+  "decimals": 18,
+  "name": "Aave Ethereum Variable Debt wstETH",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol#L180",
+  "token_kind": {
+    "kind": "debt_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0" }
+    },
+    "rate_mode": "variable"
+  }
+}

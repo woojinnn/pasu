@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x232ce3bd40fcd6f80f3d55a522d03f25df784ee2",
-  "symbol": "LIT",
-  "decimals": 18,
-  "name": "Lighter"
-}

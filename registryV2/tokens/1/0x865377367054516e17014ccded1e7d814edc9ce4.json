@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x865377367054516e17014ccded1e7d814edc9ce4",
+  "symbol": "DOLA",
+  "decimals": 18,
+  "name": "Dola USD Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

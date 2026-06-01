@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x0391d2021f89dc339f60fff84546ea23e337750f",
-  "symbol": "BOND",
-  "decimals": 18,
-  "name": "BarnBridge"
-}

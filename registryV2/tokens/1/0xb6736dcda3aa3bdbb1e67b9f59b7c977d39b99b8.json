@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb6736dcda3aa3bdbb1e67b9f59b7c977d39b99b8",
+  "symbol": "USDA",
+  "decimals": 18,
+  "name": "Autono USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

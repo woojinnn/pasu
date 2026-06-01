@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7a56e1c57c7475ccf742a1832b028f0456652f97",
+  "symbol": "SolvBTC",
+  "decimals": 18,
+  "name": "Solv BTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

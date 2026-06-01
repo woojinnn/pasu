@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xc6fbf362a12804feca22000f37db5efc1f41a7c9",
-  "symbol": "PRO",
-  "decimals": 8,
-  "name": "Propy"
-}

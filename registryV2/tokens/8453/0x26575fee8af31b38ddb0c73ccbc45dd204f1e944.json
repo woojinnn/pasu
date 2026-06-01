@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x26575fee8af31b38ddb0c73ccbc45dd204f1e944",
+  "symbol": "MAAThyUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: MAAT/hyUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x0f14b5c2f55af20dedfb19b8835e9614aa1be733"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xc8448941afc9e6ba122aea4a58ac5449af4d6ffd"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcc7ff230365bd730ee4b352cc2492cedac49383e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

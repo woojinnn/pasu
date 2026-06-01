@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x240558287687e0645f552c17865a28d64dccf8df",
+  "symbol": "ARTH+3pool-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: ARTH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6525e7e2e8450741ab97bd3948bfa47878f83ec6"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x8cc0f052fff7ead7f2edcccac895502e884a8a71"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6c3f90f043a72fa612cbac8115ee7e52bde6e490"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

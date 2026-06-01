@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x661c70333aa1850ccdbae82776bb436a0fcfeefb",
+  "symbol": "EBTC",
+  "decimals": 18,
+  "name": "eBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

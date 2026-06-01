@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4d1941a887ec788f059b3bfcc8ee1e97b968825b",
+  "symbol": "crvFRAXTBTCFRXETH",
+  "decimals": 18,
+  "name": "TricryptoFRAX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x4d1941a887ec788f059b3bfcc8ee1e97b968825b"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x853d955acef822db058eb8505911ed77f175b99e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5e8422345238f34275888049021821e8e08caa1f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

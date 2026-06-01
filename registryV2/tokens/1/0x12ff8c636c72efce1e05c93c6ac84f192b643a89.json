@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x12ff8c636c72efce1e05c93c6ac84f192b643a89",
+  "symbol": "CBDETHBOND",
+  "decimals": 18,
+  "name": "BOND/CBD/cbdETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x12ff8c636c72efce1e05c93c6ac84f192b643a89"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0204f05af77c640ef80675dec46ff90cf996a90a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7d9a9bc5646c8b2b89dc72e2fe98b2ce8d737381"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe5736fd5ea3412b62caa20c6547d2b8f8e61d363"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9a81e74794483b7a109e8645fe42e1c43d8b6162",
+  "symbol": "CNJ",
+  "decimals": 18,
+  "name": "CNNN",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x9a81e74794483b7a109e8645fe42e1c43d8b6162"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x69420f9e38a4e60a62224c489be4bf7a94402496"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

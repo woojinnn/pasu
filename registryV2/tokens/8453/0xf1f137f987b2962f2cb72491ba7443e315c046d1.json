@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf1f137f987b2962f2cb72491ba7443e315c046d1",
+  "symbol": "GGE-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: GoGetEm",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x3bd05f51f55dbc9d38f2f23be1523d3e38d5ab88"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x4200000000000000000000000000000000000006"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

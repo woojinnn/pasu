@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6c49c560cdcb33d991b089f8237e8175564ff567",
+  "symbol": "zkBTCwcb2",
+  "decimals": 18,
+  "name": "zkBTC/w/cb2",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6c49c560cdcb33d991b089f8237e8175564ff567"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x199cc8f0ac008bdc8cf0b1ccd5187f84e168c4d2"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

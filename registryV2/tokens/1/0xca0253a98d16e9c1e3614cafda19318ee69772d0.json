@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xca0253a98d16e9c1e3614cafda19318ee69772d0",
+  "symbol": "sdCRVlp-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: sdCRV/CRV",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xca0253a98d16e9c1e3614cafda19318ee69772d0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd1b5651e55d4ceed36251c61c50c889b36f6abb5"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x843430499c896ef012a3dc92c6cf7bf1b5a340ff",
+  "symbol": "SynCbethfm",
+  "decimals": 18,
+  "name": "08syntsoul/cbeth/frntrms3",
+  "source": "https://api.curve.fi/api/getPools/base/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x843430499c896ef012a3dc92c6cf7bf1b5a340ff"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xee8c601cf8bae5b090c2eb17f29a05b924810ec0"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xb9ea8ece3ade803e41d2a6d05d0fb5843eda864d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x38590324e6c4c372a3da187f8aa74800424ae562",
+  "symbol": "DOPETH-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: DOP/ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x1ebe895af819eb97a008269c14422db82246a450"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6bb61215298f296c55b19ad842d3df69021da2ef"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

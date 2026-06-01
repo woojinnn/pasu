@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x0a69317c8e8e8ce4842fd9023af9283566f683b1",
+  "symbol": "WETHV",
+  "decimals": 18,
+  "name": "WETH2VAIN",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x0a69317c8e8e8ce4842fd9023af9283566f683b1"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x4200000000000000000000000000000000000006"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xf958d21c1a59ba6c477636231067af5c265ecd72"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

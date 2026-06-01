@@ -1,0 +1,25 @@
+// LiquidStaking::ClaimWithdrawal — redeem finalized withdrawal request(s) for
+// ETH. Models Lido `claimWithdrawal` / `claimWithdrawals` / `claimWithdrawalsTo`.
+//
+// Rust source: `crates/simulation/reducer/src/action/liquid_staking/claim_withdrawal.rs`
+// (`ClaimWithdrawalAction`). No LiveInputs.
+
+namespace LiquidStaking {
+  type ClaimWithdrawalContext = {
+    meta: Core::ActionMeta,
+    venue: StakingVenue,
+    // Withdrawal request ids being claimed, each U256 hex.
+    requestIds: Set<String>,
+    // Explicit payout recipient; omitted ⇒ the submitter.
+    recipient?: String,
+    custom?: ClaimWithdrawalCustomContext,
+  };
+
+  type ClaimWithdrawalCustomContext = {};
+
+  action "ClaimWithdrawal" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: ClaimWithdrawalContext,
+  };
+}

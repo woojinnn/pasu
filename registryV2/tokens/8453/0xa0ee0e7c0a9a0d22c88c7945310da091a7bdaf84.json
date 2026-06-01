@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xa0ee0e7c0a9a0d22c88c7945310da091a7bdaf84",
+  "symbol": "USTop",
+  "decimals": 18,
+  "name": "ToppaInu",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xa0ee0e7c0a9a0d22c88c7945310da091a7bdaf84"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x9dba38e9cadcf67d1959390a8c0c1deee619f0f2"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

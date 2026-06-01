@@ -4,13 +4,13 @@
 //! transaction / signature request shapes consumed by host capabilities
 //! (`oracle`, `portfolio`, `approvals`, `stat_windows`).
 //!
-//! The new envelope-driven pipeline (`crate::action::ActionEnvelope`) is the
-//! primary entry point for callers; these types remain here because the
-//! host capability traits speak in terms of `Token`/`AmountSpec` for
+//! The active action-model pipeline enters through
+//! `simulation_reducer::action::ActionBody`; these types remain here because
+//! the host capability traits speak in terms of `Token`/`AmountSpec` for
 //! oracle valuation and portfolio accounting.
 //!
 //! Note: `action::Address` is a distinct lowercase-hex newtype used by the
-//! envelope schema; `core::Address` is retained for host capability traits
+//! action schema; `core::Address` is retained for host capability traits
 //! that pre-date the envelope work.
 //!
 //! `Eip712TypedData` / `Eip712Domain` are kept here because `SignatureRequest`

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8c1bed5b9a0928467c9b1341da1d7bd5e10b6549",
+  "symbol": "LsETH",
+  "decimals": 18,
+  "name": "Liquid Staked ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

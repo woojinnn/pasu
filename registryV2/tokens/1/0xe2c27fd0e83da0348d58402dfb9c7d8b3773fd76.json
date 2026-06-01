@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe2c27fd0e83da0348d58402dfb9c7d8b3773fd76",
+  "symbol": "OUSDfxUSD",
+  "decimals": 18,
+  "name": "OUSD/fxUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xe2c27fd0e83da0348d58402dfb9c7d8b3773fd76"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2a8e1e676ec238d8a992307b495b45b3feaa5e86"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x085780639cc2cacd35e474e71f4d000e2405d8f6"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

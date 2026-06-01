@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1571921b73b3a813cc93c0f671e9488a2c2ecfa2",
+  "symbol": "NPR-PT/tacUSD@18/10/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/Turtle TAC USD Vault@18/10/2025",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x1571921b73b3a813cc93c0f671e9488a2c2ecfa2"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x699e04f98de2fc395a7dcbf36b48ec837a976490"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x80ea5b7478e6f61a1d344dac18ef94b29273ec78"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

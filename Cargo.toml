@@ -1,6 +1,9 @@
 # Optimize wasm-pack release WASM artifact for size. LTO + 1 codegen unit
 # recovers ~150-300 KB on the merged build (Phase 7 + 12 + 8) which
 # otherwise is ~30 KB over the plan §9 6 MiB target.
+#
+# Batch 3 시도: `strip = "symbols"` 추가는 wasm-pack 의 후속 wasm-opt 가
+# stripped wasm 처리 못해 exit 1 — 적용 불가. 옵션 4 의 strip 변종 모두 동일.
 [profile.release]
 lto = "fat"
 codegen-units = 1

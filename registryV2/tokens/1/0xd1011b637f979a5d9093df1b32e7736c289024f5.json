@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd1011b637f979a5d9093df1b32e7736c289024f5",
+  "symbol": "sETH2stETH-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Curve sETH2-stETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd1011b637f979a5d9093df1b32e7736c289024f5"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xfe2e637202056d30016725477c5da089ab0a043a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

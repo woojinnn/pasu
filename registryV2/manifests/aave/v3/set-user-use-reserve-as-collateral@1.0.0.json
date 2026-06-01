@@ -1,0 +1,92 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/setUserUseReserveAsCollateral@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave V3 Pool.setUserUseReserveAsCollateral(asset, useAsCollateral). The useAsCollateral bool selects between TWO distinct LendingAction variants — an action-tag-level switch, not a field value — so the `lending` sub-object is itself a $match value-map: true -> enable_collateral, false -> disable_collateral. Both branches carry the same SetCollateralAction shape (venue + asset) and share the emit.live_inputs (reserve_state + user_state_before). After value-map resolution the body is a normal nested-twice lending body that flatten_body decodes straight into LendingAction::EnableCollateral / DisableCollateral.",
+  "match": {
+    "selector": "0x5a3b74b9",
+    "chain_to_addresses": {
+      "1":     ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"],
+      "10":    ["0x794a61358d6845594f94dc1db02a252b5b4814ad"],
+      "8453":  ["0xa238dd80c259a72e81d7e4664a9801593f98d1c5"],
+      "42161": ["0x794a61358d6845594f94dc1db02a252b5b4814ad"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setUserUseReserveAsCollateral",
+    "abi": {
+      "name": "setUserUseReserveAsCollateral",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "asset",           "type": "address" },
+        { "name": "useAsCollateral", "type": "bool"    }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "$match": "$args.useAsCollateral",
+        "$cases": {
+          "true": {
+            "action": "enable_collateral",
+            "enable_collateral": {
+              "venue": {
+                "name":      "aave_v3",
+                "chain":     "$chain",
+                "pool":      "$to",
+                "market_id": null
+              },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } }
+            }
+          },
+          "false": {
+            "action": "disable_collateral",
+            "disable_collateral": {
+              "venue": {
+                "name":      "aave_v3",
+                "chain":     "$chain",
+                "pool":      "$to",
+                "market_id": null
+              },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } }
+            }
+          }
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "getReserveData(address)",
+          "decoder_id": "aave_v3_reserve_data"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "getUserAccountData(address)",
+          "decoder_id": "aave_v3_user_account_data"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

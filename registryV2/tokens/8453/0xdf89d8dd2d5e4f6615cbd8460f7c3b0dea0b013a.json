@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xdf89d8dd2d5e4f6615cbd8460f7c3b0dea0b013a",
+  "symbol": "cbETHMAAT-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: cbETH/MAAT",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x4a4ec09f69e586e8080aae6b89101bb5edf22e19"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xc8448941afc9e6ba122aea4a58ac5449af4d6ffd"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x89a8c847f41c0dfa6c8b88638bacca8a0b777da7",
+  "symbol": "ELX",
+  "decimals": 18,
+  "name": "Elixir",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

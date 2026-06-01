@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x0b02779e4a93438abd9396f9aa0ebee0505f3c3d",
+  "symbol": "BFT",
+  "decimals": 18,
+  "name": "BFT",
+  "source": "https://api.curve.fi/api/getPools/base/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x0b02779e4a93438abd9396f9aa0ebee0505f3c3d"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x52220332f48f1e2cd3128025cf70bcba5a513c57"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x0d4522191e02c5b17cf2d7e1de4c340e773b5fd6"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x9dba38e9cadcf67d1959390a8c0c1deee619f0f2"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

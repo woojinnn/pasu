@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd60eea80c83779a8a5bfcdac1f3323548e6bb62d",
+  "symbol": "ShezUSD",
+  "decimals": 18,
+  "name": "ShezmuUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

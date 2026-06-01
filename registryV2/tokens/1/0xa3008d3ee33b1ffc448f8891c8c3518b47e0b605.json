@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa3008d3ee33b1ffc448f8891c8c3518b47e0b605",
+  "symbol": "BENTFRAXBP-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: BENT/FRAX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd3301b7caa76f932816a6fc7ef0b673238e217ad"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x01597e397605bf280674bf292623460b4204c375"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3175df0976dfa876431c2e9ee6bc45b65d3473cc"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

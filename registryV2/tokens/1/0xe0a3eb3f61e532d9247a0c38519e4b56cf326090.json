@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe0a3eb3f61e532d9247a0c38519e4b56cf326090",
+  "symbol": "sgoldenUSD",
+  "decimals": 18,
+  "name": "Staked ONE BIG BEAUTIFUL SHINY USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

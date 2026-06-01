@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0d2157fa01cdfac70c7c156f02ea685625351401",
+  "symbol": "USDC EURO-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: USDC/EUROC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x3d2253fa44c38d9870539dc2856286aa1638467f"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1abaea1f7c830bd89acc67ec4af516284b1bc33c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3175df0976dfa876431c2e9ee6bc45b65d3473cc"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

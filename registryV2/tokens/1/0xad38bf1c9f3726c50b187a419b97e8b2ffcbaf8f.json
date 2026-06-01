@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xad38bf1c9f3726c50b187a419b97e8b2ffcbaf8f",
+  "symbol": "EURSFRAXBP-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: EURS/FRAXBP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x4cc9385d9909d2bf529a4c1e847dc4ee01f4927a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdb25f211ab05b1c97d595516f45794528a807ad8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3175df0976dfa876431c2e9ee6bc45b65d3473cc"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

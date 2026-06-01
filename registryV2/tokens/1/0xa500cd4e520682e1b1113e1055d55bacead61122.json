@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa500cd4e520682e1b1113e1055d55bacead61122",
+  "symbol": "cusdfraxbp3CRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory USD Metapool: cUSD/FRAXBP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xa500cd4e520682e1b1113e1055d55bacead61122"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc22956c3cfec3ee9a9925abee044f05bc47f6632"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3175df0976dfa876431c2e9ee6bc45b65d3473cc"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

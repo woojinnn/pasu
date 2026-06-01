@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x22559fc36a9b0c936dff0ab1d0de9a2ac5e6a059",
+  "symbol": "GloOETHb",
+  "decimals": 18,
+  "name": "USDGLO/SuperOETHb",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x22559fc36a9b0c936dff0ab1d0de9a2ac5e6a059"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x4f604735c1cf31399c6e711d5962b2b3e0225ad3"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xdbfefd2e8460a6ee4955a68582f85708baea60a3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

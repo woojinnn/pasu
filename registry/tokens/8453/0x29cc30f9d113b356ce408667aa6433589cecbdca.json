@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x29cc30f9d113b356ce408667aa6433589cecbdca",
-  "symbol": "ELSA",
-  "decimals": 18,
-  "name": "Elsa"
-}

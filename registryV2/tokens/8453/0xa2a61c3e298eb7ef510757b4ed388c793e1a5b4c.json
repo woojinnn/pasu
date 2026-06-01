@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xa2a61c3e298eb7ef510757b4ed388c793e1a5b4c",
+  "symbol": "TBUSD",
+  "decimals": 18,
+  "name": "TBill USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x16850cdddfabdd38ca1ef6813d5704e0594ce62e",
+  "symbol": "INVETH-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: INV/ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x1df0bae5add689d6be57ac6fd18b1e4a27b4498b"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x41d5d79431a913c4ae7d69a668ecdfe5ff9dfb68"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

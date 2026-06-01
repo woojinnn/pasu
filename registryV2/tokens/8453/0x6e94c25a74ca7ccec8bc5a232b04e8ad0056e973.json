@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x6e94c25a74ca7ccec8bc5a232b04e8ad0056e973",
+  "symbol": "mm",
+  "decimals": 18,
+  "name": "mip",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x6e94c25a74ca7ccec8bc5a232b04e8ad0056e973"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x4200000000000000000000000000000000000006"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

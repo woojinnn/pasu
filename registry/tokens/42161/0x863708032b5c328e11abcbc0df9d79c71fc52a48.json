@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x863708032b5c328e11abcbc0df9d79c71fc52a48",
-  "symbol": "EURC",
-  "decimals": 6,
-  "name": "Euro Coin"
-}

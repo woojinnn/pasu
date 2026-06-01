@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x4154550f4db74dc38d1fe98e1f3f28ed6dad627d",
+  "symbol": "jEUR",
+  "decimals": 18,
+  "name": "Jarvis Synthetic Euro",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

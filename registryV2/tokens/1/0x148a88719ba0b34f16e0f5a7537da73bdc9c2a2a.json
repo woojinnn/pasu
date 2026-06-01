@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x148a88719ba0b34f16e0f5a7537da73bdc9c2a2a",
+  "symbol": "ORK/sbtcCRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory BTC Metapool: Orkan",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x148a88719ba0b34f16e0f5a7537da73bdc9c2a2a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe1406825186d63980fd6e2ec61888f7b91c4bae4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x075b1bb99792c9e1041ba13afef80c91a1e70fb3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

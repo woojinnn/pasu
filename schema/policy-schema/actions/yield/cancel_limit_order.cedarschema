@@ -1,0 +1,27 @@
+// Yield::CancelLimitOrder — on-chain cancel of the maker's own Pendle limit
+// order(s) (PendleLimitRouter cancelSingle / cancelBatch).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/cancel_limit_order.rs`
+// (`CancelLimitOrderAction`). `YieldVenue` is defined in core.cedarschema.
+
+namespace Yield {
+  type CancelLimitOrderContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // Cancel kind: "single" (cancelSingle) | "batch" (cancelBatch).
+    kind: String,
+    // Manifest-extensible slot.
+    custom?: CancelLimitOrderCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type CancelLimitOrderCustomContext = {};
+
+  action "CancelLimitOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: CancelLimitOrderContext,
+  };
+}

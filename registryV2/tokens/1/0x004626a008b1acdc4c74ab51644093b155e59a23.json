@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x004626a008b1acdc4c74ab51644093b155e59a23",
+  "symbol": "stEUR",
+  "decimals": 18,
+  "name": "Staked EURA",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

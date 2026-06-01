@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xbeef03f0bf3cb2e348393008a826538aadd7d183",
+  "symbol": "steakUSDM",
+  "decimals": 18,
+  "name": "Steakhouse USDM",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

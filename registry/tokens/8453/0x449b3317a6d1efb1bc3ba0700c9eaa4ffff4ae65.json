@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x449b3317a6d1efb1bc3ba0700c9eaa4ffff4ae65",
-  "symbol": "AUDD",
-  "decimals": 6,
-  "name": "Australian Digital Dollar"
-}

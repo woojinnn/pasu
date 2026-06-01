@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xcc7ff230365bd730ee4b352cc2492cedac49383e",
+  "symbol": "hyUSD",
+  "decimals": 18,
+  "name": "High Yield USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdadfd00a2bbeb1abc4936b1644a3033e1b653228",
+  "symbol": "xFraxTplLP-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Stax Frax/Temple xLP + LP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xdadfd00a2bbeb1abc4936b1644a3033e1b653228"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbcb8b7fc9197feda75c101fa69d3211b5a30dcd9"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6021444f1706f15465bee85463bcc7d7cc17fc03"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

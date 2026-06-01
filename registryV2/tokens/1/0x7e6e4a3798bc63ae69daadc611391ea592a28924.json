@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7e6e4a3798bc63ae69daadc611391ea592a28924",
+  "symbol": "$AUD",
+  "decimals": 18,
+  "name": "The Australian Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

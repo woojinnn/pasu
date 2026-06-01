@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x961226b64ad373275130234145b96d100dc0b655",
+  "symbol": "tFXS-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tFXS/FXS",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x961226b64ad373275130234145b96d100dc0b655"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xadf15ec41689fc5b6dca0db7c53c9bfe7981e655"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

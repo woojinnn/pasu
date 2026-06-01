@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8e6f84d924cb70b67a3872f9ca4f99c851dc7d48",
+  "symbol": "ynETHx/YND",
+  "decimals": 18,
+  "name": "ynETHx/YND",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8e6f84d924cb70b67a3872f9ca4f99c851dc7d48"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x657d9aba1dbb59e53f9f3ecaa878447dcfc96dcb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7159cc276d7d17ab4b3beb19959e1f39368a45ba"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

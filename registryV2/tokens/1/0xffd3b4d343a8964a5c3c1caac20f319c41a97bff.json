@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xffd3b4d343a8964a5c3c1caac20f319c41a97bff",
+  "symbol": "yn-RWA/USD",
+  "decimals": 18,
+  "name": "ynRWAx/ynUSDx",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xffd3b4d343a8964a5c3c1caac20f319c41a97bff"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x01ba69727e2860b37bc1a2bd56999c1afb4c15d8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3db228fe836d99ccb25ec4dfdc80ed6d2cddcb4b"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

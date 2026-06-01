@@ -1,19 +1,19 @@
-//! Permit2 block-level allowance for a (token, spender) pair: amount, expiration, and nonce.
+//! Permit2 — block-level allowance (token, spender) 의 expiration / nonce.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 use crate::primitives::{Time, U256};
 
+/// Permit2 contract 에 기록된 (token, spender) 권한 — 한도 / 만료 / nonce.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
-/// Permit2 allowance granted to a spender: approved amount, its expiration time, and the current nonce.
 pub struct Permit2Allowance {
-    /// Approved spending amount (256-bit unsigned).
+    /// 한도 base unit (token 의 smallest unit).
     #[tsify(type = "string")]
     pub amount: U256,
-    /// Unix timestamp (seconds) at which this allowance expires.
+    /// 한도 만료 시각.
     pub expiration: Time,
-    /// Nonce incremented on each allowance update, used to invalidate prior approvals.
+    /// Permit2 의 spender-level nonce. 재서명 시 1 증가.
     pub nonce: u32,
 }

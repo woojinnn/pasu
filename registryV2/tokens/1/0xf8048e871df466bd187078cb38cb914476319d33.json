@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf8048e871df466bd187078cb38cb914476319d33",
+  "symbol": "MAILUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: MAI/LUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xf8048e871df466bd187078cb38cb914476319d33"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x8d6cebd76f18e1558d4db88138e2defb3909fad6"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5f98805a4e8be255a32880fdec7f6728c6568ba0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

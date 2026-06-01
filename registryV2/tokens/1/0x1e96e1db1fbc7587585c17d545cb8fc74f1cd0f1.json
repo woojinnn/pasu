@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1e96e1db1fbc7587585c17d545cb8fc74f1cd0f1",
+  "symbol": "SLDUSDT-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: SLD/USDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xde90ba7bb025f435b2a6f984ef6ea76d7c8bc853"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4c1aa92781c8813a79596ef5122476e28d656686"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

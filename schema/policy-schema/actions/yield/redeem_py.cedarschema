@@ -1,0 +1,34 @@
+// Yield::RedeemPy — recombine the PT+YT pair back into a token/SY (ActionMiscV3
+// redeemPyToToken / redeemPyToSy).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/redeem_py.rs`
+// (`RedeemPyAction`). No LiveInputs (P1a).
+
+namespace Yield {
+  type RedeemPyContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // YT contract identifying the PT+YT position (address).
+    yt: String,
+    // Plain external output token (redeemPyToToken); absent for redeemPyToSy.
+    externalToken?: Core::TokenRef,
+    // PY (PT=YT) amount redeemed (U256 hex).
+    netPyIn: String,
+    // Minimum output amount (token or SY) / slippage floor (U256 hex).
+    minOutput: String,
+    // Output recipient (address).
+    recipient: String,
+    // Manifest-extensible slot.
+    custom?: RedeemPyCustomContext,
+  };
+
+  type RedeemPyCustomContext = {};
+
+  action "RedeemPy" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RedeemPyContext,
+  };
+}

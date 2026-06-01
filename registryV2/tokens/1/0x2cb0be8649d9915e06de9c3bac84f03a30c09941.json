@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2cb0be8649d9915e06de9c3bac84f03a30c09941",
+  "symbol": "CFDTCRVUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: crvUSD/cncDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x81db1af4cab88324d9391ef5d39eeb1eeae621d1"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xfb588886715a263f69c1edd4e84e0ac1855e928a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

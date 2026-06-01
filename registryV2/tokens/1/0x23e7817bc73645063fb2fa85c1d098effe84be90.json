@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x23e7817bc73645063fb2fa85c1d098effe84be90",
+  "symbol": "JPEGpETH-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: JPEG/pETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x808db6e464279c6a77a1164e0b34d64bd6fb526e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe80c0cd204d654cebe8dd64a4857cab6be8345a3"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x836a808d4828586a69364065a1e064609f5078c7"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

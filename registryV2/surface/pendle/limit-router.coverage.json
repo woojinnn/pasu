@@ -1,0 +1,89 @@
+{
+  "contract": "PendleLimitRouter",
+  "chainId": 1,
+  "address": "0x000000000000c9b3e2c3ec88b1b4c0cd853f4321",
+  "snapshot": "limit-router.abi.json",
+  "functions": {
+    "0x078dfbe7": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "governance: BoringOwnable ownership transfer"
+    },
+    "0x26bbbdf5": {
+      "name": "preSignSingle",
+      "decision": "exclude",
+      "reason": "deferred \u2014 on-chain pre-sign (gasless alternative) of one order; follow-up"
+    },
+    "0x485cc955": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "admin: one-time proxy initializer"
+    },
+    "0x4e71e0c8": {
+      "name": "claimOwnership",
+      "decision": "exclude",
+      "reason": "governance: BoringOwnable ownership claim"
+    },
+    "0x5413fba7": {
+      "name": "cancelSingle",
+      "decision": "cover",
+      "reason": "maker cancels one of their own signed limit orders"
+    },
+    "0x6122b173": {
+      "name": "fill",
+      "decision": "exclude",
+      "reason": "relayer/taker fills maker orders \u2014 not the maker pre-sign surface"
+    },
+    "0x72c244a8": {
+      "name": "advanceNonce",
+      "decision": "exclude",
+      "reason": "deferred \u2014 bulk nonce-advance order-management (invalidate orders below); follow-up"
+    },
+    "0x7f3bc4dd": {
+      "name": "setMintSySigners",
+      "decision": "exclude",
+      "reason": "admin: mint-SY signer config"
+    },
+    "0x97cf58b0": {
+      "name": "setLnFeeRateRoots",
+      "decision": "exclude",
+      "reason": "admin/governance: per-market fee-rate roots config"
+    },
+    "0xbd61951d": {
+      "name": "simulate",
+      "decision": "exclude",
+      "reason": "off-chain SDK/relayer simulation helper (payable eth_call shim), not a user value action"
+    },
+    "0xc36c4340": {
+      "name": "preSignBatch",
+      "decision": "exclude",
+      "reason": "deferred \u2014 on-chain pre-sign of a batch; follow-up"
+    },
+    "0xc53a0292": {
+      "name": "increaseNonce",
+      "decision": "exclude",
+      "reason": "deferred \u2014 order-management nonce bump; follow-up"
+    },
+    "0xd74a3eca": {
+      "name": "forceCancel",
+      "decision": "exclude",
+      "reason": "deferred \u2014 cancel by order-hash list (bytes32[]), not Order structs; follow-up"
+    },
+    "0xe74b981b": {
+      "name": "setFeeRecipient",
+      "decision": "exclude",
+      "reason": "admin/governance: fee-recipient config"
+    },
+    "0xf1d4deb3": {
+      "name": "cancelBatch",
+      "decision": "cover",
+      "reason": "maker cancels a batch of their own signed limit orders"
+    }
+  },
+  "signed_structs": {
+    "Order": {
+      "decision": "cover",
+      "reason": "off-chain EIP-712 maker-sign of a Pendle limit order (domain 'Pendle Limit Order Protocol' v1, PendleLimitRouter)"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5905c0290e59afbdc42a5480add9bd7b20cb3759",
+  "symbol": "BLX",
+  "decimals": 18,
+  "name": "Blotix",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

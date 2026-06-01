@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xda9d200a1626a991e810d4a71f60ee970fe3933c",
+  "symbol": "WGC",
+  "decimals": 6,
+  "name": "Wild Goat Coin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

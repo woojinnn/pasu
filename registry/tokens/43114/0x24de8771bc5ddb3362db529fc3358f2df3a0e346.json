@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 43114,
-  "address": "0x24de8771bc5ddb3362db529fc3358f2df3a0e346",
-  "symbol": "avUSD",
-  "decimals": 18,
-  "name": "avUSD"
-}

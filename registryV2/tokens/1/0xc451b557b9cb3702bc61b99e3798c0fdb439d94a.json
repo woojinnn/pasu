@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc451b557b9cb3702bc61b99e3798c0fdb439d94a",
+  "symbol": "LCNYBP-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: LCNY/FRAXBP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xec3c1b7ec905b618bd414d4de1e75f2581afdace"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3175df0976dfa876431c2e9ee6bc45b65d3473cc"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7635b612792e4bfb7f2fa12a3e5d5a3f2e3c34bc"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

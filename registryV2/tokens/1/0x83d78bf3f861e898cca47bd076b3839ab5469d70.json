@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x83d78bf3f861e898cca47bd076b3839ab5469d70",
+  "symbol": "tMYC-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tMYC/MYC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x83d78bf3f861e898cca47bd076b3839ab5469d70"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x061aee9ab655e73719577ea1df116d7139b2a7e7"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4b13006980acb09645131b91d259eaa111eaf5ba"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

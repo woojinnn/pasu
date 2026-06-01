@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6969c3ca5142b9eca6141de577c50454326265b1",
+  "symbol": "USD69",
+  "decimals": 18,
+  "name": "Rezerve.money USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

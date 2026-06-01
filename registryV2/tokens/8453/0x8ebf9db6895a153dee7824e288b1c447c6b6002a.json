@@ -1,0 +1,60 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8ebf9db6895a153dee7824e288b1c447c6b6002a",
+  "symbol": "worthless1",
+  "decimals": 18,
+  "name": "worthlessToken Pool 1",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x8ebf9db6895a153dee7824e288b1c447c6b6002a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x20173a75d8ae180d64704ee162e5f97a2cf7da77"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x417ac0e078398c154edfadd9ef675d30be60af93"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x646a737b9b6024e49f5908762b3ff73e65b5160c"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

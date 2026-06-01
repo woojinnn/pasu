@@ -1,0 +1,13 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+  "symbol": "AERO",
+  "decimals": 18,
+  "name": "Aerodrome",
+  "source": "https://aerodrome.finance/docs",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "governance", "protocol": { "name": "aerodrome" } }
+  }
+}

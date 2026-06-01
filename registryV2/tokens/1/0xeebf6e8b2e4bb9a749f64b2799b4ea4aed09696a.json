@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xeebf6e8b2e4bb9a749f64b2799b4ea4aed09696a",
+  "symbol": "os-rosETH",
+  "decimals": 18,
+  "name": "RestakeFi rosETH/osETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xeebf6e8b2e4bb9a749f64b2799b4ea4aed09696a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3a2725556dde7b21fbe3dd64a4913ff29faba6a1"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf1c9acdc66974dfb6decb12aa385b9cd01190e38"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

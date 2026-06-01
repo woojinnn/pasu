@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x4bfaa776991e85e5f8b1255461cbbd216cfc714f",
-  "symbol": "HOME",
-  "decimals": 18,
-  "name": "HOME"
-}

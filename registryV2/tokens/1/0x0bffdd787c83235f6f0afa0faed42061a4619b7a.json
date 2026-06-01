@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0bffdd787c83235f6f0afa0faed42061a4619b7a",
+  "symbol": "VUSD",
+  "decimals": 6,
+  "name": "Virtual USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

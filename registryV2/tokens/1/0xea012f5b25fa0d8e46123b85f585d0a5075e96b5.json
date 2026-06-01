@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xea012f5b25fa0d8e46123b85f585d0a5075e96b5",
+  "symbol": "TryLSD-gauge",
+  "decimals": 18,
+  "name": "Curve.fi TryLSD Gauge Deposit",
+  "source": "https://etherscan.io/token/0xea012f5b25fa0d8e46123b85f585d0a5075e96b5",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "curve_gauge", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193" }
+    }
+  }
+}

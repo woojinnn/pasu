@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf39d453f93e36f893d592d6dd1e3901396d89fd0",
+  "symbol": "crvBONDSPO",
+  "decimals": 18,
+  "name": "crvBONDS/scrvBONDS Price Oracle",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xf39d453f93e36f893d592d6dd1e3901396d89fd0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdc41f881732d3bc509b3f0b2371a948af48d739c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9e2f5daaceac3970be16723566a9b781bd4e4335"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

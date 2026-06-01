@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd7d1c5a99fc60234fca8b2c302aaa71471edc6bc",
+  "symbol": "LPXCVX",
+  "decimals": 18,
+  "name": "lpxCVX/CVX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd7d1c5a99fc60234fca8b2c302aaa71471edc6bc"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x389fb29230d02e67eb963c1f5a00f2b16f95beb7"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

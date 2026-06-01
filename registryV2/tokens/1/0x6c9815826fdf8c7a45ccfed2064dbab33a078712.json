@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6c9815826fdf8c7a45ccfed2064dbab33a078712",
+  "symbol": "CVX1",
+  "decimals": 18,
+  "name": "Convergence stkCVX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

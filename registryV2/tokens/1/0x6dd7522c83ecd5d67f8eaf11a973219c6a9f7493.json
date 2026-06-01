@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6dd7522c83ecd5d67f8eaf11a973219c6a9f7493",
+  "symbol": "frxtmvUSDC",
+  "decimals": 18,
+  "name": "tmvUSDC/frxUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6dd7522c83ecd5d67f8eaf11a973219c6a9f7493"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x697c54a84d83f37380d034e2bfc6f7ce8d89f4ee"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xcacd6fd266af91b8aed52accc382b4e165586e29"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

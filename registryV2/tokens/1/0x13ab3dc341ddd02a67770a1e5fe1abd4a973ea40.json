@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x13ab3dc341ddd02a67770a1e5fe1abd4a973ea40",
+  "symbol": "PUSSY",
+  "decimals": 18,
+  "name": "PUSSY token from BSC (TokensExpress) from PulseChain",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

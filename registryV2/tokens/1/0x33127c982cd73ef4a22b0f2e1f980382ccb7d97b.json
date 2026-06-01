@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x33127c982cd73ef4a22b0f2e1f980382ccb7d97b",
+  "symbol": "punk15wstE",
+  "decimals": 18,
+  "name": "mwstETH-WPUNKS-15/wstETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x33127c982cd73ef4a22b0f2e1f980382ccb7d97b"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x074e57a5eaac12adf3448b1f9d35b211d8f4bd61"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

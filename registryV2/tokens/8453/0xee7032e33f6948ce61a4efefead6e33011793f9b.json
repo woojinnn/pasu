@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xee7032e33f6948ce61a4efefead6e33011793f9b",
+  "symbol": "cbeth-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: cbETH/WETH",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x8e01c9848d2e9be59793eb0f262f38519442f3bb"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x4200000000000000000000000000000000000006"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

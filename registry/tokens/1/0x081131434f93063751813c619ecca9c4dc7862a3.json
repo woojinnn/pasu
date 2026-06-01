@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x081131434f93063751813c619ecca9c4dc7862a3",
-  "symbol": "DAR",
-  "decimals": 6,
-  "name": "Mines of Dalarnia"
-}

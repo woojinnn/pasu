@@ -1,0 +1,7 @@
+{
+  "id": "permit2-sign-allowance-confirm",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "permit2_sign_allowance" } } },
+  "policy_rpc": [],
+  "custom_context": { "fields": {} }
+}

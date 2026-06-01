@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x23238f20b894f29041f48d88ee91131c395aaa71",
+  "symbol": "USDat",
+  "decimals": 6,
+  "name": "USDat",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

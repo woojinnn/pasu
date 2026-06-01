@@ -1,0 +1,159 @@
+{
+  "type": "adapter_action",
+  "id": "curve/stableswap-ng/source/factory-stable-ng-4coin-mainnet/exchange-receiver@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xddc1f59d",
+    "chain_to_addresses_source": "curve:factory_stable_ng_4coin_mainnet",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "i",
+          "type": "int128"
+        },
+        {
+          "name": "j",
+          "type": "int128"
+        },
+        {
+          "name": "_dx",
+          "type": "uint256"
+        },
+        {
+          "name": "_min_dy",
+          "type": "uint256"
+        },
+        {
+          "name": "_receiver",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "curve_v1",
+            "chain": "$chain",
+            "pool": "$to",
+            "n_coins": 4,
+            "is_meta": false
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$match": "$args.i",
+                  "$cases": {
+                    "0": "$source.coins.0",
+                    "1": "$source.coins.1",
+                    "2": "$source.coins.2",
+                    "3": "$source.coins.3"
+                  }
+                }
+              }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$match": "$args.j",
+                  "$cases": {
+                    "0": "$source.coins.0",
+                    "1": "$source.coins.1",
+                    "2": "$source.coins.2",
+                    "3": "$source.coins.3"
+                  }
+                }
+              }
+            },
+            "direction": {
+              "kind": "exact_input",
+              "amount_in": "$args._dx",
+              "min_amount_out": "$args._min_dy"
+            },
+            "recipient": "$args._receiver",
+            "slippage_bp": 0
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_ng_balances"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_ng_pool_state"
+                  }
+                ],
+                "calc_id": "curve_ng_expected_out"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_ng_pool_state"
+                  }
+                ],
+                "calc_id": "curve_ng_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "oracle_feed",
+                "provider": "pyth",
+                "feed_id": "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "curve:factory_stable_ng_4coin_mainnet",
+    "note": "build-index substitutes $source.* and appends a per-pool id suffix"
+  }
+}

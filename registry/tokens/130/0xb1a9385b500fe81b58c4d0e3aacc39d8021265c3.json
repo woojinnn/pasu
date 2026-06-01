@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xb1a9385b500fe81b58c4d0e3aacc39d8021265c3",
-  "symbol": "XSGD",
-  "decimals": 6,
-  "name": "XSGD"
-}

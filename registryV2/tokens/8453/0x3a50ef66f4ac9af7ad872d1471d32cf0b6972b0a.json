@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x3a50ef66f4ac9af7ad872d1471d32cf0b6972b0a",
+  "symbol": "alb/boost-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: Why is Chago so French?",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x992649012d9a675a9a9b07aa1992b3ca94d09396"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x1dd2d631c92b1acdfcdd51a0f7145a50130050c4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x71e8f538f47397cd9a544041555cafc7a0ce9ae3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

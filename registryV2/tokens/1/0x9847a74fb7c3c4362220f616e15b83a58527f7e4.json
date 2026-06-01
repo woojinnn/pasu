@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9847a74fb7c3c4362220f616e15b83a58527f7e4",
+  "symbol": "3SPool",
+  "decimals": 18,
+  "name": "sUSD/snxUSD/wUSDA",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9847a74fb7c3c4362220f616e15b83a58527f7e4"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x43833f0c2025dfa80b5556574faa11cbf7f3f4eb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb2f30a7c980f052f02563fb518dcc39e6bf38175"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x57ab1ec28d129707052df4df418d58a2d46d5f51"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

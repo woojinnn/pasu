@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
+use simulation_state::primitives::Address;
 use simulation_state::token::TokenRef;
 use simulation_state::LiveField;
 
@@ -16,6 +17,10 @@ pub struct SetCollateralAction {
     pub venue: LendingVenue,
     /// Asset whose collateral flag is being toggled.
     pub asset: TokenRef,
+    /// Account whose collateral flag is changed; defaults to `submitter` when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub on_behalf_of: Option<Address>,
     /// Live inputs fetched at simulation time.
     pub live_inputs: SetCollateralLiveInputs,
 }

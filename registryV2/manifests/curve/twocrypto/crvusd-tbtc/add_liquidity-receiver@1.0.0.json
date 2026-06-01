@@ -1,0 +1,113 @@
+{
+  "type": "adapter_action",
+  "id": "curve/twocrypto/crvusd-tbtc/add_liquidity-receiver@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x0c3e4b54",
+    "chain_to_addresses": {
+      "1": [
+        "0x4f52c3a81e33521e5a9a47fd9d3be475d2279c2e",
+        "0xf1f435b05d255a5dbde37333c0f61da6f69c6127"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "add_liquidity",
+    "abi": {
+      "name": "add_liquidity",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "amounts",
+          "type": "uint256[2]"
+        },
+        {
+          "name": "min_mint_amount",
+          "type": "uint256"
+        },
+        {
+          "name": "receiver",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "add_liquidity",
+        "add_liquidity": {
+          "venue": {
+            "name": "curve_v2",
+            "chain": "$chain",
+            "pool": "$to"
+          },
+          "params": {
+            "kind": "pooled",
+            "tokens": [
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+                  }
+                },
+                "$args.amounts[0]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+                  }
+                },
+                "$args.amounts[1]"
+              ]
+            ],
+            "min_lp_out": "$args.min_mint_amount",
+            "recipient": "$args.receiver"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_v2_balances"
+              },
+              "ttl_s": 12
+            },
+            "current_price": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

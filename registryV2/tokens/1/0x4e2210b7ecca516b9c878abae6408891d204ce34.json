@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4e2210b7ecca516b9c878abae6408891d204ce34",
+  "symbol": "NPR-PT/sUSP@29/7/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/Pareto staked USP@29/7/2025",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x4e2210b7ecca516b9c878abae6408891d204ce34"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x271c616157e69a43b4977412a64183cf110edf16"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5c1452f2e4206d2c81de6da1bb35bd8bdd1feba3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

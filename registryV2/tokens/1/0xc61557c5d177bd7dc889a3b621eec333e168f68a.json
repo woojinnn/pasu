@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc61557c5d177bd7dc889a3b621eec333e168f68a",
+  "symbol": "REUSD3CRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory USD Metapool: REUSD/3Crv",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc61557c5d177bd7dc889a3b621eec333e168f68a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x29b41fe7d754b8b43d4060bb43734e436b0b9a33"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6c3f90f043a72fa612cbac8115ee7e52bde6e490"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

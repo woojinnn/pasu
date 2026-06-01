@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4737d9b4592b40d51e110b94c9c043c6654067ae",
+  "symbol": "slvlUSD",
+  "decimals": 18,
+  "name": "Staked lvlUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

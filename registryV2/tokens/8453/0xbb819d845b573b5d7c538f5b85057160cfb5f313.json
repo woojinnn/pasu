@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xbb819d845b573b5d7c538f5b85057160cfb5f313",
+  "symbol": "meUSD",
+  "decimals": 18,
+  "name": "Morpho eUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

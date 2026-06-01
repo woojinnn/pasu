@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x064b396eb6fcf181dcd2926d6da00d6e57e0f280",
+  "symbol": "TricyETHlp",
+  "decimals": 18,
+  "name": "CurveYield ETH/USD Tripool",
+  "source": "https://api.curve.fi/api/getPools/base/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x064b396eb6fcf181dcd2926d6da00d6e57e0f280"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xe3f476f62e7af9f85ea1a2b28ae7321e9077791d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x60798c83f91db73fa3648ea8a9bb84a0b0e2aaee"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x9bfb757b7376121cf6042bf05c5a3037add6cd80"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

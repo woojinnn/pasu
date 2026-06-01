@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca",
+  "symbol": "mwUSDC",
+  "decimals": 18,
+  "name": "Moonwell Flagship USDC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -170,6 +170,7 @@ mod tests {
         SetCollateralAction {
             venue: aave_v3_venue(),
             asset: usdc_ref(),
+            on_behalf_of: None,
             live_inputs: SetCollateralLiveInputs {
                 reserve_state: LiveField::new(
                     ReserveState {

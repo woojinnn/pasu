@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3835a58ca93cdb5f912519ad366826ac9a752510",
+  "symbol": "FraxlendV1 - CRV/FRAX",
+  "decimals": 18,
+  "name": "FraxlendV1 - Curve DAO Token/Frax - Variable Time-Weighted Interest Rate - 6",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

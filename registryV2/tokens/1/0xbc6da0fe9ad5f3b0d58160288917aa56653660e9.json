@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbc6da0fe9ad5f3b0d58160288917aa56653660e9",
+  "symbol": "alUSD",
+  "decimals": 18,
+  "name": "Alchemix USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

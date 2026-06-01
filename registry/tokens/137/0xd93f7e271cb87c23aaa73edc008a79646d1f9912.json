@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xd93f7e271cb87c23aaa73edc008a79646d1f9912",
-  "symbol": "SOL",
-  "decimals": 9,
-  "name": "Wrapped SOL"
-}

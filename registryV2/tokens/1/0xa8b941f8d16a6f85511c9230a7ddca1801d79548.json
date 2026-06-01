@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa8b941f8d16a6f85511c9230a7ddca1801d79548",
+  "symbol": "APEST-PROS",
+  "decimals": 18,
+  "name": "APESTR/PROSPECTIVE",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xa8b941f8d16a6f85511c9230a7ddca1801d79548"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9ebf91b8d6ff68aa05545301a3d0984eaee54a03"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbe1936a67f503e0eaf2434b0cf9f4e3d7100008a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

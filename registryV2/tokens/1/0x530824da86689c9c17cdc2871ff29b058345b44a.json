@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x530824da86689c9c17cdc2871ff29b058345b44a",
+  "symbol": "STBT",
+  "decimals": 18,
+  "name": "Short-term Treasury Bill Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

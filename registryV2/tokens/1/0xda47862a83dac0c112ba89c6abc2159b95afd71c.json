@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xda47862a83dac0c112ba89c6abc2159b95afd71c",
+  "symbol": "PRISMA",
+  "decimals": 18,
+  "name": "Prisma Governance Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

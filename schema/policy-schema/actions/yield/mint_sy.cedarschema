@@ -1,0 +1,33 @@
+// Yield::MintSy — wrap a token into its SY (ActionMiscV3 mintSyFromToken).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/mint_sy.rs`
+// (`MintSyAction`). No LiveInputs (P1a).
+
+namespace Yield {
+  type MintSyContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // SY contract minted into (address).
+    sy: String,
+    // External token deposited.
+    externalToken: Core::TokenRef,
+    // External-token amount deposited (U256 hex).
+    netTokenIn: String,
+    // Minimum SY shares minted / slippage floor (U256 hex).
+    minSyOut: String,
+    // SY recipient (address).
+    recipient: String,
+    // Manifest-extensible slot.
+    custom?: MintSyCustomContext,
+  };
+
+  type MintSyCustomContext = {};
+
+  action "MintSy" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: MintSyContext,
+  };
+}

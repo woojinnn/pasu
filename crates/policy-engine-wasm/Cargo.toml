@@ -11,7 +11,10 @@ publish = false
 # -Oz alone — --strip-debug recovers the ~30 KB budget. No effect on
 # Cargo profile.release — only the wasm-pack post-processing step.
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ["-Oz", "--strip-debug", "--enable-bulk-memory", "--enable-mutable-globals"]
+# Plan §M10 (2026-05-28) — simulation-reducer 의 sqrt / log math 가
+# i64.trunc_sat_f64_s (non-trapping saturating float→int) 명령 사용 →
+# wasm-opt 의 --enable-nontrapping-float-to-int 필요.
+wasm-opt = ["-Oz", "--strip-debug", "--enable-bulk-memory", "--enable-mutable-globals", "--enable-nontrapping-float-to-int"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

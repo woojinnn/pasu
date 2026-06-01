@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xcf62f905562626cfcdd2261162a51fd02fc9c5b6",
+  "symbol": "sfrxUSD",
+  "decimals": 18,
+  "name": "Staked Frax USD",
+  "source": "https://etherscan.io/token/0xcf62f905562626cfcdd2261162a51fd02fc9c5b6"
+}

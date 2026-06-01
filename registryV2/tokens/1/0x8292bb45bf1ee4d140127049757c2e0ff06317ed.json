@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+  "symbol": "RLUSD",
+  "decimals": 18,
+  "name": "RLUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

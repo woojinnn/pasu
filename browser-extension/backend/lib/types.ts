@@ -79,7 +79,55 @@ export type VenueActionWire =
     }
   | { kind: "withdraw"; destination: string; amount: string }
   | { kind: "usd_send"; destination: string; amount: string }
-  | { kind: "approve_agent"; agentAddress: string; agentName?: string };
+  | { kind: "approve_agent"; agentAddress: string; agentName?: string }
+  | { kind: "spot_send"; destination: string; token: string; amount: string }
+  | { kind: "usd_class_transfer"; amount: string; toPerp: boolean }
+  | {
+      kind: "send_asset";
+      destination: string;
+      sourceDex: string;
+      destinationDex: string;
+      token: string;
+      amount: string;
+    }
+  | {
+      kind: "send_to_evm_with_data";
+      token: string;
+      amount: string;
+      sourceDex: string;
+      destinationRecipient: string;
+      data: string;
+    }
+  | { kind: "c_deposit"; wei: string }
+  | { kind: "c_withdraw"; wei: string }
+  | { kind: "vault_transfer"; vaultAddress: string; isDeposit: boolean; usd: string }
+  | {
+      kind: "sub_account_transfer";
+      subAccountUser: string;
+      isDeposit: boolean;
+      usd: string;
+    }
+  | { kind: "approve_builder_fee"; maxFeeRate: string; builder: string }
+  | { kind: "token_delegate"; validator: string; isUndelegate: boolean; wei: string }
+  | {
+      kind: "twap_order";
+      assetIndex: number;
+      isBuy: boolean;
+      size: string;
+      reduceOnly: boolean;
+      minutes: number;
+      randomize: boolean;
+    }
+  | { kind: "update_isolated_margin"; assetIndex: number; isBuy: boolean; ntli: string }
+  | {
+      /**
+       * Catch-all for an `/exchange` action with no explicit model. Carries only
+       * the raw wire `type` string so the engine can gate / surface it (maps to
+       * `ActionBody::HyperliquidCore(HlUnknown)` — policy default warn / deny).
+       */
+      kind: "unknown";
+      actionType: string;
+    };
 
 /**
  * An off-chain venue action intercepted from a network POST. Carries one parsed
@@ -101,6 +149,19 @@ export interface VenueOrderPayload {
   hlAction: VenueActionWire;
   /** Resolved asset symbol (e.g. `"BTC-USD"`); `undefined` until meta resolves. */
   symbol?: string;
+  /**
+   * The `/exchange` request nonce — a millisecond wall-clock timestamp. Shared
+   * by every leg of one POST. Threaded into `ActionMeta.submitted_at` (÷1000 →
+   * seconds) so time-scoped policies see the real submission time instead of a
+   * placeholder.
+   */
+  nonce?: number;
+  /**
+   * The `vaultAddress` from the request body when the order is placed on behalf
+   * of a vault (`null`/absent otherwise). Captured for attribution; not yet
+   * surfaced into the policy context (that needs a shared `ActionMeta` field).
+   */
+  vaultAddress?: string;
   /**
    * Optional wallet attribution. Hyperliquid agent-key exchange requests do not
    * always reveal the master account in the request body, so the response hook

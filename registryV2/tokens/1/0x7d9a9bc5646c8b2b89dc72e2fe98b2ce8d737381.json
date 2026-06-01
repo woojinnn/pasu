@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7d9a9bc5646c8b2b89dc72e2fe98b2ce8d737381",
+  "symbol": "CBD",
+  "decimals": 18,
+  "name": "Curve Bonds Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

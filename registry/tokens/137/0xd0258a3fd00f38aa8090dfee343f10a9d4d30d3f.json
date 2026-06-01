@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xd0258a3fd00f38aa8090dfee343f10a9d4d30d3f",
-  "symbol": "VOXEL",
-  "decimals": 18,
-  "name": "VOXEL Token"
-}

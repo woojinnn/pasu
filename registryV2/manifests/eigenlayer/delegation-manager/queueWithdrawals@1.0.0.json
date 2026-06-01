@@ -1,0 +1,80 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/queueWithdrawals@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x0dd8dd02",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    }
+  },
+  "note": "queueWithdrawals emits one queue_withdrawal intent per QueuedWithdrawalParams. The decoded depositShares (uint256[]) is in protocol-internal strategy-share units, NOT a user-legible token amount (§4d illegible decoded field). Converting each entry to its underlying token amount requires a per-strategy calldata-arg view (IStrategy.sharesToUnderlyingView(shares)) whose contract is the decoded $args.strategies[i] rather than $to — not expressible with manifest-only onchain_view, and array-shaped. Per §4d this is a justified array/per-strategy defer; the share-to-underlying enrichment is tracked for a follow-up restaking-enrichment round (see plan).",
+  "abi_fragment": {
+    "function_name": "queueWithdrawals",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "contract IStrategy[]",
+              "name": "strategies",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "depositShares",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "address",
+              "name": "__deprecated_withdrawer",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct IDelegationManagerTypes.QueuedWithdrawalParams[]",
+          "name": "params",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "queueWithdrawals",
+      "outputs": [
+        {
+          "internalType": "bytes32[]",
+          "name": "",
+          "type": "bytes32[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.params",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "queue_withdrawal",
+        "queue_withdrawal": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "strategies": "$inputs[0]",
+          "deposit_shares": "$inputs[1]",
+          "withdrawer": "$inputs[2]"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

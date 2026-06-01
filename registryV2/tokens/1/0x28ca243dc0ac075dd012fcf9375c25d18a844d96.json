@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x28ca243dc0ac075dd012fcf9375c25d18a844d96",
+  "symbol": "sdFXNFXN-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: sdFXN",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x28ca243dc0ac075dd012fcf9375c25d18a844d96"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x365accfca291e7d3914637abf1f7635db165bb09"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe19d1c837b8a1c83a56cd9165b2c0256d39653ad"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

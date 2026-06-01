@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x05d6682379f5f9626451e44d16ff550a1c05911b",
+  "symbol": "credUSD",
+  "decimals": 6,
+  "name": "credUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

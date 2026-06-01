@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x01fe650ef2f8e2982295489ae6adc1413bf6011f",
+  "symbol": "tTCR-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tTCR/TCR",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x01fe650ef2f8e2982295489ae6adc1413bf6011f"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x15a629f0665a3eb97d7ae9a7ce7abf73aeb79415"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9c4a4204b79dd291d6b6571c5be8bbcd0622f050"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

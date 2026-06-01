@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x7ef918f3b54459049b2bd4453dd97ea54286cb96",
+  "symbol": "$KAREN/USD",
+  "decimals": 18,
+  "name": "$KAREN/USDbC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x7ef918f3b54459049b2bd4453dd97ea54286cb96"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x00f5787d6d21c92c4ed3ef950add920004143b07"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x4493fae71502871245b7049580b3195bc930e661",
+  "symbol": "CUSD",
+  "decimals": 18,
+  "name": "Chad USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

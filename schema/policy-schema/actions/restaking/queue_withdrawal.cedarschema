@@ -1,0 +1,29 @@
+// Restaking::QueueWithdrawal — queue a withdrawal of staked shares (EigenLayer
+// DelegationManager `queueWithdrawals`, one QueuedWithdrawalParams element).
+//
+// Rust source: `crates/simulation/reducer/src/action/restaking/queue_withdrawal.rs`
+// (`QueueWithdrawalAction`). `depositShares` is the internal share unit (NOT
+// underlying token units) — share→underlying enrichment deferred (per-strategy,
+// array-shaped). No LiveInputs.
+
+namespace Restaking {
+  type QueueWithdrawalContext = {
+    meta: Core::ActionMeta,
+    venue: RestakingVenue,
+    // Strategies whose shares are being withdrawn.
+    strategies: Set<String>,
+    // Per-strategy share amounts (internal share unit, U256 hex).
+    depositShares: Set<String>,
+    // Address that will complete the withdrawal and receive the funds.
+    withdrawer: String,
+    custom?: QueueWithdrawalCustomContext,
+  };
+
+  type QueueWithdrawalCustomContext = {};
+
+  action "QueueWithdrawal" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: QueueWithdrawalContext,
+  };
+}

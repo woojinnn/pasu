@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x11113ff3a60c2450f4b22515cb760417259ee94b",
+  "symbol": "nBASIS",
+  "decimals": 6,
+  "name": "Nest Basis",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

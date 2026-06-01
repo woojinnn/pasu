@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2e9d63788249371f1dfc918a52f8d799f4a38c94",
+  "symbol": "TOKE",
+  "decimals": 18,
+  "name": "Tokemak",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

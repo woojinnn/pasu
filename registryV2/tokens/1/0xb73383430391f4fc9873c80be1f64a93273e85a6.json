@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb73383430391f4fc9873c80be1f64a93273e85a6",
+  "symbol": "sUSDb",
+  "decimals": 18,
+  "name": "Staked USDb",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

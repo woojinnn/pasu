@@ -1,0 +1,114 @@
+{
+  "type": "adapter_action",
+  "id": "curve/crvusd-controller/wsteth/add_collateral@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x6f972f12",
+    "chain_to_addresses": {
+      "1": [
+        "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "add_collateral",
+    "abi": {
+      "name": "add_collateral",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "collateral",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "supply",
+        "supply": {
+          "venue": {
+            "name": "crv_usd",
+            "chain": "$chain",
+            "controller": "$to",
+            "collateral": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+              }
+            }
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+            }
+          },
+          "amount": "$args.collateral",
+          "on_behalf_of": "$tx.from"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "amm()",
+          "decoder_id": "crvusd_controller_state"
+        },
+        "ttl_s": 30
+      },
+      "supply_apy": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "crvusd_collateral_apy"
+        },
+        "ttl_s": 30
+      },
+      "a_token_price_usd": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "crvusd_collateral_price"
+        },
+        "ttl_s": 60
+      },
+      "eligible_as_collat": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "crvusd_is_collateral"
+        },
+        "ttl_s": 60
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "user_state(address)",
+          "decoder_id": "crvusd_user_state"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

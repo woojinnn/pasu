@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb88a5ac00917a02d82c7cd6cebd73e2852d43574",
+  "symbol": "SWEEP",
+  "decimals": 18,
+  "name": "SweepCoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

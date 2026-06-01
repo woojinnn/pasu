@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9b247107ef12d7d6046f7060f9c682a1373db2fe",
+  "symbol": "pTONTON-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: pTON/TON",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc878dd87d598ece5d4900b5933c6a656227c528d"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6256ab9480b84cf70d75773121c0523f87b0d588"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x582d872a1b094fc48f5de31d3b73f2d9be47def1"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

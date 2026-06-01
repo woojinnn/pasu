@@ -1,0 +1,67 @@
+{
+  "type": "adapter_action",
+  "id": "curve/minter/mint_for@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x27f18ae3",
+    "chain_to_addresses": {
+      "1": [
+        "0xd061d61a4d941c39e5453435b6345dc261c2fce0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mint_for",
+    "abi": {
+      "name": "mint_for",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "gauge_addr",
+          "type": "address"
+        },
+        {
+          "name": "_for",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "claim_rewards",
+        "claim_rewards": {
+          "venue": {
+            "name": "curve_minter",
+            "chain": "$chain",
+            "minter": "$to"
+          },
+          "reward_token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+            }
+          },
+          "gauges": [
+            "$args.gauge_addr"
+          ],
+          "on_behalf_of": "$args._for"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

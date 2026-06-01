@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2863a328a0b7fc6040f11614fa0728587db8e353",
+  "symbol": "multibtc3CRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory USD Metapool: multiBTC+WBTC/sBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x2863a328a0b7fc6040f11614fa0728587db8e353"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x66eff5221ca926636224650fd3b9c497ff828f7d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x051d7e5609917bd9b73f04bac0ded8dd46a74301"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

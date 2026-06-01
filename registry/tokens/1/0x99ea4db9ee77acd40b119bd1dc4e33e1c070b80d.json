@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x99ea4db9ee77acd40b119bd1dc4e33e1c070b80d",
-  "symbol": "QSP",
-  "decimals": 18,
-  "name": "Quantstamp"
-}

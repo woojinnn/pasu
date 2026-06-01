@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x64351fc9810adad17a690e4e1717df5e7e085160",
+  "symbol": "msETH",
+  "decimals": 18,
+  "name": "Metronome Synth ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

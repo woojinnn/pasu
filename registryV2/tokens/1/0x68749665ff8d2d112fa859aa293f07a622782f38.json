@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x68749665ff8d2d112fa859aa293f07a622782f38",
+  "symbol": "XAUt",
+  "decimals": 6,
+  "name": "Tether Gold",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

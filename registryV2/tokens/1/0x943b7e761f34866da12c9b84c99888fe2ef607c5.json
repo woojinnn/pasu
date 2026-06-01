@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x943b7e761f34866da12c9b84c99888fe2ef607c5",
+  "symbol": "dfx2SGD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: dfxSGD/XSGD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x943b7e761f34866da12c9b84c99888fe2ef607c5"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x52ddda10eb0abdb34528329c4af16d218ab95bd1"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x70e8de73ce538da2beed35d14187f6959a8eca96"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

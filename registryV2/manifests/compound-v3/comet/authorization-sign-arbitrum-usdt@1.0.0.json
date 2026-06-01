@@ -1,0 +1,95 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v3/comet/authorization-sign-arbitrum-usdt@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound V3 Arbitrum cUSDTv3 off-chain Authorization (EIP-712) consumed by allowBySig. Official CometExt.sol typehash: Authorization(address owner,address manager,bool isAllowed,uint256 nonce,uint256 expiry). Domain name is Compound USDT and routing keys on the arbitrum cUSDTv3 verifying_contract + primary_type.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "42161": [
+        "0xd98be00b5d27fc98112bde293e487f8d4ca57d07"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "Compound USDT",
+      "verifying_contract": "0xd98be00b5d27fc98112bde293e487f8d4ca57d07",
+      "primary_type": "Authorization",
+      "types": {
+        "Authorization": [
+          {
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "name": "manager",
+            "type": "address"
+          },
+          {
+            "name": "isAllowed",
+            "type": "bool"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "expiry",
+            "type": "uint256"
+          }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "Authorization",
+    "abi": {
+      "name": "Authorization",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "name": "manager",
+          "type": "address"
+        },
+        {
+          "name": "isAllowed",
+          "type": "bool"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256"
+        },
+        {
+          "name": "expiry",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "set_authorization",
+        "set_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "authorizer": "$args.owner",
+          "authorized": "$args.manager",
+          "is_authorized": "$args.isAllowed"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

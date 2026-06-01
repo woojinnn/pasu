@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x66a1e37c9b0eaddca17d3662d6c05f4decf3e110",
+  "symbol": "USR",
+  "decimals": 18,
+  "name": "Resolv USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

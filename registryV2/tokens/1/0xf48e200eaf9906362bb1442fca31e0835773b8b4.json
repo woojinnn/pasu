@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf48e200eaf9906362bb1442fca31e0835773b8b4",
+  "symbol": "sAUD",
+  "decimals": 18,
+  "name": "Synth sAUD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

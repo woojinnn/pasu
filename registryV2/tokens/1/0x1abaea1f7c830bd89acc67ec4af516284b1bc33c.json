@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1abaea1f7c830bd89acc67ec4af516284b1bc33c",
+  "symbol": "EURC",
+  "decimals": 6,
+  "name": "Euro Coin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

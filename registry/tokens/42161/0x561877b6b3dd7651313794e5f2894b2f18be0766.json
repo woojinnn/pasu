@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x561877b6b3dd7651313794e5f2894b2f18be0766",
-  "symbol": "MATIC",
-  "decimals": 18,
-  "name": "Polygon"
-}

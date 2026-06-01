@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc23837ccbecab20102ddb87d41675c8a2f858056",
+  "symbol": "bgold",
+  "decimals": 18,
+  "name": "Pennyweight'd Gold ",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc23837ccbecab20102ddb87d41675c8a2f858056"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x166c293f2e3b180f00b25e82ad5b592a7c8f4d3d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x45804880de22913dafe09f4980848ece6ecbaf78"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x68749665ff8d2d112fa859aa293f07a622782f38"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2103e845c5e135493bb6c2a4f0b8651956ea8682"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

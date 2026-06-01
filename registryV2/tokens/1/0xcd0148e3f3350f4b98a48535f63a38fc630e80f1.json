@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xcd0148e3f3350f4b98a48535f63a38fc630e80f1",
+  "symbol": "BBTETH3CRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory USD Metapool: BBT/ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xcd0148e3f3350f4b98a48535f63a38fc630e80f1"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9f77ba354889bf6eb5c275d4ac101e9547f15adb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6c3f90f043a72fa612cbac8115ee7e52bde6e490"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

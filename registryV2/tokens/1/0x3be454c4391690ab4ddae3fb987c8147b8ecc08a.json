@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3be454c4391690ab4ddae3fb987c8147b8ecc08a",
+  "symbol": "USDafscrv",
+  "decimals": 18,
+  "name": "USDaf Curve Stable Pool",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x3be454c4391690ab4ddae3fb987c8147b8ecc08a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0655977feb2f289a4ab78af67bab0d17aab84367"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9cf12ccd6020b6888e4d4c4e4c7aca33c1eb91f8"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

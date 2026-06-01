@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8",
+  "symbol": "aEthWBTC",
+  "decimals": 8,
+  "name": "Aave Ethereum WBTC",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol#L198",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" }
+    },
+    "rebase_form": "rebasing"
+  }
+}

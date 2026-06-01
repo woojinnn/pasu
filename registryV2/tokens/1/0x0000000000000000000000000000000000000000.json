@@ -1,0 +1,10 @@
+{
+  "erc_kind": "native",
+  "chainId": 1,
+  "address": "0x0000000000000000000000000000000000000000",
+  "symbol": "ETH",
+  "decimals": 18,
+  "name": "Ether",
+  "source": "https://ethereum.org/",
+  "token_kind": { "kind": "native_gas" }
+}

@@ -1,0 +1,58 @@
+{
+  "type": "adapter_action",
+  "id": "curve/gauge/source/deposit-for@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x6e553f65",
+    "chain_to_addresses_source": "curve:gauges",
+    "chain_ids": [
+      1,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "deposit",
+    "abi": {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_value",
+          "type": "uint256"
+        },
+        {
+          "name": "_addr",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "gauge_deposit",
+        "gauge_deposit": {
+          "venue": {
+            "name": "curve_gauge",
+            "chain": "$chain",
+            "gauge": "$to"
+          },
+          "amount": "$args._value",
+          "on_behalf_of": "$args._addr"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

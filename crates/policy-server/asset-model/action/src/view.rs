@@ -52,6 +52,31 @@ impl ActionBody {
                 action_tag: Some(a.action_tag()),
                 venue_name: a.venue_name(),
             },
+            Self::LiquidStaking(a) => ActionView {
+                domain: "liquid_staking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Permission(a) => ActionView {
+                domain: "permission",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Yield(a) => ActionView {
+                domain: "yield",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Restaking(a) => ActionView {
+                domain: "restaking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Staking(a) => ActionView {
+                domain: "staking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
             Self::HyperliquidCore(a) => ActionView {
                 domain: "hyperliquid_core",
                 action_tag: Some(a.action_tag()),
@@ -75,7 +100,7 @@ impl ActionBody {
 #[allow(clippy::too_many_lines)]
 mod tests {
     use super::*;
-    use crate::{amm, lending, perp, token, AirdropAction, LaunchpadAction};
+    use crate::{amm, lending, permission, perp, token, AirdropAction, LaunchpadAction};
 
     use simulation_state::primitives::{Address, ChainId, U256};
     use simulation_state::token::TokenKey;
@@ -173,6 +198,48 @@ mod tests {
         assert_eq!(view.domain, "token");
         assert_eq!(view.action_tag, Some("erc20_approve"));
         assert_eq!(view.venue_name, None);
+    }
+
+    #[test]
+    fn view_yield_pt_swap_pendle_v2() {
+        use crate::yield_;
+        let market_src = simulation_state::live_field::DataSource::OnchainView {
+            chain: ChainId::ethereum_mainnet(),
+            contract: addr("0xcfd848b9f6fef552204014ac67901223ad6bf679"),
+            function: "readTokens()".into(),
+            decoder_id: "pendle_market_tokens".into(),
+        };
+        let now = simulation_state::primitives::Time::from_unix(1_738_000_000);
+        let zero = addr("0x0000000000000000000000000000000000000000");
+        let body = ActionBody::Yield(yield_::YieldAction::PtSwap(yield_::PtSwapAction {
+            venue: yield_::YieldVenue::PendleV2 {
+                chain: ChainId::ethereum_mainnet(),
+            },
+            market: addr("0xcfd848b9f6fef552204014ac67901223ad6bf679"),
+            direction: yield_::PtSwapDirection::TokenForPt,
+            external_token: Some(token_ref()),
+            exact_amount_in: U256::from(1_000_000_000u64),
+            min_amount_out: U256::from(990_000_000u64),
+            recipient: addr("0x000000000000000000000000000000000000a01c"),
+            live_inputs: yield_::MarketTokensLiveInputs {
+                sy: simulation_state::LiveField::new(zero, market_src.clone(), now),
+                pt: simulation_state::LiveField::new(zero, market_src.clone(), now),
+                yt: simulation_state::LiveField::new(zero, market_src.clone(), now),
+                maturity: simulation_state::LiveField::new(U256::ZERO, market_src, now),
+            },
+        }));
+        let view = body.view();
+        assert_eq!(view.domain, "yield");
+        assert_eq!(view.action_tag, Some("pt_swap"));
+        assert_eq!(view.venue_name, Some("pendle_v2"));
+        // serde `domain` tag is the source of truth — must equal VALID_DOMAINS entry.
+        let json = serde_json::to_value(&body).unwrap();
+        assert_eq!(
+            json.get("domain").and_then(serde_json::Value::as_str),
+            Some("yield"),
+            "ActionBody::Yield must serialize domain tag `yield`"
+        );
+        assert_action_tag(&body);
     }
 
     #[test]
@@ -550,6 +617,7 @@ mod tests {
                     market_id: None,
                 },
                 category_id: 1,
+                on_behalf_of: None,
                 live_inputs: lending::SetEModeLiveInputs {
                     category_config: simulation_state::LiveField::new(
                         lending::EModeConfig {
@@ -584,6 +652,26 @@ mod tests {
             "serde must emit set_e_mode (underscore before E and M)"
         );
         assert_action_tag(&set_emode);
+
+        let permission =
+            ActionBody::Permission(permission::PermissionAction::ProtocolAuthorization(
+                permission::ProtocolAuthorizationAction {
+                    chain: ChainId::ethereum_mainnet(),
+                    protocol: any,
+                    protocol_name: "balancer_v2".into(),
+                    permission: permission::ProtocolPermissionKind::Relayer,
+                    permission_label: None,
+                    permission_limit: None,
+                    authorizer: Some(any),
+                    authorized: any,
+                    is_authorized: true,
+                },
+            ));
+        let permission_view = permission.view();
+        assert_eq!(permission_view.domain, "permission");
+        assert_eq!(permission_view.action_tag, Some("protocol_authorization"));
+        assert_eq!(permission_view.venue_name, Some("balancer_v2"));
+        assert_action_tag(&permission);
 
         // Airdrop / Launchpad tags are single-boundary; the accessor is trivially
         // correct, but reference the methods so the imports stay honest.

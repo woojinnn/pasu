@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x02d55af4813a3a6826ef185935e4fc1defa45fb0",
+  "symbol": "lp-sdSPECT",
+  "decimals": 18,
+  "name": "sdSPECTRA/SPECTRA",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x02d55af4813a3a6826ef185935e4fc1defa45fb0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x64fcc3a02eeeba05ef701b7eed066c6ebd5d4e51"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x8e7801bac71e92993f6924e7d767d7dbc5fce0ae"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

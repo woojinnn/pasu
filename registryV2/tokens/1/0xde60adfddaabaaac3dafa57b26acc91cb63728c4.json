@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xde60adfddaabaaac3dafa57b26acc91cb63728c4",
+  "symbol": "USDT",
+  "decimals": 18,
+  "name": "Tether USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

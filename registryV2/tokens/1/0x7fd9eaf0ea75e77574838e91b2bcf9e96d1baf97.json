@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7fd9eaf0ea75e77574838e91b2bcf9e96d1baf97",
+  "symbol": "CSPANK-gauge",
+  "decimals": 18,
+  "name": "Curve.fi CSPANK Gauge Deposit",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

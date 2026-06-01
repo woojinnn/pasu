@@ -1,0 +1,23 @@
+// Restaking::Undelegate — undelegate from the current operator (EigenLayer
+// DelegationManager `undelegate`); queues a withdrawal of all delegated shares.
+//
+// Rust source: `crates/simulation/reducer/src/action/restaking/undelegate.rs`
+// (`UndelegateAction`). No LiveInputs.
+
+namespace Restaking {
+  type UndelegateContext = {
+    meta: Core::ActionMeta,
+    venue: RestakingVenue,
+    // Staker being undelegated.
+    staker: String,
+    custom?: UndelegateCustomContext,
+  };
+
+  type UndelegateCustomContext = {};
+
+  action "Undelegate" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: UndelegateContext,
+  };
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x11e969e9b3f89cb16d686a03cd8508c9fc0361af",
-  "symbol": "LAVA",
-  "decimals": 6,
-  "name": "Axelar Wrapped LAVA"
-}

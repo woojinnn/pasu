@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 10,
-  "address": "0x3390108e913824b8ead638444cc52b9abdf63798",
-  "symbol": "MASK",
-  "decimals": 18,
-  "name": "Mask Network"
-}

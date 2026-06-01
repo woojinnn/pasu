@@ -99,7 +99,7 @@ pub async fn evaluate(
     for (i, action) in req.envelopes.iter().enumerate() {
         // The reducer is pure: it reads only `(state, action, ctx)`. The
         // per-envelope index lets the reducer disambiguate intra-batch effects.
-        let ctx = req.eval_context.clone().with_envelope_index(i);
+        let ctx = req.eval_context.clone().with_action_index(i);
 
         // TODO(prep): live-input refresh. Once the sync orchestrator + RPC
         // config are wired, run

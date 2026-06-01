@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x649c1b0e70a80210bcfb3c4eb5ddad175b90be4d",
+  "symbol": "GCDUSDP-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: GCD / USDP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x649c1b0e70a80210bcfb3c4eb5ddad175b90be4d"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x213ecae6b3cbc0ad976f7d82626546d5b63a71cb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1456688345527be1f37e9e627da0837d6f08c925"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

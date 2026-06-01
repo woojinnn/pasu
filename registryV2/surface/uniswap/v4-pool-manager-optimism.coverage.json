@@ -1,0 +1,115 @@
+{
+  "contract": "V4PoolManager",
+  "chainId": 10,
+  "address": "0x9a13f98cb987694c9f086b1f5eb990eea8264ec3",
+  "snapshot": "v4-pool-manager-optimism.abi.json",
+  "note": "Direct PoolManager user surface is limited here to initialize. Low-level flash-accounting methods are explicit excludes and should be reached through PositionManager/UniversalRouter intent paths.",
+  "functions": {
+    "0x426a8493": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0xf5298aca": {
+      "name": "burn",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x80f0b44c": {
+      "name": "clear",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x8161b874": {
+      "name": "collectProtocolFees",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x234266d7": {
+      "name": "donate",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x6276cbbe": {
+      "name": "initialize",
+      "decision": "cover",
+      "reason": "direct V4 pool initialization, routed conservatively as Unknown"
+    },
+    "0x156e29f6": {
+      "name": "mint",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x5a6bcfda": {
+      "name": "modifyLiquidity",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x558a7297": {
+      "name": "setOperator",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x7e87ce7d": {
+      "name": "setProtocolFee",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x2d771389": {
+      "name": "setProtocolFeeController",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x11da60b4": {
+      "name": "settle",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x3dd45adb": {
+      "name": "settleFor",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0xf3cd914c": {
+      "name": "swap",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0xa5841194": {
+      "name": "sync",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x0b0d9c09": {
+      "name": "take",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x095bcdb6": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0xfe99049a": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x48c89491": {
+      "name": "unlock",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    },
+    "0x52759651": {
+      "name": "updateDynamicLPFee",
+      "decision": "exclude",
+      "reason": "low-level V4 flash-accounting, callback-driven, ERC6909, or owner operation; not a direct safe wallet intent model"
+    }
+  },
+  "signed_structs": {}
+}

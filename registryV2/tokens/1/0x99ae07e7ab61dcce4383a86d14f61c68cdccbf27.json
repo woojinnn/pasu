@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x99ae07e7ab61dcce4383a86d14f61c68cdccbf27",
+  "symbol": "ibbtc/sbtcCRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory BTC Metapool: Interest Bearing Bitcoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x99ae07e7ab61dcce4383a86d14f61c68cdccbf27"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc4e15973e6ff2a35cc804c2cf9d2a1b817a8b40f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x075b1bb99792c9e1041ba13afef80c91a1e70fb3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

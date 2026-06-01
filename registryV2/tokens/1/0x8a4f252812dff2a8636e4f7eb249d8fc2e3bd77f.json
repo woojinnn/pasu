@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+  "symbol": "BTCGHOETH",
+  "decimals": 18,
+  "name": "TricryptoGHO",
+  "source": "https://etherscan.io/token/0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

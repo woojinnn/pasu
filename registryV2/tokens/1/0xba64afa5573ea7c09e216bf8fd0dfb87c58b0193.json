@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xba64afa5573ea7c09e216bf8fd0dfb87c58b0193",
+  "symbol": "iREAL-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: REAL/iBBT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x96421bb962c47fe5cf784161f850f83d77919996"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x04a289fe4ce5fa87a76f58d0214340fb5893a58c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x691c25c461dafc47792b6e4d674fbb637bca1c6f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/whype/approve@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note": "WHYPE (HyperEVM chain 999) standard ERC20 approve. Mirrors standard/erc20/approve@1.0.0 -> token/erc20_approve. WHYPE-specific manifest (explicit chain_to_addresses) because chain 999 has no committed tokens/999 list; no collision with standard/erc20 (chains [1,10,8453,42161]). CAVEAT: WHYPE full 40-hex D9-limited; 0x5555...5 ASSUMED.",
+  "match": {
+    "selector": "0x095ea7b3",
+    "chain_to_addresses": {
+      "999": ["0x5555555555555555555555555555555555555555"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "approve",
+    "abi": {
+      "name": "approve",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "spender", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ],
+      "outputs": [
+        { "name": "", "type": "bool" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_approve",
+        "erc20_approve": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "spender": "$args.spender",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

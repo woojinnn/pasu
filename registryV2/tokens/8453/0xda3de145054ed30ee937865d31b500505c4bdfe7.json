@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xda3de145054ed30ee937865d31b500505c4bdfe7",
+  "symbol": "USD+crvUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Overnight/Curve",
+  "source": "https://api.curve.fi/api/getPools/base/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xda3de145054ed30ee937865d31b500505c4bdfe7"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xb79dd08ea68a908a97220c76d19a6aa9cbde4376"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x417ac0e078398c154edfadd9ef675d30be60af93"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

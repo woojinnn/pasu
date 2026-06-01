@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x69cfe57dac431ad2e3662f4d25d1aba2d49e8488",
+  "symbol": "MyFirstStabelcoin",
+  "decimals": 18,
+  "name": "MyFirstStabelcoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

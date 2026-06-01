@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6bede1c6009a78c222d9bdb7974bb67847fdb68c",
+  "symbol": "USBD",
+  "decimals": 18,
+  "name": "US Bitcoin Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

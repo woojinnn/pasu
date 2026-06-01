@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf17d6f98a5c6eaa99d149079984119e0a4ef6900",
+  "symbol": "sUSG",
+  "decimals": 18,
+  "name": "Savings USG",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

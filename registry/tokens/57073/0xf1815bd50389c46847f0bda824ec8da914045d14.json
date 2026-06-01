@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 57073,
-  "address": "0xf1815bd50389c46847f0bda824ec8da914045d14",
-  "symbol": "USDC.E",
-  "decimals": 6,
-  "name": "Stargate Bridged USDC"
-}

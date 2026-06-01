@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x00f3c42833c3170159af4e92dbb451fb3f708917",
-  "symbol": "ICP",
-  "decimals": 8,
-  "name": "ICP"
-}

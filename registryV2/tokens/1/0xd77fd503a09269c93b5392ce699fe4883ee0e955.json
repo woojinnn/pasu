@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd77fd503a09269c93b5392ce699fe4883ee0e955",
+  "symbol": "LYU",
+  "decimals": 18,
+  "name": "LYVE Debt Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

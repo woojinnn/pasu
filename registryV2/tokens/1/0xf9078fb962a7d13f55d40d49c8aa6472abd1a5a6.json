@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf9078fb962a7d13f55d40d49c8aa6472abd1a5a6",
+  "symbol": "clevCVX-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Clever clevCVX/CVX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xf9078fb962a7d13f55d40d49c8aa6472abd1a5a6"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf05e58fcea29ab4da01a495140b349f8410ba904"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

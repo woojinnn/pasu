@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+  "symbol": "USDS",
+  "decimals": 18,
+  "name": "USDS Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc69b00366f07840ff939cc9fdf866c3dccb10804",
+  "symbol": "sdLFTLFT-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: sdLFT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc69b00366f07840ff939cc9fdf866c3dccb10804"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb620be8a1949aa9532e6a3510132864ef9bc3f82"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0879c1a344910c2944c29b892a1cf0c216122c66"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

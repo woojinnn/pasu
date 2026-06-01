@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa9c7fe39c89ca77d84dfa177f86f510f4e256eb2",
+  "symbol": "CRVEURTst-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: CRV/EUR stonks",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x526afb67a479d4e9b0154d4cc1a44d47df91bf3e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc581b735a1688071a1746c968e0798d642ede491"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

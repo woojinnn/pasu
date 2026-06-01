@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xdb6e0e5094a25a052ab6845a9f1e486b9a9b3dde",
+  "symbol": "OKAYEG",
+  "decimals": 18,
+  "name": "Okayeg",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

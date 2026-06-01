@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5d4d6836260c116b959e7e25a1735b6c7c328f47",
+  "symbol": "USXSDAI-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: USX/sDAI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x5d4d6836260c116b959e7e25a1735b6c7c328f47"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0a5e677a6a24b2f1a2bf4f3bffc443231d2fdec8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x83f20f44975d03b1b09e64809b757c47f942beea"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

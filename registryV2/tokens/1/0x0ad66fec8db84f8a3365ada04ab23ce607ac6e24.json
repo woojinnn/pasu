@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0ad66fec8db84f8a3365ada04ab23ce607ac6e24",
+  "symbol": "pitchFXS-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: pitchFXS/FXS",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x0ad66fec8db84f8a3365ada04ab23ce607ac6e24"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x11ebe21e9d7bf541a18e1e3ac94939018ce88f0b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

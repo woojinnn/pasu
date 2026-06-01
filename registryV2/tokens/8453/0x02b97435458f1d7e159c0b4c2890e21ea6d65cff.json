@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x02b97435458f1d7e159c0b4c2890e21ea6d65cff",
+  "symbol": "PUSSYPUSSY",
+  "decimals": 18,
+  "name": "ethPUSSY/bscPUSSY",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x02b97435458f1d7e159c0b4c2890e21ea6d65cff"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x839aed139f6364b16cc519fc3c2aa6030e067beb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xf22b8bedcd6c79cff17066e972d1199bf1f40675"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

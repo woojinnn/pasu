@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb37d6c07482bc11cd28a1f11f1a6ad7b66dec933",
+  "symbol": "ag+ib-EUR-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: agEUR/ibEUR",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xb37d6c07482bc11cd28a1f11f1a6ad7b66dec933"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x96e61422b6a9ba0e068b6c5add4ffabc6a4aae27"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1a7e4e63778b4f12a199c062f3efdd288afcbce8"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

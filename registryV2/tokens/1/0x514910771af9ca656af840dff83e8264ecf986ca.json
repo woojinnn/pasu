@@ -1,0 +1,13 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x514910771af9ca656af840dff83e8264ecf986ca",
+  "symbol": "LINK",
+  "decimals": 18,
+  "name": "ChainLink Token",
+  "source": "https://etherscan.io/token/0x514910771af9ca656af840dff83e8264ecf986ca",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "volatile" }
+  }
+}

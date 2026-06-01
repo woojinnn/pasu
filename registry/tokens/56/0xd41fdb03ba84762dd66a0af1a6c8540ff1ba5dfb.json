@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0xd41fdb03ba84762dd66a0af1a6c8540ff1ba5dfb",
-  "symbol": "SFP",
-  "decimals": 18,
-  "name": "SafePal Token"
-}

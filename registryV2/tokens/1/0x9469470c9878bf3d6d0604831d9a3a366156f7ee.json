@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9469470c9878bf3d6d0604831d9a3a366156f7ee",
+  "symbol": "avETH",
+  "decimals": 18,
+  "name": "avETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

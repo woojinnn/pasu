@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xdfa2ec1d1feb82ed1705e2b79b9c03b123fb8585",
+  "symbol": "BUSD",
+  "decimals": 18,
+  "name": "Blazed Stable Coin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

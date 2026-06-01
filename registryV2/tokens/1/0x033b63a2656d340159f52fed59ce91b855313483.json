@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x033b63a2656d340159f52fed59ce91b855313483",
+  "symbol": "fETHDola-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: fETH/DOLA",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x294b61367b4b36521291a6cc74f0b6037e4319d6"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x865377367054516e17014ccded1e7d814edc9ce4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x53805a76e1f5ebbfe7115f16f9c87c2f7e633726"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

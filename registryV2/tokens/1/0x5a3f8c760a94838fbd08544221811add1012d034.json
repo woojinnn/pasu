@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5a3f8c760a94838fbd08544221811add1012d034",
+  "symbol": "SPT-PT/IBT-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: Spectra-PT/IBT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8561d7a37a998196cafab7432e3243b413dc187e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x37f86e2fb8020fb8dc53236fdae86f9122b56270"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1541865672149191412af718c1764c9662142c83"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

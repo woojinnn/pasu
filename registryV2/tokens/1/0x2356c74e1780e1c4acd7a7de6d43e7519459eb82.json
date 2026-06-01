@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2356c74e1780e1c4acd7a7de6d43e7519459eb82",
+  "symbol": "KACHING",
+  "decimals": 18,
+  "name": "ONE BIG BEAUTIFUL SHINY POOL",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x2356c74e1780e1c4acd7a7de6d43e7519459eb82"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb45ad160634c528cc3d2926d9807104fa3157305"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe0a3eb3f61e532d9247a0c38519e4b56cf326090"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

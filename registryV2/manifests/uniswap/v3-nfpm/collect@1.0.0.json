@@ -1,0 +1,78 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-nfpm/collect@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xfc6f7865",
+    "chain_to_addresses": {
+      "1":     ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "10":    ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "42161": ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "8453":  ["0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "collect",
+    "abi": {
+      "name": "collect",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "tokenId",    "type": "uint256" },
+            { "name": "recipient",  "type": "address" },
+            { "name": "amount0Max", "type": "uint128" },
+            { "name": "amount1Max", "type": "uint128" }
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "collect_fees",
+        "collect_fees": {
+          "venue": {
+            "name":        "uniswap_v3",
+            "chain":       "$chain",
+            "pool":        "$resolved.pool",
+            "fee_tier_bp": "$resolved.fee_tier_bp"
+          },
+          "nft_key": {
+            "standard": "erc721",
+            "chain":    "$chain",
+            "contract": "$to",
+            "token_id": "$args.tokenId"
+          },
+          "recipient": "$args.recipient",
+          "live_inputs": {
+            "fees_owed": {
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$to",
+                "function":   "positions(uint256)",
+                "decoder_id": "uniswap_v3_position_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata", "v3_pool_resolver"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

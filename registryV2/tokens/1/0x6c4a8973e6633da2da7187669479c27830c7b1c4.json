@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6c4a8973e6633da2da7187669479c27830c7b1c4",
+  "symbol": "BLOOM",
+  "decimals": 18,
+  "name": "BLOOM",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

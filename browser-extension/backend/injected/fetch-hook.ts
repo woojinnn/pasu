@@ -96,12 +96,28 @@ function install(): void {
     venue: string,
     body: unknown,
   ): VenueOrderPayload[] | null {
-    return parseHyperliquidExchangeOrders(
+    const payloads = parseHyperliquidExchangeOrders(
       venue,
       url,
       location.hostname,
       body,
     ) as VenueOrderPayload[] | null;
+    if (payloads) {
+      // Devtools: the in-page parsed result (one entry per guarded leg), visible
+      // in the PAGE console on the venue site + queryable from a probe via
+      // `window.__scopeball_last_parse__`. (The fully-normalized ActionBody is
+      // logged SW-side; this is the wire-level parse the page actually produced.)
+      const actions = payloads.map((p) => ({ ...p.hlAction }));
+      // eslint-disable-next-line no-console
+      console.info("[Scopeball] HL /exchange parsed (in-page):", { url, venue, actions });
+      try {
+        const ww = window as unknown as Record<string, unknown>;
+        ww.__scopeball_last_parse__ = { url, venue, actions, at: Date.now() };
+      } catch {
+        /* ignore */
+      }
+    }
+    return payloads;
   }
 
   // Evaluate every order in a POST body; return false if ANY is denied

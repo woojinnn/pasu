@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb1378758a27d0a8e6d0bb4c5e7b1b99b106d5ff0",
+  "symbol": "dBTC",
+  "decimals": 18,
+  "name": "dBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

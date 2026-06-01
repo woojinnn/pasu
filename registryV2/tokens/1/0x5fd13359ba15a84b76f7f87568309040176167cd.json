@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5fd13359ba15a84b76f7f87568309040176167cd",
+  "symbol": "amphrETH",
+  "decimals": 18,
+  "name": "Amphor Restaked ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,41 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/whype/deposit@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note": "WHYPE (Wrapped HYPE, HyperEVM chain 999) is a WETH9 fork. deposit() wraps native HYPE -> WHYPE; the wrapped amount is msg.value. There is NO wrap/unwrap TokenAction variant in the ActionBody model (token actions are approve/permit/transfer/nft_*/permit2_*/revoke), so mapping to a token action would mislabel. -> Unknown, which preserves the raw deposit() call + the HYPE value being wrapped (calldata = $calldata, value = $tx.value). CAVEAT: the WHYPE full 40-hex address is D9-limited; docs give only 0x5555...5, so the all-5s pattern 0x5555555555555555555555555555555555555555 is ASSUMED (not 1차-verified). If the real address differs the chain-999 callkey is wrong, but the body mapping is unaffected.",
+  "match": {
+    "selector": "0xd0e30db0",
+    "chain_to_addresses": {
+      "999": ["0x5555555555555555555555555555555555555555"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "deposit",
+    "abi": {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

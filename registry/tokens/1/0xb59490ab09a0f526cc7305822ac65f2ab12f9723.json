@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xb59490ab09a0f526cc7305822ac65f2ab12f9723",
-  "symbol": "LIT",
-  "decimals": 18,
-  "name": "Litentry"
-}

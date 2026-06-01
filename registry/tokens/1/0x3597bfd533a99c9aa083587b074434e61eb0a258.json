@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x3597bfd533a99c9aa083587b074434e61eb0a258",
-  "symbol": "DENT",
-  "decimals": 8,
-  "name": "Dent"
-}

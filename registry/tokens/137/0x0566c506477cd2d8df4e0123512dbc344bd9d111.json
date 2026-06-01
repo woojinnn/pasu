@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x0566c506477cd2d8df4e0123512dbc344bd9d111",
-  "symbol": "MLC",
-  "decimals": 18,
-  "name": "MyLovelyCoin"
-}

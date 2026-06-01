@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2302aabe69e6e7a1b0aa23aac68fccb8a4d2b460",
+  "symbol": "silofrax-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: SILO/FRAX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9a22cdb1ca1cdd2371cd5bb5199564c4e89465eb"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6f80310ca7f2c654691d1383149fa1a57d8ab1f8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x853d955acef822db058eb8505911ed77f175b99e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * In-process handlers for policy-rpc methods that are pure functions of the
- * action envelope itself — no oracles, no chain RPC, no portfolio lookup.
+ * ActionBody itself — no oracles, no chain RPC, no portfolio lookup.
  *
  * The remote policy-rpc server (localhost:8787) exists for enrichment that
  * needs external data (`oracle.usd_value`, `chain.is_contract`, etc.). For

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf38feedb0c85c1e1d6864c7513ac646d28bb0cfc",
+  "symbol": "stZETA",
+  "decimals": 18,
+  "name": "stZETA",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

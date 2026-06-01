@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4591dbff62656e7859afe5e45f6f47d3669fbb28",
+  "symbol": "mkUSD",
+  "decimals": 18,
+  "name": "Prisma mkUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

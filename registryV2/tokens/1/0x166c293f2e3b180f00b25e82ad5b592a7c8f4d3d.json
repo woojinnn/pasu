@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x166c293f2e3b180f00b25e82ad5b592a7c8f4d3d",
+  "symbol": "₿Gold",
+  "decimals": 18,
+  "name": "₿gold ",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

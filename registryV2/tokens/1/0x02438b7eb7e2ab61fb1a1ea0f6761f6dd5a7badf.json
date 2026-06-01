@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x02438b7eb7e2ab61fb1a1ea0f6761f6dd5a7badf",
+  "symbol": "RAILUSD-4-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: RAI/LUSD-4",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x167de3887edebe5012544373c5871481bd95cc4e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x03ab458634910aad20ef5f1c8ee96f1d6ac54919"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5f98805a4e8be255a32880fdec7f6728c6568ba0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

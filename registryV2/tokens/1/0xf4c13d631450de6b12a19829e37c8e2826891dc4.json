@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf4c13d631450de6b12a19829e37c8e2826891dc4",
+  "symbol": "avUSD",
+  "decimals": 18,
+  "name": "avUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xca83dde9c22254f58e771be5e157773212acbac3",
+  "symbol": "VUSD",
+  "decimals": 18,
+  "name": "Vetro USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

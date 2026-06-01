@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4eabb5b7054fd6d2caf05fdadbb1dbd3a906acee",
+  "symbol": "FRV",
+  "decimals": 18,
+  "name": "Firova",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

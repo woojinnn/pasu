@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbdca01e29fd4310d96fcbc2ffeccf7b3b84ad4b3",
+  "symbol": "xpUSDsUSDS",
+  "decimals": 18,
+  "name": "xpUSD/sUSDS",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xbdca01e29fd4310d96fcbc2ffeccf7b3b84ad4b3"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x31bc2baa782e5180e9efa32261d2bb33ce8918bc"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

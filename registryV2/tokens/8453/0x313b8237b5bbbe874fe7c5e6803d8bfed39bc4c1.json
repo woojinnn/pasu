@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x313b8237b5bbbe874fe7c5e6803d8bfed39bc4c1",
+  "symbol": "RDCTD",
+  "decimals": 18,
+  "name": "REDACTED",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc7de47b9ca2fc753d6a2f167d8b3e19c6d18b19a",
+  "symbol": "crvDBRINV",
+  "decimals": 18,
+  "name": "TriDBR",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc7de47b9ca2fc753d6a2f167d8b3e19c6d18b19a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x865377367054516e17014ccded1e7d814edc9ce4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xad038eb671c44b853887a7e32528fab35dc5d710"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x41d5d79431a913c4ae7d69a668ecdfe5ff9dfb68"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf2dae008bb1973b799543b2d01d7352904ef4d2a",
+  "symbol": "ZSNPHST",
+  "decimals": 18,
+  "name": "ZSNAIL_SAPPHIRE STABLE POOL",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xf2dae008bb1973b799543b2d01d7352904ef4d2a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x75a233f8ad2494486845861d642ebd24283fead8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x417ac0e078398c154edfadd9ef675d30be60af93"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x8ee73c484a26e0a5df2ee2a4960b789967dd0415"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcfa3ef56d303ae4faaba0592388f19d7c3399fb4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x4e65fe4dba92790696d040ac24aa414708f5c0ab"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcc7ff230365bd730ee4b352cc2492cedac49383e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

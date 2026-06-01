@@ -1,0 +1,67 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xac4aa7ad827bafd46194accf244a4e04edb2d3e5",
+  "symbol": "ZSNLSPHR",
+  "decimals": 18,
+  "name": "Zsnail Sapphire",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xac4aa7ad827bafd46194accf244a4e04edb2d3e5"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x75a233f8ad2494486845861d642ebd24283fead8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x65a2508c429a6078a7bc2f7df81ab575bd9d9275"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xb79dd08ea68a908a97220c76d19a6aa9cbde4376"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x85483696cc9970ad9edd786b2c5ef735f38d156f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

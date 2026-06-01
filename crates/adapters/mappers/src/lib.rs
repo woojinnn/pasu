@@ -1,8 +1,8 @@
 //! Calldata → v3 `ActionBody` declarative builder.
 //!
 //! Phase 1 (action-types) trimmed this crate to the v3 declarative path only.
-//! The legacy v1 `Mapper` trait (which produced `policy_engine::ActionEnvelope`)
-//! and its per-protocol implementations have been removed. What remains is the
+//! The legacy v1 `Mapper` trait and its per-protocol implementations have been
+//! removed. What remains is the
 //! self-contained v3 builder consumed by `policy-engine-wasm`'s
 //! `declarative_route_request_v3_json`:
 //!

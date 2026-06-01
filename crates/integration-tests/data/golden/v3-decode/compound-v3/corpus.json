@@ -1,0 +1,1139 @@
+{
+  "_comment": "Compound V3 Comet hand-encoded corpus that exercises every COVER selector plus Authorization typed-data. This starts the corpus loop while the local environment has no ETHERSCAN_API_KEY; replace/augment with real Etherscan/Dune transactions before marking Scenario B fully done.",
+  "transactions": [
+    {
+      "intent": "comet supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet supplyTo hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x4232cd630000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet supplyFrom hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x9032317700000000000000000000000022222222222222222222222222222222222222220000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet transfer hand",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xa9059cbb000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet transferFrom hand",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x23b872dd0000000000000000000000002222222222222222222222222222222222222222000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet transferAsset hand",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x439e2e450000000000000000000000001111111111111111111111111111111111111111000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet transferAssetFrom hand",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xc1ee2c1800000000000000000000000022222222222222222222222222222222222222220000000000000000000000001111111111111111111111111111111111111111000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet withdraw hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xf3fef3a3000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet withdrawTo hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xc3b35a7e0000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet withdrawFrom hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x2644131800000000000000000000000022222222222222222222222222222222222222220000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet approveThis hand",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xad14777c0000000000000000000000003333333333333333333333333333333333333333000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet buyCollateral hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xe4e6e779000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000001f400000000000000000000000000000000000000000000000000000000000003e80000000000000000000000004444444444444444444444444444444444444444"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet allow hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x110496e500000000000000000000000033333333333333333333333333333333333333330000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet allowBySig hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xbb24d994000000000000000000000000222222222222222222222222222222222222222200000000000000000000000033333333333333333333333333333333333333330000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000002540be3ff000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet approve hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x095ea7b30000000000000000000000003333333333333333333333333333333333333333ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet cWETH supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet cWETH Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Base cAERO supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x784efeb622244d2348d4f2522f8860b96fbece89",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000940181a94a35a4569e4529a3cdfb74e38fd9863100000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Base cAERO Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "typed_data": {
+        "verifying_contract": "0x784efeb622244d2348d4f2522f8860b96fbece89",
+        "primary_type": "Authorization",
+        "domain_name": "Compound AERO",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Base cUSDbC supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000d9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca00000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Base cUSDbC Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "typed_data": {
+        "verifying_contract": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDbC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Base cUSDC supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xb125e6687d4313864e53df431d5425969c15eb2f",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda0291300000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Base cUSDC Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "typed_data": {
+        "verifying_contract": "0xb125e6687d4313864e53df431d5425969c15eb2f",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Base cUSDS supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x2c776041ccfe903071af44aa147368a9c8eea518",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000820c137fa70c8691f0e44dc420a5e53c168921dc00000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Base cUSDS Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "typed_data": {
+        "verifying_contract": "0x2c776041ccfe903071af44aa147368a9c8eea518",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDS",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Base cWETH supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x46e6b214b524310239732d51387075e0e70970bf",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000420000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Base cWETH Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "typed_data": {
+        "verifying_contract": "0x46e6b214b524310239732d51387075e0e70970bf",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Optimism cUSDC supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 10,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
+            "value": "0",
+            "data": "0xf2b9fdb80000000000000000000000000b2c639c533813f4aa9d7837caf62653d097ff8500000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Optimism cUSDC Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 10,
+      "typed_data": {
+        "verifying_contract": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Optimism cUSDT supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 10,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
+            "value": "0",
+            "data": "0xf2b9fdb800000000000000000000000094b008aa00579c1307b0ef2c499ad98a8ce58e5800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Optimism cUSDT Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 10,
+      "typed_data": {
+        "verifying_contract": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDT",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Optimism cWETH supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 10,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xe36a30d249f7761327fd973001a32010b521b6fd",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000420000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Optimism cWETH Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 10,
+      "typed_data": {
+        "verifying_contract": "0xe36a30d249f7761327fd973001a32010b521b6fd",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Arbitrum cUSDC.e supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa5edbdd9646f8dff606d7448e414884c7d905dca",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000ff970a61a04b1ca14834a43f5de4533ebddb5cc800000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Arbitrum cUSDC.e Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "typed_data": {
+        "verifying_contract": "0xa5edbdd9646f8dff606d7448e414884c7d905dca",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Arbitrum cUSDC supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Arbitrum cUSDC Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "typed_data": {
+        "verifying_contract": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Arbitrum cUSDT supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd98be00b5d27fc98112bde293e487f8d4ca57d07",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000fd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb900000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Arbitrum cUSDT Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "typed_data": {
+        "verifying_contract": "0xd98be00b5d27fc98112bde293e487f8d4ca57d07",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDT",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Arbitrum cWETH supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486",
+            "value": "0",
+            "data": "0xf2b9fdb800000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab100000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Arbitrum cWETH Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "typed_data": {
+        "verifying_contract": "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet cUSDSv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000dc035d45d973e3ec169d2276ddab16f1e407384f00000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet cUSDSv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDS",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet cUSDTv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec700000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet cUSDTv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDT",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet cWBTCv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
+            "value": "0",
+            "data": "0xf2b9fdb80000000000000000000000002260fac5e5542a773aa44fbcfedf7c193bc2c59900000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet cWBTCv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WBTC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet cWstETHv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
+            "value": "0",
+            "data": "0xf2b9fdb80000000000000000000000007f39c581f595b53c5cb19bd0b3f8da6c935e2ca000000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet cWstETHv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
+        "primary_type": "Authorization",
+        "domain_name": "Compound wstETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Polygon cUSDCv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 137,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xf25212e676d1f7f89cd72ffee66158f541246445",
+            "value": "0",
+            "data": "0xf2b9fdb80000000000000000000000002791bca1f2de4661ed88a30c99a7a9449aa8417400000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Polygon cUSDCv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 137,
+      "typed_data": {
+        "verifying_contract": "0xf25212e676d1f7f89cd72ffee66158f541246445",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Polygon cUSDTv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 137,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xaeb318360f27748acb200ce616e389a6c9409a07",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000c2132d05d31c914a87c6611c10748aeb04b58e8f00000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Polygon cUSDTv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 137,
+      "typed_data": {
+        "verifying_contract": "0xaeb318360f27748acb200ce616e389a6c9409a07",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDT",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Mantle cUSDev3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 5000,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x606174f62cd968d8e684c645080fa694c1d7786e",
+            "value": "0",
+            "data": "0xf2b9fdb80000000000000000000000005d3a1ff2b6bab83b63cd9ad0787074081a52ef3400000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Mantle cUSDev3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 5000,
+      "typed_data": {
+        "verifying_contract": "0x606174f62cd968d8e684c645080fa694c1d7786e",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDe",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Linea cUSDCv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 59144,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x8d38a3d6b3c3b7d96d6536da7eef94a9d7dbc991",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000176211869ca2b568f2a7d4ee941e073a821ee1ff00000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Linea cUSDCv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 59144,
+      "typed_data": {
+        "verifying_contract": "0x8d38a3d6b3c3b7d96d6536da7eef94a9d7dbc991",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Linea cWETHv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 59144,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x60f2058379716a64a7a5d29219397e79bc552194",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000e5d7c2a44ffddf6b295a15c148167daaaf5cf34f00000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Linea cWETHv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 59144,
+      "typed_data": {
+        "verifying_contract": "0x60f2058379716a64a7a5d29219397e79bc552194",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Scroll cUSDCv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 534352,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xb2f97c1bd3bf02f5e74d13f02e3e26f93d77ce44",
+            "value": "0",
+            "data": "0xf2b9fdb800000000000000000000000006efdbff2a14a7c8e15944d1f4a48f9f95f663a400000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Scroll cUSDCv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 534352,
+      "typed_data": {
+        "verifying_contract": "0xb2f97c1bd3bf02f5e74d13f02e3e26f93d77ce44",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Ronin cWETHv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 2020,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4006ed4097ee51c09a04c3b0951d28ccf19e6dfe",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000c99a6a985ed2cac1ef41640596c5a5f9f4e19ef500000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Ronin cWETHv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 2020,
+      "typed_data": {
+        "verifying_contract": "0x4006ed4097ee51c09a04c3b0951d28ccf19e6dfe",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Ronin cWRONv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 2020,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000e514d9deb7966c8be0ca922de8a064264ea6bcd400000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Ronin cWRONv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 2020,
+      "typed_data": {
+        "verifying_contract": "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WRON",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Unichain cUSDCv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 130,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x2c7118c4c88b9841fcf839074c26ae8f035f2921",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000078d782b760474a361dda0af3839290b0ef57ad600000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Unichain cUSDCv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 130,
+      "typed_data": {
+        "verifying_contract": "0x2c7118c4c88b9841fcf839074c26ae8f035f2921",
+        "primary_type": "Authorization",
+        "domain_name": "Compound USDC",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    },
+    {
+      "intent": "comet Unichain cWETHv3 supply hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 130,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x6c987dde50db1dcdd32cd4175778c2a291978e2a",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000420000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000003e8"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "comet Unichain cWETHv3 Authorization hand typed-data",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 130,
+      "typed_data": {
+        "verifying_contract": "0x6c987dde50db1dcdd32cd4175778c2a291978e2a",
+        "primary_type": "Authorization",
+        "domain_name": "Compound WETH",
+        "message": {
+          "owner": "0x2222222222222222222222222222222222222222",
+          "manager": "0x3333333333333333333333333333333333333333",
+          "isAllowed": true,
+          "nonce": "7",
+          "expiry": "9999999999"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x19662ac12392c8c25643d91eed3d2d35d65d3847",
+  "symbol": "scrvCBDRWA",
+  "decimals": 18,
+  "name": "scrvUSD/sCBD/CBD/ynYWAx",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x19662ac12392c8c25643d91eed3d2d35d65d3847"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb7d569d63f92e3c0454984b7da4426e83d453e7a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7d9a9bc5646c8b2b89dc72e2fe98b2ce8d737381"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0655977feb2f289a4ab78af67bab0d17aab84367"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x01ba69727e2860b37bc1a2bd56999c1afb4c15d8"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

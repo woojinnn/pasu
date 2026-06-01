@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0xc729777d0470f30612b1564fd96e8dd26f5814e3",
-  "symbol": "SAPIEN",
-  "decimals": 18,
-  "name": "Sapien"
-}

@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x18c28d2f00ef6d35dc5f9a7e141da0acfe826903",
+  "symbol": "GHOBTCNIG",
+  "decimals": 18,
+  "name": "GHO/WBTC/NIG",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x18c28d2f00ef6d35dc5f9a7e141da0acfe826903"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x863a0d8bfc940969087bec4e4f1824f312a21565"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

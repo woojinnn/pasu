@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xa3f751662e282e83ec3cbc387d225ca56dd63d3a",
-  "symbol": "APEPE",
-  "decimals": 18,
-  "name": "Ape and Pepe"
-}

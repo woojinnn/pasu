@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x01c2c9f2c271ecef81287b44fa6f813a1605f5eb",
+  "symbol": "USD_3_TEST",
+  "decimals": 18,
+  "name": "USDC_T/USD_T1/USD_T2",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x01c2c9f2c271ecef81287b44fa6f813a1605f5eb"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x53be558af29cc65126ed0e585119fac748feb01b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xf0c44a9f24159e1f2a0d9ba3203172f528d224ca"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x73ed1cb902397efe7fc337859a1a66835361f7a3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xca960e6df1150100586c51382f619efcccf72706",
+  "symbol": "yscvxCRV",
+  "decimals": 18,
+  "name": "Convex cvxCRV Compounder",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

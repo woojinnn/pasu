@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4956b52ae2ff65d74ca2d61207523288e4528f96",
+  "symbol": "RLP",
+  "decimals": 18,
+  "name": "Resolv Liquidity Provider Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xddc0f880ff6e4e22e4b74632fbb43ce4df6ccc5a",
+  "symbol": "reUSDe",
+  "decimals": 18,
+  "name": "Re Protocol reUSDe",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

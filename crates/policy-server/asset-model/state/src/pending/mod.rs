@@ -1,10 +1,13 @@
-//! `PendingTx` — signed but not-yet-settled transaction state. Spec §6.
+//! `PendingTx` — 서명되었지만 아직 체결되지 않은 상태. spec §6.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
+/// pending 의 자산 묶임 방식 (`AssetCommitment`).
 pub mod commitment;
+/// pending 의 4가지 종류 (`PendingKind`).
 pub mod kind;
+/// pending nonce / hash 식별자 (`NonceKey`, `B256`, `TxHash`).
 pub mod nonce;
 
 pub use commitment::AssetCommitment;
@@ -15,43 +18,43 @@ use crate::delta::StateDelta;
 use crate::live_field::DataSource;
 use crate::primitives::Time;
 
-/// Unique identifier for a pending transaction (hash or order id, as a string).
+/// 한 pending 의 안정 식별자 (string).
 pub type PendingId = String;
 
-/// Lifecycle status of a signed-but-unsettled pending transaction.
+/// 한 pending 의 lifecycle 상태.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PendingStatus {
-    /// Live and not yet filled; still eligible to settle.
+    /// 서명 완료, 미체결.
     Active,
-    /// Partially executed; remaining size is still open.
+    /// 일부 체결됨.
     PartiallyFilled,
-    /// Fully executed.
+    /// 완전 체결.
     Filled,
-    /// Cancelled before settlement.
+    /// 사용자 취소.
     Cancelled,
-    /// No longer valid because its validity window elapsed.
+    /// deadline 만료.
     Expired,
-    /// Status could not be determined from the data source.
+    /// venue 응답 부재 / 갱신 실패 등.
     Unknown,
 }
 
-/// Lifecycle tracking for a pending transaction: status, validity, and settlement linkage.
+/// pending 의 lifecycle 메타 (status / `valid_until` / nonce / on-chain tx).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct PendingLifecycle {
-    /// Current lifecycle status of the pending transaction.
+    /// 현재 lifecycle 상태.
     pub status: PendingStatus,
-    /// Time after which the pending transaction is no longer valid.
+    /// 본 pending 이 유효한 deadline. 무기한이면 `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub valid_until: Option<Time>,
-    /// Nonce key used to detect conflicts with other pending entries.
+    /// 본 pending 의 nonce / order hash. nonce 가 없는 형태는 `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub nonce: Option<NonceKey>,
-    /// On-chain transaction hash of a partial fill or settler tx.
+    /// 부분 fill 또는 settler tx.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub on_chain_tx: Option<TxHash>,
@@ -68,33 +71,33 @@ impl PendingLifecycle {
     }
 }
 
-/// Raw signature payload kept for auditing (e.g. the EIP-712 domain + message bytes).
+/// 감사용 서명 페이로드. EIP-712 의 도메인 + 메시지 원본 등.
 pub type SignaturePayload = Vec<u8>;
 
-/// A signed but not-yet-settled transaction tracked for simulation and policy evaluation.
+/// 서명-only / 미체결 pending entry 본체.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct PendingTx {
-    /// Unique identifier for this pending transaction.
+    /// 본 pending 의 식별자.
     pub id: PendingId,
-    /// The kind of pending entry (off-chain order, perp order, permit, etc.).
+    /// pending 의 sub-kind 와 본체 데이터.
     pub kind: PendingKind,
 
-    /// Assets committed (locked or potentially spendable) by this pending transaction.
+    /// 자산이 어떻게 묶여 있는지.
     pub commitment: AssetCommitment,
 
-    /// State change applied when this transaction settles (simulation only); boxed because it is recursive.
+    /// 체결되면 일어날 변화 (시뮬용). recursive 라서 Box.
     pub fill_effect: Box<StateDelta>,
 
-    /// Lifecycle status, validity, and nonce of this pending transaction.
+    /// lifecycle 메타.
     pub lifecycle: PendingLifecycle,
 
-    /// Where and how to refresh the pending status (same schema as `DataSource`).
+    /// pending 상태를 어디서 어떻게 갱신할지 (`DataSource` 와 같은 스키마).
     pub sync: DataSource,
 
-    /// Timestamp at which the transaction was signed.
+    /// 서명 시각.
     pub signed_at: Time,
-    /// Original EIP-712 signature bytes, retained for auditing.
+    /// EIP-712 원본 (감사용).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[tsify(type = "Array<number>")]
     pub signature_payload: SignaturePayload,

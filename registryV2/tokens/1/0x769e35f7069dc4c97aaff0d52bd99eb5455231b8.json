@@ -1,0 +1,81 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x769e35f7069dc4c97aaff0d52bd99eb5455231b8",
+  "symbol": "WEWON",
+  "decimals": 18,
+  "name": "WE WON",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x769e35f7069dc4c97aaff0d52bd99eb5455231b8"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1f440fb7dab4d3b27617f8e5b4855b476fdd95a2"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4fabb145d64652a948d72533023f6e7a623c7c53"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6c3ea9036406852006290770bedfcaba0e23a0e8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6b175474e89094c44da98b954eedeac495271d0f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x056fd409e1d7a124bd7017459dfea2f387b6d5cd"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

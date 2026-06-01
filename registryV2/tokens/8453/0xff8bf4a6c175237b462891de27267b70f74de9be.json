@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xff8bf4a6c175237b462891de27267b70f74de9be",
+  "symbol": "GPS",
+  "decimals": 0,
+  "name": "GPS",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

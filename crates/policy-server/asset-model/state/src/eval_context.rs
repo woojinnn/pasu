@@ -41,7 +41,7 @@ pub struct EvalContext {
     /// Reference timestamp for the evaluation (block.timestamp or wall-clock).
     pub now: Time,
     /// Index of this action within the request's `actions[]` list.
-    pub envelope_index: usize,
+    pub action_index: usize,
     /// Kind of request being evaluated.
     pub request_kind: RequestKind,
     /// Evaluation mode (preview simulation or commit).
@@ -50,22 +50,22 @@ pub struct EvalContext {
 
 impl EvalContext {
     /// Creates a new `EvalContext` for the given chain, time, and request kind,
-    /// defaulting `envelope_index` to 0 and `simulation` to [`SimulationMode::Preview`].
+    /// defaulting `action_index` to 0 and `simulation` to [`SimulationMode::Preview`].
     #[must_use]
     pub const fn new(chain: ChainId, now: Time, request_kind: RequestKind) -> Self {
         Self {
             chain,
             now,
-            envelope_index: 0,
+            action_index: 0,
             request_kind,
             simulation: SimulationMode::Preview,
         }
     }
 
-    /// Returns this context with `envelope_index` set to `i`.
+    /// Returns this context with `action_index` set to `i`.
     #[must_use]
-    pub const fn with_envelope_index(mut self, i: usize) -> Self {
-        self.envelope_index = i;
+    pub const fn with_action_index(mut self, i: usize) -> Self {
+        self.action_index = i;
         self
     }
 

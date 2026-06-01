@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x95710bde45c8d384a976cc58cc7a7e489576b098",
+  "symbol": "upYFI",
+  "decimals": 18,
+  "name": "1UP Locked YFI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

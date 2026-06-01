@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8dc3c6e22cd5baaa5e6b9cf2e3083cf1c41b4523",
+  "symbol": "wMBold",
+  "decimals": 18,
+  "name": "M (Wrapped) / Bold",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8dc3c6e22cd5baaa5e6b9cf2e3083cf1c41b4523"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x437cc33344a0b27a429f795ff6b469c72698b291"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb01dd87b29d187f3e3a4bf6cdaebfb97f3d9ab98"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

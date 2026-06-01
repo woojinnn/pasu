@@ -1,0 +1,33 @@
+// Lending::SetAuthorization — grant/revoke an operator's full control over the
+// submitter's positions in a lending protocol (Morpho Blue setAuthorization /
+// off-chain Authorization EIP-712 via setAuthorizationWithSig).
+//
+// Rust source: `crates/simulation/reducer/src/action/lending/set_authorization.rs`
+// (`SetAuthorizationAction`). Account-wide (not market-scoped) — carries a
+// bespoke { chain, protocol } locator instead of a LendingVenue. No LiveInputs.
+
+namespace Lending {
+  type SetAuthorizationContext = {
+    meta: Core::ActionMeta,
+    // Chain hosting the protocol.
+    chain: String,
+    // Protocol contract whose positions are delegated (e.g. Morpho singleton).
+    protocol: String,
+    // Account granting/revoking permission, when explicitly present in calldata
+    // or EIP-712. Direct calls usually omit this because principal is authorizer.
+    authorizer?: String,
+    // Address being granted / revoked full control of the submitter's positions.
+    authorized: String,
+    // true = grant authorization, false = revoke.
+    isAuthorized: Bool,
+    custom?: SetAuthorizationCustomContext,
+  };
+
+  type SetAuthorizationCustomContext = {};
+
+  action "SetAuthorization" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: SetAuthorizationContext,
+  };
+}

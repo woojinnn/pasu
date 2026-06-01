@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x32bd822d615a3658a68b6fdd30c2fcb2c996d678",
+  "symbol": "mswETH",
+  "decimals": 18,
+  "name": "mswETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x067079c14b85169e6a29703769daddef90816f4c",
+  "symbol": "mkPRISMA-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: PRISMA/mkUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9d8108ddd8ad1ee89d527c0c9e928cb9d2bba2d3"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4591dbff62656e7859afe5e45f6f47d3669fbb28"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xda47862a83dac0c112ba89c6abc2159b95afd71c"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

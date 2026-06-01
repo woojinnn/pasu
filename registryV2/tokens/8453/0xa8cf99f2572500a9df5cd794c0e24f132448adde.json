@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xa8cf99f2572500a9df5cd794c0e24f132448adde",
+  "symbol": "lvlUSD",
+  "decimals": 18,
+  "name": "Level USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

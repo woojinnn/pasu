@@ -1,0 +1,43 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/whype/withdraw@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note": "WHYPE (Wrapped HYPE, HyperEVM chain 999) WETH9 fork. withdraw(uint256 wad) unwraps WHYPE -> native HYPE. No wrap/unwrap TokenAction variant exists -> Unknown (preserves the raw call; the wad is carried in $calldata). withdraw is non-payable so value = literal '0'. CAVEAT: WHYPE full 40-hex is D9-limited; 0x5555...5 all-5s pattern ASSUMED (see deposit@1.0.0 note).",
+  "match": {
+    "selector": "0x2e1a7d4d",
+    "chain_to_addresses": {
+      "999": ["0x5555555555555555555555555555555555555555"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "wad", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "0"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

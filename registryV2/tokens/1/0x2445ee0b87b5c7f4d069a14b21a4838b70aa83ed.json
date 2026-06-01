@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2445ee0b87b5c7f4d069a14b21a4838b70aa83ed",
+  "symbol": "GRD",
+  "decimals": 18,
+  "name": "GRADE",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

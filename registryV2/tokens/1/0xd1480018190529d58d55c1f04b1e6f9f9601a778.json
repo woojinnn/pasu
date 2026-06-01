@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd1480018190529d58d55c1f04b1e6f9f9601a778",
+  "symbol": "sCBDETHUSD",
+  "decimals": 18,
+  "name": "sBOND/sCBD/scbdETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd1480018190529d58d55c1f04b1e6f9f9601a778"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbc03f8d07d2dcda3f846938f64898eb4769d2806"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf46e0a7799d73897c978b6efe4bb44795ebdabd8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb7d569d63f92e3c0454984b7da4426e83d453e7a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

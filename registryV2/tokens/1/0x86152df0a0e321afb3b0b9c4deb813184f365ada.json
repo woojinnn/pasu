@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x86152df0a0e321afb3b0b9c4deb813184f365ada",
+  "symbol": "crvUSDGHO-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: crvUSD/GHO",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crvusd",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x86152df0a0e321afb3b0b9c4deb813184f365ada"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

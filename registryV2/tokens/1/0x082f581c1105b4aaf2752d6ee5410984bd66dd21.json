@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x082f581c1105b4aaf2752d6ee5410984bd66dd21",
+  "symbol": "wsxETH",
+  "decimals": 18,
+  "name": "Wrapped sxETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

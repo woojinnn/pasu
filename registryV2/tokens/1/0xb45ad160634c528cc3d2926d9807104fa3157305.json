@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb45ad160634c528cc3d2926d9807104fa3157305",
+  "symbol": "sDOLA",
+  "decimals": 18,
+  "name": "Staked Dola",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

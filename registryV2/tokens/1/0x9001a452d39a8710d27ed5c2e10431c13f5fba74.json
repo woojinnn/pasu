@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9001a452d39a8710d27ed5c2e10431c13f5fba74",
+  "symbol": "tALCX-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tALCX/ALCX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9001a452d39a8710d27ed5c2e10431c13f5fba74"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd3b5d9a561c293fb42b446fe7e237daa9bf9aa84"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdbdb4d16eda451d0503b854cf79d55697f90c8df"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

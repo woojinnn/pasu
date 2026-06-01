@@ -1,0 +1,30 @@
+{
+  "contract": "UniversalRouter211",
+  "chainId": 10,
+  "address": "0x8b844f726710dc1d16328c6825cb7e97cb89d6b2",
+  "snapshot": "universal-router-2-1-1-optimism.abi.json",
+  "note": "Only execute envelope functions are wallet entrypoints; callbacks are excluded.",
+  "functions": {
+    "0x24856bc3": {
+      "name": "execute",
+      "decision": "cover",
+      "reason": "Universal Router execute envelope without deadline"
+    },
+    "0x3593564c": {
+      "name": "execute",
+      "decision": "cover",
+      "reason": "Universal Router execute envelope with deadline"
+    },
+    "0xfa461e33": {
+      "name": "uniswapV3SwapCallback",
+      "decision": "exclude",
+      "reason": "router callback or receiver hook, not a direct user wallet command"
+    },
+    "0x91dd7346": {
+      "name": "unlockCallback",
+      "decision": "exclude",
+      "reason": "router callback or receiver hook, not a direct user wallet command"
+    }
+  },
+  "signed_structs": {}
+}

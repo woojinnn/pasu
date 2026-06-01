@@ -27,6 +27,25 @@ impl Reducer for HyperliquidCoreAction {
             Self::Withdraw(a) => withdraw::apply(a, state, ctx),
             Self::UsdSend(a) => usd_send::apply(a, state, ctx),
             Self::ApproveAgent(a) => approve_agent::apply(a, state, ctx),
+            // StateDelta modeling for these fund-movement / transfer actions is
+            // deferred to the simulation track (it needs the spot-balance / vault
+            // / staking position model). The VERDICT path (lowering_v2 → Cedar)
+            // does not call `Reducer::apply`, so a no-op delta here has zero
+            // effect on policy decisions; it only under-reports the simulated
+            // balance change, which the simulation track will fill in.
+            Self::SpotSend(_)
+            | Self::UsdClassTransfer(_)
+            | Self::SendAsset(_)
+            | Self::SendToEvmWithData(_)
+            | Self::CDeposit(_)
+            | Self::CWithdraw(_)
+            | Self::VaultTransfer(_)
+            | Self::SubAccountTransfer(_)
+            | Self::ApproveBuilderFee(_)
+            | Self::TokenDelegate(_)
+            | Self::TwapOrder(_)
+            | Self::UpdateIsolatedMargin(_)
+            | Self::Unknown(_) => Ok(StateDelta::new()),
         }
     }
 }

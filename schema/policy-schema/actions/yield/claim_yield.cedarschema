@@ -1,0 +1,32 @@
+// Yield::ClaimYield — claim accrued interest + rewards (ActionMiscV3
+// redeemDueInterestAndRewards(user, sys[], yts[], markets[])).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/claim_yield.rs`
+// (`ClaimYieldAction`). No LiveInputs (P1a).
+
+namespace Yield {
+  type ClaimYieldContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // User whose accrued yield is claimed (address).
+    user: String,
+    // SY contracts swept (set of addresses).
+    sys: Set<String>,
+    // YT contracts swept (set of addresses).
+    yts: Set<String>,
+    // Market (LP) contracts swept (set of addresses).
+    markets: Set<String>,
+    // Manifest-extensible slot.
+    custom?: ClaimYieldCustomContext,
+  };
+
+  type ClaimYieldCustomContext = {};
+
+  action "ClaimYield" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: ClaimYieldContext,
+  };
+}

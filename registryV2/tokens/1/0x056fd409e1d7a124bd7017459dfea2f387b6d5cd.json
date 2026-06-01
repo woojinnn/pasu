@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x056fd409e1d7a124bd7017459dfea2f387b6d5cd",
+  "symbol": "GUSD",
+  "decimals": 2,
+  "name": "Gemini dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

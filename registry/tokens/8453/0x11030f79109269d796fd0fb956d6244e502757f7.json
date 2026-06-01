@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x11030f79109269d796fd0fb956d6244e502757f7",
-  "symbol": "CTR",
-  "decimals": 18,
-  "name": "Citrea"
-}

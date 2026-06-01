@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc1809275f6b31965d71bb49deda12d24b45e2101",
+  "symbol": "BRR",
+  "decimals": 18,
+  "name": "$BRR",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

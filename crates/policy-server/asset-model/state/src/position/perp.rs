@@ -1,5 +1,4 @@
-//! `PerpPosition` — an open perpetual-futures position on venues such as
-//! Hyperliquid, GMX V2, or dYdX V4.
+//! `PerpPosition` — Hyperliquid / GMX V2 / dYdX V4 등의 오픈 포지션.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -8,62 +7,62 @@ use crate::live_field::LiveField;
 use crate::primitives::{Decimal, MarketRef, Price, SignedI256, VenueRef, U256};
 use crate::token::TokenRef;
 
+/// 포지션 방향.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
-/// Directional side of a perpetual position.
 pub enum PerpSide {
-    /// Long position that profits when the market price rises.
+    /// 가격 상승에 베팅하는 매수 포지션.
     Long,
-    /// Short position that profits when the market price falls.
+    /// 가격 하락에 베팅하는 매도 포지션.
     Short,
 }
 
+/// margin 적용 방식.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
-/// How margin is allocated to back the position.
 pub enum MarginMode {
-    /// Isolated margin: collateral is dedicated to this single position.
+    /// 포지션 단위로 격리된 margin.
     Isolated,
-    /// Cross margin: collateral is shared across the account's positions.
+    /// 한 계정의 모든 포지션이 margin pool 을 공유.
     Cross,
 }
 
+/// 한 perp venue 의 오픈 포지션 + 라이브 mark / liq / pnl / funding / leverage.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
-/// A single open perpetual-futures position held on a trading venue.
 pub struct PerpPosition {
-    /// Trading venue that hosts this position (e.g. Hyperliquid, GMX V2).
+    /// 본 포지션을 호스팅하는 venue.
     pub venue: VenueRef,
-    /// Market the position is opened in (e.g. "ETH-USD").
+    /// 거래 market.
     pub market: MarketRef,
-    /// Whether the position is long or short.
+    /// 포지션 방향 (Long / Short).
     pub side: PerpSide,
-    /// Position size denominated in the base asset (raw integer units).
+    /// base asset 단위의 포지션 size.
     #[tsify(type = "string")]
     pub size_base: U256,
-    /// Notional value of the position in USD (raw integer units).
+    /// USD 환산 notional (entry price × size).
     #[tsify(type = "string")]
     pub notional_usd: U256,
-    /// Collateral backing the position, as (token, raw amount) pairs.
+    /// margin 으로 deposit 된 자산 list.
     #[tsify(type = "Array<[TokenRef, string]>")]
     pub collateral: Vec<(TokenRef, U256)>,
-    /// Average entry price at which the position was opened.
+    /// 본 포지션의 entry (average) price.
     pub entry_price: Price,
-    /// Margin allocation mode (isolated or cross).
+    /// margin 적용 방식 (Isolated / Cross).
     pub margin_mode: MarginMode,
 
-    /// Current mark price used for valuation and liquidation checks.
+    /// 본 포지션의 mark price (실시간).
     pub mark_price: LiveField<Price>,
-    /// Estimated liquidation price, or `None` when not applicable/unknown.
+    /// 청산 price. 산출 불가 venue 는 inner `None`.
     pub liq_price: LiveField<Option<Price>>,
-    /// Unrealized profit/loss of the position (signed, raw integer units).
+    /// 미실현 손익 (base unit, 부호 있음).
     #[tsify(type = "LiveField<string>")]
     pub unrealized_pnl: LiveField<SignedI256>,
-    /// Funding currently owed by (negative) or to (positive) the position.
+    /// 미수령 / 미납 funding (부호 있음).
     #[tsify(type = "LiveField<string>")]
     pub funding_owed: LiveField<SignedI256>,
-    /// Effective leverage of the position (notional / collateral).
+    /// 본 포지션의 실효 leverage.
     pub leverage: LiveField<Decimal>,
 }

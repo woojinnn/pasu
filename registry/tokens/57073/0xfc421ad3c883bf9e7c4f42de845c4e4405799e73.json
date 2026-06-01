@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 57073,
-  "address": "0xfc421ad3c883bf9e7c4f42de845c4e4405799e73",
-  "symbol": "GHO",
-  "decimals": 18,
-  "name": "GHO"
-}

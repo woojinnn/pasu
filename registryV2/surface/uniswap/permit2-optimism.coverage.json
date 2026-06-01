@@ -1,0 +1,83 @@
+{
+  "contract": "Permit2",
+  "chainId": 10,
+  "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+  "snapshot": "permit2-optimism.abi.json",
+  "note": "Permit2 surface triage. Permission grant/revoke functions are COVER. Spender/relayer execution functions are EXCLUDE because the protected signer risk is at approve/permit/off-chain typed-data time; missing generic PermitTransferFrom typed-data ActionBody is tracked in registry-v2 progress notes.",
+  "functions": {
+    "0x87517c45": {
+      "name": "approve",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: sets Permit2 allowance for token/spender/amount/expiration"
+    },
+    "0x65d9723c": {
+      "name": "invalidateNonces",
+      "decision": "cover",
+      "reason": "PERMISSION REVOCATION primitive: invalidates ordered allowance nonces for a token/spender pair"
+    },
+    "0x3ff9dcb1": {
+      "name": "invalidateUnorderedNonces",
+      "decision": "cover",
+      "reason": "PERMISSION/ORDER REVOCATION primitive: invalidates Permit2 unordered nonce bits; used by UniswapX order cancellation"
+    },
+    "0xcc53287f": {
+      "name": "lockdown",
+      "decision": "cover",
+      "reason": "PERMISSION REVOCATION primitive: batch revokes Permit2 token/spender approvals"
+    },
+    "0x2a2d80d1": {
+      "name": "permit",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: relayed PermitBatch allowance signature submission"
+    },
+    "0x2b67b570": {
+      "name": "permit",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: relayed PermitSingle allowance signature submission"
+    },
+    "0x30f28b7a": {
+      "name": "permitTransferFrom",
+      "decision": "exclude",
+      "reason": "relayer/spender execution of a Permit2 signature-transfer; signer risk belongs to off-chain PermitTransferFrom typed-data, which needs a separate ActionBody model"
+    },
+    "0xedd9444b": {
+      "name": "permitTransferFrom",
+      "decision": "exclude",
+      "reason": "relayer/spender execution of a batch Permit2 signature-transfer; signer risk belongs to off-chain PermitBatchTransferFrom typed-data, which needs a separate ActionBody model"
+    },
+    "0x137c29fe": {
+      "name": "permitWitnessTransferFrom",
+      "decision": "exclude",
+      "reason": "relayer/spender execution path; UniswapX PermitWitnessTransferFrom typed-data manifests cover the pre-sign risk"
+    },
+    "0xfe8ec1a7": {
+      "name": "permitWitnessTransferFrom",
+      "decision": "exclude",
+      "reason": "relayer/spender batch execution path; UniswapX PermitWitnessTransferFrom typed-data manifests cover the pre-sign risk"
+    },
+    "0x36c78516": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "spender execution using already-granted Permit2 allowance; owner risk is captured at approve/permit signing time"
+    },
+    "0x0d58b1db": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "spender execution using already-granted Permit2 allowance; owner risk is captured at approve/permit signing time"
+    }
+  },
+  "signed_structs": {
+    "PermitSingle": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 allowance signature; manifest uniswap/permit2/permitSingle"
+    },
+    "PermitBatch": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 batch allowance signature; manifest uniswap/permit2/permitBatch"
+    },
+    "PermitWitnessTransferFrom": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 witness signature used by UniswapX intent orders; manifests under uniswapx/*/sign"
+    }
+  }
+}

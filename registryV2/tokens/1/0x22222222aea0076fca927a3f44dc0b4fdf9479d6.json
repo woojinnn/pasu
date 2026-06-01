@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x22222222aea0076fca927a3f44dc0b4fdf9479d6",
+  "symbol": "yYB",
+  "decimals": 18,
+  "name": "Yearn YB Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

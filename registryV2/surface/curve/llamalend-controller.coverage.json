@@ -1,0 +1,133 @@
+{
+  "contract": "Curve-LlamaLend-Controller",
+  "chainId": 1,
+  "addresses": [
+    "0xeda215b7666936ded834f76f3fbc6f323295110a",
+    "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617",
+    "0xb536fea3a01c95dd09932440ec802a75410139d6"
+  ],
+  "snapshot": "llamalend-controller.abi.json",
+  "note": "Curve LlamaLend (OneWayLendingFactory) Controller — OLDER-gen impl (24 fns), 3 mainnet markets: CRV / WBTC / sUSDe collateral (all borrow crvUSD). 1 impl → 3 controllers via addresses[]. These lack approve(address,bool) and the +receiver overloads of the newer sreUSD/sfrxUSD impl (llamalend-controller-newgen). 8 cover (create_loan / add_collateral x2 / remove_collateral / borrow_more / repay x3) · 16 exclude (1 keeper save_rate, 6 callback-extended, 3 liquidate, 6 admin). The collateral DEPOSIT amount on borrow is a secondary effect (documented limitation, mirrors crvUSD).",
+  "functions": {
+    "0x23cfed03": {
+      "name": "create_loan(uint256,uint256,uint256)",
+      "decision": "cover",
+      "reason": "user create_loan on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0x6f972f12": {
+      "name": "add_collateral(uint256)",
+      "decision": "cover",
+      "reason": "user add_collateral on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0x24049e57": {
+      "name": "add_collateral(uint256,address)",
+      "decision": "cover",
+      "reason": "user add_collateral (for) on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0xd14ff5b6": {
+      "name": "remove_collateral(uint256)",
+      "decision": "cover",
+      "reason": "user remove_collateral on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0xdd171e7c": {
+      "name": "borrow_more(uint256,uint256)",
+      "decision": "cover",
+      "reason": "user borrow_more on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0x371fd8e6": {
+      "name": "repay(uint256)",
+      "decision": "cover",
+      "reason": "user repay on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0xacb70815": {
+      "name": "repay(uint256,address)",
+      "decision": "cover",
+      "reason": "user repay (for) on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0xb4440df4": {
+      "name": "repay(uint256,address,int256)",
+      "decision": "cover",
+      "reason": "user repay (band) on Curve LlamaLend Controller (lending) — venue=llama_lend{controller,collateral}; create_loan/borrow_more → Borrow (debt=crvUSD), add/remove_collateral → Supply/Withdraw (asset=collateral), repay → Repay. on_behalf_of = _for arg if present else tx.from."
+    },
+    "0x69c6804e": {
+      "name": "save_rate()",
+      "decision": "exclude",
+      "reason": "keeper rate checkpoint — not a user-wallet position action."
+    },
+    "0xbc61ea23": {
+      "name": "create_loan_extended(uint256,uint256,uint256,address,uint256[])",
+      "decision": "exclude",
+      "reason": "callback / flash-leverage integrator variant (callbacker + callback_args) — the base create_loan/borrow_more/repay are covered."
+    },
+    "0x4ba96d46": {
+      "name": "create_loan_extended(uint256,uint256,uint256,address,uint256[],bytes)",
+      "decision": "exclude",
+      "reason": "callback / flash-leverage integrator variant (callbacker + callback_args) — the base create_loan/borrow_more/repay are covered."
+    },
+    "0x36b7dbb7": {
+      "name": "borrow_more_extended(uint256,uint256,address,uint256[])",
+      "decision": "exclude",
+      "reason": "callback / flash-leverage integrator variant (callbacker + callback_args) — the base create_loan/borrow_more/repay are covered."
+    },
+    "0x24977ef3": {
+      "name": "borrow_more_extended(uint256,uint256,address,uint256[],bytes)",
+      "decision": "exclude",
+      "reason": "callback / flash-leverage integrator variant (callbacker + callback_args) — the base create_loan/borrow_more/repay are covered."
+    },
+    "0x152f65cb": {
+      "name": "repay_extended(address,uint256[])",
+      "decision": "exclude",
+      "reason": "callback / flash-leverage integrator variant (callbacker + callback_args) — the base create_loan/borrow_more/repay are covered."
+    },
+    "0x5794e890": {
+      "name": "repay_extended(address,uint256[],bytes)",
+      "decision": "exclude",
+      "reason": "callback / flash-leverage integrator variant (callbacker + callback_args) — the base create_loan/borrow_more/repay are covered."
+    },
+    "0xbcbaf487": {
+      "name": "liquidate(address,uint256)",
+      "decision": "exclude",
+      "reason": "liquidation — keeper / 3rd-party action, not the borrower's wallet."
+    },
+    "0xfed9698c": {
+      "name": "liquidate_extended(address,uint256,uint256,address,uint256[])",
+      "decision": "exclude",
+      "reason": "liquidation — keeper / 3rd-party action, not the borrower's wallet."
+    },
+    "0xd28952fc": {
+      "name": "liquidate_extended(address,uint256,uint256,address,uint256[],bytes)",
+      "decision": "exclude",
+      "reason": "liquidation — keeper / 3rd-party action, not the borrower's wallet."
+    },
+    "0x4189617d": {
+      "name": "set_amm_fee(uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback / discount parameter management)."
+    },
+    "0xa5b4804a": {
+      "name": "set_amm_admin_fee(uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback / discount parameter management)."
+    },
+    "0x81d2f1b7": {
+      "name": "set_monetary_policy(address)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback / discount parameter management)."
+    },
+    "0x2a0c3586": {
+      "name": "set_borrowing_discounts(uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback / discount parameter management)."
+    },
+    "0xcc1891c7": {
+      "name": "set_callback(address)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback / discount parameter management)."
+    },
+    "0x1e0cfcef": {
+      "name": "collect_fees()",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback / discount parameter management)."
+    }
+  }
+}

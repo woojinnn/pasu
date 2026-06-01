@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x03b54a6e9a984069379fae1a4fc4dbae93b3bccd",
-  "symbol": "wstETH",
-  "decimals": 18,
-  "name": "Wrapped liquid staked Ether 2.0"
-}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xaf16c06aa672d35d94641f966e82d0eb4dbf8f80",
+  "symbol": "cyCRV",
+  "decimals": 18,
+  "name": "CurveYield CRV",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

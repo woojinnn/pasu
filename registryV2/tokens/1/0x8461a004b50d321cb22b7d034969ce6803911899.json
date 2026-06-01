@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8461a004b50d321cb22b7d034969ce6803911899",
+  "symbol": "ibKRW+sKRW-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: ibKRW/sKRW",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8461a004b50d321cb22b7d034969ce6803911899"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x95dfdc8161832e4ff7816ac4b6367ce201538253"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x269895a3df4d73b077fc823dd6da1b95f72aaf9b"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

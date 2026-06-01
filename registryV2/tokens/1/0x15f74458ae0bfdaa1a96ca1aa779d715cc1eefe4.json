@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x15f74458ae0bfdaa1a96ca1aa779d715cc1eefe4",
+  "symbol": "GRAI",
+  "decimals": 18,
+  "name": "Gravita Debt Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

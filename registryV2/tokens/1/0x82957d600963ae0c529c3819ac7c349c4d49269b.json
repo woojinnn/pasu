@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x82957d600963ae0c529c3819ac7c349c4d49269b",
+  "symbol": "USDnr",
+  "decimals": 18,
+  "name": "Ultimate Synthetic Dollar - No Rebase",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe0a342a97ef07e3c5515dcc7564c4bd40c405428",
+  "symbol": "PXBTRFLY-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: PXBTRFLY/BTRFLY",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x38c60bcca6ae0fdbd34466fe8999be15ee4e699e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x10978db3885ba79bf1bc823e108085fb88e6f02f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc55126051b22ebb829d00368f4b12bde432de5da"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

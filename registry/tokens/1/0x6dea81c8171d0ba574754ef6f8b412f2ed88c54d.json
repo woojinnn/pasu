@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d",
-  "symbol": "LQTY",
-  "decimals": 18,
-  "name": "Liquity"
-}

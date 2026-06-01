@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe088b84986fc5cc7e2a7d2e0a207fda66544a630",
+  "symbol": "scbdETHLPE",
+  "decimals": 18,
+  "name": "scbdETH/EarnETH/wstETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xe088b84986fc5cc7e2a7d2e0a207fda66544a630"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf46e0a7799d73897c978b6efe4bb44795ebdabd8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbbfc8683c8fe8cf73777fede7ab9574935fea0a4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

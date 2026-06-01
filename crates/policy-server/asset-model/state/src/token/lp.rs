@@ -1,4 +1,4 @@
-//! LP share shapes — Pooled (V2/Curve/Balancer) vs Concentrated (V3/V4/Joe LB)
+//! LP share 모양 — Pooled (V2/Curve/Balancer) vs Concentrated (V3/V4/Joe LB)
 //! vs Custom (escape hatch).
 
 use serde::{Deserialize, Serialize};
@@ -8,84 +8,80 @@ use tsify_next::Tsify;
 use super::token_ref::TokenRef;
 use crate::primitives::{Weight, U128, U256};
 
+/// LP share 가 fungible (ERC20) 인지 NFT (ERC721) 인지.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
-/// How an LP position's share is represented on-chain.
 pub enum ShareForm {
-    /// Fungible ERC20 LP tokens (e.g. Uniswap V2, Curve, Balancer pool shares).
+    /// Uniswap V2 LP, Curve LP 등 ERC20 share.
     Fungible,
-    /// Non-fungible position represented as an NFT (e.g. Uniswap V3/V4 positions).
+    /// Uniswap V3/V4 LP NFT 등 ERC721 share.
     NonFungible,
 }
 
-/// The price-distribution shape of an LP share.
+/// LP share 의 가격 분포 모양.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum LpShape {
-    /// Liquidity spread proportionally across the whole pool — Uniswap V2,
-    /// Curve V1, Balancer.
+    /// 풀 전체에 비례 — Uniswap V2, Curve V1, Balancer.
     Pooled {
-        /// Per-asset pool weights (e.g. Balancer weighted pools); `None` for
-        /// uniformly weighted pools.
+        /// pool 의 자산 별 weight (Balancer 등). 균등은 `None`.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[tsify(optional)]
         weights: Option<Vec<Weight>>,
     },
 
-    /// Liquidity concentrated within a price/tick range — Uniswap V3/V4,
-    /// Trader Joe LB, Maverick.
+    /// 가격/틱 구간 집중 — Uniswap V3/V4, Trader Joe LB, Maverick.
     Concentrated {
-        /// The range specification the liquidity is concentrated within.
+        /// 본 share 의 집중 구간.
         range: RangeSpec,
-        /// Uncollected fees accrued to the position, as `(token, raw amount)`
-        /// pairs.
+        /// share 가 누적한 미수령 fee — (token, base unit) pair.
         #[serde(default)]
         #[tsify(type = "Array<[TokenRef, string]>")]
         fees_owed: Vec<(TokenRef, U256)>,
     },
 
-    /// An LP that fits neither shape above — escape hatch.
+    /// 위 두 모양에 안 맞는 LP — escape hatch.
     Custom {
-        /// Identifier of the originating protocol.
+        /// 프로토콜 식별자 (display 용).
         protocol: String,
-        /// Opaque protocol-specific payload preserved verbatim.
+        /// 프로토콜 고유 raw JSON.
         #[tsify(type = "unknown")]
         raw: Value,
     },
 }
 
-/// The range over which concentrated liquidity is provided.
+/// `LpShape::Concentrated` 의 구간 표현.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RangeSpec {
-    /// Tick-based concentration as used by Uniswap V3/V4.
+    /// Uniswap V3/V4 의 tick 단위 집중.
     Tick {
-        /// Lower tick boundary of the position (inclusive).
+        /// tick 하단 (포함).
         lower: i32,
-        /// Upper tick boundary of the position (inclusive).
+        /// tick 상단 (포함).
         upper: i32,
-        /// Liquidity amount held across the tick range.
+        /// 구간 내 유동성 (U128).
         #[tsify(type = "string")]
         liquidity: U128,
     },
 
-    /// Bin-based distribution as used by Trader Joe Liquidity Book.
+    /// Trader Joe LB 의 bin 단위 분포.
     Bin {
-        /// Identifier of the currently active (in-price) bin.
+        /// 현재 활성 bin id.
         active_id: u32,
-        /// Liquidity distribution as `(bin id, liquidity)` pairs.
+        /// bin id → 본 share 가 보유한 유동성 분포.
         #[tsify(type = "Array<[number, string]>")]
         distribution: Vec<(u32, U128)>,
     },
 
-    /// A range format that differs from the above — e.g. Maverick.
+    /// Maverick 등 형식이 다른 경우.
     Custom {
-        /// Identifier of the originating protocol.
+        /// 프로토콜 식별자 (display 용).
         protocol: String,
-        /// Opaque protocol-specific payload preserved verbatim.
+        /// 프로토콜 고유 raw JSON.
         #[tsify(type = "unknown")]
         raw: Value,
     },

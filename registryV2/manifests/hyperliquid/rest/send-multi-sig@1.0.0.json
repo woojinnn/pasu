@@ -1,0 +1,62 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/send-multi-sig@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B `HyperliquidTransaction:SendMultiSig` — off-chain L1 submission of a multi-sig action (`multiSigActionHash` bytes32 wrapping an inner action), signed via eth_signTypedData_v4. A meta/wrapper action whose inner intent is opaque at the wrapper layer → best-effort `Unknown` (routing win; structured representation, incl. recursive decode of the inner action, = deferred off-chain-exchange variant, OUT OF SCOPE). See usd-send@1.0.0 for the full B.3 rationale.",
+  "match": {
+    "selector": "0x0000000a",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:SendMultiSig",
+      "types": {
+        "HyperliquidTransaction:SendMultiSig": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "multiSigActionHash", "type": "bytes32" },
+          { "name": "nonce", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "sendMultiSig",
+    "abi": {
+      "name": "sendMultiSig",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "sendMultiSig",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "multiSigActionHash", "type": "bytes32" },
+            { "name": "nonce", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "0x0000000000000000000000000000000000000000",
+        "chain": "$chain",
+        "calldata": "0x",
+        "value": "0"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

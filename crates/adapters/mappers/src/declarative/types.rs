@@ -159,7 +159,8 @@ pub struct Requires {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "strategy", rename_all = "snake_case")]
 pub enum EmitRule {
-    /// Simple ABI → single ActionEnvelope. Phase 1 implementation target.
+    /// Legacy typed single-emit shape. Runtime v3 manifests use raw
+    /// `emit.body` templates consumed by `action_builder`.
     SingleEmit {
         category: String,
         action: String,
@@ -193,8 +194,8 @@ pub enum EmitRule {
         max_depth: u8,
     },
 
-    /// Array fan-out — one ABI tuple-array argument → N ActionEnvelopes,
-    /// one per element. Phase 7B (Permit2 batch overloads). Generalises
+    /// Legacy typed array fan-out shape. Runtime v3 manifests use
+    /// `strategy: "array_emit"` plus raw `emit.body` templates. Generalises
     /// `single_emit`: the field tree is built once per array element with a
     /// synthetic `element` arg bound to the current row.
     ArrayEmit {

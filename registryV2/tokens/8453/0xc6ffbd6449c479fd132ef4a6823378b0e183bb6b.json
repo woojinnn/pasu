@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc6ffbd6449c479fd132ef4a6823378b0e183bb6b",
+  "symbol": "cysdSPECTRA",
+  "decimals": 18,
+  "name": "CurveYield sdSPECTRA Boosted Vault",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

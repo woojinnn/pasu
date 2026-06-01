@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x55c65102c26b173696e935b1325e5aaef30cfe0e",
-  "symbol": "TRU",
-  "decimals": 8,
-  "name": "TrueFi"
-}

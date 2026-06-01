@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6a8a274a670484fc358ab5ae00a1e0aa9ab11ae6",
+  "symbol": "weETH/s/k",
+  "decimals": 18,
+  "name": "Tri ether.fi",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6a8a274a670484fc358ab5ae00a1e0aa9ab11ae6"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xcd5fe23c85820f7b72d0926fc9b05b43e359b7ee"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x917cee801a67f933f2e6b33fc0cd1ed2d5909d88"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7223442cad8e9ca474fc40109ab981608f8c4273"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

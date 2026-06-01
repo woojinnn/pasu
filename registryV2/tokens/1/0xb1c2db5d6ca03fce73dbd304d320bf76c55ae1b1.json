@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb1c2db5d6ca03fce73dbd304d320bf76c55ae1b1",
+  "symbol": "USG",
+  "decimals": 18,
+  "name": "Tangent USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xbedd35f23ea055c6af039f9c6a6fc8bdee4d7a13",
+  "symbol": "dfmDAI",
+  "decimals": 18,
+  "name": "DAI/MONEY Curve LP",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xbedd35f23ea055c6af039f9c6a6fc8bdee4d7a13"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x69420f9e38a4e60a62224c489be4bf7a94402496"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

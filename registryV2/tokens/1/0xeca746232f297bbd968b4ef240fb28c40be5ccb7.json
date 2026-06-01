@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xeca746232f297bbd968b4ef240fb28c40be5ccb7",
+  "symbol": "afSTG",
+  "decimals": 18,
+  "name": "Asymmetry Finance Stargate Liquid Locker",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

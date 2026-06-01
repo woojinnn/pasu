@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x46c85152bfe9f96829aa94755d9f915f9b10ef5f",
+  "symbol": "cNGN",
+  "decimals": 6,
+  "name": "cNGN",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

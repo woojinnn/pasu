@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbf673d8dc8ff9c9dc8f8063532a7d3bbd3799298",
+  "symbol": "rgUSDsFRAX",
+  "decimals": 18,
+  "name": "Rev sFRAX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xbf673d8dc8ff9c9dc8f8063532a7d3bbd3799298"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x78da5799cf427fee11e9996982f4150ece7a99a7"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa663b02cf0a4b149d2ad41910cb81e23e1c41c32"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

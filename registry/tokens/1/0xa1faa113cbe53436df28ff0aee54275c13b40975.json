@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xa1faa113cbe53436df28ff0aee54275c13b40975",
-  "symbol": "ALPHA",
-  "decimals": 18,
-  "name": "AlphaToken"
-}

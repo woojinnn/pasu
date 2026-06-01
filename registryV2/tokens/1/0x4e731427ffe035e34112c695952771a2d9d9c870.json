@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4e731427ffe035e34112c695952771a2d9d9c870",
+  "symbol": "btcusdt-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: btc/usdt",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xaa738040e9dbc91368df782579cf1810a74e87fa"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x13cc8d626445c6fccc548aae172cbacf572ef5a4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9220f3eff6f4a32ebcd414198c52da86d78dcceb"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

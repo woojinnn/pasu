@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbb84b2b436e1a9945daf930369826143bad86105",
+  "symbol": "ETHx-SD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: ETHx-SD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9f7896679fc2a5ddc2ffec9b42b155e7999e8a0a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa35b1b31ce002fbf2058d22f30f95d405200a15b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x30d20208d987713f46dfd34ef128bb16c404d10f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

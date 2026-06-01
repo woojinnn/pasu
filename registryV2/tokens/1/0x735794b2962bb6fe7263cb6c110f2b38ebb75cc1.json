@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x735794b2962bb6fe7263cb6c110f2b38ebb75cc1",
+  "symbol": "LUSD",
+  "decimals": 18,
+  "name": "LUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -104,7 +104,10 @@ fn flatten_tuple_arg(arg: LegacyArg) -> Result<Vec<DecodedArg>, BridgeError> {
         let value = convert_value(DynSolValue::Tuple(items))?;
         return Ok(vec![DecodedArg {
             name: arg.name,
-            abi_type: arg.sol_type,
+            // We hold the full `Param` here (with `components`), so emit the
+            // canonical parenthesised type (e.g. `(address,uint160,uint48)`)
+            // rather than the bare `"tuple"` — see `canonical_abi_type`.
+            abi_type: canonical_abi_type(&arg.sol_type, &arg.components),
             value,
         }]);
     }
@@ -113,11 +116,14 @@ fn flatten_tuple_arg(arg: LegacyArg) -> Result<Vec<DecodedArg>, BridgeError> {
         let name = if component.name.is_empty() {
             format!("arg{}", out.len())
         } else {
-            component.name
+            component.name.clone()
         };
         out.push(DecodedArg {
+            // Each flattened field keeps its own canonical type so a NESTED
+            // tuple field (V4 `modifyLiquidities` params) threads its inner
+            // widths instead of collapsing to a bare `"tuple"`.
+            abi_type: canonical_abi_type(&component.ty, &component.components),
             name,
-            abi_type: component.ty,
             value: convert_value(value)?,
         });
     }
@@ -130,10 +136,46 @@ fn flatten_tuple_arg(arg: LegacyArg) -> Result<Vec<DecodedArg>, BridgeError> {
 /// the argument's `name` and `sol_type`.
 pub fn convert_arg(legacy: LegacyArg) -> Result<DecodedArg, BridgeError> {
     Ok(DecodedArg {
+        // A bare `"tuple"` / `"tuple[]"` (alloy keeps the field types out of
+        // band on `components`) is rebuilt into the full parenthesised type so
+        // the downstream `eval::decoded_value_to_json_typed` can thread each
+        // nested component's ABI width — without it a `uint48` / `int24`
+        // component collapses to a decimal string and a `u64`/`i32`-typed
+        // `ActionBody` field rejects it. Scalars pass through unchanged.
+        abi_type: canonical_abi_type(&legacy.sol_type, &legacy.components),
         name: legacy.name,
-        abi_type: legacy.sol_type,
         value: convert_value(legacy.value)?,
     })
+}
+
+/// Rebuild a parameter's **canonical** ABI type string from its `components`.
+///
+/// alloy's `Param.ty` for a tuple input is the bare word `"tuple"` (or
+/// `"tuple[]"` / `"tuple[2]"`), with the inner field types carried out of band
+/// on `Param.components`. For a NON-compound type (`components` empty) `ty` is
+/// already canonical (`"address"`, `"uint48"`, `"bytes"`, …).
+///
+/// [`alloy_json_abi::Param::selector_type`] does exactly this reconstruction —
+/// it returns `Cow::Borrowed(&ty)` when `components` is empty and otherwise
+/// emits the fully parenthesised form (`"(address,uint160,uint48,uint48)[]"`),
+/// recursing into nested tuples. We thread that string onto
+/// [`DecodedArg::abi_type`] so the JSON encoder (`eval.rs`) recovers per-field
+/// widths for nested tuple / tuple-array components.
+fn canonical_abi_type(ty: &str, components: &[alloy_json_abi::Param]) -> String {
+    if components.is_empty() {
+        // Scalars / `bytes` / `string` / non-tuple arrays — `ty` is canonical.
+        return ty.to_owned();
+    }
+    // Build a throwaway `Param` so we can reuse alloy's canonical formatter
+    // (which handles arbitrary nesting + the `tuple[..]` array suffix).
+    alloy_json_abi::Param {
+        name: String::new(),
+        ty: ty.to_owned(),
+        components: components.to_vec(),
+        internal_type: None,
+    }
+    .selector_type()
+    .into_owned()
 }
 
 /// Convert a single `alloy_dyn_abi::DynSolValue` into the policy-engine /
@@ -372,6 +414,142 @@ mod tests {
         };
         let converted = convert_legacy_call(legacy, [0xde, 0xad, 0xbe, 0xef]).unwrap();
         assert_eq!(converted.decoder_id.as_str(), "fallback/0xdeadbeef");
+    }
+
+    #[test]
+    fn canonical_abi_type_rebuilds_nested_tuple() {
+        // Bare `"tuple"` + nested `"tuple[]"` components → the full
+        // parenthesised canonical string. Drives the b1-infra width fix.
+        let abi = serde_json::json!({
+            "name": "permit", "type": "function",
+            "outputs": [], "stateMutability": "nonpayable",
+            "inputs": [
+                { "name": "owner", "type": "address" },
+                { "name": "permitBatch", "type": "tuple", "components": [
+                    { "name": "details", "type": "tuple[]", "components": [
+                        { "name": "token", "type": "address" },
+                        { "name": "amount", "type": "uint160" },
+                        { "name": "expiration", "type": "uint48" },
+                        { "name": "nonce", "type": "uint48" }
+                    ]},
+                    { "name": "spender", "type": "address" },
+                    { "name": "sigDeadline", "type": "uint256" }
+                ]},
+                { "name": "signature", "type": "bytes" }
+            ]
+        });
+        let function: alloy_json_abi::Function = serde_json::from_value(abi).unwrap();
+        let owner = &function.inputs[0];
+        let permit_batch = &function.inputs[1];
+        let details = &permit_batch.components[0];
+
+        // Scalar passthrough.
+        assert_eq!(canonical_abi_type(&owner.ty, &owner.components), "address");
+        // Nested tuple[] keeps its inner widths + array suffix.
+        assert_eq!(
+            canonical_abi_type(&details.ty, &details.components),
+            "(address,uint160,uint48,uint48)[]"
+        );
+        // Top-level tuple recurses into the nested array.
+        assert_eq!(
+            canonical_abi_type(&permit_batch.ty, &permit_batch.components),
+            "((address,uint160,uint48,uint48)[],address,uint256)"
+        );
+    }
+
+    #[test]
+    fn decode_with_json_abi_threads_nested_tuple_canonical_type() {
+        // End-to-end through the bridge: a calldata `permit(owner, PermitBatch,
+        // signature)` with a nested `PermitDetails[]` — assert the decoded
+        // `permitBatch` arg carries the CANONICAL parenthesised `abi_type`
+        // (rebuilt from `components`) rather than the bare `"tuple"` alloy
+        // emits. The downstream `eval::args_to_json` (covered in the mappers
+        // crate + the v3-route integration test) relies on this string to
+        // render the nested uint48 `expiration` as a JSON number.
+        //
+        // The arg's VALUE is also verified to be a correctly-shaped nested
+        // Tuple/Array so the positional `$inputs[2]` walk lands on the uint48.
+        use alloy_dyn_abi::DynSolValue;
+        use alloy_primitives::Address as AlloyAddress;
+
+        let abi = serde_json::json!({
+            "name": "permit", "type": "function",
+            "inputs": [
+                { "name": "owner", "type": "address" },
+                { "name": "permitBatch", "type": "tuple", "components": [
+                    { "name": "details", "type": "tuple[]", "components": [
+                        { "name": "token", "type": "address" },
+                        { "name": "amount", "type": "uint160" },
+                        { "name": "expiration", "type": "uint48" },
+                        { "name": "nonce", "type": "uint48" }
+                    ]},
+                    { "name": "spender", "type": "address" },
+                    { "name": "sigDeadline", "type": "uint256" }
+                ]},
+                { "name": "signature", "type": "bytes" }
+            ]
+        });
+
+        let token = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+            .parse::<AlloyAddress>()
+            .unwrap();
+        let spender = "0x00000000000000000000000000000000deadbeef"
+            .parse::<AlloyAddress>()
+            .unwrap();
+        let owner = "0x000000000000000000000000000000000000a01c"
+            .parse::<AlloyAddress>()
+            .unwrap();
+        let details = DynSolValue::Tuple(vec![
+            DynSolValue::Address(token),
+            DynSolValue::Uint(U256::from(1000u64), 160),
+            DynSolValue::Uint(U256::from(1_738_001_800u64), 48),
+            DynSolValue::Uint(U256::from(0u64), 48),
+        ]);
+        let permit_batch = DynSolValue::Tuple(vec![
+            DynSolValue::Array(vec![details]),
+            DynSolValue::Address(spender),
+            DynSolValue::Uint(U256::from(1_738_002_000u64), 256),
+        ]);
+        // Structural ABI encoding (no Function-type coercion) — mirrors the
+        // route test's `encode_calldata`: selector ++ abi_encode_params over a
+        // top-level Tuple of the three args. The `permit` selector is
+        // `0x2a2d80d1`.
+        let body = DynSolValue::Tuple(vec![
+            DynSolValue::Address(owner),
+            permit_batch,
+            DynSolValue::Bytes(vec![0xab, 0xcd]),
+        ])
+        .abi_encode_params();
+        let mut calldata = vec![0x2a, 0x2d, 0x80, 0xd1];
+        calldata.extend_from_slice(&body);
+
+        let decoded = decode_with_json_abi(&abi, &calldata).unwrap();
+        let pb = decoded
+            .args
+            .iter()
+            .find(|a| a.name == "permitBatch")
+            .expect("permitBatch arg");
+        // The load-bearing assertion: canonical parenthesised type, NOT "tuple".
+        assert_eq!(
+            pb.abi_type,
+            "((address,uint160,uint48,uint48)[],address,uint256)"
+        );
+
+        // Value shape: permitBatch = Tuple[ Array[ Tuple[token, amount, exp, nonce] ], spender, sigDeadline ].
+        let DecodedValue::Tuple(pb_fields) = &pb.value else {
+            panic!("permitBatch must be a Tuple, got {:?}", pb.value);
+        };
+        let DecodedValue::Array(details_arr) = &pb_fields[0] else {
+            panic!("details must be an Array, got {:?}", pb_fields[0]);
+        };
+        let DecodedValue::Tuple(d0) = &details_arr[0] else {
+            panic!("details[0] must be a Tuple, got {:?}", details_arr[0]);
+        };
+        assert!(
+            matches!(&d0[2], DecodedValue::Uint(v) if *v == U256::from(1_738_001_800u64)),
+            "details[0][2] (uint48 expiration) value mismatch: {:?}",
+            d0[2]
+        );
     }
 
     #[test]

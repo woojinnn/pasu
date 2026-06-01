@@ -5,7 +5,7 @@
 //!
 //! 1. **`snake_case` bare action name** — used internally by composer /
 //!    `manifest_fragment` paths. `REGISTERED_ACTIONS` is the Phase 1 action set
-//!    derived from `ActionBody`'s domain enums (45 entries).
+//!    derived from `ActionBody`'s domain enums (59 entries).
 //!
 //! 2. **`<Namespace>::<PascalCaseAction>`** — the fully-qualified Cedar action
 //!    id under the namespace migration. Composed via [`namespace_action_id`].
@@ -69,9 +69,9 @@ pub fn namespace_context_type_id(domain: &str, action: &str) -> String {
     )
 }
 
-/// Phase 1 `snake_case` action set (45 entries) — produced by `ActionBody`'s
+/// Phase 1 `snake_case` action set (59 entries) — produced by `ActionBody`'s
 /// domain enums. Each maps to a `.cedarschema` file under
-/// `schema/policy-schema/actions/{token,amm,lending,airdrop,launchpad,perp}/`
+/// `schema/policy-schema/actions/{token,amm,lending,airdrop,launchpad,perp,permission}/`
 /// and to a Cedar action id `<Namespace>::<PascalCase>` (via
 /// [`namespace_action_id`]).
 pub const REGISTERED_ACTIONS: &[&str] = &[
@@ -88,17 +88,38 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "remove_liquidity",
     "sign_intent_order",
     "swap",
-    // Lending (10)
+    // Lending (12)
     "borrow",
+    "buy_collateral",
     "delegate_borrow",
     "disable_collateral",
     "enable_collateral",
     "liquidate",
     "repay",
+    "set_authorization",
     "set_emode",
     "supply",
     "swap_rate_mode",
     "withdraw",
+    // LiquidStaking (6)
+    "claim_withdrawal",
+    "request_withdrawal",
+    "stake",
+    "transfer_shares",
+    "unwrap",
+    "wrap",
+    // Yield (11)
+    "add_market_liquidity",
+    "cancel_limit_order",
+    "claim_yield",
+    "mint_py",
+    "mint_sy",
+    "pt_swap",
+    "redeem_py",
+    "redeem_sy",
+    "remove_market_liquidity",
+    "sign_limit_order",
+    "yt_swap",
     // Launchpad (5)
     "claim_allocation",
     "claim_vested",
@@ -117,6 +138,25 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "open_position",
     "place_limit_order",
     "place_stop_order",
+    // Permission (1)
+    "protocol_authorization",
+    // Restaking (7) — `delegate` already listed above under Airdrop, so `delegate_to`
+    "complete_withdrawal",
+    "delegate_to",
+    "deposit",
+    "queue_withdrawal",
+    "redelegate",
+    "register_operator",
+    "undelegate",
+    // Staking (8)
+    "claim_rewards",
+    "gauge_deposit",
+    "gauge_withdraw",
+    "increase_lock_amount",
+    "increase_lock_time",
+    "lock",
+    "unlock",
+    "vote_for_gauge",
     // Token (9) — `delegate` already listed above under Airdrop
     "erc20_approve",
     "erc20_permit",
@@ -127,13 +167,26 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "permit2_approve",
     "permit2_sign_allowance",
     "revoke_approval",
-    // HyperliquidCore (5) — thin off-chain L1 action model. `hl_`-prefixed so
+    // HyperliquidCore (18) — thin off-chain L1 action model. `hl_`-prefixed so
     // the tags stay globally unique (e.g. `withdraw` already exists in Lending).
     "hl_order",
     "hl_update_leverage",
     "hl_withdraw",
     "hl_usd_send",
     "hl_approve_agent",
+    "hl_unknown",
+    "hl_spot_send",
+    "hl_usd_class_transfer",
+    "hl_send_asset",
+    "hl_send_to_evm_with_data",
+    "hl_c_deposit",
+    "hl_c_withdraw",
+    "hl_vault_transfer",
+    "hl_sub_account_transfer",
+    "hl_approve_builder_fee",
+    "hl_token_delegate",
+    "hl_twap_order",
+    "hl_update_isolated_margin",
 ];
 
 #[cfg(test)]
@@ -184,9 +237,16 @@ mod tests {
 
     #[test]
     fn registry_size_matches_phase1() {
-        // 2 Core + 2 Airdrop + 6 Amm + 10 Lending + 5 Launchpad + 11 Perp + 9 Token
-        // + 5 HyperliquidCore = 50.
-        assert_eq!(REGISTERED_ACTIONS.len(), 50);
+        // Union of feat/registry-v2 (74: + 7 Restaking + 8 Staking + 5 HyperliquidCore)
+        // and the 11 Pendle `yield` rows (pt_swap / yt_swap / add+remove_market_liquidity
+        // / mint_py / redeem_py / mint_sy / redeem_sy / claim_yield / sign_limit_order
+        // / cancel_limit_order) = 85, plus 13 more HyperliquidCore actions: the
+        // `hl_unknown` catch-all + 8 fund-movement (spot_send / usd_class_transfer
+        // / send_asset / send_to_evm_with_data / c_deposit / c_withdraw /
+        // vault_transfer / sub_account_transfer) + 2 permission (approve_builder_fee
+        // / token_delegate) + 2 trading/margin (twap_order / update_isolated_margin)
+        // = 98.
+        assert_eq!(REGISTERED_ACTIONS.len(), 98);
     }
 
     #[test]

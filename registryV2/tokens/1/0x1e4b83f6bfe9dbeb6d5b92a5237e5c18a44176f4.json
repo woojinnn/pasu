@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1e4b83f6bfe9dbeb6d5b92a5237e5c18a44176f4",
+  "symbol": "BTCGHOETH-gauge",
+  "decimals": 18,
+  "name": "Curve.fi BTCGHOETH Gauge Deposit",
+  "source": "https://etherscan.io/token/0x1e4b83f6bfe9dbeb6d5b92a5237e5c18a44176f4",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "curve_gauge", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f" }
+    }
+  }
+}

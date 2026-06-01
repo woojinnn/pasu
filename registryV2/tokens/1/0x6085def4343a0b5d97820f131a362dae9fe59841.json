@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6085def4343a0b5d97820f131a362dae9fe59841",
+  "symbol": "palStkAAVE-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: AAVE/palStkAAVE",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x48536ec5233297c367fd0b6979b75d9270bb6b15"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x24e79e946dea5482212c38aab2d0782f04cdb0e0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

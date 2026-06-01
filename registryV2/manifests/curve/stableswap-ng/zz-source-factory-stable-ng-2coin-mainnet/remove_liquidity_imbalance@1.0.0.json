@@ -1,0 +1,121 @@
+{
+  "type": "adapter_action",
+  "id": "curve/stableswap-ng/source/factory-stable-ng-2coin-mainnet/remove_liquidity_imbalance@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xe3103273",
+    "chain_to_addresses_source": "curve:factory_stable_ng_2coin_mainnet",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "remove_liquidity_imbalance",
+    "abi": {
+      "name": "remove_liquidity_imbalance",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_amounts",
+          "type": "uint256[2]"
+        },
+        {
+          "name": "_max_burn_amount",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "remove_liquidity",
+        "remove_liquidity": {
+          "venue": {
+            "name": "curve_v1",
+            "chain": "$chain",
+            "pool": "$to",
+            "n_coins": 2,
+            "is_meta": false
+          },
+          "params": {
+            "kind": "pooled_burn_imbalance",
+            "lp_token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$to"
+              }
+            },
+            "max_lp_burn": "$args._max_burn_amount",
+            "amounts_out": [
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.0"
+                  }
+                },
+                "$args._amounts[0]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.1"
+                  }
+                },
+                "$args._amounts[1]"
+              ]
+            ],
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_ng_balances"
+              },
+              "ttl_s": 12
+            },
+            "fees_owed": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_ng_pool_state"
+                  }
+                ],
+                "calc_id": "curve_ng_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "curve:factory_stable_ng_2coin_mainnet",
+    "note": "build-index substitutes $source.* and appends a per-pool id suffix"
+  }
+}

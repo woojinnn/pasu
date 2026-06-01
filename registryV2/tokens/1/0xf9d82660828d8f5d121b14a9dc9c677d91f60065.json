@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf9d82660828d8f5d121b14a9dc9c677d91f60065",
+  "symbol": "USST",
+  "decimals": 18,
+  "name": "STBL_USST - USST Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

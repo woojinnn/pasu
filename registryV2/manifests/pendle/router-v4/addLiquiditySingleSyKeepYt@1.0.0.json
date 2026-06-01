@@ -1,0 +1,139 @@
+{
+  "type": "adapter_action",
+  "id": "pendle/router-v4/addLiquiditySingleSyKeepYt@1.0.0",
+  "publisher": "pendle",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x844384aa",
+    "chain_to_addresses": {
+      "1": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ],
+      "8453": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "addLiquiditySingleSyKeepYt",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "market",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netSyIn",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minLpOut",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minYtOut",
+          "type": "uint256"
+        }
+      ],
+      "name": "addLiquiditySingleSyKeepYt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "netLpOut",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netYtOut",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netSyMintPy",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "yield",
+      "yield": {
+        "action": "add_market_liquidity",
+        "add_market_liquidity": {
+          "venue": {
+            "name": "pendle_v2",
+            "chain": "$chain"
+          },
+          "market": "$args.market",
+          "kind": "single_sy_keep_yt",
+          "net_token_in": "0x0",
+          "net_pt_in": "0x0",
+          "net_sy_in": "$args.netSyIn",
+          "min_lp_out": "$args.minLpOut",
+          "recipient": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {
+      "sy": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$args.market",
+          "function": "readTokens()",
+          "decoder_id": "pendle_market_tokens_sy"
+        },
+        "ttl_s": 86400
+      },
+      "pt": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$args.market",
+          "function": "readTokens()",
+          "decoder_id": "pendle_market_tokens_pt"
+        },
+        "ttl_s": 86400
+      },
+      "yt": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$args.market",
+          "function": "readTokens()",
+          "decoder_id": "pendle_market_tokens_yt"
+        },
+        "ttl_s": 86400
+      },
+      "maturity": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$args.market",
+          "function": "expiry()",
+          "decoder_id": "pendle_market_expiry"
+        },
+        "ttl_s": 86400
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

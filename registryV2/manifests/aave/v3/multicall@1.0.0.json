@@ -1,0 +1,38 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/multicall@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave V3.4+ Pool inherits OpenZeppelin Multicall. Decode each bytes[] item recursively against the same Pool so bundled supply/withdraw/position-manager calls retain their concrete ActionBody shapes.",
+  "match": {
+    "selector": "0xac9650d8",
+    "chain_to_addresses": {
+      "1": ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "multicall",
+    "abi": {
+      "name": "multicall",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "data", "type": "bytes[]" }
+      ],
+      "outputs": [
+        { "name": "results", "type": "bytes[]" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "multicall_recurse",
+    "recurse_rule_id": "self_array_bytes_last_arg",
+    "max_depth": 3
+  },
+  "requires": {
+    "imperative": ["multicall-recurse@^1.0"],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

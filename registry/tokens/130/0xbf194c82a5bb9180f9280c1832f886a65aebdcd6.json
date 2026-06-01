@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xbf194c82a5bb9180f9280c1832f886a65aebdcd6",
-  "symbol": "ALCX",
-  "decimals": 18,
-  "name": "Alchemix"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x6164a78f7b2ac49cf9b76c49e5b6909e89f34a66",
-  "symbol": "RAI",
-  "decimals": 18,
-  "name": "Rai Reflex Index"
-}

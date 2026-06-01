@@ -1,0 +1,81 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xab8933164acb5ce85d6921619b13cbfdaa268fad",
+  "symbol": "PUSSYPUSSY",
+  "decimals": 18,
+  "name": "8 STABLE PUSSY FiNANCiAL POOLS",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xab8933164acb5ce85d6921619b13cbfdaa268fad"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x02b97435458f1d7e159c0b4c2890e21ea6d65cff"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xea69a3677a110840bef6319ad2df9966a1312492"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xd2aad6d041253d1c7d2508168b37e73ed0d5aa94"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x24ec849bea0dc74eaca4eed373d81ae2901fb140"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x55890ba64ac12731583ed1b1f44b7e8b7bdad44d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xb043dc8af8c98a7df78c8a6007b10d717c6628f5"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xfc1c6a71ccc8f65679300f2a6e041bb69be2eb3b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x369599743ca591feaef525af9bccbbcf75b21286"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

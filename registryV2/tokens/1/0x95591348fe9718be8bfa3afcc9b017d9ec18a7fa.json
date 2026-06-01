@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x95591348fe9718be8bfa3afcc9b017d9ec18a7fa",
+  "symbol": "crv2USDaf",
+  "decimals": 18,
+  "name": "AF Power Pool Strategic Reserve",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x95591348fe9718be8bfa3afcc9b017d9ec18a7fa"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x85e30b8b263bc64d94b827ed450f2edfee8579da"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4f493b7de8aac7d55f71853688b1f7c8f0243c85"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

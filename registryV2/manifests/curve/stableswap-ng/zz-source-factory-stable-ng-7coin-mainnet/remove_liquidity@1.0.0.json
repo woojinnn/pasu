@@ -1,0 +1,171 @@
+{
+  "type": "adapter_action",
+  "id": "curve/stableswap-ng/source/factory-stable-ng-7coin-mainnet/remove_liquidity@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x5c912d2b",
+    "chain_to_addresses_source": "curve:factory_stable_ng_7coin_mainnet",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "remove_liquidity",
+    "abi": {
+      "name": "remove_liquidity",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_burn_amount",
+          "type": "uint256"
+        },
+        {
+          "name": "_min_amounts",
+          "type": "uint256[7]"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "remove_liquidity",
+        "remove_liquidity": {
+          "venue": {
+            "name": "curve_v1",
+            "chain": "$chain",
+            "pool": "$to",
+            "n_coins": 7,
+            "is_meta": false
+          },
+          "params": {
+            "kind": "pooled_burn",
+            "lp_token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$to"
+              }
+            },
+            "lp_amount": "$args._burn_amount",
+            "min_out": [
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.0"
+                  }
+                },
+                "$args._min_amounts[0]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.1"
+                  }
+                },
+                "$args._min_amounts[1]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.2"
+                  }
+                },
+                "$args._min_amounts[2]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.3"
+                  }
+                },
+                "$args._min_amounts[3]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.4"
+                  }
+                },
+                "$args._min_amounts[4]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.5"
+                  }
+                },
+                "$args._min_amounts[5]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.6"
+                  }
+                },
+                "$args._min_amounts[6]"
+              ]
+            ],
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_ng_balances"
+              },
+              "ttl_s": 12
+            },
+            "fees_owed": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_ng_pool_state"
+                  }
+                ],
+                "calc_id": "curve_ng_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "curve:factory_stable_ng_7coin_mainnet",
+    "note": "build-index substitutes $source.* and appends a per-pool id suffix"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7cd017ca5ddb86861fa983a34b5f495c6f898c41",
+  "symbol": "WUSD",
+  "decimals": 18,
+  "name": "Worldwide USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

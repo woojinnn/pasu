@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xe5020a6d073a794b6e7f05678707de47986fb0b6",
+  "symbol": "frxUSD",
+  "decimals": 18,
+  "name": "Frax USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -249,6 +249,50 @@ namespace Lending {
   };
 }
 
+namespace LiquidStaking {
+  // -------------------------------------------------------------------------
+  // StakingVenue — liquid-staking venue identifier.
+  //   - "lido" → no extra fields (stETH / wstETH / WithdrawalQueue singleton set)
+  // -------------------------------------------------------------------------
+  type StakingVenue = {
+    name: String,                // discriminated by name (currently "lido")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
+namespace Restaking {
+  // -------------------------------------------------------------------------
+  // RestakingVenue — restaking venue identifier.
+  //   - "eigenlayer" → no extra fields (DelegationManager / StrategyManager /
+  //     EigenPodManager singleton set on the chain)
+  // -------------------------------------------------------------------------
+  type RestakingVenue = {
+    name: String,                // discriminated by name (currently "eigenlayer")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
+namespace Staking {
+  // -------------------------------------------------------------------------
+  // StakeVenue — Curve DAO staking / vote-escrow venue identifier. Each variant
+  // is one Curve DAO contract carrying its single contract address.
+  //   - "curve_voting_escrow"    → escrow     (veCRV VotingEscrow)
+  //   - "curve_minter"           → minter     (CRV Minter)
+  //   - "curve_gauge_controller" → controller (GaugeController)
+  //   - "curve_gauge"            → gauge      (per-pool liquidity gauge)
+  //   - "curve_fee_distributor"  → distributor (FeeDistributor, veCRV fee claim)
+  // -------------------------------------------------------------------------
+  type StakeVenue = {
+    name: String,                // discriminated by name
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+    escrow?: String,             // curve_voting_escrow
+    minter?: String,             // curve_minter
+    controller?: String,         // curve_gauge_controller
+    gauge?: String,              // curve_gauge
+    distributor?: String,        // curve_fee_distributor
+  };
+}
+
 namespace Launchpad {
   // Vesting curve (Rust `VestCurve`, serde tag = "kind", rename_all = "snake_case").
   //   - "linear"   : no extra fields.
@@ -341,6 +385,20 @@ namespace Perp {
     usedMarginUsd: String,
     freeMarginUsd: String,
     openPositions: Set<{ market: MarketRef, sizeBase: String }>,
+  };
+}
+
+namespace Yield {
+  // -------------------------------------------------------------------------
+  // YieldVenue — yield-tokenization venue identifier. Carries protocol + chain
+  // identity only; the specific market / YT / SY contract is a per-action field
+  // (the locator varies: market for swaps/liquidity, YT for PY mint/redeem, SY
+  // for SY mint/redeem).
+  //   - "pendle_v2" → no extra fields (Router V4 / markets / SY set on the chain)
+  // -------------------------------------------------------------------------
+  type YieldVenue = {
+    name: String,                // discriminated by name (currently "pendle_v2")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
   };
 }
 

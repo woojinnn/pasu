@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x58f8afd6f6499b02e68cb8964fd1d3da3afb9465",
+  "symbol": "fUSDC",
+  "decimals": 6,
+  "name": "FARM_USDC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

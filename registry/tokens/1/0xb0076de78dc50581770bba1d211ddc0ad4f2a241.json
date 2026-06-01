@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xb0076de78dc50581770bba1d211ddc0ad4f2a241",
-  "symbol": "EDGEX",
-  "decimals": 18,
-  "name": "EDGEX"
-}

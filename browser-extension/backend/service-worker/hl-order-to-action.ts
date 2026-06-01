@@ -103,6 +103,115 @@ function actionBody(
       if (a.agentName !== undefined) body.agent_name = a.agentName;
       return body;
     }
+    case "spot_send":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_spot_send",
+        destination: a.destination,
+        token: a.token,
+        amount: String(a.amount),
+      };
+    case "usd_class_transfer":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_usd_class_transfer",
+        amount: String(a.amount),
+        to_perp: a.toPerp,
+      };
+    case "send_asset":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_send_asset",
+        destination: a.destination,
+        source_dex: a.sourceDex,
+        destination_dex: a.destinationDex,
+        token: a.token,
+        amount: String(a.amount),
+      };
+    case "send_to_evm_with_data":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_send_to_evm_with_data",
+        token: a.token,
+        amount: String(a.amount),
+        source_dex: a.sourceDex,
+        destination_recipient: a.destinationRecipient,
+        data: a.data,
+      };
+    case "c_deposit":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_c_deposit",
+        wei: String(a.wei),
+      };
+    case "c_withdraw":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_c_withdraw",
+        wei: String(a.wei),
+      };
+    case "vault_transfer":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_vault_transfer",
+        vault_address: a.vaultAddress,
+        is_deposit: a.isDeposit,
+        usd: String(a.usd),
+      };
+    case "sub_account_transfer":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_sub_account_transfer",
+        sub_account_user: a.subAccountUser,
+        is_deposit: a.isDeposit,
+        usd: String(a.usd),
+      };
+    case "approve_builder_fee":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_approve_builder_fee",
+        max_fee_rate: a.maxFeeRate,
+        builder: a.builder,
+      };
+    case "token_delegate":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_token_delegate",
+        validator: a.validator,
+        is_undelegate: a.isUndelegate,
+        wei: String(a.wei),
+      };
+    case "twap_order": {
+      const body: Record<string, unknown> = {
+        domain: "hyperliquid_core",
+        action: "hl_twap_order",
+        asset_index: a.assetIndex,
+        is_buy: a.isBuy,
+        size: String(a.size),
+        reduce_only: a.reduceOnly,
+        minutes: a.minutes,
+        randomize: a.randomize,
+      };
+      if (symbol !== undefined) body.symbol = symbol;
+      return body;
+    }
+    case "update_isolated_margin": {
+      const body: Record<string, unknown> = {
+        domain: "hyperliquid_core",
+        action: "hl_update_isolated_margin",
+        asset_index: a.assetIndex,
+        is_buy: a.isBuy,
+        ntli: String(a.ntli),
+      };
+      if (symbol !== undefined) body.symbol = symbol;
+      return body;
+    }
+    case "unknown":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_unknown",
+        action_type: a.actionType,
+      };
   }
 }
 
@@ -110,16 +219,33 @@ function actionBody(
  * Convert a {@link VenueOrderPayload} into the `{ action, meta }` JSON pair the
  * v2 entry point consumes. Pure and synchronous.
  */
+/** Fallback `submitted_at` (unix seconds) when the request carries no nonce. */
+const HL_SUBMITTED_AT_FALLBACK = 1_738_000_000;
+
 export function hlOrderToAction(payload: VenueOrderPayload): HlActionInput {
   const action = actionBody(payload.hlAction, payload.symbol);
 
+  // HL `nonce` is a millisecond wall-clock timestamp; `ActionMeta.submitted_at`
+  // is unix seconds. Threading the real nonce lets time-scoped policies see the
+  // actual submission time instead of a fixed placeholder.
+  const submittedAt =
+    typeof payload.nonce === "number" && payload.nonce > 0
+      ? Math.floor(payload.nonce / 1000)
+      : HL_SUBMITTED_AT_FALLBACK;
+
+  // NOTE: `submitter` stays a sentinel. The /exchange body carries no master
+  // account address (only an agent signature + nonce), and the SW does not track
+  // the connected account for the HL path. Recovering the real submitter (e.g.
+  // ec-recover on user-signed actions) is deferred; for a single-user pre-sign
+  // analyzer the high-value scoping fields are destination / amount, which ARE
+  // modeled. See memory `project_hl_order_audit` (#2b).
   const meta: Record<string, unknown> = {
-    submitted_at: 1_738_000_000,
+    submitted_at: submittedAt,
     submitter: "0x000000000000000000000000000000000000a01c",
     nature: {
       kind: "offchain_sig",
       domain: { name: "Hyperliquid", version: "1" },
-      deadline: 1_738_000_600,
+      deadline: submittedAt + 600,
     },
   };
 

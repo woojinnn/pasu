@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa3eb7a9e57fca4e40b79e394ed5eb37fed205a24",
+  "symbol": "bfUSD",
+  "decimals": 6,
+  "name": "BitFi USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

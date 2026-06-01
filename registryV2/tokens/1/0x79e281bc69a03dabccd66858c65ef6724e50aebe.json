@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x79e281bc69a03dabccd66858c65ef6724e50aebe",
+  "symbol": "sdYFIYFI-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: sdYFI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x79e281bc69a03dabccd66858c65ef6724e50aebe"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x97983236be88107cc8998733ef73d8d969c52e37"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/permit2/invalidateUnorderedNonces@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Permit2 invalidateUnorderedNonces(uint256 wordPos,uint256 mask). Official source: Uniswap Permit2 AllowanceTransfer contract. This revokes unordered nonce bitmap bits used by SignatureTransfer flows, including UniswapX PermitWitnessTransferFrom orders. It is modeled as Token::RevokeApproval with scope.kind=permit2_unordered_nonce so policy/UI can explain the nonce-word revoke directly instead of pretending wordPos is an order hash.",
+  "match": {
+    "selector": "0x3ff9dcb1",
+    "chain_to_addresses": {
+      "1": ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "10": ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "8453": ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "42161": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "invalidateUnorderedNonces",
+    "abi": {
+      "name": "invalidateUnorderedNonces",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "wordPos", "type": "uint256" },
+        { "name": "mask", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "revoke_approval",
+        "revoke_approval": {
+          "scope": {
+            "kind": "permit2_unordered_nonce",
+            "chain": "$chain",
+            "word_pos": "$args.wordPos",
+            "mask": "$args.mask"
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

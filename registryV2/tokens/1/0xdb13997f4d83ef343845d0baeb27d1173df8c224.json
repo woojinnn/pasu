@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdb13997f4d83ef343845d0baeb27d1173df8c224",
+  "symbol": "BUCK",
+  "decimals": 18,
+  "name": "Buck",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

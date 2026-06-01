@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x35282d87011f87508d457f08252bc5bfa52e10a0",
+  "symbol": "ULTRA",
+  "decimals": 18,
+  "name": "Prisma ULTRA USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

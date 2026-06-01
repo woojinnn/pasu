@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x2178f07c1d585c39272caf69a72bef08aad6c9ab",
-  "symbol": "REZ",
-  "decimals": 18,
-  "name": "Renzo"
-}

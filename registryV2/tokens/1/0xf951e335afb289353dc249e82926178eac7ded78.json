@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf951e335afb289353dc249e82926178eac7ded78",
+  "symbol": "swETH",
+  "decimals": 18,
+  "name": "swETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

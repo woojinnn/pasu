@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x025d7dce7ad345bd55c4c972614e720ab67e1b2b",
+  "symbol": "crvARTHOHM-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: ARTH/OHM",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x27a8697fbd2ed137d88e74132a5558fa43656175"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x8cc0f052fff7ead7f2edcccac895502e884a8a71"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd48e565561416de59da1050ed70b8d75e8ef28f9",
+  "symbol": "USDnr",
+  "decimals": 6,
+  "name": "Nerona USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

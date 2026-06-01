@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xcf3d55c10db69f28fd1a75bd73f3d8a2d9c595ad",
+  "symbol": "aBascbETH",
+  "decimals": 18,
+  "name": "Aave Base cbETH",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Base.sol#L156",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:8453" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:8453", "address": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22" }
+    },
+    "rebase_form": "rebasing"
+  }
+}

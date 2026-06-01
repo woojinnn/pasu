@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x25b65cb4694152fb882b388fa73c75efb606fc55",
+  "symbol": "wspolBTC",
+  "decimals": 18,
+  "name": "Wrapped spolBTC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

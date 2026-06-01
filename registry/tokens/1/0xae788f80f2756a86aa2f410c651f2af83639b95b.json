@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xae788f80f2756a86aa2f410c651f2af83639b95b",
-  "symbol": "MV",
-  "decimals": 18,
-  "name": "GensoKishi Metaverse"
-}

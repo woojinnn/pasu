@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb33f4b9c6f0624edeae8881c97381837760d52cb",
+  "symbol": "lstRZR",
+  "decimals": 18,
+  "name": "Liquid Staked Rezerve.money",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,57 @@
+{
+  "type": "adapter_action",
+  "id": "curve/llamalend/sreusd/approve@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x3d140d21",
+    "chain_to_addresses": {
+      "1": [
+        "0x4f79fe450a2baf833e8f50340bd230f5a3ecafe9"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "approve",
+    "abi": {
+      "name": "approve",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_spender",
+          "type": "address"
+        },
+        {
+          "name": "_allow",
+          "type": "bool"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "curve_llamalend",
+          "permission": "operator",
+          "authorized": "$args._spender",
+          "is_authorized": "$args._allow"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

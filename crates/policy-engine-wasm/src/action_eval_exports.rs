@@ -1,8 +1,8 @@
 //! `#[wasm_bindgen]` v2 (ActionBody-model) policy-RPC exports.
 //!
-//! Built on the v3 `ActionBody` model (the legacy flat `ActionEnvelope`
-//! route/plan/evaluate exports were removed in the Phase 1 action
-//! restructure). The two phases are:
+//! Built on the v3 `ActionBody` model (the legacy flat action
+//! route/plan/evaluate exports were removed in the Phase 1 action restructure).
+//! The two phases are:
 //!
 //! 1. [`plan_action_rpc_v2_json`] — lower the action, plan the v2 policy-RPC
 //!    calls, return `{ planned: [...] }` for the host to dispatch.

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 480,
-  "address": "0x61d450a098b6a7f69fc4b98ce68198fe59768651",
-  "symbol": "wCLP",
-  "decimals": 18,
-  "name": "Peso Chileno"
-}

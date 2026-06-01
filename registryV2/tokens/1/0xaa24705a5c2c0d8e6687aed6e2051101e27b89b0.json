@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xaa24705a5c2c0d8e6687aed6e2051101e27b89b0",
+  "symbol": "creUSD",
+  "decimals": 6,
+  "name": "USD credcoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

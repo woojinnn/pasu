@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x50b0d9171160d6eb8aa39e090da51e7e078e81c4",
+  "symbol": "tSNX-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tSNX/SNX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x50b0d9171160d6eb8aa39e090da51e7e078e81c4"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xeff721eae19885e17f5b80187d6527aad3ffc8de"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

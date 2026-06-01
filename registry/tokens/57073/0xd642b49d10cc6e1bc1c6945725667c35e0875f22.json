@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 57073,
-  "address": "0xd642b49d10cc6e1bc1c6945725667c35e0875f22",
-  "symbol": "PURPLE",
-  "decimals": 18,
-  "name": "Purple"
-}

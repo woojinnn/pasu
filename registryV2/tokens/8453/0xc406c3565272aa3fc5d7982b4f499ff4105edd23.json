@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc406c3565272aa3fc5d7982b4f499ff4105edd23",
+  "symbol": "BreedEVO-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: RareBreed/Evo",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x986f14c0c9af05412f480be5f229b72ae4f3a867"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x3c575df5fe1fe4c51c7cd25649bd7f5ba59a366c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xb50cd14fb444c0b5b6ae60c11a46d90b46016fda"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

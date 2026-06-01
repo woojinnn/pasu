@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4f493b7de8aac7d55f71853688b1f7c8f0243c85",
+  "symbol": "crv2pool",
+  "decimals": 18,
+  "name": "Curve.fi Strategic USD Reserves",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

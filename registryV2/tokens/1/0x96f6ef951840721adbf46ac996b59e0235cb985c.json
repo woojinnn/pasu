@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x96f6ef951840721adbf46ac996b59e0235cb985c",
+  "symbol": "USDY",
+  "decimals": 18,
+  "name": "Ondo U.S. Dollar Yield",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

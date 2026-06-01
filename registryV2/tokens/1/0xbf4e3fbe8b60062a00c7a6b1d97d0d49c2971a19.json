@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbf4e3fbe8b60062a00c7a6b1d97d0d49c2971a19",
+  "symbol": "USPC",
+  "decimals": 6,
+  "name": "USPC Vault",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

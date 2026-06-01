@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x07041776f5007aca2a54844f50503a18a72a8b68",
+  "symbol": "USAT",
+  "decimals": 6,
+  "name": "Tether America USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

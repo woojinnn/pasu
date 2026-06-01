@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xcfc5bd99915aaa815401c5a41a927ab7a38d29cf",
+  "symbol": "thUSD",
+  "decimals": 18,
+  "name": "Threshold USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

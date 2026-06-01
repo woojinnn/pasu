@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xce4e96cc3b53d15acedb2c61ae85726066890f13",
+  "symbol": "RAIDAI-5-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: RAI/DAI-5",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x5538e48bfe47749d2540d3cbe83fd50465bcb6c3"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x03ab458634910aad20ef5f1c8ee96f1d6ac54919"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6b175474e89094c44da98b954eedeac495271d0f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

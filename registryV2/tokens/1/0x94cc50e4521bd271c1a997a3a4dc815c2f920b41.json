@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x94cc50e4521bd271c1a997a3a4dc815c2f920b41",
+  "symbol": "crvUSDSUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: crvUSD/SUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crvusd",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x94cc50e4521bd271c1a997a3a4dc815c2f920b41"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x57ab1ec28d129707052df4df418d58a2d46d5f51"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

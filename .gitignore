@@ -50,8 +50,37 @@ crates/*-wasm/pkg-tsify-test/
 browser-extension/backend/wasm/
 browser-extension/public/wasm/
 
+# Legacy v1/v2 `registry/` tree — moved out of the repo. Runtime + harness load
+# `registryV2/` only; this tree is dead weight. Kept locally at ~/Desktop/registry.
+/registry/
+
+# Generated registry index — output of `registryV2/scripts/build-index.ts`
+# (`cd registryV2 && npm run build`). Regenerated locally and in CI (rust job's
+# "Build registry index" step) from registryV2/{manifests,tokens}; never committed.
+/registryV2/index/
+/registryV2/bundles/
+/registryV2/contexts/
+
 # Markdown docs, research + audit notes — only README.md stays tracked.
 *.md
 !README.md
-/docs/
+# The rest of /docs/ stays ignored (scratch research/audit notes).
+/docs/*
+
+# Methodology deliverables — these SHIP with the repo (not scratch notes). A
+# teammate/agent needs them to onboard a new protocol end-to-end. ALL instruction
+# docs live in crates/integration-tests/ now (README + PROTOCOL_ONBOARDING +
+# ACTIONBODY_EXTENSION_GUIDE); this one rule un-ignores every top-level .md there
+# (current + future). Subdir .md (logs/) stay ignored except their own README.md.
+!crates/integration-tests/*.md
+!crates/integration-tests/onboarding/
+!crates/integration-tests/onboarding/**
+!crates/integration-tests/onboarding/**/*.md
+
+# integration-tests per-run harness logs — keep the dir via its README (format
+# guide + curated index), but the actual per-run dumps are local scratch.
+/crates/integration-tests/logs/*
+!/crates/integration-tests/logs/README.md
+
+# Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
 .scopeball-runtime/

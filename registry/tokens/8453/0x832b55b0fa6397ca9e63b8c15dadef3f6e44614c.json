@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x832b55b0fa6397ca9e63b8c15dadef3f6e44614c",
-  "symbol": "DUAL",
-  "decimals": 18,
-  "name": "DUAL"
-}

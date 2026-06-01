@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x64b88c73a5dfa78d1713fe1b4c69a22d7e0faaa7",
+  "symbol": "MAV",
+  "decimals": 18,
+  "name": "Maverick Token",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x2f5cfdc89fb96f2cf6c0fb1ca6e3501dd538d863",
-  "symbol": "POLY",
-  "decimals": 18,
-  "name": "Polymath"
-}

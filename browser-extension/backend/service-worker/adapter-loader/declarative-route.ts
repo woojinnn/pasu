@@ -15,7 +15,12 @@
  *      `service-worker/orchestrator.ts`) plugs these into the audit trail.
  */
 
-import { EngineError, declarativeRouteRequestV3, type DeclarativeRouteRequestV3Result } from "../wasm-bridge";
+import {
+  EngineError,
+  declarativeRouteRequestV3,
+  type DeclarativeRouteRequestV3Result,
+} from "../wasm-bridge";
+import type { V3Bundle } from "./bundle-schema";
 import { extractSelector } from "./declarative-decode";
 import {
   installDeclarativeBundleV3,
@@ -43,6 +48,137 @@ export type DeclarativeRouteV3Outcome =
       reason: "engine_error" | "install_failed" | "unexpected";
       cause: unknown;
     };
+
+function isHexCalldata(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.startsWith("0x") &&
+    value.length >= 10 &&
+    value.length % 2 === 0
+  );
+}
+
+function readAbiWord(calldataHex: string, byteOffset: number): string | null {
+  const start = 2 + byteOffset * 2;
+  const end = start + 64;
+  if (start < 2 || end > calldataHex.length) return null;
+  return calldataHex.slice(start, end);
+}
+
+function readAbiWordNumber(
+  calldataHex: string,
+  byteOffset: number,
+): number | null {
+  const word = readAbiWord(calldataHex, byteOffset);
+  if (!word) return null;
+  const value = BigInt(`0x${word}`);
+  if (value > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  return Number(value);
+}
+
+function bytesArrayArgIndex(bundle: V3Bundle): number | null {
+  const abi = bundle.abi_fragment.abi as
+    | { inputs?: Array<{ type?: unknown }> }
+    | null
+    | undefined;
+  const inputs = abi?.inputs;
+  if (!Array.isArray(inputs)) return null;
+
+  const indices = inputs.flatMap((input, index) =>
+    input.type === "bytes[]" ? [index] : [],
+  );
+  return indices.length === 1 ? indices[0] : null;
+}
+
+function decodeBytesArrayArg(calldataHex: string, argIndex: number): string[] {
+  if (!isHexCalldata(calldataHex)) return [];
+
+  const argsStart = 4;
+  const arrayRelativeOffset = readAbiWordNumber(
+    calldataHex,
+    argsStart + argIndex * 32,
+  );
+  if (arrayRelativeOffset === null) return [];
+
+  const arrayStart = argsStart + arrayRelativeOffset;
+  const childCount = readAbiWordNumber(calldataHex, arrayStart);
+  if (childCount === null || childCount > 64) return [];
+
+  const offsetsStart = arrayStart + 32;
+  const children: string[] = [];
+  for (let i = 0; i < childCount; i += 1) {
+    const childRelativeOffset = readAbiWordNumber(
+      calldataHex,
+      offsetsStart + i * 32,
+    );
+    if (childRelativeOffset === null) return [];
+
+    const childStart = offsetsStart + childRelativeOffset;
+    const childLength = readAbiWordNumber(calldataHex, childStart);
+    if (childLength === null) return [];
+
+    const childDataStart = childStart + 32;
+    const childDataEnd = childDataStart + childLength;
+    if (childDataEnd * 2 + 2 > calldataHex.length) return [];
+    children.push(
+      `0x${calldataHex.slice(2 + childDataStart * 2, 2 + childDataEnd * 2)}`,
+    );
+  }
+
+  return children;
+}
+
+function multicallChildSelectors(
+  bundle: V3Bundle,
+  calldataHex: string | undefined,
+): string[] {
+  const emit = bundle.emit as
+    | { strategy?: unknown; recurse_rule_id?: unknown }
+    | null
+    | undefined;
+  if (
+    emit?.strategy !== "multicall_recurse" ||
+    emit.recurse_rule_id !== "self_array_bytes_last_arg" ||
+    !calldataHex?.startsWith("0x")
+  ) {
+    return [];
+  }
+
+  const argIndex = bytesArrayArgIndex(bundle);
+  if (argIndex === null) {
+    return [];
+  }
+
+  const childCalls = decodeBytesArrayArg(calldataHex, argIndex);
+
+  const selectors = new Set<string>();
+  for (const child of childCalls) {
+    const selector = extractSelector(child);
+    if (selector) selectors.add(selector);
+  }
+  return [...selectors];
+}
+
+async function preinstallMulticallChildren(args: {
+  chainId: number;
+  to: string;
+  calldataHex: string | undefined;
+  installedBundle: V3Bundle;
+}): Promise<void> {
+  const selectors = multicallChildSelectors(
+    args.installedBundle,
+    args.calldataHex,
+  );
+  await Promise.all(
+    selectors.map((selector) =>
+      installDeclarativeBundleV3({
+        chainId: args.chainId,
+        to: args.to,
+        selector,
+      }),
+    ),
+  );
+}
 
 /**
  * Phase M4 — v3 route entry. Pipeline:
@@ -91,6 +227,12 @@ export async function tryDeclarativeRouteV3(args: {
     if (installed === null) {
       return { kind: "miss", reason: "bundle_not_installed" };
     }
+    await preinstallMulticallChildren({
+      chainId: args.chainId,
+      to: args.to,
+      calldataHex: args.calldataHex,
+      installedBundle: installed.bundle,
+    });
   } catch (err) {
     if (err instanceof InstallDeclarativeV3Error) {
       return { kind: "fault", reason: "install_failed", cause: err };

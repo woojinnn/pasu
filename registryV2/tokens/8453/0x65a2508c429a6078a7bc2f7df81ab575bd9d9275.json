@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x65a2508c429a6078a7bc2f7df81ab575bd9d9275",
+  "symbol": "DAI+",
+  "decimals": 18,
+  "name": "DAI+",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

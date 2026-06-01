@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4424b4a37ba0088d8a718b8fc2ab7952c7e695f5",
+  "symbol": "STACMEWACM-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: stACME/WACME",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x4424b4a37ba0088d8a718b8fc2ab7952c7e695f5"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7ac168c81f4f3820fa3f22603ce5864d6ab3c547"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdf4ef6ee483953fe3b84abd08c6a060445c01170"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

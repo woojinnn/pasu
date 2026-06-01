@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4d03e5fd864ef0e87e7da137acc2e062b9cac23e",
+  "symbol": "PERLUSDCX",
+  "decimals": 18,
+  "name": "USDCX/ stETH/ DAI/ PERL",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x4d03e5fd864ef0e87e7da137acc2e062b9cac23e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x68edffb662f91bebce399eeb8ad478058ebd98aa"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xabb21f5c9a8e580be89f141741670c42f154a653"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6b175474e89094c44da98b954eedeac495271d0f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

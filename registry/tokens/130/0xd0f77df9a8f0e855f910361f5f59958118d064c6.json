@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xd0f77df9a8f0e855f910361f5f59958118d064c6",
-  "symbol": "PIRATE",
-  "decimals": 18,
-  "name": "Pirate Nation"
-}

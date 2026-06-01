@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x78da5799cf427fee11e9996982f4150ece7a99a7",
+  "symbol": "rgUSD",
+  "decimals": 18,
+  "name": "Revenue Generating USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x3506424f91fd33084466f402d5d97f05f8e3b4af",
-  "symbol": "CHZ",
-  "decimals": 18,
-  "name": "Chiliz"
-}

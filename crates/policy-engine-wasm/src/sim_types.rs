@@ -15,7 +15,7 @@ use wasm_bindgen::prelude::*;
 
 use simulation_reducer::action::{
     Action, ActionBody, ActionMeta, ActionNature, AirdropAction, AmmAction, Eip712Domain,
-    LaunchpadAction, LendingAction, PerpAction, TokenAction,
+    LaunchpadAction, LendingAction, PermissionAction, PerpAction, TokenAction,
 };
 use simulation_state::approval::{AllowanceSpec, ApprovalSet, Permit2Allowance};
 use simulation_state::delta::{
@@ -72,6 +72,7 @@ pin! {
     __pin_AirdropAction: AirdropAction,
     __pin_LaunchpadAction: LaunchpadAction,
     __pin_PerpAction: PerpAction,
+    __pin_PermissionAction: PermissionAction,
     __pin_WalletState: WalletState,
     __pin_WalletId: WalletId,
     __pin_StateDelta: StateDelta,

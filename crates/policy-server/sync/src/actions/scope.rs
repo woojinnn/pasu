@@ -8,7 +8,7 @@
 //! // 이제 정책 평가 가능 — 관련 가격 / HF 신선함 보장
 //! ```
 //!
-//! action 자체의 구조 (`ActionEnvelope`) 는 action-schema 의 책임. 이 모듈은 action →
+//! action 자체의 구조 (`ActionBody`) 는 action-schema 의 책임. 이 모듈은 action →
 //! scope 변환을 위한 작은 도우미만 제공하고, scope 만 보고 refresh 수행.
 
 use std::collections::HashSet;

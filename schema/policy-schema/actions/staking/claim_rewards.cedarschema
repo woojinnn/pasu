@@ -1,0 +1,30 @@
+// Staking::ClaimRewards — mint accrued reward tokens for one or more gauges
+// (Curve `Minter.mint` / `mint_for` / `mint_many`).
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/claim_rewards.rs`
+// (`ClaimRewardsAction`). No LiveInputs.
+
+namespace Staking {
+  type ClaimRewardsContext = {
+    meta: Core::ActionMeta,
+    venue: StakeVenue,
+    // Reward token (CRV for the Minter); omitted for a gauge's multi-reward claim_rewards.
+    rewardToken?: Core::TokenRef,
+    // Gauge address(es) rewards are minted from (Minter mint/mint_many); empty for a
+    // gauge's own claim_rewards (the gauge is the venue). Each a hex address.
+    gauges: Set<String>,
+    // Beneficiary whose rewards are claimed (`mint_for._for` / `claim_rewards(_addr)`).
+    onBehalfOf?: String,
+    // Explicit payout recipient (gauge `claim_rewards(_addr, _receiver)`).
+    recipient?: String,
+    custom?: ClaimRewardsCustomContext,
+  };
+
+  type ClaimRewardsCustomContext = {};
+
+  action "ClaimRewards" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: ClaimRewardsContext,
+  };
+}

@@ -1,0 +1,15 @@
+{
+  "contract": "Curve-RouterNG",
+  "chainId": 1,
+  "addresses": [
+    "0x16c6521dff6bab339122a0fe25a9116693265353",
+    "0xf0d4c12a5768d806021f80a262b4d39d26c58b8d",
+    "0x45312ea0eff7e09c83cbe249fa1d7598c4c8cd4e"
+  ],
+  "snapshot": "router-ng.abi.json",
+  "functions": {
+    "0x371dc447": { "name": "exchange(address[11],uint256[5][5],uint256,uint256)", "decision": "cover", "reason": "user AMM surface: aggregator route swap (base overload)" },
+    "0x5c9c18e2": { "name": "exchange(address[11],uint256[5][5],uint256,uint256,address[5])", "decision": "cover", "reason": "user AMM surface: aggregator route swap (+explicit pools)" },
+    "0xc872a3c5": { "name": "exchange(address[11],uint256[5][5],uint256,uint256,address[5],address)", "decision": "cover", "reason": "user AMM surface: aggregator route swap (+pools +receiver)" }
+  }
+}

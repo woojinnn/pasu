@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd1eac76497d06cf15475a5e3984d5bc03de7c707",
+  "symbol": "GREEN",
+  "decimals": 18,
+  "name": "Green USD Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

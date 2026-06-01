@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xac0cfa7742069a8af0c63e14ffd0fe6b3e1bf8d2",
+  "symbol": "yb-cbBTC",
+  "decimals": 18,
+  "name": "Yield Basis liquidity for cbBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

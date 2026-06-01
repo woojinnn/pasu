@@ -1,0 +1,51 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v2/vault-set-relayer-approval@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V2 Vault.setRelayerApproval(sender,relayer,approved). Official IVault states a user must approve a relayer before it can act on their behalf, and this call grants/revokes that approval. Source: balancer/balancer-v2-monorepo pkg/interfaces/contracts/vault/IVault.sol. Maps to Permission::ProtocolAuthorization, not token allowance and not lending manager auth.",
+  "match": {
+    "selector": "0xfa6e671d",
+    "chain_to_addresses": {
+      "1":     ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "42161": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "43114": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "10":    ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "137":   ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "56":    ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"],
+      "8453":  ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setRelayerApproval",
+    "abi": {
+      "name": "setRelayerApproval",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "sender",   "type": "address" },
+        { "name": "relayer",  "type": "address" },
+        { "name": "approved", "type": "bool"    }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "balancer_v2",
+          "permission": "relayer",
+          "authorizer": "$args.sender",
+          "authorized": "$args.relayer",
+          "is_authorized": "$args.approved"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf2dcf6336d8250754b4527f57b275b19c8d5cf88",
+  "symbol": "wstTAOwTAO-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: wstTAO/wTAO",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xf2dcf6336d8250754b4527f57b275b19c8d5cf88"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe9633c52f4c8b7bdeb08c4a7fe8a5c1b84afcf67"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x77e06c9eccf2e797fd462a92b6d7642ef85b0a44"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

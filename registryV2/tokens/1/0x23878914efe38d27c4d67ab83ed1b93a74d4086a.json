@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x23878914efe38d27c4d67ab83ed1b93a74d4086a",
+  "symbol": "aEthUSDT",
+  "decimals": 6,
+  "name": "Aave Ethereum USDT",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol#L329",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0xdac17f958d2ee523a2206206994597c13d831ec7" }
+    },
+    "rebase_form": "rebasing"
+  }
+}

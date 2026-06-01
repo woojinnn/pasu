@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6aee8ff0edd601865bd24c321083e94e6d8c7045",
+  "symbol": "aETH",
+  "decimals": 18,
+  "name": "Astral Ether",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

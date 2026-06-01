@@ -1,0 +1,14 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x853d955acef822db058eb8505911ed77f175b99e",
+  "symbol": "FRAX",
+  "decimals": 18,
+  "name": "Frax",
+  "source": "https://docs.frax.finance/frax-stablecoin/overview",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "stable" },
+    "peg_to": { "kind": "fiat", "value": "usd" }
+  }
+}

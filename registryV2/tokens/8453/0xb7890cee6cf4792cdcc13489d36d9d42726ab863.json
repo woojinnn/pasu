@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xb7890cee6cf4792cdcc13489d36d9d42726ab863",
+  "symbol": "uUSDC",
+  "decimals": 18,
+  "name": "Universal USDC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

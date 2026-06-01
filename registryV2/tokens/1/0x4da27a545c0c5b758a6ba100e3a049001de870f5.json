@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+  "symbol": "stkAAVE",
+  "decimals": 18,
+  "name": "Staked Aave",
+  "source": "https://docs.aave.com/developers/v/2.0/protocol-overview/safety-module",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "aave_safety_module", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9" }
+    },
+    "unlock": { "kind": "cooldown", "cooldown_secs": 864000 }
+  }
+}

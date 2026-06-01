@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd91dcc4f4574e7c2b56dd569b55102fa8a1a6440",
+  "symbol": "AZNFUSDC",
+  "decimals": 18,
+  "name": "AZNF/USDC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xd91dcc4f4574e7c2b56dd569b55102fa8a1a6440"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x6dc6f4e3de8ab5d9cba481fdea2f4d0e49de0d0f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x9bf0860251d80e96ee6b9a1b3992c817e17798b3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

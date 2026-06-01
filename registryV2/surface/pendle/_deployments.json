@@ -1,0 +1,625 @@
+{
+  "protocol": "pendle",
+  "source": "pendle-finance/pendle-core-v2-public deployments/{1,8453}-core.json",
+  "url": "https://github.com/pendle-finance/pendle-core-v2-public/blob/main/deployments/1-core.json",
+  "fetchedAt": "2026-05-31",
+  "note": "1st-party deploy manifest. cover = Router V4 (diamond) + Limit Router (Phase 1 yield-core). vePENDLE/sPENDLE/factories/airdrop-distributors/gauge = exclude:deferred-or-infra (follow-up phases). network.* config refs + deployer EOA omitted (external deps, not Pendle contracts). SY/PT/YT/Market are factory-deployed per-market (not in core manifest) \u2014 deferred (Curve addresses[] pattern).",
+  "contracts": [
+    {
+      "name": "baseCodeSplitter",
+      "chainId": 1,
+      "address": "0x35878C2Cff38cC4032E85283183428170BA618A2",
+      "decision": "exclude",
+      "reason": "deploy/infra helper"
+    },
+    {
+      "name": "PENDLE token",
+      "chainId": 1,
+      "address": "0x808507121b80c02388fad14726482e061b8da827",
+      "decision": "exclude",
+      "reason": "standard ERC20 \u2014 tokens:erc20 standard adapter"
+    },
+    {
+      "name": "governanceProxy",
+      "chainId": 1,
+      "address": "0x2aD631F72fB16d91c4953A7f4260A97C2fE2f31e",
+      "decision": "exclude",
+      "reason": "governance / proxy admin (onlyOwner)"
+    },
+    {
+      "name": "yieldContractFactory",
+      "chainId": 1,
+      "address": "0x70ee0A6DB4F5a2Dc4d9c0b57bE97B9987e75BAFD",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "marketFactory",
+      "chainId": 1,
+      "address": "0x27b1dAcd74688aF24a64BD3C9C1B143118740784",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "Pendle Router V4 (diamond proxy)",
+      "chainId": 1,
+      "address": "0x888888888889758F76e7103c6CbF23ABbF58F946",
+      "decision": "cover",
+      "reason": "primary user entry; ABI = union of 7 verified facet ABIs (router-v4 snapshot)"
+    },
+    {
+      "name": "ActionAddRemoveLiqV3",
+      "chainId": 1,
+      "address": "0x663C21103915B68e9dA797CfdF3cAb01a037D5Ff",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionSwapPTV3",
+      "chainId": 1,
+      "address": "0xd8D200d9A713A1c71cF1e7F694B14E5F1D948b15",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionSwapYTV3",
+      "chainId": 1,
+      "address": "0x4a03Ce0a268951d04E187B1CF48075eE69266e27",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionMiscV3",
+      "chainId": 1,
+      "address": "0x373Dba2055Ad40cb4815148bC47cd1DC16e92E44",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionSimple",
+      "chainId": 1,
+      "address": "0x852e59252c94716F0df19B52b36512f6C9297a96",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionCallbackV3",
+      "chainId": 1,
+      "address": "0x997FBC511a8Ad11F84a400feACD66E2A3fa805d2",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionStorageV4",
+      "chainId": 1,
+      "address": "0x6a0Ed0A9193FCBe7ae9B0F3D90F88e365Cca64fC",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "PendleRouterStatic",
+      "chainId": 1,
+      "address": "0x263833d47eA3fA4a30f269323aba6a107f9eB14C",
+      "decision": "exclude",
+      "reason": "read-only static lens (view-only)"
+    },
+    {
+      "name": "PendleSwap aggregator",
+      "chainId": 1,
+      "address": "0xd4F480965D2347d421F1bEC7F545682E5Ec2151D",
+      "decision": "exclude",
+      "reason": "aggregator-executor helper called internally by router; not a user pre-sign entry"
+    },
+    {
+      "name": "pyYtLpOracle",
+      "chainId": 1,
+      "address": "0x5542be50420E88dd7D5B4a3D488FA6ED82F6DAc2",
+      "decision": "exclude",
+      "reason": "oracle (price/discount feed) \u2014 view/infra"
+    },
+    {
+      "name": "yieldContractFactoryV3",
+      "chainId": 1,
+      "address": "0xdF3601014686674e53d1Fa52F7602525483F9122",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "marketFactoryV3",
+      "chainId": 1,
+      "address": "0x1A6fCc85557BC4fB7B534ed835a03EF056552D52",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "yieldContractFactoryV4",
+      "chainId": 1,
+      "address": "0x273b4bFA3Bb30fe8F32c467b5f0046834557F072",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "marketFactoryV4",
+      "chainId": 1,
+      "address": "0x3d75Bd20C983edb5fD218A1b7e0024F1056c7A2F",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "yieldContractFactoryV5",
+      "chainId": 1,
+      "address": "0x35A338522a435D46f77Be32C70E215B813D0e3aC",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "marketFactoryV5",
+      "chainId": 1,
+      "address": "0x6fcf753f2C67b83f7B09746Bbc4FA0047b35D050",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "yieldContractFactoryV6",
+      "chainId": 1,
+      "address": "0x3E6EBa46AbC5ab18ED95F6667d8B2fd4020E4637",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "marketFactoryV6",
+      "chainId": 1,
+      "address": "0x6d247b1c044fA1E22e6B04fA9F71Baf99EB29A9f",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "poolDeployHelper",
+      "chainId": 1,
+      "address": "0x4Df98410c95737FD646D2413AC6CAFc1c04834b9",
+      "decision": "exclude",
+      "reason": "pool deploy helper \u2014 integrator/keeper"
+    },
+    {
+      "name": "poolDeployHelperV2",
+      "chainId": 1,
+      "address": "0xF642d8Daa026B8aEd6dFE82FACbA2E077AF199E2",
+      "decision": "exclude",
+      "reason": "pool deploy helper \u2014 integrator/keeper"
+    },
+    {
+      "name": "Pendle Limit Router",
+      "chainId": 1,
+      "address": "0x000000000000c9B3E2C3Ec88B1B4c0cD853f4321",
+      "decision": "cover",
+      "reason": "primary off-chain limit-order surface: EIP-712 maker-sign (Order) + on-chain cancelSingle/cancelBatch (limit-router snapshot = verified impl ABI)"
+    },
+    {
+      "name": "proxyAdmin",
+      "chainId": 1,
+      "address": "0xA28c08f165116587D4F3E708743B4dEe155c5E64",
+      "decision": "exclude",
+      "reason": "governance / proxy admin (onlyOwner)"
+    },
+    {
+      "name": "reflector",
+      "chainId": 1,
+      "address": "0x30544e00Cf296B34A9eE59E5540Ae2f9CCCD55DD",
+      "decision": "exclude",
+      "reason": "reflector infra (callAndReflect mechanism)"
+    },
+    {
+      "name": "commonDeploy",
+      "chainId": 1,
+      "address": "0x2Ed473F528E5B320f850d17ADfe0e558f0298aA9",
+      "decision": "exclude",
+      "reason": "deploy/infra helper"
+    },
+    {
+      "name": "syFactory",
+      "chainId": 1,
+      "address": "0x466CeD3b33045Ea986B2f306C8D0aA8067961CF8",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "sparkLinearDiscountOracleFactory",
+      "chainId": 1,
+      "address": "0x34C91651A070664279866E5f3d6B4d5F65cbbFFb",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "PendleChainlinkOracleFactory",
+      "chainId": 1,
+      "address": "0x6502cda86f9110f3655512237C9FF2B9CE247c69",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "PendleSparkLinearDiscountOracleFactoryWrapper",
+      "chainId": 1,
+      "address": "0x9E80e2525c7289ebd6352B428f2beC53b5A4e579",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "MarketSweed",
+      "chainId": 1,
+      "address": "0x9205aCD8A2fFD56917d4b9139bA423b4f2a70EE5",
+      "decision": "exclude",
+      "reason": "experimental factory/helper \u2014 not core user surface"
+    },
+    {
+      "name": "sPENDLE (staked PENDLE)",
+      "chainId": 1,
+      "address": "0x999999999991E178D52Cd95AFd4b00d066664144",
+      "decision": "exclude",
+      "reason": "staked-PENDLE \u2014 deferred to follow-up (stake surface)"
+    },
+    {
+      "name": "senderEndpoint",
+      "chainId": 1,
+      "address": "0x07b1014c88f14C9E910092526db57A20052E989F",
+      "decision": "exclude",
+      "reason": "LayerZero messaging endpoint (cross-chain infra)"
+    },
+    {
+      "name": "GaugeController",
+      "chainId": 1,
+      "address": "0x47D74516B33eD5D70ddE7119A40839f6Fcc24e57",
+      "decision": "exclude",
+      "reason": "gauge reward infra; user reward claim routed via Router redeemDueInterestAndRewards"
+    },
+    {
+      "name": "vePendleAirdropDistributor",
+      "chainId": 1,
+      "address": "0x3942F7B55094250644cFfDa7160226Caa349A38E",
+      "decision": "exclude",
+      "reason": "airdrop/reward distributor \u2014 deferred (airdrop-domain follow-up, not yield-core)"
+    },
+    {
+      "name": "externalRewardsDistributor",
+      "chainId": 1,
+      "address": "0x33305665f69B4642D1275f4Ce81c23651674D21C",
+      "decision": "exclude",
+      "reason": "airdrop/reward distributor \u2014 deferred (airdrop-domain follow-up, not yield-core)"
+    },
+    {
+      "name": "lpWrapperFactory",
+      "chainId": 1,
+      "address": "0x12930Bd944bb34B0A21CCc2E7d32a6834Bd58e19",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "decimalsFactory",
+      "chainId": 1,
+      "address": "0x992ec6a490a4b7f256bd59e63746951d98b29be9",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "lpLinearDiscountOracleFactory",
+      "chainId": 1,
+      "address": "0x44fb16d078e9c39b65d6c15e78ede9736a9f2df5",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "exchangeRateOracle",
+      "chainId": 1,
+      "address": "0xA914c44E960cC95D996969BDf0ab5D6f4f2B5870",
+      "decision": "exclude",
+      "reason": "oracle (price/discount feed) \u2014 view/infra"
+    },
+    {
+      "name": "ptOftAdapterFactory",
+      "chainId": 1,
+      "address": "0x905aF80C4DE82E0075a19fDE2f5777f1A6636732",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "merkleDepositor",
+      "chainId": 1,
+      "address": "0x3dAe3d1734cA3C7B3089D4DD03C9876e0A0102b4",
+      "decision": "exclude",
+      "reason": "airdrop/reward distributor \u2014 deferred (airdrop-domain follow-up, not yield-core)"
+    },
+    {
+      "name": "vePENDLE (VotingEscrow)",
+      "chainId": 1,
+      "address": "0x4f30A9D41B80ecC5B94306AB4364951AE3170210",
+      "decision": "exclude",
+      "reason": "vote-escrow lock (increaseLockPosition/withdraw) \u2014 deferred to follow-up phase"
+    },
+    {
+      "name": "feeDistributor",
+      "chainId": 1,
+      "address": "0xd7b34a6fDCb2A7ceD2115FF7f5fdD72aa6aA4dE2",
+      "decision": "exclude",
+      "reason": "fee distribution claim \u2014 deprecated/keeper, not user pre-sign core"
+    },
+    {
+      "name": "feeDistributorV2",
+      "chainId": 1,
+      "address": "0x8C237520a8E14D658170A633D96F8e80764433b9",
+      "decision": "exclude",
+      "reason": "fee distribution claim \u2014 deprecated/keeper, not user pre-sign core"
+    },
+    {
+      "name": "PendleVotingController",
+      "chainId": 1,
+      "address": "0x44087E105137a5095c008AaB6a6530182821F2F0",
+      "decision": "exclude",
+      "reason": "gauge vote (vePENDLE weight) \u2014 deferred (mainnet governance) to follow-up"
+    },
+    {
+      "name": "baseCodeSplitter",
+      "chainId": 8453,
+      "address": "0xf3f560164979fe7F8f3eb2b64669Eac00E7043A6",
+      "decision": "exclude",
+      "reason": "deploy/infra helper"
+    },
+    {
+      "name": "PENDLE token",
+      "chainId": 8453,
+      "address": "0xA99F6e6785Da0F5d6fB42495Fe424BCE029Eeb3E",
+      "decision": "exclude",
+      "reason": "standard ERC20 \u2014 tokens:erc20 standard adapter"
+    },
+    {
+      "name": "governanceProxy",
+      "chainId": 8453,
+      "address": "0x2aD631F72fB16d91c4953A7f4260A97C2fE2f31e",
+      "decision": "exclude",
+      "reason": "governance / proxy admin (onlyOwner)"
+    },
+    {
+      "name": "Pendle Router V4 (diamond proxy)",
+      "chainId": 8453,
+      "address": "0x888888888889758F76e7103c6CbF23ABbF58F946",
+      "decision": "cover",
+      "reason": "primary user entry; ABI = union of 7 verified facet ABIs (router-v4 snapshot)"
+    },
+    {
+      "name": "ActionAddRemoveLiqV3",
+      "chainId": 8453,
+      "address": "0x663C21103915B68e9dA797CfdF3cAb01a037D5Ff",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionSwapPTV3",
+      "chainId": 8453,
+      "address": "0xd8D200d9A713A1c71cF1e7F694B14E5F1D948b15",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionSwapYTV3",
+      "chainId": 8453,
+      "address": "0x4a03Ce0a268951d04E187B1CF48075eE69266e27",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionMiscV3",
+      "chainId": 8453,
+      "address": "0x373Dba2055Ad40cb4815148bC47cd1DC16e92E44",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionSimple",
+      "chainId": 8453,
+      "address": "0x852e59252c94716F0df19B52b36512f6C9297a96",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionCallbackV3",
+      "chainId": 8453,
+      "address": "0x997FBC511a8Ad11F84a400feACD66E2A3fa805d2",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "ActionStorageV4",
+      "chainId": 8453,
+      "address": "0x6a0Ed0A9193FCBe7ae9B0F3D90F88e365Cca64fC",
+      "decision": "exclude",
+      "reason": "implementation behind router diamond \u2014 analyzed via router facet-union snapshot"
+    },
+    {
+      "name": "PendleRouterStatic",
+      "chainId": 8453,
+      "address": "0xB4205a645c7e920BD8504181B1D7f2c5C955C3e7",
+      "decision": "exclude",
+      "reason": "read-only static lens (view-only)"
+    },
+    {
+      "name": "PendleSwap aggregator",
+      "chainId": 8453,
+      "address": "0xd4F480965D2347d421F1bEC7F545682E5Ec2151D",
+      "decision": "exclude",
+      "reason": "aggregator-executor helper called internally by router; not a user pre-sign entry"
+    },
+    {
+      "name": "pyYtLpOracle",
+      "chainId": 8453,
+      "address": "0x5542be50420E88dd7D5B4a3D488FA6ED82F6DAc2",
+      "decision": "exclude",
+      "reason": "oracle (price/discount feed) \u2014 view/infra"
+    },
+    {
+      "name": "yieldContractFactoryV5",
+      "chainId": 8453,
+      "address": "0x963ddBB35c1AE44e2a159E3b5fb5177E0B32660d",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "marketFactoryV5",
+      "chainId": 8453,
+      "address": "0x59968008a703dC13E6beaECed644bdCe4ee45d13",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "yieldContractFactoryV6",
+      "chainId": 8453,
+      "address": "0xdDBfA21ecf024971486684E4E1600998ADeabc88",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "marketFactoryV6",
+      "chainId": 8453,
+      "address": "0x81E80A50E56d10C501fF17B5Fe2F662bd9EA4590",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "poolDeployHelper",
+      "chainId": 8453,
+      "address": "0x8D77771fA2518474cc83a613ef3d6140A84dbe56",
+      "decision": "exclude",
+      "reason": "pool deploy helper \u2014 integrator/keeper"
+    },
+    {
+      "name": "Pendle Limit Router",
+      "chainId": 8453,
+      "address": "0x000000000000c9B3E2C3Ec88B1B4c0cD853f4321",
+      "decision": "cover",
+      "reason": "primary off-chain limit-order surface: EIP-712 maker-sign (Order) + on-chain cancelSingle/cancelBatch (limit-router snapshot = verified impl ABI)"
+    },
+    {
+      "name": "proxyAdmin",
+      "chainId": 8453,
+      "address": "0xA28c08f165116587D4F3E708743B4dEe155c5E64",
+      "decision": "exclude",
+      "reason": "governance / proxy admin (onlyOwner)"
+    },
+    {
+      "name": "reflector",
+      "chainId": 8453,
+      "address": "0x30544e00Cf296B34A9eE59E5540Ae2f9CCCD55DD",
+      "decision": "exclude",
+      "reason": "reflector infra (callAndReflect mechanism)"
+    },
+    {
+      "name": "commonDeploy",
+      "chainId": 8453,
+      "address": "0x2Ed473F528E5B320f850d17ADfe0e558f0298aA9",
+      "decision": "exclude",
+      "reason": "deploy/infra helper"
+    },
+    {
+      "name": "syFactory",
+      "chainId": 8453,
+      "address": "0x466CeD3b33045Ea986B2f306C8D0aA8067961CF8",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "sparkLinearDiscountOracleFactory",
+      "chainId": 8453,
+      "address": "0x34C91651A070664279866E5f3d6B4d5F65cbbFFb",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "vePendleAirdropDistributor",
+      "chainId": 8453,
+      "address": "0x3942F7B55094250644cFfDa7160226Caa349A38E",
+      "decision": "exclude",
+      "reason": "airdrop/reward distributor \u2014 deferred (airdrop-domain follow-up, not yield-core)"
+    },
+    {
+      "name": "externalRewardsDistributor",
+      "chainId": 8453,
+      "address": "0x33305665f69B4642D1275f4Ce81c23651674D21C",
+      "decision": "exclude",
+      "reason": "airdrop/reward distributor \u2014 deferred (airdrop-domain follow-up, not yield-core)"
+    },
+    {
+      "name": "PendleChainlinkOracleFactory",
+      "chainId": 8453,
+      "address": "0x6502cda86f9110f3655512237C9FF2B9CE247c69",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "PendleSparkLinearDiscountOracleFactoryWrapper",
+      "chainId": 8453,
+      "address": "0x9E80e2525c7289ebd6352B428f2beC53b5A4e579",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "MarketSweed",
+      "chainId": 8453,
+      "address": "0x9205aCD8A2fFD56917d4b9139bA423b4f2a70EE5",
+      "decision": "exclude",
+      "reason": "experimental factory/helper \u2014 not core user surface"
+    },
+    {
+      "name": "receiverEndpoint",
+      "chainId": 8453,
+      "address": "0xeE708FC793a02F1eDd5BB9DBD7fD13010D1F7136",
+      "decision": "exclude",
+      "reason": "LayerZero messaging endpoint (cross-chain infra)"
+    },
+    {
+      "name": "GaugeController",
+      "chainId": 8453,
+      "address": "0x17F100fB4bE2707675c6439468d38249DD993d58",
+      "decision": "exclude",
+      "reason": "gauge reward infra; user reward claim routed via Router redeemDueInterestAndRewards"
+    },
+    {
+      "name": "lpWrapperFactory",
+      "chainId": 8453,
+      "address": "0xCa274A44a52241c1a8EFb9f84Bf492D8363929FC",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "decimalsFactory",
+      "chainId": 8453,
+      "address": "0x992ec6a490a4b7f256bd59e63746951d98b29be9",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "lpLinearDiscountOracleFactory",
+      "chainId": 8453,
+      "address": "0x44fb16d078e9c39b65d6c15e78ede9736a9f2df5",
+      "decision": "exclude",
+      "reason": "factory: permissionless market/contract creation (integrator surface) \u2014 deferred"
+    },
+    {
+      "name": "exchangeRateOracle",
+      "chainId": 8453,
+      "address": "0xA914c44E960cC95D996969BDf0ab5D6f4f2B5870",
+      "decision": "exclude",
+      "reason": "oracle (price/discount feed) \u2014 view/infra"
+    },
+    {
+      "name": "merkleDepositor",
+      "chainId": 8453,
+      "address": "0x3dAe3d1734cA3C7B3089D4DD03C9876e0A0102b4",
+      "decision": "exclude",
+      "reason": "airdrop/reward distributor \u2014 deferred (airdrop-domain follow-up, not yield-core)"
+    },
+    {
+      "name": "vePENDLE (VotingEscrow)",
+      "chainId": 8453,
+      "address": "0x051dcd6a80f11fE68F77Fb0EBdE03853FA96B1fD",
+      "decision": "exclude",
+      "reason": "vote-escrow lock (increaseLockPosition/withdraw) \u2014 deferred to follow-up phase"
+    }
+  ]
+}

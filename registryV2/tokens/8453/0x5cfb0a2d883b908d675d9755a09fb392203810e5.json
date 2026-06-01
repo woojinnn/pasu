@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x5cfb0a2d883b908d675d9755a09fb392203810e5",
+  "symbol": "polUSD",
+  "decimals": 18,
+  "name": "polYIELD USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

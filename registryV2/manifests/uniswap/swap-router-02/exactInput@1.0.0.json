@@ -1,0 +1,157 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/swap-router-02/exactInput@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xb858183f",
+    "chain_to_addresses": {
+      "1": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ],
+      "10": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ],
+      "8453": [
+        "0x2626664c2603336E57B271c5C0b26F421741e481"
+      ],
+      "42161": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exactInput",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes",
+              "name": "path",
+              "type": "bytes"
+            },
+            {
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amountIn",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amountOutMinimum",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IV3SwapRouter.ExactInputParams",
+          "name": "params",
+          "type": "tuple"
+        }
+      ],
+      "name": "exactInput",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "amountOut",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "uniswap_v3",
+            "chain": "$chain",
+            "pool": "$resolved.pool",
+            "fee_tier_bp": "$derived.fee_tier_bp"
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$derived.v3_path_first_token"
+              }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$derived.v3_path_last_token"
+              }
+            },
+            "direction": {
+              "kind": "exact_input",
+              "amount_in": "$args.amountIn",
+              "min_amount_out": "$args.amountOutMinimum"
+            },
+            "recipient": "$args.recipient",
+            "slippage_bp": "$derived.slippage_bp"
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$resolved.pool",
+                "function": "slot0()",
+                "decoder_id": "uniswap_v3_slot0"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "venue_api",
+                "endpoint": "https://api.uniswap.org/v2/quote",
+                "parser_id": "uniswapx_quote"
+              },
+              "ttl_s": 6
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "uniswap_v3_pool_state"
+                  }
+                ],
+                "calc_id": "uniswap_v3_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "oracle_feed",
+                "provider": "pyth",
+                "feed_id": "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata",
+      "v3_pool_resolver"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

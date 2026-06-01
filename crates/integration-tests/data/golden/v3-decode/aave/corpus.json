@@ -1,0 +1,1009 @@
+{
+  "_comment": "Aave V3 real-tx corpus. Source: Etherscan v2 txlist 2026-05-30, free key (only chain 1 + 42161 accessible). chain1 Pool 0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2 + chain1 WrappedTokenGatewayV3 0xd01607c3c5ecaba394d8be377a08590149325722 + chain42161 Pool 0x794a61358d6845594f94dc1db02a252b5b4814ad. Covered verbose-ABI selectors expect pass/lending. L2Pool packed-args (bytes32 CalldataLogic) selectors expect error/no_declarative_v3_mapper - manifest gap; asset is uint16 reserve-index not address, needs onchain getReserveAddressById + bit-field strategy. Hand fixtures cover Sourcify-verified WrappedTokenGateway withdrawETHWithPermit and official Aave v3-core debt-token credit-delegation signature paths not observed in the sampled txlist.",
+  "transactions": [
+    {
+      "intent": "setUserEMode",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x5f55b98e7bfb07201f45091b895471900975f78fabb6aa8c49996feb2e105fc2",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x28530a470000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "supply",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x46cf689773c01a479a0325d8694c0e5adebb79746b6a3cf6a8c0d784e627d300",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x617ba037000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000000000000989680000000000000000000000000674f4bb89e71d43864b57618227434555aebbf860000000000000000000000000000000000000000000000000000000000009276"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "withdraw",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x8cf59c7c79e024f4a261f7d5c7dca791fa1227b81b4eda3e1fb5c49c1cf92bf7",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x69328dec000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000778decc4ff09e90e6a10026657cea91971b9dcb1"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "supplyWithPermit",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xa0a3a1506de1d5d8b0cf4c796fc3a39ecb0b210e2697737c033ee1918122bc3d",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x02c205f0000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000000000115c6158100000000000000000000000055dbaec5e20f68408f577ee3d7134adc021749420000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006a1a7d33000000000000000000000000000000000000000000000000000000000000001bd77e817bfe2e7bd6bdb7b9f6eb76ae8749961ecf432f6ebab4914428580f95616ecaf32660a1081b13643ef2c4996443e8adce943fbe1bfe310e29b80608a8e7"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "borrow",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x44677473bea5d924bd8f131eb7c0a8260955f748943bdc805f0d230a458bade4",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0xa415bcad000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7000000000000000000000000000000000000000000000000000000037e11d60000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0166cc72d1c5369a2a512793ea0a13a6c5b3347"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "repay",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xf5af74a6051e678a20d6907f5e2173e5aef2f593773e7590cf3e74a8ff736ab6",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x573ade81000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000003135bae530000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b72a4283403d415b38b93d0a8148422d617a0b2a"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "borrow",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x2957beed8295a64066ea3a71853561a883e61033b368f7a8eedb0a0390df8797",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0xa415bcad000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000435a6e80000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000003750b44da8d3b389d1abad434d38a1eb60032c45"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "setUserEMode",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xd1b5bcee8b0f7fe7984d5b3690242c410802b1f200b1c16766ef6ebadb65850e",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x28530a470000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "setUserUseReserveAsCollateral",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x0aa0ffa59779585b45d0e0594e234ea54d52832a190c29d4246114b6d73372ba",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x5a3b74b9000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "repay",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x7e07a644d863aba73134064d965340a430ce9d27747d53bc4840add96b2bcadc",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x573ade81000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000000000000200000000000000000000000091d4e1b72803f6cae420eb494b9b9f4dd6038629"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "supply",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xf5bd8ec4de3170be017301a910ee41e9f3cf7570a54fd54e443bb43f79895dbf",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x617ba0370000000000000000000000008236a87084f8b84306f72007f36f2618a563449400000000000000000000000000000000000000000000000000000000005ea09c0000000000000000000000008a9f4905f26c97d11a3f8c7e8c9b5e3730d216bb0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "setUserUseReserveAsCollateral",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x85f422daf4cd60cfc25793a8740a2d7dbc7e403c659ecd3f5d8625952f8c9f09",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x5a3b74b9000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec70000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "supplyWithPermit",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x63ed0a0ea4d52ceb3e705b94aeec01cf298979debff2997761e0f9621011ef8b",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x02c205f0000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000000000000000000000000000000000007c4be767000000000000000000000000feba472cecfc9de6b698f3a36f9c6938eb9cf2b50000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006a1a76f5000000000000000000000000000000000000000000000000000000000000001b0ff50ba188ddf6f04ec6a722ea65dc7f3fc22f3595139f68ad379990b986a9e67f196eb082d8e18f0a3056a0f4fe3959e36d6789a96634d014074d507aa795b1"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "withdraw",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x721b8d25c993c7792110c7b561d9491f764c66ac2750bcbcdf129d1507cff9ee",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0x69328dec000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000000000000000000000000000000000001dcd650000000000000000000000000072b9e1370c3bb3d8a9590838edf15b3601a105d4"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "repayWithPermit",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x3416d20ad11bfaa332edba32fa1e48439be0ef3ce99c63f4fc05008f068c7ed7",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0xee3e210b000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000000000000200000000000000000000000024cf5416e87d8c64b4d7a414bda12b0308ee7251000000000000000000000000000000000000000000000000000000006a1a6d36000000000000000000000000000000000000000000000000000000000000001c7a976fc7fa8448ad988d93eeb5dcb696350e98337a55009bad2fa43318b2bee95a8875ae0224f136ada9d50f43d4e31d2bd74df9eafc42d1ac8813f124559076"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "repayWithPermit",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xc78048370a29360b1d8c292296698988356a642a37f4265e01d24737d5fa8eb0",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "value": "0",
+            "data": "0xee3e210b000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b50b42ebfbd3b3d7622aac4dbebedbb9162d51cc000000000000000000000000000000000000000000000000000000006a1a69fc000000000000000000000000000000000000000000000000000000000000001c5463049b29904a06131d2061a999ee7992c63f5304f7b77eb10c7b405bb8e54d6237beb80ab94af8b244a3e48e1f67076357bc102dcdfcec4fd7ac5f9e290554"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "withdrawETH",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x16c0cc18fa4341f202b80b7199454644f94574faccf47f7e660bfe2ec686e395",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "0",
+            "data": "0x80500d2000000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e2ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000000000007e82a7bb5e6787beb07c363a0fbb42304ac04525"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "depositETH",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x7d2f39c0579d94029d3cda7cdbc8400e298be96ee9e1a1a6d609096748f78fbf",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "7500000000000000000",
+            "data": "0x474cf53d00000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e2000000000000000000000000a0166cc72d1c5369a2a512793ea0a13a6c5b33470000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "withdrawETH",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x31aeeccc8a80b4b18b29e798515a793ba15d3028654453997dbb2bce3e113591",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "0",
+            "data": "0x80500d2000000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e2ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000074cbc954d5fdc8995ddc3b4ddf937a8c3798edd3"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "depositETH",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xaaddda4c70e6164d4e5c06457e3a6dc047258f8ecb0c1f349dd6a3317b1af834",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "134259400000000000",
+            "data": "0x474cf53d00000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e2000000000000000000000000b73ace7357490f109d2ec144ab6d0c8b5c2992420000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "borrowETH",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xdb24de72c4146a9c242f59fb1a7ed0e005c691e70c78568ff37d67dba2751658",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "0",
+            "data": "0xe74f7b8500000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e200000000000000000000000000000000000000000000000053444835ec5800000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "borrowETH",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x2e4bfdd2fe4f6975b33dc7828686ab48c27c592f5490da02f8d40039ff638310",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "0",
+            "data": "0xe74f7b8500000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e20000000000000000000000000000000000000000000000004563918244f400000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "repayETH",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xe31bf6aa48203ec985c2c6ca357cf52392f6aed2ba212e99784945454f0fbc9a",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "15037738988609097659105",
+            "data": "0xbcc3c25500000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e200000000000000000000000000000000000000000000032f328d00c8bf2772e1000000000000000000000000b4d3bea9d824c4dd7ded7ccc93e6212e3f0b186a"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "L2Pool.setUserUseReserveAsCollateral(bytes32)",
+      "expect": "error",
+      "expect_error": "no_declarative_v3_mapper",
+      "tx_hash": "0x08545d81c189bf2ebdea3bd9d33d0adababfed92eaf8e72f7c6aed1e9b11ecbe",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x4d013f030000000000000000000000000000000000000000000000000000000000000006"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "L2Pool.withdraw(bytes32)",
+      "expect": "error",
+      "expect_error": "no_declarative_v3_mapper",
+      "tx_hash": "0x5e5458b2a717cbbf6503d2706448b8df6bfac21bdc1256dc143d2764dee9416c",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x8e19899e0000000000000000000000000000ffffffffffffffffffffffffffffffff000e"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "borrow",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xb926c83cba15f927f1d405569291901dce8c1c4ae05a737e1d15e325d645e61d",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0xa415bcad000000000000000000000000fd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb90000000000000000000000000000000000000000000000000000000000007687000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000aed74e231dd0e255918018be97137e6be0aaec2"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "supply",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xcc3a27fb740fa6de7c040bc8503bbb587fc11d17f2aa755c819206664eafacbd",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x617ba0370000000000000000000000002f2a2543b76a4166549f7aab2e75bef0aefc5b0f00000000000000000000000000000000000000000000000000000000000000520000000000000000000000000aed74e231dd0e255918018be97137e6be0aaec20000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "borrow",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xa065e59060f6b0bd6fb3ec86ff48bbb32af828619a9485fbdd8395fe7ad2f570",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0xa415bcad0000000000000000000000002f2a2543b76a4166549f7aab2e75bef0aefc5b0f00000000000000000000000000000000000000000000000000000000000a695a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b6c27d51bac7c0fb4027e95e002647ef0d25dff6"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "supply",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x258dc0487ec30bce51d47f0ac3c486f36f35271df19c510180d326990b1da2d5",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x617ba037000000000000000000000000fd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb900000000000000000000000000000000000000000000000000000000003f227a000000000000000000000000b6c27d51bac7c0fb4027e95e002647ef0d25dff60000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "L2Pool.withdraw(bytes32)",
+      "expect": "error",
+      "expect_error": "no_declarative_v3_mapper",
+      "tx_hash": "0x12c885a197b6be6e36ae79c63b7ef0d3e875e2022a48adedf61a9e5be04cf9c8",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x8e19899e000000000000000000000000000000000000000000000000002e90edd0000005"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "withdraw",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x57b3faecac050accc8cc1ecf462fc902e122b203f16c43a5a51f0f6b12190e62",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x69328dec000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e58310000000000000000000000000000000000000000000000000000000002faf080000000000000000000000000d6715bde04de94c577f836f8cf00833a0108e8bf"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "repay",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0xf5c1ae04a7f65b1400f4b02ac19ac46b95413c494b35c8ae13ece438d6b72e73",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x573ade810000000000000000000000002f2a2543b76a4166549f7aab2e75bef0aefc5b0f0000000000000000000000000000000000000000000000000000000001312d000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000f250a46e421100924cefd95a38ffd28490cf5833"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "L2Pool.repay(bytes32)",
+      "expect": "error",
+      "expect_error": "no_declarative_v3_mapper",
+      "tx_hash": "0x7b9a789440f20f526d9b41986a703e88b37dc0630ca71ee2b89942b3531be208",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x563dd613000000000000000000000000000200000000000000000000000018dda2f8000c"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "L2Pool.repay(bytes32)",
+      "expect": "error",
+      "expect_error": "no_declarative_v3_mapper",
+      "tx_hash": "0x4a95b63bc13a6b2dc2c764f95ca1e59cc9b58174d99b808d60b33bb08cfa9e98",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x563dd613000000000000000000000000000200000000000000000000000005f6617b0005"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "withdraw",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x51107078a181142155a514b9196f1f9af5a2828ee7ae9faa51f9276086e235a0",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+            "value": "0",
+            "data": "0x69328dec000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e5831ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000059ae811b43db8a889123658fba6913c8f4e0868"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "withdrawETHWithPermit-hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified WrappedTokenGateway ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd01607c3c5ecaba394d8be377a08590149325722",
+            "value": "0",
+            "data": "0xd4c40b6c00000000000000000000000087870bca3f3fd6335c3f4ce8392d69350b4fa4e2000000000000000000000000000000000000000000000000000000000000000500000000000000000000000011111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDC.delegationWithSig calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from official Aave v3-core ICreditDelegationToken ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+            "value": "0",
+            "data": "0x0b52d558000000000000000000000000000000000000000000000000000000000000b0b0000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a00000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000022"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDC.renounceDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+            "value": "0",
+            "data": "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDC DelegationWithSig typed-data hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand EIP-712 fixture from official Aave DebtTokenBase DelegationWithSig typehash",
+      "typed_data": {
+        "verifying_contract": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt USDC",
+        "message": {
+          "delegatee": "0x000000000000000000000000000000000000d1e9",
+          "value": "2500000",
+          "nonce": "7",
+          "deadline": "2000000000"
+        }
+      }
+    },
+    {
+      "intent": "variableDebtDAI.approveDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xcf8d0c70c850859266f5c338b38f9d663181c314",
+            "value": "0",
+            "data": "0xc04a8a10000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtDAI.delegationWithSig calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xcf8d0c70c850859266f5c338b38f9d663181c314",
+            "value": "0",
+            "data": "0x0b52d558000000000000000000000000000000000000000000000000000000000000b0b0000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a00000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000022"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtDAI.renounceDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xcf8d0c70c850859266f5c338b38f9d663181c314",
+            "value": "0",
+            "data": "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtDAI DelegationWithSig typed-data hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand EIP-712 fixture from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "typed_data": {
+        "verifying_contract": "0xcf8d0c70c850859266f5c338b38f9d663181c314",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt DAI",
+        "message": {
+          "delegatee": "0x000000000000000000000000000000000000d1e9",
+          "value": "2500000",
+          "nonce": "7",
+          "deadline": "2000000000"
+        }
+      }
+    },
+    {
+      "intent": "variableDebtUSDT.approveDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+            "value": "0",
+            "data": "0xc04a8a10000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDT.delegationWithSig calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+            "value": "0",
+            "data": "0x0b52d558000000000000000000000000000000000000000000000000000000000000b0b0000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a00000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000022"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDT.renounceDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+            "value": "0",
+            "data": "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtUSDT DelegationWithSig typed-data hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand EIP-712 fixture from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "typed_data": {
+        "verifying_contract": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt USDT",
+        "message": {
+          "delegatee": "0x000000000000000000000000000000000000d1e9",
+          "value": "2500000",
+          "nonce": "7",
+          "deadline": "2000000000"
+        }
+      }
+    },
+    {
+      "intent": "variableDebtWBTC.approveDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+            "value": "0",
+            "data": "0xc04a8a10000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtWBTC.delegationWithSig calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+            "value": "0",
+            "data": "0x0b52d558000000000000000000000000000000000000000000000000000000000000b0b0000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a00000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000022"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtWBTC.renounceDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+            "value": "0",
+            "data": "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtWBTC DelegationWithSig typed-data hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand EIP-712 fixture from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "typed_data": {
+        "verifying_contract": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt WBTC",
+        "message": {
+          "delegatee": "0x000000000000000000000000000000000000d1e9",
+          "value": "2500000",
+          "nonce": "7",
+          "deadline": "2000000000"
+        }
+      }
+    },
+    {
+      "intent": "variableDebtLINK.approveDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4228f8895c7dda20227f6a5c6751b8ebf19a6ba8",
+            "value": "0",
+            "data": "0xc04a8a10000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtLINK.delegationWithSig calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4228f8895c7dda20227f6a5c6751b8ebf19a6ba8",
+            "value": "0",
+            "data": "0x0b52d558000000000000000000000000000000000000000000000000000000000000b0b0000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a00000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000022"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtLINK.renounceDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4228f8895c7dda20227f6a5c6751b8ebf19a6ba8",
+            "value": "0",
+            "data": "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtLINK DelegationWithSig typed-data hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand EIP-712 fixture from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "typed_data": {
+        "verifying_contract": "0x4228f8895c7dda20227f6a5c6751b8ebf19a6ba8",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt LINK",
+        "message": {
+          "delegatee": "0x000000000000000000000000000000000000d1e9",
+          "value": "2500000",
+          "nonce": "7",
+          "deadline": "2000000000"
+        }
+      }
+    },
+    {
+      "intent": "variableDebtwstETH.approveDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
+            "value": "0",
+            "data": "0xc04a8a10000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtwstETH.delegationWithSig calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
+            "value": "0",
+            "data": "0x0b52d558000000000000000000000000000000000000000000000000000000000000b0b0000000000000000000000000000000000000000000000000000000000000d1e900000000000000000000000000000000000000000000000000000000002625a00000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000022"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtwstETH.renounceDelegation calldata hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand-encoded from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
+            "value": "0",
+            "data": "0x91fb372d000000000000000000000000000000000000000000000000000000000000b0b0"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "variableDebtwstETH DelegationWithSig typed-data hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "source": "hand EIP-712 fixture from Sourcify verified Aave VariableDebtTokenInstance ABI",
+      "typed_data": {
+        "verifying_contract": "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
+        "primary_type": "DelegationWithSig",
+        "domain_name": "Aave Ethereum Variable Debt wstETH",
+        "message": {
+          "delegatee": "0x000000000000000000000000000000000000d1e9",
+          "value": "2500000",
+          "nonce": "7",
+          "deadline": "2000000000"
+        }
+      }
+    },
+    {
+      "intent": "depositETH Optimism Gateway hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 10,
+      "source": "hand-encoded from Sourcify verified Aave V3 WrappedTokenGateway ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5f2508cae9923b02316254026cd43d7902866725",
+            "value": "1000000000000000",
+            "data": "0x474cf53d000000000000000000000000794a61358d6845594f94dc1db02a252b5b4814ad00000000000000000000000011111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "depositETH Base Gateway hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 8453,
+      "source": "hand-encoded from Sourcify verified Aave V3 WrappedTokenGateway ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa0d9c1e9e48ca30c8d8c3b5d69ff5dc1f6dffc24",
+            "value": "2000000000000000",
+            "data": "0x474cf53d000000000000000000000000a238dd80c259a72e81d7e4664a9801593f98d1c500000000000000000000000011111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "depositETH Arbitrum Gateway hand",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 42161,
+      "source": "hand-encoded from Sourcify verified Aave V3 WrappedTokenGateway ABI",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5283beced7adf6d003225c13896e536f2d4264ff",
+            "value": "3000000000000000",
+            "data": "0x474cf53d000000000000000000000000794a61358d6845594f94dc1db02a252b5b4814ad00000000000000000000000011111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    }
+  ]
+}

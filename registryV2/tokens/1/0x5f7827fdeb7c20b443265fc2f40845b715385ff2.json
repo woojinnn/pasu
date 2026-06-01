@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5f7827fdeb7c20b443265fc2f40845b715385ff2",
+  "symbol": "EURCV",
+  "decimals": 18,
+  "name": "EUR CoinVertible",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

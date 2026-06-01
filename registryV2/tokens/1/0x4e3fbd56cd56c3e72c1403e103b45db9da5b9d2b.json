@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b",
+  "symbol": "CVX",
+  "decimals": 18,
+  "name": "Convex Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

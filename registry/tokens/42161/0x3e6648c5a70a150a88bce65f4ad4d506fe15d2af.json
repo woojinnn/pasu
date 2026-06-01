@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x3e6648c5a70a150a88bce65f4ad4d506fe15d2af",
-  "symbol": "SPELL",
-  "decimals": 18,
-  "name": "Spell Token"
-}

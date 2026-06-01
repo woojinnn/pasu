@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x998f02a9e343ef6e3e6f28700d5a20f839fd74e6",
+  "symbol": "HOODon",
+  "decimals": 18,
+  "name": "Robinhood Markets (Ondo Tokenized)",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x80d69e79258fe9d056c822461c4eb0b4ca8802e2",
+  "symbol": "InrETH",
+  "decimals": 18,
+  "name": "Inception Restaked rETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

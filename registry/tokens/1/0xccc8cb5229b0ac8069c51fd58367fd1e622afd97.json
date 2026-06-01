@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xccc8cb5229b0ac8069c51fd58367fd1e622afd97",
-  "symbol": "GODS",
-  "decimals": 18,
-  "name": "Gods Unchained"
-}

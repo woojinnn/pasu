@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc2e660c62f72c2ad35ace6db78a616215e2f2222",
+  "symbol": "zunETH",
+  "decimals": 18,
+  "name": "Zunami ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

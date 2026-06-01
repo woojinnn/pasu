@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xe6a537a407488807f0bbeb0038b79004f19dddfb",
-  "symbol": "BRLA",
-  "decimals": 18,
-  "name": "BRLA Token"
-}

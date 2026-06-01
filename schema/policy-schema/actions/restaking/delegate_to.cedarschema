@@ -1,0 +1,29 @@
+// Restaking::DelegateTo — delegate all deposited restaking shares to an operator
+// (EigenLayer DelegationManager `delegateTo`).
+//
+// Rust source: `crates/simulation/reducer/src/action/restaking/delegate_to.rs`
+// (`DelegateToAction`). No LiveInputs. `RestakingVenue` is in core.cedarschema
+// (namespace Restaking).
+
+namespace Restaking {
+  type DelegateToContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Restaking venue (e.g. EigenLayer on Ethereum).
+    venue: RestakingVenue,
+    // Operator receiving the delegation of all the staker's restaked shares.
+    operator: String,
+    // bytes32 approver-signature de-collision salt (hex).
+    approverSalt: String,
+    // Manifest-extensible slot.
+    custom?: DelegateToCustomContext,
+  };
+
+  type DelegateToCustomContext = {};
+
+  action "DelegateTo" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: DelegateToContext,
+  };
+}

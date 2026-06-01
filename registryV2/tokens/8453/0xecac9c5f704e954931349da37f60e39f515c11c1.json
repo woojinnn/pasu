@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xecac9c5f704e954931349da37f60e39f515c11c1",
+  "symbol": "LBTC",
+  "decimals": 8,
+  "name": "Lombard Staked Bitcoin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

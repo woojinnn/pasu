@@ -6,11 +6,12 @@
 //! * 진입점:        [`walk_action_stale`], [`apply_value_to_action`] (이 파일)
 //! * 도메인 dispatch: [`walk_body`] / [`body_at_index_mut`] (이 파일)
 //! * 도메인별 본문:  `token.rs`, `amm.rs`, `lending.rs`, `airdrop.rs`,
-//!                  `launchpad.rs`, `perp.rs`
+//!                  `launchpad.rs`, `perp.rs`, `liquid_staking.rs`
 //! * 공유 헬퍼:      [`push_if_stale`], [`set_field`], [`value_to_decimal`],
 //!                  [`value_to_u256`]
 //!
-//! 현재 wire-up 된 도메인: lending (borrow + supply). 나머지는 빈 함수 stub.
+//! 현재 wire-up 된 도메인: lending, perp, airdrop, launchpad, permission,
+//! liquid_staking (wrap/unwrap/transfer_shares 환산). 나머지는 빈 함수 stub.
 
 use serde_json::Value;
 
@@ -23,6 +24,8 @@ pub mod airdrop;
 pub mod amm;
 pub mod launchpad;
 pub mod lending;
+pub mod liquid_staking;
+pub mod permission;
 pub mod perp;
 pub mod token;
 
@@ -52,6 +55,14 @@ fn walk_body(
         ActionBody::Airdrop(a) => airdrop::walk(a, action_index, now, stale, stats),
         ActionBody::Launchpad(l) => launchpad::walk(l, action_index, now, stale, stats),
         ActionBody::Perp(p) => perp::walk(p, action_index, now, stale, stats),
+        ActionBody::LiquidStaking(ls) => liquid_staking::walk(ls, action_index, now, stale, stats),
+        // staking actions carry no live inputs — nothing to walk.
+        ActionBody::Staking(_) => {}
+        ActionBody::Permission(p) => permission::walk(p, action_index, now, stale, stats),
+        // Yield (Pendle) carries no live_inputs in P1a — enrichment (market →
+        // SY/PT/YT/maturity) is wired in P1c (the source descriptor is built at
+        // decode time, no sync-side walk slot).
+        ActionBody::Yield(_) => {}
         // Hyperliquid CORE actions carry NO live inputs (they are self-describing
         // order/transfer intents), so there is nothing to refresh — like Unknown.
         ActionBody::HyperliquidCore(_) => {}
@@ -60,6 +71,8 @@ fn walk_body(
                 walk_body(child, i, now, stale, stats);
             }
         }
+        // Restaking round-1 actions carry no live inputs (no walk needed).
+        ActionBody::Restaking(_) => {}
         ActionBody::Unknown { .. } => {}
     }
 }
@@ -88,8 +101,14 @@ pub fn apply_value_to_action(
         ActionBody::Airdrop(a) => airdrop::apply(a, slot, value, now),
         ActionBody::Launchpad(l) => launchpad::apply(l, slot, value, now),
         ActionBody::Perp(p) => perp::apply(p, slot, value, now),
-        // No live inputs on Hyperliquid CORE actions → nothing to apply.
-        ActionBody::HyperliquidCore(_)
+        ActionBody::Permission(p) => permission::apply(p, slot, value, now),
+        ActionBody::LiquidStaking(ls) => liquid_staking::apply(ls, slot, value, now),
+        // No live_input apply-slots on Yield / Restaking / Staking / Hyperliquid CORE
+        // → nothing to apply (Yield P1c enrichment is built at decode time, not synced).
+        ActionBody::Yield(_)
+        | ActionBody::Restaking(_)
+        | ActionBody::Staking(_)
+        | ActionBody::HyperliquidCore(_)
         | ActionBody::Multicall { .. }
         | ActionBody::Unknown { .. } => {}
     }

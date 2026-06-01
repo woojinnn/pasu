@@ -1,0 +1,36 @@
+{
+  "contract": "StableSwap-NG",
+  "chainId": 1,
+  "addresses": [
+    "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+    "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+    "0x0cd6f267b2086bea681e922e19d40512511be538"
+  ],
+  "snapshot": "stableswap-ng.abi.json",
+  "note": "Curve StableSwap-NG plain factory pools (mainnet). One shared implementation ABI (snapshot) → N pool addresses (addresses[], factory multi-address mode). Each pool is called DIRECTLY by users. coins per pool are baked into the per-pool manifests by the generator. Pools: 2btc (WBTC/tBTC), frxeth-ng (WETH/frxETH), crvusdfrax (FRAX/crvUSD).",
+  "functions": {
+    "0x3df02124": { "name": "exchange",                 "decision": "cover", "reason": "user swap: coin i -> coin j (pool-coin indices resolved to token addresses via the per-pool baked coins value-map)" },
+    "0xddc1f59d": { "name": "exchange(+receiver)",       "decision": "cover", "reason": "user swap with explicit receiver" },
+    "0x0b4c7e4d": { "name": "add_liquidity",             "decision": "cover", "reason": "user provides liquidity (proportional per-coin amounts)" },
+    "0x0c3e4b54": { "name": "add_liquidity(+receiver)",  "decision": "cover", "reason": "user provides liquidity with explicit receiver" },
+    "0x5b36389c": { "name": "remove_liquidity",          "decision": "cover", "reason": "user burns LP for proportional underlying" },
+    "0x3eb1719f": { "name": "remove_liquidity(+receiver)","decision": "cover", "reason": "proportional burn with explicit receiver" },
+    "0x1a4d01d2": { "name": "remove_liquidity_one_coin",  "decision": "cover", "reason": "user burns LP for a single coin i (PooledBurnOneCoin, Tier 3)" },
+    "0x081579a5": { "name": "remove_liquidity_one_coin(+receiver)", "decision": "cover", "reason": "single-coin burn with explicit receiver" },
+    "0xe3103273": { "name": "remove_liquidity_imbalance",  "decision": "cover", "reason": "user withdraws exact per-coin amounts, capped LP burn (PooledBurnImbalance, Tier 3)" },
+    "0x52d2cfdd": { "name": "remove_liquidity_imbalance(+receiver)", "decision": "cover", "reason": "imbalanced withdraw with explicit receiver" },
+
+    "0x095ea7b3": { "name": "approve",      "decision": "exclude", "reason": "standard ERC20 on the pool-as-LP-token — analyzed by the erc20 standard adapter (register the pool in tokens/<chain>/ as erc20 to auto-enumerate); not a Curve-specific surface. The permission grant IS covered, just by the generic adapter, so the §3 red-flag is satisfied in substance." },
+    "0xd505accf": { "name": "permit",       "decision": "exclude", "reason": "EIP-2612 permit on the LP token — same as approve: covered by the erc20 standard adapter, not Curve-specific." },
+    "0xa9059cbb": { "name": "transfer",     "decision": "exclude", "reason": "standard ERC20 LP transfer — erc20 standard adapter." },
+    "0x23b872dd": { "name": "transferFrom", "decision": "exclude", "reason": "standard ERC20 LP transferFrom — erc20 standard adapter." },
+
+    "0xa461b3c8": { "name": "initialize",          "decision": "exclude", "reason": "factory-only one-time init (proxy bootstrap); not a user-wallet action." },
+    "0x3c157e64": { "name": "ramp_A",              "decision": "exclude", "reason": "admin (owner-only) — ramp amplification coefficient." },
+    "0x551a6588": { "name": "stop_ramp_A",         "decision": "exclude", "reason": "admin (owner-only) — stop A ramp." },
+    "0x7f3e17cb": { "name": "set_ma_exp_time",     "decision": "exclude", "reason": "admin (owner-only) — moving-average exp time." },
+    "0xa48eac9d": { "name": "commit_new_fee",      "decision": "exclude", "reason": "admin (owner-only) — stage a new fee." },
+    "0x4f12fe97": { "name": "apply_new_fee",       "decision": "exclude", "reason": "admin (owner-only) — apply staged fee." },
+    "0x30c54085": { "name": "withdraw_admin_fees", "decision": "exclude", "reason": "keeper/admin — sweep accrued admin fees; not a user-wallet position action." }
+  }
+}

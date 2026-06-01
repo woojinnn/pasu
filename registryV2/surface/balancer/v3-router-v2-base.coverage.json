@@ -1,0 +1,185 @@
+{
+  "contract": "BalancerV3RouterV2",
+  "chainId": 8453,
+  "address": "0x3f170631ed9821Ca51A59D996aB095162438DC10",
+  "snapshot": "v3-router-v2-base.abi.json",
+  "note": "Balancer V3 Router v2 user pre-sign surface triage. Current manifests cover direct single-token swaps and plain multicall wrappers; liquidity, donation, and Permit2 batch wrapper functions remain explicit deferred gaps until dynamic pool-token mapping and Permit2 side-effect modeling are wired.",
+  "functions": {
+    "0x0ca078ec": {
+      "name": "addLiquidityCustom",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: custom userData and dynamic pool-token amount arrays require a pool token resolver before faithful add_liquidity emission"
+    },
+    "0x5b343791": {
+      "name": "addLiquidityHook",
+      "decision": "exclude",
+      "reason": "Vault callback hook path; users call Router entry points, not hook functions directly"
+    },
+    "0x724dba33": {
+      "name": "addLiquidityProportional",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: maxAmountsIn requires dynamic pool-token amount zipping before faithful add_liquidity emission"
+    },
+    "0x72657d17": {
+      "name": "addLiquiditySingleTokenExactOut",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: pool token identity is dynamic and needs pool metadata resolver wiring before faithful add_liquidity emission"
+    },
+    "0xc08bc851": {
+      "name": "addLiquidityUnbalanced",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: maxAmountsIn requires dynamic pool-token amount zipping before faithful add_liquidity emission"
+    },
+    "0xbf6ee3fd": {
+      "name": "donate",
+      "decision": "exclude",
+      "reason": "donation path has no current ActionBody model and must not be mislabeled as swap/liquidity"
+    },
+    "0x026b3d95": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "pool bootstrap/initialization path; not covered as a recurring wallet safety action in this onboarding pass"
+    },
+    "0x086fad66": {
+      "name": "initializeHook",
+      "decision": "exclude",
+      "reason": "Vault callback hook path; users call Router entry points, not hook functions directly"
+    },
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "cover",
+      "reason": "wrapper: recursively decodes bytes[] child Router calls so bundled user actions keep concrete ActionBody shapes"
+    },
+    "0x19c6989f": {
+      "name": "permitBatchAndCall",
+      "decision": "exclude",
+      "reason": "deferred wrapper: real mainnet samples commonly contain liquidity child calls and Permit2 batch allowance side effects; keep fail-closed until child liquidity mapping and Permit2 side-effect modeling are faithful"
+    },
+    "0x452db952": {
+      "name": "queryAddLiquidityCustom",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0xefd85f14": {
+      "name": "queryAddLiquidityHook",
+      "decision": "exclude",
+      "reason": "quote/callback helper; not a user pre-sign entry point"
+    },
+    "0x9de90518": {
+      "name": "queryAddLiquidityProportional",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0x1d56798d": {
+      "name": "queryAddLiquiditySingleTokenExactOut",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0xda001f7d": {
+      "name": "queryAddLiquidityUnbalanced",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0xc330c7be": {
+      "name": "queryRemoveLiquidityCustom",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0xb24bd571": {
+      "name": "queryRemoveLiquidityHook",
+      "decision": "exclude",
+      "reason": "quote/callback helper; not a user pre-sign entry point"
+    },
+    "0x0f710888": {
+      "name": "queryRemoveLiquidityProportional",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0xb037ed36": {
+      "name": "queryRemoveLiquidityRecovery",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0x5f9815ff": {
+      "name": "queryRemoveLiquidityRecoveryHook",
+      "decision": "exclude",
+      "reason": "quote/callback helper; not a user pre-sign entry point"
+    },
+    "0x23b39241": {
+      "name": "queryRemoveLiquiditySingleTokenExactIn",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0x53d0bb98": {
+      "name": "queryRemoveLiquiditySingleTokenExactOut",
+      "decision": "exclude",
+      "reason": "quote helper; nonpayable for revert/static query flow, not a user state-changing intent"
+    },
+    "0xbe5ae841": {
+      "name": "querySwapHook",
+      "decision": "exclude",
+      "reason": "quote/callback helper; not a user pre-sign entry point"
+    },
+    "0x3ebc54e5": {
+      "name": "querySwapSingleTokenExactIn",
+      "decision": "exclude",
+      "reason": "quote helper used as live-input source; not a user state-changing intent"
+    },
+    "0x175d4408": {
+      "name": "querySwapSingleTokenExactOut",
+      "decision": "exclude",
+      "reason": "quote helper used as live-input source; not a user state-changing intent"
+    },
+    "0x82bf2b24": {
+      "name": "removeLiquidityCustom",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: custom userData and dynamic pool-token amount arrays require resolver wiring before faithful remove_liquidity emission"
+    },
+    "0x7b03c7ba": {
+      "name": "removeLiquidityHook",
+      "decision": "exclude",
+      "reason": "Vault callback hook path; users call Router entry points, not hook functions directly"
+    },
+    "0x51682750": {
+      "name": "removeLiquidityProportional",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: minAmountsOut requires dynamic pool-token amount zipping before faithful remove_liquidity emission"
+    },
+    "0x08c04793": {
+      "name": "removeLiquidityRecovery",
+      "decision": "exclude",
+      "reason": "deferred recovery liquidity path: pool token mapping is dynamic and needs resolver wiring before faithful remove_liquidity emission"
+    },
+    "0x82cd54fb": {
+      "name": "removeLiquidityRecoveryHook",
+      "decision": "exclude",
+      "reason": "Vault callback hook path; users call Router entry points, not hook functions directly"
+    },
+    "0xecb2182c": {
+      "name": "removeLiquiditySingleTokenExactIn",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: pool token identity is dynamic and needs pool metadata resolver wiring before faithful remove_liquidity emission"
+    },
+    "0xe7326def": {
+      "name": "removeLiquiditySingleTokenExactOut",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: pool token identity is dynamic and needs pool metadata resolver wiring before faithful remove_liquidity emission"
+    },
+    "0x750283bc": {
+      "name": "swapSingleTokenExactIn",
+      "decision": "cover",
+      "reason": "user AMM action: Balancer V3 single-token exact-input swap"
+    },
+    "0x94e86ef8": {
+      "name": "swapSingleTokenExactOut",
+      "decision": "cover",
+      "reason": "user AMM action: Balancer V3 single-token exact-output swap"
+    },
+    "0x68a24fe0": {
+      "name": "swapSingleTokenHook",
+      "decision": "exclude",
+      "reason": "Vault callback hook path; users call Router entry points, not hook functions directly"
+    }
+  },
+  "signed_structs": {}
+}

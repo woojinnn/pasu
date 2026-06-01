@@ -1,0 +1,58 @@
+{
+  "type": "adapter_action",
+  "id": "curve/gauge-controller/vote_for_gauge_weights@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xd7136328",
+    "chain_to_addresses": {
+      "1": [
+        "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "vote_for_gauge_weights",
+    "abi": {
+      "name": "vote_for_gauge_weights",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_gauge_addr",
+          "type": "address"
+        },
+        {
+          "name": "_user_weight",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "vote_for_gauge",
+        "vote_for_gauge": {
+          "venue": {
+            "name": "curve_gauge_controller",
+            "chain": "$chain",
+            "controller": "$to"
+          },
+          "gauge": "$args._gauge_addr",
+          "weight_bp": "$args._user_weight"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

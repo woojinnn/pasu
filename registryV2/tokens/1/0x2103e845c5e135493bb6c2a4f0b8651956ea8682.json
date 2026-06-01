@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2103e845c5e135493bb6c2a4f0b8651956ea8682",
+  "symbol": "XAUM",
+  "decimals": 18,
+  "name": "Matrixdock Gold",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

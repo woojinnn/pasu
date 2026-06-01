@@ -7,9 +7,11 @@ use simulation_state::primitives::{Address, ChainId, Decimal, U256};
 use simulation_state::token::TokenRef;
 
 pub mod borrow;
+pub mod buy_collateral;
 pub mod delegate_borrow;
 pub mod liquidate;
 pub mod repay;
+pub mod set_authorization;
 pub mod set_collateral;
 pub mod set_emode;
 pub mod supply;
@@ -17,9 +19,11 @@ pub mod swap_rate_mode;
 pub mod withdraw;
 
 pub use self::borrow::*;
+pub use self::buy_collateral::*;
 pub use self::delegate_borrow::*;
 pub use self::liquidate::*;
 pub use self::repay::*;
+pub use self::set_authorization::*;
 pub use self::set_collateral::*;
 pub use self::set_emode::*;
 pub use self::supply::*;
@@ -37,6 +41,8 @@ pub enum LendingAction {
     Withdraw(WithdrawAction),
     /// Borrow an asset against existing collateral.
     Borrow(BorrowAction),
+    /// Buy collateral being sold from protocol reserves.
+    BuyCollateral(BuyCollateralAction),
     /// Repay an outstanding debt position.
     Repay(RepayAction),
     /// `Aave`-specific — switch between `Variable` and `Stable` borrow rate modes.
@@ -51,6 +57,9 @@ pub enum LendingAction {
     DelegateBorrow(DelegateBorrowAction),
     /// Liquidate an unhealthy position; typically not invoked from a user wallet, included for completeness.
     Liquidate(LiquidateAction),
+    /// Grant or revoke an operator's full control over the submitter's positions
+    /// (`Morpho Blue` `setAuthorization` / off-chain `Authorization`). Account-wide.
+    SetAuthorization(SetAuthorizationAction),
 }
 
 impl LendingAction {
@@ -64,6 +73,7 @@ impl LendingAction {
             Self::Supply(_) => "supply",
             Self::Withdraw(_) => "withdraw",
             Self::Borrow(_) => "borrow",
+            Self::BuyCollateral(_) => "buy_collateral",
             Self::Repay(_) => "repay",
             Self::SwapRateMode(_) => "swap_rate_mode",
             Self::SetEMode(_) => "set_e_mode",
@@ -71,6 +81,7 @@ impl LendingAction {
             Self::DisableCollateral(_) => "disable_collateral",
             Self::DelegateBorrow(_) => "delegate_borrow",
             Self::Liquidate(_) => "liquidate",
+            Self::SetAuthorization(_) => "set_authorization",
         }
     }
 
@@ -81,12 +92,15 @@ impl LendingAction {
             Self::Supply(a) => Some(a.venue.name()),
             Self::Withdraw(a) => Some(a.venue.name()),
             Self::Borrow(a) => Some(a.venue.name()),
+            Self::BuyCollateral(a) => Some(a.venue.name()),
             Self::Repay(a) => Some(a.venue.name()),
             Self::SwapRateMode(a) => Some(a.venue.name()),
             Self::SetEMode(a) => Some(a.venue.name()),
             Self::EnableCollateral(a) | Self::DisableCollateral(a) => Some(a.venue.name()),
             Self::DelegateBorrow(a) => Some(a.venue.name()),
             Self::Liquidate(a) => Some(a.venue.name()),
+            // Account-wide grant — no market venue.
+            Self::SetAuthorization(_) => None,
         }
     }
 }
@@ -169,6 +183,33 @@ pub enum LendingVenue {
         #[tsify(type = "string")]
         vault: Address,
     },
+    /// `Curve` crvUSD lending market. One `Controller` per collateral token;
+    /// the debt asset is always crvUSD. (`create_loan`/`borrow_more` deposit the
+    /// market's `collateral` and mint crvUSD debt.)
+    CrvUsd {
+        /// Chain hosting the controller.
+        chain: ChainId,
+        /// `Controller` contract address (one per collateral market).
+        #[tsify(type = "string")]
+        controller: Address,
+        /// Collateral token of this market.
+        collateral: TokenRef,
+    },
+    /// `Curve` `LlamaLend` (`OneWayLendingFactory`) market. Same `Controller`
+    /// interface as crvUSD, but the borrowed asset comes from a permissionless
+    /// ERC-4626 `Vault` (lender deposits) rather than crvUSD minting — distinct
+    /// risk/liquidity profile, so it carries its own venue tag. One `Controller`
+    /// per (collateral, borrowed) market; the borrowed asset is named by the
+    /// action's `asset` field (the top markets all borrow crvUSD).
+    LlamaLend {
+        /// Chain hosting the controller.
+        chain: ChainId,
+        /// `Controller` contract address (one per market).
+        #[tsify(type = "string")]
+        controller: Address,
+        /// Collateral token of this market.
+        collateral: TokenRef,
+    },
 }
 
 impl LendingVenue {
@@ -187,6 +228,8 @@ impl LendingVenue {
             Self::MorphoOptimizer { .. } => "morpho_optimizer",
             Self::Spark { .. } => "spark",
             Self::Fluid { .. } => "fluid",
+            Self::CrvUsd { .. } => "crv_usd",
+            Self::LlamaLend { .. } => "llama_lend",
         }
     }
 }

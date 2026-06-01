@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0437ac6109e8a366a1f4816edf312a36952db856",
+  "symbol": "tSUSHI-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tSUSHI/SUSHI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x0437ac6109e8a366a1f4816edf312a36952db856"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf49764c9c5d644ece6ae2d18ffd9f1e902629777"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x004e9c3ef86bc1ca1f0bb5c7662861ee93350568",
+  "symbol": "uniBTC",
+  "decimals": 8,
+  "name": "uniBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -13,11 +13,13 @@ use super::common::token::lower_token_ref;
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
 mod borrow;
+mod buy_collateral;
 mod delegate_borrow;
 mod disable_collateral;
 mod enable_collateral;
 mod liquidate;
 mod repay;
+mod set_authorization;
 mod set_e_mode;
 mod supply;
 mod swap_rate_mode;
@@ -37,6 +39,7 @@ pub(crate) fn lower(
         LendingAction::Supply(a) => supply::lower(a, ctx),
         LendingAction::Withdraw(a) => withdraw::lower(a, ctx),
         LendingAction::Borrow(a) => borrow::lower(a, ctx),
+        LendingAction::BuyCollateral(a) => buy_collateral::lower(a, ctx),
         LendingAction::Repay(a) => repay::lower(a, ctx),
         LendingAction::SwapRateMode(a) => swap_rate_mode::lower(a, ctx),
         LendingAction::SetEMode(a) => set_e_mode::lower(a, ctx),
@@ -44,6 +47,7 @@ pub(crate) fn lower(
         LendingAction::DisableCollateral(a) => disable_collateral::lower(a, ctx),
         LendingAction::DelegateBorrow(a) => delegate_borrow::lower(a, ctx),
         LendingAction::Liquidate(a) => liquidate::lower(a, ctx),
+        LendingAction::SetAuthorization(a) => set_authorization::lower(a, ctx),
     }
 }
 
@@ -92,6 +96,19 @@ pub(crate) fn lower_lending_venue(venue: &LendingVenue) -> Value {
         LendingVenue::MorphoOptimizer { chain, vault } | LendingVenue::Fluid { chain, vault } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("vault".into(), Value::String(addr(vault)));
+        }
+        // crvUSD / LlamaLend: the per-market `Controller` is the venue's pool.
+        // The collateral token is carried on the Rust venue for the reducer but
+        // is not needed by Cedar policies (the controller address identifies the
+        // market), so only `{ chain, pool }` is lowered.
+        LendingVenue::CrvUsd {
+            chain, controller, ..
+        }
+        | LendingVenue::LlamaLend {
+            chain, controller, ..
+        } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("pool".into(), Value::String(addr(controller)));
         }
     }
     Value::Object(m)
@@ -171,6 +188,9 @@ pub(crate) fn lower_set_collateral_context(
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_lending_venue(&action.venue));
     m.insert("asset".into(), lower_token_ref(&action.asset));
+    if let Some(on_behalf_of) = &action.on_behalf_of {
+        m.insert("onBehalfOf".into(), Value::String(addr(on_behalf_of)));
+    }
     m.insert(
         "reserveState".into(),
         lower_reserve_state(&action.live_inputs.reserve_state.value),

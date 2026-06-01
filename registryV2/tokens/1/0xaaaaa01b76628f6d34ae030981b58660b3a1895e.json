@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xaaaaa01b76628f6d34ae030981b58660b3a1895e",
+  "symbol": "xAZTEC",
+  "decimals": 18,
+  "name": "Xolo Staked AZTEC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

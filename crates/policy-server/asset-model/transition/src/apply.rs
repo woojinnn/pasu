@@ -43,6 +43,11 @@ impl Reducer for ActionBody {
             Self::Airdrop(a) => a.apply(state, ctx),
             Self::Launchpad(a) => a.apply(state, ctx),
             Self::Perp(a) => a.apply(state, ctx),
+            Self::LiquidStaking(a) => a.apply(state, ctx),
+            Self::Permission(a) => a.apply(state, ctx),
+            Self::Yield(a) => a.apply(state, ctx),
+            Self::Restaking(a) => a.apply(state, ctx),
+            Self::Staking(a) => a.apply(state, ctx),
             // Hyperliquid CORE actions record their effect against the wallet's
             // off-chain Hl account (see effect::hyperliquid_core). No fetch: the
             // reducer reads only state + ctx; Sync populates the base balance.
@@ -71,7 +76,7 @@ fn apply_multicall(
     let mut accumulated = StateDelta::default();
     let mut current = state.clone();
     for (i, body) in actions.iter().enumerate() {
-        let sub_ctx = ctx.clone().with_envelope_index(i);
+        let sub_ctx = ctx.clone().with_action_index(i);
         let sub_delta = body.apply(&current, &sub_ctx)?;
         current = crate::helpers::delta::apply_delta(&current, &sub_delta)?;
         accumulated = crate::helpers::delta::merge_delta(accumulated, sub_delta)?;

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x58efe15c0404ab22f87e4495d71f6f2077e862be",
+  "symbol": "USDT",
+  "decimals": 6,
+  "name": "USDT (Solana) (IBC)",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

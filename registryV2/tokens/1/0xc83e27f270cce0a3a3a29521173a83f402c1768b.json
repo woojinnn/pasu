@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc83e27f270cce0a3a3a29521173a83f402c1768b",
+  "symbol": "USDQ",
+  "decimals": 6,
+  "name": "Quantoz USDQ",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

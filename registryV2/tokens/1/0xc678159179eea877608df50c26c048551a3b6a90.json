@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc678159179eea877608df50c26c048551a3b6a90",
+  "symbol": "sroywstETH",
+  "decimals": 18,
+  "name": "Staked Royco ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

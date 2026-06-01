@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7cb20517776636ed76b68edb3d99dcce356abf02",
+  "symbol": "sdUSD",
+  "decimals": 18,
+  "name": "Staked dUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x368181499736d0c0cc614dbb145e2ec1ac86b8c6",
+  "symbol": "LUSD",
+  "decimals": 18,
+  "name": "LUSD Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

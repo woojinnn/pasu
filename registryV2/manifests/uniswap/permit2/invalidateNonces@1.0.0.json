@@ -1,0 +1,58 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/permit2/invalidateNonces@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x65d9723c",
+    "chain_to_addresses": {
+      "1": ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "10": ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "8453": ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "42161": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    }
+  },
+  "note": "Permit2 invalidateNonces(token,spender,newNonce) invalidates ordered allowance nonces for a token/spender pair. This is modeled as a permission revocation for policy purposes; the exact nonce floor is not represented in RevokeScope today.",
+  "abi_fragment": {
+    "function_name": "invalidateNonces",
+    "abi": {
+      "name": "invalidateNonces",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "token", "type": "address" },
+        { "name": "spender", "type": "address" },
+        { "name": "newNonce", "type": "uint48" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "revoke_approval",
+        "revoke_approval": {
+          "scope": {
+            "kind": "permit2_lockdown",
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$args.token"
+              }
+            },
+            "spender": "$args.spender"
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

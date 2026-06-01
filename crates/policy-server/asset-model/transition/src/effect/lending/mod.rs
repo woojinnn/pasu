@@ -9,9 +9,11 @@
 #![allow(dead_code)]
 
 mod borrow;
+mod buy_collateral;
 mod delegate_borrow;
 mod liquidate;
 mod repay;
+mod set_authorization;
 mod set_collateral;
 mod set_emode;
 mod supply;
@@ -44,6 +46,7 @@ impl Reducer for LendingAction {
             Self::Supply(a) => a.apply(state, ctx),
             Self::Withdraw(a) => a.apply(state, ctx),
             Self::Borrow(a) => a.apply(state, ctx),
+            Self::BuyCollateral(a) => a.apply(state, ctx),
             Self::Repay(a) => a.apply(state, ctx),
             Self::SwapRateMode(a) => a.apply(state, ctx),
             Self::SetEMode(a) => a.apply(state, ctx),
@@ -51,6 +54,7 @@ impl Reducer for LendingAction {
             Self::DisableCollateral(a) => set_collateral::apply(a, state, ctx, false),
             Self::DelegateBorrow(a) => a.apply(state, ctx),
             Self::Liquidate(a) => a.apply(state, ctx),
+            Self::SetAuthorization(a) => a.apply(state, ctx),
         }
     }
 }
@@ -100,6 +104,16 @@ pub(super) mod position_id {
             LendingVenue::Fluid { chain, vault } => {
                 format!("fluid:{}:{vault:?}", chain.as_str())
             }
+            LendingVenue::CrvUsd {
+                chain, controller, ..
+            } => {
+                format!("crv_usd:{}:{controller:?}", chain.as_str())
+            }
+            LendingVenue::LlamaLend {
+                chain, controller, ..
+            } => {
+                format!("llama_lend:{}:{controller:?}", chain.as_str())
+            }
         }
     }
 }
@@ -116,6 +130,8 @@ pub(super) const fn venue_tag(venue: &LendingVenue) -> &'static str {
         LendingVenue::MorphoBlue { .. } => "morpho_blue",
         LendingVenue::MorphoOptimizer { .. } => "morpho_optimizer",
         LendingVenue::Fluid { .. } => "fluid",
+        LendingVenue::CrvUsd { .. } => "crv_usd",
+        LendingVenue::LlamaLend { .. } => "llama_lend",
     }
 }
 
@@ -132,7 +148,9 @@ pub(super) fn venue_chain(venue: &LendingVenue) -> ChainId {
         | LendingVenue::CompoundV2 { chain, .. }
         | LendingVenue::MorphoBlue { chain, .. }
         | LendingVenue::MorphoOptimizer { chain, .. }
-        | LendingVenue::Fluid { chain, .. } => chain.clone(),
+        | LendingVenue::Fluid { chain, .. }
+        | LendingVenue::CrvUsd { chain, .. }
+        | LendingVenue::LlamaLend { chain, .. } => chain.clone(),
     }
 }
 

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x0b3f868e0be5597d5db7feb59e1cadbb0fdda50a",
-  "symbol": "SUSHI",
-  "decimals": 18,
-  "name": "SushiToken (PoS)"
-}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x78a087d713be963bf307b18f2ff8122ef9a63ae9",
+  "symbol": "BSWAP",
+  "decimals": 18,
+  "name": "Baseswap Token",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

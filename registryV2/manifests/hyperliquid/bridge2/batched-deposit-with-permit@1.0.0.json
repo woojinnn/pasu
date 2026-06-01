@@ -1,0 +1,63 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/bridge2/batched-deposit-with-permit@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note": "HyperLiquid Bridge2 (Arbitrum mainnet, 0x2df1c51e09aecf9cacb7bc98cb1742757f163df7). batchedDepositWithPermit takes an ARRAY of deposits; each element moves `usd` (uint64, USDC 6-dp) of USDC (0xaf88d065e77c8cC2239327C5EDb3A432268e5831) from `user` to the bridge. We map each element to a USDC transfer-to-Bridge2 intent via array_emit -> Multicall of token/erc20_transfer (token = USDC literal, recipient = $to = the Bridge2 contract, amount = $inputs.[1] = usd). On the calldata path the tuple elements decode POSITIONALLY so per-element fields are $inputs.[0]=user, [1]=usd, [2]=deadline, [3]=signature (signature unused by the body). usd is uint64 but alloy widens to a U256 word, so the amount renders faithfully. The per-element `user` is the depositor; erc20_transfer has no `from` field (the actor is the signer), so `user` is informational only.",
+  "match": {
+    "selector": "0xb30b5bce",
+    "chain_to_addresses": {
+      "42161": ["0x2df1c51e09aecf9cacb7bc98cb1742757f163df7"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "batchedDepositWithPermit",
+    "abi": {
+      "name": "batchedDepositWithPermit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "deposits",
+          "type": "tuple[]",
+          "components": [
+            { "name": "user", "type": "address" },
+            { "name": "usd", "type": "uint64" },
+            { "name": "deadline", "type": "uint64" },
+            {
+              "name": "signature",
+              "type": "tuple",
+              "components": [
+                { "name": "r", "type": "uint256" },
+                { "name": "s", "type": "uint256" },
+                { "name": "v", "type": "uint8" }
+              ]
+            }
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.deposits",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" } },
+          "recipient": "$to",
+          "amount": "$inputs.[1]"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

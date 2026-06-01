@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 10,
-  "address": "0x03569cc076654f82679c4ba2124d64774781b01d",
-  "symbol": "BOLD",
-  "decimals": 18,
-  "name": "BOLD Stablecoin"
-}

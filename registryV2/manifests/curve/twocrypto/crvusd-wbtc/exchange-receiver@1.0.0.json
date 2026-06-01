@@ -1,0 +1,150 @@
+{
+  "type": "adapter_action",
+  "id": "curve/twocrypto/crvusd-wbtc/exchange-receiver@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xa64833a0",
+    "chain_to_addresses": {
+      "1": [
+        "0x313698667d7fdd6789a9bc70821309ff891e729a",
+        "0xd9ff8396554a0d18b2cfbec53e1979b7ecce8373"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "i",
+          "type": "uint256"
+        },
+        {
+          "name": "j",
+          "type": "uint256"
+        },
+        {
+          "name": "dx",
+          "type": "uint256"
+        },
+        {
+          "name": "min_dy",
+          "type": "uint256"
+        },
+        {
+          "name": "receiver",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "curve_v2",
+            "chain": "$chain",
+            "pool": "$to"
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$match": "$args.i",
+                  "$cases": {
+                    "0": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
+                    "1": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+                  }
+                }
+              }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$match": "$args.j",
+                  "$cases": {
+                    "0": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
+                    "1": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+                  }
+                }
+              }
+            },
+            "direction": {
+              "kind": "exact_input",
+              "amount_in": "$args.dx",
+              "min_amount_out": "$args.min_dy"
+            },
+            "recipient": "$args.receiver",
+            "slippage_bp": 0
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_v2_balances"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_expected_out"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "oracle_feed",
+                "provider": "pyth",
+                "feed_id": "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

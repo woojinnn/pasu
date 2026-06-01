@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6d0bd8365e2fcd0c2acf7d218f629a319b6c9d47",
+  "symbol": "waBTC/sbtcCRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory BTC Metapool: Wasabi BTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6d0bd8365e2fcd0c2acf7d218f629a319b6c9d47"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xfd8e70e83e399307db3978d3f34b060a06792c36"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x075b1bb99792c9e1041ba13afef80c91a1e70fb3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

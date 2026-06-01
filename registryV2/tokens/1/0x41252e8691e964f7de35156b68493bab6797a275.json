@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x41252e8691e964f7de35156b68493bab6797a275",
+  "symbol": "dYFI",
+  "decimals": 18,
+  "name": "Discount YFI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

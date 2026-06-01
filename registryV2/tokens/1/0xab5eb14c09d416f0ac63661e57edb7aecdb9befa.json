@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xab5eb14c09d416f0ac63661e57edb7aecdb9befa",
+  "symbol": "msUSD",
+  "decimals": 18,
+  "name": "Metronome Synth USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

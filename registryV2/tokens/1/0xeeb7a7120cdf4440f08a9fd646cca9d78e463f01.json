@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xeeb7a7120cdf4440f08a9fd646cca9d78e463f01",
+  "symbol": "bll3c-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: bll3",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xf4a3cca34470b5ba21e2bb1ed365acf68b4d4598"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1e2391a261217c93d09ff3ae9ab1903ea237bda8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xed279fdd11ca84beef15af5d39bb4d4bee23f0ca"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9bfb757b7376121cf6042bf05c5a3037add6cd80",
+  "symbol": "cystratETH",
+  "decimals": 18,
+  "name": "CurveYield stratETH Merkl Vault",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

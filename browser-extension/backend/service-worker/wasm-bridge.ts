@@ -30,6 +30,11 @@ interface WasmExports {
   // through the engine-internal bridge populated at install time, then emits
   // the PDF FSM `simulation_reducer::action::Action` tree.
   declarative_route_request_v3_json(input_json: string): string;
+  // Phase A.1 — v3 typed-data (EIP-712 sign) route entry. Keys on the
+  // typed-data triple `(chain_id, verifying_contract, primary_type)` (+ optional
+  // witness_type) the install bridged; decodes the raw EIP-712 `message` to the
+  // same ActionBody tree as `declarative_route_request_v3_json`.
+  declarative_route_typed_data_v3_json(input_json: string): string;
   // Phase 1 (v2 ActionBody model) — stateless policy-RPC plan + evaluate.
   // Contract: `crates/policy-engine-wasm/src/action_eval_exports.rs`.
   // `plan_action_rpc_v2_json` lowers the action + plans its policy-RPC calls
@@ -328,6 +333,107 @@ export async function declarativeRouteRequestV3(
   return unwrap<DeclarativeRouteRequestV3Result>(
     exports.declarative_route_request_v3_json(JSON.stringify(input)),
   );
+}
+
+/**
+ * Phase A.1 — wire shape for `declarative_route_typed_data_v3_json`.
+ *
+ * The typed-data analogue of {@link DeclarativeRouteRequestV3Input}: instead
+ * of `(to, selector, calldata)` the WASM keys on the typed-data triple
+ * `(chain_id, verifying_contract, primary_type)` the install bridged, plus
+ * the raw EIP-712 `message` object the manifest `$args.*` placeholders read.
+ *
+ * `domain_name` is optional — EIP-2612 token Permits carry the token name as
+ * `domain.name`, so it can't be part of the routing key; the WASM only uses
+ * it for audit / display. `submitted_at` is unix-epoch seconds.
+ */
+export interface DeclarativeRouteTypedDataV3Input {
+  chainId: number;
+  /** "0x" + 40 hex. Case-insensitive on the engine side. */
+  verifyingContract: string;
+  /** EIP-712 `primaryType` discriminator (may contain a `:` segment). */
+  primaryType: string;
+  /**
+   * Optional 4th routing-key component (T1) — the EIP-712 `witness` field's
+   * struct type for Permit2 `permitWitnessTransferFrom` payloads (UniswapX
+   * intent orders etc.), which otherwise all collide on
+   * `(chainId, Permit2, "PermitWitnessTransferFrom")`. Kept VERBATIM (the exact
+   * EIP-712 type name). `undefined` for non-witness payloads → the WASM bridge
+   * key keeps its 3-tuple shape. Typed `string | undefined` so callers can
+   * forward a derived value straight through under `exactOptionalPropertyTypes`.
+   */
+  witnessType?: string | undefined;
+  /**
+   * Optional EIP-712 `domain.name` — audit only, not part of the key. Typed
+   * as `string | undefined` (not just optional) so callers can forward
+   * `typedData.domain.name` straight through under `exactOptionalPropertyTypes`.
+   */
+  domainName?: string | undefined;
+  /** Raw EIP-712 `message` object — the manifest `$args.*` decode root. */
+  message: unknown;
+  /** Signer address — "0x" + 40 hex. */
+  submitter: string;
+  /** Unix epoch seconds at which the signature was requested. */
+  submittedAt: number;
+}
+
+/**
+ * Phase A.1 — v3 typed-data (EIP-712 sign) route entry.
+ *
+ * Mirrors {@link declarativeRouteRequestV3} but returns the WASM envelope
+ * in a non-throwing `{ ok, data?, error? }` shape so the SW sig-router can
+ * treat a `route_failed` / `no_declarative_v3_mapper` miss as a transparent
+ * fall-through (`null`) rather than catching an `EngineError`. `actions` is
+ * the JSON-serialised `Vec<simulation_reducer::action::Action>`; `decoder_id`
+ * is the matched bundle id (`""` on no match).
+ *
+ * The caller marshals the snake_case wire keys
+ * (`chain_id, verifying_contract, primary_type, domain_name, message,
+ * submitter, submitted_at`) the Rust DTO expects.
+ */
+export async function declarativeRouteTypedDataV3(
+  input: DeclarativeRouteTypedDataV3Input,
+): Promise<{
+  ok: boolean;
+  data?: { actions: unknown[]; decoder_id: string };
+  error?: { kind: string; message: string };
+}> {
+  // T5 review fix — honor the non-throwing contract. A WASM-layer fault
+  // (init failure, a non-JSON panic string from the export, or a serde
+  // hiccup) must surface as a `{ ok: false }` envelope so the SW
+  // sig-router treats it as a transparent miss, NOT as a thrown
+  // `EngineError` that would bubble past the orchestrator's try/catch.
+  try {
+    const exports = await load();
+    const raw = exports.declarative_route_typed_data_v3_json(
+      JSON.stringify({
+        chain_id: input.chainId,
+        verifying_contract: input.verifyingContract,
+        primary_type: input.primaryType,
+        // T1 — 4th routing-key component. Omitted from the JSON when undefined
+        // (JSON.stringify drops undefined values), so the Rust DTO's
+        // `#[serde(default)]` yields `None` and the bridge key stays a 3-tuple.
+        witness_type: input.witnessType,
+        domain_name: input.domainName,
+        message: input.message,
+        submitter: input.submitter,
+        submitted_at: input.submittedAt,
+      }),
+    );
+    const parsed = JSON.parse(raw) as Envelope<{
+      actions: unknown[];
+      decoder_id: string;
+    }>;
+    if (parsed.ok === true) {
+      return { ok: true, data: parsed.data };
+    }
+    return { ok: false, error: parsed.error };
+  } catch (err) {
+    return {
+      ok: false,
+      error: { kind: "parse_failed", message: String(err) },
+    };
+  }
 }
 
 /**

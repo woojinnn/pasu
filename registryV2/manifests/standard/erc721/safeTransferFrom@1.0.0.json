@@ -5,7 +5,12 @@
   "match": {
     "selector": "0x42842e0e",
     "chain_to_addresses_source": "tokens:erc721",
-    "chain_ids": [1]
+    "chain_ids": [
+      1,
+      10,
+      42161,
+      8453
+    ]
   },
   "abi_fragment": {
     "function_name": "safeTransferFrom",
@@ -14,9 +19,18 @@
       "type": "function",
       "stateMutability": "payable",
       "inputs": [
-        { "name": "from", "type": "address" },
-        { "name": "to", "type": "address" },
-        { "name": "tokenId", "type": "uint256" }
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256"
+        }
       ],
       "outputs": []
     }
@@ -43,7 +57,9 @@
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

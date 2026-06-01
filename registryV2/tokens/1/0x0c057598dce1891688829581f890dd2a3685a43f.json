@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0c057598dce1891688829581f890dd2a3685a43f",
+  "symbol": "sdYB",
+  "decimals": 18,
+  "name": "Stake DAO YieldBasis Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

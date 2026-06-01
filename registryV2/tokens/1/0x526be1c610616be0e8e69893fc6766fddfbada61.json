@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x526be1c610616be0e8e69893fc6766fddfbada61",
+  "symbol": "rTBL",
+  "decimals": 6,
+  "name": "Rolling T-bill",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

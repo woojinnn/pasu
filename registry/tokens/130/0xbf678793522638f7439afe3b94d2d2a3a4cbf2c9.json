@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xbf678793522638f7439afe3b94d2d2a3a4cbf2c9",
-  "symbol": "AXL",
-  "decimals": 6,
-  "name": "Axelar"
-}

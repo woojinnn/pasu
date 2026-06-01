@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5228a22e72ccc52d415ecfd199f99d0665e7733b",
+  "symbol": "pBTC",
+  "decimals": 18,
+  "name": "pTokens BTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

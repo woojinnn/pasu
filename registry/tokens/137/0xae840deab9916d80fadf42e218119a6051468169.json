@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xae840deab9916d80fadf42e218119a6051468169",
-  "symbol": "EFI",
-  "decimals": 18,
-  "name": "ElevateFi"
-}

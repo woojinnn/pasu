@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5b4b8fd619a38f2906d4ae22b6fe338550c3b449",
+  "symbol": "MTETH",
+  "decimals": 18,
+  "name": "Test ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

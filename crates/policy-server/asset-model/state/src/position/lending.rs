@@ -1,8 +1,7 @@
-//! `LendingAccount` — the *account-level aggregate* for a single lending market.
+//! `LendingAccount` — 한 lending market 에서의 *계정 집계*.
 //!
-//! The per-asset supply/borrow ERC20 balances (e.g. aUSDC, variableDebtUSDC)
-//! live in `tokens`; this struct only holds the aggregate metadata layered on
-//! top of them (HF, LTV, e-mode, isolation). See spec §5.
+//! 개별 supply/borrow 의 ERC20 잔고 (aUSDC, variableDebtUSDC) 는 tokens 안에 살고,
+//! 여기서는 그 위의 집계 메타 (HF, LTV, emode, isolation) 만 담는다. spec §5.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -11,33 +10,32 @@ use crate::live_field::LiveField;
 use crate::primitives::{Decimal, MarketRef, U256};
 use crate::token::{RateMode, TokenRef};
 
-/// Aave efficiency-mode (e-mode) category id, a single byte.
+/// Aave 의 efficiency mode 카테고리 id. 1-bytes.
 pub type EModeCategory = u8;
 
-/// Account-level aggregate of a single lending-market position, holding the
-/// collateral/debt breakdown plus the risk metadata (HF, LTV, e-mode, isolation).
+/// 한 lending market 의 *계정 집계* — 담보 / 부채 / HF / LTV / emode / isolation.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct LendingAccount {
-    /// Lending market this account belongs to.
+    /// 본 계정이 속한 lending market.
     pub market: MarketRef,
-    /// Collateral assets supplied, as `(token, underlying amount)` pairs.
+    /// 담보 자산 목록 (token, underlying amount).
     #[tsify(type = "Array<[TokenRef, string]>")]
     pub collaterals: Vec<(TokenRef, U256)>,
-    /// Borrowed assets, as `(token, underlying amount, rate mode)` tuples.
+    /// 부채 자산 목록 (token, underlying amount, rate mode).
     #[tsify(type = "Array<[TokenRef, string, RateMode]>")]
     pub debts: Vec<(TokenRef, U256, RateMode)>,
-    /// Active efficiency-mode category, if the account has e-mode enabled.
+    /// Aave eMode 카테고리 id. 비활성 시 `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub emode: Option<EModeCategory>,
-    /// Whether the account is in isolation mode.
+    /// Aave isolation mode 활성 여부.
     pub is_isolated: bool,
 
-    /// Account health factor; below 1.0 the position is liquidatable.
+    /// 본 계정의 health factor (`collateral_usd × liq_threshold / debt_usd`).
     pub health_factor: LiveField<Decimal>,
-    /// Current loan-to-value ratio of the account.
+    /// 본 계정의 loan-to-value 비율.
     pub ltv: LiveField<Decimal>,
-    /// LTV threshold at which the account becomes eligible for liquidation.
+    /// 본 계정의 청산 임계값.
     pub liquidation_threshold: LiveField<Decimal>,
 }

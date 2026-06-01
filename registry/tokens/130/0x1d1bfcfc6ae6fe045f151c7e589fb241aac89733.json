@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x1d1bfcfc6ae6fe045f151c7e589fb241aac89733",
-  "symbol": "LOKA",
-  "decimals": 18,
-  "name": "League of Kingdoms"
-}

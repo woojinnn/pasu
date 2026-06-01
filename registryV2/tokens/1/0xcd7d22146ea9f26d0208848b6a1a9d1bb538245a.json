@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xcd7d22146ea9f26d0208848b6a1a9d1bb538245a",
+  "symbol": "rsCOMAI",
+  "decimals": 18,
+  "name": "Rivus Staked COMAI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

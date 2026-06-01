@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf46e0a7799d73897c978b6efe4bb44795ebdabd8",
+  "symbol": "scbdETH",
+  "decimals": 18,
+  "name": "Staked Curve Bonds DAO ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

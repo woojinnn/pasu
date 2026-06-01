@@ -1,0 +1,119 @@
+{
+  "type": "adapter_action",
+  "id": "curve/twocrypto/source/factory-twocrypto-base/remove_liquidity@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x5b36389c",
+    "chain_to_addresses_source": "curve:factory_twocrypto_base",
+    "chain_ids": [
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "remove_liquidity",
+    "abi": {
+      "name": "remove_liquidity",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "name": "min_amounts",
+          "type": "uint256[2]"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "remove_liquidity",
+        "remove_liquidity": {
+          "venue": {
+            "name": "curve_v2",
+            "chain": "$chain",
+            "pool": "$to"
+          },
+          "params": {
+            "kind": "pooled_burn",
+            "lp_token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$to"
+              }
+            },
+            "lp_amount": "$args.amount",
+            "min_out": [
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.0"
+                  }
+                },
+                "$args.min_amounts[0]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.1"
+                  }
+                },
+                "$args.min_amounts[1]"
+              ]
+            ],
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_v2_balances"
+              },
+              "ttl_s": 12
+            },
+            "fees_owed": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "curve:factory_twocrypto_base",
+    "note": "build-index substitutes $source.* and appends a per-pool id suffix"
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x9f0c013016e8656bc256f948cd4b79ab25c7b94d",
-  "symbol": "COOK",
-  "decimals": 18,
-  "name": "mETH Protocol"
-}

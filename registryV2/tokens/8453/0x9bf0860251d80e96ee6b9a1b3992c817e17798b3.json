@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9bf0860251d80e96ee6b9a1b3992c817e17798b3",
+  "symbol": "AZND",
+  "decimals": 18,
+  "name": "Asian Dollar",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

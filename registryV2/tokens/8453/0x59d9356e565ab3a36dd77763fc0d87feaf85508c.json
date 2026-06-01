@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x59d9356e565ab3a36dd77763fc0d87feaf85508c",
+  "symbol": "USDM",
+  "decimals": 18,
+  "name": "Mountain Protocol USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

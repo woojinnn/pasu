@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xed24fe718effc6b2fc59eeaa5c5f51dd079ab6ed",
+  "symbol": "jGBP+TGBP-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: jGBP/TGBP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xed24fe718effc6b2fc59eeaa5c5f51dd079ab6ed"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7409856cae628f5d578b285b45669b36e7005283"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x00000000441378008ea67f4284a57932b1c000a5"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

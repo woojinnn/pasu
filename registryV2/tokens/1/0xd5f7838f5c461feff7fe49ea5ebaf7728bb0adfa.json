@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd5f7838f5c461feff7fe49ea5ebaf7728bb0adfa",
+  "symbol": "mETH",
+  "decimals": 18,
+  "name": "mETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

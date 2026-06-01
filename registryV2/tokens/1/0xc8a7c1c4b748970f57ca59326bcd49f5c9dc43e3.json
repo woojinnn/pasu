@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc8a7c1c4b748970f57ca59326bcd49f5c9dc43e3",
+  "symbol": "OPEN MATIC-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: OPEN MATIC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc8a7c1c4b748970f57ca59326bcd49f5c9dc43e3"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x69e8b9528cabda89fe846c67675b5d73d463a916"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

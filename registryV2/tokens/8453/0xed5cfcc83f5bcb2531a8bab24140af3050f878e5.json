@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xed5cfcc83f5bcb2531a8bab24140af3050f878e5",
+  "symbol": "BOLDLUSD",
+  "decimals": 18,
+  "name": "BOLD/LUSD Pool",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xed5cfcc83f5bcb2531a8bab24140af3050f878e5"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xbb2f20f8e9b7da7d2ab23f44d35219f6994ee0e3"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x368181499736d0c0cc614dbb145e2ec1ac86b8c6"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

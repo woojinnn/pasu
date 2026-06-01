@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xcfa3ef56d303ae4faaba0592388f19d7c3399fb4",
+  "symbol": "eUSD",
+  "decimals": 18,
+  "name": "Electronic Dollar",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e",
+  "symbol": "YFI",
+  "decimals": 18,
+  "name": "yearn.finance",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

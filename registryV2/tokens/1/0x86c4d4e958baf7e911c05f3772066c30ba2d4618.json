@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x86c4d4e958baf7e911c05f3772066c30ba2d4618",
+  "symbol": "mUSD",
+  "decimals": 18,
+  "name": "Molecula USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

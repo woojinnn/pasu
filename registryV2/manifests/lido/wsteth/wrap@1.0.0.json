@@ -1,0 +1,47 @@
+{
+  "type": "adapter_action",
+  "id": "lido/wsteth/wrap@1.0.0",
+  "publisher": "lido.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xea598cb0",
+    "chain_to_addresses": {
+      "1": ["0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "wrap",
+    "abi": {
+      "name": "wrap",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [{ "name": "_stETHAmount", "type": "uint256" }],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "wrap",
+        "wrap": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "amount": "$args._stETHAmount"
+        }
+      }
+    },
+    "live_inputs": {
+      "expected_wsteth": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getWstETHByStETH(uint256)",
+          "decoder_id": "lido_wsteth_by_steth"
+        },
+        "ttl_s": 30
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x0555e30da8f98308edb960aa94c0db47230d2b9c",
+  "symbol": "WBTC",
+  "decimals": 8,
+  "name": "Wrapped BTC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

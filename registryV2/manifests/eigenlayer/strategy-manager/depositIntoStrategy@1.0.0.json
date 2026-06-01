@@ -1,0 +1,77 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/strategy-manager/depositIntoStrategy@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xe7a050aa",
+    "chain_to_addresses": {
+      "1": [
+        "0x858646372cc42e1a627fce94aa7a7033e7cf075a"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "depositIntoStrategy",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "contract IStrategy",
+          "name": "strategy",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IERC20",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "depositIntoStrategy",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "depositShares",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "deposit",
+        "deposit": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "strategy": "$args.strategy",
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.token"
+            }
+          },
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

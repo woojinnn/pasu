@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc1f33e0cf7e40a67375007104b929e49a581bafe",
+  "symbol": "SPOT",
+  "decimals": 9,
+  "name": "SPOT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

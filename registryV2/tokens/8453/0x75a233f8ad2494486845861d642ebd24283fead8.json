@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x75a233f8ad2494486845861d642ebd24283fead8",
+  "symbol": "ZSPHR",
+  "decimals": 18,
+  "name": "ZSNAIL_SAPPHIRE",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

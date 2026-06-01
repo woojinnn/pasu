@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x01ba69727e2860b37bc1a2bd56999c1afb4c15d8",
+  "symbol": "ynRWAx",
+  "decimals": 18,
+  "name": "YieldNest RWA MAX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

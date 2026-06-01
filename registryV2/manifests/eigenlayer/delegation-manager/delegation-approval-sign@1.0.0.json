@@ -1,0 +1,98 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/delegation-approval-sign@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "EigenLayer",
+      "verifying_contract": "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a",
+      "primary_type": "DelegationApproval",
+      "types": {
+        "DelegationApproval": [
+          {
+            "name": "delegationApprover",
+            "type": "address"
+          },
+          {
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "name": "operator",
+            "type": "address"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32"
+          },
+          {
+            "name": "expiry",
+            "type": "uint256"
+          }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "DelegationApproval",
+    "abi": {
+      "name": "DelegationApproval",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "delegationApprover",
+          "type": "address"
+        },
+        {
+          "name": "staker",
+          "type": "address"
+        },
+        {
+          "name": "operator",
+          "type": "address"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32"
+        },
+        {
+          "name": "expiry",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "eigenlayer",
+          "authorizer": "$args.delegationApprover",
+          "authorized": "$args.staker",
+          "is_authorized": true,
+          "permission": "delegate",
+          "permission_label": "$args.operator"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

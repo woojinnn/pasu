@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x25ec98773d7b4ced4cafab96a2a1c0945f145e10",
+  "symbol": "stUSDT",
+  "decimals": 18,
+  "name": "Staked USDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

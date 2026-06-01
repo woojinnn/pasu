@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x8d8e1b6ffc6832e8d2ef0de8a3d957cae7ac5067",
-  "symbol": "PRIME",
-  "decimals": 18,
-  "name": "Prime"
-}

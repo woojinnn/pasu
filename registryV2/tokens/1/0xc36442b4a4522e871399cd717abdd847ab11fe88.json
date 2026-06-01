@@ -2,16 +2,7 @@
   "erc_kind": "erc721",
   "chainId": 1,
   "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
-  "collection_name": "Uniswap V3 Positions NFT",
+  "collection_name": "Uniswap V3 Positions",
   "symbol": "UNI-V3-POS",
-  "source": "https://docs.uniswap.org/contracts/v3/reference/deployments/ethereum-deployments",
-  "token_kind": {
-    "kind": "lp_share",
-    "pool": {
-      "protocol": { "name": "uniswap_v3", "chain": "eip155:1" }
-    },
-    "underlyings": [],
-    "share_form": "non_fungible",
-    "shape": { "kind": "concentrated" }
-  }
+  "source": "https://developers.uniswap.org/docs/protocols/v3/deployments/ethereum-deployments"
 }

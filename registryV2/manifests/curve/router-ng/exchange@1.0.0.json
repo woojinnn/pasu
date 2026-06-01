@@ -1,0 +1,102 @@
+{
+  "type": "adapter_action",
+  "id": "curve/router-ng/exchange@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x371dc447",
+    "chain_to_addresses": {
+      "1": [
+        "0x16c6521dff6bab339122a0fe25a9116693265353",
+        "0xf0d4c12a5768d806021f80a262b4d39d26c58b8d",
+        "0x45312ea0eff7e09c83cbe249fa1d7598c4c8cd4e"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "_route", "type": "address[11]" },
+        { "name": "_swap_params", "type": "uint256[5][5]" },
+        { "name": "_amount", "type": "uint256" },
+        { "name": "_min_dy", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "aggregator_route",
+            "chain": "$chain",
+            "router": "$to",
+            "route_hash": { "$fn": "route_hash", "$args": ["$args._route"] }
+          },
+          "params": {
+            "token_in": {
+              "key": { "standard": "erc20", "chain": "$chain", "address": "$args._route[0]" }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": { "$fn": "curve_route_last_token", "$args": ["$args._route", "$args._swap_params"] }
+              }
+            },
+            "direction": {
+              "kind": "exact_input",
+              "amount_in": "$args._amount",
+              "min_amount_out": "$args._min_dy"
+            },
+            "recipient": "$tx.from",
+            "slippage_bp": 0
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [{ "scope": "global", "name": "curve_router_ng_route" }],
+                "calc_id": "curve_router_ng_route"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [{ "scope": "global", "name": "curve_router_ng_route" }],
+                "calc_id": "curve_router_ng_expected_out"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [{ "scope": "global", "name": "curve_router_ng_route" }],
+                "calc_id": "curve_router_ng_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": { "kind": "oracle_feed", "provider": "pyth", "feed_id": "gas/ethereum" },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

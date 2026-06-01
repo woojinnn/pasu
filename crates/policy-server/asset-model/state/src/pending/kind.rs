@@ -14,99 +14,99 @@ use crate::token::TokenRef;
 pub enum OrderKind {
     /// Dutch auction order whose price decays over time (e.g. `UniswapX`).
     Dutch,
-    /// Standard limit order filled at or better than a fixed price.
+    /// 단순 limit order.
     Limit,
-    /// Request-for-quote order matched against a market-maker quote.
+    /// Request-for-Quote (1inch Fusion, Bebop 등).
     Rfq,
 }
 
-/// Kind of resting (unfilled) order on a perpetual-futures venue.
+/// Perp venue 의 미체결 주문 종류.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PerpOrderKind {
-    /// Limit order resting at a fixed price.
+    /// 가격 도달 시 체결되는 limit 주문.
     Limit,
-    /// Stop order that triggers a market order once the stop price is reached.
+    /// trigger 가격 도달 시 시장가 체결.
     StopMarket,
-    /// Stop order that triggers a limit order once the stop price is reached.
+    /// trigger 가격 도달 시 limit 주문 활성.
     StopLimit,
-    /// Take-profit order that closes the position at a favorable target price.
+    /// take-profit trigger.
     TakeProfit,
 }
 
-/// A signature-only or unsettled entry that may still consume funds or open a position.
+/// 서명-only pending entry 의 sub-kind (4 형태).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PendingKind {
     /// Off-chain-matched limit order (`UniswapX`, `CowSwap`, 1inch Fusion, Bebop, OKX RFQ, etc.).
     OffchainLimitOrder {
-        /// Venue the order was submitted to.
+        /// 주문을 매칭할 venue.
         venue: VenueRef,
-        /// Token being sold (input side of the swap).
+        /// 매도 토큰.
         sell: TokenRef,
-        /// Token being bought (output side of the swap).
+        /// 매수 토큰.
         buy: TokenRef,
-        /// Maximum amount of `sell` token spendable (raw token units).
+        /// 매도 가능 최대 양 (base unit).
         #[tsify(type = "string")]
         sell_max: U256,
-        /// Minimum amount of `buy` token to receive (raw token units).
+        /// 매수 받을 최소 양 (base unit).
         #[tsify(type = "string")]
         buy_min: U256,
-        /// Matching style of the order (Dutch / limit / RFQ).
+        /// 주문 종류 (Dutch / Limit / RFQ).
         order_kind: OrderKind,
     },
 
-    /// Unfilled resting order on a perpetual-futures DEX.
+    /// `PerpDEX` 미체결 리밋.
     PerpVenueOrder {
-        /// Perp venue the order rests on.
+        /// 주문이 등록된 venue.
         venue: VenueRef,
-        /// Market (trading pair) the order targets.
+        /// 거래 market.
         market: MarketRef,
-        /// Position side the order would take (long / short).
+        /// 주문 방향 (Long / Short).
         side: PerpSide,
-        /// Order size denominated in the base asset (raw units).
+        /// base asset 단위의 주문 size.
         #[tsify(type = "string")]
         size_base: U256,
-        /// Limit / trigger price of the order.
+        /// 주문 가격.
         price: Price,
-        /// Order kind (limit / stop-market / stop-limit / take-profit).
+        /// 주문 종류 (Limit / Stop / TP).
         order_kind: PerpOrderKind,
-        /// Whether the order may only reduce, never increase, the position.
+        /// reduce-only flag (포지션 늘리기 금지).
         reduce_only: bool,
     },
 
-    /// A signed-but-unused Permit2 approval — a potential spend cap.
+    /// 서명만 발급된 Permit2 — 잠재적 spend cap.
     SignedPermit2 {
-        /// Token the approval applies to.
+        /// 권한이 부여된 토큰.
         token: TokenRef,
-        /// Address authorized to spend the token.
+        /// 권한을 받는 spender 주소.
         #[tsify(type = "string")]
         spender: Address,
-        /// Maximum amount the spender is permitted to transfer (raw token units).
+        /// 한도 양 (base unit).
         #[tsify(type = "string")]
         amount: U256,
-        /// Timestamp at which the permit expires.
+        /// 본 권한의 만료 시각.
         expires_at: Time,
-        /// Permit2 unordered nonce as a `(word, bit)` pair.
+        /// Permit2 비트맵 nonce — (word, bit).
         #[tsify(type = "[string, number]")]
-        nonce: (U256, u8), // (word, bit)
+        nonce: (U256, u8),
     },
 
-    /// A signed-but-unused EIP-2612 `permit` approval (USDC, DAI, etc.).
+    /// EIP-2612 (USDC, DAI 등).
     SignedEIP2612 {
-        /// Token the approval applies to.
+        /// 권한이 부여된 토큰.
         token: TokenRef,
-        /// Address authorized to spend the token.
+        /// 권한을 받는 spender 주소.
         #[tsify(type = "string")]
         spender: Address,
-        /// Maximum amount the spender is permitted to transfer (raw token units).
+        /// 한도 양 (base unit).
         #[tsify(type = "string")]
         amount: U256,
-        /// Timestamp at which the permit expires.
+        /// 본 권한의 만료 시각.
         expires_at: Time,
-        /// Sequential EIP-2612 nonce for the token owner.
+        /// 본 token 의 owner-level nonce.
         #[tsify(type = "string")]
         nonce: U256,
     },

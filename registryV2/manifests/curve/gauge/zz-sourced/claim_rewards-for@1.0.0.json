@@ -1,0 +1,54 @@
+{
+  "type": "adapter_action",
+  "id": "curve/gauge/source/claim_rewards-for@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x84e9bd7e",
+    "chain_to_addresses_source": "curve:gauges",
+    "chain_ids": [
+      1,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "claim_rewards",
+    "abi": {
+      "name": "claim_rewards",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_addr",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "claim_rewards",
+        "claim_rewards": {
+          "venue": {
+            "name": "curve_gauge",
+            "chain": "$chain",
+            "gauge": "$to"
+          },
+          "gauges": [],
+          "on_behalf_of": "$args._addr"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x82c626453623d6a8eb3217ecb9b23cce3c9a2b51",
+  "symbol": "LQLT",
+  "decimals": 18,
+  "name": "LQ Liquid Token",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x466a756e9a7401b5e2444a3fcb3c2c12fbea0a54",
+  "symbol": "PUSd",
+  "decimals": 18,
+  "name": "Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

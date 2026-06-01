@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x18f52b3fb465118731d9e0d276d4eb3599d57596",
+  "symbol": "AID",
+  "decimals": 18,
+  "name": "AI Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

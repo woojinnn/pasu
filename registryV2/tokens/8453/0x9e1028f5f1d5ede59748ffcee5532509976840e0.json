@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9e1028f5f1d5ede59748ffcee5532509976840e0",
+  "symbol": "COMP",
+  "decimals": 18,
+  "name": "Compound",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

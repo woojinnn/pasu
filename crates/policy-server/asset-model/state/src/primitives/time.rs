@@ -1,4 +1,4 @@
-//! Time representation in unix epoch seconds.
+//! 시간 표기 — unix epoch 초.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -9,7 +9,10 @@ use tsify_next::Tsify;
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(transparent)]
 /// A point in time expressed as unix epoch seconds.
-pub struct Time(pub u64);
+pub struct Time(
+    /// Unix epoch 으로부터 경과한 초.
+    pub u64,
+);
 
 impl Time {
     /// Builds a `Time` from a unix epoch timestamp in seconds.
@@ -54,8 +57,11 @@ impl From<u64> for Time {
 )]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(transparent)]
-/// A span of time expressed in seconds.
-pub struct Duration(pub u64);
+/// A span of time expressed in whole seconds.
+pub struct Duration(
+    /// 초 단위 기간 값.
+    pub u64,
+);
 
 impl Duration {
     /// Builds a `Duration` from a count of seconds.

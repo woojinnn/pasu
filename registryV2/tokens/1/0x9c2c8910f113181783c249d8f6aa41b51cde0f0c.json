@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9c2c8910f113181783c249d8f6aa41b51cde0f0c",
+  "symbol": "ibCHF+sCHF-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: ibCHF/sCHF",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9c2c8910f113181783c249d8f6aa41b51cde0f0c"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1cc481ce2bd2ec7bf67d1be64d4878b16078f309"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0f83287ff768d1c1e17a42f44d644d7f22e8ee1d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

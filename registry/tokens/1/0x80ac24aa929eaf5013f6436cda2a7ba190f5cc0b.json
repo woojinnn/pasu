@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
-  "symbol": "syrupUSDC",
-  "decimals": 6,
-  "name": "Syrup USDC"
-}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9f8410c4d683721a1acf9d79093cccefbf1c8876",
+  "symbol": "PETALrai-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: PETAL/RAI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x7193d845f8991e27ffdce54e78137de036a6f743"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2e60f6c4ca05bc55a8e577deebd61fce727c4a6e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x03ab458634910aad20ef5f1c8ee96f1d6ac54919"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x3e681f4a56c10d98757af0ead523978cbd25c841",
+  "symbol": "pfUSDC-200",
+  "decimals": 6,
+  "name": "Peapods Interest Bearing USDC - 200",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

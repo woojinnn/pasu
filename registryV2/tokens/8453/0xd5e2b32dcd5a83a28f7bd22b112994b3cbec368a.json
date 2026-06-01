@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd5e2b32dcd5a83a28f7bd22b112994b3cbec368a",
+  "symbol": "ETHPH",
+  "decimals": 18,
+  "name": "ETHPH",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

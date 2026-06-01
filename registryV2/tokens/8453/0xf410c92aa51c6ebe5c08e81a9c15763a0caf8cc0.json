@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf410c92aa51c6ebe5c08e81a9c15763a0caf8cc0",
+  "symbol": "PEACEREST-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: PEACE/REST",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x94363d52eed6f41b86fe5ac359c350800b7e0ac1"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x2b6d32d812c761126603323f4befa780a6a67e85"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x76a0eefda24a1fb7bf279719df08eb63855dc0ca"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

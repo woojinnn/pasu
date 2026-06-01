@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x20cab320a855b39f724131c69424240519573f81",
-  "symbol": "DAI",
-  "decimals": 18,
-  "name": "Dai Stablecoin"
-}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd1c10003c092f9843f9980ef3b1fd32f8018a591",
+  "symbol": "DFG",
+  "decimals": 18,
+  "name": "Defgi",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

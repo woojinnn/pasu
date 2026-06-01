@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdda1b81690b530de3c48b3593923df0a6c5fe92e",
+  "symbol": "morphoaave-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: maDAI/maUSDC/maUSDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xdda1b81690b530de3c48b3593923df0a6c5fe92e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x36f8d0d0573ae92326827c4a82fe4ce4c244cab6"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa5269a8e31b93ff27b887b56720a25f844db0529"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xafe7131a57e44f832cb2de78ade38cad644aac2f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

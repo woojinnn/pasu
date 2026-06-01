@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xea7a3cc19b96691fbf3bbf2e4458d74b20f05147",
+  "symbol": "dgnETHETH+",
+  "decimals": 18,
+  "name": "dgnETH/ETH+",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xea7a3cc19b96691fbf3bbf2e4458d74b20f05147"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe6c43823269fbce5c6911d0924a8fc6920b723ce"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe72b141df173b999ae7c1adcbf60cc9833ce56a8"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

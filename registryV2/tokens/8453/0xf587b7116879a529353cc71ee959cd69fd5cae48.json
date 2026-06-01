@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf587b7116879a529353cc71ee959cd69fd5cae48",
+  "symbol": "cgETH.hashkey",
+  "decimals": 18,
+  "name": "cgETH Hashkey Cloud",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

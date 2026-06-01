@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x2982be2d0c6ae4a7d5bc1c8fe7b630e3bdfb3ce5",
-  "symbol": "SUSHI",
-  "decimals": 18,
-  "name": "Sushi"
-}

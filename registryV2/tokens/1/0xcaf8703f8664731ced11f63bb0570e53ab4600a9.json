@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xcaf8703f8664731ced11f63bb0570e53ab4600a9",
+  "symbol": "tAPW-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tAPW/APW",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xcaf8703f8664731ced11f63bb0570e53ab4600a9"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdc0b02849bb8e0f126a216a2840275da829709b0"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4104b135dbc9609fc1a9490e61369036497660c8"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

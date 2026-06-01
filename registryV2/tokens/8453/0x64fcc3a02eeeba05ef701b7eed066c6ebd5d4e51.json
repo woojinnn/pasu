@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x64fcc3a02eeeba05ef701b7eed066c6ebd5d4e51",
+  "symbol": "SPECTRA",
+  "decimals": 18,
+  "name": "Spectra Token",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

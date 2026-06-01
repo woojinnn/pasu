@@ -1,0 +1,2746 @@
+{
+  "generatedAt": "2026-06-01T04:55:34.316Z",
+  "source": "Etherscan v2 account txlist, offset=10000, sort=desc, local Curve decision=cover chainId=1 addresses only",
+  "apiCalls": 40,
+  "coverAddressesQueried": 40,
+  "rawTxs": 125253,
+  "uniqueSelectors": 112,
+  "matchedCallkeys": 183,
+  "errors": [],
+  "topSelectors": [
+    {
+      "selector": "0x5c9c18e2",
+      "count": 29297
+    },
+    {
+      "selector": "0x1e83409a",
+      "count": 17320
+    },
+    {
+      "selector": "0xdd171e7c",
+      "count": 11489
+    },
+    {
+      "selector": "0x6a627842",
+      "count": 9979
+    },
+    {
+      "selector": "0xd7136328",
+      "count": 9974
+    },
+    {
+      "selector": "0x37671f93",
+      "count": 5739
+    },
+    {
+      "selector": "0x24049e57",
+      "count": 4997
+    },
+    {
+      "selector": "0x3ccfd60b",
+      "count": 3899
+    },
+    {
+      "selector": "0xb4440df4",
+      "count": 2529
+    },
+    {
+      "selector": "0x23cfed03",
+      "count": 2499
+    },
+    {
+      "selector": "0xeff7a612",
+      "count": 2475
+    },
+    {
+      "selector": "0x65fc3873",
+      "count": 2187
+    },
+    {
+      "selector": "0x2b6e993a",
+      "count": 2169
+    },
+    {
+      "selector": "0x2e4af52a",
+      "count": 2136
+    },
+    {
+      "selector": "0x095ea7b3",
+      "count": 2076
+    },
+    {
+      "selector": "0x4e71d92d",
+      "count": 1872
+    },
+    {
+      "selector": "0x152f65cb",
+      "count": 1545
+    },
+    {
+      "selector": "0x4957677c",
+      "count": 1378
+    },
+    {
+      "selector": "0x65b2489b",
+      "count": 1328
+    },
+    {
+      "selector": "0xd14ff5b6",
+      "count": 1308
+    },
+    {
+      "selector": "0x5794e890",
+      "count": 877
+    },
+    {
+      "selector": "0x8f15b6b5",
+      "count": 867
+    },
+    {
+      "selector": "0xbc61ea23",
+      "count": 745
+    },
+    {
+      "selector": "0xfce64736",
+      "count": 741
+    },
+    {
+      "selector": "0x4ba96d46",
+      "count": 527
+    },
+    {
+      "selector": "0x0b4c7e4d",
+      "count": 500
+    },
+    {
+      "selector": "0xc872a3c5",
+      "count": 493
+    },
+    {
+      "selector": "0x2e1a7d4d",
+      "count": 462
+    },
+    {
+      "selector": "0x3df02124",
+      "count": 428
+    },
+    {
+      "selector": "0xb6b55f25",
+      "count": 375
+    },
+    {
+      "selector": "0x24977ef3",
+      "count": 358
+    },
+    {
+      "selector": "0x3ecdb828",
+      "count": 349
+    },
+    {
+      "selector": "0x1e0cfcef",
+      "count": 334
+    },
+    {
+      "selector": "0x5b41b908",
+      "count": 332
+    },
+    {
+      "selector": "0x1a4d01d2",
+      "count": 316
+    },
+    {
+      "selector": "0x371dc447",
+      "count": 200
+    },
+    {
+      "selector": "0x6f972f12",
+      "count": 164
+    },
+    {
+      "selector": "0x68747470",
+      "count": 156
+    },
+    {
+      "selector": "0x5b36389c",
+      "count": 136
+    },
+    {
+      "selector": "0x371fd8e6",
+      "count": 127
+    },
+    {
+      "selector": "0xbcbaf487",
+      "count": 89
+    },
+    {
+      "selector": "0xa9059cbb",
+      "count": 77
+    },
+    {
+      "selector": "0x00000000",
+      "count": 53
+    },
+    {
+      "selector": "0xe6f1daf2",
+      "count": 52
+    },
+    {
+      "selector": "0x036aed88",
+      "count": 39
+    },
+    {
+      "selector": "0x7e56402f",
+      "count": 19
+    },
+    {
+      "selector": "0x615e5237",
+      "count": 15
+    },
+    {
+      "selector": "0x496d6167",
+      "count": 13
+    },
+    {
+      "selector": "0x27f18ae3",
+      "count": 11
+    },
+    {
+      "selector": "0xecb586a5",
+      "count": 10
+    }
+  ],
+  "topUnmatchedAddressSelectors": [
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x65b2489b",
+      "count": 1201
+    },
+    {
+      "address": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "selector": "0x152f65cb",
+      "count": 911
+    },
+    {
+      "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "selector": "0x152f65cb",
+      "count": 459
+    },
+    {
+      "address": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "selector": "0xbc61ea23",
+      "count": 431
+    },
+    {
+      "address": "0xb536fea3a01c95dd09932440ec802a75410139d6",
+      "selector": "0x5794e890",
+      "count": 360
+    },
+    {
+      "address": "0xb536fea3a01c95dd09932440ec802a75410139d6",
+      "selector": "0x4ba96d46",
+      "count": 274
+    },
+    {
+      "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "selector": "0xbc61ea23",
+      "count": 270
+    },
+    {
+      "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "selector": "0x3ecdb828",
+      "count": 237
+    },
+    {
+      "address": "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617",
+      "selector": "0x5794e890",
+      "count": 233
+    },
+    {
+      "address": "0xb536fea3a01c95dd09932440ec802a75410139d6",
+      "selector": "0x24977ef3",
+      "count": 187
+    },
+    {
+      "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "selector": "0x1e0cfcef",
+      "count": 180
+    },
+    {
+      "address": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "selector": "0x152f65cb",
+      "count": 175
+    },
+    {
+      "address": "0x4f79fe450a2baf833e8f50340bd230f5a3ecafe9",
+      "selector": "0x5794e890",
+      "count": 171
+    },
+    {
+      "address": "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617",
+      "selector": "0x4ba96d46",
+      "count": 142
+    },
+    {
+      "address": "0x3de37c38739dfb83b7a902842bf5393040f7bf50",
+      "selector": "0x5794e890",
+      "count": 113
+    },
+    {
+      "address": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "selector": "0x1e0cfcef",
+      "count": 108
+    },
+    {
+      "address": "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617",
+      "selector": "0x24977ef3",
+      "count": 103
+    },
+    {
+      "address": "0x3de37c38739dfb83b7a902842bf5393040f7bf50",
+      "selector": "0x4ba96d46",
+      "count": 92
+    },
+    {
+      "address": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "selector": "0x3ecdb828",
+      "count": 88
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x65b2489b",
+      "count": 69
+    },
+    {
+      "address": "0x3de37c38739dfb83b7a902842bf5393040f7bf50",
+      "selector": "0x24977ef3",
+      "count": 59
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x68747470",
+      "count": 56
+    },
+    {
+      "address": "0xeda215b7666936ded834f76f3fbc6f323295110a",
+      "selector": "0x2e4af52a",
+      "count": 50
+    },
+    {
+      "address": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "selector": "0x1e0cfcef",
+      "count": 46
+    },
+    {
+      "address": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "selector": "0xbc61ea23",
+      "count": 44
+    },
+    {
+      "address": "0x2889302a794da87fbf1d6db415c1492194663d13",
+      "selector": "0x65b2489b",
+      "count": 39
+    },
+    {
+      "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "selector": "0xbcbaf487",
+      "count": 39
+    },
+    {
+      "address": "0xeda215b7666936ded834f76f3fbc6f323295110a",
+      "selector": "0x036aed88",
+      "count": 27
+    },
+    {
+      "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+      "selector": "0x00000000",
+      "count": 25
+    },
+    {
+      "address": "0xeda215b7666936ded834f76f3fbc6f323295110a",
+      "selector": "0xbcbaf487",
+      "count": 25
+    },
+    {
+      "address": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+      "selector": "0x68747470",
+      "count": 21
+    },
+    {
+      "address": "0x2889302a794da87fbf1d6db415c1492194663d13",
+      "selector": "0x68747470",
+      "count": 21
+    },
+    {
+      "address": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+      "selector": "0x68747470",
+      "count": 20
+    },
+    {
+      "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+      "selector": "0x68747470",
+      "count": 20
+    },
+    {
+      "address": "0x4f79fe450a2baf833e8f50340bd230f5a3ecafe9",
+      "selector": "0x4ba96d46",
+      "count": 19
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x68747470",
+      "count": 18
+    },
+    {
+      "address": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "selector": "0x3ecdb828",
+      "count": 16
+    },
+    {
+      "address": "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb",
+      "selector": "0x615e5237",
+      "count": 15
+    },
+    {
+      "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+      "selector": "0xa9059cbb",
+      "count": 14
+    },
+    {
+      "address": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+      "selector": "0x496d6167",
+      "count": 13
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x00000000",
+      "count": 12
+    },
+    {
+      "address": "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193",
+      "selector": "0x65b2489b",
+      "count": 11
+    },
+    {
+      "address": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "selector": "0xbcbaf487",
+      "count": 11
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x7e56402f",
+      "count": 10
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x00000000",
+      "count": 9
+    },
+    {
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "selector": "0x7e56402f",
+      "count": 9
+    },
+    {
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "selector": "0xe3f9a52a",
+      "count": 9
+    },
+    {
+      "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "selector": "0x036aed88",
+      "count": 9
+    },
+    {
+      "address": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "selector": "0xbcbaf487",
+      "count": 9
+    },
+    {
+      "address": "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb",
+      "selector": "0x95cfcec3",
+      "count": 9
+    },
+    {
+      "address": "0x4f79fe450a2baf833e8f50340bd230f5a3ecafe9",
+      "selector": "0x24977ef3",
+      "count": 9
+    },
+    {
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "selector": "0x65b2489b",
+      "count": 8
+    },
+    {
+      "address": "0xeda215b7666936ded834f76f3fbc6f323295110a",
+      "selector": "0x3ecdb828",
+      "count": 8
+    },
+    {
+      "address": "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc",
+      "selector": "0x7b935a23",
+      "count": 7
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x0b4c7e4d",
+      "count": 6
+    },
+    {
+      "address": "0x6e5492f8ea2370844ee098a56dd88e1717e4a9c2",
+      "selector": "0x86514738",
+      "count": 6
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0xf2fde38b",
+      "count": 5
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0xc93f49e8",
+      "count": 5
+    },
+    {
+      "address": "0x2889302a794da87fbf1d6db415c1492194663d13",
+      "selector": "0x0b4c7e4d",
+      "count": 5
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x0b4c7e4d",
+      "count": 5
+    },
+    {
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "selector": "0x0b4c7e4d",
+      "count": 5
+    },
+    {
+      "address": "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193",
+      "selector": "0x0b4c7e4d",
+      "count": 4
+    },
+    {
+      "address": "0xd16d5ec345dd86fb63c6a9c43c517210f1027914",
+      "selector": "0x811a40fe",
+      "count": 4
+    },
+    {
+      "address": "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617",
+      "selector": "0xbcbaf487",
+      "count": 4
+    },
+    {
+      "address": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+      "selector": "0xd40ddb8c",
+      "count": 3
+    },
+    {
+      "address": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+      "selector": "0x30c54085",
+      "count": 3
+    },
+    {
+      "address": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+      "selector": "0x30c54085",
+      "count": 3
+    },
+    {
+      "address": "0x0cd6f267b2086bea681e922e19d40512511be538",
+      "selector": "0x30c54085",
+      "count": 3
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x2a7dd7cd",
+      "count": 3
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x3ccfd60b",
+      "count": 3
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0xc93f49e8",
+      "count": 3
+    },
+    {
+      "address": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "selector": "0x036aed88",
+      "count": 3
+    },
+    {
+      "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+      "selector": "0x6b441a40",
+      "count": 3
+    },
+    {
+      "address": "0xd16d5ec345dd86fb63c6a9c43c517210f1027914",
+      "selector": "0xb21ed502",
+      "count": 3
+    },
+    {
+      "address": "0xf0d4c12a5768d806021f80a262b4d39d26c58b8d",
+      "selector": "0x394747c5",
+      "count": 3
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x41c0e1b5",
+      "count": 2
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x83197ef0",
+      "count": 2
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x3ccfd60b",
+      "count": 2
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x2e1a7d4d",
+      "count": 2
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x87395540",
+      "count": 2
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0xa457c2d7",
+      "count": 2
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x3659cfe6",
+      "count": 2
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0xc4d66de8",
+      "count": 2
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0xe2ad025a",
+      "count": 2
+    },
+    {
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "selector": "0x081579a5",
+      "count": 2
+    },
+    {
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "selector": "0x3ccfd60b",
+      "count": 2
+    },
+    {
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "selector": "0x3659cfe6",
+      "count": 2
+    },
+    {
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "selector": "0xc4d66de8",
+      "count": 2
+    },
+    {
+      "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+      "selector": "0x3cebb823",
+      "count": 2
+    },
+    {
+      "address": "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc",
+      "selector": "0x89afcb44",
+      "count": 2
+    },
+    {
+      "address": "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc",
+      "selector": "0xb21ed502",
+      "count": 2
+    },
+    {
+      "address": "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc",
+      "selector": "0x00000000",
+      "count": 2
+    },
+    {
+      "address": "0xd16d5ec345dd86fb63c6a9c43c517210f1027914",
+      "selector": "0x7b935a23",
+      "count": 2
+    },
+    {
+      "address": "0x16c6521dff6bab339122a0fe25a9116693265353",
+      "selector": "0x00000000",
+      "count": 2
+    },
+    {
+      "address": "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617",
+      "selector": "0x69c6804e",
+      "count": 2
+    },
+    {
+      "address": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+      "selector": "0x5e0d443f",
+      "count": 1
+    },
+    {
+      "address": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+      "selector": "0xd505accf",
+      "count": 1
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x2e1a7d4d",
+      "count": 1
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x371dc447",
+      "count": 1
+    },
+    {
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "selector": "0x39509351",
+      "count": 1
+    }
+  ],
+  "byAddress": [
+    {
+      "chainId": 1,
+      "address": "0xb7ecb2aa52aa64a717180e030241bc75cd946726",
+      "label": "StableSwap-NG pool (factory) #1",
+      "txs": 553,
+      "matched_txs": 525,
+      "unmatched_txs": 28,
+      "selectors": [
+        {
+          "selector": "0x3df02124",
+          "count": 332,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 72,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 49,
+          "indexed": true
+        },
+        {
+          "selector": "0x1a4d01d2",
+          "count": 48,
+          "indexed": true
+        },
+        {
+          "selector": "0x5b36389c",
+          "count": 22,
+          "indexed": true
+        },
+        {
+          "selector": "0x68747470",
+          "count": 21,
+          "indexed": false
+        },
+        {
+          "selector": "0xd40ddb8c",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0x30c54085",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0xe3103273",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0x5e0d443f",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc",
+      "label": "StableSwap-NG pool (factory) #2",
+      "txs": 421,
+      "matched_txs": 384,
+      "unmatched_txs": 37,
+      "selectors": [
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 112,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 107,
+          "indexed": true
+        },
+        {
+          "selector": "0x3df02124",
+          "count": 67,
+          "indexed": true
+        },
+        {
+          "selector": "0x1a4d01d2",
+          "count": 64,
+          "indexed": true
+        },
+        {
+          "selector": "0x5b36389c",
+          "count": 34,
+          "indexed": true
+        },
+        {
+          "selector": "0x68747470",
+          "count": 20,
+          "indexed": false
+        },
+        {
+          "selector": "0x496d6167",
+          "count": 13,
+          "indexed": false
+        },
+        {
+          "selector": "0x30c54085",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0xd505accf",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x0cd6f267b2086bea681e922e19d40512511be538",
+      "label": "StableSwap-NG pool (factory) #3",
+      "txs": 904,
+      "matched_txs": 901,
+      "unmatched_txs": 3,
+      "selectors": [
+        {
+          "selector": "0x095ea7b3",
+          "count": 299,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 280,
+          "indexed": true
+        },
+        {
+          "selector": "0x1a4d01d2",
+          "count": 203,
+          "indexed": true
+        },
+        {
+          "selector": "0x5b36389c",
+          "count": 79,
+          "indexed": true
+        },
+        {
+          "selector": "0x3df02124",
+          "count": 29,
+          "indexed": true
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 7,
+          "indexed": true
+        },
+        {
+          "selector": "0xe3103273",
+          "count": 4,
+          "indexed": true
+        },
+        {
+          "selector": "0x30c54085",
+          "count": 3,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+      "label": "CryptoSwap-NG pool (factory) #1",
+      "txs": 1282,
+      "matched_txs": 1111,
+      "unmatched_txs": 171,
+      "selectors": [
+        {
+          "selector": "0x2b6e993a",
+          "count": 380,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 343,
+          "indexed": true
+        },
+        {
+          "selector": "0xfce64736",
+          "count": 198,
+          "indexed": true
+        },
+        {
+          "selector": "0x8f15b6b5",
+          "count": 153,
+          "indexed": true
+        },
+        {
+          "selector": "0x65b2489b",
+          "count": 69,
+          "indexed": false
+        },
+        {
+          "selector": "0x68747470",
+          "count": 56,
+          "indexed": false
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 20,
+          "indexed": true
+        },
+        {
+          "selector": "0x00000000",
+          "count": 12,
+          "indexed": false
+        },
+        {
+          "selector": "0xecb586a5",
+          "count": 8,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 6,
+          "indexed": false
+        },
+        {
+          "selector": "0xf2fde38b",
+          "count": 5,
+          "indexed": false
+        },
+        {
+          "selector": "0xc93f49e8",
+          "count": 5,
+          "indexed": false
+        },
+        {
+          "selector": "0x5b41b908",
+          "count": 4,
+          "indexed": true
+        },
+        {
+          "selector": "0x2a7dd7cd",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0x394747c5",
+          "count": 3,
+          "indexed": true
+        },
+        {
+          "selector": "0x4515cef3",
+          "count": 2,
+          "indexed": true
+        },
+        {
+          "selector": "0x41c0e1b5",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x83197ef0",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x371dc447",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x39509351",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x40c10f19",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x8129fc1c",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x13af4035",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x2889302a794da87fbf1d6db415c1492194663d13",
+      "label": "CryptoSwap-NG pool (factory) #2",
+      "txs": 1255,
+      "matched_txs": 1189,
+      "unmatched_txs": 66,
+      "selectors": [
+        {
+          "selector": "0x2b6e993a",
+          "count": 459,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 372,
+          "indexed": true
+        },
+        {
+          "selector": "0xfce64736",
+          "count": 219,
+          "indexed": true
+        },
+        {
+          "selector": "0x8f15b6b5",
+          "count": 124,
+          "indexed": true
+        },
+        {
+          "selector": "0x65b2489b",
+          "count": 39,
+          "indexed": false
+        },
+        {
+          "selector": "0x68747470",
+          "count": 21,
+          "indexed": false
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 11,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 5,
+          "indexed": false
+        },
+        {
+          "selector": "0x5b41b908",
+          "count": 3,
+          "indexed": true
+        },
+        {
+          "selector": "0xecb586a5",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0xc93f49e8",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x4ebdf703948ddcea3b11f675b4d1fba9d2414a14",
+      "label": "CryptoSwap-NG pool (factory) #3",
+      "txs": 3679,
+      "matched_txs": 2410,
+      "unmatched_txs": 1269,
+      "selectors": [
+        {
+          "selector": "0x65b2489b",
+          "count": 1201,
+          "indexed": false
+        },
+        {
+          "selector": "0x2b6e993a",
+          "count": 1008,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 599,
+          "indexed": true
+        },
+        {
+          "selector": "0x8f15b6b5",
+          "count": 431,
+          "indexed": true
+        },
+        {
+          "selector": "0xfce64736",
+          "count": 202,
+          "indexed": true
+        },
+        {
+          "selector": "0x5b41b908",
+          "count": 153,
+          "indexed": true
+        },
+        {
+          "selector": "0x68747470",
+          "count": 18,
+          "indexed": false
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 11,
+          "indexed": true
+        },
+        {
+          "selector": "0x7e56402f",
+          "count": 10,
+          "indexed": false
+        },
+        {
+          "selector": "0x00000000",
+          "count": 9,
+          "indexed": false
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 5,
+          "indexed": false
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0xc93f49e8",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x4515cef3",
+          "count": 2,
+          "indexed": true
+        },
+        {
+          "selector": "0x87395540",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0xa457c2d7",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x3659cfe6",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0xc4d66de8",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0xe2ad025a",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0xf1dc3cc9",
+          "count": 2,
+          "indexed": true
+        },
+        {
+          "selector": "0x081579a5",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0xe9fad8ee",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x57ea89b6",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x70a08231",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x8a4f252812dff2a8636e4f7eb249d8fc2e3bd77f",
+      "label": "CryptoSwap-NG pool (factory) #4",
+      "txs": 468,
+      "matched_txs": 426,
+      "unmatched_txs": 42,
+      "selectors": [
+        {
+          "selector": "0x2b6e993a",
+          "count": 159,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 152,
+          "indexed": true
+        },
+        {
+          "selector": "0xfce64736",
+          "count": 86,
+          "indexed": true
+        },
+        {
+          "selector": "0x8f15b6b5",
+          "count": 24,
+          "indexed": true
+        },
+        {
+          "selector": "0x7e56402f",
+          "count": 9,
+          "indexed": false
+        },
+        {
+          "selector": "0xe3f9a52a",
+          "count": 9,
+          "indexed": false
+        },
+        {
+          "selector": "0x65b2489b",
+          "count": 8,
+          "indexed": false
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 5,
+          "indexed": false
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 3,
+          "indexed": true
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x3659cfe6",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0xc4d66de8",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x853828b6",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x8129fc1c",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0xecb586a5",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0x5b41b908",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0xfa40dfd4",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x4bf20e20",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0xdb4404dc",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x2570f1bd5d2735314fc102eb12fc1afe9e6e7193",
+      "label": "CryptoSwap-NG pool (factory) #5",
+      "txs": 483,
+      "matched_txs": 466,
+      "unmatched_txs": 17,
+      "selectors": [
+        {
+          "selector": "0x2b6e993a",
+          "count": 163,
+          "indexed": true
+        },
+        {
+          "selector": "0x8f15b6b5",
+          "count": 135,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 125,
+          "indexed": true
+        },
+        {
+          "selector": "0xfce64736",
+          "count": 36,
+          "indexed": true
+        },
+        {
+          "selector": "0x65b2489b",
+          "count": 11,
+          "indexed": false
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 7,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 4,
+          "indexed": false
+        },
+        {
+          "selector": "0xc93f49e8",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x2a7dd7cd",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+      "label": "crvUSD Controller (wstETH market)",
+      "txs": 10000,
+      "matched_txs": 8805,
+      "unmatched_txs": 1195,
+      "selectors": [
+        {
+          "selector": "0xdd171e7c",
+          "count": 2888,
+          "indexed": true
+        },
+        {
+          "selector": "0x37671f93",
+          "count": 2777,
+          "indexed": true
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 1434,
+          "indexed": true
+        },
+        {
+          "selector": "0x2e4af52a",
+          "count": 935,
+          "indexed": true
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 706,
+          "indexed": true
+        },
+        {
+          "selector": "0x152f65cb",
+          "count": 459,
+          "indexed": false
+        },
+        {
+          "selector": "0xbc61ea23",
+          "count": 270,
+          "indexed": false
+        },
+        {
+          "selector": "0x3ecdb828",
+          "count": 237,
+          "indexed": false
+        },
+        {
+          "selector": "0x1e0cfcef",
+          "count": 180,
+          "indexed": false
+        },
+        {
+          "selector": "0x371fd8e6",
+          "count": 48,
+          "indexed": true
+        },
+        {
+          "selector": "0xbcbaf487",
+          "count": 39,
+          "indexed": false
+        },
+        {
+          "selector": "0x6f972f12",
+          "count": 17,
+          "indexed": true
+        },
+        {
+          "selector": "0x036aed88",
+          "count": 9,
+          "indexed": false
+        },
+        {
+          "selector": "0x037671f9",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+      "label": "crvUSD Controller market #2",
+      "txs": 2468,
+      "matched_txs": 2114,
+      "unmatched_txs": 354,
+      "selectors": [
+        {
+          "selector": "0xdd171e7c",
+          "count": 731,
+          "indexed": true
+        },
+        {
+          "selector": "0x37671f93",
+          "count": 567,
+          "indexed": true
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 374,
+          "indexed": true
+        },
+        {
+          "selector": "0x2e4af52a",
+          "count": 237,
+          "indexed": true
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 204,
+          "indexed": true
+        },
+        {
+          "selector": "0x152f65cb",
+          "count": 175,
+          "indexed": false
+        },
+        {
+          "selector": "0x1e0cfcef",
+          "count": 108,
+          "indexed": false
+        },
+        {
+          "selector": "0xbc61ea23",
+          "count": 44,
+          "indexed": false
+        },
+        {
+          "selector": "0x3ecdb828",
+          "count": 16,
+          "indexed": false
+        },
+        {
+          "selector": "0xbcbaf487",
+          "count": 11,
+          "indexed": false
+        },
+        {
+          "selector": "0x371fd8e6",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+      "label": "crvUSD Controller market #3",
+      "txs": 10000,
+      "matched_txs": 8511,
+      "unmatched_txs": 1489,
+      "selectors": [
+        {
+          "selector": "0xdd171e7c",
+          "count": 2952,
+          "indexed": true
+        },
+        {
+          "selector": "0x37671f93",
+          "count": 2395,
+          "indexed": true
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 1537,
+          "indexed": true
+        },
+        {
+          "selector": "0x2e4af52a",
+          "count": 914,
+          "indexed": true
+        },
+        {
+          "selector": "0x152f65cb",
+          "count": 911,
+          "indexed": false
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 586,
+          "indexed": true
+        },
+        {
+          "selector": "0xbc61ea23",
+          "count": 431,
+          "indexed": false
+        },
+        {
+          "selector": "0x3ecdb828",
+          "count": 88,
+          "indexed": false
+        },
+        {
+          "selector": "0x6f972f12",
+          "count": 77,
+          "indexed": true
+        },
+        {
+          "selector": "0x371fd8e6",
+          "count": 49,
+          "indexed": true
+        },
+        {
+          "selector": "0x1e0cfcef",
+          "count": 46,
+          "indexed": false
+        },
+        {
+          "selector": "0xbcbaf487",
+          "count": 9,
+          "indexed": false
+        },
+        {
+          "selector": "0x036aed88",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0xacb70815",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0x00000000",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x96424e6b5eaafe0c3b36ca82068d574d44be4e3c",
+      "label": "Curve LiquidityGauge #1",
+      "txs": 82,
+      "matched_txs": 82,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 50,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 29,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 3,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xea012f5b25fa0d8e46123b85f585d0a5075e96b5",
+      "label": "Curve LiquidityGauge #2",
+      "txs": 52,
+      "matched_txs": 52,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 30,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 21,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x60d3d7ebbc44dc810a743703184f062d00e6db7e",
+      "label": "Curve LiquidityGauge #3",
+      "txs": 114,
+      "matched_txs": 114,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 45,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 40,
+          "indexed": true
+        },
+        {
+          "selector": "0xe6f1daf2",
+          "count": 26,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 2,
+          "indexed": true
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x8d867bef70c6733ff25cc0d1caa8aa6c38b24817",
+      "label": "Curve LiquidityGauge #4",
+      "txs": 302,
+      "matched_txs": 302,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 154,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 144,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 3,
+          "indexed": true
+        },
+        {
+          "selector": "0x38d07436",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x1e4b83f6bfe9dbeb6d5b92a5237e5c18a44176f4",
+      "label": "Curve LiquidityGauge #5",
+      "txs": 70,
+      "matched_txs": 69,
+      "unmatched_txs": 1,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 42,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 24,
+          "indexed": true
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 2,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0xe8de0d4d",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x4e21418095d32d15c6e2b96a9910772613a50d50",
+      "label": "Curve LiquidityGauge #6",
+      "txs": 43,
+      "matched_txs": 43,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 25,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 16,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 2,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x5010263ac1978297f56048c7d2b02316a3435404",
+      "label": "Curve LiquidityGauge #7",
+      "txs": 51,
+      "matched_txs": 51,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 29,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 20,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0x38d07436",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xf29fff074f5cf755b55fbb3eb10a29203ac91ea2",
+      "label": "Curve LiquidityGauge #8",
+      "txs": 197,
+      "matched_txs": 194,
+      "unmatched_txs": 3,
+      "selectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 83,
+          "indexed": true
+        },
+        {
+          "selector": "0xb6b55f25",
+          "count": 81,
+          "indexed": true
+        },
+        {
+          "selector": "0xe6f1daf2",
+          "count": 26,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 3,
+          "indexed": true
+        },
+        {
+          "selector": "0x38d07436",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0x39509351",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x93f7aa67",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0xe8de0d4d",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+      "label": "VotingEscrow (veCRV)",
+      "txs": 10000,
+      "matched_txs": 9933,
+      "unmatched_txs": 67,
+      "selectors": [
+        {
+          "selector": "0x3ccfd60b",
+          "count": 3892,
+          "indexed": true
+        },
+        {
+          "selector": "0xeff7a612",
+          "count": 2475,
+          "indexed": true
+        },
+        {
+          "selector": "0x65fc3873",
+          "count": 2187,
+          "indexed": true
+        },
+        {
+          "selector": "0x4957677c",
+          "count": 1378,
+          "indexed": true
+        },
+        {
+          "selector": "0x00000000",
+          "count": 25,
+          "indexed": false
+        },
+        {
+          "selector": "0x68747470",
+          "count": 20,
+          "indexed": false
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 14,
+          "indexed": false
+        },
+        {
+          "selector": "0x6b441a40",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0x3cebb823",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x3a46273e",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0xf09f9ba1",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0xc2c4c5c1",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x6a1c05ae",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd061d61a4d941c39e5453435b6345dc261c2fce0",
+      "label": "Minter (CRV)",
+      "txs": 10000,
+      "matched_txs": 10000,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x6a627842",
+          "count": 9979,
+          "indexed": true
+        },
+        {
+          "selector": "0x27f18ae3",
+          "count": 11,
+          "indexed": true
+        },
+        {
+          "selector": "0xa51e1904",
+          "count": 8,
+          "indexed": true
+        },
+        {
+          "selector": "0xdd289d60",
+          "count": 2,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb",
+      "label": "GaugeController",
+      "txs": 10000,
+      "matched_txs": 9974,
+      "unmatched_txs": 26,
+      "selectors": [
+        {
+          "selector": "0xd7136328",
+          "count": 9974,
+          "indexed": true
+        },
+        {
+          "selector": "0x615e5237",
+          "count": 15,
+          "indexed": false
+        },
+        {
+          "selector": "0x95cfcec3",
+          "count": 9,
+          "indexed": false
+        },
+        {
+          "selector": "0x6c540baf",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0xd4d2646e",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc",
+      "label": "FeeDistributor (3CRV)",
+      "txs": 10000,
+      "matched_txs": 9986,
+      "unmatched_txs": 14,
+      "selectors": [
+        {
+          "selector": "0x1e83409a",
+          "count": 8459,
+          "indexed": true
+        },
+        {
+          "selector": "0x4e71d92d",
+          "count": 1527,
+          "indexed": true
+        },
+        {
+          "selector": "0x7b935a23",
+          "count": 7,
+          "indexed": false
+        },
+        {
+          "selector": "0x89afcb44",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0xb21ed502",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x00000000",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x811a40fe",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd16d5ec345dd86fb63c6a9c43c517210f1027914",
+      "label": "FeeDistributor (crvUSD)",
+      "txs": 9217,
+      "matched_txs": 9206,
+      "unmatched_txs": 11,
+      "selectors": [
+        {
+          "selector": "0x1e83409a",
+          "count": 8861,
+          "indexed": true
+        },
+        {
+          "selector": "0x4e71d92d",
+          "count": 345,
+          "indexed": true
+        },
+        {
+          "selector": "0x811a40fe",
+          "count": 4,
+          "indexed": false
+        },
+        {
+          "selector": "0xb21ed502",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0x7b935a23",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x00000000",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x6020611b",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xf0d4c12a5768d806021f80a262b4d39d26c58b8d",
+      "label": "CurveRouter v1.0 (router-ng)",
+      "txs": 10000,
+      "matched_txs": 9995,
+      "unmatched_txs": 5,
+      "selectors": [
+        {
+          "selector": "0x5c9c18e2",
+          "count": 9817,
+          "indexed": true
+        },
+        {
+          "selector": "0x371dc447",
+          "count": 172,
+          "indexed": true
+        },
+        {
+          "selector": "0xc872a3c5",
+          "count": 6,
+          "indexed": true
+        },
+        {
+          "selector": "0x394747c5",
+          "count": 3,
+          "indexed": false
+        },
+        {
+          "selector": "0x38ed1739",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x43757272",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x16c6521dff6bab339122a0fe25a9116693265353",
+      "label": "CurveRouter v1.1 (router-ng)",
+      "txs": 10000,
+      "matched_txs": 9994,
+      "unmatched_txs": 6,
+      "selectors": [
+        {
+          "selector": "0x5c9c18e2",
+          "count": 9590,
+          "indexed": true
+        },
+        {
+          "selector": "0xc872a3c5",
+          "count": 394,
+          "indexed": true
+        },
+        {
+          "selector": "0x371dc447",
+          "count": 10,
+          "indexed": true
+        },
+        {
+          "selector": "0x00000000",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x87395540",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x43757272",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0xbfaa0506",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x969e3756",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x45312ea0eff7e09c83cbe249fa1d7598c4c8cd4e",
+      "label": "CurveRouter v1.2 (router-ng)",
+      "txs": 10000,
+      "matched_txs": 10000,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x5c9c18e2",
+          "count": 9890,
+          "indexed": true
+        },
+        {
+          "selector": "0xc872a3c5",
+          "count": 93,
+          "indexed": true
+        },
+        {
+          "selector": "0x371dc447",
+          "count": 17,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x862cb4e988fb66e72f128d1183829f8c05b6c6a0",
+      "label": "Twocrypto-NG crvUSD/cbBTC #1 (gen1)",
+      "txs": 35,
+      "matched_txs": 34,
+      "unmatched_txs": 1,
+      "selectors": [
+        {
+          "selector": "0x5b41b908",
+          "count": 34,
+          "indexed": true
+        },
+        {
+          "selector": "0x71931d35",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x83f24023d15d835a213df24fd309c47dab5beb32",
+      "label": "Twocrypto-NG crvUSD/cbBTC #2 (gen2)",
+      "txs": 14,
+      "matched_txs": 14,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x5b41b908",
+          "count": 7,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 4,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 3,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x6e5492f8ea2370844ee098a56dd88e1717e4a9c2",
+      "label": "Twocrypto-NG crvUSD/WETH #1 (gen1)",
+      "txs": 27,
+      "matched_txs": 19,
+      "unmatched_txs": 8,
+      "selectors": [
+        {
+          "selector": "0x095ea7b3",
+          "count": 9,
+          "indexed": true
+        },
+        {
+          "selector": "0x86514738",
+          "count": 6,
+          "indexed": false
+        },
+        {
+          "selector": "0x5b41b908",
+          "count": 5,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 4,
+          "indexed": true
+        },
+        {
+          "selector": "0xf1dc3cc9",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0x1a4d01d2",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x656341ef90b622c6634e0573772ffb7f3669b9f3",
+      "label": "Twocrypto-NG crvUSD/WETH #2 (gen2)",
+      "txs": 35,
+      "matched_txs": 34,
+      "unmatched_txs": 1,
+      "selectors": [
+        {
+          "selector": "0x5b41b908",
+          "count": 34,
+          "indexed": true
+        },
+        {
+          "selector": "0x71931d35",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x313698667d7fdd6789a9bc70821309ff891e729a",
+      "label": "Twocrypto-NG crvUSD/WBTC #1 (gen1)",
+      "txs": 37,
+      "matched_txs": 36,
+      "unmatched_txs": 1,
+      "selectors": [
+        {
+          "selector": "0x5b41b908",
+          "count": 36,
+          "indexed": true
+        },
+        {
+          "selector": "0x71931d35",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd9ff8396554a0d18b2cfbec53e1979b7ecce8373",
+      "label": "Twocrypto-NG crvUSD/WBTC #2 (gen2)",
+      "txs": 20,
+      "matched_txs": 19,
+      "unmatched_txs": 1,
+      "selectors": [
+        {
+          "selector": "0x5b41b908",
+          "count": 15,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 2,
+          "indexed": true
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 1,
+          "indexed": true
+        },
+        {
+          "selector": "0x00000000",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0x5b36389c",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x4f52c3a81e33521e5a9a47fd9d3be475d2279c2e",
+      "label": "Twocrypto-NG crvUSD/tBTC #1 (gen1)",
+      "txs": 35,
+      "matched_txs": 34,
+      "unmatched_txs": 1,
+      "selectors": [
+        {
+          "selector": "0x5b41b908",
+          "count": 34,
+          "indexed": true
+        },
+        {
+          "selector": "0x71931d35",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xf1f435b05d255a5dbde37333c0f61da6f69c6127",
+      "label": "Twocrypto-NG crvUSD/tBTC #2 (gen2)",
+      "txs": 9,
+      "matched_txs": 9,
+      "unmatched_txs": 0,
+      "selectors": [
+        {
+          "selector": "0x5b41b908",
+          "count": 6,
+          "indexed": true
+        },
+        {
+          "selector": "0x0b4c7e4d",
+          "count": 2,
+          "indexed": true
+        },
+        {
+          "selector": "0xf1dc3cc9",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x4f79fe450a2baf833e8f50340bd230f5a3ecafe9",
+      "label": "LlamaLend Controller (sreUSD market)",
+      "txs": 3213,
+      "matched_txs": 3013,
+      "unmatched_txs": 200,
+      "selectors": [
+        {
+          "selector": "0xdd171e7c",
+          "count": 2203,
+          "indexed": true
+        },
+        {
+          "selector": "0xb4440df4",
+          "count": 300,
+          "indexed": true
+        },
+        {
+          "selector": "0xd14ff5b6",
+          "count": 242,
+          "indexed": true
+        },
+        {
+          "selector": "0x5794e890",
+          "count": 171,
+          "indexed": false
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 139,
+          "indexed": true
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 125,
+          "indexed": true
+        },
+        {
+          "selector": "0x4ba96d46",
+          "count": 19,
+          "indexed": false
+        },
+        {
+          "selector": "0x24977ef3",
+          "count": 9,
+          "indexed": false
+        },
+        {
+          "selector": "0x3d140d21",
+          "count": 3,
+          "indexed": true
+        },
+        {
+          "selector": "0x69c6804e",
+          "count": 1,
+          "indexed": false
+        },
+        {
+          "selector": "0xacb70815",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x3de37c38739dfb83b7a902842bf5393040f7bf50",
+      "label": "LlamaLend Controller (sfrxUSD market)",
+      "txs": 506,
+      "matched_txs": 241,
+      "unmatched_txs": 265,
+      "selectors": [
+        {
+          "selector": "0x5794e890",
+          "count": 113,
+          "indexed": false
+        },
+        {
+          "selector": "0x4ba96d46",
+          "count": 92,
+          "indexed": false
+        },
+        {
+          "selector": "0xdd171e7c",
+          "count": 89,
+          "indexed": true
+        },
+        {
+          "selector": "0xb4440df4",
+          "count": 66,
+          "indexed": true
+        },
+        {
+          "selector": "0x24977ef3",
+          "count": 59,
+          "indexed": false
+        },
+        {
+          "selector": "0xd14ff5b6",
+          "count": 47,
+          "indexed": true
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 30,
+          "indexed": true
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 9,
+          "indexed": true
+        },
+        {
+          "selector": "0x69c6804e",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xeda215b7666936ded834f76f3fbc6f323295110a",
+      "label": "LlamaLend Controller (CRV market)",
+      "txs": 6066,
+      "matched_txs": 5956,
+      "unmatched_txs": 110,
+      "selectors": [
+        {
+          "selector": "0xdd171e7c",
+          "count": 1891,
+          "indexed": true
+        },
+        {
+          "selector": "0xb4440df4",
+          "count": 1479,
+          "indexed": true
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 1261,
+          "indexed": true
+        },
+        {
+          "selector": "0xd14ff5b6",
+          "count": 683,
+          "indexed": true
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 556,
+          "indexed": true
+        },
+        {
+          "selector": "0x6f972f12",
+          "count": 57,
+          "indexed": true
+        },
+        {
+          "selector": "0x2e4af52a",
+          "count": 50,
+          "indexed": false
+        },
+        {
+          "selector": "0x371fd8e6",
+          "count": 28,
+          "indexed": true
+        },
+        {
+          "selector": "0x036aed88",
+          "count": 27,
+          "indexed": false
+        },
+        {
+          "selector": "0xbcbaf487",
+          "count": 25,
+          "indexed": false
+        },
+        {
+          "selector": "0x3ecdb828",
+          "count": 8,
+          "indexed": false
+        },
+        {
+          "selector": "0xacb70815",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xcad85b7fe52b1939dceebee9bcf0b2a5aa0ce617",
+      "label": "LlamaLend Controller (WBTC market)",
+      "txs": 2169,
+      "matched_txs": 1685,
+      "unmatched_txs": 484,
+      "selectors": [
+        {
+          "selector": "0xdd171e7c",
+          "count": 590,
+          "indexed": true
+        },
+        {
+          "selector": "0xb4440df4",
+          "count": 471,
+          "indexed": true
+        },
+        {
+          "selector": "0x5794e890",
+          "count": 233,
+          "indexed": false
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 216,
+          "indexed": true
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 206,
+          "indexed": true
+        },
+        {
+          "selector": "0xd14ff5b6",
+          "count": 183,
+          "indexed": true
+        },
+        {
+          "selector": "0x4ba96d46",
+          "count": 142,
+          "indexed": false
+        },
+        {
+          "selector": "0x24977ef3",
+          "count": 103,
+          "indexed": false
+        },
+        {
+          "selector": "0x6f972f12",
+          "count": 13,
+          "indexed": true
+        },
+        {
+          "selector": "0xacb70815",
+          "count": 5,
+          "indexed": true
+        },
+        {
+          "selector": "0xbcbaf487",
+          "count": 4,
+          "indexed": false
+        },
+        {
+          "selector": "0x69c6804e",
+          "count": 2,
+          "indexed": false
+        },
+        {
+          "selector": "0x371fd8e6",
+          "count": 1,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xb536fea3a01c95dd09932440ec802a75410139d6",
+      "label": "LlamaLend Controller (sUSDe market)",
+      "txs": 1446,
+      "matched_txs": 624,
+      "unmatched_txs": 822,
+      "selectors": [
+        {
+          "selector": "0x5794e890",
+          "count": 360,
+          "indexed": false
+        },
+        {
+          "selector": "0x4ba96d46",
+          "count": 274,
+          "indexed": false
+        },
+        {
+          "selector": "0xb4440df4",
+          "count": 213,
+          "indexed": true
+        },
+        {
+          "selector": "0x24977ef3",
+          "count": 187,
+          "indexed": false
+        },
+        {
+          "selector": "0xd14ff5b6",
+          "count": 153,
+          "indexed": true
+        },
+        {
+          "selector": "0xdd171e7c",
+          "count": 145,
+          "indexed": true
+        },
+        {
+          "selector": "0x23cfed03",
+          "count": 76,
+          "indexed": true
+        },
+        {
+          "selector": "0x24049e57",
+          "count": 37,
+          "indexed": true
+        },
+        {
+          "selector": "0xbcbaf487",
+          "count": 1,
+          "indexed": false
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Queries only current local cover addresses from registryV2/surface/curve/_deployments.json.",
+    "Does not close full Curve pool universe; P0 pool universe inventory remains required before full P2 real-tx sweep.",
+    "Etherscan account txlist returns normal transactions only, not internal calls/logs/events."
+  ]
+}

@@ -148,13 +148,14 @@ pub struct PreviewSchemaInputDto {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Declarative mapper boundary (Phase 1A)
+// Declarative mapper boundary — install result (shared v3 / v1)
 // ───────────────────────────────────────────────────────────────────────────
 
 /// Result returned by `declarative_install_v3_json` on success.
 #[derive(Debug, Clone, Serialize)]
 pub struct DeclarativeInstallResultDto {
-    /// Decoder id derived from the bundle (`declarative.<bundle.id-without-version>`).
+    /// Decoder id derived from the bundle. For v3 this equals `bundle_id`
+    /// (the canonical registry path).
     pub decoder_id: String,
     /// Echoes back the bundle's full id (including `@version`) for client
     /// indexing.
@@ -168,8 +169,8 @@ pub struct DeclarativeInstallResultDto {
 /// Input for `declarative_route_request_v3_json`.
 ///
 /// This is the v3 (PDF FSM spec) route entry that emits the new hierarchical
-/// `simulation_reducer::action::Action` tree (the legacy flat
-/// `ActionEnvelope` route was removed in the Phase 1 action restructure).
+/// `simulation_reducer::action::Action` tree (the legacy flat action route was
+/// removed in the Phase 1 action restructure).
 ///
 /// The wire shape mirrors the SW orchestrator's [`decideMessage`] output:
 ///   * `chain_id`/`to`/`selector`/`calldata` — registry-v2 callkey + raw
@@ -227,6 +228,49 @@ pub struct DeclarativeRouteRequestV3InputDto {
 
 fn default_zero_decimal() -> String {
     "0".to_string()
+}
+
+/// Input for `declarative_route_typed_data_v3_json` (Phase A.1).
+///
+/// The off-chain EIP-712 parallel to [`DeclarativeRouteRequestV3InputDto`].
+/// Instead of raw calldata + selector, the wallet's `eth_signTypedData`
+/// payload surfaces:
+///   * `chain_id` / `verifying_contract` / `primary_type` — the typed-data
+///     bridge key populated at install time from the manifest's
+///     `match.typed_data` block. `verifying_contract` is case-insensitive.
+///   * `domain_name` (optional) — the EIP-712 `domain.name`. Echoed verbatim
+///     into the resulting [`Eip712Domain`](simulation_reducer::action::Eip712Domain).
+///     Defaults to an empty string when the wallet payload omits it.
+///   * `message` — the EIP-712 `message` object. The route handler reshapes
+///     this into `args_json` via the ABI-derived wrap rule (single-tuple wrap
+///     vs flat) so the manifest's `$args.<path>` placeholders resolve.
+///   * `submitter` — the signer address. Echoed into `ActionMeta.submitter`.
+///   * `submitted_at` — Unix epoch seconds. Echoed into `ActionMeta.submitted_at`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeclarativeRouteTypedDataV3InputDto {
+    pub chain_id: u64,
+    /// EIP-712 `domain.verifyingContract` — "0x" + 40 hex. Case-insensitive.
+    pub verifying_contract: String,
+    /// EIP-712 `primaryType` (e.g. `"PermitSingle"`).
+    pub primary_type: String,
+    /// Optional 4th routing-key component (T1). For Permit2
+    /// `permitWitnessTransferFrom` witnesses (UniswapX intent orders etc.) the
+    /// real order type is the EIP-712 `witness` field's type — every such order
+    /// collides on `(chain_id, Permit2, "PermitWitnessTransferFrom")`, so
+    /// `witness_type` (the witness struct's EIP-712 type name, kept VERBATIM
+    /// like `primary_type`) disambiguates. Absent for non-witness payloads →
+    /// the bridge key keeps its 3-tuple shape (backward compatible).
+    #[serde(default)]
+    pub witness_type: Option<String>,
+    /// EIP-712 `domain.name`. Optional — defaults to empty.
+    #[serde(default)]
+    pub domain_name: Option<String>,
+    /// The EIP-712 `message` object (decoded typed-data payload).
+    pub message: serde_json::Value,
+    /// Signer address — "0x" + 40 hex.
+    pub submitter: String,
+    /// Unix epoch seconds at which the signature was requested.
+    pub submitted_at: u64,
 }
 
 /// Result returned by `declarative_route_request_v3_json` on success.

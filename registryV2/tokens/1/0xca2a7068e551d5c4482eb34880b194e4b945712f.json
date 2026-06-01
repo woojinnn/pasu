@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xca2a7068e551d5c4482eb34880b194e4b945712f",
+  "symbol": "wbIB01",
+  "decimals": 18,
+  "name": "Wrapped Backed IB01 $ Treasury Bond 0-1yr",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

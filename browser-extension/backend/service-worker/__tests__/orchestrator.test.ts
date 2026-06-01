@@ -75,6 +75,11 @@ const mocks = vi.hoisted(() => {
       kind: "miss",
       reason: "bundle_not_installed",
     })),
+    // Typed-data signature router. Default `null` (no published manifest) so
+    // existing typed-sig cases fail closed; the routed-hit case overrides it.
+    routeTypedSignaturePayload: vi.fn<
+      (...args: unknown[]) => Promise<unknown>
+    >(async () => null),
     browser: {
       storage: {
         session: {
@@ -166,6 +171,12 @@ vi.mock("../policy-rpc", () => ({
 // `tryDeclarativeRoute` export was removed in the Phase 1/P3 v1 cutover.
 vi.mock("../adapter-loader/declarative-route", () => ({
   tryDeclarativeRouteV3: mocks.tryDeclarativeRouteV3,
+}));
+// Typed-data signature router (`typedSignatureLifecycle` calls this). Mocked so
+// tests don't pull in the real WASM `declarative_route_typed_data_v3_json` +
+// registry `by-typed-data/` fetch.
+vi.mock("../sig-routing", () => ({
+  routeTypedSignaturePayload: mocks.routeTypedSignaturePayload,
 }));
 
 import { decideMessage } from "../orchestrator";
@@ -265,6 +276,9 @@ describe("orchestrator", () => {
         manifest: { id: "high-slippage-warning", schema_version: 2 },
       },
     ]);
+    // Typed-sig router default: miss → fail-closed warn. The typed-sig hit
+    // case overrides it.
+    mocks.routeTypedSignaturePayload.mockResolvedValue(null);
   });
 
   // ── Phase 1 / P2 — v2 ActionBody verdict path ───────────────────────
@@ -379,7 +393,7 @@ describe("orchestrator", () => {
   });
 
   // ── Phase 1 / P3 — FAIL-CLOSED tail ──────────────────────────────────
-  // Every case the deleted v1 declarative-envelope + static path used to
+  // Every case the deleted legacy declarative/static path used to
   // catch now emits the `__engine::no_decoder` warn verdict, which requires
   // the user to explicitly proceed. The v2 plan/evaluate path never runs.
 
@@ -480,14 +494,15 @@ describe("orchestrator", () => {
     );
   });
 
-  it("p3: a typed signature fails closed (no v3 route exists for it yet)", async () => {
-    // Typed sigs were the sole consumer of the deleted v1 static path; they
-    // must now fail closed (warn + user-proceed) until the SignAdapter lands.
+  it("p3: a typed signature with no published manifest fails closed (route miss)", async () => {
+    // `typedSignatureLifecycle` routes through the by-typed-data index; a miss
+    // (router → null, the default) warn-closes (no decoder, user-proceed).
     const result = await decideAndApprove(typedSigMessage("p3-typed-1"), true);
 
     expect(result.ok).toBe(true);
     expect(result.verdict.kind).toBe("warn");
-    // The v3 route is only invoked for transactions; typed sigs skip it.
+    // The typed-sig path uses `routeTypedSignaturePayload`, NOT the tx v3 route;
+    // a miss never reaches the v2 plan/dispatch/evaluate loop.
     expect(mocks.tryDeclarativeRouteV3).not.toHaveBeenCalled();
     expect(mocks.planActionRpcV2).not.toHaveBeenCalled();
     expect(mocks.auditAppend).toHaveBeenCalledWith(
@@ -497,6 +512,112 @@ describe("orchestrator", () => {
           expect.objectContaining({ id: "__engine::no_decoder" }),
         ],
       }),
+    );
+  });
+
+  // ── Typed-data signature verdict path (typedSignatureLifecycle) ──────────
+  // A routed hit decodes the EIP-712 message into an Action[] and drives the
+  // SAME v2 pipeline the tx path uses; the only difference is the `tx` context
+  // (`from`=signer, `to`=verifyingContract). warn-closed on miss/fault.
+
+  const sigPermitAction = {
+    meta: {
+      submitted_at: { unix: 1_700_000_000 },
+      submitter: OWNER,
+      nature: { kind: "offchain_sig" },
+    },
+    body: {
+      domain: "token",
+      token: {
+        action: "permit2_sign_allowance",
+        permit2_sign_allowance: { spender: ROUTER, amount: "1000" },
+      },
+    },
+  };
+
+  it("typed sig: a routed hit drives the v2 verdict (verdictSource=declarative-v2, tx.to=verifyingContract)", async () => {
+    mocks.routeTypedSignaturePayload.mockResolvedValueOnce({
+      actions: [sigPermitAction],
+      decoderId: "uniswap/permit2/permitSingle@1.0.0",
+    });
+    // evaluate → pass (beforeEach default) → decideMessage resolves w/o a window.
+
+    const { ok, verdict } = await decideMessage(typedSigMessage("typed-hit-1"), {
+      onAwaitingUser: vi.fn(),
+    });
+
+    expect(ok).toBe(true);
+    expect(verdict.kind).toBe("pass");
+    // v2 pipeline drove the verdict from the SIG decode (not the tx v3 route).
+    expect(mocks.tryDeclarativeRouteV3).not.toHaveBeenCalled();
+    expect(mocks.planActionRpcV2).toHaveBeenCalledOnce();
+    expect(mocks.evaluateActionV2).toHaveBeenCalledOnce();
+    // typed-sig `tx` context: from=signer, to=verifyingContract (lowercased),
+    // CAIP-2 chain id. `action`/`meta` split from the routed Action.
+    const planArgs = mocks.planActionRpcV2.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    expect(planArgs.action).toEqual(sigPermitAction.body);
+    expect(planArgs.meta).toEqual(sigPermitAction.meta);
+    const tx = planArgs.tx as { chain_id: string; from: string; to: string };
+    expect(tx.chain_id).toBe("eip155:1");
+    expect(tx.from).toBe(OWNER);
+    expect(tx.to).toBe(ROUTER.toLowerCase());
+    expect(mocks.auditAppend).toHaveBeenCalledWith(
+      expect.objectContaining({ verdictSource: "declarative-v2" }),
+    );
+  });
+
+  it("typed sig: a routed hit logs a readable off-chain signature summary to DevTools", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    mocks.routeTypedSignaturePayload.mockResolvedValueOnce({
+      actions: [sigPermitAction],
+      decoderId: "uniswap/permit2/permitSingle@1.0.0",
+    });
+
+    await decideMessage(typedSigMessage("typed-log-1"), {
+      onAwaitingUser: vi.fn(),
+    });
+
+    const summary = infoSpy.mock.calls
+      .map((call) => String(call[0]))
+      .find((line) => line.startsWith("[Scopeball] off-chain signature parsed"));
+    expect(summary).toBeDefined();
+    // EIP-712 primaryType + routing decoder + the decoded action tag/fields are
+    // all surfaced in one readable line.
+    expect(summary).toContain("Permit");
+    expect(summary).toContain("uniswap/permit2/permitSingle@1.0.0");
+    expect(summary).toContain("permit2_sign_allowance");
+    expect(summary).toContain("spender=");
+    expect(summary).toContain("amount=1000");
+    infoSpy.mockRestore();
+  });
+
+  it("typed sig: a routed hit with a warn verdict opens the verdict window", async () => {
+    mocks.routeTypedSignaturePayload.mockResolvedValueOnce({
+      actions: [sigPermitAction],
+      decoderId: "uniswap/permit2/permitSingle@1.0.0",
+    });
+    mocks.evaluateActionV2.mockResolvedValueOnce({
+      kind: "warn",
+      matched: [
+        {
+          policy_id: "permit2-unlimited-approve-warning",
+          reason: "unlimited Permit2 approval",
+          severity: "warn",
+          origin: "action",
+        },
+      ],
+    });
+
+    const decided = await decideAndApprove(typedSigMessage("typed-warn-1"), true);
+
+    expect(decided.ok).toBe(true);
+    expect(decided.verdict.kind).toBe("warn");
+    expect(mocks.evaluateActionV2).toHaveBeenCalledOnce();
+    expect(mocks.auditAppend).toHaveBeenCalledWith(
+      expect.objectContaining({ verdictSource: "declarative-v2" }),
     );
   });
 

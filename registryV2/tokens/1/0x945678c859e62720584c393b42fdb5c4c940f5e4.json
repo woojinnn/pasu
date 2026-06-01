@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x945678c859e62720584c393b42fdb5c4c940f5e4",
+  "symbol": "NPR-PT/stataEthUSDT@15/3/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/Static Aave Ethereum USDT@15/3/2025",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x945678c859e62720584c393b42fdb5c4c940f5e4"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x862c57d48becb45583aeba3f489696d22466ca1b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x543d18d945966c5572089a2b6a59e4a81c587987"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x4e44fb5c61a89cf44a9080ab987335889fcaa6bd",
+  "symbol": "USDA+",
+  "decimals": 6,
+  "name": "Autonomint USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}
