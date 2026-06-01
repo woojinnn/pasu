@@ -4,7 +4,7 @@
 //! - total portfolio USD (sum of every holding's `value_usd`)
 //! - per-chain USD breakdown (`{chain, usd, pct}`)
 //! - per-wallet summary (`{address, label, total_usd, unlimited_count, pending_count}`)
-//! - workspace-level counters (wallet_count, policy_count, unresolved_findings)
+//! - workspace-level counters (`wallet_count`)
 //!
 //! Implementation deliberately walks the user's wallets one-by-one and
 //! reuses `WalletState::populate_computed_values()`. Typical users have
@@ -17,9 +17,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use serde::Serialize;
 
-use simulation_db::repositories::{
-    approvals, pending_txs, user_policies, verdicts as verdicts_repo, wallets as wallets_repo,
-};
+use simulation_db::repositories::{approvals, pending_txs, wallets as wallets_repo};
 use simulation_state::primitives::ChainId;
 use simulation_state::{WalletId, WalletStore};
 
@@ -29,11 +27,9 @@ use crate::auth::AuthUser;
 #[derive(Debug, Serialize)]
 pub struct DashboardSummary {
     pub wallet_count: usize,
-    pub policy_count: usize,
     pub total_portfolio_usd: String,
     pub chain_breakdown: Vec<ChainShare>,
     pub wallets: Vec<WalletSummary>,
-    pub unresolved_findings: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -63,14 +59,13 @@ pub async fn get_summary(
     };
 
     // Pull the wallet list + per-wallet aggregate counts (unlimited
-    // approvals, pending txs, policy count, unresolved findings) in one
-    // spawn_blocking. Holdings/prices come from the async `WalletStore`
-    // path below.
+    // approvals, pending txs) in one spawn_blocking. Policies, verdicts,
+    // audit history, and findings are extension-local, so the server must
+    // not derive dashboard counters from those tables.
     let pool = store.pool().clone();
     let counts_result = tokio::task::spawn_blocking(move || {
         pool.with_tx(|tx| {
             let wallets = wallets_repo::list_active(tx)?;
-            let policy_count = user_policies::list_all(tx)?.len();
             let mut per_wallet: Vec<(wallets_repo::Wallet, i64, i64)> =
                 Vec::with_capacity(wallets.len());
             for w in &wallets {
@@ -78,27 +73,11 @@ pub async fn get_summary(
                 let pending = pending_txs::count_for_wallet(tx, w.id)?;
                 per_wallet.push((w.clone(), unlimited, pending));
             }
-            let unresolved = verdicts_repo::count_by_verdict(
-                tx,
-                &verdicts_repo::VerdictFilter {
-                    verdict: Some("warn".into()),
-                    limit: 1,
-                    ..Default::default()
-                },
-            )?;
-            // count_by_verdict aggregates pass/warn/fail; we only want
-            // warns without a user decision. Run a tight follow-up query.
-            let undecided_warns: i64 = tx.query_row(
-                "SELECT COUNT(*) FROM verdicts WHERE verdict = 'warn' AND user_decision IS NULL",
-                [],
-                |r| r.get(0),
-            )?;
-            let _ = unresolved; // keep the binding for clarity above
-            Ok((per_wallet, policy_count, undecided_warns))
+            Ok(per_wallet)
         })
     })
     .await;
-    let (per_wallet, policy_count, unresolved_findings) = match counts_result {
+    let per_wallet = match counts_result {
         Ok(Ok(t)) => t,
         Ok(Err(e)) => return internal(&format!("dashboard counts: {e}")),
         Err(e) => return internal(&format!("join: {e}")),
@@ -165,11 +144,9 @@ pub async fn get_summary(
 
     Json(DashboardSummary {
         wallet_count: wallet_summaries.len(),
-        policy_count,
         total_portfolio_usd: fmt6(total),
         chain_breakdown,
         wallets: wallet_summaries,
-        unresolved_findings,
     })
     .into_response()
 }

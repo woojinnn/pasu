@@ -21,8 +21,6 @@ pub mod pending_txs;
 pub mod positions;
 pub mod profile;
 pub mod tokens;
-pub mod user_policies;
-pub mod verdicts;
 pub mod wallets;
 
 pub use deltas::{DeltaInsert, DeltaRow, DeltaSource, DeltaStatus};

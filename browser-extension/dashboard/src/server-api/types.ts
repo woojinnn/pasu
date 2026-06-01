@@ -175,7 +175,6 @@ export interface VerdictRow {
 
 export interface DashboardSummary {
   wallet_count: number;
-  policy_count: number;
   total_portfolio_usd: Decimal;
   chain_breakdown: Array<{ chain: ChainId; usd: Decimal; pct: number }>;
   wallets: Array<{
@@ -186,5 +185,4 @@ export interface DashboardSummary {
     unlimited_count: number;
     pending_count: number;
   }>;
-  unresolved_findings: number;
 }

@@ -19,9 +19,7 @@ use simulation_state::primitives::{Address, BlockHeight, ChainId};
 use simulation_state::token::{TokenHolding, TokenKey};
 use simulation_state::{WalletId, WalletState, WalletStore};
 
-use simulation_db::repositories::{
-    deltas, tokens as tokens_repo, user_policies, wallets as wallets_repo,
-};
+use simulation_db::repositories::{deltas, tokens as tokens_repo, wallets as wallets_repo};
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
@@ -427,20 +425,6 @@ fn internal_str(reason: &str) -> Response {
     (StatusCode::INTERNAL_SERVER_ERROR, reason.to_owned()).into_response()
 }
 
-// ---------- /policies ----------
-
-#[derive(Serialize)]
-struct PolicyRow {
-    id: i64,
-    name: String,
-    description: Option<String>,
-    cedar_text: String,
-    severity: String,
-    enabled: bool,
-    created_at: i64,
-    updated_at: i64,
-}
-
 // ---------- /tokens (catalog) ----------
 
 #[derive(Serialize)]
@@ -510,112 +494,4 @@ fn hex_token_hash(h: &[u8; 16]) -> String {
         let _ = write!(out, "{b:02x}");
     }
     out
-}
-
-/// `GET /policies` — every Cedar policy installed in the user's
-/// `user_policies` table. Empty list for a fresh user.
-pub async fn list_policies(
-    State(state): State<AppState>,
-    Extension(user): Extension<AuthUser>,
-) -> Response {
-    let store = match state.multi_user.for_user(&user.user_id) {
-        Ok(s) => s,
-        Err(e) => return open_store_error(&e.to_string()),
-    };
-    let pool = store.pool().clone();
-    let result = tokio::task::spawn_blocking(move || {
-        pool.with_tx(|tx| {
-            user_policies::list_all(tx).map(|rows| {
-                rows.into_iter()
-                    .map(|r| PolicyRow {
-                        id: r.id,
-                        name: r.name,
-                        description: r.description,
-                        cedar_text: r.cedar_text,
-                        severity: r.severity,
-                        enabled: r.enabled,
-                        created_at: r.created_at,
-                        updated_at: r.updated_at,
-                    })
-                    .collect::<Vec<_>>()
-            })
-        })
-    })
-    .await;
-    match result {
-        Ok(Ok(rows)) => Json(rows).into_response(),
-        Ok(Err(e)) => internal_str(&format!("list_policies: {e}")),
-        Err(e) => internal_str(&format!("join: {e}")),
-    }
-}
-
-/// `GET /policies/:id` — a single Cedar policy row. 404 when the id
-/// doesn't belong to the authenticated user's DB.
-pub async fn get_policy(
-    State(state): State<AppState>,
-    Extension(user): Extension<AuthUser>,
-    Path(id): Path<i64>,
-) -> Response {
-    let store = match state.multi_user.for_user(&user.user_id) {
-        Ok(s) => s,
-        Err(e) => return open_store_error(&e.to_string()),
-    };
-    let pool = store.pool().clone();
-    let result =
-        tokio::task::spawn_blocking(move || pool.with_tx(|tx| user_policies::get(tx, id))).await;
-    match result {
-        Ok(Ok(Some(r))) => Json(PolicyRow {
-            id: r.id,
-            name: r.name,
-            description: r.description,
-            cedar_text: r.cedar_text,
-            severity: r.severity,
-            enabled: r.enabled,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-        })
-        .into_response(),
-        Ok(Ok(None)) => (StatusCode::NOT_FOUND, "policy not found").into_response(),
-        Ok(Err(e)) => internal_str(&format!("get_policy: {e}")),
-        Err(e) => internal_str(&format!("join: {e}")),
-    }
-}
-
-// ---------- /policy-schema  /policy-templates  /examples/transactions ----------
-
-/// `GET /policy-schema` — block-coding catalog (predicate fields,
-/// operators per field kind, action enum). Static JSON embedded at
-/// build time; v1 ships an empty-ish stub so the UI can wire its
-/// fetch without waiting for the full glossary import.
-pub async fn get_policy_schema() -> Response {
-    static SCHEMA: &str = include_str!("../static/policy-schema.json");
-    static_json(SCHEMA)
-}
-
-/// `GET /policy-templates` — starter Cedar policies (HF guard, slippage
-/// cap, etc.). Static JSON; users fork these into their own catalog.
-pub async fn get_policy_templates() -> Response {
-    static TEMPLATES: &str = include_str!("../static/policy-templates.json");
-    static_json(TEMPLATES)
-}
-
-/// `GET /examples/transactions` — fixture action envelopes used by the
-/// editor's "test against TX" panel and the simulation page's example
-/// cards. Static JSON.
-pub async fn get_example_transactions() -> Response {
-    static EXAMPLES: &str = include_str!("../static/example-transactions.json");
-    static_json(EXAMPLES)
-}
-
-fn static_json(body: &'static str) -> Response {
-    use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
-    (
-        StatusCode::OK,
-        [
-            (CONTENT_TYPE, "application/json; charset=utf-8"),
-            (CACHE_CONTROL, "public, max-age=300"),
-        ],
-        body,
-    )
-        .into_response()
 }

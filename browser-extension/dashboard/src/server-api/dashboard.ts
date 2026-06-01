@@ -2,8 +2,9 @@
  * `/dashboard/summary` — workspace aggregate (Home + Monitoring L1).
  *
  * Single round-trip: total USD across every tracked wallet, per-chain
- * breakdown, per-wallet badges (unlimited approvals + pending tx
- * counts), policy + unresolved-finding counters.
+ * breakdown, per-wallet badges (unlimited approvals + pending tx counts).
+ * Policy/verdict counters are extension-local and are not returned by the
+ * simulation server.
  */
 
 import type { Address, ChainId, Decimal } from "./types";
@@ -28,12 +29,9 @@ export interface DashboardWalletSummary {
 
 export interface DashboardSummary {
   wallet_count: number;
-  policy_count: number;
   total_portfolio_usd: Decimal;
   chain_breakdown: ChainShare[];
   wallets: DashboardWalletSummary[];
-  /** warn-level verdicts the user hasn't yet trusted/cancelled. */
-  unresolved_findings: number;
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
