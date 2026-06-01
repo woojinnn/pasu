@@ -39,7 +39,6 @@ async fn spawn_server() -> (std::net::SocketAddr, EventBus) {
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),
-        spenders: simulation_server::spenders::SpenderCatalog::empty(),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

@@ -56,10 +56,6 @@ pub struct AppState {
     /// logo / website / description on newly-seen tokens. Lookups are
     /// best-effort; CoinGecko outages don't block wallet adds.
     pub coingecko: CoinGeckoClient,
-    /// Spender reputation catalog — loaded once at startup from
-    /// `scopeball-spenders.toml`. Drives `GET /spenders/:addr` and the
-    /// approval risk classifier.
-    pub spenders: crate::spenders::SpenderCatalog,
 }
 
 impl std::fmt::Debug for AppState {
@@ -75,10 +71,6 @@ impl std::fmt::Debug for AppState {
                 &self.etherscan.as_ref().map(|_| "<EtherscanClient>"),
             )
             .field("coingecko", &"<CoinGeckoClient>")
-            .field(
-                "spenders",
-                &format_args!("<{} entries>", self.spenders.len()),
-            )
             .finish()
     }
 }
@@ -191,7 +183,6 @@ pub fn build_router(state: AppState) -> Router {
             "/examples/transactions",
             get(read_handlers::get_example_transactions),
         )
-        .route("/spenders/:addr", get(read_handlers::get_spender))
         // ---- Phase 3: dashboard summary ----
         .route("/dashboard/summary", get(dashboard_handlers::get_summary))
         // ---- Phase 2: verdict / audit / history / findings ----

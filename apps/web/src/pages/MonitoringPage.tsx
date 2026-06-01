@@ -648,7 +648,7 @@ function buildApprovalIndexes(
         chain: a.chain,
         tokenAddr: a.token.toLowerCase(),
         spender: a.spender.toLowerCase(),
-        spenderLabel: a.spender_meta?.label,
+        spenderLabel: undefined,
         allowance: a.is_unlimited ? Infinity : Number(a.amount) || 0,
         risk: new Set(a.risk as RiskTag[]),
       });
@@ -658,7 +658,7 @@ function buildApprovalIndexes(
         chain: a.chain,
         tokenAddr: a.token.toLowerCase(),
         spender: a.spender.toLowerCase(),
-        spenderLabel: a.spender_meta?.label,
+        spenderLabel: undefined,
         allowance: Number(a.amount) || 0,
         risk: new Set(a.risk as RiskTag[]),
       });
@@ -668,7 +668,7 @@ function buildApprovalIndexes(
         chain: a.chain,
         tokenAddr: a.collection.toLowerCase(),
         spender: a.operator.toLowerCase(),
-        spenderLabel: a.spender_meta?.label,
+        spenderLabel: undefined,
         allowance: Infinity,
         risk: new Set(a.risk as RiskTag[]),
       });
@@ -1111,15 +1111,7 @@ function ApprovalsTable({
                   <td className="mono">{shortAddr(tokenOrColl)}</td>
                   <td className="mono">{r.walletLabel ?? shortAddr(r.walletAddr)}</td>
                   <td>
-                    {r.data.spender_meta ? (
-                      <span>
-                        <span className="strong">{r.data.spender_meta.label}</span>
-                        <br />
-                        <span className="mono">{shortAddr(spenderOrOp)}</span>
-                      </span>
-                    ) : (
-                      <span className="mono">{shortAddr(spenderOrOp)}</span>
-                    )}
+                    <span className="mono">{shortAddr(spenderOrOp)}</span>
                   </td>
                   <td className="mono num">
                     {"amount" in r.data
@@ -1144,7 +1136,7 @@ function ApprovalsTable({
                             chain: r.data.chain,
                             token: tokenOrColl,
                             spender: spenderOrOp,
-                            label: r.data.spender_meta?.label ?? shortAddr(spenderOrOp),
+                            label: shortAddr(spenderOrOp),
                           })
                         }
                       >

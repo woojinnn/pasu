@@ -3246,7 +3246,6 @@ dependencies = [
  "time",
  "tokio",
  "tokio-stream",
- "toml",
  "tower-http 0.5.2",
  "tracing",
  "tracing-subscriber",
