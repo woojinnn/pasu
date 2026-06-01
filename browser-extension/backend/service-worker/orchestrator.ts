@@ -635,6 +635,17 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   let meta: Record<string, unknown>;
   try {
     ({ action, meta } = hlOrderToAction(message.data));
+    // Devtools: the canonical parsed representation (the `ActionBody` the policy
+    // engine evaluates). Visible in the service-worker console
+    // (chrome://extensions → ScopeBall → "Inspect views: service worker").
+    console.info("[Scopeball] HL /exchange parsed →", {
+      requestId: message.requestId,
+      venue: message.data.venue,
+      wireKind: message.data.hlAction?.kind,
+      action,
+      submitter: meta.submitter,
+      submitted_at: meta.submitted_at,
+    });
   } catch (err) {
     // Malformed order wire → deny-closed (do NOT let an unparseable order pass).
     console.warn("[Scopeball] venue-order convert threw", {
