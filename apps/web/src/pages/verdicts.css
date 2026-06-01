@@ -1,0 +1,74 @@
+/* Shared verdict table style — used by Audit + History. */
+
+.v-toolbar {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 14px; background: var(--surface);
+  border: 1px solid var(--hairline); border-radius: var(--r-md);
+  margin-bottom: 14px;
+}
+.v-toolbar label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--slate-500); font-weight: 500;
+}
+.v-toolbar select, .v-toolbar input[type="text"] {
+  font: inherit; font-size: 13px; padding: 6px 10px;
+  border: 1px solid var(--hairline); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--slate-900);
+}
+.v-toolbar input[type="text"] { min-width: 200px; }
+.v-toolbar .spacer { flex: 1; }
+
+.v-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.v-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.v-table thead th {
+  text-align: left; font-weight: 600; color: var(--slate-500);
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 10px 14px; border-bottom: 1px solid var(--hairline-soft);
+  background: var(--fog-200);
+}
+.v-table tbody td {
+  padding: 12px 14px; border-bottom: 1px solid var(--hairline-soft);
+  color: var(--slate-700);
+  vertical-align: top;
+}
+.v-table tbody tr:hover td { background: var(--fog-200); }
+.v-table tbody tr:last-child td { border-bottom: none; }
+.v-table .mono { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-500); }
+.v-table .strong { color: var(--slate-900); font-weight: 600; }
+.v-table .seq { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-400); }
+.v-table .reason { color: var(--slate-600); max-width: 380px; }
+.v-table .actions-cell { white-space: nowrap; }
+.v-table .pill-row { display: flex; gap: 4px; align-items: center; }
+.v-table .deco-trusted {
+  display: inline-block; padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--pass-100); color: var(--pass-800);
+  font-size: 11px; font-weight: 600;
+}
+.v-table .deco-cancelled {
+  display: inline-block; padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--slate-100); color: var(--slate-700);
+  font-size: 11px; font-weight: 600;
+}
+
+.v-empty {
+  text-align: center; padding: 40px 20px;
+  color: var(--slate-400); font-size: 13px;
+}
+
+.v-loadmore {
+  display: block; margin: 16px auto;
+  padding: 10px 20px; border-radius: var(--r-sm);
+  background: var(--surface); border: 1px solid var(--hairline);
+  font-size: 13px; color: var(--slate-700); font-weight: 500;
+}
+.v-loadmore:hover { background: var(--fog-300); }
+.v-loadmore:disabled { opacity: 0.5; cursor: not-allowed; }

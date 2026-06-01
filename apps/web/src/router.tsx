@@ -2,14 +2,19 @@ import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom"
 
 import { AppShell } from "./shell/AppShell";
 import { HomePage } from "./pages/HomePage";
+import { AuditPage } from "./pages/AuditPage";
+import { HistoryPage } from "./pages/HistoryPage";
+import { MonitoringPage } from "./pages/MonitoringPage";
+import { EditorPage } from "./pages/EditorPage";
+import { SimulationPage } from "./pages/SimulationPage";
 import { LoginPage } from "./pages/LoginPage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { RequireAuth } from "./auth/RequireAuth";
 
 /**
- * Top-level routes. Phase 0 scaffolds the auth flow + Home shell only;
- * Editor / Simulation / Monitoring / Audit / History pages land in
- * later phases as their APIs come online.
+ * Top-level routes. Home / Audit / History wired today;
+ * Editor / Simulation / Monitoring land in later phases (NavRail shows
+ * them as disabled placeholders).
  */
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -23,7 +28,11 @@ const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <HomePage /> },
-          // TODO Phase 1+: editor, simulation, monitoring, audit, history, settings
+          { path: "editor", element: <EditorPage /> },
+          { path: "simulation", element: <SimulationPage /> },
+          { path: "monitoring", element: <MonitoringPage /> },
+          { path: "audit", element: <AuditPage /> },
+          { path: "history", element: <HistoryPage /> },
           { path: "*", element: <Navigate to="/" replace /> },
         ],
       },

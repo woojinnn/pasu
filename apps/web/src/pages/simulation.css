@@ -1,0 +1,137 @@
+/* Simulation page — step builder + sequence runner + verdict timeline */
+
+.sim-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 16px;
+  min-height: calc(100vh - 120px);
+}
+
+/* ── step builder (left) ── */
+.sim-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.sim-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+}
+.sim-card h3 {
+  margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: var(--slate-900);
+}
+
+.step-list { display: flex; flex-direction: column; gap: 10px; }
+.step-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px; align-items: stretch;
+  background: var(--fog-100);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+}
+.step-row.verdict-pass { border-left: 3px solid var(--pass-500); }
+.step-row.verdict-warn { border-left: 3px solid var(--warn-500); }
+.step-row.verdict-fail { border-left: 3px solid var(--fail-500); }
+.step-row .step-n {
+  font-family: var(--ff-mono); font-size: 12px; font-weight: 700;
+  color: var(--slate-400); padding-top: 2px;
+}
+.step-row .step-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.step-row .step-label-row {
+  display: flex; gap: 8px; align-items: center;
+}
+.step-row .step-label-row input {
+  flex: 1; font: inherit; font-size: 13px;
+  padding: 5px 8px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface);
+}
+.step-row .step-detail {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.step-row .step-detail input {
+  font: inherit; font-family: var(--ff-mono); font-size: 11.5px;
+  padding: 5px 8px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface);
+  color: var(--slate-900);
+}
+.step-row .step-detail input::placeholder { color: var(--slate-300); }
+.step-row textarea {
+  font-family: var(--ff-mono); font-size: 11.5px;
+  padding: 6px 8px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface);
+  min-height: 60px; resize: vertical; color: var(--slate-900);
+}
+.step-row .step-actions {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+}
+.step-row .step-verdict-pill {
+  margin-top: auto;
+  font-family: var(--ff-mono); font-size: 10.5px; font-weight: 700;
+  padding: 3px 8px; border-radius: var(--r-pill);
+}
+.step-row .step-verdict-pill.pass { background: var(--pass-100); color: var(--pass-800); }
+.step-row .step-verdict-pill.warn { background: var(--warn-100); color: var(--warn-800); }
+.step-row .step-verdict-pill.fail { background: var(--fail-100); color: var(--fail-800); }
+
+.add-step-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding-top: 6px; border-top: 1px dashed var(--hairline-soft);
+  margin-top: 6px;
+}
+
+/* ── right rail (run controls + overall verdict + outcomes detail) ── */
+.sim-side { display: flex; flex-direction: column; gap: 14px; }
+
+.run-card .run-controls {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.run-card .run-controls .meta {
+  font-size: 12px; color: var(--slate-500);
+}
+.run-card .overall {
+  margin-top: 12px; padding: 14px;
+  border-radius: var(--r-sm);
+  text-align: center;
+}
+.run-card .overall.pass { background: var(--pass-50); border: 1px solid var(--pass-300); }
+.run-card .overall.warn { background: var(--warn-50); border: 1px solid var(--warn-300); }
+.run-card .overall.fail { background: var(--fail-50); border: 1px solid var(--fail-300); }
+.run-card .overall .v {
+  font-size: 28px; font-weight: 800; letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.run-card .overall.pass .v { color: var(--pass-700); }
+.run-card .overall.warn .v { color: var(--warn-700); }
+.run-card .overall.fail .v { color: var(--fail-700); }
+.run-card .overall .sub { font-size: 12px; color: var(--slate-500); margin-top: 4px; }
+
+.outcomes h4 { margin: 0 0 8px 0; font-size: 12.5px; color: var(--slate-700); font-weight: 700; }
+.outcome-row {
+  font-size: 12px; color: var(--slate-700); padding: 6px 0;
+  border-bottom: 1px dashed var(--hairline-soft);
+  display: flex; gap: 8px; align-items: baseline;
+}
+.outcome-row:last-child { border-bottom: none; }
+.outcome-row .deny { color: var(--fail-700); font-weight: 700; }
+.outcome-row .allow { color: var(--pass-700); font-weight: 600; }
+.outcome-row .pname { font-weight: 600; color: var(--slate-900); }
+.outcome-row .sev {
+  font-family: var(--ff-mono); font-size: 10px; padding: 1px 6px; border-radius: var(--r-pill);
+  text-transform: uppercase;
+}
+.outcome-row .sev.deny { background: var(--fail-100); color: var(--fail-800); }
+.outcome-row .sev.warn { background: var(--warn-100); color: var(--warn-800); }
+.outcome-row .sev.info { background: var(--cyan-100); color: var(--cyan-800); }
+
+/* example dropdown row */
+.tools-row {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 12px;
+}
+.tools-row select {
+  font: inherit; font-size: 12.5px;
+  padding: 6px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface); color: var(--slate-900);
+}
