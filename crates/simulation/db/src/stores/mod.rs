@@ -9,8 +9,12 @@
 
 pub mod global;
 pub mod multi_user;
+#[cfg(feature = "postgres")]
+pub mod postgres;
 pub mod sqlite;
 
 pub use global::{GlobalDb, User};
 pub use multi_user::MultiUserStore;
+#[cfg(feature = "postgres")]
+pub use postgres::{PostgresGlobalDb, PostgresWalletStore};
 pub use sqlite::SqliteWalletStore;
