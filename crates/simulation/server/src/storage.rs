@@ -4,7 +4,10 @@
 //! main/server wiring from depending directly on that layout so Postgres can
 //! be introduced behind the same shape in the next task.
 
+use std::sync::Arc;
+
 use simulation_db::{GlobalDb, MultiUserStore};
+use simulation_state::WalletStore;
 
 use crate::config::ServerConfig;
 
@@ -50,6 +53,27 @@ impl StorageBackend {
     pub fn multi_user(&self) -> MultiUserStore {
         match self {
             Self::Sqlite { multi_user, .. } => multi_user.clone(),
+        }
+    }
+
+    /// User ids visible to background workers.
+    pub fn list_user_ids(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        match self {
+            Self::Sqlite { global_db, .. } => Ok(global_db
+                .list_users()?
+                .into_iter()
+                .map(|user| user.user_id)
+                .collect()),
+        }
+    }
+
+    /// Open the wallet store for one authenticated user's namespace.
+    pub fn wallet_store_for_user(
+        &self,
+        user_id: &str,
+    ) -> Result<Arc<dyn WalletStore>, Box<dyn std::error::Error>> {
+        match self {
+            Self::Sqlite { multi_user, .. } => Ok(multi_user.for_user(user_id)?),
         }
     }
 }

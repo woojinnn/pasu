@@ -559,8 +559,10 @@ pub async fn sync_wallet(
 
 // ---------- internals ----------
 
-/// Load the wallet state, refresh it through the orchestrator (which
-/// hits RPC/oracle endpoints), and save it back.
+/// Load the wallet state, perform authoritative venue/RPC sync, refresh stale
+/// live fields, and persist the result. Execution reports are reconciled only
+/// after an authoritative source updates the wallet snapshot; a local preflight
+/// or extension report is never treated as final state by itself.
 async fn run_sync(
     store: &dyn WalletStore,
     id: &WalletId,
@@ -570,14 +572,42 @@ async fn run_sync(
         .load(id)
         .await
         .map_err(|e| format!("load before sync: {e}"))?;
+    let now = Time::from_unix(unix_now_u64());
+    let mut authoritative_updated = false;
+
+    let primitives = orchestrator
+        .sync_primitives(&mut state, now)
+        .await
+        .map_err(|e| format!("orchestrator.sync_primitives: {e}"))?;
+    authoritative_updated |= primitives.block_heights_updated
+        + primitives.native_balances_updated
+        + primitives.erc20_balances_updated
+        + primitives.approvals_updated
+        > 0;
+
+    let hyperliquid = orchestrator
+        .sync_hyperliquid_account(&mut state, now)
+        .await
+        .map_err(|e| format!("orchestrator.sync_hyperliquid_account: {e}"))?;
+    authoritative_updated |= hyperliquid.account_updated;
+
     orchestrator
-        .refresh(&mut state, Time::from_unix(unix_now_u64()))
+        .refresh(&mut state, now)
         .await
         .map_err(|e| format!("orchestrator.refresh: {e}"))?;
     store
         .save(&state)
         .await
-        .map_err(|e| format!("save after sync: {e}"))
+        .map_err(|e| format!("save after sync: {e}"))?;
+
+    if authoritative_updated {
+        store
+            .reconcile_reports(id, now)
+            .await
+            .map_err(|e| format!("reconcile reports: {e}"))?;
+    }
+
+    Ok(())
 }
 
 fn build_wallet_id(req: &AddWalletReq, state: &AppState) -> Result<WalletId, Response> {
