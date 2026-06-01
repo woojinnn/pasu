@@ -45,12 +45,14 @@ export function HomePage() {
   const countsQ = useQuery({
     queryKey: ["audit", "counts", "today"],
     queryFn: () => getAuditCounts({ range: "24h" }),
-    refetchInterval: 60_000,
+    refetchInterval: (q) => (q.state.error ? false : 60_000),
+    retry: false,
   });
   const findingsQ = useQuery({
     queryKey: ["findings", "home"],
     queryFn: () => listFindings({ limit: 50 }),
-    refetchInterval: 30_000,
+    refetchInterval: (q) => (q.state.error ? false : 30_000),
+    retry: false,
   });
   const policiesQ = useQuery({ queryKey: ["policies"], queryFn: listPolicies });
 
@@ -64,6 +66,7 @@ export function HomePage() {
       queryFn: () => listAuditVerdicts({ wallet: w.address, range: "24h" as const, limit: 50 }),
       enabled: summaryQ.isSuccess,
       refetchInterval: 60_000,
+      retry: false,
     })),
   });
   const verdictsByAddr = useMemo(() => {
@@ -217,12 +220,20 @@ function TriageCard({
         </div>
       </div>
 
-      {error ? <div className="err-banner">finding 불러오기 실패: {String(error)}</div> : null}
-      {loading && (
-        <div className="tq-loading">불러오는 중…</div>
-      )}
+      {loading && <div className="tq-loading">불러오는 중…</div>}
 
-      {!loading && unresolved.length === 0 && (
+      {!loading && error ? (
+        <div className="tq-empty">
+          <span className="ico" style={{ background: "var(--fog-300)", color: "var(--slate-500)" }}>!</span>
+          <span className="et">verdict 데이터를 가져올 수 없어요</span>
+          <span className="es">
+            verdict는 브라우저 익스텐션의 chrome.storage.local에 저장됩니다. 익스텐션이 설치돼 있지 않거나
+            트랜잭션을 아직 평가하지 않았을 가능성이 높아요. ({(error as Error)?.message ?? "bridge error"})
+          </span>
+        </div>
+      ) : null}
+
+      {!loading && !error && unresolved.length === 0 && (
         <div className="tq-empty">
           <span className="ico">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
@@ -230,11 +241,11 @@ function TriageCard({
             </svg>
           </span>
           <span className="et">조치할 항목 없음 · 모두 정상</span>
-          <span className="es">새 FAIL/WARN이 생기면 여기에 모입니다. 브라우저 확장 설치 후 트랜잭션을 평가하면 verdict가 여기에 흘러요.</span>
+          <span className="es">새 FAIL/WARN이 생기면 여기에 모입니다.</span>
         </div>
       )}
 
-      {!loading && unresolved.length > 0 && (
+      {!loading && !error && unresolved.length > 0 && (
         <div className="tq-list">
           {unresolved.map((f) => (
             <TriageRow key={f.id} f={f} />
