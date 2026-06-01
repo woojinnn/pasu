@@ -127,6 +127,37 @@ pub async fn google_callback(
     Redirect::to(&target).into_response()
 }
 
+#[derive(Debug, Deserialize)]
+pub struct RefreshRequest {
+    pub refresh_token: String,
+}
+
+/// `POST /auth/refresh` — rotate a refresh token and mint a new access
+/// token. This remains stateless for now; Redis/DB revocation can be layered
+/// underneath the same endpoint once cloud session storage is introduced.
+pub async fn refresh_token(Json(req): Json<RefreshRequest>) -> Response {
+    let claims = match jwt::verify(&req.refresh_token) {
+        Ok(c) if c.is_refresh() => c,
+        Ok(_) => return user_error("access token cannot refresh a session"),
+        Err(e) => return user_error(&format!("invalid refresh token: {e}")),
+    };
+
+    let access = match jwt::issue(&claims.sub, &claims.email, TokenType::Access, None) {
+        Ok(t) => t,
+        Err(e) => return server_error(&format!("issue access: {e}")),
+    };
+    let refresh = match jwt::issue(&claims.sub, &claims.email, TokenType::Refresh, None) {
+        Ok(t) => t,
+        Err(e) => return server_error(&format!("issue refresh: {e}")),
+    };
+
+    Json(json!({
+        "access_token": access,
+        "refresh_token": refresh,
+    }))
+    .into_response()
+}
+
 // ---------- internals ----------
 
 /// POST `code` to Google's token endpoint, extract the `id_token`.

@@ -79,6 +79,30 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
+interface RefreshResponse {
+  access_token: string;
+  refresh_token?: string;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = getStoredRefreshToken();
+  if (!refresh) return null;
+  const res = await fetch(`${SERVER_BASE_URL}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refresh }),
+  });
+  if (!res.ok) {
+    setStoredToken(null);
+    setStoredRefreshToken(null);
+    return null;
+  }
+  const body = (await res.json()) as RefreshResponse;
+  setStoredToken(body.access_token);
+  setStoredRefreshToken(body.refresh_token ?? refresh);
+  return body.access_token;
+}
+
 /** Core request primitive. Returns parsed JSON. Throws `ServerError`. */
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const url = path.startsWith("http") ? path : `${SERVER_BASE_URL}${path}`;
@@ -97,6 +121,23 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     signal: opts.signal,
   });
 
+  if (res.status === 401 && !opts.noAuth) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers["Authorization"] = `Bearer ${refreshed}`;
+      const retry = await fetch(url, {
+        method: opts.method ?? "GET",
+        headers,
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+        signal: opts.signal,
+      });
+      return parseResponse<T>(retry);
+    }
+  }
+  return parseResponse<T>(res);
+}
+
+async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let body: unknown = null;
     try {
