@@ -31,6 +31,7 @@ use crate::events::EventBus;
 use crate::handler::{evaluate, report_execution, HandlerError};
 use crate::cedar_handlers;
 use crate::dashboard_handlers;
+use crate::phase5_handlers;
 use crate::read_handlers;
 use crate::verdict_handlers;
 use crate::write_handlers;
@@ -207,6 +208,16 @@ pub fn build_router(state: AppState) -> Router {
         .route("/history/verdicts", get(verdict_handlers::list_history))
         .route("/findings/feed", get(verdict_handlers::findings_feed))
         .route("/events/stream", get(crate::events::sse_stream))
+        // ---- Phase 5: tx decode + revoke plan + sequence simulation ----
+        .route("/tx/decode", post(phase5_handlers::decode_tx))
+        .route(
+            "/approvals/revoke-plan",
+            post(phase5_handlers::revoke_plan),
+        )
+        .route(
+            "/simulate/sequence",
+            post(phase5_handlers::simulate_sequence),
+        )
         .layer(from_fn(require_auth));
 
     let public = Router::new()

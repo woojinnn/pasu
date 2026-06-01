@@ -171,27 +171,85 @@ async fn seed_holdings(
         // 1. Native gas balance.
         match discovery::fetch_native_balance(&router, chain, id.address).await {
             Ok(tok) => {
+                tracing::info!(
+                    chain = %chain,
+                    address = %format!("{:#x}", id.address),
+                    "seed: native balance ok"
+                );
                 state_out
                     .tokens
                     .insert(tok.key.clone(), discovered_to_holding(tok, chain));
                 count += 1;
             }
-            Err(e) => return Err(format!("native {chain}: {e}")),
+            Err(e) => {
+                tracing::warn!(
+                    chain = %chain,
+                    address = %format!("{:#x}", id.address),
+                    error = %e,
+                    "seed: native balance failed"
+                );
+                return Err(format!("native {chain}: {e}"));
+            }
         }
 
-        // 2. ERC-20 — prefer Etherscan (comprehensive) when a key is
-        //    configured; fall back to the hardcoded top-N catalog via
-        //    Multicall so users without a key still see major
-        //    stablecoins + WETH/WBTC/UNI/LINK/etc.
-        let erc20s = if let Some(es) = app.etherscan.as_ref() {
-            es.list_erc20_balances(chain, id.address)
-                .await
-                .map_err(|e| format!("etherscan {chain}: {e}"))?
-        } else {
-            discovery::discover_top_tokens(&router, chain, id.address)
-                .await
-                .map_err(|e| format!("top-tokens {chain}: {e}"))?
-        };
+        // 2. ERC-20 — try Etherscan first when a key is configured
+        //    (comprehensive). If it 4xx's (no Pro tier, rate-limit, banned IP,
+        //    etc.) fall back to the hardcoded top-N catalog via Multicall so
+        //    free-tier users still see major stablecoins + WETH/WBTC/UNI/LINK.
+        //    Listing every ERC-20 a wallet holds is a Pro-only endpoint at
+        //    Etherscan as of 2026 — the fallback is therefore the common path.
+        let mut erc20s = Vec::new();
+        let mut source: &'static str = "top-tokens";
+        let mut etherscan_failed: Option<String> = None;
+
+        if let Some(es) = app.etherscan.as_ref() {
+            match es.list_erc20_balances(chain, id.address).await {
+                Ok(v) => {
+                    source = "etherscan";
+                    erc20s = v;
+                }
+                Err(e) => {
+                    etherscan_failed = Some(format!("{e}"));
+                }
+            }
+        }
+        // Fallback path — no etherscan, or etherscan errored.
+        if etherscan_failed.is_some() || app.etherscan.is_none() {
+            match discovery::discover_top_tokens(&router, chain, id.address).await {
+                Ok(v) => {
+                    erc20s = v;
+                    source = if etherscan_failed.is_some() {
+                        "top-tokens (etherscan-fallback)"
+                    } else {
+                        "top-tokens"
+                    };
+                    if let Some(es_err) = &etherscan_failed {
+                        tracing::warn!(
+                            chain = %chain,
+                            etherscan_error = %es_err,
+                            "seed: etherscan failed, falling back to top-tokens multicall"
+                        );
+                    }
+                }
+                Err(top_err) => {
+                    tracing::warn!(
+                        chain = %chain,
+                        etherscan_error = %etherscan_failed.unwrap_or_else(|| "(no etherscan)".into()),
+                        top_tokens_error = %top_err,
+                        "seed: both erc20 paths failed — keeping wallet without tokens"
+                    );
+                    continue;
+                }
+            }
+        }
+
+        tracing::info!(
+            chain = %chain,
+            candidates = erc20s.len(),
+            source,
+            "seed: erc20 candidates fetched"
+        );
+        let mut nonzero = 0usize;
         for tok in erc20s {
             if tok.balance.is_zero() {
                 continue;
@@ -200,8 +258,19 @@ async fn seed_holdings(
                 .tokens
                 .insert(tok.key.clone(), discovered_to_holding(tok, chain));
             count += 1;
+            nonzero += 1;
         }
+        tracing::info!(
+            chain = %chain,
+            inserted = nonzero,
+            "seed: erc20 non-zero balances inserted"
+        );
     }
+    tracing::info!(
+        address = %format!("{:#x}", id.address),
+        total = count,
+        "seed: completed"
+    );
 
     // Best-effort CoinGecko metadata backfill. Capped by `MAX_METADATA_LOOKUPS`
     // so a wallet with 100+ tokens doesn't burn 100 sequential HTTP calls
@@ -435,6 +504,38 @@ pub async fn sync_wallet(
         return not_found("wallet not tracked for this user");
     };
 
+    // Re-run discovery if (a) the wallet has no holdings at all, or
+    // (b) it has only native gas balances and zero ERC-20s. The latter
+    // means the original Etherscan discovery silently bailed out and
+    // the user now expects "지금 동기화" to actually re-attempt.
+    let pre = match store.load(&id).await {
+        Ok(s) => s,
+        Err(e) => return internal(&format!("pre-sync load: {e}")),
+    };
+    let has_any_erc20 = pre
+        .tokens
+        .keys()
+        .any(|k| matches!(k, simulation_state::TokenKey::Erc20 { .. }));
+    if pre.tokens.is_empty() || !has_any_erc20 {
+        tracing::info!(
+            address = %format!("{:#x}", id.address),
+            had_total = pre.tokens.len(),
+            had_erc20 = has_any_erc20,
+            "sync: missing ERC-20 holdings — re-running discovery"
+        );
+        let mut seeded = pre.clone();
+        match seed_holdings(&mut seeded, &id, &state).await {
+            Ok(n) => {
+                tracing::info!(seeded = n, "sync: discovery seeded N holdings");
+                if let Err(e) = store.save(&seeded).await {
+                    return internal(&format!("save after seed: {e}"));
+                }
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "sync: discovery failed — proceeding with previous wallet");
+            }
+        }
+    }
     if let Err(e) = run_sync(&*store, &id, &state.orchestrator).await {
         return internal(&e);
     }
