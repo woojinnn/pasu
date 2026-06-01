@@ -23,10 +23,10 @@ use std::sync::Arc;
 
 use tracing_subscriber::EnvFilter;
 
-use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router_with_config, AppState};
 use simulation_server::config::ServerConfig;
 use simulation_server::events::EventBus;
+use simulation_server::storage::StorageBackend;
 use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
 
 /// Default sync config path. Lives next to the workspace root so the dev
@@ -56,8 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "opening multi-user wallet store"
     );
 
-    let global_db = GlobalDb::open(&global_db_path)?;
-    let multi_user = MultiUserStore::new(&users_dir);
+    let storage = StorageBackend::open(&config, &home)?;
 
     // Sync orchestrator. Load the TOML config; if the file is missing we
     // boot with an empty config (no RPC providers) — endpoints that
@@ -98,8 +97,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("CoinGecko token metadata client ready");
 
     let state = AppState {
-        multi_user,
-        global_db,
+        multi_user: storage.multi_user(),
+        global_db: storage.global_db(),
         event_bus: EventBus::new(),
         orchestrator,
         etherscan,

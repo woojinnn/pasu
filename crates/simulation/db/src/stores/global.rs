@@ -98,6 +98,18 @@ impl GlobalDb {
         })
     }
 
+    /// Return every known OAuth user in deterministic order.
+    pub fn list_users(&self) -> DbResult<Vec<User>> {
+        self.pool.with_conn(|c| {
+            let mut stmt = c.prepare(
+                "SELECT user_id, email, provider, created_at, last_login_at \
+                 FROM users ORDER BY email",
+            )?;
+            let rows = stmt.query_map([], row_to_user)?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+        })
+    }
+
     /// Borrow the underlying pool (for tests / diagnostics).
     #[must_use]
     pub const fn pool(&self) -> &Pool {
@@ -185,5 +197,17 @@ mod tests {
             derive_user_id("alice@example.com"),
             derive_user_id("bob@example.com")
         );
+    }
+
+    #[test]
+    fn list_users_returns_all_users() {
+        let db = GlobalDb::open_in_memory();
+        let alice = db.upsert_user("alice@example.com", "google").unwrap();
+        let bob = db.upsert_user("bob@example.com", "google").unwrap();
+
+        let users = db.list_users().unwrap();
+        let ids: Vec<_> = users.into_iter().map(|u| u.user_id).collect();
+
+        assert_eq!(ids, vec![alice, bob]);
     }
 }

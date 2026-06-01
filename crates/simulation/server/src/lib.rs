@@ -60,5 +60,6 @@ pub mod dto;
 pub mod events;
 pub mod handler;
 pub mod read_handlers;
+pub mod storage;
 pub mod store;
 pub mod write_handlers;
