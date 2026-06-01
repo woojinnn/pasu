@@ -25,7 +25,7 @@ pub enum YtSwapDirection {
 
 /// Swap involving YT on a Pendle market.
 ///
-/// Models the `ActionSwapYTV3` facet — the YT mirror of [`PtSwapAction`].
+/// Models the `ActionSwapYTV3` facet — the YT mirror of [`super::PtSwapAction`].
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct YtSwapAction {

@@ -150,11 +150,38 @@ impl Default for LoadOptions {
 }
 
 impl LoadOptions {
+    /// Build loader options from process environment.
+    ///
+    /// CI can keep source-generated protocol surfaces bounded by setting
+    /// `SCOPEBALL_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS=1`. Local/manual runs
+    /// stay exhaustive unless the variable is explicitly enabled.
+    #[must_use]
+    pub fn from_env() -> Self {
+        let mut options = Self::default();
+        if env_flag("SCOPEBALL_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS") {
+            options.representative_source_refs = true;
+        }
+        options
+    }
+
     fn matches_callkey_entry(&self, stem: &str, bundle_id: &str) -> bool {
         self.filter
             .as_deref()
             .is_none_or(|filter| stem.contains(filter) || bundle_id.contains(filter))
     }
+}
+
+fn env_flag(name: &str) -> bool {
+    std::env::var(name)
+        .map(|value| {
+            let value = value.trim();
+            !value.is_empty()
+                && !matches!(
+                    value.to_ascii_lowercase().as_str(),
+                    "0" | "false" | "off" | "no"
+                )
+        })
+        .unwrap_or(false)
 }
 
 /// The full routable surface plus install bookkeeping.
@@ -441,7 +468,7 @@ fn bundle_from_index_entry(index_root: &Path, entry: &Value, path: &Path) -> Res
 /// **Must run on the same OS thread that subsequently routes** (the WASM v3
 /// install state is thread-local).
 pub fn load_and_install() -> Result<RoutableSurface> {
-    load_and_install_with_options(LoadOptions::default())
+    load_and_install_with_options(LoadOptions::from_env())
 }
 
 /// Load and install a filtered/representative surface subset.

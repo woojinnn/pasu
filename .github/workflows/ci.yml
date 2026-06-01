@@ -32,7 +32,7 @@ jobs:
         working-directory: registryV2
         run: |
           npm ci
-          npm run build
+          npm run build -- --summary-only --representative-source-refs
 
       - name: Format
         run: cargo fmt --all -- --check
@@ -44,6 +44,8 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Test
+        env:
+          SCOPEBALL_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS: '1'
         run: cargo test --all-features
 
       - name: Doctest
