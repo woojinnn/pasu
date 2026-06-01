@@ -22,7 +22,8 @@ BUCKET="scopeball-registry-v3-seoul"
 SA_NAME="registry-api-v3-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 SERVICE_NAME="registry-api-v3"
-IMAGE="asia-northeast3-docker.pkg.dev/${PROJECT_ID}/scopeball/registry-api:v1"
+IMAGE_TAG="${IMAGE_TAG:-v3-ref-materializer-20260601}"
+IMAGE="asia-northeast3-docker.pkg.dev/${PROJECT_ID}/scopeball/registry-api:${IMAGE_TAG}"
 
 echo "=== Step 1: gcloud config 활성 ==="
 gcloud config configurations activate scopeball
