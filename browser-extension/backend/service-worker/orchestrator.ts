@@ -38,6 +38,7 @@ import {
   type Message,
 } from "@lib/types";
 import { hlOrderToAction, HL_TO_SENTINEL } from "./hl-order-to-action";
+import { routeTypedSignaturePayload } from "./sig-routing";
 
 /**
  * Phase 4A — submission-shape classifier. Maps the SW `Message` envelope
@@ -408,6 +409,16 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
     return venueOrderLifecycle(message);
   }
 
+  // EIP-712 typed-data signature — its own manifest-driven decode→verdict
+  // path (`sig-routing.ts` → WASM `declarative_route_typed_data_v3_json`),
+  // analogous to the venue-order path above: no EVM calldata, the typed-data
+  // `message` is decoded into the same `Action[]` tree and driven through the
+  // same stateless v2 pipeline. Routed early (before `classifyMessage` /
+  // the tx branch) since it owns its own lifecycle + audit row.
+  if (isTypedSignature(message)) {
+    return typedSignatureLifecycle(message);
+  }
+
   // Phase 4A classifier — `nature` lets us tell the v3 path apart at a
   // glance (audit telemetry + the upcoming v3 verdict driver). Untyped
   // sigs short-circuit just as before; the new classifier doesn't move
@@ -504,14 +515,12 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       };
     }
   } else {
-    // Typed-sig path — Phase 4B does NOT yet route signatures through the
-    // v3 WASM entry (SignAdapter arrives in Phase 4C). Record a miss with
-    // the nature so the audit log still shows the v3 column populated.
-    declarativeV3Meta = {
-      outcome: "miss",
-      nature,
-      reason: "typed_sig_not_yet_routed",
-    };
+    // Defensive: unreachable. Venue orders, typed signatures, and untyped
+    // signatures all short-circuit above (typed sigs route through
+    // `typedSignatureLifecycle`); the only remaining nature here is a
+    // transaction, handled by the `if` branch. Kept fail-safe in case a new
+    // message nature is added without a dedicated branch.
+    declarativeV3Meta = { outcome: "miss", nature, reason: "unrouted" };
   }
 
   // Phase 1 / P2 — v2 (ActionBody-model) verdict path. When the v3 route HIT
@@ -700,6 +709,169 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
     };
   }
+}
+
+/**
+ * EIP-712 typed-data signature verdict lifecycle.
+ *
+ * Mirrors {@link venueOrderLifecycle} but sources the `Action[]` from the
+ * manifest-driven typed-data router ({@link routeTypedSignaturePayload} →
+ * registry `by-typed-data/` lookup → WASM `declarative_route_typed_data_v3_json`)
+ * instead of an EVM calldata decode, then drives the SAME stateless v2 pipeline
+ * (plan → dispatch → evaluate) the transaction path uses.
+ *
+ * **warn-closed** (like the tx path, NOT deny-closed like venue orders): a
+ * route miss / decode-or-evaluate fault yields a `noDecoderVerdict()` warn the
+ * user must approve — a benign signature we cannot decode must not be hard
+ * blocked. A decoded signature with no matching policy baseline-passes.
+ */
+async function typedSignatureLifecycle(
+  message: Message,
+): Promise<LifecycleResult> {
+  const nature: ActionNatureKind = "offchain_sig";
+  if (!isTypedSignature(message)) {
+    // Unreachable (caller guards); keep the type narrow + fail-closed.
+    return { verdict: noDecoderVerdict(), verdictSource: "fail_closed" };
+  }
+
+  // Route the typed-data payload through the registry-v2 `by-typed-data/`
+  // index + WASM decode. `null` = no published manifest / decode miss; a throw
+  // is an unexpected fault. Both warn-close (mirrors the tx fail-closed tail).
+  let routed: Awaited<ReturnType<typeof routeTypedSignaturePayload>>;
+  try {
+    routed = await routeTypedSignaturePayload({
+      payload: message.data,
+      submittedAt: Math.floor(Date.now() / 1000),
+    });
+  } catch (err) {
+    console.warn("[Scopeball] typed-sig route threw", {
+      requestId: message.requestId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3: {
+        outcome: "fault",
+        nature,
+        reason: "typed_sig_route_threw",
+      },
+    };
+  }
+  if (!routed) {
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3: { outcome: "miss", nature, reason: "typed_sig_no_manifest" },
+    };
+  }
+
+  // Pretty-print the decoded ActionBody[] so DevTools shows the signature's
+  // spender / amount / deadline (mirrors the tx-path dump).
+  console.info(
+    `[Scopeball] decoded ActionBody[] (${routed.actions.length})\n` +
+      JSON.stringify(routed.actions, null, 2),
+  );
+  const declarativeV3: DeclarativeV3AuditMeta = {
+    outcome: "hit",
+    nature,
+    decoder_id: routed.decoderId,
+    action_count: routed.actions.length,
+  };
+
+  // Warm the v2 bundle cache (idempotent) before reading it — closes the
+  // pre-boot race where a sig arriving early sees [] and baseline-passes.
+  await loadDefaultPolicySetV2();
+  const bundles = getDefaultPolicyBundlesV2();
+  // No policies ⇒ baseline pass (you cannot deny without a policy).
+  if (bundles.length === 0) {
+    return {
+      verdict: { kind: "pass" },
+      verdictSource: "declarative-v2",
+      declarativeV3,
+    };
+  }
+  const manifests = bundles.map((b) => b.manifest);
+
+  // Skip `Unknown` bodies — only real ActionBody variants drive a verdict.
+  const realActions = routed.actions.filter((a) => {
+    const body = (a as { body?: unknown }).body;
+    return (
+      typeof body === "object" &&
+      body !== null &&
+      (body as { domain?: unknown }).domain !== "unknown"
+    );
+  });
+  if (realActions.length === 0) {
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3,
+    };
+  }
+
+  // v2 `tx` context for a signature: `to` is the EIP-712 verifyingContract
+  // (e.g. Permit2), `from` the signer. Only `{chain_id, from, to}` is consumed
+  // by the WASM (`ActionTxInputDto`); `to` is NOT a trigger-match field
+  // (`TriggerField` = action.domain/tag/venue + tx.chain_id), so a missing
+  // verifyingContract degrades to the zero sentinel without affecting
+  // action-tag-based policies.
+  const td = message.data.typedData as
+    | { domain?: { verifyingContract?: string } }
+    | undefined;
+  const verifyingContract =
+    td?.domain?.verifyingContract?.toLowerCase() ?? "0x" + "0".repeat(40);
+  const tx = {
+    chain_id: `eip155:${message.data.chainId}`,
+    from: message.data.address,
+    to: verifyingContract,
+  } as const;
+  const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
+
+  const verdicts: VerdictDto[] = [];
+  for (const a of realActions) {
+    const action = (a as { body: unknown }).body;
+    const meta = (a as { meta?: unknown }).meta;
+    try {
+      const planned = await planActionRpcV2({ manifests, action, meta, tx });
+      const results =
+        planned.length > 0 ? await dispatchCallsV2(planned, policyRpcUrl) : {};
+      const verdict = await evaluateActionV2({
+        action,
+        meta,
+        tx,
+        bundles,
+        results,
+      });
+      verdicts.push(verdict);
+    } catch (err) {
+      // A plan/dispatch/evaluate throw is a fault → warn-closed (mirrors tx).
+      console.warn("[Scopeball] typed-sig-verdict threw", {
+        requestId: message.requestId,
+        chainId: message.data.chainId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      return {
+        verdict: noDecoderVerdict(),
+        verdictSource: "fail_closed",
+        declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
+      };
+    }
+  }
+
+  const verdict = aggregateV2Verdicts(verdicts);
+  console.info("[Scopeball] typed-sig-verdict", {
+    requestId: message.requestId,
+    verdictSource: "declarative-v2",
+    verdict: verdict.kind,
+    decoderId: routed.decoderId,
+    matched:
+      verdict.matched?.map((m) => ({
+        id: m.policy_id,
+        severity: m.severity,
+      })) ?? [],
+  });
+  return { verdict, verdictSource: "declarative-v2", declarativeV3 };
 }
 
 /** Synthetic deny verdict for the venue-order deny-closed paths. */
