@@ -1,0 +1,133 @@
+{
+  "_comment": "Curve broad real-tx smoke corpus. Source: Etherscan normal txlist for representative onboarded Curve contracts, cross-checked with Dune query 7625582 for current RouterNG activity.",
+  "transactions": [
+    {
+      "intent": "StableSwap-NG crvUSD/Frax remove_liquidity",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "tx_hash": "0xfdca11065053f0a5d239ffe20f7a2633112ffc357aaf8cb655286daf778f2ed9",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x0cd6f267b2086bea681e922e19d40512511be538",
+            "value": "0",
+            "data": "0x5b36389c0000000000000000000000000000000000000000000000008a9f24eb763050b60000000000000000000000000000000000000000000000006df058f90822d0000000000000000000000000000000000000000000000000001aa7dca928138400"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "CryptoSwap-NG crvUSDTWBTCWETH remove_liquidity(use_eth)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "tx_hash": "0x08cd484b7ad8a801deeabf71e390b0328a59dcf773f6a16a460c1857117c6848",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xf5f5b97624542d72a9e06f04804bf81baa15e2b4",
+            "value": "0",
+            "data": "0xfce647360000000000000000000000000000000000000000000000056bc75e2d631000000000000000000000000000000000000000000000000000000000000ca7a3af9800000000000000000000000000000000000000000000000000000000047de66b000000000000000000000000000000000000000000000001838711f264b03bad0000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "Curve gauge 2BTC-f deposit",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x1531cc927a7b5eff6d9c6468ed3f922c8eecda01e8af4e0ef5f3c5daabdbe16e",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5010263ac1978297f56048c7d2b02316a3435404",
+            "value": "0",
+            "data": "0xb6b55f250000000000000000000000000000000000000000000000000dada85c59962156"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "Curve gauge 2BTC-f withdraw",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x007bbfdf14a11d0a860380cfe60077e10544ca271ab3ee6d9f9f7fdd3baf4e9f",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5010263ac1978297f56048c7d2b02316a3435404",
+            "value": "0",
+            "data": "0x2e1a7d4d000000000000000000000000000000000000000000000000005f7bfb7957c850"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "veCRV create_lock",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xfadfb2cfda0ab29cdac3fe8026ac20edc64e25a59359d41f49248197d7a9c195",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+            "value": "0",
+            "data": "0x65fc3873000000000000000000000000000000000000000000000a968163f0a57b400000000000000000000000000000000000000000000000000000000000006a95f562"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "veCRV increase_amount",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xdc7d31676253370bb4d5e765297f37b7a4df6b9781f97feab1b52abc9cf97df4",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+            "value": "0",
+            "data": "0x4957677c00000000000000000000000000000000000000000000037c1950c45d47bc9089"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "Curve Minter mint from gauge",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xafc600fe945fa17e939a2d48068f01b631b740865e8362d475928af53208ba9a",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd061d61a4d941c39e5453435b6345dc261c2fce0",
+            "value": "0",
+            "data": "0x6a627842000000000000000000000000bc89cd85491d81c6ad2954e6d0362ee29fca8f53"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "crvUSD WBTC controller repay(use_eth=false)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "tx_hash": "0x01bdc2dadee04e59fcfe32416b6e733a4b367cc1d3e9e255ee183e61c6d0049a",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67",
+            "value": "0",
+            "data": "0x37671f93000000000000000000000000000000000000000000002262d61f0ad32a5ff16f0000000000000000000000003a8315e25378ce9fc0d3279b26ec0576de52c0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff40000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    }
+  ]
+}
