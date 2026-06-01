@@ -11,12 +11,12 @@
 //! `SqliteExecutionReportStore` constructed on demand from the user's pool.
 
 use axum::extract::{FromRef, State};
-use axum::http::StatusCode;
+use axum::http::{header, HeaderValue, Method, StatusCode};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use std::sync::Arc;
@@ -25,6 +25,7 @@ use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator};
 
 use crate::auth::{require_auth, AuthUser};
+use crate::config::ServerConfig;
 use crate::dashboard_handlers;
 use crate::db_store::SqliteExecutionReportStore;
 use crate::dto::{EvaluateRequest, ExecutionReportRequest};
@@ -130,10 +131,14 @@ impl FromRef<AppState> for Arc<Orchestrator> {
 /// wallet state, token metadata, transactions, execution reports, and sync
 /// lifecycle data.
 ///
-/// CORS is `permissive` with private-network access enabled so both the
-/// dashboard (127.0.0.1:5173) and the browser extension can reach the
-/// server on 127.0.0.1.
+/// CORS is allowlist-based in cloud mode. Local defaults still allow the
+/// dashboard development origins configured in [`ServerConfig`].
 pub fn build_router(state: AppState) -> Router {
+    build_router_with_config(state, ServerConfig::from_env())
+}
+
+/// Builds the service router with explicit runtime configuration.
+pub fn build_router_with_config(state: AppState, config: ServerConfig) -> Router {
     let protected = Router::new()
         .route("/auth/me", get(auth_me_handler))
         .route("/evaluate", post(evaluate_handler))
@@ -181,8 +186,28 @@ pub fn build_router(state: AppState) -> Router {
     public
         .merge(protected)
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive().allow_private_network(true))
+        .layer(cors_layer(&config))
         .with_state(state)
+}
+
+fn cors_layer(config: &ServerConfig) -> CorsLayer {
+    let origins: Vec<HeaderValue> = config
+        .cors_allowed_origins
+        .iter()
+        .filter_map(|origin| origin.parse::<HeaderValue>().ok())
+        .collect();
+
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(origins))
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .allow_private_network(config.allow_private_network)
 }
 
 /// `GET /health` — liveness probe.

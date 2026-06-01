@@ -7,8 +7,9 @@
 use std::sync::Arc;
 
 use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
+use simulation_server::app::{build_router, build_router_with_config, AppState};
 use simulation_server::auth::jwt::{issue, TokenType};
+use simulation_server::config::ServerConfig;
 use simulation_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
@@ -34,6 +35,31 @@ async fn spawn_server() -> std::net::SocketAddr {
         coingecko: simulation_sync::CoinGeckoClient::new(),
     };
     let router = build_router(state);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    addr
+}
+
+async fn spawn_server_with_origin_allowlist(origins: Vec<&str>) -> std::net::SocketAddr {
+    ensure_jwt_secret();
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.keep();
+    let global_db = GlobalDb::open(path.join("global.db")).unwrap();
+    let multi_user = MultiUserStore::new(path.join("users"));
+    let state = AppState {
+        multi_user,
+        global_db,
+        event_bus: simulation_server::events::EventBus::new(),
+        orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
+        etherscan: None,
+        coingecko: simulation_sync::CoinGeckoClient::new(),
+    };
+    let mut config = ServerConfig::for_tests();
+    config.cors_allowed_origins = origins.into_iter().map(str::to_owned).collect();
+    let router = build_router_with_config(state, config);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move {
@@ -139,4 +165,42 @@ async fn google_redirect_when_env_configured() {
     let location = resp.headers().get("location").unwrap().to_str().unwrap();
     assert!(location.contains("accounts.google.com"), "loc={location}");
     assert!(location.contains("client_id=test-client-id"));
+}
+
+#[tokio::test]
+async fn cors_rejects_unconfigured_origin() {
+    let addr = spawn_server_with_origin_allowlist(vec!["https://app.scopeball.dev"]).await;
+    let res = reqwest::Client::new()
+        .request(reqwest::Method::OPTIONS, format!("http://{addr}/auth/me"))
+        .header("origin", "https://evil.example")
+        .header("access-control-request-method", "GET")
+        .send()
+        .await
+        .unwrap();
+
+    assert!(
+        res.headers().get("access-control-allow-origin").is_none(),
+        "unconfigured origins must not receive CORS approval"
+    );
+}
+
+#[tokio::test]
+async fn cors_allows_configured_dashboard_origin() {
+    let addr = spawn_server_with_origin_allowlist(vec!["https://app.scopeball.dev"]).await;
+    let res = reqwest::Client::new()
+        .request(reqwest::Method::OPTIONS, format!("http://{addr}/auth/me"))
+        .header("origin", "https://app.scopeball.dev")
+        .header("access-control-request-method", "GET")
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        res.headers()
+            .get("access-control-allow-origin")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "https://app.scopeball.dev"
+    );
 }
