@@ -26,8 +26,10 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
    멈춤은 merge/push/destructive action, Etherscan/Dune/auth 부재, 1차출처로도 안 풀리는 스코프 모호성,
    같은 blocker 3회 이상 반복처럼 사용자 입력 없이는 진행 불가능할 때만.
  · **증거 없으면 완료 아님** — `crates/integration-tests/ONBOARDING_EVIDENCE_TEMPLATE.md` 를
-   `crates/integration-tests/onboarding/<PROTOCOL>/evidence.md` 로 복사해 채운다. P0 Claude/sub-agent,
-   P2 Etherscan, P2 Dune 각 행이 `done` 또는 구체적 `blocked` 가 아니면 phase/온보딩 완료 선언 금지.
+   `crates/integration-tests/onboarding/<PROTOCOL>/evidence.md` 로 복사해 채운다. P0/P1/P2/P3/P4 각 행이
+   `done` 또는 구체적 `blocked` 가 아니면 phase/온보딩 완료 선언 금지.
+   phase 완료 선언 전 `rg -n '^\|.*\|\s*(pending|todo|skipped)\s*\|' crates/integration-tests/onboarding/<PROTOCOL>/evidence.md`
+   를 실행하고, 대상 phase 의 mandatory row 가 출력되면 incomplete 로 남긴다.
    사용자가 나중에 "Claude Code에 시켰냐?", "Etherscan/Dune real tx 돌렸냐?"라고 물었을 때
    evidence.md 의 명령·결과·카운트로 답할 수 있어야 한다. 못 했으면 사과하지 말고 incomplete/blocked 로 남기고 계속 처리.
  · P2 real-tx 시작 전 외부 데이터 lane 연결 확인:
@@ -74,6 +76,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     Tier3 필요 시 ActionBody + effect/view/sync + lowering_v2 + cedarschema +
     schema registration + conformance test 를 먼저 완성한 뒤 manifest 작성.
     npm run check:manifest.
+    P1 완료 전 evidence.md 에 COVER selector→ActionBody/Tier3 mapping, permission/fund-move red-flag review,
+    manifest 파일 목록, live_field/enrichment 결정, Tier3 downstream 산출물(해당 시), check:manifest 출력 기록.
  P2 synthetic fuzz(random 5000+ fixed seed) + hand edge synthesis(permission/value/nested/array/opcode)
     + Etherscan API/MCP bulk 최소 10,000 tx/protocol(10,000 API call 아님; 현재 txlist 최대 10k tx/call,
       2026-07-01 이후 Free tier 는 1k/request 예정이라 현재 docs 재확인)
@@ -88,6 +92,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  P4 build-index → registryV2 build-index vitest → check:manifest → check:surface →
     v3-harness coverage/fuzz/corpus → cargo test --workspace 0 fail →
     wasm-build → clippy/fmt(변경 crate) → explicit-stage 커밋.
+    P3/P4 완료 전 evidence.md 에 gap bucket, fix↔gap mapping, rerun 결과, corpus expect flip/disposition,
+    모든 land gate 출력, staged file list, commit hash, 남은 WARN/defer 를 기록.
 
 [♻️ <PROTOCOL> 가 이미 온보딩돼 있으면] greenfield 아님 — 재검증:
  현 _deployments/coverage/manifest/corpus 를 1차출처와 diff → 틀린 곳 수정,

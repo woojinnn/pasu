@@ -9,7 +9,7 @@
 
 ## 0. 목표 모델
 
-프로토콜 온보딩 완료는 “테스트가 green” 이 아니다. 완료는 아래 네 층이 모두 증명된 상태다.
+프로토콜 온보딩 완료는 “테스트가 green” 이 아니다. 완료는 아래 다섯 층이 모두 증명된 상태다.
 
 | 층 | 질문 | 현재 근거 | 부족하면 |
 |---|---|---|---|
@@ -51,7 +51,7 @@ crates/integration-tests/src/bin/v3_harness.rs
 └─ audit                  # planned: protocol strict gate wrapper
 ```
 
-현재 구현된 CLI 는 `fuzz`, `validate`, `coverage`, `replay`, `corpus`, `import-*` 이다. `projection.rs`, `semantic_lints.rs`, `audit.rs` 와 `audit --strict` 는 설계 목표이며 아직 실행 가능한 gate 로 취급하지 않는다. 현 landing 은 아래 §3/P5 의 manual gate 조합으로 수행한다.
+현재 구현된 CLI 는 `fuzz`, `validate`, `coverage`, `replay`, `corpus`, `import-*` 이다. `projection.rs`, `semantic_lints.rs`, `audit.rs` 와 `audit --strict` 는 설계 목표이며 아직 실행 가능한 gate 로 취급하지 않는다. 현 landing 은 아래 §3/P4 의 manual gate 조합으로 수행한다.
 
 ### 1.1 `expect_body` data contract
 
@@ -289,6 +289,26 @@ Run the onboarding in one continuous pass once branch setup and external data la
 
 Do not merge the onboarding branch back into the base worktree automatically after the framework is complete. Merge only when the user explicitly requests it.
 
+### Phase Exit Gates
+
+Every phase is evidence-gated. Before saying a phase is complete, update `crates/integration-tests/onboarding/<protocol>/evidence.md` and make sure that phase's mandatory rows are `done` or concrete `blocked`.
+
+| phase | cannot complete until |
+|---|---|
+| P0 research | Codex + Claude/sub-agent discovery, first-party disposition, token-surface inventory, surface artifact, and `check:surface` evidence are recorded |
+| P1 authoring | every COVER selector has ActionBody/Tier3 mapping, red-flag review, manifest/Tier3 artifact list, live_field/enrichment decision, and manifest validation evidence |
+| P2 test corpus | synthetic fuzz/edge evidence and Etherscan+Dune real-tx evidence are recorded, or the exact external-data blocker is recorded |
+| P3 develop | all P2 gaps are bucketed, every fix maps back to a gap/selector/tx/seed, reruns are recorded, and remaining gaps have disposition |
+| P4 land | full landing gate outputs, staged file list, commit hash, remaining WARN/defer list, and no-auto-merge statement are recorded |
+
+Before any phase-complete claim, run:
+
+```bash
+rg -n '^\|.*\|\s*(pending|todo|skipped)\s*\|' crates/integration-tests/onboarding/<protocol>/evidence.md
+```
+
+If this prints a mandatory row for the phase being claimed, the phase is incomplete. `blocked` is allowed only with a concrete blocker row and next action.
+
 ### Agent Orchestration
 
 Protocol onboarding is too long for one linear context. Use sub-agents or Claude Code for independent work packets, but treat every result as untrusted until verified by the main session.
@@ -507,7 +527,7 @@ Real-tx floor:
 
 Tool connection hints: Etherscan remote MCP is `https://mcp.etherscan.io/mcp` with bearer-token auth from `ETHERSCAN_API_KEY`. Dune remote MCP is `https://api.dune.com/mcp/v1` with OAuth or API-key auth. Never commit keys or raw external dumps.
 
-### P3. Corpus and Projection Authoring
+### P3. Develop: Corpus, Projection, and Gap Loop
 
 Corpus rules:
 
@@ -535,7 +555,7 @@ Projection rules:
    - `operation kind`
    - EIP-712 `primaryType` / `witnessType`
 
-### P4. Gap Loop
+Gap loop rules:
 
 Every run emits gaps into the same vocabulary.
 
@@ -549,7 +569,7 @@ excluded           -> keep if reason still valid against primary source
 
 No protocol moves to done while any COVER selector is `uncovered`, `decode_error`, `mis_decoded`, or `untested_semantic`.
 
-### P5. Landing Gate
+### P4. Landing Gate
 
 Minimum commands:
 
@@ -586,14 +606,20 @@ Current product-path caveats to check explicitly:
 
 Completion evidence must include:
 
+- `crates/integration-tests/onboarding/<protocol>/evidence.md`, copied from `ONBOARDING_EVIDENCE_TEMPLATE.md`
+- every P0/P1/P2/P3/P4 mandatory row marked `done` or concrete `blocked`; otherwise do not claim the phase is complete
 - exact files added/changed
 - gate output
 - remaining WARNs, if any, explicitly scoped outside the protocol or justified
 - any deferred selector/action with reason and issue/follow-up
-- `crates/integration-tests/onboarding/<protocol>/evidence.md`, copied from `ONBOARDING_EVIDENCE_TEMPLATE.md`
 - P0 Claude Code/sub-agent command or agent id, output summary, union/diff disposition, and first-party verification result
+- P1 authoring evidence: per-COVER selector ActionBody/Tier3 mapping, permission/fund-movement red-flag review, manifest file list, live_field/enrichment decision, Tier3 downstream artifact list if applicable, `check:manifest` output
+- P2 synthetic evidence: fuzz seed/iteration command, fixed edge matrix, pass/error corpus disposition
 - P2 Etherscan evidence: txlist command/query, api call count, raw tx count, unique selector count, per-COVER-selector real tx coverage
 - P2 Dune evidence: usage baseline, query id/SQL summary with partition WHERE, rows returned, credit cost or usage delta, selected tx hashes
+- P3 develop evidence: gap buckets, fix-to-gap mapping, rerun output, corpus `expect` flips/exclusions, remaining defer/blocker disposition
+- P4 land evidence: `registryV2 npm run build`, build-index vitest, `check:manifest`, `check:surface`, v3-harness coverage/fuzz/corpus, workspace test output, wasm/fmt/clippy/typecheck outputs where applicable, staged file list, commit hash
+- explicit statement that no base/worktree merge was performed unless the user requested it
 - explicit `blocked_external_data` entry if Etherscan/Dune/Claude Code could not be used
 
 ---
