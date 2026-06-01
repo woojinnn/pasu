@@ -7,42 +7,43 @@ import {
   deletePolicy,
   getPolicy,
   getPolicyTemplates,
-  getExampleTransactions,
+  installPolicyToExtension,
   listPolicies,
   patchPolicy,
+  removePolicyFromExtension,
   ServerError,
-  type ExampleTransaction,
   type PolicySeverity,
   type PolicyTemplate,
 } from "../server-api";
-
-import {
-  testPolicyLocal,
-  validatePolicyLocal,
-  type CedarRequestInput,
-  type TestPolicyResp,
-  type ValidateResp,
-} from "../cedar";
+import { stampAnnotations } from "../editor-v7/annotations";
+import { initialDoc as makeInitialDoc } from "../editor-v7/doc";
+import { EditorShell, parseTree } from "../editor-v7/EditorShell";
+import { serializeDoc } from "../editor-v7/serialize";
+import type { Doc } from "../editor-v7/types";
 import { Topbar } from "../shell/Topbar";
 import "./editor.css";
 
 /**
- * Policy editor (MVP / text-based).
+ * Policy editor — v7 block builder by default, Cedar Code mode as a
+ * fallback for hand-tuning. `EditorShell` holds the source-of-truth
+ * doc + cedar pair; this page just owns the metadata (name, severity)
+ * and the save / delete plumbing.
  *
- * Layout: left sidebar with the installed policy list; main column with
- * a Cedar textarea + live validation (debounced 400ms) + save / delete.
- * Bottom test panel posts a sample Cedar request and prints the verdict.
- *
- * The block-based scratch editor from front/scopeball-v3 is intentionally
- * not built here — that's a 6-10h palette/canvas job. This MVP unlocks
- * the same backend (validate + test + save) with a fraction of the UI.
+ * Each policy row in the sidebar gets a builder/code badge (🧱 / 📝)
+ * driven by whether `policy_tree` is set.
  */
+type ShellSeed = {
+  initialCedarText: string;
+  initialDoc: Doc | null;
+  initialMode: "builder" | "code";
+};
+
 export function EditorPage() {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<number | "new" | null>(null);
 
-  // Honor ?new=1 (from NavRail CTA) and ?policy=<id> (from Home triage Editor link).
+  // Honor ?new=1 (NavRail CTA) and ?policy=<id> (Home triage Editor link).
   useEffect(() => {
     if (params.get("new") === "1") {
       setSelectedId("new");
@@ -64,62 +65,81 @@ export function EditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Editor draft state — name / cedar / severity. When the selection
-  // changes we sync from the fetched policy below.
+  // ── editor-local state ──────────────────────────────────────────
   const [name, setName] = useState("");
-  const [cedarText, setCedarText] = useState("");
   const [severity, setSeverity] = useState<PolicySeverity>("deny");
+  const [cedarText, setCedarText] = useState("");
+  const [treeJson, setTreeJson] = useState<string | null>(null);
+  const [cedarValid, setCedarValid] = useState<boolean>(true);
+
+  // Seed only changes when selectedId changes — we re-mount `EditorShell`
+  // via `key={shellKey}` so its internal mode/doc/cedar reset cleanly.
+  const [shellSeed, setShellSeed] = useState<ShellSeed | null>(null);
+  const [shellKey, setShellKey] = useState(0);
 
   const listQ = useQuery({ queryKey: ["policies"], queryFn: listPolicies });
   const templatesQ = useQuery({ queryKey: ["policy-templates"], queryFn: getPolicyTemplates });
-  const examplesQ = useQuery({ queryKey: ["example-transactions"], queryFn: getExampleTransactions });
 
-  // When selectedId is a real id, fetch it (so we always see the saved
-  // state, not the stale list row).
   const detailQ = useQuery({
     queryKey: ["policy", selectedId],
     queryFn: () => getPolicy(selectedId as number),
     enabled: typeof selectedId === "number",
   });
 
-  // Sync draft state when selection changes.
+  // Re-seed shell + meta when selection changes.
   useEffect(() => {
-    if (selectedId === null) return;
+    if (selectedId === null) {
+      setShellSeed(null);
+      return;
+    }
     if (selectedId === "new") {
       setName("");
-      setCedarText("permit(principal, action, resource);");
       setSeverity("deny");
+      const seedDoc = makeInitialDoc({ action: "Amm::Swap" });
+      const seedCedar = serializeDoc(seedDoc);
+      setShellSeed({ initialCedarText: seedCedar, initialDoc: seedDoc, initialMode: "builder" });
+      setShellKey((k) => k + 1);
+      setCedarText(seedCedar);
+      setTreeJson(null);
+      setCedarValid(true);
       return;
     }
     if (detailQ.data) {
       setName(detailQ.data.name);
-      setCedarText(detailQ.data.cedar_text);
       setSeverity(detailQ.data.severity);
+      const parsedDoc = parseTree(detailQ.data.policy_tree ?? null);
+      setShellSeed({
+        initialCedarText: detailQ.data.cedar_text,
+        initialDoc: parsedDoc,
+        initialMode: parsedDoc ? "builder" : "code",
+      });
+      setShellKey((k) => k + 1);
+      setCedarText(detailQ.data.cedar_text);
+      setTreeJson(detailQ.data.policy_tree ?? null);
+      setCedarValid(true);
     }
   }, [selectedId, detailQ.data]);
 
-  // ── debounced live validation ────────────────────────────────────────
-  const [validateState, setValidateState] = useState<ValidateResp | null>(null);
-  const [validating, setValidating] = useState(false);
-  useEffect(() => {
-    if (cedarText.trim() === "") {
-      setValidateState({ ok: false, error: "cedar_text must not be empty" });
-      return;
-    }
-    setValidating(true);
-    const t = setTimeout(() => {
-      validatePolicyLocal(cedarText)
-        .then(setValidateState)
-        .catch((e) => setValidateState({ ok: false, error: String(e) }))
-        .finally(() => setValidating(false));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [cedarText]);
+  // ── mutations ────────────────────────────────────────────────────
+  // Both create + patch re-stamp `@id` / `@severity` annotations onto
+  // the cedar text so the inline metadata always mirrors the DB columns.
+  const stampedCedar = () => stampAnnotations(cedarText, name.trim() || "untitled", severity);
 
-  // ── save / create / delete ───────────────────────────────────────────
   const createMut = useMutation({
-    mutationFn: () =>
-      createPolicy({ name: name.trim() || "untitled", cedar_text: cedarText, severity }),
+    mutationFn: async () => {
+      const cedar = stampedCedar();
+      const resp = await createPolicy({
+        name: name.trim() || "untitled",
+        cedar_text: cedar,
+        policy_tree: treeJson,
+        severity,
+      });
+      // Dual-write into the extension storage so the popup + wasm engine
+      // see the new policy without waiting for a reload. Non-fatal — if
+      // the extension isn't installed this falls through silently.
+      void installPolicyToExtension(resp.id, cedar);
+      return resp;
+    },
     onSuccess: (resp) => {
       qc.invalidateQueries({ queryKey: ["policies"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -127,15 +147,28 @@ export function EditorPage() {
     },
   });
   const patchMut = useMutation({
-    mutationFn: () =>
-      patchPolicy(selectedId as number, { name: name.trim() || "untitled", cedar_text: cedarText, severity }),
+    mutationFn: async () => {
+      const id = selectedId as number;
+      const cedar = stampedCedar();
+      await patchPolicy(id, {
+        name: name.trim() || "untitled",
+        cedar_text: cedar,
+        policy_tree: treeJson,
+        severity,
+      });
+      void installPolicyToExtension(id, cedar);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["policies"] });
       qc.invalidateQueries({ queryKey: ["policy", selectedId] });
     },
   });
   const deleteMut = useMutation({
-    mutationFn: () => deletePolicy(selectedId as number),
+    mutationFn: async () => {
+      const id = selectedId as number;
+      await deletePolicy(id);
+      void removePolicyFromExtension(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["policies"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -155,6 +188,29 @@ export function EditorPage() {
     if (!confirm(`정책 "${name}"을 삭제할까요?`)) return;
     deleteMut.mutate();
   };
+
+  const onTemplatePick = (t: PolicyTemplate) => {
+    setSeverity(t.severity);
+    if (selectedId === "new" && !name) setName(t.name.ko || t.name.en);
+    // Apply the cedar text by re-seeding the shell. The tree gets cleared
+    // (templates don't ship as v7 trees yet); user can rebuild in Builder
+    // by starting from a blank canvas.
+    setShellSeed({
+      initialCedarText: t.cedar_text,
+      initialDoc: null,
+      initialMode: "code",
+    });
+    setShellKey((k) => k + 1);
+    setCedarText(t.cedar_text);
+    setTreeJson(null);
+  };
+
+  const saveDisabled = useMemo(() => {
+    if (createMut.isPending || patchMut.isPending) return true;
+    if (!cedarText.trim()) return true;
+    if (!cedarValid) return true;
+    return false;
+  }, [createMut.isPending, patchMut.isPending, cedarText, cedarValid]);
 
   return (
     <>
@@ -178,6 +234,9 @@ export function EditorPage() {
                 onClick={() => setSelectedId(p.id)}
               >
                 <div>
+                  <span className="mode-badge" title={p.policy_tree ? "Builder 트리" : "Code 전용"}>
+                    {p.policy_tree ? "🧱" : "📝"}
+                  </span>
                   {p.name}
                   <span className={`sev ${p.severity}`}>{p.severity}</span>
                 </div>
@@ -203,55 +262,35 @@ export function EditorPage() {
             </div>
           )}
 
-          {isEditing && (
+          {isEditing && shellSeed && (
             <>
-              <div className="editor-card">
-                <div className="ec-head">
-                  <input
-                    className="name-input"
-                    type="text"
-                    placeholder="정책 이름"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                  <select value={severity} onChange={(e) => setSeverity(e.target.value as PolicySeverity)}>
-                    <option value="deny">deny (차단)</option>
-                    <option value="warn">warn (경고)</option>
-                    <option value="info">info (정보)</option>
-                  </select>
-                  <span className="grow" />
-                  <TemplateMenu templates={templatesQ.data} onPick={(t) => {
-                    setCedarText(t.cedar_text);
-                    setSeverity(t.severity);
-                    if (selectedId === "new" && !name) setName(t.name.ko || t.name.en);
-                  }} />
-                </div>
-                <textarea
-                  spellCheck={false}
-                  value={cedarText}
-                  onChange={(e) => setCedarText(e.target.value)}
-                  placeholder="permit(principal, action, resource) when { /* … */ };"
+              <div className="meta-row">
+                <input
+                  className="name-input"
+                  type="text"
+                  placeholder="정책 이름"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                 />
-                <div className="ec-foot">
-                  <ValidateBadge validating={validating} state={validateState} />
-                  <span className="spacer" />
-                  {isExisting && (
-                    <button
-                      className="btn danger"
-                      onClick={onDelete}
-                      disabled={deleteMut.isPending}
-                    >
-                      삭제
-                    </button>
-                  )}
-                  <button
-                    className="btn primary"
-                    onClick={onSave}
-                    disabled={createMut.isPending || patchMut.isPending || Boolean(validateState && !validateState.ok && cedarText.trim() !== "")}
-                  >
-                    {createMut.isPending || patchMut.isPending ? "저장 중…" : isExisting ? "저장" : "정책 생성"}
+                <select value={severity} onChange={(e) => setSeverity(e.target.value as PolicySeverity)}>
+                  <option value="deny">deny (차단)</option>
+                  <option value="warn">warn (경고)</option>
+                  <option value="info">info (정보)</option>
+                </select>
+                <span className="grow" />
+                <TemplateMenu templates={templatesQ.data} onPick={onTemplatePick} />
+                {isExisting && (
+                  <button className="btn-danger" onClick={onDelete} disabled={deleteMut.isPending}>
+                    삭제
                   </button>
-                </div>
+                )}
+                <button className="btn-primary" onClick={onSave} disabled={saveDisabled}>
+                  {createMut.isPending || patchMut.isPending
+                    ? "저장 중…"
+                    : isExisting
+                      ? "저장"
+                      : "정책 생성"}
+                </button>
               </div>
 
               {(createMut.error || patchMut.error || deleteMut.error) && (
@@ -260,10 +299,21 @@ export function EditorPage() {
                 </div>
               )}
 
-              <TestPanel
-                cedarText={cedarText}
-                cedarOk={validateState?.ok ?? false}
-                examples={examplesQ.data}
+              <EditorShell
+                key={shellKey}
+                initialCedarText={shellSeed.initialCedarText}
+                initialDoc={shellSeed.initialDoc}
+                initialMode={shellSeed.initialMode}
+                onChange={(next) => {
+                  setCedarText(next.cedarText);
+                  setTreeJson(next.treeJson);
+                  // Builder mode always produces valid cedar (it serializes
+                  // from a structured tree). In Code mode the user might
+                  // type something broken — the shell's bottom drawer shows
+                  // a status pill; we trust the cedar otherwise and rely on
+                  // server-side compile to reject malformed text on save.
+                  setCedarValid(next.mode === "builder" ? true : next.cedarText.trim().length > 0);
+                }}
               />
             </>
           )}
@@ -271,14 +321,6 @@ export function EditorPage() {
       </div>
     </>
   );
-}
-
-// ── validate badge ──────────────────────────────────────────────────────
-
-function ValidateBadge({ validating, state }: { validating: boolean; state: ValidateResp | null }) {
-  if (validating || !state) return <span className="status checking">검증 중…</span>;
-  if (state.ok) return <span className="status ok">✓ 구문 OK</span>;
-  return <span className="status err" title={state.error}>✗ {state.error}</span>;
 }
 
 // ── template picker ─────────────────────────────────────────────────────
@@ -299,134 +341,6 @@ function TemplateMenu({ templates, onPick }: { templates?: PolicyTemplate[]; onP
       ))}
     </select>
   );
-}
-
-// ── test panel ──────────────────────────────────────────────────────────
-
-function TestPanel({
-  cedarText,
-  cedarOk,
-  examples,
-}: {
-  cedarText: string;
-  cedarOk: boolean;
-  examples?: ExampleTransaction[];
-}) {
-  // Default request — easy starting point so the user can hit "테스트" immediately.
-  const defaultReq: CedarRequestInput = useMemo(
-    () => ({
-      principal: 'Wallet::"0x0000000000000000000000000000000000000000"',
-      action: 'Action::"Amm::Swap"',
-      resource: 'Protocol::"0x0000000000000000000000000000000000000000"',
-      entities: [],
-      context: {},
-    }),
-    [],
-  );
-  const [requestJson, setRequestJson] = useState(() => JSON.stringify(defaultReq, null, 2));
-  const [result, setResult] = useState<TestPolicyResp | null>(null);
-  const [parseErr, setParseErr] = useState<string | null>(null);
-
-  // Cedar evaluation now runs in-browser via @scopeball/cedar-wasm.
-  // No server roundtrip, no need to save the policy first — we evaluate
-  // the current draft directly.
-  const testMut = useMutation({
-    mutationFn: () => {
-      let req: CedarRequestInput;
-      try {
-        req = JSON.parse(requestJson) as CedarRequestInput;
-      } catch (e) {
-        throw new Error(`JSON parse: ${e instanceof Error ? e.message : String(e)}`);
-      }
-      if (!cedarOk) throw new Error("Cedar 문법이 유효해야 테스트할 수 있습니다");
-      return testPolicyLocal(cedarText, req);
-    },
-    onSuccess: (resp) => {
-      setResult(resp);
-      setParseErr(null);
-    },
-    onError: (e) => {
-      setResult(null);
-      setParseErr(e instanceof Error ? e.message : String(e));
-    },
-  });
-
-  const loadExample = (ex: ExampleTransaction) => {
-    // Best-effort mapping: example's `meta.from` → principal, derive action
-    // from `action.domain/kind`, mash context+enrichment into context object.
-    const meta = (ex.meta as Record<string, unknown>) ?? {};
-    const action = (ex.action as Record<string, unknown>) ?? {};
-    const from = (meta.from as string) ?? "0x0000000000000000000000000000000000000000";
-    const to = (meta.to as string) ?? "0x0000000000000000000000000000000000000000";
-    const domain = String(action.domain ?? "Generic");
-    const kind = String(action.kind ?? "Tx");
-    const actionKey = `${capitalize(domain)}::${capitalize(kind)}`;
-    const ctx = { ...(ex.context ?? {}), ...((ex.enrichment as Record<string, unknown>) ?? {}) };
-    const req: CedarRequestInput = {
-      principal: `Wallet::"${from}"`,
-      action: `Action::"${actionKey}"`,
-      resource: `Protocol::"${to}"`,
-      entities: [],
-      context: ctx,
-    };
-    setRequestJson(JSON.stringify(req, null, 2));
-    setResult(null);
-    setParseErr(null);
-  };
-
-  return (
-    <div className="editor-card test-card">
-      <h4>테스트</h4>
-      <div className="tc-controls">
-        <select
-          onChange={(e) => {
-            const ex = examples?.find((x) => x.id === e.target.value);
-            if (ex) loadExample(ex);
-            e.target.value = "";
-          }}
-          defaultValue=""
-        >
-          <option value="" disabled>🧪 예시 트랜잭션…</option>
-          {examples?.map((ex) => (
-            <option key={ex.id} value={ex.id}>{ex.label.ko || ex.label.en}</option>
-          ))}
-        </select>
-        <span style={{ flex: 1 }} />
-        <button
-          className="btn primary"
-          onClick={() => testMut.mutate()}
-          disabled={!cedarOk || testMut.isPending}
-          title={!cedarOk ? "Cedar 문법 검증 통과 후 테스트 가능" : ""}
-        >
-          {testMut.isPending ? "실행 중…" : "테스트 실행"}
-        </button>
-      </div>
-      <textarea
-        spellCheck={false}
-        value={requestJson}
-        onChange={(e) => setRequestJson(e.target.value)}
-      />
-      {parseErr && <div className="err-banner" style={{ marginTop: 8 }}>{parseErr}</div>}
-      {result && (
-        <div className={`verdict-result ${result.verdict}`}>
-          <div className="v-head">
-            <span className={`sev-pill ${result.verdict}`}><span className="pd" />{result.verdict}</span>
-            <span>매칭 {result.matched.length}건</span>
-          </div>
-          {result.matched.map((m, i) => (
-            <div key={i} className="matched-row">
-              · {m.policy_id} <span style={{ color: "var(--fail-700)" }}>[{m.severity}]</span>
-              {m.reason ? ` — ${m.reason}` : ""}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function capitalize(s: string): string {
-  return s.length > 0 ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
 function fmtErr(e: unknown): string {

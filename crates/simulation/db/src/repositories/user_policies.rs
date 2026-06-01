@@ -10,6 +10,10 @@ pub struct UserPolicyRow {
     pub name: String,
     pub description: Option<String>,
     pub cedar_text: String,
+    /// JSON snapshot of the v7 builder `Doc` tree. `None` when the policy
+    /// was authored in Code (textarea) mode — the builder shows a
+    /// "code-only" hint in that case.
+    pub policy_tree: Option<String>,
     pub severity: String, // "deny" | "warn" | "info"
     pub enabled: bool,
     pub created_at: i64,
@@ -21,14 +25,15 @@ pub struct UserPolicyInsert {
     pub name: String,
     pub description: Option<String>,
     pub cedar_text: String,
+    pub policy_tree: Option<String>,
     pub severity: String,
 }
 
 pub fn insert(tx: &Transaction<'_>, p: &UserPolicyInsert, now: i64) -> DbResult<i64> {
     tx.execute(
-        "INSERT INTO user_policies (name, description, cedar_text, severity, enabled, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, 1, ?5, ?5)",
-        params![p.name, p.description, p.cedar_text, p.severity, now],
+        "INSERT INTO user_policies (name, description, cedar_text, policy_tree, severity, enabled, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?6)",
+        params![p.name, p.description, p.cedar_text, p.policy_tree, p.severity, now],
     )?;
     Ok(tx.last_insert_rowid())
 }
@@ -47,12 +52,15 @@ pub fn set_enabled(tx: &Transaction<'_>, id: i64, enabled: bool, now: i64) -> Db
 }
 
 /// Patch a policy. Only `Some` fields are written; nested `Option` on
-/// `description` lets a caller distinguish "unchanged" from "set to NULL".
+/// `description` / `policy_tree` lets a caller distinguish "unchanged"
+/// from "set to NULL" (the latter happens when the user switches a
+/// builder-authored policy to direct Code mode and abandons the tree).
 #[derive(Clone, Debug, Default)]
 pub struct UserPolicyPatch {
     pub name: Option<String>,
     pub description: Option<Option<String>>,
     pub cedar_text: Option<String>,
+    pub policy_tree: Option<Option<String>>,
     pub severity: Option<String>,
     pub enabled: Option<bool>,
 }
@@ -63,6 +71,7 @@ impl UserPolicyPatch {
         self.name.is_none()
             && self.description.is_none()
             && self.cedar_text.is_none()
+            && self.policy_tree.is_none()
             && self.severity.is_none()
             && self.enabled.is_none()
     }
@@ -91,6 +100,12 @@ pub fn update(tx: &Transaction<'_>, id: i64, patch: &UserPolicyPatch, now: i64) 
             params![id, cedar, now],
         )?;
     }
+    if let Some(tree) = &patch.policy_tree {
+        total += tx.execute(
+            "UPDATE user_policies SET policy_tree = ?2, updated_at = ?3 WHERE id = ?1",
+            params![id, tree, now],
+        )?;
+    }
     if let Some(severity) = &patch.severity {
         total += tx.execute(
             "UPDATE user_policies SET severity = ?2, updated_at = ?3 WHERE id = ?1",
@@ -109,21 +124,10 @@ pub fn update(tx: &Transaction<'_>, id: i64, patch: &UserPolicyPatch, now: i64) 
 pub fn get(tx: &Transaction<'_>, id: i64) -> DbResult<Option<UserPolicyRow>> {
     let row = tx
         .prepare(
-            "SELECT id, name, description, cedar_text, severity, enabled, created_at, updated_at \
+            "SELECT id, name, description, cedar_text, policy_tree, severity, enabled, created_at, updated_at \
              FROM user_policies WHERE id = ?1",
         )?
-        .query_row(params![id], |r| {
-            Ok(UserPolicyRow {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                description: r.get(2)?,
-                cedar_text: r.get(3)?,
-                severity: r.get(4)?,
-                enabled: r.get::<_, i64>(5)? != 0,
-                created_at: r.get(6)?,
-                updated_at: r.get(7)?,
-            })
-        });
+        .query_row(params![id], map_row);
     match row {
         Ok(r) => Ok(Some(r)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
@@ -133,46 +137,38 @@ pub fn get(tx: &Transaction<'_>, id: i64) -> DbResult<Option<UserPolicyRow>> {
 
 pub fn list_all(tx: &Transaction<'_>) -> DbResult<Vec<UserPolicyRow>> {
     let mut stmt = tx.prepare(
-        "SELECT id, name, description, cedar_text, severity, enabled, created_at, updated_at \
+        "SELECT id, name, description, cedar_text, policy_tree, severity, enabled, created_at, updated_at \
          FROM user_policies ORDER BY enabled DESC, created_at DESC",
     )?;
     let rows = stmt
-        .query_map([], |r| {
-            Ok(UserPolicyRow {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                description: r.get(2)?,
-                cedar_text: r.get(3)?,
-                severity: r.get(4)?,
-                enabled: r.get::<_, i64>(5)? != 0,
-                created_at: r.get(6)?,
-                updated_at: r.get(7)?,
-            })
-        })?
+        .query_map([], map_row)?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
 
 pub fn list_enabled(tx: &Transaction<'_>) -> DbResult<Vec<UserPolicyRow>> {
     let mut stmt = tx.prepare(
-        "SELECT id, name, description, cedar_text, severity, enabled, created_at, updated_at \
+        "SELECT id, name, description, cedar_text, policy_tree, severity, enabled, created_at, updated_at \
          FROM user_policies WHERE enabled = 1 ORDER BY created_at ASC",
     )?;
     let rows = stmt
-        .query_map([], |r| {
-            Ok(UserPolicyRow {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                description: r.get(2)?,
-                cedar_text: r.get(3)?,
-                severity: r.get(4)?,
-                enabled: true,
-                created_at: r.get(6)?,
-                updated_at: r.get(7)?,
-            })
-        })?
+        .query_map([], map_row)?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
+}
+
+fn map_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<UserPolicyRow> {
+    Ok(UserPolicyRow {
+        id: r.get(0)?,
+        name: r.get(1)?,
+        description: r.get(2)?,
+        cedar_text: r.get(3)?,
+        policy_tree: r.get(4)?,
+        severity: r.get(5)?,
+        enabled: r.get::<_, i64>(6)? != 0,
+        created_at: r.get(7)?,
+        updated_at: r.get(8)?,
+    })
 }
 
 #[cfg(test)]
@@ -196,6 +192,7 @@ mod tests {
                     name: "max HF".into(),
                     description: Some("borrow 후 HF < 1.5 차단".into()),
                     cedar_text: r#"forbid(principal, action == Action::"Borrow", resource) when { context.outcome.hf < decimal("1.5") };"#.into(),
+                    policy_tree: None,
                     severity: "deny".into(),
                 },
                 1_700_000_000,
@@ -220,6 +217,7 @@ mod tests {
                     name: "a".into(),
                     description: None,
                     cedar_text: "permit(principal, action, resource);".into(),
+                    policy_tree: None,
                     severity: "info".into(),
                 },
                 1,
@@ -230,6 +228,7 @@ mod tests {
                     name: "b".into(),
                     description: None,
                     cedar_text: "permit(principal, action, resource);".into(),
+                    policy_tree: None,
                     severity: "info".into(),
                 },
                 2,

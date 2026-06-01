@@ -110,6 +110,13 @@ export {
   ExtensionBridgeTimeout,
 } from "./extension-bridge";
 
+export {
+  installPolicyToExtension,
+  removePolicyFromExtension,
+  syncAllPoliciesToExtension,
+  dashboardId,
+} from "./extension-sync";
+
 // Shared primitive types — kept in one file (./types) to mirror the
 // Rust DTOs. Re-exported here so consumer pages can
 // `import type { ... } from "../server-api"`.

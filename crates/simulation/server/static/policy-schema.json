@@ -8,13 +8,13 @@
       "label": { "ko": "AMM 스왑", "en": "AMM swap" }
     },
     {
-      "id": "Erc20::Transfer",
+      "id": "Token::Erc20Transfer",
       "domain": "token",
       "kind": "transfer",
       "label": { "ko": "ERC-20 전송", "en": "ERC-20 transfer" }
     },
     {
-      "id": "Erc20::Approve",
+      "id": "Token::Erc20Approve",
       "domain": "token",
       "kind": "approve",
       "label": { "ko": "ERC-20 승인", "en": "ERC-20 approve" }

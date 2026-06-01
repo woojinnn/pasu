@@ -10,14 +10,16 @@ const RES_TAG = "scopeball-extension";
 const BROADCAST_ID = "__broadcast__";
 
 // Origins that the page bridge accepts. The manifest already restricts where
-// this script runs (matches: http://localhost:5174/*, http://127.0.0.1:5174/*),
+// this script runs (matches: http://localhost:5173-5/*, http://127.0.0.1:5173-5/*),
 // but we re-check at runtime so a future manifest change can't accidentally
 // widen the bridge to arbitrary origins. Keep these two in sync.
 const DASHBOARD_ORIGINS = new Set([
+  // browser-extension/dashboard (current dev port).
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  // Reserved legacy dashboard ports (apps/web, simulation viewer).
   "http://localhost:5174",
   "http://127.0.0.1:5174",
-  // apps/web (new dashboard) — uses the same bridge for Cedar
-  // editor + simulation requests routed to policy-engine-wasm.
   "http://localhost:5175",
   "http://127.0.0.1:5175",
 ]);

@@ -566,6 +566,10 @@ pub struct CreatePolicyReq {
     #[serde(default)]
     pub description: Option<String>,
     pub cedar_text: String,
+    /// Optional JSON snapshot of the v7 builder `Doc` tree — opaque to
+    /// the server; persisted as-is so the builder can round-trip.
+    #[serde(default)]
+    pub policy_tree: Option<String>,
     /// "deny" | "warn" | "info" — matches the DB CHECK contract.
     pub severity: String,
 }
@@ -604,6 +608,7 @@ pub async fn create_policy(
         name: req.name,
         description: req.description,
         cedar_text: req.cedar_text,
+        policy_tree: req.policy_tree,
         severity: req.severity,
     };
     let result = tokio::task::spawn_blocking(move || {
@@ -631,6 +636,10 @@ pub struct PatchPolicyReq {
     pub description: Option<Option<String>>,
     #[serde(default)]
     pub cedar_text: Option<String>,
+    /// `None` = unchanged; `Some(None)` = explicitly clear (user dropped
+    /// the builder tree in favor of Code mode); `Some(Some(json))` = update.
+    #[serde(default, deserialize_with = "serde_helpers::deserialize_present")]
+    pub policy_tree: Option<Option<String>>,
     #[serde(default)]
     pub severity: Option<String>,
     #[serde(default)]
@@ -659,6 +668,7 @@ pub async fn patch_policy(
         name: req.name,
         description: req.description,
         cedar_text: req.cedar_text,
+        policy_tree: req.policy_tree,
         severity: req.severity,
         enabled: req.enabled,
     };

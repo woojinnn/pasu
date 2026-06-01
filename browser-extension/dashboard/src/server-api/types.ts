@@ -128,6 +128,9 @@ export interface InstalledPolicy {
   name: string;
   description: string | null;
   cedar_text: string;
+  /** Builder tree snapshot (JSON-encoded v7 `Doc`). `null` / absent
+   *  when the policy was authored directly in Code mode. */
+  policy_tree?: string | null;
   severity: PolicySeverity;
   enabled: boolean;
   created_at: UnixSeconds;

@@ -18,6 +18,8 @@ export interface CreatePolicyBody {
   name: string;
   description?: string | null;
   cedar_text: string;
+  /** v7 builder `Doc` JSON snapshot, when saving from the block editor. */
+  policy_tree?: string | null;
   severity: PolicySeverity;
 }
 
@@ -35,6 +37,8 @@ export interface PatchPolicyBody {
   name?: string;
   description?: string | null;
   cedar_text?: string;
+  /** Set to `null` to clear (drop builder tree → code-only). */
+  policy_tree?: string | null;
   severity?: PolicySeverity;
   enabled?: boolean;
 }

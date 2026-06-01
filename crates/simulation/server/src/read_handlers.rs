@@ -435,6 +435,10 @@ struct PolicyRow {
     name: String,
     description: Option<String>,
     cedar_text: String,
+    /// JSON snapshot of the v7 builder `Doc` — null when the policy
+    /// was authored directly in Code mode.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    policy_tree: Option<String>,
     severity: String,
     enabled: bool,
     created_at: i64,
@@ -532,6 +536,7 @@ pub async fn list_policies(
                         name: r.name,
                         description: r.description,
                         cedar_text: r.cedar_text,
+                        policy_tree: r.policy_tree,
                         severity: r.severity,
                         enabled: r.enabled,
                         created_at: r.created_at,
@@ -569,6 +574,7 @@ pub async fn get_policy(
             name: r.name,
             description: r.description,
             cedar_text: r.cedar_text,
+            policy_tree: r.policy_tree,
             severity: r.severity,
             enabled: r.enabled,
             created_at: r.created_at,

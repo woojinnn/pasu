@@ -86,6 +86,12 @@ const MIGRATION_010: Migration = Migration {
     sql: include_str!("migrations/010_drop_local_storage_tables.sql"),
 };
 
+const MIGRATION_011: Migration = Migration {
+    version: 11,
+    description: "user_policies.policy_tree — v7 builder tree round-trip storage",
+    sql: include_str!("migrations/011_policy_tree.sql"),
+};
+
 /// User-DB schema (one DB file per wallet user). Holds wallet state,
 /// holdings, approvals, etc. — but NOT the global users table.
 const USER_DB_MIGRATIONS: &[Migration] = &[
@@ -99,6 +105,7 @@ const USER_DB_MIGRATIONS: &[Migration] = &[
     MIGRATION_008,
     MIGRATION_009,
     MIGRATION_010,
+    MIGRATION_011,
 ];
 
 /// Global-DB schema (single file shared across users, holds the email →
@@ -202,7 +209,7 @@ mod tests {
         let pool = Pool::open_in_memory();
         assert_eq!(current_version(&pool).unwrap(), None);
         run(&pool).unwrap();
-        assert_eq!(current_version(&pool).unwrap(), Some(10));
+        assert_eq!(current_version(&pool).unwrap(), Some(11));
     }
 
     #[test]
@@ -211,14 +218,14 @@ mod tests {
         run(&pool).unwrap();
         run(&pool).unwrap(); // 두 번째 호출도 OK
         run(&pool).unwrap(); // 세 번째도
-        assert_eq!(current_version(&pool).unwrap(), Some(10));
+        assert_eq!(current_version(&pool).unwrap(), Some(11));
 
         // _schema_migrations 에는 적용된 버전 수 만큼만 row.
         pool.with_conn(|c| {
             let n: i64 = c
                 .query_row("SELECT COUNT(*) FROM _schema_migrations", [], |r| r.get(0))
                 .unwrap();
-            assert_eq!(n, 10);
+            assert_eq!(n, 11);
             Ok(())
         })
         .unwrap();

@@ -151,3 +151,59 @@
   color: var(--slate-400); text-align: center; padding: 40px;
 }
 .empty-editor strong { display: block; color: var(--slate-700); font-size: 14px; margin-bottom: 6px; }
+
+/* ── meta row (name / severity / template / save) ─────────────────── */
+
+.meta-row {
+  display: flex; gap: 8px; align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+}
+.meta-row .name-input {
+  min-width: 220px; font-weight: 600;
+  padding: 7px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface);
+  color: var(--slate-900); font-size: 13px;
+}
+.meta-row select {
+  padding: 7px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface);
+  color: var(--slate-900); font-size: 13px;
+}
+.meta-row .grow { flex: 1; }
+
+.meta-row .btn-primary {
+  padding: 7px 16px; border-radius: var(--r-sm);
+  background: var(--slate-700); color: var(--fog-50);
+  font-size: 12px; font-weight: 600;
+}
+.meta-row .btn-primary:hover:not(:disabled) { background: var(--slate-900); }
+.meta-row .btn-primary:disabled { background: var(--slate-300); cursor: not-allowed; }
+
+.meta-row .btn-danger {
+  padding: 7px 12px; border-radius: var(--r-sm);
+  background: var(--fail-100); color: var(--fail-800);
+  font-size: 12px; font-weight: 600;
+}
+.meta-row .btn-danger:hover:not(:disabled) { background: var(--fail-200); }
+
+/* ── sidebar mode badge ──────────────────────────────────────────── */
+
+.policy-side .pi .mode-badge {
+  display: inline-block;
+  font-size: 12px; margin-right: 4px;
+}
+
+/* ── error banner ────────────────────────────────────────────────── */
+
+.err-banner {
+  background: var(--fail-50);
+  border: 1px solid var(--fail-200);
+  color: var(--fail-800);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--ff-mono);
+}
