@@ -10,17 +10,19 @@ import {
   getExampleTransactions,
   listPolicies,
   patchPolicy,
-  testPolicy,
-  validatePolicy,
   ServerError,
-  type CedarRequestInput,
   type ExampleTransaction,
   type PolicyTemplate,
-  type TestPolicyResp,
-  type ValidateResp,
 } from "@scopeball/api-client";
 import type { PolicySeverity } from "@scopeball/types";
 
+import {
+  testPolicyLocal,
+  validatePolicyLocal,
+  type CedarRequestInput,
+  type TestPolicyResp,
+  type ValidateResp,
+} from "../cedar";
 import { Topbar } from "../shell/Topbar";
 import "./editor.css";
 
@@ -106,7 +108,7 @@ export function EditorPage() {
     }
     setValidating(true);
     const t = setTimeout(() => {
-      validatePolicy(cedarText)
+      validatePolicyLocal(cedarText)
         .then(setValidateState)
         .catch((e) => setValidateState({ ok: false, error: String(e) }))
         .finally(() => setValidating(false));
@@ -260,7 +262,8 @@ export function EditorPage() {
               )}
 
               <TestPanel
-                policyId={isExisting ? (selectedId as number) : null}
+                cedarText={cedarText}
+                cedarOk={validateState?.ok ?? false}
                 examples={examplesQ.data}
               />
             </>
@@ -302,10 +305,12 @@ function TemplateMenu({ templates, onPick }: { templates?: PolicyTemplate[]; onP
 // ── test panel ──────────────────────────────────────────────────────────
 
 function TestPanel({
-  policyId,
+  cedarText,
+  cedarOk,
   examples,
 }: {
-  policyId: number | null;
+  cedarText: string;
+  cedarOk: boolean;
   examples?: ExampleTransaction[];
 }) {
   // Default request — easy starting point so the user can hit "테스트" immediately.
@@ -323,6 +328,9 @@ function TestPanel({
   const [result, setResult] = useState<TestPolicyResp | null>(null);
   const [parseErr, setParseErr] = useState<string | null>(null);
 
+  // Cedar evaluation now runs in-browser via @scopeball/cedar-wasm.
+  // No server roundtrip, no need to save the policy first — we evaluate
+  // the current draft directly.
   const testMut = useMutation({
     mutationFn: () => {
       let req: CedarRequestInput;
@@ -331,8 +339,8 @@ function TestPanel({
       } catch (e) {
         throw new Error(`JSON parse: ${e instanceof Error ? e.message : String(e)}`);
       }
-      if (policyId === null) throw new Error("정책을 먼저 저장해야 테스트할 수 있습니다");
-      return testPolicy(policyId, req);
+      if (!cedarOk) throw new Error("Cedar 문법이 유효해야 테스트할 수 있습니다");
+      return testPolicyLocal(cedarText, req);
     },
     onSuccess: (resp) => {
       setResult(resp);
@@ -388,8 +396,8 @@ function TestPanel({
         <button
           className="btn primary"
           onClick={() => testMut.mutate()}
-          disabled={policyId === null || testMut.isPending}
-          title={policyId === null ? "정책을 먼저 저장하세요" : ""}
+          disabled={!cedarOk || testMut.isPending}
+          title={!cedarOk ? "Cedar 문법 검증 통과 후 테스트 가능" : ""}
         >
           {testMut.isPending ? "실행 중…" : "테스트 실행"}
         </button>

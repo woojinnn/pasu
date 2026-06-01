@@ -4,7 +4,8 @@
   "description": "Scopeball monorepo — Rust backend (crates/), browser extension, and frontend apps.",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "crates/cedar-wasm-lite/pkg"
   ],
   "scripts": {
     "web:dev": "yarn workspace @scopeball/web dev",

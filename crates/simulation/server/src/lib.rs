@@ -52,14 +52,12 @@
 
 pub mod app;
 pub mod auth;
-pub mod cedar_handlers;
 pub mod dashboard_handlers;
 pub mod db_store;
 pub mod docs;
 pub mod dto;
 pub mod events;
 pub mod handler;
-pub mod phase5_handlers;
 pub mod read_handlers;
 pub mod spenders;
 pub mod store;

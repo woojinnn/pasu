@@ -1,0 +1,28 @@
+[package]
+name = "cedar-wasm-lite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Thin wasm-bindgen wrapper around `cedar-policy` used by apps/web for in-browser Cedar validate + authorize. Lets simulation-server drop its `cedar-policy` dep and runs Editor live-check at zero latency."
+
+# `-Oz` keeps the bundle small (the editor wasm is ~700 KB pre-strip);
+# `--strip-debug` shaves another ~30 KB without affecting semantics.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--strip-debug", "--enable-bulk-memory", "--enable-mutable-globals"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cedar-policy = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen = { workspace = true }
+console_error_panic_hook = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { workspace = true }
+
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }
