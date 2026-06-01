@@ -70,6 +70,7 @@ fn main() -> ExitCode {
         ResolveOutcome::Resolved(r) => {
             let source = match r.source {
                 Source::Sourcify => "Sourcify (curated, parameter names available)",
+                #[cfg(feature = "sqlite")]
                 Source::SourcifyDb => "Sourcify DB dump (parameter names available)",
                 Source::Openchain => "openchain (selector match, names synthesised)",
             };

@@ -150,7 +150,7 @@ export async function listWallets(): Promise<WalletId[]> {
  * Returns the server's `policyRequest` (state_before / deltas /
  * state_after) and `diagnostics`. Errors are surfaced as `ServerError`.
  *
- * Wire shape mirrors `crates/simulation/server/src/dto.rs`. Types are
+ * Wire shape mirrors `crates/policy-server/server/src/dto.rs`. Types are
  * kept loose (`Record<string, unknown>`) because the action / context
  * payloads are opaque to the SW — only the server (and WASM Cedar)
  * needs to interpret them.

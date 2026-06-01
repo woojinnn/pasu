@@ -1,6 +1,6 @@
 // Lending::Supply — supply (deposit) an asset into a lending market.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/supply.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/supply.rs`
 // (`SupplyAction` + `SupplyLiveInputs`). `LiveField<T>` is inlined as the
 // underlying `T` at the policy layer (source/ttl/synced_at metadata is not
 // exposed).

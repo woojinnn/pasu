@@ -15,6 +15,7 @@ import {
   type SequenceStepResult,
 } from "../cedar";
 import { decodeTxLocal } from "../tools/tx-decode";
+import { Topbar } from "../shell/Topbar";
 
 import "./simulation.css";
 
@@ -134,6 +135,10 @@ export function SimulationPage() {
 
   return (
     <>
+      <Topbar
+        here="Simulation"
+        subtitle={`${stepCount} step${stepCount === 1 ? "" : "s"}`}
+      />
       <div className="sim-layout">
         {/* Left column — step builder + run trigger area */}
         <div className="sim-main">

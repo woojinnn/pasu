@@ -36,6 +36,22 @@ class MockStream {
   }
 }
 
+function streamWrites(): Array<{ requestId: string; data: unknown }> {
+  return streamState.instances[0]?.writes ?? [];
+}
+
+function policyWrites(): Array<{ requestId: string; data: unknown }> {
+  return streamWrites().filter(
+    (write) => (write.data as { type?: string }).type !== "execution-report",
+  );
+}
+
+function executionReportWrites(): Array<{ requestId: string; data: unknown }> {
+  return streamWrites().filter(
+    (write) => (write.data as { type?: string }).type === "execution-report",
+  );
+}
+
 vi.mock("@metamask/post-message-stream", () => ({
   WindowPostMessageStream: class extends MockStream {
     constructor() {
@@ -81,10 +97,153 @@ describe("inpage provider proxy", () => {
       }),
     ).resolves.toBe("sent");
 
-    expect(streamState.instances[0].writes).toHaveLength(1);
+    expect(policyWrites()).toHaveLength(1);
     expect(
       originalRequest.mock.calls.map(([request]) => request.method),
     ).toEqual(["eth_chainId", "eth_sendTransaction"]);
+  });
+
+  it("reports an onchain submission when the wallet confirms eth_sendTransaction", async () => {
+    streamState.responses.push(true);
+
+    await import("../proxy-injected-providers");
+
+    const originalRequest = vi.fn(async (request: { method?: string }) => {
+      if (request.method === "eth_chainId") return "0x1";
+      return "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    });
+    (window as any).ethereum = {
+      request: originalRequest,
+    };
+
+    const tx = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value: "0x0",
+      data: "0x",
+    };
+
+    await expect(
+      (window as any).ethereum.request({
+        method: "eth_sendTransaction",
+        params: [tx],
+      }),
+    ).resolves.toBe(
+      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    );
+
+    expect(executionReportWrites()).toHaveLength(1);
+    expect(executionReportWrites()[0].data).toEqual(
+      expect.objectContaining({
+        type: "execution-report",
+        wallet_id: {
+          address: tx.from,
+          chains: ["eip155:1"],
+        },
+        outcome: {
+          kind: "onchain_submitted",
+          chain: "eip155:1",
+          tx_hash:
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        },
+        metadata: expect.objectContaining({
+          source: "provider-proxy",
+          method: "eth_sendTransaction",
+        }),
+      }),
+    );
+  });
+
+  it("reports wallet rejection when the wallet rejects eth_sendTransaction", async () => {
+    streamState.responses.push(true);
+
+    await import("../proxy-injected-providers");
+
+    const walletError = Object.assign(new Error("User rejected the request."), {
+      code: 4001,
+    });
+    const originalRequest = vi.fn(async (request: { method?: string }) => {
+      if (request.method === "eth_chainId") return "0x1";
+      throw walletError;
+    });
+    (window as any).ethereum = {
+      request: originalRequest,
+    };
+
+    const tx = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value: "0x0",
+      data: "0x",
+    };
+
+    await expect(
+      (window as any).ethereum.request({
+        method: "eth_sendTransaction",
+        params: [tx],
+      }),
+    ).rejects.toMatchObject({ code: 4001 });
+
+    expect(executionReportWrites()).toHaveLength(1);
+    expect(executionReportWrites()[0].data).toEqual(
+      expect.objectContaining({
+        type: "execution-report",
+        wallet_id: {
+          address: tx.from,
+          chains: ["eip155:1"],
+        },
+        outcome: {
+          kind: "wallet_rejected",
+          reason: "User rejected the request.",
+        },
+        metadata: expect.objectContaining({
+          source: "provider-proxy",
+          method: "eth_sendTransaction",
+        }),
+      }),
+    );
+  });
+
+  it("reports a wallet signature when the wallet confirms typed data", async () => {
+    streamState.responses.push(true);
+
+    await import("../proxy-injected-providers");
+
+    const originalRequest = vi.fn(async (request: { method?: string }) => {
+      if (request.method === "eth_chainId") return "0x1";
+      return "0xsigned";
+    });
+    (window as any).ethereum = {
+      request: originalRequest,
+    };
+
+    const address = "0x1111111111111111111111111111111111111111";
+
+    await expect(
+      (window as any).ethereum.request({
+        method: "eth_signTypedData_v4",
+        params: [address, { domain: { chainId: 1 }, message: { ok: true } }],
+      }),
+    ).resolves.toBe("0xsigned");
+
+    expect(executionReportWrites()).toHaveLength(1);
+    expect(executionReportWrites()[0].data).toEqual(
+      expect.objectContaining({
+        type: "execution-report",
+        wallet_id: {
+          address,
+          chains: ["eip155:1"],
+        },
+        outcome: {
+          kind: "wallet_signed",
+          signature: "0xsigned",
+        },
+        metadata: expect.objectContaining({
+          source: "provider-proxy",
+          method: "eth_signTypedData_v4",
+        }),
+      }),
+    );
   });
 
   it("gates payload-only send(payload) transaction calls before forwarding", async () => {
@@ -113,7 +272,7 @@ describe("inpage provider proxy", () => {
 
     expect(originalSend).not.toHaveBeenCalled();
     await expect(result).resolves.toBe("sent");
-    expect(streamState.instances[0].writes).toHaveLength(1);
+    expect(policyWrites()).toHaveLength(1);
     expect(originalSend).toHaveBeenCalledTimes(1);
   });
 
@@ -143,7 +302,7 @@ describe("inpage provider proxy", () => {
 
     expect(originalSendAsync).not.toHaveBeenCalled();
     await expect(result).resolves.toBe("sent");
-    expect(streamState.instances[0].writes).toHaveLength(1);
+    expect(policyWrites()).toHaveLength(1);
     expect(originalSendAsync).toHaveBeenCalledTimes(1);
   });
 
@@ -188,7 +347,7 @@ describe("inpage provider proxy", () => {
       }),
     ).resolves.toBe("sent");
 
-    expect(streamState.instances[0].writes).toHaveLength(1);
+    expect(policyWrites()).toHaveLength(1);
   });
 
   it("checks metamask_batch inner wallet actions before forwarding the batch", async () => {
@@ -239,8 +398,8 @@ describe("inpage provider proxy", () => {
         ([request]) => request?.method === "metamask_batch",
       ),
     ).toHaveLength(0);
-    expect(streamState.instances[0].writes).toHaveLength(2);
-    expect(streamState.instances[0].writes.map((write) => write.data)).toEqual([
+    expect(policyWrites()).toHaveLength(2);
+    expect(policyWrites().map((write) => write.data)).toEqual([
       expect.objectContaining({
         type: "transaction",
         transaction: tx,
@@ -294,8 +453,8 @@ describe("inpage provider proxy", () => {
         ([request]) => request?.method === "wallet_sendCalls",
       ),
     ).toHaveLength(0);
-    expect(streamState.instances[0].writes).toHaveLength(2);
-    expect(streamState.instances[0].writes.map((write) => write.data)).toEqual([
+    expect(policyWrites()).toHaveLength(2);
+    expect(policyWrites().map((write) => write.data)).toEqual([
       expect.objectContaining({
         type: "transaction",
         chainId: 8453,
@@ -309,6 +468,60 @@ describe("inpage provider proxy", () => {
         transaction: { from, ...secondCall },
       }),
     ]);
+  });
+
+  it("reports wallet confirmation when wallet_sendCalls succeeds", async () => {
+    streamState.responses.push(true);
+    const originalRequest = vi.fn(async (request: { method?: string }) => {
+      if (request.method === "eth_chainId") return "0x1";
+      return { id: "bundle-1" };
+    });
+    const provider = {
+      chainId: "0x1",
+      request: originalRequest,
+    };
+    (window as any).ethereum = provider;
+
+    await import("../proxy-injected-providers");
+
+    const from = "0x1111111111111111111111111111111111111111";
+    await expect(
+      (window as any).ethereum.request({
+        method: "wallet_sendCalls",
+        params: [
+          {
+            chainId: "0x2105",
+            from,
+            calls: [
+              {
+                to: "0x2222222222222222222222222222222222222222",
+                data: "0x1234",
+              },
+            ],
+          },
+        ],
+      }),
+    ).resolves.toEqual({ id: "bundle-1" });
+
+    expect(policyWrites()).toHaveLength(1);
+    expect(executionReportWrites()).toHaveLength(1);
+    expect(executionReportWrites()[0].data).toEqual(
+      expect.objectContaining({
+        type: "execution-report",
+        wallet_id: {
+          address: from,
+          chains: ["eip155:8453"],
+        },
+        outcome: {
+          kind: "wallet_confirmed",
+          method: "wallet_sendCalls",
+        },
+        metadata: expect.objectContaining({
+          source: "provider-proxy",
+          method: "wallet_sendCalls",
+        }),
+      }),
+    );
   });
 
   it("stops checking wallet_sendCalls after the first denied call", async () => {
@@ -347,7 +560,7 @@ describe("inpage provider proxy", () => {
     expect(originalRequest).not.toHaveBeenCalledWith(
       expect.objectContaining({ method: "wallet_sendCalls" }),
     );
-    expect(streamState.instances[0].writes).toHaveLength(1);
+    expect(policyWrites()).toHaveLength(1);
   });
 
   it("caches chain id reads for repeated gated requests on the same provider", async () => {
@@ -391,7 +604,7 @@ describe("inpage provider proxy", () => {
         ([request]) => request?.method === "eth_chainId",
       ),
     ).toHaveLength(1);
-    expect(streamState.instances[0].writes).toHaveLength(2);
+    expect(policyWrites()).toHaveLength(2);
   });
 
   it("does not reannounce an EIP-6963 provider that could not be wrapped", async () => {
@@ -478,7 +691,7 @@ describe("inpage provider proxy", () => {
       }),
     ).resolves.toBe("sent");
 
-    expect(streamState.instances[0].writes).toHaveLength(1);
+    expect(policyWrites()).toHaveLength(1);
     dispatchSpy.mockRestore();
   });
 });

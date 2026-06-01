@@ -13,11 +13,12 @@ members = [
     "crates/integration-tests",
     "crates/adapters/abi-resolver",
     "crates/adapters/mappers",
-    "crates/simulation/state",
-    "crates/simulation/reducer",
-    "crates/simulation/db",
-    "crates/simulation/sync",
-    "crates/simulation/server",
+    "crates/policy-server/asset-model/state",
+    "crates/policy-server/asset-model/action",
+    "crates/policy-server/asset-model/transition",
+    "crates/policy-server/db",
+    "crates/policy-server/sync",
+    "crates/policy-server/server",
 ]
 
 [workspace.package]
@@ -47,10 +48,11 @@ thiserror = "2"
 policy-engine = { path = "crates/policy-engine", version = "0.1.0" }
 abi-resolver = { path = "crates/adapters/abi-resolver", version = "0.1.0" }
 mappers = { path = "crates/adapters/mappers", version = "0.1.0" }
-simulation-state = { path = "crates/simulation/state", version = "0.1.0" }
-simulation-reducer = { path = "crates/simulation/reducer", version = "0.1.0" }
-simulation-db = { path = "crates/simulation/db", version = "0.1.0" }
-simulation-sync = { path = "crates/simulation/sync", version = "0.1.0" }
+simulation-state = { path = "crates/policy-server/asset-model/state", version = "0.1.0" }
+simulation-action = { path = "crates/policy-server/asset-model/action", version = "0.1.0" }
+simulation-reducer = { path = "crates/policy-server/asset-model/transition", version = "0.1.0" }
+simulation-db = { path = "crates/policy-server/db", version = "0.1.0" }
+simulation-sync = { path = "crates/policy-server/sync", version = "0.1.0" }
 
 # WASM bridge deps
 wasm-bindgen = "0.2"

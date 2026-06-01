@@ -1,6 +1,6 @@
 // Lending::DelegateBorrow — Aave credit-delegation.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/delegate_borrow.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/delegate_borrow.rs`
 // (`DelegateBorrowAction`). Authorizes `delegatee` to borrow on behalf of the
 // submitter up to `amount` of `asset` under the given rate mode. No LiveInputs.
 

@@ -1,6 +1,6 @@
 // Perp::ChangeLeverage — change the leverage setting for a market.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/change_leverage.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/change_leverage.rs`
 // (`ChangeLeverageAction` + `ChangeLeverageLiveInputs`).
 //
 // `affectedPositions` is `Vec<PositionId>` → `Set<String>`. `newLiqPrices` is

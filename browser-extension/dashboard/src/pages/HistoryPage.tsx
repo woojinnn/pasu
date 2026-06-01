@@ -7,6 +7,7 @@ import {
   type VerdictListOpts,
   type VerdictRangeAlias,
 } from "../server-api";
+import { Topbar } from "../shell/Topbar";
 
 import "./verdicts.css";
 
@@ -23,9 +24,11 @@ const PAGE_SIZE = 50;
 export function HistoryPage() {
   const [range, setRange] = useState<VerdictRangeAlias | "">("");
   const [pages, setPages] = useState<VerdictDto[][]>([]);
+  // Cursor is now a unix-seconds timestamp (`before`) — the storage layer
+  // paginates by `ts`, not by autoincrement id (which is now a UUID string).
   const [cursor, setCursor] = useState<number | undefined>(undefined);
   const [doneLoadingMore, setDoneLoadingMore] = useState(false);
-  const seenIds = useRef(new Set<number>());
+  const seenIds = useRef(new Set<string>());
 
   const baseOpts = useMemo<VerdictListOpts>(
     () => ({ range: range || undefined, limit: PAGE_SIZE }),
@@ -43,7 +46,9 @@ export function HistoryPage() {
     if (firstQ.data) {
       seenIds.current = new Set(firstQ.data.map((r) => r.id));
       setPages([firstQ.data]);
-      setCursor(firstQ.data.at(-1)?.id);
+      // Cursor is the oldest `ts` in the page — the storage layer keeps
+      // rows newest-first and filters by `ts < before` to paginate.
+      setCursor(firstQ.data.at(-1)?.ts);
       setDoneLoadingMore(firstQ.data.length < PAGE_SIZE);
     }
   }, [firstQ.data]);
@@ -65,7 +70,8 @@ export function HistoryPage() {
     }
     newRows.forEach((r) => seenIds.current.add(r.id));
     setPages((p) => [...p, newRows]);
-    setCursor(newRows.at(-1)?.id);
+    // Advance the cursor by `ts` (oldest row in the new page).
+    setCursor(newRows.at(-1)?.ts);
     if (rows.length < PAGE_SIZE) setDoneLoadingMore(true);
   };
 
@@ -73,6 +79,10 @@ export function HistoryPage() {
 
   return (
     <>
+      <Topbar
+        here="History"
+        subtitle={`${allRows.length}건 로드`}
+      />
       <div className="v-toolbar">
         <label>
           기간
@@ -137,9 +147,12 @@ function HistoryRow({ v }: { v: VerdictDto }) {
   const origin = v.dapp_origin ?? "—";
   const reason = v.reason?.ko ?? v.reason?.en ?? "—";
   const policyName = v.policy?.name ?? "—";
+  // The id used to be a tiny autoincrement; now it's a UUID — show the first
+  // 8 chars so the column stays narrow while remaining glanceably distinct.
+  const shortId = v.id.length > 8 ? v.id.slice(0, 8) : v.id;
   return (
     <tr>
-      <td className="seq">#{v.id}</td>
+      <td className="seq" title={v.id}>#{shortId}</td>
       <td>
         <span className={`sev-pill ${v.verdict}`}><span className="pd" />{v.verdict}</span>
       </td>

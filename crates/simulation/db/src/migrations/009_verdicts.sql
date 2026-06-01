@@ -1,3 +1,0 @@
--- 009_verdicts tombstone.
--- Verdict, audit, history, and finding records are browser-extension local state.
--- Keep this migration version as a no-op so existing migration numbering stays stable.

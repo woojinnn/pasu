@@ -1,7 +1,7 @@
 // Perp::DecreasePosition — reduce size of an existing perpetual position
 // without fully closing it.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/decrease.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/decrease.rs`
 // (`DecreasePerpAction`; reuses `ClosePerpLiveInputs`).
 
 namespace Perp {

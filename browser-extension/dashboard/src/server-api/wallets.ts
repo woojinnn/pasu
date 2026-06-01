@@ -3,7 +3,7 @@
  *
  * All routes are authenticated — `client.request()` attaches the stored
  * JWT automatically. The TypeScript shapes mirror the Rust DTOs in
- * `crates/simulation/server/src/read_handlers.rs` and the underlying
+ * `crates/policy-server/server/src/read_handlers.rs` and the underlying
  * `simulation-state` types.
  */
 

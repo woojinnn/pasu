@@ -1,6 +1,6 @@
 // Perp::AdjustMargin — add or withdraw collateral from an existing position.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/adjust_margin.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/adjust_margin.rs`
 // (`AdjustMarginAction` + `AdjustMarginLiveInputs`).
 //
 // `delta` is a `SignedI256` exposed as a string: positive = deposit,

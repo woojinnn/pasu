@@ -1,6 +1,6 @@
 // Perp::IncreasePosition — add size to an existing perpetual position.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/increase.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/increase.rs`
 // (`IncreasePerpAction`; reuses `OpenPerpLiveInputs`).
 //
 // Optional collateral top-up is exposed via the 3-layer amount projection.

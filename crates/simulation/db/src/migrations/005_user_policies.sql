@@ -1,3 +1,0 @@
--- 005_user_policies tombstone.
--- Policies are browser-extension local state and are not managed by simulation-db.
--- Keep this migration version as a no-op so existing migration numbering stays stable.

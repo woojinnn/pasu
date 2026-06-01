@@ -1,8 +1,8 @@
 // Launchpad::WithdrawCommit — `LaunchpadAction::WithdrawCommit`.
 //
-// Rust source: `crates/simulation/reducer/src/action/launchpad/withdraw_commit.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/launchpad/withdraw_commit.rs`
 // (`WithdrawCommitAction` + `WithdrawCommitLiveInputs`); `SaleState` is defined
-// in `crates/simulation/reducer/src/action/launchpad/mod.rs`.
+// in `crates/policy-server/asset-model/action/src/launchpad/mod.rs`.
 //
 // Cancels a prior commitment on platforms that allow pre-sale withdrawal.
 // The `(start, end)` window inside `SaleState` is flattened to two parallel

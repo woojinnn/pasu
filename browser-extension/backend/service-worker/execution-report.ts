@@ -1,32 +1,22 @@
 import { RequestType, type ExecutionReportPayload } from "@lib/types";
-import { getAccessToken, request } from "./scopeball-auth";
+
+import { appendExecutionReport } from "./execution-report-storage";
 
 /**
  * Best-effort execution report sink.
  *
- * Reports are authenticated with the same OAuth/JWT token used by `/evaluate`.
- * A signed-out user does not have a server-side namespace, so we skip rather
- * than POST an unauthenticated report that the server will reject.
+ * Reports are written into chrome.storage.local so this per-device activity log
+ * does not round-trip through the policy server.
  */
 export async function reportExecutionOutcome(
   report: ExecutionReportPayload,
 ): Promise<void> {
-  const {
-    type: _type,
-    hostname: _hostname,
-    bypassed: _bypassed,
-    ...body
-  } = report;
-  if (_type !== RequestType.EXECUTION_REPORT) return;
+  if (report.type !== RequestType.EXECUTION_REPORT) return;
 
   try {
-    if (!(await getAccessToken())) return;
-    await request("/execution-report", {
-      method: "POST",
-      body,
-    });
+    await appendExecutionReport(report);
   } catch (err) {
-    console.warn("[Scopeball] execution report failed", {
+    console.warn("[Scopeball] execution report storage failed", {
       err: err instanceof Error ? err.message : String(err),
     });
   }
