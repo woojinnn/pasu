@@ -63,3 +63,17 @@ pub fn route_typed_data(
     let out = policy_engine_wasm::declarative_route_typed_data_v3_json(input.to_string());
     serde_json::from_str(&out).unwrap_or(Value::Null)
 }
+
+/// Run the v2 evaluate export over a prebuilt input → parsed verdict envelope.
+///
+/// The caller assembles the `{ action, meta, tx, bundles, results }` object
+/// (`action` + `meta` are taken verbatim from a route envelope's
+/// `data.actions[i]`; `bundles` is `[{ policy, manifest }]`; `results` the host
+/// RPC results map — `{}` when the policies declare no `policy_rpc`). This wraps
+/// the WASM `evaluate_action_v2_json` call + envelope parse, mirroring the route
+/// helpers above. Parse failures collapse to `Value::Null`.
+#[must_use]
+pub fn evaluate_action(input: &Value) -> Value {
+    let out = policy_engine_wasm::evaluate_action_v2_json(input.to_string());
+    serde_json::from_str(&out).unwrap_or(Value::Null)
+}

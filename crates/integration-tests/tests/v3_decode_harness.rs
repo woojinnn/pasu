@@ -2287,3 +2287,135 @@ fn eigenlayer_delegation_approval_typed_data_decodes_grant() {
     assert_eq!(find_string_field(&env, "authorized"), Some(STAKER.into()));
     assert_eq!(find_bool_field(&env, "is_authorized"), Some(true));
 }
+
+/// End-to-end decode→verdict golden for the EIP-712 typed-data signature wiring
+/// (mock-free). Every other typed-data test in this file stops at the decoded
+/// body; this one is the only test that carries a real Permit2 `PermitSingle`
+/// signature all the way through the PRODUCTION decoder AND the real Cedar
+/// evaluation, exactly as the orchestrator's `typedSignatureLifecycle` does:
+///
+///   route_typed_data (production WASM decode)
+///     → ActionBody { domain: token, action: permit2_sign_allowance, spender, … }
+///   → evaluate_action_v2_json (real Cedar, no mock)
+///     → Verdict::Warn { matched: [permit2-sign-allowance-confirm] }
+///
+/// The policy bundle is the shipped default-policy fixture
+/// (`default_policies_v2/permit2-sign-allowance-confirm`) — the same
+/// confirm-before-sign policy the extension installs — so this pins that signing
+/// a Permit2 token allowance actually surfaces a warn to the user. A regression
+/// in the decoder (wrong action tag), the trigger (`action.tag` match), or the
+/// Cedar severity would all break it; the synthetic-fuzz / corpus gates above
+/// would not (they never run `evaluate_action_v2_json`).
+#[test]
+fn permit2_sign_allowance_typed_data_yields_warn_verdict() {
+    use serde_json::Value;
+
+    // R1: install + route + evaluate on the same OS thread (WASM v3 install
+    // state is thread-local).
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // The shipped raw `eth_signTypedData_v4` Permit2 PermitSingle golden input.
+    const GOLDEN: &str = include_str!("../data/golden/inputs/permit2_permit_single.json");
+    let golden: Value = serde_json::from_str(GOLDEN).expect("parse permit2 golden input");
+    let typed = &golden["rpc"]["params"][1];
+    let verifying_contract = typed["domain"]["verifyingContract"]
+        .as_str()
+        .expect("golden carries domain.verifyingContract");
+    let primary_type = typed["primaryType"]
+        .as_str()
+        .expect("golden carries primaryType");
+    let domain_name = typed["domain"]["name"].as_str();
+    let message = &typed["message"];
+
+    // The signed message's spender — the security-critical field a user must see.
+    const SPENDER: &str = "0x1111111111111111111111111111111111111111";
+
+    // ── decode: production typed-data route ──────────────────────────────────
+    let env = harness::route::route_typed_data(
+        1,
+        verifying_contract,
+        primary_type,
+        None,
+        domain_name,
+        message,
+    );
+    assert_eq!(
+        env.get("ok").and_then(Value::as_bool),
+        Some(true),
+        "Permit2 PermitSingle typed-data route did not succeed: {env}"
+    );
+    let actions = env["data"]["actions"]
+        .as_array()
+        .expect("route env carries data.actions[]");
+    assert_eq!(
+        actions.len(),
+        1,
+        "expected exactly one decoded action; got {actions:?}"
+    );
+    let action = actions[0]
+        .get("body")
+        .expect("decoded action carries a body");
+    let meta = actions[0].get("meta").expect("decoded action carries meta");
+    eprintln!("decoded Permit2 ActionBody = {action}");
+
+    assert_eq!(
+        action.get("domain").and_then(Value::as_str),
+        Some("token"),
+        "Permit2 sign must decode to the token domain; got {action}"
+    );
+    assert_eq!(
+        action.get("action").and_then(Value::as_str),
+        Some("permit2_sign_allowance"),
+        "must decode to the permit2_sign_allowance tag (the policy trigger); got {action}"
+    );
+    assert_eq!(
+        action.get("spender").and_then(Value::as_str),
+        Some(SPENDER),
+        "decoded spender must equal the signed message spender; got {action}"
+    );
+
+    // ── verdict: real Cedar over the shipped default policy ──────────────────
+    const POLICY: &str = include_str!(
+        "../../policy-engine/tests/fixtures/default_policies_v2/permit2-sign-allowance-confirm/policy.cedar"
+    );
+    const MANIFEST: &str = include_str!(
+        "../../policy-engine/tests/fixtures/default_policies_v2/permit2-sign-allowance-confirm/manifest.json"
+    );
+    let manifest: Value = serde_json::from_str(MANIFEST).expect("parse permit2 confirm manifest");
+
+    // tx context mirrors `typedSignatureLifecycle`: from = signer, to =
+    // verifyingContract. `to` is not a trigger-match field (TriggerField has no
+    // `tx.to`); the policy keys solely on `action.tag`.
+    let eval_input = serde_json::json!({
+        "action": action,
+        "meta": meta,
+        "tx": {
+            "chain_id": "eip155:1",
+            "from": "0x000000000000000000000000000000000000aaaa",
+            "to": verifying_contract,
+        },
+        "bundles": [{ "policy": POLICY, "manifest": manifest }],
+        "results": {},
+    });
+    let verdict_env = harness::route::evaluate_action(&eval_input);
+    assert_eq!(
+        verdict_env.get("ok").and_then(Value::as_bool),
+        Some(true),
+        "evaluate_action_v2_json did not return an ok envelope: {verdict_env}"
+    );
+    let verdict = &verdict_env["data"]["verdict"];
+    assert_eq!(
+        verdict.get("kind").and_then(Value::as_str),
+        Some("warn"),
+        "signing a Permit2 allowance must warn (confirm-before-sign default policy); got {verdict}"
+    );
+    let matched = verdict["matched"]
+        .as_array()
+        .expect("warn verdict carries matched[]");
+    assert!(
+        matched.iter().any(|m| {
+            m.get("policy_id").and_then(Value::as_str) == Some("permit2-sign-allowance-confirm")
+        }),
+        "warn must be attributed to permit2-sign-allowance-confirm; got {verdict}"
+    );
+}

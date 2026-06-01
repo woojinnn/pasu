@@ -988,6 +988,7 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
             bundle_value.pointer("/abi_fragment/abi"),
             &input.primary_type,
             &input.message,
+            emit.get("body"),
         );
 
         // ── V3MapContext (same resolved/derived population as calldata) ─────
@@ -1117,40 +1118,162 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
 ///
 /// Fallback (inputs missing / empty / unreadable): wrap under the
 /// `primary_type` lower-camel-cased — the most common single-tuple shape.
+///
+/// # Positional reshape (Permit2)
+///
+/// A nested manifest that **reuses the calldata emit** (Permit2
+/// `permitSingle` / `permitBatch`) indexes the wrapped tuple POSITIONALLY —
+/// `$args.<root>[0][0]` — because the calldata path abi-decodes tuples into
+/// positional arrays ([`bridge::decode_with_json_abi`] renders every tuple as a
+/// JSON array). The EIP-712 `message` is a NAMED object, so a bare wrap leaves
+/// `$args.<root>[0]` indexing an object → `build_action_body` errors
+/// (`indexed access on non-array`). When the emit indexes the root positionally
+/// we therefore reshape the named message into the SAME positional layout via
+/// the ABI `components` ordering (authoritative — independent of message key
+/// order). Named-path manifests (UniswapX / HyperLiquid / Pendle,
+/// `$args.<root>.<field>`) keep the named object untouched, so this is a no-op
+/// for them.
 fn build_typed_data_args_json(
     abi: Option<&serde_json::Value>,
     primary_type: &str,
     message: &serde_json::Value,
+    emit_body: Option<&serde_json::Value>,
 ) -> serde_json::Value {
-    let payload_inputs: Option<Vec<(String, String)>> = abi
+    // Payload params = ABI inputs minus the signature machinery.
+    let payload: Vec<&serde_json::Value> = abi
         .and_then(|abi| abi.get("inputs"))
         .and_then(serde_json::Value::as_array)
         .map(|inputs| {
             inputs
                 .iter()
-                .filter_map(|i| {
-                    let name = i.get("name").and_then(serde_json::Value::as_str)?;
-                    let ty = i.get("type").and_then(serde_json::Value::as_str)?;
-                    if matches!(name, "owner" | "signature" | "v" | "r" | "s") {
-                        None
-                    } else {
-                        Some((name.to_owned(), ty.to_owned()))
-                    }
+                .filter(|i| {
+                    !matches!(
+                        i.get("name").and_then(serde_json::Value::as_str),
+                        Some("owner" | "signature" | "v" | "r" | "s")
+                    )
                 })
                 .collect()
-        });
+        })
+        .unwrap_or_default();
 
-    match payload_inputs {
-        // Single tuple payload → wrap under its param name.
-        Some(ref payload) if payload.len() == 1 && payload[0].1.starts_with("tuple") => {
-            serde_json::json!({ payload[0].0.clone(): message.clone() })
+    // Single tuple payload → wrap under its param name.
+    if let [only] = payload.as_slice() {
+        let ty = only
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        let name = only
+            .get("name")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        if ty.starts_with("tuple") {
+            if emit_indexes_root_positionally(emit_body, name) {
+                return serde_json::json!({ name: reshape_named_to_positional(message, only) });
+            }
+            return serde_json::json!({ name: message.clone() });
         }
-        // Multiple scalars (or single non-tuple) → flat, no wrap.
-        Some(payload) if !payload.is_empty() => message.clone(),
-        // Fallback: inputs missing / empty / unreadable → wrap under the
-        // lower-camel-cased primary_type (the dominant single-tuple shape).
-        _ => serde_json::json!({ primary_type_to_lower_camel(primary_type): message.clone() }),
+        // Single non-tuple param → flat (no wrap).
+        return message.clone();
     }
+
+    // Multiple scalars → flat, no wrap.
+    if !payload.is_empty() {
+        return message.clone();
+    }
+
+    // Fallback: inputs missing / empty / unreadable → wrap under the
+    // lower-camel-cased primary_type (the dominant single-tuple shape).
+    serde_json::json!({ primary_type_to_lower_camel(primary_type): message.clone() })
+}
+
+/// True when the emit body indexes the wrapped tuple `root` positionally
+/// (`$args.<root>[…`), the Permit2 convention inherited from the shared calldata
+/// emit. Named-path manifests reference `$args.<root>.<field>` and return false.
+fn emit_indexes_root_positionally(emit_body: Option<&serde_json::Value>, root: &str) -> bool {
+    if root.is_empty() {
+        return false;
+    }
+    emit_body.is_some_and(|body| {
+        serde_json::to_string(body)
+            .unwrap_or_default()
+            .contains(&format!("$args.{root}["))
+    })
+}
+
+/// Recursively reshape a NAMED EIP-712 value into the POSITIONAL layout the
+/// calldata-shared emit paths index into, driven by the ABI type node. Tuples
+/// become arrays ordered by `components`; `tuple[]` / `tuple[N]` become arrays
+/// of reshaped tuples; scalars (and scalar arrays) pass through unchanged. A
+/// value already in array form is recursed element-wise, so a positional input
+/// is idempotent.
+fn reshape_named_to_positional(
+    value: &serde_json::Value,
+    node: &serde_json::Value,
+) -> serde_json::Value {
+    let ty = node
+        .get("type")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    let components = node.get("components").and_then(serde_json::Value::as_array);
+
+    // `tuple[]` / `tuple[N]` — an array of tuples.
+    if ty.starts_with("tuple") && ty.ends_with(']') {
+        let Some(arr) = value.as_array() else {
+            return value.clone();
+        };
+        return serde_json::Value::Array(
+            arr.iter().map(|el| reshape_tuple(el, components)).collect(),
+        );
+    }
+    // `tuple` — a single tuple.
+    if ty == "tuple" {
+        return reshape_tuple(value, components);
+    }
+    // Scalar / scalar array — pass through.
+    value.clone()
+}
+
+/// Reshape one tuple value into a positional array ordered by `components`.
+/// A named object is ordered by component name; an already-positional array is
+/// recursed element-wise by index. Each field recurses through
+/// [`reshape_named_to_positional`] so nested tuples flatten too.
+fn reshape_tuple(
+    value: &serde_json::Value,
+    components: Option<&Vec<serde_json::Value>>,
+) -> serde_json::Value {
+    let Some(components) = components else {
+        return value.clone();
+    };
+    if let Some(obj) = value.as_object() {
+        return serde_json::Value::Array(
+            components
+                .iter()
+                .map(|c| {
+                    let cname = c
+                        .get("name")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or_default();
+                    obj.get(cname).map_or(serde_json::Value::Null, |v| {
+                        reshape_named_to_positional(v, c)
+                    })
+                })
+                .collect(),
+        );
+    }
+    if let Some(arr) = value.as_array() {
+        return serde_json::Value::Array(
+            components
+                .iter()
+                .enumerate()
+                .map(|(i, c)| {
+                    arr.get(i).map_or(serde_json::Value::Null, |v| {
+                        reshape_named_to_positional(v, c)
+                    })
+                })
+                .collect(),
+        );
+    }
+    value.clone()
 }
 
 /// Lower-camel-case an EIP-712 `primaryType` for the wrap-rule fallback.
