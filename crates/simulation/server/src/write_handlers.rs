@@ -265,6 +265,41 @@ async fn seed_holdings(
             inserted = nonzero,
             "seed: erc20 non-zero balances inserted"
         );
+
+        // 3. Approvals — for each ERC-20 the wallet holds, ask Multicall
+        //    `allowance(owner, spender)` against a curated catalog of
+        //    famous spenders (Permit2 / Uniswap / 1inch / Aave / OpenSea
+        //    / …). One Multicall round-trip per chain. Best-effort:
+        //    failures are logged but don't fail the wallet add.
+        let erc20_addrs: Vec<Address> = state_out
+            .tokens
+            .keys()
+            .filter_map(|key| match key {
+                simulation_state::token::TokenKey::Erc20 {
+                    chain: c,
+                    address: a,
+                } if c == chain => Some(*a),
+                _ => None,
+            })
+            .collect();
+        match discovery::discover_approvals(&router, chain, id.address, &erc20_addrs).await {
+            Ok(found) => {
+                let n = found.len();
+                seed_approvals(state_out, found);
+                tracing::info!(
+                    chain = %chain,
+                    inserted = n,
+                    "seed: approvals discovered"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    chain = %chain,
+                    error = %e,
+                    "seed: approval discovery failed (best-effort)"
+                );
+            }
+        }
     }
     tracing::info!(
         address = %format!("{:#x}", id.address),
@@ -277,6 +312,26 @@ async fn seed_holdings(
     // synchronously — the orchestrator can fill the rest on next sync.
     backfill_metadata(state_out, &app.coingecko).await;
     Ok(count)
+}
+
+/// Merge a batch of discovered approvals into `state.approvals.erc20`.
+///
+/// The map key is `(chain, token_contract)`; each entry maps spenders to
+/// an [`AllowanceSpec`]. We set `last_set_at` to "now" since on-chain
+/// `Approval` event timestamps aren't available through `eth_call` —
+/// the orchestrator's allowance refresh path keeps this fresh for known
+/// spenders going forward.
+fn seed_approvals(state: &mut WalletState, found: Vec<simulation_sync::DiscoveredApproval>) {
+    use simulation_state::approval::AllowanceSpec;
+    let now = Time::from_unix(unix_now_u64());
+    for row in found {
+        state
+            .approvals
+            .erc20
+            .entry((row.chain, row.token))
+            .or_default()
+            .insert(row.spender, AllowanceSpec::new(row.amount, now));
+    }
 }
 
 /// Hit CoinGecko for every token in the seeded state that lacks

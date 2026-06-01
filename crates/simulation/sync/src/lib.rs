@@ -131,7 +131,8 @@ pub use config::{
 };
 pub use db_store::SqliteWalletStore;
 pub use discovery::{
-    discover_top_tokens, fetch_native_balance, CoinGeckoClient, DiscoveredToken, EtherscanClient,
+    discover_approvals, discover_top_tokens, fetch_native_balance, CoinGeckoClient,
+    DiscoveredApproval, DiscoveredToken, EtherscanClient,
 };
 pub use error::{SyncError, SyncResult};
 pub use fetchers::abi_decoder::{AbiDecoder, AbiTypeRegistry};

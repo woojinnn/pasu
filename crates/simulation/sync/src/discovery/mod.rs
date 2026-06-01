@@ -14,11 +14,14 @@
 //! `TokenHolding` entries seeded into a `WalletState`. The orchestrator
 //! then keeps prices fresh through normal `LiveField` refresh cycles.
 
+pub mod approvals;
 pub mod coingecko;
 pub mod etherscan;
+mod known_spenders;
 pub mod native;
 pub mod top_tokens;
 
+pub use approvals::{discover_approvals, DiscoveredApproval};
 pub use coingecko::CoinGeckoClient;
 pub use etherscan::EtherscanClient;
 pub use native::fetch_native_balance;
