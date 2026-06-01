@@ -590,6 +590,11 @@ Completion evidence must include:
 - gate output
 - remaining WARNs, if any, explicitly scoped outside the protocol or justified
 - any deferred selector/action with reason and issue/follow-up
+- `crates/integration-tests/onboarding/<protocol>/evidence.md`, copied from `ONBOARDING_EVIDENCE_TEMPLATE.md`
+- P0 Claude Code/sub-agent command or agent id, output summary, union/diff disposition, and first-party verification result
+- P2 Etherscan evidence: txlist command/query, api call count, raw tx count, unique selector count, per-COVER-selector real tx coverage
+- P2 Dune evidence: usage baseline, query id/SQL summary with partition WHERE, rows returned, credit cost or usage delta, selected tx hashes
+- explicit `blocked_external_data` entry if Etherscan/Dune/Claude Code could not be used
 
 ---
 
@@ -653,7 +658,7 @@ Read:
 - crates/integration-tests/PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md
 - crates/integration-tests/README.md
 
-Collect representative real txs from Etherscan/Dune if available.
+Collect representative real txs from Etherscan and run Dune calibration/pinpoint where applicable. If either source is unavailable, write `blocked_external_data` in `crates/integration-tests/onboarding/<protocol>/evidence.md`; do not silently skip it.
 Create/extend crates/integration-tests/data/golden/v3-decode/<protocol>/corpus.json.
 For each pass entry, add expect_domain and expect_body for token/amount/recipient/spender/pool/fee/live-source fields.
 If selector is simple enough, note future projection spec candidates, but do not treat them as executable until projection support exists.

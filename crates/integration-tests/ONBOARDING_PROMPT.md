@@ -25,6 +25,11 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
    phase 커밋은 체크포인트일 뿐 멈춤 지점이 아니다. 커밋 후 곧바로 다음 phase 로 진행.
    멈춤은 merge/push/destructive action, Etherscan/Dune/auth 부재, 1차출처로도 안 풀리는 스코프 모호성,
    같은 blocker 3회 이상 반복처럼 사용자 입력 없이는 진행 불가능할 때만.
+ · **증거 없으면 완료 아님** — `crates/integration-tests/ONBOARDING_EVIDENCE_TEMPLATE.md` 를
+   `crates/integration-tests/onboarding/<PROTOCOL>/evidence.md` 로 복사해 채운다. P0 Claude/sub-agent,
+   P2 Etherscan, P2 Dune 각 행이 `done` 또는 구체적 `blocked` 가 아니면 phase/온보딩 완료 선언 금지.
+   사용자가 나중에 "Claude Code에 시켰냐?", "Etherscan/Dune real tx 돌렸냐?"라고 물었을 때
+   evidence.md 의 명령·결과·카운트로 답할 수 있어야 한다. 못 했으면 사과하지 말고 incomplete/blocked 로 남기고 계속 처리.
  · P2 real-tx 시작 전 외부 데이터 lane 연결 확인:
    Etherscan API/MCP(`ETHERSCAN_API_KEY`, `https://mcp.etherscan.io/mcp`) +
    Dune MCP/API(`https://api.dune.com/mcp/v1`). 키는 로컬 설정만, repo commit 금지.
@@ -50,6 +55,7 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  4. ACTIONBODY_EXTENSION_GUIDE.md      — Tier3 확장(새 domain/action/live_field)
  5. registryV2/surface/README.md       — surface gate(I0/I1) + _deployments.json
  6. TOKEN_INVENTORY_GUIDE.md           — protocol token-surface / registryV2/tokens 작성
+ 7. ONBOARDING_EVIDENCE_TEMPLATE.md    — phase 완료 증거 ledger
  읽고 큰 틀 파악 후 스스로 판단해 자율 실행(매 단계 confirm 요청 X).
  새 domain 같은 큰 설계만 ExitPlanMode 로 plan 1회 받고 자율 진행.
 
@@ -62,6 +68,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     만들거나 직접 다루면 TOKEN_INVENTORY_GUIDE.md 기준으로
     registryV2/tokens/<chain>/<addr>.json 등록/보강. Curve 같은 pool-heavy 프로토콜은
     covered pool 의 LP token + underlyings 를 포함하고, long-tail 제외분은 P0 로그에 명시.
+    P0 를 완료했다고 말하기 전 evidence.md 에 Claude/sub-agent 명령, 결과 요약, Codex-only/Claude-only/dropped
+    후보, 1차출처 검증 disposition, check:surface 출력이 기록되어 있어야 한다.
  P1 함수마다 schema(§4a)→manifest(§4b)→engine(§4c)→enrich(§4d: 추상 단위면 환산 live_field).
     Tier3 필요 시 ActionBody + effect/view/sync + lowering_v2 + cedarschema +
     schema registration + conformance test 를 먼저 완성한 뒤 manifest 작성.
@@ -71,6 +79,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
       2026-07-01 이후 Free tier 는 1k/request 예정이라 현재 docs 재확인)
     + Dune MCP/API calibration 후 Base/OP·cross-chain pinpoint(free 엔진 + partition WHERE).
     Etherscan/Dune 연결 없으면 P2 real-tx complete 선언 금지 — blocked_external_data 와 재실행 대상 기록.
+    P2 real-tx 를 완료했다고 말하기 전 evidence.md 에 Etherscan api_calls/raw_txs/unique_selectors/selector coverage,
+    Dune usage baseline/query/rows/credit delta/selected tx hashes 가 기록되어 있어야 한다.
     §5d 소스별 하한 준수. semantic-critical 필드는
     PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK 기준으로 expect_body 또는 field-level golden 으로 pin
     (projection 은 하니스 구현 후 사용).
