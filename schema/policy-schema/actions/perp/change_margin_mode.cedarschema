@@ -1,6 +1,6 @@
 // Perp::ChangeMarginMode — switch margin mode (Cross <-> Isolated) for a market.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/change_margin_mode.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/change_margin_mode.rs`
 // (`ChangeMarginModeAction` + `ChangeMarginModeLiveInputs`).
 //
 // `marginReallocation` is `Vec<(PositionId, U256)>` →

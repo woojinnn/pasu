@@ -1,6 +1,6 @@
 // Launchpad::ClaimAllocation — `LaunchpadAction::ClaimAllocation`.
 //
-// Rust source: `crates/simulation/reducer/src/action/launchpad/claim_allocation.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/launchpad/claim_allocation.rs`
 // (`ClaimAllocationAction` + `ClaimAllocationLiveInputs`).
 //
 // `LiveField<(TokenRef, U256)>` for the allocation is flattened to a

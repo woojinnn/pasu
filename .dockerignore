@@ -1,0 +1,15 @@
+.git/
+target/
+
+browser-extension/node_modules/
+browser-extension/dist/
+browser-extension/dashboard/dist/
+browser-extension/backend/wasm/
+browser-extension/public/wasm/
+browser-extension/public/default-policies/
+browser-extension/public/default-manifests/
+
+crates/policy-engine-wasm/pkg/
+
+**/*.log
+**/*.tsbuildinfo

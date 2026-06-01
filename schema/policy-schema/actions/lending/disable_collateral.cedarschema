@@ -1,6 +1,6 @@
 // Lending::DisableCollateral — unmark an asset as collateral.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/set_collateral.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/set_collateral.rs`
 // (`SetCollateralAction` + `SetCollateralLiveInputs`). Both
 // `LendingAction::EnableCollateral` and `LendingAction::DisableCollateral`
 // wrap the same `SetCollateralAction` body; the toggle direction is

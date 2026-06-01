@@ -1,0 +1,53 @@
+[package]
+name = "simulation-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "HTTP backend service for wallet state, sync, and simulation. Policy catalogs, verdict logs, audit logs, and execution reports are extension-local; Cedar evaluation and wallet-result logging live in the browser extension."
+publish = false
+
+[dependencies]
+# The service operates on the pure simulation types + reducer. NO cedar /
+# policy-engine dependency: the extension owns Cedar evaluation.
+simulation-state.workspace = true
+simulation-reducer.workspace = true
+# Sync orchestrator hooks live RPC/oracle fetchers into `LiveField` refresh.
+simulation-sync.workspace = true
+# PostgreSQL-backed wallet state persistence. Handlers stay db-agnostic where
+# possible by operating on `&dyn WalletStore`.
+simulation-db.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+# HTTP server stack — versions mirror `adapter-debug-dashboard`.
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { workspace = true }
+async-trait.workspace = true
+thiserror.workspace = true
+
+# SSE: bridge tokio::broadcast → axum Sse via tokio_stream + futures helpers.
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures = "0.3"
+
+# Auth: JWT signing/verification (HS256). Stateless tokens, no Redis.
+jsonwebtoken = "9"
+# OAuth callback fetches Google's token endpoint and userinfo.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# URL-encoding query params for the Google authorize redirect.
+urlencoding = "2"
+# Decoding the base64-url payload of Google's id_token.
+base64 = "0.22"
+# Time math for token expiry.
+time = { version = "0.3", default-features = false, features = ["std"] }
+# Loads `.env` at startup so OAuth/JWT config doesn't need to be exported
+# manually in every dev shell.
+dotenvy = "0.15"
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }

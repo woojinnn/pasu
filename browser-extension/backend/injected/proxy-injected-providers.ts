@@ -1,9 +1,16 @@
 import { WindowPostMessageStream } from "@metamask/post-message-stream";
 import { ethErrors } from "eth-rpc-errors";
 import { Identifier, PROVIDER_MARKER } from "@lib/identifier";
-import { sendToStreamAndAwaitResponse } from "@lib/messages";
+import {
+  sendToStreamAndAwaitResponse,
+  sendToStreamAndDisregard,
+} from "@lib/messages";
 import { RequestType } from "@lib/types";
-import type { MessageData } from "@lib/types";
+import type {
+  ExecutionReportOutcome,
+  ExecutionReportPayload,
+  MessageData,
+} from "@lib/types";
 
 declare global {
   interface Window {
@@ -340,6 +347,197 @@ function logRawTransaction(params: unknown[]): void {
   });
 }
 
+function chainCaip2(chainId: number): string {
+  return `eip155:${chainId}`;
+}
+
+function knownChainId(provider: Eip1193Provider): number | undefined {
+  return chainIdCache.get(provider) ?? rememberChainId(provider, provider.chainId);
+}
+
+function resultChainId(
+  provider: Eip1193Provider,
+  method: string | undefined,
+  params: unknown[],
+): number | undefined {
+  if (method === "wallet_sendCalls") {
+    return parseChainId(asRecord(params[0])?.chainId) ?? knownChainId(provider);
+  }
+  return knownChainId(provider);
+}
+
+function signatureAddress(params: unknown[]): string | undefined {
+  const [first, second] = params;
+  if (looksLikeAddress(first)) return String(first);
+  if (looksLikeAddress(second)) return String(second);
+  return undefined;
+}
+
+function transactionAddress(params: unknown[]): string | undefined {
+  const tx = asRecord(params[0]);
+  const from = tx?.from;
+  return looksLikeAddress(from) ? String(from) : undefined;
+}
+
+function reportWalletId(
+  provider: Eip1193Provider,
+  method: string | undefined,
+  params: unknown[],
+): ExecutionReportPayload["wallet_id"] | undefined {
+  const address =
+    method === "eth_sendTransaction"
+      ? transactionAddress(params)
+      : method === "wallet_sendCalls"
+      ? transactionAddress(params)
+      : method &&
+          (TYPED_SIGNATURE_METHODS.has(method) ||
+            UNTYPED_SIGNATURE_METHODS.has(method))
+        ? signatureAddress(params)
+        : undefined;
+  const chainId = resultChainId(provider, method, params);
+  if (!address || chainId === undefined) return undefined;
+  return {
+    address,
+    chains: [chainCaip2(chainId)],
+  };
+}
+
+function errorReason(error: unknown): string | undefined {
+  if (error instanceof Error && error.message) return error.message;
+  const record = asRecord(error);
+  if (typeof record?.message === "string") return record.message;
+  if (typeof record?.reason === "string") return record.reason;
+  if (typeof error === "string" && error.length > 0) return error;
+  return undefined;
+}
+
+function successOutcome(
+  provider: Eip1193Provider,
+  method: string | undefined,
+  result: unknown,
+): ExecutionReportOutcome | undefined {
+  if (method === "eth_sendTransaction" && typeof result === "string") {
+    const chainId = knownChainId(provider);
+    if (chainId === undefined) return undefined;
+    return {
+      kind: "onchain_submitted",
+      chain: chainCaip2(chainId),
+      tx_hash: result,
+    };
+  }
+  if (method === "wallet_sendCalls") {
+    return {
+      kind: "wallet_confirmed",
+      method,
+    };
+  }
+  if (
+    method &&
+    (TYPED_SIGNATURE_METHODS.has(method) ||
+      UNTYPED_SIGNATURE_METHODS.has(method)) &&
+    typeof result === "string"
+  ) {
+    return {
+      kind: "wallet_signed",
+      signature: result,
+    };
+  }
+  return undefined;
+}
+
+function rejectedOutcome(
+  method: string | undefined,
+  error: unknown,
+): ExecutionReportOutcome | undefined {
+  if (
+    method === "eth_sendTransaction" ||
+    method === "wallet_sendCalls" ||
+    (method &&
+      (TYPED_SIGNATURE_METHODS.has(method) ||
+        UNTYPED_SIGNATURE_METHODS.has(method)))
+  ) {
+    const outcome: ExecutionReportOutcome = {
+      kind: "wallet_rejected",
+    };
+    const reason = errorReason(error);
+    if (reason !== undefined) outcome.reason = reason;
+    return outcome;
+  }
+  return undefined;
+}
+
+function reportProviderOutcome(
+  provider: Eip1193Provider,
+  method: string | undefined,
+  params: unknown[],
+  outcome: ExecutionReportOutcome | undefined,
+): void {
+  if (!outcome) return;
+  const report: ExecutionReportPayload = {
+    type: RequestType.EXECUTION_REPORT,
+    hostname: location.hostname,
+    outcome,
+    metadata: {
+      source: "provider-proxy",
+      method,
+    },
+  };
+  const walletId = reportWalletId(provider, method, params);
+  if (walletId) report.wallet_id = walletId;
+  sendToStreamAndDisregard(stream, report);
+}
+
+async function forwardProviderResult<T>(
+  provider: Eip1193Provider,
+  method: string | undefined,
+  params: unknown[],
+  invoke: () => T | Promise<T>,
+): Promise<T> {
+  try {
+    const result = await invoke();
+    reportProviderOutcome(
+      provider,
+      method,
+      params,
+      successOutcome(provider, method, result),
+    );
+    return result;
+  } catch (error) {
+    reportProviderOutcome(provider, method, params, rejectedOutcome(method, error));
+    throw error;
+  }
+}
+
+function wrapProviderCallback(
+  provider: Eip1193Provider,
+  method: string | undefined,
+  params: unknown[],
+  callback: JsonRpcCallback,
+): JsonRpcCallback {
+  return (error, response) => {
+    const responseRecord = asRecord(response);
+    const responseError = responseRecord?.error;
+    if (error !== null && error !== undefined) {
+      reportProviderOutcome(provider, method, params, rejectedOutcome(method, error));
+    } else if (responseError !== undefined) {
+      reportProviderOutcome(
+        provider,
+        method,
+        params,
+        rejectedOutcome(method, responseError),
+      );
+    } else {
+      reportProviderOutcome(
+        provider,
+        method,
+        params,
+        successOutcome(provider, method, responseRecord?.result ?? response),
+      );
+    }
+    callback(error, response);
+  };
+}
+
 function rejectJsonRpc(
   callback: JsonRpcCallback,
   request: JsonRpcRequest,
@@ -438,7 +636,9 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
       // silently no-ops — no error, no popup. This was tolerable for
       // `eth_sendTransaction` (the dApp's call shape happened to align)
       // but breaks `wallet_sendCalls`, which arrives via a different stack.
-      return Reflect.apply(target, provider, args);
+      return forwardProviderResult(provider, method, params, () =>
+        Reflect.apply(target, provider, args),
+      );
     },
   });
 
@@ -460,7 +660,9 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
               if (!method) return Reflect.apply(target, provider, args);
               return (async () => {
                 await ensureAllowed(provider, method, params, originalRequest);
-                return Reflect.apply(target, provider, args);
+                return forwardProviderResult(provider, method, params, () =>
+                  Reflect.apply(target, provider, args),
+                );
               })();
             }
 
@@ -469,7 +671,7 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
                 await ensureAllowed(provider, method, params, originalRequest);
                 Reflect.apply(target, provider, [
                   request,
-                  callback,
+                  wrapProviderCallback(provider, method, params, callback),
                   ...args.slice(2),
                 ]);
               } catch (error) {
@@ -501,7 +703,9 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
               if (!method) return Reflect.apply(target, provider, args);
               return (async () => {
                 await ensureAllowed(provider, method, params, originalRequest);
-                return Reflect.apply(target, provider, args);
+                return forwardProviderResult(provider, method, params, () =>
+                  Reflect.apply(target, provider, args),
+                );
               })();
             }
 
@@ -514,7 +718,12 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
                 await ensureAllowed(provider, method, params, originalRequest);
                 Reflect.apply(target, provider, [
                   request,
-                  callbackOrParams,
+                  wrapProviderCallback(
+                    provider,
+                    method,
+                    params,
+                    callbackOrParams as JsonRpcCallback,
+                  ),
                   ...args.slice(2),
                 ]);
               } catch (error) {

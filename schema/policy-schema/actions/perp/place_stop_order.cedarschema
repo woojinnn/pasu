@@ -1,6 +1,6 @@
 // Perp::PlaceStopOrder — place a stop / take-profit order.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/place_stop.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/place_stop.rs`
 // (`PlaceStopOrderAction` + `PlaceStopLiveInputs`).
 //
 // `orderKind` is a `StopOrderKind` enum exposed as a string. `limitPrice` is

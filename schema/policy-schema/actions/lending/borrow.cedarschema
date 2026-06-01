@@ -1,6 +1,6 @@
 // Lending::Borrow — borrow an asset against existing collateral.
 //
-// Rust source: `crates/simulation/reducer/src/action/lending/borrow.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/lending/borrow.rs`
 // (`BorrowAction` + `BorrowLiveInputs`). `rateMode` is "variable" | "stable"
 // (serde-renamed from Rust `RateMode`).
 

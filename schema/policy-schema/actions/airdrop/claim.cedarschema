@@ -1,6 +1,6 @@
 // Airdrop::Claim — claim eligibility for a one-time airdrop.
 //
-// Rust source: `crates/simulation/reducer/src/action/airdrop/claim.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/airdrop/claim.rs`
 // (`ClaimAirdropAction` + `ClaimTarget` + `ClaimAirdropLiveInputs`).
 //
 // Three distributor flavours are unified via `ClaimTarget.kind`:

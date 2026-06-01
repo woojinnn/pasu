@@ -13,7 +13,7 @@
  * default.
  */
 
-import { getAccessToken } from "./tokenStore";
+import { getAccessToken, getRefreshToken, setTokens } from "./tokenStore";
 
 declare const SCOPEBALL_SERVER_URL: string | undefined;
 
@@ -43,6 +43,28 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
+interface RefreshResponse {
+  access_token: string;
+  refresh_token?: string;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = await getRefreshToken();
+  if (!refresh) return null;
+  const res = await fetch(`${SERVER_BASE_URL}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refresh }),
+  });
+  if (!res.ok) {
+    await setTokens(null, null);
+    return null;
+  }
+  const body = (await res.json()) as RefreshResponse;
+  await setTokens(body.access_token, body.refresh_token ?? refresh);
+  return body.access_token;
+}
+
 /** Core request primitive. Returns parsed JSON. Throws `ServerError`. */
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const url = path.startsWith("http") ? path : `${SERVER_BASE_URL}${path}`;
@@ -62,6 +84,18 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   if (opts.signal !== undefined) init.signal = opts.signal;
   const res = await fetch(url, init);
 
+  if (res.status === 401 && !opts.noAuth) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers["Authorization"] = `Bearer ${refreshed}`;
+      const retry = await fetch(url, { ...init, headers });
+      return parseResponse<T>(retry);
+    }
+  }
+  return parseResponse<T>(res);
+}
+
+async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let body: unknown = null;
     try {
@@ -116,7 +150,7 @@ export async function listWallets(): Promise<WalletId[]> {
  * Returns the server's `policyRequest` (state_before / deltas /
  * state_after) and `diagnostics`. Errors are surfaced as `ServerError`.
  *
- * Wire shape mirrors `crates/simulation/server/src/dto.rs`. Types are
+ * Wire shape mirrors `crates/policy-server/server/src/dto.rs`. Types are
  * kept loose (`Record<string, unknown>`) because the action / context
  * payloads are opaque to the SW — only the server (and WASM Cedar)
  * needs to interpret them.

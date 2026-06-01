@@ -41,7 +41,7 @@ interface SelectorEntry {
   kind: string;
 }
 
-/** Same set as `crates/simulation/server/src/phase5_handlers.rs::SELECTORS`. */
+/** Same set as `crates/policy-server/server/src/phase5_handlers.rs::SELECTORS`. */
 const SELECTORS: Record<string, SelectorEntry> = {
   // ── ERC-20 ──
   "0xa9059cbb": { function_name: "transfer", signature: "transfer(address,uint256)", domain: "token", kind: "erc20.transfer" },

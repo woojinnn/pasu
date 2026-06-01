@@ -1,6 +1,6 @@
 // Perp::OpenPosition — open a new perpetual position at market price.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/open.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/open.rs`
 // (`OpenPerpAction` + `OpenPerpLiveInputs`).
 //
 // Notes:

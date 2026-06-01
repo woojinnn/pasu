@@ -3,7 +3,7 @@
  *
  * The server redirects to `${DASHBOARD_URL}/auth/callback#access_token=…`.
  * This page consumes the fragment, persists the token, and forwards the
- * user to the main app (`/server`).
+ * user to the main app.
  */
 
 import { useEffect, useState } from "react";
@@ -23,7 +23,7 @@ export function AuthCallbackPage() {
       setError("No token in callback URL fragment.");
       return;
     }
-    void refresh().then(() => navigate("/server", { replace: true }));
+    void refresh().then(() => navigate("/", { replace: true }));
   }, [navigate, refresh]);
 
   if (error) {

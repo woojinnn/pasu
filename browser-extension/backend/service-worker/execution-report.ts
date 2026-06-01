@@ -1,41 +1,22 @@
 import { RequestType, type ExecutionReportPayload } from "@lib/types";
 
-const DEFAULT_SIMULATION_SERVER_URL = "http://127.0.0.1:8788";
+import { appendExecutionReport } from "./execution-report-storage";
 
 /**
  * Best-effort execution report sink.
  *
- * This is deliberately narrower than the future simulation-server API client:
- * verdict/evaluate traffic still uses the existing policy path, while this
- * adapter only forwards post-policy lifecycle facts to `/execution-report`.
+ * Reports are written into chrome.storage.local so this per-device activity log
+ * does not round-trip through the policy server.
  */
 export async function reportExecutionOutcome(
   report: ExecutionReportPayload,
 ): Promise<void> {
-  const {
-    type: _type,
-    hostname: _hostname,
-    bypassed: _bypassed,
-    ...body
-  } = report;
-  if (_type !== RequestType.EXECUTION_REPORT) return;
+  if (report.type !== RequestType.EXECUTION_REPORT) return;
 
   try {
-    const base =
-      process.env.SIMULATION_SERVER_URL ?? DEFAULT_SIMULATION_SERVER_URL;
-    const resp = await fetch(`${base}/execution-report`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!resp.ok) {
-      console.warn("[Scopeball] execution report rejected", {
-        status: resp.status,
-        statusText: resp.statusText,
-      });
-    }
+    await appendExecutionReport(report);
   } catch (err) {
-    console.warn("[Scopeball] execution report failed", {
+    console.warn("[Scopeball] execution report storage failed", {
       err: err instanceof Error ? err.message : String(err),
     });
   }

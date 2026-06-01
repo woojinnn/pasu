@@ -70,12 +70,13 @@ export async function getExampleTransactions(): Promise<ExampleTransaction[]> {
   return request<ExampleTransaction[]>("/examples/transactions");
 }
 
-// ---------- /policies/:id ----------
+// ---------- legacy policy detail ----------
 
 import type { InstalledPolicy } from "./types";
 
 export async function getPolicy(id: number): Promise<InstalledPolicy> {
-  return request<InstalledPolicy>(`/policies/${id}`);
+  void id;
+  throw new Error("server policy detail has moved to extension-local storage");
 }
 
 // ---------- /spenders/:addr ----------

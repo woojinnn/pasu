@@ -1,6 +1,6 @@
 // Perp::CancelOrder — cancel a previously placed open order.
 //
-// Rust source: `crates/simulation/reducer/src/action/perp/cancel.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/perp/cancel.rs`
 // (`CancelOrderAction`).
 //
 // No `LiveInputs` — cancellation only references the venue-assigned order id.

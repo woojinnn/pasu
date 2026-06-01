@@ -1,6 +1,6 @@
 // Launchpad::ClaimVested — `LaunchpadAction::ClaimVested`.
 //
-// Rust source: `crates/simulation/reducer/src/action/launchpad/claim_vested.rs`
+// Rust source: `crates/policy-server/asset-model/action/src/launchpad/claim_vested.rs`
 // (`ClaimVestedAction` + `ClaimVestedLiveInputs`).
 //
 // The `next_unlock` field — `LiveField<Option<(Time, U256)>>` — is flattened

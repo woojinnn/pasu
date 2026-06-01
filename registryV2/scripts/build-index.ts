@@ -76,7 +76,7 @@
  *   - tokens/<chainId>/<addr>.json now uses `erc_kind` (ERC contract kind:
  *     erc20/erc721/erc1155) to disambiguate from the semantic `TokenKind`
  *     enum (Base, NativeGas, Wrapped, LpShare, YieldReceipt, ... 10 variants)
- *     declared in `crates/simulation/state/src/token/kind.rs`. The build-index
+ *     declared in `crates/policy-server/asset-model/state/src/token/kind.rs`. The build-index
  *     step only consumes `erc_kind` for auto-enumerate; the semantic
  *     `token_kind` field (if present) is treated as opaque metadata.
  *
