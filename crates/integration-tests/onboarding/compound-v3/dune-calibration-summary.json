@@ -1,0 +1,80 @@
+{
+  "protocol": "compound-v3",
+  "date": "2026-06-01",
+  "engine": "free",
+  "queryId": 7630074,
+  "executionId": "01KT1RJ1SCZ9RFWWTQV65GSA93",
+  "usageBeforeCreditsUsed": 35.562,
+  "usageAfterCreditsUsed": 36.68,
+  "executionCostCredits": 1.118,
+  "tablesSearched": [
+    "ethereum.transactions",
+    "base.transactions",
+    "optimism.transactions"
+  ],
+  "partitionFilter": "block_date >= current_date - interval '30' day",
+  "targetAddresses": [
+    {
+      "chain": "ethereum",
+      "market": "cUSDCv3",
+      "address": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+    },
+    {
+      "chain": "base",
+      "market": "cUSDCv3",
+      "address": "0xb125e6687d4313864e53df431d5425969c15eb2f"
+    },
+    {
+      "chain": "optimism",
+      "market": "cUSDCv3",
+      "address": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb"
+    }
+  ],
+  "selectorsTargeted": [
+    {
+      "selector": "0xf2b9fdb8",
+      "name": "supply"
+    },
+    {
+      "selector": "0xf3fef3a3",
+      "name": "withdraw"
+    },
+    {
+      "selector": "0x110496e5",
+      "name": "allow"
+    },
+    {
+      "selector": "0x095ea7b3",
+      "name": "approve"
+    },
+    {
+      "selector": "0xe4e6e779",
+      "name": "buyCollateral"
+    }
+  ],
+  "rowsReturned": 120,
+  "uniqueSelectorsObserved": [
+    "0x095ea7b3",
+    "0x110496e5",
+    "0xf2b9fdb8",
+    "0xf3fef3a3"
+  ],
+  "selectedTxHashes": [
+    {
+      "chain": "ethereum",
+      "selector": "0xf2b9fdb8",
+      "hash": "0x9933ed58..."
+    },
+    {
+      "chain": "ethereum",
+      "selector": "0xf3fef3a3",
+      "hash": "0xae77cdc3..."
+    },
+    {
+      "chain": "base",
+      "selector": "0xf3fef3a3",
+      "hash": "0xd6a5b687..."
+    }
+  ],
+  "scope": "calibration only; not a full adapter-blind 28-market real-tx sweep"
+}

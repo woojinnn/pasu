@@ -14,7 +14,53 @@
             "data": "0xf2b9fdb8000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet supplyTo hand",
@@ -29,7 +75,53 @@
             "data": "0x4232cd630000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet supplyFrom hand",
@@ -44,7 +136,53 @@
             "data": "0x9032317700000000000000000000000022222222222222222222222222222222222222220000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet transfer hand",
@@ -59,7 +197,34 @@
             "data": "0xa9059cbb000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        }
+      ]
     },
     {
       "intent": "comet transferFrom hand",
@@ -74,7 +239,34 @@
             "data": "0x23b872dd0000000000000000000000002222222222222222222222222222222222222222000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        }
+      ]
     },
     {
       "intent": "comet transferAsset hand",
@@ -89,7 +281,34 @@
             "data": "0x439e2e450000000000000000000000001111111111111111111111111111111111111111000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        }
+      ]
     },
     {
       "intent": "comet transferAssetFrom hand",
@@ -104,7 +323,34 @@
             "data": "0xc1ee2c1800000000000000000000000022222222222222222222222222222222222222220000000000000000000000001111111111111111111111111111111111111111000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        }
+      ]
     },
     {
       "intent": "comet withdraw hand",
@@ -119,7 +365,58 @@
             "data": "0xf3fef3a3000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x000000000000000000000000000000000000aaaa"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet withdrawTo hand",
@@ -134,7 +431,58 @@
             "data": "0xc3b35a7e0000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet withdrawFrom hand",
@@ -149,7 +497,58 @@
             "data": "0x2644131800000000000000000000000022222222222222222222222222222222222222220000000000000000000000001111111111111111111111111111111111111111000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet approveThis hand",
@@ -164,7 +563,34 @@
             "data": "0xad14777c0000000000000000000000003333333333333333333333333333333333333333000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_approve"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.spender",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        }
+      ]
     },
     {
       "intent": "comet buyCollateral hand",
@@ -179,7 +605,64 @@
             "data": "0xe4e6e779000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000001f400000000000000000000000000000000000000000000000000000000000003e80000000000000000000000004444444444444444444444444444444444444444"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "buy_collateral"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.collateral_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.min_collateral_amount",
+          "op": "u256_hex_eq",
+          "value": "0x1f4"
+        },
+        {
+          "path": "$.data.actions[0].body.base_amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x4444444444444444444444444444444444444444"
+        }
+      ]
     },
     {
       "intent": "comet allow hand",
@@ -194,7 +677,39 @@
             "data": "0x110496e500000000000000000000000033333333333333333333333333333333333333330000000000000000000000000000000000000000000000000000000000000001"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet allowBySig hand",
@@ -209,7 +724,44 @@
             "data": "0xbb24d994000000000000000000000000222222222222222222222222222222222222222200000000000000000000000033333333333333333333333333333333333333330000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000002540be3ff000000000000000000000000000000000000000000000000000000000000001b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet approve hand",
@@ -224,7 +776,39 @@
             "data": "0x095ea7b30000000000000000000000003333333333333333333333333333333333333333ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet Authorization hand typed-data",
@@ -242,7 +826,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet cWETH supply hand",
@@ -257,7 +878,53 @@
             "data": "0xf2b9fdb8000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet cWETH Authorization hand typed-data",
@@ -275,7 +942,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet Base cAERO supply hand",
@@ -290,7 +994,53 @@
             "data": "0xf2b9fdb8000000000000000000000000940181a94a35a4569e4529a3cdfb74e38fd9863100000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x784efeb622244d2348d4f2522f8860b96fbece89"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Base cAERO Authorization hand typed-data",
@@ -308,7 +1058,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x784efeb622244d2348d4f2522f8860b96fbece89"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        }
+      ]
     },
     {
       "intent": "comet Base cUSDbC supply hand",
@@ -323,7 +1110,53 @@
             "data": "0xf2b9fdb8000000000000000000000000d9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca00000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Base cUSDbC Authorization hand typed-data",
@@ -341,7 +1174,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        }
+      ]
     },
     {
       "intent": "comet Base cUSDC supply hand",
@@ -356,7 +1226,53 @@
             "data": "0xf2b9fdb8000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda0291300000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xb125e6687d4313864e53df431d5425969c15eb2f"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Base cUSDC Authorization hand typed-data",
@@ -374,7 +1290,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xb125e6687d4313864e53df431d5425969c15eb2f"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        }
+      ]
     },
     {
       "intent": "comet Base cUSDS supply hand",
@@ -389,7 +1342,53 @@
             "data": "0xf2b9fdb8000000000000000000000000820c137fa70c8691f0e44dc420a5e53c168921dc00000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x2c776041ccfe903071af44aa147368a9c8eea518"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x820c137fa70c8691f0e44dc420a5e53c168921dc"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x820c137fa70c8691f0e44dc420a5e53c168921dc"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Base cUSDS Authorization hand typed-data",
@@ -407,7 +1406,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x2c776041ccfe903071af44aa147368a9c8eea518"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        }
+      ]
     },
     {
       "intent": "comet Base cWETH supply hand",
@@ -422,7 +1458,53 @@
             "data": "0xf2b9fdb8000000000000000000000000420000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x46e6b214b524310239732d51387075e0e70970bf"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Base cWETH Authorization hand typed-data",
@@ -440,7 +1522,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x46e6b214b524310239732d51387075e0e70970bf"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:8453"
+        }
+      ]
     },
     {
       "intent": "comet Optimism cUSDC supply hand",
@@ -455,7 +1574,53 @@
             "data": "0xf2b9fdb80000000000000000000000000b2c639c533813f4aa9d7837caf62653d097ff8500000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:10"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Optimism cUSDC Authorization hand typed-data",
@@ -473,7 +1638,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:10"
+        }
+      ]
     },
     {
       "intent": "comet Optimism cUSDT supply hand",
@@ -488,7 +1690,53 @@
             "data": "0xf2b9fdb800000000000000000000000094b008aa00579c1307b0ef2c499ad98a8ce58e5800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:10"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x995e394b8b2437ac8ce61ee0bc610d617962b214"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Optimism cUSDT Authorization hand typed-data",
@@ -506,7 +1754,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x995e394b8b2437ac8ce61ee0bc610d617962b214"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:10"
+        }
+      ]
     },
     {
       "intent": "comet Optimism cWETH supply hand",
@@ -521,7 +1806,53 @@
             "data": "0xf2b9fdb8000000000000000000000000420000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:10"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xe36a30d249f7761327fd973001a32010b521b6fd"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Optimism cWETH Authorization hand typed-data",
@@ -539,7 +1870,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xe36a30d249f7761327fd973001a32010b521b6fd"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:10"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cUSDC.e supply hand",
@@ -554,7 +1922,53 @@
             "data": "0xf2b9fdb8000000000000000000000000ff970a61a04b1ca14834a43f5de4533ebddb5cc800000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xa5edbdd9646f8dff606d7448e414884c7d905dca"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cUSDC.e Authorization hand typed-data",
@@ -572,7 +1986,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xa5edbdd9646f8dff606d7448e414884c7d905dca"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cUSDC supply hand",
@@ -587,7 +2038,53 @@
             "data": "0xf2b9fdb8000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cUSDC Authorization hand typed-data",
@@ -605,7 +2102,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cUSDT supply hand",
@@ -620,7 +2154,53 @@
             "data": "0xf2b9fdb8000000000000000000000000fd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb900000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xd98be00b5d27fc98112bde293e487f8d4ca57d07"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cUSDT Authorization hand typed-data",
@@ -638,7 +2218,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xd98be00b5d27fc98112bde293e487f8d4ca57d07"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cWETH supply hand",
@@ -653,7 +2270,53 @@
             "data": "0xf2b9fdb800000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab100000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Arbitrum cWETH Authorization hand typed-data",
@@ -671,7 +2334,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:42161"
+        }
+      ]
     },
     {
       "intent": "comet cUSDSv3 supply hand",
@@ -686,7 +2386,53 @@
             "data": "0xf2b9fdb8000000000000000000000000dc035d45d973e3ec169d2276ddab16f1e407384f00000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x5d409e56d886231adaf00c8775665ad0f9897b56"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet cUSDSv3 Authorization hand typed-data",
@@ -704,7 +2450,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x5d409e56d886231adaf00c8775665ad0f9897b56"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet cUSDTv3 supply hand",
@@ -719,7 +2502,53 @@
             "data": "0xf2b9fdb8000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec700000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet cUSDTv3 Authorization hand typed-data",
@@ -737,7 +2566,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet cWBTCv3 supply hand",
@@ -752,7 +2618,53 @@
             "data": "0xf2b9fdb80000000000000000000000002260fac5e5542a773aa44fbcfedf7c193bc2c59900000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xe85dc543813b8c2cfeaac371517b925a166a9293"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet cWBTCv3 Authorization hand typed-data",
@@ -770,7 +2682,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xe85dc543813b8c2cfeaac371517b925a166a9293"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet cWstETHv3 supply hand",
@@ -785,7 +2734,53 @@
             "data": "0xf2b9fdb80000000000000000000000007f39c581f595b53c5cb19bd0b3f8da6c935e2ca000000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet cWstETHv3 Authorization hand typed-data",
@@ -803,7 +2798,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        }
+      ]
     },
     {
       "intent": "comet Polygon cUSDCv3 supply hand",
@@ -818,7 +2850,53 @@
             "data": "0xf2b9fdb80000000000000000000000002791bca1f2de4661ed88a30c99a7a9449aa8417400000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:137"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xf25212e676d1f7f89cd72ffee66158f541246445"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Polygon cUSDCv3 Authorization hand typed-data",
@@ -836,7 +2914,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xf25212e676d1f7f89cd72ffee66158f541246445"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:137"
+        }
+      ]
     },
     {
       "intent": "comet Polygon cUSDTv3 supply hand",
@@ -851,7 +2966,53 @@
             "data": "0xf2b9fdb8000000000000000000000000c2132d05d31c914a87c6611c10748aeb04b58e8f00000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:137"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xaeb318360f27748acb200ce616e389a6c9409a07"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc2132d05d31c914a87c6611c10748aeb04b58e8f"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc2132d05d31c914a87c6611c10748aeb04b58e8f"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Polygon cUSDTv3 Authorization hand typed-data",
@@ -869,7 +3030,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xaeb318360f27748acb200ce616e389a6c9409a07"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:137"
+        }
+      ]
     },
     {
       "intent": "comet Mantle cUSDev3 supply hand",
@@ -884,7 +3082,53 @@
             "data": "0xf2b9fdb80000000000000000000000005d3a1ff2b6bab83b63cd9ad0787074081a52ef3400000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:5000"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x606174f62cd968d8e684c645080fa694c1d7786e"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Mantle cUSDev3 Authorization hand typed-data",
@@ -902,7 +3146,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x606174f62cd968d8e684c645080fa694c1d7786e"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:5000"
+        }
+      ]
     },
     {
       "intent": "comet Linea cUSDCv3 supply hand",
@@ -917,7 +3198,53 @@
             "data": "0xf2b9fdb8000000000000000000000000176211869ca2b568f2a7d4ee941e073a821ee1ff00000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:59144"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x8d38a3d6b3c3b7d96d6536da7eef94a9d7dbc991"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x176211869ca2b568f2a7d4ee941e073a821ee1ff"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x176211869ca2b568f2a7d4ee941e073a821ee1ff"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Linea cUSDCv3 Authorization hand typed-data",
@@ -935,7 +3262,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x8d38a3d6b3c3b7d96d6536da7eef94a9d7dbc991"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:59144"
+        }
+      ]
     },
     {
       "intent": "comet Linea cWETHv3 supply hand",
@@ -950,7 +3314,53 @@
             "data": "0xf2b9fdb8000000000000000000000000e5d7c2a44ffddf6b295a15c148167daaaf5cf34f00000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:59144"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x60f2058379716a64a7a5d29219397e79bc552194"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Linea cWETHv3 Authorization hand typed-data",
@@ -968,7 +3378,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x60f2058379716a64a7a5d29219397e79bc552194"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:59144"
+        }
+      ]
     },
     {
       "intent": "comet Scroll cUSDCv3 supply hand",
@@ -983,7 +3430,53 @@
             "data": "0xf2b9fdb800000000000000000000000006efdbff2a14a7c8e15944d1f4a48f9f95f663a400000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:534352"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xb2f97c1bd3bf02f5e74d13f02e3e26f93d77ce44"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x06efdbff2a14a7c8e15944d1f4a48f9f95f663a4"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x06efdbff2a14a7c8e15944d1f4a48f9f95f663a4"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Scroll cUSDCv3 Authorization hand typed-data",
@@ -1001,7 +3494,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xb2f97c1bd3bf02f5e74d13f02e3e26f93d77ce44"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:534352"
+        }
+      ]
     },
     {
       "intent": "comet Ronin cWETHv3 supply hand",
@@ -1016,7 +3546,53 @@
             "data": "0xf2b9fdb8000000000000000000000000c99a6a985ed2cac1ef41640596c5a5f9f4e19ef500000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:2020"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x4006ed4097ee51c09a04c3b0951d28ccf19e6dfe"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Ronin cWETHv3 Authorization hand typed-data",
@@ -1034,7 +3610,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x4006ed4097ee51c09a04c3b0951d28ccf19e6dfe"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:2020"
+        }
+      ]
     },
     {
       "intent": "comet Ronin cWRONv3 supply hand",
@@ -1049,7 +3662,53 @@
             "data": "0xf2b9fdb8000000000000000000000000e514d9deb7966c8be0ca922de8a064264ea6bcd400000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:2020"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xe514d9deb7966c8be0ca922de8a064264ea6bcd4"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xe514d9deb7966c8be0ca922de8a064264ea6bcd4"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Ronin cWRONv3 Authorization hand typed-data",
@@ -1067,7 +3726,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:2020"
+        }
+      ]
     },
     {
       "intent": "comet Unichain cUSDCv3 supply hand",
@@ -1082,7 +3778,53 @@
             "data": "0xf2b9fdb8000000000000000000000000078d782b760474a361dda0af3839290b0ef57ad600000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:130"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x2c7118c4c88b9841fcf839074c26ae8f035f2921"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x078d782b760474a361dda0af3839290b0ef57ad6"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x078d782b760474a361dda0af3839290b0ef57ad6"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Unichain cUSDCv3 Authorization hand typed-data",
@@ -1100,7 +3842,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x2c7118c4c88b9841fcf839074c26ae8f035f2921"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:130"
+        }
+      ]
     },
     {
       "intent": "comet Unichain cWETHv3 supply hand",
@@ -1115,7 +3894,53 @@
             "data": "0xf2b9fdb8000000000000000000000000420000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000003e8"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.chain",
+          "op": "equals",
+          "value": "eip155:130"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.comet",
+          "op": "hex_eq",
+          "value": "0x6c987dde50db1dcdd32cd4175778c2a291978e2a"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3e8"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs",
+          "op": "exists"
+        }
+      ]
     },
     {
       "intent": "comet Unichain cWETHv3 Authorization hand typed-data",
@@ -1133,7 +3958,44 @@
           "nonce": "7",
           "expiry": "9999999999"
         }
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol",
+          "op": "hex_eq",
+          "value": "0x6c987dde50db1dcdd32cd4175778c2a291978e2a"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:130"
+        }
+      ]
     }
   ]
 }
