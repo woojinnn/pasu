@@ -11,6 +11,7 @@ use std::sync::Arc;
 use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::auth::jwt::{issue, TokenType};
+use simulation_server::events::{EventBus, LocalEventPublisher};
 use simulation_state::approval::{AllowanceSpec, ApprovalSet};
 use simulation_state::primitives::{Address, BlockHeight, ChainId, Time, U256};
 use simulation_state::{WalletId, WalletState, WalletStore};
@@ -43,10 +44,12 @@ async fn spawn_server() -> (
     let tmp = tempfile::tempdir().unwrap();
     let global_db = GlobalDb::open(tmp.path().join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(tmp.path().join("users"));
+    let event_bus = EventBus::new();
     let state = AppState {
         multi_user: multi_user.clone(),
         global_db,
-        event_bus: simulation_server::events::EventBus::new(),
+        event_bus: event_bus.clone(),
+        publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),

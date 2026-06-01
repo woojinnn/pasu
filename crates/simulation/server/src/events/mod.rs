@@ -7,9 +7,11 @@
 //!   per-client SSE response.
 
 pub mod bus;
+pub mod pubsub;
 pub mod sse;
 pub mod types;
 
 pub use bus::EventBus;
+pub use pubsub::{EventPublisher, LocalEventPublisher};
 pub use sse::stream as sse_stream;
 pub use types::{Event, TxConfirmed, TxRef, TxRefWithHash, WalletSync};

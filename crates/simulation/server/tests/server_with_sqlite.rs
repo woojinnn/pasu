@@ -14,6 +14,7 @@ use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::auth::jwt::{issue, TokenType};
 use simulation_server::dto::{EvaluateRequest, EvaluateResponse};
+use simulation_server::events::{EventBus, LocalEventPublisher};
 use simulation_state::primitives::{Address, BlockHeight, ChainId, Time};
 use simulation_state::{EvalContext, RequestKind, WalletId, WalletState, WalletStore};
 use simulation_sync::{Orchestrator, SyncConfig};
@@ -55,11 +56,13 @@ fn spawn_state() -> (AppState, tempfile::TempDir) {
     let tmp = tempfile::tempdir().unwrap();
     let global_db = GlobalDb::open(tmp.path().join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(tmp.path().join("users"));
+    let event_bus = EventBus::new();
     (
         AppState {
             multi_user,
             global_db,
-            event_bus: simulation_server::events::EventBus::new(),
+            event_bus: event_bus.clone(),
+            publisher: Arc::new(LocalEventPublisher::new(event_bus)),
             orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
             etherscan: None,
             coingecko: simulation_sync::CoinGeckoClient::new(),
