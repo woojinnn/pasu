@@ -21,6 +21,34 @@ export async function listWallets(): Promise<WalletId[]> {
   return request<WalletId[]>("/wallets");
 }
 
+export interface AddWalletBody {
+  /** 0x address (case-insensitive). */
+  address: Address;
+  /** CAIP-2 list (e.g. `["eip155:1"]`). Omit to track on every configured chain. */
+  chains?: ChainId[];
+  label?: string;
+}
+
+export interface AddWalletResp {
+  wallet_id: WalletId;
+  /** True when the auto-sync after add succeeded. */
+  synced: boolean;
+  /** How many TokenHolding rows were seeded for a brand-new wallet. */
+  discovered: number;
+  /** Non-fatal sync error message — caller can retry with /sync. */
+  error?: string;
+}
+
+/** `POST /wallets` — start tracking a new wallet for the authenticated user. */
+export async function addWallet(body: AddWalletBody): Promise<AddWalletResp> {
+  return request<AddWalletResp>("/wallets", { method: "POST", body });
+}
+
+/** `POST /wallets/:addr/sync` — manual resync (balance + price refresh). */
+export async function syncWallet(address: Address): Promise<void> {
+  await request<void>(`/wallets/${address}/sync`, { method: "POST" });
+}
+
 /** `GET /wallets/:addr/state` — full state snapshot (with portfolio_value_usd). */
 export async function getWalletState(address: Address): Promise<WalletState> {
   return request<WalletState>(`/wallets/${address}/state`);

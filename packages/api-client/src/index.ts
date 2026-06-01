@@ -26,6 +26,8 @@ export {
 
 export {
   listWallets,
+  addWallet,
+  syncWallet,
   getWalletState,
   getWalletHoldings,
   getWalletApprovals,
@@ -34,6 +36,8 @@ export {
   patchWallet,
   deleteWallet,
   type WalletId,
+  type AddWalletBody,
+  type AddWalletResp,
   type BlockHeight,
   type WalletState,
   type ApprovalRisk,
@@ -61,6 +65,23 @@ export {
   type TestPolicyResp,
   type MatchedPolicyDto,
 } from "./cedar";
+
+// Phase 5 — tx decode + revoke plan + sequence simulation.
+export {
+  decodeTx,
+  planRevokes,
+  simulateSequence,
+  type DecodeReq,
+  type DecodeResp,
+  type ActionHint,
+  type RevokeItem,
+  type RevokeCall,
+  type RevokePlanResp,
+  type SequenceStepInput,
+  type SequenceStepResult,
+  type SequenceResp,
+  type PolicyOutcome,
+} from "./phase5";
 
 // Re-export every shared type so consumers can `import { … } from "@scopeball/api-client"`
 // without juggling two packages. (`DashboardSummary` is the live shape

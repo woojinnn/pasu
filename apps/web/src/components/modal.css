@@ -1,0 +1,85 @@
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(13, 17, 24, 0.42);
+  display: grid; place-items: center;
+  z-index: 100;
+  animation: fadeIn 140ms ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-panel {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  box-shadow: 0 20px 60px rgba(15,23,42,0.18);
+  max-height: 88vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.modal-head h3 {
+  margin: 0; font-size: 15px; font-weight: 700;
+  color: var(--slate-900); letter-spacing: -0.01em;
+}
+.modal-close {
+  width: 28px; height: 28px;
+  border-radius: 6px; color: var(--slate-400);
+  font-size: 20px; line-height: 1;
+}
+.modal-close:hover { background: var(--fog-300); color: var(--slate-700); }
+.modal-body { padding: 18px 20px; overflow: auto; }
+.modal-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--hairline-soft);
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+
+/* shared form bits used by the modals */
+.form-row { margin-bottom: 14px; }
+.form-row:last-child { margin-bottom: 0; }
+.form-row label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--slate-600); margin-bottom: 6px;
+}
+.form-row input[type="text"],
+.form-row textarea,
+.form-row select {
+  width: 100%;
+  font: inherit; font-size: 13px;
+  padding: 9px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-input);
+  background: var(--surface);
+  color: var(--slate-900);
+}
+.form-row input[type="text"]:focus,
+.form-row textarea:focus,
+.form-row select:focus {
+  outline: 2px solid var(--sage-300);
+  outline-offset: -1px;
+  border-color: var(--sage-500);
+}
+.form-row .hint {
+  font-size: 11.5px; color: var(--slate-400); margin-top: 4px;
+}
+.form-row .err {
+  font-size: 12px; color: var(--fail-700); margin-top: 4px;
+}
+
+.chain-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.chain-chip {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; padding: 8px 10px;
+  border: 1px solid var(--hairline); border-radius: var(--r-sm);
+  background: var(--surface); cursor: pointer;
+}
+.chain-chip:hover { background: var(--fog-200); }
+.chain-chip input { margin: 0; }
+.chain-chip.checked { background: var(--sage-50); border-color: var(--sage-400); color: var(--slate-900); }
