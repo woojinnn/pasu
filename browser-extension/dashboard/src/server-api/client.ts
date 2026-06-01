@@ -10,7 +10,7 @@
  * - Stay tiny and dependency-free — no axios, no React.
  */
 
-const DEFAULT_BASE = "http://127.0.0.1:8788";
+const DEFAULT_BASE = import.meta.env.VITE_SCOPEBALL_SERVER_URL || "http://127.0.0.1:8788";
 
 /** Resolve the server URL — env > localStorage > default. Read once at
  * import time; we don't expect users to swap servers mid-session. */

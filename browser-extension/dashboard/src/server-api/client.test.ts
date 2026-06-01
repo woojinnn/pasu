@@ -6,6 +6,7 @@ describe("dashboard server-api client", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     storage = new Map();
     Object.defineProperty(window, "localStorage", {
       configurable: true,
@@ -16,6 +17,14 @@ describe("dashboard server-api client", () => {
         clear: () => storage.clear(),
       },
     });
+  });
+
+  it("uses the Vite server URL when it is defined", async () => {
+    vi.stubEnv("VITE_SCOPEBALL_SERVER_URL", "https://api.scopeball.dev");
+
+    const { SERVER_BASE_URL } = await import("./client");
+
+    expect(SERVER_BASE_URL).toBe("https://api.scopeball.dev");
   });
 
   it("refreshes the access token once and retries after a 401", async () => {
