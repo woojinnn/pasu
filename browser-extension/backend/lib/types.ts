@@ -107,6 +107,18 @@ export type VenueActionWire =
       isDeposit: boolean;
       usd: string;
     }
+  | { kind: "approve_builder_fee"; maxFeeRate: string; builder: string }
+  | { kind: "token_delegate"; validator: string; isUndelegate: boolean; wei: string }
+  | {
+      kind: "twap_order";
+      assetIndex: number;
+      isBuy: boolean;
+      size: string;
+      reduceOnly: boolean;
+      minutes: number;
+      randomize: boolean;
+    }
+  | { kind: "update_isolated_margin"; assetIndex: number; isBuy: boolean; ntli: string }
   | {
       /**
        * Catch-all for an `/exchange` action with no explicit model. Carries only

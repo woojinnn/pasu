@@ -305,6 +305,57 @@ export function parseHyperliquidExchangeOrders(
       });
     }
 
+    case "approveBuilderFee": {
+      if (typeof action.builder !== "string" || action.maxFeeRate === undefined) {
+        return null;
+      }
+      return one({
+        kind: "approve_builder_fee",
+        maxFeeRate: String(action.maxFeeRate),
+        builder: action.builder,
+      });
+    }
+
+    case "tokenDelegate": {
+      if (typeof action.validator !== "string" || action.wei === undefined) {
+        return null;
+      }
+      return one({
+        kind: "token_delegate",
+        validator: action.validator,
+        isUndelegate: action.isUndelegate === true,
+        wei: String(action.wei),
+      });
+    }
+
+    case "twapOrder": {
+      const twap = asObject(action.twap);
+      if (!twap || typeof twap.a !== "number" || typeof twap.b !== "boolean") {
+        return null;
+      }
+      return one({
+        kind: "twap_order",
+        assetIndex: twap.a,
+        isBuy: twap.b,
+        size: String(twap.s ?? ""),
+        reduceOnly: twap.r === true,
+        minutes: typeof twap.m === "number" ? twap.m : Number(twap.m ?? 0),
+        randomize: twap.t === true,
+      });
+    }
+
+    case "updateIsolatedMargin": {
+      if (typeof action.asset !== "number" || action.ntli === undefined) {
+        return null;
+      }
+      return one({
+        kind: "update_isolated_margin",
+        assetIndex: action.asset,
+        isBuy: action.isBuy === true,
+        ntli: String(action.ntli),
+      });
+    }
+
     default:
       // BENIGN_PASS_THROUGH (cancel / modify / schedule / admin) is high-frequency
       // and moves no funds / grants no permission → return null (out of scope, not

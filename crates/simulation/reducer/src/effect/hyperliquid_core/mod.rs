@@ -41,6 +41,10 @@ impl Reducer for HyperliquidCoreAction {
             | Self::CWithdraw(_)
             | Self::VaultTransfer(_)
             | Self::SubAccountTransfer(_)
+            | Self::ApproveBuilderFee(_)
+            | Self::TokenDelegate(_)
+            | Self::TwapOrder(_)
+            | Self::UpdateIsolatedMargin(_)
             | Self::Unknown(_) => Ok(StateDelta::new()),
         }
     }

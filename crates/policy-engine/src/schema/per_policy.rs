@@ -29,10 +29,12 @@ use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_C_DEPOSIT_SCHEMA, HL_C_WITHDRAW_SCHEMA,
-    HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA, HL_SEND_TO_EVM_WITH_DATA_SCHEMA, HL_SPOT_SEND_SCHEMA,
-    HL_SUB_ACCOUNT_TRANSFER_SCHEMA, HL_UNKNOWN_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA,
-    HL_USD_CLASS_TRANSFER_SCHEMA, HL_USD_SEND_SCHEMA, HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA,
+    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_APPROVE_BUILDER_FEE_SCHEMA,
+    HL_C_DEPOSIT_SCHEMA, HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA,
+    HL_SEND_TO_EVM_WITH_DATA_SCHEMA, HL_SPOT_SEND_SCHEMA, HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
+    HL_TOKEN_DELEGATE_SCHEMA, HL_TWAP_ORDER_SCHEMA, HL_UNKNOWN_SCHEMA,
+    HL_UPDATE_ISOLATED_MARGIN_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA,
+    HL_USD_SEND_SCHEMA, HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA,
     LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA,
     LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA,
     LENDING_BUY_COLLATERAL_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
@@ -667,6 +669,30 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         schema_text: HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
         pascal_stub: "HlSubAccountTransfer",
     },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_approve_builder_fee"),
+        schema_text: HL_APPROVE_BUILDER_FEE_SCHEMA,
+        pascal_stub: "HlApproveBuilderFee",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_token_delegate"),
+        schema_text: HL_TOKEN_DELEGATE_SCHEMA,
+        pascal_stub: "HlTokenDelegate",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_twap_order"),
+        schema_text: HL_TWAP_ORDER_SCHEMA,
+        pascal_stub: "HlTwapOrder",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_update_isolated_margin"),
+        schema_text: HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
+        pascal_stub: "HlUpdateIsolatedMargin",
+    },
 ];
 
 /// Synthesize an isolated per-policy `.cedarschema` for one bundle.
@@ -1110,10 +1136,10 @@ mod tests {
         }
         // Union of feat/registry-v2 (74: + 7 restaking + 8 staking + 5 hyperliquid_core)
         // and the 11 Pendle `yield` rows = 85 shipped actions (multicall + unknown
-        // included), plus 9 more HyperliquidCore actions (the `hl_unknown`
-        // catch-all + 8 fund-movement actions) = 94.
+        // included), plus 13 more HyperliquidCore actions (the `hl_unknown`
+        // catch-all + 8 fund-movement + 2 permission + 2 trading/margin) = 98.
         // Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 94, "resolver table must have 94 rows");
+        assert_eq!(RESOLVER_TABLE.len(), 98, "resolver table must have 98 rows");
     }
 
     /// A `custom_context` field whose name collides with one of the matched

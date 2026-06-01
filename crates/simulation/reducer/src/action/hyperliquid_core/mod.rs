@@ -74,6 +74,18 @@ pub enum HyperliquidCoreAction {
     /// Move USDC to / from a sub-account (`{"type":"subAccountTransfer"}`).
     #[serde(rename = "hl_sub_account_transfer")]
     SubAccountTransfer(HlSubAccountTransferAction),
+    /// Authorize a builder to charge a fee (`{"type":"approveBuilderFee"}`).
+    #[serde(rename = "hl_approve_builder_fee")]
+    ApproveBuilderFee(HlApproveBuilderFeeAction),
+    /// Delegate / undelegate stake to a validator (`{"type":"tokenDelegate"}`).
+    #[serde(rename = "hl_token_delegate")]
+    TokenDelegate(HlTokenDelegateAction),
+    /// Place a TWAP order (`{"type":"twapOrder"}`).
+    #[serde(rename = "hl_twap_order")]
+    TwapOrder(HlTwapOrderAction),
+    /// Add / remove isolated margin (`{"type":"updateIsolatedMargin"}`).
+    #[serde(rename = "hl_update_isolated_margin")]
+    UpdateIsolatedMargin(HlUpdateIsolatedMarginAction),
     /// Any `/exchange` action not explicitly modeled above. Carries only the raw
     /// wire `type` string so a policy can gate or surface unrecognized actions
     /// (`HlUnknown` — policy default: warn / deny). Closes the silent-allow gap:
@@ -101,6 +113,10 @@ impl HyperliquidCoreAction {
             Self::CWithdraw(_) => "hl_c_withdraw",
             Self::VaultTransfer(_) => "hl_vault_transfer",
             Self::SubAccountTransfer(_) => "hl_sub_account_transfer",
+            Self::ApproveBuilderFee(_) => "hl_approve_builder_fee",
+            Self::TokenDelegate(_) => "hl_token_delegate",
+            Self::TwapOrder(_) => "hl_twap_order",
+            Self::UpdateIsolatedMargin(_) => "hl_update_isolated_margin",
             Self::Unknown(_) => "hl_unknown",
         }
     }
@@ -289,6 +305,70 @@ pub struct HlSubAccountTransferAction {
     pub usd: Decimal,
 }
 
+/// Builder-fee authorization: `{"type":"approveBuilderFee"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlApproveBuilderFeeAction {
+    /// Maximum fee rate the builder may charge (`maxFeeRate`), e.g. `"0.001%"`.
+    /// Kept as the raw wire string (it carries a `%` suffix, not a plain decimal).
+    pub max_fee_rate: String,
+    /// Builder address being authorized (`builder`).
+    #[tsify(type = "string")]
+    pub builder: Address,
+}
+
+/// Stake delegation / undelegation: `{"type":"tokenDelegate"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlTokenDelegateAction {
+    /// Validator address (`validator`).
+    #[tsify(type = "string")]
+    pub validator: Address,
+    /// `isUndelegate` — `true` ⇒ undelegate, `false` ⇒ delegate.
+    pub is_undelegate: bool,
+    /// Amount in token wei (`wei`), a decimal value held as a string.
+    pub wei: Decimal,
+}
+
+/// TWAP order: `{"type":"twapOrder"}` (`twap` sub-object).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlTwapOrderAction {
+    /// Asset index (`twap.a`).
+    pub asset_index: u32,
+    /// Resolved market symbol; `None` until the venue meta cache resolves it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub symbol: Option<String>,
+    /// `twap.b` — `true` ⇒ buy/long, `false` ⇒ sell/short.
+    pub is_buy: bool,
+    /// Total size (`twap.s`), a decimal value held as a string.
+    pub size: Decimal,
+    /// `twap.r` — reduce-only.
+    pub reduce_only: bool,
+    /// Duration in minutes the TWAP runs over (`twap.m`).
+    pub minutes: u32,
+    /// `twap.t` — randomize sub-order timing.
+    pub randomize: bool,
+}
+
+/// Isolated-margin adjustment: `{"type":"updateIsolatedMargin"}`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlUpdateIsolatedMarginAction {
+    /// Asset index (`asset`).
+    pub asset_index: u32,
+    /// Resolved market symbol; `None` until resolved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub symbol: Option<String>,
+    /// `isBuy` — side the margin adjustment applies to.
+    pub is_buy: bool,
+    /// Notional to add (positive) or remove (negative) (`ntli`), a decimal value
+    /// held as a string (can be negative).
+    pub ntli: Decimal,
+}
+
 /// Catch-all for an `/exchange` action not explicitly modeled.
 ///
 /// Holds only the raw wire `type` string (`{"type":"<actionType>"}`) — no
@@ -380,6 +460,30 @@ mod tests {
                 sub_account_user: Address::from([0x88; 20]),
                 is_deposit: false,
                 usd: Decimal::new("75"),
+            }),
+            HyperliquidCoreAction::ApproveBuilderFee(HlApproveBuilderFeeAction {
+                max_fee_rate: "0.001%".to_owned(),
+                builder: Address::from([0x99; 20]),
+            }),
+            HyperliquidCoreAction::TokenDelegate(HlTokenDelegateAction {
+                validator: Address::from([0xaa; 20]),
+                is_undelegate: false,
+                wei: Decimal::new("1000000000"),
+            }),
+            HyperliquidCoreAction::TwapOrder(HlTwapOrderAction {
+                asset_index: 0,
+                symbol: None,
+                is_buy: true,
+                size: Decimal::new("10"),
+                reduce_only: false,
+                minutes: 30,
+                randomize: true,
+            }),
+            HyperliquidCoreAction::UpdateIsolatedMargin(HlUpdateIsolatedMarginAction {
+                asset_index: 0,
+                symbol: None,
+                is_buy: true,
+                ntli: Decimal::new("-100"),
             }),
             HyperliquidCoreAction::Unknown(HlUnknownAction {
                 action_type: "convertToMultiSigUser".to_owned(),

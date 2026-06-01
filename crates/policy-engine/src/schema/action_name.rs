@@ -167,7 +167,7 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "permit2_approve",
     "permit2_sign_allowance",
     "revoke_approval",
-    // HyperliquidCore (14) — thin off-chain L1 action model. `hl_`-prefixed so
+    // HyperliquidCore (18) — thin off-chain L1 action model. `hl_`-prefixed so
     // the tags stay globally unique (e.g. `withdraw` already exists in Lending).
     "hl_order",
     "hl_update_leverage",
@@ -183,6 +183,10 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "hl_c_withdraw",
     "hl_vault_transfer",
     "hl_sub_account_transfer",
+    "hl_approve_builder_fee",
+    "hl_token_delegate",
+    "hl_twap_order",
+    "hl_update_isolated_margin",
 ];
 
 #[cfg(test)]
@@ -236,11 +240,13 @@ mod tests {
         // Union of feat/registry-v2 (74: + 7 Restaking + 8 Staking + 5 HyperliquidCore)
         // and the 11 Pendle `yield` rows (pt_swap / yt_swap / add+remove_market_liquidity
         // / mint_py / redeem_py / mint_sy / redeem_sy / claim_yield / sign_limit_order
-        // / cancel_limit_order) = 85, plus 9 more HyperliquidCore actions (the
-        // `hl_unknown` catch-all + the 8 fund-movement actions spot_send /
-        // usd_class_transfer / send_asset / send_to_evm_with_data / c_deposit /
-        // c_withdraw / vault_transfer / sub_account_transfer) = 94.
-        assert_eq!(REGISTERED_ACTIONS.len(), 94);
+        // / cancel_limit_order) = 85, plus 13 more HyperliquidCore actions: the
+        // `hl_unknown` catch-all + 8 fund-movement (spot_send / usd_class_transfer
+        // / send_asset / send_to_evm_with_data / c_deposit / c_withdraw /
+        // vault_transfer / sub_account_transfer) + 2 permission (approve_builder_fee
+        // / token_delegate) + 2 trading/margin (twap_order / update_isolated_margin)
+        // = 98.
+        assert_eq!(REGISTERED_ACTIONS.len(), 98);
     }
 
     #[test]

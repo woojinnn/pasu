@@ -1,0 +1,36 @@
+// HyperliquidCore::HlTwapOrder — a Hyperliquid `{"type":"twapOrder"}`.
+//
+// Places a TWAP order that executes `size` over `minutes`. Like a regular order,
+// policies match on action + side / market, not on numeric magnitude.
+
+namespace HyperliquidCore {
+  type HlTwapOrderContext = {
+    // Common envelope.
+    meta: Core::ActionMeta,
+    // Always `{ name: "hyperliquid" }`.
+    venue: HlVenue,
+    // Market the TWAP trades.
+    market: HlMarket,
+    // "long" (buy) or "short" (sell).
+    side: String,
+    // Total size (decimal string).
+    size: String,
+    // Reduce-only.
+    reduceOnly: Bool,
+    // Duration in minutes the TWAP runs over.
+    minutes: Long,
+    // Randomize sub-order timing.
+    randomize: Bool,
+    // Manifest-extensible slot.
+    custom?: HlTwapOrderCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type HlTwapOrderCustomContext = {};
+
+  action "HlTwapOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: HlTwapOrderContext,
+  };
+}

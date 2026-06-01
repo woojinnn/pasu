@@ -192,6 +192,52 @@ describe("hlOrderToAction", () => {
     });
   });
 
+  it("converts tokenDelegate (delegation), carrying isUndelegate", () => {
+    const { action } = hlOrderToAction(
+      payload({
+        kind: "token_delegate",
+        validator: "0x000000000000000000000000000000000000bEEF",
+        isUndelegate: false,
+        wei: "1000000000",
+      }),
+    );
+    expect(action).toEqual({
+      domain: "hyperliquid_core",
+      action: "hl_token_delegate",
+      validator: "0x000000000000000000000000000000000000bEEF",
+      is_undelegate: false,
+      wei: "1000000000",
+    });
+  });
+
+  it("converts twapOrder (side + minutes + randomize), with symbol when resolved", () => {
+    const { action } = hlOrderToAction(
+      payload(
+        {
+          kind: "twap_order",
+          assetIndex: 0,
+          isBuy: true,
+          size: "10",
+          reduceOnly: false,
+          minutes: 30,
+          randomize: true,
+        },
+        "BTC-USD",
+      ),
+    );
+    expect(action).toEqual({
+      domain: "hyperliquid_core",
+      action: "hl_twap_order",
+      asset_index: 0,
+      is_buy: true,
+      size: "10",
+      reduce_only: false,
+      minutes: 30,
+      randomize: true,
+      symbol: "BTC-USD",
+    });
+  });
+
   it("converts the hl_unknown catch-all (raw wire type only)", () => {
     const { action } = hlOrderToAction(
       payload({ kind: "unknown", actionType: "convertToMultiSigUser" }),

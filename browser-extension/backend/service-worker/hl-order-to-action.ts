@@ -166,6 +166,46 @@ function actionBody(
         is_deposit: a.isDeposit,
         usd: String(a.usd),
       };
+    case "approve_builder_fee":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_approve_builder_fee",
+        max_fee_rate: a.maxFeeRate,
+        builder: a.builder,
+      };
+    case "token_delegate":
+      return {
+        domain: "hyperliquid_core",
+        action: "hl_token_delegate",
+        validator: a.validator,
+        is_undelegate: a.isUndelegate,
+        wei: String(a.wei),
+      };
+    case "twap_order": {
+      const body: Record<string, unknown> = {
+        domain: "hyperliquid_core",
+        action: "hl_twap_order",
+        asset_index: a.assetIndex,
+        is_buy: a.isBuy,
+        size: String(a.size),
+        reduce_only: a.reduceOnly,
+        minutes: a.minutes,
+        randomize: a.randomize,
+      };
+      if (symbol !== undefined) body.symbol = symbol;
+      return body;
+    }
+    case "update_isolated_margin": {
+      const body: Record<string, unknown> = {
+        domain: "hyperliquid_core",
+        action: "hl_update_isolated_margin",
+        asset_index: a.assetIndex,
+        is_buy: a.isBuy,
+        ntli: String(a.ntli),
+      };
+      if (symbol !== undefined) body.symbol = symbol;
+      return body;
+    }
     case "unknown":
       return {
         domain: "hyperliquid_core",
