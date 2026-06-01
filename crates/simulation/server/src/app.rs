@@ -25,13 +25,11 @@ use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator};
 
 use crate::auth::{require_auth, AuthUser};
-use crate::cedar_handlers;
 use crate::dashboard_handlers;
 use crate::db_store::SqliteExecutionReportStore;
 use crate::dto::{EvaluateRequest, ExecutionReportRequest};
 use crate::events::EventBus;
 use crate::handler::{evaluate, report_execution, HandlerError};
-use crate::phase5_handlers;
 use crate::read_handlers;
 use crate::verdict_handlers;
 use crate::write_handlers;
@@ -181,9 +179,9 @@ pub fn build_router(state: AppState) -> Router {
                 .patch(write_handlers::patch_policy)
                 .delete(write_handlers::delete_policy),
         )
-        // ---- Phase 4: cedar editor support ----
-        .route("/policies/validate", post(cedar_handlers::validate_policy))
-        .route("/policies/:id/test", post(cedar_handlers::test_policy))
+        // Cedar evaluation (validate / test / simulate) moved to the
+        // browser via `@scopeball/cedar-wasm` (crates/cedar-wasm-lite).
+        // The server keeps only policy storage CRUD.
         .route("/policy-schema", get(read_handlers::get_policy_schema))
         .route(
             "/policy-templates",
@@ -208,13 +206,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/history/verdicts", get(verdict_handlers::list_history))
         .route("/findings/feed", get(verdict_handlers::findings_feed))
         .route("/events/stream", get(crate::events::sse_stream))
-        // ---- Phase 5: tx decode + revoke plan + sequence simulation ----
-        .route("/tx/decode", post(phase5_handlers::decode_tx))
-        .route("/approvals/revoke-plan", post(phase5_handlers::revoke_plan))
-        .route(
-            "/simulate/sequence",
-            post(phase5_handlers::simulate_sequence),
-        )
+        // Selector decode + revoke calldata builder + Cedar sequence sim
+        // all moved to the dashboard (apps/web/src/tools/* + cedar/).
+        // The server holds only state + verdict mirror.
         .layer(from_fn(require_auth));
 
     let public = Router::new()

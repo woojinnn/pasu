@@ -3,7 +3,7 @@ name = "simulation-server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "HTTP backend service for the simulation engine — executes enrichment calls + simulates Action(s) over wallet state and returns state / statediff / results. Phase 4 added a policy-engine dependency for the editor's Cedar syntax-check and verdict-preview endpoints (still off the hot path; live cedar evaluation lives in the extension)."
+description = "HTTP backend service for the simulation engine. DB-only contract: wallet state cache, policy/verdict storage, catalog reads, auth. Cedar evaluation + selector decode + revoke calldata building live in the browser (apps/web/src/cedar + tools/, backed by crates/cedar-wasm-lite). Extensions push verdicts via `POST /verdicts`."
 publish = false
 
 [dependencies]
@@ -13,12 +13,6 @@ simulation-state.workspace = true
 simulation-reducer.workspace = true
 # Sync orchestrator hooks live RPC/oracle fetchers into `LiveField` refresh.
 simulation-sync.workspace = true
-# Cedar parser + evaluator. Used only by the editor-facing
-# `/policies/validate` + `/policies/:id/test` endpoints; live evaluation
-# in the extension is unaffected. We talk to cedar-policy directly here
-# (schema-less authoring) rather than going through `policy-engine`, which
-# bundles a strict schema that would reject ad-hoc author requests.
-cedar-policy.workspace = true
 # SQLite-backed wallet/policy/execution-report persistence. The handler
 # stays db-agnostic where possible (operates on `&dyn WalletStore`); this
 # dep is required directly for `MultiUserStore` and `SqliteExecutionReportStore`.

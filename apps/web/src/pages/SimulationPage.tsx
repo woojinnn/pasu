@@ -2,16 +2,19 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
-  decodeTx,
   getExampleTransactions,
   listPolicies,
-  simulateSequence,
   type ExampleTransaction,
   type InstalledPolicy,
+} from "@scopeball/api-client";
+
+import {
+  simulateSequenceLocal,
   type SequenceResp,
   type SequenceStepInput,
   type SequenceStepResult,
-} from "@scopeball/api-client";
+} from "../cedar";
+import { decodeTxLocal } from "../tools/tx-decode";
 
 import { Topbar } from "../shell/Topbar";
 import "./simulation.css";
@@ -42,8 +45,18 @@ export function SimulationPage() {
 
   const runMut = useMutation({
     mutationFn: () => {
-      const ids = policyFilter.size === 0 ? undefined : Array.from(policyFilter);
-      return simulateSequence(steps, ids);
+      const all = policiesQ.data ?? [];
+      const enabled = all.filter((p) => p.enabled);
+      const chosen =
+        policyFilter.size === 0 ? enabled : enabled.filter((p) => policyFilter.has(p.id));
+      // Map InstalledPolicy → wasm PolicyInput shape (snake_case fields).
+      const policies = chosen.map((p) => ({
+        policy_id: p.id,
+        policy_name: p.name,
+        severity: p.severity,
+        cedar_text: p.cedar_text,
+      }));
+      return simulateSequenceLocal(steps, policies);
     },
     onSuccess: (resp) => {
       setResult(resp);
@@ -93,7 +106,7 @@ export function SimulationPage() {
     const data = (meta.data as string) ?? "0x";
     if (data && data !== "0x") {
       try {
-        const dec = await decodeTx({ chain: meta.chainId as string, to, data });
+        const dec = decodeTxLocal({ chain: meta.chainId as string, to, data });
         if (dec.action_envelope) {
           envelopeKind = `${cap(dec.action_envelope.domain)}::${cap(dec.action_envelope.kind)}`;
         }

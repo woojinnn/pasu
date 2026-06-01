@@ -708,6 +708,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cedar-wasm-lite"
+version = "0.1.0"
+dependencies = [
+ "cedar-policy",
+ "console_error_panic_hook",
+ "getrandom 0.2.17",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3218,7 +3231,6 @@ dependencies = [
  "async-trait",
  "axum",
  "base64",
- "cedar-policy",
  "dotenvy",
  "futures",
  "jsonwebtoken",

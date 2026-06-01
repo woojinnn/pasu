@@ -7,7 +7,6 @@ import {
   getWalletApprovalsWithRisk,
   getWalletHoldings,
   listAuditVerdicts,
-  planRevokes,
   setVerdictDecision,
   type ClassifiedApprovals,
   type ClassifiedErc20Approval,
@@ -15,8 +14,6 @@ import {
   type ClassifiedSetForAllApproval,
   type DashboardSummary,
   type DashboardWalletSummary,
-  type RevokeItem,
-  type RevokePlanResp,
   type TokenHolding,
   type VerdictDto,
 } from "@scopeball/api-client";
@@ -24,6 +21,11 @@ import {
 import { Topbar } from "../shell/Topbar";
 import { AddWalletModal } from "../components/AddWalletModal";
 import { Modal } from "../components/Modal";
+import {
+  planRevokesLocal,
+  type RevokeItem,
+  type RevokePlanResp,
+} from "../tools/revoke-plan";
 import "./monitoring.css";
 
 /**
@@ -1168,7 +1170,7 @@ function ApprovalsTable({
 
 function RevokeModal({ item, onClose }: { item: RevokeItem; onClose: () => void }) {
   const planMut = useMutation({
-    mutationFn: () => planRevokes([item]),
+    mutationFn: async () => planRevokesLocal([item]),
   });
   if (planMut.isIdle) planMut.mutate();
 

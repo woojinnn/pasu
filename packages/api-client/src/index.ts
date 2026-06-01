@@ -56,32 +56,10 @@ export {
   type ChainShare,
 } from "./dashboard";
 
-// Phase 4 cedar editor support.
-export {
-  validatePolicy,
-  testPolicy,
-  type ValidateResp,
-  type CedarRequestInput,
-  type TestPolicyResp,
-  type MatchedPolicyDto,
-} from "./cedar";
-
-// Phase 5 — tx decode + revoke plan + sequence simulation.
-export {
-  decodeTx,
-  planRevokes,
-  simulateSequence,
-  type DecodeReq,
-  type DecodeResp,
-  type ActionHint,
-  type RevokeItem,
-  type RevokeCall,
-  type RevokePlanResp,
-  type SequenceStepInput,
-  type SequenceStepResult,
-  type SequenceResp,
-  type PolicyOutcome,
-} from "./phase5";
+// Cedar validate/test/simulate moved off the server — call
+// `@scopeball/cedar-wasm` (via `apps/web/src/cedar/`) directly.
+// Selector decode + revoke calldata builder moved to
+// `apps/web/src/tools/` (pure TS, no roundtrip).
 
 // Re-export every shared type so consumers can `import { … } from "@scopeball/api-client"`
 // without juggling two packages. (`DashboardSummary` is the live shape
