@@ -110,6 +110,17 @@ export {
   ExtensionBridgeTimeout,
 } from "./extension-bridge";
 
+// Dashboard ↔ extension SW bridge for managed policies. Replaces the
+// retired server-side `user_policies` CRUD (see policies.ts stubs).
+export {
+  putPolicy,
+  deletePolicy as deleteManagedPolicy,
+  listManagedPolicies,
+  dashboardId,
+  stripDashboardId,
+  type ManagedPolicy,
+} from "./extension-sync";
+
 // Shared primitive types — kept in one file (./types) to mirror the
 // Rust DTOs. Re-exported here so consumer pages can
 // `import type { ... } from "../server-api"`.

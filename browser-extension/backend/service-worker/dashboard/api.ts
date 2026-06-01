@@ -38,6 +38,10 @@ export type DashboardRequest =
       text: string;
       manifest?: unknown;
       manifests?: readonly unknown[];
+      /** v7 builder tree snapshot — preserved opaquely. */
+      policyTree?: string;
+      /** Human-readable label; shown in popup + dashboard. */
+      displayName?: string;
     }
   | {
       type: "dashboard:put-template";
@@ -186,6 +190,8 @@ export async function handleDashboardRequest(
           text: req.text,
           ...(req.manifest !== undefined ? { manifest: req.manifest } : {}),
           ...(req.manifests !== undefined ? { manifests: req.manifests } : {}),
+          ...(typeof req.policyTree === "string" ? { policyTree: req.policyTree } : {}),
+          ...(typeof req.displayName === "string" ? { displayName: req.displayName } : {}),
           updatedAtMs: Date.now(),
           schemaVersion: 1,
         };
