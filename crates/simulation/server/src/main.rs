@@ -25,7 +25,7 @@ use tracing_subscriber::EnvFilter;
 
 use simulation_server::app::{build_router_with_config, AppState};
 use simulation_server::config::ServerConfig;
-use simulation_server::events::EventBus;
+use simulation_server::events::{EventBus, LocalEventPublisher};
 use simulation_server::storage::StorageBackend;
 use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
 
@@ -96,10 +96,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let coingecko = CoinGeckoClient::from_env();
     tracing::info!("CoinGecko token metadata client ready");
 
+    let event_bus = EventBus::new();
     let state = AppState {
         multi_user: storage.multi_user(),
         global_db: storage.global_db(),
-        event_bus: EventBus::new(),
+        event_bus: event_bus.clone(),
+        publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator,
         etherscan,
         coingecko,

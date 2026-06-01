@@ -12,6 +12,7 @@ use std::sync::Arc;
 use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::auth::jwt::{issue, TokenType};
+use simulation_server::events::{EventBus, LocalEventPublisher};
 use simulation_state::{WalletId, WalletStore};
 use simulation_sync::{Orchestrator, SyncConfig};
 
@@ -32,10 +33,12 @@ async fn spawn_server() -> (std::net::SocketAddr, MultiUserStore, String) {
     let path = tmp.keep();
     let global_db = GlobalDb::open(path.join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(path.join("users"));
+    let event_bus = EventBus::new();
     let state = AppState {
         multi_user: multi_user.clone(),
         global_db,
-        event_bus: simulation_server::events::EventBus::new(),
+        event_bus: event_bus.clone(),
+        publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),

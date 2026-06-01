@@ -10,6 +10,7 @@ use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, build_router_with_config, AppState};
 use simulation_server::auth::jwt::{issue, verify, TokenType};
 use simulation_server::config::ServerConfig;
+use simulation_server::events::{EventBus, LocalEventPublisher};
 use simulation_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
@@ -26,10 +27,12 @@ async fn spawn_server() -> std::net::SocketAddr {
     let path = tmp.keep();
     let global_db = GlobalDb::open(path.join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(path.join("users"));
+    let event_bus = EventBus::new();
     let state = AppState {
         multi_user,
         global_db,
-        event_bus: simulation_server::events::EventBus::new(),
+        event_bus: event_bus.clone(),
+        publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),
@@ -49,10 +52,12 @@ async fn spawn_server_with_origin_allowlist(origins: Vec<&str>) -> std::net::Soc
     let path = tmp.keep();
     let global_db = GlobalDb::open(path.join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(path.join("users"));
+    let event_bus = EventBus::new();
     let state = AppState {
         multi_user,
         global_db,
-        event_bus: simulation_server::events::EventBus::new(),
+        event_bus: event_bus.clone(),
+        publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),

@@ -10,7 +10,7 @@ use simulation_db::{GlobalDb, MultiUserStore};
 use simulation_server::app::{build_router, AppState};
 use simulation_server::auth::jwt::{issue, TokenType};
 use simulation_server::events::types::{Event, TxConfirmed};
-use simulation_server::events::EventBus;
+use simulation_server::events::{EventBus, EventPublisher, LocalEventPublisher};
 use simulation_state::primitives::ChainId;
 use simulation_sync::{Orchestrator, SyncConfig};
 
@@ -32,10 +32,12 @@ async fn spawn_server() -> (std::net::SocketAddr, EventBus) {
     let global_db = GlobalDb::open(path.join("global.db")).unwrap();
     let multi_user = MultiUserStore::new(path.join("users"));
     let bus = EventBus::new();
+    let publisher = Arc::new(LocalEventPublisher::new(bus.clone()));
     let state = AppState {
         multi_user,
         global_db,
         event_bus: bus.clone(),
+        publisher,
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
         coingecko: simulation_sync::CoinGeckoClient::new(),
@@ -118,6 +120,21 @@ async fn subscriber_receives_published_event() {
     let body = reader.await.unwrap();
     assert!(body.contains("event: tx_confirmed"), "body=\n{body}");
     assert!(body.contains("\"tx_id\":\"t1\""), "body=\n{body}");
+}
+
+#[tokio::test]
+async fn local_publisher_fans_out_to_the_sse_bus() {
+    let bus = EventBus::new();
+    let publisher = LocalEventPublisher::new(bus.clone());
+    let mut rx = bus.subscribe();
+
+    publisher
+        .publish("u_alice".to_owned(), sample_event("via_publisher"))
+        .await;
+
+    let (uid, event) = rx.recv().await.unwrap();
+    assert_eq!(uid, "u_alice");
+    assert_eq!(event.kind(), "tx_confirmed");
 }
 
 #[tokio::test]

@@ -124,15 +124,18 @@ pub async fn add_wallet(
     // POST /sync later, and stale state is better than no wallet row.
     let (synced, sync_err) = match run_sync(&*store, &id, &state.orchestrator).await {
         Ok(()) => {
-            state.event_bus.publish(
-                user.user_id.clone(),
-                Event::WalletSynced(WalletSync {
-                    wallet: format!("{:#x}", id.address),
-                    fields_updated: 0, // populated by /sync, not the seed path
-                    fields_failed: 0,
-                    synced_at: unix_now(),
-                }),
-            );
+            state
+                .publisher
+                .publish(
+                    user.user_id.clone(),
+                    Event::WalletSynced(WalletSync {
+                        wallet: format!("{:#x}", id.address),
+                        fields_updated: 0, // populated by /sync, not the seed path
+                        fields_failed: 0,
+                        synced_at: unix_now(),
+                    }),
+                )
+                .await;
             (true, None)
         }
         Err(e) => (false, Some(e)),
@@ -545,15 +548,18 @@ pub async fn sync_wallet(
         Ok(s) => s,
         Err(e) => return internal(&format!("post-sync load: {e}")),
     };
-    state.event_bus.publish(
-        user.user_id.clone(),
-        Event::WalletSynced(WalletSync {
-            wallet: format!("{:#x}", id.address),
-            fields_updated: 0,
-            fields_failed: 0,
-            synced_at: unix_now(),
-        }),
-    );
+    state
+        .publisher
+        .publish(
+            user.user_id.clone(),
+            Event::WalletSynced(WalletSync {
+                wallet: format!("{:#x}", id.address),
+                fields_updated: 0,
+                fields_failed: 0,
+                synced_at: unix_now(),
+            }),
+        )
+        .await;
     StatusCode::NO_CONTENT.into_response()
 }
 

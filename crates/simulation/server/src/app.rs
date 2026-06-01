@@ -29,7 +29,7 @@ use crate::config::ServerConfig;
 use crate::dashboard_handlers;
 use crate::db_store::SqliteExecutionReportStore;
 use crate::dto::{EvaluateRequest, ExecutionReportRequest};
-use crate::events::EventBus;
+use crate::events::{EventBus, EventPublisher};
 use crate::handler::{evaluate, report_execution, HandlerError};
 use crate::read_handlers;
 use crate::write_handlers;
@@ -43,6 +43,9 @@ pub struct AppState {
     pub multi_user: MultiUserStore,
     pub global_db: GlobalDb,
     pub event_bus: EventBus,
+    /// Fanout boundary for server-originated events. The local publisher writes
+    /// into `event_bus`; cloud deployments can replace it with Redis pub/sub.
+    pub publisher: Arc<dyn EventPublisher>,
     /// Sync orchestrator — wraps the per-protocol fetchers wired from
     /// `scopeball-sync.toml`. Shared across handlers so we don't re-open
     /// HTTP connection pools on every request.
@@ -65,6 +68,7 @@ impl std::fmt::Debug for AppState {
             .field("multi_user", &self.multi_user)
             .field("global_db", &self.global_db)
             .field("event_bus", &self.event_bus)
+            .field("publisher", &"<EventPublisher>")
             .field("orchestrator", &"<Orchestrator>")
             .field(
                 "etherscan",
