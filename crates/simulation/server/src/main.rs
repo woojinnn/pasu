@@ -24,14 +24,10 @@ use std::sync::Arc;
 use tracing_subscriber::EnvFilter;
 
 use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
+use simulation_server::app::{build_router_with_config, AppState};
+use simulation_server::config::ServerConfig;
 use simulation_server::events::EventBus;
 use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
-
-/// Default bind address. Port `8788` deliberately differs from the legacy
-/// Node.js policy-rpc host (`8787`) so the two can run side-by-side during
-/// the migration.
-const DEFAULT_ADDR: &str = "127.0.0.1:8788";
 
 /// Default sync config path. Lives next to the workspace root so the dev
 /// loop is one command (`cargo run -p simulation-server`).
@@ -50,6 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
+    let config = ServerConfig::from_env();
     let home = scopeball_home();
     let global_db_path = home.join("global.db");
     let users_dir = home.join("users");
@@ -108,11 +105,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         etherscan,
         coingecko,
     };
-    let router = build_router(state);
+    let router = build_router_with_config(state, config.clone());
 
-    let addr = std::env::var("SIMULATION_SERVER_ADDR").unwrap_or_else(|_| DEFAULT_ADDR.to_owned());
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
-    tracing::info!(%addr, "simulation-server listening");
+    let listener = tokio::net::TcpListener::bind(&config.bind_addr).await?;
+    tracing::info!(addr = %config.bind_addr, "simulation-server listening");
 
     axum::serve(listener, router).await?;
     Ok(())
