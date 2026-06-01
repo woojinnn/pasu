@@ -1,7 +1,5 @@
 //! `ChangeMarginModeAction` reducer — toggle between cross and isolated margin.
-//!
 //! ## Effect
-//!
 //! For each affected position:
 //!   - Update `margin_mode` to `self.new_mode`.
 //!   - Adjust `collateral[0].1` to the matching entry in
@@ -12,8 +10,8 @@
 //! No wallet-side balance change — margin reallocation happens within the
 //! venue subaccount; the user's on-chain collateral total is unchanged.
 
-use simulation_state::position::PositionKind;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::PositionKind;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::perp::ChangeMarginModeAction;
 use crate::apply::Reducer;
@@ -64,14 +62,14 @@ impl Reducer for ChangeMarginModeAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::delta::PositionChange;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::delta::PositionChange;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, SignedI256, Time, VenueRef, U256,
     };
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{ChangeMarginModeLiveInputs, PerpVenue};
@@ -81,7 +79,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

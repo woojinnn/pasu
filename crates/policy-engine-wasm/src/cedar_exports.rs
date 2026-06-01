@@ -1,7 +1,7 @@
 //! Editor-facing Cedar exports — `validate_policy_text`,
 //! `test_policy_text`, `simulate_policy_sequence`.
 //!
-//! Background: the simulation-server used to host `POST
+//! Background: the policy-server used to host `POST
 //! /policies/validate` + `POST /policies/:id/test` + `POST
 //! /simulate/sequence`. The DB-only server contract pushed those out
 //! of the server crate; the apps/web Editor and the

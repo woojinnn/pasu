@@ -1,9 +1,5 @@
-# Optimize wasm-pack release WASM artifact for size. LTO + 1 codegen unit
-# recovers ~150-300 KB on the merged build (Phase 7 + 12 + 8) which
-# otherwise is ~30 KB over the plan §9 6 MiB target.
-#
-# Batch 3 시도: `strip = "symbols"` 추가는 wasm-pack 의 후속 wasm-opt 가
-# stripped wasm 처리 못해 exit 1 — 적용 불가. 옵션 4 의 strip 변종 모두 동일.
+# Optimize wasm-pack release WASM artifact for size. LTO plus a single codegen
+# unit keeps the merged build under the WASM artifact target.
 [profile.release]
 lto = "fat"
 codegen-units = 1
@@ -38,9 +34,8 @@ alloy-json-abi = "0.8"
 anyhow = "1"
 cedar-policy = "4"
 hex = "0.4"
-# Fixed-point decimal arithmetic used by simulation-reducer for derived field
-# recompute (HF / LTV / PnL / liq_price). 1.37 is the latest stable as of
-# 2026-05-28; no_std-friendly with `serde-str` feature.
+# Fixed-point decimal arithmetic used by policy-transition for derived field
+# recompute (HF / LTV / PnL / liq_price).
 rust_decimal = { version = "1.37", default-features = false, features = ["serde-str", "maths"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -51,11 +46,11 @@ thiserror = "2"
 policy-engine = { path = "crates/policy-engine", version = "0.1.0" }
 abi-resolver = { path = "crates/adapters/abi-resolver", version = "0.1.0" }
 mappers = { path = "crates/adapters/mappers", version = "0.1.0" }
-simulation-state = { path = "crates/policy-server/asset-model/state", version = "0.1.0" }
-simulation-action = { path = "crates/policy-server/asset-model/action", version = "0.1.0" }
-simulation-reducer = { path = "crates/policy-server/asset-model/transition", version = "0.1.0" }
-simulation-db = { path = "crates/policy-server/db", version = "0.1.0" }
-simulation-sync = { path = "crates/policy-server/sync", version = "0.1.0" }
+policy-state = { path = "crates/policy-server/asset-model/state", version = "0.1.0" }
+policy-action = { path = "crates/policy-server/asset-model/action", version = "0.1.0" }
+policy-transition = { path = "crates/policy-server/asset-model/transition", version = "0.1.0" }
+policy-db = { path = "crates/policy-server/db", version = "0.1.0" }
+policy-sync = { path = "crates/policy-server/sync", version = "0.1.0" }
 
 # WASM bridge deps
 wasm-bindgen = "0.2"

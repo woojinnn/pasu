@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::token::TokenRef;
+use policy_state::token::TokenRef;
 
 use super::StakeVenue;
 

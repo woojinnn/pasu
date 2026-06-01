@@ -12,7 +12,7 @@
 //!     raw calldata against the bundle's `abi_fragment.abi`, runs the
 //!     emit-rule against the decoded args via `mappers::declarative::
 //!     action_builder`, and returns the resulting `Vec<Action>` (PDF FSM
-//!     `simulation_reducer::action::Action`).
+//!     `policy_transition::action::Action`).
 //!
 //! Wire shape (input/output) is documented inline next to each export.
 
@@ -34,12 +34,12 @@ use crate::dto::{
 };
 use crate::exports::check_input_size;
 
-// Phase 4B — v3 action tree imports.
-use simulation_reducer::action as v3_action;
-use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-use simulation_state::primitives::{
+// v3 action tree imports. Namespaced under `v3_action` for readability.
+use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+use policy_state::primitives::{
     Address as V3Address, ChainId as V3ChainId, Time as V3Time, U256 as V3U256,
 };
+use policy_transition::action as v3_action;
 
 /// Reserved selector key for **bare native transfers** (B.3). A tx with EMPTY
 /// calldata (`"0x"` / absent) and `value > 0` has NO 4-byte function selector,
@@ -284,7 +284,7 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
 // v3 route entry. Looks up the callkey through the bridge populated by
 // `declarative_install_v3_json`, decodes the calldata against the bundle's
 // ABI, then runs the manifest's emit-rule via `action_builder` to produce
-// the hierarchical `simulation_reducer::action::Action` tree (PDF FSM spec).
+// the hierarchical `policy_transition::action::Action` tree (PDF FSM spec).
 //
 // Phase 4B scope = **WASM boundary only**:
 //   * Define the TS↔Rust wire (input/output JSON shape).

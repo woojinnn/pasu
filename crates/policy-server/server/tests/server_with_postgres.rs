@@ -1,23 +1,20 @@
 //! Integration: the axum server backed by per-user PostgreSQL wallet stores.
-//!
 //! Spins up the router on an ephemeral port, hits `POST /evaluate` against
 //! a tempdir-backed user DB, and asserts the state actually persists across
 //! requests (the load→reduce→save path runs through PostgreSQL, not memory).
-//!
-//! Phase 5: every protected route requires a Bearer JWT. The test mints
 //! one with the same `JWT_SECRET` the server reads.
 
 use std::str::FromStr;
 use std::sync::Arc;
 
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
-use simulation_server::auth::jwt::{issue, TokenType};
-use simulation_server::dto::{EvaluateRequest, EvaluateResponse};
-use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_state::primitives::{Address, BlockHeight, ChainId, Time};
-use simulation_state::{EvalContext, RequestKind, WalletId, WalletState, WalletStore};
-use simulation_sync::{Orchestrator, SyncConfig};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_server::app::{build_router, AppState};
+use policy_server::auth::jwt::{issue, TokenType};
+use policy_server::dto::{EvaluateRequest, EvaluateResponse};
+use policy_server::events::{EventBus, LocalEventPublisher};
+use policy_state::primitives::{Address, BlockHeight, ChainId, Time};
+use policy_state::{EvalContext, RequestKind, WalletId, WalletState, WalletStore};
+use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -65,7 +62,7 @@ fn spawn_state() -> (AppState, tempfile::TempDir) {
             publisher: Arc::new(LocalEventPublisher::new(event_bus)),
             orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
             etherscan: None,
-            coingecko: simulation_sync::CoinGeckoClient::new(),
+            coingecko: policy_sync::CoinGeckoClient::new(),
         },
         tmp,
     )

@@ -1,6 +1,6 @@
 //! Airdrop-domain lowering: per-action dispatch (`Claim` / `Delegate`).
 
-use simulation_reducer::action::airdrop::AirdropAction;
+use policy_transition::action::airdrop::AirdropAction;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
@@ -32,11 +32,11 @@ pub(crate) fn lower(
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::LiveField;
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 

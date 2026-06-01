@@ -3,9 +3,7 @@
 //!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::GmxV2`. Not a `Reducer` impl.
-//!
 //! ## Deferred liquidation price
-//!
 //! GMX V2's `PositionUtils.getLiquidationPrice` factors in:
 //!   - the position's accumulated funding fees,
 //!   - the borrowing fee state of the `GM` market,
@@ -20,9 +18,7 @@
 //! subgraph" }`; the canonical figure is sourced via the GMX subgraph as
 //! a separate `LiveField` on the resulting `PerpPosition` and refreshed by
 //! the sync orchestrator.
-//!
 //! ## Primary sources
-//!
 //! - <https://github.com/gmx-io/gmx-synthetics/blob/main/contracts/position/PositionUtils.sol>
 //!   — `getLiquidationPrice` reference
 //! - <https://gmx-docs.io/docs/api/subgraph-queries> — `MarketsInfo` /
@@ -30,8 +26,8 @@
 
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, Price, SignedI256, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs};
 use crate::error::ReducerResult;
@@ -39,7 +35,6 @@ use crate::error::ReducerResult;
 use super::math;
 
 /// Compute the initial margin required for an `OpenPerpAction` on GMX V2.
-///
 /// GMX V2 applies the same `notional / leverage + taker_fee × notional`
 /// formula as the orderbook venues; the venue-specific "execution fee"
 /// (Pyth oracle keeper payment) is charged in native ETH and lives outside
@@ -54,7 +49,6 @@ pub(super) fn required_initial_margin(
 }
 
 /// Compute the liquidation price of a newly opened position on GMX V2.
-///
 /// Returns `UnsupportedProtocol` — deferred, see module docs.
 pub(super) fn liquidation_price(
     _state: &WalletState,

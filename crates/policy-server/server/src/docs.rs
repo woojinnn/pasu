@@ -1,6 +1,5 @@
 //! `/docs` + `/openapi.yaml` — public, no-auth API browser.
-//!
-//! Loads the OpenAPI spec from `openapi.yaml` (embedded at compile
+//! Loads the `OpenAPI` spec from `openapi.yaml` (embedded at compile
 //! time via `include_str!`) and renders a Swagger UI page that pulls
 //! the JS/CSS from the public unpkg CDN. Keeps the server zero-asset —
 //! nothing to copy at deploy time, nothing to chmod.

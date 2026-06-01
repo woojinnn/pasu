@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::restaking::DepositAction;
+use policy_transition::action::restaking::DepositAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -36,9 +36,9 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use simulation_reducer::action::restaking::{DepositAction, RestakingAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::U256;
+    use policy_state::primitives::U256;
+    use policy_transition::action::restaking::{DepositAction, RestakingAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{eigenlayer_venue, onchain_meta, other, steth};
 

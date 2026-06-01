@@ -1,4 +1,4 @@
-//! `LiveField` — wrapper for externally sourced or derived data. See spec §7.
+//! Wrapper for externally sourced or derived data.
 //!
 //! It lives embedded inside the state; the Sync orchestrator (or a reducer in
 //! the `DerivedFrom` case) updates `value` / `synced_at` / `confidence` in place.

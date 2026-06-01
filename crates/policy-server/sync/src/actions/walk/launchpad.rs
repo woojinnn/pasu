@@ -1,15 +1,12 @@
-//! Launchpad 도메인 walk + apply.
-//!
 //! Wired: Commit (4), `ClaimAllocation` (3), `ClaimVested` (2), Refund (2),
-//!        `WithdrawCommit` (2). 총 13 slots.
 
 use serde_json::Value;
 
-use simulation_reducer::action::launchpad::{
+use policy_state::Time;
+use policy_transition::action::launchpad::{
     ClaimAllocationAction, ClaimVestedAction, CommitAction, RefundAction, WithdrawCommitAction,
 };
-use simulation_reducer::action::LaunchpadAction;
-use simulation_state::Time;
+use policy_transition::action::LaunchpadAction;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 

@@ -3,24 +3,16 @@
 //! All helpers operate on the *effective state* (`state` overlaid with the
 //! changes already accumulated in `delta`). They never mutate `state` directly
 //! — they only push `PositionChange` entries onto `delta.position_changes`.
-//!
-//! ### `PositionPatch.fields` shape (Phase 2A decision)
-//!
 //! `PositionPatch.fields` is `serde_json::Value`. Computing a structural diff
 //! between the old and new `Position` would require either a generic JSON
 //! differ or a per-`PositionKind` field-walker, both of which are out of scope
-//! for Phase 2A. Instead we store a full snapshot of the post-mutation
 //! `Position`:
-//!
 //! ```text
 //! { "after": <serde_json::to_value(new_position)> }
 //! ```
-//!
 //! `apply_delta` can later replace `state.positions[i]` with the snapshot
-//! verbatim. A true field-diff optimisation is deferred to a later phase.
-//!
+//! verbatim. A true field-diff optimisation is deferred to a future change.
 //! ### Effective-state lookup
-//!
 //! A position becomes part of the effective state as soon as a
 //! `PositionChange::Open` is pushed onto `delta`, even before any mutation
 //! lands in `state.positions`. `upsert_*` and `close_position` therefore
@@ -32,11 +24,11 @@
 //! removes the position from effective state, even if it still appears in
 //! `state.positions`.
 
+use policy_state::delta::PositionPatch;
+use policy_state::position::{Position, PositionId, PositionKind};
+use policy_state::PositionChange;
+use policy_state::{StateDelta, WalletState};
 use serde_json::json;
-use simulation_state::delta::PositionPatch;
-use simulation_state::position::{Position, PositionId, PositionKind};
-use simulation_state::PositionChange;
-use simulation_state::{StateDelta, WalletState};
 
 use crate::error::{ReducerError, ReducerResult};
 
@@ -88,9 +80,13 @@ fn snapshot_patch(new_position: &Position) -> PositionPatch {
 }
 
 /// Insert a new `Position` and emit `PositionChange::Open`.
-///
 /// Errors if a position with the same id is already part of the effective
 /// state (already committed or queued in `delta`).
+///
+/// # Errors
+///
+/// Returns [`ReducerError::Invariant`] if a position with the same id already
+/// exists in the effective state.
 pub fn open_position(
     state: &WalletState,
     delta: &mut StateDelta,
@@ -113,7 +109,8 @@ pub fn open_position(
 /// Looks up the effective position by `position_id`, applies `mutate`, then
 /// pushes a `PositionChange::Update` carrying the full post-mutation snapshot.
 ///
-/// Errors:
+/// # Errors
+///
 ///   - `PositionNotFound` if no position with `position_id` is in the
 ///     effective state.
 ///   - `Invariant` if the position exists but is not a `LendingAccount`.
@@ -153,8 +150,12 @@ where
 }
 
 /// Mutate the existing `PerpPosition` for a venue.
-///
 /// Same shape as [`upsert_lending_account`] but for `PerpPosition`.
+///
+/// # Errors
+///
+/// Returns [`ReducerError::PositionNotFound`] if the position is absent, or
+/// [`ReducerError::Invariant`] if the effective position is not a `PerpPosition`.
 pub fn upsert_perp_position<F>(
     state: &WalletState,
     delta: &mut StateDelta,
@@ -196,7 +197,8 @@ where
 /// effective position by `position_id`, applies `mutate`, then pushes a
 /// `PositionChange::Update` carrying the full post-mutation snapshot.
 ///
-/// Errors:
+/// # Errors
+///
 ///   - `PositionNotFound` if no position with `position_id` is effective.
 ///   - `Invariant` if the position exists but is not a `HyperliquidAccount`.
 pub fn upsert_hl_account<F>(
@@ -239,6 +241,10 @@ where
 /// Accepts a position that exists in the effective state (i.e. either in
 /// `state.positions` or queued as `PositionChange::Open` on `delta`). Errors
 /// with `PositionNotFound` otherwise.
+///
+/// # Errors
+///
+/// Returns [`ReducerError::PositionNotFound`] if no effective position exists.
 pub fn close_position(
     state: &WalletState,
     delta: &mut StateDelta,
@@ -256,16 +262,14 @@ pub fn close_position(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{AirdropClaim, PositionKind};
-    use simulation_state::position::{
-        ClaimStatus, LendingAccount, MarginMode, PerpPosition, PerpSide,
-    };
-    use simulation_state::primitives::{
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{AirdropClaim, PositionKind};
+    use policy_state::position::{ClaimStatus, LendingAccount, MarginMode, PerpPosition, PerpSide};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, Price, ProtocolRef, SignedI256, Time, VenueRef, U256,
     };
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

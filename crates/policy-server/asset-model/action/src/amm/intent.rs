@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId, Price, Time, U256};
-use simulation_state::token::TokenRef;
-use simulation_state::LiveField;
+use policy_state::primitives::{Address, ChainId, Price, Time, U256};
+use policy_state::token::TokenRef;
+use policy_state::LiveField;
 
 use crate::Bytes;
 
@@ -71,7 +71,6 @@ pub enum IntentVenue {
 
 impl IntentVenue {
     /// The venue's `serde` `name` tag (e.g. `"uniswap_x"`, `"one_inch_fusion"`).
-    ///
     /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
     /// discriminants exactly and are verified against `serde_json` output in tests.
     #[must_use]

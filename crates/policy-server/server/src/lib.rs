@@ -1,48 +1,31 @@
-//! `simulation-server` — the HTTP backend service for the simulation engine.
-//!
+//! `policy-server` — the HTTP backend for wallet state and synchronization.
 //! # Vision
-//!
 //! The browser extension decodes calldata/signature into an `Action`, reads the
 //! policy manifest to decide which enrichment calls are needed (the *planning*
 //! step), and POSTs `{wallet, Action(s), eval_context, call-specs}` here. This
-//! backend **executes** those calls (via `simulation-sync`) and **simulates**
-//! the action(s) over the wallet's state (via `simulation-reducer`, persisted
-//! through `simulation-db`), returning the resulting **state / statediff /
+//! backend **executes** those calls (via `policy-sync`) and **simulates**
+//! the action(s) over the wallet's state (via `policy-transition`, persisted
+//! through `policy-db`), returning the resulting **state / statediff /
 //! enriched results**. Cedar policy evaluation stays in the extension (WASM),
 //! so this crate has **no** `cedar` / `policy-engine` dependency.
-//!
 //! # Status
-//!
 //! This crate provides the service **DTO contract** ([`dto`]) — the
 //! request/response shapes the extension and backend agree on, matching +
 //! extending the legacy Node.js `scopeball.evaluate_v3` contract — plus the
 //! axum [`app`] (router + shared state), the [`handler`] that simulates action
 //! envelopes over canonical wallet state (load → reduce → predicted response),
-//! and the in-memory test store boundary ([`store`]). Live-input refresh and
-//! enrichment-call execution are marked `TODO(prep)` and land in subsequent
-//! tasks.
+//! and the in-memory test store boundary ([`store`]). The server stores
+//! primitive wallet state; policies, verdicts, and audit history stay in the
+//! browser extension.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(rustdoc::broken_intra_doc_links)]
-#![allow(rustdoc::private_intra_doc_links)]
-#![allow(rustdoc::redundant_explicit_links)]
-#![allow(unknown_lints)]
-#![allow(clippy::duration_suboptimal_units)]
-// Phase 5 auth + multi-user code: pedantic lints handled at follow-up cleanup.
 #![allow(missing_docs)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::doc_markdown)]
-#![allow(clippy::result_large_err)]
-#![allow(clippy::manual_let_else)]
-#![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::must_use_candidate)]
 // Several long handler functions (dashboard summary, simulate_sequence,
 // seed_holdings) exceed the 100-line clippy default; splitting them would
 // just create one-shot helpers that obscure the linear request flow.

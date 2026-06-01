@@ -1,27 +1,23 @@
 //! Shared math primitives for lending venues — index conversion, two-slope
 //! borrow rate, supply rate, helpers used by Aave V2 / V3 / Spark / Compound /
 //! Fluid / Morpho.
-//!
-//! Pure module — no side effects. Phase 2 approximation: when a per-venue
 //! deployment does not yet expose a real interest index, callers feed
 //! `ReserveState.total_supply` / `total_borrow` (present-value) directly and
 //! we treat the index as `1`. The signature is conservative: when a real
 //! index is plumbed through, swap the body for the index-scaled formula
 //! without changing the call sites.
 
-// Phase 2 stubs: some action reducers may not yet exercise every helper. The
 // venue-specific dispatchers will wire these up; until then `dead_code` is
 // the expected diagnostic.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
+use policy_state::primitives::{Decimal, U256};
 
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
 
 /// Convert an asset amount into the equivalent scaled (receipt) balance
 /// using a 1:1 index approximation.
-///
 /// Returns `Invariant` when the reserve is malformed (zero `total_supply`
 /// but non-zero `total_borrow`, which `present_value_supply = supply - borrow`
 /// would have underflowed).
@@ -30,7 +26,6 @@ pub(super) fn asset_to_scaled_balance(
     asset_amount: U256,
     venue_tag: &'static str,
 ) -> ReducerResult<U256> {
-    // Phase 2 approximation: index = 1. Validate the reserve first to surface
     // a degenerate state early (rather than silently returning 0).
     if reserve.total_supply < reserve.total_borrow {
         return Err(ReducerError::Invariant(format!(
@@ -59,14 +54,11 @@ pub(super) fn scaled_balance_to_asset(
 
 /// Two-slope variable borrow rate (Aave-style); inputs all in basis points,
 /// output in per-year `Decimal` (so `0.04` = 4 % APR).
-///
 /// Formula (matches Aave V3 `DefaultReserveInterestRateStrategyV2`):
-///
 /// ```text
 ///   U < U_opt:   r = r_base + slope1 * (U / U_opt)
 ///   U ≥ U_opt:   r = r_base + slope1 + slope2 * (U - U_opt) / (10_000 - U_opt)
 /// ```
-///
 /// `utilization_bp` must satisfy `<= 10_000`. `optimal_bp` must satisfy
 /// `0 < optimal_bp < 10_000` so the post-kink denominator stays positive.
 pub(super) fn two_slope_borrow_apr(
@@ -96,7 +88,6 @@ pub(super) fn two_slope_borrow_apr(
 }
 
 /// Supply (deposit) rate — borrow rate × utilization × (1 - `reserve_factor`).
-///
 /// `reserve_factor_bp` is the share that goes to protocol reserves
 /// (typically 10-20 %); the remainder flows to suppliers proportional to the
 /// pool's utilization. All inputs in basis points; output is per-year

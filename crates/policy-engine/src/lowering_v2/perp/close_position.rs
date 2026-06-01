@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::ClosePerpAction;
+use policy_transition::action::perp::ClosePerpAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::{lower_perp_venue, lower_size_spec};
@@ -57,11 +57,11 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{ClosePerpAction, ClosePerpLiveInputs, PerpAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Price, SignedI256};
+    use policy_state::primitives::{Price, SignedI256};
+    use policy_transition::action::perp::{ClosePerpAction, ClosePerpLiveInputs, PerpAction};
+    use policy_transition::action::ActionBody;
 
-    use simulation_reducer::action::perp::SizeSpec;
+    use policy_transition::action::perp::SizeSpec;
 
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_size, sample_venue,
@@ -84,7 +84,7 @@ mod tests {
         ActionBody::Perp(PerpAction::ClosePosition(action))
     }
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         // Full close: `size` is None.
         (build(None), onchain_meta())
     }

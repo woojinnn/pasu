@@ -27,13 +27,13 @@
 //!
 //! The contract zeros `tokensOwed0` / `tokensOwed1` on the NFT after a
 //! successful `collect`. This internal mutation is not representable in
-//! today's [`TokenChange`](simulation_state::delta::TokenChange) variants
+//! today's [`TokenChange`](policy_state::delta::TokenChange) variants
 //! (no mechanism for mutating `TokenKind::LpShare.fees_owed`) and is
 //! out-of-scope for this sub-agent (state crate is read-only). The NFT
 //! lands in `state.tokens` with refreshed `fees_owed` on the next sync.
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::amm::{AmmVenue, CollectFeesAction};
 use crate::apply::Reducer;
@@ -107,17 +107,17 @@ impl Reducer for CollectFeesAction {
 mod tests {
     use super::*;
     use crate::action::amm::{AmmVenue, CollectFeesAction, CollectFeesLiveInputs};
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{
         Address, ChainId, PoolRef, ProtocolRef, SignedI256, Time, U128, U256,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, LpShape, PegTarget, RangeSpec, ShareForm,
         TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

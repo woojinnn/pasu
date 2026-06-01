@@ -1,23 +1,14 @@
-//! `OnchainView` fetcher — `DataSource::OnchainView` 처리.
-//!
-//! 한 번 호출:  `eth_call(contract, function, args)` → decoder 로 풀기 → Value
-//! 배치 호출:   Multicall3 의 `aggregate3` 로 N 개를 1 RPC 호출에.
-//!
-//! `function` 문자열은 솔리디티 시그니처 그대로 ("balanceOf(address)") — selector 계산에 사용.
-//! 인자는 fetch 요청 시점에 호출자가 인코드 ([`encode_address`], [`encode_u256`]).
-
 use std::sync::Arc;
 
 use serde_json::Value;
 
-use simulation_state::{ChainId, DataSource};
+use policy_state::{ChainId, DataSource};
 
 use super::decoder::DecoderRegistry;
 use super::rpc::multicall::{Call3, Multicall};
 use super::rpc::{BlockTag, EthCallRequest, RpcRouter};
 use crate::error::SyncError;
 
-/// 한 `OnchainView` 호출의 calldata + 메타. router 가 알아야 할 것만.
 #[derive(Clone, Debug)]
 pub struct OnchainCall {
     pub chain: ChainId,
@@ -27,8 +18,6 @@ pub struct OnchainCall {
 }
 
 impl OnchainCall {
-    /// `DataSource::OnchainView` 를 그대로 부르려면 args 가 비어있다고 가정한다.
-    /// 인자가 있으면 호출자가 `calldata` 를 미리 인코드해서 넘긴다.
     pub fn from_source(source: &DataSource, args_encoded: Vec<u8>) -> Result<Self, SyncError> {
         match source {
             DataSource::OnchainView {
@@ -101,30 +90,22 @@ impl OnchainViewFetcher {
         &mut self.abi_decoder
     }
 
-    /// `decoder_id` 를 풀 디코더 결정: 먼저 손코딩 `DecoderRegistry`,
-    /// 모르면 `AbiDecoder` (alloy-dyn-abi) 로 fallback.
     fn decode_any(&self, decoder_id: &str, data: &[u8]) -> Result<Value, SyncError> {
-        // 1) 빠른 path — 단순 디코더 (u256, erc20_balance 등)
         if let Ok(v) = self.decoders.decode(decoder_id, data) {
             return Ok(v);
         }
-        // 2) generic ABI fallback — registered ABI 시그니처
         if self.abi_decoder.knows(decoder_id) {
             return self.abi_decoder.decode(decoder_id, data);
         }
-        // 3) 둘 다 모름
         Err(SyncError::UnknownDecoder(decoder_id.to_string()))
     }
 
-    /// 단일 호출.
     pub async fn fetch_one(&self, call: &OnchainCall) -> Result<Value, SyncError> {
         let req = EthCallRequest::new(call.contract, call.calldata.clone());
         let returndata = self.router.eth_call(&call.chain, req).await?;
         self.decode_any(&call.decoder_id, &returndata)
     }
 
-    /// N 개를 한 chain 안에서 Multicall3 로 묶어서 호출.
-    /// 같은 chain 의 call 들만 한 batch 로 묶을 수 있음.
     pub async fn fetch_batch(
         &self,
         chain: &ChainId,
@@ -134,7 +115,6 @@ impl OnchainViewFetcher {
             return Ok(Vec::new());
         }
 
-        // 모두 같은 chain 이어야 함.
         for c in calls {
             if &c.chain != chain {
                 return Err(SyncError::FetchFailed {
@@ -144,12 +124,11 @@ impl OnchainViewFetcher {
             }
         }
 
-        // Multicall3.aggregate3 입력 구성.
         let mc_calls: Vec<Call3> = calls
             .iter()
             .map(|c| Call3 {
                 target: c.contract,
-                allow_failure: true, // 한 개 실패해도 나머지 진행
+                allow_failure: true,
                 call_data: c.calldata.clone(),
             })
             .collect();
@@ -189,7 +168,7 @@ impl OnchainViewFetcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::{Address, ChainId, DataSource};
+    use policy_state::{Address, ChainId, DataSource};
 
     #[test]
     fn from_source_encodes_selector() {

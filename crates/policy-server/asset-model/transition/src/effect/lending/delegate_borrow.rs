@@ -1,24 +1,20 @@
 //! `DelegateBorrowAction` reducer — `Aave` credit delegation.
-//!
 //! Authorizes `delegatee` to borrow `amount` of `asset` against the wallet
 //! owner's collateral. Models on-chain `approveDelegation(delegatee, asset,
 //! amount)` on the debt token.
-//!
 //! Flow (PDF §6.10):
-//!
 //! 1. Reject venues other than Aave V2 / V3 (other venues don't have
 //!    `DelegationAwareDebtToken`).
 //! 2. Emit a `TokenChange::ApprovalSet` with the delegatee as spender and
 //!    the amount as the allowance. The `key` is the underlying asset's
-//!    `TokenKey` — Phase 2 approximation; the actual debt token address
 //!    will substitute in once the registry surfaces them.
 //! 3. No `LendingAccount` mutation required — credit delegation does not
 //!    alter the wallet's collateral / debt state; only the *spender*'s
 //!    ability to borrow on behalf of the wallet.
 
-use simulation_state::approval::AllowanceSpec;
-use simulation_state::delta::TokenChange;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::approval::AllowanceSpec;
+use policy_state::delta::TokenChange;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::{DelegateBorrowAction, LendingVenue};
 use crate::apply::Reducer;
@@ -58,11 +54,11 @@ impl Reducer for DelegateBorrowAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{RateMode, TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{RateMode, TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

@@ -7,14 +7,14 @@
 //! We only consume one action today: `addresstokenbalance` (list of
 //! ERC-20 balances for an address). The response gives us contract
 //! address + symbol + decimals + balance — enough to build a
-//! `TokenHolding` without a follow-up RPC roundtrip.
+//! `TokenHolding` without an extra RPC roundtrip.
 
 use std::str::FromStr;
 
 use serde::Deserialize;
 
-use simulation_state::primitives::{Address, ChainId, U256};
-use simulation_state::token::TokenKey;
+use policy_state::primitives::{Address, ChainId, U256};
+use policy_state::token::TokenKey;
 
 use crate::error::SyncError;
 

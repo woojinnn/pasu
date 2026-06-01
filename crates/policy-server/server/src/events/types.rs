@@ -1,12 +1,11 @@
 //! Event payloads streamed to dashboard clients over SSE.
-//!
 //! Each variant becomes one SSE `event:` block; the payload struct is the
 //! `data:` JSON body. Names follow `snake_case` so JS clients can pattern
 //! match on `event.type`.
 
 use serde::{Deserialize, Serialize};
 
-use simulation_state::primitives::ChainId;
+use policy_state::primitives::ChainId;
 
 /// One scopeball event. Tagged externally so the JSON shape matches what
 /// the dashboard's `EventSource.addEventListener('tx_confirmed', …)`
@@ -17,7 +16,7 @@ pub enum Event {
     /// A transaction was just recorded in `predicted` status (the
     /// extension's pre-sign step).
     TxPredicted(TxRef),
-    /// User signed in MetaMask — the tx hash is now known and it is
+    /// User signed in `MetaMask` — the tx hash is now known and it is
     /// pending in the mempool.
     TxPending(TxRefWithHash),
     /// Receipt arrived; tx is in a block.

@@ -27,8 +27,8 @@ pub use etherscan::EtherscanClient;
 pub use native::fetch_native_balance;
 pub use top_tokens::discover_top_tokens;
 
-use simulation_state::primitives::U256;
-use simulation_state::token::TokenKey;
+use policy_state::primitives::U256;
+use policy_state::token::TokenKey;
 
 /// A single token found for a wallet. `balance` is the current on-chain
 /// amount in the token's smallest unit (wei / token decimals).

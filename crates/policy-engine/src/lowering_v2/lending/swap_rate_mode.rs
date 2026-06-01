@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::lending::SwapRateModeAction;
+use policy_transition::action::lending::SwapRateModeAction;
 
 use super::super::common::cedar::u256_hex;
 use super::super::common::token::lower_token_ref;
@@ -57,12 +57,12 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::lending::{
+    use policy_state::primitives::{Decimal, U256};
+    use policy_state::token::RateMode;
+    use policy_transition::action::lending::{
         LendingAction, SwapRateModeAction, SwapRateModeLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Decimal, U256};
-    use simulation_state::token::RateMode;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{live, onchain_meta, usdc, venue};
 

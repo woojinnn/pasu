@@ -3,9 +3,7 @@
 //! E-mode (efficiency mode) groups correlated assets so the user gets
 //! higher LTV / liquidation threshold within the category at the cost of
 //! restricting borrows to that category. `category_id = 0` disables e-mode.
-//!
 //! Flow (PDF §6.8):
-//!
 //! 1. Look up the `LendingAccount` — `PositionNotFound` when missing.
 //! 2. Only `AaveV3` / `Spark` venues currently honour e-mode; reject
 //!    others with `UnsupportedProtocol`.
@@ -15,8 +13,8 @@
 //!
 //! Token balances are unchanged.
 
-use simulation_state::position::PositionKind;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::PositionKind;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::{LendingVenue, SetEModeAction};
 use crate::apply::Reducer;
@@ -92,14 +90,14 @@ impl Reducer for SetEModeAction {
 mod tests {
     use super::*;
     use crate::action::lending::{EModeConfig, LendingVenue, SetEModeLiveInputs, UserLendingState};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{LendingAccount, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{LendingAccount, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, Time, VenueRef, U256,
     };
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

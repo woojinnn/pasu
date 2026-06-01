@@ -1,37 +1,27 @@
 //! Fluid venue math — smart debt / smart collateral.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::Fluid`. Not a `Reducer` impl.
-//!
 //! Fluid uses unified vault state combining supply and borrow.
-//!
 //! ## Vault shares
-//!
 //! [fToken.sol](https://github.com/Instadapp/fluid-protocol/) — Fluid's
 //! ERC4626-style vault — exposes `convertToShares` / `convertToAssets`:
-//!
 //! ```text
 //!   shares = (assets * (totalShares + 1)) / (totalAssets + 1)
 //!   assets = (shares * (totalAssets + 1)) / (totalShares + 1)
 //! ```
-//!
 //! The `+ 1` virtual offset is identical to `OpenZeppelin`'s ERC4626 mitigation
 //! against share-price manipulation (Fluid uses `VIRTUAL_SHARES = VIRTUAL_ASSETS
 //! = 1`, smaller than Morpho's `VIRTUAL_SHARES = 1e6`).
-//!
 //! ## Rate model
-//!
 //! Fluid uses Aave-style two-slope variable borrow rates with vault-specific
 //! parameters. Until vault-specific strategy state is plumbed through, we use
 //! Aave V3's defaults via the `shared` module.
 
-// Phase 2 stubs: per-action wiring lands in a later commit in the same batch.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
+use policy_state::primitives::{Decimal, U256};
 
 // `ReserveState` is reused here as a stand-in until a Fluid-specific vault
-// state struct is added in Phase 2.
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
 
@@ -47,7 +37,6 @@ pub(super) fn asset_to_fluid_shares(
     asset_amount: U256,
 ) -> ReducerResult<U256> {
     let total_assets = vault_state.total_supply;
-    // `total_shares` is approximated as `total_supply` under the Phase 2
     // index=1 model — Fluid's vault tracks share supply separately, but
     // until the orchestrator wires it through they are identical at the
     // start of every vault's life.

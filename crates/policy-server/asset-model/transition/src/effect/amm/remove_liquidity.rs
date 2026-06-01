@@ -20,7 +20,7 @@
 //!   [`CollectFeesAction`](crate::action::amm::CollectFeesAction) (or a
 //!   bundled `decrease+collect` multicall) to actually move tokens. The
 //!   NFT's internal liquidity change is not representable in today's
-//!   [`TokenChange`](simulation_state::delta::TokenChange) variants and is
+//!   [`TokenChange`](policy_state::delta::TokenChange) variants and is
 //!   out-of-scope for this sub-agent.
 //! * [`ConcentratedBurn`](crate::action::amm::RemoveLiquidityParams::ConcentratedBurn)
 //!   — `Uniswap V3` / `V4` burn of an empty position NFT. The NFT ownership
@@ -42,9 +42,9 @@
 //! concentrated variants against non-concentrated venues are both rejected
 //! as [`ReducerError::UnsupportedProtocol`].
 
-use simulation_state::primitives::{Address, U128, U256};
-use simulation_state::token::{LpShape, RangeSpec, TokenKind};
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::primitives::{Address, U128, U256};
+use policy_state::token::{LpShape, RangeSpec, TokenKind};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::amm::{AmmVenue, RemoveLiquidityAction, RemoveLiquidityParams};
 use crate::apply::Reducer;
@@ -246,17 +246,17 @@ mod tests {
     use crate::action::amm::{
         AmmVenue, RemoveLiquidityAction, RemoveLiquidityLiveInputs, RemoveLiquidityParams,
     };
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{
         Address, ChainId, PoolRef, ProtocolRef, SignedI256, Time, U128, U256,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, LpShape, PegTarget, RangeSpec, ShareForm,
         TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::amm::PoolState;

@@ -1,4 +1,4 @@
-//! CoinGecko metadata client.
+//! `CoinGecko` metadata client.
 //!
 //! Hits `/coins/{platform}/contract/{contract_address}` to grab the
 //! token's logo (large), homepage, and short description. Free tier is
@@ -6,16 +6,16 @@
 //! per-key tier kicks in (Pro plans go higher).
 //!
 //! This is best-effort metadata for UI rendering — every failure path
-//! resolves to `None` so a CoinGecko outage doesn't block wallet adds.
+//! resolves to `None` so a `CoinGecko` outage doesn't block wallet adds.
 
 use serde::Deserialize;
 
-use simulation_state::primitives::{Address, ChainId};
-use simulation_state::token::TokenMetadata;
+use policy_state::primitives::{Address, ChainId};
+use policy_state::token::TokenMetadata;
 
 const CG_API_BASE: &str = "https://api.coingecko.com/api/v3";
 
-/// Read-mostly CoinGecko client. Cheap to clone (`reqwest::Client` is
+/// Read-mostly `CoinGecko` client. Cheap to clone (`reqwest::Client` is
 /// `Arc` internally).
 #[derive(Clone, Debug)]
 pub struct CoinGeckoClient {
@@ -60,8 +60,8 @@ impl CoinGeckoClient {
     }
 
     /// `GET /coins/{platform}/contract/{address}` — token metadata.
-    /// Returns `None` for chains CoinGecko doesn't index, addresses
-    /// CoinGecko doesn't know, or transient HTTP errors.
+    /// Returns `None` for chains `CoinGecko` doesn't index, addresses
+    /// `CoinGecko` doesn't know, or transient HTTP errors.
     pub async fn fetch_metadata(&self, chain: &ChainId, address: Address) -> Option<TokenMetadata> {
         let platform = caip2_to_coingecko_platform(chain)?;
         let addr_lower = format!("{address:#x}");
@@ -80,7 +80,7 @@ impl CoinGeckoClient {
     }
 }
 
-/// Map CAIP-2 chain id → CoinGecko platform slug. Only the chains the
+/// Map CAIP-2 chain id → `CoinGecko` platform slug. Only the chains the
 /// sync config supports today are covered; new chains plug in here.
 fn caip2_to_coingecko_platform(chain: &ChainId) -> Option<&'static str> {
     match chain.as_str() {
@@ -95,8 +95,8 @@ fn caip2_to_coingecko_platform(chain: &ChainId) -> Option<&'static str> {
     }
 }
 
-/// CAIP-2 chain id from a CoinGecko platform slug (for the reverse
-/// lookup, e.g. when a registry resource points at a CoinGecko id).
+/// CAIP-2 chain id from a `CoinGecko` platform slug (for the reverse
+/// lookup, e.g. when a registry resource points at a `CoinGecko` id).
 #[must_use]
 pub fn coingecko_platform_to_chain_id(platform: &str) -> Option<ChainId> {
     let raw = match platform {

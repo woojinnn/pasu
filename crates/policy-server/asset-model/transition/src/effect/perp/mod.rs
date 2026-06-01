@@ -1,5 +1,4 @@
 //! `PerpAction` reducers.
-//!
 //! One file per action; one file per venue's math.
 
 mod adjust_margin;
@@ -30,7 +29,7 @@ mod math;
 // Shared per-action helpers (PendingTx id derivation, market venue tag).
 mod common;
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::perp::PerpAction;
 use crate::apply::Reducer;

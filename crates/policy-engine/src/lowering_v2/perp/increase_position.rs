@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::IncreasePerpAction;
+use policy_transition::action::perp::IncreasePerpAction;
 
 use super::super::common::cedar::u256_hex;
 use super::super::common::token::lower_token_ref;
@@ -97,12 +97,12 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::perp::{
+    use policy_state::primitives::{Decimal, Price, U256};
+    use policy_state::token::TokenRef;
+    use policy_transition::action::perp::{
         IncreasePerpAction, OpenPerpLiveInputs, PerpAccountState, PerpAction,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Decimal, Price, U256};
-    use simulation_state::token::TokenRef;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_account_state, sample_account_state_empty,
@@ -137,7 +137,7 @@ mod tests {
         ActionBody::Perp(PerpAction::IncreasePosition(action))
     }
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         // Exercise the Some arm: addCollateralToken + addCollateralAmount.
         (
             build(

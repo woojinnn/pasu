@@ -1,38 +1,29 @@
 //! Uniswap V4 swap math — concentrated liquidity behind the singleton
 //! `PoolManager` with an optional hooks contract.
-//!
 //! Pure functions called from `swap.rs` after dispatch on
 //! `AmmVenue::UniswapV4`. Not a `Reducer` impl since `AmmVenue` is not an
 //! `Action`.
-//!
-//! ## Phase 2F scope — **hooks-free, V3-shape math**
-//!
 //! Today's wiring covers only the `hooks == Address::ZERO` case. Behind the
 //! singleton, V4's swap math is the same Uniswap-V3 closed form on the
 //! pool's `(sqrt_price_x96, liquidity, ticks)` snapshot — the V4 spec
 //! literally invokes the same `SwapMath` library that V3 uses. We therefore
 //! delegate to [`super::uniswap_v3::concentrated_swap_math`] with a
 //! `"uniswap_v4"` protocol tag so error messages stay attributable.
-//!
 //! ### Hooks dispatch (deferred)
-//!
 //! When `PoolKey.hooks != 0`, the pool may override the swap curve, fees,
 //! or accounting via `beforeSwap` / `afterSwap` callbacks. Resolving an
 //! arbitrary hook against a known-hook registry (and running its
-//! mini-state machine) is out of scope for Phase 2F. The caller in
 //! `swap.rs` therefore short-circuits non-zero-hooks pools with
 //! `UnsupportedProtocol { protocol: "uniswap_v4_with_hooks" }`. This
 //! function itself does **not** inspect hooks — its `PoolState` snapshot
 //! does not carry the `PoolKey`.
-//!
 //! ## References
-//!
 //! * `PoolManager.sol`  — <https://github.com/Uniswap/v4-core/blob/main/src/PoolManager.sol>
 //! * V4 swap math reuses V3's `SwapMath` / `SqrtPriceMath` libraries — see
 //!   the `uniswap_v3` module's reference links.
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use super::uniswap_v3;
 use crate::action::amm::{PoolState, SwapAction};
@@ -43,8 +34,6 @@ use crate::error::ReducerResult;
 /// responsible for balance changes **and** for refusing pools whose
 /// `hooks` address is non-zero (see module docs — hooks dispatch is
 /// deferred and the caller short-circuits before reaching this function).
-///
-/// The math is identical to `uniswap_v3::quote_swap_hop`: Phase 2E's
 /// simplified active-tick closed form in the `zeroForOne` direction, no
 /// fee subtraction, no tick crossing. See the `uniswap_v3` module docs
 /// for the algebra and the caveats.
@@ -67,11 +56,11 @@ mod tests {
     use super::*;
     use crate::action::amm::{AmmVenue, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute};
     use crate::error::ReducerError;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time, U128, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time, U128, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

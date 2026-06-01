@@ -1,18 +1,14 @@
 //! Hyperliquid CORE actions — the thin, off-chain L1 action model.
-//!
 //! Unlike [`PerpAction`](crate::perp::PerpAction), which carries
 //! venue-live inputs (mark price, order book, account state) that an order
 //! payload does NOT contain, a Hyperliquid `/exchange` request is a small,
 //! self-describing JSON intent signed by an agent key. This module models only
 //! the order-/transfer-intrinsic fields the request actually carries, so the
 //! policy engine can evaluate it WITHOUT fetching any live data from the venue.
-//!
 //! v1 covers the high-risk subset: an order, a leverage change, and the three
 //! fund-movement / delegation actions (`withdraw3`, `usdSend`, `approveAgent`)
 //! that move or authorize control of funds.
-//!
 //! ## Tag naming
-//!
 //! The serde `action` tags are prefixed `hl_` (`hl_order`, `hl_withdraw`, …)
 //! so they are globally unique across every domain's action set — notably
 //! `withdraw` is already a Lending tag, and the engine's flat action registries
@@ -21,10 +17,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, Decimal};
+use policy_state::primitives::{Address, Decimal};
 
 /// A Hyperliquid CORE action, decoded from a `/exchange` POST body.
-///
 /// The serde `action` tag is the source of truth for the trigger tag a policy
 /// matches on; [`Self::action_tag`] returns the same string and is verified
 /// against serde by the `action_tag_matches_serde` test.

@@ -4,7 +4,7 @@
 //! They are still policy-critical, so the action is represented for Cedar
 //! evaluation while the reducer returns an empty delta.
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::permission::{PermissionAction, ProtocolAuthorizationAction};
 use crate::apply::Reducer;

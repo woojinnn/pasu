@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::lending::LiquidateAction;
+use policy_transition::action::lending::LiquidateAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -62,11 +62,9 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::lending::{
-        LendingAction, LiquidateAction, LiquidateLiveInputs,
-    };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Decimal, U256};
+    use policy_state::primitives::{Decimal, U256};
+    use policy_transition::action::lending::{LendingAction, LiquidateAction, LiquidateLiveInputs};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{live, onchain_meta, other, usdc, user_state, venue, weth};
 

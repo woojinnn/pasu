@@ -4,7 +4,7 @@
 //! Evaluated in order; the first failing layer wins:
 //! * **L1 Envelope** — output parses and has an `ok` field.
 //! * **L2 TypedRoundTrip** *(strongest)* — `data.actions` re-deserializes into
-//!   the real `Vec<simulation_reducer::action::Action>`. A failure here is a
+//!   the real `Vec<policy_transition::action::Action>`. A failure here is a
 //!   serde-shape regression even when the envelope said `ok:true`.
 //! * **L3 Domain** — every emitted `body.domain` is one of the valid domains.
 //!   `unknown` is **valid** (it is the correct output for HyperLiquid off-chain
@@ -15,8 +15,8 @@
 //! Corpus-mode `expect_*` comparison lives in `corpus.rs`, layered on top of
 //! [`judge`].
 
+use policy_transition::action::Action;
 use serde_json::Value;
-use simulation_reducer::action::Action;
 
 /// The valid `ActionBody` domains (serde `domain` tags).
 pub const VALID_DOMAINS: [&str; 14] = [

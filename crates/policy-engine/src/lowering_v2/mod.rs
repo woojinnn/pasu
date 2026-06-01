@@ -1,4 +1,4 @@
-//! New-model Cedar lowering — `simulation_reducer::action::ActionBody` →
+//! New-model Cedar lowering — `policy_transition::action::ActionBody` →
 //! [`LoweredAction`] (`Wallet` / `<Namespace>::Action::"…"` / `Protocol` +
 //! cedarschema action-context JSON).
 //!

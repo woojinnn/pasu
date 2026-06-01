@@ -123,8 +123,8 @@ export type Action = Record<string, unknown>;
 
 /**
  * Phase 5A — opaque `EvalContext` payload. Mirrors
- * `simulation_state::EvalContext` (chain + clock + RequestKind +
- * SimulationMode + action_index). Carried verbatim by the SW.
+ * `policy_state::EvalContext` (chain + clock + RequestKind +
+ * SimulationMode + envelope_index). Carried verbatim by the SW.
  */
 export type EvalContext = Record<string, unknown>;
 

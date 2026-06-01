@@ -1,12 +1,10 @@
-//! Airdrop 도메인 walk + apply.
-//!
 //! Wired: Claim (4 slots), Delegate (2 slots).
 
 use serde_json::Value;
 
-use simulation_reducer::action::airdrop::{ClaimAirdropAction, DelegateGovernanceAction};
-use simulation_reducer::action::AirdropAction;
-use simulation_state::Time;
+use policy_state::Time;
+use policy_transition::action::airdrop::{ClaimAirdropAction, DelegateGovernanceAction};
+use policy_transition::action::AirdropAction;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 

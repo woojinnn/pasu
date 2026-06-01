@@ -4,7 +4,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::liquid_staking::{LiquidStakingAction, StakingVenue};
+use policy_transition::action::liquid_staking::{LiquidStakingAction, StakingVenue};
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
@@ -58,12 +58,12 @@ pub(crate) fn lower_staking_venue(venue: &StakingVenue) -> Value {
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::liquid_staking::StakingVenue;
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::LiveField;
+    use policy_transition::action::liquid_staking::StakingVenue;
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
 
     use crate::lowering_v2::TxMeta;
 

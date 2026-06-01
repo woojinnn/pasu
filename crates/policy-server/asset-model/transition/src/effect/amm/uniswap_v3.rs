@@ -1,37 +1,28 @@
 //! Uniswap V3 swap math — concentrated-liquidity tick traversal.
-//!
 //! Pure functions called from `swap.rs` after dispatch on `AmmVenue::UniswapV3`.
 //! Not a `Reducer` impl since `AmmVenue` is not an `Action`.
-//!
-//! ## Phase 2E scope — **simplified single-tick closed form**
-//!
 //! Today's implementation evaluates the swap **only on the active in-range
 //! liquidity** at the current `sqrt_price_x96` / `liquidity`, without crossing
 //! any tick boundary. The math reproduces the canonical Uniswap V3 single-step
 //! closed form:
-//!
 //! ```text
 //!   sqrt_price_next = L * sqrt_price * Q96 / (L * Q96 + amount_in * sqrt_price)
 //!   amount_out      = L * (sqrt_price - sqrt_price_next) / Q96
 //! ```
-//!
 //! which is `SqrtPriceMath::getNextSqrtPriceFromAmount0RoundingUp` followed by
 //! `SqrtPriceMath::getAmount1Delta` for the **`zeroForOne`** direction
 //! (token0 → token1, `sqrt_price` decreasing) — the assumption we adopt here
 //! because the on-chain `token0` / `token1` ordering of the pool is **not**
 //! carried in `PoolState::Concentrated`. See the "Direction assumption" note
 //! below for the impact.
-//!
 //! Full tick traversal (cross-tick swaps with `liquidity_net` application from
-//! the `ticks` snapshot) is deferred to a follow-up phase. Large enough
+//! the `ticks` snapshot) is deferred to a future change. Large enough
 //! `amount_in` will therefore *under-quote* in cases where the swap would have
 //! crossed into a richer tick range, and may *over-quote* in cases where it
 //! would have crossed into a thinner one. The active-tick close-form is the
 //! Uniswap V3 baseline used by the v3-core reference itself before
 //! `SwapMath::computeSwapStep` clamps each step to the next tick boundary.
-//!
 //! ## Direction assumption (zeroForOne)
-//!
 //! `PoolState::Concentrated` does *not* carry the pool's `(token0, token1)`
 //! ordering, only `sqrt_price_x96`, `tick`, `liquidity`, and `ticks`. We
 //! therefore evaluate every hop in the **`zeroForOne` direction** (the more
@@ -43,13 +34,10 @@
 //! is part of the follow-up tick-traversal work; until then, the
 //! `RouteHop.estimated_out` field (carried on the live route) acts as the
 //! oracle on cases where direction matters for policy.
-//!
 //! ## Fee accounting
-//!
 //! V3 also subtracts the pool fee from `amount_in` before the swap math
 //! (`amount_in_net = amount_in - amount_in * fee / 1e6`). The
 //! `effective_fee_bp` field on `RouteHop` carries the fee for policy
-//! evaluation, but the Phase 2E body **does not** apply it because:
 //!   * the fee schedule (`fee_pips = fee_tier_bp * 100`) is on
 //!     `AmmVenue::UniswapV3.fee_tier_bp`, not on `PoolState::Concentrated`;
 //!   * the closed-form math above already matches the v3-core test fixtures
@@ -57,15 +45,13 @@
 //!     plumbing the venue-side `fee_tier_bp` into this function would be
 //!     misleading. Lifting fee accounting is bundled with the follow-up
 //!     tick-traversal work.
-//!
 //! ## References
-//!
 //! * `SwapMath.sol`         — <https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/SwapMath.sol>
 //! * `SqrtPriceMath.sol`    — <https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/SqrtPriceMath.sol>
 //! * `TickMath.sol`         — <https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/TickMath.sol>
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::{ReducerError, ReducerResult};
@@ -78,18 +64,13 @@ fn q96() -> U256 {
 
 /// Shared concentrated-liquidity single-hop math used by both
 /// `uniswap_v3::quote_swap_hop` and `uniswap_v4::quote_swap_hop`.
-///
-/// Implements the Phase 2E **simplified active-tick closed form** in the
 /// `zeroForOne` direction (see `uniswap_v3` module docs for the algebra,
 /// direction assumption and fee-accounting caveat). V4 with `hooks == 0`
 /// reuses the same math identically — the singleton `PoolManager` invokes
 /// the same `SwapMath::computeSwapStep` library on its V4-pool snapshot,
-/// and Phase 2F defers tick traversal alongside V3.
-///
 /// `protocol_tag` is woven into the `Invariant` message so callers can keep
 /// their per-protocol error trails (the V3 + V4 unit tests assert on
 /// substrings like `"zero active liquidity"` and `"Concentrated"`).
-///
 /// Errors with `Invariant` on:
 ///   * `liquidity == 0` (empty pool — division by zero downstream),
 ///   * `sqrt_price_x96 == 0` (degenerate price — multiplication trivially
@@ -133,7 +114,6 @@ pub(super) fn concentrated_swap_math(
             }
 
             // sqrt_price_next = L * sp * Q96 / (L * Q96 + amount_in * sp)
-            //
             // Numerator and denominator are split into checked multiplications
             // so an overflow surfaces as an `Invariant` rather than a panic.
             let num_l_sp = l.checked_mul(sp).ok_or_else(|| {
@@ -158,7 +138,6 @@ pub(super) fn concentrated_swap_math(
             let sqrt_price_next = numerator / denominator;
 
             // amount_out = L * (sp - sqrt_price_next) / Q96
-            //
             // The `zeroForOne` closed form guarantees `sqrt_price_next <= sp`
             // when `amount_in > 0` (price falls as token0 enters), so the
             // checked subtraction is structurally safe; we still
@@ -183,10 +162,7 @@ pub(super) fn concentrated_swap_math(
 /// Quote a single hop on a Uniswap V3 pool given its `Concentrated`
 /// `PoolState` snapshot. Returns the hop's output amount; caller is
 /// responsible for balance changes.
-///
-/// **Phase 2E simplified** — see module docs. Active-tick closed form,
 /// `zeroForOne` direction, no fee subtraction, no tick crossing.
-///
 /// Errors with `Invariant` on:
 ///   * `liquidity == 0` (empty pool — division by zero downstream),
 ///   * `sqrt_price_x96 == 0` (degenerate price — multiplication trivially
@@ -211,11 +187,11 @@ pub(super) fn quote_swap_hop(
 mod tests {
     use super::*;
     use crate::action::amm::{AmmVenue, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time, U128, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time, U128, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

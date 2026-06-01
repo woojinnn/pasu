@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use simulation_server::config::ServerConfig;
-use simulation_server::coordination::{Coordinator, NoopCoordinator};
-use simulation_server::storage::StorageBackend;
-use simulation_sync::{Orchestrator, Scheduler, SchedulerConfig, SyncConfig};
+use policy_server::config::ServerConfig;
+use policy_server::coordination::{Coordinator, NoopCoordinator};
+use policy_server::storage::StorageBackend;
+use policy_sync::{Orchestrator, Scheduler, SchedulerConfig, SyncConfig};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info,simulation_server=debug")),
+                .unwrap_or_else(|_| EnvFilter::new("info,policy_server=debug")),
         )
         .init();
 

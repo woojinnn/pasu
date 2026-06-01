@@ -1,19 +1,9 @@
 //! Hyperliquid REST fetcher — mark price, funding rate, open orders, account primitives.
-//!
 //! API: <https://api.hyperliquid.xyz/info>  (POST JSON body)
-//!
-//! `DataSource::VenueApi { endpoint, parser_id, .. }` 의 `parser_id` 로 메서드 식별:
-//! - `hl_all_mids`         → 전체 mark price (key=coin symbol, val=price string)
-//! - `hl_funding`          → 각 perp 의 funding rate
-//! - `hl_open_orders`      → 한 유저의 미체결 주문 lifecycle 추적
 //! - `hl_spot_account`     → spot token balances
 //! - `hl_staking_summary`  → staking summary
 //! - `hl_vault_equities`   → per-vault user equity
 //! - `hl_borrow_lend`      → borrow/lend user state
-//!
-//! body 는 endpoint URL 옆에 별도로 들고와야 하지만, `parser_id` 가 같으면 body 구조도
-//! 같다는 가정 하에 간단한 매핑 테이블로 처리.
-
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::Duration;
@@ -22,26 +12,22 @@ use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal as RustDecimal;
 use serde_json::{json, Value};
 
-use simulation_reducer::action::perp::PerpAccountState;
-use simulation_state::position::{
+use policy_state::position::{
     HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance, HlBorrowLendTokenState,
     HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance, HlStakingAccount,
     HlStakingDelegation, HlVaultEquity,
 };
-use simulation_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
+use policy_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
+use policy_transition::action::perp::PerpAccountState;
 
 use crate::config::HyperliquidConfig;
 use crate::error::SyncError;
 use crate::walker::{ActionSlot, FieldLocation};
 
-/// Hyperliquid API 기본 endpoint. `scopeball-sync.toml` 의
-/// `[venues.hyperliquid]` 가 비어있을 때 fallback 으로 사용.
 pub const HL_API_BASE: &str = "https://api.hyperliquid.xyz";
 
 pub struct HyperliquidFetcher {
     client: reqwest::Client,
-    /// venue API 의 base URL. `DataSource::VenueApi.endpoint` 가 절대 URL 이면
-    /// 그쪽이 우선; relative path 만 들어올 경우를 대비한 base.
     base_url: String,
 }
 
@@ -52,7 +38,6 @@ impl Default for HyperliquidFetcher {
 }
 
 impl HyperliquidFetcher {
-    /// 기본 endpoint (`HL_API_BASE`) 로 초기화.
     #[must_use]
     pub fn new() -> Self {
         Self::with_base_url(HL_API_BASE.to_string())
@@ -69,13 +54,11 @@ impl HyperliquidFetcher {
         }
     }
 
-    /// `scopeball-sync.toml` 의 `[venues.hyperliquid]` 섹션에서 endpoint 주입.
     #[must_use]
     pub fn from_sync_config(cfg: &HyperliquidConfig) -> Self {
         Self::with_base_url(cfg.endpoint.clone())
     }
 
-    /// 현재 설정된 base URL — 호출자가 endpoint 결정 시 참고용.
     #[must_use]
     pub fn base_url(&self) -> &str {
         &self.base_url
@@ -1355,8 +1338,8 @@ fn sync_error(reason: impl Into<String>) -> SyncError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::DataSource;
-    use simulation_state::Decimal;
+    use policy_state::DataSource;
+    use policy_state::Decimal;
 
     #[test]
     fn rejects_non_venue_source() {

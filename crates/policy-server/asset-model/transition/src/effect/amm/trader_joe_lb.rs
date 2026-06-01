@@ -3,15 +3,12 @@
 //! Pure functions called from `swap.rs` after dispatch on
 //! `AmmVenue::TraderJoeLB`. Not a `Reducer` impl since `AmmVenue` is not an
 //! `Action`.
-//!
 //! ## Simplification — **single active-bin closed form**
-//!
 //! Trader Joe LB partitions liquidity into discrete bins at fixed price steps
 //! (`bin_step` basis points). A full swap walks through bins in price order,
 //! consuming each bin's reserves until `amount_in` is exhausted (analogous to
 //! Uniswap V3 tick traversal but on discrete price levels). The on-chain
 //! implementation lives in `LBPair.sol::swap` and `BinHelper.sol::getAmounts`.
-//!
 //! This helper instead evaluates the swap **only on the active bin**, treating
 //! that bin as a local constant-product pool with the `variable_fee_bp`
 //! applied to `amount_in`. The simplification is accurate when:
@@ -21,9 +18,6 @@
 //! Bin walking is bundled with the follow-up tick-traversal work tracked for
 //! Uniswap V3 (see `uniswap_v3` module docs); the two share the same
 //! "step through liquidity until exhausted" shape.
-//!
-//! ## 1차 출처
-//!
 //! * Trader Joe Liquidity Book whitepaper —
 //!   <https://docs.traderjoexyz.com/concepts/liquidity-book>
 //! * Joe-v2 contracts —
@@ -37,12 +31,11 @@
 //!   contract; this helper consumes the already-derived `variable_fee_bp`
 //!   carried on `PoolState::LiquidityBook`).
 
-// Phase 2 stubs: callers (per-action reducers) are still `todo!()` so these
 // functions look unused. Lift this allow when the first caller wires up.
 #![allow(dead_code)]
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::{ReducerError, ReducerResult};
@@ -270,11 +263,11 @@ mod tests {
     // -------- test fixtures --------
 
     use crate::action::amm::{AmmVenue, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

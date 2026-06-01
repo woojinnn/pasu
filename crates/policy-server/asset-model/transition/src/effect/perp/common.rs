@@ -12,10 +12,10 @@
 
 #![allow(dead_code)]
 
-use simulation_state::live_field::DataSource;
-use simulation_state::pending::PerpOrderKind;
-use simulation_state::position::PerpSide;
-use simulation_state::primitives::VenueRef;
+use policy_state::live_field::DataSource;
+use policy_state::pending::PerpOrderKind;
+use policy_state::position::PerpSide;
+use policy_state::primitives::VenueRef;
 
 use crate::action::perp::{PerpVenue, StopOrderKind};
 
@@ -58,7 +58,6 @@ pub(super) fn venue_ref(venue: &PerpVenue) -> VenueRef {
 
 /// Returns true if the venue routes new positions through an off-chain
 /// orderbook (signed-only at the reducer; on-chain settlement happens later).
-///
 /// Hyperliquid / Aevo / `DyDx` V4 are off-chain-orderbook; the others execute
 /// trades on-chain at the venue's gateway contract.
 pub(super) const fn is_orderbook_venue(venue: &PerpVenue) -> bool {
@@ -88,7 +87,7 @@ pub(super) fn pending_id_for_limit_order(
     venue: &PerpVenue,
     market: &str,
     side: &PerpSide,
-    price: &simulation_state::primitives::Price,
+    price: &policy_state::primitives::Price,
 ) -> String {
     format!(
         "limit:{}:{market}:{}:{}",
@@ -104,7 +103,7 @@ pub(super) fn pending_id_for_stop_order(
     market: &str,
     side: &PerpSide,
     kind: &StopOrderKind,
-    trigger: &simulation_state::primitives::Price,
+    trigger: &policy_state::primitives::Price,
 ) -> String {
     let kind_s = match kind {
         StopOrderKind::StopMarket => "stop_market",
@@ -141,7 +140,7 @@ pub(super) const fn pending_user_source() -> DataSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::primitives::{ChainId, Decimal};
+    use policy_state::primitives::{ChainId, Decimal};
 
     fn chain() -> ChainId {
         ChainId::ethereum_mainnet()

@@ -1,7 +1,6 @@
 //! In-memory stores — the DEV/TEST persistence backend.
-//!
 //! This is **not** the production store. Production uses the PostgreSQL-backed
-//! [`WalletStore`] impl in the `simulation-db` crate. [`InMemoryWalletStore`]
+//! [`WalletStore`] impl in the `policy-db` crate. [`InMemoryWalletStore`]
 //! remains useful for small unit tests that do not need durable state.
 
 use std::collections::HashMap;
@@ -9,14 +8,13 @@ use std::sync::Mutex;
 
 use async_trait::async_trait;
 
-use simulation_state::store::StoreError;
-use simulation_state::{WalletId, WalletState, WalletStore};
+use policy_state::store::StoreError;
+use policy_state::{WalletId, WalletState, WalletStore};
 
 /// A process-local [`WalletStore`] backed by `Mutex`-protected collections.
-///
 /// Intended for development and tests. State lives only for the lifetime of the
 /// process; restart loses everything. Production code should use the
-/// PostgreSQL store from `simulation-db`.
+/// `PostgreSQL` store from `policy-db`.
 #[derive(Debug, Default)]
 pub struct InMemoryWalletStore {
     wallets: Mutex<HashMap<WalletId, WalletState>>,
@@ -30,12 +28,9 @@ impl InMemoryWalletStore {
     }
 
     /// Seeds (inserts or overwrites) a wallet's state.
-    ///
     /// Test/dev helper — primes the store so a simulation runs against a known
     /// starting state instead of the empty default.
-    ///
     /// # Panics
-    ///
     /// Panics only if the internal mutex was poisoned by a prior panic while a
     /// lock was held — which cannot happen in normal operation.
     pub fn seed(&self, state: WalletState) {

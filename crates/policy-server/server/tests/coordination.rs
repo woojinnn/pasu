@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use simulation_server::coordination::{Coordinator, NoopCoordinator};
+use policy_server::coordination::{Coordinator, NoopCoordinator};
 
 #[tokio::test]
 async fn noop_coordinator_allows_lock_and_idempotency() {

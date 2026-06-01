@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::launchpad::CommitAction;
+use policy_transition::action::launchpad::CommitAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -61,12 +61,12 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::launchpad::{
+    use policy_state::primitives::{Price, U256};
+    use policy_state::LiveField;
+    use policy_transition::action::launchpad::{
         CommitAction, CommitLiveInputs, LaunchpadAction, SaleState,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Price, U256};
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         now, platform, sale_state, sale_state_custom_vest, sale_state_linear_bare_vest,
@@ -79,7 +79,7 @@ mod tests {
     fn commit_with(
         sale: SaleState,
         price: Option<Price>,
-    ) -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    ) -> (ActionBody, policy_transition::action::ActionMeta) {
         let action = CommitAction {
             platform: platform(),
             sale_id: "sale-42".into(),
@@ -101,7 +101,7 @@ mod tests {
 
     /// A representative on-chain `Commit`: versioned platform, ERC20 pay token,
     /// a full `SaleState` (caps + window + Stepped vest), and a price present.
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         commit_with(sale_state(), Some(Price::new("0.25")))
     }
 

@@ -9,7 +9,7 @@
 //! ```text
 //!   types.rs          — Bundle JSON struct/enum (serde Deserialize / Serialize)
 //!   args_json.rs      — DecodedCall → serde_json args view (v1-free)
-//!   action_builder.rs — body/placeholder template → simulation-reducer ActionBody (v3)
+//!   action_builder.rs — body/placeholder template → policy-transition ActionBody (v3)
 //! ```
 
 pub mod action_builder;

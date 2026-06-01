@@ -1,33 +1,24 @@
 //! `SwapAction` reducer — single-pool or routed token-for-token swap.
-//!
-//! ## Phase 2D scope
-//!
 //! Wires up the **route walk** and **venue dispatch**. Only the V2-family
 //! venues (`UniswapV2`, `SushiV2`) are implemented today; concentrated-liquidity
 //! (V3 / V4), aggregator outer-level handling, and the remaining stable /
-//! weighted / book pools surface as `UnsupportedProtocol` until their per-phase
-//! activation (Phase 2E / 2F / 2G — see plan).
-//!
+//! weighted / book pools surface as `UnsupportedProtocol` until their per-feature
 //! ## Balance accounting
-//!
 //! Only the *outer* `token_in` / `token_out` are debited / credited. Hops in a
 //! multi-hop path move strictly *inside* the swap envelope (router escrow); the
 //! user's wallet only sees the first leg's spend and the last leg's receipt.
 //! This matches the user-visible accounting convention of every routed-swap
 //! protocol (Uniswap routers, 1inch, 0x, Paraswap): intermediate hop tokens
 //! are not credited to the user.
-//!
 //! ## Slippage check
-//!
 //! `ExactInput` enforces `total_out >= min_amount_out` before any state
 //! mutation is recorded. `ExactOutput` simulation reverses that bound (must
 //! return at least `amount_out` and consume at most `max_amount_in`); the
-//! Phase 2D body wires the `ExactInput` branch only — exact-output simulation
 //! requires inverse hop math (`getAmountIn`) which we defer with the rest of
 //! the V3 cases.
 
-use simulation_state::primitives::{Address, U256};
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::primitives::{Address, U256};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::amm::{AmmVenue, SwapAction, SwapDirection};
 use crate::apply::Reducer;
@@ -44,11 +35,8 @@ impl Reducer for SwapAction {
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta> {
         let route = &self.live_inputs.route.value;
 
-        // Phase 2D: only ExactInput is fully simulated. ExactOutput would need
-        // a per-venue `getAmountIn` quote (V2 inverse formula, V3 backward
-        // sweep, …); for now we use the user-signed `max_amount_in` as the
-        // spend cap and return a Phase 2E follow-up via Invariant if any path
-        // ends up needing the exact-output inverse math.
+        // Exact-output simulation uses the user-signed `max_amount_in` spend
+        // cap until venue-specific inverse quotes are available.
         let total_amount_in = match &self.params.direction {
             SwapDirection::ExactInput { amount_in, .. } => *amount_in,
             SwapDirection::ExactOutput { max_amount_in, .. } => *max_amount_in,
@@ -81,12 +69,10 @@ impl Reducer for SwapAction {
                     AmmVenue::SushiV2 { .. } => {
                         sushi_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
-                    // Phase 2E — V3 concentrated-liquidity math (simplified
                     // active-tick closed form; see `uniswap_v3` module docs).
                     AmmVenue::UniswapV3 { .. } => {
                         uniswap_v3::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
-                    // Phase 2F — V4 singleton. Hooks dispatch is deferred:
                     // pools with a non-zero `hooks` address may override the
                     // swap curve / fees / accounting via `beforeSwap` /
                     // `afterSwap` callbacks, which we cannot soundly
@@ -130,7 +116,6 @@ impl Reducer for SwapAction {
                     AmmVenue::MaverickV2 { .. } => {
                         maverick_v2::quote_swap_hop(state, ctx, self, &hop.pool_state, hop_in)?
                     }
-                    // Phase 2G — aggregator outer-level wiring. The aggregator
                     // hop variant is unusual inside a path (the aggregator
                     // *route* lives in `SwapRoute.aggregator`, not as a hop
                     // venue), so we treat it as unsupported per-hop today.
@@ -158,7 +143,6 @@ impl Reducer for SwapAction {
 
         let mut delta = StateDelta::new();
 
-        // Outer-level aggregator hook (Phase 2G). Wired only for the top-level
         // `AggregatorRoute` venue — the inner per-hop variant (rejected above
         // as `UnsupportedProtocol("aggregator_route")`) stays unsupported to
         // prevent nested-aggregator dispatch. The hook order is: executor
@@ -198,14 +182,14 @@ mod tests {
         AggregatorKind, AggregatorMeta, AmmVenue, PoolState, RouteHop, RoutePath, SwapDirection,
         SwapLiveInputs, SwapParams, SwapRoute,
     };
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {
@@ -577,13 +561,10 @@ mod tests {
     }
 
     // ----------------------------------------------------------------------
-    // ExactOutput direction — Phase 2D uses max_amount_in as the spend cap
     // ----------------------------------------------------------------------
 
     /// `ExactOutput` direction is currently simulated as if `max_amount_in`
     /// were the spent amount (no inverse hop math). The output uses the same
-    /// constant-product quote — Phase 2D test pins the current behaviour
-    /// (deferred exact-output quote) so a Phase 2E inverse-math change is
     /// caught.
     #[test]
     fn v2_exact_output_uses_max_amount_in_as_spend() {
@@ -631,11 +612,9 @@ mod tests {
     // Unsupported venue surfaces UnsupportedProtocol
     // ----------------------------------------------------------------------
 
-    /// Phase 2E activates V3 via the simplified closed-form
     /// (active-tick, no fee, `zeroForOne`). A degenerate pool with **zero
     /// active liquidity** must now surface as
     /// `Invariant("uniswap_v3 … zero active liquidity")` from the V3 quote
-    /// helper — *not* `UnsupportedProtocol`, which used to be the Phase 2D
     /// behaviour.
     #[test]
     fn v3_hop_zero_liquidity_returns_invariant() {
@@ -648,7 +627,7 @@ mod tests {
         let pool_state = PoolState::Concentrated {
             sqrt_price_x96: U256::from(1u64),
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(0u64),
+            liquidity: policy_state::primitives::U128::from(0u64),
             ticks: vec![],
         };
         let swap = exact_in_swap(
@@ -666,7 +645,6 @@ mod tests {
         );
     }
 
-    /// Phase 2E happy path — a single V3 hop on a `price = 1` pool
     /// (`sqrt_price_x96 = Q96 = 2^96`) with `liquidity = 1_000_000` swapping
     /// `1_000` in. The closed form gives `L*a/(L+a) = 1e9 / 1_001_000 = 999`.
     /// Verifies the outer-only accounting (USDC debit, WETH credit) and the
@@ -684,7 +662,7 @@ mod tests {
         let pool_state = PoolState::Concentrated {
             sqrt_price_x96: q96,
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(1_000_000u64),
+            liquidity: policy_state::primitives::U128::from(1_000_000u64),
             ticks: vec![],
         };
         let swap = exact_in_swap(
@@ -718,7 +696,6 @@ mod tests {
         assert!(saw_debit && saw_credit);
     }
 
-    /// Phase 2E slippage breach — `min_amount_out` set above the
     /// closed-form's `999` output produces `Invariant("swap slippage: …")`.
     #[test]
     fn v3_single_hop_slippage_breach() {
@@ -732,7 +709,7 @@ mod tests {
         let pool_state = PoolState::Concentrated {
             sqrt_price_x96: q96,
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(1_000_000u64),
+            liquidity: policy_state::primitives::U128::from(1_000_000u64),
             ticks: vec![],
         };
         let swap = exact_in_swap(
@@ -747,7 +724,6 @@ mod tests {
         assert!(matches!(err, ReducerError::Invariant(msg) if msg.contains("slippage")));
     }
 
-    /// Phase 2F V4 happy path — a single V4 hop on a hooks-free pool
     /// (`hooks == Address::ZERO`). The math is identical to V3: a
     /// `price = 1` pool (`sqrt_price_x96 = Q96 = 2^96`) with
     /// `liquidity = 1_000_000` swapping `1_000` in gives
@@ -767,7 +743,7 @@ mod tests {
         let pool_state = PoolState::Concentrated {
             sqrt_price_x96: q96,
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(1_000_000u64),
+            liquidity: policy_state::primitives::U128::from(1_000_000u64),
             ticks: vec![],
         };
         let swap = exact_in_swap(
@@ -801,9 +777,7 @@ mod tests {
         assert!(saw_debit && saw_credit);
     }
 
-    /// Phase 2F V4 with a non-zero `hooks` address must surface as
     /// `UnsupportedProtocol { protocol: "uniswap_v4_with_hooks" }` *before*
-    /// any pool math runs. Phase 2F defers arbitrary-hook dispatch —
     /// hooks can override `beforeSwap` / `afterSwap` curves and fees, so
     /// the reducer cannot soundly simulate them without a known-hook
     /// registry. A pool snapshot with zero liquidity would *otherwise*
@@ -827,7 +801,7 @@ mod tests {
         let pool_state = PoolState::Concentrated {
             sqrt_price_x96: U256::from(1u64),
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(0u64),
+            liquidity: policy_state::primitives::U128::from(0u64),
             ticks: vec![],
         };
         let swap = exact_in_swap(
@@ -989,7 +963,6 @@ mod tests {
     }
 
     // ----------------------------------------------------------------------
-    // Phase 2G — AggregatorRoute outer-level hook
     // ----------------------------------------------------------------------
 
     fn one_inch_router_addr() -> Address {
@@ -1127,7 +1100,6 @@ mod tests {
     }
 
     /// Inner-hop `AggregatorRoute` (an aggregator venue inside another
-    /// route's `hops`) stays unsupported — Phase 2G refuses nested
     /// aggregator dispatch.
     #[test]
     fn nested_aggregator_inner_hop_returns_unsupported_protocol() {

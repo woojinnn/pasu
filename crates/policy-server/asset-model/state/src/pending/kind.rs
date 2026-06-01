@@ -14,99 +14,99 @@ use crate::token::TokenRef;
 pub enum OrderKind {
     /// Dutch auction order whose price decays over time (e.g. `UniswapX`).
     Dutch,
-    /// 단순 limit order.
+    /// Plain limit order.
     Limit,
-    /// Request-for-Quote (1inch Fusion, Bebop 등).
+    /// Request-for-Quote order, such as 1inch Fusion or Bebop.
     Rfq,
 }
 
-/// Perp venue 의 미체결 주문 종류.
+/// Unsettled perp order kind.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PerpOrderKind {
-    /// 가격 도달 시 체결되는 limit 주문.
+    /// Limit order that fills when price reaches the limit.
     Limit,
-    /// trigger 가격 도달 시 시장가 체결.
+    /// Market order that fires when the trigger price is reached.
     StopMarket,
-    /// trigger 가격 도달 시 limit 주문 활성.
+    /// Limit order activated when the trigger price is reached.
     StopLimit,
     /// take-profit trigger.
     TakeProfit,
 }
 
-/// 서명-only pending entry 의 sub-kind (4 형태).
+/// Sub-kind for signature-only or unsettled pending entries.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PendingKind {
     /// Off-chain-matched limit order (`UniswapX`, `CowSwap`, 1inch Fusion, Bebop, OKX RFQ, etc.).
     OffchainLimitOrder {
-        /// 주문을 매칭할 venue.
+        /// Venue that will match the order.
         venue: VenueRef,
-        /// 매도 토큰.
+        /// Token being sold.
         sell: TokenRef,
-        /// 매수 토큰.
+        /// Token being bought.
         buy: TokenRef,
-        /// 매도 가능 최대 양 (base unit).
+        /// Maximum sell amount in base units.
         #[tsify(type = "string")]
         sell_max: U256,
-        /// 매수 받을 최소 양 (base unit).
+        /// Minimum buy amount in base units.
         #[tsify(type = "string")]
         buy_min: U256,
-        /// 주문 종류 (Dutch / Limit / RFQ).
+        /// Order kind.
         order_kind: OrderKind,
     },
 
-    /// `PerpDEX` 미체결 리밋.
+    /// Unsettled perp venue order.
     PerpVenueOrder {
-        /// 주문이 등록된 venue.
+        /// Venue where the order is registered.
         venue: VenueRef,
-        /// 거래 market.
+        /// Trading market.
         market: MarketRef,
-        /// 주문 방향 (Long / Short).
+        /// Order side.
         side: PerpSide,
-        /// base asset 단위의 주문 size.
+        /// Order size in base-asset units.
         #[tsify(type = "string")]
         size_base: U256,
-        /// 주문 가격.
+        /// Order price.
         price: Price,
-        /// 주문 종류 (Limit / Stop / TP).
+        /// Order kind.
         order_kind: PerpOrderKind,
-        /// reduce-only flag (포지션 늘리기 금지).
+        /// Reduce-only flag.
         reduce_only: bool,
     },
 
-    /// 서명만 발급된 Permit2 — 잠재적 spend cap.
+    /// Signed Permit2 allowance that may become a spend cap.
     SignedPermit2 {
-        /// 권한이 부여된 토큰.
+        /// Token being authorized.
         token: TokenRef,
-        /// 권한을 받는 spender 주소.
+        /// Authorized spender address.
         #[tsify(type = "string")]
         spender: Address,
-        /// 한도 양 (base unit).
+        /// Allowance amount in base units.
         #[tsify(type = "string")]
         amount: U256,
-        /// 본 권한의 만료 시각.
+        /// Allowance expiration timestamp.
         expires_at: Time,
-        /// Permit2 비트맵 nonce — (word, bit).
+        /// Permit2 bitmap nonce as `(word, bit)`.
         #[tsify(type = "[string, number]")]
         nonce: (U256, u8),
     },
 
-    /// EIP-2612 (USDC, DAI 등).
+    /// Signed EIP-2612 permit, such as USDC or DAI.
     SignedEIP2612 {
-        /// 권한이 부여된 토큰.
+        /// Token being authorized.
         token: TokenRef,
-        /// 권한을 받는 spender 주소.
+        /// Authorized spender address.
         #[tsify(type = "string")]
         spender: Address,
-        /// 한도 양 (base unit).
+        /// Allowance amount in base units.
         #[tsify(type = "string")]
         amount: U256,
-        /// 본 권한의 만료 시각.
+        /// Allowance expiration timestamp.
         expires_at: Time,
-        /// 본 token 의 owner-level nonce.
+        /// Owner-level nonce for this token.
         #[tsify(type = "string")]
         nonce: U256,
     },

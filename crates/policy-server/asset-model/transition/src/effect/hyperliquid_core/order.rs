@@ -1,7 +1,7 @@
 //! `hl_order` reducer — record an unfilled open-order intent.
 
-use simulation_state::position::{HlAccount, HlOpenOrder, PositionKind};
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::{HlAccount, HlOpenOrder, PositionKind};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::hyperliquid_core::HlOrderAction;
 use crate::error::ReducerResult;
@@ -53,11 +53,11 @@ pub(super) fn apply(
 mod tests {
     use super::*;
 
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::position::{HlAccount, Position, PositionKind};
-    use simulation_state::primitives::{Address, ChainId, Decimal, Time};
-    use simulation_state::wallet::{WalletId, WalletState};
-    use simulation_state::PositionChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::position::{HlAccount, Position, PositionKind};
+    use policy_state::primitives::{Address, ChainId, Decimal, Time};
+    use policy_state::wallet::{WalletId, WalletState};
+    use policy_state::PositionChange;
 
     use super::super::common::HL_ACCOUNT_ID;
 
@@ -96,7 +96,7 @@ mod tests {
             chain: None,
             kind: PositionKind::HyperliquidAccount(acct),
             primitives_synced_at: Time::from_unix(1),
-            primitives_source: simulation_state::live_field::DataSource::UserSupplied,
+            primitives_source: policy_state::live_field::DataSource::UserSupplied,
         });
         s
     }

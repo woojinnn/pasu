@@ -2124,10 +2124,10 @@ dependencies = [
  "alloy-primitives",
  "anyhow",
  "hex",
+ "policy-state",
+ "policy-transition",
  "serde",
  "serde_json",
- "simulation-reducer",
- "simulation-state",
  "thiserror",
 ]
 
@@ -2435,17 +2435,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
+name = "policy-action"
+version = "0.1.0"
+dependencies = [
+ "policy-state",
+ "serde",
+ "serde_json",
+ "tsify-next",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "policy-db"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "blake3",
+ "hex",
+ "policy-state",
+ "serde",
+ "serde_json",
+ "sqlx-core",
+ "sqlx-postgres",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "policy-engine"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "cedar-policy",
  "hex",
+ "policy-state",
+ "policy-transition",
  "serde",
  "serde_json",
  "sha2",
- "simulation-reducer",
- "simulation-state",
  "thiserror",
 ]
 
@@ -2462,9 +2489,9 @@ dependencies = [
  "mappers",
  "policy-engine",
  "policy-engine-wasm",
+ "policy-transition",
  "serde",
  "serde_json",
- "simulation-reducer",
  "walkdir",
 ]
 
@@ -2484,14 +2511,92 @@ dependencies = [
  "js-sys",
  "mappers",
  "policy-engine",
+ "policy-state",
+ "policy-transition",
  "serde",
  "serde_json",
- "simulation-reducer",
- "simulation-state",
  "thiserror",
  "tsify-next",
  "wasm-bindgen",
  "wasm-bindgen-test",
+]
+
+[[package]]
+name = "policy-server"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "dotenvy",
+ "futures",
+ "jsonwebtoken",
+ "policy-db",
+ "policy-state",
+ "policy-sync",
+ "policy-transition",
+ "redis",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "time",
+ "tokio",
+ "tokio-stream",
+ "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+ "uuid",
+]
+
+[[package]]
+name = "policy-state"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "async-trait",
+ "hex",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tsify-next",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "policy-sync"
+version = "0.1.0"
+dependencies = [
+ "alloy-dyn-abi",
+ "alloy-primitives",
+ "alloy-sol-types",
+ "async-trait",
+ "hex",
+ "policy-state",
+ "policy-transition",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "policy-transition"
+version = "0.1.0"
+dependencies = [
+ "policy-action",
+ "policy-state",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tsify-next",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -3407,111 +3512,6 @@ dependencies = [
  "num-traits",
  "thiserror",
  "time",
-]
-
-[[package]]
-name = "simulation-action"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "simulation-state",
- "tsify-next",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "simulation-db"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "blake3",
- "hex",
- "serde",
- "serde_json",
- "simulation-state",
- "sqlx-core",
- "sqlx-postgres",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "simulation-reducer"
-version = "0.1.0"
-dependencies = [
- "rust_decimal",
- "serde",
- "serde_json",
- "simulation-action",
- "simulation-state",
- "thiserror",
- "tsify-next",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "simulation-server"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "base64",
- "dotenvy",
- "futures",
- "jsonwebtoken",
- "redis",
- "reqwest",
- "serde",
- "serde_json",
- "simulation-db",
- "simulation-reducer",
- "simulation-state",
- "simulation-sync",
- "tempfile",
- "thiserror",
- "time",
- "tokio",
- "tokio-stream",
- "tower-http 0.5.2",
- "tracing",
- "tracing-subscriber",
- "urlencoding",
- "uuid",
-]
-
-[[package]]
-name = "simulation-state"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "async-trait",
- "hex",
- "serde",
- "serde_json",
- "thiserror",
- "tsify-next",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "simulation-sync"
-version = "0.1.0"
-dependencies = [
- "alloy-dyn-abi",
- "alloy-primitives",
- "alloy-sol-types",
- "async-trait",
- "hex",
- "reqwest",
- "rust_decimal",
- "serde",
- "serde_json",
- "simulation-reducer",
- "simulation-state",
- "thiserror",
- "tokio",
- "toml",
 ]
 
 [[package]]

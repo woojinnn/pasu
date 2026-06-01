@@ -1,21 +1,20 @@
 //! Integration: read-only endpoints (`GET /wallets…`) served against the
 //! PostgreSQL wallet store the simulator writes through. Seeds a
 //! wallet end-to-end and asserts every endpoint returns the expected slice.
-//!
 //! Every request carries a Bearer JWT minted from the same `JWT_SECRET`
 //! the server reads.
 
 use std::str::FromStr;
 use std::sync::Arc;
 
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
-use simulation_server::auth::jwt::{issue, TokenType};
-use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_state::approval::{AllowanceSpec, ApprovalSet};
-use simulation_state::primitives::{Address, BlockHeight, ChainId, Time, U256};
-use simulation_state::{WalletId, WalletState, WalletStore};
-use simulation_sync::{Orchestrator, SyncConfig};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_server::app::{build_router, AppState};
+use policy_server::auth::jwt::{issue, TokenType};
+use policy_server::events::{EventBus, LocalEventPublisher};
+use policy_state::approval::{AllowanceSpec, ApprovalSet};
+use policy_state::primitives::{Address, BlockHeight, ChainId, Time, U256};
+use policy_state::{WalletId, WalletState, WalletStore};
+use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -52,7 +51,7 @@ async fn spawn_server() -> (
         publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
-        coingecko: simulation_sync::CoinGeckoClient::new(),
+        coingecko: policy_sync::CoinGeckoClient::new(),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

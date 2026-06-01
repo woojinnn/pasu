@@ -1,16 +1,13 @@
-//! `simulation-reducer` — transition rules that apply an `Action` to a `WalletState`.
+//! `policy-transition` applies typed actions to wallet state and returns the
+//! predicted state delta.
 //!
-//! No external IO (no DB, no RPC, no clock). Inputs: `state` + `action` + `eval`.
-//! Output: `(newState, StateDelta)`. wasm-buildable.
+//! Transition rules are pure: no database, RPC, or clock access. Callers supply
+//! the current [`policy_state::WalletState`], an action, and evaluation context;
+//! reducers return the updated state plus a typed [`policy_state::StateDelta`].
 
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
 #![deny(rustdoc::bare_urls)]
-#![allow(rustdoc::broken_intra_doc_links)]
-#![allow(rustdoc::private_intra_doc_links)]
-#![allow(rustdoc::redundant_explicit_links)]
-#![allow(unknown_lints)]
-#![allow(clippy::duration_suboptimal_units)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
 #![warn(rust_2018_idioms)]
@@ -20,22 +17,22 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::dbg_macro)]
-// Phase 2 skeleton: every reducer / helper returns `Result` but the concrete
-// error contract is not yet decided (bodies are `todo!()`). Lift this allow
-// as implementations land and proper `# Errors` sections can be written.
-#![allow(clippy::missing_errors_doc)]
 
+/// Top-level transition entry points.
 pub mod apply;
+/// Domain-specific action reducers.
 pub mod effect;
+/// Reducer error type.
 pub mod error;
+/// Shared reducer helpers.
 pub mod helpers;
 
-/// Action type tree re-exported from the sibling `simulation-action` crate.
+/// Action type tree re-exported from the sibling `policy-action` crate.
 ///
-/// Keeping this module preserves the existing `simulation_reducer::action::*`
+/// Keeping this module preserves the existing `policy_transition::action::*`
 /// API while making `asset-model/action` the canonical home for action shapes.
 pub mod action {
-    pub use simulation_action::*;
+    pub use policy_action::*;
 }
 
 pub use action::{

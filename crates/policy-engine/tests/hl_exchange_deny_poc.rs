@@ -28,11 +28,11 @@ use policy_engine::policy::{PolicyEngine, Verdict};
 use policy_engine::policy_rpc::ManifestV2;
 use policy_engine::schema::compose_per_policy;
 
-use simulation_reducer::action::hyperliquid_core::{
+use policy_state::primitives::{Address, Decimal, Time};
+use policy_transition::action::hyperliquid_core::{
     HlOrderAction, HlUpdateLeverageAction, HlWithdrawAction, HyperliquidCoreAction,
 };
-use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-use simulation_state::primitives::{Address, Decimal, Time};
+use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
 const FROM: &str = "0x1111111111111111111111111111111111111111";
 // HL Core actions have no on-chain settlement address; the SW supplies a

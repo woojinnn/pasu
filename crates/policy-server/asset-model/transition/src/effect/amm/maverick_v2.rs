@@ -1,16 +1,12 @@
 //! Maverick V2 swap math — directional (mode-aware) liquidity.
-//!
 //! Pure functions called from `swap.rs` after dispatch on `AmmVenue::MaverickV2`.
 //! Not a `Reducer` impl since `AmmVenue` is not an `Action`.
-//!
 //! ## Simplification — **single active-bin closed form**
-//!
 //! Maverick V2 uses bin-based liquidity (analogous to Trader Joe LB) with an
 //! additional **directional mode** (`Static` / `Right` / `Left` / `Both`) that
 //! shifts liquidity in the direction of price movement. Full simulation
 //! requires walking adjacent bins per the mode's shift rule, modelled in the
 //! on-chain `Pool.sol::swap` library.
-//!
 //! `PoolState::Maverick` carries the active-bin payload in a free-form
 //! `raw: serde_json::Value` field plus a `mode: String` discriminator. This
 //! helper extracts a flat `(reserve_in, reserve_out, fee_bp)` triple from the
@@ -18,9 +14,7 @@
 //! produces — and quotes against it with the canonical constant-product
 //! formula. Mode-aware bin shifting is deferred (tracked alongside the
 //! Uniswap V3 / Trader Joe LB tick-traversal work).
-//!
 //! The expected `raw` shape is:
-//!
 //! ```json
 //! {
 //!   "reserve_in":  "1000000000000000000",
@@ -28,13 +22,9 @@
 //!   "fee_bp":      30
 //! }
 //! ```
-//!
 //! `mode` is currently accepted as informational only — full mode-aware
 //! dispatch is deferred. Pools whose `raw` payload does not carry the
 //! expected fields surface as `Invariant`.
-//!
-//! ## 1차 출처
-//!
 //! * Maverick V2 documentation —
 //!   <https://docs.mav.xyz/protocol/v2>
 //!   * "Directional liquidity" — `mode_left` / `mode_right` / `mode_static` /
@@ -45,12 +35,11 @@
 //! * `Pool.sol` (v2) — <https://github.com/maverickprotocol/maverick-v2-contracts>
 //!   `swap` library + `BinMath` for the full per-mode bin-walking math.
 
-// Phase 2 stubs: callers (per-action reducers) are still `todo!()` so these
 // functions look unused. Lift this allow when the first caller wires up.
 #![allow(dead_code)]
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::{ReducerError, ReducerResult};
@@ -89,11 +78,9 @@ fn pull_u32(raw: &serde_json::Value, key: &str) -> ReducerResult<u32> {
 /// Quote a single hop on a Maverick V2 pool given its `Maverick` `PoolState`
 /// snapshot. Returns the hop's output amount; caller is responsible for fee
 /// accounting and balance changes.
-///
 /// **Simplification** — single active-bin constant-product; see module docs
 /// for the deferred mode-aware bin-walking work and the expected `raw`
 /// payload shape.
-///
 /// Errors with `Invariant` on:
 ///   * `PoolState` variant other than `Maverick`,
 ///   * `raw` payload missing `reserve_in` / `reserve_out` / `fee_bp` fields,
@@ -263,11 +250,11 @@ mod tests {
     // -------- test fixtures --------
 
     use crate::action::amm::{AmmVenue, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

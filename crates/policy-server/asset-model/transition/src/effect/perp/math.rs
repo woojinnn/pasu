@@ -1,21 +1,16 @@
 //! Cross-venue perpetuals math primitives.
-//!
 //! Every venue's `unrealized_pnl` / `funding_accrued` is algebraically
 //! identical — the only venue-specific knob is `liquidation_price` (which
 //! differs in maintenance-margin / cross-vs-isolated handling) and a venue
 //! tag carried in error messages. We hoist the common computations here so
 //! the per-venue files (`hyperliquid.rs`, `gmx_v2.rs`, ...) stay thin and
 //! provably consistent.
-//!
 //! ## Arithmetic backend
-//!
-//! `simulation_state::primitives::Decimal` is a `String` newtype safe for
+//! `policy_state::primitives::Decimal` is a `String` newtype safe for
 //! transport / serde but lacking arithmetic. We bridge to
 //! `rust_decimal::Decimal` for math (parse → arithmetic → format), matching
 //! the convention already used by `helpers::derived` for HF / LTV / `PnL`.
-//!
 //! ## Liquidation-price models
-//!
 //! Two flavors are exposed:
 //!   - [`liquidation_price_simple`] — single-asset isolated-margin closed
 //!     form: `entry ± (free_margin − maintenance_margin) / size_base`.
@@ -33,8 +28,8 @@
 
 use std::str::FromStr;
 
+use policy_state::primitives::{Decimal, Price, SignedI256, U256};
 use rust_decimal::Decimal as RustDecimal;
-use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
 
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs, PerpVenue, SizeSpec};
 use crate::error::{ReducerError, ReducerResult};
@@ -43,7 +38,7 @@ use crate::error::{ReducerError, ReducerResult};
 // Decimal conversion helpers (mirrors `helpers::derived` patterns).
 // ---------------------------------------------------------------------------
 
-/// Parse a `simulation_state::Decimal` (`String` newtype) into a
+/// Parse a `policy_state::Decimal` (`String` newtype) into a
 /// `rust_decimal::Decimal` for arithmetic.
 pub(super) fn parse_decimal(d: &Decimal) -> ReducerResult<RustDecimal> {
     RustDecimal::from_str(d.as_str()).map_err(|e| {
@@ -147,12 +142,10 @@ pub(super) fn notional_usd(size_base: U256, mark: &Price) -> ReducerResult<RustD
 // ---------------------------------------------------------------------------
 
 /// Common `required_initial_margin` formula — used by every venue.
-///
 /// ```text
 ///   notional       = size_base × mark_price
 ///   required_margin = notional / leverage + taker_fee_bp × notional / 10_000
 /// ```
-///
 /// `leverage` comes from `action.leverage` (Hyperliquid / GMX V2 / `DyDx` V4
 /// all allow user-specified leverage up to the venue's `max_leverage`).
 /// `fee_taker_bp` is venue-quoted via the `LiveField`. Returns the margin in
@@ -190,12 +183,10 @@ pub(super) fn required_initial_margin_common(
 }
 
 /// Common single-asset isolated-margin `liquidation_price` formula.
-///
 /// ```text
 ///   maintenance_margin = notional × maintenance_bp / 10_000
 ///   liq_price          = entry ± (free_margin − maintenance_margin) / size_base
 /// ```
-///
 /// `free_margin` comes from `live.user_account_state.free_margin_usd`.
 /// `entry` ≈ `mark_price` at open (the simulated swap is the spot price).
 /// Returns `Ok(None)` if `size_base = 0`. Returns `Decimal::zero()` (clipped)
@@ -223,8 +214,8 @@ pub(super) fn liquidation_price_simple(
     }
     let buffer = (free_margin - maintenance) / size;
     let liq = match &action.side {
-        simulation_state::position::PerpSide::Long => mark - buffer,
-        simulation_state::position::PerpSide::Short => mark + buffer,
+        policy_state::position::PerpSide::Long => mark - buffer,
+        policy_state::position::PerpSide::Short => mark + buffer,
     };
     let liq = if liq.is_sign_negative() {
         RustDecimal::ZERO
@@ -239,8 +230,7 @@ pub(super) fn liquidation_price_simple(
 /// collateral oracle blend) we cannot soundly compute from
 /// `OpenPerpLiveInputs` alone. Returns
 /// `UnsupportedProtocol { … "deferred — see venue docs" }`.
-///
-/// Venues currently using this stub: GMX V2 (`PositionUtils.getLiquidationPrice`
+/// Venues currently using this sentinel: GMX V2 (`PositionUtils.getLiquidationPrice`
 /// needs funding+borrowing fee state), Synthetix V3 (multi-collateral debt
 /// pool), Jupiter Perps (JLP pool dynamics).
 pub(super) fn liquidation_price_deferred(
@@ -255,11 +245,9 @@ pub(super) fn liquidation_price_deferred(
 }
 
 /// Common `unrealized_pnl` formula:
-///
 /// ```text
 ///   pnl = size_base × (mark − entry) × side_sign
 /// ```
-///
 /// `side_sign = +1` (long) or `−1` (short). Truncates toward zero (venues
 /// book at integer denom, matching `helpers::derived::recompute_perp_pnl`).
 pub(super) fn unrealized_pnl_common(
@@ -280,11 +268,9 @@ pub(super) fn unrealized_pnl_common(
 }
 
 /// Common `funding_accrued` formula:
-///
 /// ```text
 ///   funding = size_base × funding_rate × hours_elapsed / 24
 /// ```
-///
 /// `funding_rate` is the venue's natural daily rate (Hyperliquid hourly
 /// rates are pre-summed by the orchestrator into a daily-equivalent before
 /// the `LiveField` is published). Truncates toward zero. Positive result =
@@ -308,10 +294,10 @@ pub(super) fn funding_accrued_common(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::{MarginMode, PerpSide};
-    use simulation_state::primitives::{Address, ChainId, MarketRef, Time, VenueRef};
-    use simulation_state::token::{TokenKey, TokenRef};
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::{MarginMode, PerpSide};
+    use policy_state::primitives::{Address, ChainId, MarketRef, Time, VenueRef};
+    use policy_state::token::{TokenKey, TokenRef};
     use std::str::FromStr;
 
     use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs, PerpAccountState, PerpVenue};

@@ -7,8 +7,8 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::{SwapAction, SwapDirection};
-use simulation_state::primitives::U256;
+use policy_state::primitives::U256;
+use policy_transition::action::amm::{SwapAction, SwapDirection};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -114,15 +114,15 @@ fn lower_swap_direction(direction: &SwapDirection) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::amm::{
         AmmAction, AmmVenue, BalancerPoolType, PoolState, RouteHop, RoutePath, SwapAction,
         SwapDirection, SwapLiveInputs, SwapParams, SwapRoute,
     };
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 

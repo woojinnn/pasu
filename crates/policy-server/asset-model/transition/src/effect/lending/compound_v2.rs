@@ -1,45 +1,33 @@
 //! Compound V2 venue math — classic `cToken` exchange-rate model.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::CompoundV2`. Not a `Reducer` impl.
-//!
 //! Suppliers receive `cToken`s whose exchange rate against the underlying
 //! grows over time as interest accrues to the market.
-//!
 //! ## Exchange-rate approximation
-//!
 //! `CToken.sol::exchangeRateStoredInternal` defines:
-//!
 //! ```text
 //!   exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
 //! ```
-//!
 //! when `totalSupply > 0`. The current `ReserveState` exposes the present-
 //! value `total_supply` (asset units) and `total_borrow`. We approximate
 //! `totalCash + totalBorrows - totalReserves == total_supply` (i.e. assume
-//! the supply tally is already the cash-side total) so under Phase 2 the
 //! cToken / asset ratio remains 1:1. The shape lets us swap in the actual
 //! `(cash, borrows, reserves, cTokenSupply)` tuple once the sync orchestrator
 //! plumbs them through.
-//!
 //! ## Rate model
-//!
 //! Two-slope Jump-rate per Compound V2's `JumpRateModelV2`:
-//!
 //! ```text
 //!   below kink: r = base + util * multiplier
 //!   above kink: r = base + kink * multiplier + (util - kink) * jumpMultiplier
 //! ```
-//!
 //! Rates are stored per-block on-chain (`BLOCKS_PER_YEAR = 2_628_000`); the
 //! `Decimal` we return uses per-year units (APR), matching every other
 //! venue's `current_borrow_rate`. Compound V2 defaults track mainnet cUSDC.
 
-// Phase 2 stubs: per-action wiring (`supply.rs`, `borrow.rs`, …) lands in a
 // later commit in the same batch.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
+use policy_state::primitives::{Decimal, U256};
 
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
@@ -65,7 +53,6 @@ pub(super) fn ctoken_to_underlying(
 
 /// Compute the per-year (APR) borrow rate on a market given its current
 /// utilization.
-///
 /// On-chain Compound V2 stores rates per-block (`BLOCKS_PER_YEAR =
 /// 2_628_000`); we return APR to stay consistent with every other venue.
 pub(super) fn current_borrow_rate(reserve: &ReserveState) -> ReducerResult<Decimal> {

@@ -7,13 +7,13 @@
 //! aggregate `StateDelta` for the caller) and by any code path that wants
 //! the post-action `WalletState` rather than just the delta.
 
-use simulation_state::delta::{
+use policy_state::delta::{
     ApprovalScope, PendingChange, PositionChange, PositionPatch, TokenChange,
 };
-use simulation_state::pending::{PendingLifecycle, PendingTx};
-use simulation_state::primitives::{Address, ChainId, SignedI256, Time, U256};
-use simulation_state::token::{Balance, TokenHolding, TokenKey, TokenKind, TokenRef};
-use simulation_state::{StateDelta, WalletState};
+use policy_state::pending::{PendingLifecycle, PendingTx};
+use policy_state::primitives::{Address, ChainId, SignedI256, Time, U256};
+use policy_state::token::{Balance, TokenHolding, TokenKey, TokenKind, TokenRef};
+use policy_state::{StateDelta, WalletState};
 
 use crate::error::{ReducerError, ReducerResult};
 
@@ -37,11 +37,9 @@ fn signed_to_u256_saturating(v: SignedI256) -> U256 {
 // ---------------------------------------------------------------------------
 
 /// Classify the wallet-level approval map that an `ApprovalSet` change targets.
-///
 /// `TokenChange::ApprovalSet` does not currently carry an explicit
 /// `ApprovalScope` (PDF §8 may add one later); until it does we infer the
 /// destination map from the `TokenKey` standard:
-///
 /// * `Native` / `Erc20`        → `approvals.erc20`
 /// * `Erc721` / `Erc1155`      → `approvals.set_for_all`
 ///
@@ -67,9 +65,9 @@ fn contract_addr_key(key: &TokenKey) -> ReducerResult<(ChainId, Address)> {
 
 /// Append a missing-token holding for `Mint`. Sync orchestrator fills the
 /// remaining `LiveField`s later; reducer-side we only need a structurally
-/// valid stub so that subsequent `BalanceDelta` entries find a `holding`.
+/// valid placeholder so that subsequent `BalanceDelta` entries find a `holding`.
 fn mint_stub_holding(key: &TokenKey, kind_hint: TokenKind) -> TokenHolding {
-    use simulation_state::live_field::DataSource;
+    use policy_state::live_field::DataSource;
     let chain = key.chain().clone();
     let contract = key
         .contract()
@@ -123,7 +121,7 @@ fn apply_approval_set(
     next: &mut WalletState,
     key: &TokenKey,
     spender: &Address,
-    allowance: &simulation_state::approval::AllowanceSpec,
+    allowance: &policy_state::approval::AllowanceSpec,
 ) -> ReducerResult<()> {
     let scope = approval_scope_for_set(key);
     match scope {
@@ -234,29 +232,27 @@ fn apply_token_change(next: &mut WalletState, tc: &TokenChange) -> ReducerResult
 }
 
 /// Merge a `PositionPatch`'s `fields` JSON object into the on-state `Position`.
-///
 /// Convention (PDF §8 reserves the patch shape; until the producer side is
 /// frozen we accept two forms):
-///
 /// 1. `{ "after": <Position> }` — full replacement, deserialised back into a
 ///    `Position`. Useful for the simplest producers.
 /// 2. `{ <field path>: <value>, ... }` — field-level merge via
 ///    `serde_json::Value` map. Each key replaces the corresponding top-level
 ///    field on the JSON-serialised position. Unknown keys cause `Invariant`.
 fn apply_position_patch(
-    target: &mut simulation_state::position::Position,
+    target: &mut policy_state::position::Position,
     patch: &PositionPatch,
 ) -> ReducerResult<()> {
     let fields = &patch.fields;
 
     // Form 1: explicit "after".
     if let Some(after) = fields.get("after") {
-        let new_pos: simulation_state::position::Position = serde_json::from_value(after.clone())
+        let new_pos: policy_state::position::Position = serde_json::from_value(after.clone())
             .map_err(|e| {
-            ReducerError::Invariant(format!(
-                "PositionPatch.after did not deserialise as Position: {e}"
-            ))
-        })?;
+                ReducerError::Invariant(format!(
+                    "PositionPatch.after did not deserialise as Position: {e}"
+                ))
+            })?;
         *target = new_pos;
         return Ok(());
     }
@@ -328,9 +324,8 @@ fn apply_pending_change(next: &mut WalletState, pc: &PendingChange) -> ReducerRe
                 status: status.clone(),
                 ..target.lifecycle.clone()
             };
-            // partial_fill is informational at this layer — PDF §6 keeps it
-            // out of `PendingLifecycle`. We accept the field for forward
-            // compatibility and ignore it for now.
+            // `partial_fill` is accepted for wire compatibility but is not part
+            // of `PendingLifecycle`.
             let _ = partial_fill;
         }
         PendingChange::Remove { id, reason: _ } => {
@@ -385,6 +380,10 @@ fn apply_gas_paid(next: &mut WalletState, token: &TokenRef, amount: U256) -> Red
 ///   3. `pending_changes`
 ///   4. `gas_paid` — last, so any swap producing native gas already credited
 ///      its receipt before the gas charge debits it
+///
+/// # Errors
+///
+/// Returns [`ReducerError`] if any change is invalid for the current state.
 pub fn apply_delta(state: &WalletState, delta: &StateDelta) -> ReducerResult<WalletState> {
     let mut next = state.clone();
 
@@ -420,6 +419,11 @@ pub fn apply_delta(state: &WalletState, delta: &StateDelta) -> ReducerResult<Wal
 /// only carry one `(token, amount)` pair. Two pairs on the same token are
 /// summed (saturating); pairs on different tokens are rejected with
 /// `Invariant` — we don't model multi-token gas today.
+///
+/// # Errors
+///
+/// Returns [`ReducerError::Invariant`] when both deltas contain gas payments for
+/// different tokens.
 pub fn merge_delta(a: StateDelta, b: StateDelta) -> ReducerResult<StateDelta> {
     let StateDelta {
         mut token_changes,
@@ -467,13 +471,13 @@ pub fn merge_delta(a: StateDelta, b: StateDelta) -> ReducerResult<StateDelta> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::approval::AllowanceSpec;
-    use simulation_state::delta::{PositionChange, PositionPatch, TokenChange};
-    use simulation_state::live_field::DataSource;
-    use simulation_state::position::{AirdropClaim, ClaimStatus, Position, PositionKind};
-    use simulation_state::primitives::{ChainId, ProtocolRef, Time};
-    use simulation_state::token::{BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKind};
-    use simulation_state::wallet::WalletId;
+    use policy_state::approval::AllowanceSpec;
+    use policy_state::delta::{PositionChange, PositionPatch, TokenChange};
+    use policy_state::live_field::DataSource;
+    use policy_state::position::{AirdropClaim, ClaimStatus, Position, PositionKind};
+    use policy_state::primitives::{ChainId, ProtocolRef, Time};
+    use policy_state::token::{BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKind};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn mainnet_usdc_key() -> TokenKey {
@@ -557,7 +561,8 @@ mod tests {
         assert!(matches!(err, ReducerError::Invariant(_)));
     }
 
-    /// `apply_delta` — `Mint` followed by `BalanceDelta` inserts a stub holding
+    /// `apply_delta` — `Mint` followed by `BalanceDelta` inserts a placeholder
+    /// holding
     /// and then credits it.
     #[test]
     fn apply_delta_mint_then_credit() {

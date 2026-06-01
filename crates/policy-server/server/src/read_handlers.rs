@@ -1,8 +1,7 @@
-//! Read-only handlers — the future web UI's window into the wallet DB.
+//! Read-only handlers for wallet state views.
 //!
-//! Every handler is auth-gated (Phase 5 `require_auth` middleware) and
-//! receives an [`AuthUser`] via `Extension`. The user's `user_id` selects
-//! the right PostgreSQL wallet store from [`MultiUserStore`].
+//! Each handler receives an [`AuthUser`] via `Extension`. The user's `user_id`
+//! selects the right `PostgreSQL` wallet store from [`MultiUserStore`].
 
 use std::str::FromStr;
 
@@ -12,14 +11,21 @@ use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use serde::Serialize;
 
-use simulation_db::MultiUserStore;
-use simulation_state::approval::ApprovalSet;
-use simulation_state::primitives::{Address, BlockHeight, ChainId};
-use simulation_state::token::{TokenHolding, TokenKey};
-use simulation_state::{WalletId, WalletState, WalletStore};
+use policy_db::MultiUserStore;
+use policy_state::approval::ApprovalSet;
+use policy_state::primitives::{Address, BlockHeight, ChainId};
+use policy_state::token::{TokenHolding, TokenKey};
+use policy_state::{WalletId, WalletState, WalletStore};
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
+
+#[derive(Serialize)]
+struct HoldingItem {
+    key: TokenKey,
+    #[serde(flatten)]
+    holding: TokenHolding,
+}
 
 /// `GET /wallets` — every wallet id the authenticated user has.
 pub async fn list_wallets(
@@ -37,7 +43,6 @@ pub async fn list_wallets(
 }
 
 /// `GET /wallets/:address/state` — the whole [`WalletState`].
-///
 /// Computed view fields (per-token `value_usd`, top-level
 /// `portfolio_value_usd`) are populated here so the dashboard / UI can
 /// render dollar values without re-computing balance × price.
@@ -65,12 +70,6 @@ pub async fn get_holdings(
     match load_state(&state.multi_user, &user.user_id, &address).await {
         Ok(mut s) => {
             s.populate_computed_values();
-            #[derive(Serialize)]
-            struct HoldingItem {
-                key: TokenKey,
-                #[serde(flatten)]
-                holding: TokenHolding,
-            }
             let items: Vec<HoldingItem> = s
                 .tokens
                 .into_iter()
@@ -83,11 +82,10 @@ pub async fn get_holdings(
 }
 
 /// `GET /wallets/:address/approvals[?with_risk=true]`.
-///
 /// Default: returns the raw [`ApprovalSet`] (back-compat).
 /// `?with_risk=true`: returns the classified shape — every approval gets
 /// a `risk[]` tag list (UNLIMITED / OLD / EXPIRED). Spender labels +
-/// KNOWN_VENUE/BLOCKED tags are no longer included on the server; that
+/// `KNOWN_VENUE/BLOCKED` tags are no longer included on the server; that
 /// data is operator-managed and lives in the (future) registry.
 pub async fn get_approvals(
     State(state): State<AppState>,
@@ -156,7 +154,7 @@ struct Permit2Approval {
 const STALE_AFTER_SECS: i64 = 90 * 24 * 3_600;
 
 fn classify_approvals(set: &ApprovalSet) -> ClassifiedApprovals {
-    use simulation_state::primitives::Time;
+    use policy_state::primitives::Time;
 
     let now = i64::try_from(
         std::time::SystemTime::now()
@@ -213,7 +211,7 @@ fn classify_approvals(set: &ApprovalSet) -> ClassifiedApprovals {
     for ((chain, token, spender), allowance) in &set.permit2 {
         let spender_lower = format!("{spender:#x}");
         let mut risk: Vec<&'static str> = Vec::new();
-        if allowance.amount == simulation_state::primitives::U256::MAX {
+        if allowance.amount == policy_state::primitives::U256::MAX {
             risk.push("UNLIMITED");
         }
         let exp = i64::try_from(allowance.expiration.as_unix()).unwrap_or(0);
@@ -295,7 +293,7 @@ async fn load_state(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("load: {e}")).into_response())
 }
 
-fn store_error(e: &simulation_state::store::StoreError) -> Response {
+fn store_error(e: &policy_state::store::StoreError) -> Response {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
         format!("store error: {e}"),
@@ -313,7 +311,7 @@ fn open_store_error(reason: &str) -> Response {
 
 // ---------- /transactions ----------
 
-/// One row in the response. Fields mirror `simulation_db::DeltaRow` but
+/// One row in the response. Fields mirror `policy_db::DeltaRow` but
 /// JSON-shaped fields are deserialized so the client doesn't have to
 /// double-parse. `realized_delta` is omitted when null.
 #[derive(Serialize)]
@@ -335,7 +333,6 @@ struct TxRow {
 }
 
 /// `GET /transactions?wallet=<address>&limit=<n>` — transaction lifecycle log.
-///
 /// State deltas are no longer stored in the policy server's database. The
 /// endpoint stays present for dashboard compatibility and returns an empty
 /// collection until a dedicated lifecycle read model is reintroduced.

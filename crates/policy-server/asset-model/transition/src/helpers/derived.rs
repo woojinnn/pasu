@@ -5,16 +5,12 @@
 //! during state walks. Reducers call them inline when a write to a primitive
 //! invalidates a derived value (e.g. supplying USDC to Aave changes the
 //! account's `health_factor`).
-//!
 //! ## Decimal arithmetic
-//!
-//! `simulation_state::primitives::Decimal` is a `String` newtype — safe for
+//! `policy_state::primitives::Decimal` is a `String` newtype — safe for
 //! transport / serde but lacking arithmetic. We bridge to
 //! [`rust_decimal::Decimal`] for the math (parse → arithmetic → format) so
 //! financial precision is preserved (no `f64` rounding artifacts).
-//!
 //! ## Price injection
-//!
 //! `LendingAccount::collaterals` / `debts` carry only `(TokenRef, U256)` —
 //! USD prices and liquidation thresholds live in the surrounding
 //! `BorrowLiveInputs` / `SupplyLiveInputs` (`asset_price_usd`, `reserve_state`).
@@ -24,10 +20,10 @@
 
 use std::str::FromStr;
 
+use policy_state::position::{LendingAccount, PerpPosition, PerpSide};
+use policy_state::primitives::{Decimal, Price, SignedI256, Time, U256};
+use policy_state::token::TokenRef;
 use rust_decimal::Decimal as RustDecimal;
-use simulation_state::position::{LendingAccount, PerpPosition, PerpSide};
-use simulation_state::primitives::{Decimal, Price, SignedI256, Time, U256};
-use simulation_state::token::TokenRef;
 
 use crate::error::{ReducerError, ReducerResult};
 
@@ -35,7 +31,7 @@ use crate::error::{ReducerError, ReducerResult};
 // Decimal conversion helpers
 // ---------------------------------------------------------------------------
 
-/// Parse a `simulation_state::Decimal` (String newtype) into a
+/// Parse a `policy_state::Decimal` (String newtype) into a
 /// `rust_decimal::Decimal` for arithmetic. Returns `Invariant` on parse
 /// failure — the string should have been validated at construction time.
 fn parse_decimal(d: &Decimal) -> ReducerResult<RustDecimal> {
@@ -57,7 +53,7 @@ fn u256_to_decimal(amount: U256) -> ReducerResult<RustDecimal> {
         .map_err(|e| ReducerError::Invariant(format!("U256 {s} exceeds rust_decimal range: {e}")))
 }
 
-/// Render a `rust_decimal::Decimal` back into the `simulation_state::Decimal`
+/// Render a `rust_decimal::Decimal` back into the `policy_state::Decimal`
 /// String newtype using its canonical (no-trailing-zero) form.
 fn decimal_to_state(d: RustDecimal) -> Decimal {
     Decimal::new(d.normalize().to_string())
@@ -101,24 +97,19 @@ const HF_INFINITY: &str = "999999999";
 
 /// Recompute `LendingAccount::health_factor` from its `collaterals` and
 /// `debts` plus current oracle prices.
-///
 /// PDF §5 formula:
 /// ```text
 ///   HF = Σ(collateral_i.amount × collateral_i.price_usd × LT_i_bp / 10_000)
 ///        ────────────────────────────────────────────────────────────────
 ///                  Σ(debt_j.amount × debt_j.price_usd)
 /// ```
-///
 /// `account.collaterals` / `debts` only carry `(TokenRef, U256)` — USD prices
 /// and per-asset liquidation thresholds (in basis points) must be injected
 /// from the surrounding `BorrowLiveInputs::reserve_state` /
 /// `asset_price_usd` `LiveField`s. The caller assembles the parallel slices.
-///
 /// Returns the sentinel `HF_INFINITY` when total debt is zero (Aave's
 /// `type(uint256).max` analogue).
-///
 /// # Errors
-///
 /// Returns `Invariant` if a referenced price or LT is missing from the
 /// inject tables, or if a price string fails to parse.
 pub fn recompute_health_factor(
@@ -153,20 +144,16 @@ pub fn recompute_health_factor(
 }
 
 /// Recompute `LendingAccount::ltv` from current collateral / debt USD.
-///
 /// PDF §5 formula:
 /// ```text
 ///   LTV = Σ(debt_j.amount × debt_j.price_usd)
 ///         ──────────────────────────────────────
 ///         Σ(collateral_i.amount × collat_i.price_usd)
 /// ```
-///
 /// Returns `Decimal::zero()` when total debt is zero (no risk; LTV trivially
 /// 0). Returns `Invariant` when total *collateral* is zero but debt is not
 /// (a degenerate state that the reducer should never produce).
-///
 /// # Errors
-///
 /// Returns `Invariant` if a referenced price is missing, fails to parse, or
 /// if the account has debt against zero collateral.
 pub fn recompute_ltv(
@@ -205,7 +192,6 @@ pub fn recompute_ltv(
 // ---------------------------------------------------------------------------
 
 /// Recompute `PerpPosition::unrealized_pnl` from entry / mark / size.
-///
 /// PDF §5 formula (long):
 /// ```text
 ///   pnl = size_base × (mark_price - entry_price)
@@ -215,15 +201,12 @@ pub fn recompute_ltv(
 /// size unit cancellation). `size_base` carries the base-asset decimals; the
 /// reducer wires it raw without re-scaling, matching how `notional_usd` is
 /// emitted by the venue.
-///
 /// Returns `SignedI256` — `rust_decimal`'s signed result is rendered as an
 /// integer (mantissa-only, post-truncation) since `SignedI256` cannot carry
 /// fractional units. For the typical USDC-quoted perp this means `PnL` is
 /// rounded toward zero at the 1-wei boundary, identical to how venues book
 /// realized `PnL`.
-///
 /// # Errors
-///
 /// Returns `Invariant` if `entry_price` / `mark_price` fail to parse, if the
 /// `size_base` exceeds `rust_decimal` range (~7.9e28), or if the final
 /// result overflows `i128` (the intermediate type before `SignedI256`).
@@ -254,7 +237,6 @@ pub fn recompute_perp_pnl(
 
 /// Recompute `PerpPosition::liq_price` from collateral, size, and
 /// (implicit) venue margin params.
-///
 /// Simple fallback formula (PDF §5):
 /// ```text
 ///   liq_price = entry_price ∓ (free_margin / size_base)
@@ -263,15 +245,12 @@ pub fn recompute_perp_pnl(
 /// of collateral amounts treated 1-USD-each — venue-accurate calculation
 /// (mark-based margin balance + maintenance ratio) lives in
 /// `effect/perp/<venue>.rs` and overrides this fallback.
-///
 /// Returns `Ok(None)` when `size_base == 0` (no position → no liquidation),
 /// matching how venues mark a fully closed slot. Returns
 /// `Ok(Some(Decimal::zero()))` when the computed price would go negative
 /// (long position with overwhelming collateral) — clipped at zero since
 /// `liq_price` cannot be negative.
-///
 /// # Errors
-///
 /// Returns `Invariant` if `entry_price` fails to parse, if collateral /
 /// `size_base` exceed `rust_decimal` range, or if any internal arithmetic
 /// produces a non-finite intermediate.
@@ -311,12 +290,12 @@ pub fn recompute_liq_price(position: &PerpPosition, _now: Time) -> ReducerResult
 #[cfg(test)]
 mod tests {
     use super::*;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::lending::LendingAccount;
+    use policy_state::position::perp::{MarginMode, PerpPosition, PerpSide};
+    use policy_state::primitives::{Address, ChainId, MarketRef, VenueRef};
+    use policy_state::token::{RateMode, TokenKey, TokenRef};
     use rust_decimal::prelude::ToPrimitive;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::lending::LendingAccount;
-    use simulation_state::position::perp::{MarginMode, PerpPosition, PerpSide};
-    use simulation_state::primitives::{Address, ChainId, MarketRef, VenueRef};
-    use simulation_state::token::{RateMode, TokenKey, TokenRef};
     use std::str::FromStr;
 
     fn usdc_ref() -> TokenRef {

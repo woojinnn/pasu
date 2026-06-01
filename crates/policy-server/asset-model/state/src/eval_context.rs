@@ -1,4 +1,4 @@
-//! `EvalContext` — metadata describing a single evaluation call.
+//! Metadata describing a single evaluation call.
 //!
 //! Not state, not an action, not a `LiveField`: it is the contextual information
 //! the caller passes to the reducer for this one evaluation.

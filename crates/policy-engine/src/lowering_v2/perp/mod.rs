@@ -4,11 +4,11 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::{
+use policy_state::position::{MarginMode, PerpSide};
+use policy_state::primitives::{MarketRef, VenueRef};
+use policy_transition::action::perp::{
     PerpAccountState, PerpAction, PerpVenue, SizeSpec, StopOrderKind, TimeInForce,
 };
-use simulation_state::position::{MarginMode, PerpSide};
-use simulation_state::primitives::{MarketRef, VenueRef};
 
 use super::common::cedar::{addr, u256_hex};
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -204,16 +204,16 @@ pub(crate) const fn stop_order_kind(kind: &StopOrderKind) -> &'static str {
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::perp::{
-        PerpAccountState, PerpPositionLive, PerpVenue, SizeSpec,
-    };
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, Price, SignedI256, Time, VenueRef, U256,
     };
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::perp::{
+        PerpAccountState, PerpPositionLive, PerpVenue, SizeSpec,
+    };
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 
@@ -467,7 +467,7 @@ pub(crate) mod test_support {
 mod tests {
     use super::*;
 
-    use simulation_state::primitives::ChainId;
+    use policy_state::primitives::ChainId;
 
     /// The merged `{ chain }` venue arm emits only `name` + `chain` (no
     /// `contract` leaks in), and the `Generic` arm adds `contract`.

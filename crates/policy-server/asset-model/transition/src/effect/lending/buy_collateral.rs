@@ -4,7 +4,7 @@
 //! yet model Comet reserve accounting or token-balance effects. Policy lowering
 //! still exposes the deterministic trade parameters for allow/deny decisions.
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::BuyCollateralAction;
 use crate::apply::Reducer;

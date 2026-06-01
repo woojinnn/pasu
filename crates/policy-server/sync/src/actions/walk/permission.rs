@@ -5,8 +5,8 @@
 
 use serde_json::Value;
 
-use simulation_reducer::action::permission::PermissionAction;
-use simulation_state::Time;
+use policy_state::Time;
+use policy_transition::action::permission::PermissionAction;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 

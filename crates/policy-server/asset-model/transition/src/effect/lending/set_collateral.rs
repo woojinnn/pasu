@@ -4,23 +4,20 @@
 //! The two `LendingAction` variants wrap the same `SetCollateralAction` struct,
 //! so a single `Reducer` impl cannot distinguish them. Dispatch in `mod.rs`
 //! calls this function with `enable = true` / `false` instead.
-//!
 //! Flow (PDF §6.7):
-//!
 //! 1. Look up the `LendingAccount` — `PositionNotFound` when missing.
 //! 2. **Enable**: noop on the collateral list itself (the asset is already
 //!    in `collaterals` from a prior supply); we update `is_isolated` as a
 //!    derived signal when the venue uses isolation mode.
 //! 3. **Disable**: reject if the asset is the *only* collateral backing
-//!    open debts (would push HF → 0). For Phase 2 we surface the disable
 //!    on a position-update only; the HF re-evaluation runs through the
 //!    sync orchestrator's `DerivedFrom` pass.
 //!
 //! The action does not change token balances — it only flips a flag on the
 //! `LendingAccount` position.
 
-use simulation_state::position::PositionKind;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::PositionKind;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::SetCollateralAction;
 use crate::error::{ReducerError, ReducerResult};
@@ -29,7 +26,6 @@ use crate::helpers;
 use super::position_id;
 
 /// Apply an enable-or-disable-collateral action against `state`.
-///
 /// `enable = true` corresponds to `LendingAction::EnableCollateral`;
 /// `enable = false` corresponds to `LendingAction::DisableCollateral`.
 pub(super) fn apply(
@@ -64,7 +60,7 @@ pub(super) fn apply(
                 // detect the now-collateral state.
                 if !la.collaterals.iter().any(|(t, _)| t == &asset) {
                     la.collaterals
-                        .push((asset.clone(), simulation_state::primitives::U256::ZERO));
+                        .push((asset.clone(), policy_state::primitives::U256::ZERO));
                 }
             } else {
                 // Disable: drop the entry. (Aave's actual disable does not
@@ -85,15 +81,15 @@ mod tests {
     use crate::action::lending::{
         LendingVenue, ReserveState, SetCollateralLiveInputs, UserLendingState,
     };
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{LendingAccount, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{LendingAccount, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, Time, VenueRef, U256,
     };
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
-    use simulation_state::PositionChange;
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
+    use policy_state::PositionChange;
     use std::str::FromStr;
 
     fn now() -> Time {

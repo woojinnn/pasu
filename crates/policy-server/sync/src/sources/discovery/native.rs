@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use simulation_state::primitives::{Address, ChainId, U256};
-use simulation_state::token::TokenKey;
+use policy_state::primitives::{Address, ChainId, U256};
+use policy_state::token::TokenKey;
 
 use crate::error::SyncError;
 use crate::fetchers::rpc::{BlockTag, RpcRouter};
@@ -13,9 +13,10 @@ use crate::fetchers::rpc::{BlockTag, RpcRouter};
 use super::DiscoveredToken;
 
 /// Fetch the native balance for `address` on `chain`. Returns a
+///
 /// `DiscoveredToken` with `TokenKey::Native` (symbol/decimals are the
-/// canonical EVM "ETH"/18 for now; per-chain overrides land when
-/// non-ETH gas tokens are supported).
+/// canonical per-chain gas-token metadata when known, or generic "GAS"/18
+/// metadata otherwise).
 pub async fn fetch_native_balance(
     router: &Arc<RpcRouter>,
     chain: &ChainId,

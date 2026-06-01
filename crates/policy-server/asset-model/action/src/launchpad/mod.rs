@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::position::VestSchedule;
-use simulation_state::primitives::{Time, U256};
+use policy_state::position::VestSchedule;
+use policy_state::primitives::{Time, U256};
 
 pub mod claim_allocation;
 pub mod claim_vested;
@@ -38,7 +38,6 @@ pub enum LaunchpadAction {
 
 impl LaunchpadAction {
     /// The action's `serde` `action` tag (e.g. `"commit"`, `"claim_vested"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]

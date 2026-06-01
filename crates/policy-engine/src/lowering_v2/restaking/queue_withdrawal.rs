@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::restaking::QueueWithdrawalAction;
+use policy_transition::action::restaking::QueueWithdrawalAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -50,9 +50,9 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use simulation_reducer::action::restaking::{QueueWithdrawalAction, RestakingAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::U256;
+    use policy_state::primitives::U256;
+    use policy_transition::action::restaking::{QueueWithdrawalAction, RestakingAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{eigenlayer_venue, onchain_meta, other};
 

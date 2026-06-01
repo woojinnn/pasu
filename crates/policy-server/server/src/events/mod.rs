@@ -1,8 +1,7 @@
 //! Real-time event subsystem.
-//!
 //! Three pieces:
 //! - [`types`]: typed `Event` enum + payloads that flow through the system.
-//! - [`bus`]: in-process broadcast channel ([`EventBus`]) tagged by user_id.
+//! - [`bus`]: in-process broadcast channel ([`EventBus`]) tagged by `user_id`.
 //! - [`sse`]: `GET /events/stream` axum handler that bridges the bus to a
 //!   per-client SSE response.
 

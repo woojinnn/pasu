@@ -1,5 +1,4 @@
 //! Event publication boundary.
-//!
 //! API handlers should publish through this trait instead of reaching directly
 //! into the local process bus. Local development still uses [`EventBus`], while
 //! cloud deployments can swap in Redis pub/sub without changing handler logic.

@@ -1,11 +1,9 @@
 //! The core simulation handler — load canonical state → simulate prediction.
-//!
 //! Given an [`EvaluateRequest`], this loads the wallet's `state_before` via the
 //! [`WalletStore`] boundary, folds each request `envelope` through
-//! [`simulation_reducer::apply`] + `apply_delta` to produce one delta per
+//! [`policy_transition::apply`] + `apply_delta` to produce one delta per
 //! action and a final predicted `state_after`, and returns the
 //! [`EvaluateResponse`] the extension's Cedar layer consumes.
-//!
 //! Important boundary: reducer deltas are *predictions* for policy evaluation,
 //! not authoritative ledger facts. Canonical wallet state is updated by sync /
 //! receipt / venue reconciliation, not by `evaluate`.
@@ -14,16 +12,15 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
-use simulation_reducer::apply;
-use simulation_reducer::error::ReducerError;
-use simulation_reducer::helpers::delta::apply_delta;
-use simulation_state::store::StoreError;
-use simulation_state::WalletStore;
+use policy_state::store::StoreError;
+use policy_state::WalletStore;
+use policy_transition::apply;
+use policy_transition::error::ReducerError;
+use policy_transition::helpers::delta::apply_delta;
 
 use crate::dto::{Diagnostic, EvaluateRequest, EvaluateResponse, PolicyRequest};
 
 /// Error surfaced by [`evaluate`].
-///
 /// `Reducer` is a *client* error (the action could not be applied to the given
 /// state — map to `422 Unprocessable Entity`); `Store` is a *server* error (the
 /// persistence layer failed — map to `500 Internal Server Error`).
@@ -66,21 +63,17 @@ impl From<StoreError> for HandlerError {
 }
 
 /// Simulates the request's action envelopes over the wallet's canonical state.
-///
 /// Loads `state_before` from `store`, applies each envelope in order through
-/// the reducer (one [`simulation_state::StateDelta`] per action), folds those
+/// the reducer (one [`policy_state::StateDelta`] per action), folds those
 /// deltas into an in-memory predicted `state_after`, and returns the
 /// [`EvaluateResponse`].
-///
 /// This function deliberately does **not** call [`WalletStore::save`] with the
 /// predicted state. A policy verdict says "this would be allowed"; it does not
 /// prove the browser extension reached the wallet confirmation screen, that the
 /// wallet signed, that an on-chain transaction landed, or that an off-chain
 /// venue accepted the request. Authoritative sync/report reconciliation owns
 /// canonical mutation.
-///
 /// # Errors
-///
 /// Returns [`HandlerError::Store`] if loading wallet state fails, or
 /// [`HandlerError::Reducer`] if any action cannot be applied to the running
 /// predicted state.
@@ -101,27 +94,19 @@ pub async fn evaluate(
         // per-envelope index lets the reducer disambiguate intra-batch effects.
         let ctx = req.eval_context.clone().with_action_index(i);
 
-        // TODO(prep): live-input refresh. Once the sync orchestrator + RPC
-        // config are wired, run
-        //   `simulation_sync::Orchestrator::refresh_action(&mut action, &state, now)`
-        // HERE — BEFORE `reducer::apply` — so each action's `live_inputs`
-        // (prices/oracle values) are fetched against the *current* running
-        // `state` and clock. That step does network IO, so it stays out until
-        // the orchestrator + RpcConfig are injected into `AppState`. For now the
-        // action's `live_inputs` are used as-supplied by the caller.
+        // `evaluate` applies the action as supplied by the caller. Canonical
+        // state freshness is handled by wallet sync/reconciliation endpoints;
+        // action-scoped network refresh belongs at the HTTP layer before this
+        // pure reducer boundary.
 
         let delta = apply(&state, action, &ctx)?;
         state = apply_delta(&state, &delta)?;
         deltas.push(delta);
     }
 
-    // TODO(prep): enrichment-call execution. `req.call_specs` (the manifest's
-    // planned enrichment calls) must be dispatched here to populate
-    // `PolicyRequest::results` keyed by `CallSpec::call_id` — the Rust
-    // equivalent of the Node.js policy-rpc host-capabilities / method-dispatch
-    // layer. That executor (method registry + per-method enrichment) does not
-    // exist in Rust yet, so `results` is empty for now and `optional` call
-    // failures are not yet surfaced as diagnostics.
+    // The browser extension owns policy and verdict evaluation. Server-side
+    // enrichment results are intentionally empty until a typed call-spec
+    // executor is introduced at the HTTP boundary.
     let results = BTreeMap::new();
 
     let note = if req.envelopes.is_empty() {
@@ -153,11 +138,11 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_reducer::action::hyperliquid_core::{HlOrderAction, HyperliquidCoreAction};
-    use simulation_reducer::{Action, ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::position::PositionKind;
-    use simulation_state::primitives::{Address, BlockHeight, ChainId, Decimal, Time};
-    use simulation_state::{RequestKind, WalletId, WalletState};
+    use policy_state::position::PositionKind;
+    use policy_state::primitives::{Address, BlockHeight, ChainId, Decimal, Time};
+    use policy_state::{RequestKind, WalletId, WalletState};
+    use policy_transition::action::hyperliquid_core::{HlOrderAction, HyperliquidCoreAction};
+    use policy_transition::{Action, ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::dto::EvaluateRequest;
     use crate::store::InMemoryWalletStore;
@@ -187,7 +172,7 @@ mod tests {
         EvaluateRequest {
             wallet_id: sample_wallet_id(),
             envelopes: Vec::new(),
-            eval_context: simulation_state::EvalContext::new(
+            eval_context: policy_state::EvalContext::new(
                 ChainId::ethereum_mainnet(),
                 Time::from_unix(1_700_000_000),
                 RequestKind::Transaction,

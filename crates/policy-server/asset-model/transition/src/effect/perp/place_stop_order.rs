@@ -2,7 +2,6 @@
 //! trigger order.
 //!
 //! ## Stop kind dispatch
-//!
 //! Maps the four `StopOrderKind` variants to `PerpOrderKind`:
 //!   - `StopMarket` → `PerpOrderKind::StopMarket`
 //!   - `StopLimit` → `PerpOrderKind::StopLimit` (requires `limit_price`)
@@ -10,9 +9,7 @@
 //!   - `TakeProfitLimit` → `PerpOrderKind::StopLimit` (limit-flavored TP
 //!     groups under the same orderbook lane on most venues; UI / policy
 //!     can still distinguish via the source action)
-//!
 //! ## Trigger price validation
-//!
 //! Validates the trigger price is on the correct side of the current mark:
 //!   - `StopMarket` / `StopLimit` (Long): trigger < mark (stop-loss below entry).
 //!     For Short: trigger > mark.
@@ -22,11 +19,11 @@
 //! Wrong-side triggers fire immediately on submission — venues reject them
 //! before they reach the orderbook, so we surface `Invariant` upfront.
 
-use simulation_state::pending::{
+use policy_state::pending::{
     AssetCommitment, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
 };
-use simulation_state::position::PerpSide;
-use simulation_state::{EvalContext, PendingChange, StateDelta, WalletState};
+use policy_state::position::PerpSide;
+use policy_state::{EvalContext, PendingChange, StateDelta, WalletState};
 
 use crate::action::perp::{PlaceStopOrderAction, StopOrderKind};
 use crate::apply::Reducer;
@@ -87,7 +84,6 @@ impl Reducer for PlaceStopOrderAction {
             &self.trigger_price,
         );
         // PerpVenueOrder.price holds the trigger; for *Limit variants we
-        // could overload the `price` slot. Phase 2 keeps it simple by
         // storing the trigger; downstream sees the order_kind tag for
         // distinguishing.
         let pending = PendingTx {
@@ -124,12 +120,10 @@ impl Reducer for PlaceStopOrderAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::pending::PerpOrderKind;
-    use simulation_state::primitives::{
-        Address, ChainId, Decimal, MarketRef, Time, VenueRef, U256,
-    };
-    use simulation_state::wallet::WalletId;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::pending::PerpOrderKind;
+    use policy_state::primitives::{Address, ChainId, Decimal, MarketRef, Time, VenueRef, U256};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{PerpAccountState, PerpVenue, PlaceStopLiveInputs, SizeSpec};
@@ -139,7 +133,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

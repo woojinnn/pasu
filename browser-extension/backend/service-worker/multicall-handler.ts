@@ -38,7 +38,7 @@ import type { DeclarativeRouteV3Outcome } from "./adapter-loader/declarative-rou
 
 // ───────────────────────────────────────────────────────────────────────────
 // v3 ActionBody shapes — minimal subset consumed by the handler.
-// Full schema lives in `simulation_reducer::action`. We don't redeclare
+// Full schema lives in `policy_transition::action`. We don't redeclare
 // every variant here; the handler only inspects `domain` discriminator
 // and `actions` recursion for Multicall.
 // ───────────────────────────────────────────────────────────────────────────

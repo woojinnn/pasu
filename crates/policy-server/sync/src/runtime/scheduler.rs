@@ -1,18 +1,9 @@
-//! Scheduler — 백그라운드에서 주기적으로 orchestrator.refresh 호출.
-//!
-//! Sync orchestrator 는 stateless 라 wallet 목록과 wallet load/save 는 호출자가
-//! [`WalletStore`] trait 으로 제공. DB 와 직접 결합 회피 — `simulation-db` 가
-//! 그 trait 을 impl 해서 주입.
-//!
-//! tick 마다 `list_wallets()` → 각각 load → refresh → save.
-//! 실패한 wallet 은 errors 에 누적, 전체 루프는 멈추지 않음.
-
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tokio::sync::watch;
 
-use simulation_state::{Time, WalletStore};
+use policy_state::{Time, WalletStore};
 
 use crate::error::SyncError;
 use crate::orchestrator::{Orchestrator, RefreshReport};
@@ -20,7 +11,6 @@ use crate::orchestrator::{Orchestrator, RefreshReport};
 #[derive(Clone, Debug)]
 pub struct SchedulerConfig {
     pub tick_interval: Duration,
-    /// 한 tick 안에서 같은 wallet 을 다시 처리하지 않도록 batch size 제한.
     pub max_wallets_per_tick: usize,
     /// Refresh plain facts such as block heights, balances, and allowances.
     pub sync_primitives: bool,
@@ -58,7 +48,6 @@ pub struct Scheduler {
     orchestrator: Arc<Orchestrator>,
     store: Arc<dyn WalletStore>,
     config: SchedulerConfig,
-    /// shutdown 신호.
     stop: watch::Sender<bool>,
 }
 
@@ -77,7 +66,6 @@ impl Scheduler {
         }
     }
 
-    /// 한 tick 만 수동 실행 (테스트 / on-demand 용).
     pub async fn tick_once(&self) -> Result<TickReport, SyncError> {
         let wallets = self.store.list_wallets().await?;
         let mut report = TickReport::default();
@@ -170,13 +158,12 @@ impl Scheduler {
         Ok(report)
     }
 
-    /// 무한 루프. `stop_handle()` 으로 종료 가능.
     pub async fn run_forever(&self) -> Result<(), SyncError> {
         let mut stop_rx = self.stop.subscribe();
         loop {
             tokio::select! {
                 () = tokio::time::sleep(self.config.tick_interval) => {
-                    let _ = self.tick_once().await; // 에러는 tick report 에 누적, 로그 X
+                    let _ = self.tick_once().await;
                 }
                 changed = stop_rx.changed() => {
                     if changed.is_ok() && *stop_rx.borrow() {
@@ -199,7 +186,6 @@ fn unix_now() -> u64 {
         .map_or(0, |d| d.as_secs())
 }
 
-// `RefreshReport` 가 build 에 안 쓰이는 경고 회피 (export 보존).
 #[allow(dead_code)]
 fn _refresh_report_keep() -> RefreshReport {
     RefreshReport::default()
@@ -212,8 +198,8 @@ mod tests {
     use std::sync::Mutex;
 
     use async_trait::async_trait;
-    use simulation_state::store::StoreError;
-    use simulation_state::{Address, ChainId, WalletId, WalletState};
+    use policy_state::store::StoreError;
+    use policy_state::{Address, ChainId, WalletId, WalletState};
 
     struct MemStore {
         wallets: Mutex<HashMap<WalletId, WalletState>>,
@@ -242,7 +228,6 @@ mod tests {
     }
 
     fn mk_scheduler() -> Scheduler {
-        // dummy orchestrator (in-memory state 만 다루도록 router 는 publicnode)
         let toml = r#"
 [chains."eip155:1"]
 multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"

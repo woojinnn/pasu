@@ -5,7 +5,7 @@
 //! (`oracle`, `portfolio`, `approvals`, `stat_windows`).
 //!
 //! The active action-model pipeline enters through
-//! `simulation_reducer::action::ActionBody`; these types remain here because
+//! `policy_transition::action::ActionBody`; these types remain here because
 //! the host capability traits speak in terms of `Token`/`AmountSpec` for
 //! oracle valuation and portfolio accounting.
 //!

@@ -13,36 +13,36 @@
 
 use wasm_bindgen::prelude::*;
 
-use simulation_reducer::action::{
-    Action, ActionBody, ActionMeta, ActionNature, AirdropAction, AmmAction, Eip712Domain,
-    LaunchpadAction, LendingAction, PermissionAction, PerpAction, TokenAction,
-};
-use simulation_state::approval::{AllowanceSpec, ApprovalSet, Permit2Allowance};
-use simulation_state::delta::{
+use policy_state::approval::{AllowanceSpec, ApprovalSet, Permit2Allowance};
+use policy_state::delta::{
     ApprovalScope, PendingChange, PendingRemoveReason, PositionChange, PositionPatch, StateDelta,
     TokenChange,
 };
-use simulation_state::eval_context::{EvalContext, RequestKind, SimulationMode};
-use simulation_state::live_field::{
+use policy_state::eval_context::{EvalContext, RequestKind, SimulationMode};
+use policy_state::live_field::{
     AuthSpec, Confidence, DataSource, FieldRef, LiveField, OracleProvider, PendingFieldName,
     PositionFieldName, TokenFieldName,
 };
-use simulation_state::pending::{
+use policy_state::pending::{
     AssetCommitment, NonceKey, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
     PerpOrderKind,
 };
-use simulation_state::position::{
+use policy_state::position::{
     AirdropClaim, ClaimStatus, LaunchpadAllocation, LendingAccount, MarginMode, MerkleProof,
     PerpPosition, PerpSide, Position, PositionKind, VestCurve, VestSchedule, VestingSchedule,
 };
-use simulation_state::primitives::{
+use policy_state::primitives::{
     BlockHeight, ChainId, Decimal, Duration, MarketRef, PoolRef, ProtocolRef, Time, VenueRef,
 };
-use simulation_state::token::{
+use policy_state::token::{
     Balance, BaseCategory, FiatCurrency, LpShape, NoteKind, PegKind, PegTarget, RangeSpec,
     RateMode, RebaseForm, ShareForm, TokenHolding, TokenKey, TokenKind, TokenRef, UnlockSchedule,
 };
-use simulation_state::wallet::{WalletId, WalletState};
+use policy_state::wallet::{WalletId, WalletState};
+use policy_transition::action::{
+    Action, ActionBody, ActionMeta, ActionNature, AirdropAction, AmmAction, Eip712Domain,
+    LaunchpadAction, LendingAction, PermissionAction, PerpAction, TokenAction,
+};
 
 /// Macro: declare a `#[wasm_bindgen]` identity fn that pins one type into
 /// the generated `.d.ts` output. Each fn name is mangled so there are no

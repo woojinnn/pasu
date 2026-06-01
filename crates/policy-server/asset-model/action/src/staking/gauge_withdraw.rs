@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::U256;
+use policy_state::primitives::U256;
 
 use super::StakeVenue;
 

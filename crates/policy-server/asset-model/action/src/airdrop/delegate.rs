@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, U256};
-use simulation_state::token::TokenRef;
-use simulation_state::LiveField;
+use policy_state::primitives::{Address, U256};
+use policy_state::token::TokenRef;
+use policy_state::LiveField;
 
 /// Delegate governance voting power of a governance token (e.g. UNI, COMP, ENS) to another address.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

@@ -3,9 +3,9 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::launchpad::{LaunchpadAction, SaleState};
-use simulation_state::position::{VestCurve, VestSchedule};
-use simulation_state::primitives::ProtocolRef;
+use policy_state::position::{VestCurve, VestSchedule};
+use policy_state::primitives::ProtocolRef;
+use policy_transition::action::launchpad::{LaunchpadAction, SaleState};
 
 use super::common::cedar::u256_hex;
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -143,13 +143,13 @@ fn lower_vest_curve(curve: &VestCurve) -> Value {
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::launchpad::SaleState;
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::position::{VestCurve, VestSchedule};
-    use simulation_state::primitives::{Address, ChainId, ProtocolRef, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::position::{VestCurve, VestSchedule};
+    use policy_state::primitives::{Address, ChainId, ProtocolRef, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::LiveField;
+    use policy_transition::action::launchpad::SaleState;
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 
@@ -329,8 +329,8 @@ pub(crate) mod test_support {
 mod tests {
     use super::*;
 
-    use simulation_state::position::VestCurve;
-    use simulation_state::primitives::{ChainId, ProtocolRef, Time, U256};
+    use policy_state::position::VestCurve;
+    use policy_state::primitives::{ChainId, ProtocolRef, Time, U256};
 
     /// A `ProtocolRef` with every optional present emits all four fields; the
     /// off-chain (`chain == None`) case omits `chain`.

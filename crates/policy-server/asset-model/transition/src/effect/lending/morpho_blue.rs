@@ -1,17 +1,12 @@
 //! Morpho Blue venue math — immutable per-market lending primitive.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::MorphoBlue`. Not a `Reducer` impl.
-//!
 //! Per-market state; `market_id = keccak((loan, collat, oracle, irm, lltv))`.
 //! The interest-rate model (IRM) is a separate contract whose state lives
 //! outside the market itself.
-//!
 //! ## Shares math
-//!
 //! Morpho Blue uses [OpenZeppelin's ERC4626 "virtual offset" pattern](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/SharesMathLib.sol)
 //! to prevent share-price manipulation:
-//!
 //! ```text
 //!   VIRTUAL_SHARES = 1e6
 //!   VIRTUAL_ASSETS = 1
@@ -20,18 +15,15 @@
 //!   assets_to_shares_down(a)  = a * (totalShares + VIRTUAL_SHARES)
 //!                              / (totalAssets + VIRTUAL_ASSETS)
 //! ```
-//!
 //! We implement the `Down` variants (favours the protocol on supply / withdraw
 //! computations). The `Up` variants used for accounting-side defensiveness
 //! can be added once a caller needs them.
 
-// Phase 2 stubs: per-action wiring lands in a later commit in the same batch.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
+use policy_state::primitives::{Decimal, U256};
 
 // `ReserveState` is reused here as a stand-in until a Morpho-Blue-specific
-// market state struct is added in Phase 2.
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
 
@@ -89,7 +81,6 @@ pub(super) fn assets_to_shares(
 }
 
 /// Query the market's IRM contract for the current per-year (APR) borrow rate.
-///
 /// **Deferred** — Morpho Blue's IRM (e.g. the Adaptive Curve IRM) is a
 /// separate contract whose state is not part of the on-chain market struct.
 /// The sync orchestrator must fetch the IRM state into a dedicated

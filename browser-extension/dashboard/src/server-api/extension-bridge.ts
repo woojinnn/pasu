@@ -8,8 +8,8 @@
  * SW handler's `{ ok, data | error }` envelope.
  *
  * Why a thin module?
- * - The Phase-N refactor moves verdict / execution-report storage off the
- *   simulation-server and into `chrome.storage.local`. The dashboard talks to
+ * - Verdict / execution-report storage lives outside the
+ *   policy-server and into `chrome.storage.local`. The dashboard talks to
  *   the SW for those reads — the bridge is the only available channel
  *   (`chrome.runtime.sendMessage` isn't reachable from a regular web page).
  * - Keeps the dashboard's React Query hooks unchanged: they still call

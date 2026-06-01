@@ -1,17 +1,15 @@
-//! Phase 3 — `/dashboard/summary` + `/wallets/:addr/approvals?with_risk=true`.
-
 use std::str::FromStr;
 use std::sync::Arc;
 
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
-use simulation_server::auth::jwt::{issue, TokenType};
-use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_state::approval::{AllowanceSpec, ApprovalSet};
-use simulation_state::primitives::{Address, ChainId, Time, U256};
-use simulation_state::token::{Balance, TokenHolding, TokenKey, TokenKind};
-use simulation_state::{WalletId, WalletState, WalletStore};
-use simulation_sync::{Orchestrator, SyncConfig};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_server::app::{build_router, AppState};
+use policy_server::auth::jwt::{issue, TokenType};
+use policy_server::events::{EventBus, LocalEventPublisher};
+use policy_state::approval::{AllowanceSpec, ApprovalSet};
+use policy_state::primitives::{Address, ChainId, Time, U256};
+use policy_state::token::{Balance, TokenHolding, TokenKey, TokenKind};
+use policy_state::{WalletId, WalletState, WalletStore};
+use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -41,7 +39,7 @@ async fn spawn_server() -> (
         publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
-        coingecko: simulation_sync::CoinGeckoClient::new(),
+        coingecko: policy_sync::CoinGeckoClient::new(),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -56,8 +54,8 @@ async fn spawn_server() -> (
 const WALLET_ADDR: &str = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045";
 
 fn usdc_holding_with_value(amount_units: u128, price: &str) -> TokenHolding {
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::primitives::{Duration, Price};
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::primitives::{Duration, Price};
 
     let key = TokenKey::Erc20 {
         chain: ChainId::ethereum_mainnet(),

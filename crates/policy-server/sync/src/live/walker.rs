@@ -1,19 +1,5 @@
-//! State walker — `WalletState` 를 traverse 하면서 `LiveField` 위치/소스를 모두 수집.
-//!
-//! 각 `LiveField` 는 _location_ (어디 박혀있는지) + _source_ (어디서 가져오나) + _staleness_
-//! 정보를 들고 있다. orchestrator 가 이 walker 결과 → batcher 로 묶어 → fetcher 로 fetch.
-//!
-//! "stale" 판정은 `LiveField.is_stale(now)` 활용. ttl 없으면 안전하게 stale 로 봄
-//! (한 번도 sync 안 된 거 포함).
+use policy_state::{DataSource, LiveField, Time, WalletState};
 
-use simulation_state::{DataSource, LiveField, Time, WalletState};
-
-/// `LiveField` 가 어디에 있는지의 경로.
-///
-/// 두 종류:
-/// * `Wallet*` — `WalletState` 안의 `LiveField` (sync 주기/event-trigger 로 갱신)
-/// * `Action { ix, slot }` — `Action.body.*.live_inputs` 안의 `LiveField`
-///   (정책 평가 직전 [`Orchestrator::refresh_action`] 으로 갱신)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FieldLocation {
     // ───── Wallet side ─────
@@ -50,17 +36,12 @@ pub enum FieldLocation {
 
     // ───── Action side ─────
     /// `Action.body.*.live_inputs.<slot>`
-    /// `action_index` 는 `Multicall` 안의 자식 위치 (단일 액션이면 0).
     Action {
         action_index: usize,
         slot: ActionSlot,
     },
 }
 
-/// `Action.body.*.live_inputs` 안의 슬롯 식별자.
-///
-/// 새 액션 wire-up 시 variant 추가 (컴파일러가 walk/apply 양쪽의 match 누락을 잡음).
-/// 명명 규칙: `{Domain}{Action}{FieldName}`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ActionSlot {
     // ───────── Token ─────────
@@ -185,11 +166,9 @@ pub enum ActionSlot {
 pub struct StaleField {
     pub location: FieldLocation,
     pub source: DataSource,
-    /// 마지막 sync 시각 (디버깅용).
     pub synced_at: Time,
 }
 
-/// 한 walk 의 결과 통계.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct WalkStats {
     pub total_live_fields: usize,
@@ -197,7 +176,6 @@ pub struct WalkStats {
     pub fresh_count: usize,
 }
 
-/// `state` 안의 모든 `LiveField` 를 수집. 이 중 stale 한 것만 반환.
 #[must_use]
 pub fn walk_stale(state: &WalletState, now: Time) -> (Vec<StaleField>, WalkStats) {
     let mut stale = Vec::new();
@@ -224,7 +202,7 @@ pub fn walk_stale(state: &WalletState, now: Time) -> (Vec<StaleField>, WalkStats
 
     // 2. positions
     for pos in &state.positions {
-        use simulation_state::PositionKind;
+        use policy_state::PositionKind;
         match &pos.kind {
             PositionKind::LendingAccount(la) => {
                 check_and_push(
@@ -302,7 +280,6 @@ pub fn walk_stale(state: &WalletState, now: Time) -> (Vec<StaleField>, WalkStats
                     },
                 );
             }
-            // Airdrop / Launchpad / Vesting 은 LiveField 없음
             _ => {}
         }
     }
@@ -330,8 +307,7 @@ fn check_and_push<T>(
     }
 }
 
-/// 가격 (price) 같은 구체 타입의 `LiveField`.
-fn is_field_stale(f: &LiveField<simulation_state::Price>, now: Time) -> bool {
+fn is_field_stale(f: &LiveField<policy_state::Price>, now: Time) -> bool {
     f.is_stale(now)
 }
 
@@ -343,7 +319,7 @@ fn is_field_stale_generic<T>(f: &LiveField<T>, now: Time) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::{
+    use policy_state::{
         Address, Balance, BaseCategory, ChainId, DataSource, Decimal, Duration, FiatCurrency,
         LiveField, OracleProvider, PegTarget, Time, TokenHolding, TokenKey, TokenKind, WalletId,
         WalletState,
@@ -396,11 +372,9 @@ mod tests {
         let addr = Address::from_str("0x0000000000000000000000000000000000000001").unwrap();
         let mut state = WalletState::new(WalletId::new(addr, [ChainId::ethereum_mainnet()]));
 
-        // 신선 (synced 30s 전, ttl 60s)
         let (k1, h1) = mk_usdc_holding(1_738_000_000);
         state.tokens.insert(k1, h1);
 
-        // stale (synced 1000s 전, ttl 60s)
         let usdt_addr = Address::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap();
         let k2 = TokenKey::Erc20 {
             chain: ChainId::ethereum_mainnet(),
@@ -419,7 +393,6 @@ mod tests {
 
         match &stale[0].location {
             FieldLocation::TokenPrice { token_key_json } => {
-                // alloy Address 의 serde 직렬화 결과 (checksum or lower 대소문자) 모두 허용.
                 let lower = token_key_json.to_lowercase();
                 assert!(
                     lower.contains("dac17"),

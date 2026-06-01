@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::lending::RepayAction;
+use policy_transition::action::lending::RepayAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -56,10 +56,10 @@ pub(crate) fn lower(action: &RepayAction, ctx: &LowerCtx<'_>) -> Result<LoweredA
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::lending::{LendingAction, RepayAction, RepayLiveInputs};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, U256};
-    use simulation_state::token::RateMode;
+    use policy_state::primitives::{Address, U256};
+    use policy_state::token::RateMode;
+    use policy_transition::action::lending::{LendingAction, RepayAction, RepayLiveInputs};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{live, onchain_meta, reserve_state, usdc, user_state, venue};
 

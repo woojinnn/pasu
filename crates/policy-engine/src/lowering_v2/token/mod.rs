@@ -6,7 +6,7 @@
 //! no domain-local helper (the `RevokeScope` lowering is single-use and lives
 //! private in the `revoke_approval` leaf).
 
-use simulation_reducer::action::token::TokenAction;
+use policy_transition::action::token::TokenAction;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
@@ -47,11 +47,11 @@ pub(crate) fn lower(action: &TokenAction, ctx: &LowerCtx<'_>) -> Result<LoweredA
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 

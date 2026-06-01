@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::launchpad::WithdrawCommitAction;
+use policy_transition::action::launchpad::WithdrawCommitAction;
 
 use super::super::common::cedar::u256_hex;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -48,12 +48,12 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::launchpad::{
+    use policy_state::primitives::U256;
+    use policy_state::LiveField;
+    use policy_transition::action::launchpad::{
         LaunchpadAction, SaleState, WithdrawCommitAction, WithdrawCommitLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::U256;
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{now, platform, sale_state, sale_state_minimal, src};
 
@@ -62,7 +62,7 @@ mod tests {
     fn withdraw_with(
         amount: Option<U256>,
         sale: SaleState,
-    ) -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    ) -> (ActionBody, policy_transition::action::ActionMeta) {
         let action = WithdrawCommitAction {
             platform: platform(),
             sale_id: "sale-42".into(),
@@ -80,7 +80,7 @@ mod tests {
 
     /// A representative on-chain `WithdrawCommit`: an explicit withdraw amount,
     /// the withdrawable balance, and the current (full) `SaleState`.
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         withdraw_with(Some(U256::from(250_000_000u64)), sale_state())
     }
 

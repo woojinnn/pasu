@@ -1,4 +1,4 @@
-//! `WalletState` — on-chain fact snapshot of a single wallet. spec §3.
+//! On-chain fact snapshot for a single wallet.
 //!
 //! The Sync Orchestrator refreshes the `LiveField`s, and the Reducer mutates
 //! the state in place when applying an action.
@@ -16,7 +16,7 @@ use crate::token::{TokenHolding, TokenKey};
 /// Wallet identity: an account address plus the set of tracked chains.
 ///
 /// On EVM the address is shared across chains, so a single `Address` suffices.
-/// Adding non-EVM chains (e.g. Solana) would require a federated identity — future work.
+/// Non-EVM chains require a federated identity model.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WalletId {

@@ -7,7 +7,7 @@
 //! decode-path representation (`ActionBody`) and the Cedar policy layer are the
 //! onboarding scope; balance/exchange-rate modeling is a later enrichment.
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::yield_::{
     AddMarketLiquidityAction, CancelLimitOrderAction, ClaimYieldAction, MintPyAction, MintSyAction,

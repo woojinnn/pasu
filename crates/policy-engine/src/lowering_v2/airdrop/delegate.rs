@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::airdrop::DelegateGovernanceAction;
+use policy_transition::action::airdrop::DelegateGovernanceAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -46,19 +46,19 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::airdrop::{
+    use policy_state::primitives::{Address, ChainId, U256};
+    use policy_state::LiveField;
+    use policy_transition::action::airdrop::{
         AirdropAction, DelegateGovernanceAction, DelegateLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, ChainId, U256};
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, now, onchain_meta, onchain_source, sample_token_ref,
     };
 
     /// A delegate with a current delegate set + voting power, on-chain meta.
-    fn sample_delegate() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_delegate() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let delegate = AirdropAction::Delegate(DelegateGovernanceAction {
             token: sample_token_ref(&chain),

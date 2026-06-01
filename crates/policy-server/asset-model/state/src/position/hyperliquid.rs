@@ -1,4 +1,4 @@
-//! Hyperliquid L1 account state — the off-chain ledger for one wallet.
+//! Hyperliquid L1 account state for one wallet.
 //!
 //! Wrapped by [`PositionKind::HyperliquidAccount`](super::PositionKind) and held
 //! as exactly one [`Position`](super::Position) per wallet. Unlike
@@ -13,15 +13,13 @@ use crate::primitives::{Address, Decimal};
 
 /// A wallet's entire Hyperliquid L1 account state.
 ///
-/// `Default` is implemented manually (NOT derived) because [`Decimal`] does not
-/// derive `Default` — and a hand-written impl lets `pending_outflow` default to a
-/// meaningful `"0"` (rather than an empty string) while `perp_usdc` defaults to
-/// `None` (balance not yet synced).
+/// `Default` is implemented manually because [`Decimal`] does not derive
+/// `Default`; the explicit implementation keeps `pending_outflow` at `"0"` and
+/// `perp_usdc` at `None` until a balance is synced.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct HlAccount {
     /// Perp-account USDC margin balance. Moves on withdraw / `usd_send` / fills.
-    ///
     /// `None` = balance not synced / unknown (what the reducer always produces
     /// today, since HL account Sync is out of scope). `Some(x)` = a real synced
     /// balance (only a future Sync layer sets this). The withdraw underflow guard

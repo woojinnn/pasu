@@ -1,7 +1,5 @@
 //! `TokenAction` reducers — `ERC20` / `ERC721` / `ERC1155` / `Permit2` ops.
-//!
 //! ## Time semantics
-//!
 //! Approval-side helpers (`set_erc20_allowance`, `set_for_all`, `set_nft_approve`)
 //! consume a `Time` for `AllowanceSpec::last_set_at`. We use `ctx.now` —
 //! "evaluation now" — as the timestamp, NOT `Action.meta.submitted_at`. The two
@@ -9,9 +7,7 @@
 //! `last_set_at` is a *recorded-at* slot, not a *valid-until* slot. `ctx.now`
 //! matches the convention already used by `helpers::approval` tests
 //! (`now() = Time::from_unix(1_738_000_000)`).
-//!
 //! ## Off-chain sig handling (`Erc20Permit`, `Permit2SignAllowance`)
-//!
 //! Off-chain signatures do not mutate on-chain state at the moment of signing
 //! — only when a relayer presents them. We model the signing event as a
 //! `PendingTx` with `commitment: AssetCommitment::PermitCap` so that the
@@ -22,11 +18,11 @@
 //! `sig_deadline` separately and we record it via the `signed_at` slot for
 //! audit (the broader "two deadlines" representation is a follow-up).
 
-use simulation_state::pending::{
+use policy_state::pending::{
     AssetCommitment, NonceKey, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
 };
-use simulation_state::primitives::Spender;
-use simulation_state::{DataSource, EvalContext, PendingChange, StateDelta, TokenKey, WalletState};
+use policy_state::primitives::Spender;
+use policy_state::{DataSource, EvalContext, PendingChange, StateDelta, TokenKey, WalletState};
 
 use crate::action::token::{
     Erc20ApproveAction, Erc20PermitAction, Erc20TransferAction, NftApproveAction,
@@ -341,9 +337,9 @@ impl Reducer for RevokeApprovalAction {
                 helpers::approval::set_nft_approve(
                     state,
                     &mut delta,
-                    simulation_state::primitives::Time::from_unix(0),
+                    policy_state::primitives::Time::from_unix(0),
                     nft_key,
-                    simulation_state::primitives::Address::ZERO,
+                    policy_state::primitives::Address::ZERO,
                 )?;
             }
             RevokeScope::NftSetForAll {
@@ -354,7 +350,7 @@ impl Reducer for RevokeApprovalAction {
                 helpers::approval::set_for_all(
                     state,
                     &mut delta,
-                    simulation_state::primitives::Time::from_unix(0),
+                    policy_state::primitives::Time::from_unix(0),
                     chain,
                     *contract,
                     *spender,
@@ -381,18 +377,18 @@ impl Reducer for RevokeApprovalAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::approval::AllowanceSpec;
-    use simulation_state::delta::token_change::ApprovalScope as TcApprovalScope;
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::DataSource;
-    use simulation_state::pending::{AssetCommitment, NonceKey, PendingKind};
-    use simulation_state::primitives::{Address, ChainId, Duration, Time, U256};
-    use simulation_state::token::{
+    use policy_state::approval::AllowanceSpec;
+    use policy_state::delta::token_change::ApprovalScope as TcApprovalScope;
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::DataSource;
+    use policy_state::pending::{AssetCommitment, NonceKey, PendingKind};
+    use policy_state::primitives::{Address, ChainId, Duration, Time, U256};
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::{WalletId, WalletState};
-    use simulation_state::LiveField;
+    use policy_state::wallet::{WalletId, WalletState};
+    use policy_state::LiveField;
     use std::str::FromStr;
 
     fn now() -> Time {

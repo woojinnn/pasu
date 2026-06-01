@@ -1,18 +1,17 @@
 //! Integration: `GET /events/stream` (SSE).
-//!
 //! Spawns the server, opens an SSE connection, publishes events via the
 //! shared bus, and asserts the right user receives the right events.
 //! Verifies tenant isolation — alice never sees bob's events.
 
 use std::sync::Arc;
 
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
-use simulation_server::auth::jwt::{issue, TokenType};
-use simulation_server::events::types::{Event, TxConfirmed};
-use simulation_server::events::{EventBus, EventPublisher, LocalEventPublisher};
-use simulation_state::primitives::ChainId;
-use simulation_sync::{Orchestrator, SyncConfig};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_server::app::{build_router, AppState};
+use policy_server::auth::jwt::{issue, TokenType};
+use policy_server::events::types::{Event, TxConfirmed};
+use policy_server::events::{EventBus, EventPublisher, LocalEventPublisher};
+use policy_state::primitives::ChainId;
+use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -40,7 +39,7 @@ async fn spawn_server() -> (std::net::SocketAddr, EventBus) {
         publisher,
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
-        coingecko: simulation_sync::CoinGeckoClient::new(),
+        coingecko: policy_sync::CoinGeckoClient::new(),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

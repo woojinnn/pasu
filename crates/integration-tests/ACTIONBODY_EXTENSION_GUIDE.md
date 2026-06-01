@@ -215,7 +215,7 @@ mod tests {
 
 **① reducer — LiveInputs struct** · `action/<domain>/<action>.rs`
 ```rust
-use simulation_state::LiveField;   // 추가
+use policy_state::LiveField;   // 추가
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WrapLiveInputs { pub expected_wsteth: LiveField<U256> }   // non-optional
@@ -241,7 +241,7 @@ fn apply_wrap(w:&mut WrapAction, slot:&ActionSlot, value:Value, now:Time) {
 
 **③ args_resolver — calldata 인자 추출** · `sync/src/args_resolver.rs` (인자 있는 view 만)
 ```rust
-use simulation_reducer::action::liquid_staking::LiquidStakingAction;
+use policy_transition::action::liquid_staking::LiquidStakingAction;
 use crate::fetchers::decoder::encode_u256;   // encode_address/encode_u256 둘 다 이미 존재
 // resolve_args match 에:
 ActionSlot::LiquidStakingTransferSharesPooledEth => {
@@ -277,7 +277,7 @@ m.insert("expectedWsteth".into(), Value::String(u256_hex(action.live_inputs.expe
   "function":"getWstETHByStETH(uint256)", "decoder_id":"lido_wsteth_by_steth" }, "ttl_s": 30 } }
 ```
 
-**검증**: `cargo test -p simulation-reducer -p policy-engine`(serde + conformance) → `npm run check:manifest`(emit.body shape) → golden(§4d: `source.function` pin, 값 아님) → `cargo test --workspace`. ②③④ 는 catch-all 이 삼키는 silent touchpoint(§1 b′)라 누락 시 decode-error/conformance 로만 드러난다.
+**검증**: `cargo test -p policy-transition -p policy-engine`(serde + conformance) → `npm run check:manifest`(emit.body shape) → golden(§4d: `source.function` pin, 값 아님) → `cargo test --workspace`. ②③④ 는 catch-all 이 삼키는 silent touchpoint(§1 b′)라 누락 시 decode-error/conformance 로만 드러난다.
 
 ## 3. 축 1 — 새 domain 추가
 
@@ -354,12 +354,12 @@ ActionBody::OffchainExchange(a) => super::offchain_exchange::lower(a, &ctx),   /
 ## 6. 검증
 
 ```bash
-cargo test -p simulation-reducer   # action serde round-trip + effect Reducer
+cargo test -p policy-transition   # action serde round-trip + effect Reducer
 cargo test -p policy-engine        # lowering + conformance gate (assert_conforms)
 ./scripts/wasm-build.sh            # tsify .d.ts regenerate (Rust 변경 시)
 ```
 
-축 2 최소 게이트 = `cargo test -p policy-engine` 의 leaf conformance + `cargo test -p simulation-reducer`. 축 1 은 추가로 `apply.rs`/`dispatch.rs` 가 컴파일되면 최상위 dispatch 완비가 보장된다.
+축 2 최소 게이트 = `cargo test -p policy-engine` 의 leaf conformance + `cargo test -p policy-transition`. 축 1 은 추가로 `apply.rs`/`dispatch.rs` 가 컴파일되면 최상위 dispatch 완비가 보장된다.
 
 ## 7. 출처 (실측 symbol)
 

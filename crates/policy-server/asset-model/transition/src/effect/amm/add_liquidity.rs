@@ -22,20 +22,20 @@
 //!   tokens are debited at `amount_desired`. The resulting NFT's `token_id`
 //!   is assigned by the contract at mint time and is therefore unknown at
 //!   sign time, so no NFT-side [`TokenChange::Mint`] is emitted — the NFT
-//!   lands in `state.tokens` on the next sync, and Phase 2's reducer cannot
+//!   lands in `state.tokens` on the next sync, and this reducer cannot
 //!   forge a synthetic `TokenKey::Erc721 { token_id, … }` without speculating
 //!   on the post-mint id.
 //! * [`ConcentratedIncrease`](crate::action::amm::AddLiquidityParams::ConcentratedIncrease)
 //!   — `Uniswap V3` / `V4` top-up of an existing position. The pair tokens
 //!   are looked up from the NFT holding's
-//!   [`TokenKind::LpShare`](simulation_state::token::TokenKind::LpShare)
+//!   [`TokenKind::LpShare`](policy_state::token::TokenKind::LpShare)
 //!   `underlyings` (a `Concentrated` LP carries exactly two underlyings in
 //!   today's reducer scope; any other length surfaces as `Invariant`). The
 //!   liquidity / `tokensOwed` mutations on the NFT itself are not represented
 //!   today — `TokenChange` carries no variant for mutating an LP NFT's
 //!   internal `LpShape` state, and the state crate is read-only in this
 //!   sub-agent's scope. The internal liquidity update lands on the next
-//!   sync; Phase 2's reducer only models the user-visible balance delta on
+//!   sync; this reducer only models the user-visible balance delta on
 //!   the two underlyings.
 //!
 //! ## Slippage convention
@@ -55,10 +55,10 @@
 //! decode time in production, but the reducer keeps the check defensive so a
 //! malformed bundle does not silently route to a wrong-shape math path.
 
-use simulation_state::delta::TokenChange;
-use simulation_state::primitives::{Address, ChainId, SignedI256, U256};
-use simulation_state::token::{LpShape, TokenKey, TokenKind, TokenRef};
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::delta::TokenChange;
+use policy_state::primitives::{Address, ChainId, SignedI256, U256};
+use policy_state::token::{LpShape, TokenKey, TokenKind, TokenRef};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::amm::{AddLiquidityAction, AddLiquidityParams, AmmVenue};
 use crate::apply::Reducer;
@@ -240,9 +240,9 @@ fn raw_credit(delta: &mut StateDelta, key: &TokenKey, amount: U256) {
 /// `weights` field is `None` (V2 / Curve / Balancer weighted information is
 /// not synthesised reducer-side; the sync orchestrator overwrites it).
 fn pooled_lp_kind_hint(underlyings: Vec<TokenRef>) -> TokenKind {
-    use simulation_state::primitives::PoolRef;
-    use simulation_state::primitives::ProtocolRef;
-    use simulation_state::token::ShareForm;
+    use policy_state::primitives::PoolRef;
+    use policy_state::primitives::ProtocolRef;
+    use policy_state::token::ShareForm;
     TokenKind::LpShare {
         pool: PoolRef {
             protocol: ProtocolRef::new("unknown"),
@@ -363,17 +363,17 @@ impl Reducer for AddLiquidityAction {
 mod tests {
     use super::*;
     use crate::action::amm::{AddLiquidityLiveInputs, AddLiquidityParams, AmmVenue};
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{
         Address, ChainId, PoolRef, Price, ProtocolRef, Time, U128, U256,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, LpShape, PegTarget, RangeSpec, ShareForm,
         TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::amm::PoolState;

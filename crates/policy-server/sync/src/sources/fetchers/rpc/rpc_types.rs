@@ -1,12 +1,8 @@
-//! RPC 호출의 입력/출력 보조 타입.
-
 use alloy_primitives::{Address, Bytes, U256};
 use serde::{Deserialize, Serialize};
 
-/// provider 식별자 (config 의 name 필드와 일치).
 pub type ProviderName = String;
 
-/// `eth_call` 의 입력.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EthCallRequest {
     pub to: Address,
@@ -31,7 +27,6 @@ impl EthCallRequest {
     }
 }
 
-/// `block` 파라미터 — `latest` / `pending` / 구체 번호.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BlockTag {
@@ -48,7 +43,6 @@ impl BlockTag {
         Self::Latest
     }
 
-    /// JSON-RPC 의 block parameter 문자열.
     #[must_use]
     pub fn as_param(&self) -> String {
         match self {

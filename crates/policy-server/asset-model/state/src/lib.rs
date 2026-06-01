@@ -1,23 +1,12 @@
-//! `simulation-state` — Scopeball 시뮬레이터의 코어 타입 정의.
+//! Primitive wallet-state model shared by policy-server crates.
 //!
-//! 이 crate 는 **순수 타입만** 정의한다. DB / RPC / async runtime 같은 외부 IO 는
-//! 일절 가지지 않는다. 그 결과:
-//!
-//! * wasm 빌드 가능 (정책 엔진 wasm 이 그대로 사용)
-//! * `serde` 로 JSON round-trip 가능 (fixture, snapshot, 디버깅)
-//! * `simulation-db` / `simulation-reducer` / `simulation-sync` 가 모두 이 crate
-//!   를 import 해서 같은 모양을 공유
-//!
-//! 모듈 구성은 spec §3–§9 의 섹션 구조를 그대로 반영한다.
+//! This crate intentionally contains data types only. It has no database, RPC,
+//! clock, or async runtime dependency, which keeps the model portable across
+//! native tests and the browser extension's WASM boundary.
 
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
 #![deny(rustdoc::bare_urls)]
-#![allow(rustdoc::broken_intra_doc_links)]
-#![allow(rustdoc::private_intra_doc_links)]
-#![allow(rustdoc::redundant_explicit_links)]
-#![allow(unknown_lints)]
-#![allow(clippy::duration_suboptimal_units)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
 #![warn(rust_2018_idioms)]
@@ -27,28 +16,32 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::dbg_macro)]
-// CI suppression — base 작업의 의도적 디자인 (large enum 은 우리 spec, must_use
-// 부재는 builder 패턴이라 의도, missing_errors 는 phase 후순위 doc 작업).
-// 이슈 추적: pedantic/nursery 의 strict 적용은 별도 정리 PR.
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
 
+/// Approval and allowance state.
 pub mod approval;
+/// State deltas emitted by transition rules.
 pub mod delta;
+/// Evaluation context carried with each policy request.
 pub mod eval_context;
+/// Freshness-aware fields backed by external data sources.
 pub mod live_field;
+/// Pending transaction and off-chain intent tracking.
 pub mod pending;
+/// Lending, perp, launchpad, and Hyperliquid position state.
 pub mod position;
+/// Shared primitive value types.
 pub mod primitives;
+/// Serde helpers for wire-compatible primitive encodings.
 pub mod serde_helpers;
+/// Wallet state persistence abstraction.
 pub mod store;
+/// Token identity, metadata, and balance state.
 pub mod token;
+/// Top-level wallet state.
 pub mod wallet;
-
-// === 자주 쓰는 타입의 짧은 경로 re-export ===
 
 pub use approval::{AllowanceSpec, ApprovalSet, Permit2Allowance};
 pub use delta::{
@@ -85,9 +78,6 @@ pub use wallet::{ApprovalEntry, WalletId, WalletState};
 
 #[cfg(test)]
 mod smoke {
-    //! 가장 단순한 round-trip 테스트 — crate 전체가 한 덩어리로 컴파일·직렬화·역직렬화
-    //! 되는지 확인.
-
     use super::*;
     use std::str::FromStr;
 
@@ -154,7 +144,6 @@ mod smoke {
         let back: WalletState = serde_json::from_str(&json).unwrap();
         assert_eq!(state, back);
 
-        // 헬퍼 동작 확인
         assert_eq!(
             state.available_balance(&usdc_key),
             Some(U256::from(10_000_000_000u64))
@@ -163,7 +152,7 @@ mod smoke {
         // LiveField freshness
         let p = state.tokens[&usdc_key].price_usd.as_ref().unwrap();
         assert!(p.fresh_within(Time::from_unix(1_738_000_010), Duration::from_secs(60)));
-        assert!(p.is_stale(Time::from_unix(1_738_001_000))); // 1000s 후라 ttl 초과
+        assert!(p.is_stale(Time::from_unix(1_738_001_000)));
     }
 
     #[test]

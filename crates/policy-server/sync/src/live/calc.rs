@@ -1,20 +1,11 @@
-//! `DerivedFrom` `LiveField` 의 계산 함수 등록부.
-//!
-//! 각 `calc_id` 마다 함수 하나. 입력은 `FieldRef` 가 가리키는 다른 `LiveField` 들의
-//! 현재 값 (또는 state 의 직접 필드), 출력은 새 value.
-//!
-//! 위상정렬은 `topo` 모듈이 담당 — 여기는 단순 함수 registry.
-
 use std::collections::HashMap;
 
 use serde_json::Value;
 
-use simulation_state::WalletState;
+use policy_state::WalletState;
 
 use crate::error::SyncError;
 
-/// 한 calc 호출의 컨텍스트 — `DerivedFrom` 의 inputs 값들을 미리 resolve 한 결과 +
-/// 전체 state (필요 시 직접 참조).
 pub struct CalcContext<'a> {
     pub state: &'a WalletState,
     pub inputs: Vec<Value>,
@@ -60,16 +51,10 @@ impl CalcRegistry {
     }
 }
 
-// ============ Built-in calcs (stub 수준) ============
-
 /// Aave Health Factor = sum(collateral * liqThreshold) / sum(debt)
-///
-/// inputs 순서 가정 (DerivedFrom.inputs 가 그 순서로 들어옴):
 ///   0: total collateral (in USD), decimal-string
 ///   1: total debt (in USD), decimal-string
 ///   2: liquidation threshold (0..1), decimal-string
-///
-/// 결과: HF decimal-string. debt 가 0 이면 매우 큰 값 ("1e18").
 fn aave_hf(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
     if ctx.inputs.len() < 3 {
         return Err(SyncError::DeriveFailed {
@@ -90,7 +75,6 @@ fn aave_hf(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
 }
 
 /// Perp unrealized `PnL` = (mark - entry) * size * `side_sign`
-///
 /// inputs: 0=entry, 1=mark, 2=size, 3=side ("long" | "short")
 fn perp_pnl(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
     if ctx.inputs.len() < 4 {
@@ -109,9 +93,6 @@ fn perp_pnl(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
     Ok(Value::String(format_decimal(pnl)))
 }
 
-/// 청산가 = entry * (1 - 1/leverage * `maintenance_factor`)
-///
-/// inputs: 0=entry, 1=leverage, `2=maintenance_factor` (보통 0.95), 3=side
 fn perp_liq_price(ctx: &CalcContext<'_>) -> Result<Value, SyncError> {
     if ctx.inputs.len() < 4 {
         return Err(SyncError::DeriveFailed {
@@ -160,10 +141,8 @@ fn parse_decimal_f64(v: &Value, name: &str) -> Result<f64, SyncError> {
 
 fn format_decimal(v: f64) -> String {
     if v.abs() >= 1e15 {
-        // 매우 큰 값 — 과학표기 회피하지 않음.
         format!("{v:e}")
     } else {
-        // 너무 짧으면 정수, 아니면 소수 8 자리까지 trim.
         let s = format!("{v:.8}");
         trim_trailing_zeros(&s).to_string()
     }
@@ -180,7 +159,7 @@ fn trim_trailing_zeros(s: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::{Address, ChainId, WalletId, WalletState};
+    use policy_state::{Address, ChainId, WalletId, WalletState};
 
     fn dummy_state() -> WalletState {
         WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]))

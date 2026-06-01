@@ -1,13 +1,11 @@
-//! Runtime configuration for the simulation server.
-//!
+//! Runtime configuration for the policy server.
 //! Cloud deployments should inject these values through environment
 //! variables. Tests use [`ServerConfig::for_tests`] so router behavior can be
 //! exercised without mutating process-wide env for every case.
 
 use std::env;
 
-/// Typed runtime configuration shared by the API server and follow-up worker
-/// processes.
+/// Typed runtime configuration shared by the API server and worker processes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ServerConfig {
     /// Socket address the API process binds to.
@@ -20,7 +18,7 @@ pub struct ServerConfig {
     pub cors_allowed_origins: Vec<String>,
     /// Whether to emit the private-network CORS approval header.
     pub allow_private_network: bool,
-    /// Durable PostgreSQL database URL. Required by process startup.
+    /// Durable `PostgreSQL` database URL. Required by process startup.
     pub database_url: Option<String>,
     /// Redis URL for coordination/fanout. `None` keeps in-process dev mode.
     pub redis_url: Option<String>,
@@ -31,7 +29,7 @@ impl ServerConfig {
     #[must_use]
     pub fn from_env() -> Self {
         Self {
-            bind_addr: env::var("SIMULATION_SERVER_ADDR")
+            bind_addr: env::var("POLICY_SERVER_ADDR")
                 .unwrap_or_else(|_| "127.0.0.1:8788".to_owned()),
             dashboard_url: env::var("DASHBOARD_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:5174".to_owned()),

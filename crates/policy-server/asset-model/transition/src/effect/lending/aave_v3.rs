@@ -1,10 +1,7 @@
 //! Aave V3 venue math — interest index, aToken ratio, health-factor recompute.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::AaveV3`. Not a `Reducer` impl.
-//!
 //! ## Index approximation
-//!
 //! In a live Aave V3 deployment each reserve carries a `liquidityIndex` (RAY-scaled,
 //! `1e27`) advanced by [`getNormalizedIncome`](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol)
 //! every interaction. The current `ReserveState` schema only carries the
@@ -12,27 +9,22 @@
 //! liquidity index as `1` (i.e. the present-value supply *is* the scaled aToken
 //! supply). When the sync orchestrator starts feeding an explicit index this
 //! file is the single point that needs updating.
-//!
 //! ## Rate model
-//!
 //! Two-slope variable borrow rate, matching [`DefaultReserveInterestRateStrategyV2`](https://github.com/aave-dao/aave-v3-origin/tree/main/src/contracts/misc):
-//!
 //! ```text
 //!   U < U_optimal:   r = r_base + slope1 * (U / U_optimal)
 //!   U ≥ U_optimal:   r = r_base + slope1 + slope2 * (U - U_optimal) / (1 - U_optimal)
 //! ```
-//!
 //! Aave V3 hard-codes per-asset `optimalUsageRatio`; absent a real strategy
 //! state we use defaults that match the most common Aave V3 reserves:
 //! `r_base = 0`, `slope1 = 4 %`, `slope2 = 60 %`, `U_optimal = 80 %`.
 
-// Phase 2 stubs: per-action wiring (`supply.rs`, `borrow.rs`, …) lands in a
 // later commit in the same batch. Until every venue path consumes the
 // per-fn dispatchers `dead_code` is the expected diagnostic.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
@@ -41,8 +33,6 @@ use super::shared;
 
 /// Convert an asset amount into the equivalent `aToken` amount using the
 /// current liquidity index.
-///
-/// Phase 2 approximation — uses the `(present_value, scaled_supply)` ratio
 /// the `ReserveState` exposes. When a real `liquidityIndex` is plumbed
 /// through, swap the body for `asset_amount * RAY / liquidity_index`.
 pub(super) fn asset_to_atokens(
@@ -66,7 +56,6 @@ pub(super) fn atokens_to_asset(
 
 /// Compute the per-second borrow rate on a reserve given its current
 /// utilization.
-///
 /// Returns the rate as a `Decimal` in **per-year (APR) units** — divide by
 /// `SECONDS_PER_YEAR` at use-site if a per-second number is needed. Matches
 /// the convention used by `BorrowLiveInputs::current_borrow_rate` elsewhere.
@@ -120,8 +109,8 @@ mod tests {
     }
 
     fn dummy_ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
-        use simulation_state::primitives::{ChainId, Time};
+        use policy_state::eval_context::RequestKind;
+        use policy_state::primitives::{ChainId, Time};
         EvalContext::new(
             ChainId::ethereum_mainnet(),
             Time::from_unix(1_738_000_000),
@@ -130,8 +119,8 @@ mod tests {
     }
 
     fn empty_state() -> WalletState {
-        use simulation_state::primitives::{Address, ChainId};
-        use simulation_state::wallet::WalletId;
+        use policy_state::primitives::{Address, ChainId};
+        use policy_state::wallet::WalletId;
         WalletState::new(WalletId::new(
             Address::from([0u8; 20]),
             [ChainId::ethereum_mainnet()],
@@ -144,7 +133,6 @@ mod tests {
     fn asset_to_atokens_one_to_one() {
         let r = reserve_with(10_000, 5_000, 5_000);
         let out = asset_to_atokens(&empty_state(), &dummy_ctx(), &r, U256::from(500u64)).unwrap();
-        // Phase 2 approximation: liquidity index = 1, so 500 in → 500 out.
         assert_eq!(out, U256::from(500u64));
     }
 

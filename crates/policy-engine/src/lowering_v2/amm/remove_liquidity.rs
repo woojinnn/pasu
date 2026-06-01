@@ -2,8 +2,8 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::{RemoveLiquidityAction, RemoveLiquidityParams};
-use simulation_state::primitives::U256;
+use policy_state::primitives::U256;
+use policy_transition::action::amm::{RemoveLiquidityAction, RemoveLiquidityParams};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::{lower_token_key, lower_token_ref};
@@ -115,14 +115,14 @@ fn lower_remove_liquidity_params(params: &RemoveLiquidityParams) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{
+    use policy_state::primitives::{Address, ChainId, U128, U256};
+    use policy_state::token::TokenKey;
+    use policy_state::LiveField;
+    use policy_transition::action::amm::{
         AmmAction, AmmVenue, PoolState, RemoveLiquidityAction, RemoveLiquidityLiveInputs,
         RemoveLiquidityParams,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, ChainId, U128, U256};
-    use simulation_state::token::TokenKey;
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, now, onchain_meta, onchain_source, sample_token_ref, user,
@@ -130,7 +130,7 @@ mod tests {
 
     /// A Uniswap V2-style pooled burn, on-chain meta — exercises lpToken,
     /// lpAmount, minOut set, recipient.
-    fn sample_pooled_burn() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_pooled_burn() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::UniswapV2 {
             chain: chain.clone(),
@@ -169,7 +169,7 @@ mod tests {
 
     /// A Uniswap V3 concentrated-decrease, on-chain meta — exercises nftKey,
     /// liquidityBurn (U128), amountMin.
-    fn sample_concentrated_decrease() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_concentrated_decrease() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::UniswapV3 {
             chain: chain.clone(),
@@ -207,7 +207,7 @@ mod tests {
     /// A Uniswap V3 ConcentratedBurn (burn an empty position NFT) — exercises
     /// the third `RemoveLiquidityParams` arm (nftKey only; no lpToken /
     /// liquidityBurn / amountMin / recipient).
-    fn sample_concentrated_burn() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_concentrated_burn() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::UniswapV3 {
             chain: chain.clone(),
@@ -240,7 +240,7 @@ mod tests {
 
     /// Curve StableSwap-NG remove_liquidity_one_coin — exercises tokenOut +
     /// the scalar `minOutOne` floor (PooledBurnOneCoin), on-chain meta.
-    fn sample_pooled_burn_one_coin() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_pooled_burn_one_coin() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::CurveV1 {
             chain: chain.clone(),
@@ -272,7 +272,7 @@ mod tests {
 
     /// Curve StableSwap-NG remove_liquidity_imbalance — exercises maxLpBurn +
     /// the `amountsOut` set (PooledBurnImbalance), on-chain meta.
-    fn sample_pooled_burn_imbalance() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_pooled_burn_imbalance() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::CurveV1 {
             chain: chain.clone(),

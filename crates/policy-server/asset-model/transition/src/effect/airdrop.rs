@@ -1,13 +1,12 @@
 //! `AirdropAction` reducers — `Claim` / `Delegate`.
 //!
 //! ## Claim semantics (spec §7)
-//!
 //! [`ClaimAirdropAction`] handles the three on-chain distributor variants
 //! ([`ClaimTarget::MerkleDistributor`], [`ClaimTarget::SignatureDistributor`],
 //! [`ClaimTarget::StakingClaim`]). All three resolve to the same observable
 //! effect from the wallet's perspective: a one-shot credit of
 //! `live_inputs.actual_amount` of `live_inputs.claim_token` to the recipient,
-//! plus an [`AirdropClaim`](simulation_state::position::AirdropClaim)
+//! plus an [`AirdropClaim`](policy_state::position::AirdropClaim)
 //! `Position` opened with [`ClaimStatus::Claimed`] for audit. The variants
 //! differ only in the on-chain payload (`proof`, `sig`, or pure
 //! `staking-balance` lookup), all of which are recorded by the
@@ -17,9 +16,7 @@
 //! on-chain claim+redeem (the wallet submits the sig as part of the
 //! `redeem(...)` tx), unlike `Permit` where the sig is shared separately
 //! and the spender redeems later.
-//!
 //! ## Pre-conditions enforced
-//!
 //! * `live_inputs.is_still_claimable.value` must be `true` — otherwise an
 //!   `Invariant` error is returned (treating "already claimed / expired"
 //!   as a programmer-side mistake, not a token-not-found situation).
@@ -29,13 +26,11 @@
 //! * The `SignatureDistributor` variant requires `self.sig.is_some()`.
 //! * `StakingClaim` requires no payload field on `self`.
 //!
-//! The wallet must already track a [`TokenHolding`](simulation_state::token::TokenHolding)
+//! The wallet must already track a [`TokenHolding`](policy_state::token::TokenHolding)
 //! for `claim_token` (so `credit` can append a `BalanceDelta`). The sync
 //! orchestrator is expected to seed an empty holding before any first-time
 //! claim — first-time receipt is a separate concern from this reducer.
-//!
 //! ## Delegate semantics
-//!
 //! Governance delegation (UNI / COMP / ENS / OP / ARB style `delegate(...)`)
 //! does not change the delegator's balance, allowances, or positions. It is
 //! a pure voting-power rotation on the token contract. The reducer therefore
@@ -46,11 +41,9 @@
 //! `DelegateLiveInputs.current_delegate`), so no `Position` is emitted —
 //! the wallet's voting state lives on the live field, not in the delta.
 
-use simulation_state::position::{AirdropClaim, ClaimStatus, Position, PositionKind};
-use simulation_state::primitives::Time;
-use simulation_state::{
-    DataSource, EvalContext, PositionChange, StateDelta, TokenKey, WalletState,
-};
+use policy_state::position::{AirdropClaim, ClaimStatus, Position, PositionKind};
+use policy_state::primitives::Time;
+use policy_state::{DataSource, EvalContext, PositionChange, StateDelta, TokenKey, WalletState};
 
 use crate::action::airdrop::{
     AirdropAction, ClaimAirdropAction, ClaimTarget, DelegateGovernanceAction,
@@ -204,16 +197,14 @@ const fn _ensure_time_zero() -> Time {
 mod tests {
     use super::*;
     use crate::action::airdrop::{ClaimAirdropLiveInputs, DelegateLiveInputs};
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::DataSource;
-    use simulation_state::position::MerkleProof;
-    use simulation_state::primitives::{Address, ChainId, Duration, ProtocolRef, Time, U256};
-    use simulation_state::token::{
-        Balance, BaseCategory, TokenHolding, TokenKey, TokenKind, TokenRef,
-    };
-    use simulation_state::wallet::{WalletId, WalletState};
-    use simulation_state::LiveField;
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::DataSource;
+    use policy_state::position::MerkleProof;
+    use policy_state::primitives::{Address, ChainId, Duration, ProtocolRef, Time, U256};
+    use policy_state::token::{Balance, BaseCategory, TokenHolding, TokenKey, TokenKind, TokenRef};
+    use policy_state::wallet::{WalletId, WalletState};
+    use policy_state::LiveField;
     use std::str::FromStr;
 
     fn now() -> Time {

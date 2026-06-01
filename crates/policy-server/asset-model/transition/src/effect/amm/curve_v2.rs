@@ -2,9 +2,7 @@
 //!
 //! Pure functions called from `swap.rs` after dispatch on `AmmVenue::CurveV2`.
 //! Not a `Reducer` impl since `AmmVenue` is not an `Action`.
-//!
 //! ## Simplification — **single-price twocrypto closed form**
-//!
 //! The full Curve V2 cryptoswap invariant solves a coupled Newton system over
 //! `(A, gamma)` against a dynamically re-pegged `price_scale` (Egorov et al.
 //! 2021). The on-chain `tricrypto2.vy::newton_y` iterates a fourth-order
@@ -12,8 +10,6 @@
 //! requires both the unpacked `(A, gamma)` parameters (currently packed into
 //! a single `U256` in `PoolState::Cryptoswap.a_gamma`) and the multi-step
 //! repeg-during-swap accounting.
-//!
-//! This Phase 2 helper instead adopts the simplified **twocrypto** closed
 //! form: scale the second-coin balance by `price_scale[0]`, then quote with
 //! the canonical `x * y = k` formula. The simplification is accurate when:
 //!   * `n = 2` (twocrypto pool layout — `CurveCryptoSwap2ETH.vy`),
@@ -23,9 +19,6 @@
 //!
 //! Pools that are not 2-coin or where the trade would meaningfully shift the
 //! peg fall back to `Invariant` so policy / observability can target them.
-//!
-//! ## 1차 출처
-//!
 //! * Egorov 2021 — "Automatic market-making with dynamic peg"
 //!   <https://classic.curve.fi/files/crypto-pools-paper.pdf>
 //! * Curve cryptoswap experimental Vyper —
@@ -36,12 +29,11 @@
 //!   <https://github.com/curvefi/twocrypto-ng/blob/main/contracts/main/CurveTwocryptoOptimized.vy>
 //!   * `_calc_token_amount`, `get_dy` — production twocrypto invariant.
 
-// Phase 2 stubs: callers (per-action reducers) are still `todo!()` so these
 // functions look unused. Lift this allow when the first caller wires up.
 #![allow(dead_code)]
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::{ReducerError, ReducerResult};
@@ -331,11 +323,11 @@ mod tests {
     // -------- test fixtures --------
 
     use crate::action::amm::{AmmVenue, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

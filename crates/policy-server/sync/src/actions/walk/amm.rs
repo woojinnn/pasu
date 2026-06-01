@@ -1,16 +1,12 @@
-//! AMM 도메인 walk + apply.
-//!
 //! Wired: Swap (4), `AddLiquidity` (2), `RemoveLiquidity` (2), `CollectFees` (1),
-//!        `SignIntentOrder` (2). 총 11 slots.
-//! `CancelIntentOrder` 는 `live_inputs` 없음.
 
 use serde_json::Value;
 
-use simulation_reducer::action::amm::{
+use policy_state::Time;
+use policy_transition::action::amm::{
     AddLiquidityAction, CollectFeesAction, RemoveLiquidityAction, SignIntentOrderAction, SwapAction,
 };
-use simulation_reducer::action::AmmAction;
-use simulation_state::Time;
+use policy_transition::action::AmmAction;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 

@@ -14,17 +14,16 @@ use sqlx_core::query::query;
 use sqlx_core::row::Row;
 use sqlx_postgres::{PgPool, PgPoolOptions, PgRow};
 
-use simulation_state::primitives::ChainId;
-use simulation_state::store::{StoreError, WalletStore};
-use simulation_state::{WalletId, WalletState};
+use policy_state::primitives::ChainId;
+use policy_state::store::{StoreError, WalletStore};
+use policy_state::{WalletId, WalletState};
 
 use crate::error::{DbError, DbResult};
 
-/// Location of the versioned PostgreSQL schema migrations.
-///
+/// Location of the versioned `PostgreSQL` schema migrations.
 /// Keep migrations as runtime files instead of using `sqlx::migrate!()`.
-/// The macro pulls in SQLx's macro crate, which currently exposes optional
-/// MySQL dependencies to `cargo audit` even though this server is Postgres-only.
+/// The macro pulls in `SQLx`'s macro crate, which currently exposes optional
+/// `MySQL` dependencies to `cargo audit` even though this server is Postgres-only.
 fn postgres_migrations_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations")
 }
@@ -32,30 +31,40 @@ fn postgres_migrations_path() -> PathBuf {
 /// A row from the `users` table.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PostgresUser {
+    /// Stable server-side user id.
     pub user_id: String,
+    /// Lowercased login email.
     pub email: String,
+    /// OAuth provider name.
     pub provider: String,
+    /// Creation timestamp as Unix seconds.
     pub created_at: i64,
+    /// Last login timestamp as Unix seconds.
     pub last_login_at: i64,
 }
 
 /// Display metadata stored beside a wallet's authoritative state snapshot.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PostgresWalletMetadata {
+    /// Wallet address as a hex string.
     pub address: String,
+    /// Chains tracked for this wallet.
     pub chains: Vec<ChainId>,
+    /// Optional display label.
     pub label: Option<String>,
+    /// Whether the user marked this wallet as owned.
     pub owned: bool,
+    /// Whether the wallet is hidden from active views.
     pub archived: bool,
 }
 
-/// Cross-user identity store backed by PostgreSQL.
+/// Cross-user identity store backed by `PostgreSQL`.
 #[derive(Clone, Debug)]
 pub struct PostgresGlobalDb {
     pool: PgPool,
 }
 
-/// Per-user wallet store factory backed by PostgreSQL.
+/// Per-user wallet store factory backed by `PostgreSQL`.
 #[derive(Clone, Debug)]
 pub struct PostgresMultiUserStore {
     pool: PgPool,
@@ -64,10 +73,10 @@ pub struct PostgresMultiUserStore {
 /// Constructor input for [`PostgresMultiUserStore`].
 #[derive(Clone, Debug)]
 pub enum PostgresMultiUserStoreSource {
-    /// Use an already-created PostgreSQL pool.
+    /// Use an already-created `PostgreSQL` pool.
     Pool(PgPool),
     /// Compatibility path for old integration tests. The filesystem path is
-    /// ignored; the store still uses PostgreSQL via `TEST_DATABASE_URL`.
+    /// ignored; the store still uses `PostgreSQL` via `TEST_DATABASE_URL`.
     LegacyTestPath(PathBuf),
 }
 
@@ -83,7 +92,7 @@ impl From<PathBuf> for PostgresMultiUserStoreSource {
     }
 }
 
-/// Per-user wallet state store backed by PostgreSQL.
+/// Per-user wallet state store backed by `PostgreSQL`.
 #[derive(Clone, Debug)]
 pub struct PostgresWalletStore {
     pool: PgPool,
@@ -91,7 +100,11 @@ pub struct PostgresWalletStore {
 }
 
 impl PostgresGlobalDb {
-    /// Connect to PostgreSQL, apply migrations, and return the global store.
+    /// Connect to `PostgreSQL`, apply migrations, and return the global store.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying `SQLx` error if the connection or migration fails.
     pub async fn connect(database_url: &str) -> Result<Self, SqlxError> {
         let pool = connect_pool(database_url).await?;
         let db = Self::new(pool);
@@ -106,13 +119,21 @@ impl PostgresGlobalDb {
     }
 
     /// Compatibility constructor for integration tests that still pass a
-    /// filesystem path. The path is ignored; it creates a lazy PostgreSQL pool
+    /// filesystem path. The path is ignored; it creates a lazy `PostgreSQL` pool
     /// from `TEST_DATABASE_URL`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying `SQLx` error if the lazy pool cannot be created.
     pub fn open(_path: impl AsRef<Path>) -> Result<Self, SqlxError> {
         Ok(Self::new(lazy_test_pool()?))
     }
 
     /// Apply the initial Postgres schema.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying `SQLx` error if migration loading or execution fails.
     pub async fn migrate(&self) -> Result<(), SqlxError> {
         Migrator::new(postgres_migrations_path())
             .await
@@ -124,6 +145,10 @@ impl PostgresGlobalDb {
     }
 
     /// Insert or refresh an OAuth user, returning the deterministic user id.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DbError`] if the upsert query fails.
     pub async fn upsert_user(&self, email: &str, provider: &str) -> DbResult<String> {
         let email = email.to_lowercase();
         let user_id = derive_user_id(&email);
@@ -144,6 +169,10 @@ impl PostgresGlobalDb {
     }
 
     /// Look up a user by email.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DbError`] if the lookup query fails.
     pub async fn get_user_by_email(&self, email: &str) -> DbResult<Option<PostgresUser>> {
         let email = email.to_lowercase();
         query(
@@ -153,11 +182,15 @@ impl PostgresGlobalDb {
         .bind(email)
         .fetch_optional(&self.pool)
         .await
-        .map(row_to_user)
+        .map(|row| row.as_ref().map(row_to_required_user))
         .map_err(|e| DbError::Invariant(e.to_string()))
     }
 
     /// Look up a user by stable user id.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DbError`] if the lookup query fails.
     pub async fn get_user_by_id(&self, user_id: &str) -> DbResult<Option<PostgresUser>> {
         query(
             "SELECT user_id, email, provider, created_at, last_login_at
@@ -166,11 +199,15 @@ impl PostgresGlobalDb {
         .bind(user_id)
         .fetch_optional(&self.pool)
         .await
-        .map(row_to_user)
+        .map(|row| row.as_ref().map(row_to_required_user))
         .map_err(|e| DbError::Invariant(e.to_string()))
     }
 
     /// Return every known OAuth user in deterministic order.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DbError`] if the list query fails.
     pub async fn list_users(&self) -> DbResult<Vec<PostgresUser>> {
         query(
             "SELECT user_id, email, provider, created_at, last_login_at
@@ -178,7 +215,7 @@ impl PostgresGlobalDb {
         )
         .fetch_all(&self.pool)
         .await
-        .map(|rows| rows.into_iter().map(row_to_required_user).collect())
+        .map(|rows| rows.iter().map(row_to_required_user).collect())
         .map_err(|e| DbError::Invariant(e.to_string()))
     }
 
@@ -190,7 +227,12 @@ impl PostgresGlobalDb {
 }
 
 impl PostgresMultiUserStore {
-    /// Build a per-user store factory from an existing PostgreSQL pool.
+    /// Build a per-user store factory from an existing `PostgreSQL` pool.
+    ///
+    /// # Panics
+    ///
+    /// Panics only for the legacy test-path variant if `TEST_DATABASE_URL` is not
+    /// a valid lazy `PostgreSQL` URL.
     #[must_use]
     pub fn new(source: impl Into<PostgresMultiUserStoreSource>) -> Self {
         match source.into() {
@@ -202,6 +244,11 @@ impl PostgresMultiUserStore {
     }
 
     /// Resolve a wallet store for one user namespace.
+    ///
+    /// # Errors
+    ///
+    /// This implementation currently cannot fail, but returns [`DbResult`] to
+    /// keep the trait-compatible factory boundary.
     pub fn for_user(&self, user_id: &str) -> DbResult<Arc<PostgresWalletStore>> {
         Ok(Arc::new(PostgresWalletStore::new(
             self.pool.clone(),
@@ -239,6 +286,10 @@ impl PostgresWalletStore {
     }
 
     /// Return active wallet metadata for dashboard/list views.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] if the metadata query or chain decoding fails.
     pub async fn list_wallet_metadata(&self) -> Result<Vec<PostgresWalletMetadata>, StoreError> {
         let rows = query(
             "SELECT address, chains, label, owned, archived
@@ -251,12 +302,16 @@ impl PostgresWalletStore {
         .await
         .map_err(|e| StoreError::Backend(e.to_string()))?;
 
-        rows.into_iter()
+        rows.iter()
             .map(row_to_wallet_metadata)
             .collect::<Result<Vec<_>, _>>()
     }
 
     /// Update mutable wallet metadata. Returns `false` when the wallet is absent.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] if the metadata read or update query fails.
     pub async fn update_wallet_metadata(
         &self,
         address: &str,
@@ -298,6 +353,10 @@ impl PostgresWalletStore {
     }
 
     /// Soft-delete a wallet from active views. The state row is kept for audit/recovery.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] if the archive query fails.
     pub async fn archive_wallet(&self, address: &str, now: i64) -> Result<bool, StoreError> {
         let result = query(
             "UPDATE wallets
@@ -408,7 +467,7 @@ impl WalletStore for PostgresWalletStore {
     }
 }
 
-fn row_to_wallet_metadata(row: PgRow) -> Result<PostgresWalletMetadata, StoreError> {
+fn row_to_wallet_metadata(row: &PgRow) -> Result<PostgresWalletMetadata, StoreError> {
     let chains_value: serde_json::Value = row.get("chains");
     let chains = serde_json::from_value::<Vec<ChainId>>(chains_value)
         .map_err(|e| StoreError::Backend(e.to_string()))?;
@@ -428,7 +487,11 @@ fn unix_now_or_default() -> i64 {
         .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
-/// Connect to PostgreSQL with the default policy-server pool settings.
+/// Connect to `PostgreSQL` with the default policy-server pool settings.
+///
+/// # Errors
+///
+/// Returns the underlying `SQLx` error if the pool cannot connect.
 pub async fn connect_pool(database_url: &str) -> Result<PgPool, SqlxError> {
     PgPoolOptions::new()
         .max_connections(10)
@@ -443,11 +506,7 @@ fn lazy_test_pool() -> Result<PgPool, SqlxError> {
     PgPoolOptions::new().max_connections(5).connect_lazy(&url)
 }
 
-fn row_to_user(row: Option<PgRow>) -> Option<PostgresUser> {
-    row.map(row_to_required_user)
-}
-
-fn row_to_required_user(row: PgRow) -> PostgresUser {
+fn row_to_required_user(row: &PgRow) -> PostgresUser {
     PostgresUser {
         user_id: row.get("user_id"),
         email: row.get("email"),
@@ -458,7 +517,6 @@ fn row_to_required_user(row: PgRow) -> PostgresUser {
 }
 
 /// Deterministic short id from a lower-cased email.
-///
 /// `u_` prefix + first 12 hex chars of blake3(email). Collisions inside
 /// 12 hex chars (48 bits) are astronomically unlikely for the expected scale.
 #[must_use]

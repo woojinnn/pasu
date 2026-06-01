@@ -1,22 +1,14 @@
-//! Action 트리 walker + apply — 도메인별 파일 디스패치.
+//! Action tree walker and domain dispatch for `Action.body.*.live_inputs`.
 //!
-//! `WalletState` walker 와 평행한 모듈이지만 대상이 `Action.body.*.live_inputs`.
-//!
-//! 구조:
-//! * 진입점:        [`walk_action_stale`], [`apply_value_to_action`] (이 파일)
-//! * 도메인 dispatch: [`walk_body`] / [`body_at_index_mut`] (이 파일)
-//! * 도메인별 본문:  `token.rs`, `amm.rs`, `lending.rs`, `airdrop.rs`,
-//!                  `launchpad.rs`, `perp.rs`, `liquid_staking.rs`
-//! * 공유 헬퍼:      [`push_if_stale`], [`set_field`], [`value_to_decimal`],
-//!                  [`value_to_u256`]
-//!
-//! 현재 wire-up 된 도메인: lending, perp, airdrop, launchpad, permission,
-//! liquid_staking (wrap/unwrap/transfer_shares 환산). 나머지는 빈 함수 stub.
-
+//! Entry points are [`walk_action_stale`] and [`apply_value_to_action`].
+//! Domain-specific walkers live in `token.rs`, `amm.rs`, `lending.rs`,
+//! `airdrop.rs`, `launchpad.rs`, `perp.rs`, `permission.rs`, and
+//! `liquid_staking.rs`; shared helpers in this module handle stale-field
+//! collection and JSON value assignment.
 use serde_json::Value;
 
-use simulation_reducer::action::{Action, ActionBody};
-use simulation_state::{LiveField, Time};
+use policy_state::{LiveField, Time};
+use policy_transition::action::{Action, ActionBody};
 
 use crate::walker::{ActionSlot, FieldLocation, StaleField, WalkStats};
 
@@ -29,10 +21,6 @@ pub mod permission;
 pub mod perp;
 pub mod token;
 
-// ─────────────────────── walk 진입점 ───────────────────────
-
-/// `action` 안의 stale `LiveField` 들 수집. 단일 액션이면 `action_index=0`,
-/// `Multicall` 자식들은 0..N 순서로 부여.
 #[must_use]
 pub fn walk_action_stale(action: &Action, now: Time) -> (Vec<StaleField>, WalkStats) {
     let mut stale = Vec::new();
@@ -77,10 +65,6 @@ fn walk_body(
     }
 }
 
-// ─────────────────────── apply 진입점 ───────────────────────
-
-/// fetched `value` 를 Action 의 해당 `LiveField` 슬롯에 in-place 로 적용.
-/// `slot` variant 별 dispatch. 알 수 없는 슬롯이거나 값 형식 mismatch 면 no-op.
 pub fn apply_value_to_action(
     action: &mut Action,
     location: &FieldLocation,
@@ -88,7 +72,7 @@ pub fn apply_value_to_action(
     now: Time,
 ) {
     let FieldLocation::Action { action_index, slot } = location else {
-        return; // wallet 측 location 은 apply_value (orchestrator) 가 처리
+        return;
     };
 
     let body = body_at_index_mut(&mut action.body, *action_index);
@@ -122,8 +106,6 @@ pub(crate) fn body_at_index_mut(body: &mut ActionBody, index: usize) -> Option<&
     }
 }
 
-// ─────────────────────── 공유 헬퍼 (도메인 파일들이 사용) ───────────────────────
-
 pub(crate) fn push_if_stale<T>(
     stale: &mut Vec<StaleField>,
     stats: &mut WalkStats,
@@ -148,22 +130,22 @@ pub(crate) fn push_if_stale<T>(
 pub(crate) fn set_field<T>(field: &mut LiveField<T>, value: T, now: Time) {
     field.value = value;
     field.synced_at = now;
-    field.confidence = Some(simulation_state::Confidence::fresh());
+    field.confidence = Some(policy_state::Confidence::fresh());
 }
 
-pub(crate) fn value_to_decimal(v: &Value) -> Option<simulation_state::Decimal> {
+pub(crate) fn value_to_decimal(v: &Value) -> Option<policy_state::Decimal> {
     match v {
-        Value::String(s) => Some(simulation_state::Decimal::new(s.clone())),
-        Value::Number(n) => Some(simulation_state::Decimal::new(n.to_string())),
+        Value::String(s) => Some(policy_state::Decimal::new(s.clone())),
+        Value::Number(n) => Some(policy_state::Decimal::new(n.to_string())),
         _ => None,
     }
 }
 
-pub(crate) fn value_to_u256(v: &Value) -> Option<simulation_state::U256> {
+pub(crate) fn value_to_u256(v: &Value) -> Option<policy_state::U256> {
     let s = match v {
         Value::String(s) => s.clone(),
         Value::Number(n) => n.to_string(),
         _ => return None,
     };
-    simulation_state::U256::from_str_radix(&s, 10).ok()
+    policy_state::U256::from_str_radix(&s, 10).ok()
 }

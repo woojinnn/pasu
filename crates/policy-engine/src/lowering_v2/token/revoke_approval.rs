@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::token::{RevokeApprovalAction, RevokeScope};
+use policy_transition::action::token::{RevokeApprovalAction, RevokeScope};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::{lower_token_key, lower_token_ref};
@@ -82,9 +82,9 @@ fn lower_revoke_scope(scope: &RevokeScope) -> Value {
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::token::{RevokeApprovalAction, RevokeScope, TokenAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{ChainId, U256};
+    use policy_state::primitives::{ChainId, U256};
+    use policy_transition::action::token::{RevokeApprovalAction, RevokeScope, TokenAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         nft_contract, onchain_meta, sample_erc1155_key, sample_erc20_token, sample_nft_key, spender,

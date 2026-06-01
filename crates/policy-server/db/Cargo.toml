@@ -1,12 +1,12 @@
 [package]
-name = "simulation-db"
+name = "policy-db"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
-simulation-state = { workspace = true }
+policy-state = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

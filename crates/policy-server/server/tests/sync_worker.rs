@@ -1,7 +1,7 @@
-use simulation_server::config::ServerConfig;
-use simulation_server::storage::StorageBackend;
-use simulation_state::primitives::{Address, ChainId};
-use simulation_state::{WalletId, WalletState};
+use policy_server::config::ServerConfig;
+use policy_server::storage::StorageBackend;
+use policy_state::primitives::{Address, ChainId};
+use policy_state::{WalletId, WalletState};
 use std::str::FromStr;
 
 #[tokio::test]

@@ -60,7 +60,6 @@ pub enum TokenAction {
 
 impl TokenAction {
     /// The action's `serde` `action` tag (e.g. `"erc20_approve"`, `"nft_set_approval_for_all"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]

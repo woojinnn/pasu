@@ -1,36 +1,28 @@
 //! Morpho Optimizer venue math — peer-to-peer layer on top of Aave / Compound.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::MorphoOptimizer`. Not a `Reducer` impl.
-//!
 //! Sits on top of Aave / Compound; rates blend p2p and pool. When matched p2p
 //! liquidity is unavailable, positions fall through to the underlying pool at
 //! that pool's prevailing rate.
-//!
 //! ## P2P blend
-//!
 //! Optimizer's [docs](https://docs.morpho.org/optimizers/concepts) describe the
 //! blended rate as a midpoint between the underlying pool's supply and borrow
 //! rates, weighted by the p2p-matched fraction:
-//!
 //! ```text
 //!   p2p_rate     = (pool_supply + pool_borrow) / 2
 //!   p2p_supply   = blend(p2p_rate, pool_supply, supply_match_ratio)
 //!   p2p_borrow   = blend(p2p_rate, pool_borrow, borrow_match_ratio)
 //! ```
-//!
 //! The `match_ratio` is supplied by the optimizer market state. Absent that
 //! state we use the reserve's `utilization_bp` as a conservative proxy — at
 //! high utilization more of the wallet's position sits in the pool fallback,
 //! at low utilization the p2p mid dominates.
 
-// Phase 2 stubs: per-action wiring lands in a later commit in the same batch.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
+use policy_state::primitives::{Decimal, U256};
 
 // `ReserveState` is reused here as a stand-in until an Optimizer-specific
-// market state struct is added in Phase 2.
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
 
@@ -95,8 +87,6 @@ pub(super) fn p2p_borrow_rate(reserve: &ReserveState) -> ReducerResult<Decimal> 
 
 /// Convert an asset amount into the equivalent Optimizer share amount using
 /// the current p2p/pool index split.
-///
-/// Under the Phase 2 index=1 approximation (shared with Aave V3) this is a
 /// 1:1 mapping; the body validates the reserve and returns the underlying
 /// asset amount. When the sync orchestrator wires real per-market p2p /
 /// pool indices the body switches to the Optimizer's split form.

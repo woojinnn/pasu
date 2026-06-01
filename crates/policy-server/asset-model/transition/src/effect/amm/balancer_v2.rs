@@ -1,55 +1,39 @@
 //! Balancer V2 swap math — vault-based, multi-curve.
-//!
 //! Pure functions called from `swap.rs` after dispatch on `AmmVenue::BalancerV2`.
 //! A single `quote_swap_hop` entry point internally dispatches on the
 //! `PoolState` variant (`Weighted` / `Stable`).
-//!
 //! Not a `Reducer` impl since `AmmVenue` is not an `Action`.
-//!
 //! ## Coverage
-//!
 //! `PoolState::Weighted` and `PoolState::Stable` are wired today; the
 //! remaining `BalancerPoolType` variants (`ComposableStable` / `MetaStable` /
 //! `LiquidityBootstrapping` / `Linear`) carry the same `Stable`/`Weighted`
 //! snapshot shapes for swap purposes but layer additional BPT / linear-yield
 //! adjustments that we surface as `Invariant` until the per-type math is
 //! plumbed in. The branch defers via the `unsupported_*` paths below.
-//!
 //! ## Simplification — Weighted pools
-//!
 //! Balancer's `WeightedMath.sol::_calcOutGivenIn` uses the closed form
-//!
 //! ```text
 //!   out = balance_out * (1 - (balance_in / (balance_in + amount_in_after_fee))^(w_in / w_out))
 //! ```
-//!
 //! Evaluating the fractional power `^(w_in / w_out)` over `U256` requires a
 //! `LogExpMath` library port (Balancer's on-chain fixed-point exponentiation
 //! based on Remco Bloemen's solidity-bytecode `exp` implementation). To keep
-//! the Phase 2 helper allocation-free and WASM-safe, we adopt the
 //! **balanced-weight approximation**:
-//!
 //! ```text
 //!   out_approx = balance_out * amount_in_after_fee * w_in
 //!              / (balance_in * w_out + amount_in_after_fee * w_in)
 //! ```
-//!
 //! which is exact for `w_in == w_out` (i.e. 50/50 pools, the canonical case)
 //! and within a few percent for moderate weight skews (80/20). The
 //! approximation is the linearisation of the `WeightedMath` fractional power
 //! around `w_in == w_out` (the dominant deployed weighting on Balancer V2).
-//!
 //! ## Stable pools
-//!
 //! `PoolState::Stable` reuses the Curve V1 `StableSwap` solver
 //! (`curve_v1::compute_d` + `curve_v1::compute_y`) since Balancer
 //! `StableMath.sol::_calcOutGivenIn` is mathematically identical to Curve V1's
 //! `get_y` (same invariant, same Newton iteration). The direction convention
 //! mirrors Curve: `i = 0` (sell), `j = 1` (buy). Multi-coin pools (n > 2) are
 //! supported through Curve's loop.
-//!
-//! ## 1차 출처
-//!
 //! * Balancer V2 monorepo —
 //!   <https://github.com/balancer/balancer-v2-monorepo>
 //!   * `pkg/pool-utils/contracts/lib/WeightedMath.sol::_calcOutGivenIn`
@@ -60,12 +44,11 @@
 //!   `pkg/vault/contracts/Vault.sol::swap` (single-step, batchSwap routes
 //!   through the same helper).
 
-// Phase 2 stubs: callers (per-action reducers) are still `todo!()` so these
 // functions look unused. Lift this allow when the first caller wires up.
 #![allow(dead_code)]
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::{ReducerError, ReducerResult};
@@ -80,7 +63,6 @@ const STABLE_J: usize = 1;
 
 /// Quote a `Weighted` pool single hop. Sell-side index `0`, buy-side index `1`
 /// in the `balances` / `weights` arrays.
-///
 /// Implements the balanced-weight approximation; see module docs.
 fn quote_weighted(
     balances: &[U256],
@@ -192,7 +174,6 @@ fn quote_stable(balances: &[U256], amp: u32, fee_bp: u32, amount_in: U256) -> Re
 /// Internally dispatches on the `PoolState` variant (`Weighted` / `Stable`)
 /// to select the matching curve. Returns the hop's output amount; caller is
 /// responsible for fee accounting and balance changes.
-///
 /// Errors with `Invariant` on:
 ///   * `PoolState` variant other than `Weighted` / `Stable`,
 ///   * any of the per-curve preconditions (see `quote_weighted` /
@@ -380,11 +361,11 @@ mod tests {
     use crate::action::amm::{
         AmmVenue, BalancerPoolType, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute,
     };
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

@@ -1,4 +1,4 @@
-//! `simulation-sync` — external data sync for wallet state and action live inputs.
+//! `policy-sync` refreshes wallet state and action live inputs.
 //!
 //! The crate has four visible layers:
 //! - [`actions`] finds stale action-level live inputs.
@@ -10,15 +10,9 @@
 //! heights, and Hyperliquid account snapshots are authoritative primitive syncs
 //! that replace state in bulk; field-level prices, rates, and action inputs use
 //! `LiveField`. Keeping both paths under [`sources`] makes this split explicit.
-//!
-//! reducer 와 달리 외부 IO 가 있으므로 native only — wasm 빌드 안 됨.
-
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
 #![deny(rustdoc::bare_urls)]
-#![allow(rustdoc::broken_intra_doc_links)]
-#![allow(rustdoc::private_intra_doc_links)]
-#![allow(rustdoc::redundant_explicit_links)]
 #![warn(missing_docs)]
 #![warn(unreachable_pub)]
 #![warn(rust_2018_idioms)]
@@ -28,19 +22,14 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::dbg_macro)]
-// Phase 1~11 의 본문은 동작 우선 — 후속 패스에서 # Errors / # Panics doc 보강.
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(missing_docs)]
 #![allow(missing_debug_implementations)]
-#![allow(clippy::doc_markdown)]
-#![allow(clippy::doc_lazy_continuation)]
-#![allow(clippy::doc_overindented_list_items)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::items_after_statements)]
 #![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::too_long_first_doc_paragraph)]
 #![allow(clippy::format_push_string)]
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::must_use_candidate)]
@@ -96,8 +85,6 @@
 #![allow(clippy::needless_borrow)]
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::single_char_pattern)]
-#![allow(unknown_lints)]
-#![allow(clippy::duration_suboptimal_units)]
 
 pub mod actions;
 pub mod live;
@@ -217,9 +204,9 @@ pub use orchestrator::{HyperliquidAccountReport, Orchestrator, RefreshReport};
 pub use primitives_sync::PrimitivesReport;
 pub use resolver::{resolve_field, resolve_inputs, GlobalValues};
 pub use scheduler::{Scheduler, SchedulerConfig, TickReport};
-// Re-export from simulation-state for callers that previously imported the
-// trait from `simulation-sync` (which is where it used to live).
-pub use simulation_state::{StoreError, WalletStore};
+// Re-export from policy-state for callers that previously imported the
+// trait from `policy-sync` (which is where it used to live).
+pub use policy_state::{StoreError, WalletStore};
 pub use subscription::{BlockSubscription, NewBlock, PollingBlockSubscription};
 pub use topo::{topological_sort, DepNode};
 pub use walker::{walk_stale, ActionSlot, FieldLocation, StaleField, WalkStats};

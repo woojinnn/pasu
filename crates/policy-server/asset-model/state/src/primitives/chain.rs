@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
 /// Chain identifier in CAIP-2 format. Examples: "eip155:1", "eip155:42161", "solana:...".
-///
 /// Non-EVM chains beyond EVM L1/L2 can be represented with the same type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]

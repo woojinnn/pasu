@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::yield_::CancelLimitOrderAction;
+use policy_transition::action::yield_::CancelLimitOrderAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::{enum_tag, lower_yield_venue};
@@ -29,8 +29,8 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use simulation_reducer::action::yield_::{CancelKind, CancelLimitOrderAction, YieldAction};
-    use simulation_reducer::action::ActionBody;
+    use policy_transition::action::yield_::{CancelKind, CancelLimitOrderAction, YieldAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{assert_conforms, onchain_meta, pendle_venue};
 

@@ -23,10 +23,9 @@ import "./simulation.css";
  * Simulation page — author a sequence of Cedar requests, run them all
  * at once via `/simulate/sequence`, see per-step verdicts + overall.
  *
- * For now this is a manual step builder + run; the front/scopeball-v3
- * design's provenance maps + counterfactuals + reducer-state diff are
- * deferred (they need real chain state, which means wiring the reducer
- * + simulation-state path — a bigger lift).
+ * This is a manual step builder and runner. Provenance maps,
+ * counterfactuals, and reducer-state diffs require live chain state plus the
+ * policy-state reducer path.
  *
  * Useful test loops it enables today:
  *   1. Load any example tx → derive a Cedar request → see which of

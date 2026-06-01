@@ -781,7 +781,7 @@ selector 필터(`WHERE ...`)·decoded 테이블·cross-chain·빈도 통계용. 
 ### 5c. Hybrid Oracle (정확성 판정)
 
 **현재 하니스가 하는 것 (oracle.rs `judge`):** shape + domain 까지만.
-- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<simulation_reducer::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS`) / L4 ErrorClass.
+- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<policy_transition::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS`) / L4 ErrorClass.
 - `VALID_DOMAINS` 는 `crates/integration-tests/src/harness/oracle.rs` 를 직접 재확인. 새 domain 추가 시 §4a 의 downstream contract 와 함께 동기화한다.
 - `SOFT_ERROR_KINDS`(tolerate) = no_declarative_v3_mapper, unsupported_strategy_for_typed_data, no_typed_data_mapper.
 - corpus `expect` 는 `expect_domain` 을 비교하고, 선택적 `expect_body` 가 있으면 필드값도 비교한다. `expect_action` 은 아직 reserved.
@@ -1113,7 +1113,7 @@ on-chain manifest(selector `0xeecea000`) → corpus 352→**387**. 나머지 13 
 
 **off-chain Authorization (8번째, pre-sign 핵심)**: 유저가 서명하는 EIP-712 `Authorization{authorizer,authorized,isAuthorized,nonce,deadline}` (relayer 가 `setAuthorizationWithSig` 로 제출). typed-data manifest — flat scalar 5개 → `build_typed_data_args_json` 의 flat 경로 → `$args.authorized`/`$args.isAuthorized` 직접. **단 Morpho EIP-712 domain 은 minimal(chainId+verifyingContract, name/version 없음)** → build-index 가 `domain_name 필수` 로 reject → **`build-index.ts` 검증을 optional 로 완화**(witness_type "when present" 패턴 미러; nameless EIP-712 허용, backward-compatible, 기존 manifest 영향 0). by-typed-data 라우팅(verifying_contract+primary_type) → probe **1/1**.
 
-**검증**: `cargo test -p policy-engine`(252) / `-p simulation-reducer`(403) / `v3_decode_harness` **6 passed** (+`morpho_set_authorization_decodes_operator_and_flag` golden: operator `0x4A6c312e…` + grant flag pin — corpus 가 "누가 권한받나"를 미검증하는 층). 커밋 corpus 17건(15 pass/lending + 2 error) green.
+**검증**: `cargo test -p policy-engine`(252) / `-p policy-transition`(403) / `v3_decode_harness` **6 passed** (+`morpho_set_authorization_decodes_operator_and_flag` golden: operator `0x4A6c312e…` + grant flag pin — corpus 가 "누가 권한받나"를 미검증하는 층). 커밋 corpus 17건(15 pass/lending + 2 error) green.
 
 **교훈**: 보강된 §3 surface-completeness gate + permission red-flag(Part A)가 이 누락을 1차에 잡았을 것. 권한 grant 는 Unknown 이 아니라 Tier 3(§4a override). ScopeBall 가장 핵심 함수가 manifest-only 가 아니라 schema 확장을 요구했다 — "쉬운 4개"만 집으면 정확히 그걸 놓친다.
 

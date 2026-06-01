@@ -61,7 +61,7 @@ export { listTransactions, type TxRow } from "./transactions";
 
 export { listTokens, type TokenCatalogRow } from "./tokens";
 
-// Phase 1 catalog endpoints (policy schema, templates, examples,
+// Catalog endpoints (policy schema, templates, examples,
 // spenders, single policy fetch).
 export {
   getPolicySchema,
@@ -78,7 +78,7 @@ export {
   type SpenderRep,
 } from "./catalog";
 
-// Phase 3 dashboard summary.
+// Dashboard summary.
 export {
   getDashboardSummary,
   type DashboardSummary,
@@ -86,7 +86,7 @@ export {
   type ChainShare,
 } from "./dashboard";
 
-// Phase 2 verdict / audit / history / findings — now backed by
+// Verdict / audit / history / findings — backed by
 // chrome.storage.local via the extension bridge.
 export {
   listAuditVerdicts,

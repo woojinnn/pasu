@@ -28,7 +28,7 @@ interface WasmExports {
   declarative_install_v3_json(bundle_json: string): string;
   // Phase 4B — v3 orchestrator route entry. Resolves (chain_id, to, selector)
   // through the engine-internal bridge populated at install time, then emits
-  // the PDF FSM `simulation_reducer::action::Action` tree.
+  // the PDF FSM `policy_transition::action::Action` tree.
   declarative_route_request_v3_json(input_json: string): string;
   // Phase A.1 — v3 typed-data (EIP-712 sign) route entry. Keys on the
   // typed-data triple `(chain_id, verifying_contract, primary_type)` (+ optional
@@ -73,7 +73,7 @@ export interface DeclarativeInstallResult {
  * Phase 4B — wire shape for `declarative_route_request_v3_json`.
  *
  * `(chain_id, to, selector)` form the callkey, plus the meta fields the
- * `simulation_reducer::action::ActionMeta` carries (`value` / `gas_limit` /
+ * `policy_transition::action::ActionMeta` carries (`value` / `gas_limit` /
  * `gas_price` / `submitter` / `submitted_at` / `nonce`). All numeric fields
  * are passed as base-10 decimal strings — the WASM converts them to
  * `U256`/`u64` internally; passing JS `number` would lose precision for
@@ -119,7 +119,7 @@ export interface DeclarativeRouteRequestV3Input {
 /**
  * Result of a successful `declarative_route_request_v3_json` call.
  *
- * `actions` is the JSON-serialised `Vec<simulation_reducer::action::Action>`
+ * `actions` is the JSON-serialised `Vec<policy_transition::action::Action>`
  * the WASM produced. Phase 4B emits a single-element vec whose body is the
  * `Unknown` stub; Phase 4D fills in the real `ActionBody` per registry-v2
  * manifest emit-rule.
@@ -315,7 +315,7 @@ export async function previewInstalledSchema(): Promise<PreviewInstalledSchemaOu
  *
  * Resolves `(chain_id, to, selector)` through the engine-side bridge table
  * populated at install time by `declarative_install_v3_json`, then produces
- * the PDF FSM `simulation_reducer::action::Action` tree. The wire boundary is
+ * the PDF FSM `policy_transition::action::Action` tree. The wire boundary is
  * locked at Phase 4B; the Rust stub currently returns a single
  * `ActionBody::Unknown` so the SW + Cedar path can already exercise the v3
  * type — manifest lookup + emit-rule decoding lands in Phase 4D.
@@ -384,7 +384,7 @@ export interface DeclarativeRouteTypedDataV3Input {
  * in a non-throwing `{ ok, data?, error? }` shape so the SW sig-router can
  * treat a `route_failed` / `no_declarative_v3_mapper` miss as a transparent
  * fall-through (`null`) rather than catching an `EngineError`. `actions` is
- * the JSON-serialised `Vec<simulation_reducer::action::Action>`; `decoder_id`
+ * the JSON-serialised `Vec<policy_transition::action::Action>`; `decoder_id`
  * is the matched bundle id (`""` on no match).
  *
  * The caller marshals the snake_case wire keys

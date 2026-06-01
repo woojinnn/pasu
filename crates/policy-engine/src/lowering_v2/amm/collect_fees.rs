@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::CollectFeesAction;
+use policy_transition::action::amm::CollectFeesAction;
 
 use super::super::common::cedar::addr;
 use super::super::common::token::lower_token_key;
@@ -45,20 +45,20 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{
+    use policy_state::primitives::{Address, ChainId, U256};
+    use policy_state::token::TokenKey;
+    use policy_state::LiveField;
+    use policy_transition::action::amm::{
         AmmAction, AmmVenue, CollectFeesAction, CollectFeesLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, ChainId, U256};
-    use simulation_state::token::TokenKey;
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, now, onchain_meta, onchain_source, sample_token_ref, user,
     };
 
     /// A Uniswap V3 collect-fees on a position NFT, on-chain meta.
-    fn sample_collect_fees() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_collect_fees() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::UniswapV3 {
             chain: chain.clone(),
@@ -94,7 +94,7 @@ mod tests {
     /// branch of `lower_token_amount_set` (the populated branch is covered
     /// above). A V4 venue (poolId/poolManager/hooks) also widens venue cover
     /// here.
-    fn sample_collect_fees_empty() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_collect_fees_empty() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::UniswapV4 {
             chain: chain.clone(),

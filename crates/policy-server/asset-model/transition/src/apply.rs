@@ -1,15 +1,12 @@
 //! Top-level entry point and the `Reducer` trait.
-//!
 //! The simulator's contract is:
-//!
 //! ```ignore
 //! apply(state, action, ctx) -> ReducerResult<StateDelta>
 //! ```
-//!
 //! Pure function: `state` is read-only and the returned `StateDelta` describes
 //! what *would* change. Use `helpers::delta::apply_delta` to advance the state.
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::{Action, ActionBody};
 use crate::error::{ReducerError, ReducerResult};
@@ -23,13 +20,22 @@ pub trait Reducer {
     ///
     /// The implementation must NOT mutate `state`. All change information
     /// lives in the returned delta.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ReducerError`](crate::error::ReducerError) when the action is
+    /// invalid for the supplied state or a reducer invariant is violated.
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta>;
 }
 
 /// Public entry point — call this from the caller's side.
-///
 /// Mirrors `Reducer::apply` but takes `state` first so the caller-side
 /// reading order is `(state, action, ctx)`.
+///
+/// # Errors
+///
+/// Returns [`ReducerError`] when the action cannot be applied to the supplied
+/// state.
 pub fn apply(state: &WalletState, action: &Action, ctx: &EvalContext) -> ReducerResult<StateDelta> {
     action.body.apply(state, ctx)
 }
@@ -63,7 +69,6 @@ impl Reducer for ActionBody {
 /// Sequentially apply each child action, advancing the state with each
 /// child's delta before applying the next, and accumulate into a single
 /// `StateDelta`.
-///
 /// Implements the PDF spec multicall semantics: `state → state' → state''`
 /// where each child sees the state produced by all previous siblings. The
 /// returned delta is the merged composition of all child deltas (sequence
@@ -88,9 +93,9 @@ fn apply_multicall(
 mod tests {
     use super::*;
 
-    use simulation_state::eval_context::{RequestKind, SimulationMode};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::wallet::{WalletId, WalletState};
+    use policy_state::eval_context::{RequestKind, SimulationMode};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::wallet::{WalletId, WalletState};
 
     fn eval_ctx() -> EvalContext {
         EvalContext::new(
@@ -160,7 +165,7 @@ mod tests {
     #[test]
     fn hyperliquid_core_is_not_a_no_op() {
         use crate::action::hyperliquid_core::{HlWithdrawAction, HyperliquidCoreAction};
-        use simulation_state::primitives::{Address, Decimal};
+        use policy_state::primitives::{Address, Decimal};
 
         let state = empty_state();
         let body = ActionBody::HyperliquidCore(HyperliquidCoreAction::Withdraw(HlWithdrawAction {

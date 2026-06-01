@@ -2,7 +2,6 @@
 //! close an existing perpetual position.
 //!
 //! ## Settlement order
-//!
 //! 1. Look up the position by `position_id` (effective state — committed
 //!    `state.positions` overlaid with any in-flight `PositionChange::Open`
 //!    on `delta`).
@@ -13,24 +12,20 @@
 //! 4. Credit the released collateral back to the wallet (the venue returns
 //!    the locked margin).
 //! 5. Emit `PositionChange::Close { id }`.
-//!
 //! ## Partial close (size = `Some(..)`)
-//!
-//! Partial close is **deferred** for Phase 2 — the spec carries the
 //! `size: Option<SizeSpec>` field but ergonomic partial-close requires
 //! either:
 //!   - a `DecreasePerpAction` (already exists for the partial path), or
 //!   - position field-walker (`PositionPatch.fields` `after` snapshot
 //!     replacement is the wrong shape for "shrink `size_base`").
 //!
-//! For now `ClosePerpAction { size: Some(_), … }` returns `Invariant` with
-//! a guiding message. Phase 3 can lift this by routing the
-//! partial path through `DecreasePerpAction` synthesis.
+//! `ClosePerpAction { size: Some(_), … }` returns `Invariant`; callers should
+//! synthesize a `DecreasePerpAction` for partial closes.
 
-use simulation_state::delta::PositionChange;
-use simulation_state::position::PositionKind;
-use simulation_state::primitives::SignedI256;
-use simulation_state::{EvalContext, StateDelta, WalletState, U256};
+use policy_state::delta::PositionChange;
+use policy_state::position::PositionKind;
+use policy_state::primitives::SignedI256;
+use policy_state::{EvalContext, StateDelta, WalletState, U256};
 
 use crate::action::perp::ClosePerpAction;
 use crate::apply::Reducer;
@@ -128,16 +123,16 @@ impl Reducer for ClosePerpAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::delta::TokenChange;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::delta::TokenChange;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, Time, VenueRef,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{ClosePerpLiveInputs, PerpVenue};
@@ -151,7 +146,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

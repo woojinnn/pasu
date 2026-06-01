@@ -4,13 +4,13 @@
  * All routes are authenticated — `client.request()` attaches the stored
  * JWT automatically. The TypeScript shapes mirror the Rust DTOs in
  * `crates/policy-server/server/src/read_handlers.rs` and the underlying
- * `simulation-state` types.
+ * `policy-state` types.
  */
 
 import { request } from "./client";
 import type { Address, ChainId, TokenHolding } from "./types";
 
-/** Mirrors `simulation_state::WalletId` (address + chains set). */
+/** Mirrors `policy_state::WalletId` (address + chains set). */
 export interface WalletId {
   address: string;
   chains: string[]; // CAIP-2 strings, e.g. "eip155:1"
@@ -24,7 +24,7 @@ export interface BlockHeight {
 
 /** A `WalletState` row as returned by `GET /wallets/:addr/state`. The
  * shape is the same as the Rust `WalletState` serde output; we keep the
- * sub-types `unknown` for now and rely on the page-level code to read
+ * sub-types `unknown` and rely on the page-level code to read
  * the parts it cares about. */
 export interface WalletStateView {
   wallet_id: WalletId;

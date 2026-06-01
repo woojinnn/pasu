@@ -6,7 +6,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::hyperliquid_core::HlUnknownAction;
+use policy_transition::action::hyperliquid_core::HlUnknownAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::hl_venue;
@@ -35,8 +35,8 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::hyperliquid_core::{HlUnknownAction, HyperliquidCoreAction};
-    use simulation_reducer::action::ActionBody;
+    use policy_transition::action::hyperliquid_core::{HlUnknownAction, HyperliquidCoreAction};
+    use policy_transition::action::ActionBody;
 
     use crate::lowering_v2::perp::test_support::{assert_conforms, offchain_meta};
 

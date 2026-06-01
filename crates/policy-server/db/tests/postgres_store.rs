@@ -1,5 +1,5 @@
-use simulation_db::stores::{PostgresGlobalDb, PostgresWalletStore};
-use simulation_state::{WalletId, WalletState, WalletStore};
+use policy_db::stores::{PostgresGlobalDb, PostgresWalletStore};
+use policy_state::{WalletId, WalletState, WalletStore};
 use sqlx_postgres::PgPool;
 
 #[tokio::test]

@@ -7,7 +7,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use simulation_state::primitives::{Address, ChainId, Spender, U256};
+use policy_state::primitives::{Address, ChainId, Spender, U256};
 
 use crate::error::SyncError;
 use crate::fetchers::rpc::multicall::{Call3, Multicall};

@@ -15,7 +15,7 @@ pub enum ReducerError {
 
     /// Referenced token holding was not found in the wallet state.
     #[error("token not found: {0:?}")]
-    TokenNotFound(simulation_state::TokenKey),
+    TokenNotFound(policy_state::TokenKey),
 
     /// Referenced position id was not found in the wallet state.
     #[error("position not found: {0}")]
