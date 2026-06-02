@@ -61,7 +61,7 @@ crates/integration-tests/src/harness/
 ├─ corpus.rs              # existing: corpus replay + expect verdict
 ├─ oracle.rs              # existing: envelope/type/domain/error class
 ├─ semantic.rs            # implemented: generic expect_body assertion engine
-├─ projection.rs          # planned: selector-level independent expected-field projection
+├─ projection.rs          # engine done (unit-tested): selector-level independent expected-field projection; corpus/CLI driver pending
 ├─ semantic_lints.rs      # planned: zero/unresolved/high-risk-field lints
 ├─ audit.rs               # planned: protocol-level strict audit aggregator
 └─ fixtures.rs            # optional: reusable JSON pointer/action find helpers
@@ -74,7 +74,7 @@ crates/integration-tests/src/bin/v3_harness.rs
 └─ audit                  # planned: protocol strict gate wrapper
 ```
 
-현재 구현된 CLI 는 `fuzz`, `validate`, `coverage`, `replay`, `corpus`, `import-*` 이다. `projection.rs`, `semantic_lints.rs`, `audit.rs` 와 `audit --strict` 는 설계 목표이며 아직 실행 가능한 gate 로 취급하지 않는다. 현 landing 은 아래 §3/P4 의 manual gate 조합으로 수행한다.
+현재 구현된 CLI 는 `fuzz`, `validate`, `coverage`, `replay`, `corpus`, `import-*` 이다. `projection.rs` 는 **엔진·단위테스트 완료**(독립 ABI decode + `$tx`/`$raw`/`$derive` source grammar + `semantic.rs` op·path 엔진 재사용; §1.2)이나 corpus/CLI 일괄 driver 는 follow-up 이라 아직 실행 가능한 gate 는 아니다. `semantic_lints.rs`, `audit.rs` 와 `audit --strict` 는 설계 목표다. 현 landing 은 아래 §3/P4 의 manual gate 조합으로 수행한다.
 
 ### 1.1 `expect_body` data contract  ✅ 구현됨 (`semantic.rs`)
 
@@ -156,7 +156,7 @@ Implementation rule:
 - path dialect 는 JSON Pointer(`/...`), `$` dotted/index(`$.data.actions[0]`), recursive field(`$..address`) 를 지원한다.
 - assertion engine 은 `ActionBody` schema 를 몰라야 한다. JSON 만 본다.
 
-### 1.2 Projection data contract  🔮 설계 — 미구현 (projection executor 부재; 현 landing 은 §1.1 `expect_body` + field-level golden)
+### 1.2 Projection data contract  🔶 엔진 구현·단위테스트 완료 (`projection.rs`: 독립 decode + `$tx`/`$raw`/`$derive` grammar, `semantic.rs` 재사용); corpus/CLI 일괄 driver 는 follow-up
 
 Projection 은 selector 단위 2nd-opinion 이다. 한 selector 에 대해 raw args 에서 기대 ActionBody field 를 계산한다.
 

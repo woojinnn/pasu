@@ -30,6 +30,7 @@ pub mod encode;
 pub mod fuzz;
 pub mod oracle;
 pub mod prng;
+pub mod projection;
 pub mod report;
 pub mod route;
 pub mod semantic;
