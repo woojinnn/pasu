@@ -60,11 +60,7 @@ fn required_env_status(names: &[&str]) -> String {
     let missing: Vec<&str> = names
         .iter()
         .copied()
-        .filter(|name| {
-            std::env::var(name)
-                .map(|v| v.trim().is_empty())
-                .unwrap_or(true)
-        })
+        .filter(|name| std::env::var(name).map_or(true, |v| v.trim().is_empty()))
         .collect();
     if missing.is_empty() {
         "ok".to_owned()
