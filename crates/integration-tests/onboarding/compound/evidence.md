@@ -158,10 +158,17 @@ Compound v2 maps to **existing ActionBody domains** (lending: supply/withdraw/bo
 - **CometRewards (mainnet)** `claim`/`claimTo` → `Airdrop::Claim` (claimTo's arbitrary `to` = fund-destination signal). rewards.coverage.json + abi snapshot + 2 manifests. `validate` 2 OK · `fuzz` 600/600 pass. Mainnet rewards addr on-chain-verified (`rewardConfig`→COMP). `check:surface` PASS. Multichain rewards = decode follow-up.
 - **Bulker `invoke` DEFERRED — hard decode gap (recorded):** `invoke(bytes32[] actions, bytes[] data)` is a parallel-array tagged dispatch where each `data[i]` is an action-specific ABI tuple keyed by the `actions[i]` bytes32 tag. Not expressible by the current emit grammar (`array_emit` = one body per element; `tagged_dispatch`/`enum_tagged_dispatch` = single dispatch; no per-element ABI decode keyed by a per-element tag). Needs an **array + per-element-tagged-dispatch grammar extension** (focused decoder work) to fan out to a multicall of supply/withdraw/transfer/claim/native-wrap/stETH sub-bodies. The underlying ops ARE covered when called directly on Comet/CometRewards; excluded in `_deployments.json` with this reason.
 
+### P2 real-tx slice — sampled, green (2026-06-02)
+
+- Etherscan `txlist` (mainnet) for cUSDC / cETH / Unitroller / COMP → 22 REAL txs across the COVER selectors that appeared in recent traffic (redeem, redeemUnderlying, repayBorrow, cETH mint()/redeem/borrow/redeemUnderlying, enterMarkets, exitMarket, claimComp, delegate). Corpus = `data/golden/v3-decode/compound-v2/corpus.json`.
+- `v3-harness corpus --filter compound-v2` → **22/22 matched** (all real calldata decodes to the expected domain). **8 entries carry `expect_body` field-pins** (lending: venue.name=compound_v2, asset.key.address=USDC, amount via `u256_hex_eq`; airdrop: token=COMP, delegatee/recipient hex_eq) — all pass → semantic-level verification against real calldata.
+- **P2 finding (legit, fixed):** `enterMarkets([cTokens])` decodes to top-level **`multicall`** (one `EnableCollateral` per cToken), NOT `lending` — the decoder is correct (array_emit wraps per-element bodies in a multicall); the corpus `expect_domain` was corrected to `multicall`.
+
 ### Remaining (not yet done this run)
-- compound-v3 **Bulker** structured decode (grammar extension, above) + **multichain** Bulker/Rewards (mainnet rewards done).
+- **P2 depth:** full Etherscan bulk sweep (≥10k tx, wallet-facing target floors) + Dune cross-chain pinpoint + typed-data corpus (`route_typed_data --require-expect-body`) for COMP `Delegation` + Comet `Authorization`; `expect_body` on all corpus entries; mint/borrow/repayBorrowBehalf/delegateBySig real samples (absent from the recent-2000 window).
+- compound-v3 **Bulker** structured decode (grammar extension) + **multichain** Bulker/Rewards (mainnet rewards done).
 - **GovernorBravo** voting (castVote/propose) — deferred (no governance-vote ActionBody domain; COMP voting-power delegation IS covered).
-- **P2 real-tx** (Etherscan bulk sweep + Dune + typed-data corpus for COMP `Delegation` + Comet `Authorization`), **P3** gap triage, **P4** land (`cargo test --workspace` + wasm + `check-onboarding-evidence`).
+- **P3** gap triage, **P4** land (`cargo test --workspace` + wasm-build + `check-onboarding-evidence --phase all`).
 
 ## Blockers
 
