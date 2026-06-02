@@ -26,6 +26,14 @@ export interface ManagedPolicy {
   template?: ManagedPolicyTemplateMeta;
   manifest?: unknown;
   manifests?: readonly unknown[];
+  /** Optional v7 builder tree snapshot (JSON-encoded `Doc`).
+   *  Present when the policy was authored in Builder mode; absent for
+   *  Code-only policies. The runtime ignores this; it's metadata so the
+   *  dashboard can reopen the canvas exactly as the user left it. */
+  policyTree?: string;
+  /** Human-readable display name. Falls back to the `@id` annotation
+   *  parsed from `text` when absent. */
+  displayName?: string;
   updatedAtMs: number;
   schemaVersion: 1;
 }
