@@ -1,0 +1,29 @@
+{
+  "contract": "MainnetBulker (mainnet)",
+  "chainId": 1,
+  "address": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
+  "snapshot": "bulker.abi.json",
+  "note": "Compound v3 MainnetBulker. COVER = invoke (parallel-array tagged batch -> Multicall of supply/withdraw/transfer/claim/native-wrap/stETH sub-bodies; the user pre-sign entrypoint). sweepNativeToken/sweepToken are admin token-recovery; transferAdmin is admin-only.",
+  "functions": {
+    "0x555029a6": {
+      "name": "invoke",
+      "decision": "cover",
+      "reason": "user batch entrypoint: invoke(bytes32[] actions, bytes[] data) -> Multicall via parallel_tagged_dispatch (8 ACTION_* tags: supply/withdraw/transfer/claim + native/stETH variants)"
+    },
+    "0xb660c156": {
+      "name": "sweepNativeToken",
+      "decision": "exclude",
+      "reason": "admin token-recovery: sweeps stuck native token to admin, not a user pre-sign action"
+    },
+    "0x258836fe": {
+      "name": "sweepToken",
+      "decision": "exclude",
+      "reason": "admin token-recovery: sweeps a stuck ERC20 to admin, not a user pre-sign action"
+    },
+    "0x75829def": {
+      "name": "transferAdmin",
+      "decision": "exclude",
+      "reason": "admin-only: transfers the Bulker admin role"
+    }
+  }
+}

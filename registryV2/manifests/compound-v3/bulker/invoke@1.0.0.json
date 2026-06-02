@@ -1,0 +1,201 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v3/bulker/invoke@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v3 MainnetBulker invoke(bytes32[] actions, bytes[] data): parallel-array tagged batch. Each data[i] is an action-specific ABI tuple keyed by the bytes32 ASCII actions[i] tag (8 ACTION_* from BaseBulker + MainnetBulker). Decoded by parallel_tagged_dispatch into a Multicall of per-action bodies that lower IDENTICALLY to the equivalent direct Comet/CometRewards call. base_asset is resolved per-leg from the DECODED comet (resolve_from_inputs), since $to is the Bulker, not the market. Native/stETH legs: the wallet emits native ETH / stETH (the Bulker wraps to WETH/wstETH internally); modelled as the asset that leaves the wallet. Tags + tuples verified against compound-finance/comet BaseBulker.sol + MainnetBulker.sol; selector 0x555029a6; addr Etherscan-verified MainnetBulker.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x555029a6",
+    "chain_to_addresses": {
+      "1": [
+        "0xa397a8c2086c554b531c02e29f3291c9704b00c7"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "invoke",
+    "abi": {
+      "name": "invoke",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "actions", "type": "bytes32[]" },
+        { "name": "data", "type": "bytes[]" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "parallel_tagged_dispatch",
+    "actions_source": "$args.actions",
+    "data_source": "$args.data",
+    "tag_encoding": "bytes32_ascii",
+    "max_elements": 32,
+    "unknown_tag_policy": "warn",
+    "resolve_from_inputs": { "compound_v3_base_asset": "comet" },
+    "per_tag": {
+      "ACTION_SUPPLY_ASSET": {
+        "inputs_abi": "(address comet, address to, address asset, uint256 amount)",
+        "body": {
+          "domain": "lending",
+          "lending": {
+            "action": "supply",
+            "supply": {
+              "venue": { "name": "compound_v3", "chain": "$chain", "comet": "$inputs.comet", "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } } },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.asset" } },
+              "amount": "$inputs.amount",
+              "on_behalf_of": "$inputs.to"
+            }
+          }
+        },
+        "live_inputs": {
+          "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_reserve_state" }, "ttl_s": 30 },
+          "supply_apy": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_supply_apy" }, "ttl_s": 30 },
+          "a_token_price_usd": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_a_token_price_usd" }, "ttl_s": 60 },
+          "eligible_as_collat": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_eligible_as_collat" }, "ttl_s": 60 },
+          "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_user_state_before" }, "ttl_s": 12 }
+        }
+      },
+      "ACTION_SUPPLY_NATIVE_TOKEN": {
+        "inputs_abi": "(address comet, address to, uint256 amount)",
+        "body": {
+          "domain": "lending",
+          "lending": {
+            "action": "supply",
+            "supply": {
+              "venue": { "name": "compound_v3", "chain": "$chain", "comet": "$inputs.comet", "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } } },
+              "asset": { "key": { "standard": "native", "chain": "$chain", "address": "0x0000000000000000000000000000000000000000" } },
+              "amount": "$inputs.amount",
+              "on_behalf_of": "$inputs.to"
+            }
+          }
+        },
+        "live_inputs": {
+          "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_reserve_state" }, "ttl_s": 30 },
+          "supply_apy": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_supply_apy" }, "ttl_s": 30 },
+          "a_token_price_usd": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_a_token_price_usd" }, "ttl_s": 60 },
+          "eligible_as_collat": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_eligible_as_collat" }, "ttl_s": 60 },
+          "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_user_state_before" }, "ttl_s": 12 }
+        }
+      },
+      "ACTION_TRANSFER_ASSET": {
+        "inputs_abi": "(address comet, address to, address asset, uint256 amount)",
+        "body": {
+          "domain": "token",
+          "token": {
+            "action": "erc20_transfer",
+            "erc20_transfer": {
+              "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.asset" } },
+              "recipient": "$inputs.to",
+              "amount": "$inputs.amount"
+            }
+          }
+        }
+      },
+      "ACTION_WITHDRAW_ASSET": {
+        "inputs_abi": "(address comet, address to, address asset, uint256 amount)",
+        "body": {
+          "domain": "lending",
+          "lending": {
+            "action": "withdraw",
+            "withdraw": {
+              "venue": { "name": "compound_v3", "chain": "$chain", "comet": "$inputs.comet", "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } } },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.asset" } },
+              "amount": "$inputs.amount",
+              "recipient": "$inputs.to"
+            }
+          }
+        },
+        "live_inputs": {
+          "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_reserve_state" }, "ttl_s": 30 },
+          "available_to_withdraw": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_available_to_withdraw" }, "ttl_s": 30 },
+          "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_user_state_before" }, "ttl_s": 12 }
+        }
+      },
+      "ACTION_WITHDRAW_NATIVE_TOKEN": {
+        "inputs_abi": "(address comet, address to, uint256 amount)",
+        "body": {
+          "domain": "lending",
+          "lending": {
+            "action": "withdraw",
+            "withdraw": {
+              "venue": { "name": "compound_v3", "chain": "$chain", "comet": "$inputs.comet", "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } } },
+              "asset": { "key": { "standard": "native", "chain": "$chain", "address": "0x0000000000000000000000000000000000000000" } },
+              "amount": "$inputs.amount",
+              "recipient": "$inputs.to"
+            }
+          }
+        },
+        "live_inputs": {
+          "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_reserve_state" }, "ttl_s": 30 },
+          "available_to_withdraw": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_available_to_withdraw" }, "ttl_s": 30 },
+          "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_user_state_before" }, "ttl_s": 12 }
+        }
+      },
+      "ACTION_CLAIM_REWARD": {
+        "inputs_abi": "(address comet, address rewards, address src, bool shouldAccrue)",
+        "body": {
+          "domain": "airdrop",
+          "airdrop": {
+            "action": "claim",
+            "claim": {
+              "source": { "name": "compound" },
+              "claim_target": { "kind": "staking_claim", "chain": "$chain", "contract": "$inputs.rewards" },
+              "recipient": "$inputs.src",
+              "proof": null,
+              "sig": null
+            }
+          }
+        },
+        "live_inputs": {
+          "is_still_claimable": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_is_still_claimable" }, "ttl_s": 30 },
+          "actual_amount": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_actual_amount" }, "ttl_s": 60 },
+          "claim_token": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_claim_token" }, "ttl_s": 60 },
+          "claim_window": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_claim_window" }, "ttl_s": 60 }
+        }
+      },
+      "ACTION_SUPPLY_STETH": {
+        "inputs_abi": "(address comet, address to, uint256 amount)",
+        "body": {
+          "domain": "lending",
+          "lending": {
+            "action": "supply",
+            "supply": {
+              "venue": { "name": "compound_v3", "chain": "$chain", "comet": "$inputs.comet", "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } } },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84" } },
+              "amount": "$inputs.amount",
+              "on_behalf_of": "$inputs.to"
+            }
+          }
+        },
+        "live_inputs": {
+          "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_reserve_state" }, "ttl_s": 30 },
+          "supply_apy": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_supply_apy" }, "ttl_s": 30 },
+          "a_token_price_usd": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_a_token_price_usd" }, "ttl_s": 60 },
+          "eligible_as_collat": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_eligible_as_collat" }, "ttl_s": 60 },
+          "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_user_state_before" }, "ttl_s": 12 }
+        }
+      },
+      "ACTION_WITHDRAW_STETH": {
+        "inputs_abi": "(address comet, address to, uint256 amount)",
+        "body": {
+          "domain": "lending",
+          "lending": {
+            "action": "withdraw",
+            "withdraw": {
+              "venue": { "name": "compound_v3", "chain": "$chain", "comet": "$inputs.comet", "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } } },
+              "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0" } },
+              "amount": "$inputs.amount",
+              "recipient": "$inputs.to"
+            }
+          }
+        },
+        "live_inputs": {
+          "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_reserve_state" }, "ttl_s": 30 },
+          "available_to_withdraw": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_available_to_withdraw" }, "ttl_s": 30 },
+          "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_user_state_before" }, "ttl_s": 12 }
+        }
+      }
+    }
+  }
+}

@@ -4,7 +4,7 @@
   "source": "compound-finance/comet deployments/<network>/<market>/roots.json (Comet proxies + Bulker + CometRewards) + on-chain rewardConfig() verification (CometRewards)",
   "url": "https://github.com/compound-finance/comet/tree/main/deployments",
   "fetchedAt": "2026-06-02",
-  "note": "Compound v3 (Comet) contract inventory. 28 Comet markets across 10 chains (cover, existing per-market coverage). CometRewards mainnet cover (claim/claimTo); Bulker deferred as a hard decode gap (see reason). Comet Configurator/CometFactory/price feeds/governance are protocol infra/admin, excluded as a class (not user pre-sign surface). Multichain Bulker/Rewards: decode follow-up.",
+  "note": "Compound v3 (Comet) contract inventory. 28 Comet markets across 10 chains (cover, existing per-market coverage). CometRewards mainnet cover (claim/claimTo); MainnetBulker cover (invoke -> parallel_tagged_dispatch). Comet Configurator/CometFactory/price feeds/governance are protocol infra/admin, excluded as a class (not user pre-sign surface). Multichain Bulker/Rewards: decode follow-up.",
   "contracts": [
     {
       "name": "Comet arbitrum-usdc-e",
@@ -210,11 +210,11 @@
       "reason": "COMP reward claim: claim/claimTo. On-chain rewardConfig() confirms COMP token + rescale. Mainnet surface-gated; other chains decode-deferred (multichain follow-up)."
     },
     {
-      "name": "Bulker / MainnetBulker (mainnet)",
+      "name": "MainnetBulker (mainnet)",
       "chainId": 1,
       "address": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
-      "decision": "exclude",
-      "reason": "DEFERRED (hard decode gap): invoke(bytes32[] actions, bytes[] data) is a parallel-array tagged dispatch where each data[i] is an action-specific ABI tuple keyed by the bytes32 actions[i] tag \u2014 not expressible by the current emit grammar (array_emit = one body per element; tagged_dispatch = single action). Needs an array+per-element-tagged-dispatch grammar extension (focused decoder work). The Bulker's underlying ops (supply/withdraw/transfer/claim/native-wrap/stETH) ARE covered when called directly on Comet/CometRewards. See onboarding/compound/evidence.md."
+      "decision": "cover",
+      "reason": "user batch entrypoint: invoke(bytes32[] actions, bytes[] data) decoded by the parallel_tagged_dispatch emit strategy into a Multicall of per-action bodies (8 ACTION_* tags: supply/withdraw/transfer/claim + native/stETH variants). See bulker.coverage.json. Address from compound-finance/comet deployments mainnet roots.json (Etherscan-verified MainnetBulker)."
     }
   ]
 }
