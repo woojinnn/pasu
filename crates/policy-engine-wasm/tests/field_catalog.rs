@@ -94,3 +94,38 @@ fn covers_all_cedar_type_forms() {
         assert_eq!(ty(p), Some((name, "extension")), "extension {name}");
     }
 }
+
+#[test]
+fn resolves_named_custom_context_like_the_shipped_schema() {
+    // Mirrors the real schema shape: `custom` is a NAMED common type (not an
+    // inline record), so the resolved JSON references it as
+    // `{"type":"Amm::SwapCustomContext"}` — the walker must resolve it against
+    // commonTypes and recurse. Inline-record tests never exercise this ref path,
+    // yet it is exactly how the shipped enriched schema carries custom fields.
+    let schema = r#"
+    namespace Amm {
+      type SwapCustomContext = { totalInputUsd: Long, riskScore: Long };
+      entity Wallet = { address: String };
+      entity Protocol;
+      action "Swap" appliesTo {
+        principal: Wallet,
+        resource: Protocol,
+        context: { slippageBp: Long, custom: SwapCustomContext },
+      };
+    }"#;
+    let cat = build(schema).expect("build");
+    let swap = cat.get("Swap").expect("Swap present");
+
+    // base field
+    assert_eq!(find(swap, "context.slippageBp").unwrap().cedar_type, "Long");
+    assert_eq!(find(swap, "context.slippageBp").unwrap().source, "base");
+
+    // custom fields resolved THROUGH the named common-type reference
+    let tiu = find(swap, "context.custom.totalInputUsd").expect("custom.totalInputUsd");
+    assert_eq!(tiu.cedar_type, "Long");
+    assert_eq!(tiu.source, "custom");
+    assert_eq!(
+        find(swap, "context.custom.riskScore").unwrap().source,
+        "custom"
+    );
+}

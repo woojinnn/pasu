@@ -751,6 +751,64 @@ mod tests_policy_rpc {
         assert_eq!(parsed["error"]["kind"], "install_failed", "{parsed}");
     }
 
+    /// End-to-end: install a schema whose action carries a named custom
+    /// context, then confirm `field_catalog_json()` (reading the installed
+    /// `state.schema_text`) emits typed BASE and CUSTOM fields keyed by the
+    /// action id. Guards the silent-no-op risk: a base-only schema source, a
+    /// wrong action key, or unresolved custom refs would all fail here.
+    #[test]
+    fn field_catalog_json_emits_base_and_custom_after_install() {
+        let schema_text = r#"
+        namespace FcTest {
+          type Custom = { riskScore: Long };
+          entity FcWallet = { address: String };
+          entity FcProtocol;
+          action "Probe" appliesTo {
+            principal: FcWallet,
+            resource: FcProtocol,
+            context: { slippageBp: Long, custom: Custom },
+          };
+        }
+        "#;
+        let install_out = install_policies_json(
+            json!({
+                "schema_text": schema_text,
+                "manifests": {},
+                "policy_set": [{ "id": "bundle::probe", "text": "permit(principal, action, resource);" }]
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&install_out).unwrap();
+        assert_eq!(parsed["ok"], true, "install failed: {parsed}");
+
+        let cat: Value = serde_json::from_str(&field_catalog_json()).unwrap();
+        assert_eq!(cat["ok"], true, "{cat}");
+        let fields = cat["data"]["Probe"]
+            .as_array()
+            .expect("Probe action present in catalog");
+        let typed = |path: &str, src: &str| {
+            fields
+                .iter()
+                .any(|f| f["path"] == path && f["source"] == src && f["type"] != Value::Null)
+        };
+        assert!(
+            typed("context.slippageBp", "base"),
+            "base field missing: {fields:?}"
+        );
+        assert!(
+            typed("context.custom.riskScore", "custom"),
+            "custom field missing: {fields:?}"
+        );
+        assert_eq!(
+            fields
+                .iter()
+                .find(|f| f["path"] == "principal.address")
+                .map(|f| &f["type"]),
+            Some(&Value::String("String".to_string())),
+            "principal.address type missing: {fields:?}"
+        );
+    }
+
     #[test]
     fn preview_custom_schema_with_one_output() {
         let input = json!({
