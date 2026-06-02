@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { makeHole, replaceNode, extractParams, fillParams } from "../params";
 import { blocksToEst } from "../blocksToEst";
+import { estToBlocks } from "../estToBlocks";
+import realPolicies from "./fixtures/real-policies-est.json";
 import type { Expr, PolicyIR } from "../ir";
 
 const lit = (value: number): Expr => ({ kind: "lit", litType: "long", value });
@@ -128,6 +130,50 @@ describe("fillParams", () => {
           { kind: "lit", litType: "string", value: "0xBBB" },
         ],
       });
+    }
+  });
+});
+
+describe("integration", () => {
+  const collectLits = (e: any, acc: any[] = []): any[] => {
+    if (e && typeof e === "object") {
+      if (e.kind === "lit" && e.litType === "long") acc.push(e);
+      for (const v of Object.values(e)) {
+        if (Array.isArray(v)) v.forEach((x) => collectLits(x, acc));
+        else if (v && typeof v === "object") collectLits(v, acc);
+      }
+    }
+    return acc;
+  };
+
+  it("parameterizes a real shipped policy's first long literal and round-trips", () => {
+    const withLong = (realPolicies as { est: any }[])
+      .map((c) => estToBlocks(c.est, null))
+      .find((ir) => collectLits(ir).length > 0);
+    expect(withLong, "expected at least one shipped policy with a long literal").toBeTruthy();
+
+    const target = collectLits(withLong)[0];
+    const tmpl = replaceNode(withLong!, (e) => e === target, makeHole(target, { name: "threshold", optional: true }));
+    expect(extractParams(tmpl).map((s) => s.name)).toEqual(["threshold"]);
+
+    const filled = fillParams(tmpl, { threshold: target.value + 1 });
+    expect(filled.ok).toBe(true);
+    if (filled.ok) expect(() => blocksToEst(filled.policy)).not.toThrow(); // hole-free + serializable
+  });
+
+  it("safety net: blocksToEst throws on a template with an unfilled hole", () => {
+    const tmpl = policyWith(makeHole(lit(1), { name: "p" }));
+    expect(() => blocksToEst(tmpl)).toThrow(/hole/);
+  });
+
+  it("property: fill-with-defaults reproduces the original policy", () => {
+    for (let i = 1; i <= 500; i++) {
+      const original = lit(i);
+      const ir = policyWith({ kind: "binary", op: ">", left: { kind: "var", name: "context" }, right: original });
+      const tmpl = replaceNode(ir, (e) => e === original, makeHole(original, { name: "p", optional: true }));
+      const r = fillParams(tmpl, {});
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.policy).toEqual(ir); // default fill === original
     }
   });
 });

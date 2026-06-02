@@ -38,6 +38,7 @@
 
 export { estToBlocks } from "./estToBlocks";
 export { blocksToEst } from "./blocksToEst";
+export { makeHole, replaceNode, extractParams, fillParams, childExprs } from "./params";
 export {
   type SchemaField,
   type SchemaDescriptor,
@@ -61,4 +62,11 @@ export type {
   Expr,
   Condition,
   PolicyIR,
+  Expected,
+  HoleNode,
+  ParamConstraints,
+  ParamSpec,
+  PolicyTemplate,
+  ParamFillValue,
+  ParamError,
 } from "./ir";
