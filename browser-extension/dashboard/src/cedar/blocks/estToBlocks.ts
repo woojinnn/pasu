@@ -23,6 +23,11 @@ const BINARY_OPS = new Set<string>([
 ]);
 const UNARY_OPS = new Set<string>(["!", "neg", "isEmpty"]);
 
+// Guard against unbounded recursion on adversarial / pathologically deep EST.
+// Well below the JS call-stack limit, so we throw a clean error rather than a
+// RangeError. Cedar's own parser bounds real inputs far below this.
+const MAX_DEPTH = 400;
+
 export function estToBlocks(est: EstPolicy, schema: SchemaDescriptor | null): PolicyIR {
   const ir: PolicyIR = {
     kind: "policy",
@@ -33,13 +38,17 @@ export function estToBlocks(est: EstPolicy, schema: SchemaDescriptor | null): Po
       action: actionScopeToIr(est.action),
       resource: scopeToIr(est.resource),
     },
-    conditions: est.conditions.map((c): Condition => ({ kind: c.kind, body: exprToIr(c.body) })),
+    conditions: est.conditions.map((c): Condition => ({ kind: c.kind, body: exprToIr(c.body, 0) })),
   };
   if (schema) annotate(ir, schema);
   return ir;
 }
 
-function exprToIr(node: EstExpr): Expr {
+function exprToIr(node: EstExpr, depth: number): Expr {
+  if (depth > MAX_DEPTH) {
+    throw new Error(`estToBlocks: expression nesting exceeds MAX_DEPTH (${MAX_DEPTH})`);
+  }
+  const d = depth + 1;
   if ("Var" in node) return { kind: "var", name: node.Var };
   if ("Value" in node) {
     const v = node.Value;
@@ -51,43 +60,43 @@ function exprToIr(node: EstExpr): Expr {
     if (typeof v === "boolean") return { kind: "lit", litType: "bool", value: v };
     return { kind: "raw", est: node };
   }
-  if ("Set" in node) return { kind: "set", elements: (node.Set as any[]).map(exprToIr) };
+  if ("Set" in node) return { kind: "set", elements: (node.Set as any[]).map((x) => exprToIr(x, d)) };
   if ("Record" in node) {
     return {
       kind: "record",
       pairs: Object.entries(node.Record as Record<string, any>).map(([key, value]) => ({
         key,
-        value: exprToIr(value),
+        value: exprToIr(value, d),
       })),
     };
   }
-  if ("." in node) return { kind: "attr", of: exprToIr(node["."].left), attr: node["."].attr };
-  if ("has" in node) return { kind: "has", of: exprToIr(node.has.left), attr: node.has.attr };
-  if ("like" in node) return { kind: "like", of: exprToIr(node.like.left), pattern: node.like.pattern };
+  if ("." in node) return { kind: "attr", of: exprToIr(node["."].left, d), attr: node["."].attr };
+  if ("has" in node) return { kind: "has", of: exprToIr(node.has.left, d), attr: node.has.attr };
+  if ("like" in node) return { kind: "like", of: exprToIr(node.like.left, d), pattern: node.like.pattern };
   if ("is" in node) {
     return {
       kind: "is",
-      of: exprToIr(node.is.left),
+      of: exprToIr(node.is.left, d),
       entityType: node.is.entity_type,
-      ...(node.is.in ? { in: exprToIr(node.is.in) } : {}),
+      ...(node.is.in ? { in: exprToIr(node.is.in, d) } : {}),
     };
   }
   if ("if-then-else" in node) {
     const n = node["if-then-else"];
-    return { kind: "if", cond: exprToIr(n.if), then: exprToIr(n.then), else: exprToIr(n.else) };
+    return { kind: "if", cond: exprToIr(n.if, d), then: exprToIr(n.then, d), else: exprToIr(n.else, d) };
   }
   const k = opKey(node);
   if (k && BINARY_OPS.has(k)) {
-    return { kind: "binary", op: k as BinaryOp, left: exprToIr(node[k].left), right: exprToIr(node[k].right) };
+    return { kind: "binary", op: k as BinaryOp, left: exprToIr(node[k].left, d), right: exprToIr(node[k].right, d) };
   }
   if (k && UNARY_OPS.has(k)) {
-    return { kind: "unary", op: k as UnaryOp, operand: exprToIr(node[k].arg) };
+    return { kind: "unary", op: k as UnaryOp, operand: exprToIr(node[k].arg, d) };
   }
   // Extension call: single key whose value is an array of arg exprs (e.g.
   // { "ip": [...] }, { "isInRange": [recv, arg] }). MUST be last — Set/Record
   // and every structural single-key form are already consumed above.
   if (k && Array.isArray(node[k])) {
-    return { kind: "ext", fn: k, args: (node[k] as any[]).map(exprToIr) };
+    return { kind: "ext", fn: k, args: (node[k] as any[]).map((x) => exprToIr(x, d)) };
   }
   return { kind: "raw", est: node };
 }
