@@ -1,0 +1,50 @@
+{
+  "type": "adapter_action",
+  "id": "cowswap/settlement/invalidate-order@1.0.0",
+  "publisher": "cowswap",
+  "schema_version": "3",
+  "note": "CoW Protocol on-chain order cancellation. GPv2Settlement.invalidateOrder(bytes orderUid), selector 0x15337bc0, mainnet 0x9008d19f58aabd9ed0d60971565aa8510560ab41. Owner-checked (the orderUid encodes owner; only the order owner can invalidate). -> amm cancel_intent_order (venue=cow_swap). order_hash carries the full CoW orderUid (56B: 32B orderDigest + 20B owner + 4B validTo); cancel semantics are terms-free so the opaque uid suffices for an audit-level cancel action. 1st-party: github.com/cowprotocol/contracts src/contracts/GPv2Settlement.sol.",
+  "match": {
+    "selector": "0x15337bc0",
+    "chain_to_addresses": {
+      "1": [
+        "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "invalidateOrder",
+    "abi": {
+      "name": "invalidateOrder",
+      "type": "function",
+      "inputs": [
+        { "name": "orderUid", "type": "bytes" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "cancel_intent_order",
+        "cancel_intent_order": {
+          "venue": {
+            "name": "cow_swap",
+            "chain": "$chain",
+            "settlement": "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          },
+          "order_hash": "$args.orderUid"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

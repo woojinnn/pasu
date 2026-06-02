@@ -1,0 +1,54 @@
+{
+  "contract": "GPv2Settlement",
+  "chainId": 1,
+  "address": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+  "snapshot": "gpv2-settlement.abi.json",
+  "functions": {
+    "0x15337bc0": {
+      "name": "invalidateOrder",
+      "decision": "cover",
+      "reason": "user on-chain order cancellation (owner-checked: msg.sender must be order owner) -> amm cancel_intent_order (venue=cow_swap). orderUid carries no terms, but cancel semantics are terms-free."
+    },
+    "0xec6cb13f": {
+      "name": "setPreSignature",
+      "decision": "exclude",
+      "reason": "DEFER (user-facing, P2 usage-share measured): on-chain pre-signature marker for an opaque orderUid (56B digest + 20B owner + 4B validTo). calldata carries NO sellToken/buyToken/amount, so static decode yields no swap intent to scope; the order's economic terms are analyzed at off-chain EIP-712 Order signing time (covered via signed_structs.Order). Predominantly a smart-contract-wallet path vs the dominant off-chain Order signature."
+    },
+    "0x13d79a0b": {
+      "name": "settle",
+      "decision": "exclude",
+      "reason": "solver-only (onlySolver, allowlisted via GPv2AllowListAuthentication); batch settlement, not a user pre-sign action."
+    },
+    "0x845a101f": {
+      "name": "swap",
+      "decision": "exclude",
+      "reason": "solver-only (onlySolver); single-order settlement routed through the Balancer V2 vault."
+    },
+    "0xed9f35ce": {
+      "name": "freeFilledAmountStorage",
+      "decision": "exclude",
+      "reason": "onlyInteraction: callable only mid-settlement by Settlement itself; storage cleanup, not user-facing."
+    },
+    "0xa2a7d51b": {
+      "name": "freePreSignatureStorage",
+      "decision": "exclude",
+      "reason": "onlyInteraction: mid-settlement pre-signature storage cleanup; not user-facing."
+    },
+    "0xf84436bd": {
+      "name": "simulateDelegatecall",
+      "decision": "exclude",
+      "reason": "simulation helper (delegatecall in a staticcall/simulation context); not a real state-changing user action."
+    },
+    "0x43218e19": {
+      "name": "simulateDelegatecallInternal",
+      "decision": "exclude",
+      "reason": "internal simulation helper invoked by simulateDelegatecall; not user-facing."
+    }
+  },
+  "signed_structs": {
+    "Order": {
+      "decision": "cover",
+      "reason": "off-chain EIP-712 Order signature (domain 'Gnosis Protocol' v2, verifyingContract=this Settlement, primaryType=Order) -> amm sign_intent_order (venue=cow_swap). The dominant CowSwap user action (gasless intent)."
+    }
+  }
+}
