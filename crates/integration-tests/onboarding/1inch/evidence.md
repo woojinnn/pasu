@@ -107,31 +107,31 @@
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | pending | |
-| each fix tied to a gap id, selector, tx hash, or synthetic seed | pending | |
-| manifest/decoder/Tier3/harness change list recorded | pending | |
-| P2 rerun after fixes recorded | pending | |
-| corpus `expect` flips or exclusions justified | pending | |
-| remaining gaps have explicit defer/blocker disposition | pending | |
+| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | done | **NO decode gap on the covered surface** — corpus 10/10 pinned + fuzz 5000/5000 + 0 structural errors. All buckets are DEFERS, data-gated with measured usage-share: (1) LOP cancel/fill ~19.0% (#1); (2) unoswap family ~4.1% ($fn/token_out-from-pool); (3) permitAndCall ~0.2% (recursion); (4) clipper ~0%. EXCLUDE: epoch bookkeeping ~6.2%, callbacks, admin. No `unknown_protocol_address` (txlist address-keyed to the router; every selector triaged). |
+| each fix tied to a gap id, selector, tx hash, or synthetic seed | done | No decode fixes were needed this onboarding (clean first-pass decode). The one new primitive (`keccak256` $fn) is tied to the COVER selector `swap` (0x07ed2379) `route_hash` requirement, validated by corpus 0x56ab0a… (+9 more) and builtin_fn unit test. |
+| manifest/decoder/Tier3/harness change list recorded | done | **manifest:** `manifests/1inch/aggregation-router-v6/swap@1.0.0.json` (new). **decoder:** `builtin_fn.rs` — new `keccak256` $fn (no Tier3/ActionBody/cedarschema change; AggregatorRoute venue pre-existing). **harness:** `data/golden/v3-decode/1inch/corpus.json` (new, 11 entries). **surface:** `surface/1inch/{_deployments,aggregation-router-v6.abi,aggregation-router-v6.coverage}.json`. |
+| P2 rerun after fixes recorded | done | no fixes → no rerun needed. Re-validation after fmt: `corpus --filter 1inch --require-expect-body` 11/11 matched / 10/10 pinned; fuzz 5000/5000; `cargo test --workspace --exclude policy-engine-integration-tests` (see P4). |
+| corpus `expect` flips or exclusions justified | done | no flips. Every `expect:pass` correct on first decode (pins matched first run); the 1 `expect:error` (unoswap) is a deliberate deferral proof (route miss), not a flip. |
+| remaining gaps have explicit defer/blocker disposition | done | all DEFERs above carry a 1st-party usage-share (data-gated). LOP/unoswap/clipper/permitAndCall = explicit DEFER in coverage.json with reasons. Multichain = separate framework. No silent gaps. |
 
 ## P4 Land Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| `registryV2 npm run build` output recorded | pending | |
-| registryV2 build-index vitest output recorded | pending | |
-| `npm run check:manifest` output recorded | pending | |
-| `npm run check:surface` output recorded | pending | |
-| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | pending | |
-| v3-harness coverage/fuzz/corpus outputs recorded | pending | |
-| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
-| `cargo test --workspace` output recorded | pending | |
-| wasm build output recorded if runtime/wasm/schema changed | pending | |
-| fmt/clippy/typecheck output recorded for changed crates/packages | pending | |
-| exact staged files and commit hash recorded | pending | |
-| remaining WARNs/deferred selectors/actions listed with reason | pending | |
-| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | pending | |
-| no base/worktree merge performed unless user explicitly requested it | pending | |
+| `registryV2 npm run build` output recorded | done | `done — 52975 callkey(s) + 83 typed-data entr(ies) across 815 manifest(s)` (+1 swap callkey `1__0x1111…2a65__0x07ed2379` vs base 52974/814). (One ENOTEMPTY on `index/by-callkey` from iCloud-synced stray files → `rm -rf index && npm run build` clean; index is gitignored/generated.) |
+| registryV2 build-index vitest output recorded | blocked | browser-extension Yarn 4 / WASM toolchain not provisioned in this onboarding worktree (same as other onboarding worktrees). build correctness covered by `npm run build` (validates every manifest+token) + `check:manifest` (1483 OK) + `check:surface`. Rerun: `cd browser-extension && yarn && yarn vitest run --root ../registryV2 scripts/__tests__/build-index.test.ts`. |
+| `npm run check:manifest` output recorded | done | exit 0: `validate (all): 1483 single_emit manifest(s) OK, 0 structural errors [iters/manifest=24, source-ref representative]`. |
+| `npm run check:surface` output recorded | done | exit 0; `✓ AggregationRouterV6 [1]: 33 surface · 1 cover · 32 exclude · 1 on-chain manifests`; `✓ [I0] 1inch: 5 deployed · 1 cover · 4 exclude`. Only pre-existing unrelated WARNs (morpho I0', aave/compound ungated). |
+| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | done | **not applicable** — 1inch is a singleton router (no `_address_universe.json`; not pool/factory/vault-heavy). |
+| v3-harness coverage/fuzz/corpus outputs recorded | done | fuzz `--filter 1inch --iters 5000 --seed 0x31696e6368` → 5000/5000 pass (amm 100%); corpus `--filter 1inch` → 11/11 matched. |
+| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | done | `v3-harness corpus --filter 1inch --require-expect-body` → **11/11 matched, 10/10 pass entries pinned**; unoswap `expect:error got:error`. |
+| `cargo test --workspace` output recorded | done | `cargo test --workspace --exclude policy-engine-integration-tests` → **exit 0, 0 failed** (all core crates: policy-action/transition/engine/sync/state/mappers/… + doc-tests). integration-tests `v3_decode_harness` full golden = covered for the changed surface by `corpus --filter 1inch --require-expect-body` (11/11) + the **full cross-protocol `v3-harness corpus` replay (no filter) → 345/345 matched** (all protocols incl. the new 11 1inch entries decode correctly) — proves the keccak256 $fn (additive WHITELIST arm) regressed no existing decoder; full golden test-suite bounded per FW-1 (`--test-threads`). |
+| wasm build output recorded if runtime/wasm/schema changed | done | `./scripts/wasm-build.sh` → release compile 1m48s (mappers w/ new keccak256 $fn + policy-engine-wasm), wasm-bindgen + wasm-opt `✨ Done`, artifact copied to `browser-extension/backend/wasm/` + `public/wasm/`. Optimized `policy_engine_wasm_bg.wasm` = 10,721,691 bytes (~10.7 MiB). Required because the keccak256 $fn (mappers) runs in the WASM declarative-decode path. |
+| fmt/clippy/typecheck output recorded for changed crates/packages | done | `cargo fmt -p mappers -- --check` clean (after auto-fmt of the new `keccak256_hex` — only builtin_fn.rs touched). `cargo clippy -p mappers --all-targets -- -D warnings` = clean (exit 0, no warnings). |
+| exact staged files and commit hash recorded | done | Onboarding landed across 4 explicit-stage commits on `feat/1inch-onboarding`: **d109f545** P0 (surface/1inch/{_deployments,abi,coverage}.json + evidence), **65800825** P1 (builtin_fn.rs keccak256 $fn + manifests/1inch/aggregation-router-v6/swap@1.0.0.json), **89aa8d5f** P2 (data/golden/v3-decode/1inch/corpus.json + evidence), and the **P3/P4 commit carrying this evidence** (staged: builtin_fn.rs fmt-wrap + this evidence.md; HEAD of git log). Generated `index/`, `pkg/`, `browser-extension/**/wasm/` gitignored. `.cargo/config.toml` (target-dir redirect) git-ignored, never staged. |
+| remaining WARNs/deferred selectors/actions listed with reason | done | Deferred (data-gated): LOP cancel/fill ~19% (#1 follow-up — needs 1inch-LOP IntentVenue + AddressLib unmask), unoswap family ~4.1% ($fn/token_out-from-pool gap), permitAndCall ~0.2% (recursion), clipper ~0%. EXCLUDE: epoch bookkeeping ~6.2%, callbacks, admin. Separate framework: multichain (Arbitrum/Base/BSC/Polygon/Optimism), legacy v5/v4 routers + standalone LOP V2/V3. WARNs: pre-existing registry-wide (morpho I0', aave/compound ungated) — not 1inch. |
+| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | see Final Completion Claim — bounded to the measured ~62–70% `swap`-selector coverage-share; explicitly NOT "the full 1inch swap surface". |
+| no base/worktree merge performed unless user explicitly requested it | done | no merge/push; all work on `feat/1inch-onboarding` (worktree scopeball-1inch). Shared base `feat/registry-v2` untouched. |
 
 ## Blockers
 
@@ -141,7 +141,15 @@
 
 ## Final Completion Claim
 
-_(filled at P4 — bounded to the P2-measured `swap`-selector coverage-share; must not over-claim.)_
+**Onboarding status: COMPLETE (mainnet-only, single-selector `swap` subset), bounded by measured coverage.**
+
+> **wallet-facing, Ethereum mainnet (`1`) ONLY: 1inch AggregationRouterV6 (`0x111111125421ca6dc452d289314280a0f8842a65`) `swap(executor,SwapDescription,data)` (`0x07ed2379`) → `Amm::Swap` on `AggregatorRoute(OneInchV6)`.** No Tier-3 (the AggregatorRoute venue + OneInchV6 kind + lowering were pre-shipped); one additive decode primitive (`keccak256` `$fn` for `route_hash`).
+>
+> **Measured coverage (tx.to — users call the router directly):** `swap` = **~70.5% (Dune 30d, 82,215/116,556)** / **~61.6% (Etherscan 2.3d, 5,082/8,253)** of successful v6-router state-changing txs — the **dominant single action**. Validated on 10 real mainnet swaps (8 ERC20→ERC20 + 2 native-ETH-sentinel), all field-pinned. This is **NOT "the full 1inch swap surface"** — see deferrals.
+>
+> **Deferred (data-gated, 1st-party usage-share measured):** 1inch **Limit Order Protocol v4** fill/cancel + the off-chain EIP-712 `Order` signature ≈ **19.0% (30d)** — the single highest-value follow-up (needs a 1inch-LOP `IntentVenue` variant + AddressLib unmask of packed `Order` uint256 fields + typed-data routing); **unoswap family** ≈ **4.1%** (token_out-from-packed-pool `$fn` gap, enrichment not wired); **permitAndCall** ≈ 0.2% (permit + self-call recursion); **clipperSwap/To** ≈ **0%** (negligible; packed srcToken uint256). **EXCLUDE:** epoch bookkeeping ≈ 6.2% (maker order-series invalidation), callbacks, admin. **Separate framework/rounds:** multichain v6 (Arbitrum/Base/BSC/Polygon/Optimism, shared `0x1111…2a65`); legacy AggregationRouterV5/V4 + standalone LOP V2/V3.
+>
+> Deferred selectors with no manifest correctly **route-miss → warn-closed** (safe default; proven by the unoswap corpus `expect:error` entry).
 
 Verify:
 

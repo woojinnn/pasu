@@ -146,7 +146,10 @@ fn route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
 /// [`route_hash`] (which packs an `address[11]` route), this hashes raw bytes.
 fn keccak256_hex(args: &[JsonValue]) -> Result<JsonValue, String> {
     if args.len() != 1 {
-        return Err(format!("keccak256 expects 1 arg (data), got {}", args.len()));
+        return Err(format!(
+            "keccak256 expects 1 arg (data), got {}",
+            args.len()
+        ));
     }
     let bytes = json_hex_bytes(&args[0], "keccak256: data")?;
     Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
