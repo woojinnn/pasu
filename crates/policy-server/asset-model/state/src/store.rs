@@ -50,7 +50,7 @@ pub trait WalletStore: Send + Sync {
     async fn list_wallets(&self) -> Result<Vec<WalletId>, StoreError>;
 
     /// Loads the wallet state for `id`. Returns an empty
-    /// [`WalletState::new(id.clone())`] for a wallet the store has never
+    /// [`WalletState::new`] for a wallet the store has never
     /// seen, rather than [`StoreError::NotFound`].
     async fn load(&self, id: &WalletId) -> Result<WalletState, StoreError>;
 

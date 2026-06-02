@@ -21,6 +21,14 @@ pub struct StorageBackend {
 impl StorageBackend {
     /// Connect to `PostgreSQL` and apply the schema migrations.
     pub async fn open(config: &ServerConfig) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::open_with_options(config, config.run_migrations_on_startup).await
+    }
+
+    /// Connect to `PostgreSQL`, optionally applying schema migrations.
+    pub async fn open_with_options(
+        config: &ServerConfig,
+        migrate: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let database_url = config.database_url.as_deref().ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -37,7 +45,9 @@ impl StorageBackend {
 
         let pool = connect_pool(database_url).await?;
         let global_db = GlobalDb::new(pool.clone());
-        global_db.migrate().await?;
+        if migrate {
+            global_db.migrate().await?;
+        }
         let multi_user = MultiUserStore::new(pool);
         Ok(Self {
             global_db,

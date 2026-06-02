@@ -1,0 +1,6 @@
+apiVersion: v2
+name: policy-server
+description: Scopeball policy-server API and sync worker
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

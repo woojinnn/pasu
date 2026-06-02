@@ -555,6 +555,31 @@ pub async fn sync_wallet(
         Err(e) => return bad_request(&format!("invalid address `{address}`: {e}")),
     };
 
+    let lock_key = format!("sync:user:{}", user.user_id);
+    let lock = match state
+        .coordinator
+        .try_lock(&lock_key, state.sync_lock_ttl)
+        .await
+    {
+        Ok(Some(lock)) => lock,
+        Ok(None) => {
+            return (
+                StatusCode::CONFLICT,
+                "wallet sync already running for this user",
+            )
+                .into_response()
+        }
+        Err(e) => return internal(&format!("sync lock: {e}")),
+    };
+
+    let response = sync_wallet_locked(state.clone(), user, addr).await;
+    if let Err(e) = state.coordinator.release_lock(lock).await {
+        tracing::warn!(error = %e, "failed to release sync lock");
+    }
+    response
+}
+
+async fn sync_wallet_locked(state: AppState, user: AuthUser, addr: Address) -> Response {
     let store = match state.multi_user.for_user(&user.user_id) {
         Ok(s) => s,
         Err(e) => return internal(&format!("open user store: {e}")),

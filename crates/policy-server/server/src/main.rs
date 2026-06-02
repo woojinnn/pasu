@@ -18,12 +18,16 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use tracing_subscriber::EnvFilter;
 
 use policy_server::app::{build_router_with_config, AppState};
 use policy_server::config::ServerConfig;
-use policy_server::events::{EventBus, LocalEventPublisher};
+use policy_server::coordination::build_coordinator;
+use policy_server::events::{
+    spawn_redis_event_forwarder, EventBus, EventPublisher, LocalEventPublisher, RedisEventPublisher,
+};
 use policy_server::storage::StorageBackend;
 use policy_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
 
@@ -47,6 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = ServerConfig::from_env();
     tracing::info!("opening PostgreSQL policy-server storage");
     let storage = StorageBackend::open(&config).await?;
+    let coordinator = build_coordinator(&config).await?;
 
     // Sync orchestrator. Load the TOML config; if the file is missing we
     // boot with an empty config (no RPC providers) — endpoints that
@@ -87,14 +92,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("CoinGecko token metadata client ready");
 
     let event_bus = EventBus::new();
+    let publisher: Arc<dyn EventPublisher> = match config.redis_url.as_deref() {
+        Some(url) if !url.trim().is_empty() => {
+            let channel = config.redis_events_channel.clone();
+            let _forwarder =
+                spawn_redis_event_forwarder(url, channel.clone(), event_bus.clone()).await?;
+            tracing::info!(channel, "Redis event fanout enabled");
+            Arc::new(RedisEventPublisher::connect(url, config.redis_events_channel.clone()).await?)
+        }
+        _ => Arc::new(LocalEventPublisher::new(event_bus.clone())),
+    };
     let state = AppState {
         multi_user: storage.multi_user(),
         global_db: storage.global_db(),
         event_bus: event_bus.clone(),
-        publisher: Arc::new(LocalEventPublisher::new(event_bus)),
+        publisher,
         orchestrator,
         etherscan,
         coingecko,
+        coordinator,
+        sync_lock_ttl: Duration::from_secs(config.sync_lock_ttl_secs),
     };
     let router = build_router_with_config(state, &config);
 

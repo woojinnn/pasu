@@ -36,10 +36,10 @@ impl ResolveContext {
 }
 
 /// * `"$chain"`        → ctx.chain
-/// * `"$inputs.X"`     → ctx.inputs[X]
-/// * `"$resolved.X"`   → ctx.resolved[X]
-/// * `"$derived.X"`    → ctx.derived[X]
-/// * `"$tx.X"`         → ctx.tx[X]
+/// * `"$inputs.X"`     → `ctx.inputs[X]`
+/// * `"$resolved.X"`   → `ctx.resolved[X]`
+/// * `"$derived.X"`    → `ctx.derived[X]`
+/// * `"$tx.X"`         → `ctx.tx[X]`
 pub fn resolve_placeholders(value: &Value, ctx: &ResolveContext) -> Result<Value, SyncError> {
     match value {
         Value::String(s) => resolve_string(s, ctx),

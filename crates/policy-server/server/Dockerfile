@@ -10,6 +10,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=builder /app/target/release/policy-server /usr/local/bin/policy-server
 COPY --from=builder /app/target/release/sync_worker /usr/local/bin/scopeball-sync-worker
+COPY --from=builder /app/target/release/migrate /usr/local/bin/policy-server-migrate
 COPY scopeball-sync.toml /app/scopeball-sync.toml
 ENV POLICY_SERVER_ADDR=0.0.0.0:8788
 EXPOSE 8788

@@ -1,0 +1,161 @@
+name: policy-server
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/policy-server.yml
+      - crates/policy-server/**
+      - docs/superpowers/plans/2026-06-02-policy-server-k8s-migration.md
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/policy-server.yml
+      - crates/policy-server/**
+      - docs/superpowers/plans/2026-06-02-policy-server-k8s-migration.md
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to Kubernetes after building the image
+        required: true
+        default: false
+        type: boolean
+      namespace:
+        description: Kubernetes namespace
+        required: true
+        default: scopeball
+      release_name:
+        description: Helm release name
+        required: true
+        default: scopeball
+      image_tag:
+        description: Image tag to deploy. Defaults to the current git SHA.
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/scopeball-policy-server
+  CHART_PATH: crates/policy-server/server/deploy/helm/policy-server
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: azure/setup-helm@v4
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Test policy-server packages
+        run: cargo test -p policy-server -p policy-db -p policy-sync
+
+      - name: Clippy policy-server packages
+        run: cargo clippy -p policy-server -p policy-db -p policy-sync --all-targets -- -D warnings
+
+      - name: Helm lint
+        run: helm lint "$CHART_PATH"
+
+      - name: Render Helm chart
+        run: |
+          helm template policy-server "$CHART_PATH" \
+            --set image.repository="$IMAGE_REPOSITORY" \
+            --set image.tag="${GITHUB_SHA}"
+
+  image:
+    runs-on: ubuntu-latest
+    needs: verify
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.image-tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: image-tag
+        name: Select deploy image tag
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - id: image-tags
+        name: Select pushed image tags
+        run: |
+          {
+            echo "tags<<EOF"
+            echo "${IMAGE_REPOSITORY}:${GITHUB_SHA}"
+            if [ -n "${{ inputs.image_tag }}" ] && [ "${{ inputs.image_tag }}" != "${GITHUB_SHA}" ]; then
+              echo "${IMAGE_REPOSITORY}:${{ inputs.image_tag }}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: crates/policy-server/server/Dockerfile
+          push: true
+          tags: ${{ steps.image-tags.outputs.tags }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: image
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Deploy chart
+        env:
+          NAMESPACE: ${{ inputs.namespace }}
+          RELEASE_NAME: ${{ inputs.release_name }}
+          IMAGE_TAG: ${{ needs.image.outputs.tag }}
+        run: |
+          helm upgrade --install "$RELEASE_NAME" "$CHART_PATH" \
+            --namespace "$NAMESPACE" \
+            --create-namespace \
+            --set image.repository="$IMAGE_REPOSITORY" \
+            --set image.tag="$IMAGE_TAG" \
+            --wait \
+            --timeout 10m
+
+      - name: Wait for rollouts
+        env:
+          NAMESPACE: ${{ inputs.namespace }}
+          RELEASE_NAME: ${{ inputs.release_name }}
+        run: |
+          FULLNAME="${RELEASE_NAME}-policy-server"
+          kubectl -n "$NAMESPACE" rollout status "deployment/${FULLNAME}-api" --timeout=10m
+          kubectl -n "$NAMESPACE" rollout status "deployment/${FULLNAME}-worker" --timeout=10m

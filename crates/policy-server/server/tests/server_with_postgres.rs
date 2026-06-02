@@ -63,6 +63,8 @@ fn spawn_state() -> (AppState, tempfile::TempDir) {
             orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
             etherscan: None,
             coingecko: policy_sync::CoinGeckoClient::new(),
+            coordinator: Arc::new(policy_server::coordination::NoopCoordinator),
+            sync_lock_ttl: std::time::Duration::from_secs(120),
         },
         tmp,
     )

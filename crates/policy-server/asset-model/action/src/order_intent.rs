@@ -52,9 +52,8 @@ pub trait OrderIntent {
     fn reduce_only(&self) -> bool;
 
     /// Normalized time-in-force tag — one of `"gtc"`, `"ioc"`, `"fok"`,
-    /// `"post_only"`, `"gtd"`. (Perp maps its [`TimeInForce`] enum to this
+    /// `"post_only"`, `"gtd"`. (Perp maps its [`crate::perp::TimeInForce`] enum to this
     /// spelling; `HL` already carries the normalized string.)
-    /// [`TimeInForce`]: crate::perp::TimeInForce
     fn time_in_force_tag(&self) -> &str;
 }
 

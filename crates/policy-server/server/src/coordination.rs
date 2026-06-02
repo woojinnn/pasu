@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
+use crate::config::ServerConfig;
+
 /// Errors from the coordination backend.
 #[derive(Debug, thiserror::Error)]
 pub enum CoordinationError {
@@ -152,6 +154,18 @@ impl Coordinator for RedisCoordinator {
 
 /// Shared coordinator trait object.
 pub type DynCoordinator = Arc<dyn Coordinator>;
+
+/// Build the cloud coordination backend selected by runtime config.
+///
+/// Local/dev mode leaves `REDIS_URL` unset and uses [`NoopCoordinator`].
+/// Cloud deployments set `REDIS_URL`, which enables Redis-backed TTL locks
+/// shared by API and worker replicas.
+pub async fn build_coordinator(config: &ServerConfig) -> Result<DynCoordinator, CoordinationError> {
+    match config.redis_url.as_deref() {
+        Some(url) if !url.trim().is_empty() => Ok(Arc::new(RedisCoordinator::connect(url).await?)),
+        _ => Ok(Arc::new(NoopCoordinator)),
+    }
+}
 
 fn ttl_millis(ttl: Duration) -> u64 {
     u64::try_from(ttl.as_millis()).unwrap_or(u64::MAX)
