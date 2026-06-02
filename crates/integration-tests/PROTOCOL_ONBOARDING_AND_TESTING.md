@@ -981,7 +981,7 @@ cd registryV2 && npx tsx scripts/build-index.ts && cd ..
 ### 8.2 ActionBody domain 카탈로그 (요약)
 현재 domain (= `crates/integration-tests/src/harness/oracle.rs` 의 `VALID_DOMAINS`, 측정 `grep -n VALID_DOMAINS`): token · amm · lending · airdrop · launchpad · liquid_staking · perp · permission · yield · restaking · staking · hyperliquid_core · multicall · unknown. 각 domain 의 action 목록·상세 = §4a 표(**SSOT**). **작성 전 `<domain>/mod.rs` 직접 확인** — 도메인·스키마 둘 다 확장된다.
 
-### 8.3 알려진 함정 (DEFECT_CATALOG.md, V3 관점)
+### 8.3 알려진 함정 (DEFECT_CATALOG.md — gitignored `docs/`, fresh clone 부재; 핵심 D-code 는 아래 inline)
 - **nested tuple per-component 타입 유실** (D010 류): `[i][j]` 접근 시 uint width 정보 유실 → string 화 → u64 coercion 실패. **Permit2 류는 commit `3f93f5c` 에서 해결**(chained-numeric + coercion). 새 프로토콜 nested-tuple 에서 재발 가능 → 같은 패턴 점검.
 - **schema enum drift** (D007): manifest 가 쓰는 enum 값(예 approvalKind `"erc721"`)이 Rust enum 에 없으면 deserialize fail → 양쪽 동기화.
 - **fork 프로토콜 struct/opcode layout** (D006/D010): Pancake PoolKey(6 field) vs Uniswap V4(5 field) 처럼 fork 가 layout 다름 → **1차 출처 직접 fetch** 로 field index 검증. mirror 가정 금지.

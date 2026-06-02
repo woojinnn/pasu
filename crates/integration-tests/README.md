@@ -228,7 +228,7 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- coverage
 cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus
 ```
 
-결과는 **`logs/<protocol>/`** 에 프로토콜별로 기록한다 (포맷·인덱스 = [`logs/README.md`](logs/README.md)). 실거래(Etherscan/Dune) 실행도 같은 포맷의 `logs/<protocol>/YYYY-MM-DD-<source>.json` 으로 남겨, 다음 실행/에이전트가 직전 로그와 diff 해 진행도(고친 gap, 새 gap)를 추적한다. 실제 예시: `logs/uniswap/2026-05-30-etherscan-fresh.json` (최신 실거래 90건 중 40건 디코드 공백 — V2 fee-on-transfer / NFPM multicall 미등록 + UR V4·Permit2 디코더 gap).
+결과는 **`logs/<protocol>/`** 에 프로토콜별로 기록한다 (포맷·인덱스 = [`logs/README.md`](logs/README.md)). 실거래(Etherscan/Dune) 실행도 같은 포맷의 `logs/<protocol>/YYYY-MM-DD-<source>.json` 으로 남겨, 다음 실행/에이전트가 직전 로그와 diff 해 진행도(고친 gap, 새 gap)를 추적한다. 실제 예시(스냅샷): `logs/uniswap/2026-05-30-etherscan-fresh.json` — 그 배치의 실거래 일부가 V2 fee-on-transfer / NFPM multicall 미등록 + UR V4·Permit2 디코더 gap 으로 디코드 공백 분류됨 (건수는 당시 측정값; 현 수치는 재측정).
 
 ### Step 2 — CLASSIFY (report 신호 → gap 종류)
 

@@ -349,7 +349,7 @@ ActionBody::OffchainExchange(a) => super::offchain_exchange::lower(a, &ctx),   /
 2. **어디에도 안 맞고 구조화 가치 > 비용 → 새 domain.** Cedar policy 작성자에게 새 namespace 를 노출하는 큰 결정이므로 표현 이득이 분명할 때만.
 3. **가치 < 비용 또는 1차 출처 불충분 → `Unknown` + metadata 유지.** opaque/admin/출처 불충분 호출을 억지 domain 으로 포장하지 않는다. scope analyzer 로서 과장하지 않는 것이 정직하다. 단, 나중에 구조화 가치가 생겨 domain/action 이 추가되면 기존 `Unknown` corpus/manifest 는 새 action 으로 마이그레이션한다.
 
-> deferred 후보 (`SCHEMA_EXTENSION_PROPOSALS.md`): 새 off-chain exchange domain, venue-specific live_input catalog 등. 둘 다 위 rule 2 의 "구조화 가치 > 비용" 재평가 후 진입.
+> deferred 후보 (`SCHEMA_EXTENSION_PROPOSALS.md` — gitignored `docs/`, fresh clone 부재; §0 참조): 새 off-chain exchange domain, venue-specific live_input catalog 등. 둘 다 위 rule 2 의 "구조화 가치 > 비용" 재평가 후 진입.
 
 ## 6. 검증
 
@@ -373,4 +373,4 @@ cargo test -p policy-engine        # lowering + conformance gate (assert_conform
 - `crates/policy-engine/src/schema/mod.rs` — `include_str!` const + `SHIPPED_SCHEMA_FILES` 수동 등록, `merge_namespace_blocks`
 - `crates/adapters/mappers/src/declarative/action_builder.rs` — `flatten_body` generic 추출
 - `schema/policy-schema/actions/<domain>/<sub>.cedarschema` + `core.cedarschema` — Cedar 4.10 namespace
-- B.3 deferred finding — `replicated-noodling-sprout.md` §12.8 / `SCHEMA_EXTENSION_PROPOSALS.md`
+- B.3 deferred finding — `replicated-noodling-sprout.md` §12.8 / `SCHEMA_EXTENSION_PROPOSALS.md` (둘 다 gitignored `docs/`, fresh clone 부재 — optional)
