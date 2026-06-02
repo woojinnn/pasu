@@ -271,40 +271,6 @@
           "deadline": "1900000000"
         }
       }
-    },
-    {
-      "intent": "morpho Base supply hand",
-      "expect": "pass",
-      "expect_domain": "lending",
-      "chain_id": 8453,
-      "source": "hand-encoded from Morpho Blue verified ABI and official Base singleton address",
-      "rpc": {
-        "params": [
-          {
-            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
-            "value": "0",
-            "data": "0xa99aad8900000000000000000000000042000000000000000000000000000000000000060000000000000000000000002ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000870ac11d48b15db9a138cf899d20f13f79ba00bc0000000000000000000000000000000000000000000000000bef55718ad600000000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000000"
-          }
-        ]
-      }
-    },
-    {
-      "intent": "morpho Base Authorization grant typed-data hand",
-      "expect": "pass",
-      "expect_domain": "lending",
-      "chain_id": 8453,
-      "source": "hand EIP-712 fixture from Morpho Blue Authorization struct and official Base singleton address",
-      "typed_data": {
-        "verifying_contract": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
-        "primary_type": "Authorization",
-        "message": {
-          "authorizer": "0x000000000000000000000000000000000000b0b0",
-          "authorized": "0x0000000000000000000000000000000000000a11",
-          "isAuthorized": true,
-          "nonce": "1",
-          "deadline": "2000000000"
-        }
-      }
     }
   ]
 }

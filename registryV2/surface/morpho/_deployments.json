@@ -3,44 +3,133 @@
   "source": "docs.morpho.org/get-started/resources/addresses + github.com/morpho-org/sdks (packages/blue-sdk/src/addresses.ts, chain-keyed)",
   "url": "https://docs.morpho.org/get-started/resources/addresses/",
   "fetchedAt": "2026-06-02",
-  "note": "I0 contract-inventory ground truth for Morpho on Ethereum (1) + Base (8453). User pre-sign surface = Morpho Blue singleton (cover; supply/borrow/repay/withdraw/collateral/setAuthorization + off-chain Authorization). MetaMorpho VAULTS are the other user surface but are factory CHILDREN (not in a static deployment list) — the factories are exclude here; the covered vault batch + full universe live in metamorpho-*.coverage.json + _address_universe.json. Bundler3 + adapters are user-facing routers but DEFERRED this round (nested multicall-adapter decode is a large separate effort) — marked exclude with a DEFERRED reason, tracked as a known coverage gap (evidence.md). Everything else = governance / keeper / oracle / IRM / V2 factory / registry infra. Honest floor: as complete as docs.morpho.org/addresses + blue-sdk; MORPHO token disposition flagged (two contracts) and verified on Etherscan (0x58d9..=ERC1967Proxy wrapper, 0x9994..=MorphoToken original).",
+  "note": "I0 contract-inventory ground truth for Morpho on Ethereum mainnet (1) only (representative chain; Base/other chains = separate multichain framework, explicit defer). User pre-sign surface = Morpho Blue singleton (cover; supply/borrow/repay/withdraw/collateral/setAuthorization + off-chain Authorization). MetaMorpho VAULTS are the other user surface but are factory CHILDREN (not in a static deployment list) \u2014 the factories are exclude here; the covered vault batch + full universe live in metamorpho-*.coverage.json + _address_universe.json. Bundler3 + adapters are user-facing routers but DEFERRED this round (nested multicall-adapter decode is a large separate effort) \u2014 marked exclude with a DEFERRED reason, tracked as a known coverage gap (evidence.md). Everything else = governance / keeper / oracle / IRM / V2 factory / registry infra. Honest floor: as complete as docs.morpho.org/addresses + blue-sdk; MORPHO token disposition flagged (two contracts) and verified on Etherscan (0x58d9..=ERC1967Proxy wrapper, 0x9994..=MorphoToken original).",
   "contracts": [
-    { "name": "Morpho Blue (singleton)", "chainId": 1, "address": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb", "decision": "cover", "reason": "core lending singleton — supply/withdraw/borrow/repay/supplyCollateral/withdrawCollateral/setAuthorization + off-chain Authorization (morpho-blue.coverage.json)" },
-    { "name": "Morpho Blue (singleton)", "chainId": 8453, "address": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb", "decision": "cover", "reason": "same singleton on Base (morpho-blue-base.coverage.json)" },
-
-    { "name": "MetaMorpho Factory V1.1", "chainId": 1, "address": "0x1897a8997241c1cd4bd0698647e4eb7213535c24", "decision": "exclude", "reason": "vault-deployment factory (createMetaMorpho) — only vault creators call it; the vault INSTANCES are the user surface (metamorpho-mainnet.coverage.json + _address_universe.json)" },
-    { "name": "MetaMorpho Factory V1.1", "chainId": 8453, "address": "0xff62a7c278c62ed665133147129245053bbf5918", "decision": "exclude", "reason": "vault-deployment factory; instances are the user surface (metamorpho-base.coverage.json)" },
-    { "name": "MetaMorpho Factory V1.0 [OLD]", "chainId": 1, "address": "0xa9c3d3a366466fa809d1ae982fb2c46e5fc41101", "decision": "exclude", "reason": "superseded vault factory; instances are the user surface" },
-
-    { "name": "Bundler3", "chainId": 1, "address": "0x6566194141eefa99af43bb5aa71460ca2dc90245", "decision": "exclude", "reason": "DEFERRED (not infra): user-facing multicall router the Morpho app routes most actions through. Decoding it = nested multicall(Call[]) -> GeneralAdapter1 adapter-ABI recursion, a large separate effort. Tracked as a known coverage gap (evidence.md); follow-up bundler-decode batch." },
-    { "name": "Bundler3", "chainId": 8453, "address": "0x6bfd8137e702540e7a42b74178a4a49ba43920c4", "decision": "exclude", "reason": "DEFERRED (not infra): Base multicall router; same as mainnet Bundler3." },
-    { "name": "GeneralAdapter1", "chainId": 1, "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0", "decision": "exclude", "reason": "DEFERRED (not infra): the adapter Bundler3 re-enters; encodes the actual supply/borrow/erc4626 legs inside a bundle. (Note: this is the operator address users grant via Morpho Blue setAuthorization — that grant IS covered.) Follow-up with Bundler3." },
-    { "name": "GeneralAdapter1", "chainId": 8453, "address": "0xb98c948cfa24072e58935bc004a8a7b376ae746a", "decision": "exclude", "reason": "DEFERRED (not infra): Base bundler adapter; follow-up with Bundler3." },
-    { "name": "ParaswapAdapter", "chainId": 1, "address": "0x03b5259bd204bfd4a616e5b79b0b786d90c6c38f", "decision": "exclude", "reason": "DEFERRED (not infra): swap adapter reached via Bundler3 re-enter; follow-up with Bundler3." },
-    { "name": "ParaswapAdapter", "chainId": 8453, "address": "0x6abe8abd0275e5564ed1336f0243a52c32562f71", "decision": "exclude", "reason": "DEFERRED (not infra): Base swap adapter; follow-up with Bundler3." },
-
-    { "name": "PublicAllocator", "chainId": 1, "address": "0xfd32fa2ca22c76dd6e550706ad913fc6ce91c75d", "decision": "exclude", "reason": "keeper/curator liquidity-reallocation across vault markets; not a wallet-owner position action" },
-    { "name": "PublicAllocator", "chainId": 8453, "address": "0xa090dd1a701408df1d4d0b85b716c87565f90467", "decision": "exclude", "reason": "keeper/curator reallocation" },
-    { "name": "AdaptiveCurveIRM", "chainId": 1, "address": "0x870ac11d48b15db9a138cf899d20f13f79ba00bc", "decision": "exclude", "reason": "interest-rate model read by Morpho Blue; no direct user calls" },
-    { "name": "AdaptiveCurveIRM", "chainId": 8453, "address": "0x46415998764c29ab2a25cbea6254146d50d22687", "decision": "exclude", "reason": "interest-rate model (distinct Base address); no direct user calls" },
-    { "name": "ChainlinkOracleV2 Factory", "chainId": 1, "address": "0x3a7bb36ee3f3ee32a60e9f2b33c1e5f2e83ad766", "decision": "exclude", "reason": "oracle-deployment factory; infra, not user pre-sign" },
-    { "name": "ChainlinkOracleV2 Factory", "chainId": 8453, "address": "0x2dc205f24bcb6b311e5cdf0745b0741648aebd3d", "decision": "exclude", "reason": "oracle-deployment factory; infra" },
-    { "name": "PreLiquidation Factory", "chainId": 1, "address": "0x6ff33615e792e35ed1026ea7caccf42d9bf83476", "decision": "exclude", "reason": "deploys pre-liquidation contracts (keeper/curator config); not a standing wallet position" },
-    { "name": "PreLiquidation Factory", "chainId": 8453, "address": "0x8cd16b62e170ee0ba83d80e1f80e6085367e2aef", "decision": "exclude", "reason": "pre-liquidation factory (keeper)" },
-    { "name": "VaultV2 Factory", "chainId": 1, "address": "0xa1d94f746defa1928926b84fb2596c06926c0405", "decision": "exclude", "reason": "Morpho Vault V2 deployment factory; V2 vault instances (newer generation) are a separate user surface, deferred to a V2 follow-up" },
-    { "name": "VaultV2 Factory", "chainId": 8453, "address": "0x4501125508079a99ebbebce205dec9593c2b5857", "decision": "exclude", "reason": "Vault V2 factory (distinct Base address); V2 follow-up" },
-    { "name": "MorphoMarketV1AdapterFactory (V2)", "chainId": 1, "address": "0xb049465969ac6355127cdf9e88dee63d25204d5d", "decision": "exclude", "reason": "Vault-V2 adapter factory infra" },
-    { "name": "MorphoMarketV1AdapterFactory (V2)", "chainId": 8453, "address": "0x133bac94306b99f6dad85c381a5be851d8dd717c", "decision": "exclude", "reason": "Vault-V2 adapter factory infra" },
-    { "name": "MorphoMarketV1AdapterV2Factory", "chainId": 1, "address": "0x32bb1c0d48d8b1b3363e86eeb9a0300bad61ccc1", "decision": "exclude", "reason": "Vault-V2 adapter factory infra" },
-    { "name": "MorphoMarketV1AdapterV2Factory", "chainId": 8453, "address": "0x9a1b378c43ba535cdb89934230f0d3890c51c0eb", "decision": "exclude", "reason": "Vault-V2 adapter factory infra" },
-    { "name": "MorphoVaultV1AdapterFactory (V2)", "chainId": 1, "address": "0xd1b8e2dee25c2b89dcd2f98448a7ce87d6f63394", "decision": "exclude", "reason": "Vault-V2 adapter factory infra" },
-    { "name": "MorphoVaultV1AdapterFactory (V2)", "chainId": 8453, "address": "0xf42d9c36b34c9c2cf3bc30ed2a52a90eeb604642", "decision": "exclude", "reason": "Vault-V2 adapter factory infra" },
-    { "name": "MorphoRegistry (registryList)", "chainId": 1, "address": "0x3696c5eae4a7ffd04ea163564571e9cd8ed9364e", "decision": "exclude", "reason": "V2 registry; governance/read, not user pre-sign" },
-    { "name": "MorphoRegistry (registryList)", "chainId": 8453, "address": "0x5c2531cbd2cf112cf687da3cd536708add7db10a", "decision": "exclude", "reason": "V2 registry; governance/read" },
-    { "name": "Universal Rewards Distributor Factory", "chainId": 1, "address": "0x9baa51245cdd28d8d74afe8b3959b616e9ee7c8d", "decision": "exclude", "reason": "DEFERRED (not infra): URD-deployment factory; the URD INSTANCES expose user claim(address,address,uint256,bytes32[]). claim maps to AirdropAction::Claim but instances are per-rewards-program (many) — deferred to a rewards-claim follow-up (enumerate instances via factory CreateUrd events / rewards API)." },
-
-    { "name": "MORPHO token (MorphoTokenEthereum, transferable wrapper, ERC1967Proxy)", "chainId": 1, "address": "0x58d97b57bb95320f9a05dc918aef65434969c2b2", "decision": "exclude", "reason": "standard ERC-20 governance token (approve/transfer/permit/delegate) — analyzed by the tokens:erc20 standard adapter; registered in token-surface as token_kind=governance. Not a Morpho-specific pre-sign manifest. Verified ContractName=ERC1967Proxy (Etherscan)." },
-    { "name": "MORPHO token (MorphoToken, original/legacy)", "chainId": 1, "address": "0x9994e35db50125e0df82e4c2dde62496ce330999", "decision": "exclude", "reason": "legacy/original MORPHO (blue-sdk morphoToken key); standard ERC-20 — tokens:erc20 adapter. Verified ContractName=MorphoToken (Etherscan). The app-canonical transferable token is 0x58d97b..; both tracked." },
-    { "name": "MORPHO token (Base)", "chainId": 8453, "address": "0x58d97b57bb95320f9a05dc918aef65434969c2b2", "decision": "exclude", "reason": "MORPHO on Base (docs.morpho.org/addresses); standard ERC-20 governance — tokens:erc20 adapter; token-surface registered." }
+    {
+      "name": "Morpho Blue (singleton)",
+      "chainId": 1,
+      "address": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+      "decision": "cover",
+      "reason": "core lending singleton \u2014 supply/withdraw/borrow/repay/supplyCollateral/withdrawCollateral/setAuthorization + off-chain Authorization (morpho-blue.coverage.json)"
+    },
+    {
+      "name": "MetaMorpho Factory V1.1",
+      "chainId": 1,
+      "address": "0x1897a8997241c1cd4bd0698647e4eb7213535c24",
+      "decision": "exclude",
+      "reason": "vault-deployment factory (createMetaMorpho) \u2014 only vault creators call it; the vault INSTANCES are the user surface (metamorpho-mainnet.coverage.json + _address_universe.json)"
+    },
+    {
+      "name": "MetaMorpho Factory V1.0 [OLD]",
+      "chainId": 1,
+      "address": "0xa9c3d3a366466fa809d1ae982fb2c46e5fc41101",
+      "decision": "exclude",
+      "reason": "superseded vault factory; instances are the user surface"
+    },
+    {
+      "name": "Bundler3",
+      "chainId": 1,
+      "address": "0x6566194141eefa99af43bb5aa71460ca2dc90245",
+      "decision": "exclude",
+      "reason": "DEFERRED (not infra): user-facing multicall router. MEASURED 1st-party (Dune ethereum traces+transactions, 30d, 8 cover vaults): Bundler3 carries ~84% of Morpho-NATIVE MetaMorpho vault deposits (direct-to-vault 193 tx vs Bundler3 1038 tx) and ~14.5% of ALL vault-touching txs (97% are router-mediated). It is the SINGLE highest-value decode follow-up \u2014 supersedes the prior run's unverified 'routes most actions through' prose (now data-gated). Decode = nested multicall(Call[]) -> GeneralAdapter1 adapter-ABI recursion (large separate effort)."
+    },
+    {
+      "name": "GeneralAdapter1",
+      "chainId": 1,
+      "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
+      "decision": "exclude",
+      "reason": "DEFERRED (not infra): the adapter Bundler3 re-enters; encodes the actual supply/borrow/erc4626 legs inside a bundle. (This is also the operator users grant via Morpho Blue setAuthorization \u2014 that grant IS covered.) Follow-up with Bundler3 (the dominant ~84% Morpho-native vault-deposit entrypoint)."
+    },
+    {
+      "name": "ParaswapAdapter",
+      "chainId": 1,
+      "address": "0x03b5259bd204bfd4a616e5b79b0b786d90c6c38f",
+      "decision": "exclude",
+      "reason": "DEFERRED (not infra): swap adapter reached via Bundler3 re-enter; follow-up with Bundler3."
+    },
+    {
+      "name": "PublicAllocator",
+      "chainId": 1,
+      "address": "0xfd32fa2ca22c76dd6e550706ad913fc6ce91c75d",
+      "decision": "exclude",
+      "reason": "keeper/curator liquidity-reallocation across vault markets; not a wallet-owner position action"
+    },
+    {
+      "name": "AdaptiveCurveIRM",
+      "chainId": 1,
+      "address": "0x870ac11d48b15db9a138cf899d20f13f79ba00bc",
+      "decision": "exclude",
+      "reason": "interest-rate model read by Morpho Blue; no direct user calls"
+    },
+    {
+      "name": "ChainlinkOracleV2 Factory",
+      "chainId": 1,
+      "address": "0x3a7bb36ee3f3ee32a60e9f2b33c1e5f2e83ad766",
+      "decision": "exclude",
+      "reason": "oracle-deployment factory; infra, not user pre-sign"
+    },
+    {
+      "name": "PreLiquidation Factory",
+      "chainId": 1,
+      "address": "0x6ff33615e792e35ed1026ea7caccf42d9bf83476",
+      "decision": "exclude",
+      "reason": "deploys pre-liquidation contracts (keeper/curator config); not a standing wallet position"
+    },
+    {
+      "name": "VaultV2 Factory",
+      "chainId": 1,
+      "address": "0xa1d94f746defa1928926b84fb2596c06926c0405",
+      "decision": "exclude",
+      "reason": "Morpho Vault V2 deployment factory; V2 vault instances (newer generation) are a separate user surface, deferred to a V2 follow-up"
+    },
+    {
+      "name": "MorphoMarketV1AdapterFactory (V2)",
+      "chainId": 1,
+      "address": "0xb049465969ac6355127cdf9e88dee63d25204d5d",
+      "decision": "exclude",
+      "reason": "Vault-V2 adapter factory infra"
+    },
+    {
+      "name": "MorphoMarketV1AdapterV2Factory",
+      "chainId": 1,
+      "address": "0x32bb1c0d48d8b1b3363e86eeb9a0300bad61ccc1",
+      "decision": "exclude",
+      "reason": "Vault-V2 adapter factory infra"
+    },
+    {
+      "name": "MorphoVaultV1AdapterFactory (V2)",
+      "chainId": 1,
+      "address": "0xd1b8e2dee25c2b89dcd2f98448a7ce87d6f63394",
+      "decision": "exclude",
+      "reason": "Vault-V2 adapter factory infra"
+    },
+    {
+      "name": "MorphoRegistry (registryList)",
+      "chainId": 1,
+      "address": "0x3696c5eae4a7ffd04ea163564571e9cd8ed9364e",
+      "decision": "exclude",
+      "reason": "V2 registry; governance/read, not user pre-sign"
+    },
+    {
+      "name": "Universal Rewards Distributor Factory",
+      "chainId": 1,
+      "address": "0x9baa51245cdd28d8d74afe8b3959b616e9ee7c8d",
+      "decision": "exclude",
+      "reason": "DEFERRED (not infra): URD-deployment factory; the URD INSTANCES expose user claim(address,address,uint256,bytes32[]). claim maps to AirdropAction::Claim but instances are per-rewards-program (many) \u2014 deferred to a rewards-claim follow-up (enumerate instances via factory CreateUrd events / rewards API)."
+    },
+    {
+      "name": "MORPHO token (MorphoTokenEthereum, transferable wrapper, ERC1967Proxy)",
+      "chainId": 1,
+      "address": "0x58d97b57bb95320f9a05dc918aef65434969c2b2",
+      "decision": "exclude",
+      "reason": "standard ERC-20 governance token (approve/transfer/permit/delegate) \u2014 analyzed by the tokens:erc20 standard adapter; registered in token-surface as token_kind=governance. Not a Morpho-specific pre-sign manifest. Verified ContractName=ERC1967Proxy (Etherscan)."
+    },
+    {
+      "name": "MORPHO token (MorphoToken, original/legacy)",
+      "chainId": 1,
+      "address": "0x9994e35db50125e0df82e4c2dde62496ce330999",
+      "decision": "exclude",
+      "reason": "legacy/original MORPHO (blue-sdk morphoToken key); standard ERC-20 \u2014 tokens:erc20 adapter. Verified ContractName=MorphoToken (Etherscan). The app-canonical transferable token is 0x58d97b..; both tracked."
+    }
   ]
 }
