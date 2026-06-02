@@ -1,6 +1,6 @@
 # ActionBody 확장 가이드 — 두 축 (domain / sub-action) recipe
 
-> `ActionBody` 를 확장하는 정규 절차. 1차 출처 = repo 코드 실측. 도메인 수는 늘어난다 — 작성 전 `grep -n "pub enum ActionBody" crates/simulation/reducer/src/action/mod.rs` 와 대상 `action/<domain>/mod.rs` 를 직접 재확인.
+> `ActionBody` 를 확장하는 정규 절차. 1차 출처 = repo 코드 실측. 도메인 수는 늘어난다 — 작성 전 `grep -n "pub enum ActionBody" crates/policy-server/asset-model/action/src/lib.rs` 와 대상 `action/<domain>/mod.rs` 를 직접 재확인.
 > 참조 심볼은 `file 의 symbol` 형식 (line 번호는 갱신 시 stale 되므로 보조). 갱신 시 `grep` 으로 재확인.
 > 관련: 온보딩 방법론 spine = `PROTOCOL_ONBOARDING_AND_TESTING.md`(같은 디렉토리; 특히 §4d live_field enrichment 가 본 가이드 §2.5 를 cross-ref). (확장 제안 `SCHEMA_EXTENSION_PROPOSALS.md` · 통합 playbook `TIER_AB_PLAYBOOK.md` 는 gitignored `docs/` 에 있어 fresh clone 엔 없음 — optional.)
 
@@ -20,7 +20,7 @@ Tier 3 확장은 `ActionBody` Rust 타입만 추가하면 끝이 아니다. `Act
 ```text
 raw tx / typed-data
   → manifest/Tier1 + builder/Tier2
-  → ActionBody                         crates/simulation/reducer/src/action/**
+  → ActionBody                         crates/policy-server/asset-model/action/src/**
   → lowering_v2::lower_action          crates/policy-engine/src/lowering_v2/**
   → LoweredAction {
        principal: Wallet::"<tx.from>",
@@ -35,7 +35,7 @@ raw tx / typed-data
 
 | 레이어 | 위치 | 책임 |
 |---|---|---|
-| **ActionBody schema** | `crates/simulation/reducer/src/action/<domain>/**` | tx 의미를 protocol-agnostic intent 로 표현. Rust/serde/tsify source-of-truth. |
+| **ActionBody schema** | `crates/policy-server/asset-model/action/src/<domain>/**` | tx 의미를 protocol-agnostic intent 로 표현. Rust/serde/tsify source-of-truth. |
 | **lowering** | `crates/policy-engine/src/lowering_v2/<domain>/<action>.rs` | `ActionBody` payload 를 Cedar context JSON 으로 변환. camelCase, U256 hex, optional omit, `LiveField<T>.value` flatten. |
 | **cedarschema** | `schema/policy-schema/actions/<domain>/<action>.cedarschema` | Cedar 가 정책에서 읽을 action/context 타입 선언. `action "<Pascal>" appliesTo { principal: Wallet, resource: Protocol, context: <Context> }`. |
 
@@ -67,10 +67,10 @@ conformance rule: 새/변경 action 은 leaf lowering test 에서 `lower_action`
 
 | match | 위치 (symbol) | 깨지는 축 |
 |---|---|---|
-| `impl Reducer for ActionBody` | `reducer/src/apply.rs` | 축 1 (domain) |
+| `impl Reducer for ActionBody` | `crates/policy-server/asset-model/transition/src/apply.rs` | 축 1 (domain) |
 | `lower_action` | `policy-engine/src/lowering_v2/dispatch.rs` | 축 1 (domain) |
-| `impl Reducer for <Domain>Action` | `reducer/src/effect/<domain>.rs` 또는 `effect/<domain>/mod.rs` | 축 2 (sub-action) |
-| `<Domain>Action::action_tag()` | `reducer/src/action/<domain>/mod.rs` | 축 2 (sub-action) |
+| `impl Reducer for <Domain>Action` | `crates/policy-server/asset-model/transition/src/effect/<domain>.rs` 또는 `effect/<domain>/mod.rs` | 축 2 (sub-action) |
+| `<Domain>Action::action_tag()` | `crates/policy-server/asset-model/action/src/<domain>/mod.rs` | 축 2 (sub-action) |
 | `<domain>::lower` dispatch | `policy-engine/src/lowering_v2/<domain>/mod.rs` | 축 2 (sub-action) |
 
 **(b) 사람이 챙겨야 함 (⚠️ 컴파일은 통과 — silent gap, sub-action 1개당 Cedar 등록 3 site)**:
@@ -81,11 +81,11 @@ conformance rule: 새/변경 action 은 leaf lowering test 에서 `lower_action`
 2. **`policy-engine/src/schema/action_name.rs`** — `REGISTERED_ACTIONS` 배열에 snake_case action tag 추가 (+ 그 `len()` assertion 갱신).
 3. **`policy-engine/src/schema/per_policy.rs`** — `RESOLVER_TABLE` 에 `ActionEntry { domain, action_tag, schema_text: <NAME>_SCHEMA, pascal_stub: "<PascalAction>" }` 추가 + import 에 `<NAME>_SCHEMA` 추가 (+ 그 `len()` assertion 갱신). **이게 `compose_per_policy` 의 (domain, action_tag)→schema 권위 테이블** — 누락하면 conformance 가 `MissingAction(<NS>::Action::"<Pascal>")` 으로 잡는다(안전망 작동, 2026-05-31 Morpho `SetAuthorization` 에서 실측).
 
-또한 **compile-forced (위 5곳 외 추가)**: `simulation/sync/src/action_walk/<domain>.rs` 의 walk + apply match 두 곳도 exhaustive — live_inputs 없는 action 은 `<DomainAction>::<New>(_) => {}` arm 추가 (DelegateBorrow 선례).
+또한 **compile-forced (위 5곳 외 추가)**: `policy-server/sync/src/actions/walk/<domain>.rs` 의 walk + apply match 두 곳도 exhaustive — live_inputs 없는 action 은 `<DomainAction>::<New>(_) => {}` arm 추가 (DelegateBorrow 선례).
 
 **(b′) live_field 전용 touchpoint (⚠️ silent — catch-all 이 삼킴)**: action 에 `LiveField` 를 **추가**할 때(=§2.5 enrichment)는 세 곳이 더 있는데 **컴파일러가 안 잡는다**:
-- `sync/src/walker.rs` 의 `ActionSlot` enum — variant 추가(enum 이라 누락해도 컴파일 통과).
-- `sync/src/args_resolver.rs` 의 `resolve_args` — `_ => Vec::new()` **catch-all** 이 있어 arm 누락 시 빈 args 로 조용히 진행(view 인자 미전달).
+- `crates/policy-server/sync/src/live/walker.rs` 의 `ActionSlot` enum — variant 추가(enum 이라 누락해도 컴파일 통과).
+- `crates/policy-server/sync/src/actions/args.rs` 의 `resolve_args` — `_ => Vec::new()` **catch-all** 이 있어 arm 누락 시 빈 args 로 조용히 진행(view 인자 미전달).
 - `mappers/.../action_builder.rs` 의 `live_input_default` — `_ => JsonValue::Null` **catch-all** → skeleton 누락 시 decode 가 `null` 거부로 실패(loud) 하거나 Option 이면 통과(silent).
 이 셋은 (c) conformance/decode 테스트 또는 §4d golden 으로만 잡힌다. 상세 = `PROTOCOL_ONBOARDING_AND_TESTING.md §4d` 의 5-touchpoint 표.
 
@@ -223,11 +223,11 @@ pub struct WrapLiveInputs { pub expected_wsteth: LiveField<U256> }   // non-opti
 ```
 > `pub use self::<action>::*` wildcard 재export 면 신규 `*LiveInputs` 자동 노출. mod.rs 의 "no LiveInputs" 주석 갱신.
 
-**② sync ActionSlot + walk/apply** · `sync/src/walker.rs` + `sync/src/action_walk/<domain>.rs`
+**② sync ActionSlot + walk/apply** · `crates/policy-server/sync/src/live/walker.rs` + `sync/src/actions/walk/<domain>.rs`
 ```rust
 // walker.rs ActionSlot enum 끝에:  (⚠️ silent — enum)
 LiquidStakingWrapExpectedWsteth,
-// action_walk/<domain>.rs:  walk → push_if_stale, apply → set_field (lending.rs 미러)
+// actions/walk/<domain>.rs:  walk → push_if_stale, apply → set_field (lending.rs 미러)
 fn walk_wrap(w:&WrapAction, ix:usize, now:Time, st:&mut Vec<StaleField>, sx:&mut WalkStats) {
     push_if_stale(st, sx, &w.live_inputs.expected_wsteth, now, ix, ActionSlot::LiquidStakingWrapExpectedWsteth);
 }
@@ -236,10 +236,10 @@ fn apply_wrap(w:&mut WrapAction, slot:&ActionSlot, value:Value, now:Time) {
         if let Some(v) = value_to_u256(&value) { set_field(&mut w.live_inputs.expected_wsteth, v, now); }
     }
 }
-// + action_walk/mod.rs 의 walk_body/apply_value_to_action 에서 그 domain arm 이 위 walk/apply 호출 (없으면 pub mod + dispatch arm 추가)
+// + actions/walk/mod.rs 의 walk_body/apply_value_to_action 에서 그 domain arm 이 위 walk/apply 호출 (없으면 pub mod + dispatch arm 추가)
 ```
 
-**③ args_resolver — calldata 인자 추출** · `sync/src/args_resolver.rs` (인자 있는 view 만)
+**③ args — calldata 인자 추출** · `crates/policy-server/sync/src/actions/args.rs` (인자 있는 view 만)
 ```rust
 use policy_transition::action::liquid_staking::LiquidStakingAction;
 use crate::fetchers::decoder::encode_u256;   // encode_address/encode_u256 둘 다 이미 존재
@@ -363,11 +363,11 @@ cargo test -p policy-engine        # lowering + conformance gate (assert_conform
 
 ## 7. 출처 (실측 symbol)
 
-- `crates/simulation/reducer/src/action/mod.rs` — `ActionBody` (`#[serde(tag="domain")]`, Tsify), domain newtype wrap, Multicall/Unknown inline, `ActionMeta`/`ActionNature`
-- `crates/simulation/reducer/src/action/token/mod.rs` — `TokenAction` (`#[serde(tag="action")]`), `action_tag()` exhaustive match, `pub mod`/`pub use` 패턴
-- `crates/simulation/reducer/src/action/{perp/open.rs, token/erc20_approve.rs}` — struct derive + `LiveField<T>` 유무 + `#[tsify(type=...)]`
-- `crates/simulation/reducer/src/apply.rs` — `trait Reducer`, `impl Reducer for ActionBody` exhaustive match
-- `crates/simulation/reducer/src/effect/{token.rs, perp/mod.rs}` — `impl Reducer for <Domain>Action` exhaustive match (단일파일/디렉토리 비대칭)
+- `crates/policy-server/asset-model/action/src/lib.rs` — `ActionBody` (`#[serde(tag="domain")]`, Tsify), domain newtype wrap, Multicall/Unknown inline, `ActionMeta`/`ActionNature`
+- `crates/policy-server/asset-model/action/src/token/mod.rs` — `TokenAction` (`#[serde(tag="action")]`), `action_tag()` exhaustive match, `pub mod`/`pub use` 패턴
+- `crates/policy-server/asset-model/action/src/{perp/open.rs, token/erc20_approve.rs}` — struct derive + `LiveField<T>` 유무 + `#[tsify(type=...)]`
+- `crates/policy-server/asset-model/transition/src/apply.rs` — `trait Reducer`, `impl Reducer for ActionBody` exhaustive match
+- `crates/policy-server/asset-model/transition/src/effect/{token.rs, perp/mod.rs}` — `impl Reducer for <Domain>Action` exhaustive match (단일파일/디렉토리 비대칭)
 - `crates/policy-engine/src/lowering_v2/dispatch.rs` — `LoweredAction`, `lower_action` exhaustive match, `lowered()` helper
 - `crates/policy-engine/src/lowering_v2/<domain>/mod.rs` — per-action dispatch + 각 domain 자체 `test_support::assert_conforms` 게이트 (token/perp/lending/amm/launchpad/airdrop 6곳)
 - `crates/policy-engine/src/schema/mod.rs` — `include_str!` const + `SHIPPED_SCHEMA_FILES` 수동 등록, `merge_namespace_blocks`

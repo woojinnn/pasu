@@ -493,14 +493,14 @@ Rules:
 
 Action-model preflight:
 
-- `crates/simulation/reducer/src/action` is an intent catalog, not a protocol list.
+- `crates/policy-server/asset-model/action/src` is an intent catalog, not a protocol list.
 - If a protocol maps cleanly to existing domains/actions, no Tier 3 work is needed.
 - If a COVER selector has user-risk semantics that no existing action can express, add/extend Tier 3 `ActionBody` before authoring manifests.
 - Permission grants/revokes are never hidden behind `Unknown`; add a dedicated action when needed.
 
 Tier 3 deliverables are not only Rust `ActionBody` structs. A new action is complete only when all downstream contracts exist:
 
-- `crates/simulation/reducer/src/action/<domain>/**` — protocol-agnostic intent schema.
+- `crates/policy-server/asset-model/action/src/<domain>/**` — protocol-agnostic intent schema.
 - reducer/effect/view/sync touchpoints — exhaustive state and action walking still compile and preserve semantics.
 - `crates/policy-engine/src/lowering_v2/<domain>/<action>.rs` — converts `ActionBody` into Cedar request context.
 - `schema/policy-schema/actions/<domain>/<action>.cedarschema` — policy-visible context/action declaration.
