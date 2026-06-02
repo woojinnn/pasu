@@ -67,12 +67,12 @@ pub fn map_aave_v3_current_borrow_rate(v: &Value) -> Option<Value> {
 
 /// Aave V3 `getUserAccountData` return tuple:
 ///
-///   [0] totalCollateralBase       (USD, 8 decimals)
-///   [1] totalDebtBase             (USD, 8 decimals)
-///   [2] availableBorrowsBase      (USD, 8 decimals)
-///   [3] currentLiquidationThreshold (bp)
-///   [4] ltv                       (bp)
-///   [5] healthFactor              (ray = 1e27)
+///   `[0]` totalCollateralBase       (USD, 8 decimals)
+///   `[1]` totalDebtBase             (USD, 8 decimals)
+///   `[2]` availableBorrowsBase      (USD, 8 decimals)
+///   `[3]` currentLiquidationThreshold (bp)
+///   `[4]` ltv                       (bp)
+///   `[5]` healthFactor              (ray = 1e27)
 ///
 /// `UserLendingState` shape:
 ///   { `total_collat_usd`: U256, `total_debt_usd`: U256, `available_borrow_usd`: U256,
@@ -93,20 +93,20 @@ pub fn map_aave_v3_user_account_data(v: &Value) -> Option<Value> {
 
 /// Aave V3 `getReserveData` return tuple:
 ///
-///   [1]  liquidityIndex (uint128, ray)
-///   [2]  currentLiquidityRate (uint128, ray = supply APY)
-///   [3]  variableBorrowIndex (uint128, ray)
-///   [4]  currentVariableBorrowRate (uint128, ray = borrow APY)
-///   [5]  currentStableBorrowRate (uint128, ray)
-///   [6]  lastUpdateTimestamp (uint40)
-///   [7]  id (uint16)
-///   [8]  aTokenAddress
-///   [9]  stableDebtTokenAddress
-///   [10] variableDebtTokenAddress
-///   [11] interestRateStrategyAddress
-///   [12] accruedToTreasury (uint128)
-///   [13] unbacked (uint128)
-///   [14] isolationModeTotalDebt (uint128)
+///   `[1]`  liquidityIndex (uint128, ray)
+///   `[2]`  currentLiquidityRate (uint128, ray = supply APY)
+///   `[3]`  variableBorrowIndex (uint128, ray)
+///   `[4]`  currentVariableBorrowRate (uint128, ray = borrow APY)
+///   `[5]`  currentStableBorrowRate (uint128, ray)
+///   `[6]`  lastUpdateTimestamp (uint40)
+///   `[7]`  id (uint16)
+///   `[8]`  aTokenAddress
+///   `[9]`  stableDebtTokenAddress
+///   `[10]` variableDebtTokenAddress
+///   `[11]` interestRateStrategyAddress
+///   `[12]` accruedToTreasury (uint128)
+///   `[13]` unbacked (uint128)
+///   `[14]` isolationModeTotalDebt (uint128)
 ///
 /// `ReserveState` shape:
 ///   { `total_supply`: U256, `total_borrow`: U256, `utilization_bp`: u32,
