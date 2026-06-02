@@ -7,8 +7,25 @@ const mocks = vi.hoisted(() => {
     // When set, the fetch mock returns this Response instead of `fetchedV2`
     // (used to simulate a non-200 / network failure).
     fetchOverride: null as Response | (() => never) | null,
+    // Mutable `chrome.storage.local["dashboard:policies"]` content — the
+    // user-authored policies the dashboard saves (Option B merge).
+    managed: [] as unknown[],
+    // Mutable `chrome.storage.local["policy-selection:enabled-ids"]` — the
+    // enabled-id allow-list the popup rewrites when a policy is toggled.
+    enabledIds: [] as string[],
     browser: {
       runtime: { getURL: (p: string) => `chrome-extension://x/${p}` },
+      storage: {
+        local: {
+          get: async (key: string) => {
+            if (key === "dashboard:policies") return { [key]: mocks.managed };
+            if (key === "policy-selection:enabled-ids")
+              return { [key]: mocks.enabledIds };
+            return { [key]: undefined };
+          },
+        },
+        onChanged: { addListener: () => {} },
+      },
     },
   };
 });
@@ -63,6 +80,8 @@ describe("policies-loader-v2 (stateless fetch-and-hold)", () => {
     vi.clearAllMocks();
     mocks.fetchedV2 = JSON.stringify([HIGH_SLIPPAGE, LARGE_SWAP]);
     mocks.fetchOverride = null;
+    mocks.managed = [];
+    mocks.enabledIds = [];
     vi.resetModules();
   });
 
@@ -143,5 +162,128 @@ describe("policies-loader-v2 (stateless fetch-and-hold)", () => {
     const { loadDefaultPolicySetV2 } = await import("../policies-loader-v2");
     await expect(loadDefaultPolicySetV2()).resolves.toEqual([]);
     warnSpy.mockRestore();
+  });
+
+  // ── Dashboard merge (Option B) ─────────────────────────────────────────
+
+  it("merges dashboard-saved policies after the baked set, with a synthesized {id, schema_version:2} manifest", async () => {
+    mocks.managed = [
+      {
+        id: "dashboard::block-non-usdt",
+        kind: "raw",
+        text:
+          '@id("block-non-usdt")\n@severity("deny")\n' +
+          'forbid(principal, action == Amm::Action::"Swap", resource)\n' +
+          "when { !(context.tokenOut.key has address && " +
+          'context.tokenOut.key.address == "0xdac17f958d2ee523a2206206994597c13d831ec7") };\n',
+        updatedAtMs: 0,
+        schemaVersion: 1,
+      },
+    ];
+    mocks.enabledIds = ["dashboard::block-non-usdt"];
+    const { loadDefaultPolicySetV2 } = await import("../policies-loader-v2");
+    const bundles = await loadDefaultPolicySetV2();
+
+    // baked 2 ∪ dashboard 1, dashboard appended after the baked set.
+    expect(bundles).toHaveLength(3);
+    expect(bundles.slice(0, 2).map((b) => b.id)).toEqual([
+      "high-slippage-warning",
+      "large-swap-usd-warning",
+    ]);
+    const dash = bundles[2];
+    expect(dash.id).toBe("dashboard::block-non-usdt");
+    expect(dash.policy).toContain("forbid(principal");
+    // Empty trigger ⇒ matches every action ⇒ Cedar head is the sole filter.
+    expect(dash.manifest).toEqual({
+      id: "dashboard::block-non-usdt",
+      schema_version: 2,
+    });
+  });
+
+  it("getDefaultPolicyBundlesV2 includes dashboard bundles (id dropped) after warm", async () => {
+    mocks.managed = [
+      {
+        id: "dashboard::x",
+        kind: "raw",
+        text: "forbid(principal, action, resource);\n",
+        updatedAtMs: 0,
+        schemaVersion: 1,
+      },
+    ];
+    mocks.enabledIds = ["dashboard::x"];
+    const { loadDefaultPolicySetV2, getDefaultPolicyBundlesV2 } = await import(
+      "../policies-loader-v2"
+    );
+    await loadDefaultPolicySetV2();
+    const engineBundles = getDefaultPolicyBundlesV2();
+
+    expect(engineBundles).toHaveLength(3);
+    expect(engineBundles[2]).toEqual({
+      policy: "forbid(principal, action, resource);\n",
+      manifest: { id: "dashboard::x", schema_version: 2 },
+    });
+    expect(engineBundles.every((b) => !("id" in b))).toBe(true);
+  });
+
+  it("excludes a dashboard policy that is NOT in the enabled-id allow-list (toggled off)", async () => {
+    // Present in `dashboard:policies` but absent from
+    // `policy-selection:enabled-ids` ⇒ the user toggled it off ⇒ it must NOT be
+    // enforced. (Regression: a disabled policy kept blocking.)
+    mocks.managed = [
+      {
+        id: "dashboard::toggled-off",
+        kind: "raw",
+        text: "forbid(principal, action, resource);\n",
+        updatedAtMs: 0,
+        schemaVersion: 1,
+      },
+    ];
+    mocks.enabledIds = []; // nothing enabled
+    const { loadDefaultPolicySetV2, getDefaultPolicyBundlesV2 } = await import(
+      "../policies-loader-v2"
+    );
+    const bundles = await loadDefaultPolicySetV2();
+    // Only the baked set survives; the disabled dashboard policy is dropped.
+    expect(bundles.map((b) => b.id)).toEqual([
+      "high-slippage-warning",
+      "large-swap-usd-warning",
+    ]);
+    expect(getDefaultPolicyBundlesV2()).toHaveLength(2);
+  });
+
+  it("includes only the ENABLED subset when some dashboard policies are toggled off", async () => {
+    mocks.managed = [
+      { id: "dashboard::on", kind: "raw", text: "forbid(principal, action, resource);\n", updatedAtMs: 0, schemaVersion: 1 },
+      { id: "dashboard::off", kind: "raw", text: "forbid(principal, action, resource);\n", updatedAtMs: 0, schemaVersion: 1 },
+    ];
+    mocks.enabledIds = ["dashboard::on"]; // 'off' is toggled off
+    const { loadDefaultPolicySetV2 } = await import("../policies-loader-v2");
+    const bundles = await loadDefaultPolicySetV2();
+    expect(bundles.map((b) => b.id)).toEqual([
+      "high-slippage-warning",
+      "large-swap-usd-warning",
+      "dashboard::on",
+    ]);
+  });
+
+  it("a dashboard storage read error degrades to the baked set (best-effort)", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Make `listManaged` throw by handing back a non-array under the key.
+    const origGet = mocks.browser.storage.local.get;
+    mocks.browser.storage.local.get = (async () => {
+      throw new Error("storage unavailable");
+    }) as typeof origGet;
+    try {
+      const { loadDefaultPolicySetV2 } = await import("../policies-loader-v2");
+      const bundles = await loadDefaultPolicySetV2();
+      // Baked 2 survives; the dashboard read failure is swallowed.
+      expect(bundles.map((b) => b.id)).toEqual([
+        "high-slippage-warning",
+        "large-swap-usd-warning",
+      ]);
+    } finally {
+      mocks.browser.storage.local.get = origGet;
+      warnSpy.mockRestore();
+    }
   });
 });

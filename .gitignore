@@ -64,6 +64,8 @@ browser-extension/public/wasm/
 # Markdown docs, research + audit notes — only README.md stays tracked.
 *.md
 !README.md
+# Local Codex session memory; keep repo-specific copies out of git.
+AGENTS.md
 # The rest of /docs/ stays ignored (scratch research/audit notes).
 /docs/*
 

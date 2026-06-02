@@ -107,6 +107,54 @@ describe("routeTypedSignaturePayload — manifest-driven typed-data router", () 
     ).toBe("offchain_sig");
   });
 
+  it("accepts JSON-stringified typedData payloads", async () => {
+    mocks.declarativeRouteTypedDataV3.mockResolvedValue({
+      ok: true,
+      data: {
+        actions: [{ meta: { nature: { kind: "offchain_sig" } }, body: {} }],
+        decoder_id: "uniswap/permit2/permitSingle@1.0.0",
+      },
+    });
+
+    const typedData = {
+      domain: {
+        name: "Permit2",
+        chainId: 1,
+        verifyingContract: PERMIT2,
+      },
+      primaryType: "PermitSingle",
+      types: { PermitSingle: [{ name: "spender", type: "address" }] },
+      message: { spender: UNISWAPX_REACTOR, sigDeadline: "1700000000" },
+    };
+
+    const result = await routeTypedSignaturePayload(
+      payload(JSON.stringify(typedData)),
+    );
+
+    expect(mocks.installDeclarativeBundleV3ByTypedData).toHaveBeenCalledWith({
+      chainId: 1,
+      verifyingContract: PERMIT2,
+      primaryType: "PermitSingle",
+    });
+    expect(mocks.declarativeRouteTypedDataV3).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chainId: 1,
+        verifyingContract: PERMIT2,
+        primaryType: "PermitSingle",
+        message: typedData.message,
+      }),
+    );
+    expect(result?.decoderId).toBe("uniswap/permit2/permitSingle@1.0.0");
+  });
+
+  it("returns null for malformed JSON-stringified typedData", async () => {
+    const result = await routeTypedSignaturePayload(payload("{not json"));
+
+    expect(result).toBeNull();
+    expect(mocks.installDeclarativeBundleV3ByTypedData).not.toHaveBeenCalled();
+    expect(mocks.declarativeRouteTypedDataV3).not.toHaveBeenCalled();
+  });
+
   it("UniswapX ExclusiveDutchOrder (mainnet) routes", async () => {
     mocks.declarativeRouteTypedDataV3.mockResolvedValue({
       ok: true,

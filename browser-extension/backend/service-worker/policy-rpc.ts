@@ -7,17 +7,12 @@ import type {
   VerdictDto,
 } from "./wasm-bridge.types";
 
-// ── Phase 5A — `scopeball.evaluate_v3` JSON-RPC 2.0 client ────────────────
+// ── Dormant v3 JSON-RPC 2.0 client ────────────────────────────────────────
 //
-// The Phase 5 cutover introduces a typed action channel between the SW
-// and a stateful rpc-server. Where the legacy `evaluateWithPolicyRpc`
-// flow (kept in place above for observability) issues many small REST
-// enrichment calls (`oracle.usd_value`, `clock.now`, …), the v3 channel
-// makes a single JSON-RPC 2.0 call that hands the rpc-server a typed
-// `Action[]` + `EvalContext` + `WalletId` and gets back a fully
-// post-processed `PolicyRequest` (actions + state/results populated). The SW then
-// hands that `PolicyRequest` to the WASM `evaluate_policy_request_json`
-// entry (Phase 5B stub today, Cedar engine in Phase 6).
+// Kept for experiments with a typed action channel between the service worker
+// and a stateful RPC server. The active extension verdict path is the v2
+// ActionBody pipeline below: `plan_action_rpc_v2_json` → host dispatch →
+// `evaluate_action_v2_json`.
 //
 // Wire shape (request body):
 //   { jsonrpc: "2.0", method: "scopeball.evaluate_v3",
@@ -29,10 +24,9 @@ import type {
 // Wire shape (error response — JSON-RPC 2.0 §5.1):
 //   { jsonrpc: "2.0", id, error: { code, message, data? } }
 //
-// Phase 5A scope = client only. The mock rpc-server method (`scopeball.evaluate_v3`)
-// lives in `policy-rpc/src/methods/scopeball-evaluate-v3.ts` and currently
-// echoes the actions verbatim into `policyRequest.actions` (Phase 5D).
-// Phase 6 replaces the mock with the real reducer + state-sync orchestrator.
+// There is no standalone `policy-rpc/` package in this worktree. Do not treat
+// this client as the active transaction driver unless a future change wires it
+// back into the orchestrator.
 
 /**
  * JSON-RPC 2.0 (§5.1) error body. The rpc-server may include arbitrary
@@ -187,10 +181,9 @@ function generateRequestId(): string {
  *   * `RpcError(code, message, data?)` — rpc-server returned a
  *     JSON-RPC 2.0 error response. Caller can inspect `code` for routing.
  *   * Generic `Error` — transport failure (HTTP non-2xx, network reset,
- *     malformed JSON, missing `result` field on a 200). The orchestrator
- *     should fence this similarly to how `evaluateWithPolicyRpc` does —
- *     a v3 transport fault must fall back to the v1 verdict path so we
- *     never lose a wallet decision.
+ *     malformed JSON, missing `result` field on a 200). If this dormant path
+ *     is reactivated, transport faults must be fenced so wallet decisions
+ *     still fail closed.
  */
 export async function evaluateV3(
   actions: readonly Action[],
@@ -225,8 +218,8 @@ export async function evaluateV3(
       body: JSON.stringify(body),
     });
   } catch (err) {
-    // Network / DNS / abort — surface as transport failure so the
-    // orchestrator's catch can fall back to the v1 path.
+    // Network / DNS / abort — surface as transport failure. Any future caller
+    // must map this to fail-closed behavior.
     throw new Error(
       `policy-rpc v3 transport failed: ${
         err instanceof Error ? err.message : String(err)

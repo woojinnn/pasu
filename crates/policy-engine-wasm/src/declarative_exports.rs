@@ -278,7 +278,7 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Phase 4B — `declarative_route_request_v3_json`
+// v3 `declarative_route_request_v3_json`
 // ───────────────────────────────────────────────────────────────────────────
 //
 // v3 route entry. Looks up the callkey through the bridge populated by
@@ -286,18 +286,10 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
 // ABI, then runs the manifest's emit-rule via `action_builder` to produce
 // the hierarchical `policy_transition::action::Action` tree (PDF FSM spec).
 //
-// Phase 4B scope = **WASM boundary only**:
-//   * Define the TS↔Rust wire (input/output JSON shape).
-//   * Build a minimal stub `Action` whose body is `ActionBody::Unknown` —
-//     the registry-v2 manifest lookup + decode + emit-rule → ActionBody
-//     conversion is the responsibility of Phase 4D (Multicall handler /
-//     adapters-v3 crate). The stub is enough to wire the SW orchestrator
-//     and round-trip through Cedar without blocking on the full mapping.
-//
 // The active route entry emits the ActionBody tree directly; no legacy
 // declarative route is installed in parallel.
 
-/// Phase 4B — v3 orchestrator entry emitting the PDF FSM `Action` tree.
+/// v3 orchestrator entry emitting the PDF FSM `Action` tree.
 ///
 /// Input JSON shape (see [`DeclarativeRouteRequestV3InputDto`]):
 /// ```json
@@ -322,11 +314,9 @@ pub fn declarative_install_v3_json(bundle_json: String) -> String {
 /// ```
 /// or `{ "ok": false, "error": { "kind": "...", "message": "..." } }`.
 ///
-/// Phase 4B emits a single-element `actions` vec whose body is
-/// `ActionBody::Unknown { target, chain, calldata, value }` — the policy
-/// engine downstream evaluates Unknown with a warn/deny default per
-/// `action-design.md`. Phase 4D replaces this stub with the registry-v2
-/// manifest lookup + emit-rule decode pipeline.
+/// The active implementation decodes calldata through the installed
+/// registry-v2 manifest and emit-rule. It may still emit `Unknown` when a
+/// manifest explicitly falls back that way, but that is not the happy path.
 #[wasm_bindgen]
 pub fn declarative_route_request_v3_json(input_json: String) -> String {
     let result = (|| -> Result<DeclarativeRouteRequestV3ResultDto, EngineErrorDto> {

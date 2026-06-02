@@ -236,13 +236,14 @@ function install(): void {
                 : null;
           if (body != null) {
             const payloads = parseVenuePayloads(url, venue, body);
-            if (!payloads) return Reflect.apply(target, thisArg, args);
-            const allowed = await evaluatePayloads(payloads);
-            recordVerdict(url, venue, allowed);
-            if (!allowed) {
-              throw new Error("Scopeball: venue order blocked by policy");
+            if (payloads) {
+              const allowed = await evaluatePayloads(payloads);
+              recordVerdict(url, venue, allowed);
+              if (!allowed) {
+                throw new Error("Scopeball: venue order blocked by policy");
+              }
+              allowedPayloads = payloads;
             }
-            allowedPayloads = payloads;
           }
         }
       } catch (err) {

@@ -1,12 +1,12 @@
 /**
- * Phase 4B — v3 declarative routing orchestrator entry.
+ * v3 declarative routing orchestrator entry.
  *
  * Pipeline (one tx in → Action[] out, or a miss for no-match):
  *
  *   1. Extract the 4-byte selector from `(chain_id, to, calldata)`.
  *   2. JIT install via `installDeclarativeBundleV3` — registry-api-v3 fetch +
  *      WASM `declarative_install_v3_json`. A registry miss surfaces as a clean
- *      `miss` so the caller falls through to the static Tier B pipeline.
+ *      `miss`; the orchestrator treats misses/faults as fail-closed warnings.
  *   3. Hand `(chain_id, to, selector, calldata, meta)` to the WASM route entry
  *      `declarative_route_request_v3_json`. The engine decodes the raw
  *      calldata using the bridge-resolved bundle's `abi_fragment.abi` and
@@ -28,9 +28,8 @@ import {
 } from "./declarative-adapter-loader";
 
 /**
- * Phase 4B — v3 outcome shape. The hit payload carries the new `Action[]`
- * (PDF FSM `Vec<Action>`). `decoder_id` is empty under the Phase 4B stub —
- * Phase 4D populates it from the registry-v2 manifest match.
+ * v3 outcome shape. The hit payload carries decoded `Action[]` values
+ * (PDF FSM `Vec<Action>`) and the registry-v2 manifest decoder id.
  */
 export interface DeclarativeRouteV3Hit {
   actions: Record<string, unknown>[];
@@ -190,11 +189,8 @@ async function preinstallMulticallChildren(args: {
  *      submitted_at / nonce) to WASM `declarative_route_request_v3_json`,
  *   4. unwrap the WASM result into a TS-friendly outcome.
  *
- * registry-v3 anonymous fetch is enabled via Cloud Run `allUsers/run.invoker`
- * grant (Plan §M0). Bundle hydration lives in `declarative-adapter-loader.ts`
- * (Plan §M3 — JIT + 2-layer cache; v1 path is untouched).
- *
- * On `fault` the caller falls back to the legacy v1 path.
+ * Bundle hydration lives in `declarative-adapter-loader.ts`; the active
+ * verdict path no longer has a legacy v1/static fallback.
  */
 export async function tryDeclarativeRouteV3(args: {
   chainId: number;
@@ -214,10 +210,10 @@ export async function tryDeclarativeRouteV3(args: {
   }
   const submittedAt = args.submittedAt ?? Math.floor(Date.now() / 1000);
 
-  // Plan §M4 — JIT install via registry-api-v3. If the callkey has no
+  // JIT install via registry-api-v3. If the callkey has no
   // matching v3 manifest (404 / `matched: false`), `installDeclarativeBundleV3`
-  // returns `null`; we surface that as a clean miss so the caller falls
-  // through to v1 without surfacing it as a fault.
+  // returns `null`; we surface that as a clean miss so the orchestrator can
+  // produce the fail-closed verdict/audit row.
   try {
     const installed = await installDeclarativeBundleV3({
       chainId: args.chainId,
@@ -258,9 +254,8 @@ export async function tryDeclarativeRouteV3(args: {
         : {}),
     });
   } catch (err) {
-    // The Phase 4B WASM stub only throws on malformed input — promote any
-    // EngineError to `engine_error` so the caller can audit it. Other
-    // throws (network glitch, etc.) bucket into `unexpected`.
+    // Promote WASM EngineError to `engine_error` so the caller can audit it.
+    // Other throws bucket into `unexpected`.
     if (err instanceof EngineError) {
       return { kind: "fault", reason: "engine_error", cause: err };
     }

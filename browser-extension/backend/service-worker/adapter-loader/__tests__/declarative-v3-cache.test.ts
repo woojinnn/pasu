@@ -114,9 +114,17 @@ describe("declarativeV3Cache", () => {
 
   it("3. TTL expiry: entry older than 24h returns null", async () => {
     const staleMs = Date.now() - 25 * 60 * 60 * 1000; // 25h 이전
-    const staleEntry = freshEntry(staleMs);
     mocks.localStore.set("registry:adapter-bundles-v3", {
-      [CALLKEY]: staleEntry,
+      schemaVersion: 2,
+      bundles: { [V3_BUNDLE.id]: V3_BUNDLE },
+      callkeys: {
+        [CALLKEY]: {
+          bundleId: V3_BUNDLE.id,
+          decoderId: V3_BUNDLE.id,
+          bundleSha256: SHA256,
+          fetchedAtMs: staleMs,
+        },
+      },
     });
 
     // hydrate 시점에 TTL filter 가 stale 을 drop.
@@ -129,9 +137,17 @@ describe("declarativeV3Cache", () => {
 
   it("4. Hydrate: pre-seeded fresh entry loaded from storage", async () => {
     const freshMs = Date.now() - 60 * 1000; // 1 분 전
-    const seeded = freshEntry(freshMs);
     mocks.localStore.set("registry:adapter-bundles-v3", {
-      [CALLKEY]: seeded,
+      schemaVersion: 2,
+      bundles: { [V3_BUNDLE.id]: V3_BUNDLE },
+      callkeys: {
+        [CALLKEY]: {
+          bundleId: V3_BUNDLE.id,
+          decoderId: V3_BUNDLE.id,
+          bundleSha256: SHA256,
+          fetchedAtMs: freshMs,
+        },
+      },
     });
 
     const got = await declarativeV3Cache.get(CALLKEY);
@@ -142,6 +158,44 @@ describe("declarativeV3Cache", () => {
     expect(mocks.browser.storage.local.get).toHaveBeenCalledWith(
       "registry:adapter-bundles-v3",
     );
+  });
+
+  it("6. Legacy fat-format storage is dropped on hydrate (migration)", async () => {
+    // Pre-v2 storage: bundle copied under every callkey. Must be discarded
+    // so the quota-exhausted state self-heals on next SW boot.
+    const legacy = {
+      [CALLKEY]: {
+        bundle: V3_BUNDLE,
+        bundleId: V3_BUNDLE.id,
+        decoderId: V3_BUNDLE.id,
+        bundleSha256: SHA256,
+        fetchedAtMs: Date.now(),
+      },
+    };
+    mocks.localStore.set("registry:adapter-bundles-v3", legacy);
+
+    const got = await declarativeV3Cache.get(CALLKEY);
+    expect(got).toBeNull();
+    // Storage should have been overwritten with the empty v2 record.
+    const stored = mocks.localStore.get("registry:adapter-bundles-v3") as
+      | { schemaVersion?: number }
+      | undefined;
+    expect(stored?.schemaVersion).toBe(2);
+  });
+
+  it("7. Same bundleId across many callkeys stores ONE bundle copy", async () => {
+    // The original bug: 8 callkeys for one UR deployment held 8 full bundle
+    // copies (~370 KB for a 46 KB bundle). With normalization, only one
+    // copy lives in storage.
+    for (let i = 0; i < 8; i++) {
+      await declarativeV3Cache.put(makeCallkey(i), freshEntry());
+    }
+    const stored = mocks.localStore.get("registry:adapter-bundles-v3") as {
+      bundles: Record<string, unknown>;
+      callkeys: Record<string, unknown>;
+    };
+    expect(Object.keys(stored.bundles)).toHaveLength(1);
+    expect(Object.keys(stored.callkeys)).toHaveLength(8);
   });
 
   it("5. LRU eviction: 257 puts evicts the first-inserted entry", async () => {

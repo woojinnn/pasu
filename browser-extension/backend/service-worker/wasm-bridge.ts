@@ -124,8 +124,7 @@ export interface DeclarativeRouteRequestV3Input {
  * `Unknown` stub; Phase 4D fills in the real `ActionBody` per registry-v2
  * manifest emit-rule.
  *
- * `decoder_id` echoes the matched bundle's declarative decoder id when a
- * manifest matched (`""` when no match — the Phase 4B stub never matches).
+ * `decoder_id` echoes the matched bundle's declarative decoder id.
  */
 export interface DeclarativeRouteRequestV3Result {
   actions: Record<string, unknown>[];

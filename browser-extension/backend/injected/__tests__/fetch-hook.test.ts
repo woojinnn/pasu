@@ -68,18 +68,19 @@ describe("parseHyperliquidExchangeOrders", () => {
     ).toEqual({ kind: "approve_agent", agentAddress: "0x123", agentName: "bot" });
   });
 
-  it("returns null for out-of-scope or malformed actions", () => {
+  it("returns null for benign/out-of-scope actions and unknown for malformed guarded actions", () => {
     expect(parse({ action: { type: "cancel", cancels: [] } })).toBeNull();
     expect(parse({ action: { type: "batchModify", modifies: [] } })).toBeNull();
-    // updateLeverage missing the required isCross flag → not parseable.
-    expect(parse({ action: { type: "updateLeverage", asset: 0, leverage: 10 } })).toBeNull();
+    // updateLeverage missing required isCross: guarded action, not pass-through.
+    expect(parse({ action: { type: "updateLeverage", asset: 0, leverage: 10 } })![0].hlAction)
+      .toEqual({ kind: "unknown", actionType: "updateLeverage" });
     expect(parse({ type: "meta" })).toBeNull();
     expect(parse("not json")).toBeNull();
     expect(parse(undefined)).toBeNull();
     expect(parse({})).toBeNull();
   });
 
-  it("skips malformed legs but keeps valid ones", () => {
+  it("keeps valid order legs and adds unknown for malformed guarded legs", () => {
     const out = parse({
       action: {
         type: "order",
@@ -89,13 +90,15 @@ describe("parseHyperliquidExchangeOrders", () => {
         ],
       },
     });
-    expect(out).toHaveLength(1);
+    expect(out).toHaveLength(2);
     expect(out![0].hlAction).toMatchObject({ kind: "order", order: { a: 3 } });
+    expect(out![1].hlAction).toEqual({ kind: "unknown", actionType: "order" });
   });
 
-  it("returns null when all legs are malformed", () => {
+  it("routes all-malformed order legs to unknown rather than null", () => {
     const out = parse({ action: { type: "order", orders: [{ x: 1 }, { y: 2 }] } });
-    expect(out).toBeNull();
+    expect(out).toHaveLength(1);
+    expect(out![0].hlAction).toEqual({ kind: "unknown", actionType: "order" });
   });
 });
 

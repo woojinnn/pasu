@@ -35,12 +35,9 @@ import {
 } from "./declarative-v3-cache";
 
 /**
- * Cached v3 install results keyed by canonical callkey. The cache is in-SW
- * only (no chrome.storage persistence yet) — fast enough for M3's
- * "SW DevTools console outputs the right Action JSON" exit criterion. The
- * `seen` flag lets us also avoid a redundant WASM round-trip when the
- * same bundle is reached via multiple callkeys (cartesian over
- * `chain_to_addresses`).
+ * Cached v3 install results keyed by canonical callkey. The process-local map
+ * avoids redundant fetch + WASM install work within one service-worker
+ * lifetime; chrome.storage provides the cross-restart cache below.
  */
 const v3InstallCache = new Map<string, DeclarativeInstallResult>();
 
@@ -61,9 +58,8 @@ export interface DeclarativeRegistryV3Response {
 }
 
 /**
- * Stage classification for {@link InstallDeclarativeV3Error}. Mirrors
- * `DeclarativeAdapterLoadError.stage` so dashboards can colour-code v1 / v3
- * faults uniformly.
+ * Stage classification for {@link InstallDeclarativeV3Error}. The orchestrator
+ * logs this as v3 registry/install telemetry before failing closed.
  */
 export type InstallV3Stage =
   | "fetch"
@@ -142,7 +138,7 @@ export interface InstallDeclarativeV3ByTypedDataResult {
 }
 
 const DEFAULT_REGISTRY_BASE_URL =
-  typeof process !== "undefined" && process.env?.REGISTRY_BASE_URL
+  typeof process !== "undefined" && process.env && process.env.REGISTRY_BASE_URL
     ? process.env.REGISTRY_BASE_URL
     : "http://localhost:8000";
 
@@ -196,24 +192,23 @@ function v3TypedDataUrl(baseUrl: string, key: TypedDataMatchKey): string {
  *   1. Cache lookup — return the prior `DeclarativeInstallResult` when the
  *      same callkey was already hydrated in this SW lifetime.
  *   2. Fetch the callkey index entry. Non-2xx surfaces `null` (treated as a
- *      miss). 404 + 5xx both fall into this — the caller short-circuits
- *      to the v1 path / Tier B static.
+ *      miss). 404 + 5xx both fall into this — the caller fails closed with
+ *      a warn verdict rather than using a legacy fallback.
  *   3. JSON parse + `matched === true` guard.
  *   4. `parseBundleV3` shape gate — rejects v1/v2 payloads and structurally
  *      broken v3 ones. Parse errors are thrown (not nulled) so an
  *      operator misconfiguring the registry surfaces a clear error.
  *   5. Stringify + hand to `declarative_install_v3_json`. The stringified
  *      form mirrors what the registry sent — we do not canonicalise, so
- *      future `bundle_sha256` checks (M4+) can compare byte-stable input.
+ *      future `bundle_sha256` checks can compare byte-stable input.
  *
  * Returns `null` when the registry response is a miss; throws
  * {@link InstallDeclarativeV3Error} on a hard fault that the caller MUST
  * surface (parse failure, install failure, network rejection that the
  * caller asked to treat as fatal).
  *
- * Error semantics — the SW orchestrator (M4) decides whether to treat a
- * thrown error as a v3 fault vs. a transparent v1 fallback. M3 itself
- * only routes; it does not classify.
+ * Error semantics — the SW orchestrator decides whether to treat a thrown
+ * error as a v3 fault. This loader only fetches, validates, and installs.
  */
 export async function installDeclarativeBundleV3(
   args: InstallDeclarativeBundleV3Args,
@@ -341,8 +336,8 @@ export async function installDeclarativeBundleV3(
   }
   if (parsedBundle === null) {
     // Registry returned a non-v3 payload for a callkey the caller asked us
-    // to hydrate via the v3 path. Treat as a miss so the caller falls
-    // through to the static Tier B pipeline rather than throwing.
+    // to hydrate via the v3 path. Treat as a miss; the orchestrator owns the
+    // resulting fail-closed verdict/audit behavior.
     return null;
   }
 

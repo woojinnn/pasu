@@ -18,9 +18,9 @@
 import type { PolicyRpcCallDto } from "./wasm-bridge.types";
 
 /**
- * Shape of a single entry in `PolicyRpcResponseDto.results`. Mirrors
- * `policy-rpc/src/types.ts::RpcResult` so the WASM bridge can consume
- * locally-produced results interchangeably with remote ones.
+ * Shape of a single entry in `PolicyRpcResponseDto.results`, matching the
+ * `/v1/rpc` batch response shape so the WASM bridge can consume locally
+ * produced results interchangeably with remote ones.
  */
 export type LocalRpcResult =
   | { readonly id: string; readonly ok: true; readonly result: Record<string, unknown> }

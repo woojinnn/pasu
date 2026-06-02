@@ -280,8 +280,8 @@ export async function routeTypedSignaturePayload(args: {
   payload: TypedSignaturePayload;
   submittedAt?: number;
 }): Promise<TypedDataRouteResult | null> {
-  const td = args.payload.typedData as EIP712TypedData | undefined;
-  if (!td || typeof td !== "object") return null;
+  const td = normalizeTypedDataPayload(args.payload.typedData);
+  if (!td) return null;
   // EIP-712 typed-data carries `domain`/`primaryType`/`types`/`message`;
   // anything missing → caller misses.
   if (!td.domain || !td.primaryType || !td.types) return null;
@@ -292,4 +292,17 @@ export async function routeTypedSignaturePayload(args: {
       ? { submittedAt: args.submittedAt }
       : {}),
   });
+}
+
+export function normalizeTypedDataPayload(raw: unknown): EIP712TypedData | null {
+  if (typeof raw === "string") {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      return normalizeTypedDataPayload(parsed);
+    } catch {
+      return null;
+    }
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  return raw as EIP712TypedData;
 }

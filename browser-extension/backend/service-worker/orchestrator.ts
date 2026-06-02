@@ -39,7 +39,10 @@ import {
   type Message,
 } from "@lib/types";
 import { hlOrderToAction, HL_TO_SENTINEL } from "./hl-order-to-action";
-import { routeTypedSignaturePayload } from "./sig-routing";
+import {
+  normalizeTypedDataPayload,
+  routeTypedSignaturePayload,
+} from "./sig-routing";
 
 /**
  * Phase 4A — submission-shape classifier. Maps the SW `Message` envelope
@@ -54,10 +57,9 @@ import { routeTypedSignaturePayload } from "./sig-routing";
  *     v3 because we cannot tell what the signer is approving.
  *
  * The classifier is a pure lookup. The orchestrator uses it to route into
- * the v3 WASM entry (`tryDeclarativeRouteV3`) for transactions and to keep
- * the legacy untyped-sig short-circuit for personal_sign — Phase 4B does
- * NOT yet add a typed-data v3 entry; that arrives in Phase 4C alongside
- * the SignAdapter.
+ * the v3 WASM entry (`tryDeclarativeRouteV3`) for transactions, the
+ * manifest-driven typed-data entry for EIP-712 signatures, and the legacy
+ * untyped-sig short-circuit for personal_sign.
  */
 export type ActionNatureKind = "onchain_tx" | "offchain_sig" | "untyped_sig";
 
@@ -84,14 +86,8 @@ interface DecisionOptions {
 }
 
 /**
- * Phase 4B — v3 route audit meta. Observability-only at Phase 4B (the v3
- * fn is a stub that always returns one `Unknown` action). Phase 4D fills
- * in `decoder_id` once registry-v2 manifest lookup is wired.
- *
- * Kept separate from `DeclarativeAuditMeta` so the audit log can show
- * both pipelines running in parallel during cutover — when Phase 5
- * promotes v3 to verdict driver, this meta moves into the `verdict`
- * branch and `DeclarativeAuditMeta` is retired.
+ * v3 route audit meta. The same route result is also the input to the active
+ * v2 ActionBody verdict path when the decoder emits real, non-Unknown bodies.
  */
 export interface DeclarativeV3AuditMeta {
   outcome: DeclarativeRouteV3Outcome["kind"]; // "hit" | "miss" | "fault"
@@ -112,9 +108,8 @@ export interface DeclarativeV3AuditMeta {
  * `"fail_closed"` ⇒ no decoder produced an evaluable verdict, so the engine
  *   fails closed with a warn-and-proceed verdict. Covers: a v3 route
  *   miss/fault, a v3 hit whose bodies were all `Unknown`, zero v2 bundles
- *   loaded, a v2 plan/dispatch throw, and — until the SignAdapter lands —
- *   every typed signature (which has no v3 route today). Also used as the
- *   hard-timeout fallback source and for the untyped-signature short-circuit.
+ *   loaded, a v2 plan/dispatch throw, typed-signature route/evaluate misses,
+ *   hard-timeout fallback, and the untyped-signature short-circuit.
  */
 export type VerdictSource = "declarative-v2" | "fail_closed";
 
@@ -385,9 +380,9 @@ function inferContractSelector(message: Message): {
   }
 
   if (isTypedSignature(message)) {
-    const verifyingContract = (
-      message.data.typedData as { domain?: { verifyingContract?: string } }
-    )?.domain?.verifyingContract?.toLowerCase();
+    const verifyingContract = normalizeTypedDataPayload(
+      message.data.typedData,
+    )?.domain.verifyingContract?.toLowerCase();
     return verifyingContract
       ? { contract: { addr: verifyingContract, symbol: null } }
       : {};
@@ -419,12 +414,12 @@ function logIncoming(message: Message): void {
   }
 
   if (isTypedSignature(message)) {
+    const typedData = normalizeTypedDataPayload(message.data.typedData);
     console.info("[Scopeball] typed-sig.incoming", {
       ...common,
       chainId: message.data.chainId,
       address: message.data.address,
-      primaryType: (message.data.typedData as { primaryType?: string })
-        ?.primaryType,
+      primaryType: typedData?.primaryType,
       typedData: message.data.typedData,
     });
     return;
@@ -467,11 +462,11 @@ function logDecision(message: Message, verdict: VerdictDto): void {
   }
 
   if (isTypedSignature(message)) {
+    const typedData = normalizeTypedDataPayload(message.data.typedData);
     console.info("[Scopeball] typed-sig", {
       ...common,
       chainId: message.data.chainId,
-      primaryType: (message.data.typedData as { primaryType?: string })
-        ?.primaryType,
+      primaryType: typedData?.primaryType,
     });
     return;
   }
@@ -644,8 +639,8 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   //   - a transaction whose v3 route missed/faulted, whose decoded bodies
   //     were all `Unknown`, had zero v2 bundles, or whose v2 plan/dispatch
   //     threw (`tryV2VerdictPath` → undefined), OR
-  //   - a typed signature (`offchain_sig`) — no v3 route exists for it until
-  //     the SignAdapter (Phase 4C) lands, so it always lands here.
+  //   - a typed signature route/evaluate miss, OR
+  //   - an unsupported untyped signature.
   // Rather than waive the request through, we emit a warn verdict that the
   // user must explicitly approve via the verdict window (mirrors the untyped
   // signature short-circuit). This replaces the deleted legacy
@@ -869,11 +864,9 @@ function leafBodies(body: unknown): unknown[] {
  * decoded (leaf) `ActionBody`. Complements the full JSON dump.
  */
 function logParsedSignature(message: Message, routed: { actions: unknown[]; decoderId: string }): void {
-  const td = (
-    message.data as {
-      typedData?: { primaryType?: string; domain?: { name?: string } };
-    }
-  ).typedData;
+  const td = isTypedSignature(message)
+    ? normalizeTypedDataPayload(message.data.typedData)
+    : null;
   const domainName = td?.domain?.name ?? "?";
   const primaryType = td?.primaryType ?? "?";
   const leaves = routed.actions.flatMap((a) =>
@@ -997,11 +990,11 @@ async function typedSignatureLifecycle(
   // (`TriggerField` = action.domain/tag/venue + tx.chain_id), so a missing
   // verifyingContract degrades to the zero sentinel without affecting
   // action-tag-based policies.
-  const td = message.data.typedData as
-    | { domain?: { verifyingContract?: string } }
-    | undefined;
   const verifyingContract =
-    td?.domain?.verifyingContract?.toLowerCase() ?? "0x" + "0".repeat(40);
+    normalizeTypedDataPayload(
+      message.data.typedData,
+    )?.domain.verifyingContract?.toLowerCase() ??
+    "0x" + "0".repeat(40);
   const tx = {
     chain_id: `eip155:${message.data.chainId}`,
     from: message.data.address,
@@ -1076,9 +1069,8 @@ async function tryV2VerdictPath(
 ): Promise<VerdictDto | undefined> {
   if (!isTransaction(message)) return undefined;
 
-  // Skip `Unknown` bodies — the 4B stub emits exactly one of these, so the
-  // path stays dormant until the registry-v2 decoder (Phase 4D) lands and
-  // begins emitting real `ActionBody` variants.
+  // Skip `Unknown` bodies. They mean the v3 decoder could not produce a real
+  // ActionBody, so the request must fall through to fail-closed handling.
   const realActions = actions.filter((a) => {
     const body = (a as { body?: unknown }).body;
     return (
@@ -1227,12 +1219,10 @@ function redactEnvelope(message: Message): unknown {
     };
   }
   if (isTypedSignature(message)) {
+    const typedData = normalizeTypedDataPayload(message.data.typedData);
     return {
-      primaryType: (message.data.typedData as { primaryType?: string })
-        ?.primaryType,
-      verifyingContract: (
-        message.data.typedData as { domain?: { verifyingContract?: string } }
-      )?.domain?.verifyingContract,
+      primaryType: typedData?.primaryType,
+      verifyingContract: typedData?.domain.verifyingContract,
     };
   }
   if (isVenueOrder(message)) {
@@ -1287,9 +1277,9 @@ function unsupportedUntypedSignatureVerdict(): VerdictDto {
  * Phase 1 / P3 — FAIL-CLOSED verdict for a request no decoder could evaluate.
  *
  * Emitted by the `runLifecycle` tail when the v3 route missed/faulted, decoded
- * only `Unknown` bodies, found no v2 bundles, or the v2 pipeline threw — and
- * for every typed signature (no v3 route exists for it until the SignAdapter
- * lands). `kind: "warn"` so `decideInner` opens the verdict window and requires
+ * only `Unknown` bodies, found no v2 bundles, the v2 pipeline threw, or typed /
+ * untyped signature routing could not produce an evaluable result. `kind: "warn"`
+ * so `decideInner` opens the verdict window and requires
  * the user to explicitly proceed (mirrors `unsupportedUntypedSignatureVerdict`),
    * rather than silently waiving the request through as the deleted legacy
    * `evaluateWithPolicyRpc` fallback would have.

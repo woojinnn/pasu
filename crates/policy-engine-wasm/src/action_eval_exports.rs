@@ -719,4 +719,75 @@ mod tests {
         assert_eq!(parsed["ok"], false, "{parsed}");
         assert_eq!(parsed["error"]["kind"], "invalid_input_json", "{parsed}");
     }
+
+    // ── Dashboard policy (Option B) — synthesized minimal manifest ──────────
+    //
+    // `policies-loader-v2.ts` projects each user-authored dashboard policy to a
+    // bundle whose manifest is the MINIMAL `{ id, schema_version: 2 }`: empty
+    // trigger (matches every action), no `policy_rpc`, no `custom_context`. The
+    // next two tests pin that exact shape through the real Cedar engine — a
+    // base-context `forbid` reading `context.tokenOut.key.address` compiles
+    // against the full base schema and evaluates conditionally on the token.
+
+    const USDT: &str = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+
+    /// The minimal manifest `policies-loader-v2` synthesizes for a dashboard
+    /// policy id. Empty trigger ⇒ the Cedar head is the sole filter.
+    fn dashboard_manifest(id: &str) -> Value {
+        json!({ "id": id, "schema_version": 2 })
+    }
+
+    /// Run `evaluate_action_v2_json` for the WETH-output `swap_sample` with one
+    /// dashboard bundle (synthesized manifest) and return the parsed envelope.
+    fn eval_dashboard(policy: &str, id: &str) -> Value {
+        let (body, meta) = swap_sample();
+        let out = evaluate_action_v2_json(
+            json!({
+                "action": body,
+                "meta": meta,
+                "tx": tx(),
+                "bundles": [{ "policy": policy, "manifest": dashboard_manifest(id) }],
+                "results": {}
+            })
+            .to_string(),
+        );
+        serde_json::from_str(&out).unwrap()
+    }
+
+    /// HOLYMOLY shape: block a swap whose output token is NOT USDT. The sample
+    /// outputs WETH, so the `!= USDT` forbid fires → Fail (deny).
+    #[test]
+    fn evaluate_action_v2_dashboard_minimal_manifest_blocks_non_usdt_swap() {
+        let policy = format!(
+            "@id(\"block-non-usdt\")\n@severity(\"deny\")\n\
+             @reason(\"output token is not USDT\")\n\
+             forbid(principal, action == Amm::Action::\"Swap\", resource)\n\
+             when {{ !(context.tokenOut.key has address \
+             && context.tokenOut.key.address == \"{USDT}\") }};\n"
+        );
+        let parsed = eval_dashboard(&policy, "dashboard::block-non-usdt");
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["verdict"]["kind"], "fail", "{parsed}");
+        assert_eq!(
+            parsed["data"]["verdict"]["matched"][0]["policy_id"], "block-non-usdt",
+            "{parsed}"
+        );
+    }
+
+    /// Control (inverted guard): forbid when output IS USDT. The WETH sample is
+    /// not USDT, so the `has address && == USDT` guard is false → forbid does
+    /// not fire → Pass. Proves the guard actually reads the token address rather
+    /// than firing unconditionally.
+    #[test]
+    fn evaluate_action_v2_dashboard_minimal_manifest_passes_when_guard_false() {
+        let policy = format!(
+            "@id(\"only-usdt\")\n@severity(\"deny\")\n\
+             forbid(principal, action == Amm::Action::\"Swap\", resource)\n\
+             when {{ context.tokenOut.key has address \
+             && context.tokenOut.key.address == \"{USDT}\" }};\n"
+        );
+        let parsed = eval_dashboard(&policy, "dashboard::only-usdt");
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["verdict"]["kind"], "pass", "{parsed}");
+    }
 }

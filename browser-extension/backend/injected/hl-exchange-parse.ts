@@ -110,6 +110,22 @@ function envelope(
   return p;
 }
 
+function unknownPayload(
+  venue: string,
+  endpoint: string,
+  hostname: string,
+  actionType: string,
+  attribution: HlAttribution,
+): VenueOrderPayload {
+  return envelope(
+    venue,
+    endpoint,
+    hostname,
+    { kind: "unknown", actionType },
+    attribution,
+  );
+}
+
 /** Parse the `orders[]` of a `{"type":"order"}` action — one payload per leg. */
 function parseOrders(
   venue: string,
@@ -119,14 +135,18 @@ function parseOrders(
   attribution: HlAttribution,
 ): VenueOrderPayload[] | null {
   const orders = action.orders;
-  if (!Array.isArray(orders) || orders.length === 0) return null;
+  if (!Array.isArray(orders) || orders.length === 0) {
+    return [unknownPayload(venue, endpoint, hostname, "order", attribution)];
+  }
 
   const payloads: VenueOrderPayload[] = [];
+  let sawInvalidLeg = false;
   for (const o of orders) {
     const order = asObject(o);
     // An order-wire entry must at least carry the numeric asset index `a` and
     // the boolean side `b`; anything else is not an order leg.
     if (!order || typeof order.a !== "number" || typeof order.b !== "boolean") {
+      sawInvalidLeg = true;
       continue;
     }
     const wire: HyperliquidOrderWire = {
@@ -142,7 +162,12 @@ function parseOrders(
       envelope(venue, endpoint, hostname, { kind: "order", order: wire }, attribution),
     );
   }
-  return payloads.length > 0 ? payloads : null;
+  if (sawInvalidLeg) {
+    payloads.push(unknownPayload(venue, endpoint, hostname, "order", attribution));
+  }
+  return payloads.length > 0
+    ? payloads
+    : [unknownPayload(venue, endpoint, hostname, "order", attribution)];
 }
 
 /**
@@ -172,6 +197,7 @@ export function parseHyperliquidExchangeOrders(
 
   const action = asObject(root.action);
   if (!action || typeof action.type !== "string") return null;
+  const actionType = action.type;
 
   // Request-level attribution shared by every leg: the `nonce` (a ms wall-clock
   // timestamp → `submitted_at`) and `vaultAddress` (on-behalf-of, when present).
@@ -184,8 +210,11 @@ export function parseHyperliquidExchangeOrders(
   const one = (a: VenueActionWire): VenueOrderPayload[] => [
     envelope(venue, endpoint, hostname, a, attribution),
   ];
+  const unknown = () => [
+    unknownPayload(venue, endpoint, hostname, actionType, attribution),
+  ];
 
-  switch (action.type) {
+  switch (actionType) {
     case "order":
       return parseOrders(venue, endpoint, hostname, action, attribution);
 
@@ -195,7 +224,7 @@ export function parseHyperliquidExchangeOrders(
         typeof action.isCross !== "boolean" ||
         typeof action.leverage !== "number"
       ) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "update_leverage",
@@ -207,7 +236,7 @@ export function parseHyperliquidExchangeOrders(
 
     case "withdraw3": {
       if (typeof action.destination !== "string" || action.amount === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "withdraw",
@@ -218,7 +247,7 @@ export function parseHyperliquidExchangeOrders(
 
     case "usdSend": {
       if (typeof action.destination !== "string" || action.amount === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "usd_send",
@@ -228,7 +257,7 @@ export function parseHyperliquidExchangeOrders(
     }
 
     case "approveAgent": {
-      if (typeof action.agentAddress !== "string") return null;
+      if (typeof action.agentAddress !== "string") return unknown();
       const a: VenueActionWire = {
         kind: "approve_agent",
         agentAddress: action.agentAddress,
@@ -243,7 +272,7 @@ export function parseHyperliquidExchangeOrders(
         typeof action.token !== "string" ||
         action.amount === undefined
       ) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "spot_send",
@@ -254,7 +283,7 @@ export function parseHyperliquidExchangeOrders(
     }
 
     case "usdClassTransfer": {
-      if (action.amount === undefined) return null;
+      if (action.amount === undefined) return unknown();
       return one({
         kind: "usd_class_transfer",
         amount: String(action.amount),
@@ -264,7 +293,7 @@ export function parseHyperliquidExchangeOrders(
 
     case "sendAsset": {
       if (typeof action.destination !== "string" || action.amount === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "send_asset",
@@ -282,7 +311,7 @@ export function parseHyperliquidExchangeOrders(
         typeof action.destinationRecipient !== "string" ||
         action.amount === undefined
       ) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "send_to_evm_with_data",
@@ -295,18 +324,18 @@ export function parseHyperliquidExchangeOrders(
     }
 
     case "cDeposit": {
-      if (action.wei === undefined) return null;
+      if (action.wei === undefined) return unknown();
       return one({ kind: "c_deposit", wei: String(action.wei) });
     }
 
     case "cWithdraw": {
-      if (action.wei === undefined) return null;
+      if (action.wei === undefined) return unknown();
       return one({ kind: "c_withdraw", wei: String(action.wei) });
     }
 
     case "vaultTransfer": {
       if (typeof action.vaultAddress !== "string" || action.usd === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "vault_transfer",
@@ -318,7 +347,7 @@ export function parseHyperliquidExchangeOrders(
 
     case "subAccountTransfer": {
       if (typeof action.subAccountUser !== "string" || action.usd === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "sub_account_transfer",
@@ -330,7 +359,7 @@ export function parseHyperliquidExchangeOrders(
 
     case "approveBuilderFee": {
       if (typeof action.builder !== "string" || action.maxFeeRate === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "approve_builder_fee",
@@ -341,7 +370,7 @@ export function parseHyperliquidExchangeOrders(
 
     case "tokenDelegate": {
       if (typeof action.validator !== "string" || action.wei === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "token_delegate",
@@ -354,7 +383,7 @@ export function parseHyperliquidExchangeOrders(
     case "twapOrder": {
       const twap = asObject(action.twap);
       if (!twap || typeof twap.a !== "number" || typeof twap.b !== "boolean") {
-        return null;
+        return unknown();
       }
       return one({
         kind: "twap_order",
@@ -369,7 +398,7 @@ export function parseHyperliquidExchangeOrders(
 
     case "updateIsolatedMargin": {
       if (typeof action.asset !== "number" || action.ntli === undefined) {
-        return null;
+        return unknown();
       }
       return one({
         kind: "update_isolated_margin",
@@ -385,7 +414,7 @@ export function parseHyperliquidExchangeOrders(
       // evaluated). EVERY OTHER unrecognized type falls to the `hl_unknown`
       // catch-all so a fund / permission action we have not modeled can never pass
       // the venue unevaluated (closes the silent-allow gap).
-      if (BENIGN_PASS_THROUGH.has(action.type)) return null;
-      return one({ kind: "unknown", actionType: action.type });
+      if (BENIGN_PASS_THROUGH.has(actionType)) return null;
+      return unknown();
   }
 }

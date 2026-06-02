@@ -312,10 +312,20 @@ describe("installDeclarativeBundleV3", () => {
     });
 
     const stored = mocks.localStore.get("registry:adapter-bundles-v3") as
-      | Record<string, { bundleId: string; decoderId: string; bundleSha256: string; fetchedAtMs: number }>
+      | {
+          schemaVersion: number;
+          bundles: Record<string, unknown>;
+          callkeys: Record<
+            string,
+            { bundleId: string; decoderId: string; bundleSha256: string; fetchedAtMs: number }
+          >;
+        }
       | undefined;
     expect(stored).toBeTruthy();
-    const keys = Object.keys(stored!);
+    expect(stored!.schemaVersion).toBe(2);
+    // Bundle body is deduped: one V3Bundle even though 2 callkeys reach it.
+    expect(Object.keys(stored!.bundles)).toEqual([v3Bundle.id]);
+    const keys = Object.keys(stored!.callkeys);
     // chain_to_addresses 가 2 chain (1 + 8453) × 1 addr/chain = 2 callkey.
     expect(keys.length).toBe(2);
     expect(keys).toContain(
@@ -325,27 +335,30 @@ describe("installDeclarativeBundleV3", () => {
       "v3:8453__0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24__0x18cbafe5",
     );
     for (const k of keys) {
-      expect(stored![k].bundleId).toBe(v3Bundle.id);
-      expect(stored![k].bundleSha256).toBe("0x" + "a".repeat(64));
+      expect(stored!.callkeys[k].bundleId).toBe(v3Bundle.id);
+      expect(stored!.callkeys[k].bundleSha256).toBe("0x" + "a".repeat(64));
     }
   });
 
   it("rehydrates from chrome.storage.local on a cold SW (storage-hit path)", async () => {
-    // 직전 lifetime 의 storage 를 흉내냄 — fresh entry seed.
+    // 직전 lifetime 의 storage 를 흉내냄 — schema-v2 seed (dedup된 bundle store + callkey index).
     const seedKey =
       "v3:1__0x7a250d5630b4cf539739df2c5dacb4c659f2488d__0x18cbafe5";
     const crossKey =
       "v3:8453__0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24__0x18cbafe5";
-    const seedEntry = {
-      bundle: v3Bundle,
+    const seedMeta = {
       bundleId: v3Bundle.id,
       decoderId: v3Bundle.id,
       bundleSha256: "0x" + "b".repeat(64),
       fetchedAtMs: Date.now() - 60 * 1000,
     };
     mocks.localStore.set("registry:adapter-bundles-v3", {
-      [seedKey]: seedEntry,
-      [crossKey]: seedEntry,
+      schemaVersion: 2,
+      bundles: { [v3Bundle.id]: v3Bundle },
+      callkeys: {
+        [seedKey]: seedMeta,
+        [crossKey]: seedMeta,
+      },
     });
 
     mocks.declarativeInstallV3.mockResolvedValueOnce({

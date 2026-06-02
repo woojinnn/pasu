@@ -177,6 +177,16 @@ vi.mock("../adapter-loader/declarative-route", () => ({
 // registry `by-typed-data/` fetch.
 vi.mock("../sig-routing", () => ({
   routeTypedSignaturePayload: mocks.routeTypedSignaturePayload,
+  normalizeTypedDataPayload: (raw: unknown) => {
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw) as unknown;
+      } catch {
+        return null;
+      }
+    }
+    return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+  },
 }));
 
 import { decideMessage } from "../orchestrator";
@@ -198,7 +208,13 @@ function txMessage(requestId = "req-1"): Message {
   } as Message;
 }
 
-function typedSigMessage(requestId = "typed-1"): Message {
+function typedSigMessage(
+  requestId = "typed-1",
+  typedData: unknown = {
+    primaryType: "Permit",
+    domain: { verifyingContract: ROUTER },
+  },
+): Message {
   return {
     requestId,
     data: {
@@ -206,10 +222,7 @@ function typedSigMessage(requestId = "typed-1"): Message {
       chainId: 1,
       hostname: "app.example",
       address: OWNER,
-      typedData: {
-        primaryType: "Permit",
-        domain: { verifyingContract: ROUTER },
-      },
+      typedData,
     },
   } as Message;
 }
@@ -567,6 +580,31 @@ describe("orchestrator", () => {
     expect(mocks.auditAppend).toHaveBeenCalledWith(
       expect.objectContaining({ verdictSource: "declarative-v2" }),
     );
+  });
+
+  it("typed sig: JSON-stringified typedData still sets tx.to=verifyingContract", async () => {
+    mocks.routeTypedSignaturePayload.mockResolvedValueOnce({
+      actions: [sigPermitAction],
+      decoderId: "uniswap/permit2/permitSingle@1.0.0",
+    });
+
+    const typedData = {
+      primaryType: "Permit",
+      domain: { verifyingContract: ROUTER.toUpperCase() },
+    };
+    const { ok, verdict } = await decideMessage(
+      typedSigMessage("typed-hit-json-string", JSON.stringify(typedData)),
+      { onAwaitingUser: vi.fn() },
+    );
+
+    expect(ok).toBe(true);
+    expect(verdict.kind).toBe("pass");
+    const planArgs = mocks.planActionRpcV2.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    const tx = planArgs.tx as { chain_id: string; from: string; to: string };
+    expect(tx.to).toBe(ROUTER.toLowerCase());
   });
 
   it("typed sig: a routed hit logs a readable off-chain signature summary to DevTools", async () => {

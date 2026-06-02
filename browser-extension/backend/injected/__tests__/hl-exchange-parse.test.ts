@@ -40,6 +40,26 @@ describe("parseHyperliquidExchangeOrders — catch-all routing", () => {
     expect(parse({ type: "scheduleCancel", time: 0 })).toBeNull();
   });
 
+  it("routes malformed modeled high-risk actions to hl_unknown instead of null", () => {
+    const malformedLeverage = parse({ type: "updateLeverage", asset: 0 });
+    expect(malformedLeverage).toHaveLength(1);
+    expect(malformedLeverage![0].hlAction).toEqual({
+      kind: "unknown",
+      actionType: "updateLeverage",
+    });
+
+    const malformedOrder = parse({
+      type: "order",
+      orders: [{ p: "95000", s: "0.05" }],
+      grouping: "na",
+    });
+    expect(malformedOrder).toHaveLength(1);
+    expect(malformedOrder![0].hlAction).toEqual({
+      kind: "unknown",
+      actionType: "order",
+    });
+  });
+
   it("still parses a modeled order action (regression)", () => {
     const payloads = parse({
       type: "order",
