@@ -3,7 +3,7 @@
 //!
 //! See docs/superpowers/plans/2026-06-02-cedar-block-ir-conversion.md (Task 0).
 
-use cedar_policy::Policy;
+use cedar_policy::{Policy, PolicySet};
 use policy_engine_wasm::{est_json_to_policy_text, policy_text_to_est_json};
 use std::str::FromStr;
 
@@ -242,4 +242,52 @@ fn est_to_text_ok_and_err() {
         serde_json::from_str::<serde_json::Value>(&bad).unwrap()["ok"],
         serde_json::json!(false)
     );
+}
+
+// ── Real shipped policies (default_policies_v2) ─────────────────────────
+
+/// Parse every vendored real policy, assert its EST is a faithful fixed point,
+/// and emit `real-policies-est.json` for the dashboard round-trip test. This is
+/// the real-world coverage check: if a shipped policy uses a construct the TS
+/// converter can't structurally map, the dashboard test surfaces a `raw` node.
+#[test]
+fn real_default_policies_v2_emit_and_fixed_point() {
+    let dir = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/default_policies_v2"
+    );
+    let mut files: Vec<_> = std::fs::read_dir(dir)
+        .unwrap_or_else(|e| panic!("read_dir {dir}: {e}"))
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("cedar"))
+        .collect();
+    files.sort();
+    assert!(
+        files.len() >= 100,
+        "expected ~118 real policies, found {}",
+        files.len()
+    );
+
+    let mut out = Vec::new();
+    for path in &files {
+        let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
+        let text = std::fs::read_to_string(path).unwrap();
+        let set =
+            PolicySet::from_str(&text).unwrap_or_else(|e| panic!("{stem}: parse failed: {e}"));
+        for p in set.policies() {
+            let est = p.to_json().unwrap();
+            let est2 = Policy::from_json(None, est.clone())
+                .unwrap()
+                .to_json()
+                .unwrap();
+            assert_eq!(est, est2, "{stem}: EST not a fixed point");
+            out.push(serde_json::json!({ "name": stem, "est": est }));
+        }
+    }
+
+    let fpath = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../browser-extension/dashboard/src/cedar/blocks/__tests__/fixtures/real-policies-est.json"
+    );
+    std::fs::write(fpath, serde_json::to_string_pretty(&out).unwrap()).unwrap();
 }
