@@ -199,6 +199,11 @@ async function decideInner(
     const { verdict } = lifecycle;
 
     let ok = false;
+    // user_decision is only meaningful for WARN — PASS auto-passes and FAIL's
+    // popup is informational only. WARN's `ok` boolean (trust vs. cancel/X)
+    // is mapped to the storage enum and persisted on the audit row so the
+    // history view can render agree/deny without round-tripping.
+    let userDecision: "trusted" | "cancelled" | null = null;
     if (verdict.kind === "pass") {
       ok = true;
     } else if (verdict.kind === "fail") {
@@ -218,6 +223,7 @@ async function decideInner(
         verdict,
         options.onAwaitingUser,
       );
+      userDecision = ok ? "trusted" : "cancelled";
     }
 
     await appendAudit(
@@ -227,6 +233,7 @@ async function decideInner(
       lifecycle.verdictSource,
       lifecycle.policyRpc,
       lifecycle.declarativeV3,
+      userDecision,
     );
     return { ok, verdict };
   } catch (err) {
@@ -294,6 +301,7 @@ async function appendAudit(
   verdictSource?: VerdictSource,
   policyRpc?: PolicyRpcAuditMeta,
   declarativeV3?: DeclarativeV3AuditMeta,
+  userDecision: "trusted" | "cancelled" | null = null,
 ): Promise<void> {
   logDecision(message, verdict);
   await auditAppend({
@@ -315,7 +323,7 @@ async function appendAudit(
   // Keep the user-facing verdict log on-device. The server returns simulated
   // state for policy evaluation; the extension owns policy verdicts and audit
   // history, so this replaces the old server `/verdicts` write path.
-  void appendVerdictsForMessage(message, verdict).catch((err) => {
+  void appendVerdictsForMessage(message, verdict, userDecision).catch((err) => {
     console.warn("[Scopeball] verdict-storage append failed", err);
   });
 }
@@ -323,6 +331,7 @@ async function appendAudit(
 async function appendVerdictsForMessage(
   message: Message,
   verdict: VerdictDto,
+  userDecision: "trusted" | "cancelled" | null = null,
 ): Promise<void> {
   const ts = Math.floor(Date.now() / 1000);
   const { contract, selector } = inferContractSelector(message);
@@ -336,6 +345,7 @@ async function appendVerdictsForMessage(
     ...(contract ? { contract } : {}),
     ...(selector ? { selector } : {}),
     delta_id: null,
+    ...(userDecision !== null ? { user_decision: userDecision } : {}),
   };
 
   if (verdict.kind === "pass" || !verdict.matched?.length) {

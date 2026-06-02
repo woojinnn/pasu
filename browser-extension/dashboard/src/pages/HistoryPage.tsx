@@ -168,9 +168,18 @@ function HistoryRow({ v }: { v: VerdictDto }) {
       </td>
       <td className="reason" title={reason}>{reason}</td>
       <td>
-        {v.user_decision === "trusted" && <span className="deco-trusted">agree</span>}
-        {v.user_decision === "cancelled" && <span className="deco-cancelled">deny</span>}
-        {v.user_decision === null && <span className="deco-pending">선택중</span>}
+        {/* PASS auto-passes and FAIL's popup is informational only — neither
+            takes user input, so the decision column is left blank. Only WARN
+            actually maps to agree/deny/선택중. */}
+        {v.verdict === "warn" && v.user_decision === "trusted" && (
+          <span className="deco-trusted">agree</span>
+        )}
+        {v.verdict === "warn" && v.user_decision === "cancelled" && (
+          <span className="deco-cancelled">deny</span>
+        )}
+        {v.verdict === "warn" && v.user_decision === null && (
+          <span className="deco-pending">선택중</span>
+        )}
       </td>
     </tr>
   );
