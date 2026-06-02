@@ -32,6 +32,7 @@ impl Reducer for AmmAction {
             Self::RemoveLiquidity(a) => a.apply(state, ctx),
             Self::CollectFees(a) => a.apply(state, ctx),
             Self::SignIntentOrder(a) => a.apply(state, ctx),
+            Self::SettleIntentOrder(a) => a.apply(state, ctx),
             Self::CancelIntentOrder(a) => a.apply(state, ctx),
         }
     }

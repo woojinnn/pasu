@@ -1,0 +1,2145 @@
+{
+  "generatedAt": "2026-06-02T06:02:52.015Z",
+  "protocol": "uniswap",
+  "source": "Etherscan v2 account txlist, adapter-blind by P0 cover deployment addresses",
+  "targetSource": "deployments",
+  "apiCallsUsed": 10,
+  "targetsQueried": 10,
+  "coverAddressesQueried": 10,
+  "offset": 5000,
+  "pageLimit": 1,
+  "targetRawTxFloor": 0,
+  "floorMet": true,
+  "rawTxsSeen": 50000,
+  "uniqueTxHashesSeen": 50000,
+  "inputTxsSeen": 49975,
+  "matchedInputTxs": 49972,
+  "excludedInputTxs": 0,
+  "unmatchedInputTxs": 3,
+  "actionableUnmatchedInputTxs": 0,
+  "nonActionableUnmatchedInputTxs": 3,
+  "unmatchedDispositions": [
+    {
+      "disposition": "selector_known_elsewhere_wrong_target",
+      "count": 2
+    },
+    {
+      "disposition": "non_abi_or_text_calldata",
+      "count": 1
+    }
+  ],
+  "uniqueSelectorsSeen": 47,
+  "uniqueMatchedSelectorsSeen": 44,
+  "uniqueExcludedSelectorsSeen": 0,
+  "uniqueUnmatchedSelectorsSeen": 3,
+  "matchedCallkeys": 56,
+  "errors": [],
+  "topSelectors": [
+    {
+      "selector": "0x3593564c",
+      "count": 13308
+    },
+    {
+      "selector": "0x3f62192e",
+      "count": 9273
+    },
+    {
+      "selector": "0x87517c45",
+      "count": 3899
+    },
+    {
+      "selector": "0xdd46508f",
+      "count": 3880
+    },
+    {
+      "selector": "0x04e45aaf",
+      "count": 3365
+    },
+    {
+      "selector": "0xac9650d8",
+      "count": 3026
+    },
+    {
+      "selector": "0x791ac947",
+      "count": 1919
+    },
+    {
+      "selector": "0xfc6f7865",
+      "count": 1825
+    },
+    {
+      "selector": "0x24856bc3",
+      "count": 1665
+    },
+    {
+      "selector": "0xb6f9de95",
+      "count": 1550
+    },
+    {
+      "selector": "0x5ae401dc",
+      "count": 991
+    },
+    {
+      "selector": "0x7ff36ab5",
+      "count": 753
+    },
+    {
+      "selector": "0x0d7a16c3",
+      "count": 726
+    },
+    {
+      "selector": "0x42966c68",
+      "count": 659
+    },
+    {
+      "selector": "0x2b67b570",
+      "count": 430
+    },
+    {
+      "selector": "0x88316456",
+      "count": 402
+    },
+    {
+      "selector": "0x38ed1739",
+      "count": 340
+    },
+    {
+      "selector": "0xb858183f",
+      "count": 248
+    },
+    {
+      "selector": "0x3ff9dcb1",
+      "count": 236
+    },
+    {
+      "selector": "0x36c78516",
+      "count": 178
+    },
+    {
+      "selector": "0x5c11d795",
+      "count": 177
+    },
+    {
+      "selector": "0x09b81346",
+      "count": 134
+    },
+    {
+      "selector": "0x219f5d17",
+      "count": 125
+    },
+    {
+      "selector": "0xcc53287f",
+      "count": 124
+    },
+    {
+      "selector": "0x0d58b1db",
+      "count": 114
+    },
+    {
+      "selector": "0x18cbafe5",
+      "count": 112
+    },
+    {
+      "selector": "0xb88d4fde",
+      "count": 107
+    },
+    {
+      "selector": "0x5023b4df",
+      "count": 100
+    },
+    {
+      "selector": "0x0c49ccbe",
+      "count": 67
+    },
+    {
+      "selector": "0xfb3bdb41",
+      "count": 53
+    },
+    {
+      "selector": "0xf305d719",
+      "count": 35
+    },
+    {
+      "selector": "0x02751cec",
+      "count": 34
+    },
+    {
+      "selector": "0x095ea7b3",
+      "count": 27
+    },
+    {
+      "selector": "0xa22cb465",
+      "count": 26
+    },
+    {
+      "selector": "0x2a2d80d1",
+      "count": 14
+    },
+    {
+      "selector": "0x8803dbee",
+      "count": 10
+    },
+    {
+      "selector": "0x42842e0e",
+      "count": 9
+    },
+    {
+      "selector": "0x4a25d94a",
+      "count": 9
+    },
+    {
+      "selector": "0x23b872dd",
+      "count": 8
+    },
+    {
+      "selector": "0x30f28b7a",
+      "count": 5
+    },
+    {
+      "selector": "0xaf2979eb",
+      "count": 4
+    },
+    {
+      "selector": "0xbaa2abde",
+      "count": 3
+    },
+    {
+      "selector": "0x13ead562",
+      "count": 1
+    },
+    {
+      "selector": "0x2e1a7d4d",
+      "count": 1
+    },
+    {
+      "selector": "0x3ccfd60b",
+      "count": 1
+    },
+    {
+      "selector": "0xaf0a675b",
+      "count": 1
+    },
+    {
+      "selector": "0xe8e33700",
+      "count": 1
+    }
+  ],
+  "topMatchedSelectors": [
+    {
+      "selector": "0x3593564c",
+      "count": 13308
+    },
+    {
+      "selector": "0x3f62192e",
+      "count": 9273
+    },
+    {
+      "selector": "0x87517c45",
+      "count": 3899
+    },
+    {
+      "selector": "0xdd46508f",
+      "count": 3880
+    },
+    {
+      "selector": "0x04e45aaf",
+      "count": 3365
+    },
+    {
+      "selector": "0xac9650d8",
+      "count": 3026
+    },
+    {
+      "selector": "0x791ac947",
+      "count": 1919
+    },
+    {
+      "selector": "0xfc6f7865",
+      "count": 1825
+    },
+    {
+      "selector": "0x24856bc3",
+      "count": 1665
+    },
+    {
+      "selector": "0xb6f9de95",
+      "count": 1550
+    },
+    {
+      "selector": "0x5ae401dc",
+      "count": 991
+    },
+    {
+      "selector": "0x7ff36ab5",
+      "count": 753
+    },
+    {
+      "selector": "0x0d7a16c3",
+      "count": 726
+    },
+    {
+      "selector": "0x42966c68",
+      "count": 659
+    },
+    {
+      "selector": "0x2b67b570",
+      "count": 430
+    },
+    {
+      "selector": "0x88316456",
+      "count": 402
+    },
+    {
+      "selector": "0x38ed1739",
+      "count": 340
+    },
+    {
+      "selector": "0xb858183f",
+      "count": 248
+    },
+    {
+      "selector": "0x3ff9dcb1",
+      "count": 236
+    },
+    {
+      "selector": "0x36c78516",
+      "count": 178
+    },
+    {
+      "selector": "0x5c11d795",
+      "count": 177
+    },
+    {
+      "selector": "0x09b81346",
+      "count": 134
+    },
+    {
+      "selector": "0x219f5d17",
+      "count": 125
+    },
+    {
+      "selector": "0xcc53287f",
+      "count": 124
+    },
+    {
+      "selector": "0x0d58b1db",
+      "count": 114
+    },
+    {
+      "selector": "0x18cbafe5",
+      "count": 112
+    },
+    {
+      "selector": "0xb88d4fde",
+      "count": 107
+    },
+    {
+      "selector": "0x5023b4df",
+      "count": 100
+    },
+    {
+      "selector": "0x0c49ccbe",
+      "count": 67
+    },
+    {
+      "selector": "0xfb3bdb41",
+      "count": 53
+    },
+    {
+      "selector": "0xf305d719",
+      "count": 35
+    },
+    {
+      "selector": "0x02751cec",
+      "count": 34
+    },
+    {
+      "selector": "0x095ea7b3",
+      "count": 27
+    },
+    {
+      "selector": "0xa22cb465",
+      "count": 26
+    },
+    {
+      "selector": "0x2a2d80d1",
+      "count": 14
+    },
+    {
+      "selector": "0x8803dbee",
+      "count": 10
+    },
+    {
+      "selector": "0x42842e0e",
+      "count": 9
+    },
+    {
+      "selector": "0x4a25d94a",
+      "count": 9
+    },
+    {
+      "selector": "0x23b872dd",
+      "count": 8
+    },
+    {
+      "selector": "0x30f28b7a",
+      "count": 5
+    },
+    {
+      "selector": "0xaf2979eb",
+      "count": 4
+    },
+    {
+      "selector": "0xbaa2abde",
+      "count": 3
+    },
+    {
+      "selector": "0x13ead562",
+      "count": 1
+    },
+    {
+      "selector": "0xe8e33700",
+      "count": 1
+    }
+  ],
+  "topExcludedSelectors": [],
+  "topUnmatchedSelectors": [
+    {
+      "selector": "0x2e1a7d4d",
+      "count": 1,
+      "knownElsewhere": [
+        {
+          "chainId": 1,
+          "address": "0x96424e6b5eaafe0c3b36ca82068d574d44be4e3c",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0xea012f5b25fa0d8e46123b85f585d0a5075e96b5",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x60d3d7ebbc44dc810a743703184f062d00e6db7e",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x8d867bef70c6733ff25cc0d1caa8aa6c38b24817",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x1e4b83f6bfe9dbeb6d5b92a5237e5c18a44176f4",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x4e21418095d32d15c6e2b96a9910772613a50d50",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x5010263ac1978297f56048c7d2b02316a3435404",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0xf29fff074f5cf755b55fbb3eb10a29203ac91ea2",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        }
+      ]
+    },
+    {
+      "selector": "0x3ccfd60b",
+      "count": 1,
+      "knownElsewhere": [
+        {
+          "chainId": 1,
+          "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+          "manifestId": "curve/vecrv/withdraw@1.0.0"
+        }
+      ]
+    },
+    {
+      "selector": "0xaf0a675b",
+      "count": 1,
+      "knownElsewhere": []
+    }
+  ],
+  "topUnmatchedAddressSelectors": [
+    {
+      "chainId": 1,
+      "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+      "name": "Universal Router v1.2",
+      "selector": "0x2e1a7d4d",
+      "count": 1,
+      "disposition": "selector_known_elsewhere_wrong_target",
+      "dispositionReason": "selector is covered on another address but is absent from this target ABI snapshot",
+      "knownElsewhere": [
+        {
+          "chainId": 1,
+          "address": "0x96424e6b5eaafe0c3b36ca82068d574d44be4e3c",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0xea012f5b25fa0d8e46123b85f585d0a5075e96b5",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x60d3d7ebbc44dc810a743703184f062d00e6db7e",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x8d867bef70c6733ff25cc0d1caa8aa6c38b24817",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x1e4b83f6bfe9dbeb6d5b92a5237e5c18a44176f4",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x4e21418095d32d15c6e2b96a9910772613a50d50",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0x5010263ac1978297f56048c7d2b02316a3435404",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        },
+        {
+          "chainId": 1,
+          "address": "0xf29fff074f5cf755b55fbb3eb10a29203ac91ea2",
+          "manifestId": "curve/gauge/withdraw@1.0.0"
+        }
+      ],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+          "name": "Universal Router v1.2",
+          "selector": "0x2e1a7d4d",
+          "txHash": "0xfce8a20c6ab19a82895903a17cfdfbca648b29541cd5688c62bd6cda5bbd5095",
+          "from": "0x1b92c61ab446e5303cec9b695364f6143e0e62f4",
+          "to": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+          "value": "0",
+          "blockNumber": "25207759",
+          "timeStamp": "1780138919",
+          "input": "0x2e1a7d4d0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+      "name": "Universal Router v1.2",
+      "selector": "0x3ccfd60b",
+      "count": 1,
+      "disposition": "selector_known_elsewhere_wrong_target",
+      "dispositionReason": "selector is covered on another address but is absent from this target ABI snapshot",
+      "knownElsewhere": [
+        {
+          "chainId": 1,
+          "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+          "manifestId": "curve/vecrv/withdraw@1.0.0"
+        }
+      ],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+          "name": "Universal Router v1.2",
+          "selector": "0x3ccfd60b",
+          "txHash": "0x5c0528b297812828dc05509c7b351037ed2f69c5e905c94bc0d5d6bffde7312f",
+          "from": "0x1b92c61ab446e5303cec9b695364f6143e0e62f4",
+          "to": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+          "value": "0",
+          "blockNumber": "25207757",
+          "timeStamp": "1780138895",
+          "input": "0x3ccfd60b"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+      "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+      "selector": "0xaf0a675b",
+      "count": 1,
+      "disposition": "non_abi_or_text_calldata",
+      "dispositionReason": "selector is absent from this target ABI snapshot; examples are treated as misdirected, spam, or non-ABI calldata",
+      "knownElsewhere": [],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+          "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+          "selector": "0xaf0a675b",
+          "txHash": "0x2b3b68e433a8919d56b290e525c7723ad778ec1afb5af7f1976aa7e6e255952d",
+          "from": "0xc432851c045e3629245111f328393e2a4a3a66f7",
+          "to": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+          "value": "0",
+          "blockNumber": "22942198",
+          "timeStamp": "1752794771",
+          "input": "0xaf0a675b00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000301000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000068797ef30000000000000000000000000000000000000000000000000000000068797ef300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000000000000000000000000000000000000095697a000000000000000000000000000000000000000000000000000000000095697a00000000000000000000000000000000000000000000000000000000000002000000000000000000000000006000da47483062a0d734ba3dc7576ce6a0b645c40000000000000000000000005d2e2ae53ef73854b1e9cefe913b2ac3c0972cb60468327eb7c3eb3e90321ad03b37524a4f637f3886b0924562d64ad7b3bbf702000000000000000000000000000000000000000000000000000000006882b973000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000e2ad0bf751834f2fbdc62a41014f84d67ca1de2a0000000000000000000000000000000000000000000000004fa8939692be00000000000000000000000000000000000000000000000000004fa8939692be00000000000000000000000000005d2e2ae53ef73854b1e9cefe913b2ac3c0972cb6aa10b266899afdf8f216234576ce60777be3464fcb67723dee78db514ba5c78b1143f931cc4507139eb729a5682a05e3e7b7e4e15bf85307dbbd5c291f44383d1b00000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    }
+  ],
+  "topExcludedAddressSelectors": [],
+  "manifestSelectorsByCoverAddress": [
+    {
+      "chainId": 1,
+      "address": "0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca",
+      "name": "Universal Router 2.1.1",
+      "selector": "0x3593564c",
+      "txCount": 5000,
+      "manifestIds": [
+        "uniswap/universal-router/execute-v1@1.0.0",
+        "uniswap/universal-router/execute-v2@1.0.0",
+        "uniswap/universal-router/execute-v2@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+      "name": "UniswapX V2 Dutch Order Reactor",
+      "selector": "0x3f62192e",
+      "txCount": 4978,
+      "manifestIds": [
+        "uniswapx/reactor/execute@1.0.0",
+        "uniswapx/reactor/execute@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+      "name": "Universal Router v1.2",
+      "selector": "0x3593564c",
+      "txCount": 4950,
+      "manifestIds": [
+        "uniswap/universal-router/execute-v1@1.0.0",
+        "uniswap/universal-router/execute-v1@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+      "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+      "selector": "0x3f62192e",
+      "txCount": 4295,
+      "manifestIds": [
+        "uniswapx/reactor/execute@1.0.0",
+        "uniswapx/reactor/execute@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x87517c45",
+      "txCount": 3899,
+      "manifestIds": [
+        "uniswap/permit2/approve@1.0.0",
+        "uniswap/permit2/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0xdd46508f",
+      "txCount": 3880,
+      "manifestIds": [
+        "uniswap/v4-position-manager/modify-liquidities@1.0.0",
+        "uniswap/v4-position-manager/modify-liquidities@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0x04e45aaf",
+      "txCount": 3365,
+      "manifestIds": [
+        "uniswap/swap-router-02/exactInputSingle@1.0.0",
+        "uniswap/swap-router-02/exactInputSingle@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af",
+      "name": "Universal Router v2",
+      "selector": "0x3593564c",
+      "txCount": 3358,
+      "manifestIds": [
+        "uniswap/universal-router/execute-v1@1.0.0",
+        "uniswap/universal-router/execute-v2@1.0.0",
+        "uniswap/universal-router/execute-v2@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x791ac947",
+      "txCount": 1919,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0",
+        "uniswap/v2-router-02/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0xfc6f7865",
+      "txCount": 1825,
+      "manifestIds": [
+        "uniswap/v3-nfpm/collect@1.0.0",
+        "uniswap/v3-nfpm/collect@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0xac9650d8",
+      "txCount": 1810,
+      "manifestIds": [
+        "uniswap/v3-nfpm/multicall@1.0.0",
+        "uniswap/v3-nfpm/multicall@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af",
+      "name": "Universal Router v2",
+      "selector": "0x24856bc3",
+      "txCount": 1642,
+      "manifestIds": [
+        "uniswap/universal-router/execute-v1-no-deadline@1.0.0",
+        "uniswap/universal-router/execute-v2-no-deadline@1.0.0",
+        "uniswap/universal-router/execute-v2-no-deadline@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0xb6f9de95",
+      "txCount": 1550,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0",
+        "uniswap/v2-router-02/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0xac9650d8",
+      "txCount": 1054,
+      "manifestIds": [
+        "uniswap/v4-position-manager/multicall@1.0.0",
+        "uniswap/v4-position-manager/multicall@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0x5ae401dc",
+      "txCount": 991,
+      "manifestIds": [
+        "uniswap/swap-router-02/multicall@1.0.0",
+        "uniswap/swap-router-02/multicall@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x7ff36ab5",
+      "txCount": 753,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapExactETHForTokens@1.0.0",
+        "uniswap/v2-router-02/swapExactETHForTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+      "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+      "selector": "0x0d7a16c3",
+      "txCount": 704,
+      "manifestIds": [
+        "uniswapx/reactor/execute-batch@1.0.0",
+        "uniswapx/reactor/execute-batch@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x42966c68",
+      "txCount": 659,
+      "manifestIds": [
+        "uniswap/v3-nfpm/burn@1.0.0",
+        "uniswap/v3-nfpm/burn@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x2b67b570",
+      "txCount": 430,
+      "manifestIds": [
+        "uniswap/permit2/permitSingle@1.0.0",
+        "uniswap/permit2/permitSingle@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x88316456",
+      "txCount": 402,
+      "manifestIds": [
+        "uniswap/v3-nfpm/mint@1.0.0",
+        "uniswap/v3-nfpm/mint@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x38ed1739",
+      "txCount": 340,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapExactTokensForTokens@1.0.0",
+        "uniswap/v2-router-02/swapExactTokensForTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0xb858183f",
+      "txCount": 248,
+      "manifestIds": [
+        "uniswap/swap-router-02/exactInput@1.0.0",
+        "uniswap/swap-router-02/exactInput@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x3ff9dcb1",
+      "txCount": 236,
+      "manifestIds": [
+        "uniswap/permit2/invalidateUnorderedNonces@1.0.0",
+        "uniswap/permit2/invalidateUnorderedNonces@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x36c78516",
+      "txCount": 178,
+      "manifestIds": [
+        "uniswap/permit2/transferFrom@1.0.0",
+        "uniswap/permit2/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x5c11d795",
+      "txCount": 177,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0",
+        "uniswap/v2-router-02/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0xac9650d8",
+      "txCount": 162,
+      "manifestIds": [
+        "uniswap/swap-router-02/multicall-bytes@1.0.0",
+        "uniswap/swap-router-02/multicall-bytes@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0x09b81346",
+      "txCount": 134,
+      "manifestIds": [
+        "uniswap/swap-router-02/exactOutput@1.0.0",
+        "uniswap/swap-router-02/exactOutput@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x219f5d17",
+      "txCount": 125,
+      "manifestIds": [
+        "uniswap/v3-nfpm/increase-liquidity@1.0.0",
+        "uniswap/v3-nfpm/increase-liquidity@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0xcc53287f",
+      "txCount": 124,
+      "manifestIds": [
+        "uniswap/permit2/lockdown@1.0.0",
+        "uniswap/permit2/lockdown@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x0d58b1db",
+      "txCount": 114,
+      "manifestIds": [
+        "uniswap/permit2/transferFromBatch@1.0.0",
+        "uniswap/permit2/transferFromBatch@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x18cbafe5",
+      "txCount": 112,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapExactTokensForETH@1.0.0",
+        "uniswap/v2-router-02/swapExactTokensForETH@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0x5023b4df",
+      "txCount": 100,
+      "manifestIds": [
+        "uniswap/swap-router-02/exactOutputSingle@1.0.0",
+        "uniswap/swap-router-02/exactOutputSingle@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0xb88d4fde",
+      "txCount": 77,
+      "manifestIds": [
+        "uniswap/position-nft/safeTransferFromWithData@1.0.0",
+        "uniswap/position-nft/safeTransferFromWithData@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x0c49ccbe",
+      "txCount": 67,
+      "manifestIds": [
+        "uniswap/v3-nfpm/decrease-liquidity@1.0.0",
+        "uniswap/v3-nfpm/decrease-liquidity@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0xfb3bdb41",
+      "txCount": 53,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapETHForExactTokens@1.0.0",
+        "uniswap/v2-router-02/swapETHForExactTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0xf305d719",
+      "txCount": 35,
+      "manifestIds": [
+        "uniswap/v2-router-02/addLiquidityETH@1.0.0",
+        "uniswap/v2-router-02/addLiquidityETH@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x02751cec",
+      "txCount": 34,
+      "manifestIds": [
+        "uniswap/v2-router-02/removeLiquidityETH@1.0.0",
+        "uniswap/v2-router-02/removeLiquidityETH@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0xb88d4fde",
+      "txCount": 30,
+      "manifestIds": [
+        "uniswap/position-nft/safeTransferFromWithData@1.0.0",
+        "uniswap/position-nft/safeTransferFromWithData@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+      "name": "Universal Router v1.2",
+      "selector": "0x24856bc3",
+      "txCount": 23,
+      "manifestIds": [
+        "uniswap/universal-router/execute-v1-no-deadline@1.0.0",
+        "uniswap/universal-router/execute-v1-no-deadline@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+      "name": "UniswapX V2 Dutch Order Reactor",
+      "selector": "0x0d7a16c3",
+      "txCount": 22,
+      "manifestIds": [
+        "uniswapx/reactor/execute-batch@1.0.0",
+        "uniswapx/reactor/execute-batch@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0xa22cb465",
+      "txCount": 15,
+      "manifestIds": [
+        "uniswap/position-nft/setApprovalForAll@1.0.0",
+        "uniswap/position-nft/setApprovalForAll@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x2a2d80d1",
+      "txCount": 14,
+      "manifestIds": [
+        "uniswap/permit2/permitBatch@1.0.0",
+        "uniswap/permit2/permitBatch@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0x095ea7b3",
+      "txCount": 14,
+      "manifestIds": [
+        "uniswap/position-nft/approve@1.0.0",
+        "uniswap/position-nft/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x095ea7b3",
+      "txCount": 13,
+      "manifestIds": [
+        "uniswap/position-nft/approve@1.0.0",
+        "uniswap/position-nft/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0xa22cb465",
+      "txCount": 11,
+      "manifestIds": [
+        "uniswap/position-nft/setApprovalForAll@1.0.0",
+        "uniswap/position-nft/setApprovalForAll@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x8803dbee",
+      "txCount": 10,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapTokensForExactTokens@1.0.0",
+        "uniswap/v2-router-02/swapTokensForExactTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x4a25d94a",
+      "txCount": 9,
+      "manifestIds": [
+        "uniswap/v2-router-02/swapTokensForExactETH@1.0.0",
+        "uniswap/v2-router-02/swapTokensForExactETH@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0x23b872dd",
+      "txCount": 7,
+      "manifestIds": [
+        "uniswap/position-nft/transferFrom@1.0.0",
+        "uniswap/position-nft/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x30f28b7a",
+      "txCount": 5,
+      "manifestIds": [
+        "uniswap/permit2/permitTransferFrom@1.0.0",
+        "uniswap/permit2/permitTransferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x42842e0e",
+      "txCount": 5,
+      "manifestIds": [
+        "uniswap/position-nft/safeTransferFrom@1.0.0",
+        "uniswap/position-nft/safeTransferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0xaf2979eb",
+      "txCount": 4,
+      "manifestIds": [
+        "uniswap/v2-router-02/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0",
+        "uniswap/v2-router-02/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0x42842e0e",
+      "txCount": 4,
+      "manifestIds": [
+        "uniswap/position-nft/safeTransferFrom@1.0.0",
+        "uniswap/position-nft/safeTransferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0xbaa2abde",
+      "txCount": 3,
+      "manifestIds": [
+        "uniswap/v2-router-02/removeLiquidity@1.0.0",
+        "uniswap/v2-router-02/removeLiquidity@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0xe8e33700",
+      "txCount": 1,
+      "manifestIds": [
+        "uniswap/v2-router-02/addLiquidity@1.0.0",
+        "uniswap/v2-router-02/addLiquidity@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x13ead562",
+      "txCount": 1,
+      "manifestIds": [
+        "uniswap/v3-nfpm/create-and-initialize-pool-if-necessary@1.0.0",
+        "uniswap/v3-nfpm/create-and-initialize-pool-if-necessary@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "name": "NonfungiblePositionManager",
+      "selector": "0x23b872dd",
+      "txCount": 1,
+      "manifestIds": [
+        "uniswap/position-nft/transferFrom@1.0.0",
+        "uniswap/position-nft/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x00000001",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswapx/exclusive-dutch-order/sign@1.0.0",
+        "uniswapx/exclusive-dutch-order/sign@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x00000002",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswapx/v2-dutch-order/sign@1.0.0",
+        "uniswapx/v2-dutch-order/sign@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x00000003",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswapx/v3-dutch-order/sign@1.0.0",
+        "uniswapx/v3-dutch-order/sign@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x00000005",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/permit2/permitTransferFrom-sign@1.0.0",
+        "uniswap/permit2/permitTransferFrom-sign@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x00000006",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/permit2/permitBatchTransferFrom-sign@1.0.0",
+        "uniswap/permit2/permitBatchTransferFrom-sign@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x137c29fe",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/permit2/permitWitnessTransferFrom@1.0.0",
+        "uniswap/permit2/permitWitnessTransferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0x65d9723c",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/permit2/invalidateNonces@1.0.0",
+        "uniswap/permit2/invalidateNonces@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0xedd9444b",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/permit2/permitTransferFromBatch@1.0.0",
+        "uniswap/permit2/permitTransferFromBatch@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "name": "Permit2",
+      "selector": "0xfe8ec1a7",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/permit2/permitWitnessTransferFromBatch@1.0.0",
+        "uniswap/permit2/permitWitnessTransferFromBatch@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+      "name": "UniswapX V2 Dutch Order Reactor",
+      "selector": "0x0d335884",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswapx/reactor/execute-with-callback@1.0.0",
+        "uniswapx/reactor/execute-with-callback@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+      "name": "UniswapX V2 Dutch Order Reactor",
+      "selector": "0x13fb72c7",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswapx/reactor/execute-batch-with-callback@1.0.0",
+        "uniswapx/reactor/execute-batch-with-callback@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca",
+      "name": "Universal Router 2.1.1",
+      "selector": "0x24856bc3",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/universal-router/execute-v1-no-deadline@1.0.0",
+        "uniswap/universal-router/execute-v2-no-deadline@1.0.0",
+        "uniswap/universal-router/execute-v2-no-deadline@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+      "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+      "selector": "0x0d335884",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswapx/reactor/execute-with-callback@1.0.0",
+        "uniswapx/reactor/execute-with-callback@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+      "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+      "selector": "0x13fb72c7",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswapx/reactor/execute-batch-with-callback@1.0.0",
+        "uniswapx/reactor/execute-batch-with-callback@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0x42712a67",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/swap-router-02/swapTokensForExactTokens@1.0.0",
+        "uniswap/swap-router-02/swapTokensForExactTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "name": "SwapRouter02",
+      "selector": "0x472b43f3",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/swap-router-02/swapExactTokensForTokens@1.0.0",
+        "uniswap/swap-router-02/swapExactTokensForTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x2195995c",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-router-02/removeLiquidityWithPermit@1.0.0",
+        "uniswap/v2-router-02/removeLiquidityWithPermit@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0x5b0d5984",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-router-02/removeLiquidityETHWithPermitSupportingFeeOnTransferTokens@1.0.0",
+        "uniswap/v2-router-02/removeLiquidityETHWithPermitSupportingFeeOnTransferTokens@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router02",
+      "selector": "0xded9382a",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0",
+        "uniswap/v2-router-02/removeLiquidityETHWithPermit@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0x002a3e3a",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v4-position-manager/permit2-batch@1.0.0",
+        "uniswap/v4-position-manager/permit2-batch@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0x0f5730f1",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v4-position-manager/permit-nft@1.0.0",
+        "uniswap/v4-position-manager/permit-nft@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0x2b67b570",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v4-position-manager/permit2-single@1.0.0",
+        "uniswap/v4-position-manager/permit2-single@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0x3aea60f0",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v4-position-manager/permit-for-all@1.0.0",
+        "uniswap/v4-position-manager/permit-for-all@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "name": "V4 PositionManager",
+      "selector": "0xf7020405",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v4-position-manager/initialize-pool@1.0.0",
+        "uniswap/v4-position-manager/initialize-pool@1.0.0"
+      ]
+    }
+  ],
+  "perAddress": [
+    {
+      "name": "Permit2",
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x87517c45",
+          "count": 3899,
+          "manifestIds": [
+            "uniswap/permit2/approve@1.0.0",
+            "uniswap/permit2/approve@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x2b67b570",
+          "count": 430,
+          "manifestIds": [
+            "uniswap/permit2/permitSingle@1.0.0",
+            "uniswap/permit2/permitSingle@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x3ff9dcb1",
+          "count": 236,
+          "manifestIds": [
+            "uniswap/permit2/invalidateUnorderedNonces@1.0.0",
+            "uniswap/permit2/invalidateUnorderedNonces@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x36c78516",
+          "count": 178,
+          "manifestIds": [
+            "uniswap/permit2/transferFrom@1.0.0",
+            "uniswap/permit2/transferFrom@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xcc53287f",
+          "count": 124,
+          "manifestIds": [
+            "uniswap/permit2/lockdown@1.0.0",
+            "uniswap/permit2/lockdown@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x0d58b1db",
+          "count": 114,
+          "manifestIds": [
+            "uniswap/permit2/transferFromBatch@1.0.0",
+            "uniswap/permit2/transferFromBatch@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x2a2d80d1",
+          "count": 14,
+          "manifestIds": [
+            "uniswap/permit2/permitBatch@1.0.0",
+            "uniswap/permit2/permitBatch@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x30f28b7a",
+          "count": 5,
+          "manifestIds": [
+            "uniswap/permit2/permitTransferFrom@1.0.0",
+            "uniswap/permit2/permitTransferFrom@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "UniswapX V2 Dutch Order Reactor",
+      "chainId": 1,
+      "address": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x3f62192e",
+          "count": 4978,
+          "manifestIds": [
+            "uniswapx/reactor/execute@1.0.0",
+            "uniswapx/reactor/execute@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x0d7a16c3",
+          "count": 22,
+          "manifestIds": [
+            "uniswapx/reactor/execute-batch@1.0.0",
+            "uniswapx/reactor/execute-batch@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "Universal Router v1.2",
+      "chainId": 1,
+      "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+      "rawTxs": 5000,
+      "inputTxs": 4975,
+      "matchedInputTxs": 4973,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 2,
+      "topSelectors": [
+        {
+          "selector": "0x3593564c",
+          "count": 4950,
+          "manifestIds": [
+            "uniswap/universal-router/execute-v1@1.0.0",
+            "uniswap/universal-router/execute-v1@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x24856bc3",
+          "count": 23,
+          "manifestIds": [
+            "uniswap/universal-router/execute-v1-no-deadline@1.0.0",
+            "uniswap/universal-router/execute-v1-no-deadline@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 1,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 1,
+          "manifestIds": []
+        }
+      ],
+      "topUnmatchedSelectors": [
+        {
+          "selector": "0x2e1a7d4d",
+          "count": 1,
+          "disposition": "selector_known_elsewhere_wrong_target",
+          "knownElsewhere": [
+            {
+              "chainId": 1,
+              "address": "0x96424e6b5eaafe0c3b36ca82068d574d44be4e3c",
+              "manifestId": "curve/gauge/withdraw@1.0.0"
+            },
+            {
+              "chainId": 1,
+              "address": "0xea012f5b25fa0d8e46123b85f585d0a5075e96b5",
+              "manifestId": "curve/gauge/withdraw@1.0.0"
+            },
+            {
+              "chainId": 1,
+              "address": "0x60d3d7ebbc44dc810a743703184f062d00e6db7e",
+              "manifestId": "curve/gauge/withdraw@1.0.0"
+            },
+            {
+              "chainId": 1,
+              "address": "0x8d867bef70c6733ff25cc0d1caa8aa6c38b24817",
+              "manifestId": "curve/gauge/withdraw@1.0.0"
+            },
+            {
+              "chainId": 1,
+              "address": "0x1e4b83f6bfe9dbeb6d5b92a5237e5c18a44176f4",
+              "manifestId": "curve/gauge/withdraw@1.0.0"
+            }
+          ]
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 1,
+          "disposition": "selector_known_elsewhere_wrong_target",
+          "knownElsewhere": [
+            {
+              "chainId": 1,
+              "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+              "manifestId": "curve/vecrv/withdraw@1.0.0"
+            }
+          ]
+        }
+      ],
+      "unmatchedDispositions": [
+        {
+          "disposition": "selector_known_elsewhere_wrong_target",
+          "count": 2
+        }
+      ],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "Universal Router 2.1.1",
+      "chainId": 1,
+      "address": "0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x3593564c",
+          "count": 5000,
+          "manifestIds": [
+            "uniswap/universal-router/execute-v1@1.0.0",
+            "uniswap/universal-router/execute-v2@1.0.0",
+            "uniswap/universal-router/execute-v2@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+      "chainId": 1,
+      "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 4999,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 1,
+      "topSelectors": [
+        {
+          "selector": "0x3f62192e",
+          "count": 4295,
+          "manifestIds": [
+            "uniswapx/reactor/execute@1.0.0",
+            "uniswapx/reactor/execute@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x0d7a16c3",
+          "count": 704,
+          "manifestIds": [
+            "uniswapx/reactor/execute-batch@1.0.0",
+            "uniswapx/reactor/execute-batch@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xaf0a675b",
+          "count": 1,
+          "manifestIds": []
+        }
+      ],
+      "topUnmatchedSelectors": [
+        {
+          "selector": "0xaf0a675b",
+          "count": 1,
+          "disposition": "non_abi_or_text_calldata",
+          "knownElsewhere": []
+        }
+      ],
+      "unmatchedDispositions": [
+        {
+          "disposition": "non_abi_or_text_calldata",
+          "count": 1
+        }
+      ],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "Universal Router v2",
+      "chainId": 1,
+      "address": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x3593564c",
+          "count": 3358,
+          "manifestIds": [
+            "uniswap/universal-router/execute-v1@1.0.0",
+            "uniswap/universal-router/execute-v2@1.0.0",
+            "uniswap/universal-router/execute-v2@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x24856bc3",
+          "count": 1642,
+          "manifestIds": [
+            "uniswap/universal-router/execute-v1-no-deadline@1.0.0",
+            "uniswap/universal-router/execute-v2-no-deadline@1.0.0",
+            "uniswap/universal-router/execute-v2-no-deadline@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "SwapRouter02",
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x04e45aaf",
+          "count": 3365,
+          "manifestIds": [
+            "uniswap/swap-router-02/exactInputSingle@1.0.0",
+            "uniswap/swap-router-02/exactInputSingle@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x5ae401dc",
+          "count": 991,
+          "manifestIds": [
+            "uniswap/swap-router-02/multicall@1.0.0",
+            "uniswap/swap-router-02/multicall@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xb858183f",
+          "count": 248,
+          "manifestIds": [
+            "uniswap/swap-router-02/exactInput@1.0.0",
+            "uniswap/swap-router-02/exactInput@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xac9650d8",
+          "count": 162,
+          "manifestIds": [
+            "uniswap/swap-router-02/multicall-bytes@1.0.0",
+            "uniswap/swap-router-02/multicall-bytes@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x09b81346",
+          "count": 134,
+          "manifestIds": [
+            "uniswap/swap-router-02/exactOutput@1.0.0",
+            "uniswap/swap-router-02/exactOutput@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x5023b4df",
+          "count": 100,
+          "manifestIds": [
+            "uniswap/swap-router-02/exactOutputSingle@1.0.0",
+            "uniswap/swap-router-02/exactOutputSingle@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "Uniswap V2 Router02",
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x791ac947",
+          "count": 1919,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0",
+            "uniswap/v2-router-02/swapExactTokensForETHSupportingFeeOnTransferTokens@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xb6f9de95",
+          "count": 1550,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0",
+            "uniswap/v2-router-02/swapExactETHForTokensSupportingFeeOnTransferTokens@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x7ff36ab5",
+          "count": 753,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapExactETHForTokens@1.0.0",
+            "uniswap/v2-router-02/swapExactETHForTokens@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x38ed1739",
+          "count": 340,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapExactTokensForTokens@1.0.0",
+            "uniswap/v2-router-02/swapExactTokensForTokens@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x5c11d795",
+          "count": 177,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0",
+            "uniswap/v2-router-02/swapExactTokensForTokensSupportingFeeOnTransferTokens@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x18cbafe5",
+          "count": 112,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapExactTokensForETH@1.0.0",
+            "uniswap/v2-router-02/swapExactTokensForETH@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xfb3bdb41",
+          "count": 53,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapETHForExactTokens@1.0.0",
+            "uniswap/v2-router-02/swapETHForExactTokens@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xf305d719",
+          "count": 35,
+          "manifestIds": [
+            "uniswap/v2-router-02/addLiquidityETH@1.0.0",
+            "uniswap/v2-router-02/addLiquidityETH@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x02751cec",
+          "count": 34,
+          "manifestIds": [
+            "uniswap/v2-router-02/removeLiquidityETH@1.0.0",
+            "uniswap/v2-router-02/removeLiquidityETH@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x8803dbee",
+          "count": 10,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapTokensForExactTokens@1.0.0",
+            "uniswap/v2-router-02/swapTokensForExactTokens@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x4a25d94a",
+          "count": 9,
+          "manifestIds": [
+            "uniswap/v2-router-02/swapTokensForExactETH@1.0.0",
+            "uniswap/v2-router-02/swapTokensForExactETH@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xaf2979eb",
+          "count": 4,
+          "manifestIds": [
+            "uniswap/v2-router-02/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0",
+            "uniswap/v2-router-02/removeLiquidityETHSupportingFeeOnTransferTokens@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "V4 PositionManager",
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0xdd46508f",
+          "count": 3880,
+          "manifestIds": [
+            "uniswap/v4-position-manager/modify-liquidities@1.0.0",
+            "uniswap/v4-position-manager/modify-liquidities@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xac9650d8",
+          "count": 1054,
+          "manifestIds": [
+            "uniswap/v4-position-manager/multicall@1.0.0",
+            "uniswap/v4-position-manager/multicall@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xb88d4fde",
+          "count": 30,
+          "manifestIds": [
+            "uniswap/position-nft/safeTransferFromWithData@1.0.0",
+            "uniswap/position-nft/safeTransferFromWithData@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 14,
+          "manifestIds": [
+            "uniswap/position-nft/approve@1.0.0",
+            "uniswap/position-nft/approve@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xa22cb465",
+          "count": 11,
+          "manifestIds": [
+            "uniswap/position-nft/setApprovalForAll@1.0.0",
+            "uniswap/position-nft/setApprovalForAll@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x23b872dd",
+          "count": 7,
+          "manifestIds": [
+            "uniswap/position-nft/transferFrom@1.0.0",
+            "uniswap/position-nft/transferFrom@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x42842e0e",
+          "count": 4,
+          "manifestIds": [
+            "uniswap/position-nft/safeTransferFrom@1.0.0",
+            "uniswap/position-nft/safeTransferFrom@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "NonfungiblePositionManager",
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "rawTxs": 5000,
+      "inputTxs": 5000,
+      "matchedInputTxs": 5000,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0xfc6f7865",
+          "count": 1825,
+          "manifestIds": [
+            "uniswap/v3-nfpm/collect@1.0.0",
+            "uniswap/v3-nfpm/collect@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xac9650d8",
+          "count": 1810,
+          "manifestIds": [
+            "uniswap/v3-nfpm/multicall@1.0.0",
+            "uniswap/v3-nfpm/multicall@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x42966c68",
+          "count": 659,
+          "manifestIds": [
+            "uniswap/v3-nfpm/burn@1.0.0",
+            "uniswap/v3-nfpm/burn@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x88316456",
+          "count": 402,
+          "manifestIds": [
+            "uniswap/v3-nfpm/mint@1.0.0",
+            "uniswap/v3-nfpm/mint@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x219f5d17",
+          "count": 125,
+          "manifestIds": [
+            "uniswap/v3-nfpm/increase-liquidity@1.0.0",
+            "uniswap/v3-nfpm/increase-liquidity@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xb88d4fde",
+          "count": 77,
+          "manifestIds": [
+            "uniswap/position-nft/safeTransferFromWithData@1.0.0",
+            "uniswap/position-nft/safeTransferFromWithData@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x0c49ccbe",
+          "count": 67,
+          "manifestIds": [
+            "uniswap/v3-nfpm/decrease-liquidity@1.0.0",
+            "uniswap/v3-nfpm/decrease-liquidity@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xa22cb465",
+          "count": 15,
+          "manifestIds": [
+            "uniswap/position-nft/setApprovalForAll@1.0.0",
+            "uniswap/position-nft/setApprovalForAll@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 13,
+          "manifestIds": [
+            "uniswap/position-nft/approve@1.0.0",
+            "uniswap/position-nft/approve@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x42842e0e",
+          "count": 5,
+          "manifestIds": [
+            "uniswap/position-nft/safeTransferFrom@1.0.0",
+            "uniswap/position-nft/safeTransferFrom@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x13ead562",
+          "count": 1,
+          "manifestIds": [
+            "uniswap/v3-nfpm/create-and-initialize-pool-if-necessary@1.0.0",
+            "uniswap/v3-nfpm/create-and-initialize-pool-if-necessary@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x23b872dd",
+          "count": 1,
+          "manifestIds": [
+            "uniswap/position-nft/transferFrom@1.0.0",
+            "uniswap/position-nft/transferFrom@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    }
+  ]
+}

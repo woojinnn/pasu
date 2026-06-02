@@ -992,8 +992,9 @@ mod tests {
                 .unwrap_or_else(|e| panic!("bundle `{id}` manifest is valid: {e}"));
             let schema = compose_per_policy(&manifest)
                 .unwrap_or_else(|e| panic!("bundle `{id}` composes a per-policy schema: {e}"));
-            PolicyEngine::build_from_per_policy(&[(policy.to_owned(), schema)])
-                .unwrap_or_else(|e| panic!("bundle `{id}` Cedar must compile against its schema: {e}"));
+            PolicyEngine::build_from_per_policy(&[(policy.to_owned(), schema)]).unwrap_or_else(
+                |e| panic!("bundle `{id}` Cedar must compile against its schema: {e}"),
+            );
         }
     }
 }

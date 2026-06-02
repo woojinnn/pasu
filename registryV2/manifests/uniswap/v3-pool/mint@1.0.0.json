@@ -1,0 +1,77 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-pool/mint@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Direct Uniswap V3 pool mint(address,int24,int24,uint128,bytes) coverage. Pool-level mint uses callback-settled token transfers and is routed as explicit Unknown/fail-closed until callback-aware liquidity semantics are modeled.",
+  "match": {
+    "selector": "0x3c8a7d8d",
+    "chain_to_addresses_source": "uniswap:v3_pool_candidates",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "mint",
+    "abi": {
+      "name": "mint",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24"
+        },
+        {
+          "name": "amount",
+          "type": "uint128"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v3_pool_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and appends a per-pool id suffix"
+  }
+}

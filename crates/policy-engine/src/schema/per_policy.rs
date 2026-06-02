@@ -28,13 +28,13 @@ use policy_transition::action::ActionView;
 use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
-    AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_APPROVE_BUILDER_FEE_SCHEMA,
-    HL_C_DEPOSIT_SCHEMA, HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA,
-    HL_SEND_TO_EVM_WITH_DATA_SCHEMA, HL_SPOT_SEND_SCHEMA, HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
-    HL_TOKEN_DELEGATE_SCHEMA, HL_TWAP_ORDER_SCHEMA, HL_UNKNOWN_SCHEMA,
-    HL_UPDATE_ISOLATED_MARGIN_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA,
-    HL_USD_SEND_SCHEMA, HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA,
+    AMM_SETTLE_INTENT_ORDER_SCHEMA, AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA,
+    CORE_MULTICALL_SCHEMA, CORE_SCHEMA, CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA,
+    HL_APPROVE_BUILDER_FEE_SCHEMA, HL_C_DEPOSIT_SCHEMA, HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA,
+    HL_SEND_ASSET_SCHEMA, HL_SEND_TO_EVM_WITH_DATA_SCHEMA, HL_SPOT_SEND_SCHEMA,
+    HL_SUB_ACCOUNT_TRANSFER_SCHEMA, HL_TOKEN_DELEGATE_SCHEMA, HL_TWAP_ORDER_SCHEMA,
+    HL_UNKNOWN_SCHEMA, HL_UPDATE_ISOLATED_MARGIN_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA,
+    HL_USD_CLASS_TRANSFER_SCHEMA, HL_USD_SEND_SCHEMA, HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA,
     LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA,
     LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA,
     LENDING_BUY_COLLATERAL_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
@@ -56,7 +56,8 @@ use super::{
     STAKING_UNLOCK_SCHEMA, STAKING_VOTE_FOR_GAUGE_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA,
     TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA,
     TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA,
-    TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
+    TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA,
+    TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
     YIELD_ADD_MARKET_LIQUIDITY_SCHEMA, YIELD_CANCEL_LIMIT_ORDER_SCHEMA, YIELD_CLAIM_YIELD_SCHEMA,
     YIELD_MINT_PY_SCHEMA, YIELD_MINT_SY_SCHEMA, YIELD_PT_SWAP_SCHEMA, YIELD_REDEEM_PY_SCHEMA,
     YIELD_REDEEM_SY_SCHEMA, YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA, YIELD_SIGN_LIMIT_ORDER_SCHEMA,
@@ -146,6 +147,12 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("sign_intent_order"),
         schema_text: AMM_SIGN_INTENT_ORDER_SCHEMA,
         pascal_stub: "SignIntentOrder",
+    },
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("settle_intent_order"),
+        schema_text: AMM_SETTLE_INTENT_ORDER_SCHEMA,
+        pascal_stub: "SettleIntentOrder",
     },
     ActionEntry {
         domain: "amm",
@@ -553,6 +560,18 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("permit2_sign_allowance"),
         schema_text: TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
         pascal_stub: "Permit2SignAllowance",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("permit2_sign_transfer"),
+        schema_text: TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA,
+        pascal_stub: "Permit2SignTransfer",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("permit2_transfer_from"),
+        schema_text: TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA,
+        pascal_stub: "Permit2TransferFrom",
     },
     ActionEntry {
         domain: "token",
@@ -1137,9 +1156,15 @@ mod tests {
         // Union of feat/registry-v2 (74: + 7 restaking + 8 staking + 5 hyperliquid_core)
         // and the 11 Pendle `yield` rows = 85 shipped actions (multicall + unknown
         // included), plus 13 more HyperliquidCore actions (the `hl_unknown`
-        // catch-all + 8 fund-movement + 2 permission + 2 trading/margin) = 98.
+        // catch-all + 8 fund-movement + 2 permission + 2 trading/margin) = 98,
+        // plus UniswapX `settle_intent_order` and two Permit2 SignatureTransfer
+        // rows = 101.
         // Guards against a row being dropped or duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 98, "resolver table must have 98 rows");
+        assert_eq!(
+            RESOLVER_TABLE.len(),
+            101,
+            "resolver table must have 101 rows"
+        );
     }
 
     /// A `custom_context` field whose name collides with one of the matched

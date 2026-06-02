@@ -4,5 +4,12 @@
   "address": "0x3c3ea4b57a46241e54610e5f022e5c45859a1017",
   "collection_name": "Uniswap V4 Positions",
   "symbol": "UNI-V4-POS",
-  "source": "https://developers.uniswap.org/docs/protocols/v4/deployments"
+  "source": "https://developers.uniswap.org/docs/protocols/v4/deployments",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": { "protocol": { "name": "uniswap_v4", "chain": "eip155:10" } },
+    "underlyings": [],
+    "share_form": "non_fungible",
+    "shape": { "kind": "concentrated" }
+  }
 }

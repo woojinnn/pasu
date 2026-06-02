@@ -1,0 +1,76 @@
+{
+  "protocol": "uniswap",
+  "note": "Mainnet wallet-facing Uniswap targets for per-contract recent Etherscan sampling. Used to pull up to 5,000 recent txs per target without mutating the broader deployment inventory.",
+  "contracts": [
+    {
+      "name": "Permit2",
+      "chainId": 1,
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "decision": "cover",
+      "reason": "wallet-facing approval and typed-data permission surface used by Uniswap routes"
+    },
+    {
+      "name": "Uniswap V2 Router02",
+      "chainId": 1,
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "decision": "cover",
+      "reason": "mainnet V2 router wallet-facing swap/liquidity entrypoint"
+    },
+    {
+      "name": "SwapRouter02",
+      "chainId": 1,
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "decision": "cover",
+      "reason": "mainnet V3 swap router wallet-facing swap entrypoint"
+    },
+    {
+      "name": "Universal Router v1.2",
+      "chainId": 1,
+      "address": "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad",
+      "decision": "cover",
+      "reason": "mainnet Universal Router v1.2 wallet-facing execute entrypoint"
+    },
+    {
+      "name": "Universal Router v2",
+      "chainId": 1,
+      "address": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af",
+      "decision": "cover",
+      "reason": "mainnet Universal Router v2 wallet-facing execute entrypoint"
+    },
+    {
+      "name": "Universal Router 2.1.1",
+      "chainId": 1,
+      "address": "0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca",
+      "decision": "cover",
+      "reason": "mainnet Universal Router 2.1.1 wallet-facing execute entrypoint"
+    },
+    {
+      "name": "NonfungiblePositionManager",
+      "chainId": 1,
+      "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
+      "decision": "cover",
+      "reason": "mainnet V3 position manager wallet-facing liquidity and position NFT entrypoint"
+    },
+    {
+      "name": "V4 PositionManager",
+      "chainId": 1,
+      "address": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e",
+      "decision": "cover",
+      "reason": "mainnet V4 position manager wallet-facing liquidity and permission entrypoint"
+    },
+    {
+      "name": "UniswapX V1 Exclusive Dutch Order Reactor",
+      "chainId": 1,
+      "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+      "decision": "cover",
+      "reason": "mainnet UniswapX reactor settlement entrypoint for signed ExclusiveDutch orders"
+    },
+    {
+      "name": "UniswapX V2 Dutch Order Reactor",
+      "chainId": 1,
+      "address": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+      "decision": "cover",
+      "reason": "mainnet UniswapX reactor settlement entrypoint for signed V2Dutch orders"
+    }
+  ]
+}

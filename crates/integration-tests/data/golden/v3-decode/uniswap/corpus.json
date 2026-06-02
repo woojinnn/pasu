@@ -14,7 +14,54 @@
             "data": "0x38ED17390000000000000000000000000000000000000000000000C15B83990C4998ADC0000000000000000000000000000000000000000000000035E6E44EEB72A9C42000000000000000000000000000000000000000000000000000000000000000A0000000000000000000000000B1B2D032AA2F52347FBCFD08E5C3CC55216E8404000000000000000000000000000000000000000000000000000000006A0ECC2F0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000203240C141DD80DCEFC43F782A1321BBDF8DC89F0000000000000000000000008D0D000EE44948FC98C9B98A4FA4921476F08B0D"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x203240c141dd80dcefc43f782a1321bbdf8dc89f"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0xc15b83990c4998adc0"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x35e6e44eeb72a9c420"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0xb1b2d032aa2f52347fbcfd08e5c3cc55216e8404"
+        }
+      ]
     },
     {
       "intent": "swapExactETHForTokens",
@@ -29,7 +76,49 @@
             "data": "0x7FF36AB50000000000000000000000000000000000000000003EDEE9DD3066DB9D0AF40F00000000000000000000000000000000000000000000000000000000000000800000000000000000000000003ED9279C84D001AB26773AF42779ADE7002B6175000000000000000000000000000000000000000000000000000000006A0ECC430000000000000000000000000000000000000000000000000000000000000002000000000000000000000000C02AAA39B223FE8D0A0E5C4F27EAD9083C756CC2000000000000000000000000E8353C0DA7A39380D6D967940467A91BF81CE479"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xe8353c0da7a39380d6d967940467a91bf81ce479"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x20dfab0caff2000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x3edee9dd3066db9d0af40f"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x3ed9279c84d001ab26773af42779ade7002b6175"
+        }
+      ]
     },
     {
       "intent": "addLiquidityETH",
@@ -44,7 +133,34 @@
             "data": "0xF305D719000000000000000000000000E8353C0DA7A39380D6D967940467A91BF81CE479000000000000000000000000000000000000000001F8948642C44E39A2000000000000000000000000000000000000000000000001F8948642C44E39A20000000000000000000000000000000000000000000000000000000DE0B6B3A7640000000000000000000000000000D6C25954F4F4AC9618B7FC337C89EC6E8888BB8B000000000000000000000000000000000000000000000000000000006A0ECEF2"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0xd6c25954f4f4ac9618b7fc337c89ec6e8888bb8b"
+        }
+      ]
     },
     {
       "intent": "removeLiquidity",
@@ -59,7 +175,59 @@
             "data": "0xBAA2ABDE000000000000000000000000C02AAA39B223FE8D0A0E5C4F27EAD9083C756CC2000000000000000000000000FD50698DC513F2A64B52D7DEFF8D2A0FDE834B5E00000000000000000000000000000000000000000000001043561A88292FFC18000000000000000000000000000000000000000000000000015CFA158ACE238C00000000000000000000000000000000000000000000B8835E05616B9FB13087000000000000000000000000E4D4DDB709D6533034AD796B02F7A3AF5E801510000000000000000000000000000000000000000000000000000000006A0EB5D9"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled_burn"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0xe4d4ddb709d6533034ad796b02f7a3af5e801510"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "u256_hex_eq",
+          "value": "0x1043561a88292ffc18"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xfd50698dc513f2a64b52d7deff8d2a0fde834b5e"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "u256_hex_eq",
+          "value": "0x15cfa158ace238c"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][1]",
+          "op": "u256_hex_eq",
+          "value": "0xb8835e05616b9fb13087"
+        }
+      ]
     },
     {
       "intent": "removeLiquidityWithPermit hand",
@@ -75,7 +243,59 @@
             "data": "0x2195995c000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000000000000000000000000000016345785d8a000000000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000773594000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000001b11111111111111111111111111111111111111111111111111111111111111112222222222222222222222222222222222222222222222222222222222222222"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled_burn"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "u256_hex_eq",
+          "value": "0xde0b6b3a7640000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "u256_hex_eq",
+          "value": "0x16345785d8a0000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][1]",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        }
+      ]
     },
     {
       "intent": "removeLiquidityETHWithPermit hand",
@@ -91,7 +311,54 @@
             "data": "0xded9382a000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000016345785d8a0000000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000773594000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001c33333333333333333333333333333333333333333333333333333333333333334444444444444444444444444444444444444444444444444444444444444444"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled_burn"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "u256_hex_eq",
+          "value": "0xde0b6b3a7640000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][1]",
+          "op": "u256_hex_eq",
+          "value": "0x16345785d8a0000"
+        }
+      ]
     },
     {
       "intent": "removeLiquidityETHWithPermitSupportingFeeOnTransferTokens hand",
@@ -107,7 +374,54 @@
             "data": "0x5b0d5984000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000016345785d8a0000000000000000000000000000111111111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000773594000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000001b55555555555555555555555555555555555555555555555555555555555555556666666666666666666666666666666666666666666666666666666666666666"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled_burn"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "u256_hex_eq",
+          "value": "0xde0b6b3a7640000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][1]",
+          "op": "u256_hex_eq",
+          "value": "0x16345785d8a0000"
+        }
+      ]
     },
     {
       "intent": "mint",
@@ -122,7 +436,44 @@
             "data": "0x8831645600000000000000000000000018084FBA666A33D37592FA2633FD49A74DD93A880000000000000000000000002260FAC5E5542A773AA44FBCFEDF7C193BC2C5990000000000000000000000000000000000000000000000000000000000000064FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC7C94FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC7C960000000000000000000000000000000000000000000000003348D5E18E12F40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000085D3B628F1C7D9411F1A97BAC8933EDDBBC2A6830000000000000000000000000000000000000000000000010000000000000000"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "concentrated_mint"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x85d3b628f1c7d9411f1a97bac8933eddbbc2a683"
+        },
+        {
+          "path": "$.data.actions[0].body.params.pool_pair[0].key.address",
+          "op": "hex_eq",
+          "value": "0x18084fba666a33d37592fa2633fd49a74dd93a88"
+        },
+        {
+          "path": "$.data.actions[0].body.params.pool_pair[1].key.address",
+          "op": "hex_eq",
+          "value": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        }
+      ]
     },
     {
       "intent": "increaseLiquidity",
@@ -137,7 +488,29 @@
             "data": "0x219F5D17000000000000000000000000000000000000000000000000000000000012E04A000000000000000000000000000000000000000000000000000000000000620F0000000000000000000000000000000000000000000000000000000000A788F900000000000000000000000000000000000000000000000000000000000057050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006A0ECFE5"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "concentrated_increase"
+        }
+      ]
     },
     {
       "intent": "collect",
@@ -152,7 +525,39 @@
             "data": "0xFC6F78650000000000000000000000000000000000000000000000000000000000136EB6000000000000000000000000EC4C92BCDD013ECF9938A6FA280DF1F4197A60BA00000000000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "collect_fees"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.nft_key.contract",
+          "op": "hex_eq",
+          "value": "0xc36442b4a4522e871399cd717abdd847ab11fe88"
+        },
+        {
+          "path": "$.data.actions[0].body.nft_key.token_id",
+          "op": "u256_hex_eq",
+          "value": "0x136eb6"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xec4c92bcdd013ecf9938a6fa280df1f4197a60ba"
+        }
+      ]
     },
     {
       "intent": "setApprovalForAll",
@@ -167,10 +572,37 @@
             "data": "0xA22CB465000000000000000000000000BA7A03A37C0799A4182D1C4CA3BF3321F8BA33290000000000000000000000000000000000000000000000000000000000000001"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "nft_set_approval_for_all"
+        },
+        {
+          "path": "$.data.actions[0].body.spender",
+          "op": "hex_eq",
+          "value": "0xba7a03a37c0799a4182d1c4ca3bf3321f8ba3329"
+        },
+        {
+          "path": "$.data.actions[0].body.contract",
+          "op": "hex_eq",
+          "value": "0xc36442b4a4522e871399cd717abdd847ab11fe88"
+        },
+        {
+          "path": "$.data.actions[0].body.approved",
+          "op": "equals",
+          "value": true
+        }
+      ]
     },
     {
-      "intent": "execute(bytes,bytes[]) \u2014 UR v1.2 (0x3fC9)",
+      "intent": "execute(bytes,bytes[]) — UR v1.2 (0x3fC9)",
       "expect": "pass",
       "tx_hash": "0x6D0A0007C53113B4D611D9846B6283CA0D2923EF75A100DC86F45678EDAD03BB",
       "chain_id": 1,
@@ -182,10 +614,92 @@
             "data": "0x24856BC30000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000020B000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000A00000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000002D79883D200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000007C9491FA07DCB11F7E9CB38C85803F963CE57ACD00000000000000000000000000000000000000000000000000002D79883D20000000000000000000000000000000000000000000000000000000000000019C5200000000000000000000000000000000000000000000000000000000000000A00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002BC02AAA39B223FE8D0A0E5C4F27EAD9083C756CC2000064DAC17F958D2EE523A2206206994597C13D831EC7000000000000000000000000000000000000000000"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].recipient",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000002"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x2d79883d2000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x2d79883d2000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x19c52"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.recipient",
+          "op": "hex_eq",
+          "value": "0x7c9491fa07dcb11f7e9cb38c85803f963ce57acd"
+        }
+      ]
     },
     {
-      "intent": "execute(bytes,bytes[]) \u2014 UR v2 (0x66a9)",
+      "intent": "execute(bytes,bytes[]) — UR v2 (0x66a9)",
       "expect": "pass",
       "tx_hash": "0xC1E01ED58259F3B67FAE046F210A3D621272148367AB85E0B6BD2EB9D112945C",
       "chain_id": 1,
@@ -197,10 +711,47 @@
             "data": "0x24856BC30000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000010500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000086CB748E06EA89F3F03BC1589D0449BA672A8F5D0000000000000000000000000000000000000000000000000429D069189E0000"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].recipient",
+          "op": "hex_eq",
+          "value": "0x86cb748e06ea89f3f03bc1589d0449ba672a8f5d"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x429d069189e0000"
+        }
+      ]
     },
     {
-      "intent": "execute(bytes,bytes[],uint256) \u2014 UR v2 (0x66a9)",
+      "intent": "execute(bytes,bytes[],uint256) — UR v2 (0x66a9)",
       "expect": "pass",
       "tx_hash": "0x36F4F2FF72F6CD63538C1EDD6BC37D185D66985EAD6B965FB3B61906883A3E34",
       "chain_id": 1,
@@ -213,7 +764,19 @@
           }
         ]
       },
-      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths."
+      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 0
+        }
+      ]
     },
     {
       "intent": "approve(address,address,uint160,uint48)",
@@ -228,7 +791,34 @@
             "data": "0x87517C450000000000000000000000003F3EE693680D33289D495DD518E1B1B3A082D6F900000000000000000000000066A9893CC07D91D95644AEDD05D03F95E1DBA8AF000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000000000000000000000000000000000000000000000006A3656F2"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "permit2_approve"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x3f3ee693680d33289d495dd518e1b1b3a082d6f9"
+        },
+        {
+          "path": "$.data.actions[0].body.spender",
+          "op": "hex_eq",
+          "value": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xffffffffffffffffffffffffffffffffffffffff"
+        }
+      ]
     },
     {
       "intent": "permit(address,PermitBatch,bytes)",
@@ -244,7 +834,44 @@
           }
         ]
       },
-      "_note": "Permit2 permitBatch calldata named-tuple over positional decode; fixed to pass after numeric tuple paths + time deserialization."
+      "_note": "Permit2 permitBatch calldata named-tuple over positional decode; fixed to pass after numeric tuple paths + time deserialization.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "permit2_sign_allowance"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].spender",
+          "op": "hex_eq",
+          "value": "0x84c812a375d4a077d94cf475bd98aa04e93c361a"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x401640"
+        }
+      ]
     },
     {
       "intent": "permit(address,PermitSingle,bytes)",
@@ -260,7 +887,34 @@
           }
         ]
       },
-      "_note": "Permit2 permitSingle [0x2b67b570] \u2014 numeric tuple paths + Time str-or-num deser (2026-05-30). Flipped error->pass."
+      "_note": "Permit2 permitSingle [0x2b67b570] — numeric tuple paths + Time str-or-num deser (2026-05-30). Flipped error->pass.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "permit2_sign_allowance"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.spender",
+          "op": "hex_eq",
+          "value": "0x7e1343d5ae79a21e57d367557c078cb4232b314b"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xffffffffffffffffffffffffffffffffffffffff"
+        }
+      ]
     },
     {
       "intent": "PositionManager.modifyLiquidities(bytes,uint256)",
@@ -275,10 +929,42 @@
             "data": "0xDD46508F0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000006A0ED2850000000000000000000000000000000000000000000000000000000000000240000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000002011100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000000C0000000000000000000000000000000000000000000000000000000000004527F00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000A00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000044B28991B167582F18BA0259E0173176CA125505000000000000000000000000A0B86991C6218B36C1D19D4A2E9EB0CE3606EB4800000000000000000000000033207893261A69D0E2B06BD204E8783DAAA03DF5"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "uniswap_v4"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.kind",
+          "op": "equals",
+          "value": "concentrated_decrease"
+        }
+      ]
     },
     {
-      "intent": "Permit2.lockdown(TokenSpenderPair[]) \u2014 revokes allowances, safety direction (out of scope per AUDIT_UNISWAP_PHASE7B.md \u00a72.3)",
+      "intent": "Permit2.lockdown(TokenSpenderPair[]) — revokes allowances, safety direction (out of scope per AUDIT_UNISWAP_PHASE7B.md §2.3)",
       "expect": "pass",
       "tx_hash": "0x321DA00D6029D15E9960C1D6342A3122EA787E6A83D5E0CE5A8572319711F17A",
       "chain_id": 1,
@@ -290,7 +976,34 @@
             "data": "0xCC53287F00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000A0B86991C6218B36C1D19D4A2E9EB0CE3606EB480000000000000000000000004C82D1FBFE28C977CBB58D8C7FF8FCF9F70A2CCA"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "revoke_approval"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].scope.kind",
+          "op": "equals",
+          "value": "permit2_lockdown"
+        }
+      ]
     },
     {
       "intent": "Permit2.invalidateUnorderedNonces(uint256,uint256) hand",
@@ -306,10 +1019,37 @@
             "data": "0x3ff9dcb10000000000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000000000000000000000000000a"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "revoke_approval"
+        },
+        {
+          "path": "$.data.actions[0].body.scope.kind",
+          "op": "equals",
+          "value": "permit2_unordered_nonce"
+        },
+        {
+          "path": "$.data.actions[0].body.scope.word_pos",
+          "op": "u256_hex_eq",
+          "value": "0x7"
+        },
+        {
+          "path": "$.data.actions[0].body.scope.mask",
+          "op": "u256_hex_eq",
+          "value": "0xa"
+        }
+      ]
     },
     {
-      "intent": "swapExactTokensForTokens (L2 Base spot-check \u2014 per-chain V2 Router02 address)",
+      "intent": "swapExactTokensForTokens (L2 Base spot-check — per-chain V2 Router02 address)",
       "expect": "pass",
       "tx_hash": "0xB35A641D0A6306D85DF98B20F98F5E8D4813DD8ACDFE5769ABCD65BDFFDECEB1",
       "chain_id": 8453,
@@ -321,10 +1061,57 @@
             "data": "0x38ED17390000000000000000000000000000000000000000000000000000000000001A760000000000000000000000000000000000000000000000CF51F3E9EF2EE8000000000000000000000000000000000000000000000000000000000000000000A0000000000000000000000000367F1B3D8CA90D1E087481A9A40D585BF3451A03000000000000000000000000000000000000000000000000000000006A0EC5310000000000000000000000000000000000000000000000000000000000000002000000000000000000000000833589FCD6EDB6E08F4C7C32D4F71B54BDA02913000000000000000000000000FA6071375B2BC079BF781D51906BEEE0B6F53B0B"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xfa6071375b2bc079bf781d51906beee0b6f53b0b"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x1a76"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0xcf51f3e9ef2ee80000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x367f1b3d8ca90d1e087481a9a40d585bf3451a03"
+        }
+      ]
     },
     {
-      "intent": "execute(bytes,bytes[],uint256) (L2 Base spot-check \u2014 per-chain UR address)",
+      "intent": "execute(bytes,bytes[],uint256) (L2 Base spot-check — per-chain UR address)",
       "expect": "pass",
       "tx_hash": "0xEB9775B65004640A77EE0792C4FE4E7A40E768D667350F68598046457A129431",
       "chain_id": 8453,
@@ -337,10 +1124,22 @@
           }
         ]
       },
-      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths."
+      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 0
+        }
+      ]
     },
     {
-      "intent": "swapExactTokensForTokens (L2 Arbitrum spot-check \u2014 per-chain V2 Router02 address)",
+      "intent": "swapExactTokensForTokens (L2 Arbitrum spot-check — per-chain V2 Router02 address)",
       "expect": "pass",
       "tx_hash": "0x8ACE0264D945776F1BE36EE6BE496B5B0DBCA28B34FBB0E570BDAC450984C535",
       "chain_id": 42161,
@@ -352,10 +1151,57 @@
             "data": "0x38ED173900000000000000000000000000000000000000000000000291518358CAADE000000000000000000000000000000000000000000000000000000000000196D83000000000000000000000000000000000000000000000000000000000000000A0000000000000000000000000FDA97A8EC794C81C02C15F4C60A2C1247134F35A000000000000000000000000000000000000000000000000000000006A0ECF000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000B23BB8C2C6CB9169EEAC8F2BD42FCF333A1A8C55000000000000000000000000FD086BC7CD5C481DCC9C85EBE478A1C0B69FCBB9"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xb23bb8c2c6cb9169eeac8f2bd42fcf333a1a8c55"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x291518358caade000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x196d830"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0xfda97a8ec794c81c02c15f4c60a2c1247134f35a"
+        }
+      ]
     },
     {
-      "intent": "mint (L2 Arbitrum spot-check \u2014 per-chain NFPM address)",
+      "intent": "mint (L2 Arbitrum spot-check — per-chain NFPM address)",
       "expect": "pass",
       "tx_hash": "0x4182CF658A8AF9F93117B94280C1F3560FB581AA087B1B2818C9D7934AF66A3D",
       "chain_id": 42161,
@@ -367,7 +1213,44 @@
             "data": "0x8831645600000000000000000000000011CDB42B0EB46D95F990BEDD4695A6E3FA03497800000000000000000000000082AF49447D8A07E3BD95BD0D56F35241523FBAB10000000000000000000000000000000000000000000000000000000000000BB8FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE84C8FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE9C7400000000000000000000000000000000000000000000000C532B908DCB8DFAC0000000000000000000000000000000000000000000000000160803626FAD5D2300000000000000000000000000000000000000000000000C36C60D75FDB0CC3400000000000000000000000000000000000000000000000015D540CB473F83FA000000000000000000000000787F8CE0A28609109998A44B0C4EE528ABC9DA72000000000000000000000000000000000000000000000000000000006A0ED1F1"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "concentrated_mint"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x787f8ce0a28609109998a44b0c4ee528abc9da72"
+        },
+        {
+          "path": "$.data.actions[0].body.params.pool_pair[0].key.address",
+          "op": "hex_eq",
+          "value": "0x11cdb42b0eb46d95f990bedd4695a6e3fa034978"
+        },
+        {
+          "path": "$.data.actions[0].body.params.pool_pair[1].key.address",
+          "op": "hex_eq",
+          "value": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+        }
+      ]
     },
     {
       "intent": "SwapRouter02.exactInputSingle((...)) [0x04e45aaf]",
@@ -383,7 +1266,54 @@
           }
         ]
       },
-      "_note": "SwapRouter02 exactInputSingle [0x04e45aaf] \u2014 v2->v3 port, single-tuple flatten + complete swap live_inputs (2026-05-30). Flipped error->pass."
+      "_note": "SwapRouter02 exactInputSingle [0x04e45aaf] — v2->v3 port, single-tuple flatten + complete swap live_inputs (2026-05-30). Flipped error->pass.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x7e2ac793f3e692f388e66c7dc28f739d13b0b71a"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x9fdd7e8b54b44800"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x314c93f"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x2b38ec627855086fb21ef3ae9e7042f84584a51b"
+        }
+      ]
     },
     {
       "intent": "SwapRouter02.multicall(uint256 deadline,bytes[]) [0x5ae401dc]",
@@ -399,7 +1329,109 @@
           }
         ]
       },
-      "_note": "SwapRouter02 multicall(deadline,bytes[]) [0x5ae401dc] \u2014 inner exactInputSingle now mapped, multicall_recurse flattens (2026-05-30). Flipped error->pass."
+      "_note": "SwapRouter02 multicall(deadline,bytes[]) [0x5ae401dc] — inner exactInputSingle now mapped, multicall_recurse flattens (2026-05-30). Flipped error->pass.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x40fd72257597aa14c7231a7b1aaa29fce868f677"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x104983508b184947f4bb88fd4d245d7dc000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x121057492e0e4"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.recipient",
+          "op": "hex_eq",
+          "value": "0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x40fd72257597aa14c7231a7b1aaa29fce868f677"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x56dd6702e5d6dc2a6e92da9c461747f4000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x66cee290725d"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.recipient",
+          "op": "hex_eq",
+          "value": "0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a"
+        }
+      ]
     },
     {
       "intent": "NFPM.multicall(bytes[]) [0xac9650d8]",
@@ -415,7 +1447,112 @@
             "data": "0xac9650d80000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000160000000000000000000000000000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000002a000000000000000000000000000000000000000000000000000000000000000a40c49ccbe000000000000000000000000000000000000000000000000000000000013c5d7000000000000000000000000000000000000000000000000001d3e347bcd90fd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006a1a7c06000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000084fc6f7865000000000000000000000000000000000000000000000000000000000013c5d7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffff00000000000000000000000000000000ffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004449404b7c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000edc64fc3b2c2f507b0efc1b0817bc0992f1f404000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064df2ab5bb0000000000000000000000002260fac5e5542a773aa44fbcfedf7c193bc2c59900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000edc64fc3b2c2f507b0efc1b0817bc0992f1f40400000000000000000000000000000000000000000000000000000000"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.kind",
+          "op": "equals",
+          "value": "concentrated_decrease"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "collect_fees"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].nft_key.contract",
+          "op": "hex_eq",
+          "value": "0xc36442b4a4522e871399cd717abdd847ab11fe88"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].nft_key.token_id",
+          "op": "u256_hex_eq",
+          "value": "0x13c5d7"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].recipient",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "intent": "V4 PositionManager.permitForAll(address,address,bool,uint256,uint256,bytes) [0x3aea60f0]",
+      "expect": "pass",
+      "tx_hash": "0xb2553555557a80b41548f8517b633afe54fbd0c3e6ac7017f72ed4dc0f37c844",
+      "chain_id": 42161,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xd88f38f930b7952f2db2432cb002e7abbf3dd869",
+            "value": "0",
+            "data": "0x3aea60f0000000000000000000000000e6497ea2a92cbb81dd3d63f70bd43e93810692e8000000000000000000000000bb9c772ae9cc2583e2b7761898af813cc084e87e0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000006a24db7c06c446d5f2fd42b9cf6e3e2741c29cbb0788cfc7eecda442b475772ad40de3ec00000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000041b40cea1bcfa638d97f1af2fc23041f5afa9924add637f7f28721a37f9563a7a6638c48bcd8c16da57052d920611d17ab58eac2902c252eef6105532bdec8b8131c00000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "source": "Etherscan v2 bulk sweep topExcluded sample reclassified to covered V4 position permission surface",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "nft_set_approval_for_all"
+        },
+        {
+          "path": "$.data.actions[0].body.contract",
+          "op": "hex_eq",
+          "value": "0xd88f38f930b7952f2db2432cb002e7abbf3dd869"
+        },
+        {
+          "path": "$.data.actions[0].body.spender",
+          "op": "hex_eq",
+          "value": "0xbb9c772ae9cc2583e2b7761898af813cc084e87e"
+        },
+        {
+          "path": "$.data.actions[0].body.approved",
+          "op": "equals",
+          "value": true
+        }
+      ]
     },
     {
       "intent": "PoolManager(V4).initialize(PoolKey,uint160) [0x6276cbbe]",
@@ -431,7 +1568,29 @@
           }
         ]
       },
-      "_note": "Covered by uniswap/v4-pool-manager/initialize@1.0.0 as ActionBody::Unknown. No first-class initialize-pool AMM body exists yet, so routing is explicit and conservative rather than a mapper miss."
+      "_note": "Covered by uniswap/v4-pool-manager/initialize@1.0.0 as ActionBody::Unknown. No first-class initialize-pool AMM body exists yet, so routing is explicit and conservative rather than a mapper miss.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "unknown"
+        },
+        {
+          "path": "$.data.actions[0].body.target",
+          "op": "hex_eq",
+          "value": "0x000000000004444c5dc75cb358380d2e3de08a90"
+        },
+        {
+          "path": "$.data.actions[0].body.chain",
+          "op": "equals",
+          "value": "eip155:1"
+        },
+        {
+          "path": "$.data.actions[0].body.calldata",
+          "op": "contains",
+          "value": "0x6276cbbe"
+        }
+      ]
     },
     {
       "intent": "PositionManager(V4).multicall(bytes[]) [0xac9650d8]",
@@ -447,12 +1606,81 @@
             "data": "0xac9650d8000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000026000000000000000000000000000000000000000000000000000000000000001e4002a3e3a000000000000000000000000e72d42810212c856636cd9d019e98cfe985535fd000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000060000000000000000000000000bd216513d74c8cf14cf4747e6aaa6420ff64ee9e000000000000000000000000000000000000000000000000000000006a1a7e2a0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000bd3ab5859f244cc9f51ee0ca755c5cf663d80040000000000000000000000000ffffffffffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000006a42042200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000041e2f47f5c23fc001aa387c6f6e7be5978be98a95d644fde7f796921b8a73613fe00f87de1fc56802633f3253814b4d1a1e2a7ae8d2a54730e4cf30454779f1f051c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e4dd46508f0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000006a1a7e300000000000000000000000000000000000000000000000000000000000000380000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003020d140000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000028000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bd3ab5859f244cc9f51ee0ca755c5cf663d8004000000000000000000000000000000000000000000000000000000000000075300000000000000000000000000000000000000000000000000000000000000258000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000054600000000000000000000000000000000000000000000000000000000000006e28000000000000000000000000000000000000000000000000068adf1346b4153a000000000000000000000000000000000000000000000000009fdf42f6e480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e72d42810212c856636cd9d019e98cfe985535fd0000000000000000000000000000000000000000000000000000000000000180000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bd3ab5859f244cc9f51ee0ca755c5cf663d8004000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].actions[0].action",
+          "op": "equals",
+          "value": "permit2_sign_allowance"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].actions[0].action",
+          "op": "equals",
+          "value": "add_liquidity"
+        }
+      ]
+    },
+    {
+      "intent": "Permit2.transferFrom(address,address,uint160,address) single [0x36c78516]",
+      "expect": "pass",
+      "tx_hash": "0x7a2516c8d7e0f1038c5e708f197691675bd387e88a671169446473cbcc5c7290",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+            "value": "0",
+            "data": "0x36c7851600000000000000000000000048c13b7a6d17b230d76003b80a60e43162e768a5000000000000000000000000c199feb7ce2b17fa84162ee705ebb35a2f19407d0000000000000000000000000000000000000000000000000000000005f5e100000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7"
+          }
+        ]
+      },
+      "source": "Etherscan v2 account txlist, Permit2 mainnet top unmatched selector sample from 2026-06-01 bulk sweep follow-up",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xc199feb7ce2b17fa84162ee705ebb35a2f19407d"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x5f5e100"
+        }
+      ]
     },
     {
       "intent": "Permit2.transferFrom((...)[]) batch [0x0d58b1db]",
-      "expect": "error",
-      "expect_error": "no_declarative_v3_mapper",
+      "expect": "pass",
       "tx_hash": "0xaeb01c89758889ea31ebf5671b89a68bbe362bdca3dc27b99e27fe71d1aa6322",
       "chain_id": 1,
       "rpc": {
@@ -464,13 +1692,55 @@
           }
         ]
       },
-      "_note": "No direct Permit2 transferFrom batch manifest yet; expected mapper miss until Permit2 SignatureTransfer/AllowanceTransfer direct transfer surfaces are modelled."
+      "_note": "Direct Permit2 AllowanceTransfer batch transferFrom; flipped error->pass after Etherscan bulk sweep found this as a top unmatched selector.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 18
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].recipient",
+          "op": "hex_eq",
+          "value": "0x935d2e470284fb536227a76a723f96a94efae6a9"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0xb957bdb44"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[17].amount",
+          "op": "u256_hex_eq",
+          "value": "0x90013c0"
+        }
+      ]
     },
     {
       "intent": "V2Router02.swapExactETHForTokensSupportingFeeOnTransferTokens [0xb6f9de95]",
       "expect": "pass",
       "expect_domain": "amm",
-      "_note": "V2 fee-on-transfer swap \u2014 manifest added 2026-05-30 (selector 0xb6f9de95); flipped error->pass after build-index",
+      "_note": "V2 fee-on-transfer swap — manifest added 2026-05-30 (selector 0xb6f9de95); flipped error->pass after build-index",
       "tx_hash": "0x975901d7729d5f51f7d46aa17240d48729daf6a2427eb4b4f23da34f6a281b2f",
       "chain_id": 1,
       "rpc": {
@@ -481,13 +1751,55 @@
             "data": "0xb6f9de950000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000020c6b003a1a5467f4b7f6256ab39d9e2b8ddabc6000000000000000000000000000000000000000000000000000000006a1a77ab0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000cb891c8f1e3a4d04229e4d871dc27124411d8952"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xcb891c8f1e3a4d04229e4d871dc27124411d8952"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x146239d16618000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x0"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x20c6b003a1a5467f4b7f6256ab39d9e2b8ddabc6"
+        }
+      ]
     },
     {
       "intent": "V2Router02.swapExactTokensForETHSupportingFeeOnTransferTokens [0x791ac947]",
       "expect": "pass",
       "expect_domain": "amm",
-      "_note": "V2 fee-on-transfer swap \u2014 manifest added 2026-05-30 (selector 0x791ac947); flipped error->pass after build-index",
+      "_note": "V2 fee-on-transfer swap — manifest added 2026-05-30 (selector 0x791ac947); flipped error->pass after build-index",
       "tx_hash": "0x45bf5b19db3fd2d63cfc41b3e66e217e60aab5f70c453ce5660393c307f2e8e4",
       "chain_id": 1,
       "rpc": {
@@ -498,7 +1810,49 @@
             "data": "0x791ac9470000000000000000000000000000000000000000000000000017521dbabdcfc6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000079b0ad47888d8ca41a44a785222d68a20cca4a4c000000000000000000000000000000000000000000000000000000006a1a779f000000000000000000000000000000000000000000000000000000000000000200000000000000000000000082a285c2a7473f480041baa1d7fb01e53199c561000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x82a285c2a7473f480041baa1d7fb01e53199c561"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x17521dbabdcfc6"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x0"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x79b0ad47888d8ca41a44a785222d68a20cca4a4c"
+        }
+      ]
     },
     {
       "intent": "UniversalRouter.execute(bytes,bytes[],uint256) V4-nested [0x3593564c] (mainnet, command contains 0x10/0x11/0x21)",
@@ -514,7 +1868,44 @@
           }
         ]
       },
-      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths."
+      "_note": "Fixed 2026-05-31: UR V4 nested decode handles V4Router single-struct params, ABI alternatives, PoolKey pool_id/hooks, and UR Permit2 tuple paths.",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "permit2_sign_allowance"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0xc8fb80fcc03f699c70ff0cc08c09106288888888"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].spender",
+          "op": "hex_eq",
+          "value": "0x66a9893cc07d91d95644aedd05d03f95e1dba8af"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x30a715a897d37174cd"
+        }
+      ]
     },
     {
       "intent": "real-dune Arbitrum SwapRouter02 exactInputSingle",
@@ -530,7 +1921,54 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://arb1.arbitrum.io/rpc; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://arb1.arbitrum.io/rpc; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x2bcc6d6cdbbdc0a4071e48bb3b969b06b3330c07"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0xd951ca78e92000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x58ae7f76"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x3862ab18f6dcc9cc2499461e13797858ae2e5307"
+        }
+      ]
     },
     {
       "intent": "real-dune Arbitrum SwapRouter02 exactInput path",
@@ -546,7 +1984,54 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://arb1.arbitrum.io/rpc; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://arb1.arbitrum.io/rpc; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x155fb6791909b62"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0xb800444"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0xd3ff9cf879982e074f89e44056baf06b1f0e7d6b"
+        }
+      ]
     },
     {
       "intent": "real-dune Arbitrum UniversalRouter v2 no-deadline",
@@ -562,7 +2047,69 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://arb1.arbitrum.io/rpc; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://arb1.arbitrum.io/rpc; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0x33b49f2264e85bb124d2730dc180182717d436ae"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].recipient",
+          "op": "hex_eq",
+          "value": "0x5af3b5bca2b49478f75aa8d3f8320e326337f22f"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x14"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].token.key.address",
+          "op": "hex_eq",
+          "value": "0x33b49f2264e85bb124d2730dc180182717d436ae"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].recipient",
+          "op": "hex_eq",
+          "value": "0xe8d5deb9b53010ce8f6700f367015cc4dd58659a"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].amount",
+          "op": "u256_hex_eq",
+          "value": "0x6cceaf7d889150"
+        }
+      ]
     },
     {
       "intent": "real-dune Base SwapRouter02 multicall path",
@@ -578,7 +2125,64 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xadfa25cb0f21e83a23c07d29a7bf30ab731d1918"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xb20a4bd059f5914a2f8b9c18881c637f79efb7df"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x38e4227713"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x258f75e2789e"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.recipient",
+          "op": "hex_eq",
+          "value": "0x1bb96d8108968de27ec6d8c4e1cbba9fc9ce5880"
+        }
+      ]
     },
     {
       "intent": "real-dune Base V2 fee-on-transfer swap",
@@ -594,7 +2198,54 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xe2458d6f6ce3d0de007238c06e86f1bc8b43b1ea"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x144ff04e3a55cfed"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x0"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x6ccced19590d2fe1a24b265d26bac0bb206b24f7"
+        }
+      ]
     },
     {
       "intent": "real-dune Base UniversalRouter v2",
@@ -610,7 +2261,89 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].recipient",
+          "op": "hex_eq",
+          "value": "0x6ff5693b99212da76ad316178a184ab56d299b43"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x55f9c593908000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x55f9c593908000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x10953675ce7d6bbd930ae"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.recipient",
+          "op": "hex_eq",
+          "value": "0xef9ec35b4c20d92a14e2803a2372fe0d4d7a8899"
+        }
+      ]
     },
     {
       "intent": "real-dune Base UniversalRouter 2.1.1",
@@ -626,7 +2359,109 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://mainnet.base.org; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "uniswap_v3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x666e850"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x0"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.recipient",
+          "op": "hex_eq",
+          "value": "0x3fee213035fcec8cb2589f25f06197008c33641e"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xe6725be5ac8dff03538a9ef3e3a7a6bed256bb4f"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x8000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x6ad07f7f51ab21f73757"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].params.recipient",
+          "op": "hex_eq",
+          "value": "0xe996f822fd307f44d2b27dc68c8a57562e3c9413"
+        }
+      ]
     },
     {
       "intent": "real-dune Ethereum UniversalRouter 2.1.1",
@@ -642,7 +2477,44 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "permit2_sign_allowance"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].token.key.address",
+          "op": "hex_eq",
+          "value": "0x3afd2f72675e7d5ca6ea7b8fd17dd03e548f6b1d"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].spender",
+          "op": "hex_eq",
+          "value": "0x4c82d1fbfe28c977cbb58d8c7ff8fcf9f70a2cca"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0xffffffffffffffffffffffffffffffffffffffff"
+        }
+      ]
     },
     {
       "intent": "real-dune Ethereum UniversalRouter v2 no-deadline",
@@ -658,7 +2530,19 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions",
+          "op": "len",
+          "value": 0
+        }
+      ]
     },
     {
       "intent": "real-dune Ethereum V4 PositionManager ERC721 transfer",
@@ -674,7 +2558,34 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "nft_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xe162e02ed718f94ac70336fba69ff86f2918436d"
+        },
+        {
+          "path": "$.data.actions[0].body.nft_key.contract",
+          "op": "hex_eq",
+          "value": "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e"
+        },
+        {
+          "path": "$.data.actions[0].body.nft_key.token_id",
+          "op": "u256_hex_eq",
+          "value": "0x495c1"
+        }
+      ]
     },
     {
       "intent": "real-dune Ethereum V3 NFPM ERC721 transfer",
@@ -690,7 +2601,34 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://ethereum-rpc.publicnode.com; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "nft_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xb4acbc082b5e7ded571c98ee4257778a9d784b36"
+        },
+        {
+          "path": "$.data.actions[0].body.nft_key.contract",
+          "op": "hex_eq",
+          "value": "0xc36442b4a4522e871399cd717abdd847ab11fe88"
+        },
+        {
+          "path": "$.data.actions[0].body.nft_key.token_id",
+          "op": "u256_hex_eq",
+          "value": "0x133c6f"
+        }
+      ]
     },
     {
       "intent": "real-dune Optimism V2 swap",
@@ -706,7 +2644,54 @@
           }
         ]
       },
-      "source": "dune query 7625591 + https://mainnet.optimism.io; selected representative real-tx corpus row 2026-06-01"
+      "source": "dune query 7625591 + https://mainnet.optimism.io; selected representative real-tx corpus row 2026-06-01",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x47e914723736614fb28d5599ef02d8fab1ce5143"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x1ae4c4"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x2157be91212187bb"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x784ec8641adf9b6d1f8a4405d7d76c5ca61e3d04"
+        }
+      ]
     }
   ]
 }

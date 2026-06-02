@@ -1,0 +1,227 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-pool/swap@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Mainnet representative direct Uniswap V3 pool swap(address,bool,int256,uint160,bytes) coverage. Source materialization bakes token0/token1/fee from PoolCreated evidence; exact-output max input is modeled conservatively because pool calldata has no router-style amountInMaximum.",
+  "match": {
+    "selector": "0x128acb08",
+    "chain_to_addresses_source": "uniswap:v3_pool_candidates",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "swap",
+    "abi": {
+      "name": "swap",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "zeroForOne",
+          "type": "bool"
+        },
+        {
+          "name": "amountSpecified",
+          "type": "int256"
+        },
+        {
+          "name": "sqrtPriceLimitX96",
+          "type": "uint160"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "int256"
+        },
+        {
+          "name": "amount1",
+          "type": "int256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "uniswap_v3",
+            "chain": "$chain",
+            "pool": "$source.address",
+            "fee_tier_bp": "$source.fee_tier_bp"
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$fn": "uniswap_v3_pool_swap_field",
+                  "$args": [
+                    "$args.amountSpecified",
+                    "$args.zeroForOne",
+                    "$source.token0",
+                    "$source.token1",
+                    "token_in"
+                  ]
+                }
+              }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$fn": "uniswap_v3_pool_swap_field",
+                  "$args": [
+                    "$args.amountSpecified",
+                    "$args.zeroForOne",
+                    "$source.token0",
+                    "$source.token1",
+                    "token_out"
+                  ]
+                }
+              }
+            },
+            "direction": {
+              "$match": {
+                "$fn": "uniswap_v3_pool_swap_field",
+                "$args": [
+                  "$args.amountSpecified",
+                  "$args.zeroForOne",
+                  "$source.token0",
+                  "$source.token1",
+                  "direction_kind"
+                ]
+              },
+              "$cases": {
+                "exact_input": {
+                  "kind": "exact_input",
+                  "amount_in": {
+                    "$fn": "uniswap_v3_pool_swap_field",
+                    "$args": [
+                      "$args.amountSpecified",
+                      "$args.zeroForOne",
+                      "$source.token0",
+                      "$source.token1",
+                      "amount_in"
+                    ]
+                  },
+                  "min_amount_out": {
+                    "$fn": "uniswap_v3_pool_swap_field",
+                    "$args": [
+                      "$args.amountSpecified",
+                      "$args.zeroForOne",
+                      "$source.token0",
+                      "$source.token1",
+                      "min_amount_out"
+                    ]
+                  }
+                },
+                "exact_output": {
+                  "kind": "exact_output",
+                  "max_amount_in": {
+                    "$fn": "uniswap_v3_pool_swap_field",
+                    "$args": [
+                      "$args.amountSpecified",
+                      "$args.zeroForOne",
+                      "$source.token0",
+                      "$source.token1",
+                      "max_amount_in"
+                    ]
+                  },
+                  "amount_out": {
+                    "$fn": "uniswap_v3_pool_swap_field",
+                    "$args": [
+                      "$args.amountSpecified",
+                      "$args.zeroForOne",
+                      "$source.token0",
+                      "$source.token1",
+                      "amount_out"
+                    ]
+                  }
+                }
+              }
+            },
+            "recipient": "$args.recipient",
+            "slippage_bp": "$derived.slippage_bp"
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$source.address",
+                "function": "slot0()",
+                "decoder_id": "uniswap_v3_slot0"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "uniswap_v3_pool_state"
+                  }
+                ],
+                "calc_id": "uniswap_v3_direct_pool_expected_amount"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "uniswap_v3_pool_state"
+                  }
+                ],
+                "calc_id": "uniswap_v3_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "oracle_feed",
+                "provider": "pyth",
+                "feed_id": "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata",
+      "v3_pool_resolver"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v3_pool_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and substitutes token0/token1/fee context"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+  "symbol": "UNI-V2",
+  "decimals": 18,
+  "name": "Uniswap V2",
+  "source": "Etherscan v2 eth_call over representative Dune PairCreated candidates",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "uniswap_v2",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x64664800a97955dec5053cf7c2923cb72de15c8f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "constant_product"
+    }
+  }
+}

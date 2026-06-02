@@ -14,10 +14,24 @@
 | main agent | |
 | base commit | |
 
+## Scope Classification
+
+Use this section to make the final claim precise. This table is narrative
+evidence; the phase tables below are the mandatory gate.
+
+| field | value |
+|---|---|
+| primary chain(s) | |
+| completion target | `wallet-facing` / `full-surface` / `full factory-child universe` |
+| multichain expansion | included / deferred / not applicable |
+| direct factory-child calls | covered / source-materialized sample / deferred / not applicable |
+| final claim label | |
+
 ## P0 Research Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
+| completion scope declared: primary chain(s), wallet-facing vs full-surface/full-universe target, and multichain status | pending | |
 | Codex current-session research executed | pending | |
 | Claude Code or sub-agent research executed | pending | |
 | Claude/sub-agent exact prompt or command recorded | pending | |
@@ -29,6 +43,7 @@
 | pool-heavy/factory universe artifact is machine-readable, nonzero, and committed, or explicitly not applicable | pending | |
 | every pool/factory child address in universe dispositioned as cover/exclude/defer with reason and batch boundary | pending | |
 | concrete manifest vs protocol source resolver/generator strategy decided for pool universe | pending | |
+| direct factory-child calls are covered, source-materialized, or explicitly deferred separately from router/live-input discovery | pending | |
 | `npm run check:universe -- --protocol <protocol>` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | pending | |
 | token-surface inventory completed or explicitly scoped out | pending | |
 | `registryV2/surface/<protocol>/_deployments.json` updated if applicable | pending | |
@@ -68,8 +83,11 @@
 | Etherscan `raw_txs_seen` recorded | pending | |
 | Etherscan `unique_selectors_seen` recorded | pending | |
 | Etherscan real tx coverage per COVER selector recorded | pending | |
+| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | pending | |
+| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | pending | |
 | pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | pending | |
 | unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | pending | |
+| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | pending | |
 | Dune MCP/API availability checked | pending | |
 | Dune usage baseline recorded | pending | |
 | Dune calibration/query executed with partition WHERE or explicitly blocked | pending | |
@@ -105,6 +123,7 @@
 | fmt/clippy/typecheck output recorded for changed crates/packages | pending | |
 | exact staged files and commit hash recorded | pending | |
 | remaining WARNs/deferred selectors/actions listed with reason | pending | |
+| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | pending | |
 | no base/worktree merge performed unless user explicitly requested it | pending | |
 
 ## Blockers

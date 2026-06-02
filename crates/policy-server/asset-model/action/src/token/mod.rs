@@ -20,6 +20,8 @@ pub mod nft_transfer;
 pub mod permit2_approve;
 /// `Uniswap` `Permit2` signed allowance action.
 pub mod permit2_sign;
+/// `Uniswap` `Permit2` SignatureTransfer actions.
+pub mod permit2_transfer;
 /// Revoke-approval action and its scope enum.
 pub mod revoke;
 
@@ -31,6 +33,7 @@ pub use self::nft_set_for_all::*;
 pub use self::nft_transfer::*;
 pub use self::permit2_approve::*;
 pub use self::permit2_sign::*;
+pub use self::permit2_transfer::*;
 pub use self::revoke::*;
 
 /// Domain-agnostic, token-level actions that can occur anywhere.
@@ -46,6 +49,10 @@ pub enum TokenAction {
     Permit2Approve(Permit2ApproveAction),
     /// `Uniswap` `Permit2` signed allowance (off-chain signature).
     Permit2SignAllowance(Permit2SignAction),
+    /// `Uniswap` `Permit2` signed one-time transfer cap (off-chain signature).
+    Permit2SignTransfer(Permit2SignTransferAction),
+    /// `Uniswap` `Permit2` SignatureTransfer execution.
+    Permit2TransferFrom(Permit2TransferFromAction),
     /// `ERC20` `transfer(recipient, amount)`.
     Erc20Transfer(Erc20TransferAction),
     /// `ERC721`/`ERC1155` single-token `approve`.
@@ -69,6 +76,8 @@ impl TokenAction {
             Self::Erc20Permit(_) => "erc20_permit",
             Self::Permit2Approve(_) => "permit2_approve",
             Self::Permit2SignAllowance(_) => "permit2_sign_allowance",
+            Self::Permit2SignTransfer(_) => "permit2_sign_transfer",
+            Self::Permit2TransferFrom(_) => "permit2_transfer_from",
             Self::Erc20Transfer(_) => "erc20_transfer",
             Self::NftApprove(_) => "nft_approve",
             Self::NftSetApprovalForAll(_) => "nft_set_approval_for_all",

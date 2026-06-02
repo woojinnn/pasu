@@ -3,7 +3,7 @@
   "chainId": 8453,
   "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
   "snapshot": "permit2-base.abi.json",
-  "note": "Permit2 surface triage. Permission grant/revoke functions are COVER. Spender/relayer execution functions are EXCLUDE because the protected signer risk is at approve/permit/off-chain typed-data time; missing generic PermitTransferFrom typed-data ActionBody is tracked in registry-v2 progress notes.",
+  "note": "Permit2 surface triage. Permission grant/revoke functions are COVER. Direct AllowanceTransfer transferFrom execution is covered as user-visible fund movement. SignatureTransfer relayer execution remains EXCLUDE because signer risk is at off-chain PermitTransferFrom typed-data time.",
   "functions": {
     "0x87517c45": {
       "name": "approve",
@@ -57,13 +57,13 @@
     },
     "0x36c78516": {
       "name": "transferFrom",
-      "decision": "exclude",
-      "reason": "spender execution using already-granted Permit2 allowance; owner risk is captured at approve/permit signing time"
+      "decision": "cover",
+      "reason": "AllowanceTransfer direct fund movement: surfaces moved token, recipient, and amount"
     },
     "0x0d58b1db": {
       "name": "transferFrom",
-      "decision": "exclude",
-      "reason": "spender execution using already-granted Permit2 allowance; owner risk is captured at approve/permit signing time"
+      "decision": "cover",
+      "reason": "AllowanceTransfer direct batch fund movement: surfaces each moved token, recipient, and amount"
     }
   },
   "signed_structs": {

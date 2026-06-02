@@ -77,7 +77,8 @@
           "spender": "$args.permitBatch[1]",
           "amount": "$inputs[1]",
           "expires_at": "$inputs[2]",
-          "sig_deadline": "$args.permitBatch[2]"
+          "sig_deadline": "$args.permitBatch[2]",
+          "nonce": "$inputs[3]"
         }
       }
     },

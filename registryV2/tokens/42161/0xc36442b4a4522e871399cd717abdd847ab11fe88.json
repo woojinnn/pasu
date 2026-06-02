@@ -4,5 +4,12 @@
   "address": "0xc36442b4a4522e871399cd717abdd847ab11fe88",
   "collection_name": "Uniswap V3 Positions",
   "symbol": "UNI-V3-POS",
-  "source": "https://developers.uniswap.org/docs/protocols/v3/deployments/v3-arbitrum-deployments"
+  "source": "https://developers.uniswap.org/docs/protocols/v3/deployments/v3-arbitrum-deployments",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": { "protocol": { "name": "uniswap_v3", "chain": "eip155:42161" } },
+    "underlyings": [],
+    "share_form": "non_fungible",
+    "shape": { "kind": "concentrated" }
+  }
 }

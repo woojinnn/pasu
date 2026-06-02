@@ -1,0 +1,80 @@
+{
+  "protocol": "uniswap",
+  "date": "2026-06-02",
+  "scope": "Track A audit of live/enrichment source ids referenced by Uniswap and UniswapX manifests",
+  "sources": [
+    {
+      "id": "uniswap_v2_get_reserves",
+      "kind": "onchain_view",
+      "status": "covered",
+      "function": "getReserves()",
+      "evidence": [
+        "crates/policy-server/sync/src/sources/fetchers/abi_decoder/types.rs registers decoder id as (uint112,uint112,uint32)",
+        "crates/policy-server/sync/src/sources/fetchers/onchain.rs falls back from DecoderRegistry to AbiDecoder for registered ABI decoder ids",
+        "Referenced by V2 Router02, SwapRouter02 V2-path, and Universal Router manifests"
+      ],
+      "notes": "No ABI args are required for getReserves()."
+    },
+    {
+      "id": "uniswap_v3_slot0",
+      "kind": "onchain_view",
+      "status": "covered",
+      "function": "slot0()",
+      "evidence": [
+        "crates/policy-server/sync/src/sources/fetchers/abi_decoder/types.rs registers decoder id as (uint160,int24,uint16,uint16,uint16,uint8,bool)",
+        "crates/policy-server/sync/src/sources/fetchers/abi_decoder/mod.rs has decodes_uniswap_v3_slot0_shape test",
+        "Referenced by SwapRouter02, V3 NFPM, and Universal Router manifests"
+      ],
+      "notes": "No ABI args are required for slot0()."
+    },
+    {
+      "id": "uniswap_v3_position_fees_owed",
+      "kind": "onchain_view",
+      "status": "covered",
+      "function": "positions(uint256)",
+      "evidence": [
+        "Referenced by registryV2/manifests/uniswap/v3-nfpm/collect@1.0.0.json",
+        "Referenced by registryV2/manifests/uniswap/v3-nfpm/decrease-liquidity@1.0.0.json",
+        "crates/policy-server/sync/src/actions/args.rs encodes the position tokenId for AmmRemoveLiquidityFeesOwed and AmmCollectFeesOwed",
+        "crates/policy-server/sync/src/sources/fetchers/onchain.rs decodes Uniswap V3 positions(uint256) token0/token1/tokensOwed0/tokensOwed1 into chain-qualified TokenRef fee rows",
+        "cargo test -p simulation-sync uniswap --lib PASS"
+      ],
+      "notes": "The decoder is source-id aware because positions(uint256) returns a tuple where only specific slots are needed for owed fee semantics."
+    },
+    {
+      "id": "permit2_nonce_bitmap",
+      "kind": "onchain_view",
+      "status": "covered",
+      "function": "nonceBitmap(address,uint256)",
+      "evidence": [
+        "Referenced by registryV2/manifests/uniswap/permit2/permitSingle@1.0.0.json and permitBatch@1.0.0.json",
+        "Referenced by Universal Router Permit2 nested commands",
+        "crates/policy-server/sync/src/actions/args.rs encodes owner plus signed nonce word for TokenPermit2SignNonce",
+        "crates/policy-server/sync/src/sources/fetchers/decoder.rs registers permit2_nonce_bitmap as a raw U256 string decoder",
+        "crates/policy-server/sync/src/runtime/orchestrator.rs checks the fetched bitmap bit and only applies the signed (word, bit) nonce coordinate when the bit is unused",
+        "crates/policy-server/sync/src/actions/walk/token.rs rejects raw bitmap strings so bitmap words are not silently treated as coordinates",
+        "cargo test -p simulation-sync args:: --lib PASS"
+      ],
+      "notes": "The live source remains nonceBitmap(address,uint256), but reducer state stores the signed nonce coordinate after orchestrator-level freshness validation."
+    },
+    {
+      "id": "uniswapx_quote",
+      "kind": "venue_api",
+      "status": "covered",
+      "endpoint": "https://api.uniswap.org/v2/quote",
+      "evidence": [
+        "Referenced by registryV2/manifests/uniswapx/*.json and Uniswap swap/universal-router quote live inputs",
+        "crates/policy-server/sync/src/manifests/v2/parser.rs can parse the VenueApi source shape",
+        "crates/policy-server/sync/src/sources/fetchers/venue/uniswap.rs implements UniswapFetcher for quote/open-orders parser ids",
+        "crates/policy-server/sync/src/runtime/orchestrator.rs dispatches Uniswap venue_api sources to UniswapFetcher while retaining Hyperliquid dispatch",
+        "cargo test -p simulation-sync uniswap --lib PASS"
+      ],
+      "notes": "Fetcher parser coverage includes swap expected amount out, UniswapX expected fill price, and competing open order count response shapes."
+    }
+  ],
+  "summary": {
+    "covered": 5,
+    "blocked": 0,
+    "blocking_for_full_completion": false
+  }
+}

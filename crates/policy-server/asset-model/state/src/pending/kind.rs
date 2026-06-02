@@ -94,7 +94,31 @@ pub enum PendingKind {
         nonce: (U256, u8),
     },
 
-    /// Signed EIP-2612 permit, such as USDC or DAI.
+    /// 서명만 발급된 Permit2 `SignatureTransfer` — spender/recipient are supplied
+    /// at execution time, so this records the owner-level one-time spend cap.
+    SignedPermit2Transfer {
+        /// 서명자가 spend를 허용한 토큰.
+        token: TokenRef,
+        /// 토큰 owner / signer.
+        #[tsify(type = "string")]
+        owner: Address,
+        /// 서명된 one-time spender.
+        #[tsify(type = "string")]
+        spender: Address,
+        /// 허용된 최대 transfer 양.
+        #[tsify(type = "string")]
+        amount: U256,
+        /// `SignatureTransfer` deadline.
+        expires_at: Time,
+        /// Permit2 비트맵 nonce — (word, bit).
+        #[tsify(type = "[string, number]")]
+        nonce: (U256, u8),
+        /// Optional `PermitWitnessTransferFrom` witness type name.
+        #[tsify(optional)]
+        witness_type: Option<String>,
+    },
+
+    /// EIP-2612 (USDC, DAI 등).
     SignedEIP2612 {
         /// Token being authorized.
         token: TokenRef,

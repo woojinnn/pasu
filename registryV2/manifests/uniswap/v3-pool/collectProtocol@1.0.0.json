@@ -1,0 +1,69 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-pool/collectProtocol@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Direct Uniswap V3 pool protocol-fee collection call coverage. Owner-gated/nonstandard wallet intent; route explicit Unknown/fail-closed instead of registry miss.",
+  "match": {
+    "selector": "0x85b66729",
+    "chain_to_addresses_source": "uniswap:v3_pool_candidates",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "collectProtocol",
+    "abi": {
+      "name": "collectProtocol",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "amount0Requested",
+          "type": "uint128"
+        },
+        {
+          "name": "amount1Requested",
+          "type": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint128"
+        },
+        {
+          "name": "amount1",
+          "type": "uint128"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v3_pool_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and appends a per-pool id suffix"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v4-position-manager/permit-nft@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "_note": "V4 PositionManager NFT permit(spender,tokenId,deadline,nonce,signature). The signature owner is not represented by NftApproveAction, but the user-visible permission grant is the spender/tokenId pair.",
+  "match": {
+    "selector": "0x0f5730f1",
+    "chain_to_addresses": {
+      "1":     ["0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"],
+      "10":    ["0x3C3Ea4B57a46241e54610e5f022E5c45859A1017"],
+      "8453":  ["0x7C5f5A4bBd8fD63184577525326123B519429bDc"],
+      "42161": ["0xd88F38F930b7952f2DB2432Cb002E7abbF3dD869"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permit",
+    "abi": {
+      "name": "permit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "spender", "type": "address" },
+        { "name": "tokenId", "type": "uint256" },
+        { "name": "deadline", "type": "uint256" },
+        { "name": "nonce", "type": "uint256" },
+        { "name": "signature", "type": "bytes" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "nft_approve",
+        "nft_approve": {
+          "nft_key": {
+            "standard": "erc721",
+            "chain": "$chain",
+            "contract": "$to",
+            "token_id": "$args.tokenId"
+          },
+          "spender": "$args.spender"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

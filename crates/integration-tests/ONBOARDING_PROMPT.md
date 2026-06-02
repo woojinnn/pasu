@@ -30,6 +30,9 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
    `done` 또는 구체적 `blocked` 가 아니면 phase/온보딩 완료 선언 금지.
    phase 완료 선언 전 `cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- <PROTOCOL> --phase <p0|p1|p2|p3|p4|all>`
    를 실행하고, 실패하면 incomplete 로 남긴다.
+   시작 시 completion scope 를 evidence 에 먼저 적는다: primary chain(s), `wallet-facing` vs `full-surface`
+   vs `full factory-child universe`, multichain expansion 포함 여부. 그냥 "온보딩 완료"라고 말하지 말고
+   마지막 claim 에도 같은 label 을 붙인다.
    사용자가 나중에 "Claude Code에 시켰냐?", "Etherscan/Dune real tx 돌렸냐?"라고 물었을 때
    evidence.md 의 명령·결과·카운트로 답할 수 있어야 한다. 못 했으면 사과하지 말고 incomplete/blocked 로 남기고 계속 처리.
  · P2 real-tx 시작 전 외부 데이터 lane 연결 확인:
@@ -74,6 +77,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     address universe 를 만들고 source/query/count 를 기록한다. universe 의 모든 pool/factory child 주소는
     cover/exclude/defer 로 disposition 해야 하며, 일부만 concrete 로 커버할 경우 batch boundary 와
     concrete manifest vs protocol source resolver/generator 결정을 evidence.md 에 남긴다.
+    wallet-facing only run 이면 direct pool/pair/vault 호출은 full-universe follow-up 으로 명시 defer 한다.
+    router tx 의 pool metadata live_input/RPC lookup 을 direct child callkey coverage 로 세지 않는다.
     pool-heavy/factory 는 machine-readable universe artifact 를 남긴다. source count 가 0 이거나
     tx pull target address count 가 0 이면 성공으로 치지 말고 필터/schema 버그로 보고 즉시 수정한다.
     pool/factory/vault-heavy 프로토콜은 `registryV2/surface/<PROTOCOL>/_address_universe.json`
@@ -94,8 +99,17 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     + Etherscan API/MCP bulk 최소 10,000 tx/protocol(10,000 API call 아님; 현재 txlist 최대 10k tx/call,
       2026-07-01 이후 Free tier 는 1k/request 예정이라 현재 docs 재확인)
     + Dune MCP/API calibration 후 Base/OP·cross-chain pinpoint(free 엔진 + partition WHERE).
+    router/manager/aggregator-heavy 프로토콜은 canonical wallet-facing target file 을 만들고
+    router/manager/permission/signature/settlement 주소별 최근 tx 를 별도 sweep 한다(대표 프로토콜 기본값:
+    target 별 약 5,000 tx). `etherscan-bulk-sweep.mjs` 사용 시 `--surface-root registryV2/surface/<PROTOCOL>`
+    를 명시하고, unmatched 는 actionable/non-actionable 으로 disposition 한다.
+    EIP-712 typed-data signing 은 Etherscan tx input 으로 검증되지 않는다. 모든 in-scope
+    primaryType/witnessType 은 typed-data corpus 또는 field golden 을 만들고
+    `v3-harness corpus --filter <PROTOCOL> --require-expect-body` 로 `route_typed_data` 경로를 검증한다.
+    off-chain signing 과 on-chain settlement/reactor execution 이 둘 다 있으면 둘을 별도 surface 로 증명한다.
     Etherscan/Dune 연결 없으면 P2 real-tx complete 선언 금지 — blocked_external_data 와 재실행 대상 기록.
     P2 real-tx 를 완료했다고 말하기 전 evidence.md 에 Etherscan api_calls/raw_txs/unique_selectors/selector coverage,
+    wallet-facing target sweep 결과/actionable unmatched, typed-data corpus 결과,
     Dune usage baseline/query/rows/credit delta/selected tx hashes 가 기록되어 있어야 한다.
     외부 tx pull 은 target address count 를 반드시 기록한다. 0이면 no-op 이므로 done 금지.
     pool-heavy/factory 프로토콜은 selected cover 주소만이 아니라 P0 candidate/universe 주소도 sweep 한다.

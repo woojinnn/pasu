@@ -1,0 +1,155 @@
+{
+  "protocol": "uniswap",
+  "kind": "track_a_factory_child_universe_disposition",
+  "track": "A-wallet-facing-router-manager-signing",
+  "source": "Dune decoded creation/init tables for Uniswap V2 pairs, Uniswap V3 pools, and Uniswap V4 pool IDs",
+  "source_count": 20412831,
+  "batch_boundary": "Track A scope boundary on 2026-06-02: wallet-facing router, manager, Permit2, Universal Router, UniswapX signing, UniswapX reactor settlement, and reviewed mainnet direct pool/pair samples are evaluated through concrete deployments/manifests or source-materialized callkeys. Full factory-child universes remain explicit batches because they require generated source/live-input population before every discovered child address can be routed.",
+  "scope_decision": {
+    "covered_in_track_a": [
+      "Uniswap V2 Router02 user swaps and liquidity calls through concrete router deployments",
+      "Uniswap V3 SwapRouter02 swaps and NFPM position NFT/liquidity/fee calls through concrete deployments",
+      "Uniswap V4 PositionManager wallet-facing position calls and PoolManager.initialize fail-closed unknown path",
+      "Universal Router execute variants and nested actions through concrete deployments",
+      "Permit2 allowance signing and direct allowance-management surfaces already represented by concrete manifests",
+      "UniswapX typed-data signing surfaces under registryV2/manifests/uniswapx",
+      "UniswapX reactor settlement entrypoints decode SignedOrder bytes into Amm::SettleIntentOrder for supported reactor families",
+      "Representative mainnet direct Uniswap V3 pool swap emits Amm::Swap via source-materialized token0/token1/fee context; remaining reviewed mutable pool entrypoints route explicit Unknown/fail-closed"
+    ],
+    "deferred_to_track_b": [
+      "Full Uniswap V2 pair universe materialization beyond reviewed LP token samples",
+      "Full Uniswap V3 pool universe materialization beyond reviewed mainnet direct-pool sample",
+      "Full Uniswap V4 pool-id semantics beyond wallet-facing manager paths"
+    ]
+  },
+  "sources": [
+    {
+      "name": "uniswap_v2_multichain.uniswapv2factory_evt_paircreated",
+      "query": "Dune query 7629549",
+      "count": 3533066
+    },
+    {
+      "name": "uniswap_v3_multichain.uniswapv3factory_evt_poolcreated",
+      "query": "Dune query 7629549",
+      "count": 1981372
+    },
+    {
+      "name": "uniswap_v4_{ethereum,base,optimism}.poolmanager_evt_initialize distinct id",
+      "query": "Dune query 7629549",
+      "count": 14898393
+    }
+  ],
+  "universe_batches": [
+    {
+      "id": "uniswap-v2-child-universe-deferred",
+      "source": "uniswap_v2_multichain.uniswapv2factory_evt_paircreated",
+      "source_count": 3533066,
+      "decision": "defer",
+      "reason": "Track A covers user-facing Router02/Universal Router paths; direct pair calls and LP-token generation require a Track B source resolver plus direct pair semantics.",
+      "boundary": "all decoded V2 PairCreated rows counted by Dune query 7629549 for ethereum/base/optimism/arbitrum"
+    },
+    {
+      "id": "uniswap-v3-child-universe-deferred",
+      "source": "uniswap_v3_multichain.uniswapv3factory_evt_poolcreated",
+      "source_count": 1981372,
+      "decision": "defer",
+      "reason": "Track A covers SwapRouter02, NFPM, Universal Router, and V4 PositionManager wallet-facing surfaces; direct pool calls require generated callkeys and pool-level action semantics.",
+      "boundary": "all decoded V3 PoolCreated rows counted by Dune query 7629549 for ethereum/base/optimism/arbitrum"
+    },
+    {
+      "id": "uniswap-v4-pool-id-universe-deferred",
+      "source": "uniswap_v4_{ethereum,base,optimism}.poolmanager_evt_initialize distinct id",
+      "source_count": 14898393,
+      "decision": "defer",
+      "reason": "Track A keeps wallet-facing V4 PositionManager coverage and explicit PoolManager.initialize unknown handling; full V4 pool-id semantics need a dedicated Track B model.",
+      "boundary": "all decoded V4 PoolManager initialize pool ids counted by Dune query 7629549 for ethereum/base/optimism"
+    }
+  ],
+  "candidates": [
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "decision": "cover",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; Etherscan eth_call enriched token0/token1 and LP metadata, standard ERC20 callkeys plus representative direct pair Unknown/permit manifests now cover this sample address",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "lp_token_inventory": {
+        "status": "sample_token_metadata_written",
+        "token_file": "registryV2/tokens/42161/0x1be1b3847364f91fad268fb7e1067bce7f1fc87a.json",
+        "source": "Etherscan v2 proxy eth_call"
+      }
+    },
+    {
+      "chainId": 8453,
+      "address": "0x58aeb29a7e88b83ce8509b43ce4b42d6e68a0dd1",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; direct pair support and full LP-token universe materialization deferred",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "lp_token_inventory": {
+        "status": "blocked_by_etherscan_plan",
+        "source": "Etherscan v2 proxy eth_call",
+        "reason": "free API access is not supported for Base chain coverage"
+      }
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "decision": "cover",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; Etherscan eth_call enriched token0/token1 and LP metadata, standard ERC20 callkeys plus representative direct pair Unknown/permit manifests now cover this sample address",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "lp_token_inventory": {
+        "status": "sample_token_metadata_written",
+        "token_file": "registryV2/tokens/1/0xd841745e607f0d8d0027d92b10b7e4005d20ecab.json",
+        "source": "Etherscan v2 proxy eth_call"
+      }
+    },
+    {
+      "chainId": 10,
+      "address": "0xaefede5dfacde87bc09e9ae12dfa94275b4ea01d",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; direct pair support and full LP-token universe materialization deferred",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "lp_token_inventory": {
+        "status": "blocked_by_etherscan_plan",
+        "source": "Etherscan v2 proxy eth_call",
+        "reason": "free API access is not supported for Optimism chain coverage"
+      }
+    },
+    {
+      "chainId": 42161,
+      "address": "0xda13a26f67a195a352ed429d7a999e75e01a2021",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V3 pool from Dune sample; direct pool support and full pool universe materialization deferred",
+      "batch": "uniswap-v3-child-universe-deferred"
+    },
+    {
+      "chainId": 8453,
+      "address": "0x741acb797fe6906aa99b25a15125ded583cd2be6",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V3 pool from Dune sample; direct pool support and full pool universe materialization deferred",
+      "batch": "uniswap-v3-child-universe-deferred"
+    },
+    {
+      "chainId": 1,
+      "address": "0x2c40c7b9f106f39a6e2aab6d9f1f29364e7250bc",
+      "decision": "cover",
+      "reason": "representative latest mainnet Uniswap V3 pool from Dune sample; PoolCreated metadata materialized into direct V3 pool swap semantics and explicit Unknown/fail-closed manifests for remaining mutable pool entrypoints",
+      "batch": "uniswap-v3-child-universe-deferred",
+      "pool_inventory": {
+        "status": "sample_pool_metadata_written",
+        "token0": "0x87c9053c819bb28e0d73d33059e1b3da80afb0cf",
+        "token1": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "fee": 100,
+        "tick_spacing": 1,
+        "source": "Dune decoded PoolCreated",
+        "query": "https://dune.com/queries/7633398"
+      }
+    },
+    {
+      "chainId": 10,
+      "address": "0x9fba24e356ef975f758bb259640ca48a0344db4b",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V3 pool from Dune sample; direct pool support and full pool universe materialization deferred",
+      "batch": "uniswap-v3-child-universe-deferred"
+    }
+  ]
+}

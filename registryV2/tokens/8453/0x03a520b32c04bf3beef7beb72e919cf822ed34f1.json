@@ -4,5 +4,12 @@
   "address": "0x03a520b32c04bf3beef7beb72e919cf822ed34f1",
   "collection_name": "Uniswap V3 Positions",
   "symbol": "UNI-V3-POS",
-  "source": "https://docs.uniswap.org/contracts/v3/reference/deployments/base-deployments"
+  "source": "https://docs.uniswap.org/contracts/v3/reference/deployments/base-deployments",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": { "protocol": { "name": "uniswap_v3", "chain": "eip155:8453" } },
+    "underlyings": [],
+    "share_form": "non_fungible",
+    "shape": { "kind": "concentrated" }
+  }
 }

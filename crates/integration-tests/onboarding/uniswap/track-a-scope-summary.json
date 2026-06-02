@@ -1,0 +1,102 @@
+{
+  "protocol": "uniswap",
+  "track": "A-wallet-facing-router-manager-signing",
+  "date": "2026-06-02",
+  "claim": "Track A covers wallet-facing Uniswap router, manager, Permit2, Universal Router, UniswapX signing, UniswapX reactor settlement semantic decoding, and reviewed mainnet direct V3 pool sample coverage. This is not a full every-factory-child protocol completion claim.",
+  "covered_surfaces": [
+    {
+      "surface": "Uniswap V2 Router02",
+      "status": "covered",
+      "evidence": "Concrete manifests under registryV2/manifests/uniswap/v2-router-02; registryV2 check:surface/check:manifest/build gates pass."
+    },
+    {
+      "surface": "Uniswap V3 SwapRouter02",
+      "status": "covered",
+      "evidence": "Concrete manifests under registryV2/manifests/uniswap/swap-router-02; strict Uniswap corpus has expect_body pins for representative swaps."
+    },
+    {
+      "surface": "Uniswap V3 NonfungiblePositionManager",
+      "status": "covered",
+      "evidence": "Concrete manifests under registryV2/manifests/uniswap/v3-nfpm plus V3 position NFT token_kind metadata updates on supported chains; V3 position-fees live decoder/arg resolver implemented."
+    },
+    {
+      "surface": "Uniswap V4 PositionManager and PoolManager.initialize",
+      "status": "covered_with_explicit_unknown",
+      "evidence": "V4 position-manager manifests cover liquidity, transfer, approval, Permit2 forwarding, and NFT permit surfaces; PoolManager.initialize remains explicit ActionBody::Unknown rather than a silent allow path."
+    },
+    {
+      "surface": "Universal Router execute variants",
+      "status": "covered",
+      "evidence": "Manifests under registryV2/manifests/uniswap/universal-router; strict corpus pins nested multicall outcomes including empty/no-deadline cases."
+    },
+    {
+      "surface": "Permit2 allowance signing, allowance management, and direct AllowanceTransfer execution",
+      "status": "covered",
+      "evidence": "Permit2 allowance and SignatureTransfer typed-data manifests route and decode; nonceBitmap live freshness is implemented; direct AllowanceTransfer and SignatureTransfer execution are surfaced as owner-aware token fund movement."
+    },
+    {
+      "surface": "UniswapX typed-data signing",
+      "status": "covered_with_live_fetcher",
+      "evidence": "Typed-data manifests under registryV2/manifests/uniswapx route as signing intents; UniswapFetcher parses quote/open-order API response shapes for expected fill price and competing order count."
+    },
+    {
+      "surface": "UniswapX reactor/filler settlement contracts",
+      "status": "covered",
+      "evidence": "Verified reactor ABI snapshots and coverage were added for mainnet ExclusiveDutch/V2Dutch, Arbitrum V3Dutch, and Base Priority reactors. Four reactor settlement selectors route via registryV2/manifests/uniswapx/reactor as Amm::SettleIntentOrder; uniswapx corpus is 3/3 pass with expect_body pins."
+    },
+    {
+      "surface": "Representative mainnet direct Uniswap V3 pool",
+      "status": "covered_sample",
+      "evidence": "Dune PoolCreated metadata for 0x2c40c7b9f106f39a6e2aab6d9f1f29364e7250bc materializes token0/token1/fee context. Direct pool swap emits first-class Amm::Swap; remaining mutable V3 pool sample entrypoints route explicit Unknown/fail-closed and pass surface gate."
+    }
+  ],
+  "deferred_surfaces": [
+    {
+      "surface": "Direct Uniswap V2 pair calls and V2 LP pair token inventory",
+      "status": "track_b_deferred",
+      "reason": "Dune counted 3,533,066 V2 pair rows. Track A covers user-facing router paths. Etherscan eth_call enriched 2/4 representative V2 pair candidates (mainnet/arbitrum) into token registry LP metadata; LP ERC20 movements are covered by token-generated standard ERC20 callkeys, while direct sample pair calls are source-materialized via uniswap:v2_pair_candidates. Base/Optimism sample enrichment is blocked by the free Etherscan plan. Full direct pair coverage still requires generated callkeys, full LP token generation, and pair-level action semantics."
+    },
+    {
+      "surface": "Full direct Uniswap V3 pool universe",
+      "status": "track_b_deferred",
+      "reason": "Dune counted 1,981,372 V3 pool rows. Track A covers one reviewed mainnet direct-pool sample; full coverage needs generated callkeys and source/live-input population for every pool."
+    },
+    {
+      "surface": "Full Uniswap V4 pool-id semantics",
+      "status": "track_b_deferred",
+      "reason": "Dune counted 14,898,393 initialized V4 pool ids. Track A keeps wallet-facing V4 manager coverage and explicit unknown handling for raw PoolManager initialize."
+    }
+  ],
+  "track_a_gates": [
+    {
+      "gate": "strict semantic corpus",
+      "status": "pass",
+      "command": "cargo run -p policy-engine-integration-tests --bin v3-harness -- corpus --filter uniswap --require-expect-body",
+      "summary": "50/50 matched; semantic expect_body: 50/50 pass entries pinned"
+    },
+    {
+      "gate": "adapter-blind Etherscan sweep",
+      "status": "pass",
+      "command": "node crates/integration-tests/scripts/etherscan-bulk-sweep.mjs --protocol uniswap --min-raw-txs 20000 --offset 10000 --page-limit 1 --timeout-ms 15000",
+      "summary": "Preserved successful sweep: 33 cover addresses queried; 143,569 raw txs; 143,199 input txs; 142,332 matched, 338 excluded, 529 unmatched; floorMet=true. A latest rerun was attempted after the direct V3/UniswapX changes but sandbox networking returned fetch failures and external rerun approval was blocked by usage limits."
+    },
+    {
+      "gate": "Etherscan V2 LP token inventory sample",
+      "status": "partial",
+      "command": "node crates/integration-tests/scripts/etherscan-v2-lp-token-inventory.mjs --protocol uniswap --timeout-ms 15000 --write-tokens --allow-partial",
+      "summary": "2/4 representative V2 pair candidates enriched with token0/token1/name/symbol/decimals via Etherscan eth_call and written as LP token metadata. LP approve/transfer/transferFrom route through token-generated standard ERC20 callkeys; representative direct V2 pair manifests for sync/swap/mint/burn/skim/permit are source-materialized from uniswap:v2_pair_candidates; both sample pair surfaces are ABI/coverage gated. Base/Optimism sample candidates remain blocked by the free Etherscan chain coverage plan."
+    },
+    {
+      "gate": "registry build/check gates",
+      "status": "pass",
+      "summary": "registryV2 check:surface/check:manifest/build gates pass after Track A, Permit2 SignatureTransfer, UniswapX reactor semantic settlement, V2 pair samples, and V3 direct pool sample fixes: full build 52,920 callkeys + 84 typed-data across 786 manifests; representative manifest validation 1,457 single_emit manifests OK. Targeted Rust sync/action/mapper tests pass."
+    }
+  ],
+  "remaining_completion_blockers": [
+    "Full factory-child universe is counted and batch-deferred but not materialized into per-child callkeys.",
+    "Full V2 LP pair token inventory remains coupled to the Track B pair universe; 2/4 representative candidates now have Etherscan-backed token metadata, token-generated standard ERC20 LP callkeys, ABI/coverage-gated source-materialized direct pair sample callkeys, and universe cover linkage.",
+    "Full V3 pool universe remains beyond the representative mainnet direct-pool sample.",
+    "Latest Etherscan rerun could not complete inside sandbox; preserved prior mainnet+Arbitrum sweep still exceeds the 20,000 raw tx floor.",
+    "No final stage/commit has been made."
+  ]
+}

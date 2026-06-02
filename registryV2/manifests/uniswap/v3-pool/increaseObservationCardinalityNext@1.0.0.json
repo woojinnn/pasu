@@ -1,0 +1,52 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-pool/increaseObservationCardinalityNext@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Direct Uniswap V3 pool oracle-cardinality maintenance call coverage. It has no direct wallet asset movement, but routes explicit Unknown/fail-closed so unexpected direct calls are visible.",
+  "match": {
+    "selector": "0x32148f67",
+    "chain_to_addresses_source": "uniswap:v3_pool_candidates",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "increaseObservationCardinalityNext",
+    "abi": {
+      "name": "increaseObservationCardinalityNext",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "observationCardinalityNext",
+          "type": "uint16"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v3_pool_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and appends a per-pool id suffix"
+  }
+}

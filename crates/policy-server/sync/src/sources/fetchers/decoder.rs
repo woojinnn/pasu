@@ -58,6 +58,7 @@ impl DecoderRegistry {
         r.register("erc20_allowance", decode_u256_as_string);
         r.register("erc20_total_supply", decode_u256_as_string);
         r.register("permit2_allowance", decode_permit2_allowance);
+        r.register("permit2_nonce_bitmap", decode_u256_as_string);
         r.register("aave_user_data", decode_aave_user_data);
         r.register("bool", decode_bool);
         r.register("address", decode_address);

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use policy_state::{ChainId, DataSource};
+use policy_state::{ChainId, DataSource, TokenKey, TokenRef, U256};
 
 use super::decoder::DecoderRegistry;
 use super::rpc::multicall::{Call3, Multicall};
@@ -90,6 +90,15 @@ impl OnchainViewFetcher {
         &mut self.abi_decoder
     }
 
+    /// `decoder_id` 를 풀 디코더 결정: 먼저 손코딩 `DecoderRegistry`,
+    /// 모르면 `AbiDecoder` (alloy-dyn-abi) 로 fallback.
+    fn decode_call_value(&self, call: &OnchainCall, data: &[u8]) -> Result<Value, SyncError> {
+        if call.decoder_id == "uniswap_v3_position_fees_owed" {
+            return decode_uniswap_v3_position_fees_owed(&call.chain, data);
+        }
+        self.decode_any(&call.decoder_id, data)
+    }
+
     fn decode_any(&self, decoder_id: &str, data: &[u8]) -> Result<Value, SyncError> {
         if let Ok(v) = self.decoders.decode(decoder_id, data) {
             return Ok(v);
@@ -103,7 +112,7 @@ impl OnchainViewFetcher {
     pub async fn fetch_one(&self, call: &OnchainCall) -> Result<Value, SyncError> {
         let req = EthCallRequest::new(call.contract, call.calldata.clone());
         let returndata = self.router.eth_call(&call.chain, req).await?;
-        self.decode_any(&call.decoder_id, &returndata)
+        self.decode_call_value(call, &returndata)
     }
 
     pub async fn fetch_batch(
@@ -148,7 +157,7 @@ impl OnchainViewFetcher {
                 });
                 continue;
             }
-            match self.decode_any(&call.decoder_id, &mc_res.return_data) {
+            match self.decode_call_value(call, &mc_res.return_data) {
                 Ok(v) => out.push(OnchainOutcome {
                     success: true,
                     value: Some(v),
@@ -165,10 +174,67 @@ impl OnchainViewFetcher {
     }
 }
 
+fn decode_uniswap_v3_position_fees_owed(chain: &ChainId, data: &[u8]) -> Result<Value, SyncError> {
+    let token0 = address_word(data, 2)?;
+    let token1 = address_word(data, 3)?;
+    let owed0 = u256_word(data, 10)?;
+    let owed1 = u256_word(data, 11)?;
+
+    serde_json::to_value(vec![
+        (
+            TokenRef::new(TokenKey::Erc20 {
+                chain: chain.clone(),
+                address: token0,
+            }),
+            owed0,
+        ),
+        (
+            TokenRef::new(TokenKey::Erc20 {
+                chain: chain.clone(),
+                address: token1,
+            }),
+            owed1,
+        ),
+    ])
+    .map_err(|e| SyncError::FetchFailed {
+        source_id: "onchain_fetcher".into(),
+        reason: format!("serialize uniswap_v3_position_fees_owed: {e}"),
+    })
+}
+
+fn word_at(data: &[u8], index: usize) -> Result<&[u8], SyncError> {
+    let start = index
+        .checked_mul(32)
+        .ok_or_else(|| SyncError::FetchFailed {
+            source_id: "onchain_fetcher".into(),
+            reason: "ABI word index overflow".into(),
+        })?;
+    let end = start + 32;
+    data.get(start..end).ok_or_else(|| SyncError::FetchFailed {
+        source_id: "onchain_fetcher".into(),
+        reason: format!(
+            "uniswap_v3_position_fees_owed needs >=384 bytes, got {}",
+            data.len()
+        ),
+    })
+}
+
+fn u256_word(data: &[u8], index: usize) -> Result<U256, SyncError> {
+    Ok(U256::from_be_slice(word_at(data, index)?))
+}
+
+fn address_word(data: &[u8], index: usize) -> Result<alloy_primitives::Address, SyncError> {
+    let word = word_at(data, index)?;
+    let mut addr = [0u8; 20];
+    addr.copy_from_slice(&word[12..32]);
+    Ok(alloy_primitives::Address::from(addr))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use policy_state::{Address, ChainId, DataSource};
+    use std::str::FromStr;
 
     #[test]
     fn from_source_encodes_selector() {
@@ -200,5 +266,40 @@ mod tests {
         // balanceOf(address) selector = 0x70a08231
         assert_eq!(&call.calldata[..4], &[0x70, 0xa0, 0x82, 0x31]);
         assert_eq!(call.calldata.len(), 4 + 32);
+    }
+
+    #[test]
+    fn decodes_uniswap_v3_position_fees_owed_with_chain_qualified_tokens() {
+        let chain = ChainId::base();
+        let token0 = Address::from_str("0x4200000000000000000000000000000000000006").unwrap();
+        let token1 = Address::from_str("0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca").unwrap();
+        let owed0 = U256::from(123u64);
+        let owed1 = U256::from(456u64);
+        let mut data = vec![0u8; 12 * 32];
+        data[(2 * 32 + 12)..(3 * 32)].copy_from_slice(token0.as_slice());
+        data[(3 * 32 + 12)..(4 * 32)].copy_from_slice(token1.as_slice());
+        data[(10 * 32)..(11 * 32)].copy_from_slice(&owed0.to_be_bytes::<32>());
+        data[(11 * 32)..(12 * 32)].copy_from_slice(&owed1.to_be_bytes::<32>());
+
+        let value = decode_uniswap_v3_position_fees_owed(&chain, &data).unwrap();
+        let decoded: Vec<(TokenRef, U256)> = serde_json::from_value(value).unwrap();
+
+        assert_eq!(decoded.len(), 2);
+        assert_eq!(
+            decoded[0].0,
+            TokenRef::new(TokenKey::Erc20 {
+                chain: chain.clone(),
+                address: token0,
+            })
+        );
+        assert_eq!(decoded[0].1, owed0);
+        assert_eq!(
+            decoded[1].0,
+            TokenRef::new(TokenKey::Erc20 {
+                chain,
+                address: token1,
+            })
+        );
+        assert_eq!(decoded[1].1, owed1);
     }
 }

@@ -36,7 +36,8 @@ use policy_state::primitives::{Address, VenueRef};
 use policy_state::{DataSource, EvalContext, PendingChange, StateDelta, WalletState};
 
 use crate::action::amm::{
-    CancelIntentOrderAction, IntentOrderKind, IntentVenue, SignIntentOrderAction,
+    CancelIntentOrderAction, IntentOrderKind, IntentVenue, SettleIntentOrderAction,
+    SignIntentOrderAction,
 };
 use crate::apply::Reducer;
 use crate::error::ReducerResult;
@@ -165,6 +166,16 @@ impl Reducer for SignIntentOrderAction {
             pending: Box::new(pending),
         });
         Ok(delta)
+    }
+}
+
+impl Reducer for SettleIntentOrderAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        // Settlement can be submitted by a third-party filler, while the order's
+        // swapper may be a different wallet. The semantic action is policy
+        // visible, but wallet-state balance deltas require execution traces or
+        // venue callback simulation. Do not invent a submitter debit here.
+        Ok(StateDelta::new())
     }
 }
 

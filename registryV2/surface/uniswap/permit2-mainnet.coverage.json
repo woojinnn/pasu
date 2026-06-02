@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
   "snapshot": "permit2-mainnet.abi.json",
-  "note": "Permit2 surface triage. Permission grant/revoke functions are COVER. Spender/relayer execution functions are EXCLUDE because the protected signer risk is at approve/permit/off-chain typed-data time; missing generic PermitTransferFrom typed-data ActionBody is tracked in registry-v2 progress notes.",
+  "note": "Permit2 mainnet surface triage. Permission grant/revoke functions are COVER. Direct AllowanceTransfer transferFrom execution is covered as user-visible fund movement. SignatureTransfer typed-data signatures and relayer execution are both modeled: sign-time as token.permit2_sign_transfer, execution-time as token.permit2_transfer_from.",
   "functions": {
     "0x87517c45": {
       "name": "approve",
@@ -37,33 +37,33 @@
     },
     "0x30f28b7a": {
       "name": "permitTransferFrom",
-      "decision": "exclude",
-      "reason": "relayer/spender execution of a Permit2 signature-transfer; signer risk belongs to off-chain PermitTransferFrom typed-data, which needs a separate ActionBody model"
+      "decision": "cover",
+      "reason": "SignatureTransfer single execution; manifest uniswap/permit2/permitTransferFrom emits owner-aware token.permit2_transfer_from"
     },
     "0xedd9444b": {
       "name": "permitTransferFrom",
-      "decision": "exclude",
-      "reason": "relayer/spender execution of a batch Permit2 signature-transfer; signer risk belongs to off-chain PermitBatchTransferFrom typed-data, which needs a separate ActionBody model"
+      "decision": "cover",
+      "reason": "SignatureTransfer batch execution; manifest uniswap/permit2/permitTransferFromBatch emits per-item owner-aware token.permit2_transfer_from"
     },
     "0x137c29fe": {
       "name": "permitWitnessTransferFrom",
-      "decision": "exclude",
-      "reason": "relayer/spender execution path; UniswapX PermitWitnessTransferFrom typed-data manifests cover the pre-sign risk"
+      "decision": "cover",
+      "reason": "SignatureTransfer witness execution; manifest uniswap/permit2/permitWitnessTransferFrom emits owner-aware token.permit2_transfer_from"
     },
     "0xfe8ec1a7": {
       "name": "permitWitnessTransferFrom",
-      "decision": "exclude",
-      "reason": "relayer/spender batch execution path; UniswapX PermitWitnessTransferFrom typed-data manifests cover the pre-sign risk"
+      "decision": "cover",
+      "reason": "SignatureTransfer witness batch execution; manifest uniswap/permit2/permitWitnessTransferFromBatch emits per-item owner-aware token.permit2_transfer_from"
     },
     "0x36c78516": {
       "name": "transferFrom",
-      "decision": "exclude",
-      "reason": "spender execution using already-granted Permit2 allowance; owner risk is captured at approve/permit signing time"
+      "decision": "cover",
+      "reason": "AllowanceTransfer direct fund movement: surfaces moved token, recipient, and amount"
     },
     "0x0d58b1db": {
       "name": "transferFrom",
-      "decision": "exclude",
-      "reason": "spender execution using already-granted Permit2 allowance; owner risk is captured at approve/permit signing time"
+      "decision": "cover",
+      "reason": "AllowanceTransfer direct batch fund movement: surfaces each moved token, recipient, and amount"
     }
   },
   "signed_structs": {
@@ -74,6 +74,14 @@
     "PermitBatch": {
       "decision": "cover",
       "reason": "off-chain Permit2 batch allowance signature; manifest uniswap/permit2/permitBatch"
+    },
+    "PermitTransferFrom": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 SignatureTransfer single signature; manifest uniswap/permit2/permitTransferFrom-sign"
+    },
+    "PermitBatchTransferFrom": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 SignatureTransfer batch signature; manifest uniswap/permit2/permitBatchTransferFrom-sign"
     },
     "PermitWitnessTransferFrom": {
       "decision": "cover",

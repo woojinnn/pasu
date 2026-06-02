@@ -27,7 +27,8 @@ use policy_state::{DataSource, EvalContext, PendingChange, StateDelta, TokenKey,
 use crate::action::token::{
     Erc20ApproveAction, Erc20PermitAction, Erc20TransferAction, NftApproveAction,
     NftSetForAllAction, NftTransferAction, Permit2ApproveAction, Permit2SignAction,
-    RevokeApprovalAction, RevokeScope, TokenAction,
+    Permit2SignTransferAction, Permit2TransferFromAction, RevokeApprovalAction, RevokeScope,
+    TokenAction,
 };
 use crate::apply::Reducer;
 use crate::error::{ReducerError, ReducerResult};
@@ -56,6 +57,16 @@ fn pending_id_for_permit2(token_addr_hex: &str, spender_hex: &str, word: &str, b
     format!("permit2:{token_addr_hex}:{spender_hex}:{word}:{bit}")
 }
 
+fn pending_id_for_permit2_transfer(
+    token_addr_hex: &str,
+    owner_hex: &str,
+    spender_hex: &str,
+    word: &str,
+    bit: u8,
+) -> String {
+    format!("permit2-transfer:{token_addr_hex}:{owner_hex}:{spender_hex}:{word}:{bit}")
+}
+
 // ---------------------------------------------------------------------------
 // Dispatcher.
 // ---------------------------------------------------------------------------
@@ -67,6 +78,8 @@ impl Reducer for TokenAction {
             Self::Erc20Permit(a) => a.apply(state, ctx),
             Self::Permit2Approve(a) => a.apply(state, ctx),
             Self::Permit2SignAllowance(a) => a.apply(state, ctx),
+            Self::Permit2SignTransfer(a) => a.apply(state, ctx),
+            Self::Permit2TransferFrom(a) => a.apply(state, ctx),
             Self::Erc20Transfer(a) => a.apply(state, ctx),
             Self::NftApprove(a) => a.apply(state, ctx),
             Self::NftSetApprovalForAll(a) => a.apply(state, ctx),
@@ -240,6 +253,101 @@ impl Reducer for Permit2SignAction {
             pending: Box::new(pending),
         });
 
+        Ok(delta)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Permit2 SignatureTransfer off-chain sig.
+// ---------------------------------------------------------------------------
+
+impl Reducer for Permit2SignTransferAction {
+    fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        let mut delta = StateDelta::new();
+
+        if self.owner != state.wallet_id.address {
+            return Ok(delta);
+        }
+
+        let token_addr = match &self.token.key {
+            TokenKey::Erc20 { address, .. } => *address,
+            _ => {
+                return Err(ReducerError::Invariant(
+                    "Permit2SignTransferAction.token must be Erc20".into(),
+                ));
+            }
+        };
+
+        let (word, bit) = self.nonce.value;
+        let id = pending_id_for_permit2_transfer(
+            &format!("{token_addr:#x}"),
+            &format!("{owner:#x}", owner = self.owner),
+            &format!("{spender:#x}", spender = self.spender),
+            &format!("{word}"),
+            bit,
+        );
+
+        let pending = PendingTx {
+            id,
+            kind: PendingKind::SignedPermit2Transfer {
+                token: self.token.clone(),
+                owner: self.owner,
+                spender: self.spender,
+                amount: self.amount,
+                expires_at: self.sig_deadline,
+                nonce: (word, bit),
+                witness_type: self.witness_type.clone(),
+            },
+            commitment: AssetCommitment::PermitCap {
+                token: self.token.clone(),
+                spender: self.spender,
+                max_out: self.amount,
+            },
+            fill_effect: Box::new(StateDelta::new()),
+            lifecycle: PendingLifecycle {
+                status: PendingStatus::Active,
+                valid_until: Some(self.sig_deadline),
+                nonce: Some(NonceKey::Permit2 { word, bit }),
+                on_chain_tx: None,
+            },
+            sync: pending_user_source(),
+            signed_at: ctx.now,
+            signature_payload: Vec::new(),
+        };
+
+        delta.pending_changes.push(PendingChange::Add {
+            pending: Box::new(pending),
+        });
+
+        Ok(delta)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Permit2 SignatureTransfer execution.
+// ---------------------------------------------------------------------------
+
+impl Reducer for Permit2TransferFromAction {
+    fn apply(&self, state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        let mut delta = StateDelta::new();
+
+        if self.owner != state.wallet_id.address {
+            return Ok(delta);
+        }
+
+        if !matches!(self.token.key, TokenKey::Erc20 { .. }) {
+            return Err(ReducerError::Invariant(
+                "Permit2TransferFromAction.token must be Erc20".into(),
+            ));
+        }
+
+        helpers::balance::transfer(
+            state,
+            &mut delta,
+            &self.token.key,
+            self.recipient,
+            self.amount,
+        )?;
         Ok(delta)
     }
 }
@@ -693,6 +801,97 @@ mod tests {
             }
             other => panic!("expected NonceKey::Permit2, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn permit2_sign_transfer_emits_pending_spend_cap_for_wallet_owner() {
+        let state = empty_state();
+        let action = Permit2SignTransferAction {
+            token: usdc_ref(),
+            owner: user(),
+            spender: spender_addr(),
+            amount: U256::from(4_000_000u64),
+            sig_deadline: later(),
+            nonce: live_nonce_pair(U256::from(9u64), 12),
+            witness_type: Some("PermitTransferFrom".into()),
+        };
+
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert_eq!(delta.pending_changes.len(), 1);
+        let PendingChange::Add { pending } = &delta.pending_changes[0] else {
+            panic!("expected PendingChange::Add");
+        };
+        match &pending.kind {
+            PendingKind::SignedPermit2Transfer {
+                token,
+                owner,
+                spender,
+                amount,
+                expires_at,
+                nonce,
+                witness_type,
+            } => {
+                assert_eq!(token, &usdc_ref());
+                assert_eq!(*owner, user());
+                assert_eq!(*spender, spender_addr());
+                assert_eq!(*amount, U256::from(4_000_000u64));
+                assert_eq!(*expires_at, later());
+                assert_eq!(*nonce, (U256::from(9u64), 12));
+                assert_eq!(witness_type.as_deref(), Some("PermitTransferFrom"));
+            }
+            other => panic!("expected SignedPermit2Transfer, got {other:?}"),
+        }
+        match &pending.commitment {
+            AssetCommitment::PermitCap {
+                token,
+                spender,
+                max_out,
+            } => {
+                assert_eq!(token, &usdc_ref());
+                assert_eq!(*spender, spender_addr());
+                assert_eq!(*max_out, U256::from(4_000_000u64));
+            }
+            other => panic!("expected PermitCap, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn permit2_transfer_from_debits_only_wallet_owner() {
+        let mut state = empty_state();
+        let holding = make_usdc_holding(10_000_000);
+        state.tokens.insert(holding.key.clone(), holding);
+
+        let recipient = Address::from_str("0x000000000000000000000000000000000000beef").unwrap();
+        let action = Permit2TransferFromAction {
+            token: usdc_ref(),
+            owner: user(),
+            spender: spender_addr(),
+            recipient,
+            amount: U256::from(3_000_000u64),
+            permitted_amount: U256::from(4_000_000u64),
+            sig_deadline: later(),
+            nonce: live_nonce_pair(U256::from(9u64), 12),
+            witness_type: None,
+        };
+
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert_eq!(delta.token_changes.len(), 1);
+        let TokenChange::BalanceDelta { key, delta: d } = &delta.token_changes[0] else {
+            panic!("expected BalanceDelta");
+        };
+        assert_eq!(key, &usdc_ref().key);
+        assert_eq!(
+            *d,
+            -policy_state::primitives::SignedI256::try_from(3_000_000_i64).unwrap()
+        );
+
+        let other_owner = Address::from_str("0x0000000000000000000000000000000000000bad").unwrap();
+        let other_owner_action = Permit2TransferFromAction {
+            owner: other_owner,
+            ..action
+        };
+        let delta = other_owner_action.apply(&state, &ctx()).unwrap();
+        assert!(delta.token_changes.is_empty());
     }
 
     // ---------- Erc20 transfer ----------

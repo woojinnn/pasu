@@ -31,12 +31,19 @@ ScopeBall = EVM 권한 위임을 **서명 직전**에 정적 분석하는 브라
 - **단 하나의 경로: V3 ActionBody 경로.** 진입 = WASM export `declarative_route_request_v3_json`. 산출 = `Vec<ActionBody>`, 이후 policy verdict path 로 전달된다.
 - 새 프로토콜의 진입점 함수에 대한 **어댑터(Tier A manifest) 전수 작성**, 필요 시 **generic 엔진 확장(V3 Tier B)** 과 **ActionBody 스키마 확장(Tier 3)**.
 - **실거래 기반 디코드 정확성 검증** — 합성(synthetic) + 실거래(Etherscan/Dune) 두 입력.
+- **완료 claim 의 정확한 scope** — `primary-chain wallet-facing`, `primary-chain full-surface`,
+  `full factory-child universe`, `blocked/deferred` 중 무엇인지 명시한다. 그냥
+  "프로토콜 온보딩 완료"라고 쓰지 않는다.
 
 ### 이 매뉴얼이 다루지 **않는** 것 (명시적 비범위)
 - **레거시 V1 ActionEnvelope 경로** — `feat(v2)! retire legacy v1 ActionEnvelope path` (commit `4e60392`) 로 **이미 제거됨**. `mapper::DeclarativeMapper`, `single_emit.rs`, `opcode_stream.rs`, `eval.rs`, `enum_tagged.rs`, `multicall.rs`, `array_emit.rs`, `builtin_fn.rs` 는 더 이상 존재하지 않는다. declarative 레이어는 **이제 V3-only by construction** 이다 — V1/V3 혼동을 할 필요가 없다.
 - **`live_inputs` *값*의 실제 RPC 채움** — live_field 의 **값**은 host RPC 서버가 production 에서 채운다(테스트는 **default 스텁** — 빈 값 / chain별 정적 주입만). 이 매뉴얼의 검증은 calldata→ActionBody **정적 디코드**만 본다.
   - ⚠️ **그러나 "이 action 이 *어떤* live_field 를 가지는가" 는 비범위가 아니다 — P1 author 의 설계 결정(§4d ENRICHMENT)이다.** 값 채움(host·런타임)과 필드 설계(author·작성 시점)는 별개다. 디코드된 필드가 추상/불투명 단위(shares, 내부 index, wrapped 수량)면 환산 live_field 없이는 디코드가 성공해도 사용자는 의미를 못 본다. "테스트가 빈 스텁을 쓴다" ≠ "manifest 의 `live_inputs` 를 비워도 된다".
 - **Cedar 정책 의미 자체 / 시뮬레이션 / SW 메시징 UX** — 디코드 하류. 단, 새 Tier3 action/domain/live field 가 생기면 `lowering_v2`, per-policy schema, Cedar action/resource schema 등록은 온보딩 범위다. 그렇지 않으면 production verdict path 에서 `MissingAction`/schema mismatch 로 멈춘다.
+- **멀티체인 확장 완료의 자동 포함** — primary-chain onboarding 은 multichain support 를 의미하지 않는다.
+  같은 ABI/컨트랙트라도 chain 별 address/source/proxy/native-token 차이는 별도
+  expansion pass 에서 검증한다. 현재 run 에 포함하지 않으면 evidence 에
+  `multichain expansion deferred` 로 남긴다.
 
 ### 핵심 원칙 4가지 (먼저 내면화)
 1. **테스트는 게이트가 아니라 루프 엔진**이다. manifest 0개로 돌리면 전부 `uncovered` → 그게 곧 "무엇을 작성할지" 지도(=discovery). 작성 후 돌리면 정확성 검증(=accuracy). **같은 하니스, 같은 실거래 데이터.**
@@ -758,7 +765,29 @@ target/debug/v3-harness corpus --root /tmp/v3probe        # 격리 probe
 3. recency-only bias 를 줄이려면 `sort=desc` 한 번으로 끝내지 말고, 필요한 경우 `startblock/endblock` 을 여러 window 로 나눈다.
 4. raw export 는 `/tmp` 또는 `logs/<protocol>/raw-*` scratch 로만 둔다. committed corpus 는 dedup representative + failure/excluded/high-value pass 만.
 5. tx pull target address count 를 기록하고, 0이면 성공으로 치지 않는다. `_deployments.json`/surface schema mismatch, wrong status field, chain filter, or empty universe bug 로 보고 수정한다.
-6. evidence ledger 에 `api_calls_used`, `raw_txs_seen`, `unique_selectors_seen`, `covered_selectors_with_real_tx`, `low_traffic_or_absent_selectors`, representative tx hashes/corpus path 를 기록한다. 이 행이 비어 있으면 P2 real-tx 는 미완이다.
+6. router/manager/aggregator-heavy protocol 은 **wallet-facing target sweep** 을 별도로 돈다.
+   canonical chain 의 router, manager, permission/signature, settlement/reactor 주소를 target file 로
+   고정하고 target 별 최근 tx 를 stratified 로 가져온다. 대표 프로토콜의 기본값은
+   target 별 약 5,000 tx 이며, traffic 이 낮으면 lower bound 와 이유를 evidence 에 쓴다.
+   `etherscan-bulk-sweep.mjs` 사용 시 `--surface-root registryV2/surface/<protocol>` 를 명시해
+   unmatched selector disposition 이 onboarding evidence 폴더가 아니라 실제 surface 기준으로 분류되게 한다.
+7. evidence ledger 에 `api_calls_used`, `raw_txs_seen`, `unique_selectors_seen`, `covered_selectors_with_real_tx`,
+   `low_traffic_or_absent_selectors`, wallet-facing target count, actionable/non-actionable unmatched disposition,
+   representative tx hashes/corpus path 를 기록한다. 이 행이 비어 있으면 P2 real-tx 는 미완이다.
+
+#### EIP-712 typed-data signing
+
+Typed-data signing 은 Etherscan txlist 로 검증되지 않는다. 지갑 서명 요청은
+off-chain payload 이고 tx `input` 에 남지 않기 때문이다. 따라서 typed-data manifest 는
+별도 signed-message corpus 가 필요하다.
+
+필수 규칙:
+1. 모든 in-scope typed-data manifest 는 `typed_data` corpus entry 또는 field-level golden 을 가진다.
+2. `verifying_contract`, `primary_type`, `domain_name`, 그리고 있으면 `witness_type` 을 명시한다.
+3. `route_typed_data` 경로를 타게 `v3-harness corpus --filter <protocol> --require-expect-body` 로 검증한다.
+4. `expect_body` 로 semantic-critical field 를 pin 한다. domain/action 만 맞으면 parsing complete 가 아니다.
+5. off-chain signing 과 on-chain settlement 가 둘 다 있는 프로토콜은 둘을 별도 surface 로 테스트한다.
+   예: order signing typed-data 와 settlement/reactor `execute` calldata 는 같은 프로토콜이어도 서로 다른 evidence row 다.
 
 #### Dune (핀포인트 보완 — 조건부)
 selector 필터(`WHERE ...`)·decoded 테이블·cross-chain·빈도 통계용. credit 기반(community plan **2,500 credit/월**; `getUsage`(또는 MCP `mcp__dune__getUsage`)로 확인 — billing period 월간, **일일 캡 아님**).
@@ -828,8 +857,9 @@ N tx (selector 20종):
 | 소스 | 하한 (lower bound) | stop 조건 | 디테일 |
 |---|---|---|---|
 | **A 합성** | 모든 COVER callkey 가 machine fuzz(4 전략) + protocol-agnostic edge menu 적용; **permission·value-bearing selector 마다 hand-edge ≥1** (infinite-approval / zero-amount / empty / truncated calldata) | callkey별 shape 포화 | seeded fuzz(`--seed`, 재현) + A-2 `_edge-cases/corpus.json` 손수(§5a P2 synthetic) |
-| **B Etherscan** (bulk 주력) | free-지원 체인(mainnet 등): **모든 COVER selector 가 real-tx decoded sample ≥1** (저트래픽/부재면 corpus `_note` 로 "low-traffic/absent" 명기) · 기본 target **10,000 tx/protocol** stratified | shape 포화 **또는** 10k tx 도달 | txlist 현재 최대 10k tx/API call(Free tier 2026-07-01 이후 1k 예정 — docs 재확인) · adapter-blind · **selector 전수 + block-range 분산**(recency-only 지양) · api_calls_used 로그 |
+| **B Etherscan** (bulk 주력) | free-지원 체인(mainnet 등): **모든 COVER selector 가 real-tx decoded sample ≥1** (저트래픽/부재면 corpus `_note` 로 "low-traffic/absent" 명기) · 기본 target **10,000 tx/protocol** stratified · router/aggregator-heavy protocol 은 wallet-facing target 별 ~5,000 tx sweep 추가 | shape 포화 **또는** 10k protocol floor / documented per-target floor 도달 | txlist 현재 최대 10k tx/API call(Free tier 2026-07-01 이후 1k 예정 — docs 재확인) · adapter-blind · **selector 전수 + block-range 분산**(recency-only 지양) · api_calls_used 로그 · unmatched 는 actionable/non-actionable 으로 disposition |
 | **C Dune** (조건부) | **필수 조건**: 프로토콜이 free-Etherscan 미지원 체인(Base/OP)에 배포 **또는** cross-chain/decoded-stats 필요 → 그 chain/selector 의 real-tx ≥1. **그 외엔 optional**(skip 가능, Etherscan 으로 충분) | 해당 chain/selector real-tx 확보, 또는 calibration 이 bulk 가능 입증 | MCP calibration 먼저: usage baseline/delta + LIMIT 100/1000/5000 probe + partition WHERE. bulk 는 안전 확인 후 |
+| **D typed-data** | 모든 in-scope EIP-712 `primaryType` / `witnessType` 조합에 typed-data corpus or golden ≥1 | all typed-data rows pass with `expect_body` | Etherscan 으로 대체 불가. SDK/official type definitions/hand fixtures 를 사용하고 `route_typed_data` 로 검증 |
 
 - **B vs C 분담**: 볼륨·기본 10k 는 **B**(무료, credit 무관). **C** 는 B 가 *못 하는 갭*(Base/OP·cross-chain·decoded)만 — credit 은 충분하나 partition 규율 필수(§5b).
 - compute/fetch/authoring 다 N 에 거의 무관 → 위 floor 넘겨 올려도 되나, **shape 포화면 marginal 가치 0**(더 돌리면 compute/credit 낭비).
@@ -855,8 +885,13 @@ N tx (selector 20종):
     "tx_hash": "0x..", "chain_id": 1,
     "rpc": { "params": [ { "to": "0x..", "value": "0", "data": "0x.." } ] } },
   // 또는 EIP-712:
-  { "expect": "excluded", "chain_id": 1,
-    "typed_data": { "verifying_contract": "0x..", "primary_type": "PermitSingle", "domain_name": "Permit2", "message": { } } }
+  { "intent": "permit/sign order", "expect": "pass", "expect_domain": "token",
+    "chain_id": 1,
+    "typed_data": { "verifying_contract": "0x..", "primary_type": "PermitSingle",
+      "witness_type": "OrderWitness", "domain_name": "Permit2", "message": { } },
+    "expect_body": [
+      { "path": "$.data.actions[0].body.spender", "op": "hex_eq", "value": "0x.." }
+    ] }
 ] }
 ```
 - `expect`: `"pass"`(ok + expect_domain 일치 + expect_body 일치) / `"excluded"`(ok + domain=unknown, off-chain 정상) / `"error"`(Fail|Soft + expect_error 일치).
@@ -973,6 +1008,8 @@ token · amm · lending · airdrop · launchpad · perp · liquid_staking · per
 
 **주소 유니버스 (pool/factory/vault-heavy P0):**
 1. 유저가 직접 호출하는 factory/pool/vault child 주소 universe 를 닫았나? `surface/<protocol>/_address_universe.json` 또는 `_pool_universe.json` 에 nonzero source count 와 모든 candidate 의 `cover|exclude|defer:reason` 이 있고, **`npm run check:universe -- --protocol <protocol>` 가 PASS** 인가? P4 에서는 `--require-cover-linkage` 로 모든 `cover` 주소가 generated callkey 를 갖는지도 확인했나?
+   - wallet-facing only run 이라면 direct child calls 를 full-universe follow-up 으로 명시 defer 했나?
+   - router tx 의 pool metadata live lookup 을 direct child callkey coverage 로 착각하지 않았나?
 
 **가로 (surface — P0):**
 2. hub 의 **external state-changing 함수를 전수**했나? (block explorer Write 탭 / interface 전체 — "눈에 띄는 것만" 아님)
@@ -985,6 +1022,12 @@ token · amm · lending · airdrop · launchpad · perp · liquid_staking · per
 
 **세로 (enrichment — P1, §4d):**
 7. **각 COVER action 의 디코드 필드가 user-legible 한가?** 추상·불투명·간접 단위(shares / 내부 index / wrapped·rebasing 수량 / rate-dependent)를 가진 필드마다 (a) 사용자 단위로 바꾸는 live_field 를 달았거나, (b) **manifest 에 한 줄 사유로 defer 를 명시**했나? 무근거 빈 `live_inputs: {}` = No. ⚠️ 이 질문은 객관 오라클이 없어 **build 로 강제 못 한다**(§8.4) — author 가 의식적으로 통과시켜야 하는 prose gate. "게이트 다 green = 완료"의 함정이 여기 산다.
+
+**완료 claim (P4):**
+8. 최종 문장에 completion label 을 붙였나? 예: `primary-chain wallet-facing complete`,
+   `primary-chain full-surface complete`, `full factory-child universe complete`,
+   또는 `blocked/deferred`. multichain expansion 이 current run 범위가 아니면
+   `multichain expansion deferred` 를 함께 적었나?
 
 > **반례 세 개.** 가로: §9 1차에 supply/withdraw/borrow/repay 4 만 보고 `setAuthorization`(권한 위임)을 놓침 → 이제 4(`check:surface`)가 `I1 un-triaged selector 0xeecea000` 으로 build 실패(실측). 토큰: ZRO ERC20 이 `tokens/` 에 없어 표준 ERC20 transfer/approve 가 `no_declarative_v3_mapper` 로 빠짐 → token JSON 추가 후 auto-enumerate 로 해결. 세로: §9.9 Lido 1차에 6 action 전부 `live_inputs: {}` 로 착지 — 게이트는 다 green 인데 `transferShares` 의 `shares`(추상 단위)가 사용자에게 안 읽혀 **피드백으로만** 잡힘. 6 이 있었으면 author 가 작성 시점에 잡았다.
 

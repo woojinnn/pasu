@@ -1,0 +1,60 @@
+{
+  "contract": "UniswapV2Pair",
+  "chainId": 42161,
+  "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+  "snapshot": "v2-pair-samples-arbitrum.abi.json",
+  "note": "Representative direct V2 pair sample promoted from Track B after Etherscan token enrichment. LP ERC20 moves are covered by standard ERC20 manifests generated from token inventory; direct pair entrypoints route explicit Unknown/fail-closed pending full semantic AMM modeling.",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "cover",
+      "reason": "LP token ERC20 approval; covered through generated standard ERC20 token inventory callkeys"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "cover",
+      "reason": "LP token ERC20 transfer; covered through generated standard ERC20 token inventory callkeys"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "cover",
+      "reason": "LP token ERC20 delegated transfer; covered through generated standard ERC20 token inventory callkeys"
+    },
+    "0x485cc955": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "factory-only pair initializer; deployed pair samples are already initialized and this is not a wallet-facing action"
+    },
+    "0xd505accf": {
+      "name": "permit",
+      "decision": "cover",
+      "reason": "LP token EIP-2612 permit approval; covered by direct V2 pair permit manifest"
+    },
+    "0x6a627842": {
+      "name": "mint",
+      "decision": "cover",
+      "reason": "direct pair liquidity mint entrypoint; route explicit Unknown/fail-closed until full pair semantics are modeled"
+    },
+    "0x89afcb44": {
+      "name": "burn",
+      "decision": "cover",
+      "reason": "direct pair liquidity burn entrypoint; route explicit Unknown/fail-closed until full pair semantics are modeled"
+    },
+    "0x022c0d9f": {
+      "name": "swap",
+      "decision": "cover",
+      "reason": "direct pair swap entrypoint; route explicit Unknown/fail-closed until full pair semantics are modeled"
+    },
+    "0xbc25cf77": {
+      "name": "skim",
+      "decision": "cover",
+      "reason": "direct pair skim entrypoint can move residual token balances; route explicit Unknown/fail-closed until full pair semantics are modeled"
+    },
+    "0xfff6cae9": {
+      "name": "sync",
+      "decision": "cover",
+      "reason": "direct pair reserve sync entrypoint; route explicit Unknown/fail-closed instead of registry miss"
+    }
+  },
+  "signed_structs": {}
+}

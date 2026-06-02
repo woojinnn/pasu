@@ -1,0 +1,100 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v2-pair/permit@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Representative Uniswap V2 LP token permit(address,address,uint256,uint256,uint8,bytes32,bytes32) coverage for Etherscan-enriched Track B sample pairs. The onchain calldata path carries a uint256 deadline, normalized by the mapper into ActionBody Time.",
+  "match": {
+    "selector": "0xd505accf",
+    "chain_to_addresses_source": "uniswap:v2_pair_candidates",
+    "chain_ids": [
+      1,
+      42161
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "permit",
+    "abi": {
+      "name": "permit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_permit",
+        "erc20_permit": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "spender": "$args.spender",
+          "amount": "$args.value",
+          "deadline": "$args.deadline"
+        }
+      }
+    },
+    "live_inputs": {
+      "nonce": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$tx.to",
+          "function": "nonces(address)",
+          "decoder_id": "erc20_permit_nonce"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v2_pair_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and appends a per-pair id suffix"
+  }
+}

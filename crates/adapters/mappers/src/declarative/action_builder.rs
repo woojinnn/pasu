@@ -77,6 +77,26 @@ pub enum V3BuildError {
     /// `emit.array_source` points at the wrong field.
     #[error("array_emit array_source did not resolve to an array: {0}")]
     ArraySourceNotArray(String),
+    /// `array_emit.parallel_sources.<name>` resolved to a non-array JSON value.
+    #[error("array_emit parallel_sources.{name} did not resolve to an array: {placeholder}")]
+    ParallelSourceNotArray {
+        /// Parallel source key.
+        name: String,
+        /// Placeholder that was resolved.
+        placeholder: String,
+    },
+    /// A parallel source length differed from `array_source` length.
+    #[error(
+        "array_emit parallel_sources.{name} length mismatch: array_source has {array_len}, parallel source has {parallel_len}"
+    )]
+    ParallelSourceLengthMismatch {
+        /// Parallel source key.
+        name: String,
+        /// Primary array length.
+        array_len: usize,
+        /// Parallel array length.
+        parallel_len: usize,
+    },
     /// A discriminant value-map (`{ $match, $cases, $default? }`) resolved its
     /// `$match` to a key that is absent from `$cases` and the map declares no
     /// `$default`. Fail-loud — the manifest author missed an on-chain enum
@@ -613,6 +633,7 @@ pub fn build_action_body(
                             action.as_deref(),
                             field_name,
                             src_payload,
+                            None,
                         );
                         live_obj.insert(field_name.clone(), wrapped);
                     }
@@ -620,12 +641,14 @@ pub fn build_action_body(
                 }
                 LiveInputLayout::Inline => {
                     for (field_name, src_payload) in map {
+                        let default_override = flat.get(field_name);
                         let wrapped = wrap_live_field(
                             ctx,
                             domain.as_deref(),
                             action.as_deref(),
                             field_name,
                             src_payload,
+                            default_override,
                         );
                         flat.insert(field_name.clone(), wrapped);
                     }
@@ -634,10 +657,32 @@ pub fn build_action_body(
         }
     }
 
+    coerce_time_like_fields(&mut flat);
+
     // Stage 4 — typed decode.
     Ok(serde_json::from_value::<ActionBody>(JsonValue::Object(
         flat,
     ))?)
+}
+
+fn coerce_time_like_fields(flat: &mut JsonMap<String, JsonValue>) {
+    for field in ["deadline", "expires_at", "sig_deadline", "valid_until"] {
+        if let Some(value) = flat.get_mut(field) {
+            coerce_decimal_string_to_u64(value);
+        }
+    }
+}
+
+fn coerce_decimal_string_to_u64(value: &mut JsonValue) {
+    let JsonValue::String(s) = value else {
+        return;
+    };
+    let trimmed = s.trim();
+    if trimmed.is_empty() || !trimmed.bytes().all(|b| b.is_ascii_digit()) {
+        return;
+    }
+    let parsed = trimmed.parse::<u64>().unwrap_or(u64::MAX);
+    *value = JsonValue::Number(parsed.into());
 }
 
 /// Strip the `<domain>.<action>.live_inputs` sub-object (if any) from a body
@@ -690,9 +735,11 @@ enum LiveInputLayout {
 /// `deny_unknown_fields`-free variants.
 fn live_input_layout(domain: Option<&str>, action: Option<&str>) -> LiveInputLayout {
     match (domain, action) {
-        (Some("token"), Some("erc20_permit")) | (Some("token"), Some("permit2_sign_allowance")) => {
-            LiveInputLayout::Inline
-        }
+        (Some("token"), Some("erc20_permit"))
+        | (
+            Some("token"),
+            Some("permit2_sign_allowance" | "permit2_sign_transfer" | "permit2_transfer_from"),
+        ) => LiveInputLayout::Inline,
         _ => LiveInputLayout::Nested,
     }
 }
@@ -802,11 +849,12 @@ fn wrap_live_field(
     action: Option<&str>,
     field_name: &str,
     src_payload: &JsonValue,
+    default_override: Option<&JsonValue>,
 ) -> JsonValue {
     let mut out = JsonMap::new();
     out.insert(
         "value".into(),
-        live_input_default(domain, action, field_name),
+        live_input_default_with_override(domain, action, field_name, default_override),
     );
     if let Some(obj) = src_payload.as_object() {
         if let Some(src) = obj.get("source") {
@@ -825,6 +873,41 @@ fn wrap_live_field(
         JsonValue::Number(ctx.submitted_at.as_unix().into()),
     );
     JsonValue::Object(out)
+}
+
+fn live_input_default_with_override(
+    domain: Option<&str>,
+    action: Option<&str>,
+    field_name: &str,
+    default_override: Option<&JsonValue>,
+) -> JsonValue {
+    let Some(value) = default_override else {
+        return live_input_default(domain, action, field_name);
+    };
+    match (domain, action, field_name) {
+        (
+            Some("token"),
+            Some("permit2_sign_allowance" | "permit2_sign_transfer" | "permit2_transfer_from"),
+            "nonce",
+        ) => permit2_nonce_tuple_default(value)
+            .unwrap_or_else(|| live_input_default(domain, action, field_name)),
+        _ => value.clone(),
+    }
+}
+
+fn permit2_nonce_tuple_default(value: &JsonValue) -> Option<JsonValue> {
+    let nonce = u256_from_json(value)?;
+    let word = nonce / U256::from(256u64);
+    let bit = nonce.to_be_bytes::<32>()[31];
+    Some(serde_json::json!([word.to_string(), bit]))
+}
+
+fn u256_from_json(value: &JsonValue) -> Option<U256> {
+    match value {
+        JsonValue::String(s) => U256::from_str_radix(s, 10).ok(),
+        JsonValue::Number(n) => U256::from_str_radix(&n.to_string(), 10).ok(),
+        _ => None,
+    }
 }
 
 /// Deserializable zero skeleton for `policy_transition::action::lending::ReserveState`.
@@ -943,7 +1026,11 @@ fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -
         // -------- Token --------
         (Some("token"), Some("erc20_permit"), "nonce")
         | (Some("token"), Some("permit2_approve"), "nonce") => JsonValue::String("0".into()),
-        (Some("token"), Some("permit2_sign_allowance"), "nonce") => {
+        (
+            Some("token"),
+            Some("permit2_sign_allowance" | "permit2_sign_transfer" | "permit2_transfer_from"),
+            "nonce",
+        ) => {
             // `LiveField<(U256, u8)>` — JSON encodes a 2-tuple as a 2-element
             // array. Default: bitmap word 0, bit 0.
             serde_json::json!(["0", 0])
@@ -1122,6 +1209,11 @@ pub fn build_multicall_from_opcode_stream(
 /// resolve to a JSON array. Each element becomes the `inputs` of a fresh
 /// child [`V3MapContext`], and `per_item_body` is built against it — so the
 /// per-item template references the element via `$inputs.<field>`.
+/// If `parallel_sources` is present, each named placeholder must resolve to an
+/// array of the same length. The per-item `$inputs` becomes an object:
+/// `{ "element": <array_source[i]>, "<name>": <parallel_sources[name][i]> }`.
+/// This models ABI shapes such as Permit2 batch signature transfer where
+/// `permit.permitted[]` and `transferDetails[]` advance in lock-step.
 ///
 /// This REUSES the exact `$inputs` mechanism
 /// [`build_multicall_from_opcode_stream`] uses: per iteration we clone the
@@ -1140,6 +1232,7 @@ pub fn build_multicall_from_opcode_stream(
 pub fn build_array_emit(
     ctx: &V3MapContext<'_>,
     array_source: &str,
+    parallel_sources: Option<&JsonValue>,
     per_item_body: &JsonValue,
     per_item_live_inputs: Option<&JsonValue>,
 ) -> Result<ActionBody, V3BuildError> {
@@ -1150,8 +1243,52 @@ pub fn build_array_emit(
         .as_array()
         .ok_or_else(|| V3BuildError::ArraySourceNotArray(array_source.to_owned()))?;
 
+    let mut parallels: Vec<(String, Vec<JsonValue>)> = Vec::new();
+    if let Some(parallel_sources) = parallel_sources {
+        let sources = parallel_sources.as_object().ok_or_else(|| {
+            V3BuildError::UnresolvedPlaceholder(
+                "array_emit.parallel_sources must be an object".into(),
+            )
+        })?;
+        for (name, source_value) in sources {
+            let source = source_value.as_str().ok_or_else(|| {
+                V3BuildError::UnresolvedPlaceholder(format!(
+                    "array_emit.parallel_sources.{name} must be a placeholder string"
+                ))
+            })?;
+            let parallel_val = resolve_placeholder(ctx, source)?;
+            let parallel_arr =
+                parallel_val
+                    .as_array()
+                    .ok_or_else(|| V3BuildError::ParallelSourceNotArray {
+                        name: name.clone(),
+                        placeholder: source.to_owned(),
+                    })?;
+            if parallel_arr.len() != arr.len() {
+                return Err(V3BuildError::ParallelSourceLengthMismatch {
+                    name: name.clone(),
+                    array_len: arr.len(),
+                    parallel_len: parallel_arr.len(),
+                });
+            }
+            parallels.push((name.clone(), parallel_arr.clone()));
+        }
+    }
+
     let mut actions = Vec::with_capacity(arr.len());
-    for element in arr {
+    for (index, element) in arr.iter().enumerate() {
+        let child_inputs;
+        let inputs = if parallels.is_empty() {
+            element
+        } else {
+            let mut object = JsonMap::new();
+            object.insert("element".into(), element.clone());
+            for (name, values) in &parallels {
+                object.insert(name.clone(), values[index].clone());
+            }
+            child_inputs = JsonValue::Object(object);
+            &child_inputs
+        };
         let child_ctx = V3MapContext {
             chain: ctx.chain.clone(),
             tx_to: ctx.tx_to,
@@ -1162,7 +1299,7 @@ pub fn build_array_emit(
             raw_calldata: ctx.raw_calldata,
             resolved: ctx.resolved.clone(),
             derived: ctx.derived.clone(),
-            inputs: Some(element),
+            inputs: Some(inputs),
         };
         actions.push(build_action_body(
             &child_ctx,
@@ -1357,11 +1494,9 @@ mod tests {
 
     // 6. Permit2 approve (onchain) → ActionBody::Token(Permit2Approve)
     //
-    // `expires_at` deserializes into a `Time` (transparent over `u64`), so
-    // the test feeds it as a raw JSON number. The on-chain ABI decoder
-    // produces decimal strings, but a numeric coercion shim is out of M1
-    // scope — when M2 wires the decoder we'll add a numeric-string -> number
-    // pass keyed by the destination's serde shape.
+    // `expires_at` deserializes into a `Time` (transparent over `u64`).
+    // The builder accepts ABI-decoded decimal strings for time-like fields and
+    // normalizes them before the final typed decode.
     #[test]
     fn t6_permit2_approve() {
         let args = json!({
@@ -1388,6 +1523,49 @@ mod tests {
             action,
             ActionBody::Token(TokenAction::Permit2Approve(_))
         ));
+    }
+
+    #[test]
+    fn t6b_erc20_permit_onchain_deadline_string_and_live_nonce() {
+        let args = json!({
+            "owner": "0x000000000000000000000000000000000000a01c",
+            "spender": "0x00000000000000000000000000000000deadbeef",
+            "value": "999",
+            "deadline": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+        });
+        let ctx = mk_ctx(&args);
+        let body = json!({
+            "domain": "token",
+            "token": {
+                "action": "erc20_permit",
+                "erc20_permit": {
+                    "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$tx.to" } },
+                    "spender": "$args.spender",
+                    "amount": "$args.value",
+                    "deadline": "$args.deadline"
+                }
+            }
+        });
+        let live_inputs = json!({
+            "nonce": {
+                "source": {
+                    "kind": "onchain_view",
+                    "chain": "$chain",
+                    "contract": "$tx.to",
+                    "function": "nonces(address)",
+                    "decoder_id": "erc20_permit_nonce"
+                },
+                "ttl_s": 12
+            }
+        });
+        let action = build_action_body(&ctx, &body, Some(&live_inputs)).unwrap();
+        match action {
+            ActionBody::Token(TokenAction::Erc20Permit(a)) => {
+                assert_eq!(a.deadline.as_unix(), u64::MAX);
+                assert_eq!(a.nonce.value, U256::ZERO);
+            }
+            other => panic!("expected Erc20Permit, got {other:?}"),
+        }
     }
 
     // 7. Permit2 PermitSingle → ActionBody::Token(Permit2SignAllowance)
@@ -1848,7 +2026,7 @@ mod tests {
             }
         });
 
-        let action = build_array_emit(&ctx, "$args.transfers", &per_item_body, None).unwrap();
+        let action = build_array_emit(&ctx, "$args.transfers", None, &per_item_body, None).unwrap();
         match action {
             ActionBody::Multicall { actions } => {
                 assert_eq!(actions.len(), 2);
@@ -1887,6 +2065,81 @@ mod tests {
         }
     }
 
+    #[test]
+    fn array_emit_parallel_sources_bind_same_index() {
+        let args = json!({
+            "owner": "0x0000000000000000000000000000000000000a01",
+            "nonce": "513",
+            "deadline": "1738002000",
+            "permitted": [
+                ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "1000"],
+                ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "2000"]
+            ],
+            "transferDetails": [
+                ["0x00000000000000000000000000000000deadbeef", "900"],
+                ["0x00000000000000000000000000000000cafef00d", "1800"]
+            ]
+        });
+        let ctx = mk_ctx(&args);
+        let per_item_body = json!({
+            "domain": "token",
+            "token": {
+                "action": "permit2_transfer_from",
+                "permit2_transfer_from": {
+                    "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.element[0]" } },
+                    "owner": "$args.owner",
+                    "spender": "$tx.from",
+                    "recipient": "$inputs.detail[0]",
+                    "amount": "$inputs.detail[1]",
+                    "permitted_amount": "$inputs.element[1]",
+                    "nonce": "$args.nonce",
+                    "sig_deadline": "$args.deadline"
+                }
+            }
+        });
+        let parallel_sources = json!({ "detail": "$args.transferDetails" });
+        let live_inputs = json!({
+            "nonce": {
+                "source": { "kind": "user_supplied" },
+                "ttl_s": 12
+            }
+        });
+        let action = build_array_emit(
+            &ctx,
+            "$args.permitted",
+            Some(&parallel_sources),
+            &per_item_body,
+            Some(&live_inputs),
+        )
+        .unwrap();
+
+        let ActionBody::Multicall { actions } = action else {
+            panic!("expected Multicall");
+        };
+        assert_eq!(actions.len(), 2);
+        let ActionBody::Token(TokenAction::Permit2TransferFrom(first)) = &actions[0] else {
+            panic!("expected Permit2TransferFrom at 0");
+        };
+        assert_eq!(first.amount, U256::from(900u64));
+        assert_eq!(first.permitted_amount, U256::from(1000u64));
+        assert_eq!(
+            first.recipient,
+            addr("0x00000000000000000000000000000000deadbeef")
+        );
+        assert_eq!(first.nonce.value, (U256::from(2u64), 1u8));
+
+        let ActionBody::Token(TokenAction::Permit2TransferFrom(second)) = &actions[1] else {
+            panic!("expected Permit2TransferFrom at 1");
+        };
+        assert_eq!(second.amount, U256::from(1800u64));
+        assert_eq!(second.permitted_amount, U256::from(2000u64));
+        assert_eq!(
+            second.recipient,
+            addr("0x00000000000000000000000000000000cafef00d")
+        );
+        assert_eq!(second.nonce.value, (U256::from(2u64), 1u8));
+    }
+
     // Empty array → empty Multicall (valid, no error).
     #[test]
     fn array_emit_empty_array_empty_multicall() {
@@ -1903,7 +2156,7 @@ mod tests {
                 }
             }
         });
-        let action = build_array_emit(&ctx, "$args.transfers", &per_item_body, None).unwrap();
+        let action = build_array_emit(&ctx, "$args.transfers", None, &per_item_body, None).unwrap();
         match action {
             ActionBody::Multicall { actions } => assert!(actions.is_empty()),
             other => panic!("expected empty Multicall, got {other:?}"),
@@ -1919,7 +2172,8 @@ mod tests {
             "domain": "token",
             "token": { "action": "erc20_transfer", "erc20_transfer": {} }
         });
-        let err = build_array_emit(&ctx, "$args.transfers", &per_item_body, None).unwrap_err();
+        let err =
+            build_array_emit(&ctx, "$args.transfers", None, &per_item_body, None).unwrap_err();
         match err {
             V3BuildError::ArraySourceNotArray(s) => assert_eq!(s, "$args.transfers"),
             other => panic!("expected ArraySourceNotArray, got {other:?}"),

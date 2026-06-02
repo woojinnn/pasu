@@ -1,0 +1,250 @@
+{
+  "protocol": "uniswap",
+  "generated_at": "2026-06-02",
+  "purpose": "Fixed P2 edge matrix for wallet-facing Uniswap router, manager, Permit2, Universal Router, V4 PositionManager, PoolManager.initialize, UniswapX signing, UniswapX reactor settlement semantics, and representative direct V3 pool swap cases.",
+  "required_categories": [
+    "permission",
+    "value",
+    "nested",
+    "array",
+    "opcode",
+    "deadline",
+    "path"
+  ],
+  "cases": [
+    {
+      "id": "permission-nfpm-set-approval-for-all",
+      "disposition": "covered",
+      "categories": ["permission"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "setApprovalForAll",
+        "tx_hash": "0xD7167DBA3EBCA55089A24200E96B6DF8FC8312F7141BC7772AC6FDFAC3E83629"
+      },
+      "expect": "pass",
+      "semantic_fields": ["operator", "approved", "nft_key.contract"]
+    },
+    {
+      "id": "permission-permit2-approve",
+      "disposition": "covered",
+      "categories": ["permission", "deadline"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "approve(address,address,uint160,uint48)",
+        "tx_hash": "0xEB26F20B39895D7AD6ABDA2238C318E5D131C081102CF7767A2F1A29399306BE"
+      },
+      "expect": "pass",
+      "semantic_fields": ["owner", "spender", "token", "amount", "expiration"]
+    },
+    {
+      "id": "permission-v4-permit-for-all",
+      "disposition": "covered",
+      "categories": ["permission", "deadline"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "V4 PositionManager.permitForAll(address,address,bool,uint256,uint256,bytes) [0x3aea60f0]",
+        "tx_hash": "0xb2553555557a80b41548f8517b633afe54fbd0c3e6ac7017f72ed4dc0f37c844"
+      },
+      "expect": "pass",
+      "semantic_fields": ["owner", "operator", "approved", "deadline"]
+    },
+    {
+      "id": "value-v2-exact-eth-for-tokens",
+      "disposition": "covered",
+      "categories": ["value", "path", "deadline"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "swapExactETHForTokens",
+        "tx_hash": "0x9658E4CEA76B9433AAFD65CCBD50A35023C697C6C685FC05B9DBDD4853122DF4"
+      },
+      "expect": "pass",
+      "semantic_fields": ["amount_in from msg.value", "min_amount_out", "recipient", "path first/last token"]
+    },
+    {
+      "id": "value-v2-fee-on-transfer",
+      "disposition": "covered",
+      "categories": ["value", "path", "deadline"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "V2Router02.swapExactETHForTokensSupportingFeeOnTransferTokens [0xb6f9de95]",
+        "tx_hash": "0x975901d7729d5f51f7d46aa17240d48729daf6a2427eb4b4f23da34f6a281b2f"
+      },
+      "expect": "pass",
+      "semantic_fields": ["fee-on-transfer swap", "amount_in", "min_amount_out", "recipient"]
+    },
+    {
+      "id": "value-permit2-direct-transfer-single",
+      "disposition": "covered",
+      "categories": ["value", "permission"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "Permit2.transferFrom(address,address,uint160,address) single [0x36c78516]",
+        "tx_hash": "0x7a2516c8d7e0f1038c5e708f197691675bd387e88a671169446473cbcc5c7290"
+      },
+      "expect": "pass",
+      "semantic_fields": ["token", "to", "amount"]
+    },
+    {
+      "id": "array-permit2-transfer-batch",
+      "disposition": "covered",
+      "categories": ["array", "value", "permission"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "Permit2.transferFrom((...)[]) batch [0x0d58b1db]",
+        "tx_hash": "0xaeb01c89758889ea31ebf5671b89a68bbe362bdca3dc27b99e27fe71d1aa6322"
+      },
+      "expect": "pass",
+      "semantic_fields": ["array_emit transfer count", "per-row token", "per-row recipient", "per-row amount"]
+    },
+    {
+      "id": "array-permit2-permit-batch-typed-data",
+      "disposition": "covered",
+      "categories": ["array", "permission", "deadline"],
+      "artifact": {
+        "kind": "test",
+        "file": "crates/policy-engine-wasm/tests/declarative_v3_typed_data_install.rs",
+        "symbols": ["typed_data_permit2_permit_batch_array_emit"]
+      },
+      "expect": "pass",
+      "semantic_fields": ["PermitBatch details[] array", "spender", "sigDeadline"]
+    },
+    {
+      "id": "nested-swaprouter02-multicall-deadline",
+      "disposition": "covered",
+      "categories": ["nested", "array", "deadline", "path"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "SwapRouter02.multicall(uint256 deadline,bytes[]) [0x5ae401dc]",
+        "tx_hash": "0x1147ee07a7324d3d13f1e35c6afeb60b7d17ac07f545f773cf117c87e545f76d"
+      },
+      "expect": "pass",
+      "semantic_fields": ["multicall child action", "deadline", "v3 path token_in/token_out"]
+    },
+    {
+      "id": "nested-nfpm-multicall",
+      "disposition": "covered",
+      "categories": ["nested", "array"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "NFPM.multicall(bytes[]) [0xac9650d8]",
+        "tx_hash": "0xa608996fd773078924afbc60e39017ef4d27017b24e8965dce2bab07b2177048"
+      },
+      "expect": "pass",
+      "semantic_fields": ["nested child action", "position token_id or recipient"]
+    },
+    {
+      "id": "opcode-universal-router-v4-nested",
+      "disposition": "covered",
+      "categories": ["opcode", "nested", "array", "path", "deadline"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "UniversalRouter.execute(bytes,bytes[],uint256) V4-nested [0x3593564c] (mainnet, command contains 0x10/0x11/0x21)",
+        "tx_hash": "0x321da6717285564809cbf73e652c731470a2c8b74a6c606ea277db140989fd17"
+      },
+      "expect": "pass",
+      "semantic_fields": ["opcode stream", "nested V4 action", "deadline", "path/pool key"]
+    },
+    {
+      "id": "opcode-universal-router-no-deadline",
+      "disposition": "covered",
+      "categories": ["opcode", "nested", "array"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "real-dune Arbitrum UniversalRouter v2 no-deadline",
+        "tx_hash": "0xbbcba321cb4411c7b7cc163cf67ccc01eaf0d2f90ae0fc36e7d24fa5dd98c60c"
+      },
+      "expect": "pass",
+      "semantic_fields": ["execute(bytes,bytes[])", "opcode stream without deadline overload"]
+    },
+    {
+      "id": "path-v3-exact-input-multihop",
+      "disposition": "covered",
+      "categories": ["path", "value"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "real-dune Arbitrum SwapRouter02 exactInput path",
+        "tx_hash": "0xf823620947370f53d64493366dd47b27b1f83fb3ee55c40a76eb3fd9c894b667"
+      },
+      "expect": "pass",
+      "semantic_fields": ["packed v3 path first token", "packed v3 path last token", "amount_in", "min_amount_out"]
+    },
+    {
+      "id": "poolmanager-initialize-unknown-fail-closed",
+      "disposition": "covered",
+      "categories": ["value"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswap",
+        "intent": "PoolManager(V4).initialize(PoolKey,uint160) [0x6276cbbe]",
+        "tx_hash": "0xfb842bb8476965e0e1e271f0eb453dacdd92750680bb723568601aa72f55f057"
+      },
+      "expect": "pass",
+      "semantic_fields": ["protocol-specific unknown", "fail-closed warn path", "pool key is not mis-modeled as swap/liquidity"]
+    },
+    {
+      "id": "direct-v3-pool-swap-signed-amount",
+      "disposition": "covered",
+      "categories": ["value", "path"],
+      "artifact": {
+        "kind": "test",
+        "file": "crates/adapters/mappers/src/declarative/builtin_fn.rs",
+        "symbols": [
+          "uniswap_v3_pool_swap_field_positive_amount_is_exact_input",
+          "uniswap_v3_pool_swap_field_negative_amount_is_exact_output"
+        ]
+      },
+      "expect": "pass",
+      "semantic_fields": ["zeroForOne token direction", "positive amountSpecified exact_input", "negative amountSpecified exact_output"]
+    },
+    {
+      "id": "typed-data-uniswapx-exclusive-dutch",
+      "disposition": "covered",
+      "categories": ["permission", "deadline", "value"],
+      "artifact": {
+        "kind": "test",
+        "file": "crates/policy-engine-wasm/tests/declarative_v3_typed_data_install.rs",
+        "symbols": ["typed_data_uniswapx_exclusive_dutch_sign_intent_order"]
+      },
+      "expect": "pass",
+      "semantic_fields": ["PermitWitnessTransferFrom witness", "reactor", "sell token", "buy token", "valid_until"]
+    },
+    {
+      "id": "uniswapx-reactor-execute-settle-intent",
+      "disposition": "covered",
+      "categories": ["nested", "array", "value"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswapx",
+        "intent": "ExclusiveDutchOrderReactor (V1, mainnet) execute((bytes,bytes))",
+        "tx_hash": "0xdb878f5c39f4ec654f15579ac86a24ac4e0394bb686c4dda71023941832ba357"
+      },
+      "expect": "pass",
+      "semantic_fields": ["Amm::SettleIntentOrder", "reactor target", "SignedOrder.order bytes decoded by family"]
+    },
+    {
+      "id": "uniswapx-reactor-execute-batch-settle-intent",
+      "disposition": "covered",
+      "categories": ["nested", "array", "value"],
+      "artifact": {
+        "kind": "corpus",
+        "protocol": "uniswapx",
+        "intent": "ExclusiveDutchOrderReactor (V1, mainnet) executeBatch((bytes,bytes)[])",
+        "tx_hash": "0x020a81ca72eb4399d84dd4fca2379255f5ad465e6fa24ba564404dfd815b80d7"
+      },
+      "expect": "pass",
+      "semantic_fields": ["Multicall of Amm::SettleIntentOrder", "reactor target", "mixed-family SignedOrder decode fallback"]
+    }
+  ]
+}

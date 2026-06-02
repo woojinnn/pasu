@@ -1,0 +1,244 @@
+{
+  "source": "dune+uniswap-v3-core-abi",
+  "url": "https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolActions.sol",
+  "chainId": 1,
+  "address": "0x2c40c7b9f106f39a6e2aab6d9f1f29364e7250bc",
+  "contract": "UniswapV3Pool",
+  "fetchedAt": "2026-06-02",
+  "note": "Mutable Uniswap V3 pool action ABI snapshot for the reviewed mainnet direct-pool sample. Pool metadata comes from Dune query 7633398 over uniswap_v3_ethereum.uniswapv3factory_evt_poolcreated.",
+  "abi": [
+    {
+      "name": "initialize",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "mint",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24"
+        },
+        {
+          "name": "amount",
+          "type": "uint128"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "collect",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24"
+        },
+        {
+          "name": "amount0Requested",
+          "type": "uint128"
+        },
+        {
+          "name": "amount1Requested",
+          "type": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint128"
+        },
+        {
+          "name": "amount1",
+          "type": "uint128"
+        }
+      ]
+    },
+    {
+      "name": "burn",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "tickLower",
+          "type": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24"
+        },
+        {
+          "name": "amount",
+          "type": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "swap",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "zeroForOne",
+          "type": "bool"
+        },
+        {
+          "name": "amountSpecified",
+          "type": "int256"
+        },
+        {
+          "name": "sqrtPriceLimitX96",
+          "type": "uint160"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "int256"
+        },
+        {
+          "name": "amount1",
+          "type": "int256"
+        }
+      ]
+    },
+    {
+      "name": "flash",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "increaseObservationCardinalityNext",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "observationCardinalityNext",
+          "type": "uint16"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setFeeProtocol",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "feeProtocol0",
+          "type": "uint8"
+        },
+        {
+          "name": "feeProtocol1",
+          "type": "uint8"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "collectProtocol",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "amount0Requested",
+          "type": "uint128"
+        },
+        {
+          "name": "amount1Requested",
+          "type": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint128"
+        },
+        {
+          "name": "amount1",
+          "type": "uint128"
+        }
+      ]
+    }
+  ]
+}

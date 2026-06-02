@@ -1,0 +1,88 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v4-position-manager/permit2-single@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "_note": "V4 PositionManager forwards Permit2 permit(owner, PermitSingle, signature). Modelled as the same token/permit2_sign_allowance as canonical Permit2; the nonceBitmap live source remains the canonical Permit2 contract.",
+  "match": {
+    "selector": "0x2b67b570",
+    "chain_to_addresses": {
+      "1":     ["0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e"],
+      "10":    ["0x3C3Ea4B57a46241e54610e5f022E5c45859A1017"],
+      "8453":  ["0x7C5f5A4bBd8fD63184577525326123B519429bDc"],
+      "42161": ["0xd88F38F930b7952f2DB2432Cb002E7abbF3dD869"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permit",
+    "abi": {
+      "name": "permit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "owner", "type": "address" },
+        {
+          "name": "permitSingle",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "details",
+              "type": "tuple",
+              "components": [
+                { "name": "token", "type": "address" },
+                { "name": "amount", "type": "uint160" },
+                { "name": "expiration", "type": "uint48" },
+                { "name": "nonce", "type": "uint48" }
+              ]
+            },
+            { "name": "spender", "type": "address" },
+            { "name": "sigDeadline", "type": "uint256" }
+          ]
+        },
+        { "name": "signature", "type": "bytes" }
+      ],
+      "outputs": [{ "name": "err", "type": "bytes" }]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "permit2_sign_allowance",
+        "permit2_sign_allowance": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.permitSingle[0][0]"
+            }
+          },
+          "spender": "$args.permitSingle[1]",
+          "amount": "$args.permitSingle[0][1]",
+          "expires_at": "$args.permitSingle[0][2]",
+          "sig_deadline": "$args.permitSingle[2]",
+          "nonce": "$args.permitSingle[0][3]"
+        }
+      }
+    },
+    "live_inputs": {
+      "nonce": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+          "function": "nonceBitmap(address,uint256)",
+          "decoder_id": "permit2_nonce_bitmap"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

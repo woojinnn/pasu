@@ -11,17 +11,19 @@ use serde_json::Value;
 
 use policy_state::{
     Confidence, DataSource, LiveField, Position, PositionKind, Price, ProtocolRef, SignedI256,
-    Time, WalletState,
+    Time, WalletState, U256,
 };
-use policy_transition::action::{Action, ActionBody, PerpAction};
+use policy_transition::action::{Action, ActionBody, PerpAction, TokenAction};
 
 use crate::batcher::{batch_by_source, BatchKind, FetchBatch};
 use crate::calc::{CalcContext, CalcRegistry};
 use crate::error::SyncError;
 use crate::fetchers::onchain::OnchainCall;
 use crate::fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
-use crate::fetchers::{ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher};
-use crate::walker::{walk_stale, FieldLocation, WalkStats};
+use crate::fetchers::{
+    ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher, UniswapFetcher,
+};
+use crate::walker::{walk_stale, ActionSlot, FieldLocation, WalkStats};
 
 #[derive(Debug, Default, Clone)]
 pub struct RefreshReport {
@@ -44,6 +46,7 @@ pub struct Orchestrator {
     price_fetchers: HashMap<String, Arc<dyn PriceFetcher>>,
     registry: Option<RegistryFetcher>,
     hyperliquid: Option<HyperliquidFetcher>,
+    uniswap: Option<UniswapFetcher>,
     calc: CalcRegistry,
     // Global values used by derived live-field inputs.
     globals: crate::resolver::GlobalValues,
@@ -59,6 +62,7 @@ impl Orchestrator {
             price_fetchers: HashMap::new(),
             registry: None,
             hyperliquid: None,
+            uniswap: Some(UniswapFetcher::new()),
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: None,
@@ -105,6 +109,12 @@ impl Orchestrator {
     }
 
     #[must_use]
+    pub fn with_uniswap(mut self, uniswap: UniswapFetcher) -> Self {
+        self.uniswap = Some(uniswap);
+        self
+    }
+
+    #[must_use]
     pub fn with_calc(mut self, calc: CalcRegistry) -> Self {
         self.calc = calc;
         self
@@ -121,6 +131,7 @@ impl Orchestrator {
             price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid: Some(HyperliquidFetcher::new()),
+            uniswap: Some(UniswapFetcher::new()),
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -153,6 +164,7 @@ impl Orchestrator {
             price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid,
+            uniswap: Some(UniswapFetcher::new()),
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -297,8 +309,12 @@ impl Orchestrator {
                     .iter()
                     .map(|item| {
                         let args = match &item.location {
-                            crate::walker::FieldLocation::Action { slot, .. } => {
-                                crate::args_resolver::resolve_args(slot, action, state)
+                            crate::walker::FieldLocation::Action { .. } => {
+                                crate::args_resolver::resolve_args_for_location(
+                                    &item.location,
+                                    action,
+                                    state,
+                                )
                             }
                             _ => Vec::new(),
                         };
@@ -312,6 +328,22 @@ impl Orchestrator {
                 for (item, outcome) in batch.items.into_iter().zip(outcomes.into_iter()) {
                     if outcome.success {
                         if let Some(value) = outcome.value {
+                            let value = if is_permit2_nonce_bitmap_source(&item.source) {
+                                match permit2_nonce_bitmap_apply_value(
+                                    action,
+                                    &item.location,
+                                    &value,
+                                ) {
+                                    Some(Ok(v)) => v,
+                                    Some(Err(_)) => {
+                                        fail += 1;
+                                        continue;
+                                    }
+                                    None => value,
+                                }
+                            } else {
+                                value
+                            };
                             crate::action_walk::apply_value_to_action(
                                 action,
                                 &item.location,
@@ -348,29 +380,43 @@ impl Orchestrator {
             }
             BatchKind::Venue { endpoint } => {
                 let is_hl = is_hyperliquid_endpoint(endpoint);
-                let Some(hl) = (if is_hl {
-                    self.hyperliquid.as_ref()
-                } else {
-                    None
-                }) else {
-                    return Ok((0, batch.items.len()));
-                };
+                let is_uniswap = is_uniswap_endpoint(endpoint);
                 for item in batch.items {
                     let FieldLocation::Action { slot, .. } = &item.location else {
                         fail += 1;
                         continue;
                     };
-                    let market_symbol =
-                        action_market_symbol(action, state, &item.location).unwrap_or_default();
-                    match hl
-                        .fetch_action_value(
+                    let fetched = if is_hl {
+                        let Some(hl) = self.hyperliquid.as_ref() else {
+                            fail += 1;
+                            continue;
+                        };
+                        let market_symbol =
+                            action_market_symbol(action, state, &item.location).unwrap_or_default();
+                        hl.fetch_action_value(
                             &item.source,
                             slot,
                             &market_symbol,
                             &state.wallet_id.address,
                         )
                         .await
-                    {
+                    } else if is_uniswap {
+                        let Some(uniswap) = self.uniswap.as_ref() else {
+                            fail += 1;
+                            continue;
+                        };
+                        let Some(body) = action_body_for_location(action, &item.location) else {
+                            fail += 1;
+                            continue;
+                        };
+                        uniswap
+                            .fetch_action_value(&item.source, slot, body, &action.meta.submitter)
+                            .await
+                    } else {
+                        fail += 1;
+                        continue;
+                    };
+                    match fetched {
                         Ok(v) => {
                             crate::action_walk::apply_value_to_action(
                                 action,
@@ -731,6 +777,89 @@ fn is_hyperliquid_endpoint(endpoint: &str) -> bool {
     endpoint.is_empty()
         || endpoint.contains("hyperliquid")
         || endpoint == "https://api.hyperliquid.xyz/info"
+}
+
+fn is_uniswap_endpoint(endpoint: &str) -> bool {
+    endpoint.contains("api.uniswap.org") || endpoint.contains("uniswap")
+}
+
+fn is_permit2_nonce_bitmap_source(source: &DataSource) -> bool {
+    matches!(
+        source,
+        DataSource::OnchainView { decoder_id, .. } if decoder_id == "permit2_nonce_bitmap"
+    )
+}
+
+fn permit2_nonce_bitmap_apply_value(
+    action: &Action,
+    location: &FieldLocation,
+    value: &Value,
+) -> Option<Result<Value, SyncError>> {
+    let FieldLocation::Action { slot, .. } = location else {
+        return None;
+    };
+    if !matches!(slot, ActionSlot::TokenPermit2SignNonce) {
+        return None;
+    }
+    let Some((word, bit)) = permit2_nonce_pair_for_location(action, location) else {
+        return Some(Err(SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: "action location is not a Permit2 unordered nonce".into(),
+        }));
+    };
+    let Some(bitmap) = u256_from_json_decimal(value) else {
+        return Some(Err(SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: format!("expected bitmap u256 string, got {value}"),
+        }));
+    };
+    if bitmap_bit_is_set(bitmap, bit) {
+        return Some(Err(SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: format!("Permit2 nonce bit already used: word={word}, bit={bit}"),
+        }));
+    }
+    Some(Ok(serde_json::json!([word.to_string(), bit])))
+}
+
+fn permit2_nonce_pair_for_location(
+    action: &Action,
+    location: &FieldLocation,
+) -> Option<(U256, u8)> {
+    let FieldLocation::Action { action_index, .. } = location else {
+        return None;
+    };
+    match body_at_index(&action.body, *action_index)? {
+        ActionBody::Token(TokenAction::Permit2SignAllowance(p)) => Some(p.nonce.value),
+        ActionBody::Token(TokenAction::Permit2SignTransfer(p)) => Some(p.nonce.value),
+        ActionBody::Token(TokenAction::Permit2TransferFrom(p)) => Some(p.nonce.value),
+        _ => None,
+    }
+}
+
+fn u256_from_json_decimal(value: &Value) -> Option<U256> {
+    match value {
+        Value::String(s) => U256::from_str_radix(s, 10).ok(),
+        Value::Number(n) => U256::from_str_radix(&n.to_string(), 10).ok(),
+        _ => None,
+    }
+}
+
+fn bitmap_bit_is_set(bitmap: U256, bit: u8) -> bool {
+    let bytes = bitmap.to_be_bytes::<32>();
+    let byte_index = 31usize.saturating_sub(usize::from(bit / 8));
+    let bit_index = bit % 8;
+    (bytes[byte_index] & (1u8 << bit_index)) != 0
+}
+
+fn action_body_for_location<'a>(
+    action: &'a Action,
+    location: &FieldLocation,
+) -> Option<&'a ActionBody> {
+    let FieldLocation::Action { action_index, .. } = location else {
+        return None;
+    };
+    body_at_index(&action.body, *action_index)
 }
 
 fn state_market_symbol(state: &WalletState, location: &FieldLocation) -> Option<String> {
