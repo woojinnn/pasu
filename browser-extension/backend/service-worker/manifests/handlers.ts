@@ -14,6 +14,7 @@ import {
   getAliasTable,
   installPolicies,
   previewCustomSchema,
+  fieldCatalog,
   previewInstalledSchema,
 } from "../wasm-bridge";
 import { fetchBundledDefaultManifests } from "./dev-seed";
@@ -43,6 +44,7 @@ export type ManifestRequest =
   | { type: "manifest:get-bundled"; action: string }
   | { type: "manifest:get-method-catalog" }
   | { type: "manifest:get-enriched-schema" }
+  | { type: "manifest:get-field-catalog" }
   | { type: "manifest:ping" }
   | { type: "manifest:alias-table" }
   | { type: "manifest:set-endpoint-url"; url: string | null }
@@ -279,6 +281,10 @@ export async function handleManifestRequest(
 
       case "manifest:get-enriched-schema": {
         return { ok: true, data: await previewInstalledSchema() };
+      }
+
+      case "manifest:get-field-catalog": {
+        return { ok: true, data: await fieldCatalog() };
       }
 
       case "manifest:ping": {
