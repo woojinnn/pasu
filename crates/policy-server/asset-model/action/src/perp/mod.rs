@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId, Decimal, MarketRef, Price, SignedI256, U256};
+use policy_state::primitives::{Address, ChainId, Decimal, MarketRef, Price, SignedI256, U256};
 
 pub mod adjust_margin;
 pub mod cancel;
@@ -64,7 +64,6 @@ pub enum PerpAction {
 
 impl PerpAction {
     /// The action's `serde` `action` tag (e.g. `"open_position"`, `"claim_funding"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]
@@ -164,7 +163,6 @@ pub enum PerpVenue {
 
 impl PerpVenue {
     /// The venue's `serde` `name` tag (e.g. `"hyperliquid"`, `"dy_dx_v4"`).
-    ///
     /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
     /// discriminants exactly and are verified against `serde_json` output in tests.
     #[must_use]
@@ -234,7 +232,7 @@ pub enum TimeInForce {
     /// Good Till Date — only supported on some venues.
     Gtd {
         /// Expiration time of the order.
-        until: simulation_state::primitives::Time,
+        until: policy_state::primitives::Time,
     },
 }
 

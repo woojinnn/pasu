@@ -2,9 +2,7 @@
 //!
 //! Pure functions called from `swap.rs` after dispatch on `AmmVenue::CurveV1`.
 //! Not a `Reducer` impl since `AmmVenue` is not an `Action`.
-//!
 //! ## Simplification
-//!
 //! `PoolState::StableV1` carries a flat `balances: Vec<U256>` plus the
 //! amplification coefficient `A` and a fee in basis points. It does **not**
 //! carry the swap direction `(i, j)` indices — the caller (`swap.rs`) only
@@ -13,16 +11,11 @@
 //! deterministic without extending the `PoolState` schema. The first batch
 //! venues (V2 / V3 / V4) likewise rely on per-hop schema (`XyConstant`,
 //! `Concentrated`) that pre-selects the direction; this matches that pattern.
-//!
 //! ## Newton iteration bounds
-//!
 //! `MAX_ITER = 255` matches the Vyper implementation's hard cap. Convergence
 //! tolerance is `1 wei` (`|y_new - y_prev| <= 1`), matching the on-chain
 //! loop's exit condition. Non-convergence after `MAX_ITER` surfaces as
 //! `Invariant("curve_v1 newton diverged")`.
-//!
-//! ## 1차 출처
-//!
 //! * Egorov 2019 — "`StableSwap` — efficient mechanism for Stablecoin liquidity"
 //!   <https://classic.curve.fi/files/stableswap-paper.pdf> (§3 invariant,
 //!   §4 `get_y` derivation).
@@ -37,12 +30,11 @@
 //!     `dy * fee_bp / 10_000` — matching the `PoolState::StableV1.fee_bp`
 //!     schema field declared in `action/amm.rs`).
 
-// Phase 2 stubs: callers (per-action reducers) are still `todo!()` so these
 // functions look unused. Lift this allow when the first caller wires up.
 #![allow(dead_code)]
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::{ReducerError, ReducerResult};
@@ -65,7 +57,6 @@ const MAX_ITER: u32 = 255;
 ///     break if |D_new - D_prev| <= 1
 ///   Ann  = A * n^n
 /// ```
-///
 /// Returns `Invariant` on:
 ///   * `balances` empty (n=0),
 ///   * any `U256` overflow during the iteration,
@@ -175,9 +166,7 @@ pub(super) fn compute_d(balances: &[U256], a: u32) -> ReducerResult<U256> {
 
 /// Solve for the new `y` (balance of coin `j`) after coin `i` changes to `x_i`,
 /// given the `StableSwap` invariant `D` and amplification `A`.
-///
 /// Implements `SwapTemplateBase.vy::get_y` — see Egorov 2019, §4.
-///
 /// ```text
 ///   S' = Σ xp[k] for k != j (with xp[i] replaced by x_i)
 ///   P' = Π xp[k] for k != j (with xp[i] replaced by x_i)
@@ -185,7 +174,6 @@ pub(super) fn compute_d(balances: &[U256], a: u32) -> ReducerResult<U256> {
 ///   b  = S' + D / Ann
 ///   y² + (b - D)·y - c = 0           ⇒    y = (y² + c) / (2y + b - D)
 /// ```
-///
 /// Shared with `balancer_v2` / `balancer_v3` — see `compute_d` doc note.
 #[allow(clippy::many_single_char_names)]
 pub(super) fn compute_y(
@@ -298,11 +286,9 @@ pub(super) fn compute_y(
 /// Quote a single hop on a Curve V1 pool given its `StableV1` `PoolState`
 /// snapshot. Returns the hop's output amount; caller is responsible for fee
 /// accounting and balance changes.
-///
 /// **Direction convention** — `i = 0` (sell coin), `j = 1` (buy coin). See
 /// module docs for why this is fixed at the helper level instead of being
 /// passed in.
-///
 /// Errors with `Invariant` on:
 ///   * `PoolState` variant other than `StableV1`,
 ///   * `balances.len() < 2`,
@@ -497,11 +483,11 @@ mod tests {
     // -------- test fixtures --------
 
     use crate::action::amm::{AmmVenue, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

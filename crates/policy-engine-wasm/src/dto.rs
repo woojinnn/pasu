@@ -163,14 +163,15 @@ pub struct DeclarativeInstallResultDto {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Phase 4B — v3 route entry (raw Tx / sig → `Vec<Action>`)
+// v3 route entry (raw tx / sig -> `Vec<Action>`)
 // ───────────────────────────────────────────────────────────────────────────
 
 /// Input for `declarative_route_request_v3_json`.
 ///
 /// This is the v3 (PDF FSM spec) route entry that emits the new hierarchical
-/// `simulation_reducer::action::Action` tree (the legacy flat action route was
-/// removed in the Phase 1 action restructure).
+/// `policy_transition::action::Action` tree (the legacy flat
+/// `ActionEnvelope` route was removed when the hierarchical action model
+/// became the canonical route output).
 ///
 /// The wire shape mirrors the SW orchestrator's [`decideMessage`] output:
 ///   * `chain_id`/`to`/`selector`/`calldata` — registry-v2 callkey + raw
@@ -178,9 +179,9 @@ pub struct DeclarativeInstallResultDto {
 ///   * `value` — `msg.value` as a decimal string (`"0"` default).
 ///   * `gas_limit` — declared gas limit as a decimal string. The orchestrator
 ///     forwards the dApp's value verbatim; defaults to `"0"` when missing.
-///   * `gas_price` — current gas price as a decimal string. Phase 4B wraps
+///   * `gas_price` — current gas price as a decimal string. The WASM route wraps
 ///     this in a [`LiveField`] with a Pyth `gas/<chain_id>` source — the
-///     actual Sync Orchestrator wiring is deferred (Phase 5+).
+///     actual sync orchestrator wiring is deferred.
 ///   * `submitter` — `tx.from`. Echoed into `ActionMeta.submitter`.
 ///   * `submitted_at` — Unix epoch seconds. Echoed into `ActionMeta.submitted_at`.
 ///   * `nonce` — declared sequential nonce. `0` when missing.
@@ -189,9 +190,9 @@ pub struct DeclarativeInstallResultDto {
 /// land, distinct from `submitted_at`. Mappers may use this for deadlines.
 ///
 /// `selector` and `block_timestamp` are part of the stable wire shape but are
-/// not consumed by the Phase 4B stub — they will be threaded into the
-/// registry-v2 callkey lookup + emit-rule decode in Phase 4D. The
-/// `#[allow(dead_code)]` reflects that intentional staging; do NOT remove
+/// not consumed by this route yet. They will be threaded into the registry-v2
+/// callkey lookup and emit-rule decode once that path is fully wired. The
+/// `#[allow(dead_code)]` reflects that intentional staging; do not remove
 /// either field as that would break the SW wire layer.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
@@ -211,7 +212,7 @@ pub struct DeclarativeRouteRequestV3InputDto {
     pub gas_limit: String,
     /// Current gas price as a base-10 decimal string. Defaults to `"0"`.
     /// Wrapped in a [`LiveField`] by the WASM entry with a Pyth
-    /// `gas/<chain_id>` source (Phase 4B stub — Sync Orchestrator wiring TBD).
+    /// `gas/<chain_id>` source.
     #[serde(default = "default_zero_decimal")]
     pub gas_price: String,
     /// `tx.from` — "0x" + 40 hex.
@@ -239,7 +240,7 @@ fn default_zero_decimal() -> String {
 ///     bridge key populated at install time from the manifest's
 ///     `match.typed_data` block. `verifying_contract` is case-insensitive.
 ///   * `domain_name` (optional) — the EIP-712 `domain.name`. Echoed verbatim
-///     into the resulting [`Eip712Domain`](simulation_reducer::action::Eip712Domain).
+///     into the resulting [`Eip712Domain`](policy_transition::action::Eip712Domain).
 ///     Defaults to an empty string when the wallet payload omits it.
 ///   * `message` — the EIP-712 `message` object. The route handler reshapes
 ///     this into `args_json` via the ABI-derived wrap rule (single-tuple wrap
@@ -275,13 +276,13 @@ pub struct DeclarativeRouteTypedDataV3InputDto {
 
 /// Result returned by `declarative_route_request_v3_json` on success.
 ///
-/// `actions` is the `Vec<simulation_reducer::action::Action>` produced for the
+/// `actions` is the `Vec<policy_transition::action::Action>` produced for the
 /// raw Tx — Phase 4B emits a single `ActionBody::Unknown` stub. `decoder_id`
 /// echoes the bundle id when a registry match exists (Phase 4D+); empty
 /// string when no match (stub fallback).
 #[derive(Debug, Clone, Serialize)]
 pub struct DeclarativeRouteRequestV3ResultDto {
-    pub actions: Vec<simulation_reducer::action::Action>,
+    pub actions: Vec<policy_transition::action::Action>,
     pub decoder_id: String,
 }
 

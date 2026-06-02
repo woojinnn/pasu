@@ -1,15 +1,15 @@
-//! Liquid-staking 도메인의 walk + apply.
+//! Liquid-staking action walker and updater.
 //!
-//! Wired: Wrap (expected_wsteth), Unwrap (expected_steth),
-//!        TransferShares (pooled_eth) — 모두 단일 `uint256` 환산 view.
-//! Stake / RequestWithdrawal / ClaimWithdrawal have no live_inputs → no-op.
+//! Wired: `Wrap` (`expected_wsteth`), `Unwrap` (`expected_steth`),
+//!        `TransferShares` (`pooled_eth`), each as a single `uint256` view.
+//! `Stake` / `RequestWithdrawal` / `ClaimWithdrawal` have no `live_inputs` → no-op.
 
 use serde_json::Value;
 
-use simulation_reducer::action::liquid_staking::{
+use policy_state::Time;
+use policy_transition::action::liquid_staking::{
     LiquidStakingAction, TransferSharesAction, UnwrapAction, WrapAction,
 };
-use simulation_state::Time;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 

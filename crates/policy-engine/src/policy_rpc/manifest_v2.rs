@@ -4,7 +4,7 @@
 //! `policy.cedarschema` (marketplace bundle). It carries three things:
 //!
 //! 1. a [`Trigger`] — a declarative selector deciding *when* this policy
-//!    applies to a decoded [`simulation_reducer::action::ActionBody`], evaluated
+//!    applies to a decoded [`policy_transition::action::ActionBody`], evaluated
 //!    by the host *before* any policy-rpc call (see [`super::trigger`]);
 //! 2. a [`PolicyRpcCallSpec`] list — the enrichment calls to run when the
 //!    trigger matches (same shape as the v1 `requires[]`, minus the per-call

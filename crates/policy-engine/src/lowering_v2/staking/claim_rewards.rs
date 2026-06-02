@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::staking::ClaimRewardsAction;
+use policy_transition::action::staking::ClaimRewardsAction;
 
 use super::super::common::cedar::addr;
 use super::super::common::token::lower_token_ref;
@@ -53,9 +53,9 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::staking::{ClaimRewardsAction, StakingAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::Address;
+    use policy_state::primitives::Address;
+    use policy_transition::action::staking::{ClaimRewardsAction, StakingAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, crv, gauge_venue, minter_venue, onchain_meta, other,

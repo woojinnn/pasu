@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId};
+use policy_state::primitives::{Address, ChainId};
 
 /// Grant or revoke a manager/operator's authorization over the submitter's
 /// positions in a lending protocol.

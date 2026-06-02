@@ -8,7 +8,7 @@
 //! representation (`ActionBody`) and the Cedar policy layer are the onboarding
 //! scope; balance/share modeling is a later enrichment.
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::restaking::{
     CompleteWithdrawalAction, DelegateToAction, DepositAction, QueueWithdrawalAction,

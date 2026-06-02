@@ -1,8 +1,6 @@
 //! `ChangeLeverageAction` reducer — update the leverage multiplier on a
 //! position or account.
-//!
 //! ## Effect
-//!
 //! 1. Validate `new_leverage <= max_leverage` (`LiveField`).
 //! 2. For each `affected_positions[i]`, upsert the position with:
 //!    - `leverage = new_leverage`
@@ -11,9 +9,9 @@
 //! No on-chain balance change — leverage adjustment is purely a policy /
 //! risk-recompute knob.
 
-use simulation_state::live_field::{DataSource, LiveField};
-use simulation_state::position::PositionKind;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::live_field::{DataSource, LiveField};
+use policy_state::position::PositionKind;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::perp::ChangeLeverageAction;
 use crate::apply::Reducer;
@@ -79,14 +77,14 @@ impl Reducer for ChangeLeverageAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::delta::PositionChange;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::delta::PositionChange;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, SignedI256, Time, VenueRef, U256,
     };
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{ChangeLeverageLiveInputs, PerpVenue};
@@ -96,7 +94,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

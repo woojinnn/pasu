@@ -1,5 +1,4 @@
 //! Numeric type aliases.
-//!
 //! - `U256`, `I256` are re-exported as-is from alloy-primitives.
 //! - `Decimal` is used wherever fractional values are needed, such as prices,
 //!   ratios, health factor, and leverage. It is currently represented as a

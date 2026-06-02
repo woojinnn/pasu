@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::ChainId;
+use policy_state::primitives::ChainId;
 
 pub mod claim_withdrawal;
 pub mod request_withdrawal;

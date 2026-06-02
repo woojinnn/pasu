@@ -8,7 +8,7 @@
 //! representation (`ActionBody`) and the Cedar policy layer are the onboarding
 //! scope; balance/boost/lock-state modeling is a later enrichment.
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::staking::{
     ClaimRewardsAction, GaugeDepositAction, GaugeWithdrawAction, IncreaseLockAmountAction,

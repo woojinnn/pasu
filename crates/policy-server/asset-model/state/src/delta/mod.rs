@@ -1,8 +1,3 @@
-//! `StateDelta` — action 한 건이 만드는 변화 묶음. spec §8.
-//!
-//! reducer 가 만들어 반환하는 typed 변경 로그. 정책은 현재 state 와 delta 둘 다
-//! 볼 수 있어야 한다 ("이 swap 이 USDC 잔고의 50% 이상을 줄이는지" 같은 정책).
-
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
@@ -20,7 +15,6 @@ use crate::token::TokenRef;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 /// Typed change log produced by a reducer for a single action.
-///
 /// Bundles all state mutations an action causes so policies can inspect both the
 /// current state and the resulting delta together.
 pub struct StateDelta {

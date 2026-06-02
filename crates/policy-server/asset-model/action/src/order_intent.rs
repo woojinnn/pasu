@@ -1,9 +1,6 @@
 //! `OrderIntent` — the read-only "order intent" shared by two order models.
-//!
 //! ## Why this exists (design note)
-//!
 //! Two order-carrying action models coexist in this crate:
-//!
 //! - [`PlaceLimitOrderAction`](crate::perp::PlaceLimitOrderAction) — the
 //!   on-chain-ish perp-`DEX` model. It carries venue-live inputs (mark price,
 //!   book, account state) that the `Sync` layer fetches before evaluation, and
@@ -20,7 +17,6 @@
 //! — chiefly the policy layer — treat the *order-intrinsic* fields the two models
 //! genuinely share uniformly, WITHOUT collapsing the models, touching their
 //! `Cedar` schemas, or changing the `Sync`/reducer pipelines.
-//!
 //! It captures only the fields that are present, type-compatible, and meaningful
 //! on **both** models:
 //!   - direction (`is_buy`),
@@ -39,11 +35,10 @@
 //! non-`PlaceLimitOrder` perp action) are NOT order intents and do not implement
 //! this trait.
 
-use simulation_state::primitives::Decimal;
+use policy_state::primitives::Decimal;
 
 /// The order-intrinsic intent shared by the perp and `Hyperliquid` `CORE` order
 /// models.
-///
 /// Read-only; implementors expose their existing fields, so this adds **zero**
 /// runtime state and is purely a unification seam for callers.
 pub trait OrderIntent {
@@ -59,14 +54,13 @@ pub trait OrderIntent {
     /// Normalized time-in-force tag — one of `"gtc"`, `"ioc"`, `"fok"`,
     /// `"post_only"`, `"gtd"`. (Perp maps its [`TimeInForce`] enum to this
     /// spelling; `HL` already carries the normalized string.)
-    ///
     /// [`TimeInForce`]: crate::perp::TimeInForce
     fn time_in_force_tag(&self) -> &str;
 }
 
 impl OrderIntent for crate::perp::PlaceLimitOrderAction {
     fn is_buy(&self) -> bool {
-        matches!(self.side, simulation_state::position::PerpSide::Long)
+        matches!(self.side, policy_state::position::PerpSide::Long)
     }
 
     fn price(&self) -> &Decimal {
@@ -118,9 +112,9 @@ mod tests {
         PerpAccountState, PerpVenue, PlaceLimitLiveInputs, PlaceLimitOrderAction, SizeSpec,
         TimeInForce,
     };
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::PerpSide;
-    use simulation_state::primitives::{ChainId, Decimal, MarketRef, Price, Time, VenueRef, U256};
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::PerpSide;
+    use policy_state::primitives::{ChainId, Decimal, MarketRef, Price, Time, VenueRef, U256};
 
     fn live<T>(v: T) -> LiveField<T> {
         LiveField::new(v, DataSource::UserSupplied, Time::from_unix(0))

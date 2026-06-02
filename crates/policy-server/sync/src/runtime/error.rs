@@ -1,11 +1,9 @@
-//! Sync 에러 타입.
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SyncError {
     #[error("store error: {0}")]
-    Store(#[from] simulation_state::store::StoreError),
+    Store(#[from] policy_state::store::StoreError),
 
     #[error("fetch failed: source_id={source_id}, reason={reason}")]
     FetchFailed { source_id: String, reason: String },

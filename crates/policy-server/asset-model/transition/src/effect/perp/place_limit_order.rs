@@ -1,8 +1,6 @@
 //! `PlaceLimitOrderAction` reducer — submit a limit order to a perp venue's
 //! orderbook.
-//!
 //! ## Effect
-//!
 //! Emits a `PendingChange::Add` carrying a `PendingKind::PerpVenueOrder` with:
 //!   - `commitment: AssetCommitment::None` (reduce-only orders lock no margin)
 //!     or `HardLock { token, locked: max(notional, 0) }` (the orderbook does
@@ -10,26 +8,22 @@
 //!     default and rely on `position_state` to surface the cap).
 //!   - `lifecycle.valid_until` populated from `TimeInForce::Gtd { until }`
 //!     for time-bound orders, `None` otherwise.
-//!
 //! ## Per-user limits
-//!
 //! Validates `open_orders_count` (`LiveField`) against venue maximums via a
 //! best-effort 100-order cap — most venues allow at least 100 open orders
 //! per market; we surface a soft `Invariant` if the count exceeds that
 //! conservative limit. Real per-venue limits surface as a separate
 //! `live_inputs.max_open_orders` field in a future schema revision.
-//!
 //! ## Best bid / ask gating
-//!
 //! Validates the limit price is "reasonable" — within ±50% of the
 //! mid-spread `(best_bid + best_ask) / 2`. Crossed / non-sensical limits
 //! land as `Invariant`. The 50% bracket is a sanity check, not a venue
 //! constraint; tighter venue-specific validation lives in the policy layer.
 
-use simulation_state::pending::{
+use policy_state::pending::{
     AssetCommitment, PendingKind, PendingLifecycle, PendingStatus, PendingTx, PerpOrderKind,
 };
-use simulation_state::{EvalContext, PendingChange, StateDelta, WalletState};
+use policy_state::{EvalContext, PendingChange, StateDelta, WalletState};
 
 use crate::action::perp::{PlaceLimitOrderAction, TimeInForce};
 use crate::apply::Reducer;
@@ -119,12 +113,10 @@ impl Reducer for PlaceLimitOrderAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::PerpSide;
-    use simulation_state::primitives::{
-        Address, ChainId, Decimal, MarketRef, Time, VenueRef, U256,
-    };
-    use simulation_state::wallet::WalletId;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::PerpSide;
+    use policy_state::primitives::{Address, ChainId, Decimal, MarketRef, Time, VenueRef, U256};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{
@@ -140,7 +132,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

@@ -1,14 +1,11 @@
 //! `LaunchpadAction` reducers — `Commit` / `ClaimAllocation` / `ClaimVested` /
 //! `Refund` / `WithdrawCommit`.
-//!
 //! ## Lifecycle (spec §8)
-//!
 //! A launchpad sale (`CoinList` / `Buidlpad` / `Echo` / `Fjord` / `DAO Maker` / etc.)
 //! flows through:
-//!
 //! 1. **`Commit`** — user deposits a `pay_token` (USDC / native) into the
 //!    sale contract. We `debit` the wallet and open a
-//!    [`Position::LaunchpadAllocation`](simulation_state::position::LaunchpadAllocation)
+//!    [`Position::LaunchpadAllocation`](policy_state::position::LaunchpadAllocation)
 //!    with `paid = [(pay_token, amount)]`, `allocated = (placeholder_token, 0)`
 //!    (the allocation is announced post-sale), and the optional
 //!    `vest_schedule` taken from the live sale state.
@@ -27,9 +24,7 @@
 //!    cancelling part or all of a prior `Commit`. `credit` the
 //!    `pay_token`. If the full commit is withdrawn the position is
 //!    `Close`-d, otherwise it is `Update`-d with reduced `paid`.
-//!
 //! ## State invariants enforced
-//!
 //! * `Commit` rejects an inactive sale.
 //! * `Commit` rejects when `user_committed + amount > user_cap`.
 //! * `Commit` rejects when `total_committed + amount > hard_cap` if a hard
@@ -43,9 +38,7 @@
 //!   (post-sale withdrawal is the refund path, not this one).
 //! * `WithdrawCommit` rejects when `live_inputs.withdrawable` < requested
 //!   amount.
-//!
 //! ## Position id convention
-//!
 //! All launchpad-flow actions (`Commit` / `ClaimAllocation` / `Refund` /
 //! `WithdrawCommit`) derive a deterministic id of shape
 //! `launchpad:{platform.name}:{sale_id}:{recipient_hex}`. `ClaimVested`
@@ -53,14 +46,14 @@
 //! covers both `LaunchpadAllocation` and `VestingSchedule` positions
 //! so it cannot synthesise the id).
 
-use serde_json::json;
-use simulation_state::delta::PositionPatch;
-use simulation_state::position::{
+use policy_state::delta::PositionPatch;
+use policy_state::position::{
     LaunchpadAllocation, Position, PositionId, PositionKind, VestCurve, VestSchedule,
     VestingSchedule,
 };
-use simulation_state::primitives::{Address, Time, U256};
-use simulation_state::{DataSource, EvalContext, PositionChange, StateDelta, WalletState};
+use policy_state::primitives::{Address, Time, U256};
+use policy_state::{DataSource, EvalContext, PositionChange, StateDelta, WalletState};
+use serde_json::json;
 
 use crate::action::launchpad::{
     ClaimAllocationAction, ClaimVestedAction, CommitAction, LaunchpadAction, RefundAction,
@@ -222,7 +215,6 @@ impl Reducer for CommitAction {
             // Brand-new position. `allocated` is announced post-sale, so we
             // seed `(pay_token, 0)` as a placeholder; `ClaimAllocation` will
             // overwrite both legs with the live allocation tuple.
-            //
             // Sales without a vest schedule are represented by a degenerate
             // Linear curve with `start == end == now` so the schedule
             // deserialises without an optional dance downstream.
@@ -524,18 +516,16 @@ mod tests {
         ClaimAllocationLiveInputs, ClaimVestedLiveInputs, CommitLiveInputs, RefundLiveInputs,
         SaleState, WithdrawCommitLiveInputs,
     };
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::DataSource;
-    use simulation_state::position::VestCurve;
-    use simulation_state::primitives::{
-        Address, ChainId, Duration, Price, ProtocolRef, Time, U256,
-    };
-    use simulation_state::token::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::DataSource;
+    use policy_state::position::VestCurve;
+    use policy_state::primitives::{Address, ChainId, Duration, Price, ProtocolRef, Time, U256};
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::{WalletId, WalletState};
-    use simulation_state::LiveField;
+    use policy_state::wallet::{WalletId, WalletState};
+    use policy_state::LiveField;
     use std::str::FromStr;
 
     fn now() -> Time {

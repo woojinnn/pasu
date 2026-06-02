@@ -1,5 +1,4 @@
 //! Integration: POST /wallets and POST /wallets/:addr/sync.
-//!
 //! Uses an empty `SyncConfig`, so the orchestrator has no providers and
 //! `refresh()` is essentially a no-op (no LiveFields to walk, nothing
 //! to fetch). The tests therefore verify the HTTP plumbing — add wallet
@@ -11,13 +10,13 @@ use std::sync::Arc;
 
 use axum::routing::post;
 use axum::{Json, Router};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_server::app::{build_router, AppState};
+use policy_server::auth::jwt::{issue, TokenType};
+use policy_server::events::{EventBus, LocalEventPublisher};
+use policy_state::{Decimal, PositionKind, WalletId, WalletState, WalletStore};
+use policy_sync::{HyperliquidConfig, Orchestrator, SyncConfig};
 use serde_json::{json, Value};
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
-use simulation_server::auth::jwt::{issue, TokenType};
-use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_state::{Decimal, PositionKind, WalletId, WalletState, WalletStore};
-use simulation_sync::{HyperliquidConfig, Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -51,7 +50,7 @@ async fn spawn_server_with_orchestrator(
         publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(orchestrator),
         etherscan: None,
-        coingecko: simulation_sync::CoinGeckoClient::new(),
+        coingecko: policy_sync::CoinGeckoClient::new(),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -263,10 +262,10 @@ async fn sync_known_wallet_returns_204() {
     let store = mu.for_user("u_write_alice").unwrap();
     let id = WalletId::new(
         std::str::FromStr::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
-        [simulation_state::primitives::ChainId::ethereum_mainnet()],
+        [policy_state::primitives::ChainId::ethereum_mainnet()],
     );
     store
-        .save(&simulation_state::WalletState::new(id.clone()))
+        .save(&policy_state::WalletState::new(id.clone()))
         .await
         .unwrap();
 
@@ -287,7 +286,7 @@ async fn sync_known_wallet_runs_hyperliquid_account_sync() {
     let store = mu.for_user("u_write_alice").unwrap();
     let id = WalletId::new(
         std::str::FromStr::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
-        [simulation_state::primitives::ChainId::ethereum_mainnet()],
+        [policy_state::primitives::ChainId::ethereum_mainnet()],
     );
     store.save(&WalletState::new(id.clone())).await.unwrap();
 

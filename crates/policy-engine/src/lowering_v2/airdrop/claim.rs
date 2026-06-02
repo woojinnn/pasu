@@ -2,8 +2,8 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::airdrop::{ClaimAirdropAction, ClaimTarget};
-use simulation_state::primitives::ProtocolRef;
+use policy_state::primitives::ProtocolRef;
+use policy_transition::action::airdrop::{ClaimAirdropAction, ClaimTarget};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -126,19 +126,19 @@ fn lower_claim_target(target: &ClaimTarget) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::airdrop::{
+    use policy_state::position::MerkleProof;
+    use policy_state::primitives::{Address, ChainId, ProtocolRef, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::LiveField;
+    use policy_transition::action::airdrop::{
         AirdropAction, ClaimAirdropAction, ClaimAirdropLiveInputs, ClaimTarget,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::position::MerkleProof;
-    use simulation_state::primitives::{Address, ChainId, ProtocolRef, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{assert_conforms, now, onchain_source, sample_token_ref};
 
     /// A Merkle-distributor claim with proof, claim window, on-chain meta.
-    fn sample_claim() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_claim() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let claim = AirdropAction::Claim(ClaimAirdropAction {
             source: ProtocolRef::new("optimism"),

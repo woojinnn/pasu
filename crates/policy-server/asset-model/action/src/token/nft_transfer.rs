@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, U256};
-use simulation_state::token::TokenKey;
+use policy_state::primitives::{Address, U256};
+use policy_state::token::TokenKey;
 
 /// `ERC721`/`ERC1155` transfer of a specific token id.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

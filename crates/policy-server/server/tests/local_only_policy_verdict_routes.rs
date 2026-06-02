@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, AppState};
-use simulation_server::auth::jwt::{issue, TokenType};
-use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_sync::{Orchestrator, SyncConfig};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_server::app::{build_router, AppState};
+use policy_server::auth::jwt::{issue, TokenType};
+use policy_server::events::{EventBus, LocalEventPublisher};
+use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-06-01";
 
@@ -31,7 +31,7 @@ async fn spawn_server() -> (std::net::SocketAddr, String) {
         publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
-        coingecko: simulation_sync::CoinGeckoClient::new(),
+        coingecko: policy_sync::CoinGeckoClient::new(),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -44,7 +44,7 @@ async fn spawn_server() -> (std::net::SocketAddr, String) {
 
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
-async fn policy_routes_are_not_served_by_simulation_server() {
+async fn policy_routes_are_not_served_by_policy_server() {
     let (addr, token) = spawn_server().await;
     let client = reqwest::Client::new();
 
@@ -72,7 +72,7 @@ async fn policy_routes_are_not_served_by_simulation_server() {
 
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
-async fn verdict_audit_and_finding_routes_are_not_served_by_simulation_server() {
+async fn verdict_audit_and_finding_routes_are_not_served_by_policy_server() {
     let (addr, token) = spawn_server().await;
     let client = reqwest::Client::new();
 

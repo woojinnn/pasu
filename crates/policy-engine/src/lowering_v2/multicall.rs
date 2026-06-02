@@ -8,7 +8,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::ActionBody;
+use policy_transition::action::ActionBody;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
@@ -66,11 +66,11 @@ mod tests {
 
     use serde_json::Value;
 
-    use simulation_reducer::action::{airdrop, token, ActionBody, ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::LiveField;
+    use policy_transition::action::{airdrop, token, ActionBody, ActionMeta, ActionNature};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 
@@ -319,8 +319,8 @@ mod tests {
     /// nature interact in one JSON object).
     #[test]
     fn multicall_offchain_sig_meta_conforms() {
-        use simulation_reducer::action::Eip712Domain;
-        use simulation_state::NonceKey;
+        use policy_state::NonceKey;
+        use policy_transition::action::Eip712Domain;
 
         let body = ActionBody::Multicall {
             actions: vec![approve_child(), unknown_child()],

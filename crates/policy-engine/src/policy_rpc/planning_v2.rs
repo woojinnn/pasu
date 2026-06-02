@@ -7,10 +7,10 @@
 //! binds `$.action` to the *lowered Cedar action-context JSON* produced by
 //! [`crate::lowering_v2::lower_action`].
 //!
-//! [`ActionBody`]: simulation_reducer::action::ActionBody
+//! [`ActionBody`]: policy_transition::action::ActionBody
 
+use policy_transition::action::ActionView;
 use serde_json::{Map, Value};
-use simulation_reducer::action::ActionView;
 
 use super::manifest_v2::ManifestV2;
 use super::trigger::{evaluate as evaluate_trigger, TxView};

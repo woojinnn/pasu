@@ -10,7 +10,7 @@
  *   3. Hand `(chain_id, to, selector, calldata, meta)` to the WASM route entry
  *      `declarative_route_request_v3_json`. The engine decodes the raw
  *      calldata using the bridge-resolved bundle's `abi_fragment.abi` and
- *      emits the PDF FSM `simulation_reducer::action::Action` tree.
+ *      emits the PDF FSM `policy_transition::action::Action` tree.
  *   4. Return `{ actions, decoderId }`. The caller (orchestrator in
  *      `service-worker/orchestrator.ts`) plugs these into the audit trail.
  */

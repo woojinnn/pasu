@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::ChangeLeverageAction;
+use policy_transition::action::perp::ChangeLeverageAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::{lower_market_ref, lower_perp_venue};
@@ -65,17 +65,17 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{
+    use policy_state::primitives::{Decimal, Price};
+    use policy_transition::action::perp::{
         ChangeLeverageAction, ChangeLeverageLiveInputs, PerpAction,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Decimal, Price};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_market, sample_venue,
     };
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         let action = ChangeLeverageAction {
             venue: sample_venue(),
             market: sample_market(),

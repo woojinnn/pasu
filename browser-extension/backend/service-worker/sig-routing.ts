@@ -64,6 +64,70 @@ export interface EIP712TypedData {
   message: unknown;
 }
 
+/** Permit2 contract address — CREATE2-deterministic; same on every chain. */
+export const PERMIT2_ADDRESS = "0x000000000022d473030f116ddee9f6b43ac78ba3";
+
+// ───────────────────────────────────────────────────────────────────────────
+// v3 Action skeleton (subset matching `policy_transition::action`)
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * v3 `ActionMeta.nature.OffchainSig` payload. Mirrors the Rust enum
+ * variant tagged with `"kind": "offchain_sig"`. We keep
+ * `verifying_contract` as the canonical lowercase form so the audit
+ * surface and Cedar policies don't have to case-fold.
+ */
+export interface OffchainSigNature {
+  kind: "offchain_sig";
+  domain: {
+    name: string;
+    version?: string;
+    chain_id?: number;
+    verifying_contract?: string;
+    salt?: string;
+  };
+  deadline: number; // unix seconds — `sigDeadline` for Permit2
+  nonce_key?: {
+    kind: "permit2_nonce_bitmap";
+    word: string; // base-10 decimal U256
+    bit: number;
+  };
+}
+
+/**
+ * Permit2-shaped `TokenAction::Permit2SignAllowance`. Mirrors the Rust
+ * variant tagged `"action": "permit2_sign_allowance"`. The body is
+ * intentionally flat (no LiveField on `nonce`) for Phase 4C — Phase 4D
+ * upgrades `nonce` to a LiveField pair `(word, bit)` once the Sync
+ * orchestrator is wired.
+ */
+export interface Permit2SignAllowanceBody {
+  domain: "token";
+  token: {
+    action: "permit2_sign_allowance";
+    permit2_sign_allowance: {
+      token: { key: { standard: "erc20"; chain: string; address: string } };
+      spender: string;
+      amount: string;
+      expires_at: number;
+      sig_deadline: number;
+      nonce: string;
+    };
+  };
+}
+
+export interface SigRouterAction {
+  meta: {
+    submitted_at: number;
+    submitter: string;
+    nature: OffchainSigNature;
+  };
+  body: Permit2SignAllowanceBody;
+  // Decoder id — manifest the router matched on. Empty when no
+  // manifest matched (caller treats as a miss).
+  decoder_id: string;
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // Public entry
 // ───────────────────────────────────────────────────────────────────────────

@@ -1,24 +1,19 @@
 //! Spark Protocol venue math — Aave V3 fork; math identical, parameters and
 //! integrations differ.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::Spark`. Not a `Reducer` impl.
-//!
 //! ## Fork relationship
-//!
 //! Spark Lend is a Maker-governed Aave V3 fork — the [`spark-lend` repo](https://github.com/marsfoundation/spark-lend)
 //! tracks Aave V3 commit-for-commit on the math libraries, overriding only
 //! parameters (e.g. DAI uses a flat `slope1 = 0`, no kink) and adding
 //! integrations (DSR-fed Direct Deposit Module).
-//!
 //! The body therefore delegates to the same shared helpers as V3 with
 //! Spark-specific defaults.
 
-// Phase 2 stubs: per-action wiring lands in a later commit in the same batch.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
@@ -48,7 +43,6 @@ pub(super) fn atokens_to_asset(
 
 /// Compute the per-year (APR) borrow rate on a reserve given its current
 /// utilization.
-///
 /// Spark's parameter sheet differs from Aave V3 — DAI / sDAI reserves run a
 /// `slope1 = 0` "passthrough" model fed from the DAI Savings Rate, while
 /// the rest of the reserves use Aave V3's defaults. We use the Aave V3
@@ -99,8 +93,8 @@ mod tests {
     }
 
     fn dummy_ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
-        use simulation_state::primitives::{ChainId, Time};
+        use policy_state::eval_context::RequestKind;
+        use policy_state::primitives::{ChainId, Time};
         EvalContext::new(
             ChainId::ethereum_mainnet(),
             Time::from_unix(1_738_000_000),
@@ -109,8 +103,8 @@ mod tests {
     }
 
     fn empty_state() -> WalletState {
-        use simulation_state::primitives::{Address, ChainId};
-        use simulation_state::wallet::WalletId;
+        use policy_state::primitives::{Address, ChainId};
+        use policy_state::wallet::WalletId;
         WalletState::new(WalletId::new(
             Address::from([0u8; 20]),
             [ChainId::ethereum_mainnet()],

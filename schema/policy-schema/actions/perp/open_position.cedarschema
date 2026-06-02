@@ -7,7 +7,7 @@
 //   - `PerpVenue` is a discriminated record (Rust enum, serde tag = "name",
 //     rename_all = snake_case). Field set varies by name; `contract` is
 //     present only for "generic".
-//   - `MarketRef` follows the simulation_state shape: `{ symbol, venue }`
+//   - `MarketRef` follows the policy_state shape: `{ symbol, venue }`
 //     where `venue: VenueRef { name, chain? }`. This is NOT the same as
 //     `PerpVenue` (which is the per-action venue discriminator).
 //   - `SizeSpec`, `TimeInForce` are also discriminated records.

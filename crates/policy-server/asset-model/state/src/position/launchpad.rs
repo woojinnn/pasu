@@ -1,5 +1,4 @@
-//! `LaunchpadAllocation` — Binance Launchpad / DAO Maker / Buidlpad 등의
-//! 청약 + vest 통합 표현.
+//! `LaunchpadAllocation` combines subscription and vesting state.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -8,26 +7,26 @@ use super::vesting::VestSchedule;
 use crate::primitives::{ProtocolRef, U256};
 use crate::token::TokenRef;
 
-/// Launchpad / IDO 의 청약 + vest 통합 (Binance Launchpad, DAO Maker 등).
+/// Subscription and vesting state for a launchpad or IDO allocation.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct LaunchpadAllocation {
-    /// 본 청약을 호스팅한 launchpad 프로토콜.
+    /// Launchpad protocol that hosted this allocation.
     pub platform: ProtocolRef,
-    /// 플랫폼-내 sale 식별자.
+    /// Platform-local sale identifier.
     pub sale_id: String,
-    /// 청약에 사용한 자산들 ((USDC, 1000), (BNB, 5)).
+    /// Assets paid into the allocation.
     #[tsify(type = "Array<[TokenRef, string]>")]
     pub paid: Vec<(TokenRef, U256)>,
-    /// 받기로 한 자산.
+    /// Asset allocated to the user.
     #[tsify(type = "[TokenRef, string]")]
     pub allocated: (TokenRef, U256),
-    /// 본 allocation 의 vesting 일정.
+    /// Vesting schedule for this allocation.
     pub vest: VestSchedule,
-    /// 누적으로 청구된 양.
+    /// Cumulative claimed amount.
     #[tsify(type = "string")]
     pub claimed: U256,
-    /// 지금 청구 가능한 양.
+    /// Amount currently claimable.
     #[tsify(type = "string")]
     pub claimable_now: U256,
 }

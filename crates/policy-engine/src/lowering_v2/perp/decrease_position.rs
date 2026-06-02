@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::DecreasePerpAction;
+use policy_transition::action::perp::DecreasePerpAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::{lower_perp_venue, lower_size_spec};
@@ -54,11 +54,11 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{
+    use policy_state::primitives::{Price, SignedI256};
+    use policy_transition::action::perp::{
         ClosePerpLiveInputs, DecreasePerpAction, PerpAction, SizeSpec,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Price, SignedI256};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_size, sample_size_base, sample_size_quote,
@@ -82,7 +82,7 @@ mod tests {
         ActionBody::Perp(PerpAction::DecreasePosition(action))
     }
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         (build(sample_size()), onchain_meta())
     }
 

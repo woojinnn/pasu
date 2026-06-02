@@ -1,4 +1,4 @@
-//! `ApprovalSet` — wallet-level approval collections split by scope. spec §4.4.
+//! Wallet-level approval collections split by scope.
 //!
 //! Only ERC721 *per-token* `approve(tokenId, spender)` is nested under
 //! `TokenHolding.approved_to` (it is 1:1 with that holding, so this is natural).

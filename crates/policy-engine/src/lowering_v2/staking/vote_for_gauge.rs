@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::staking::VoteForGaugeAction;
+use policy_transition::action::staking::VoteForGaugeAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -33,9 +33,9 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::staking::{StakingAction, VoteForGaugeAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, U256};
+    use policy_state::primitives::{Address, U256};
+    use policy_transition::action::staking::{StakingAction, VoteForGaugeAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{assert_conforms, gauge_controller_venue, onchain_meta};
 

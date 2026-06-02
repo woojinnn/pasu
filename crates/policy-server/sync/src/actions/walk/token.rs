@@ -1,13 +1,10 @@
-//! Token 도메인 walk + apply.
-//!
 //! Wired: Erc20Permit.nonce, Permit2SignAllowance.nonce.
-//! 나머지 token action 들 (approve/transfer/...) 은 `live_inputs` 없음 → no-op.
 
 use serde_json::Value;
 
-use simulation_reducer::action::token::{Erc20PermitAction, Permit2SignAction};
-use simulation_reducer::action::TokenAction;
-use simulation_state::Time;
+use policy_state::Time;
+use policy_transition::action::token::{Erc20PermitAction, Permit2SignAction};
+use policy_transition::action::TokenAction;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 
@@ -71,7 +68,6 @@ pub(super) fn apply(ta: &mut TokenAction, slot: &ActionSlot, value: Value, now: 
             }
         }
         (TokenAction::Permit2SignAllowance(p), ActionSlot::TokenPermit2SignNonce) => {
-            // Permit2 nonce 는 (word: U256, bit: u8). value 가 JSON [word, bit] 가정.
             if let Value::Array(arr) = &value {
                 if arr.len() == 2 {
                     let word = value_to_u256(&arr[0]);
@@ -81,7 +77,6 @@ pub(super) fn apply(ta: &mut TokenAction, slot: &ActionSlot, value: Value, now: 
                     }
                 }
             } else if let Some(u) = value_to_u256(&value) {
-                // 단일 숫자만 받으면 word 만, bit=0
                 set_field(&mut p.nonce, (u, 0u8), now);
             }
         }

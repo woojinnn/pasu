@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::PlaceStopOrderAction;
+use policy_transition::action::perp::PlaceStopOrderAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::{
@@ -60,12 +60,12 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{
+    use policy_state::position::PerpSide;
+    use policy_state::primitives::Price;
+    use policy_transition::action::perp::{
         PerpAccountState, PerpAction, PlaceStopLiveInputs, PlaceStopOrderAction, StopOrderKind,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::position::PerpSide;
-    use simulation_state::primitives::Price;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, live, offchain_meta, sample_account_state, sample_account_state_empty,
@@ -99,7 +99,7 @@ mod tests {
         ActionBody::Perp(PerpAction::PlaceStopOrder(action))
     }
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         // StopLimit carries a limitPrice (Some arm) + long side + reduce_only.
         (
             build(

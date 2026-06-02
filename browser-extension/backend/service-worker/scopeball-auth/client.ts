@@ -9,7 +9,7 @@
  *   the extension never opens SSE.
  *
  * The server URL is taken from `SCOPEBALL_SERVER_URL` at build time
- * (webpack DefinePlugin in Phase 9) and falls back to the local-dev
+ * (webpack DefinePlugin) and falls back to the local-dev
  * default.
  */
 

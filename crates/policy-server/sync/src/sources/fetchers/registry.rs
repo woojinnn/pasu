@@ -1,13 +1,3 @@
-//! Registry fetcher — scopeball 자체 메타데이터 서버 (로컬 또는 원격).
-//!
-//! 동작:
-//! - `DataSource::RegistryApi { endpoint, resource, version }` 를 받음
-//! - resource 에 따라 `GET {endpoint}/v{ver}/token/{chain}/{addr}` 같은 URL 만들기
-//! - 응답 JSON 을 Value 로 반환
-//! - in-memory TTL cache (기본 24h) — 같은 (resource) 를 두 번 안 부르도록
-//!
-//! 응답 schema 는 registry 서버 측 결정. 여기선 그냥 Value 로 pass-through.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -15,14 +5,13 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 use tokio::sync::RwLock;
 
-use simulation_state::{DataSource, RegistryResource};
+use policy_state::{DataSource, RegistryResource};
 
 use crate::error::SyncError;
 
 /// Cache TTL (default 24h).
-const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(86_400);
+const DEFAULT_CACHE_TTL: Duration = Duration::from_hours(24);
 
-/// 한 cache entry.
 #[derive(Clone, Debug)]
 struct CacheEntry {
     value: Value,
@@ -61,7 +50,6 @@ impl RegistryFetcher {
         self
     }
 
-    /// 한 `RegistryApi` `DataSource` 를 처리.
     pub async fn fetch(&self, source: &DataSource) -> Result<Value, SyncError> {
         let (endpoint, resource, version) = match source {
             DataSource::RegistryApi {
@@ -159,7 +147,7 @@ fn build_url(endpoint: &str, resource: &RegistryResource, version: Option<&str>)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::{Address, ChainId};
+    use policy_state::{Address, ChainId};
     use std::str::FromStr;
 
     #[test]

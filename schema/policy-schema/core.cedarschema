@@ -105,7 +105,7 @@ namespace Core {
   // ProtocolRef — lightweight identifier for a source protocol (Defillama-style
   // name). Used cross-domain by Airdrop::Claim and Launchpad::{Commit,
   // ClaimAllocation, Refund, WithdrawCommit}. Mirrors
-  // `simulation_state::primitives::ProtocolRef`.
+  // `policy_state::primitives::ProtocolRef`.
   // -------------------------------------------------------------------------
   type ProtocolRef = {
     // Protocol slug, e.g. "optimism", "arbitrum_dao", "coinlist", "fjord".
@@ -310,7 +310,7 @@ namespace Launchpad {
     description?: String,
   };
 
-  // Vesting parameters (Rust `simulation_state::position::VestSchedule`).
+  // Vesting parameters (Rust `policy_state::position::VestSchedule`).
   type VestSchedule = {
     // Vesting start (unix seconds).
     start: Long,
@@ -360,7 +360,7 @@ namespace Perp {
     chain?: String,
   };
 
-  // MarketRef — `{ symbol, venue }` per simulation_state.
+  // MarketRef — `{ symbol, venue }` per policy_state.
   type MarketRef = {
     symbol: String,
     venue: VenueRef,

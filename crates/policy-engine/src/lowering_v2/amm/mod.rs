@@ -2,9 +2,9 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::{AmmAction, AmmVenue, BalancerPoolType, IntentVenue};
-use simulation_state::primitives::U256;
-use simulation_state::token::TokenRef;
+use policy_state::primitives::U256;
+use policy_state::token::TokenRef;
+use policy_transition::action::amm::{AmmAction, AmmVenue, BalancerPoolType, IntentVenue};
 
 use super::common::cedar::{addr, u256_hex};
 use super::common::token::lower_token_ref;
@@ -206,7 +206,7 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::{Address, ChainId};
+    use policy_state::primitives::{Address, ChainId};
 
     /// The merged `{chain, pool}` venue group emits only chain + pool (no extra
     /// venue fields leak in), and `CurveV1` carries `nCoins` (Long) + `isMeta`
@@ -250,11 +250,11 @@ mod tests {
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::LiveField;
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 

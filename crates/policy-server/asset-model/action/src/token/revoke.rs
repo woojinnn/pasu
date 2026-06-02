@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId, U256};
-use simulation_state::token::{TokenKey, TokenRef};
+use policy_state::primitives::{Address, ChainId, U256};
+use policy_state::token::{TokenKey, TokenRef};
 
 /// Revoke a previously granted approval, scoped via `RevokeScope`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

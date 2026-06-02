@@ -1,13 +1,13 @@
-//! `PendingTx` — 서명되었지만 아직 체결되지 않은 상태. spec §6.
+//! `PendingTx` represents a signed request that has not fully settled yet.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-/// pending 의 자산 묶임 방식 (`AssetCommitment`).
+/// Asset commitment model for pending entries.
 pub mod commitment;
-/// pending 의 4가지 종류 (`PendingKind`).
+/// Pending entry kinds.
 pub mod kind;
-/// pending nonce / hash 식별자 (`NonceKey`, `B256`, `TxHash`).
+/// Pending nonce and hash identifiers.
 pub mod nonce;
 
 pub use commitment::AssetCommitment;
@@ -18,43 +18,43 @@ use crate::delta::StateDelta;
 use crate::live_field::DataSource;
 use crate::primitives::Time;
 
-/// 한 pending 의 안정 식별자 (string).
+/// Stable identifier for a pending entry.
 pub type PendingId = String;
 
-/// 한 pending 의 lifecycle 상태.
+/// Lifecycle status for a pending entry.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PendingStatus {
-    /// 서명 완료, 미체결.
+    /// Signed and not yet settled.
     Active,
-    /// 일부 체결됨.
+    /// Partially settled.
     PartiallyFilled,
-    /// 완전 체결.
+    /// Fully settled.
     Filled,
-    /// 사용자 취소.
+    /// Cancelled by the user.
     Cancelled,
-    /// deadline 만료.
+    /// Expired after its deadline.
     Expired,
-    /// venue 응답 부재 / 갱신 실패 등.
+    /// Unknown because the venue did not respond or reconciliation failed.
     Unknown,
 }
 
-/// pending 의 lifecycle 메타 (status / `valid_until` / nonce / on-chain tx).
+/// Lifecycle metadata for a pending entry.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct PendingLifecycle {
-    /// 현재 lifecycle 상태.
+    /// Current lifecycle status.
     pub status: PendingStatus,
-    /// 본 pending 이 유효한 deadline. 무기한이면 `None`.
+    /// Deadline while this pending entry remains valid; `None` means no deadline.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub valid_until: Option<Time>,
-    /// 본 pending 의 nonce / order hash. nonce 가 없는 형태는 `None`.
+    /// Nonce or order hash for this pending entry; `None` when unavailable.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub nonce: Option<NonceKey>,
-    /// 부분 fill 또는 settler tx.
+    /// Partial-fill or settlement transaction.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub on_chain_tx: Option<TxHash>,
@@ -71,33 +71,33 @@ impl PendingLifecycle {
     }
 }
 
-/// 감사용 서명 페이로드. EIP-712 의 도메인 + 메시지 원본 등.
+/// Signature payload retained for audit, such as the original EIP-712 domain and message.
 pub type SignaturePayload = Vec<u8>;
 
-/// 서명-only / 미체결 pending entry 본체.
+/// Body for a signature-only or unsettled pending entry.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct PendingTx {
-    /// 본 pending 의 식별자.
+    /// Pending entry identifier.
     pub id: PendingId,
-    /// pending 의 sub-kind 와 본체 데이터.
+    /// Pending sub-kind and payload.
     pub kind: PendingKind,
 
-    /// 자산이 어떻게 묶여 있는지.
+    /// How assets are committed while this entry is pending.
     pub commitment: AssetCommitment,
 
-    /// 체결되면 일어날 변화 (시뮬용). recursive 라서 Box.
+    /// Simulated state change that would happen on fill; boxed because deltas are recursive.
     pub fill_effect: Box<StateDelta>,
 
-    /// lifecycle 메타.
+    /// Lifecycle metadata.
     pub lifecycle: PendingLifecycle,
 
-    /// pending 상태를 어디서 어떻게 갱신할지 (`DataSource` 와 같은 스키마).
+    /// Source used to refresh this pending entry's status.
     pub sync: DataSource,
 
-    /// 서명 시각.
+    /// Signature timestamp.
     pub signed_at: Time,
-    /// EIP-712 원본 (감사용).
+    /// Original EIP-712 payload bytes retained for audit.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[tsify(type = "Array<number>")]
     pub signature_payload: SignaturePayload,

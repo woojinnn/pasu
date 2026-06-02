@@ -7,7 +7,7 @@
 //! (`StateDelta::new()`). The security-relevant evaluation happens in the Cedar
 //! policy layer (a policy can deny granting control to an untrusted operator).
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::SetAuthorizationAction;
 use crate::apply::Reducer;

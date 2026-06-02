@@ -1,8 +1,6 @@
 //! `SignIntentOrderAction` / `CancelIntentOrderAction` reducers —
 //! EIP-712 intent flows (`UniswapX` / `CowSwap` / `1inch Fusion` / `Bebop`).
-//!
 //! ## Off-chain sig handling
-//!
 //! Intent orders are signed off-chain (EIP-712 typed-data signatures). They do
 //! not move funds at the moment of signing — only when a filler/solver presents
 //! them at the venue's settlement contract. We model the signing event as a
@@ -10,13 +8,10 @@
 //! <reactor or settlement>, max_out: sell_amount }` so the wallet's `committed`
 //! accounting (PDF §6.1) reflects the spend cap that the signature has
 //! authorised, even though no on-chain allowance has been set yet.
-//!
 //! This mirrors the `Erc20Permit` / `Permit2Sign` pattern in `effect/token.rs`
 //! and lets the policy layer reason about intent-order spend caps with the
 //! same `cap_for` aggregation that's already wired for permits.
-//!
 //! ## Venue address binding
-//!
 //! `IntentVenue` carries the reactor / settlement contract on each variant
 //! (`UniswapX` reactor, `CowSwap` `GPv2` settlement, `1inch Fusion` + `Bebop`
 //! are chain-bound but the actual filler is dynamic). For `OneInchFusion` and
@@ -25,9 +20,6 @@
 //! relevant against any spender. Policy can match on the `VenueRef.name`
 //! field of the `PendingTx.kind.OffchainLimitOrder.venue` slot to whitelist
 //! fillers by venue family.
-//!
-//! ## 1차 출처
-//!
 //! * `UniswapX` — <https://github.com/Uniswap/UniswapX>
 //!   * `src/base/ReactorStructs.sol::OrderInfo`
 //!   * `src/reactors/V2DutchOrderReactor.sol::execute`
@@ -37,18 +29,18 @@
 //! * 1inch Fusion — <https://docs.1inch.io/docs/fusion-swap/introduction>
 //! * Bebop — <https://docs.bebop.xyz/>
 
-use simulation_state::pending::{
+use policy_state::pending::{
     AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
 };
-use simulation_state::primitives::{Address, VenueRef};
-use simulation_state::{DataSource, EvalContext, PendingChange, StateDelta, WalletState};
+use policy_state::primitives::{Address, VenueRef};
+use policy_state::{DataSource, EvalContext, PendingChange, StateDelta, WalletState};
 
 use crate::action::amm::{
     CancelIntentOrderAction, IntentOrderKind, IntentVenue, SignIntentOrderAction,
 };
 use crate::apply::Reducer;
 use crate::error::ReducerResult;
-use simulation_state::delta::PendingRemoveReason;
+use policy_state::delta::PendingRemoveReason;
 
 /// Map the action-side `IntentOrderKind` to the state-side `OrderKind`. Both
 /// enums carry the same `Dutch` / `Limit` / `Rfq` variants but live in
@@ -200,11 +192,11 @@ impl Reducer for CancelIntentOrderAction {
 mod tests {
     use super::*;
     use crate::action::amm::{IntentOrderKind, IntentVenue, SignIntentOrderLiveInputs};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Price, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Price, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

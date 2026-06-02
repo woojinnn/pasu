@@ -1,5 +1,3 @@
-//! Provider 별 health 추적. 실패 누적 시 일정 시간 unhealthy 로 마킹.
-
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -14,7 +12,6 @@ pub struct HealthTracker {
 #[derive(Debug, Clone, Default)]
 struct ProviderHealth {
     consecutive_failures: u32,
-    /// 이 시각 이전에는 unhealthy 로 본다.
     unhealthy_until: Option<Instant>,
 }
 

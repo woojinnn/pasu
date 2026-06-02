@@ -1,5 +1,5 @@
 [package]
-name = "simulation-server"
+name = "policy-server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,13 +9,13 @@ publish = false
 [dependencies]
 # The service operates on the pure simulation types + reducer. NO cedar /
 # policy-engine dependency: the extension owns Cedar evaluation.
-simulation-state.workspace = true
-simulation-reducer.workspace = true
+policy-state.workspace = true
+policy-transition.workspace = true
 # Sync orchestrator hooks live RPC/oracle fetchers into `LiveField` refresh.
-simulation-sync.workspace = true
+policy-sync.workspace = true
 # PostgreSQL-backed wallet state persistence. Handlers stay db-agnostic where
 # possible by operating on `&dyn WalletStore`.
-simulation-db.workspace = true
+policy-db.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

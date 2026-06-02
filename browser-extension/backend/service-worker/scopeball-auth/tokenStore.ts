@@ -7,8 +7,8 @@
  * cost on each call.
  *
  * This is intentionally separate from the legacy 8787 policy-rpc client
- * — that path stays unauthenticated for now (Phase 8A). Only the new
- * Rust simulation-server at port 8788 needs these tokens.
+ * — that path remains unauthenticated. Only the new
+ * Rust policy-server at port 8788 needs these tokens.
  */
 
 import Browser from "webextension-polyfill";

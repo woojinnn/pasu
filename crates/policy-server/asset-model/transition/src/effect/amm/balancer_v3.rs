@@ -1,22 +1,16 @@
 //! Balancer V3 swap math.
-//!
 //! Same pool types as V2 (`Weighted` / `Stable` / `ComposableStable` /
 //! `MetaStable` / `LiquidityBootstrapping` / `Linear`), but V3 introduces a
 //! hook framework, a unified router, and buffer-based ERC-4626 wrappers — the
 //! V3 dispatch must therefore resolve hooks before falling through to the
 //! per-pool-type math, analogous to `uniswap_v4`.
-//!
 //! A single `quote_swap_hop` entry point internally dispatches on the
 //! `PoolState` variant. Hooks dispatch lives upstream in `swap.rs` (mirroring
 //! the V4 pattern — the hooks address is on the `AmmVenue::BalancerV3`
 //! variant, not on the `PoolState`); this helper only handles hook-less pool
 //! math and otherwise delegates to the shared V2 helpers since the underlying
 //! `WeightedMath` / `StableMath` libraries are unchanged from V2 to V3.
-//!
 //! Not a `Reducer` impl since `AmmVenue` is not an `Action`.
-//!
-//! ## 1차 출처
-//!
 //! * Balancer V3 monorepo —
 //!   <https://github.com/balancer/balancer-v3-monorepo>
 //!   * `pkg/pool-weighted/contracts/WeightedPool.sol`
@@ -24,21 +18,17 @@
 //!   * `pkg/vault/contracts/Vault.sol::swap`
 //!   * `pkg/pool-hooks/contracts/Hooks.sol` — hooks framework (deferred,
 //!     analogous to V4: see "Hooks" below).
-//!
 //! ## Hooks
-//!
 //! V3's hook framework can override `onSwap` / `onAfterSwap` to mutate the
-//! curve, fees, or final amounts. Phase 2 defers arbitrary-hook dispatch.
 //! The hooks short-circuit, when added, will live in `swap.rs` — analogous
 //! to the `AmmVenue::UniswapV4 { hooks, .. }` check — because the hooks
 //! address is on the `AmmVenue` discriminant, not the `PoolState`.
 
-// Phase 2 stubs: callers (per-action reducers) are still `todo!()` so these
 // functions look unused. Lift this allow when the first caller wires up.
 #![allow(dead_code)]
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::ReducerResult;
@@ -50,10 +40,8 @@ use super::balancer_v2;
 /// `WeightedMath` / `StableMath` libraries are unchanged from V2; the V3
 /// surface differences (hooks, buffers) live at the routing layer, not the
 /// curve math.
-///
 /// Returns the hop's output amount; caller is responsible for fee accounting
 /// and balance changes.
-///
 /// Errors are produced verbatim by [`balancer_v2::quote_swap_hop`] — see that
 /// helper for the full failure-mode taxonomy.
 pub(super) fn quote_swap_hop(
@@ -108,11 +96,11 @@ mod tests {
     use crate::action::amm::{
         AmmVenue, BalancerPoolType, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute,
     };
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

@@ -1,14 +1,13 @@
 //! Runtime storage backend wiring.
-//!
-//! The policy server now has one durable backend: PostgreSQL. State remains
+//! The policy server now has one durable backend: `PostgreSQL`. State remains
 //! primitive-first in `wallet_states.state_json`; mutable wallet metadata and
 //! sync cursors live in adjacent tables under the same user namespace.
 
 use std::sync::Arc;
 
-use simulation_db::stores::postgres::connect_pool;
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_state::WalletStore;
+use policy_db::stores::postgres::connect_pool;
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_state::WalletStore;
 
 use crate::config::ServerConfig;
 
@@ -20,7 +19,7 @@ pub struct StorageBackend {
 }
 
 impl StorageBackend {
-    /// Connect to PostgreSQL and apply the schema migrations.
+    /// Connect to `PostgreSQL` and apply the schema migrations.
     pub async fn open(config: &ServerConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let database_url = config.database_url.as_deref().ok_or_else(|| {
             std::io::Error::new(

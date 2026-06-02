@@ -17,7 +17,7 @@
 namespace Amm {
   // -------------------------------------------------------------------------
   // RangeSpec — concentrated-liquidity range geometry. Maps Rust enum
-  // `simulation_state::token::RangeSpec` (Tick / Bin / Custom). Cedar lacks
+  // `policy_state::token::RangeSpec` (Tick / Bin / Custom). Cedar lacks
   // unions, so the variant is discriminated by `kind` and per-variant fields
   // are optional.
   //

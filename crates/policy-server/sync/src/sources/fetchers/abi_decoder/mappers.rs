@@ -1,12 +1,3 @@
-//! Decoded JSON Array → target Struct shape 매퍼.
-//!
-//! `AbiDecoder` 가 풀어낸 결과는 JSON Array (튜플 형태).
-//! `apply_value_to_action` 은 그걸 typed struct (`UserLendingState` 등) 로
-//! deserialize 시도. Array → Struct 변환이 안 되므로 중간 mapper 가 필요.
-//!
-//! 각 매퍼: 디코드된 array → struct 모양의 JSON object.
-//! 새 protocol = 매퍼 함수 1개 추가 + `register_mapper` 1줄.
-
 use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
@@ -41,7 +32,6 @@ impl MapperRegistry {
         self.by_id.get(id)
     }
 
-    /// `value` 가 mapper 적용 가능한 array 이면 변환, 아니면 그대로 반환.
     #[must_use]
     pub fn maybe_apply(&self, id: &str, value: Value) -> Value {
         if let Some(mapper) = self.by_id.get(id) {
@@ -64,8 +54,6 @@ impl MapperRegistry {
     }
 }
 
-/// `getReserveData` 의 결과에서 index 4 = currentVariableBorrowRate (ray) 만 추출.
-/// 결과: decimal string (ray scale 적용 후).
 #[must_use]
 pub fn map_aave_v3_current_borrow_rate(v: &Value) -> Option<Value> {
     let arr = v.as_array()?;
@@ -77,9 +65,8 @@ pub fn map_aave_v3_current_borrow_rate(v: &Value) -> Option<Value> {
 
 // ─────────────────────── Aave V3 ───────────────────────
 
-/// `getUserAccountData(user)` 의 6 uint256 → `UserLendingState` shape.
+/// Aave V3 `getUserAccountData` return tuple:
 ///
-/// Aave 응답 (Array of 6):
 ///   [0] totalCollateralBase       (USD, 8 decimals)
 ///   [1] totalDebtBase             (USD, 8 decimals)
 ///   [2] availableBorrowsBase      (USD, 8 decimals)
@@ -104,11 +91,8 @@ pub fn map_aave_v3_user_account_data(v: &Value) -> Option<Value> {
     }))
 }
 
-/// `getReserveData(asset)` 의 15 필드 → `ReserveState` shape.
+/// Aave V3 `getReserveData` return tuple:
 ///
-/// Aave V3 `ReserveDataLegacy` struct (15 필드):
-///   [0]  configuration (uint256 bitmap) — ltv / `liq_threshold` / `reserve_factor` 등이
-///        이 안에 비트 패킹돼있음. 풀어내려면 별도 bit-shift 필요.
 ///   [1]  liquidityIndex (uint128, ray)
 ///   [2]  currentLiquidityRate (uint128, ray = supply APY)
 ///   [3]  variableBorrowIndex (uint128, ray)
@@ -129,25 +113,19 @@ pub fn map_aave_v3_user_account_data(v: &Value) -> Option<Value> {
 ///     `supply_cap`: `Option<U256>`, `borrow_cap`: `Option<U256>`,
 ///     `ltv_bp`: u32, `liquidation_threshold_bp`: u32, `liquidation_bonus_bp`: u32,
 ///     `reserve_factor_bp`: u32, `is_frozen`: bool, `is_paused`: bool }
-///
-/// 주의: 정확한 `ltv/liq_threshold/cap` 등은 configuration bitmask 풀어야 함.
-/// 본 매퍼는 단순한 placeholder + 가용한 직접 필드만 매핑. 정밀 매핑은
-/// configuration bit decoder 추가 후.
 #[must_use]
 pub fn map_aave_v3_reserve_data(v: &Value) -> Option<Value> {
     let arr = v.as_array()?;
     if arr.len() < 15 {
         return None;
     }
-    // 첫 패스: configuration bitmask 풀이 없이 placeholder + borrow/supply rates.
-    // accruedToTreasury / unbacked 는 ReserveState 모양에 없으니 무시.
     Some(json!({
-        "total_supply":              arr[1].clone(),  // liquidityIndex 를 임시 표현
-        "total_borrow":              arr[3].clone(),  // variableBorrowIndex 를 임시 표현
+        "total_supply":              arr[1].clone(),
+        "total_borrow":              arr[3].clone(),
         "utilization_bp":            0,
         "supply_cap":                Value::Null,
         "borrow_cap":                Value::Null,
-        "ltv_bp":                    0,    // configuration bitmask 풀면 정확값
+        "ltv_bp":                    0,
         "liquidation_threshold_bp":  0,
         "liquidation_bonus_bp":      0,
         "reserve_factor_bp":         0,
@@ -158,8 +136,6 @@ pub fn map_aave_v3_reserve_data(v: &Value) -> Option<Value> {
 
 // ─────────────────────── Helpers ───────────────────────
 
-/// Aave 의 ray (1e27) → 사람 친화적 decimal string.
-/// 예: "1500000000000000000000000000" → "1.5"
 fn ray_to_decimal_string(v: &Value) -> Value {
     let s = match v {
         Value::String(s) => s.clone(),
@@ -169,7 +145,6 @@ fn ray_to_decimal_string(v: &Value) -> Value {
     Value::String(scale_string_by_decimals(&s, 27))
 }
 
-/// `value_str` 을 10^decimals 로 나눈 decimal string.
 fn scale_string_by_decimals(value_str: &str, decimals: usize) -> String {
     let neg = value_str.starts_with('-');
     let abs = value_str.trim_start_matches('-');
@@ -215,7 +190,6 @@ fn _bp_to_decimal_string(v: &Value) -> Value {
 
 // ─────────────────────── Helper accessor ───────────────────────
 
-/// `Map` import 가 unused 안 되게 (실제 사용처 없으면 `dead_code` 경고만)
 #[allow(dead_code)]
 fn _ensure_map_import() -> Map<String, Value> {
     Map::new()

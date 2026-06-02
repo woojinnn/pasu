@@ -1,14 +1,10 @@
 //! `CancelOrderAction` reducer — cancel a previously placed limit or stop order.
-//!
 //! ## Effect
-//!
 //! Emits a `PendingChange::Remove { id, reason: Cancelled }`. The `id`
 //! references the order's venue-assigned identifier (`self.order_id`),
 //! which downstream `apply_delta` matches against the `PendingTx.id`
 //! stored at submission time.
-//!
 //! ## Pending-id matching
-//!
 //! For venue-managed orders (`Hyperliquid` / `Aevo`) `self.order_id` is the
 //! venue's own id (e.g. Hyperliquid `oid: u64` as string). For
 //! reducer-synthesized orders (where we built the id via
@@ -18,8 +14,8 @@
 //! pending table and can warn on a no-op cancel. Reducer-side we just
 //! record the Remove intent.
 
-use simulation_state::delta::PendingRemoveReason;
-use simulation_state::{EvalContext, PendingChange, StateDelta, WalletState};
+use policy_state::delta::PendingRemoveReason;
+use policy_state::{EvalContext, PendingChange, StateDelta, WalletState};
 
 use crate::action::perp::CancelOrderAction;
 use crate::apply::Reducer;
@@ -39,14 +35,14 @@ impl Reducer for CancelOrderAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::wallet::WalletId;
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::PerpVenue;
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(
             ChainId::ethereum_mainnet(),
             Time::from_unix(1_738_000_000),

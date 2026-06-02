@@ -1,14 +1,12 @@
 //! Per-action `Reducer` trait implementations.
-//!
 //! Cross-cutting / low-fanout domains live as single files:
 //!   - [`token`]     — `Erc20Approve` / `Permit` / `Transfer` / NFT ops
 //!   - [`airdrop`]   — `Claim` / `Delegate`
 //!   - [`launchpad`] — `Commit` / `ClaimAllocation` / `ClaimVested` / ...
-//!
 //! Protocol-rich domains use a subdirectory with one file per action and one
 //! file per venue's math. Every variant of `AmmVenue` / `LendingVenue` /
 //! `PerpVenue` (except the catch-all `PerpVenue::Generic`) has a corresponding
-//! stub file:
+//! module:
 //!   - [`amm`]     — swap / add+remove liquidity / ... + per-protocol math
 //!   - [`lending`] — supply / borrow / repay / ... + per-protocol math
 //!   - [`perp`]    — open / close / `place_order` / ... + per-protocol math

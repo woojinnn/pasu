@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId, Decimal, U256};
-use simulation_state::token::TokenRef;
+use policy_state::primitives::{Address, ChainId, Decimal, U256};
+use policy_state::token::TokenRef;
 
 pub mod borrow;
 pub mod buy_collateral;
@@ -64,7 +64,6 @@ pub enum LendingAction {
 
 impl LendingAction {
     /// The action's `serde` `action` tag (e.g. `"borrow"`, `"set_e_mode"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]
@@ -214,7 +213,6 @@ pub enum LendingVenue {
 
 impl LendingVenue {
     /// The venue's `serde` `name` tag (e.g. `"aave_v3"`, `"morpho_blue"`).
-    ///
     /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
     /// discriminants exactly and are verified against `serde_json` output in tests.
     #[must_use]

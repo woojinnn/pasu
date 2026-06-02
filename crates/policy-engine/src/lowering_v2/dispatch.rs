@@ -8,7 +8,7 @@
 
 use serde_json::Value;
 
-use simulation_reducer::action::{ActionBody, ActionMeta};
+use policy_transition::action::{ActionBody, ActionMeta};
 
 /// A lowered action ready for the Cedar engine: the `principal` / `action` /
 /// `resource` entity uids (as parseable strings) plus the action-context JSON.
@@ -124,10 +124,10 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_reducer::action::{ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::LiveField;
+    use policy_transition::action::{ActionMeta, ActionNature};
 
     const FROM: &str = "0x1111111111111111111111111111111111111111";
     const TO: &str = "0x2222222222222222222222222222222222222222";

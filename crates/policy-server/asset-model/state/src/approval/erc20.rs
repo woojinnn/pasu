@@ -1,4 +1,6 @@
-//! ERC20 allowance — the per-spender limit keyed by (owner, chain, token contract, spender).
+//! ERC20 per-spender allowance state.
+//!
+//! The allowance is keyed by owner, chain, token contract, and spender.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;

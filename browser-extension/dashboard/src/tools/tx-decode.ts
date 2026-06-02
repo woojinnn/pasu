@@ -1,10 +1,10 @@
 /**
- * `decodeTxLocal` — port of `POST /tx/decode` (phase5_handlers.rs).
+ * `decodeTxLocal` — port of `POST /tx/decode`.
  *
  * Pure selector → function-name + action-envelope lookup. Lives in the
  * web app because it's static reference data, no DB, no auth needed.
  * Keeping it on the server forced a network roundtrip for every step
- * builder call and put the dashboard's needs into the simulation-server
+ * builder call and put the dashboard's needs into the policy-server
  * boundary, which the project explicitly wants to keep DB-only.
  *
  * Catalog is intentionally limited to the selectors the FE actually
@@ -41,7 +41,7 @@ interface SelectorEntry {
   kind: string;
 }
 
-/** Same set as `crates/policy-server/server/src/phase5_handlers.rs::SELECTORS`. */
+/** Selector set shared with the policy-server transaction decoder. */
 const SELECTORS: Record<string, SelectorEntry> = {
   // ── ERC-20 ──
   "0xa9059cbb": { function_name: "transfer", signature: "transfer(address,uint256)", domain: "token", kind: "erc20.transfer" },

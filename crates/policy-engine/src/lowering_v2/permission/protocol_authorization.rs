@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::permission::ProtocolAuthorizationAction;
+use policy_transition::action::permission::ProtocolAuthorizationAction;
 
 use super::super::common::cedar::addr;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -53,11 +53,11 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::permission::{
+    use policy_state::primitives::{Address, ChainId};
+    use policy_transition::action::permission::{
         PermissionAction, ProtocolAuthorizationAction, ProtocolPermissionKind,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, ChainId};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{onchain_meta, other, submitter};
 

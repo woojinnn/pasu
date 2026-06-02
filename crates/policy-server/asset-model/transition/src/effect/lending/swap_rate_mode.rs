@@ -1,11 +1,8 @@
 //! `SwapRateModeAction` reducer — `Aave` switch between `Variable` and `Stable`
 //! debt.
-//!
 //! Aave-only. Other venues do not support stable-rate debt and surface
 //! `UnsupportedProtocol`.
-//!
 //! Flow (PDF §6.9):
-//!
 //! 1. Reject venues other than Aave V2 / V3.
 //! 2. Look up the `LendingAccount` — `PositionNotFound` when missing.
 //! 3. Move the debt from the *other* rate mode to `new_mode`:
@@ -15,9 +12,9 @@
 //! 4. No balance change (token balances are unchanged; only the rate-mode
 //!    flag on the debt is flipped).
 
-use simulation_state::position::PositionKind;
-use simulation_state::token::RateMode;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::PositionKind;
+use policy_state::token::RateMode;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::{LendingVenue, SwapRateModeAction};
 use crate::apply::Reducer;
@@ -95,14 +92,14 @@ const fn other_mode(mode: &RateMode) -> RateMode {
 mod tests {
     use super::*;
     use crate::action::lending::SwapRateModeLiveInputs;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{LendingAccount, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{LendingAccount, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, Time, VenueRef, U256,
     };
-    use simulation_state::token::{RateMode, TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::token::{RateMode, TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

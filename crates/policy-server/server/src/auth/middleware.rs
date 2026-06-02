@@ -1,11 +1,9 @@
 //! axum middleware that turns `Authorization: Bearer <jwt>` into an
 //! [`AuthUser`] every protected handler can extract.
-//!
 //! Wire it once at the router builder (`.layer(from_fn(require_auth))`)
 //! and protected handlers add `Extension(user): Extension<AuthUser>` to
 //! their signature. Missing / invalid / expired tokens short-circuit with
 //! `401 Unauthorized` and a small JSON body.
-//!
 //! The middleware does NOT touch the DB — it only validates the token.
 //! Mapping `user_id → DB store` happens in the handler via the
 //! `MultiUserStore` carried in `AppState`.
@@ -37,7 +35,6 @@ impl From<Claims> for AuthUser {
 
 /// `axum::middleware::from_fn(require_auth)` — wraps a route so every
 /// downstream handler can rely on `Extension<AuthUser>` being present.
-///
 /// Token resolution order:
 /// 1. `Authorization: Bearer <jwt>` header (preferred — used by all
 ///    standard fetch/HTTP clients).
@@ -46,7 +43,7 @@ impl From<Claims> for AuthUser {
 pub async fn require_auth(mut req: Request, next: Next) -> Response {
     let user = match extract_user(&req) {
         Ok(u) => u,
-        Err(resp) => return resp,
+        Err(resp) => return *resp,
     };
     req.extensions_mut().insert(user);
     next.run(req).await
@@ -55,24 +52,26 @@ pub async fn require_auth(mut req: Request, next: Next) -> Response {
 /// Pulls the bearer token out of either `Authorization` or `?token=…` and
 /// verifies it. Only access tokens are accepted — refresh tokens reach
 /// `/auth/refresh` instead.
-fn extract_user(req: &Request) -> Result<AuthUser, Response> {
+fn extract_user(req: &Request) -> Result<AuthUser, Box<Response>> {
     // Prefer the header; fall back to query string for SSE callers.
     let token = match token_from_header(req.headers()) {
         Some(Ok(t)) => t,
-        Some(Err(resp)) => return Err(resp),
+        Some(Err(resp)) => return Err(Box::new(resp)),
         None => match token_from_query(req.uri().query()) {
             Some(t) => t,
             None => {
-                return Err(reject(
+                return Err(Box::new(reject(
                     "missing Authorization header and `token` query param",
-                ))
+                )))
             }
         },
     };
 
-    let claims = jwt::verify(&token).map_err(|e| reject(&e.to_string()))?;
+    let claims = jwt::verify(&token).map_err(|e| Box::new(reject(&e.to_string())))?;
     if !claims.is_access() {
-        return Err(reject("refresh token cannot be used as an access token"));
+        return Err(Box::new(reject(
+            "refresh token cannot be used as an access token",
+        )));
     }
     Ok(AuthUser::from(claims))
 }

@@ -1,17 +1,16 @@
 //! Integration: auth surface end-to-end.
-//!
 //! Doesn't drive a real Google login (external dependency); instead mints
 //! tokens with the same `JWT_SECRET` the server reads and exercises the
 //! middleware via real HTTP.
 
 use std::sync::Arc;
 
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_server::app::{build_router, build_router_with_config, AppState};
-use simulation_server::auth::jwt::{issue, verify, TokenType};
-use simulation_server::config::ServerConfig;
-use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_sync::{Orchestrator, SyncConfig};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_server::app::{build_router, build_router_with_config, AppState};
+use policy_server::auth::jwt::{issue, verify, TokenType};
+use policy_server::config::ServerConfig;
+use policy_server::events::{EventBus, LocalEventPublisher};
+use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -35,7 +34,7 @@ async fn spawn_server() -> std::net::SocketAddr {
         publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
-        coingecko: simulation_sync::CoinGeckoClient::new(),
+        coingecko: policy_sync::CoinGeckoClient::new(),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -60,11 +59,11 @@ async fn spawn_server_with_origin_allowlist(origins: Vec<&str>) -> std::net::Soc
         publisher: Arc::new(LocalEventPublisher::new(event_bus)),
         orchestrator: Arc::new(Orchestrator::from_sync_config(&SyncConfig::default()).unwrap()),
         etherscan: None,
-        coingecko: simulation_sync::CoinGeckoClient::new(),
+        coingecko: policy_sync::CoinGeckoClient::new(),
     };
     let mut config = ServerConfig::for_tests();
     config.cors_allowed_origins = origins.into_iter().map(str::to_owned).collect();
-    let router = build_router_with_config(state, config);
+    let router = build_router_with_config(state, &config);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move {

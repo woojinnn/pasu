@@ -1,26 +1,20 @@
 //! Aave V2 venue math — predecessor of Aave V3; simpler interest model with
 //! `Stable` debt support intact.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::AaveV2`. Not a `Reducer` impl.
-//!
 //! ## Index approximation
-//!
 //! Mirrors the V3 file: in a live deployment each reserve carries a
 //! `liquidityIndex` (RAY = `1e27`); the present `ReserveState` carries only
 //! present-value totals, so we approximate the index as `1` until the sync
 //! orchestrator feeds an explicit value.
-//!
 //! ## Rate model
-//!
 //! Same two-slope shape as V3 but with V2's slightly more aggressive
 //! defaults (`slope2 = 75 %`, `U_optimal = 80 %`) matching mainnet V2 USDC.
 
-// Phase 2 stubs: per-action wiring lands in a later commit in the same batch.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};
@@ -96,8 +90,8 @@ mod tests {
     }
 
     fn dummy_ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
-        use simulation_state::primitives::{ChainId, Time};
+        use policy_state::eval_context::RequestKind;
+        use policy_state::primitives::{ChainId, Time};
         EvalContext::new(
             ChainId::ethereum_mainnet(),
             Time::from_unix(1_738_000_000),
@@ -106,8 +100,8 @@ mod tests {
     }
 
     fn empty_state() -> WalletState {
-        use simulation_state::primitives::{Address, ChainId};
-        use simulation_state::wallet::WalletId;
+        use policy_state::primitives::{Address, ChainId};
+        use policy_state::wallet::WalletId;
         WalletState::new(WalletId::new(
             Address::from([0u8; 20]),
             [ChainId::ethereum_mainnet()],

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use simulation_state::{Address, ChainId};
-use simulation_sync::discovery::discover_approvals;
-use simulation_sync::fetchers::rpc::{RpcConfig, RpcRouter};
+use policy_state::{Address, ChainId};
+use policy_sync::discovery::discover_approvals;
+use policy_sync::fetchers::rpc::{RpcConfig, RpcRouter};
 
 fn router() -> Arc<RpcRouter> {
     let toml_text = r#"

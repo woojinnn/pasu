@@ -1,12 +1,11 @@
 //! `AmmAction` — `Swap` / `AddLiquidity` / `RemoveLiquidity` / `CollectFees` / `IntentOrder`. Spec §5.
-//!
 //! Venue discriminator pattern: a single `AmmAction::Swap` variant plus an `AmmVenue` enum.
 //! `run_action` then dispatches per-protocol math via a single `match venue { ... }`.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId, U128, U256};
+use policy_state::primitives::{Address, ChainId, U128, U256};
 
 pub mod add_liquidity;
 pub mod collect_fees;
@@ -47,7 +46,6 @@ pub enum AmmAction {
 
 impl AmmAction {
     /// The action's `serde` `action` tag (e.g. `"swap"`, `"sign_intent_order"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]
@@ -202,7 +200,6 @@ pub enum AmmVenue {
 
 impl AmmVenue {
     /// The venue's `serde` `name` tag (e.g. `"uniswap_v3"`, `"trader_joe_l_b"`).
-    ///
     /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
     /// discriminants exactly and are verified against `serde_json` output in tests.
     #[must_use]
@@ -339,12 +336,10 @@ pub enum PoolState {
     Maverick {
         /// Known mode identifier (`"mode_left"`, `"mode_right"`, `"mode_both"`, `"mode_dynamic"`).
         mode: String,
-        /// Per-mode raw payload (to be decomposed into typed fields in Phase 2).
         #[tsify(type = "unknown")]
         raw: serde_json::Value,
     },
 
-    /// Escape hatch (Phase 1) for protocols not yet modelled above.
     Custom {
         /// Protocol identifier.
         protocol: String,

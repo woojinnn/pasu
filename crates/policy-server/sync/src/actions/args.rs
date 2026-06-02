@@ -1,35 +1,22 @@
-//! Action 의 `OnchainView` `LiveField` 들이 필요로 하는 ABI 인자를 동적으로 인코딩.
-//!
-//! 배경:
-//! `DataSource::OnchainView { contract, function, decoder_id }` 자체에는 args 가
-//! 없다. `balanceOf(address)` 같이 인자가 필요한 호출에서는 호출 시점에
-//! 인자를 동적으로 채워야 한다. action 의 다른 필드 (venue.pool, asset, submitter)
-//! 에서 그 인자를 추출.
-//!
-//! 설계: slot-keyed resolver — `(ActionSlot, Action, WalletState)` → `Vec<u8>` (ABI 인자).
-//!
-//! 현재 wired:
-//! * `LendingBorrowAvailableLiquidity`  → balanceOf(pool) — pool 주소를 인자로
 //! * `LendingBorrowUserState`           → getUserAccountData(user) — submitter
 //! * `LendingBorrowReserveState`        → getReserveData(asset) — borrow asset
 //!
-//! 나머지는 후속 패스. 기본값 = 빈 args (인자 없는 함수).
+//! Remaining slots default to empty args, which covers no-arg views and slots
+//! that are intentionally wired in a later pass.
 
-use simulation_reducer::action::lending::LendingAction;
-use simulation_reducer::action::liquid_staking::LiquidStakingAction;
-use simulation_reducer::action::{Action, ActionBody};
-use simulation_state::WalletState;
+use policy_state::WalletState;
+use policy_transition::action::lending::LendingAction;
+use policy_transition::action::liquid_staking::LiquidStakingAction;
+use policy_transition::action::{Action, ActionBody};
 
 use crate::fetchers::decoder::{encode_address, encode_u256};
 use crate::walker::ActionSlot;
 
-/// 한 slot 이 필요로 하는 ABI 인자를 인코딩. 인자 없는 함수면 빈 벡터.
 #[must_use]
 pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) -> Vec<u8> {
     match slot {
         // ─── Aave Borrow ───
         ActionSlot::LendingBorrowAvailableLiquidity => {
-            // balanceOf(pool) — 자산 컨트랙트의 잔고를 pool 이 얼마나 들고 있나
             if let ActionBody::Lending(LendingAction::Borrow(b)) = &action.body {
                 if let Some(pool) = lending_venue_pool_address(&b.venue) {
                     return encode_address(pool).to_vec();
@@ -37,11 +24,7 @@ pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) ->
             }
             Vec::new()
         }
-        ActionSlot::LendingBorrowUserState => {
-            // getUserAccountData(user) — submitter 의 lending 상태
-            encode_address(action.meta.submitter).to_vec()
-        }
-        // 둘 다 getReserveData(asset) 호출 — 같은 인자 (borrow 자산 주소)
+        ActionSlot::LendingBorrowUserState => encode_address(action.meta.submitter).to_vec(),
         ActionSlot::LendingBorrowReserveState | ActionSlot::LendingBorrowCurrentRate => {
             if let ActionBody::Lending(LendingAction::Borrow(b)) = &action.body {
                 if let Some(addr) = token_ref_to_address(&b.asset) {
@@ -51,26 +34,22 @@ pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) ->
             Vec::new()
         }
 
-        // ─── Aave Supply (같은 패턴, 후속에서 wire-up) ───
         // ActionSlot::LendingSupplyReserveState  → getReserveData(asset)
         // ActionSlot::LendingSupplyUserState     → getUserAccountData(user)
 
-        // ─── Lido Liquid Staking (단일 uint256 환산 view) ───
-        // wstETH getWstETHByStETH(amount) — wrap 이 받을 wstETH
+        // Lido liquid staking conversion views.
         ActionSlot::LiquidStakingWrapExpectedWsteth => {
             if let ActionBody::LiquidStaking(LiquidStakingAction::Wrap(w)) = &action.body {
                 return encode_u256(w.amount).to_vec();
             }
             Vec::new()
         }
-        // wstETH getStETHByWstETH(amount) — unwrap 이 돌려줄 stETH
         ActionSlot::LiquidStakingUnwrapExpectedSteth => {
             if let ActionBody::LiquidStaking(LiquidStakingAction::Unwrap(u)) = &action.body {
                 return encode_u256(u.amount).to_vec();
             }
             Vec::new()
         }
-        // stETH getPooledEthByShares(shares) — 전송 shares 의 stETH 환산
         ActionSlot::LiquidStakingTransferSharesPooledEth => {
             if let ActionBody::LiquidStaking(LiquidStakingAction::TransferShares(t)) = &action.body
             {
@@ -78,17 +57,14 @@ pub fn resolve_args(slot: &ActionSlot, action: &Action, _state: &WalletState) ->
             }
             Vec::new()
         }
-
-        // 그 외 slot 은 args 없음 (Chainlink, no-arg 함수 등)
         _ => Vec::new(),
     }
 }
 
-/// `LendingVenue` 의 pool 주소 추출 (Aave/Compound/Morpho/...).
 const fn lending_venue_pool_address(
-    venue: &simulation_reducer::action::lending::LendingVenue,
-) -> Option<simulation_state::Address> {
-    use simulation_reducer::action::lending::LendingVenue::{
+    venue: &policy_transition::action::lending::LendingVenue,
+) -> Option<policy_state::Address> {
+    use policy_transition::action::lending::LendingVenue::{
         AaveV2, AaveV3, CompoundV2, CompoundV3, CrvUsd, Fluid, LlamaLend, MorphoBlue,
         MorphoOptimizer, Spark,
     };
@@ -97,18 +73,14 @@ const fn lending_venue_pool_address(
         CompoundV3 { comet, .. } => Some(*comet),
         CompoundV2 { comptroller, .. } => Some(*comptroller),
         MorphoOptimizer { vault, .. } | Fluid { vault, .. } => Some(*vault),
-        // crvUSD / LlamaLend: market 당 Controller 1개 = pool.
+        // crvUSD and LlamaLend use one controller address per market.
         CrvUsd { controller, .. } | LlamaLend { controller, .. } => Some(*controller),
-        // Morpho Blue 는 single market id 기반, pool address 없음
         MorphoBlue { .. } => None,
     }
 }
 
-/// `TokenRef` → 그 토큰의 ERC20 address. Native/NFT 면 None.
-const fn token_ref_to_address(
-    token_ref: &simulation_state::TokenRef,
-) -> Option<simulation_state::Address> {
-    use simulation_state::TokenKey;
+const fn token_ref_to_address(token_ref: &policy_state::TokenRef) -> Option<policy_state::Address> {
+    use policy_state::TokenKey;
     match &token_ref.key {
         TokenKey::Erc20 { address, .. } => Some(*address),
         TokenKey::Erc721 { contract, .. } | TokenKey::Erc1155 { contract, .. } => Some(*contract),
@@ -120,14 +92,14 @@ const fn token_ref_to_address(
 mod tests {
     use super::*;
 
-    use simulation_reducer::action::lending::{
-        BorrowAction, BorrowLiveInputs, LendingVenue, ReserveState, UserLendingState,
-    };
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-    use simulation_state::{
+    use policy_state::{
         Address, ChainId, DataSource, Decimal, LiveField, RateMode, Time, TokenKey, TokenRef,
         WalletId, U256,
     };
+    use policy_transition::action::lending::{
+        BorrowAction, BorrowLiveInputs, LendingVenue, ReserveState, UserLendingState,
+    };
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
     use std::str::FromStr;
 
     fn empty_reserve() -> ReserveState {
@@ -203,7 +175,7 @@ mod tests {
                     asset_price_usd: LiveField::new(
                         Decimal::from("0"),
                         DataSource::OracleFeed {
-                            provider: simulation_state::OracleProvider::Chainlink,
+                            provider: policy_state::OracleProvider::Chainlink,
                             feed_id: "USDC/USD".into(),
                         },
                         Time::from_unix(0),
@@ -237,7 +209,6 @@ mod tests {
         );
 
         assert_eq!(args.len(), 32);
-        // 마지막 20 bytes = pool address
         assert_eq!(&args[12..], pool.as_slice());
     }
 

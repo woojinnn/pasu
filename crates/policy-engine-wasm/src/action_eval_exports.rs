@@ -35,7 +35,7 @@
 //! boundary cannot fail-open by the host passing inconsistent manifest lists,
 //! because there is only one list.
 //!
-//! [`ActionBody`]: simulation_reducer::action::ActionBody
+//! [`ActionBody`]: policy_transition::action::ActionBody
 
 use std::collections::BTreeMap;
 
@@ -49,7 +49,7 @@ use policy_engine::policy_rpc::{
     plan_policy_rpc_v2, system_fail_verdict, ManifestV2, PlannedCallV2, TxView,
 };
 use policy_engine::schema::compose_per_policy;
-use simulation_reducer::action::{ActionBody, ActionMeta};
+use policy_transition::action::{ActionBody, ActionMeta};
 
 use crate::dto::{EngineErrorDto, Envelope, MatchedPolicyDto, VerdictDto};
 use crate::exports::check_input_size;
@@ -142,7 +142,7 @@ struct EvaluateActionOutput {
 /// PLAN phase: lower the action and plan its v2 policy-RPC calls.
 ///
 /// Parses [`PlanActionInput`], lowers via [`lower_action`], builds the
-/// [`ActionView`](simulation_reducer::action::ActionView) + [`TxView`], calls
+/// [`ActionView`](policy_transition::action::ActionView) + [`TxView`], calls
 /// [`plan_policy_rpc_v2`], and returns the planned calls inside the standard
 /// `{ ok, data }` envelope. The host dispatches each call and returns the raw
 /// results keyed by `call_id` to [`evaluate_action_v2_json`].
@@ -396,15 +396,15 @@ mod tests {
     use serde_json::{json, Value};
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::LiveField;
+    use policy_transition::action::amm::{
         AmmAction, AmmVenue, PoolState, RouteHop, RoutePath, SwapAction, SwapDirection,
         SwapLiveInputs, SwapParams, SwapRoute,
     };
-    use simulation_reducer::action::{ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::LiveField;
+    use policy_transition::action::{ActionMeta, ActionNature};
 
     const FROM: &str = "0x1111111111111111111111111111111111111111";
     const TO: &str = "0x2222222222222222222222222222222222222222";

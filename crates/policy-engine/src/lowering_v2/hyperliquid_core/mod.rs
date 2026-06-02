@@ -9,7 +9,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::hyperliquid_core::HyperliquidCoreAction;
+use policy_transition::action::hyperliquid_core::HyperliquidCoreAction;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 

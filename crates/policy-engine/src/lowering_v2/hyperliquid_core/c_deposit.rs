@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::hyperliquid_core::HlCDepositAction;
+use policy_transition::action::hyperliquid_core::HlCDepositAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::hl_venue;
@@ -28,9 +28,9 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::hyperliquid_core::{HlCDepositAction, HyperliquidCoreAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::Decimal;
+    use policy_state::primitives::Decimal;
+    use policy_transition::action::hyperliquid_core::{HlCDepositAction, HyperliquidCoreAction};
+    use policy_transition::action::ActionBody;
 
     use crate::lowering_v2::perp::test_support::{assert_conforms, offchain_meta};
 

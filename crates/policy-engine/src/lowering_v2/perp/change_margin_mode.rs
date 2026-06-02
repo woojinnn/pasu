@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::ChangeMarginModeAction;
+use policy_transition::action::perp::ChangeMarginModeAction;
 
 use super::super::common::cedar::u256_hex;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -61,12 +61,12 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{
+    use policy_state::position::MarginMode;
+    use policy_state::primitives::U256;
+    use policy_transition::action::perp::{
         ChangeMarginModeAction, ChangeMarginModeLiveInputs, PerpAction,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::position::MarginMode;
-    use simulation_state::primitives::U256;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_market, sample_venue,
@@ -86,7 +86,7 @@ mod tests {
         ActionBody::Perp(PerpAction::ChangeMarginMode(action))
     }
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         (build(MarginMode::Isolated), onchain_meta())
     }
 

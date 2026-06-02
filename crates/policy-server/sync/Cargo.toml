@@ -1,16 +1,16 @@
 [package]
-name = "simulation-sync"
+name = "policy-sync"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
-simulation-state = { workspace = true }
-# Action types — sync 가 Action.live_inputs 도 walk/apply 하기 위해
-simulation-reducer = { workspace = true }
+policy-state = { workspace = true }
+# Action types used to walk and update `Action.live_inputs`.
+policy-transition = { workspace = true }
 
-# 외부 데이터 fetch
+# External data fetch.
 tokio = { workspace = true }
 reqwest = { workspace = true }
 async-trait = { workspace = true }
@@ -26,7 +26,7 @@ rust_decimal = { workspace = true }
 # Errors
 thiserror = { workspace = true }
 
-# EVM types (eth_call ABI encoding 등)
+# EVM types for eth_call ABI encoding.
 alloy-primitives = { workspace = true }
 # Dynamic ABI decoding — generic decoder + Sourcify integration
 alloy-dyn-abi = { workspace = true }

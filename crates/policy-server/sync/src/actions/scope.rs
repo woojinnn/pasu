@@ -1,32 +1,22 @@
-//! Action-triggered refresh — 한 액션을 평가하기 직전에 그 액션이 건드릴
-//! `LiveField` 들만 골라서 즉시 sync.
-//!
-//! 호출 패턴:
 //! ```ignore
 //! let scope = ActionScope::from_token_keys(touched_keys);
 //! orch.refresh_for_scope(&mut state, &scope, now).await?;
-//! // 이제 정책 평가 가능 — 관련 가격 / HF 신선함 보장
 //! ```
 //!
-//! action 자체의 구조 (`ActionBody`) 는 action-schema 의 책임. 이 모듈은 action →
-//! scope 변환을 위한 작은 도우미만 제공하고, scope 만 보고 refresh 수행.
-
+//! This module only derives refresh scopes from actions; action schema details
+//! stay owned by the action model.
 use std::collections::HashSet;
 
-use simulation_state::{PositionKind, TokenKey, WalletState};
+use policy_state::{PositionKind, TokenKey, WalletState};
 
 use crate::error::SyncError;
 use crate::orchestrator::{Orchestrator, RefreshReport};
 use crate::walker::{FieldLocation, StaleField, WalkStats};
 
-/// 한 액션이 건드리는 state 의 부분 집합.
 #[derive(Clone, Debug, Default)]
 pub struct ActionScope {
-    /// 가격/잔고 가 신선해야 하는 토큰들.
     pub tokens: HashSet<TokenKey>,
-    /// HF/LTV 가 신선해야 하는 lending position id 들.
     pub lending_positions: HashSet<String>,
-    /// mark/PnL 가 신선해야 하는 perp position id 들.
     pub perp_positions: HashSet<String>,
 }
 
@@ -66,7 +56,6 @@ impl ActionScope {
     }
 }
 
-/// scope 에 해당하는 `LiveField` 만 stale list 로 모은다. walker 와 비슷하지만 더 좁음.
 #[must_use]
 pub fn walk_scope(state: &WalletState, scope: &ActionScope) -> (Vec<StaleField>, WalkStats) {
     let mut stale = Vec::new();
@@ -183,8 +172,8 @@ pub fn walk_scope(state: &WalletState, scope: &ActionScope) -> (Vec<StaleField>,
 fn push_field(
     stale: &mut Vec<StaleField>,
     stats: &mut WalkStats,
-    source: &simulation_state::DataSource,
-    synced_at: simulation_state::Time,
+    source: &policy_state::DataSource,
+    synced_at: policy_state::Time,
     location: FieldLocation,
 ) {
     stats.total_live_fields += 1;
@@ -197,13 +186,11 @@ fn push_field(
 }
 
 impl Orchestrator {
-    /// scope 에 한정해 즉시 refresh. 일반 [`refresh`](Orchestrator::refresh) 와 같은
-    /// dispatch 흐름이지만 walker 가 좁혀짐.
     pub async fn refresh_for_scope(
         &self,
         state: &mut WalletState,
         scope: &ActionScope,
-        now: simulation_state::Time,
+        now: policy_state::Time,
     ) -> Result<RefreshReport, SyncError> {
         if scope.is_empty() {
             return Ok(RefreshReport::default());
@@ -236,7 +223,7 @@ impl Orchestrator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::{Address, ChainId, TokenKey};
+    use policy_state::{Address, ChainId, TokenKey};
     use std::str::FromStr;
 
     #[test]

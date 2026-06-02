@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::staking::UnlockAction;
+use policy_transition::action::staking::UnlockAction;
 
 use super::super::common::token::lower_token_ref;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -30,8 +30,8 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use simulation_reducer::action::staking::{StakingAction, UnlockAction};
-    use simulation_reducer::action::ActionBody;
+    use policy_transition::action::staking::{StakingAction, UnlockAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{assert_conforms, crv, onchain_meta, vecrv_venue};
 

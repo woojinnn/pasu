@@ -1,5 +1,4 @@
 //! `AmmAction` reducers.
-//!
 //! One file per action; one file per venue's math.
 
 mod add_liquidity;
@@ -19,7 +18,7 @@ mod uniswap_v2;
 mod uniswap_v3;
 mod uniswap_v4;
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::amm::AmmAction;
 use crate::apply::Reducer;

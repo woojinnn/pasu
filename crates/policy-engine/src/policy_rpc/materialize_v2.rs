@@ -331,20 +331,20 @@ mod tests {
     /// Build the UniswapV3 swap sample (mirrors `amm::swap`'s test fixture, kept
     /// minimal). Returns the `(ActionBody, ActionMeta)` pair.
     fn swap_sample() -> (
-        simulation_reducer::action::ActionBody,
-        simulation_reducer::action::ActionMeta,
+        policy_transition::action::ActionBody,
+        policy_transition::action::ActionMeta,
     ) {
         use std::str::FromStr;
 
-        use simulation_reducer::action::amm::{
+        use policy_state::live_field::{DataSource, OracleProvider};
+        use policy_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::LiveField;
+        use policy_transition::action::amm::{
             AmmAction, AmmVenue, PoolState, RouteHop, RoutePath, SwapAction, SwapDirection,
             SwapLiveInputs, SwapParams, SwapRoute,
         };
-        use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-        use simulation_state::live_field::{DataSource, OracleProvider};
-        use simulation_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
-        use simulation_state::token::{TokenKey, TokenRef};
-        use simulation_state::LiveField;
+        use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
 
         let now = Time::from_unix(1_738_000_000);
         let user = Address::from_str("0x000000000000000000000000000000000000a01c").unwrap();

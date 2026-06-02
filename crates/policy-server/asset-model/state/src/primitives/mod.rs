@@ -1,14 +1,14 @@
-//! 모든 다른 모듈이 의존하는 기본 타입들.
+//! Primitive types shared by the asset model.
 
-/// EVM 주소 alias + 정규화 helper.
+/// Address helpers and semantic aliases.
 pub mod address;
-/// 체인 식별자 (CAIP-2) 와 블록 높이.
+/// Chain identifiers and block heights.
 pub mod chain;
-/// 숫자 타입 (`Decimal`, `Price`, `U256` 등).
+/// Decimal, price, signed integer, and fixed-size numeric wrappers.
 pub mod decimal;
-/// 가벼운 식별자 (`ProtocolRef`, `PoolRef`, `VenueRef`, `MarketRef`).
+/// Protocol, pool, market, and venue references.
 pub mod refs;
-/// 시각 / 기간 (`Time`, `Duration`).
+/// Timestamp and duration wrappers.
 pub mod time;
 
 pub use address::{Address, Spender};

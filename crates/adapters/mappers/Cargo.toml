@@ -14,8 +14,8 @@ alloy-primitives = { workspace = true }
 alloy-dyn-abi = { workspace = true }
 abi-resolver = { workspace = true }
 # M1 — declarative_action_builder consumes v3 ActionBody types directly.
-simulation-reducer = { workspace = true }
-simulation-state = { workspace = true }
+policy-transition = { workspace = true }
+policy-state = { workspace = true }
 hex = "0.4"
 
 [dev-dependencies]

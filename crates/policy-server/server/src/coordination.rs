@@ -1,5 +1,4 @@
 //! Cross-replica coordination primitives.
-//!
 //! Redis is used only for short-lived coordination: locks and idempotency
 //! keys. It is not the source of truth for users, wallets, reports, or
 //! canonical wallet state.

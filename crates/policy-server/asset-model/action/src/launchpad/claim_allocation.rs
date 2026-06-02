@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ProtocolRef, U256};
-use simulation_state::token::TokenRef;
-use simulation_state::LiveField;
+use policy_state::primitives::{Address, ProtocolRef, U256};
+use policy_state::token::TokenRef;
+use policy_state::LiveField;
 
 /// Claims the allocated sale tokens after the sale ends.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

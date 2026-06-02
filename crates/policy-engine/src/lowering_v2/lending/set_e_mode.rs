@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::lending::{EModeConfig, SetEModeAction};
+use policy_transition::action::lending::{EModeConfig, SetEModeAction};
 
 use super::super::common::cedar::addr;
 use super::super::common::token::lower_token_ref;
@@ -83,11 +83,11 @@ fn lower_emode_config(config: &EModeConfig) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::lending::{
+    use policy_state::primitives::Address;
+    use policy_transition::action::lending::{
         EModeConfig, LendingAction, SetEModeAction, SetEModeLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::Address;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{live, onchain_meta, usdc, user_state, venue, weth};
 

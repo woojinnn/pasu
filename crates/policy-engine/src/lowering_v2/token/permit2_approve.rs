@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::token::Permit2ApproveAction;
+use policy_transition::action::token::Permit2ApproveAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -39,9 +39,9 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::token::{Permit2ApproveAction, TokenAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Time, U256};
+    use policy_state::primitives::{Time, U256};
+    use policy_transition::action::token::{Permit2ApproveAction, TokenAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{onchain_meta, sample_erc20_token, spender};
 

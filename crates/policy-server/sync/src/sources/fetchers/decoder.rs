@@ -1,11 +1,3 @@
-//! Decoder registry — `decoder_id` → 결과 bytes 를 Rust `serde_json::Value` 로 변환.
-//!
-//! `DataSource::OnchainView` 의 결과 (`eth_call` returndata) 는 ABI-encoded bytes 다.
-//! 이를 `LiveField` 의 `value` 로 쓰려면 의미 있는 타입으로 풀어야 한다. decoder 별로
-//! 풀이 방식이 다르므로 registry 패턴.
-//!
-//! 같은 패턴이 selector encoding 에도 필요 — `function` 문자열 → 4-byte selector.
-
 use std::collections::HashMap;
 
 use alloy_primitives::{keccak256, Address, U256};
@@ -24,7 +16,6 @@ pub fn function_selector(signature: &str) -> [u8; 4] {
     out
 }
 
-/// `signature` 의 selector + ABI 인코딩된 인자 = calldata.
 #[must_use]
 pub fn encode_call(signature: &str, args_encoded: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(4 + args_encoded.len());
@@ -33,7 +24,6 @@ pub fn encode_call(signature: &str, args_encoded: &[u8]) -> Vec<u8> {
     out
 }
 
-/// 단일 Address 를 ABI 32-byte 로 (left-pad).
 #[must_use]
 pub fn encode_address(addr: Address) -> [u8; 32] {
     let mut out = [0u8; 32];
@@ -41,7 +31,6 @@ pub fn encode_address(addr: Address) -> [u8; 32] {
     out
 }
 
-/// 단일 U256 을 ABI 32-byte 로 (big-endian).
 #[must_use]
 pub const fn encode_u256(v: U256) -> [u8; 32] {
     v.to_be_bytes::<32>()
@@ -62,7 +51,6 @@ impl DecoderRegistry {
         Self::default()
     }
 
-    /// 내장 decoder 들 등록.
     pub fn with_builtins() -> Self {
         let mut r = Self::new();
         r.register("u256", decode_u256_as_string);
@@ -92,7 +80,6 @@ impl DecoderRegistry {
 
 // ============ Built-in decoders ============
 
-/// 단일 uint256 → decimal string (JSON number 한도 회피).
 pub fn decode_u256_as_string(data: &[u8]) -> Result<Value, SyncError> {
     if data.len() < 32 {
         return Err(SyncError::FetchFailed {
@@ -127,8 +114,6 @@ pub fn decode_address(data: &[u8]) -> Result<Value, SyncError> {
 }
 
 /// Permit2 `allowance(owner, token, spender)` → (amount: uint160, expiration: uint48, nonce: uint48)
-///
-/// ABI: 32 + 32 + 32 = 96 bytes returndata (각 값이 uint256 슬롯에 들어감).
 pub fn decode_permit2_allowance(data: &[u8]) -> Result<Value, SyncError> {
     if data.len() < 96 {
         return Err(SyncError::FetchFailed {

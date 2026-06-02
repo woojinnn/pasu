@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::restaking::RegisterOperatorAction;
+use policy_transition::action::restaking::RegisterOperatorAction;
 
 use super::super::common::cedar::addr;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -40,8 +40,8 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use simulation_reducer::action::restaking::{RegisterOperatorAction, RestakingAction};
-    use simulation_reducer::action::ActionBody;
+    use policy_transition::action::restaking::{RegisterOperatorAction, RestakingAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{eigenlayer_venue, onchain_meta, other};
 

@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, Time, U256};
-use simulation_state::token::TokenRef;
-use simulation_state::LiveField;
+use policy_state::primitives::{Address, Time, U256};
+use policy_state::token::TokenRef;
+use policy_state::LiveField;
 
 /// `ERC20` `EIP-2612` `permit` — gasless allowance granted via off-chain signature.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

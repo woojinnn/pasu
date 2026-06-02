@@ -13,7 +13,7 @@ mod update_leverage;
 mod usd_send;
 mod withdraw;
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::hyperliquid_core::HyperliquidCoreAction;
 use crate::apply::Reducer;

@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::liquid_staking::TransferSharesAction;
+use policy_transition::action::liquid_staking::TransferSharesAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -44,11 +44,11 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use simulation_reducer::action::liquid_staking::{
+    use policy_state::primitives::U256;
+    use policy_transition::action::liquid_staking::{
         LiquidStakingAction, TransferSharesAction, TransferSharesLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::U256;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{lido_venue, live_u256, onchain_meta, other};
 

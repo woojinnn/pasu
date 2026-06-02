@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::position::PositionId;
-use simulation_state::primitives::U256;
-use simulation_state::token::TokenRef;
+use policy_state::position::PositionId;
+use policy_state::primitives::U256;
+use policy_state::token::TokenRef;
 
 use super::open::OpenPerpLiveInputs;
 use super::{PerpVenue, SizeSpec};

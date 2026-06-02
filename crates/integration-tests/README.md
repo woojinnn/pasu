@@ -51,7 +51,7 @@ C. Dune 실거래       ─┘  / td        fuzz/*    : 전략별 합성 (4종) 
 ```
 
 - **2 front-end** — `tests/v3_decode_harness.rs` (deterministic CI gate = **4 structural + protocol 별 field-level golden 다수**; 총수는 늘어남 → 측정 `grep "test result"`) + `src/bin/v3_harness.rs` (CLI, 무제한 fuzz + 리포트).
-- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<simulation_reducer::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(`VALID_DOMAINS`; 현재 목록은 oracle 코드에서 직접 확인) → L4 soft/hard error class.
+- **layered oracle** (`src/harness/oracle.rs`) — L1 envelope(`ok`) → L2 typed round-trip(`Vec<policy_transition::action::Action>` 역직렬화 = serde-shape 회귀 검출, 최강) → L3 domain validity(`VALID_DOMAINS`; 현재 목록은 oracle 코드에서 직접 확인) → L4 soft/hard error class.
 - **⚠️ R1 (필독)** — WASM v3 install state 는 **thread-local**. install 과 route 는 **반드시 동일 OS 스레드**에서. 각 test fn 이 스스로 install 한다. 새 헬퍼를 만들 때 install→route 를 같은 함수 안에서 호출할 것.
 
 ---

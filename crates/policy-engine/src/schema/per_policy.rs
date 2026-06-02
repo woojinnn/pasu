@@ -23,7 +23,7 @@ use super::merge_namespace_blocks;
 use crate::policy_rpc::{
     evaluate_trigger, ManifestV2, PolicyRpcError, Trigger, TriggerField, TxView,
 };
-use simulation_reducer::action::ActionView;
+use policy_transition::action::ActionView;
 
 use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
@@ -822,7 +822,7 @@ fn render_custom_body(
     // Source of truth for an action's base context fields is its OWN shipped
     // `.cedarschema` (`schema/policy-schema/actions/...`), parsed from the
     // `type <Stub>Context = { ... }` block — NOT a hardcoded table. This keeps
-    // the collision check aligned with the `simulation-reducer` action shapes.
+    // the collision check aligned with the `policy-transition` action shapes.
     let base_fields = context_base_fields(entry.schema_text, entry.pascal_stub);
 
     let mut lines = String::new();

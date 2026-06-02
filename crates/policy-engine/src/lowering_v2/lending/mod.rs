@@ -3,10 +3,10 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::lending::{
+use policy_state::token::RateMode;
+use policy_transition::action::lending::{
     LendingAction, LendingVenue, ReserveState, SetCollateralAction, UserLendingState,
 };
-use simulation_state::token::RateMode;
 
 use super::common::cedar::{addr, u256_hex};
 use super::common::token::lower_token_ref;
@@ -221,8 +221,8 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::{Address, ChainId};
-    use simulation_state::token::{TokenKey, TokenRef};
+    use policy_state::primitives::{Address, ChainId};
+    use policy_state::token::{TokenKey, TokenRef};
 
     /// `AaveV3` emits `pool` + optional `marketId` (Long); when `market_id` is
     /// `None` the field is omitted. `MorphoBlue` emits `marketIdStr` (String),
@@ -306,12 +306,12 @@ mod tests {
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::lending::{LendingVenue, ReserveState, UserLendingState};
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Decimal, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Decimal, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::lending::{LendingVenue, ReserveState, UserLendingState};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::TxMeta;
 

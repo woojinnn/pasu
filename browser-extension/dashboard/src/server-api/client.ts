@@ -1,5 +1,5 @@
 /**
- * Thin fetch wrapper for the policy-rpc server (simulation-server).
+ * Thin fetch wrapper for the policy-rpc server (policy-server).
  *
  * Responsibilities:
  * - Prepend the server base URL (configurable; defaults to localhost).

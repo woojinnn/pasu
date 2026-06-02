@@ -1,7 +1,7 @@
 //! `#[wasm_bindgen]` trigger pre-filter export.
 //!
 //! The host calls [`evaluate_triggers_json`] AFTER decoding a transaction into
-//! a `simulation_reducer::action::ActionBody` but BEFORE any policy-rpc call,
+//! a `policy_transition::action::ActionBody` but BEFORE any policy-rpc call,
 //! to learn which installed policies' triggers match — so only those policies'
 //! enrichment runs and only they are evaluated.
 
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use policy_engine::policy_rpc::{evaluate_trigger, ManifestV2, TriggerScope, TxView};
-use simulation_reducer::action::ActionBody;
+use policy_transition::action::ActionBody;
 
 /// Input: the installed manifests (v2), the decoded action, and tx metadata.
 #[derive(Deserialize)]
@@ -88,10 +88,10 @@ fn error_json(message: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use policy_state::primitives::{Address, ChainId, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_transition::action::token::{Erc20ApproveAction, TokenAction};
     use serde_json::{json, Value};
-    use simulation_reducer::action::token::{Erc20ApproveAction, TokenAction};
-    use simulation_state::primitives::{Address, ChainId, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
     use std::str::FromStr;
 
     fn approve() -> ActionBody {

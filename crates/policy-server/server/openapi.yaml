@@ -244,7 +244,7 @@ paths:
   /wallets/{address}/approvals:
     parameters:
       - $ref: "#/components/parameters/AddressParam"
-      - { name: with_risk, in: query, schema: { type: boolean, default: false }, description: "Server-classify each approval with risk[] + spender_meta (Phase 3)" }
+      - { name: with_risk, in: query, schema: { type: boolean, default: false }, description: "Server-classify each approval with risk[] + spender_meta" }
     get:
       tags: [wallets]
       summary: Full ApprovalSet (raw or classified-with-risk)

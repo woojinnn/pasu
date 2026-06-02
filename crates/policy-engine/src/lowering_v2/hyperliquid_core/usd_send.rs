@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::hyperliquid_core::HlUsdSendAction;
+use policy_transition::action::hyperliquid_core::HlUsdSendAction;
 
 use super::super::common::cedar::addr;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -36,9 +36,9 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::hyperliquid_core::{HlUsdSendAction, HyperliquidCoreAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, Decimal};
+    use policy_state::primitives::{Address, Decimal};
+    use policy_transition::action::hyperliquid_core::{HlUsdSendAction, HyperliquidCoreAction};
+    use policy_transition::action::ActionBody;
 
     use crate::lowering_v2::perp::test_support::{assert_conforms, offchain_meta};
 

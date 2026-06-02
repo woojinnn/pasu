@@ -1,10 +1,7 @@
 //! `OpenPerpAction` reducer — open a new perpetual futures position.
-//!
 //! ## Orderbook vs on-chain dispatch
-//!
 //! The reducer branches on `PerpVenue` discriminant via
 //! [`super::common::is_orderbook_venue`]:
-//!
 //! * **Orderbook** (`Hyperliquid` / `Aevo` / `DyDxV4`) — the signing event
 //!   does not mutate wallet state on chain (the user's collateral remains in
 //!   their venue subaccount, no on-chain transfer fires until the order fills
@@ -14,16 +11,13 @@
 //!   recognises the margin as locked even though the on-chain balance has
 //!   not moved yet. This mirrors the `Erc20Permit` / `Permit2SignAction`
 //!   pattern in `effect::token` (off-chain sig → pending entry).
-//!
 //! * **On-chain** (`GmxV2` / `Vertex` / `Drift` / `JupiterPerps` /
 //!   `Synthetix` / `Generic`) — the signing event triggers immediate
 //!   on-chain state change: collateral debit + new `PerpPosition` entry.
 //!   We still emit a synthetic `PendingTx` so the wallet can track the
 //!   submitted transaction's lifecycle, but the bulk of the effect is the
 //!   `PositionChange::Open` + `TokenChange::BalanceDelta` rows.
-//!
 //! ## Validation order
-//!
 //! 1. `required_initial_margin` (venue helper) — also rejects
 //!    leverage > venue max.
 //! 2. `free_margin_usd >= required_margin` invariant (`LiveField`).
@@ -37,14 +31,14 @@
 //!    Position with `liq_price = LiveField<None>` so policy can still
 //!    use the position.
 
-use simulation_state::delta::PositionChange;
-use simulation_state::live_field::{DataSource, LiveField};
-use simulation_state::pending::{
+use policy_state::delta::PositionChange;
+use policy_state::live_field::{DataSource, LiveField};
+use policy_state::pending::{
     AssetCommitment, PendingKind, PendingLifecycle, PendingStatus, PendingTx, PerpOrderKind,
 };
-use simulation_state::position::{PerpPosition, Position, PositionKind};
-use simulation_state::primitives::{ProtocolRef, SignedI256};
-use simulation_state::{Decimal, EvalContext, PendingChange, StateDelta, WalletState, U256};
+use policy_state::position::{PerpPosition, Position, PositionKind};
+use policy_state::primitives::{ProtocolRef, SignedI256};
+use policy_state::{Decimal, EvalContext, PendingChange, StateDelta, WalletState, U256};
 
 use crate::action::perp::{OpenPerpAction, PerpVenue};
 use crate::apply::Reducer;
@@ -80,7 +74,7 @@ impl Reducer for OpenPerpAction {
             )));
         }
 
-        // Liquidation price — tolerate the deferred-stub error for venues
+        // Liquidation price — tolerate the deferred venue error for venues
         // whose accurate formula needs venue subgraph state.
         let liq_price = match dispatch_liquidation_price(self) {
             Ok(p) => p,
@@ -141,7 +135,6 @@ impl Reducer for OpenPerpAction {
 
         // Orderbook venues: emit pending only (no immediate position).
         // The position is opened later when the orderbook reports the fill.
-        // For Phase 2 reducer-side we still record the Position so the
         // downstream `apply_delta` / DB layer can mark it `pending`; the
         // Pending entry's `fill_effect` carries the same `Position::Open`
         // for the resolver to play back idempotently.
@@ -257,7 +250,7 @@ fn dispatch_required_initial_margin(action: &OpenPerpAction) -> ReducerResult<U2
 /// `dispatch_required_initial_margin`.
 fn dispatch_liquidation_price(
     action: &OpenPerpAction,
-) -> ReducerResult<Option<simulation_state::primitives::Price>> {
+) -> ReducerResult<Option<policy_state::primitives::Price>> {
     match &action.venue {
         PerpVenue::Hyperliquid { .. } => hyperliquid::liquidation_price(
             &empty_state_for_helpers(),
@@ -314,7 +307,7 @@ fn dispatch_liquidation_price(
 }
 
 /// Returns the chain associated with the venue (or `None` for off-chain).
-const fn chain_for_venue(venue: &PerpVenue) -> Option<simulation_state::primitives::ChainId> {
+const fn chain_for_venue(venue: &PerpVenue) -> Option<policy_state::primitives::ChainId> {
     // ChainId is a String newtype (non-Copy), so we cannot return a borrowed
     // reference inside Option without unwinding the API. We return None here
     // for off-chain venues and Some(clone) for on-chain; the wrapper below
@@ -328,8 +321,8 @@ const fn chain_for_venue(venue: &PerpVenue) -> Option<simulation_state::primitiv
 /// `effect/perp/<venue>.rs` ignore both. We materialise an empty wallet here
 /// to keep the call ergonomic; the value is never read.
 fn empty_state_for_helpers() -> WalletState {
-    use simulation_state::primitives::{Address, ChainId};
-    use simulation_state::wallet::WalletId;
+    use policy_state::primitives::{Address, ChainId};
+    use policy_state::wallet::WalletId;
     WalletState::new(WalletId::new(
         Address::from([0u8; 20]),
         [ChainId::ethereum_mainnet()],
@@ -337,8 +330,8 @@ fn empty_state_for_helpers() -> WalletState {
 }
 
 fn empty_ctx_for_helpers() -> EvalContext {
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::primitives::{ChainId, Time};
+    use policy_state::eval_context::RequestKind;
+    use policy_state::primitives::{ChainId, Time};
     EvalContext::new(
         ChainId::ethereum_mainnet(),
         Time::from_unix(0),
@@ -360,13 +353,13 @@ fn _module_touch() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::{MarginMode, PerpSide};
-    use simulation_state::primitives::{Address, ChainId, MarketRef, Time, VenueRef};
-    use simulation_state::token::{
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::{MarginMode, PerpSide};
+    use policy_state::primitives::{Address, ChainId, MarketRef, Time, VenueRef};
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{OpenPerpLiveInputs, PerpAccountState, PerpVenue, SizeSpec};
@@ -380,7 +373,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

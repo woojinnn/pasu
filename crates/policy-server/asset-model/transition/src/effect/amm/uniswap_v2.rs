@@ -1,22 +1,18 @@
 //! Uniswap V2 swap math — `x * y = k` constant product.
-//!
 //! Pure functions called from `swap.rs` after dispatch on `AmmVenue::UniswapV2`.
 //! Not a `Reducer` impl since `AmmVenue` is not an `Action`.
-//!
 //! ## Fee convention
-//!
 //! `PoolState::XyConstant.fee_bp` is in **basis points** (1 bp = 0.01%); the
 //! canonical Uniswap V2 spec fee of `0.3 %` therefore corresponds to
 //! `fee_bp = 30`. Matches the `fee_bp` units already used by
 //! `PoolState::Cryptoswap` and the `effective_fee_bp` field on `RouteHop`
 //! (e.g. fixture #5 uses `5` for the V3 `0.05 %` tier).
-//!
 //! The V3 enum field `fee_tier_bp` *does* use the `bp × 100` convention but
 //! that variant is `Concentrated`, not `XyConstant`; only the latter is
 //! consumed by this module.
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::amm::{PoolState, SwapAction};
 use crate::error::{ReducerError, ReducerResult};
@@ -24,16 +20,13 @@ use crate::error::{ReducerError, ReducerResult};
 /// Quote a single hop on a Uniswap V2 pool given its `XyConstant` `PoolState`
 /// snapshot. Returns the hop's output amount; caller is responsible for fee
 /// accounting and balance changes.
-///
 /// Implements the canonical `getAmountOut` formula:
-///
 /// ```text
 ///   amount_in_with_fee = amount_in * (10_000 - fee_bp)
 ///   numerator          = reserve_out * amount_in_with_fee
 ///   denominator        = reserve_in  * 10_000 + amount_in_with_fee
 ///   amount_out         = numerator / denominator
 /// ```
-///
 /// Returns `Invariant` on:
 ///   * `fee_bp >= 10_000` (would zero / underflow the fee multiplier),
 ///   * any `U256` overflow during the multiplications,
@@ -93,11 +86,11 @@ pub(super) fn quote_swap_hop(
 mod tests {
     use super::*;
     use crate::action::amm::{AmmVenue, SwapDirection, SwapLiveInputs, SwapParams, SwapRoute};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {
@@ -262,7 +255,7 @@ mod tests {
         let pool_state = PoolState::Concentrated {
             sqrt_price_x96: U256::from(1u64),
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(0u64),
+            liquidity: policy_state::primitives::U128::from(0u64),
             ticks: vec![],
         };
         let err = quote_swap_hop(&state, &ctx, &swap, &pool_state, U256::from(1u64)).unwrap_err();

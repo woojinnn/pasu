@@ -1,6 +1,5 @@
 //! Action live-input planning.
-//!
-//! Code in this group inspects `simulation-action`/`simulation-reducer` action
+//! Code in this group inspects `policy-action`/`policy-transition` action
 //! values and discovers which fields must be fetched before transition rules can
 //! run with fresh inputs.
 

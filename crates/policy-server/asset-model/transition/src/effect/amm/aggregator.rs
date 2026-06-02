@@ -1,30 +1,21 @@
 //! Aggregator cross-cutting concerns (1inch / 0x / Paraswap / Kyberswap / Odos /
 //! OKX / `Uniswap Universal Router` / `CoW` solver).
-//!
 //! Aggregators have no pool math of their own — each hop in their `SwapRoute`
 //! delegates to an underlying single-pool venue (`uniswap_v3`, `curve_v2`, ...).
 //! This file holds the *aggregator-specific* hooks the swap reducer must call
 //! when `AmmVenue::AggregatorRoute` is dispatched.
-//!
-//! ## Phase 2G scope — stub-grade verification
-//!
-//! The three hooks below are Phase 2 stubs that perform *structural* checks
 //! only: known-executor allow-list lookup (`verify_executor`), 32-byte hex
 //! sanity check on the recorded calldata hash (`verify_calldata_hash`), and a
 //! `Permit2`-shaped allowance grant when the aggregator bundles a permit
 //! (`apply_permit_bundle`). Actual calldata content verification requires the
-//! raw bytes in `ActionMeta`, which is a follow-up phase.
-//!
+//! raw bytes in `ActionMeta`, which is a future change.
 //! ### Known-safe executor allow-list
-//!
 //! Hard-coded today for 1inch v6 only (PDF §11 fixture #4). Other aggregators
 //! either don't have a separate executor (`router == executor` — single-router
 //! case, handled by the `meta.executor.is_none()` branch returning `Ok(())`),
 //! or are deferred to follow-up fixture batches. `AggregatorKind::Custom`
 //! always rejects executor verification — the reducer refuses to vouch for
 //! an unmoderated aggregator.
-//!
-//! 1차 출처:
 //!   * 1inch v6 router — <https://docs.1inch.io/docs/aggregation-protocol/api/swagger>
 //!     and the canonical mainnet deployment at
 //!     `0x111111125421ca6dc452d289314280a0f8842a65` (also reproduced in
@@ -34,17 +25,15 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::OnceLock;
 
-use simulation_state::primitives::{Address, Duration, Spender};
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::primitives::{Address, Duration, Spender};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::amm::{AggregatorKind, AggregatorMeta, SwapAction, SwapDirection};
 use crate::error::{ReducerError, ReducerResult};
 use crate::helpers;
 
 /// Hard-coded allow-list of known-safe `(aggregator, executor)` pairs.
-///
 /// Keyed by a stable string discriminator (one per `AggregatorKind` variant
-/// that has a separate executor today). The Phase 2G batch only verifies
 /// 1inch v6 (PDF §11 fixture #4); other aggregators either use a single
 /// router contract (no separate executor — handled by an `Ok(())` short-
 /// circuit) or are deferred to follow-up fixture batches.
@@ -53,7 +42,6 @@ fn known_safe_executors() -> &'static HashMap<&'static str, Vec<Address>> {
     MAP.get_or_init(|| {
         let mut m = HashMap::new();
         // 1inch v6 Aggregation Router — also acts as the canonical executor
-        // when the calldata embeds executor selection internally. 1차 출처:
         // https://docs.1inch.io/docs/aggregation-protocol/api/swagger
         // (deployment registry).
         m.insert(
@@ -80,17 +68,14 @@ const fn discriminator(kind: &AggregatorKind) -> Option<&'static str> {
 }
 
 /// Default expiration for a bundled `Permit2` grant — 1 hour from `ctx.now`.
-///
-/// Phase 2 stub: the on-chain `Permit2` expiration field is carried inside
 /// the user-signed permit blob, which isn't accessible to the reducer at
-/// this phase. The 1-hour default is a conservative upper bound that lines
+/// this implementation. The 1-hour default is a conservative upper bound that lines
 /// up with most aggregator SDK defaults (1inch / 0x / Paraswap publish
 /// roughly comparable values in their reference flows).
 const PERMIT_BUNDLE_DEFAULT_TTL: Duration = Duration::from_secs(3_600);
 
 /// Verify that the aggregator's executor contract is on a known-safe allow
 /// list. Returns `Err` for unknown or fake executors.
-///
 /// `meta.executor.is_none()` means the aggregator uses a single router
 /// contract (no router/executor split) — no executor check is needed and
 /// `Ok(())` is returned. `AggregatorKind::Custom` always rejects (the
@@ -134,8 +119,6 @@ pub(super) fn verify_executor(meta: &AggregatorMeta) -> ReducerResult<()> {
 
 /// Verify that the calldata hash recorded in `meta` matches what would be
 /// generated from the user's signed intent (replay / audit guard).
-///
-/// **Phase 2 stub** — the actual content verification needs the raw
 /// `ActionMeta.calldata` bytes. Today we only check the *format*: the hash
 /// must be 32 bytes of hex prefixed with `0x` (i.e. 66 chars total).
 pub(super) fn verify_calldata_hash(meta: &AggregatorMeta) -> ReducerResult<()> {
@@ -156,12 +139,10 @@ pub(super) fn verify_calldata_hash(meta: &AggregatorMeta) -> ReducerResult<()> {
 /// When `meta.permit_bundled == true`, apply the bundled `permit` step
 /// (allowance grant) before the swap proceeds. Emits an `ApprovalSet`
 /// change to `delta`.
-///
 /// Spender choice: when the aggregator has a separate executor we approve
 /// that executor (the contract that actually pulls the funds); otherwise we
 /// approve the router contract directly. Amount: `ExactInput.amount_in`
 /// for exact-in swaps, `ExactOutput.max_amount_in` for exact-out swaps
-/// (the user-signed spend cap). Expiration: `ctx.now + 1 hour` Phase 2 stub
 /// default — the actual on-chain expiration lives inside the off-chain
 /// `Permit2` signature, which isn't reachable here yet.
 pub(super) fn apply_permit_bundle(
@@ -208,12 +189,12 @@ mod tests {
         AmmVenue, PoolState, RouteHop, RoutePath, SwapDirection, SwapLiveInputs, SwapParams,
         SwapRoute,
     };
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {
@@ -377,24 +358,24 @@ mod tests {
         token: &TokenRef,
         balance: U256,
         symbol: &str,
-    ) -> simulation_state::token::TokenHolding {
+    ) -> policy_state::token::TokenHolding {
         let contract = token
             .key
             .contract()
             .copied()
             .unwrap_or_else(|| Address::from([0u8; 20]));
-        simulation_state::token::TokenHolding {
+        policy_state::token::TokenHolding {
             key: token.key.clone(),
-            kind: simulation_state::token::TokenKind::Base {
-                category: simulation_state::token::BaseCategory::Stable,
-                peg_to: Some(simulation_state::token::PegTarget::Fiat(
-                    simulation_state::token::FiatCurrency::Usd,
+            kind: policy_state::token::TokenKind::Base {
+                category: policy_state::token::BaseCategory::Stable,
+                peg_to: Some(policy_state::token::PegTarget::Fiat(
+                    policy_state::token::FiatCurrency::Usd,
                 )),
             },
             symbol: symbol.into(),
             decimals: 18,
-            balance: simulation_state::token::Balance::fungible(balance),
-            committed: simulation_state::token::Balance::zero_fungible(),
+            balance: policy_state::token::Balance::fungible(balance),
+            committed: policy_state::token::Balance::zero_fungible(),
             approved_to: None,
             price_usd: None,
             metadata: None,

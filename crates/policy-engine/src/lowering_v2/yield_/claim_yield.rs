@@ -2,8 +2,8 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::yield_::ClaimYieldAction;
-use simulation_state::primitives::Address;
+use policy_state::primitives::Address;
+use policy_transition::action::yield_::ClaimYieldAction;
 
 use super::super::common::cedar::addr;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -41,9 +41,9 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::yield_::{ClaimYieldAction, YieldAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::Address;
+    use policy_state::primitives::Address;
+    use policy_transition::action::yield_::{ClaimYieldAction, YieldAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, onchain_meta, pendle_market, pendle_venue, user,

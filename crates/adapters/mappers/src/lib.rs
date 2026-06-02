@@ -8,7 +8,7 @@
 //!
 //! ```text
 //!   DecodedCall (abi-resolver) → declarative::args_json → JSON args view
-//!                              → declarative::action_builder → simulation-reducer ActionBody
+//!                              → declarative::action_builder → policy-transition ActionBody
 //! ```
 //!
 //! Module layout:

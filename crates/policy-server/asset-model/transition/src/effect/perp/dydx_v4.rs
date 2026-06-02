@@ -1,27 +1,20 @@
 //! dYdX V4 venue math — dYdX V4 runs on its own Cosmos chain; off-chain
 //! orderbook with on-chain settlement.
-//!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::DyDxV4`. Not a `Reducer` impl.
-//!
 //! ## Cross-margin only
-//!
 //! dYdX V4 enforces cross-margin at the subaccount level. The simplified
 //! liquidation-price formula degenerates to the same single-asset form when
 //! exactly one position dominates the subaccount; for true multi-position
 //! cross-margin the venue's `clob` module surfaces the canonical figure via
 //! the indexer API and our `LiveField` source should switch to
 //! `DataSource::VenueApi { provider: "dydx_v4_indexer", ... }`.
-//!
 //! ## Primary sources
-//!
 //! - <https://github.com/dydxprotocol/v4-chain/tree/main/protocol/x/clob>
 //!   — `clob` module margin / liquidation reference (Cosmos SDK)
 //! - <https://docs.dydx.exchange/api_integration-indexer/indexer_api> —
 //!   indexer API `liquidationPx` field shape
-//!
 //! ## Cosmos signing note
-//!
 //! `DyDx` V4 trade orders are signed via Cosmos SDK `SIGN_MODE_DIRECT`, not
 //! EIP-712. The orderbook-vs-on-chain dispatch in the per-action reducers
 //! treats `DyDx` V4 the same as Hyperliquid (pending-only state mutation at
@@ -30,8 +23,8 @@
 
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, Price, SignedI256, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs};
 use crate::error::ReducerResult;
@@ -49,7 +42,6 @@ pub(super) fn required_initial_margin(
 }
 
 /// Compute the liquidation price of a newly opened position on dYdX V4.
-///
 /// dYdX V4 is cross-margin only; the simplified single-asset formula remains
 /// correct for the common case (single dominant position). Multi-position
 /// cross-margin should be sourced from the venue indexer's `liquidationPx`.

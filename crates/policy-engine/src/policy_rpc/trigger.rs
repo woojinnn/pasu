@@ -15,7 +15,7 @@
 //! Multicall fan-out (which [`ActionView`] to feed for `scope: inner` vs
 //! `outer`) is the caller's responsibility; this function judges one view.
 
-use simulation_reducer::action::ActionView;
+use policy_transition::action::ActionView;
 
 use super::manifest_v2::{Trigger, TriggerConstraint, TriggerField};
 

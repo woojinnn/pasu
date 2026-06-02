@@ -1,6 +1,6 @@
 //! `Lending::DisableCollateral` lowering → `Lending::DisableCollateralContext`.
 
-use simulation_reducer::action::lending::SetCollateralAction;
+use policy_transition::action::lending::SetCollateralAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::lower_set_collateral_context;
@@ -29,10 +29,10 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::lending::{
+    use policy_transition::action::lending::{
         LendingAction, SetCollateralAction, SetCollateralLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{live, onchain_meta, reserve_state, user_state, venue, weth};
 

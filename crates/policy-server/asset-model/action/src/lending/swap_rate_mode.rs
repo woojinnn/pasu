@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Decimal, U256};
-use simulation_state::token::{RateMode, TokenRef};
-use simulation_state::LiveField;
+use policy_state::primitives::{Decimal, U256};
+use policy_state::token::{RateMode, TokenRef};
+use policy_state::LiveField;
 
 use super::LendingVenue;
 

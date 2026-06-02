@@ -1,7 +1,7 @@
 //! M1 — `declarative_action_builder`
 //!
 //! Convert a v3 registry manifest's `emit.body` (nested-twice DSL with `$`
-//! placeholders) into a typed [`ActionBody`] from the `simulation-reducer`
+//! placeholders) into a typed [`ActionBody`] from the `policy-transition`
 //! crate. The translation has four stages:
 //!
 //! 1. **placeholder substitution** — recursively rewrite every string in the
@@ -15,7 +15,7 @@
 //! 3. **live_inputs injection** — for each `live_inputs.<field>` of the
 //!    target variant, substitute placeholders inside the `source` descriptor
 //!    and wrap it with a default `value` plus the host-provided `synced_at`,
-//!    matching the [`simulation_state::LiveField`] serde shape. Default values
+//!    matching the [`policy_state::LiveField`] serde shape. Default values
 //!    are looked up from a small per-`(domain, action, field)` catalog.
 //! 4. **deserialize** — `serde_json::from_value::<ActionBody>(_)` produces the
 //!    fully typed value.
@@ -31,9 +31,9 @@
 
 use std::collections::BTreeMap;
 
+use policy_state::primitives::{Address, ChainId, Time, U256};
+use policy_transition::action::ActionBody;
 use serde_json::{Map as JsonMap, Value as JsonValue};
-use simulation_reducer::action::ActionBody;
-use simulation_state::primitives::{Address, ChainId, Time, U256};
 
 /// Errors surfaced by the v3 builder.
 #[derive(thiserror::Error, Debug)]
@@ -183,7 +183,7 @@ pub struct V3MapContext<'a> {
     /// `tx.value` — native value attached to the call.
     pub value: U256,
     /// Host-supplied wall-clock at submission time (drives `synced_at` of
-    /// every freshly built [`LiveField`](simulation_state::LiveField)).
+    /// every freshly built [`LiveField`](policy_state::LiveField)).
     pub submitted_at: Time,
     /// Decoded calldata args as a JSON object keyed by ABI argument name.
     pub args_json: &'a JsonValue,
@@ -790,11 +790,11 @@ fn extract_tags(flat: &JsonMap<String, JsonValue>) -> (Option<String>, Option<St
 }
 
 /// Wrap a placeholder-substituted `source` descriptor into the full
-/// [`LiveField`](simulation_state::LiveField) JSON shape with a default value
+/// [`LiveField`](policy_state::LiveField) JSON shape with a default value
 /// drawn from [`live_input_default`] and `synced_at = ctx.submitted_at`.
 ///
 /// If the manifest entry carries `ttl_s` (the v3 convention) the value is
-/// converted into a `ttl` JSON number — [`simulation_state::primitives::Duration`]
+/// converted into a `ttl` JSON number — [`policy_state::primitives::Duration`]
 /// is `#[serde(transparent)]` over a `u64`.
 fn wrap_live_field(
     ctx: &V3MapContext<'_>,
@@ -827,7 +827,7 @@ fn wrap_live_field(
     JsonValue::Object(out)
 }
 
-/// Deserializable zero skeleton for `simulation_reducer::action::lending::ReserveState`.
+/// Deserializable zero skeleton for `policy_transition::action::lending::ReserveState`.
 ///
 /// `U256` fields (`total_supply` / `total_borrow`) are decimal strings (alloy
 /// serde), the `*_bp` / `utilization_bp` / `reserve_factor_bp` fields are
@@ -879,11 +879,11 @@ fn lending_emode_config_skeleton() -> JsonValue {
 /// Per-`(domain, action, field)` default `value` for the `LiveField` wrap.
 ///
 /// Each entry encodes the minimal `serde_json` shape needed for
-/// `simulation_state::LiveField<T>` to deserialize successfully — typically
-/// `"0"` for `U256` / `Decimal` / `Price`, `0` for `u32`, `false` for `bool`,
-/// `["0","0"]` for 2-tuples, and a hand-rolled object skeleton for the richer
-/// state types (`SwapRoute`, `PoolState`, `Vec<(TokenRef, U256)>`,
-/// `ReserveState`, `UserLendingState`, `EModeConfig`).
+/// `policy_state::LiveField<T>` to deserialize successfully: typically `"0"`
+/// for `U256` / `Decimal` / `Price`, `0` for `u32`, `false` for `bool`,
+/// `["0","0"]` for 2-tuples, and object skeletons for richer state types
+/// (`SwapRoute`, `PoolState`, `Vec<(TokenRef, U256)>`, `ReserveState`,
+/// `UserLendingState`, `EModeConfig`).
 ///
 /// Extending the catalog when a new `live_inputs.<field>` lands in registry
 /// V2 is a one-line edit — the test suite covers what's currently emitted by
@@ -1181,8 +1181,8 @@ pub fn build_array_emit(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use policy_transition::action::{amm::AmmAction, token::TokenAction};
     use serde_json::json;
-    use simulation_reducer::action::{amm::AmmAction, token::TokenAction};
     use std::str::FromStr;
 
     fn addr(hex: &str) -> Address {
