@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import {
+  ENABLED_IDS_STORAGE_KEY,
   deleteWallet,
   getDashboardSummary,
   getAuditCounts,
+  getEnabledPolicyIds,
   listAuditVerdicts,
-  listPolicies,
+  listManagedPolicies,
+  subscribeToBroadcast,
   syncWallet,
   type DashboardSummary,
   type DashboardWalletSummary,
@@ -32,6 +35,7 @@ import "./home.css";
  */
 export function HomePage() {
   const [addOpen, setAddOpen] = useState(false);
+  const qc = useQueryClient();
 
   const summaryQ = useQuery({ queryKey: ["dashboard", "summary"], queryFn: getDashboardSummary });
   const countsQ = useQuery({
@@ -40,7 +44,26 @@ export function HomePage() {
     refetchInterval: (q) => (q.state.error ? false : 60_000),
     retry: false,
   });
-  const policiesQ = useQuery({ queryKey: ["policies"], queryFn: listPolicies });
+  // Pull the same two data sources EditorListPage / popup use so the
+  // count stays in sync regardless of which surface flipped the toggle.
+  const managedQ = useQuery({
+    queryKey: ["managed-policies"],
+    queryFn: listManagedPolicies,
+  });
+  const enabledQ = useQuery({
+    queryKey: ["enabled-policy-ids"],
+    queryFn: getEnabledPolicyIds,
+  });
+
+  // Refetch the enabled set when the popup writes it behind our back.
+  useEffect(() => {
+    const unsubscribe = subscribeToBroadcast((keys) => {
+      if (keys.includes(ENABLED_IDS_STORAGE_KEY)) {
+        void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+      }
+    });
+    return unsubscribe;
+  }, [qc]);
 
   const wallets = summaryQ.data?.wallets ?? [];
 
@@ -79,8 +102,11 @@ export function HomePage() {
   // Today-evaluated total (PASS+WARN+FAIL).
   const todayTotal = countsQ.data ? countsQ.data.pass + countsQ.data.warn + countsQ.data.fail : null;
 
-  const policies = policiesQ.data ?? [];
-  const enabledPolicyCount = policies.filter((p) => p.enabled).length;
+  const managed = managedQ.data ?? [];
+  const enabledSet = useMemo(() => new Set(enabledQ.data ?? []), [enabledQ.data]);
+  const enabledPolicyCount = managed.filter((p) => enabledSet.has(p.id)).length;
+  const totalManagedCount = managed.length;
+  const policiesLoading = managedQ.isLoading || enabledQ.isLoading;
 
   return (
     <>
@@ -98,8 +124,8 @@ export function HomePage() {
 
       <ActivePoliciesCard
         enabledCount={enabledPolicyCount}
-        totalCount={policies.length}
-        loading={policiesQ.isLoading}
+        totalCount={totalManagedCount}
+        loading={policiesLoading}
       />
 
       <WalletList
