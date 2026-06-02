@@ -53,6 +53,18 @@ const CORPUS: &[(&str, &str, &str)] = &[
      r#"permit(principal, action, resource) when { context.a } unless { context.b };"#),
     ("no_conditions", "conditions",
      r#"permit(principal, action, resource);"#),
+    ("expr_is", "operators",
+     r#"permit(principal, action, resource) when { resource is Vault };"#),
+    ("unary_not", "operators",
+     r#"permit(principal, action, resource) when { !(context.flag) };"#),
+    ("is_empty", "operators",
+     r#"permit(principal, action, resource) when { context.tags.isEmpty() };"#),
+    ("has_tag", "operators",
+     r#"permit(principal, action, resource) when { resource.hasTag("admin") };"#),
+    ("get_tag", "operators",
+     r#"permit(principal, action, resource) when { resource.getTag("level") == 1 };"#),
+    ("entity_literal", "literals",
+     r#"permit(principal, action, resource) when { context.owner == User::"alice" };"#),
 ];
 
 /// THE load-bearing invariant for the TS EST↔IR engine: an EST survives a

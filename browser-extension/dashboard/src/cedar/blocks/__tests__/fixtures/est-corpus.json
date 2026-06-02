@@ -1105,5 +1105,216 @@
       },
       "conditions": []
     }
+  },
+  {
+    "name": "expr_is",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { resource is Vault };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "is": {
+              "left": {
+                "Var": "resource"
+              },
+              "entity_type": "Vault"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "unary_not",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { !(context.flag) };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "!": {
+              "arg": {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "flag"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "is_empty",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { context.tags.isEmpty() };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "isEmpty": {
+              "arg": {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "tags"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "has_tag",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { resource.hasTag(\"admin\") };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "hasTag": {
+              "left": {
+                "Var": "resource"
+              },
+              "right": {
+                "Value": "admin"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "get_tag",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { resource.getTag(\"level\") == 1 };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                "getTag": {
+                  "left": {
+                    "Var": "resource"
+                  },
+                  "right": {
+                    "Value": "level"
+                  }
+                }
+              },
+              "right": {
+                "Value": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "entity_literal",
+    "category": "literals",
+    "text": "permit(principal, action, resource) when { context.owner == User::\"alice\" };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "owner"
+                }
+              },
+              "right": {
+                "Value": {
+                  "__entity": {
+                    "type": "User",
+                    "id": "alice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
   }
 ]

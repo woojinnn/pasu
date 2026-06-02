@@ -20,8 +20,50 @@ export function blocksToEst(ir: PolicyIR): EstPolicy {
 }
 
 function exprToEst(node: Expr): EstExpr {
-  if (node.kind === "raw") return node.est as EstExpr;
-  throw new Error(`blocksToEst: unhandled IR node kind "${node.kind}"`);
+  switch (node.kind) {
+    case "raw":
+      return node.est as EstExpr;
+    case "var":
+      return { Var: node.name };
+    case "lit":
+      return { Value: node.value };
+    case "litEntity":
+      return { Value: { __entity: { type: node.entity.type, id: node.entity.id } } };
+    case "set":
+      return { Set: node.elements.map(exprToEst) };
+    case "record":
+      return { Record: Object.fromEntries(node.pairs.map((p) => [p.key, exprToEst(p.value)])) };
+    case "attr":
+      return { ".": { left: exprToEst(node.of), attr: node.attr } };
+    case "has":
+      return { has: { left: exprToEst(node.of), attr: node.attr } };
+    case "like":
+      return { like: { left: exprToEst(node.of), pattern: node.pattern } };
+    case "is":
+      return {
+        is: {
+          left: exprToEst(node.of),
+          entity_type: node.entityType,
+          ...(node.in ? { in: exprToEst(node.in) } : {}),
+        },
+      };
+    case "if":
+      return {
+        "if-then-else": {
+          if: exprToEst(node.cond),
+          then: exprToEst(node.then),
+          else: exprToEst(node.else),
+        },
+      };
+    case "binary":
+      return { [node.op]: { left: exprToEst(node.left), right: exprToEst(node.right) } };
+    case "unary":
+      return { [node.op]: { arg: exprToEst(node.operand) } };
+    case "ext":
+      return { [node.fn]: node.args.map(exprToEst) };
+    case "hole":
+      throw new Error(`blocksToEst: cannot serialize unfilled hole "${node.name ?? "?"}"`);
+  }
 }
 
 function scopeToEst(s: Scope): Record<string, any> {

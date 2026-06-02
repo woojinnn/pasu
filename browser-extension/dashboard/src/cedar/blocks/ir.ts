@@ -44,6 +44,8 @@ export type BinaryOp =
   | "hasTag";
 export type UnaryOp = "!" | "neg" | "isEmpty";
 export type SourceKind = "base" | "custom" | "unknown";
+// Cedar EST `like` pattern: a token array of literal chars + wildcards.
+export type LikePattern = ({ Literal: string } | "Wildcard")[];
 
 export type Expr =
   | { kind: "var"; name: VarName }
@@ -56,7 +58,7 @@ export type Expr =
   | { kind: "has"; of: Expr; attr: string }
   | { kind: "binary"; op: BinaryOp; left: Expr; right: Expr }
   | { kind: "unary"; op: UnaryOp; operand: Expr }
-  | { kind: "like"; of: Expr; pattern: string }
+  | { kind: "like"; of: Expr; pattern: LikePattern }
   | { kind: "is"; of: Expr; entityType: string; in?: Expr }
   | { kind: "if"; cond: Expr; then: Expr; else: Expr }
   | { kind: "ext"; fn: string; args: Expr[] }
