@@ -1,5 +1,5 @@
 {
-  "_comment": "Morpho Blue corpus with semantically pinned Ethereum real transactions, fresh Etherscan V2 representatives from the 2026-06-02 adapter-blind singleton sweep, Base hand/typed fixtures, and excluded-selector error cases. Base direct real transactions are recorded in onboarding Dune evidence because Etherscan V2 free API does not expose Base txlist rows.",
+  "_comment": "Morpho Blue corpus with semantically pinned Ethereum real transactions, fresh Etherscan V2 representatives from the 2026-06-02 adapter-blind singleton sweep, Base Dune direct-call representatives, Base hand/typed fixtures, and excluded-selector error cases.",
   "transactions": [
     {
       "intent": "morpho supply #1",
@@ -1753,6 +1753,209 @@
             "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
             "value": "0",
             "data": "0xeecea0000000000000000000000000004a6c312ec70e8747a587ee860a0353cd42be0ae00000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        }
+      ]
+    },
+    {
+      "intent": "morpho supply fresh Dune direct Morpho Blue (Base)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "supply",
+      "tx_hash": "0x7cd2dd9a9c0318705b5610a0d6ff5fe51d525b0ad8e31a0d502ffcbd26747c69",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0xa99aad8900000000000000000000000042000000000000000000000000000000000000060000000000000000000000003a43aec53490cb9fa922847385d82fe25d0e9de7000000000000000000000000bf991c8c88be948881a4d2168f7b7f3e1ee71dbc00000000000000000000000046415998764c29ab2a25cbea6254146d50d226870000000000000000000000000000000000000000000000000cb2bba6f17b80000000000000000000000000000000000000000000000000001e87f85809dc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c7666afe71d4699a9331092ccfd055846f9c6c5400000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        }
+      ]
+    },
+    {
+      "intent": "morpho withdraw fresh Dune direct Morpho Blue (Base)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "withdraw",
+      "tx_hash": "0xad818ef05c250f0d166abe44ce843f3f5bcdd63b5bfcf884257ee35d82b24b43",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0x5c2bea49000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda02913000000000000000000000000cb585250f852c6c6bf90434ab21a00f02833a4af000000000000000000000000031b2efc8d70042ac8d9f5c793c4149ec4b60fde00000000000000000000000046415998764c29ab2a25cbea6254146d50d2268700000000000000000000000000000000000000000000000008ac7230489e800000000000000000000000000000000000000000000000000000000002540be4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001ac4e512d670c34fedf6c71ce2f49fb160a000000000000000000000000000001ac4e512d670c34fedf6c71ce2f49fb160a"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        }
+      ]
+    },
+    {
+      "intent": "morpho borrow fresh Dune direct Morpho Blue (Base)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "borrow",
+      "tx_hash": "0x2e3ba028eaa99bbb9659534934350d4378d94f0d19414f01b91984c59c98ed47",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0x50d8cd4b000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda02913000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf000000000000000000000000663becd10dae6c4a3dcd89f1d76c1174199639b900000000000000000000000046415998764c29ab2a25cbea6254146d50d226870000000000000000000000000000000000000000000000000bef55718ad60000000000000000000000000000000000000000000000000000000000001dcd6500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000096f3beef541bb85b184e78c322c1d6bb41e329f400000000000000000000000096f3beef541bb85b184e78c322c1d6bb41e329f4"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "borrow"
+        }
+      ]
+    },
+    {
+      "intent": "morpho repay fresh Dune direct Morpho Blue (Base)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "repay",
+      "tx_hash": "0x820bdf578ab3080203bddb428ddfd6af719f01f4502cdf5f24deb6d49b243fce",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0x20b76e81000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda029130000000000000000000000004200000000000000000000000000000000000006000000000000000000000000fea2d58cefcb9fcb597723c6bae66ffe4193afe400000000000000000000000046415998764c29ab2a25cbea6254146d50d226870000000000000000000000000000000000000000000000000bef55718ad60000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000606f9873a03000000000000000000000000585daf2d9f83fb4a840472a09074e051fc65a6b60000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000000062635f706a33667a3477370b0080218021802180218021802180218021"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "repay"
+        }
+      ]
+    },
+    {
+      "intent": "morpho supplyCollateral fresh Dune direct Morpho Blue (Base)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "supply",
+      "tx_hash": "0xe54cc20143446ed697d7733df449e8e128c7d67dc7d693cba942e73293f4cdf3",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0x238d6579000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda02913000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf000000000000000000000000663becd10dae6c4a3dcd89f1d76c1174199639b900000000000000000000000046415998764c29ab2a25cbea6254146d50d226870000000000000000000000000000000000000000000000000bef55718ad6000000000000000000000000000000000000000000000000000000000000000ad1ee00000000000000000000000096f3beef541bb85b184e78c322c1d6bb41e329f400000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        }
+      ]
+    },
+    {
+      "intent": "morpho withdrawCollateral fresh Dune direct Morpho Blue (Base)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "withdraw",
+      "tx_hash": "0x2c037a78a0d50a229da552567265235b86c5a70a0dc71f47c30d1fdc3a358ba0",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0x8720316d000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda029130000000000000000000000004200000000000000000000000000000000000006000000000000000000000000fea2d58cefcb9fcb597723c6bae66ffe4193afe400000000000000000000000046415998764c29ab2a25cbea6254146d50d226870000000000000000000000000000000000000000000000000bef55718ad60000000000000000000000000000000000000000000000000000006cecc7eb0a944c0000000000000000000000002185b1741f5710cb84c78adc574ba65b3b8e14cf0000000000000000000000002185b1741f5710cb84c78adc574ba65b3b8e14cf"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        }
+      ]
+    },
+    {
+      "intent": "morpho setAuthorization fresh Dune direct Morpho Blue (Base)",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "set_authorization",
+      "tx_hash": "0x335029a44e4476bf3ebb0717ccdb96d65b7026f58d8f01bd42611f49fa6de194",
+      "chain_id": 8453,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+            "value": "0",
+            "data": "0xeecea000000000000000000000000000b98c948cfa24072e58935bc004a8a7b376ae746a0000000000000000000000000000000000000000000000000000000000000001"
           }
         ]
       },

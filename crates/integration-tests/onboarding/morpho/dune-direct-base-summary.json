@@ -52,6 +52,7 @@
     ]
   },
   "observed_onchain_cover_selectors": 7,
+  "corpus_imported_direct_real_txs": 7,
   "selected_direct_hashes": [
     {
       "selector": "0x20b76e81",
@@ -102,8 +103,15 @@
     "execution_cost_credits": 0.23,
     "rows_returned": 14
   },
+  "calldata_hex_check_query": {
+    "query_id": 7633691,
+    "execution_id": "01KT33BEPHWW81EXJG6PT1AE0M",
+    "execution_cost_credits": 0.161,
+    "rows_returned": 2,
+    "reason": "Re-read Base repay calldata with to_hex(data) after CAST(data AS varchar) returned odd-length display text."
+  },
   "limitations": [
-    "Etherscan V2 rejected Base account txlist on the free API plan, so Base direct-call evidence comes from Dune.",
+    "Etherscan V2 rejected Base account txlist on the free API plan, so Base direct-call evidence and imported corpus calldata come from Dune.",
     "Only direct top-level singleton calls were considered corpus-suitable; router/aggregator top-level transactions from decoded call tables were not imported into the direct-call corpus."
   ]
 }
