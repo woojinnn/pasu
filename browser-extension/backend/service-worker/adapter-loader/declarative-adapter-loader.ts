@@ -138,7 +138,7 @@ export interface InstallDeclarativeV3ByTypedDataResult {
 }
 
 const DEFAULT_REGISTRY_BASE_URL =
-  typeof process !== "undefined" && process.env?.REGISTRY_BASE_URL
+  typeof process !== "undefined" && process.env && process.env.REGISTRY_BASE_URL
     ? process.env.REGISTRY_BASE_URL
     : "http://localhost:8000";
 

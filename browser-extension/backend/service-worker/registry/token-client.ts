@@ -58,7 +58,7 @@ export interface TokenRegistryClientOptions {
 }
 
 const DEFAULT_BASE_URL =
-  typeof process !== "undefined" && process.env?.REGISTRY_BASE_URL
+  typeof process !== "undefined" && process.env && process.env.REGISTRY_BASE_URL
     ? process.env.REGISTRY_BASE_URL
     : "http://localhost:8000";
 const DEFAULT_TIMEOUT_MS = 2000;
