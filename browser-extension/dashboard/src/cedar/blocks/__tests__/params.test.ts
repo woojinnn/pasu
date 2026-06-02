@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { makeHole, replaceNode } from "../params";
+import { makeHole, replaceNode, extractParams } from "../params";
 import type { Expr, PolicyIR } from "../ir";
 
 const lit = (value: number): Expr => ({ kind: "lit", litType: "long", value });
@@ -40,5 +40,29 @@ describe("replaceNode", () => {
     const body: any = out.conditions[0].body;
     expect(body.left).toEqual(hole); // first match replaced
     expect(body.right).toEqual(lit(1)); // second untouched
+  });
+});
+
+describe("extractParams", () => {
+  it("collects holes in document order with their specs", () => {
+    const ir = policyWith({
+      kind: "binary",
+      op: "&&",
+      left: { kind: "binary", op: ">", left: lit(0), right: makeHole(lit(10000), { name: "maxUsd", label: "Max" }) },
+      right: { kind: "binary", op: "<", left: lit(0), right: makeHole(lit(60), { name: "minPct", optional: true }) },
+    });
+    const specs = extractParams(ir);
+    expect(specs.map((s) => s.name)).toEqual(["maxUsd", "minPct"]);
+    expect(specs[0]).toMatchObject({ name: "maxUsd", expected: "lit:long", label: "Max", default: lit(10000) });
+    expect(specs[1].optional).toBe(true);
+  });
+  it("throws on duplicate param names", () => {
+    const ir = policyWith({
+      kind: "binary",
+      op: "&&",
+      left: makeHole(lit(1), { name: "dup" }),
+      right: makeHole(lit(2), { name: "dup" }),
+    });
+    expect(() => extractParams(ir)).toThrow(/duplicate/);
   });
 });

@@ -3,7 +3,7 @@
 // (`replaceNode`). Adopter side (added below): `extractParams` / `fillParams`.
 // Pure functions over the block IR; no schema dependency. See the design spec.
 
-import type { Expr, Expected, HoleNode, ParamConstraints, PolicyIR } from "./ir";
+import type { Expr, Expected, HoleNode, ParamConstraints, ParamSpec, PolicyIR } from "./ir";
 
 // ── tree helpers ────────────────────────────────────────────────────────
 
@@ -115,4 +115,33 @@ export function replaceNode(ir: PolicyIR, locate: (e: Expr) => boolean, replacem
     return mapChildren(e, map);
   };
   return { ...ir, conditions: ir.conditions.map((c) => ({ ...c, body: map(c.body) })) };
+}
+
+// ── adopter side ────────────────────────────────────────────────────────
+
+/** Collect every hole in document order into form specs. Throws on duplicate names. */
+export function extractParams(ir: PolicyIR): ParamSpec[] {
+  const specs: ParamSpec[] = [];
+  const visit = (e: Expr): void => {
+    if (e.kind === "hole") {
+      specs.push({
+        name: e.name,
+        expected: e.expected,
+        default: e.default,
+        ...(e.optional ? { optional: true } : {}),
+        ...(e.label ? { label: e.label } : {}),
+        ...(e.type ? { type: e.type } : {}),
+        ...(e.constraints ? { constraints: e.constraints } : {}),
+      });
+    }
+    childExprs(e).forEach(visit);
+  };
+  ir.conditions.forEach((c) => visit(c.body));
+
+  const seen = new Set<string>();
+  for (const s of specs) {
+    if (seen.has(s.name)) throw new Error(`extractParams: duplicate param name "${s.name}"`);
+    seen.add(s.name);
+  }
+  return specs;
 }
