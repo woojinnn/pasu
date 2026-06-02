@@ -1,0 +1,839 @@
+{
+  "protocol": "compound-v3",
+  "source": "Etherscan v2 account txlist, page=1 offset=10000 sort=desc, adapter-blind over registryV2/surface/compound-v3 cover addresses",
+  "fetched_at": "2026-06-02T01:30:34.514Z",
+  "api_calls_used": 28,
+  "target_address_count": 28,
+  "raw_txs_seen": 125551,
+  "unique_selectors_seen": 31,
+  "successful_address_count": 17,
+  "blocked_address_count": 11,
+  "blocked_address_reasons": [
+    {
+      "chain_ids": [
+        10,
+        8453
+      ],
+      "reason": "Etherscan V2 free API response: Free API access is not supported for this chain; upgrade required for full chain coverage.",
+      "address_count": 8
+    },
+    {
+      "chain_ids": [
+        2020,
+        534352
+      ],
+      "reason": "Etherscan V2 response: missing or unsupported chainid parameter for Ronin/Scroll in this account txlist lane.",
+      "address_count": 3
+    }
+  ],
+  "selector_totals": {
+    "0xf2b9fdb8": 48262,
+    "0xf3fef3a3": 47560,
+    "0x110496e5": 16486,
+    "0x095ea7b3": 11545,
+    "0xa9059cbb": 332,
+    "0xc3cecfd2": 89,
+    "<none>": 117,
+    "0xc3b35a7e": 339,
+    "0xbfe69c8d": 6,
+    "0x439e2e45": 3,
+    "0x5c60da1b": 2,
+    "0x26441318": 51,
+    "0xbb24d994": 3,
+    "0x4232cd63": 200,
+    "0x3cb174aa": 1,
+    "0x880d6244": 1,
+    "0x96303d65": 1,
+    "0x68747470": 233,
+    "0x23b872dd": 218,
+    "0x1c9f7fb9": 7,
+    "0x60806040": 7,
+    "0xe4e6e779": 33,
+    "0xdc4abafd": 1,
+    "0xe727fbec": 1,
+    "0xb0ab4ed9": 1,
+    "0x496d6167": 37,
+    "0xf851a440": 1,
+    "0xa0712d68": 1,
+    "0x90323177": 9,
+    "0xc1ee2c18": 1,
+    "0x5f676ff5": 3
+  },
+  "cover_selector_coverage": [
+    {
+      "selector": "0xf2b9fdb8",
+      "name": "supply",
+      "domain": "lending",
+      "action": "supply",
+      "observed_txs": 48262,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x39e17ce11431f64be8e6d3028837786796dd379e8b8c0d8352c43b003f4e7518",
+        "function_name": "supply(address asset, uint256 amount)"
+      }
+    },
+    {
+      "selector": "0x4232cd63",
+      "name": "supplyTo",
+      "domain": "lending",
+      "action": "supply",
+      "observed_txs": 200,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x7f92a094c770db9e690e885967fef1968b994b9865b36cfb36994adbbabb3bd6",
+        "function_name": "supplyTo(address dst, address asset, uint256 amount)"
+      }
+    },
+    {
+      "selector": "0x90323177",
+      "name": "supplyFrom",
+      "domain": "lending",
+      "action": "supply",
+      "observed_txs": 9,
+      "selected_corpus_tx": {
+        "chain_id": 42161,
+        "target_name": "Comet Arbitrum cUSDCv3 USDC.e",
+        "target_address": "0xa5edbdd9646f8dff606d7448e414884c7d905dca",
+        "tx_hash": "0x20b99736f346a27222699c2f034f7dafaa0fbb3112909268b06352724bde7830",
+        "function_name": "supplyFrom(address from,address dst,address asset,uint256 amount)"
+      }
+    },
+    {
+      "selector": "0xf3fef3a3",
+      "name": "withdraw",
+      "domain": "lending",
+      "action": "withdraw",
+      "observed_txs": 47560,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x6922dccc768fef87b56a8e4c67d203b1301142f4a2527c928d18706cf9638c87",
+        "function_name": "withdraw(address to, uint256 value)"
+      }
+    },
+    {
+      "selector": "0xc3b35a7e",
+      "name": "withdrawTo",
+      "domain": "lending",
+      "action": "withdraw",
+      "observed_txs": 339,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x8afa11e47eaab3efacdea9e91de6c34b2b9d5f5f8bda09b8b29fa2ca09fe962b",
+        "function_name": "withdrawTo(address _token, address _to, uint256 _quantity)"
+      }
+    },
+    {
+      "selector": "0x26441318",
+      "name": "withdrawFrom",
+      "domain": "lending",
+      "action": "withdraw",
+      "observed_txs": 51,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x58d9efb54df21f1bdc234f5c7fb964f800e0a9565528e36fb1d82176f99ac56b",
+        "function_name": "withdrawFrom(address token, address from, address to, uint256 amount)"
+      }
+    },
+    {
+      "selector": "0xe4e6e779",
+      "name": "buyCollateral",
+      "domain": "lending",
+      "action": "buy_collateral",
+      "observed_txs": 33,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDTv3",
+        "target_address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
+        "tx_hash": "0x9880c53151921b5344cac9bd115f5a9bd89d2f6e6572f35e24a018756d9aa552",
+        "function_name": "buyCollateral(address asset, uint256 minAmount, uint256 baseAmount, address recipient)"
+      }
+    },
+    {
+      "selector": "0xa9059cbb",
+      "name": "transfer",
+      "domain": "token",
+      "action": "erc20_transfer",
+      "observed_txs": 332,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0xf577ae06a9497ec0b65b12d751b20df5e7eaa893320a18c93d3e82acdb61450f",
+        "function_name": "transfer(address _to, uint256 _value)"
+      }
+    },
+    {
+      "selector": "0x23b872dd",
+      "name": "transferFrom",
+      "domain": "token",
+      "action": "erc20_transfer",
+      "observed_txs": 218,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDSv3",
+        "target_address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
+        "tx_hash": "0x686997c5ad1e5acb44c514eb6f0b908ce052052d97aea4800ef0cf4a8abff459",
+        "function_name": "transferFrom(address _from, address _to, uint256 _value)"
+      }
+    },
+    {
+      "selector": "0x439e2e45",
+      "name": "transferAsset",
+      "domain": "token",
+      "action": "erc20_transfer",
+      "observed_txs": 3,
+      "selected_corpus_tx": {
+        "chain_id": 42161,
+        "target_name": "Comet Arbitrum cUSDCv3 USDC",
+        "target_address": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+        "tx_hash": "0x55200ab858ab654701e1b6b0a785636ce0ffd0de3309547649770c90146cfe05",
+        "function_name": "transferAsset(address dst,address asset,uint256 amount)"
+      }
+    },
+    {
+      "selector": "0xc1ee2c18",
+      "name": "transferAssetFrom",
+      "domain": "token",
+      "action": "erc20_transfer",
+      "observed_txs": 1,
+      "selected_corpus_tx": {
+        "chain_id": 42161,
+        "target_name": "Comet Arbitrum cUSDCv3 USDC",
+        "target_address": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+        "tx_hash": "0x64056304e7066193d1f247890eb72074b1e934e08bcb101fed20e530102fb46e",
+        "function_name": "transferAssetFrom(address src,address dst,address asset,uint256 amount)"
+      }
+    },
+    {
+      "selector": "0x095ea7b3",
+      "name": "approve",
+      "domain": "lending",
+      "action": "set_authorization",
+      "observed_txs": 11545,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x9bee0401b2401b32b01bdff8e35957a7cc9ce078bca3f2333ee916ddd5ea6585",
+        "function_name": "approve(address _spender, uint256 _value)"
+      }
+    },
+    {
+      "selector": "0xad14777c",
+      "name": "approveThis",
+      "domain": "token",
+      "action": "erc20_approve",
+      "observed_txs": 0,
+      "selected_corpus_tx": null
+    },
+    {
+      "selector": "0x110496e5",
+      "name": "allow",
+      "domain": "lending",
+      "action": "set_authorization",
+      "observed_txs": 16486,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x19931d03c07cef0c6550aa0b06a8fa38981340af415ec72b62fa455467a7aef3",
+        "function_name": "allow(address who, bool status)"
+      }
+    },
+    {
+      "selector": "0xbb24d994",
+      "name": "allowBySig",
+      "domain": "lending",
+      "action": "set_authorization",
+      "observed_txs": 3,
+      "selected_corpus_tx": {
+        "chain_id": 1,
+        "target_name": "Comet cUSDCv3",
+        "target_address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+        "tx_hash": "0x9bbf822a1d777dcf9f10e39410ad703ea6735803c2ebb3beababa34fbabc7e43",
+        "function_name": "allowBySig(address owner, address manager, bool isAllowed_, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)"
+      }
+    }
+  ],
+  "observed_onchain_cover_selectors": 14,
+  "missing_onchain_cover_selectors": [
+    {
+      "selector": "0xad14777c",
+      "name": "approveThis"
+    }
+  ],
+  "corpus_imported_real_txs": 14,
+  "corpus_selected_tx_hashes": [
+    {
+      "intent": "comet supply real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x39e17ce11431f64be8e6d3028837786796dd379e8b8c0d8352c43b003f4e7518"
+    },
+    {
+      "intent": "comet supplyTo real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x7f92a094c770db9e690e885967fef1968b994b9865b36cfb36994adbbabb3bd6"
+    },
+    {
+      "intent": "comet supplyFrom real Etherscan Comet Arbitrum cUSDCv3 USDC.e",
+      "chain_id": 42161,
+      "tx_hash": "0x20b99736f346a27222699c2f034f7dafaa0fbb3112909268b06352724bde7830"
+    },
+    {
+      "intent": "comet withdraw real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x6922dccc768fef87b56a8e4c67d203b1301142f4a2527c928d18706cf9638c87"
+    },
+    {
+      "intent": "comet withdrawTo real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x8afa11e47eaab3efacdea9e91de6c34b2b9d5f5f8bda09b8b29fa2ca09fe962b"
+    },
+    {
+      "intent": "comet withdrawFrom real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x58d9efb54df21f1bdc234f5c7fb964f800e0a9565528e36fb1d82176f99ac56b"
+    },
+    {
+      "intent": "comet buyCollateral real Etherscan Comet cUSDTv3",
+      "chain_id": 1,
+      "tx_hash": "0x9880c53151921b5344cac9bd115f5a9bd89d2f6e6572f35e24a018756d9aa552"
+    },
+    {
+      "intent": "comet transfer real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0xf577ae06a9497ec0b65b12d751b20df5e7eaa893320a18c93d3e82acdb61450f"
+    },
+    {
+      "intent": "comet transferFrom real Etherscan Comet cUSDSv3",
+      "chain_id": 1,
+      "tx_hash": "0x686997c5ad1e5acb44c514eb6f0b908ce052052d97aea4800ef0cf4a8abff459"
+    },
+    {
+      "intent": "comet transferAsset real Etherscan Comet Arbitrum cUSDCv3 USDC",
+      "chain_id": 42161,
+      "tx_hash": "0x55200ab858ab654701e1b6b0a785636ce0ffd0de3309547649770c90146cfe05"
+    },
+    {
+      "intent": "comet transferAssetFrom real Etherscan Comet Arbitrum cUSDCv3 USDC",
+      "chain_id": 42161,
+      "tx_hash": "0x64056304e7066193d1f247890eb72074b1e934e08bcb101fed20e530102fb46e"
+    },
+    {
+      "intent": "comet approve real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x9bee0401b2401b32b01bdff8e35957a7cc9ce078bca3f2333ee916ddd5ea6585"
+    },
+    {
+      "intent": "comet allow real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x19931d03c07cef0c6550aa0b06a8fa38981340af415ec72b62fa455467a7aef3"
+    },
+    {
+      "intent": "comet allowBySig real Etherscan Comet cUSDCv3",
+      "chain_id": 1,
+      "tx_hash": "0x9bbf822a1d777dcf9f10e39410ad703ea6735803c2ebb3beababa34fbabc7e43"
+    }
+  ],
+  "calls": [
+    {
+      "index": 1,
+      "chain_id": 1,
+      "name": "Comet cUSDCv3",
+      "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 17,
+      "selectors": {
+        "0xf2b9fdb8": 4303,
+        "0xf3fef3a3": 4559,
+        "0x110496e5": 658,
+        "0x095ea7b3": 315,
+        "0xa9059cbb": 22,
+        "0xc3cecfd2": 10,
+        "<none>": 107,
+        "0xc3b35a7e": 8,
+        "0xbfe69c8d": 2,
+        "0x439e2e45": 1,
+        "0x5c60da1b": 1,
+        "0x26441318": 3,
+        "0xbb24d994": 3,
+        "0x4232cd63": 5,
+        "0x3cb174aa": 1,
+        "0x880d6244": 1,
+        "0x96303d65": 1
+      }
+    },
+    {
+      "index": 2,
+      "chain_id": 1,
+      "name": "Comet cUSDSv3",
+      "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
+      "status": "1",
+      "message": "OK",
+      "row_count": 4415,
+      "unique_selectors": 11,
+      "selectors": {
+        "0xf3fef3a3": 1768,
+        "0xf2b9fdb8": 2071,
+        "0x095ea7b3": 116,
+        "0x110496e5": 327,
+        "0xa9059cbb": 14,
+        "0x68747470": 113,
+        "0x23b872dd": 1,
+        "0x4232cd63": 1,
+        "0xbfe69c8d": 2,
+        "0x1c9f7fb9": 1,
+        "0x60806040": 1
+      }
+    },
+    {
+      "index": 3,
+      "chain_id": 1,
+      "name": "Comet cUSDTv3",
+      "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 11,
+      "selectors": {
+        "0xf2b9fdb8": 4326,
+        "0xf3fef3a3": 4761,
+        "0x110496e5": 375,
+        "0x095ea7b3": 261,
+        "<none>": 6,
+        "0x26441318": 2,
+        "0xa9059cbb": 24,
+        "0xc3b35a7e": 68,
+        "0xc3cecfd2": 2,
+        "0x4232cd63": 170,
+        "0xe4e6e779": 5
+      }
+    },
+    {
+      "index": 4,
+      "chain_id": 1,
+      "name": "Comet cWBTCv3",
+      "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
+      "status": "1",
+      "message": "OK",
+      "row_count": 879,
+      "unique_selectors": 6,
+      "selectors": {
+        "0xf3fef3a3": 346,
+        "0xf2b9fdb8": 465,
+        "0x095ea7b3": 29,
+        "0x110496e5": 37,
+        "0x1c9f7fb9": 1,
+        "0x60806040": 1
+      }
+    },
+    {
+      "index": 5,
+      "chain_id": 1,
+      "name": "Comet cWETHv3",
+      "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 16,
+      "selectors": {
+        "0x095ea7b3": 2336,
+        "0x110496e5": 4982,
+        "0xf3fef3a3": 1221,
+        "0xf2b9fdb8": 1269,
+        "0xa9059cbb": 45,
+        "0x439e2e45": 1,
+        "0x23b872dd": 1,
+        "0xc3cecfd2": 1,
+        "<none>": 1,
+        "0xdc4abafd": 1,
+        "0x68747470": 100,
+        "0xe727fbec": 1,
+        "0xb0ab4ed9": 1,
+        "0xbfe69c8d": 1,
+        "0xc3b35a7e": 2,
+        "0x496d6167": 37
+      }
+    },
+    {
+      "index": 6,
+      "chain_id": 1,
+      "name": "Comet cWstETHv3",
+      "address": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
+      "status": "1",
+      "message": "OK",
+      "row_count": 2355,
+      "unique_selectors": 10,
+      "selectors": {
+        "0xf3fef3a3": 955,
+        "0xf2b9fdb8": 1157,
+        "0x110496e5": 147,
+        "0x095ea7b3": 66,
+        "0xa9059cbb": 6,
+        "0x5c60da1b": 1,
+        "0xf851a440": 1,
+        "0x68747470": 20,
+        "0x1c9f7fb9": 1,
+        "0x60806040": 1
+      }
+    },
+    {
+      "index": 7,
+      "chain_id": 10,
+      "name": "Comet Optimism cUSDCv3",
+      "address": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 8,
+      "chain_id": 10,
+      "name": "Comet Optimism cUSDTv3",
+      "address": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 9,
+      "chain_id": 10,
+      "name": "Comet Optimism cWETHv3",
+      "address": "0xe36a30d249f7761327fd973001a32010b521b6fd",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 10,
+      "chain_id": 130,
+      "name": "Comet Unichain cUSDCv3",
+      "address": "0x2c7118c4c88b9841fcf839074c26ae8f035f2921",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 8,
+      "selectors": {
+        "0xf3fef3a3": 3253,
+        "0x095ea7b3": 2214,
+        "0xf2b9fdb8": 3226,
+        "0x110496e5": 1242,
+        "0xe4e6e779": 27,
+        "0xc3cecfd2": 7,
+        "0xa9059cbb": 30,
+        "<none>": 1
+      }
+    },
+    {
+      "index": 11,
+      "chain_id": 130,
+      "name": "Comet Unichain cWETHv3",
+      "address": "0x6c987dde50db1dcdd32cd4175778c2a291978e2a",
+      "status": "1",
+      "message": "OK",
+      "row_count": 5165,
+      "unique_selectors": 7,
+      "selectors": {
+        "0x095ea7b3": 818,
+        "0xf3fef3a3": 1142,
+        "0x110496e5": 1875,
+        "0xf2b9fdb8": 1312,
+        "0xa9059cbb": 16,
+        "0x1c9f7fb9": 1,
+        "0x60806040": 1
+      }
+    },
+    {
+      "index": 12,
+      "chain_id": 137,
+      "name": "Comet Polygon cUSDCv3",
+      "address": "0xf25212e676d1f7f89cd72ffee66158f541246445",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 11,
+      "selectors": {
+        "0xf3fef3a3": 3510,
+        "0xf2b9fdb8": 2902,
+        "0x095ea7b3": 1840,
+        "0x110496e5": 1186,
+        "0x26441318": 31,
+        "0xc3cecfd2": 4,
+        "0xa9059cbb": 28,
+        "0x4232cd63": 23,
+        "0xc3b35a7e": 259,
+        "0x23b872dd": 216,
+        "0xa0712d68": 1
+      }
+    },
+    {
+      "index": 13,
+      "chain_id": 137,
+      "name": "Comet Polygon cUSDTv3",
+      "address": "0xaeb318360f27748acb200ce616e389a6c9409a07",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 8,
+      "selectors": {
+        "0xf3fef3a3": 4237,
+        "0xf2b9fdb8": 4417,
+        "0x095ea7b3": 930,
+        "0xc3cecfd2": 18,
+        "0x110496e5": 345,
+        "0x26441318": 13,
+        "0xa9059cbb": 39,
+        "0x4232cd63": 1
+      }
+    },
+    {
+      "index": 14,
+      "chain_id": 2020,
+      "name": "Comet Ronin cWETHv3",
+      "address": "0x4006ed4097ee51c09a04c3b0951d28ccf19e6dfe",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 15,
+      "chain_id": 2020,
+      "name": "Comet Ronin cWRONv3",
+      "address": "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 16,
+      "chain_id": 5000,
+      "name": "Comet Mantle cUSDev3",
+      "address": "0x606174f62cd968d8e684c645080fa694c1d7786e",
+      "status": "1",
+      "message": "OK",
+      "row_count": 6221,
+      "unique_selectors": 8,
+      "selectors": {
+        "0xf3fef3a3": 2632,
+        "0xf2b9fdb8": 3415,
+        "0x095ea7b3": 34,
+        "0xa9059cbb": 1,
+        "0x110496e5": 123,
+        "0xc3cecfd2": 14,
+        "0x1c9f7fb9": 1,
+        "0x60806040": 1
+      }
+    },
+    {
+      "index": 17,
+      "chain_id": 8453,
+      "name": "Comet cAEROv3 Base",
+      "address": "0x784efeb622244d2348d4f2522f8860b96fbece89",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 18,
+      "chain_id": 8453,
+      "name": "Comet cUSDbCv3 Base",
+      "address": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 19,
+      "chain_id": 8453,
+      "name": "Comet cUSDCv3 Base",
+      "address": "0xb125e6687d4313864e53df431d5425969c15eb2f",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 20,
+      "chain_id": 8453,
+      "name": "Comet cUSDSv3 Base",
+      "address": "0x2c776041ccfe903071af44aa147368a9c8eea518",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 21,
+      "chain_id": 8453,
+      "name": "Comet cWETHv3 Base",
+      "address": "0x46e6b214b524310239732d51387075e0e70970bf",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    },
+    {
+      "index": 22,
+      "chain_id": 42161,
+      "name": "Comet Arbitrum cUSDCv3 USDC.e",
+      "address": "0xa5edbdd9646f8dff606d7448e414884c7d905dca",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 10,
+      "selectors": {
+        "0xf3fef3a3": 4181,
+        "0xf2b9fdb8": 4729,
+        "0x095ea7b3": 425,
+        "0x110496e5": 609,
+        "0xa9059cbb": 23,
+        "0xc3cecfd2": 20,
+        "0x26441318": 2,
+        "0x90323177": 9,
+        "0xc3b35a7e": 1,
+        "0xbfe69c8d": 1
+      }
+    },
+    {
+      "index": 23,
+      "chain_id": 42161,
+      "name": "Comet Arbitrum cUSDCv3 USDC",
+      "address": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 10,
+      "selectors": {
+        "0xf2b9fdb8": 5020,
+        "0xf3fef3a3": 4378,
+        "0x095ea7b3": 272,
+        "0xa9059cbb": 21,
+        "0x110496e5": 302,
+        "0xc3cecfd2": 3,
+        "0xc1ee2c18": 1,
+        "0x439e2e45": 1,
+        "0xe4e6e779": 1,
+        "0x5f676ff5": 1
+      }
+    },
+    {
+      "index": 24,
+      "chain_id": 42161,
+      "name": "Comet Arbitrum cUSDTv3",
+      "address": "0xd98be00b5d27fc98112bde293e487f8d4ca57d07",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 8,
+      "selectors": {
+        "0x095ea7b3": 352,
+        "0xf2b9fdb8": 5262,
+        "0xf3fef3a3": 4098,
+        "0x110496e5": 268,
+        "0xa9059cbb": 15,
+        "0x5f676ff5": 2,
+        "<none>": 2,
+        "0xc3b35a7e": 1
+      }
+    },
+    {
+      "index": 25,
+      "chain_id": 42161,
+      "name": "Comet Arbitrum cWETHv3",
+      "address": "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486",
+      "status": "1",
+      "message": "OK",
+      "row_count": 10000,
+      "unique_selectors": 6,
+      "selectors": {
+        "0x095ea7b3": 1375,
+        "0xf3fef3a3": 3972,
+        "0xf2b9fdb8": 1355,
+        "0x110496e5": 3245,
+        "0xa9059cbb": 43,
+        "0xc3cecfd2": 10
+      }
+    },
+    {
+      "index": 26,
+      "chain_id": 59144,
+      "name": "Comet Linea cUSDCv3",
+      "address": "0x8d38a3d6b3c3b7d96d6536da7eef94a9d7dbc991",
+      "status": "1",
+      "message": "OK",
+      "row_count": 5696,
+      "unique_selectors": 7,
+      "selectors": {
+        "0xf2b9fdb8": 2710,
+        "0x095ea7b3": 113,
+        "0xf3fef3a3": 2339,
+        "0x110496e5": 527,
+        "0xa9059cbb": 5,
+        "0x1c9f7fb9": 1,
+        "0x60806040": 1
+      }
+    },
+    {
+      "index": 27,
+      "chain_id": 59144,
+      "name": "Comet Linea cWETHv3",
+      "address": "0x60f2058379716a64a7a5d29219397e79bc552194",
+      "status": "1",
+      "message": "OK",
+      "row_count": 820,
+      "unique_selectors": 6,
+      "selectors": {
+        "0x110496e5": 238,
+        "0x095ea7b3": 49,
+        "0xf2b9fdb8": 323,
+        "0xf3fef3a3": 208,
+        "0x1c9f7fb9": 1,
+        "0x60806040": 1
+      }
+    },
+    {
+      "index": 28,
+      "chain_id": 534352,
+      "name": "Comet Scroll cUSDCv3",
+      "address": "0xb2f97c1bd3bf02f5e74d13f02e3e26f93d77ce44",
+      "status": "0",
+      "message": "NOTOK",
+      "row_count": 0,
+      "unique_selectors": 0,
+      "selectors": {}
+    }
+  ],
+  "notes": [
+    "Raw per-transaction Etherscan rows were intentionally not committed; they remain in /tmp for this session only.",
+    "Authorization typed-data selector 0x00000001 is not part of account txlist selector coverage and remains covered by synthetic typed-data corpus entries."
+  ]
+}

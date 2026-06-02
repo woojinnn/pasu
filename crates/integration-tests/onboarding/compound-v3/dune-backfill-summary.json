@@ -1,0 +1,161 @@
+{
+  "protocol": "compound-v3",
+  "source": "Dune MCP query backfill for Etherscan V2 free-plan blocked Base/Optimism lanes",
+  "date": "2026-06-02",
+  "query_id": 7633464,
+  "execution_id": "01KT2ZXME42GD99KW0QMYK3A5C",
+  "execution_cost_credits": 0.892,
+  "rows_returned": 103,
+  "scope": {
+    "chains": [
+      {
+        "chain_id": 8453,
+        "chain": "base",
+        "table": "base.transactions",
+        "cover_addresses": 5
+      },
+      {
+        "chain_id": 10,
+        "chain": "optimism",
+        "table": "optimism.transactions",
+        "cover_addresses": 3
+      }
+    ],
+    "partition_filter": "block_time >= now() - interval '30' day",
+    "representative_limit": "up to 3 latest rows per chain_id/to/selector",
+    "selectors_targeted": [
+      {
+        "selector": "0xf2b9fdb8",
+        "name": "supply",
+        "domain": "lending",
+        "action": "supply"
+      },
+      {
+        "selector": "0x4232cd63",
+        "name": "supplyTo",
+        "domain": "lending",
+        "action": "supply"
+      },
+      {
+        "selector": "0x90323177",
+        "name": "supplyFrom",
+        "domain": "lending",
+        "action": "supply"
+      },
+      {
+        "selector": "0xf3fef3a3",
+        "name": "withdraw",
+        "domain": "lending",
+        "action": "withdraw"
+      },
+      {
+        "selector": "0xc3b35a7e",
+        "name": "withdrawTo",
+        "domain": "lending",
+        "action": "withdraw"
+      },
+      {
+        "selector": "0x26441318",
+        "name": "withdrawFrom",
+        "domain": "lending",
+        "action": "withdraw"
+      },
+      {
+        "selector": "0xe4e6e779",
+        "name": "buyCollateral",
+        "domain": "lending",
+        "action": "buy_collateral"
+      },
+      {
+        "selector": "0xa9059cbb",
+        "name": "transfer",
+        "domain": "token",
+        "action": "erc20_transfer"
+      },
+      {
+        "selector": "0x23b872dd",
+        "name": "transferFrom",
+        "domain": "token",
+        "action": "erc20_transfer"
+      },
+      {
+        "selector": "0x439e2e45",
+        "name": "transferAsset",
+        "domain": "token",
+        "action": "erc20_transfer"
+      },
+      {
+        "selector": "0xc1ee2c18",
+        "name": "transferAssetFrom",
+        "domain": "token",
+        "action": "erc20_transfer"
+      },
+      {
+        "selector": "0x095ea7b3",
+        "name": "approve",
+        "domain": "lending",
+        "action": "set_authorization"
+      },
+      {
+        "selector": "0xad14777c",
+        "name": "approveThis",
+        "domain": "token",
+        "action": "erc20_approve"
+      },
+      {
+        "selector": "0x110496e5",
+        "name": "allow",
+        "domain": "lending",
+        "action": "set_authorization"
+      },
+      {
+        "selector": "0xbb24d994",
+        "name": "allowBySig",
+        "domain": "lending",
+        "action": "set_authorization"
+      }
+    ]
+  },
+  "selected_hashes_recorded": [
+    {
+      "chain_id": 10,
+      "selector": "0xf2b9fdb8",
+      "tx_hash": "0xfc467634bf61b34e7a1106c9a868806c22b229f12ed6c029579d4c1373126dab"
+    },
+    {
+      "chain_id": 10,
+      "selector": "0xf3fef3a3",
+      "tx_hash": "0x518f5d505dd4d0545c290646e77d032c760a4952d7a31ed1a957fc0d8862a836"
+    },
+    {
+      "chain_id": 10,
+      "selector": "0xc3b35a7e",
+      "tx_hash": "0xcd3c869c3a7d2eacfc37f03ac2ba7c89a59c4c65b7d7595978176c5e7efaa8f7"
+    },
+    {
+      "chain_id": 8453,
+      "selector": "0xf2b9fdb8",
+      "tx_hash": "0x9b4e2a696ac1d9ab5b74137f7943f056b77ecb9114902949251c37e2a217cd93"
+    },
+    {
+      "chain_id": 8453,
+      "selector": "0xf3fef3a3",
+      "tx_hash": "0xcdef8b46952d9ed27112c465c3d6e71674d4a222bf8da2a964fb5efaf2f69eb9"
+    },
+    {
+      "chain_id": 8453,
+      "selector": "0xa9059cbb",
+      "tx_hash": "0x17ad2490b611fb463f244c1f1314fd83e13c37ff1a4cadc6b4d36e629ed3676f"
+    },
+    {
+      "chain_id": 8453,
+      "selector": "0x110496e5",
+      "tx_hash": "0xcb6ecc83f13e9d87f27d3792de883f0a20cd50659fed9297d23ccfc2b7b5d9dd"
+    }
+  ],
+  "limitations": [
+    "This was a bounded 30-day Dune backfill for Base and Optimism after Etherscan V2 rejected free API access to those chain IDs.",
+    "Ronin and Scroll did not have confirmed canonical transaction tables from the Dune table search performed in this session.",
+    "A 180-day variant timed out on the free-tier Dune execution limit; the committed summary records the completed 30-day run."
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "_comment": "Compound V3 Comet hand-encoded corpus that exercises every COVER selector plus Authorization typed-data. This starts the corpus loop while the local environment has no ETHERSCAN_API_KEY; replace/augment with real Etherscan/Dune transactions before marking Scenario B fully done.",
+  "_comment": "Compound V3 Comet corpus: hand-encoded fixtures for every COVER selector plus representative Etherscan V2 real transactions from the 2026-06-02 28-market sweep. approveThis was not observed in that sweep; Authorization typed-data remains covered by synthetic typed-data entries because it is not an onchain txlist selector.",
   "transactions": [
     {
       "intent": "comet supply hand",
@@ -3994,6 +3994,412 @@
           "path": "$.data.actions[0].body.chain",
           "op": "equals",
           "value": "eip155:130"
+        }
+      ]
+    },
+    {
+      "intent": "comet supply real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "supply",
+      "chain_id": 1,
+      "tx_hash": "0x39e17ce11431f64be8e6d3028837786796dd379e8b8c0d8352c43b003f4e7518",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xf2b9fdb8000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000000000000000000000000000000000025374dc1a"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        }
+      ]
+    },
+    {
+      "intent": "comet supplyTo real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "supply",
+      "chain_id": 1,
+      "tx_hash": "0x7f92a094c770db9e690e885967fef1968b994b9865b36cfb36994adbbabb3bd6",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x4232cd63000000000000000000000000f3eafcd134723cf35e2fea1494532aba745f4989000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000001e7cb0"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        }
+      ]
+    },
+    {
+      "intent": "comet supplyFrom real Etherscan Comet Arbitrum cUSDCv3 USDC.e",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "supply",
+      "chain_id": 42161,
+      "tx_hash": "0x20b99736f346a27222699c2f034f7dafaa0fbb3112909268b06352724bde7830",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa5edbdd9646f8dff606d7448e414884c7d905dca",
+            "value": "0",
+            "data": "0x90323177000000000000000000000000ac2d12de00d36ec67889be48a7fbb88e0a942e41000000000000000000000000ac2d12de00d36ec67889be48a7fbb88e0a942e41000000000000000000000000ff970a61a04b1ca14834a43f5de4533ebddb5cc800000000000000000000000000000000000000000000000000000000000f4240"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        }
+      ]
+    },
+    {
+      "intent": "comet withdraw real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "withdraw",
+      "chain_id": 1,
+      "tx_hash": "0x6922dccc768fef87b56a8e4c67d203b1301142f4a2527c928d18706cf9638c87",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xf3fef3a3000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000000000000000000000000000000000012a05f200"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        }
+      ]
+    },
+    {
+      "intent": "comet withdrawTo real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "withdraw",
+      "chain_id": 1,
+      "tx_hash": "0x8afa11e47eaab3efacdea9e91de6c34b2b9d5f5f8bda09b8b29fa2ca09fe962b",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xc3b35a7e0000000000000000000000002d19c08c6dd27b298a4d7aae69f0e0c8e0c42fa7000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        }
+      ]
+    },
+    {
+      "intent": "comet withdrawFrom real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "withdraw",
+      "chain_id": 1,
+      "tx_hash": "0x58d9efb54df21f1bdc234f5c7fb964f800e0a9565528e36fb1d82176f99ac56b",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x26441318000000000000000000000000f3eafcd134723cf35e2fea1494532aba745f4989000000000000000000000000f3eafcd134723cf35e2fea1494532aba745f4989000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000001e8480"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        }
+      ]
+    },
+    {
+      "intent": "comet buyCollateral real Etherscan Comet cUSDTv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "buy_collateral",
+      "chain_id": 1,
+      "tx_hash": "0x9880c53151921b5344cac9bd115f5a9bd89d2f6e6572f35e24a018756d9aa552",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
+            "value": "0",
+            "data": "0xe4e6e77900000000000000000000000015700b564ca08d9439c58ca5053166e8317aa138000000000000000000000000000000000000000000000000004f74504994ef6e000000000000000000000000000000000000000000000000000000001d8119c000000000000000000000000053daf8aebbf482e21611afa2688bd74a90056c24"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "buy_collateral"
+        }
+      ]
+    },
+    {
+      "intent": "comet transfer real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "token",
+      "expect_action": "erc20_transfer",
+      "chain_id": 1,
+      "tx_hash": "0xf577ae06a9497ec0b65b12d751b20df5e7eaa893320a18c93d3e82acdb61450f",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xa9059cbb000000000000000000000000d5878d9dd35df591951526613764512d4365ad2e0000000000000000000000000000000000000000000000000000000124101100"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        }
+      ]
+    },
+    {
+      "intent": "comet transferFrom real Etherscan Comet cUSDSv3",
+      "expect": "pass",
+      "expect_domain": "token",
+      "expect_action": "erc20_transfer",
+      "chain_id": 1,
+      "tx_hash": "0x686997c5ad1e5acb44c514eb6f0b908ce052052d97aea4800ef0cf4a8abff459",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
+            "value": "0",
+            "data": "0x23b872dd0000000000000000000000006e377e571b5976e56d88c7e9f367fb3ba7c00e7a0000000000000000000000003af637465aea69f009004283095b1569e764ecd9ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        }
+      ]
+    },
+    {
+      "intent": "comet transferAsset real Etherscan Comet Arbitrum cUSDCv3 USDC",
+      "expect": "pass",
+      "expect_domain": "token",
+      "expect_action": "erc20_transfer",
+      "chain_id": 42161,
+      "tx_hash": "0x55200ab858ab654701e1b6b0a785636ce0ffd0de3309547649770c90146cfe05",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+            "value": "0",
+            "data": "0x439e2e450000000000000000000000007a668ccd94ace4f45a4a8c33e2b1fdc4ba25a008000000000000000000000000912ce59144191c1204e64559fe8253a0e49e65480000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        }
+      ]
+    },
+    {
+      "intent": "comet transferAssetFrom real Etherscan Comet Arbitrum cUSDCv3 USDC",
+      "expect": "pass",
+      "expect_domain": "token",
+      "expect_action": "erc20_transfer",
+      "chain_id": 42161,
+      "tx_hash": "0x64056304e7066193d1f247890eb72074b1e934e08bcb101fed20e530102fb46e",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+            "value": "0",
+            "data": "0xc1ee2c1800000000000000000000000019a6d240b82a16b83188e583e65f36c118aba96c0000000000000000000000007a668ccd94ace4f45a4a8c33e2b1fdc4ba25a008000000000000000000000000912ce59144191c1204e64559fe8253a0e49e65480000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        }
+      ]
+    },
+    {
+      "intent": "comet approve real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "set_authorization",
+      "chain_id": 1,
+      "tx_hash": "0x9bee0401b2401b32b01bdff8e35957a7cc9ce078bca3f2333ee916ddd5ea6585",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x095ea7b3000000000000000000000000a397a8c2086c554b531c02e29f3291c9704b00c70000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        }
+      ]
+    },
+    {
+      "intent": "comet allow real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "set_authorization",
+      "chain_id": 1,
+      "tx_hash": "0x19931d03c07cef0c6550aa0b06a8fa38981340af415ec72b62fa455467a7aef3",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0x110496e5000000000000000000000000a397a8c2086c554b531c02e29f3291c9704b00c70000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
+        }
+      ]
+    },
+    {
+      "intent": "comet allowBySig real Etherscan Comet cUSDCv3",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "expect_action": "set_authorization",
+      "chain_id": 1,
+      "tx_hash": "0x9bbf822a1d777dcf9f10e39410ad703ea6735803c2ebb3beababa34fbabc7e43",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+            "value": "0",
+            "data": "0xbb24d994000000000000000000000000f3eafcd134723cf35e2fea1494532aba745f4989000000000000000000000000d028dffe61e4eaf832b851429c4dc2082891cb95000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000069e591a9000000000000000000000000000000000000000000000000000000000000001bd8953e867cdc3468d983f694207affb6412e709e87ec206c74f672bc938b32b05ee67bef8de3e0f1146be590557b84523a1a2e52092d35a2ca9de7bceccdd21b"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "set_authorization"
         }
       ]
     }
