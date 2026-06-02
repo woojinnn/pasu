@@ -27,10 +27,10 @@
 |---|---|
 | representative chain (SINGLE — multichain = separate framework, deferred) | Ethereum mainnet (`eip155:1`). L2 wstETH bridge deployments = multichain → deferred (separate framework). |
 | completion target | `wallet-facing` |
-| covered real-usage coverage-share (P2-measured: % of recent P0-universe txs the covered set decodes) | pending (P2 SCOPE ORACLE) |
-| user-facing DEFERs, each with its 1st-party usage-share (%/count) | None on the representative chain. Only DEFER = L2/multichain wstETH (categorical multichain defer, exempt from within-chain usage-share). |
+| covered real-usage coverage-share (P2-measured: % of recent P0-universe txs the covered set decodes) | **99.64%** — 29875/29983 recent direct input txs to the 3 cover contracts decode (Etherscan 30k adapter-blind sweep); 0 actionable uncovered. |
+| user-facing DEFERs, each with its 1st-party usage-share (%/count) | None on the representative chain. Only DEFER = L2/multichain wstETH (categorical multichain defer, exempt from within-chain usage-share). Sub-chain edge: bare-ETH selectorless stake ≈ 0.06% of direct txs (17/30k), warn-closed. |
 | direct factory-child calls | not applicable — Lido is a fixed-contract protocol (3 singleton/proxy contracts), not factory/pool-heavy. |
-| final claim label (MUST NOT over-claim the measured coverage-share above) | pending (set at P4 against P2 coverage-share) |
+| final claim label (MUST NOT over-claim the measured coverage-share above) | **Wallet-facing Lido mainnet (`eip155:1`) direct surface — 99.6% direct-tx coverage-share.** NOT full-universe, NOT multichain, NOT "all Lido staking" (Dune 7d: 18.4% of stETH `submit` is internal/router-routed = other surfaces). |
 
 **COVER (3 wallet-facing contracts, mainnet):**
 - stETH (Lido, Aragon proxy) `0xae7ab96520de3a18e5e111b5eaab095312d7fe84` — submit / transferShares / transferSharesFrom
@@ -115,41 +115,43 @@
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | pending | |
-| each fix tied to a gap id, selector, tx hash, or synthetic seed | pending | |
-| manifest/decoder/Tier3/harness change list recorded | pending | |
-| P2 rerun after fixes recorded | pending | |
-| corpus `expect` flips or exclusions justified | pending | |
-| remaining gaps have explicit defer/blocker disposition | pending | |
+| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | done | Buckets: **hard=0, misdecoded=0, unknown_protocol_address=0** (sweep 0 actionable-unmatched; corpus 9/9 + expect_body; fuzz 60000/0-fail). **excluded** = standard ERC20/721 helpers (increaseAllowance 67, safeTransferFrom 12, NFT transferFrom 11, setApprovalForAll 8, permit 1, …) → standard-adapter territory. **soft/edge** = (a) bare-ETH selectorless stake (~17/30k direct, 0.06%), (b) 7 non-actionable unmatched (spam/probe 5 + misdirected Curve `withdraw()` 2). |
+| each fix tied to a gap id, selector, tx hash, or synthetic seed | done | No production fixes required — 0 actionable gaps. The only data changes were strengthening (not bug-fixes): corpus `expect_body` upgrade (tied to the §9.4 semantic-pin requirement, not a mis-decode) and the unstETH token registration (P0 token-surface). |
+| manifest/decoder/Tier3/harness change list recorded | done | **No manifest / decoder / Tier3 / production-code changes.** Data/test-only: `tokens/1/0x889e…json` (new, P0), `data/golden/v3-decode/lido/corpus.json` (expect_body, P2), `onboarding/lido/{evidence.md,etherscan-bulk-summary.json}`. Investigated wstETH `peg_kind` (♻️): `PegKind` enum = {HardPeg, SoftPeg, Rebasing} only — `hard_peg` is the best-fitting variant (deterministic redeemable via `getStETHByWstETH`, no market de-peg risk; SoftPeg would wrongly imply market deviation, Rebasing wrongly implies a growing balance) → **kept, verified correct**; an exact "index/exchange-rate wrapper" variant is a schema refinement out of lido scope. |
+| P2 rerun after fixes recorded | done | No fixes → re-confirmed stable: `fuzz --filter lido` 60000 pass / 0 fail; `corpus --filter lido --require-expect-body` 9/9 pinned; `validate --filter lido` 12 OK / 0 errors. (Full suite re-run in P4.) |
+| corpus `expect` flips or exclusions justified | done | No `expect` flips — all 9 entries remain `expect=pass` (added field-level `expect_body`, did not change any verdict). No corpus exclusions. |
+| remaining gaps have explicit defer/blocker disposition | done | **DEFER (explicit):** (1) bare-ETH selectorless stake (empty-calldata ETH→stETH fallback / wstETH `receive()`) — not routable by the `(chain,to,selector)` decoder; orchestrator fail-closes to `warn` (safe for a value-bearing tx); a selectorless special-route is a core-decoder change for a focused session; measured 0.06% of direct txs. (2) Multichain L2 wstETH — categorical multichain defer. (3) Enrichment RPC runtime materialization — framework-wide dormant policy-RPC (live_inputs declared + plumbed; static decode faithful without it). **ACCEPT:** embedded EIP-2612 permit value/deadline in `*WithPermit` not surfaced in body — bounded (spender = the queue itself); withdrawal amounts ARE surfaced. |
 
 ## P4 Land Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| `registryV2 npm run build` output recorded | pending | |
-| registryV2 build-index vitest output recorded | pending | |
-| `npm run check:manifest` output recorded | pending | |
-| `npm run check:surface` output recorded | pending | |
-| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | pending | |
-| v3-harness coverage/fuzz/corpus outputs recorded | pending | |
-| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
-| `cargo test --workspace` output recorded | pending | |
-| wasm build output recorded if runtime/wasm/schema changed | pending | |
-| fmt/clippy/typecheck output recorded for changed crates/packages | pending | |
-| exact staged files and commit hash recorded | pending | |
-| remaining WARNs/deferred selectors/actions listed with reason | pending | |
-| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | pending | |
-| no base/worktree merge performed unless user explicitly requested it | pending | |
+| `registryV2 npm run build` output recorded | done | `npm run build` → "done — 52979 callkey(s) + 83 typed-data entry(ies) written across 814 manifest(s)" (lido's 12 single_emit callkeys included; 0 errors). |
+| registryV2 build-index vitest output recorded | done | not applicable — `registryV2` has no vitest suite (scripts: build, check:universe/surface/tokens/manifest, typecheck). Index validation is `build-index` + `check:manifest` (both PASS). |
+| `npm run check:manifest` output recorded | done | "validate (all): 1487 single_emit manifest(s) OK, 0 structural errors" (CI-safe representative index + source-ref representative). |
+| `npm run check:surface` output recorded | done | "PASS — every gated contract's external surface is fully triaged and consistent." (lido stETH/wstETH/WithdrawalQueueERC721 gated; 21 UNGATED = other protocols, pre-existing WARN). |
+| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | done | not applicable — Lido is not pool/factory/vault-heavy (3 fixed contracts, no child universe). |
+| v3-harness coverage/fuzz/corpus outputs recorded | done | coverage: lido 12 single_emit in the covered surface (global single_emit=1567). fuzz: 60000 pass / 0 fail. corpus: 9/9 matched. (`native-transfer sentinel 0x00000000` is globally corpus-deferred — the selectorless bare-ETH edge.) |
+| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | done | `cargo run --bin v3-harness -- corpus --filter lido --require-expect-body` → 9/9 matched, semantic expect_body 9/9 pinned, exit 0. |
+| `cargo test --workspace` output recorded | done | Completed exit 0; all suites ok (doc-tests policy_state/sync/transition ok/ignored). Crate consuming the lido corpus + goldens: `policy-engine-integration-tests` → 18+5+3+1+60+0 = 87 passed / 0 failed (the 60-test `v3_decode_harness`, 18.75s, includes the 4 lido field goldens + the expect_body corpus replay). |
+| wasm build output recorded if runtime/wasm/schema changed | done | not applicable — no runtime / WASM / Cedar-schema change this run (data + docs only: 1 token JSON, corpus expect_body, evidence). |
+| fmt/clippy/typecheck output recorded for changed crates/packages | done | not applicable — no Rust crate or TS package source changed (JSON + markdown only). `registryV2` index regenerates clean via `npm run build`. |
+| exact staged files and commit hash recorded | done | P0+P1 commit `d8c90b08` (tokens/1/0x889e…json + evidence.md). P2 commit `59753425` (corpus.json + etherscan-bulk-summary.json + evidence.md). P3+P4 commit = this land commit (evidence.md only — P3/P4 made no code change); hash in `git log`. |
+| remaining WARNs/deferred selectors/actions listed with reason | done | DEFER: bare-ETH selectorless stake (orchestrator warn-closed, 0.06% direct, core-decoder change for a focused session); multichain L2 wstETH; enrichment-RPC runtime materialization (framework dormant). ACCEPT: `*WithPermit` embedded grant value not surfaced (bounded, self-spender). check:surface WARN = 21 UNGATED non-lido contracts. check:tokens WARN = 1338 registry-wide unresolved-underlying refs (pre-existing, none lido). |
+| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | See Scope Classification / Final Completion Claim — "wallet-facing Lido **mainnet** direct surface, 99.6% direct-tx coverage-share"; NOT full-universe, NOT multichain, NOT "all Lido staking" (18.4% of submit is internal/router-routed = other surfaces). |
+| no base/worktree merge performed unless user explicitly requested it | done | No merge performed. Work isolated on `feat/lido-onboarding` in worktree `scopeball-lido`; base/worktree merge awaits explicit user request. |
 
 ## Blockers
 
 | blocker | source | next action |
 |---|---|---|
-| (none blocking P0/P1) | — | P2-tracked open items: lido.fi stake-widget `to` (UNVERIFIED) + bare-ETH-stake selectorless edge — both resolved/dispositioned in P2/P3. |
+| (none) | — | No blockers. P0–P4 all `done`. Open items resolved: lido.fi widget `to` confirmed direct `submit` (P2, 3517 direct txs); bare-ETH selectorless edge → explicit DEFER (P3, 0.06%, warn-closed). |
 
 ## Final Completion Claim
 
-Not complete. P0 + P1 are `done` and gate-checked; P2/P3/P4 pending. Final label set at P4, bounded by the P2 SCOPE ORACLE coverage-share.
+**Complete — `wallet-facing Lido mainnet (eip155:1) direct surface`.** All P0–P4 mandatory rows are `done` and gate-checked. Covered: stETH (submit / transferShares / transferSharesFrom), wstETH (wrap / unwrap), WithdrawalQueueERC721 (requestWithdrawals ×4 / claimWithdrawal ×3) — 12 manifests on the existing `liquid_staking` domain (no new Tier3). Measured direct-tx coverage-share = **99.6%** (Etherscan 30k), 0 actionable gaps; synthetic 60000/0-fail; corpus 9/9 field-level `expect_body`-pinned.
+
+This claim does **not** cover: multichain (L2 wstETH — deferred); the selectorless bare-ETH stake path (0.06% of direct txs — warn-closed, explicit DEFER); router/aggregator-routed staking (Dune 7d: 18.4% of `submit` is internal — those are the integrators' own surfaces, not Lido's wallet-facing surface). Standard ERC-20/721 `approve`/`transfer`/`permit`/`setApprovalForAll` on the lido tokens are covered by the generic erc20/erc721 standard adapters (out of Lido's gate scope).
 
 ```bash
 cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- lido --phase all
