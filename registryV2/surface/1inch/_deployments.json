@@ -1,0 +1,44 @@
+{
+  "protocol": "1inch",
+  "source": "Etherscan-verified ContractName (chain 1) + portal.1inch.dev/documentation (Aggregation Protocol / contract addresses)",
+  "url": "https://portal.1inch.dev/documentation/apis/swap/introduction",
+  "fetchedAt": "2026-06-03",
+  "note": "I0 contract-inventory for 1inch Ethereum mainnet pre-sign surface. ROUND SCOPE = wallet-facing, mainnet (1) ONLY, AggregationRouterV6 aggregation-swap surface. COVER = AggregationRouterV6 (the single current router; user calls swap/unoswap*/clipperSwap* directly via eth_sendTransaction, and the embedded Limit Order Protocol v4 fillOrder/cancelOrder). Of its 33 external-mutating functions only `swap` (0x07ed2379) is decoded this round (see coverage.json); the rest are DEFER (data-gated, see SCOPE ORACLE in evidence) or EXCLUDE (admin/callback/view). EXCLUDED prior router versions (Etherscan ContractName verified) = version expansion, superseded by v6: see V5/V4 rows. Other deferred families NOT asserted as rows (no user-facing on-chain entrypoint or non-user-facing): 1inch Fusion / FusionPlus settlement (resolver/relayer-side batch settlement — non-user-facing, EXCLUDE-by-category like a solver settlement; the user side is the off-chain Fusion order SIGNATURE, deferred with the LOP Order in coverage.json signed_structs); SpotPriceAggregator / OffchainOracle (price infra, non-user pre-sign). Multichain deployments of the v6 router on Arbitrum/Base/BSC/Polygon/Optimism share the canonical 0x1111...2a65 address but are a SEPARATE framework (representative chain = mainnet only).",
+  "contracts": [
+    {
+      "name": "AggregationRouterV6",
+      "chainId": 1,
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "decision": "cover",
+      "reason": "user aggregation-swap entrypoint: swap(executor,SwapDescription,data) decoded this round → AmmVenue::AggregatorRoute (OneInchV6). unoswap*/clipperSwap*/LOP fillOrder triaged in coverage.json (DEFER/EXCLUDE with reasons)."
+    },
+    {
+      "name": "AggregationRouterV5",
+      "chainId": 1,
+      "address": "0x1111111254eeb25477b68fb85ed929f73a960582",
+      "decision": "exclude",
+      "reason": "superseded prior router version (Etherscan ContractName 'AggregationRouterV5'); version expansion = separate round, not the current pre-sign surface"
+    },
+    {
+      "name": "AggregationRouterV4",
+      "chainId": 1,
+      "address": "0x1111111254fb6c44bac0bed2854e76f90643097d",
+      "decision": "exclude",
+      "reason": "superseded prior router version (Etherscan ContractName 'AggregationRouterV4'); version expansion = separate round, not the current pre-sign surface"
+    },
+    {
+      "name": "LimitOrderProtocol (legacy standalone V2)",
+      "chainId": 1,
+      "address": "0x119c71d3bbac22029622cbaec24854d3d32d2828",
+      "decision": "exclude",
+      "reason": "legacy standalone Limit Order Protocol (Etherscan ContractName 'LimitOrderProtocol', label '1inch: Limit Order Protocol V2'); superseded — LOP v4 now lives inside AggregationRouterV6. Version expansion = separate round."
+    },
+    {
+      "name": "LimitOrderProtocol (legacy standalone V3-era)",
+      "chainId": 1,
+      "address": "0x3ef51736315f52d568d6d2cf289419b9cfffe782",
+      "decision": "exclude",
+      "reason": "legacy standalone Limit Order Protocol (Etherscan ContractName 'LimitOrderProtocol', Solidity 0.8.4, ~v3-generation by deploy-age — version number is deploy-age inference, not an explicit on-page tag); superseded by LOP v4 in AggregationRouterV6. Version expansion = separate round."
+    }
+  ]
+}
