@@ -163,27 +163,73 @@ function isBridgeBroadcast(value: unknown): value is BridgeBroadcastEnvelope {
   );
 }
 
+interface ChromeStorageShim {
+  storage?: {
+    onChanged: {
+      addListener(
+        cb: (
+          changes: Record<string, unknown>,
+          areaName: string,
+        ) => void,
+      ): void;
+      removeListener(
+        cb: (
+          changes: Record<string, unknown>,
+          areaName: string,
+        ) => void,
+      ): void;
+    };
+  };
+}
+
 /**
- * Subscribe to storage-change broadcasts from the content-script bridge.
+ * Subscribe to storage-change broadcasts.
  *
- * The SW listens to `chrome.storage.local.onChanged` and, for a curated
- * key set (`policy-selection:enabled-ids`, `dashboard:policies`, etc.),
- * the content-script forwards a single page-side `postMessage`. Callers
- * use this to invalidate a React Query when the popup (or another tab)
- * mutates the same storage key behind their back.
+ * Two delivery paths cover the two hosts the dashboard ships in:
+ *  1. Extension options page (chrome-extension://<id>/options.html) —
+ *     `chrome.storage.onChanged` is available directly; the
+ *     content-script bridge does NOT inject here (its manifest only
+ *     matches localhost dev origins), so the page MUST subscribe to
+ *     the storage API itself.
+ *  2. Vite dev server (http://localhost:5173) — `chrome.storage` is
+ *     undefined; the content-script bridge fans `onChanged` out via
+ *     `window.postMessage` and we listen on that.
  *
- * Returns an unsubscribe function — callers store it in a `useEffect`
- * cleanup.
+ * We register whichever paths are available so the callback fires once
+ * per change in either host.
  */
 export function subscribeToBroadcast(
   callback: (keys: string[]) => void,
 ): () => void {
-  const handler = (event: MessageEvent): void => {
+  const cleanups: Array<() => void> = [];
+
+  const messageHandler = (event: MessageEvent): void => {
     if (event.source !== window) return;
     if (event.origin !== window.location.origin) return;
     if (!isBridgeBroadcast(event.data)) return;
     callback(event.data.keys);
   };
-  window.addEventListener("message", handler);
-  return () => window.removeEventListener("message", handler);
+  window.addEventListener("message", messageHandler);
+  cleanups.push(() => window.removeEventListener("message", messageHandler));
+
+  const chrome = (globalThis as unknown as { chrome?: ChromeStorageShim })
+    .chrome;
+  const storageOnChanged = chrome?.storage?.onChanged;
+  if (storageOnChanged) {
+    const storageHandler = (
+      changes: Record<string, unknown>,
+      areaName: string,
+    ): void => {
+      if (areaName !== "local") return;
+      const keys = Object.keys(changes);
+      if (keys.length === 0) return;
+      callback(keys);
+    };
+    storageOnChanged.addListener(storageHandler);
+    cleanups.push(() => storageOnChanged.removeListener(storageHandler));
+  }
+
+  return () => {
+    for (const fn of cleanups) fn();
+  };
 }
