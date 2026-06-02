@@ -9,62 +9,146 @@ use std::str::FromStr;
 
 /// (name, category, cedar_text) — covers the 12 spec test categories.
 const CORPUS: &[(&str, &str, &str)] = &[
-    ("nesting_bool", "recursion",
-     r#"permit(principal, action, resource) when { ((context.a && context.b) || (context.c && context.d)) && (context.e || context.f) };"#),
-    ("chained_attr", "recursion",
-     r#"permit(principal, action, resource) when { context.a.b.c.d == 1 };"#),
-    ("assoc_sub", "recursion",
-     r#"permit(principal, action, resource) when { context.a - context.b - context.c == 0 };"#),
-    ("repeated_field", "same-name",
-     r#"permit(principal, action, resource) when { (context.custom.inputAmount > 30 && context.custom.inputAmount < 60) || (context.custom.inputAmount > 90 && context.custom.inputAmount < 120) };"#),
-    ("repeated_dup", "same-name",
-     r#"permit(principal, action, resource) when { context.x > 30 || context.x > 30 };"#),
-    ("precedence", "precedence",
-     r#"permit(principal, action, resource) when { context.a || context.b && context.c };"#),
-    ("neg_vs_sub", "precedence",
-     r#"permit(principal, action, resource) when { context.a - 5 == -5 };"#),
-    ("has_single", "operators",
-     r#"permit(principal, action, resource) when { context has x };"#),
-    ("has_path", "operators",
-     r#"permit(principal, action, resource) when { context has a.b.c };"#),
-    ("like_escape", "operators",
-     r#"permit(principal, action, resource) when { resource.name like "foo*bar\*baz" };"#),
-    ("is_in", "operators",
-     r#"permit(principal is User in Group::"admins", action, resource);"#),
-    ("contains_ops", "operators",
-     r#"permit(principal, action, resource) when { context.tags.contains("x") && [1,2,3].containsAll([1,2]) };"#),
-    ("if_then_else", "operators",
-     r#"permit(principal, action, resource) when { (if context.a then 1 else 2) == 1 };"#),
-    ("ext_decimal", "ext",
-     r#"permit(principal, action, resource) when { context.rate.lessThan(decimal("0.10")) };"#),
-    ("ext_ip", "ext",
-     r#"permit(principal, action, resource) when { context.src.isInRange(ip("10.0.0.0/24")) };"#),
-    ("literals", "literals",
-     r#"permit(principal, action, resource) when { context.n == 9223372036854775807 && context.s == "a\"b\\c" && context.set == [] && context.rec == {} };"#),
-    ("entity_uid", "literals",
-     r#"permit(principal == My::Name::Space::User::"al ice", action, resource);"#),
-    ("scope_forbid", "scope",
-     r#"forbid(principal, action == Action::"Swap", resource is Vault);"#),
-    ("action_set", "scope",
-     r#"permit(principal, action in [Action::"a", Action::"b"], resource);"#),
-    ("annotations", "annotations",
-     "@id(\"p1\") @severity(\"warn\")\npermit(principal, action, resource);"),
-    ("when_unless", "conditions",
-     r#"permit(principal, action, resource) when { context.a } unless { context.b };"#),
-    ("no_conditions", "conditions",
-     r#"permit(principal, action, resource);"#),
-    ("expr_is", "operators",
-     r#"permit(principal, action, resource) when { resource is Vault };"#),
-    ("unary_not", "operators",
-     r#"permit(principal, action, resource) when { !(context.flag) };"#),
-    ("is_empty", "operators",
-     r#"permit(principal, action, resource) when { context.tags.isEmpty() };"#),
-    ("has_tag", "operators",
-     r#"permit(principal, action, resource) when { resource.hasTag("admin") };"#),
-    ("get_tag", "operators",
-     r#"permit(principal, action, resource) when { resource.getTag("level") == 1 };"#),
-    ("entity_literal", "literals",
-     r#"permit(principal, action, resource) when { context.owner == User::"alice" };"#),
+    (
+        "nesting_bool",
+        "recursion",
+        r#"permit(principal, action, resource) when { ((context.a && context.b) || (context.c && context.d)) && (context.e || context.f) };"#,
+    ),
+    (
+        "chained_attr",
+        "recursion",
+        r#"permit(principal, action, resource) when { context.a.b.c.d == 1 };"#,
+    ),
+    (
+        "assoc_sub",
+        "recursion",
+        r#"permit(principal, action, resource) when { context.a - context.b - context.c == 0 };"#,
+    ),
+    (
+        "repeated_field",
+        "same-name",
+        r#"permit(principal, action, resource) when { (context.custom.inputAmount > 30 && context.custom.inputAmount < 60) || (context.custom.inputAmount > 90 && context.custom.inputAmount < 120) };"#,
+    ),
+    (
+        "repeated_dup",
+        "same-name",
+        r#"permit(principal, action, resource) when { context.x > 30 || context.x > 30 };"#,
+    ),
+    (
+        "precedence",
+        "precedence",
+        r#"permit(principal, action, resource) when { context.a || context.b && context.c };"#,
+    ),
+    (
+        "neg_vs_sub",
+        "precedence",
+        r#"permit(principal, action, resource) when { context.a - 5 == -5 };"#,
+    ),
+    (
+        "has_single",
+        "operators",
+        r#"permit(principal, action, resource) when { context has x };"#,
+    ),
+    (
+        "has_path",
+        "operators",
+        r#"permit(principal, action, resource) when { context has a.b.c };"#,
+    ),
+    (
+        "like_escape",
+        "operators",
+        r#"permit(principal, action, resource) when { resource.name like "foo*bar\*baz" };"#,
+    ),
+    (
+        "is_in",
+        "operators",
+        r#"permit(principal is User in Group::"admins", action, resource);"#,
+    ),
+    (
+        "contains_ops",
+        "operators",
+        r#"permit(principal, action, resource) when { context.tags.contains("x") && [1,2,3].containsAll([1,2]) };"#,
+    ),
+    (
+        "if_then_else",
+        "operators",
+        r#"permit(principal, action, resource) when { (if context.a then 1 else 2) == 1 };"#,
+    ),
+    (
+        "ext_decimal",
+        "ext",
+        r#"permit(principal, action, resource) when { context.rate.lessThan(decimal("0.10")) };"#,
+    ),
+    (
+        "ext_ip",
+        "ext",
+        r#"permit(principal, action, resource) when { context.src.isInRange(ip("10.0.0.0/24")) };"#,
+    ),
+    (
+        "literals",
+        "literals",
+        r#"permit(principal, action, resource) when { context.n == 9223372036854775807 && context.s == "a\"b\\c" && context.set == [] && context.rec == {} };"#,
+    ),
+    (
+        "entity_uid",
+        "literals",
+        r#"permit(principal == My::Name::Space::User::"al ice", action, resource);"#,
+    ),
+    (
+        "scope_forbid",
+        "scope",
+        r#"forbid(principal, action == Action::"Swap", resource is Vault);"#,
+    ),
+    (
+        "action_set",
+        "scope",
+        r#"permit(principal, action in [Action::"a", Action::"b"], resource);"#,
+    ),
+    (
+        "annotations",
+        "annotations",
+        "@id(\"p1\") @severity(\"warn\")\npermit(principal, action, resource);",
+    ),
+    (
+        "when_unless",
+        "conditions",
+        r#"permit(principal, action, resource) when { context.a } unless { context.b };"#,
+    ),
+    (
+        "no_conditions",
+        "conditions",
+        r#"permit(principal, action, resource);"#,
+    ),
+    (
+        "expr_is",
+        "operators",
+        r#"permit(principal, action, resource) when { resource is Vault };"#,
+    ),
+    (
+        "unary_not",
+        "operators",
+        r#"permit(principal, action, resource) when { !(context.flag) };"#,
+    ),
+    (
+        "is_empty",
+        "operators",
+        r#"permit(principal, action, resource) when { context.tags.isEmpty() };"#,
+    ),
+    (
+        "has_tag",
+        "operators",
+        r#"permit(principal, action, resource) when { resource.hasTag("admin") };"#,
+    ),
+    (
+        "get_tag",
+        "operators",
+        r#"permit(principal, action, resource) when { resource.getTag("level") == 1 };"#,
+    ),
+    (
+        "entity_literal",
+        "literals",
+        r#"permit(principal, action, resource) when { context.owner == User::"alice" };"#,
+    ),
 ];
 
 /// THE load-bearing invariant for the TS EST↔IR engine: an EST survives a
@@ -81,7 +165,10 @@ fn est_is_a_faithful_fixed_point() {
             .unwrap_or_else(|e| panic!("{name}: from_json failed: {e}"))
             .to_json()
             .unwrap();
-        assert_eq!(est, est2, "{name}: EST not a fixed point under from_json→to_json");
+        assert_eq!(
+            est, est2,
+            "{name}: EST not a fixed point under from_json→to_json"
+        );
     }
 }
 
@@ -128,7 +215,10 @@ fn text_to_est_ok_and_err() {
     let ok = policy_text_to_est_json("permit(principal, action, resource);".into());
     let v: serde_json::Value = serde_json::from_str(&ok).unwrap();
     assert_eq!(v["ok"], serde_json::json!(true));
-    assert_eq!(v["policies"][0]["est"]["effect"], serde_json::json!("permit"));
+    assert_eq!(
+        v["policies"][0]["est"]["effect"],
+        serde_json::json!("permit")
+    );
 
     let err = policy_text_to_est_json("permit(".into());
     let e: serde_json::Value = serde_json::from_str(&err).unwrap();
@@ -140,8 +230,8 @@ fn text_to_est_ok_and_err() {
 fn est_to_text_ok_and_err() {
     // Round-trip through both exports: text → est → text.
     let est_resp = policy_text_to_est_json("permit(principal, action, resource);".into());
-    let est = serde_json::from_str::<serde_json::Value>(&est_resp).unwrap()["policies"][0]["est"]
-        .clone();
+    let est =
+        serde_json::from_str::<serde_json::Value>(&est_resp).unwrap()["policies"][0]["est"].clone();
     let resp = est_json_to_policy_text(serde_json::to_string(&est).unwrap());
     let v: serde_json::Value = serde_json::from_str(&resp).unwrap();
     assert_eq!(v["ok"], serde_json::json!(true));

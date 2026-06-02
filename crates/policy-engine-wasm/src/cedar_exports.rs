@@ -20,7 +20,9 @@
 
 use std::str::FromStr;
 
-use cedar_policy::{Authorizer, Context, Decision, Entities, EntityUid, Policy, PolicySet, Request};
+use cedar_policy::{
+    Authorizer, Context, Decision, Entities, EntityUid, Policy, PolicySet, Request,
+};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
