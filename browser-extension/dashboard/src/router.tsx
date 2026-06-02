@@ -25,7 +25,6 @@ import { EditorNewPage } from "./pages/editor/EditorNewPage";
 import { EditorDetailPage } from "./pages/editor/EditorDetailPage";
 import { SimulationPage } from "./pages/SimulationPage";
 import { MonitoringPage } from "./pages/MonitoringPage";
-import { AuditPage } from "./pages/AuditPage";
 import { HistoryPage } from "./pages/HistoryPage";
 
 const router = createBrowserRouter([
@@ -45,7 +44,6 @@ const router = createBrowserRouter([
           { path: "editor/:id", element: <EditorDetailPage /> },
           { path: "simulation", element: <SimulationPage /> },
           { path: "monitoring", element: <MonitoringPage /> },
-          { path: "audit", element: <AuditPage /> },
           { path: "history", element: <HistoryPage /> },
           { path: "*", element: <Navigate to="/" replace /> },
         ],

@@ -42,7 +42,6 @@ export function NavRail() {
       <div className="nav-divider" />
 
       <div className="nav-group">
-        <RailItem to="/audit" label="Audit" icon={<AuditIcon />} />
         <RailItem
           to="/history"
           label="History"
@@ -125,12 +124,5 @@ const HistoryIcon = () => (
   <svg viewBox="0 0 24 24" {...stroke}>
     <path d="M3 3v18h18" />
     <path d="m7 14 4-4 4 3 5-7" />
-  </svg>
-);
-const AuditIcon = () => (
-  <svg viewBox="0 0 24 24" {...stroke}>
-    <path d="M4 4h12l4 4v12H4z" />
-    <path d="M16 4v4h4" />
-    <path d="M8 12h8M8 16h6" />
   </svg>
 );

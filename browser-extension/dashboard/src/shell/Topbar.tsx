@@ -212,7 +212,7 @@ function GlobalSearch({ placeholder }: { placeholder?: string }) {
             <div className="search-group">
               <div className="search-group-head">최근 verdict · {verdictHits.length}</div>
               {verdictHits.slice(0, 5).map((v) => (
-                <button key={v.id} className="search-item" onClick={() => onPick(`/audit`)}>
+                <button key={v.id} className="search-item" onClick={() => onPick(`/history`)}>
                   <span className={`search-item-ico verdict ${v.verdict}`}>{v.verdict[0].toUpperCase()}</span>
                   <span className="search-item-main">
                     <span className="search-item-title">{v.policy?.name ?? v.decoded_fn ?? "(unnamed)"}</span>
@@ -242,7 +242,7 @@ function NotificationButton() {
   return (
     <button
       className="icon-btn"
-      onClick={() => navigate("/")}
+      onClick={() => navigate("/history")}
       title={unread > 0 ? `${unread}건 미해결 finding` : "알림 없음"}
       aria-label="notifications"
     >

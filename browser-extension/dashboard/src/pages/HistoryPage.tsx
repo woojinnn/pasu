@@ -168,8 +168,9 @@ function HistoryRow({ v }: { v: VerdictDto }) {
       </td>
       <td className="reason" title={reason}>{reason}</td>
       <td>
-        {v.user_decision === "trusted" && <span className="deco-trusted">신뢰</span>}
-        {v.user_decision === "cancelled" && <span className="deco-cancelled">무시</span>}
+        {v.user_decision === "trusted" && <span className="deco-trusted">agree</span>}
+        {v.user_decision === "cancelled" && <span className="deco-cancelled">deny</span>}
+        {v.user_decision === null && <span className="deco-pending">선택중</span>}
       </td>
     </tr>
   );
