@@ -28,6 +28,16 @@ const UNARY_OPS = new Set<string>(["!", "neg", "isEmpty"]);
 // RangeError. Cedar's own parser bounds real inputs far below this.
 const MAX_DEPTH = 400;
 
+/**
+ * Convert one Cedar policy's EST into a {@link PolicyIR} for a block editor to render.
+ *
+ * @param est    One policy's EST — from the WASM `policy_text_to_est_json` export
+ *               (which returns `{ policies: [{ id, est }] }` for a document).
+ * @param schema Optional enriched-schema descriptor (see `descriptorFromCustomTypes`).
+ *               When given, `attr` nodes receive display-only `type`/`source`
+ *               annotations; pass `null` to skip. The round trip is identical either way.
+ * @returns A faithful, renderable IR; any unmapped EST construct appears as a `raw` node.
+ */
 export function estToBlocks(est: EstPolicy, schema: SchemaDescriptor | null): PolicyIR {
   const ir: PolicyIR = {
     kind: "policy",
