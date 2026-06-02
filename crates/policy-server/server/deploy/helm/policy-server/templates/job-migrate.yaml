@@ -1,0 +1,35 @@
+{{- if .Values.migrationJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "policy-server.fullname" . }}-migrate
+  labels:
+    {{- include "policy-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "policy-server.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      serviceAccountName: {{ include "policy-server.serviceAccountName" . }}
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: {{ include "policy-server.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["policy-server-migrate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: DATABASE_URL
+            - name: RUST_LOG
+              value: {{ .Values.runtime.rustLog | quote }}
+{{- end }}

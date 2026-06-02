@@ -1,0 +1,87 @@
+image:
+  repository: ghcr.io/woojinnn/scopeball-policy-server
+  tag: ""
+  pullPolicy: IfNotPresent
+
+existingSecret: policy-server-secrets
+
+api:
+  replicas: 1
+  port: 8788
+  publicApiUrl: https://api.scopeball.dev
+  dashboardUrl: https://app.scopeball.dev
+  corsAllowedOrigins:
+    - https://app.scopeball.dev
+    - chrome-extension://<published-extension-id>
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+worker:
+  replicas: 1
+  tickSeconds: 30
+  lockTtlSeconds: 120
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+runtime:
+  rustLog: info,policy_server=debug,policy_sync=info
+  requireSyncConfig: true
+  runMigrationsOnStartup: false
+  redisEventsChannel: policy-server:events
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.scopeball.dev
+  tls:
+    enabled: true
+    secretName: policy-server-tls
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+serviceAccount:
+  create: true
+  name: ""
+
+migrationJob:
+  enabled: true
+
+hpa:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  api:
+    enabled: true
+    minAvailable: 1
+  worker:
+    enabled: true
+    maxUnavailable: 1
+
+networkPolicy:
+  enabled: false
+
+syncConfig: |-
+  # Override this value with the production scopeball-sync.toml.
+  [rpc.failover]
+  strategy = "priority"
+  retry_attempts = 3
+  retry_delay_ms = 200
+  mark_unhealthy_after = 5
+  unhealthy_cooldown_sec = 60
+
+  [venues.hyperliquid]
+  endpoint = "https://api.hyperliquid.xyz"

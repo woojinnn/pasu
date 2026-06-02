@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use policy_server::config::ServerConfig;
-use policy_server::coordination::{Coordinator, NoopCoordinator};
+use policy_server::coordination::build_coordinator;
 use policy_server::storage::StorageBackend;
 use policy_sync::{Orchestrator, Scheduler, SchedulerConfig, SyncConfig};
 use tracing_subscriber::EnvFilter;
@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "./scopeball-sync.toml".to_owned());
     let sync_config = SyncConfig::load_file(sync_config_path)?;
     let orchestrator = Arc::new(Orchestrator::from_sync_config(&sync_config)?);
-    let coordinator: Arc<dyn Coordinator> = Arc::new(NoopCoordinator);
+    let coordinator = build_coordinator(&config).await?;
 
     let tick_interval = Duration::from_secs(
         std::env::var("SYNC_WORKER_TICK_SECS")
@@ -32,11 +32,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .and_then(|v| v.parse().ok())
             .unwrap_or(30),
     );
+    let sync_lock_ttl = Duration::from_secs(config.sync_lock_ttl_secs);
 
     loop {
         for user_id in storage.list_user_ids().await? {
             let lock_key = format!("sync:user:{user_id}");
-            let Some(lock) = coordinator.try_lock(&lock_key, tick_interval * 2).await? else {
+            let Some(lock) = coordinator.try_lock(&lock_key, sync_lock_ttl).await? else {
                 continue;
             };
 
@@ -49,14 +50,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ..SchedulerConfig::default()
                 },
             );
-            let report = scheduler.tick_once().await?;
+            let report_result = scheduler.tick_once().await;
+            coordinator.release_lock(lock).await?;
+            let report = report_result?;
             tracing::info!(
                 user_id,
                 wallets = report.wallets_processed,
                 errors = report.errors.len(),
                 "sync worker tick complete"
             );
-            coordinator.release_lock(lock).await?;
         }
         tokio::time::sleep(tick_interval).await;
     }

@@ -56,7 +56,7 @@ fn extract_user(req: &Request) -> Result<AuthUser, Box<Response>> {
     // Prefer the header; fall back to query string for SSE callers.
     let token = match token_from_header(req.headers()) {
         Some(Ok(t)) => t,
-        Some(Err(resp)) => return Err(Box::new(resp)),
+        Some(Err(reason)) => return Err(Box::new(reject(reason))),
         None => match token_from_query(req.uri().query()) {
             Some(t) => t,
             None => {
@@ -79,15 +79,15 @@ fn extract_user(req: &Request) -> Result<AuthUser, Box<Response>> {
 /// Returns `Some(Ok(token))` if `Authorization` is set, `Some(Err)` if
 /// it's set but malformed (so we can surface the right reason), or
 /// `None` if absent (fall through to the query string).
-fn token_from_header(headers: &HeaderMap) -> Option<Result<String, Response>> {
+fn token_from_header(headers: &HeaderMap) -> Option<Result<String, &'static str>> {
     let raw = headers.get(header::AUTHORIZATION)?;
     Some((|| {
         let s = raw
             .to_str()
-            .map_err(|_| reject("Authorization header is not valid UTF-8"))?;
+            .map_err(|_| "Authorization header is not valid UTF-8")?;
         s.strip_prefix("Bearer ")
             .map(String::from)
-            .ok_or_else(|| reject("Authorization header must start with `Bearer `"))
+            .ok_or("Authorization header must start with `Bearer `")
     })())
 }
 

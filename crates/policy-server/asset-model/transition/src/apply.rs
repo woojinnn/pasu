@@ -23,7 +23,7 @@ pub trait Reducer {
     ///
     /// # Errors
     ///
-    /// Returns [`ReducerError`](crate::error::ReducerError) when the action is
+    /// Returns [`ReducerError`] when the action is
     /// invalid for the supplied state or a reducer invariant is violated.
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta>;
 }

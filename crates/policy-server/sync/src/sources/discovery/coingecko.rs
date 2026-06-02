@@ -2,7 +2,7 @@
 //!
 //! Hits `/coins/{platform}/contract/{contract_address}` to grab the
 //! token's logo (large), homepage, and short description. Free tier is
-//! ~30 req/min without a key; if [`COINGECKO_API_KEY`] is set, the
+//! ~30 req/min without a key; if `COINGECKO_API_KEY` is set, the
 //! per-key tier kicks in (Pro plans go higher).
 //!
 //! This is best-effort metadata for UI rendering — every failure path

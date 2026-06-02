@@ -219,6 +219,19 @@ impl PostgresGlobalDb {
         .map_err(|e| DbError::Invariant(e.to_string()))
     }
 
+    /// Verify the underlying `PostgreSQL` pool can execute a trivial query.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DbError`] if the ping query fails.
+    pub async fn ping(&self) -> DbResult<()> {
+        query("SELECT 1")
+            .execute(&self.pool)
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::Invariant(e.to_string()))
+    }
+
     /// Borrow the underlying pool.
     #[must_use]
     pub const fn pool(&self) -> &PgPool {

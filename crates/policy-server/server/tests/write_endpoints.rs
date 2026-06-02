@@ -51,6 +51,8 @@ async fn spawn_server_with_orchestrator(
         orchestrator: Arc::new(orchestrator),
         etherscan: None,
         coingecko: policy_sync::CoinGeckoClient::new(),
+        coordinator: Arc::new(policy_server::coordination::NoopCoordinator),
+        sync_lock_ttl: std::time::Duration::from_secs(120),
     };
     let router = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

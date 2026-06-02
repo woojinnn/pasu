@@ -15,12 +15,14 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use policy_db::{GlobalDb, MultiUserStore};
 use policy_sync::{CoinGeckoClient, EtherscanClient, Orchestrator};
 
 use crate::auth::{require_auth, AuthUser};
 use crate::config::ServerConfig;
+use crate::coordination::DynCoordinator;
 use crate::dashboard_handlers;
 use crate::dto::EvaluateRequest;
 use crate::events::{EventBus, EventPublisher};
@@ -52,6 +54,10 @@ pub struct AppState {
     /// logo / website / description on newly-seen tokens. Lookups are
     /// best-effort; `CoinGecko` outages don't block wallet adds.
     pub coingecko: CoinGeckoClient,
+    /// Cross-replica lock/idempotency boundary.
+    pub coordinator: DynCoordinator,
+    /// TTL used for user-scoped sync locks.
+    pub sync_lock_ttl: Duration,
 }
 
 impl std::fmt::Debug for AppState {
@@ -68,6 +74,8 @@ impl std::fmt::Debug for AppState {
                 &self.etherscan.as_ref().map(|_| "<EtherscanClient>"),
             )
             .field("coingecko", &"<CoinGeckoClient>")
+            .field("coordinator", &"<Coordinator>")
+            .field("sync_lock_ttl", &self.sync_lock_ttl)
             .finish()
     }
 }
@@ -172,6 +180,7 @@ pub fn build_router_with_config(state: AppState, config: &ServerConfig) -> Route
 
     let public = Router::new()
         .route("/health", get(health_handler))
+        .route("/readyz", get(crate::readiness::readyz_handler))
         .route("/docs", get(crate::docs::docs_html))
         .route("/openapi.yaml", get(crate::docs::openapi_yaml))
         .route("/auth/google", get(crate::auth::start_google_login))

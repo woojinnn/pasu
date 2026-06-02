@@ -1,7 +1,7 @@
 //! The core simulation handler — load canonical state → simulate prediction.
 //! Given an [`EvaluateRequest`], this loads the wallet's `state_before` via the
 //! [`WalletStore`] boundary, folds each request `envelope` through
-//! [`policy_transition::apply`] + `apply_delta` to produce one delta per
+//! [`policy_transition::apply()`] + `apply_delta` to produce one delta per
 //! action and a final predicted `state_after`, and returns the
 //! [`EvaluateResponse`] the extension's Cedar layer consumes.
 //! Important boundary: reducer deltas are *predictions* for policy evaluation,

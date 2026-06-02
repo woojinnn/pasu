@@ -11,6 +11,8 @@ pub mod sse;
 pub mod types;
 
 pub use bus::EventBus;
-pub use pubsub::{EventPublisher, LocalEventPublisher};
+pub use pubsub::{
+    spawn_redis_event_forwarder, EventPublisher, LocalEventPublisher, RedisEventPublisher,
+};
 pub use sse::stream as sse_stream;
 pub use types::{Event, TxConfirmed, TxRef, TxRefWithHash, WalletSync};
