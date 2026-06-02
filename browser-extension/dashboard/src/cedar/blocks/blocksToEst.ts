@@ -5,6 +5,16 @@
 import type { PolicyIR, Expr, Scope, ActionScope } from "./ir";
 import type { EstPolicy, EstExpr } from "./est";
 
+/**
+ * Convert an edited {@link PolicyIR} back into a Cedar EST. Feed the result to the
+ * WASM `est_json_to_policy_text` export to get Cedar text.
+ *
+ * Rebuilds EST from structural fields only — display annotations
+ * (`type`/`source`/`label` on `attr`) are dropped, which keeps the round trip exact.
+ *
+ * @throws if the IR contains an unfilled `hole` node — gate "save/export" on the IR
+ *         being hole-free.
+ */
 export function blocksToEst(ir: PolicyIR): EstPolicy {
   const out: EstPolicy = {
     effect: ir.effect,
