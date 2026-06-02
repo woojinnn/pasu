@@ -152,10 +152,16 @@ Compound v2 maps to **existing ActionBody domains** (lending: supply/withdraw/bo
 - **P1 manifests (24):** cerc20 ×7 (mint/redeem/redeemUnderlying/borrow/repayBorrow/repayBorrowBehalf/liquidateBorrow), ceth ×7 (payable overloads, native asset), comptroller ×5 (enterMarkets[array_emit]/exitMarket/claimComp×3), maximillion ×2, comp ×2 (delegate/delegateBySig) + comp Delegation typed-data. `v3-harness validate --filter compound-v2` → **147 single_emit OK, 0 errors**; `fuzz --filter compound-v2 -i 300` → **44100/44100 pass, 0 fail/panic** (exercises array_emit). Enrichment dormant (derived_from skeletons; verdict 100% local).
 - **Dogfood gate fix (committed `b383acb2`):** `check-tokens.ts` had `governance` as a valid top-level token_kind (it's a nested `BaseCategory`) — masked 4 malformed ZRO files; gate re-grounded on the Rust enum + 4 ZRO files fixed.
 
+### compound-v3 slice — Rewards DONE + Bulker deferred (2026-06-02)
+
+- `surface/compound-v3/_deployments.json` authored → **I0 now ENFORCED** (30 contracts: 28 Comet + CometRewards cover, Bulker exclude). Closes the prior "contract-inventory NOT enforced" WARN for the existing 28 Comet markets.
+- **CometRewards (mainnet)** `claim`/`claimTo` → `Airdrop::Claim` (claimTo's arbitrary `to` = fund-destination signal). rewards.coverage.json + abi snapshot + 2 manifests. `validate` 2 OK · `fuzz` 600/600 pass. Mainnet rewards addr on-chain-verified (`rewardConfig`→COMP). `check:surface` PASS. Multichain rewards = decode follow-up.
+- **Bulker `invoke` DEFERRED — hard decode gap (recorded):** `invoke(bytes32[] actions, bytes[] data)` is a parallel-array tagged dispatch where each `data[i]` is an action-specific ABI tuple keyed by the `actions[i]` bytes32 tag. Not expressible by the current emit grammar (`array_emit` = one body per element; `tagged_dispatch`/`enum_tagged_dispatch` = single dispatch; no per-element ABI decode keyed by a per-element tag). Needs an **array + per-element-tagged-dispatch grammar extension** (focused decoder work) to fan out to a multicall of supply/withdraw/transfer/claim/native-wrap/stETH sub-bodies. The underlying ops ARE covered when called directly on Comet/CometRewards; excluded in `_deployments.json` with this reason.
+
 ### Remaining (not yet done this run)
-- compound-v2 **cToken token-registry files** (yield_receipt, `rebase_form:index`) — classification ready (Agent C), files not yet authored.
-- **compound-v3** Bulker (`invoke`) + CometRewards (`claim`/`claimTo`) manifests + `surface/compound-v3/_deployments.json` (Comet 28 + bulker/rewards). Bulker/rewards abi snapshots staged on disk, coverage/manifests pending.
-- **P2 real-tx** (Etherscan bulk sweep + Dune + typed-data corpus), **P3** gap triage, **P4** land (workspace test + wasm + commit).
+- compound-v3 **Bulker** structured decode (grammar extension, above) + **multichain** Bulker/Rewards (mainnet rewards done).
+- **GovernorBravo** voting (castVote/propose) — deferred (no governance-vote ActionBody domain; COMP voting-power delegation IS covered).
+- **P2 real-tx** (Etherscan bulk sweep + Dune + typed-data corpus for COMP `Delegation` + Comet `Authorization`), **P3** gap triage, **P4** land (`cargo test --workspace` + wasm + `check-onboarding-evidence`).
 
 ## Blockers
 
