@@ -1,6 +1,7 @@
 // EST → block IR. Generic-faithful: one IR node per EST grammar production,
-// with a `raw` escape for anything not structurally mapped. Schema-aware
-// annotations on `attr` nodes are added by a separate post-pass (schema phase).
+// with a `raw` escape for anything not structurally mapped. When a schema
+// descriptor is supplied, a post-pass annotates `attr` nodes with type/source
+// (non-authoritative — does not affect EST round-trip).
 
 import type {
   PolicyIR,
@@ -13,8 +14,8 @@ import type {
   UnaryOp,
 } from "./ir";
 import type { EstPolicy, EstExpr } from "./est";
-import type { SchemaDescriptor } from "./schema";
 import { opKey } from "./est";
+import { type SchemaDescriptor, type SchemaField, attrPath, classify } from "./schema";
 
 const BINARY_OPS = new Set<string>([
   "==", "!=", "<", "<=", ">", ">=", "&&", "||", "+", "-", "*",
@@ -22,8 +23,8 @@ const BINARY_OPS = new Set<string>([
 ]);
 const UNARY_OPS = new Set<string>(["!", "neg", "isEmpty"]);
 
-export function estToBlocks(est: EstPolicy, _schema: SchemaDescriptor | null): PolicyIR {
-  return {
+export function estToBlocks(est: EstPolicy, schema: SchemaDescriptor | null): PolicyIR {
+  const ir: PolicyIR = {
     kind: "policy",
     effect: est.effect,
     annotations: Object.entries(est.annotations ?? {}).map(([name, value]) => ({ name, value })),
@@ -34,6 +35,8 @@ export function estToBlocks(est: EstPolicy, _schema: SchemaDescriptor | null): P
     },
     conditions: est.conditions.map((c): Condition => ({ kind: c.kind, body: exprToIr(c.body) })),
   };
+  if (schema) annotate(ir, schema);
+  return ir;
 }
 
 function exprToIr(node: EstExpr): Expr {
@@ -124,5 +127,57 @@ function actionScopeToIr(s: Record<string, any>): ActionScope {
       return { kind: "scopeIn", entities: (s.entities ?? []).map(entity) };
     default:
       return { kind: "scopeAll" };
+  }
+}
+
+// ── schema-aware annotation (non-authoritative post-pass) ───────────────
+
+function annotate(ir: PolicyIR, schema: SchemaDescriptor): void {
+  // The enriched context is per-action; only a concrete `action == Action::"X"`
+  // scope yields a single action's fields.
+  const action = ir.scope.action.kind === "scopeEq" ? ir.scope.action.entity.id : null;
+  const fields = action ? (schema[action] ?? null) : null;
+  for (const c of ir.conditions) annotateExpr(c.body, fields);
+}
+
+function annotateExpr(e: Expr, fields: SchemaField[] | null): void {
+  switch (e.kind) {
+    case "attr": {
+      const ann = classify(attrPath(e.of, e.attr), fields);
+      if (ann.type) e.type = ann.type;
+      e.source = ann.source;
+      annotateExpr(e.of, fields);
+      break;
+    }
+    case "binary":
+      annotateExpr(e.left, fields);
+      annotateExpr(e.right, fields);
+      break;
+    case "unary":
+      annotateExpr(e.operand, fields);
+      break;
+    case "has":
+    case "like":
+      annotateExpr(e.of, fields);
+      break;
+    case "is":
+      annotateExpr(e.of, fields);
+      if (e.in) annotateExpr(e.in, fields);
+      break;
+    case "if":
+      annotateExpr(e.cond, fields);
+      annotateExpr(e.then, fields);
+      annotateExpr(e.else, fields);
+      break;
+    case "set":
+      e.elements.forEach((x) => annotateExpr(x, fields));
+      break;
+    case "record":
+      e.pairs.forEach((p) => annotateExpr(p.value, fields));
+      break;
+    case "ext":
+      e.args.forEach((x) => annotateExpr(x, fields));
+      break;
+    // var, lit, litEntity, raw, hole: nothing to annotate
   }
 }
