@@ -48,6 +48,7 @@ interface WasmExports {
   // origin/main — manifest-driven schema preview + alias table.
   preview_custom_schema_json(input_json: string): string;
   preview_installed_schema_json(): string;
+  field_catalog_json(): string;
   get_alias_table_json(): string;
   // Editor / Simulation page exports — schema-less Cedar parse +
   // Authorizer over ad-hoc requests. `apps/web` posts message via
@@ -554,4 +555,16 @@ export async function policyTextToEst(text: string): Promise<string> {
 export async function estToPolicyText(estJson: string): Promise<string> {
   const exports = await load();
   return exports.est_json_to_policy_text(estJson);
+}
+
+/** Per-action typed field catalog for block-editor annotations:
+ *  `{ [actionId]: { path, type, fieldKind, source }[] }`, keyed by the
+ *  policy-facing action id. Display metadata only (non-authoritative). */
+export interface FieldCatalog {
+  [action: string]: { path: string; type: string; fieldKind: string; source: string }[];
+}
+
+export async function fieldCatalog(): Promise<FieldCatalog> {
+  const exports = await load();
+  return unwrap<FieldCatalog>(exports.field_catalog_json());
 }
