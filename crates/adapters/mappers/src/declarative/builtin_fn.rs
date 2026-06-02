@@ -15,13 +15,20 @@
 
 use std::str::FromStr as _;
 
-use alloy_primitives::{keccak256, Address};
+use abi_resolver::decode::decode_with_signature;
+use alloy_dyn_abi::DynSolValue;
+use alloy_primitives::{keccak256, Address, U256};
 use serde_json::Value as JsonValue;
 
 /// The whitelist of accepted `$fn` names. The author-time validator
 /// (`registryV2/scripts/build-index.ts` `validateEmitShape`) mirrors this so an
 /// unknown `$fn` fails at build-index time, not only at decode time.
-pub const WHITELIST: &[&str] = &["curve_route_last_token", "route_hash"];
+pub const WHITELIST: &[&str] = &[
+    "curve_route_last_token",
+    "route_hash",
+    "uniswap_v3_pool_swap_field",
+    "uniswapx_reactor_order_field",
+];
 
 /// Dispatch a `$fn` call by name against its already-substituted JSON args.
 ///
@@ -32,6 +39,8 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
     match name {
         "curve_route_last_token" => curve_route_last_token(args),
         "route_hash" => route_hash(args),
+        "uniswap_v3_pool_swap_field" => uniswap_v3_pool_swap_field(args),
+        "uniswapx_reactor_order_field" => uniswapx_reactor_order_field(args),
         _ => Err(format!(
             "unknown $fn '{name}' (whitelist: {})",
             WHITELIST.join(", ")
@@ -127,6 +136,493 @@ fn route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
     Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
 }
 
+/// `uniswap_v3_pool_swap_field(amountSpecified, zeroForOne, token0, token1, field)`.
+///
+/// Direct `UniswapV3Pool.swap` exposes a signed `amountSpecified` instead of
+/// router-style `amountIn` / `amountOutMinimum` fields:
+/// - positive means exact input;
+/// - negative means exact output;
+/// - `zeroForOne` controls token direction.
+///
+/// The pool calldata has no explicit exact-output max input, so that field is
+/// modeled as `U256::MAX` for a conservative spend cap until live price-limit
+/// math can tighten it.
+fn uniswap_v3_pool_swap_field(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 5 {
+        return Err(format!(
+            "uniswap_v3_pool_swap_field expects 5 args (amountSpecified, zeroForOne, token0, token1, field), got {}",
+            args.len()
+        ));
+    }
+
+    let amount = json_signed_int(&args[0], "amountSpecified")?;
+    let zero_for_one = json_bool(&args[1], "zeroForOne")?;
+    let token0 = json_address(&args[2], "token0")?.to_string();
+    let token1 = json_address(&args[3], "token1")?.to_string();
+    let field = args[4]
+        .as_str()
+        .ok_or("uniswap_v3_pool_swap_field: field arg is not a string")?;
+
+    let (token_in, token_out) = if zero_for_one {
+        (token0, token1)
+    } else {
+        (token1, token0)
+    };
+
+    let exact_output = amount.negative;
+    let max_u256 = U256::MAX.to_string();
+    let zero = "0".to_owned();
+    let value = match field {
+        "token_in" => JsonValue::String(token_in),
+        "token_out" => JsonValue::String(token_out),
+        "direction_kind" => JsonValue::String(
+            if exact_output {
+                "exact_output"
+            } else {
+                "exact_input"
+            }
+            .to_owned(),
+        ),
+        "amount_in" => JsonValue::String(if exact_output {
+            zero.clone()
+        } else {
+            amount.abs_decimal.clone()
+        }),
+        "min_amount_out" => JsonValue::String(zero.clone()),
+        "max_amount_in" => JsonValue::String(if exact_output { max_u256 } else { zero.clone() }),
+        "amount_out" => JsonValue::String(if exact_output {
+            amount.abs_decimal
+        } else {
+            zero
+        }),
+        _ => {
+            return Err(format!(
+                "uniswap_v3_pool_swap_field: unsupported field '{field}'"
+            ))
+        }
+    };
+    Ok(value)
+}
+
+/// `uniswapx_reactor_order_field(order_bytes, reactor, field) -> scalar`.
+///
+/// UniswapX reactors take a generic `SignedOrder { bytes order; bytes sig }`,
+/// then the concrete reactor decodes `order` into its family-specific struct.
+/// This helper mirrors that second decode for declarative manifests and exposes
+/// the policy-relevant scalar fields used by `Amm::SettleIntentOrder`.
+fn uniswapx_reactor_order_field(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 3 {
+        return Err(format!(
+            "uniswapx_reactor_order_field expects 3 args (order_bytes, reactor, field), got {}",
+            args.len()
+        ));
+    }
+
+    let order_bytes = json_hex_bytes(&args[0], "order_bytes")?;
+    let reactor = json_address(&args[1], "reactor")?;
+    let field = args[2]
+        .as_str()
+        .ok_or("uniswapx_reactor_order_field: field arg is not a string")?;
+    let family = UniswapXOrderFamily::for_reactor(&reactor)?;
+    let order = decode_uniswapx_order(family, &order_bytes).or_else(|primary_error| {
+        decode_any_uniswapx_order(family, &order_bytes).map_err(|fallback_error| {
+            format!(
+                "target-family decode failed: {primary_error}; fallback family decode failed: {fallback_error}"
+            )
+        })
+    })?;
+
+    order.field(field).ok_or_else(|| {
+        format!(
+            "uniswapx_reactor_order_field: unsupported field '{field}' for {:?}",
+            family
+        )
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UniswapXOrderFamily {
+    ExclusiveDutch,
+    V2Dutch,
+    V3Dutch,
+    Priority,
+}
+
+impl UniswapXOrderFamily {
+    const ALL: [Self; 4] = [
+        Self::ExclusiveDutch,
+        Self::V2Dutch,
+        Self::V3Dutch,
+        Self::Priority,
+    ];
+
+    fn for_reactor(reactor: &Address) -> Result<Self, String> {
+        let lower = reactor.to_string().to_ascii_lowercase();
+        match lower.as_str() {
+            // Mainnet ExclusiveDutchOrderReactor.
+            "0x6000da47483062a0d734ba3dc7576ce6a0b645c4" => Ok(Self::ExclusiveDutch),
+            // Mainnet V2DutchOrderReactor and Arbitrum V2DutchOrderReactor.
+            "0x00000011f84b9aa48e5f8aa8b9897600006289be"
+            | "0x1bd1aadc8a99fe9c48cffd9a5718b67f83cd4c08" => Ok(Self::V2Dutch),
+            // V3DutchOrderReactor deployments currently used by UniswapX.
+            "0x0000000015757c461808ea25eb309638b62681cf"
+            | "0x000000008a8330b5e401f8d6b6f4d82e9e6fef4a"
+            | "0x000000000923439a00000cfd2e0c5e60fef971c4"
+            | "0xb274d5f4b833b61b340b654d600a864fb604a87c" => Ok(Self::V3Dutch),
+            // Base PriorityOrderReactor.
+            "0x000000001ec5656dcdb24d90dfa42742738de729" => Ok(Self::Priority),
+            _ => Err(format!(
+                "uniswapx_reactor_order_field: unsupported reactor {lower}"
+            )),
+        }
+    }
+
+    const fn synthetic_decode_signature(self) -> &'static str {
+        match self {
+            Self::ExclusiveDutch => "decode(((address,address,uint256,uint256,address,bytes),uint256,uint256,address,uint256,(address,uint256,uint256),(address,uint256,uint256,address)[]))",
+            Self::V2Dutch => "decode(((address,address,uint256,uint256,address,bytes),address,(address,uint256,uint256),(address,uint256,uint256,address)[],(uint256,uint256,address,uint256,uint256,uint256[]),bytes))",
+            Self::V3Dutch => "decode(((address,address,uint256,uint256,address,bytes),address,uint256,(address,uint256,(uint256,int256[]),uint256,uint256),(address,uint256,(uint256,int256[]),address,uint256,uint256)[],(uint256,address,uint256,uint256,uint256[]),bytes))",
+            Self::Priority => "decode(((address,address,uint256,uint256,address,bytes),address,uint256,uint256,(address,uint256,uint256),(address,uint256,uint256,address)[],(uint256),bytes))",
+        }
+    }
+}
+
+fn decode_any_uniswapx_order(
+    preferred: UniswapXOrderFamily,
+    order_bytes: &[u8],
+) -> Result<DecodedUniswapXOrder, String> {
+    let mut errors = Vec::new();
+    for family in UniswapXOrderFamily::ALL {
+        if family == preferred {
+            continue;
+        }
+        match decode_uniswapx_order(family, order_bytes) {
+            Ok(order) => return Ok(order),
+            Err(error) => errors.push(format!("{family:?}: {error}")),
+        }
+    }
+    Err(errors.join("; "))
+}
+
+#[derive(Debug)]
+struct DecodedUniswapXOrder {
+    swapper: JsonValue,
+    sell_token: JsonValue,
+    buy_token: JsonValue,
+    sell_amount: JsonValue,
+    buy_min: JsonValue,
+    order_kind: JsonValue,
+    recipient: JsonValue,
+    deadline: JsonValue,
+    nonce: JsonValue,
+}
+
+impl DecodedUniswapXOrder {
+    fn field(&self, field: &str) -> Option<JsonValue> {
+        match field {
+            "swapper" => Some(self.swapper.clone()),
+            "sell_token" => Some(self.sell_token.clone()),
+            "buy_token" => Some(self.buy_token.clone()),
+            "sell_amount" => Some(self.sell_amount.clone()),
+            "buy_min" => Some(self.buy_min.clone()),
+            "order_kind" => Some(self.order_kind.clone()),
+            "recipient" => Some(self.recipient.clone()),
+            "deadline" | "valid_until" => Some(self.deadline.clone()),
+            "nonce" | "order_nonce" => Some(self.nonce.clone()),
+            _ => None,
+        }
+    }
+}
+
+fn decode_uniswapx_order(
+    family: UniswapXOrderFamily,
+    order_bytes: &[u8],
+) -> Result<DecodedUniswapXOrder, String> {
+    let signature = family.synthetic_decode_signature();
+    let mut calldata = Vec::with_capacity(4 + order_bytes.len());
+    calldata.extend_from_slice(&synthetic_selector(signature));
+    calldata.extend_from_slice(order_bytes);
+    let decoded = decode_with_signature(signature, &calldata)
+        .map_err(|e| format!("uniswapx order ABI decode failed: {e}"))?;
+    let order = decoded
+        .args
+        .first()
+        .ok_or("uniswapx order ABI decode returned no args")?;
+    let order = tuple_items(&order.value, "order")?;
+    let info = tuple_at(order, 0, "order.info")?;
+    let swapper = address_json(tuple_get(info, 1, "order.info.swapper")?)?;
+    let nonce = uint_string_json(tuple_get(info, 2, "order.info.nonce")?)?;
+    let deadline = uint_u64_json(tuple_get(info, 3, "order.info.deadline")?)?;
+
+    match family {
+        UniswapXOrderFamily::ExclusiveDutch => {
+            let input = tuple_at(order, 5, "order.input")?;
+            let output = first_tuple_array_item(order, 6, "order.outputs")?;
+            Ok(DecodedUniswapXOrder {
+                swapper,
+                sell_token: address_json(tuple_get(input, 0, "order.input.token")?)?,
+                buy_token: address_json(tuple_get(output, 0, "order.outputs[0].token")?)?,
+                sell_amount: uint_string_json(tuple_get(input, 1, "order.input.startAmount")?)?,
+                buy_min: uint_string_json(tuple_get(output, 2, "order.outputs[0].endAmount")?)?,
+                order_kind: JsonValue::String("dutch".to_owned()),
+                recipient: address_json(tuple_get(output, 3, "order.outputs[0].recipient")?)?,
+                deadline,
+                nonce,
+            })
+        }
+        UniswapXOrderFamily::V2Dutch => {
+            let input = tuple_at(order, 2, "order.baseInput")?;
+            let output = first_tuple_array_item(order, 3, "order.baseOutputs")?;
+            let cosigner_data = tuple_at(order, 4, "order.cosignerData")?;
+            let cosigner_input_amount = uint_from_value(tuple_get(
+                cosigner_data,
+                4,
+                "order.cosignerData.inputAmount",
+            )?)?;
+            let sell_amount_value = if cosigner_input_amount.is_zero() {
+                tuple_get(input, 1, "order.baseInput.startAmount")?
+            } else {
+                tuple_get(cosigner_data, 4, "order.cosignerData.inputAmount")?
+            };
+            Ok(DecodedUniswapXOrder {
+                swapper,
+                sell_token: address_json(tuple_get(input, 0, "order.baseInput.token")?)?,
+                buy_token: address_json(tuple_get(output, 0, "order.baseOutputs[0].token")?)?,
+                sell_amount: uint_string_json(sell_amount_value)?,
+                buy_min: uint_string_json(tuple_get(output, 2, "order.baseOutputs[0].endAmount")?)?,
+                order_kind: JsonValue::String("dutch".to_owned()),
+                recipient: address_json(tuple_get(output, 3, "order.baseOutputs[0].recipient")?)?,
+                deadline,
+                nonce,
+            })
+        }
+        UniswapXOrderFamily::V3Dutch => {
+            let input = tuple_at(order, 3, "order.baseInput")?;
+            let output = first_tuple_array_item(order, 4, "order.baseOutputs")?;
+            let cosigner_data = tuple_at(order, 5, "order.cosignerData")?;
+            let cosigner_input_amount = uint_from_value(tuple_get(
+                cosigner_data,
+                3,
+                "order.cosignerData.inputAmount",
+            )?)?;
+            let sell_amount_value = if cosigner_input_amount.is_zero() {
+                tuple_get(input, 1, "order.baseInput.startAmount")?
+            } else {
+                tuple_get(cosigner_data, 3, "order.cosignerData.inputAmount")?
+            };
+            Ok(DecodedUniswapXOrder {
+                swapper,
+                sell_token: address_json(tuple_get(input, 0, "order.baseInput.token")?)?,
+                buy_token: address_json(tuple_get(output, 0, "order.baseOutputs[0].token")?)?,
+                sell_amount: uint_string_json(sell_amount_value)?,
+                buy_min: uint_string_json(tuple_get(output, 4, "order.baseOutputs[0].minAmount")?)?,
+                order_kind: JsonValue::String("dutch".to_owned()),
+                recipient: address_json(tuple_get(output, 3, "order.baseOutputs[0].recipient")?)?,
+                deadline,
+                nonce,
+            })
+        }
+        UniswapXOrderFamily::Priority => {
+            let input = tuple_at(order, 4, "order.input")?;
+            let output = first_tuple_array_item(order, 5, "order.outputs")?;
+            Ok(DecodedUniswapXOrder {
+                swapper,
+                sell_token: address_json(tuple_get(input, 0, "order.input.token")?)?,
+                buy_token: address_json(tuple_get(output, 0, "order.outputs[0].token")?)?,
+                sell_amount: uint_string_json(tuple_get(input, 1, "order.input.amount")?)?,
+                buy_min: uint_string_json(tuple_get(output, 1, "order.outputs[0].amount")?)?,
+                order_kind: JsonValue::String("limit".to_owned()),
+                recipient: address_json(tuple_get(output, 3, "order.outputs[0].recipient")?)?,
+                deadline,
+                nonce,
+            })
+        }
+    }
+}
+
+fn synthetic_selector(signature: &str) -> [u8; 4] {
+    let hash = keccak256(signature.as_bytes());
+    let mut selector = [0u8; 4];
+    selector.copy_from_slice(&hash.as_slice()[..4]);
+    selector
+}
+
+fn tuple_items<'a>(value: &'a DynSolValue, path: &str) -> Result<&'a [DynSolValue], String> {
+    match value {
+        DynSolValue::Tuple(items) => Ok(items.as_slice()),
+        other => Err(format!(
+            "uniswapx order decode: {path} expected tuple, got {}",
+            dyn_value_kind(other)
+        )),
+    }
+}
+
+fn tuple_at<'a>(
+    items: &'a [DynSolValue],
+    idx: usize,
+    path: &str,
+) -> Result<&'a [DynSolValue], String> {
+    let value = tuple_get(items, idx, path)?;
+    tuple_items(value, path)
+}
+
+fn tuple_get<'a>(
+    items: &'a [DynSolValue],
+    idx: usize,
+    path: &str,
+) -> Result<&'a DynSolValue, String> {
+    items
+        .get(idx)
+        .ok_or_else(|| format!("uniswapx order decode: missing {path} at tuple index {idx}"))
+}
+
+fn first_tuple_array_item<'a>(
+    order: &'a [DynSolValue],
+    idx: usize,
+    path: &str,
+) -> Result<&'a [DynSolValue], String> {
+    let value = tuple_get(order, idx, path)?;
+    let items = match value {
+        DynSolValue::Array(items) | DynSolValue::FixedArray(items) => items,
+        other => {
+            return Err(format!(
+                "uniswapx order decode: {path} expected array, got {}",
+                dyn_value_kind(other)
+            ))
+        }
+    };
+    let first = items
+        .first()
+        .ok_or_else(|| format!("uniswapx order decode: {path} is empty"))?;
+    tuple_items(first, &format!("{path}[0]"))
+}
+
+fn address_json(value: &DynSolValue) -> Result<JsonValue, String> {
+    match value {
+        DynSolValue::Address(address) => Ok(JsonValue::String(address.to_string())),
+        other => Err(format!(
+            "uniswapx order decode: expected address, got {}",
+            dyn_value_kind(other)
+        )),
+    }
+}
+
+fn uint_string_json(value: &DynSolValue) -> Result<JsonValue, String> {
+    Ok(JsonValue::String(uint_from_value(value)?.to_string()))
+}
+
+fn uint_u64_json(value: &DynSolValue) -> Result<JsonValue, String> {
+    let value = uint_from_value(value)?;
+    let n = u64::try_from(value)
+        .map_err(|_| format!("uniswapx order decode: uint {value} does not fit u64"))?;
+    Ok(JsonValue::Number(serde_json::Number::from(n)))
+}
+
+fn uint_from_value(value: &DynSolValue) -> Result<U256, String> {
+    match value {
+        DynSolValue::Uint(value, _) => Ok(*value),
+        other => Err(format!(
+            "uniswapx order decode: expected uint, got {}",
+            dyn_value_kind(other)
+        )),
+    }
+}
+
+fn dyn_value_kind(value: &DynSolValue) -> &'static str {
+    match value {
+        DynSolValue::Address(_) => "address",
+        DynSolValue::Bool(_) => "bool",
+        DynSolValue::Bytes(_) => "bytes",
+        DynSolValue::FixedBytes(_, _) => "fixed_bytes",
+        DynSolValue::Int(_, _) => "int",
+        DynSolValue::Uint(_, _) => "uint",
+        DynSolValue::String(_) => "string",
+        DynSolValue::Array(_) => "array",
+        DynSolValue::FixedArray(_) => "fixed_array",
+        DynSolValue::Tuple(_) => "tuple",
+        DynSolValue::Function(_) => "function",
+    }
+}
+
+fn json_hex_bytes(value: &JsonValue, label: &str) -> Result<Vec<u8>, String> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| format!("{label} is not a hex string"))?;
+    let body = s.strip_prefix("0x").unwrap_or(s);
+    hex::decode(body).map_err(|e| format!("{label} is not valid hex: {e}"))
+}
+
+fn json_address(value: &JsonValue, label: &str) -> Result<Address, String> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| format!("{label} is not an address string"))?;
+    Address::from_str(s).map_err(|e| format!("{label} is not an address ({s}): {e}"))
+}
+
+fn json_bool(value: &JsonValue, label: &str) -> Result<bool, String> {
+    match value {
+        JsonValue::Bool(value) => Ok(*value),
+        JsonValue::String(value) if value.eq_ignore_ascii_case("true") => Ok(true),
+        JsonValue::String(value) if value.eq_ignore_ascii_case("false") => Ok(false),
+        other => Err(format!("{label} is not a bool: {other}")),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct JsonSignedInt {
+    negative: bool,
+    abs_decimal: String,
+}
+
+fn json_signed_int(value: &JsonValue, label: &str) -> Result<JsonSignedInt, String> {
+    match value {
+        JsonValue::Number(number) => {
+            if let Some(value) = number.as_i64() {
+                let negative = value < 0;
+                let abs_decimal = if negative {
+                    (-(value as i128)).to_string()
+                } else {
+                    value.to_string()
+                };
+                return Ok(JsonSignedInt {
+                    negative: negative && abs_decimal != "0",
+                    abs_decimal,
+                });
+            }
+            if let Some(value) = number.as_u64() {
+                return Ok(JsonSignedInt {
+                    negative: false,
+                    abs_decimal: value.to_string(),
+                });
+            }
+            Err(format!("{label} must be an integer, got {number}"))
+        }
+        JsonValue::String(raw) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                return Err(format!("{label} is empty"));
+            }
+            let (negative, digits) = if let Some(rest) = trimmed.strip_prefix('-') {
+                (true, rest)
+            } else if let Some(rest) = trimmed.strip_prefix('+') {
+                (false, rest)
+            } else {
+                (false, trimmed)
+            };
+            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                return Err(format!("{label} is not a decimal integer: {raw}"));
+            }
+            let abs = digits.trim_start_matches('0');
+            let abs_decimal = if abs.is_empty() { "0" } else { abs }.to_owned();
+            Ok(JsonSignedInt {
+                negative: negative && abs_decimal != "0",
+                abs_decimal,
+            })
+        }
+        other => Err(format!("{label} is not an integer: {other}")),
+    }
+}
+
 /// A route slot is "empty" when it parses to the zero address (Router NG
 /// zero-pads unused hops). Falls back to an all-zero-hex string check if the
 /// value is not a parseable address.
@@ -219,7 +715,169 @@ mod tests {
     }
 
     #[test]
+    fn uniswap_v3_pool_swap_field_positive_amount_is_exact_input() {
+        let out = uniswap_v3_pool_swap_field(&[
+            json!("1000"),
+            json!(true),
+            json!(A),
+            json!(B),
+            json!("direction_kind"),
+        ])
+        .unwrap();
+        assert_eq!(out, json!("exact_input"));
+
+        let token_in = uniswap_v3_pool_swap_field(&[
+            json!("1000"),
+            json!(true),
+            json!(A),
+            json!(B),
+            json!("token_in"),
+        ])
+        .unwrap();
+        let token_out = uniswap_v3_pool_swap_field(&[
+            json!("1000"),
+            json!(true),
+            json!(A),
+            json!(B),
+            json!("token_out"),
+        ])
+        .unwrap();
+        let amount_in = uniswap_v3_pool_swap_field(&[
+            json!("1000"),
+            json!(true),
+            json!(A),
+            json!(B),
+            json!("amount_in"),
+        ])
+        .unwrap();
+
+        assert_eq!(token_in, json!(A));
+        assert_eq!(token_out, json!(B));
+        assert_eq!(amount_in, json!("1000"));
+    }
+
+    #[test]
+    fn uniswap_v3_pool_swap_field_negative_amount_is_exact_output() {
+        let kind = uniswap_v3_pool_swap_field(&[
+            json!("-2500"),
+            json!(false),
+            json!(A),
+            json!(B),
+            json!("direction_kind"),
+        ])
+        .unwrap();
+        let token_in = uniswap_v3_pool_swap_field(&[
+            json!("-2500"),
+            json!(false),
+            json!(A),
+            json!(B),
+            json!("token_in"),
+        ])
+        .unwrap();
+        let amount_out = uniswap_v3_pool_swap_field(&[
+            json!("-2500"),
+            json!(false),
+            json!(A),
+            json!(B),
+            json!("amount_out"),
+        ])
+        .unwrap();
+        let max_amount_in = uniswap_v3_pool_swap_field(&[
+            json!("-2500"),
+            json!(false),
+            json!(A),
+            json!(B),
+            json!("max_amount_in"),
+        ])
+        .unwrap();
+
+        assert_eq!(kind, json!("exact_output"));
+        assert_eq!(token_in, json!(B));
+        assert_eq!(amount_out, json!("2500"));
+        assert_eq!(max_amount_in, json!(U256::MAX.to_string()));
+    }
+
+    #[test]
+    fn uniswapx_v2_reactor_order_field_decodes_cosigned_order() {
+        let order = v2_dutch_order_bytes();
+        let order_hex = json!(format!("0x{}", hex::encode(order)));
+        let reactor = json!("0x00000011f84b9aa48e5f8aa8b9897600006289be");
+
+        let sell_amount = uniswapx_reactor_order_field(&[
+            order_hex.clone(),
+            reactor.clone(),
+            json!("sell_amount"),
+        ])
+        .unwrap();
+        let buy_min =
+            uniswapx_reactor_order_field(&[order_hex.clone(), reactor.clone(), json!("buy_min")])
+                .unwrap();
+        let swapper =
+            uniswapx_reactor_order_field(&[order_hex.clone(), reactor.clone(), json!("swapper")])
+                .unwrap();
+        let valid_until =
+            uniswapx_reactor_order_field(&[order_hex, reactor, json!("valid_until")]).unwrap();
+
+        assert_eq!(sell_amount, json!("900"));
+        assert_eq!(buy_min, json!("1800"));
+        assert_eq!(swapper, json!("0x1111111111111111111111111111111111111111"));
+        assert_eq!(valid_until, json!(1_900_000_000u64));
+    }
+
+    #[test]
     fn dispatch_unknown_fn_errors() {
         assert!(dispatch("nope", &[]).is_err());
+    }
+
+    fn v2_dutch_order_bytes() -> Vec<u8> {
+        let reactor = addr("0x00000011f84b9aa48e5f8aa8b9897600006289be");
+        let swapper = addr("0x1111111111111111111111111111111111111111");
+        let sell = addr("0x2222222222222222222222222222222222222222");
+        let buy = addr("0x3333333333333333333333333333333333333333");
+        let recipient = addr("0x4444444444444444444444444444444444444444");
+        let zero = addr("0x0000000000000000000000000000000000000000");
+
+        let info = DynSolValue::Tuple(vec![
+            DynSolValue::Address(reactor),
+            DynSolValue::Address(swapper),
+            uint(42),
+            uint(1_900_000_000),
+            DynSolValue::Address(zero),
+            DynSolValue::Bytes(Vec::new()),
+        ]);
+        let base_input =
+            DynSolValue::Tuple(vec![DynSolValue::Address(sell), uint(1_000), uint(1_100)]);
+        let base_output = DynSolValue::Tuple(vec![
+            DynSolValue::Address(buy),
+            uint(2_000),
+            uint(1_800),
+            DynSolValue::Address(recipient),
+        ]);
+        let cosigner_data = DynSolValue::Tuple(vec![
+            uint(1_800_000_000),
+            uint(1_900_000_000),
+            DynSolValue::Address(zero),
+            uint(0),
+            uint(900),
+            DynSolValue::Array(vec![uint(0)]),
+        ]);
+        let order = DynSolValue::Tuple(vec![
+            info,
+            DynSolValue::Address(zero),
+            base_input,
+            DynSolValue::Array(vec![base_output]),
+            cosigner_data,
+            DynSolValue::Bytes(vec![0xab; 65]),
+        ]);
+
+        DynSolValue::Tuple(vec![order]).abi_encode_params()
+    }
+
+    fn addr(value: &str) -> Address {
+        Address::from_str(value).unwrap()
+    }
+
+    fn uint(value: u64) -> DynSolValue {
+        DynSolValue::Uint(U256::from(value), 256)
     }
 }

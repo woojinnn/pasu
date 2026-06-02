@@ -1,0 +1,47 @@
+// Token::Permit2SignTransfer — `Uniswap` `Permit2` SignatureTransfer signature.
+//
+// Off-chain `PermitTransferFrom` / `PermitWitnessTransferFrom` typed data.
+// The signed message grants a one-time spend cap for `token` owned by `owner`.
+// The final spender and recipient are not part of the signature; they appear
+// only when the signature is executed on chain.
+
+namespace Token {
+  type Permit2SignTransferNonce = {
+    word: String,
+    bit: Long,
+  };
+
+  type Permit2SignTransferContext = {
+    // Common envelope. `meta.nature.kind` is `"offchain_sig"`.
+    meta: Core::ActionMeta,
+    // Underlying token whose one-time transfer is authorized.
+    token: Core::TokenRef,
+    // Token owner / signer.
+    owner: String,
+    // Address authorized to consume the one-time signature.
+    spender: String,
+    // Maximum transfer amount (U256 hex).
+    amount: String,
+    // Token-native nano (raw × 10^(9 − decimals)). Host-populated.
+    amountNano?: Long,
+    // USD estimate at submission time. Host-populated.
+    amountUsd?: decimal,
+    // Signature deadline (unix seconds).
+    sigDeadline: Long,
+    // Permit2 unordered nonce bitmap coordinates.
+    nonce: Permit2SignTransferNonce,
+    // Optional EIP-712 witness type name.
+    witnessType?: String,
+    // Manifest-extensible slot.
+    custom?: Permit2SignTransferCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type Permit2SignTransferCustomContext = {};
+
+  action "Permit2SignTransfer" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: Permit2SignTransferContext,
+  };
+}

@@ -95,6 +95,18 @@ fn resolve_args_for_body(
                 out.extend_from_slice(&encode_u256(p.nonce.value.0));
                 return out;
             }
+            if let ActionBody::Token(TokenAction::Permit2SignTransfer(p)) = body {
+                let mut out = Vec::with_capacity(64);
+                out.extend_from_slice(&encode_address(p.owner));
+                out.extend_from_slice(&encode_u256(p.nonce.value.0));
+                return out;
+            }
+            if let ActionBody::Token(TokenAction::Permit2TransferFrom(p)) = body {
+                let mut out = Vec::with_capacity(64);
+                out.extend_from_slice(&encode_address(p.owner));
+                out.extend_from_slice(&encode_u256(p.nonce.value.0));
+                return out;
+            }
             Vec::new()
         }
 

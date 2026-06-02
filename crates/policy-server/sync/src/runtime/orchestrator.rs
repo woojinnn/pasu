@@ -854,7 +854,7 @@ fn permit2_nonce_bitmap_apply_value(
     let Some((word, bit)) = permit2_nonce_pair_for_location(action, location) else {
         return Some(Err(SyncError::FetchFailed {
             source_id: "permit2_nonce_bitmap".into(),
-            reason: "action location is not a Permit2 signed allowance nonce".into(),
+            reason: "action location is not a Permit2 unordered nonce".into(),
         }));
     };
     let Some(bitmap) = u256_from_json_decimal(value) else {
@@ -879,12 +879,12 @@ fn permit2_nonce_pair_for_location(
     let FieldLocation::Action { action_index, .. } = location else {
         return None;
     };
-    let ActionBody::Token(TokenAction::Permit2SignAllowance(p)) =
-        body_at_index(&action.body, *action_index)?
-    else {
-        return None;
-    };
-    Some(p.nonce.value)
+    match body_at_index(&action.body, *action_index)? {
+        ActionBody::Token(TokenAction::Permit2SignAllowance(p)) => Some(p.nonce.value),
+        ActionBody::Token(TokenAction::Permit2SignTransfer(p)) => Some(p.nonce.value),
+        ActionBody::Token(TokenAction::Permit2TransferFrom(p)) => Some(p.nonce.value),
+        _ => None,
+    }
 }
 
 fn u256_from_json_decimal(value: &Value) -> Option<U256> {

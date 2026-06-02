@@ -702,10 +702,18 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                 let per_item_body = emit.get("body").ok_or_else(|| {
                     EngineErrorDto::new("invalid_bundle", "missing emit.body".to_string())
                 })?;
+                let parallel_sources = emit.get("parallel_sources");
                 let per_item_live_inputs = emit.get("live_inputs");
-                build_array_emit(&ctx, array_source, per_item_body, per_item_live_inputs).map_err(
-                    |error| EngineErrorDto::new("build_array_emit_failed", error.to_string()),
-                )?
+                build_array_emit(
+                    &ctx,
+                    array_source,
+                    parallel_sources,
+                    per_item_body,
+                    per_item_live_inputs,
+                )
+                .map_err(|error| {
+                    EngineErrorDto::new("build_array_emit_failed", error.to_string())
+                })?
             }
             // A-redux.2 — `tagged_dispatch` (HyperLiquid CoreWriter mechanism).
             // ONE action is encoded as `data[0]=version ‖ data[tag..tag+sz]=
@@ -1033,10 +1041,16 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
             let per_item_body = emit.get("body").ok_or_else(|| {
                 EngineErrorDto::new("invalid_bundle", "missing emit.body".to_string())
             })?;
+            let parallel_sources = emit.get("parallel_sources");
             let per_item_live_inputs = emit.get("live_inputs");
-            build_array_emit(&ctx, array_source, per_item_body, per_item_live_inputs).map_err(
-                |error| EngineErrorDto::new("build_array_emit_failed", error.to_string()),
-            )?
+            build_array_emit(
+                &ctx,
+                array_source,
+                parallel_sources,
+                per_item_body,
+                per_item_live_inputs,
+            )
+            .map_err(|error| EngineErrorDto::new("build_array_emit_failed", error.to_string()))?
         } else {
             let body_template = emit.get("body").ok_or_else(|| {
                 EngineErrorDto::new("invalid_bundle", "missing emit.body".to_string())

@@ -27,6 +27,29 @@
 - **manifest 를 manifest 로 검증하지 않는다.** projection 은 raw ABI decode / independent parser / primary-source fact 에서 온다.
 - **완료 기준은 opt-in strict 이다.** 기존 프로토콜을 한 번에 깨지 말고, protocol 단위로 strict 를 켠다.
 
+### 0.1 Completion Scope Vocabulary
+
+Do not use a bare "onboarding complete" claim. Every completion claim must
+name the scope it covers:
+
+| label | meaning | must still say |
+|---|---|---|
+| `primary-chain wallet-facing complete` | the canonical chain's ordinary wallet entrypoints are covered: routers, managers, permission/signature contracts, typed-data signing, and settlement contracts users/fillers actually hit through wallet-visible flows | direct factory-child calls, multichain expansion, and long-tail child universes may still be deferred |
+| `primary-chain full-surface complete` | every in-scope user-facing contract/function/signature on the canonical chain is covered, including direct child contracts that users can call | multichain expansion may still be deferred |
+| `source-materialized sample` | a representative child/pool/vault subset is generated from a machine-readable source and tested | this is evidence for the pattern, not full universe coverage |
+| `full factory-child universe complete` | every discovered factory/registry child is `cover`, `exclude`, or `defer`, and every `cover` child has generated callkeys or an explicit source resolver proven by `check:universe --require-cover-linkage` | nothing in that universe is silently implied by router coverage |
+| `blocked_external_data` / `blocked_environment` | a required external data lane or local build/test gate could not run | list the exact command, blocker, and rerun target |
+
+Primary-chain onboarding does **not** imply multichain support. Multichain
+address parity/ABI/source verification is a separate expansion phase unless the
+user explicitly asks to include it in the current protocol onboarding run.
+
+Wallet-facing coverage also does **not** imply direct pool/pair/vault coverage.
+If a router manifest uses live inputs or runtime lookup to discover pool facts,
+that supports the router transaction. It does not create callkeys for users who
+send transactions directly to the pool/pair/vault contract. Direct child calls
+need concrete manifests or a source resolver/generator and universe linkage.
+
 ---
 
 ## 1. Framework Code Skeleton
@@ -420,6 +443,11 @@ Rules:
   first, then decide cover/exclude/defer.
 - For exact callkey registries, every missing child address is a production miss
   even when the selector and ABI are already supported.
+- Router/manager transactions may discover pool metadata through live inputs,
+  source context, or host RPC. That is not direct child coverage. If users can
+  submit transactions directly to pool/pair/vault children and the current run
+  only targets wallet-facing router flows, record those child calls as deferred
+  full-universe work rather than counting them as covered.
 - If the protocol has thousands of pools, batching is allowed only with an
   explicit boundary such as chain, factory, creation block range, official list
   page, TVL cutoff, or product family. "Top pools" without a reproducible source
@@ -576,6 +604,14 @@ Real-tx floor:
 1. Etherscan API/MCP is the bulk lane. One `txlist` API call currently can return up to 10,000 tx, so the default target is **10,000 tx/protocol**, not 10,000 API calls. Re-check the current Etherscan docs before each onboarding; Free tier record limits are scheduled to drop to 1,000/request on 2026-07-01.
 2. Use `.env` `ETHERSCAN_API_KEY`; daily 100,000-call capacity is a safety budget, not a spending target.
 3. Fetch adapter-blind by P0 cover addresses, stratified by selector and block range. Do not choose txs by existing manifests.
+   For router/aggregator-heavy protocols, also run a wallet-facing target sweep
+   across the canonical router/manager/permission/signature/settlement
+   addresses. A good default for large representative protocols is about 5,000
+   recent tx per target, or a documented lower bound when traffic is sparse.
+   Record the target file, target count, raw tx count, matched count,
+   actionable unmatched count, and non-actionable disposition count. When using
+   the bulk sweep helper, pass the protocol surface root explicitly so residual
+   classification is not relative to the onboarding evidence directory.
    For pool-heavy/factory protocols, also sweep the P0 candidate/universe
    addresses or run selector/address stats over the whole universe. Do not limit
    real-tx sampling to the subset already selected for concrete manifests.
@@ -586,6 +622,19 @@ Real-tx floor:
 6. Dune MCP/API is the gap lane for Free-tier Etherscan txlist gaps such as Base/OP, decoded namespaces, selector stats, and cross-chain joins. Before relying on it, run MCP calibration: usage baseline, LIMIT 100/1000/5000 probe, partition WHERE, credit delta log.
 7. If Etherscan or Dune is unavailable, do not mark P2 real-tx complete. Record `blocked_external_data`, completed synthetic/golden scope, and the addresses/selectors to replay once the tool is connected.
 8. Commit only dedup representative corpus/golden entries; keep raw 10k+ dumps out of git.
+
+Typed-data floor:
+
+1. EIP-712 signing requests are not Etherscan transaction input. A real-tx sweep
+   is not evidence that typed-data signing parses.
+2. Every in-scope typed-data manifest needs at least one corpus or field-level
+   golden fixture routed through `route_typed_data`, with `primary_type`,
+   `verifying_contract`, and `witness_type` when present.
+3. Protocols with both off-chain signing and on-chain settlement must test both
+   surfaces separately. Example classes: order signing typed-data and reactor or
+   settlement contract execution calldata.
+4. Run the protocol-filtered corpus with `--require-expect-body`; typed-data
+   pass entries must pin semantic-critical fields just like calldata entries.
 
 Tool connection hints: Etherscan remote MCP is `https://mcp.etherscan.io/mcp` with bearer-token auth from `ETHERSCAN_API_KEY`. Dune remote MCP is `https://api.dune.com/mcp/v1` with OAuth or API-key auth. Never commit keys or raw external dumps.
 
@@ -666,7 +715,7 @@ If Tier 2/Tier 3/WASM-facing code changed:
 
 Current product-path caveats to check explicitly:
 
-- EIP-712 typed-data manifests can pass registry/WASM/harness tests while browser orchestration may still mark typed signatures as not routed. Treat typed-data support as harness-proven, product-unproven unless the extension route is exercised.
+- EIP-712 typed-data manifests can pass registry/WASM/harness tests while browser orchestration may still mark typed signatures as not routed. Treat typed-data support as harness-proven, product-unproven unless the extension route is exercised. Etherscan real-tx sweeps do not prove typed-data support; require signed-message corpus/golden evidence.
 - Native-transfer sentinel `0x00000000` is valid in WASM/harness corpus, but selector-less calldata can miss earlier in the extension TypeScript route. Do not claim production native-transfer support without checking that boundary.
 - Required remote policy-RPC/live/enrichment methods fail closed when no
   endpoint supplies them. The standalone Node `policy-rpc/` package has been
@@ -676,6 +725,8 @@ Current product-path caveats to check explicitly:
 Completion evidence must include:
 
 - `crates/integration-tests/onboarding/<protocol>/evidence.md`, copied from `ONBOARDING_EVIDENCE_TEMPLATE.md`
+- the exact completion label being claimed: `primary-chain wallet-facing`,
+  `primary-chain full-surface`, `full factory-child universe`, or blocked/deferred
 - every P0/P1/P2/P3/P4 mandatory row marked `done` or concrete `blocked`; otherwise do not claim the phase is complete
 - exact files added/changed
 - gate output

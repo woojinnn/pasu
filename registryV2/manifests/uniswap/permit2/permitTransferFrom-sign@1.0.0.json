@@ -1,0 +1,99 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/permit2/permitTransferFrom-sign@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "_note": "Permit2 SignatureTransfer typed-data PermitTransferFrom. This is an off-chain one-time transfer authorization: the signed surface includes owner=$from, spender, permitted token/amount, nonce, and deadline; recipient is supplied later at on-chain execution. selector 0x00000005 is sign-only synthetic to avoid by-callkey collisions on the shared Permit2 address.",
+  "match": {
+    "selector": "0x00000005",
+    "chain_to_addresses": {
+      "1": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    },
+    "typed_data": {
+      "domain_name": "Permit2",
+      "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "primary_type": "PermitTransferFrom",
+      "types": {
+        "PermitTransferFrom": [
+          { "name": "permitted", "type": "TokenPermissions" },
+          { "name": "spender", "type": "address" },
+          { "name": "nonce", "type": "uint256" },
+          { "name": "deadline", "type": "uint256" }
+        ],
+        "TokenPermissions": [
+          { "name": "token", "type": "address" },
+          { "name": "amount", "type": "uint256" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permitTransferFrom",
+    "abi": {
+      "name": "permitTransferFrom",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "permitTransferFrom",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "permitted",
+              "type": "tuple",
+              "components": [
+                { "name": "token", "type": "address" },
+                { "name": "amount", "type": "uint256" }
+              ]
+            },
+            { "name": "spender", "type": "address" },
+            { "name": "nonce", "type": "uint256" },
+            { "name": "deadline", "type": "uint256" }
+          ]
+        },
+        { "name": "signature", "type": "bytes" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "permit2_sign_transfer",
+        "permit2_sign_transfer": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.permitTransferFrom.permitted.token"
+            }
+          },
+          "owner": "$tx.from",
+          "spender": "$args.permitTransferFrom.spender",
+          "amount": "$args.permitTransferFrom.permitted.amount",
+          "sig_deadline": "$args.permitTransferFrom.deadline",
+          "nonce": "$args.permitTransferFrom.nonce",
+          "witness_type": "PermitTransferFrom"
+        }
+      }
+    },
+    "live_inputs": {
+      "nonce": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+          "function": "nonceBitmap(address,uint256)",
+          "decoder_id": "permit2_nonce_bitmap"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

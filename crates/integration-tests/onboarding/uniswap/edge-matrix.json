@@ -1,7 +1,7 @@
 {
   "protocol": "uniswap",
   "generated_at": "2026-06-02",
-  "purpose": "Fixed P2 edge matrix for wallet-facing Uniswap router, manager, Permit2, Universal Router, V4 PositionManager, PoolManager.initialize, and UniswapX signing/reactor gap cases.",
+  "purpose": "Fixed P2 edge matrix for wallet-facing Uniswap router, manager, Permit2, Universal Router, V4 PositionManager, PoolManager.initialize, UniswapX signing, UniswapX reactor settlement semantics, and representative direct V3 pool swap cases.",
   "required_categories": [
     "permission",
     "value",
@@ -194,6 +194,21 @@
       "semantic_fields": ["protocol-specific unknown", "fail-closed warn path", "pool key is not mis-modeled as swap/liquidity"]
     },
     {
+      "id": "direct-v3-pool-swap-signed-amount",
+      "disposition": "covered",
+      "categories": ["value", "path"],
+      "artifact": {
+        "kind": "test",
+        "file": "crates/adapters/mappers/src/declarative/builtin_fn.rs",
+        "symbols": [
+          "uniswap_v3_pool_swap_field_positive_amount_is_exact_input",
+          "uniswap_v3_pool_swap_field_negative_amount_is_exact_output"
+        ]
+      },
+      "expect": "pass",
+      "semantic_fields": ["zeroForOne token direction", "positive amountSpecified exact_input", "negative amountSpecified exact_output"]
+    },
+    {
       "id": "typed-data-uniswapx-exclusive-dutch",
       "disposition": "covered",
       "categories": ["permission", "deadline", "value"],
@@ -206,8 +221,8 @@
       "semantic_fields": ["PermitWitnessTransferFrom witness", "reactor", "sell token", "buy token", "valid_until"]
     },
     {
-      "id": "blocked-uniswapx-reactor-execute",
-      "disposition": "blocked",
+      "id": "uniswapx-reactor-execute-settle-intent",
+      "disposition": "covered",
       "categories": ["nested", "array", "value"],
       "artifact": {
         "kind": "corpus",
@@ -215,12 +230,12 @@
         "intent": "ExclusiveDutchOrderReactor (V1, mainnet) execute((bytes,bytes))",
         "tx_hash": "0xdb878f5c39f4ec654f15579ac86a24ac4e0394bb686c4dda71023941832ba357"
       },
-      "expect": "error",
-      "semantic_fields": ["SignedOrder.order bytes require reactor-family Tier B decode before safe fund-movement modeling"]
+      "expect": "pass",
+      "semantic_fields": ["Amm::SettleIntentOrder", "reactor target", "SignedOrder.order bytes decoded by family"]
     },
     {
-      "id": "blocked-uniswapx-reactor-execute-batch",
-      "disposition": "blocked",
+      "id": "uniswapx-reactor-execute-batch-settle-intent",
+      "disposition": "covered",
       "categories": ["nested", "array", "value"],
       "artifact": {
         "kind": "corpus",
@@ -228,8 +243,8 @@
         "intent": "ExclusiveDutchOrderReactor (V1, mainnet) executeBatch((bytes,bytes)[])",
         "tx_hash": "0x020a81ca72eb4399d84dd4fca2379255f5ad465e6fa24ba564404dfd815b80d7"
       },
-      "expect": "error",
-      "semantic_fields": ["SignedOrder[] array requires per-order decode before safe fund-movement modeling"]
+      "expect": "pass",
+      "semantic_fields": ["Multicall of Amm::SettleIntentOrder", "reactor target", "mixed-family SignedOrder decode fallback"]
     }
   ]
 }

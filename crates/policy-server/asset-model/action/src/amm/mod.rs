@@ -41,6 +41,8 @@ pub enum AmmAction {
     CollectFees(CollectFeesAction),
     /// Sign an EIP-712 intent order (`UniswapX` / `CowSwap` / `1inch Fusion`, ...).
     SignIntentOrder(SignIntentOrderAction),
+    /// Submit an on-chain fill/settlement for a signed intent order.
+    SettleIntentOrder(SettleIntentOrderAction),
     /// Cancel a previously signed intent order.
     CancelIntentOrder(CancelIntentOrderAction),
 }
@@ -58,6 +60,7 @@ impl AmmAction {
             Self::RemoveLiquidity(_) => "remove_liquidity",
             Self::CollectFees(_) => "collect_fees",
             Self::SignIntentOrder(_) => "sign_intent_order",
+            Self::SettleIntentOrder(_) => "settle_intent_order",
             Self::CancelIntentOrder(_) => "cancel_intent_order",
         }
     }
@@ -71,6 +74,7 @@ impl AmmAction {
             Self::RemoveLiquidity(a) => Some(a.venue.name()),
             Self::CollectFees(a) => Some(a.venue.name()),
             Self::SignIntentOrder(a) => Some(a.venue.name()),
+            Self::SettleIntentOrder(a) => Some(a.venue.name()),
             Self::CancelIntentOrder(a) => Some(a.venue.name()),
         }
     }

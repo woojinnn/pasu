@@ -1,0 +1,69 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-pool/burn@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Direct Uniswap V3 pool burn(int24,int24,uint128) coverage. Pool-level burn updates caller-owned tick-range liquidity without NFPM token context; route explicit Unknown/fail-closed until callback/range semantics are modeled.",
+  "match": {
+    "selector": "0xa34123a7",
+    "chain_to_addresses_source": "uniswap:v3_pool_candidates",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "burn",
+    "abi": {
+      "name": "burn",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "tickLower",
+          "type": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24"
+        },
+        {
+          "name": "amount",
+          "type": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v3_pool_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and appends a per-pool id suffix"
+  }
+}

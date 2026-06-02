@@ -1,0 +1,40 @@
+{
+  "contract": "UniswapX ExclusiveDutchOrderReactor",
+  "chainId": 1,
+  "address": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+  "snapshot": "uniswapx-exclusive-dutch-reactor-mainnet.abi.json",
+  "note": "UniswapX reactor settlement surface triage. SignedOrder.order is an opaque bytes payload whose family-specific struct is decoded in a later Tier-B pass; these entrypoints are still COVER so wallet traffic routes to an explicit Unknown fail-closed action instead of missing the registry.",
+  "functions": {
+    "0x3f62192e": {
+      "name": "execute",
+      "decision": "cover",
+      "reason": "filler settles one signed UniswapX order; route conservatively as Unknown until SignedOrder inner bytes semantics are decoded"
+    },
+    "0x0d7a16c3": {
+      "name": "executeBatch",
+      "decision": "cover",
+      "reason": "filler settles a batch of signed UniswapX orders; route conservatively as Unknown until SignedOrder inner bytes semantics are decoded"
+    },
+    "0x13fb72c7": {
+      "name": "executeBatchWithCallback",
+      "decision": "cover",
+      "reason": "callback-enabled batch reactor settlement; route conservatively as Unknown because callback data and inner order bytes need Tier-B semantics"
+    },
+    "0x0d335884": {
+      "name": "executeWithCallback",
+      "decision": "cover",
+      "reason": "callback-enabled single reactor settlement; route conservatively as Unknown because callback data and inner order bytes need Tier-B semantics"
+    },
+    "0x2d771389": {
+      "name": "setProtocolFeeController",
+      "decision": "exclude",
+      "reason": "owner/protocol fee administration, not an end-user wallet settlement intent"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "owner administration, not an end-user wallet settlement intent"
+    }
+  },
+  "signed_structs": {}
+}

@@ -43,6 +43,8 @@ const AMM_COLLECT_FEES_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/collect_fees.cedarschema");
 const AMM_REMOVE_LIQUIDITY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/remove_liquidity.cedarschema");
+const AMM_SETTLE_INTENT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/amm/settle_intent_order.cedarschema");
 const AMM_SIGN_INTENT_ORDER_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/sign_intent_order.cedarschema");
 const AMM_SWAP_SCHEMA: &str =
@@ -213,6 +215,12 @@ const TOKEN_PERMIT2_APPROVE_SCHEMA: &str =
 const TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/token/permit2_sign_allowance.cedarschema"
 );
+const TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/token/permit2_sign_transfer.cedarschema"
+);
+const TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/token/permit2_transfer_from.cedarschema"
+);
 const TOKEN_REVOKE_APPROVAL_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/revoke_approval.cedarschema");
 
@@ -279,6 +287,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     AMM_CANCEL_INTENT_ORDER_SCHEMA,
     AMM_COLLECT_FEES_SCHEMA,
     AMM_REMOVE_LIQUIDITY_SCHEMA,
+    AMM_SETTLE_INTENT_ORDER_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA,
     AMM_SWAP_SCHEMA,
     LENDING_BORROW_SCHEMA,
@@ -349,6 +358,8 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     TOKEN_NFT_TRANSFER_SCHEMA,
     TOKEN_PERMIT2_APPROVE_SCHEMA,
     TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
+    TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA,
+    TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA,
     TOKEN_REVOKE_APPROVAL_SCHEMA,
     HL_ORDER_SCHEMA,
     HL_UPDATE_LEVERAGE_SCHEMA,
@@ -814,6 +825,7 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("cancel_intent_order", "CancelIntentOrderContext"),
     ("collect_fees", "CollectFeesContext"),
     ("remove_liquidity", "RemoveLiquidityContext"),
+    ("settle_intent_order", "SettleIntentOrderContext"),
     ("sign_intent_order", "SignIntentOrderContext"),
     ("swap", "SwapContext"),
     // lending (alphabetical)
@@ -856,6 +868,8 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("nft_transfer", "NftTransferContext"),
     ("permit2_approve", "Permit2ApproveContext"),
     ("permit2_sign_allowance", "Permit2SignAllowanceContext"),
+    ("permit2_sign_transfer", "Permit2SignTransferContext"),
+    ("permit2_transfer_from", "Permit2TransferFromContext"),
     ("revoke_approval", "RevokeApprovalContext"),
     // hyperliquid_core (alphabetical) — `hl_`-prefixed tags keep these globally
     // unique (notably `withdraw` is already a Lending tag).

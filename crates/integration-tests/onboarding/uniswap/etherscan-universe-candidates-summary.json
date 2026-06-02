@@ -1,26 +1,29 @@
 {
-  "generatedAt": "2026-06-01T16:56:19.728Z",
+  "generatedAt": "2026-06-01T18:44:42.314Z",
   "protocol": "uniswap",
   "source": "Etherscan v2 account txlist, adapter-blind by P0 address-universe candidate addresses",
   "targetSource": "universe-candidates",
   "apiCallsUsed": 8,
   "targetsQueried": 8,
   "coverAddressesQueried": 8,
-  "offset": 100,
+  "offset": 10000,
   "pageLimit": 1,
   "targetRawTxFloor": 1,
   "floorMet": true,
   "rawTxsSeen": 3,
   "uniqueTxHashesSeen": 3,
   "inputTxsSeen": 3,
-  "matchedInputTxs": 0,
+  "matchedInputTxs": 3,
   "excludedInputTxs": 0,
-  "unmatchedInputTxs": 3,
+  "unmatchedInputTxs": 0,
+  "actionableUnmatchedInputTxs": 0,
+  "nonActionableUnmatchedInputTxs": 0,
+  "unmatchedDispositions": [],
   "uniqueSelectorsSeen": 3,
-  "uniqueMatchedSelectorsSeen": 0,
+  "uniqueMatchedSelectorsSeen": 3,
   "uniqueExcludedSelectorsSeen": 0,
-  "uniqueUnmatchedSelectorsSeen": 3,
-  "matchedCallkeys": 0,
+  "uniqueUnmatchedSelectorsSeen": 0,
+  "matchedCallkeys": 3,
   "errors": [
     {
       "chainId": 8453,
@@ -65,170 +68,33 @@
       "count": 1
     }
   ],
-  "topMatchedSelectors": [],
-  "topExcludedSelectors": [],
-  "topUnmatchedSelectors": [
+  "topMatchedSelectors": [
     {
       "selector": "0x095ea7b3",
-      "count": 1,
-      "knownElsewhere": [
-        {
-          "chainId": 1,
-          "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        }
-      ]
+      "count": 1
     },
     {
       "selector": "0xa9059cbb",
-      "count": 1,
-      "knownElsewhere": [
-        {
-          "chainId": 1,
-          "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        }
-      ]
+      "count": 1
     },
     {
       "selector": "0xfff6cae9",
-      "count": 1,
-      "knownElsewhere": []
+      "count": 1
     }
   ],
-  "topUnmatchedAddressSelectors": [
+  "topExcludedSelectors": [],
+  "topUnmatchedSelectors": [],
+  "topUnmatchedAddressSelectors": [],
+  "topExcludedAddressSelectors": [],
+  "manifestSelectorsByCoverAddress": [
     {
       "chainId": 1,
       "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
       "name": "uniswap-v2-child-universe-deferred",
       "selector": "0xa9059cbb",
-      "count": 1,
-      "knownElsewhere": [
-        {
-          "chainId": 1,
-          "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
-          "manifestId": "compound-v3/comet/transfer@1.0.0"
-        }
-      ],
-      "examples": [
-        {
-          "chainId": 1,
-          "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
-          "name": "uniswap-v2-child-universe-deferred",
-          "selector": "0xa9059cbb",
-          "txHash": "0xda31ada6982c1c6dce13b18d2fe886cecdb81fc43dbf64af8f6d0664e4426794",
-          "from": "0x2c37a79002d66a63fc9f1d7b880c0c90e7c1fb25",
-          "to": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
-          "value": "0",
-          "blockNumber": "25222765",
-          "timeStamp": "1780319807",
-          "input": "0xa9059cbb000000000000000000000000000000000000000000000000000000000000dead0000000000000000000000000000000000000000000000011ca4bf438b5517df"
-        }
+      "txCount": 1,
+      "manifestIds": [
+        "standard/erc20/transfer@1.0.0"
       ]
     },
     {
@@ -236,22 +102,9 @@
       "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
       "name": "uniswap-v2-child-universe-deferred",
       "selector": "0xfff6cae9",
-      "count": 1,
-      "knownElsewhere": [],
-      "examples": [
-        {
-          "chainId": 1,
-          "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
-          "name": "uniswap-v2-child-universe-deferred",
-          "selector": "0xfff6cae9",
-          "txHash": "0x61372cab188b563fc2c583875028af02d7bd664d36c821fbcba85a8027e9b6ab",
-          "from": "0x2c37a79002d66a63fc9f1d7b880c0c90e7c1fb25",
-          "to": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
-          "value": "0",
-          "blockNumber": "25222779",
-          "timeStamp": "1780319975",
-          "input": "0xfff6cae9"
-        }
+      "txCount": 1,
+      "manifestIds": [
+        "uniswap/v2-pair/sync/1-v2-pair-d841745e@1.0.0"
       ]
     },
     {
@@ -259,68 +112,162 @@
       "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
       "name": "uniswap-v2-child-universe-deferred",
       "selector": "0x095ea7b3",
-      "count": 1,
-      "knownElsewhere": [
-        {
-          "chainId": 1,
-          "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 1,
-          "address": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        },
-        {
-          "chainId": 10,
-          "address": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
-          "manifestId": "compound-v3/comet/approve@1.0.0"
-        }
-      ],
-      "examples": [
-        {
-          "chainId": 42161,
-          "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
-          "name": "uniswap-v2-child-universe-deferred",
-          "selector": "0x095ea7b3",
-          "txHash": "0x959fedfca00aae9ce9b3024b73a8ddf4f13569ef992d5064035f838e74a07cda",
-          "from": "0xa5444d8f1c95b257bb4d3e66e2f6706ab4444270",
-          "to": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
-          "value": "0",
-          "blockNumber": "468847942",
-          "timeStamp": "1780297068",
-          "input": "0x095ea7b30000000000000000000000004752ba5dbc23f44d87826276bf6fd6b1c372ad24ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-        }
+      "txCount": 1,
+      "manifestIds": [
+        "standard/erc20/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x022c0d9f",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/swap/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x095ea7b3",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x23b872dd",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x6a627842",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/mint/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x89afcb44",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/burn/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xbc25cf77",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/skim/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xd505accf",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/permit/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x022c0d9f",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/swap/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x23b872dd",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x6a627842",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/mint/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x89afcb44",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/burn/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xa9059cbb",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/transfer@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xbc25cf77",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/skim/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xd505accf",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/permit/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xfff6cae9",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/sync/42161-v2-pair-1be1b384@1.0.0"
       ]
     }
   ],
-  "topExcludedAddressSelectors": [],
-  "manifestSelectorsByCoverAddress": [],
   "perAddress": [
     {
       "name": "uniswap-v2-child-universe-deferred",
@@ -328,59 +275,27 @@
       "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
       "rawTxs": 2,
       "inputTxs": 2,
-      "matchedInputTxs": 0,
+      "matchedInputTxs": 2,
       "excludedInputTxs": 0,
-      "unmatchedInputTxs": 2,
+      "unmatchedInputTxs": 0,
       "topSelectors": [
         {
           "selector": "0xa9059cbb",
           "count": 1,
-          "manifestIds": []
-        },
-        {
-          "selector": "0xfff6cae9",
-          "count": 1,
-          "manifestIds": []
-        }
-      ],
-      "topUnmatchedSelectors": [
-        {
-          "selector": "0xa9059cbb",
-          "count": 1,
-          "knownElsewhere": [
-            {
-              "chainId": 1,
-              "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
-              "manifestId": "compound-v3/comet/transfer@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-              "manifestId": "compound-v3/comet/transfer@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
-              "manifestId": "compound-v3/comet/transfer@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
-              "manifestId": "compound-v3/comet/transfer@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
-              "manifestId": "compound-v3/comet/transfer@1.0.0"
-            }
+          "manifestIds": [
+            "standard/erc20/transfer@1.0.0"
           ]
         },
         {
           "selector": "0xfff6cae9",
           "count": 1,
-          "knownElsewhere": []
+          "manifestIds": [
+            "uniswap/v2-pair/sync/1-v2-pair-d841745e@1.0.0"
+          ]
         }
       ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     },
     {
@@ -389,49 +304,20 @@
       "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
       "rawTxs": 1,
       "inputTxs": 1,
-      "matchedInputTxs": 0,
+      "matchedInputTxs": 1,
       "excludedInputTxs": 0,
-      "unmatchedInputTxs": 1,
+      "unmatchedInputTxs": 0,
       "topSelectors": [
         {
           "selector": "0x095ea7b3",
           "count": 1,
-          "manifestIds": []
-        }
-      ],
-      "topUnmatchedSelectors": [
-        {
-          "selector": "0x095ea7b3",
-          "count": 1,
-          "knownElsewhere": [
-            {
-              "chainId": 1,
-              "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
-              "manifestId": "compound-v3/comet/approve@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-              "manifestId": "compound-v3/comet/approve@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
-              "manifestId": "compound-v3/comet/approve@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
-              "manifestId": "compound-v3/comet/approve@1.0.0"
-            },
-            {
-              "chainId": 1,
-              "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
-              "manifestId": "compound-v3/comet/approve@1.0.0"
-            }
+          "manifestIds": [
+            "standard/erc20/approve@1.0.0"
           ]
         }
       ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     },
     {
@@ -445,6 +331,7 @@
       "unmatchedInputTxs": 0,
       "topSelectors": [],
       "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     },
     {
@@ -458,6 +345,7 @@
       "unmatchedInputTxs": 0,
       "topSelectors": [],
       "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     },
     {
@@ -471,6 +359,7 @@
       "unmatchedInputTxs": 0,
       "topSelectors": [],
       "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     },
     {
@@ -484,6 +373,7 @@
       "unmatchedInputTxs": 0,
       "topSelectors": [],
       "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     },
     {
@@ -497,6 +387,7 @@
       "unmatchedInputTxs": 0,
       "topSelectors": [],
       "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     },
     {
@@ -510,6 +401,7 @@
       "unmatchedInputTxs": 0,
       "topSelectors": [],
       "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
       "topExcludedSelectors": []
     }
   ]

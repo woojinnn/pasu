@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-06-01T17:50:06.166Z",
+  "protocol": "uniswap",
+  "source": "Etherscan v2 proxy eth_call over representative Uniswap V2 pair universe candidates",
+  "universePath": "registryV2/surface/uniswap/_address_universe.json",
+  "writeTokens": true,
+  "allowPartial": true,
+  "candidatesSeen": 4,
+  "enriched": 2,
+  "errors": [
+    {
+      "chainId": 8453,
+      "address": "0x58aeb29a7e88b83ce8509b43ce4b42d6e68a0dd1",
+      "error": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    },
+    {
+      "chainId": 10,
+      "address": "0xaefede5dfacde87bc09e9ae12dfa94275b4ea01d",
+      "error": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    }
+  ],
+  "rows": [
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; direct pair support and full LP-token universe materialization deferred",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "chain": "arbitrum",
+      "token0": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "token1": "0xc55292aced03da1a4762bd53227980d3ab9257db",
+      "decimals": 18,
+      "symbol": "UNI-V2",
+      "name": "Uniswap V2",
+      "tokenFile": "registryV2/tokens/42161/0x1be1b3847364f91fad268fb7e1067bce7f1fc87a.json"
+    },
+    {
+      "chainId": 8453,
+      "address": "0x58aeb29a7e88b83ce8509b43ce4b42d6e68a0dd1",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; direct pair support and full LP-token universe materialization deferred",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "chain": "base",
+      "error": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; direct pair support and full LP-token universe materialization deferred",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "chain": "ethereum",
+      "token0": "0x64664800a97955dec5053cf7c2923cb72de15c8f",
+      "token1": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "decimals": 18,
+      "symbol": "UNI-V2",
+      "name": "Uniswap V2",
+      "tokenFile": "registryV2/tokens/1/0xd841745e607f0d8d0027d92b10b7e4005d20ecab.json"
+    },
+    {
+      "chainId": 10,
+      "address": "0xaefede5dfacde87bc09e9ae12dfa94275b4ea01d",
+      "decision": "defer",
+      "reason": "representative latest Uniswap V2 pair from Dune sample; direct pair support and full LP-token universe materialization deferred",
+      "batch": "uniswap-v2-child-universe-deferred",
+      "chain": "optimism",
+      "error": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    }
+  ]
+}

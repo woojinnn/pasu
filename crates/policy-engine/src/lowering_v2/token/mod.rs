@@ -18,6 +18,8 @@ mod nft_set_approval_for_all;
 mod nft_transfer;
 mod permit2_approve;
 mod permit2_sign_allowance;
+mod permit2_sign_transfer;
+mod permit2_transfer_from;
 mod revoke_approval;
 
 /// Dispatch a [`TokenAction`] to its per-action lowering.
@@ -32,6 +34,8 @@ pub(crate) fn lower(action: &TokenAction, ctx: &LowerCtx<'_>) -> Result<LoweredA
         TokenAction::Erc20Permit(a) => erc20_permit::lower(a, ctx),
         TokenAction::Permit2Approve(a) => permit2_approve::lower(a, ctx),
         TokenAction::Permit2SignAllowance(a) => permit2_sign_allowance::lower(a, ctx),
+        TokenAction::Permit2SignTransfer(a) => permit2_sign_transfer::lower(a, ctx),
+        TokenAction::Permit2TransferFrom(a) => permit2_transfer_from::lower(a, ctx),
         TokenAction::Erc20Transfer(a) => erc20_transfer::lower(a, ctx),
         TokenAction::NftApprove(a) => nft_approve::lower(a, ctx),
         TokenAction::NftSetApprovalForAll(a) => nft_set_approval_for_all::lower(a, ctx),

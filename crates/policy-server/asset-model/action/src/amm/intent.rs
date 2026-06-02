@@ -1,4 +1,5 @@
-//! Intent-based off-chain signed orders — `SignIntentOrder` / `CancelIntentOrder`.
+//! Intent-based off-chain signed orders — `SignIntentOrder` /
+//! `SettleIntentOrder` / `CancelIntentOrder`.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -34,6 +35,46 @@ pub struct SignIntentOrderAction {
     pub valid_until: Time,
     /// Simulation-time inputs (expected fill price, competing-order count).
     pub live_inputs: SignIntentOrderLiveInputs,
+}
+
+/// Submit an on-chain fill/settlement transaction for a previously signed
+/// intent order. The actor may be the swapper or a third-party filler; the
+/// action therefore records the signed order's economic terms without
+/// pretending the submitter is necessarily the seller.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct SettleIntentOrderAction {
+    /// Intent venue whose settlement contract is being called.
+    pub venue: IntentVenue,
+    /// Address that originally signed/created the order.
+    #[tsify(type = "string")]
+    pub swapper: Address,
+    /// Token the signed order sells.
+    pub sell: TokenRef,
+    /// Token the signed order buys.
+    pub buy: TokenRef,
+    /// Sell-side amount/cap decoded from the signed order.
+    #[tsify(type = "string")]
+    pub sell_amount: U256,
+    /// Minimum acceptable buy-side amount decoded from the signed order.
+    #[tsify(type = "string")]
+    pub buy_min: U256,
+    /// Order semantics (Dutch / Limit / RFQ).
+    pub order_kind: IntentOrderKind,
+    /// Recipient of the buy token when the order fills.
+    #[tsify(type = "string")]
+    pub recipient: Address,
+    /// Order expiry timestamp.
+    pub valid_until: Time,
+    /// Venue-side order nonce.
+    #[tsify(type = "string")]
+    pub order_nonce: U256,
+    /// Signature submitted with the settlement transaction, when surfaced by
+    /// the calldata route. Stored for audit; verification is an upstream
+    /// adapter/orchestrator responsibility.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub signature: Option<Bytes>,
 }
 
 /// Off-chain intent-order venue (EIP-712 signed limit / Dutch / RFQ orders).

@@ -30,6 +30,7 @@ import {
   gaugesResolver,
   stableNgResolvers,
 } from "./curve.ts";
+import { v2PairCandidatesResolver, v3PoolCandidatesResolver } from "./uniswap.ts";
 import type { ProtocolResolver, ProtocolSourceKind } from "./types.ts";
 
 export { rpcClient } from "./rpc.ts";
@@ -58,6 +59,8 @@ const protocolSourceResolverList: ProtocolResolver[] = [
   factoryTwocryptoResolver,
   ...factoryV2Resolvers,
   ...stableNgResolvers,
+  v2PairCandidatesResolver,
+  v3PoolCandidatesResolver,
 ];
 
 export const PROTOCOL_SOURCE_RESOLVERS: Record<ProtocolSourceKind, ProtocolResolver> =

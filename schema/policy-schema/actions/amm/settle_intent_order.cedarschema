@@ -1,0 +1,55 @@
+// Amm::SettleIntentOrder — submit an on-chain fill/settlement transaction for
+// a previously signed intent order.
+//
+// Unlike `SignIntentOrder`, this is an on-chain transaction and the submitter
+// may be a third-party filler rather than the swapper. The context exposes the
+// signed order's economic terms for policy/audit without claiming the submitter
+// necessarily owns the sell-side funds.
+
+namespace Amm {
+  type SettleIntentOrderContext = {
+    // Common envelope. `meta.nature.kind` is `"onchain_tx"`.
+    meta: Core::ActionMeta,
+    // Intent venue whose settlement contract is being called.
+    venue: IntentVenue,
+    // Address that originally signed/created the order.
+    swapper: String,
+    // Token being sold by the signed order.
+    sell: Core::TokenRef,
+    // Token being bought by the signed order.
+    buy: Core::TokenRef,
+    // Sell-side amount/cap (U256 hex).
+    sellAmount: String,
+    // Token-native nano sibling of sellAmount (Host-populated).
+    sellAmountNano?: Long,
+    // USD estimate of sell side (Host-populated).
+    sellAmountUsd?: decimal,
+    // Minimum acceptable buy-side amount (U256 hex).
+    buyMin: String,
+    // Token-native nano sibling of buyMin (Host-populated).
+    buyMinNano?: Long,
+    // USD estimate of buy side (Host-populated).
+    buyMinUsd?: decimal,
+    // "dutch" | "limit" | "rfq" — order price-discovery semantics.
+    orderKind: String,
+    // Recipient of the buy token when the order fills.
+    recipient: String,
+    // Order expiry (unix seconds).
+    validUntil: Long,
+    // Venue-side order nonce (U256 hex).
+    orderNonce: String,
+    // Submitted swapper signature, when surfaced by calldata.
+    signature?: String,
+    // Manifest-extensible slot.
+    custom?: SettleIntentOrderCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type SettleIntentOrderCustomContext = {};
+
+  action "SettleIntentOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: SettleIntentOrderContext,
+  };
+}

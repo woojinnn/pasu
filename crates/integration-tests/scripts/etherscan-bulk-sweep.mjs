@@ -48,6 +48,10 @@ const manifestsRoot = path.resolve(
   repoRoot,
   args.get("--manifests-root") ?? "registryV2/manifests",
 );
+const indexRoot = path.resolve(
+  repoRoot,
+  args.get("--index-root") ?? "registryV2/index/by-callkey",
+);
 const outPath = path.resolve(
   repoRoot,
   args.get("--out") ??
@@ -136,10 +140,29 @@ function addUnmatchedExample(map, key, tx, target, selector) {
   map.set(key, examples);
 }
 
-function loadManifestCallkeys(root) {
+function addCallkeyMeta({ byCallkey, bySelector }, callkey, meta) {
+  if (!byCallkey.has(callkey)) byCallkey.set(callkey, []);
+  const existing = byCallkey
+    .get(callkey)
+    .some((row) => row.manifestId === meta.manifestId && row.file === meta.file);
+  if (!existing) byCallkey.get(callkey).push(meta);
+  if (!bySelector.has(meta.selector)) bySelector.set(meta.selector, []);
+  const selectorExisting = bySelector
+    .get(meta.selector)
+    .some(
+      (row) =>
+        row.chainId === meta.chainId &&
+        row.address === meta.address &&
+        row.manifestId === meta.manifestId,
+    );
+  if (!selectorExisting) bySelector.get(meta.selector).push(meta);
+}
+
+function loadManifestCallkeys(manifestRoot, generatedIndexRoot) {
   const byCallkey = new Map();
   const bySelector = new Map();
-  for (const file of walkJsonFiles(root)) {
+  const maps = { byCallkey, bySelector };
+  for (const file of walkJsonFiles(manifestRoot)) {
     let manifest;
     try {
       manifest = readJson(file);
@@ -161,20 +184,46 @@ function loadManifestCallkeys(root) {
           selector,
           chainId: Number(chainId),
           address: lowerAddress(address),
+          source: "manifest",
         };
-        if (!byCallkey.has(callkey)) byCallkey.set(callkey, []);
-        byCallkey.get(callkey).push(meta);
-        if (!bySelector.has(selector)) bySelector.set(selector, []);
-        bySelector.get(selector).push(meta);
+        addCallkeyMeta(maps, callkey, meta);
       }
     }
   }
+
+  if (fs.existsSync(generatedIndexRoot)) {
+    for (const file of walkJsonFiles(generatedIndexRoot)) {
+      const name = path.basename(file, ".json");
+      const parts = name.split("__");
+      if (parts.length !== 3) continue;
+      const [chainIdRaw, address, selector] = parts;
+      const chainId = Number(chainIdRaw);
+      if (!chainId || !address || !selector) continue;
+      let entry;
+      try {
+        entry = readJson(file);
+      } catch {
+        continue;
+      }
+      const manifestId = entry?.bundle_id ?? entry?.bundle?.id ?? path.relative(repoRoot, file);
+      addCallkeyMeta(maps, `${chainId}__${address.toLowerCase()}__${selector.toLowerCase()}`, {
+        manifestId,
+        file: entry?.manifest_path ?? path.relative(repoRoot, file),
+        selector: selector.toLowerCase(),
+        chainId,
+        address: address.toLowerCase(),
+        source: "generated_index",
+      });
+    }
+  }
+
   return { byCallkey, bySelector };
 }
 
 function loadCoverageDecisions(root) {
   const byCallkey = new Map();
-  if (!fs.existsSync(root)) return byCallkey;
+  const selectorsByTarget = new Map();
+  if (!fs.existsSync(root)) return { byCallkey, selectorsByTarget };
   for (const file of walkJsonFiles(root)) {
     if (!file.endsWith(".coverage.json")) continue;
     let coverage;
@@ -189,8 +238,12 @@ function loadCoverageDecisions(root) {
     if (!chainId || !address || !functions || typeof functions !== "object") {
       continue;
     }
+    const targetKey = `${chainId}__${address}`;
+    if (!selectorsByTarget.has(targetKey)) selectorsByTarget.set(targetKey, new Set());
     for (const [selector, row] of Object.entries(functions)) {
-      byCallkey.set(`${chainId}__${address}__${selector.toLowerCase()}`, {
+      const normalizedSelector = selector.toLowerCase();
+      selectorsByTarget.get(targetKey).add(normalizedSelector);
+      byCallkey.set(`${targetKey}__${normalizedSelector}`, {
         decision: row?.decision,
         name: row?.name,
         reason: row?.reason,
@@ -198,7 +251,36 @@ function loadCoverageDecisions(root) {
       });
     }
   }
-  return byCallkey;
+  return { byCallkey, selectorsByTarget };
+}
+
+function classifyUnmatched({ target, selector, selectorsByTarget, bySelector }) {
+  const targetKey = `${target.chainId}__${target.address}`;
+  const snapshotSelectors = selectorsByTarget.get(targetKey);
+  if (!snapshotSelectors) {
+    return {
+      disposition: "missing_surface_coverage",
+      actionable: true,
+      reason: "target has no coverage snapshot, so this selector cannot be dispositioned",
+    };
+  }
+  if (!snapshotSelectors.has(selector)) {
+    const knownElsewhere = (bySelector.get(selector) ?? []).length > 0;
+    return {
+      disposition: knownElsewhere
+        ? "selector_known_elsewhere_wrong_target"
+        : "non_abi_or_text_calldata",
+      actionable: false,
+      reason: knownElsewhere
+        ? "selector is covered on another address but is absent from this target ABI snapshot"
+        : "selector is absent from this target ABI snapshot; examples are treated as misdirected, spam, or non-ABI calldata",
+    };
+  }
+  return {
+    disposition: "abi_selector_without_cover_or_exclude",
+    actionable: true,
+    reason: "selector is in this target coverage snapshot but has no matching manifest or explicit exclude",
+  };
 }
 
 async function etherscanTxlist({ apiKey, chainId, address, page }) {
@@ -279,8 +361,8 @@ function loadTargets() {
 }
 
 const coverTargets = loadTargets();
-const { byCallkey, bySelector } = loadManifestCallkeys(manifestsRoot);
-const coverageByCallkey = loadCoverageDecisions(surfaceRoot);
+const { byCallkey, bySelector } = loadManifestCallkeys(manifestsRoot, indexRoot);
+const { byCallkey: coverageByCallkey, selectorsByTarget } = loadCoverageDecisions(surfaceRoot);
 
 const generatedAt = new Date().toISOString();
 const selectorCounts = new Map();
@@ -290,6 +372,7 @@ const excludedSelectorCounts = new Map();
 const addressSelectorCounts = new Map();
 const unmatchedAddressSelectorCounts = new Map();
 const excludedAddressSelectorCounts = new Map();
+const unmatchedDispositionCounts = new Map();
 const matchedCallkeys = new Map();
 const unmatchedExamples = new Map();
 const excludedExamples = new Map();
@@ -301,6 +384,8 @@ let rawTxsSeen = 0;
 let inputTxsSeen = 0;
 let matchedInputTxs = 0;
 let excludedInputTxs = 0;
+let actionableUnmatchedInputTxs = 0;
+let nonActionableUnmatchedInputTxs = 0;
 
 for (const target of coverTargets) {
   let targetRawTxs = 0;
@@ -308,6 +393,7 @@ for (const target of coverTargets) {
   let targetMatched = 0;
   const targetSelectors = new Map();
   const targetUnmatched = new Map();
+  const targetUnmatchedDispositions = new Map();
   const targetExcluded = new Map();
   for (let page = 1; page <= pageLimit; page += 1) {
     apiCallsUsed += 1;
@@ -352,6 +438,19 @@ for (const target of coverTargets) {
         addCount(excludedAddressSelectorCounts, addressSelector);
         addUnmatchedExample(excludedExamples, addressSelector, tx, target, selector);
       } else {
+        const classification = classifyUnmatched({
+          target,
+          selector,
+          selectorsByTarget,
+          bySelector,
+        });
+        if (classification.actionable) {
+          actionableUnmatchedInputTxs += 1;
+        } else {
+          nonActionableUnmatchedInputTxs += 1;
+        }
+        addCount(unmatchedDispositionCounts, classification.disposition);
+        addCount(targetUnmatchedDispositions, classification.disposition);
         addCount(unmatchedSelectorCounts, selector);
         addCount(targetUnmatched, selector);
         addCount(unmatchedAddressSelectorCounts, addressSelector);
@@ -383,12 +482,24 @@ for (const target of coverTargets) {
     topUnmatchedSelectors: mapToSortedArray(targetUnmatched, 12).map(({ key, count }) => ({
       selector: key,
       count,
+      disposition: classifyUnmatched({
+        target,
+        selector: key,
+        selectorsByTarget,
+        bySelector,
+      }).disposition,
       knownElsewhere: (bySelector.get(key) ?? []).slice(0, 5).map((m) => ({
         chainId: m.chainId,
         address: m.address,
         manifestId: m.manifestId,
       })),
     })),
+    unmatchedDispositions: mapToSortedArray(targetUnmatchedDispositions).map(
+      ({ key, count }) => ({
+        disposition: key,
+        count,
+      }),
+    ),
     topExcludedSelectors: mapToSortedArray(targetExcluded, 12).map(({ key, count }) => {
       const coverage = coverageByCallkey.get(`${target.chainId}__${target.address}__${key}`);
       return {
@@ -440,6 +551,12 @@ const summary = {
   matchedInputTxs,
   excludedInputTxs,
   unmatchedInputTxs: inputTxsSeen - matchedInputTxs - excludedInputTxs,
+  actionableUnmatchedInputTxs,
+  nonActionableUnmatchedInputTxs,
+  unmatchedDispositions: mapToSortedArray(unmatchedDispositionCounts).map(({ key, count }) => ({
+    disposition: key,
+    count,
+  })),
   uniqueSelectorsSeen: selectorCounts.size,
   uniqueMatchedSelectorsSeen: matchedSelectorCounts.size,
   uniqueExcludedSelectorsSeen: excludedSelectorCounts.size,
@@ -475,12 +592,25 @@ const summary = {
       const target = coverTargets.find(
         (row) => row.chainId === Number(chainId) && row.address === address,
       );
+      const classification = target
+        ? classifyUnmatched({
+            target,
+            selector,
+            selectorsByTarget,
+            bySelector,
+          })
+        : {
+            disposition: "unknown_target",
+            reason: "target not found in cover target list",
+          };
       return {
         chainId: Number(chainId),
         address,
         name: target?.name,
         selector,
         count,
+        disposition: classification.disposition,
+        dispositionReason: classification.reason,
         knownElsewhere: (bySelector.get(selector) ?? []).slice(0, 8).map((m) => ({
           chainId: m.chainId,
           address: m.address,
@@ -539,6 +669,8 @@ console.log(
       matchedInputTxs: summary.matchedInputTxs,
       excludedInputTxs: summary.excludedInputTxs,
       unmatchedInputTxs: summary.unmatchedInputTxs,
+      actionableUnmatchedInputTxs: summary.actionableUnmatchedInputTxs,
+      nonActionableUnmatchedInputTxs: summary.nonActionableUnmatchedInputTxs,
       uniqueSelectorsSeen: summary.uniqueSelectorsSeen,
       errors: summary.errors.length,
     },
