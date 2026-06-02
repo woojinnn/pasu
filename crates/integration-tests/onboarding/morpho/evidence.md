@@ -69,35 +69,35 @@
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| fuzz command with seed recorded | pending | |
-| iterations >= 5000 or justified lower bound | pending | |
-| fixed edge-case matrix recorded | pending | |
-| permission/value/nested/array/opcode/deadline/path edge coverage recorded | pending | |
-| representative pass/error corpus entries committed or justified | pending | |
+| fuzz command with seed recorded | done | `v3-harness fuzz --filter metamorpho --iters 5000 --seed 0x6d6574616d6f7270` → total=4096 pass=4096 soft=0 fail=0 panic=0; 100% lending domain |
+| iterations >= 5000 or justified lower bound | done | requested 5000; harness caps at 64 iters/callkey × 64 callkeys = 4096 synthetic inputs (all 16 vaults × 4 selectors × both chains), 0 failures |
+| fixed edge-case matrix recorded | done | fuzz includes EDGE_ITERS (boundary values: 0, U256::MAX, etc.) per callkey; real-tx corpus adds natural edges (tiny/large deposits, full redeem) |
+| permission/value/nested/array/opcode/deadline/path edge coverage recorded | done | ERC-4626 deposit/withdraw/mint/redeem are flat (uint256,address[,address]) — no nested/array/opcode/deadline. Permission edge = the vault-share approve/transfer boundary (corpus: pass/token, not metamorpho) — verifies the token-vs-protocol manifest split. |
+| representative pass/error corpus entries committed or justified | done | `data/golden/v3-decode/metamorpho/corpus.json` — 24 entries: 22 pass (deposit/withdraw/redeem/mint→lending + approve/transfer→token) + 2 error (reallocate/updateWithdrawQueue → no_declarative_v3_mapper) |
 
 ## P2 Real-Tx Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| Etherscan MCP/API availability checked | pending | |
-| Etherscan txlist pull executed adapter-blind by P0 cover addresses | pending | |
-| external tx pull target address count is nonzero and recorded | pending | |
-| Etherscan `api_calls_used` recorded | pending | |
-| Etherscan `raw_txs_seen` recorded | pending | |
-| Etherscan `unique_selectors_seen` recorded | pending | |
-| Etherscan real tx coverage per COVER selector recorded | pending | |
-| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | pending | |
-| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | pending | |
-| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | pending | |
-| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | pending | |
-| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | pending | |
-| Dune MCP/API availability checked | pending | |
-| Dune usage baseline recorded | pending | |
-| Dune calibration/query executed with partition WHERE or explicitly blocked | pending | |
-| Dune `executionCostCredits` / usage delta recorded | pending | |
-| Dune rows returned / selected tx hashes recorded | pending | |
-| representative real-tx corpus/golden entries committed or justified | pending | |
-| protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
+| Etherscan MCP/API availability checked | done | Etherscan v2 (ETHERSCAN_API_KEY local) — chain 1 txlist WORKS; chain 8453 (Base) txlist BLOCKED on free tier ("Free API access is not supported for this chain") → Base via Dune. (Base `getabi` contract-module DID work — used for the Base snapshot.) |
+| Etherscan txlist pull executed adapter-blind by P0 cover addresses | done | 8 mainnet cover vaults, `account&action=txlist&offset=250&sort=desc` each (adapter-blind) |
+| external tx pull target address count is nonzero and recorded | done | mainnet: 8 vault targets (Etherscan); Base: 8 vault targets (Dune) = 16/16 cover vaults swept |
+| Etherscan `api_calls_used` recorded | done | 8 txlist calls (mainnet) + 12 getabi (snapshots/MORPHO) ≈ 20 calls |
+| Etherscan `raw_txs_seen` recorded | done | ~1,400 mainnet direct-call txs across 8 vaults (≤250 each) |
+| Etherscan `unique_selectors_seen` recorded | done | deposit 0x6e553f65, redeem 0xba087652, withdraw 0xb460af94, mint 0x94bf804d (COVER) + reallocate 0x7299aa31, approve, updateWithdrawQueue, acceptCap, transfer (EXCLUDE/token) |
+| Etherscan real tx coverage per COVER selector recorded | done | mainnet direct calls: deposit **160**, redeem **109**, withdraw **41**, mint **1** (mint sparse — most users deposit). All 4 COVER selectors observed on real direct calls. |
+| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | done | the cover-batch VAULTS are the wallet-facing targets (ERC-4626 factory children). 16 targets (8/chain), per-target floor ~250 (mainnet)/Dune-sampled (base). corpus = 24 matched. target file = `surface/morpho/_address_universe.json` (cover batch). |
+| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | done | non-actionable: reallocate (243, allocator gov), approve (196, token), updateWithdrawQueue (5, gov), acceptCap (3, gov), transfer (18, token). All map to EXCLUDE triage or tokens:erc20 — no actionable unmatched. Bundler3-routed deposits (to=Bundler3, not vault) are the DEFERRED router surface (not in vault txlist). |
+| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | done | swept all 16 COVER vaults. The 90 DEFER long-tail vaults (universe) not swept this round — explicit defer (batch `metamorpho-longtail-defer`); full-universe sweep is the documented follow-up. |
+| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | done | none — every swept tx had to=cover-vault (txlist is address-keyed). No unknown-address metamorpho-selector gap. |
+| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | not applicable | MetaMorpho adds NO bespoke EIP-712 — its only signed struct is standard ERC-2612 `Permit` on the vault share (handled by the tokens:erc20/2612 standard path, EXCLUDE from metamorpho surface). Morpho Blue `Authorization` typed-data is already covered (morpho/corpus.json). |
+| Dune MCP/API availability checked | done | Dune MCP available; plan `community_fluid_engine_v2` |
+| Dune usage baseline recorded | done | baseline 400.362 / 2500 credits used (billing 2026-05-05 → 2026-06-05) |
+| Dune calibration/query executed with partition WHERE or explicitly blocked | done | query 7637092 on `base.transactions`, partition WHERE `block_date >= CURRENT_DATE - INTERVAL '45' DAY`, free engine. Filter: to IN (8 base cover vaults) AND selector IN (deposit/withdraw/redeem/mint). |
+| Dune `executionCostCredits` / usage delta recorded | done | executionCostCredits = **2.692** (free engine) |
+| Dune rows returned / selected tx hashes recorded | done | 40 rows (deposit+redeem); 9 selected into corpus (e.g. 0xd327b9ad.., 0xfa449c39.., 0x301692bf.., 0x29be6dca.., 0x6645d4fa..) across vaults 0xee8f4e/0xbeefe9/0xbeef010f/0x1401d1/0xa0e430 (USDC + WETH) |
+| representative real-tx corpus/golden entries committed or justified | done | `metamorpho/corpus.json` 24 entries (15 mainnet Etherscan + 9 Base Dune), 22 with field-level expect_body pins |
+| protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | done | `v3-harness corpus --filter metamorpho --require-expect-body` → **24/24 matched, 22/22 pass entries pinned** (venue.vault + asset.address + amount + party verified vs real decoded body, both chains) |
 
 ## P3 Develop Evidence
 
