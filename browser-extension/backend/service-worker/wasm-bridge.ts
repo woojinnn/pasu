@@ -56,6 +56,10 @@ interface WasmExports {
   validate_policy_text(text: string): string;
   test_policy_text(text: string, request_json: string): string;
   simulate_policy_sequence(steps_json: string, policies_json: string): string;
+  // Cedar text↔EST (block-IR engine). Contract:
+  // `crates/policy-engine-wasm/src/cedar_exports.rs`.
+  policy_text_to_est_json(text: string): string;
+  est_json_to_policy_text(est_json: string): string;
 }
 
 /**
@@ -536,4 +540,18 @@ export async function simulatePolicySequence(
 ): Promise<string> {
   const exports = await load();
   return exports.simulate_policy_sequence(stepsJson, policiesJson);
+}
+
+/** Cedar text → EST JSON. Returns the raw wasm JSON string
+ *  `{ ok, policies: [{ id, est }] }` | `{ ok:false, error }`. */
+export async function policyTextToEst(text: string): Promise<string> {
+  const exports = await load();
+  return exports.policy_text_to_est_json(text);
+}
+
+/** EST JSON → Cedar text. Returns the raw wasm JSON string
+ *  `{ ok, text }` | `{ ok:false, error }`. */
+export async function estToPolicyText(estJson: string): Promise<string> {
+  const exports = await load();
+  return exports.est_json_to_policy_text(estJson);
 }
