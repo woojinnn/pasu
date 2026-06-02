@@ -288,7 +288,7 @@ Rules:
 2. **selector cross-check** — `selector == keccak256(signature)[0:4]`. (검증: `cast sig "transfer(address,uint256)"` == `0xa9059cbb`. cast 없으면 alloy/로컬 keccak.)
 3. **전수 후 triage** — hub 의 external state-changing 함수를 *전부* 나열한 뒤 각각 `COVER`/`EXCLUDE:reason`. "눈에 띄는 것만" 금지. EXCLUDE 는 사유 명시(`onlyOwner`/keeper/callback/internal). COVER 는 EOA·smart-account 가 서명 직전 직접 부르는 fund-move·permission 함수.
 4. **⚠️ permission-primitive red-flag (반드시 통과)** — `authorize | approve | permit | delegate | setOperator | setApprovalForAll | setAuthorization` 패턴 함수는 **무조건 COVER** (Tier 3 escalate 필요해도). ScopeBall 의 존재 이유(권한 위임 분석)라서 EXCLUDE/Unknown/skip **금지**. on-chain calldata 와 off-chain EIP-712(`*WithSig`/typed-data) **양쪽** 점검 — 둘 다 권한 grant 다. 매핑할 ActionBody 가 없으면 §4a 에서 Tier 3 신규 action 추가(Unknown 으로 떨구지 않음).
-5. **체인 scope** — main chain 1개 + L2 variant. free Etherscan v2 키는 **Base(8453)/Optimism(10) 미지원**(아래 5b) — 그 체인은 Dune 또는 유료키.
+5. **체인 scope — 대표 체인 1개만**(보통 mainnet, 또는 그 프로토콜 최대-활동 체인). **멀티체인 = 별도 프레임워크** → 타체인 variant 는 임의 확장 금지(명시 defer). Etherscan+Dune 도 그 한 체인만. (free Etherscan v2 키는 **Base(8453)/Optimism(10) `txlist` 미지원**(아래 5b) — Base 가 대표 체인이면 Dune 사용; `getabi` 는 됨.) ⚠️ 이전판의 "main chain + L2 variant" 는 폐기 — 멀티체인 default 가 scope 를 사용자 의도에서 벗어나게 밀었다(§9.11 dogfood). 체인·COVER/DEFER 경계 = `[SCOPE CONTRACT]`(ONBOARDING_PROMPT, P1 전 명시).
 6. **legacy 명시 제외 기록** — 구버전 deploy 제외 결정을 적어둠.
 7. **⚠️ executable gate — 함수 차원 (I1~I3, 산문 → build 강제)** — 위 전수 triage 는 agent 재량에 맡기면 silent 누락이 재발한다(§9 setAuthorization). 그래서 **기계 검증**으로 승격: scratch `research-<protocol>.json` 을 commit 되는 2 artifact 로 — `registryV2/surface/<protocol>/<contract>.abi.json`(1차 출처 verified **전체 ABI** snapshot = manifest·triage 가 거짓말 못 하는 **독립 ground-truth**) + `.coverage.json`(per-selector `COVER`/`EXCLUDE:reason` + `signed_structs`). `npm run check:surface` 가 검사: **I1** snapshot 의 external-mutating selector(`stateMutability∈{nonpayable,payable}`) 전수가 coverage 에 있나(누락 = 원래 miss) · **I2** COVER 는 manifest 보유 · **I3** manifest 는 COVER · **S1/S2** typed-data ↔ `signed_structs`. 위반 = exit 1. coverage·manifest 를 **둘 다** 빠뜨려도 독립 snapshot 이 I1 으로 잡으므로 silent 누락이 *불가능*해진다. 절차·포맷 = `registryV2/surface/README.md`. (이게 §3 의 본질: research-completeness 를 trust 에서 build-enforced invariant 로 — Cedar 등록 누락을 `MissingAction` 이 잡는 것과 같은 패턴.)
 
@@ -1213,5 +1213,26 @@ Lido(Liquid Staking)는 §4d ENRICHMENT 단계가 **왜 필요한지**를 실증
 즉 리서치가 user-facing 컨트랙트를 놓치고 그걸 cover 로 적으면 build 가 막는다 (되돌려 green).
 
 **정직한 floor**(§3 규약 8): verified ABI 는 함수를 못 빠뜨리지만 deployment 페이지는 컨트랙트를 누락할 수 있다 → I0 는 "공식 목록만큼" 완벽(I1 보다 약함). SPOF 를 "agent 기억"→"공식 목록 + DefiLlama/Dune/Etherscan-labels cross-check"로 옮길 뿐. 그래서 I0 는 opt-in WARN(강제 아님) — 목록을 작성해야 닫힌다.
+
+### 9.11 SCOPE ORACLE — "all-green 인데 scope 가 틀렸다" (§9.4 의 scope-level 버전, 2026-06-02)
+
+§9.4 는 **field-level** 교훈이었다: `corpus green ≠ correct decode`(verdict+domain 만 보는 corpus 는 semantic mis-decode 를 통과시킴) → **projection/field-golden** oracle 추가. **이 절은 그 *세로(scope-level)* 버전**이다: `gates green ≠ correct scope`.
+
+**드러난 실패 (morpho 재온보딩 dogfood).** morpho 를 프레임워크대로 P0→P4 관통해 **전 게이트 green**(surface I0/I1·universe·corpus 24/24·evidence --phase all OK) + 4 commit 까지 갔는데, **scope 가 두 군데 틀렸다**:
+1. **체인**: 프레임워크 default(§3 규약 5 "main chain + L2 variant")를 따라 mainnet+**Base** 를 했으나, 사용자 실제 의도는 **대표 체인 1개**. 게이트가 침묵한 게 아니라 *틀린 방향으로 밀었다*.
+2. **DEFER**: Bundler3(앱 multicall 라우터)를 **"앱 트래픽 대부분일 것"이라 *가정*하고 defer** — "가장 중요한 걸 deferred" 라는 자기모순인데 게이트는 전부 통과(DEFER 사유가 산문이면 OK). 
+
+게이트(surface/universe/corpus/evidence)는 **내부 정합성**(triage→manifest→corpus 일관)만 본다. "이 scope 가 사용자가 원하는 거냐(intent)" + "covered surface 가 실사용 dominant 를 잡냐(data)" 는 검증하지 않는다.
+
+**측정으로 사후 교정.** 사용자가 밀어붙여서야 Dune `ethereum.traces` 14d 로 실측: MetaMorpho vault 직접호출 중 **direct 95% vs Bundler3-GeneralAdapter1 5%**(3483 vs 182). → `morpho-blue`+`metamorpho` 가 dominant 커버 맞음(= 결과는 ~맞았으나, scope 정확성을 보장한 건 **게이트가 아니라 운 + 사용자 개입**).
+
+**처치 = SCOPE ORACLE** (ONBOARDING_PROMPT `[SCOPE CONTRACT]` + 본 매뉴얼 P2 + evidence `P2 Real-Tx` 의 SCOPE ORACLE row):
+1. **대표 체인 1개** — 멀티체인은 별도 프레임워크, 임의 확장 금지(§3 규약 5 개정).
+2. **scope = COVER/DEFER 경계를 P1 전 명시·합의** — scope 는 게이트 밖 사용자 고유 결정. autonomy 의 유일한 예외(그 외 phase confirm 은 여전히 X).
+3. **DEFER 데이터-게이트** — user-facing surface defer 는 **1차 usage-share(%/count)** 필수. "비중 클 것 같다"며 defer = 자기모순, **재기 전 측정**.
+4. **coverage-share 측정** — P2 에서 covered (chain,to,selector) 가 P0 universe 실거래의 몇 %를 잡는지 측정. **completion label 은 이를 초과주장 못 한다**(40% → "full surface" 금지).
+5. **1차-rule 확장** — usage/dominance/"대부분 유저가 X" 주장도 1차 데이터(Etherscan/Dune)만, 가정 금지.
+
+**교훈**: field-level 에 projection 을 붙였듯 **scope-level 에 coverage-share oracle** 을 붙여 `all-green = 완료`의 **거짓양성**을 차단한다. 게이트가 못 잡는 단 하나의 층(scope intent + real-usage dominance)을 측정으로 못박는 것.
 
 <!-- 출처: 사용자 설계 세션(V3-only/4-phase/3-tier/hybrid oracle/10k scale) + 코드 grounding(action_builder.rs·declarative_exports.rs·args_json.rs·dto.rs·oracle.rs·corpus.rs·v3_harness.rs·실제 manifest 5종·action/**·DEFECT_CATALOG.md) + §9 dogfood 실측(Morpho Blue 4함수 commit 760af8c + Full-8 보강: collateral 2 + SetAuthorization Tier 3 + off-chain Authorization). 2026-05-31. -->

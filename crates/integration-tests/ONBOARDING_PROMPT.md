@@ -50,6 +50,23 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
    commit 금지, 불확실 항목은 unverified 표기)을 전부 embed. 결과는 candidate-only —
    메인 세션이 실제 코드/1차출처/gate 로 검증 후 반영.
 
+[SCOPE CONTRACT — 빌드(P1) 전 확정, 비협상. 게이트가 못 잡는 유일한 층이라 여기서 못박는다]
+ 게이트(surface/universe/corpus/evidence)는 **내부 정합성**만 본다 — "all-green ≠ scope 정답". scope 정합성은
+ 별도로 못박지 않으면 silent 하게 틀린다(실측: morpho 가 멀티체인+Bundler3 가정으로 틀린 scope 를 짓고 전 게이트 통과). §9.x.
+ · **대표 체인 1개.** 온보딩은 한 프로토콜의 **대표 체인 하나**만(보통 mainnet, 또는 그 프로토콜 최대-활동 체인).
+   Etherscan+Dune 도 그 한 체인만. **멀티체인 = 별도 프레임워크** → 타체인 variant 는 명시 defer(절대 임의 확장 금지).
+ · **scope = COVER/DEFER 경계를 P0 직후·P1 전에 명시 선언**(evidence 'Scope Classification'). scope 는
+   게이트로 검증 안 되는 **사용자 고유 결정**이다. 사용자가 지정했으면 그대로(pre-authorized); 모호하면 P0 surface triage +
+   제안 cover/defer 경계를 **1회 제시**하고 진행. 자율 진행은 이 contract '안'에서만(그 외 phase confirm 은 여전히 X).
+ · **DEFER 는 데이터-게이트.** user-facing surface(유저가 직접 서명하는 컨트랙트/selector)를 defer 하려면
+   **1차 usage-share(%/count, Etherscan/Dune 실측)** 를 붙인다 — "큰 공수"같은 산문 사유만으로 defer 금지.
+   ⚠️ "비중 클 것 같다"고 *추정*하면서 defer 하면 자기모순 — **defer 하기 전에 측정**한다.
+   (infra/governance/keeper EXCLUDE 는 정의상 user-facing 아니라 면제.)
+ · **SCOPE ORACLE = coverage-share 측정**(§9.4 field-level projection 의 **scope-level 버전**). P2 에서
+   **covered (chain,to,selector) 집합이 P0 universe 의 최근 실거래 중 몇 %를 잡는지** Etherscan/Dune 으로 측정.
+   **completion label 은 이 측정치를 초과주장 못 한다** — 40% 잡으면 "full surface" 라 못 쓰고
+   "40% subset, uncovered majority=<X>" 로 정직 라벨. 이 측정 없이 "full/dominant surface" 선언 금지.
+
 [먼저 읽어라 — 인스트럭션, 방법론 1차 source-of-truth. 전부 crates/integration-tests/]
  1. PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md — protocol-agnostic completion model,
                                          semantic oracle contract, strict audit skeleton
@@ -63,6 +80,8 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  7. ONBOARDING_EVIDENCE_TEMPLATE.md    — phase 완료 증거 ledger
  읽고 큰 틀 파악 후 스스로 판단해 자율 실행(매 단계 confirm 요청 X).
  새 domain 같은 큰 설계만 ExitPlanMode 로 plan 1회 받고 자율 진행.
+ 단 **SCOPE CONTRACT(대표 체인 + cover/defer 경계)만은 P1 전 명시·합의**(pre-authorized 거나 1회 제시) — scope 는
+ 게이트가 못 잡고 사용자 고유 결정이라 유일한 예외. 그 외 모든 phase 는 confirm 없이 자율.
 
 [진행 P0→P4]
  P0 1차출처로 컨트랙트 인벤토리 + token-surface 전수. 현 Codex 세션 리서치 + Claude Code headless
@@ -98,7 +117,11 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  P2 synthetic fuzz(random 5000+ fixed seed) + hand edge synthesis(permission/value/nested/array/opcode)
     + Etherscan API/MCP bulk 최소 10,000 tx/protocol(10,000 API call 아님; 현재 txlist 최대 10k tx/call,
       2026-07-01 이후 Free tier 는 1k/request 예정이라 현재 docs 재확인)
-    + Dune MCP/API calibration 후 Base/OP·cross-chain pinpoint(free 엔진 + partition WHERE).
+    + Dune MCP/API calibration(**대표 체인 1개**; free 엔진 + partition WHERE). (멀티체인 pinpoint = 별도 프레임워크.)
+    + **SCOPE ORACLE — coverage-share 측정(필수)**: covered (chain,to,selector) 집합이 P0 universe(P0 의
+      cover+defer 주소 전체)의 최근 실거래 중 **몇 %를 잡는지** Etherscan/Dune 으로 측정·기록. 이게 §9.4 field-level
+      projection 의 scope-level 버전 — completion label 이 측정치를 초과주장 못 하게 P4 에서 대조. user-facing DEFER
+      마다 그 surface 의 usage-share 도 1차 실측(예: "Bundler3 ~5%, Dune traces 14d 3483 vs 182").
     router/manager/aggregator-heavy 프로토콜은 canonical wallet-facing target file 을 만들고
     router/manager/permission/signature/settlement 주소별 최근 tx 를 별도 sweep 한다(대표 프로토콜 기본값:
     target 별 약 5,000 tx). `etherscan-bulk-sweep.mjs` 사용 시 `--surface-root registryV2/surface/<PROTOCOL>`
@@ -132,7 +155,10 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
 
 [가드레일 — 절대]
  explicit-stage(git add <파일>, git add -A 금지) · 무관 churn·.env(ETHERSCAN_API_KEY 로컬) 비접촉
- · 주소/ABI 는 1차 출처(Etherscan/Sourcify/공식 GitHub verified)만, 추측·블로그 금지
+ · 주소/ABI **및 usage/dominance/'대부분 유저가 X 한다' 주장**은 1차 출처만(주소/ABI=Etherscan/Sourcify/공식 GitHub
+   verified; **usage/비중=Etherscan/Dune 실측**), 추측·블로그·기억 금지. scope/defer 판단을 추정 usage 로 내리지 말 것
+ · **대표 체인 1개**(멀티체인=별도 프레임워크). scope=COVER/DEFER 경계 P1 전 명시, user-facing DEFER 은 1차 usage-share 첨부,
+   completion label 은 P2 coverage-share 측정치 초과주장 금지
  · cargo fmt --all 후 내가 안 건드린 파일 재포맷되면 stage 하지 말고, 실제 revert 는 명확히 내 변경 파일이거나 사용자 승인 받은 경우만
  · 출력 한국어(기술용어 영어), 정직한 한계, 작업/결정에 sequential-thinking.
 

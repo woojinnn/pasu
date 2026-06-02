@@ -838,6 +838,9 @@ Existing corpus without `expect_body` is legacy-valid but not semantically compl
 A protocol is onboarded only when all of these are true. **This list is the SSOT for what "onboarded" means**; the spine's §2.1b phase-gate table and `ONBOARDING_EVIDENCE_TEMPLATE.md` are the operational checklist that proves each item (the latter enforced by `check-onboarding-evidence`):
 
 - `_deployments.json` exists or omission is explicitly approved for that protocol.
+- **Scope contract declared (§9.11 SCOPE ORACLE — the scope-level analog of the §9.4 field oracle)**: a SINGLE representative chain (multichain = a separate framework, deferred), and an explicit COVER/DEFER boundary fixed before P1. Gates verify internal consistency, NOT scope correctness — scope intent is the user's decision and must be an explicit contract, not an implicit self-assertion.
+- **Every user-facing DEFER carries a 1st-party usage-share** (%/count from Etherscan/Dune), never a prose-only reason ("large effort"). Deferring a surface you *assume* is high-volume is self-contradictory — measure first. (infra/governance/keeper EXCLUDE is exempt.)
+- **Covered-surface real-usage coverage-share is measured** (P2, on the P0 universe) and the final completion label does NOT over-claim it (e.g. "40% subset, uncovered majority = X" — never "full surface" at 40%). `gates-green ≠ correct-scope`.
 - Every covered contract has ABI snapshot and coverage.
 - `check:surface` has no failures for the protocol.
 - Every COVER selector has manifest or documented Tier 2/Tier 3 implementation.

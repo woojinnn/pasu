@@ -23,11 +23,12 @@ evidence; the phase tables below are the mandatory gate.
 
 | field | value |
 |---|---|
-| primary chain(s) | |
+| representative chain (SINGLE — multichain = separate framework, deferred) | |
 | completion target | `wallet-facing` / `full-surface` / `full factory-child universe` |
-| multichain expansion | included / deferred / not applicable |
+| covered real-usage coverage-share (P2-measured: % of recent P0-universe txs the covered set decodes) | |
+| user-facing DEFERs, each with its 1st-party usage-share (%/count) | |
 | direct factory-child calls | covered / source-materialized sample / deferred / not applicable |
-| final claim label | |
+| final claim label (MUST NOT over-claim the measured coverage-share above) | |
 
 ## P0 Research Evidence
 
@@ -97,6 +98,7 @@ evidence; the phase tables below are the mandatory gate.
 | Dune rows returned / selected tx hashes recorded | pending | |
 | representative real-tx corpus/golden entries committed or justified | pending | |
 | protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
+| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered (chain,to,selector) set decodes), and each user-facing DEFER's usage-share recorded; completion label must not over-claim it | pending | |
 
 ## P3 Develop Evidence
 
