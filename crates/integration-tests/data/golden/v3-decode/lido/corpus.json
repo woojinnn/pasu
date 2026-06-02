@@ -1,5 +1,5 @@
 {
-  "_comment": "Lido liquid_staking real-tx corpus (Etherscan mainnet, adapter-blind sample). expect=pass+liquid_staking. Field-level value checks live in v3_decode_harness.rs goldens (corpus only verifies verdict+domain).",
+  "_comment": "Lido liquid_staking real-tx corpus (Etherscan mainnet, adapter-blind sample). expect=pass+liquid_staking; expect_body pins field-level semantics (action/venue/amount/owner/token/request_ids/enrichment-view) against the production decoder per \u00a79.4 (catches silent mis-decodes verdict+domain cannot). Verified via `v3-harness corpus --filter lido --require-expect-body`.",
   "transactions": [
     {
       "intent": "submit",
@@ -15,7 +15,29 @@
             "data": "0xa1903eab0000000000000000000000006dc9657c2d90d57cadffb64239242d06e6103e43"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x88009813ced40000"
+        },
+        {
+          "path": "$.data.actions[0].body.referral",
+          "op": "hex_eq",
+          "value": "0x6dc9657c2d90d57cadffb64239242d06e6103e43"
+        }
+      ]
     },
     {
       "intent": "wrap",
@@ -31,7 +53,29 @@
             "data": "0xea598cb0000000000000000000000000000000000000000000000000b3b26499afaf3f69"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "wrap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xb3b26499afaf3f69"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs.expected_wsteth.source.function",
+          "op": "equals",
+          "value": "getWstETHByStETH(uint256)"
+        }
+      ]
     },
     {
       "intent": "unwrap",
@@ -47,7 +91,29 @@
             "data": "0xde0e9a3e000000000000000000000000000000000000000000000000226c6a3c70ff3b9a"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "unwrap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x226c6a3c70ff3b9a"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs.expected_steth.source.function",
+          "op": "equals",
+          "value": "getStETHByWstETH(uint256)"
+        }
+      ]
     },
     {
       "intent": "claimWithdrawals",
@@ -63,7 +129,24 @@
             "data": "0xe3afe0a3000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000001eabf00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000457"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "claim_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.request_ids[0]",
+          "op": "u256_hex_eq",
+          "value": "0x1eabf"
+        }
+      ]
     },
     {
       "intent": "requestWithdrawalsWithPermit",
@@ -79,7 +162,34 @@
             "data": "0xacf41e4d00000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000cc9eb059623ca6687897c40e55c5b5b5a09f73f80000000000000000000000000000000000000000000000007edf11bda615641b000000000000000000000000000000000000000000000000000000006a1cf28f000000000000000000000000000000000000000000000000000000000000001c88d091dd824698f6b3234580f0e0d3abed8c7b7733842f9468a7b494fa30af03076a4cc1c83672c93da7029a7f1e0cd93abe4e1d881765757cc90ca775720dec00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000007edf11bda615641b"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x7edf11bda615641b"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0xcc9eb059623ca6687897c40e55c5b5b5a09f73f8"
+        }
+      ]
     },
     {
       "intent": "requestWithdrawalsWstETHWithPermit",
@@ -95,7 +205,34 @@
             "data": "0x7951b76f00000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000c7f9e94843c24b847695c04b2e556a66ddcd44de000000000000000000000000000000000000000000000001a0556e39bff311eb000000000000000000000000000000000000000000000000000000006a1cd737000000000000000000000000000000000000000000000000000000000000001c8965370804abe83cad8c54ec6bf335fbe8b9302ecc1e9901a0c6c1b2d42128c9597ae22fa2a804060e13687d32263d3ba3bf32ae2758ae0b12b58d6a91799e730000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000001a0556e39bff311eb"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x1a0556e39bff311eb"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0xc7f9e94843c24b847695c04b2e556a66ddcd44de"
+        }
+      ]
     },
     {
       "intent": "requestWithdrawals",
@@ -111,7 +248,34 @@
             "data": "0xd66810420000000000000000000000000000000000000000000000000000000000000040000000000000000000000000afc98cfd72b91c5da3a35dbd387bdc40dd289a21000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000086346e29ab7d7"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x86346e29ab7d7"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0xafc98cfd72b91c5da3a35dbd387bdc40dd289a21"
+        }
+      ]
     },
     {
       "intent": "claimWithdrawal",
@@ -127,7 +291,24 @@
             "data": "0xf8444436000000000000000000000000000000000000000000000000000000000001eb2f"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "claim_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.request_ids[0]",
+          "op": "u256_hex_eq",
+          "value": "0x1eb2f"
+        }
+      ]
     },
     {
       "intent": "requestWithdrawalsWstETH",
@@ -143,7 +324,34 @@
             "data": "0x19aa625700000000000000000000000000000000000000000000000000000000000000400000000000000000000000008e01dc1a08ddf5a47ca992ba389ae290bc6362bc0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000002b39d1477c3aa0"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x2b39d1477c3aa0"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0x8e01dc1a08ddf5a47ca992ba389ae290bc6362bc"
+        }
+      ]
     }
   ]
 }
