@@ -26,6 +26,7 @@ use serde_json::Value as JsonValue;
 pub const WHITELIST: &[&str] = &[
     "curve_route_last_token",
     "route_hash",
+    "keccak256",
     "uniswap_v3_pool_swap_field",
     "uniswapx_reactor_order_field",
 ];
@@ -39,6 +40,7 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
     match name {
         "curve_route_last_token" => curve_route_last_token(args),
         "route_hash" => route_hash(args),
+        "keccak256" => keccak256_hex(args),
         "uniswap_v3_pool_swap_field" => uniswap_v3_pool_swap_field(args),
         "uniswapx_reactor_order_field" => uniswapx_reactor_order_field(args),
         _ => Err(format!(
@@ -133,6 +135,20 @@ fn route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
             .map_err(|e| format!("route_hash: route[{idx}] is not an address ({s}): {e}"))?;
         bytes.extend_from_slice(addr.as_slice());
     }
+    Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
+}
+
+/// `keccak256(data: bytes) -> bytes32` — keccak256 of an opaque byte string,
+/// returned as `0x`-prefixed 32-byte hex. General-purpose route/calldata identity
+/// for aggregator venues whose route lives in an opaque `bytes` arg (e.g. 1inch v6
+/// `swap(executor, desc, data)` — `data` carries the executor route). Feeds
+/// `AmmVenue::AggregatorRoute.route_hash` ("32-byte hex hash of the route"). Unlike
+/// [`route_hash`] (which packs an `address[11]` route), this hashes raw bytes.
+fn keccak256_hex(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 1 {
+        return Err(format!("keccak256 expects 1 arg (data), got {}", args.len()));
+    }
+    let bytes = json_hex_bytes(&args[0], "keccak256: data")?;
     Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
 }
 
@@ -712,6 +728,28 @@ mod tests {
                                  // different route → different hash
         let other = route_hash(&[route(&[A, POOL1, C])]).unwrap();
         assert_ne!(h1, other);
+    }
+
+    #[test]
+    fn keccak256_hashes_bytes_deterministically_to_32_bytes() {
+        // keccak256("") is the well-known empty-input hash.
+        let empty = keccak256_hex(&[json!("0x")]).unwrap();
+        assert_eq!(
+            empty.as_str().unwrap(),
+            "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        );
+        // Deterministic + exactly 32 bytes for arbitrary data.
+        let d = json!("0xdeadbeef");
+        let h1 = keccak256_hex(std::slice::from_ref(&d)).unwrap();
+        let h2 = keccak256_hex(&[d]).unwrap();
+        assert_eq!(h1, h2);
+        assert_eq!(h1.as_str().unwrap().len(), 66); // 0x + 64 hex
+                                                    // different data → different hash
+        let other = keccak256_hex(&[json!("0xdeadbeff")]).unwrap();
+        assert_ne!(h1, other);
+        // wrong arg count + non-hex error out
+        assert!(keccak256_hex(&[]).is_err());
+        assert!(keccak256_hex(&[json!("not-hex")]).is_err());
     }
 
     #[test]
