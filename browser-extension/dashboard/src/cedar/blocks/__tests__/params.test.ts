@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { makeHole, replaceNode, extractParams } from "../params";
+import { makeHole, replaceNode, extractParams, fillParams } from "../params";
+import { blocksToEst } from "../blocksToEst";
 import type { Expr, PolicyIR } from "../ir";
 
 const lit = (value: number): Expr => ({ kind: "lit", litType: "long", value });
@@ -64,5 +65,69 @@ describe("extractParams", () => {
       right: makeHole(lit(2), { name: "dup" }),
     });
     expect(() => extractParams(ir)).toThrow(/duplicate/);
+  });
+});
+
+const tmpl = () =>
+  policyWith({
+    kind: "binary",
+    op: ">",
+    left: { kind: "attr", of: { kind: "var", name: "context" }, attr: "amt" },
+    right: makeHole(lit(10000), { name: "maxUsd", constraints: { min: 0, max: 1000000 } }),
+  });
+
+describe("fillParams", () => {
+  it("fills a supplied value", () => {
+    const r = fillParams(tmpl(), { maxUsd: 5000 });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect((r.policy.conditions[0].body as any).right).toEqual(lit(5000));
+      expect(() => blocksToEst(r.policy)).not.toThrow(); // hole-free
+    }
+  });
+  it("errors on a missing required param", () => {
+    const r = fillParams(tmpl(), {});
+    expect(r).toMatchObject({ ok: false, errors: [{ name: "maxUsd", reason: "missing" }] });
+  });
+  it("falls back to default for an optional unsupplied param", () => {
+    const ir = policyWith(makeHole(lit(42), { name: "p", optional: true }));
+    const r = fillParams(ir, {});
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.policy.conditions[0].body).toEqual(lit(42));
+  });
+  it("reports type, range, enum, and unknown errors together", () => {
+    const ir = policyWith({
+      kind: "binary",
+      op: "&&",
+      left: makeHole(lit(1), { name: "n", constraints: { max: 10 } }),
+      right: makeHole({ kind: "lit", litType: "string", value: "x" }, { name: "s", constraints: { enum: ["a", "b"] } }),
+    });
+    const r = fillParams(ir, { n: 999, s: "z", bogus: 1 });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      const reasons = Object.fromEntries(r.errors.map((e) => [e.name, e.reason]));
+      expect(reasons).toEqual({ n: "range", s: "enum", bogus: "unknown" });
+    }
+  });
+  it("builds a litEntity and a typed set", () => {
+    const ir = policyWith({
+      kind: "binary",
+      op: "&&",
+      left: makeHole({ kind: "litEntity", entity: { type: "User", id: "x" } }, { name: "u" }),
+      right: makeHole({ kind: "set", elements: [{ kind: "lit", litType: "string", value: "a" }] }, { name: "allow" }),
+    });
+    const r = fillParams(ir, { u: { type: "User", id: "bob" }, allow: ["0xAAA", "0xBBB"] });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const body: any = r.policy.conditions[0].body;
+      expect(body.left).toEqual({ kind: "litEntity", entity: { type: "User", id: "bob" } });
+      expect(body.right).toEqual({
+        kind: "set",
+        elements: [
+          { kind: "lit", litType: "string", value: "0xAAA" },
+          { kind: "lit", litType: "string", value: "0xBBB" },
+        ],
+      });
+    }
   });
 });
