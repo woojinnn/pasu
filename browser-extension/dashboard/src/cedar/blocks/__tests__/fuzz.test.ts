@@ -206,7 +206,17 @@ describe("robustness / failure modes", () => {
       effect: "permit",
       annotations: [],
       scope: { principal: { kind: "scopeAll" }, action: { kind: "scopeAll" }, resource: { kind: "scopeAll" } },
-      conditions: [{ kind: "when", body: { kind: "hole", expected: "expr", name: "maxUsd" } }],
+      conditions: [
+        {
+          kind: "when",
+          body: {
+            kind: "hole",
+            name: "maxUsd",
+            expected: "lit:long",
+            default: { kind: "lit", litType: "long", value: 0 },
+          },
+        },
+      ],
     };
     expect(() => blocksToEst(ir)).toThrow(/hole/);
   });

@@ -72,7 +72,7 @@ function exprToEst(node: Expr): EstExpr {
     case "ext":
       return { [node.fn]: node.args.map(exprToEst) };
     case "hole":
-      throw new Error(`blocksToEst: cannot serialize unfilled hole "${node.name ?? "?"}"`);
+      throw new Error(`blocksToEst: cannot serialize unfilled hole "${node.name}"`);
   }
 }
 

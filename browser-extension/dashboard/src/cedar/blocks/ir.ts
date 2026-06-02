@@ -40,9 +40,9 @@
  *    map surfaces as `{ kind: "raw", est }`. Render it read-only (e.g. as a code
  *    chip). For every shipped policy this never occurs (see real-policies test),
  *    but render defensively.
- * 3. **`hole` is reserved** for the editor / future parameterization — a named,
- *    unfilled slot. `estToBlocks` never emits one; `blocksToEst` THROWS on an
- *    unfilled hole, so gate "export to text/save" on the IR being hole-free.
+ * 3. **`hole` is reserved** for parameterization (the customizable-fields feature)
+ *    — a named parameter slot ({@link HoleNode}). `estToBlocks` never emits one;
+ *    `blocksToEst` THROWS on an unfilled hole, so gate "export/save" on a hole-free IR.
  *
  * Obtain/return values via {@link estToBlocks} and {@link blocksToEst}.
  */
@@ -164,9 +164,10 @@ export type Expr =
   /** ESCAPE HATCH: an EST node not structurally mapped. Carries the verbatim EST
    *  subtree; round-trips losslessly. Render read-only. */
   | { kind: "raw"; est: unknown }
-  /** RESERVED (not produced by `estToBlocks`): a named, unfilled slot for the
-   *  editor / future parameterization. `blocksToEst` throws on an unfilled hole. */
-  | { kind: "hole"; expected: string; name?: string; default?: unknown; label?: string };
+  /** RESERVED (not produced by `estToBlocks`): a named parameter slot for the
+   *  customizable-fields feature (see {@link HoleNode}). `blocksToEst` throws on
+   *  an unfilled hole. */
+  | HoleNode;
 
 /** One `when` / `unless` clause of a policy. A policy's conditions are ANDed. */
 export interface Condition {
@@ -185,4 +186,62 @@ export interface PolicyIR {
   annotations: { name: string; value: string }[];
   scope: { principal: Scope; action: ActionScope; resource: Scope };
   conditions: Condition[];
+}
+
+// ── Parameterization (customizable fields) ──────────────────────────────
+
+/** Structural shape a parameter hole fills — inferred from the marked value node. */
+export type Expected = "lit:long" | "lit:string" | "lit:bool" | "litEntity" | "set";
+
+/** Adopter-input constraints an author may attach to a parameter. */
+export interface ParamConstraints {
+  min?: number;
+  max?: number;
+  enum?: (string | number)[];
+}
+
+/** A parameter slot: a value node the author exposed for adopters to edit.
+ *  `default` is the captured original value (applied only when `optional` and
+ *  unsupplied). `type`/`label` are author-set display hints. */
+export interface HoleNode {
+  kind: "hole";
+  name: string;
+  expected: Expected;
+  default: Expr;
+  optional?: boolean;
+  label?: string;
+  type?: string;
+  constraints?: ParamConstraints;
+}
+
+/** Form spec for one parameter, surfaced to the adopter UI. */
+export interface ParamSpec {
+  name: string;
+  expected: Expected;
+  default: Expr;
+  optional?: boolean;
+  label?: string;
+  type?: string;
+  constraints?: ParamConstraints;
+}
+
+/** A parameterized policy artifact: a PolicyIR containing one or more HoleNodes. */
+export interface PolicyTemplate {
+  version: 1;
+  policy: PolicyIR;
+}
+
+/** A value an adopter supplies for a parameter, shaped per the hole's `expected`. */
+export type ParamFillValue =
+  | number
+  | string
+  | boolean
+  | (string | number)[]
+  | { type: string; id: string };
+
+/** One validation failure from `fillParams`, surfaced to the adopter form. */
+export interface ParamError {
+  name: string;
+  reason: "missing" | "type" | "range" | "enum" | "unknown";
+  message: string;
 }
