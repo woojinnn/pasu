@@ -28,6 +28,8 @@ import {
   type WalletId,
 } from "./scopeball-auth";
 import {
+  estToPolicyText,
+  policyTextToEst,
   simulatePolicySequence,
   testPolicyText,
   validatePolicyText,
@@ -273,6 +275,15 @@ interface CedarSimulateRequest {
   steps_json: string;
   policies_json: string;
 }
+interface CedarTextToEstRequest {
+  type: "cedar-text-to-est";
+  text: string;
+}
+interface CedarEstToTextRequest {
+  type: "cedar-est-to-text";
+  // Pre-serialized EST JSON (a single policy's EST object).
+  est_json: string;
+}
 interface ExecutionReportsListRequest {
   type: "execution-reports:list";
   opts?: ExecutionReportFilter;
@@ -322,6 +333,8 @@ type PopupRequest =
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
+  | CedarTextToEstRequest
+  | CedarEstToTextRequest
   | ExecutionReportsListRequest
   | ExecutionReportsCountRequest
   | ExecutionReportsClearRequest
@@ -385,6 +398,28 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "cedar_simulate_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "cedar-text-to-est") {
+      void policyTextToEst((req as CedarTextToEstRequest).text)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "cedar_text_to_est_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "cedar-est-to-text") {
+      void estToPolicyText((req as CedarEstToTextRequest).est_json)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "cedar_est_to_text_failed", message: String(err) },
           }),
         );
       return true;
