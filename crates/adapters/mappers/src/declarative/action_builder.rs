@@ -154,7 +154,12 @@ fn placeholder_type_lookup(rest: &str) -> Option<FallbackType> {
         | "v4_token_in"
         | "v4_token_out"
         | "v4_hooks"
-        | "v4_recipient" => Some(Address),
+        | "v4_recipient"
+        // GeneralAdapter1 erc4626* leg underlying — injected by
+        // `maybe_inject_metamorpho_underlying` for a KNOWN listed vault; a synthetic
+        // fuzz arg (random vault) is value-gated out, so it falls back to a zero
+        // address. (Unlike `morpho_market_id`, which is always keccak-computable.)
+        | "metamorpho_underlying" => Some(Address),
         "fee_tier_bp" | "slippage_bp" => Some(U32),
         "v4_amount_in" | "v4_amount_out_min" | "min_lp_out" => Some(U256),
         "v4_pool_id" => Some(Bytes32),

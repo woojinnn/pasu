@@ -19,6 +19,7 @@ mod cedar_exports;
 mod declarative_exports;
 mod dto;
 mod exports;
+mod metamorpho_underlying;
 mod policy_request_exports;
 mod trigger_exports;
 

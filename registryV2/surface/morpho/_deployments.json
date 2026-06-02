@@ -37,8 +37,8 @@
       "name": "GeneralAdapter1",
       "chainId": 1,
       "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
-      "decision": "exclude",
-      "reason": "DEFERRED (not infra): the adapter Bundler3 re-enters; encodes the actual supply/borrow/erc4626 legs inside a bundle. (This is also the operator users grant via Morpho Blue setAuthorization \u2014 that grant IS covered.) Follow-up with Bundler3 (the dominant ~84% Morpho-native vault-deposit entrypoint)."
+      "decision": "cover",
+      "reason": "the adapter Bundler3 multicall(Call[]) legs target; encodes the actual supply/borrow/erc4626 legs inside a bundle. COVERED (Q2): general-adapter1.coverage.json triages all 26 mutating selectors (10 cover position legs \u2192 metamorpho/morpho_blue, reached per-leg-to from a Bundler3 bundle; 16 exclude = onMorpho* callbacks + deferred plumbing/staking/wrapper). (Also the operator users grant via Morpho Blue setAuthorization \u2014 that grant IS covered.)"
     },
     {
       "name": "ParaswapAdapter",

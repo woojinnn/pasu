@@ -1,0 +1,149 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-morphoBorrow@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 morphoBorrow leg (reached via Bundler3 multicall(Call[])) → same Morpho Blue borrow body as a direct call (venue=morpho_blue, market_id=$derived.morpho_market_id from $args.marketParams, asset=marketParams token). on_behalf_of omitted (no onBehalf arg; borrow is by the initiator). live_inputs=skeleton (enrichment deferred). Decoded as a per-leg-to multicall child.",
+  "match": {
+    "selector": "0x62577ad0",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "morphoBorrow",
+    "abi": {
+      "name": "morphoBorrow",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "loanToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "collateralToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "oracle",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "irm",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lltv",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct MarketParams",
+          "name": "marketParams",
+          "type": "tuple"
+        },
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minSharePriceE27",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "borrow",
+        "borrow": {
+          "venue": {
+            "name": "morpho_blue",
+            "chain": "$chain",
+            "market_id": "$derived.morpho_market_id"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.marketParams[0]"
+            }
+          },
+          "amount": "$args.assets",
+          "rate_mode": "variable"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "market(bytes32)",
+          "decoder_id": "morpho_blue_market"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "position(bytes32,address)",
+          "decoder_id": "morpho_blue_position"
+        },
+        "ttl_s": 12
+      },
+      "asset_price_usd": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "morpho_blue_loan_token_price"
+        },
+        "ttl_s": 60
+      },
+      "current_borrow_rate": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "morpho_blue_borrow_rate"
+        },
+        "ttl_s": 30
+      },
+      "available_liquidity": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "morpho_blue_available_liquidity"
+        },
+        "ttl_s": 30
+      }
+    }
+  }
+}

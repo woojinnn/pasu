@@ -1,0 +1,139 @@
+{
+  "contract": "GeneralAdapter1",
+  "chainId": 1,
+  "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
+  "snapshot": "general-adapter1.abi.json",
+  "note": "GeneralAdapter1 — the adapter Bundler3 multicall(Call[]) legs target on Ethereum mainnet. EVERY external-mutating selector triaged (I1). cover = the 10 user position legs (erc4626Deposit/Mint/Withdraw/Redeem → metamorpho; morphoSupply/SupplyCollateral/Borrow/Repay/Withdraw/WithdrawCollateral → morpho_blue), reached per-leg-to from a Bundler3 bundle. exclude = onMorpho* callbacks (reenterHash-guarded) + DEFERRED plumbing (transfers/wraps), staking (stakeEth/wrapStEth), flash-loan, MORPHO wrapper.",
+  "functions": {
+    "0x6ef5eeae": {
+      "name": "erc4626Deposit(address,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Deposit into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0x39029ab6": {
+      "name": "erc4626Mint(address,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Mint into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0xc9565706": {
+      "name": "erc4626Withdraw(address,uint256,uint256,address,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Withdraw into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0xa7f6e606": {
+      "name": "erc4626Redeem(address,uint256,uint256,address,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Redeem into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0x5b866db6": {
+      "name": "morphoSupply((address,address,address,address,uint256),uint256,uint256,uint256,address,bytes)",
+      "decision": "cover",
+      "reason": "user Morpho Blue supply VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0xca463673": {
+      "name": "morphoSupplyCollateral((address,address,address,address,uint256),uint256,address,bytes)",
+      "decision": "cover",
+      "reason": "user Morpho Blue supply VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x62577ad0": {
+      "name": "morphoBorrow((address,address,address,address,uint256),uint256,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user Morpho Blue borrow VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x4d5fcf68": {
+      "name": "morphoRepay((address,address,address,address,uint256),uint256,uint256,uint256,address,bytes)",
+      "decision": "cover",
+      "reason": "user Morpho Blue repay VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x84d287ef": {
+      "name": "morphoWithdraw((address,address,address,address,uint256),uint256,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user Morpho Blue withdraw VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x1af3bbc6": {
+      "name": "morphoWithdrawCollateral((address,address,address,address,uint256),uint256,address)",
+      "decision": "cover",
+      "reason": "user Morpho Blue withdraw VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x2075be03": {
+      "name": "onMorphoSupply(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0xb1022fdf": {
+      "name": "onMorphoSupplyCollateral(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0x05b4591c": {
+      "name": "onMorphoRepay(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0x31f57072": {
+      "name": "onMorphoFlashLoan(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0xe2975912": {
+      "name": "morphoFlashLoan(address,uint256,bytes)",
+      "decision": "exclude",
+      "reason": "DEFERRED: flash-loan is transient (not a standing user position); the inner reenter(Call[]) callback carries the real intent — nested-reenter decode follow-up."
+    },
+    "0x54f09129": {
+      "name": "stakeEth(uint256,uint256,address,address)",
+      "decision": "exclude",
+      "reason": "DEFERRED: Lido ETH staking leg — separate staking-domain follow-up."
+    },
+    "0x5a18a7d0": {
+      "name": "wrapStEth(uint256,address)",
+      "decision": "exclude",
+      "reason": "DEFERRED: stETH→wstETH wrap leg — staking-token follow-up."
+    },
+    "0xe17aeb46": {
+      "name": "unwrapStEth(uint256,address)",
+      "decision": "exclude",
+      "reason": "DEFERRED: wstETH→stETH unwrap leg — staking-token follow-up."
+    },
+    "0xbff63170": {
+      "name": "morphoWrapperDepositFor(address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: legacy MORPHO token wrapper (governance-token migration) — token-level, low value."
+    },
+    "0xa387bd8e": {
+      "name": "morphoWrapperWithdrawTo(address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: legacy MORPHO token wrapper (governance-token migration) — token-level, low value."
+    },
+    "0x3790767d": {
+      "name": "erc20Transfer(address,address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: bundle funding/plumbing leg (token/native transfer or wrap into the adapter) — the PAIRED lending leg captures the user position intent; the approve/permit grant to Bundler3 is gated separately. Token-domain transfer coverage is a follow-up."
+    },
+    "0xd96ca0b9": {
+      "name": "erc20TransferFrom(address,address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: bundle funding/plumbing leg (token/native transfer or wrap into the adapter) — the PAIRED lending leg captures the user position intent; the approve/permit grant to Bundler3 is gated separately. Token-domain transfer coverage is a follow-up."
+    },
+    "0x827fcfcc": {
+      "name": "permit2TransferFrom(address,address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: bundle funding/plumbing leg (token/native transfer or wrap into the adapter) — the PAIRED lending leg captures the user position intent; the approve/permit grant to Bundler3 is gated separately. Token-domain transfer coverage is a follow-up."
+    },
+    "0xf2522bcd": {
+      "name": "nativeTransfer(address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: bundle funding/plumbing leg (token/native transfer or wrap into the adapter) — the PAIRED lending leg captures the user position intent; the approve/permit grant to Bundler3 is gated separately. Token-domain transfer coverage is a follow-up."
+    },
+    "0x3244c12c": {
+      "name": "wrapNative(uint256,address)",
+      "decision": "exclude",
+      "reason": "DEFERRED: bundle funding/plumbing leg (token/native transfer or wrap into the adapter) — the PAIRED lending leg captures the user position intent; the approve/permit grant to Bundler3 is gated separately. Token-domain transfer coverage is a follow-up."
+    },
+    "0xb172af6d": {
+      "name": "unwrapNative(uint256,address)",
+      "decision": "exclude",
+      "reason": "DEFERRED: bundle funding/plumbing leg (token/native transfer or wrap into the adapter) — the PAIRED lending leg captures the user position intent; the approve/permit grant to Bundler3 is gated separately. Token-domain transfer coverage is a follow-up."
+    }
+  }
+}

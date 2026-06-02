@@ -527,6 +527,7 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         // 5-tuple). The single_emit analogue of `maybe_inject_v4_pool_id`.
         let mut derived = BTreeMap::new();
         maybe_inject_morpho_market_id(&args_json, &mut derived);
+        maybe_inject_metamorpho_underlying(&args_json, &mut derived);
         maybe_inject_uniswap_v3_path(&args_json, &mut derived);
 
         let ctx = V3MapContext {
@@ -2254,6 +2255,29 @@ fn maybe_inject_morpho_market_id(
     }
     if let Some(id) = compute_morpho_market_id(mp) {
         derived.insert("morpho_market_id".to_owned(), serde_json::Value::String(id));
+    }
+}
+
+/// If the decoded top-level args carry a MetaMorpho `vault` argument (a
+/// GeneralAdapter1 `erc4626*` leg — `erc4626Deposit/Mint/Withdraw/Redeem`),
+/// inject `$derived.metamorpho_underlying`: the vault's underlying asset, which
+/// is NOT in the leg calldata (the leg carries only the vault address). Sourced
+/// from the committed mainnet vault→underlying snapshot
+/// ([`crate::metamorpho_underlying`]). A no-op for every non-vault call
+/// (value-gated on a known listed vault). The single_emit analogue of the
+/// per-vault baked `asset` used by the DIRECT metamorpho manifests.
+fn maybe_inject_metamorpho_underlying(
+    args_json: &serde_json::Value,
+    derived: &mut BTreeMap<String, serde_json::Value>,
+) {
+    let Some(vault) = args_json.get("vault").and_then(serde_json::Value::as_str) else {
+        return;
+    };
+    if let Some(underlying) = crate::metamorpho_underlying::underlying_of(&vault.to_lowercase()) {
+        derived.insert(
+            "metamorpho_underlying".to_owned(),
+            serde_json::Value::String(underlying.to_owned()),
+        );
     }
 }
 
