@@ -3,9 +3,9 @@ import corpus from "./fixtures/est-corpus.json";
 import { estToBlocks } from "../estToBlocks";
 import { blocksToEst } from "../blocksToEst";
 
-// Constructs allowed to fall back to `raw`. Starts permissive ("*" = anything),
-// then shrinks to empty as node kinds are promoted (Phase 3).
-export const RAW_ALLOWLIST: string[] = ["*"];
+// Constructs allowed to fall back to `raw`. Empty for the supported grammar —
+// coverage.test.ts enforces zero raw nodes across the corpus.
+export const RAW_ALLOWLIST: string[] = [];
 
 export function rawNodes(node: any, acc: any[] = []): any[] {
   if (node && typeof node === "object") {
