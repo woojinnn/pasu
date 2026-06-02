@@ -2,7 +2,7 @@
 //!
 //! Unlike the no-op this replaced, each HL action now records its effect as a
 //! `StateDelta` against the wallet's single `HlAccount` position (id
-//! [`common::HL_ACCOUNT_ID`]). No network fetch occurs: the reducer reads only
+//! `common::HL_ACCOUNT_ID`). No network fetch occurs: the reducer reads only
 //! `state` + `ctx`. Absolute balances are obtained downstream by
 //! `helpers::delta::apply_delta` layering the delta onto a Sync-populated base.
 

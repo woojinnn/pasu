@@ -6,7 +6,7 @@
 //! [`ClaimTarget::StakingClaim`]). All three resolve to the same observable
 //! effect from the wallet's perspective: a one-shot credit of
 //! `live_inputs.actual_amount` of `live_inputs.claim_token` to the recipient,
-//! plus an [`AirdropClaim`](policy_state::position::AirdropClaim)
+//! plus an [`AirdropClaim`]
 //! `Position` opened with [`ClaimStatus::Claimed`] for audit. The variants
 //! differ only in the on-chain payload (`proof`, `sig`, or pure
 //! `staking-balance` lookup), all of which are recorded by the
