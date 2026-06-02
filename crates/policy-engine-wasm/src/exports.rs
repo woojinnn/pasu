@@ -549,6 +549,26 @@ pub fn preview_installed_schema_json() -> String {
     }
 }
 
+/// Walk the installed enriched schema into a typed field catalog
+/// `{ actionId(Pascal) -> [FieldDto] }` for block-editor annotations
+/// (display metadata only; non-authoritative).
+#[wasm_bindgen]
+pub fn field_catalog_json() -> String {
+    let result: Result<
+        std::collections::BTreeMap<String, Vec<crate::field_catalog::FieldDto>>,
+        EngineErrorDto,
+    > = STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().ok_or_else(not_installed_error)?;
+        crate::field_catalog::build(&state.schema_text)
+            .map_err(|m| EngineErrorDto::new("field_catalog_failed", m))
+    });
+    match result {
+        Ok(catalog) => Envelope::ok(catalog).to_json(),
+        Err(error) => Envelope::<()>::err(error.kind, error.message).to_json(),
+    }
+}
+
 #[cfg(test)]
 mod tests_policy_rpc {
     use super::*;

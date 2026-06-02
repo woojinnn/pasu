@@ -43,7 +43,7 @@ pub use declarative_exports::{
     declarative_route_typed_data_v3_json,
 };
 pub use exports::{
-    get_alias_table_json, install_policies_json, preview_custom_schema_json,
+    field_catalog_json, get_alias_table_json, install_policies_json, preview_custom_schema_json,
     preview_installed_schema_json, preview_schema_json,
 };
 pub use policy_request_exports::evaluate_policy_request_json;
