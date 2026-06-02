@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbeeffff0629438ad198c47f80d66fa4be5c0caf6",
+  "symbol": "grove-bbqAUSD",
+  "decimals": 18,
+  "name": "Grove x Steakhouse High Yield AUSD",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

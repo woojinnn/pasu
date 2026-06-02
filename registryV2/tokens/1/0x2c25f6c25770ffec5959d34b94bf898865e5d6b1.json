@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2c25f6c25770ffec5959d34b94bf898865e5d6b1",
+  "symbol": "bbUSDT",
+  "decimals": 18,
+  "name": "Flagship USDT",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

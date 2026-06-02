@@ -3,12 +3,23 @@
   "id": "morpho/metamorpho/1-weth-redeem@1.0.0",
   "publisher": "morpho.eth",
   "schema_version": "3",
-  "note": "MetaMorpho ERC-4626 redeem for WETH vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=WETH (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) baked (not in ERC-4626 calldata). amount=shares SHARE-denominated (abstract \u2014 \u00a74d convertToAssets enrichment deferred; decode-faithful). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred \u00a74d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org + etherscan/basescan. Cover-batch (1 vault(s)); long-tail in _address_universe.json.",
+  "note": "MetaMorpho ERC-4626 redeem for WETH vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=WETH (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) baked (not in ERC-4626 calldata). amount=shares SHARE-denominated (abstract — §4d convertToAssets enrichment deferred; decode-faithful). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 12 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
   "match": {
     "selector": "0xba087652",
     "chain_to_addresses": {
       "1": [
-        "0x31a5684983eee865d943a696aac155363ba024f9"
+        "0x2371e134e3455e0593363cbf89d3b6cf53740618",
+        "0x31a5684983eee865d943a696aac155363ba024f9",
+        "0x47fe8ab9ee47dd65c24df52324181790b9f47efc",
+        "0x4881ef0bf6d2365d3dd6499ccd7532bcdbce0658",
+        "0x6d6d386c4855d9b604d7e14c70526407f6272394",
+        "0x701907283a57ff77e255c3f1aad790466b8ce4ef",
+        "0x739d8a60ed4b14e4cb6dcaeaf79d2ec0ca092237",
+        "0x78fc2c2ed1a4cdb5402365934ae5648adad094d0",
+        "0x9a8bc3b04b7f3d87cfc09ba407dced575f2d61d8",
+        "0xa3fc33543beee52bc60babc80af3d29789637b6d",
+        "0xbeef050ecd6a16c4e7bffbb52ebba7846c4b8cd4",
+        "0xe89371eaaac6d46d4c3ed23453241987916224fc"
       ]
     }
   },

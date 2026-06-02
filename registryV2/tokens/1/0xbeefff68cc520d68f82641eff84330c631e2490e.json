@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbeefff68cc520d68f82641eff84330c631e2490e",
+  "symbol": "bbqDAI",
+  "decimals": 18,
+  "name": "Smokehouse DAI",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x6b175474e89094c44da98b954eedeac495271d0f"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

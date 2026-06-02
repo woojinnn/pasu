@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9b7cca326004967f9d2b7cf5f2328d82cf65b302",
+  "symbol": "augustAUSD",
+  "decimals": 18,
+  "name": "August AUSD",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa3fc33543beee52bc60babc80af3d29789637b6d",
+  "symbol": "CSWETH",
+  "decimals": 18,
+  "name": "Clearstar Reactor ETH",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

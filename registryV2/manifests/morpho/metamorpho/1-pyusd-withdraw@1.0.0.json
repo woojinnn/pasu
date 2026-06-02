@@ -3,12 +3,14 @@
   "id": "morpho/metamorpho/1-pyusd-withdraw@1.0.0",
   "publisher": "morpho.eth",
   "schema_version": "3",
-  "note": "MetaMorpho ERC-4626 withdraw for PYUSD vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=PYUSD (0x6c3ea9036406852006290770bedfcaba0e23a0e8) baked (not in ERC-4626 calldata). amount=assets asset-denominated (legible). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred \u00a74d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org + etherscan/basescan. Cover-batch (1 vault(s)); long-tail in _address_universe.json.",
+  "note": "MetaMorpho ERC-4626 withdraw for PYUSD vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=PYUSD (0x6c3ea9036406852006290770bedfcaba0e23a0e8) baked (not in ERC-4626 calldata). amount=assets asset-denominated (legible). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 3 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
   "match": {
     "selector": "0xb460af94",
     "chain_to_addresses": {
       "1": [
-        "0x19b3cd7032b8c062e8d44eacad661a0970dd8c55"
+        "0x19b3cd7032b8c062e8d44eacad661a0970dd8c55",
+        "0x2c793f5cb25b35a99648783c01e6cccc200d2096",
+        "0xbeef02e5e13584ab96848af90261f0c8ee04722a"
       ]
     }
   },

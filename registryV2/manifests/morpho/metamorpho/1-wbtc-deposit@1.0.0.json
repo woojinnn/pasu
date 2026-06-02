@@ -3,12 +3,15 @@
   "id": "morpho/metamorpho/1-wbtc-deposit@1.0.0",
   "publisher": "morpho.eth",
   "schema_version": "3",
-  "note": "MetaMorpho ERC-4626 deposit for WBTC vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=WBTC (0x2260fac5e5542a773aa44fbcfedf7c193bc2c599) baked (not in ERC-4626 calldata). amount=assets asset-denominated (legible). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred \u00a74d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org + etherscan/basescan. Cover-batch (1 vault(s)); long-tail in _address_universe.json.",
+  "note": "MetaMorpho ERC-4626 deposit for WBTC vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=WBTC (0x2260fac5e5542a773aa44fbcfedf7c193bc2c599) baked (not in ERC-4626 calldata). amount=assets asset-denominated (legible). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 4 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
   "match": {
     "selector": "0x6e553f65",
     "chain_to_addresses": {
       "1": [
-        "0x812b2c6ab3f4471c0e43d4bb61098a9211017427"
+        "0x2f1abb81ed86be95bcf8178ba62c8e72d6834775",
+        "0x443df5eee3196e9b2dd77cabd3ea76c3dee8f9b2",
+        "0x812b2c6ab3f4471c0e43d4bb61098a9211017427",
+        "0xe0c98605f279e4d7946d25b75869c69802823763"
       ]
     }
   },

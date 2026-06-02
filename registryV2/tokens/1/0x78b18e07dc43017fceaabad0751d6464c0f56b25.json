@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x78b18e07dc43017fceaabad0751d6464c0f56b25",
+  "symbol": "gtmsETHc",
+  "decimals": 18,
+  "name": "Metronome msETH Vault",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x64351fc9810adad17a690e4e1717df5e7e085160"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

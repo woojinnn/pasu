@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbeef02e5e13584ab96848af90261f0c8ee04722a",
+  "symbol": "steakPYUSD",
+  "decimals": 18,
+  "name": "Steakhouse PYUSD",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x6c3ea9036406852006290770bedfcaba0e23a0e8"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

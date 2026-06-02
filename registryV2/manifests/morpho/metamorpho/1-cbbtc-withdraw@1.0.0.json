@@ -1,0 +1,94 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/metamorpho/1-cbbtc-withdraw@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "MetaMorpho ERC-4626 withdraw for cbBTC vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=cbBTC (0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf) baked (not in ERC-4626 calldata). amount=assets asset-denominated (legible). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 1 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
+  "match": {
+    "selector": "0xb460af94",
+    "chain_to_addresses": {
+      "1": [
+        "0xa02f5e93f783baf150aa1f8b341ae90fe0a772f7"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "shares",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name": "metamorpho",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"
+            }
+          },
+          "amount": "$args.assets",
+          "recipient": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_reserve_state_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "available_to_withdraw": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_available_to_withdraw_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_user_state_skeleton"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

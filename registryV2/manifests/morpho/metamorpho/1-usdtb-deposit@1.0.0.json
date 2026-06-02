@@ -3,7 +3,7 @@
   "id": "morpho/metamorpho/1-usdtb-deposit@1.0.0",
   "publisher": "morpho.eth",
   "schema_version": "3",
-  "note": "MetaMorpho ERC-4626 deposit for USDtb vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=USDtb (0xc139190f447e929f090edeb554d95abb8b18ac1c) baked (not in ERC-4626 calldata). amount=assets asset-denominated (legible). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred \u00a74d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org + etherscan/basescan. Cover-batch (1 vault(s)); long-tail in _address_universe.json.",
+  "note": "MetaMorpho ERC-4626 deposit for USDtb vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=USDtb (0xc139190f447e929f090edeb554d95abb8b18ac1c) baked (not in ERC-4626 calldata). amount=assets asset-denominated (legible). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 1 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
   "match": {
     "selector": "0x6e553f65",
     "chain_to_addresses": {

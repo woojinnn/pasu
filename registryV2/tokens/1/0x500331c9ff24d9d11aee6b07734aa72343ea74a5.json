@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x500331c9ff24d9d11aee6b07734aa72343ea74a5",
+  "symbol": "gtDAIcore",
+  "decimals": 18,
+  "name": "Gauntlet DAI Core",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x6b175474e89094c44da98b954eedeac495271d0f"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

@@ -659,6 +659,112 @@
           "value": "0x0000000000000000000000000000000000000001"
         }
       ]
+    },
+    {
+      "intent": "metamorpho deposit (wstETH vault bbqWSTETH) [Q1 long-tail new-underlying]",
+      "expect": "pass",
+      "tx_hash": "0xe8e7fc8c2a1bf7959e4432e060f3dd3c37a3864a4999b26791b05a7856292561",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x833adaef212c5cd3f78906b44bbfb18258f238f0",
+            "value": "0",
+            "data": "0x6e553f65000000000000000000000000000000000000000000000001a24f7a3ce1386067000000000000000000000000a356d8fb4dd09bbe034fd2b8255fddde989d832dd4e39552f5f84ac07e9b3a4c21f8d052535a2a0fffc69deb"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x833adaef212c5cd3f78906b44bbfb18258f238f0"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x1a24f7a3ce1386067"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0xa356d8fb4dd09bbe034fd2b8255fddde989d832d"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho redeem (wstETH vault bbqWSTETH) [Q1 long-tail new-underlying]",
+      "expect": "pass",
+      "tx_hash": "0x27dddde0ac885988f33a58710e8b434d5178ccda18b35da110adfea867b7a981",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x833adaef212c5cd3f78906b44bbfb18258f238f0",
+            "value": "0",
+            "data": "0xba087652000000000000000000000000000000000000000000000000000162ae8a8bfa88000000000000000000000000deba922080fe851a9b2e63d9dfdf97404287de0e000000000000000000000000deba922080fe851a9b2e63d9dfdf97404287de0e"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x833adaef212c5cd3f78906b44bbfb18258f238f0"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x162ae8a8bfa88"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xdeba922080fe851a9b2e63d9dfdf97404287de0e"
+        }
+      ]
     }
   ]
 }

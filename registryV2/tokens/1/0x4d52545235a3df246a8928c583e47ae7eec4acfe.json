@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4d52545235a3df246a8928c583e47ae7eec4acfe",
+  "symbol": "Re7USDf",
+  "decimals": 18,
+  "name": "Re7 Falcon USDf",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xfa2b947eec368f42195f24f36d2af29f7c24cec2"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

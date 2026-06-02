@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdc94785959b73f7a168452b3654e44fec6a750e4",
+  "symbol": "gtLBTCc",
+  "decimals": 18,
+  "name": "Gauntlet LBTC Core",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x8236a87084f8b84306f72007f36f2618a5634494"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

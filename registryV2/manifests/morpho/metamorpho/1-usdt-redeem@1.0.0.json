@@ -3,12 +3,22 @@
   "id": "morpho/metamorpho/1-usdt-redeem@1.0.0",
   "publisher": "morpho.eth",
   "schema_version": "3",
-  "note": "MetaMorpho ERC-4626 redeem for USDT vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=USDT (0xdac17f958d2ee523a2206206994597c13d831ec7) baked (not in ERC-4626 calldata). amount=shares SHARE-denominated (abstract \u2014 \u00a74d convertToAssets enrichment deferred; decode-faithful). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred \u00a74d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org + etherscan/basescan. Cover-batch (1 vault(s)); long-tail in _address_universe.json.",
+  "note": "MetaMorpho ERC-4626 redeem for USDT vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=USDT (0xdac17f958d2ee523a2206206994597c13d831ec7) baked (not in ERC-4626 calldata). amount=shares SHARE-denominated (abstract — §4d convertToAssets enrichment deferred; decode-faithful). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 11 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
   "match": {
     "selector": "0xba087652",
     "chain_to_addresses": {
       "1": [
-        "0xbeef047a543e45807105e51a8bbefcc5950fcfba"
+        "0x2c25f6c25770ffec5959d34b94bf898865e5d6b1",
+        "0x79fd640000f8563a866322483524a4b48f1ed702",
+        "0x888883f0eddf69ca4bfd00af93714ff97f188888",
+        "0x8cb3649114051ca5119141a34c200d65dc0faa73",
+        "0x95eef579155cd2c5510f312c8fa39208c3be01a8",
+        "0x965ec3552427b8258bd0a0c7baa234618fc98d01",
+        "0xa0804346780b4c2e3be118ac957d1db82f9d7484",
+        "0xa71d08a159258553a5ac190d60fa919425ff02ea",
+        "0xbdd4859050468fbc11dec07113a6e633608a1372",
+        "0xbeef047a543e45807105e51a8bbefcc5950fcfba",
+        "0xc54b4e08c1dcc199fdd35c6b5ab589ffd3428a8d"
       ]
     }
   },

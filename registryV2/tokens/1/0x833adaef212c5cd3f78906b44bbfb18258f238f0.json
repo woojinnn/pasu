@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x833adaef212c5cd3f78906b44bbfb18258f238f0",
+  "symbol": "bbqWSTETH",
+  "decimals": 18,
+  "name": "Smokehouse WSTETH",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+      }
+    },
+    "rebase_form": "index"
+  }
+}
