@@ -209,3 +209,20 @@ export async function blocksToText(ir: PolicyIR): Promise<string> {
   if (!parsed.ok) throw new Error(parsed.error ?? "cedar EST→text failed");
   return parsed.text;
 }
+
+/** Fetch the per-action typed field catalog from the SW (wasm-built). Returns a
+ *  {@link SchemaDescriptor} keyed by the policy-facing action id (e.g. `"Swap"`)
+ *  — pass it straight into {@link textToBlocks} for schema annotations. Fetch
+ *  once and reuse across policies. Soft-fails to `null` when the extension
+ *  bridge is unavailable, so the UI still renders blocks (without annotations). */
+export async function fetchFieldCatalog(): Promise<SchemaDescriptor | null> {
+  try {
+    return await sendToExtension<SchemaDescriptor>(
+      { type: "manifest:get-field-catalog" },
+      BRIDGE_TIMEOUT_MS,
+    );
+  } catch (err) {
+    if (isMissingBridge(err)) return null;
+    throw err;
+  }
+}
