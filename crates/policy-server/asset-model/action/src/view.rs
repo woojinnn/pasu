@@ -477,6 +477,7 @@ mod tests {
                 chain: eth.clone(),
                 router: any,
                 route_hash: "0x00".into(),
+                executor: None,
             },
             "aggregator_route",
         );

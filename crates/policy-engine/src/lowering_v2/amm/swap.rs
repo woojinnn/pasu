@@ -269,6 +269,7 @@ mod tests {
             chain: chain.clone(),
             router,
             route_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000".into(),
+            executor: None,
         };
 
         let hop_venue = AmmVenue::UniswapV3 {
@@ -678,6 +679,7 @@ mod tests {
             chain: eth(),
             router: sample_addr(),
             route_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000".into(),
+            executor: Some(sample_addr()),
         });
     }
 

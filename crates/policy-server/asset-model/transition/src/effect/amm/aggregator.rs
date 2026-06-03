@@ -402,6 +402,7 @@ mod tests {
             chain: ChainId::ethereum_mainnet(),
             router: one_inch_router(),
             route_hash: zero_hash(),
+            executor: None,
         }
     }
 

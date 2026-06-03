@@ -974,6 +974,7 @@ mod tests {
             chain: ChainId::ethereum_mainnet(),
             router: one_inch_router_addr(),
             route_hash: format!("0x{}", "00".repeat(32)),
+            executor: None,
         }
     }
 
@@ -1108,6 +1109,7 @@ mod tests {
             chain: ChainId::ethereum_mainnet(),
             router: one_inch_router_addr(),
             route_hash: format!("0x{}", "00".repeat(32)),
+            executor: None,
         };
         let route = SwapRoute {
             paths: vec![RoutePath {

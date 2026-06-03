@@ -22,6 +22,11 @@
           "value": "0x111111125421ca6dc452d289314280a0f8842a65"
         },
         {
+          "path": "$.data.actions[0].body.venue.executor",
+          "op": "hex_eq",
+          "value": "0x4c3ccc98c01103be72bcfd29e1d2454c98d1a6e3"
+        },
+        {
           "path": "$.data.actions[0].body.params.token_in.key.address",
           "op": "hex_eq",
           "value": "0x45804880de22913dafe09f4980848ece6ecbaf78"

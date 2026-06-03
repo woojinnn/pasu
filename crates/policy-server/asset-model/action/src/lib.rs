@@ -470,6 +470,7 @@ mod smoke {
                 router: Address::from_str("0x111111125421ca6dc452d289314280a0f8842a65").unwrap(),
                 route_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000"
                     .into(),
+                executor: None,
             },
             params: amm::SwapParams {
                 token_in: usdc,

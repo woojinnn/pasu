@@ -199,6 +199,13 @@ pub enum AmmVenue {
         router: Address,
         /// 32-byte hex hash of the route calldata.
         route_hash: String,
+        /// Separated executor the router delegates the swap to (e.g. `1inch v6`
+        /// splits router/executor; calldata arg 0). Statically decodable and
+        /// policy-relevant — policies typically whitelist known-safe executors.
+        /// `None` for venues without a distinct executor (e.g. Curve Router NG).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[tsify(optional, type = "string")]
+        executor: Option<Address>,
     },
 }
 

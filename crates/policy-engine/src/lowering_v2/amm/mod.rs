@@ -131,10 +131,14 @@ pub(crate) fn lower_amm_venue(venue: &AmmVenue) -> Value {
             chain,
             router,
             route_hash,
+            executor,
         } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("router".into(), Value::String(addr(router)));
             m.insert("routeHash".into(), Value::String(route_hash.clone()));
+            if let Some(executor) = executor {
+                m.insert("executor".into(), Value::String(addr(executor)));
+            }
         }
     }
     Value::Object(m)
