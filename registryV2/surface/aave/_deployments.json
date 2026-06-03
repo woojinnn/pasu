@@ -128,8 +128,8 @@
       "name": "SGHO (Savings GHO, ERC4626)",
       "chainId": 1,
       "address": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d",
-      "decision": "exclude",
-      "reason": "deferred user-facing surface (ERC4626 deposit/redeem); usage-share P2, follow-up"
+      "decision": "cover",
+      "reason": "sGHO ERC4626 savings vault: deposit/mint/redeem/withdraw → staking domain (AaveSavingsGho venue). snapshot sgho-mainnet."
     },
     {
       "name": "GHO FlashMinter",

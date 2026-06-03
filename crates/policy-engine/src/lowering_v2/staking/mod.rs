@@ -84,6 +84,10 @@ pub(crate) fn lower_stake_venue(venue: &StakeVenue) -> Value {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("controller".into(), Value::String(addr(controller)));
         }
+        StakeVenue::AaveSavingsGho { chain, vault } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("vault".into(), Value::String(addr(vault)));
+        }
     }
     Value::Object(m)
 }

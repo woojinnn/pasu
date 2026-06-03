@@ -192,6 +192,15 @@ pub enum StakeVenue {
         #[tsify(type = "string")]
         controller: Address,
     },
+    /// Aave Savings GHO (sGHO) — an ERC4626 savings vault a user deposits GHO
+    /// into / redeems from.
+    AaveSavingsGho {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// sGHO ERC4626 vault contract address.
+        #[tsify(type = "string")]
+        vault: Address,
+    },
 }
 
 impl StakeVenue {
@@ -210,6 +219,7 @@ impl StakeVenue {
             Self::AaveSafetyModule { .. } => "aave_safety_module",
             Self::AaveUmbrellaStakeToken { .. } => "aave_umbrella_stake_token",
             Self::AaveUmbrellaRewardsController { .. } => "aave_umbrella_rewards_controller",
+            Self::AaveSavingsGho { .. } => "aave_savings_gho",
         }
     }
 }

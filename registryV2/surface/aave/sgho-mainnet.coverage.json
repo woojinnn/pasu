@@ -1,0 +1,109 @@
+{
+  "contract": "sGHO Savings Vault",
+  "chainId": 1,
+  "address": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d",
+  "snapshot": "sgho-mainnet.abi.json",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612; erc20 standard adapter"
+    },
+    "0x6e553f65": {
+      "name": "deposit",
+      "decision": "cover",
+      "reason": "user-facing Aave deposit action covered by registry manifest"
+    },
+    "0x03fc9747": {
+      "name": "depositWithPermit",
+      "decision": "cover",
+      "reason": "user-facing Aave depositWithPermit action covered by registry manifest"
+    },
+    "0xeed88b8d": {
+      "name": "emergencyEtherTransfer",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xa3d5b255": {
+      "name": "emergencyTokenTransfer",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x2f2ff15d": {
+      "name": "grantRole",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x760b9235": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x94bf804d": {
+      "name": "mint",
+      "decision": "cover",
+      "reason": "user-facing Aave mint action covered by registry manifest"
+    },
+    "0x8456cb59": {
+      "name": "pause",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xd505accf": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612; erc20 standard adapter"
+    },
+    "0xba087652": {
+      "name": "redeem",
+      "decision": "cover",
+      "reason": "user-facing Aave redeem action covered by registry manifest"
+    },
+    "0x36568abe": {
+      "name": "renounceRole",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xd547741f": {
+      "name": "revokeRole",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x22d1bad3": {
+      "name": "setSupplyCap",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x431b4da6": {
+      "name": "setTargetRate",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612; erc20 standard adapter"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612; erc20 standard adapter"
+    },
+    "0x3f4ba83a": {
+      "name": "unpause",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xb460af94": {
+      "name": "withdraw",
+      "decision": "cover",
+      "reason": "user-facing Aave withdraw action covered by registry manifest"
+    }
+  },
+  "signed_structs": {
+    "Permit": {
+      "decision": "exclude",
+      "reason": "standard EIP-2612"
+    }
+  }
+}

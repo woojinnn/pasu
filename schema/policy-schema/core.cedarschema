@@ -302,6 +302,7 @@ namespace Staking {
     distributor?: String,        // curve_fee_distributor
     module?: String,             // aave_safety_module
     stakeToken?: String,         // aave_umbrella_stake_token
+    vault?: String,              // aave_savings_gho (sGHO ERC4626)
     // aave_umbrella_rewards_controller reuses `controller?` (above).
   };
 }

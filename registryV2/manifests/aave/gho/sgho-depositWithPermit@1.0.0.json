@@ -1,0 +1,95 @@
+{
+  "type": "adapter_action",
+  "id": "aave/gho/sgho/depositWithPermit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "sGHO ERC4626-style deposit into Aave savings GHO.",
+  "match": {
+    "selector": "0x03fc9747",
+    "chain_to_addresses": {
+      "1": [
+        "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "depositWithPermit",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct IsGho.SignatureParams",
+          "name": "sig",
+          "type": "tuple"
+        }
+      ],
+      "name": "depositWithPermit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "stake",
+        "stake": {
+          "venue": {
+            "name": "aave_savings_gho",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+            }
+          },
+          "amount": "$args.assets",
+          "on_behalf_of": null,
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  }
+}
