@@ -28,7 +28,7 @@ use crate::action::token::{
     Erc20ApproveAction, Erc20PermitAction, Erc20TransferAction, NftApproveAction,
     NftSetForAllAction, NftTransferAction, Permit2ApproveAction, Permit2SignAction,
     Permit2SignTransferAction, Permit2TransferFromAction, RevokeApprovalAction, RevokeScope,
-    TokenAction,
+    TokenAction, UnwrapNativeAction, WrapNativeAction,
 };
 use crate::apply::Reducer;
 use crate::error::{ReducerError, ReducerResult};
@@ -85,7 +85,30 @@ impl Reducer for TokenAction {
             Self::NftSetApprovalForAll(a) => a.apply(state, ctx),
             Self::NftTransfer(a) => a.apply(state, ctx),
             Self::RevokeApproval(a) => a.apply(state, ctx),
+            Self::WrapNative(a) => a.apply(state, ctx),
+            Self::UnwrapNative(a) => a.apply(state, ctx),
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Native wrap / unwrap (WETH-style `deposit` / `withdraw`) — 1:1, no `LiveField`.
+//
+// We do not model the native↔wrapper balance shift here: the state-projection
+// (simulation) side is dormant and the verdict path needs only the static
+// decode. Emit an empty `StateDelta` (honest no-op) — a 1:1 self-custody wrap
+// neither grants an allowance nor moves funds to a counterparty.
+// ---------------------------------------------------------------------------
+
+impl Reducer for WrapNativeAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        Ok(StateDelta::new())
+    }
+}
+
+impl Reducer for UnwrapNativeAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        Ok(StateDelta::new())
     }
 }
 
