@@ -10,6 +10,7 @@ pub mod borrow;
 pub mod buy_collateral;
 pub mod delegate_borrow;
 pub mod liquidate;
+pub mod periphery_operation;
 pub mod repay;
 pub mod set_authorization;
 pub mod set_collateral;
@@ -22,6 +23,7 @@ pub use self::borrow::*;
 pub use self::buy_collateral::*;
 pub use self::delegate_borrow::*;
 pub use self::liquidate::*;
+pub use self::periphery_operation::*;
 pub use self::repay::*;
 pub use self::set_authorization::*;
 pub use self::set_collateral::*;
@@ -60,6 +62,9 @@ pub enum LendingAction {
     /// Grant or revoke an operator's full control over the submitter's positions
     /// (`Morpho Blue` `setAuthorization` / off-chain `Authorization`). Account-wide.
     SetAuthorization(SetAuthorizationAction),
+    /// Periphery adapter op (debt-swap / repay-with-collateral / swap-collateral /
+    /// withdraw-swap) — a flash-loan + swap routed through an Aave periphery adapter.
+    PeripheryOperation(PeripheryOperationAction),
 }
 
 impl LendingAction {
@@ -81,6 +86,7 @@ impl LendingAction {
             Self::DelegateBorrow(_) => "delegate_borrow",
             Self::Liquidate(_) => "liquidate",
             Self::SetAuthorization(_) => "set_authorization",
+            Self::PeripheryOperation(_) => "periphery_operation",
         }
     }
 
@@ -100,6 +106,7 @@ impl LendingAction {
             Self::Liquidate(a) => Some(a.venue.name()),
             // Account-wide grant — no market venue.
             Self::SetAuthorization(_) => None,
+            Self::PeripheryOperation(a) => Some(a.venue.name()),
         }
     }
 }
@@ -222,6 +229,15 @@ pub enum LendingVenue {
         /// Collateral token of this market.
         collateral: TokenRef,
     },
+    /// `Aave V3` periphery adapter (debt-swap / repay-with-collateral /
+    /// swap-collateral / withdraw-swap) — a flash-loan + swap helper.
+    AaveV3Periphery {
+        /// Chain hosting the adapter.
+        chain: ChainId,
+        /// Periphery adapter contract address.
+        #[tsify(type = "string")]
+        adapter: Address,
+    },
 }
 
 impl LendingVenue {
@@ -242,6 +258,7 @@ impl LendingVenue {
             Self::MetaMorpho { .. } => "metamorpho",
             Self::CrvUsd { .. } => "crv_usd",
             Self::LlamaLend { .. } => "llama_lend",
+            Self::AaveV3Periphery { .. } => "aave_v3_periphery",
         }
     }
 }

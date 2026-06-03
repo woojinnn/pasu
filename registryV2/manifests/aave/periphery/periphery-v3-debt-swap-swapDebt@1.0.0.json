@@ -1,0 +1,177 @@
+{
+  "type": "adapter_action",
+  "id": "aave/periphery/periphery-v3-debt-swap-mainnet/swapDebt@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave periphery adapter high-risk operation. Nested callback/Paraswap effects are audit-visible via calldata and not state-simulated.",
+  "match": {
+    "selector": "0xb8bd1c6b",
+    "chain_to_addresses": {
+      "1": [
+        "0xd7852e139a7097e119623de0751ae53a61efb442"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapDebt",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "debtAsset",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "debtRepayAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "debtRateMode",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "newDebtAsset",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxNewDebtAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "extraCollateralAsset",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "extraCollateralAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "offset",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "paraswapData",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct IParaswapDebtSwapAdapter.DebtSwapParams",
+          "name": "debtSwapParams",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "contract ICreditDelegationToken",
+              "name": "debtToken",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct IParaswapDebtSwapAdapter.CreditDelegationInput",
+          "name": "creditDelegationPermit",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "contract IERC20WithPermit",
+              "name": "aToken",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct IParaswapDebtSwapAdapter.PermitInput",
+          "name": "collateralATokenPermit",
+          "type": "tuple"
+        }
+      ],
+      "name": "swapDebt",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "periphery_operation",
+        "periphery_operation": {
+          "venue": {
+            "name": "aave_v3_periphery",
+            "chain": "$chain",
+            "adapter": "$to"
+          },
+          "adapter": "$to",
+          "kind": "debt_swap",
+          "asset_in": null,
+          "asset_out": null,
+          "amount": null,
+          "limit_amount": null,
+          "user": null,
+          "recipient": null,
+          "calldata": "$calldata"
+        }
+      }
+    }
+  }
+}

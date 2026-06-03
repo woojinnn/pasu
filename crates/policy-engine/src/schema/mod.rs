@@ -91,6 +91,9 @@ const LENDING_ENABLE_COLLATERAL_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/enable_collateral.cedarschema");
 const LENDING_LIQUIDATE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/liquidate.cedarschema");
+const LENDING_PERIPHERY_OPERATION_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/lending/periphery_operation.cedarschema"
+);
 const LENDING_REPAY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/repay.cedarschema");
 const LENDING_SET_EMODE_SCHEMA: &str =
@@ -341,6 +344,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     LENDING_DISABLE_COLLATERAL_SCHEMA,
     LENDING_ENABLE_COLLATERAL_SCHEMA,
     LENDING_LIQUIDATE_SCHEMA,
+    LENDING_PERIPHERY_OPERATION_SCHEMA,
     LENDING_REPAY_SCHEMA,
     LENDING_SET_EMODE_SCHEMA,
     LENDING_SUPPLY_SCHEMA,

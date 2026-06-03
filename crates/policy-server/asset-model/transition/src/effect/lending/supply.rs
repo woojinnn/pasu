@@ -94,6 +94,14 @@ impl Reducer for SupplyAction {
                     protocol: "morpho_blue".into(),
                 });
             }
+            // A periphery adapter is never a direct supply venue (periphery ops
+            // route through `PeripheryOperation`, not `Supply`).
+            LendingVenue::AaveV3Periphery { .. } => {
+                return Err(ReducerError::UnsupportedProtocol {
+                    action: "supply".into(),
+                    protocol: "aave_v3_periphery".into(),
+                });
+            }
         };
         let _ = receipt_amount;
 

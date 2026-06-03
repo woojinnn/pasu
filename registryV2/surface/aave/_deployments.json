@@ -247,22 +247,29 @@
       "name": "ParaSwapRepayAdapter",
       "chainId": 1,
       "address": "0x35bb522b102326ea3f1141661df4626c87000e3e",
-      "decision": "exclude",
-      "reason": "integrator adapter (ParaSwap-backed), not a core Aave pre-sign target"
+      "decision": "cover",
+      "reason": "ParaSwapRepayAdapter (v3 repay-with-collateral): flash-loan+swap periphery → lending::periphery_operation (aave_v3_periphery venue)."
     },
     {
       "name": "ParaSwapLiquiditySwapAdapter",
       "chainId": 1,
       "address": "0xadc0a53095a0af87f3aa29fe0715b5c28016364e",
-      "decision": "exclude",
-      "reason": "integrator adapter (ParaSwap-backed)"
+      "decision": "cover",
+      "reason": "ParaSwapLiquiditySwapAdapter (v3 swap-collateral): flash-loan+swap periphery → lending::periphery_operation (aave_v3_periphery venue)."
     },
     {
       "name": "ParaSwapWithdrawSwapAdapter",
       "chainId": 1,
       "address": "0x78f8bd884c3d738b74b420540659c82f392820e0",
-      "decision": "exclude",
-      "reason": "integrator adapter (ParaSwap-backed)"
+      "decision": "cover",
+      "reason": "ParaSwapWithdrawSwapAdapter (v3 withdraw-swap): flash-loan+swap periphery → lending::periphery_operation (aave_v3_periphery venue)."
+    },
+    {
+      "name": "Aave V3 DebtSwap adapter",
+      "chainId": 1,
+      "address": "0xd7852e139a7097e119623de0751ae53a61efb442",
+      "decision": "cover",
+      "reason": "Aave V3 DebtSwap adapter: → lending::periphery_operation."
     }
   ]
 }

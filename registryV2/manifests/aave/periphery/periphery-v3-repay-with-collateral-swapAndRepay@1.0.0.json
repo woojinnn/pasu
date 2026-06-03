@@ -1,0 +1,130 @@
+{
+  "type": "adapter_action",
+  "id": "aave/periphery/periphery-v3-repay-with-collateral-mainnet/swapAndRepay@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave periphery adapter high-risk operation. Nested callback/Paraswap effects are audit-visible via calldata and not state-simulated.",
+  "match": {
+    "selector": "0x4db9dc97",
+    "chain_to_addresses": {
+      "1": [
+        "0x35bb522b102326ea3f1141661df4626c87000e3e"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapAndRepay",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "contract IERC20Detailed",
+          "name": "collateralAsset",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IERC20Detailed",
+          "name": "debtAsset",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "collateralAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "debtRepayAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "debtRateMode",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "buyAllBalanceOffset",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "paraswapData",
+          "type": "bytes"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct BaseParaSwapAdapter.PermitSignature",
+          "name": "permitSignature",
+          "type": "tuple"
+        }
+      ],
+      "name": "swapAndRepay",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "periphery_operation",
+        "periphery_operation": {
+          "venue": {
+            "name": "aave_v3_periphery",
+            "chain": "$chain",
+            "adapter": "$to"
+          },
+          "adapter": "$to",
+          "kind": "repay_with_collateral",
+          "asset_in": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.collateralAsset"
+            }
+          },
+          "asset_out": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.debtAsset"
+            }
+          },
+          "amount": "$args.collateralAmount",
+          "limit_amount": "$args.debtRepayAmount",
+          "user": null,
+          "recipient": null,
+          "calldata": "$calldata"
+        }
+      }
+    }
+  }
+}

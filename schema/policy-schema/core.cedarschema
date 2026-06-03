@@ -231,6 +231,7 @@ namespace Lending {
     baseAsset?: Core::TokenRef,  // Compound V3
     comptroller?: String,        // Compound V2
     vault?: String,              // Morpho Optimizer / Fluid / MetaMorpho
+    adapter?: String,            // aave_v3_periphery adapter
   };
 
   // Reserve-level metadata — supply/borrow caps, LTV, etc.

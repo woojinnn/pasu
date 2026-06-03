@@ -102,13 +102,14 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "start_vote",
     "update_representative",
     "vote",
-    // Lending (12)
+    // Lending (13)
     "borrow",
     "buy_collateral",
     "delegate_borrow",
     "disable_collateral",
     "enable_collateral",
     "liquidate",
+    "periphery_operation",
     "repay",
     "set_authorization",
     "set_emode",
@@ -266,7 +267,7 @@ mod tests {
         // vault_transfer / sub_account_transfer) + 2 permission (approve_builder_fee
         // / token_delegate) + 2 trading/margin (twap_order / update_isolated_margin)
         // = 98, plus `settle_intent_order` for on-chain intent settlement = 99.
-        assert_eq!(REGISTERED_ACTIONS.len(), 114);
+        assert_eq!(REGISTERED_ACTIONS.len(), 115);
     }
 
     #[test]

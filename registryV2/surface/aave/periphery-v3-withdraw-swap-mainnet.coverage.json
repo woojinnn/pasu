@@ -1,0 +1,33 @@
+{
+  "contract": "Aave V3 WithdrawSwapAdapter",
+  "chainId": 1,
+  "address": "0x78f8bd884c3d738b74b420540659c82f392820e0",
+  "snapshot": "periphery-v3-withdraw-swap-mainnet.abi.json",
+  "functions": {
+    "0x1b11d0ff": {
+      "name": "executeOperation",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x00ae3bf8": {
+      "name": "rescueTokens",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x5fd73e07": {
+      "name": "withdrawAndSwap",
+      "decision": "cover",
+      "reason": "user-facing Aave withdrawAndSwap action covered by registry manifest"
+    }
+  }
+}

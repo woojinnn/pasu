@@ -43,7 +43,8 @@ use super::{
     LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
     LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA,
     LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
-    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_REPAY_SCHEMA,
+    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA,
+    LENDING_PERIPHERY_OPERATION_SCHEMA, LENDING_REPAY_SCHEMA,
     LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA,
     LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA, LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
     LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA, LIQUID_STAKING_STAKE_SCHEMA,
@@ -312,6 +313,12 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("set_authorization"),
         schema_text: LENDING_SET_AUTHORIZATION_SCHEMA,
         pascal_stub: "SetAuthorization",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("periphery_operation"),
+        schema_text: LENDING_PERIPHERY_OPERATION_SCHEMA,
+        pascal_stub: "PeripheryOperation",
     },
     // liquid_staking
     ActionEntry {
@@ -1258,8 +1265,8 @@ mod tests {
         // Guards against a row being dropped or duplicated.
         assert_eq!(
             RESOLVER_TABLE.len(),
-            116,
-            "resolver table must have 116 rows"
+            117,
+            "resolver table must have 117 rows"
         );
     }
 

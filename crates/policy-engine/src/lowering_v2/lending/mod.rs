@@ -18,6 +18,7 @@ mod delegate_borrow;
 mod disable_collateral;
 mod enable_collateral;
 mod liquidate;
+mod periphery_operation;
 mod repay;
 mod set_authorization;
 mod set_e_mode;
@@ -48,6 +49,7 @@ pub(crate) fn lower(
         LendingAction::DelegateBorrow(a) => delegate_borrow::lower(a, ctx),
         LendingAction::Liquidate(a) => liquidate::lower(a, ctx),
         LendingAction::SetAuthorization(a) => set_authorization::lower(a, ctx),
+        LendingAction::PeripheryOperation(a) => periphery_operation::lower(a, ctx),
     }
 }
 
@@ -112,6 +114,11 @@ pub(crate) fn lower_lending_venue(venue: &LendingVenue) -> Value {
         } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("pool".into(), Value::String(addr(controller)));
+        }
+        // Aave V3 periphery adapter — carries the adapter address under `adapter`.
+        LendingVenue::AaveV3Periphery { chain, adapter } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("adapter".into(), Value::String(addr(adapter)));
         }
     }
     Value::Object(m)
