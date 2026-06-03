@@ -1,0 +1,31 @@
+// Staking::Stake — stake into an Aave safety module (StakedAaveV3 / StakedGho
+// `stake(to, amount)` / `stakeWithPermit(amount, …)`). The staked token (AAVE /
+// GHO) is implied by `venue.module`; `recipient` is the share receiver
+// (omitted ⇒ submitter, e.g. stakeWithPermit mints to msg.sender).
+//
+// Rust source: crates/policy-server/asset-model/action/src/staking/stake.rs
+// (`StakeAction`). No LiveInputs. `StakeVenue` is in core.cedarschema (Staking).
+
+namespace Staking {
+  type StakeContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Staking venue (name = "aave_safety_module"; carries `module`).
+    venue: StakeVenue,
+    // Amount of the underlying staked (`amount`), U256 hex.
+    amount: String,
+    // Recipient of the staked-derivative shares (`to`). Absent ⇒ submitter.
+    recipient?: String,
+    // Manifest-extensible slot.
+    custom?: StakeCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type StakeCustomContext = {};
+
+  action "Stake" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: StakeContext,
+  };
+}

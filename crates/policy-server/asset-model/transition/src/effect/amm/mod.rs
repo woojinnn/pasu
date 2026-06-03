@@ -8,6 +8,7 @@ mod balancer_v3;
 mod collect_fees;
 mod curve_v1;
 mod curve_v2;
+mod gsm_swap;
 mod intent_order;
 mod maverick_v2;
 mod remove_liquidity;
@@ -28,6 +29,7 @@ impl Reducer for AmmAction {
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta> {
         match self {
             Self::Swap(a) => a.apply(state, ctx),
+            Self::GsmSwap(a) => a.apply(state, ctx),
             Self::AddLiquidity(a) => a.apply(state, ctx),
             Self::RemoveLiquidity(a) => a.apply(state, ctx),
             Self::CollectFees(a) => a.apply(state, ctx),

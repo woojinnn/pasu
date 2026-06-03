@@ -1,0 +1,49 @@
+{
+  "type": "adapter_action",
+  "id": "aave/safety-module/redeem@1.0.0",
+  "publisher": "aave.eth",
+  "note": "Aave safety-module redeem(address to, uint256 amount) — burn staked-derivative shares (post-cooldown) and withdraw the underlying to `to`. Maps to staking::Redeem (venue.module=$to). Covers stkAAVE + stkGHO; selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x1e9a6950",
+    "chain_to_addresses": {
+      "1": [
+        "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+        "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "redeem",
+    "abi": {
+      "name": "redeem",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "to", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "redeem",
+        "redeem": {
+          "venue": { "name": "aave_safety_module", "chain": "$chain", "module": "$to" },
+          "amount": "$args.amount",
+          "recipient": "$args.to"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

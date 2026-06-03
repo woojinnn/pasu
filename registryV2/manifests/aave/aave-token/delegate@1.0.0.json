@@ -1,0 +1,78 @@
+{
+  "type": "adapter_action",
+  "id": "aave/aave-token/delegate@1.0.0",
+  "publisher": "aave.eth",
+  "note": "AAVE governance delegate(address) \u2014 delegates BOTH voting + proposition power to delegatee. Maps to Airdrop::Delegate (power_type=voting_and_proposition). The airdrop domain already models ERC20Votes-style governance delegation, so NO new domain (\u00a70.1 action-model preflight). AaveTokenV3 0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9; selector keccak-verified. Also covers aAAVE 0xa700.. and stkAAVE 0x4da2.. (same governance-delegation surface; delegate is a permission primitive \u2014 never excluded).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x5c19a95c",
+    "chain_to_addresses": {
+      "1": [
+        "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+        "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+        "0x4da27a545c0c5b758a6ba100e3a049001de870f5"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "delegate",
+    "abi": {
+      "name": "delegate",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "delegatee",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "delegate",
+        "delegate": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "delegatee": "$args.delegatee",
+          "power_type": "voting_and_proposition"
+        }
+      }
+    },
+    "live_inputs": {
+      "current_delegate": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "aave_token_current_delegate"
+        },
+        "ttl_s": 60
+      },
+      "voting_power": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "aave_token_voting_power"
+        },
+        "ttl_s": 60
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

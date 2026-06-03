@@ -1004,6 +1004,760 @@
           }
         ]
       }
+    },
+    {
+      "intent": "AAVE delegate (both powers)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand fixture — delegate(address) 0x5c19a95c keccak-verified; real-tx absent (0/10000 recent AAVE txs; governance delegation rare/sticky)",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting_and_proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+        }
+      ],
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+            "value": "0",
+            "data": "0x5c19a95c0000000000000000000000001111111111111111111111111111111111111111"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "AAVE delegateByType voting (0)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand fixture — power_type value-map 0->voting",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        }
+      ],
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+            "value": "0",
+            "data": "0xdc937e1c00000000000000000000000022222222222222222222222222222222222222220000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "AAVE delegateByType proposition (1)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand fixture — power_type value-map 1->proposition",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x5555555555555555555555555555555555555555"
+        }
+      ],
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+            "value": "0",
+            "data": "0xdc937e1c00000000000000000000000055555555555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "AAVE off-chain Delegate sign (metaDelegate EIP-712)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand EIP-712 — Delegate(address delegator,address delegatee,uint256 nonce,uint256 deadline); DELEGATE_TYPEHASH 0xd46e8b93 on-chain-verified; name 'Aave Token'",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+        "primary_type": "Delegate",
+        "domain_name": "Aave Token",
+        "message": {
+          "delegator": "0x000000000000000000000000000000000000aaaa",
+          "delegatee": "0x3333333333333333333333333333333333333333",
+          "nonce": "0",
+          "deadline": "2000000000"
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting_and_proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        }
+      ]
+    },
+    {
+      "intent": "AAVE off-chain DelegateByType sign voting (metaDelegateByType)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand EIP-712 — DelegateByType delegationType=0 -> power_type voting via value-map",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+        "primary_type": "DelegateByType",
+        "domain_name": "Aave Token",
+        "message": {
+          "delegator": "0x000000000000000000000000000000000000aaaa",
+          "delegatee": "0x4444444444444444444444444444444444444444",
+          "delegationType": "0",
+          "nonce": "0",
+          "deadline": "2000000000"
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x4444444444444444444444444444444444444444"
+        }
+      ]
+    },
+    {
+      "intent": "aAAVE delegate (real-tx)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "real Etherscan tx 0x3af51d217365d19d845534b39bb3ab0ae4bba985ae4e30f7bc299dd99162c900 (aAAVE delegate; SCOPE ORACLE dominant delegate surface 2.5%)",
+      "tx_hash": "0x3af51d217365d19d845534b39bb3ab0ae4bba985ae4e30f7bc299dd99162c900",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+            "value": "0",
+            "data": "0x5c19a95c00000000000000000000000057ab7ee15ce5ecacb1ab84ee42d5a9d0d8112922"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting_and_proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x57ab7ee15ce5ecacb1ab84ee42d5a9d0d8112922"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9"
+        }
+      ]
+    },
+    {
+      "intent": "aAAVE delegateByType (real-tx, type=1->proposition)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "real Etherscan tx 0x19e0271be9e13bacf4a0f1654f894944838d4477b85fa3a63dc131c9b92a8b98 (aAAVE delegateByType)",
+      "tx_hash": "0x19e0271be9e13bacf4a0f1654f894944838d4477b85fa3a63dc131c9b92a8b98",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+            "value": "0",
+            "data": "0xdc937e1c00000000000000000000000050174919350fd2944439ba719488b78ec4be93570000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "proposition"
+        }
+      ]
+    },
+    {
+      "intent": "stkAAVE stake(to,amount) — deposit AAVE, mint shares",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xdc499666c1cb809756940cc4facb4f6f875278ee816f77c4bde77e277ae2bff7",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+            "value": "0",
+            "data": "0xadc9772e00000000000000000000000091b2e0d584bb8a1d6e5ca3e91b7dd59313bc60000000000000000000000000000000000000000000000000006f05b59d3b200000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x4da27a545c0c5b758a6ba100e3a049001de870f5"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x6f05b59d3b200000"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x91b2e0d584bb8a1d6e5ca3e91b7dd59313bc6000"
+        }
+      ]
+    },
+    {
+      "intent": "stkAAVE cooldown() — start unstake window",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x906a5f0007be0a56c715483abe83b3869fbbe0e6699ceab435e546dc102e211c",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+            "value": "0",
+            "data": "0x787a08a6"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "cooldown"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x4da27a545c0c5b758a6ba100e3a049001de870f5"
+        }
+      ]
+    },
+    {
+      "intent": "stkAAVE redeem(to,amount) — withdraw AAVE post-cooldown",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x3fe6be06beaa59cc39d1bb347b7670ff6d95050e580e6709d82891f87b9b754e",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+            "value": "0",
+            "data": "0x1e9a6950000000000000000000000000fb60e656320d85822893b137ecf0e0d7bc9120980000000000000000000000000000000000000000000000007af4b47f57ac34a6"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "redeem"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x4da27a545c0c5b758a6ba100e3a049001de870f5"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x7af4b47f57ac34a6"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xfb60e656320d85822893b137ecf0e0d7bc912098"
+        }
+      ]
+    },
+    {
+      "intent": "stkAAVE claimRewards(to,amount) — claim AAVE rewards",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xd4e6a1651908d40876387311adf997f1495134c62b29cb8060585a2a17fdd228",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+            "value": "0",
+            "data": "0x9a99b4f0000000000000000000000000fb60e656320d85822893b137ecf0e0d7bc9120980000000000000000000000000000000000000000000000000124b620d5a3ae04"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "claim_rewards"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x4da27a545c0c5b758a6ba100e3a049001de870f5"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xfb60e656320d85822893b137ecf0e0d7bc912098"
+        },
+        {
+          "path": "$.data.actions[0].body.reward_token.key.address",
+          "op": "hex_eq",
+          "value": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+        }
+      ]
+    },
+    {
+      "intent": "stkAAVE stakeWithPermit(amount,...) — stake w/ permit, shares to submitter",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xae79ad4a0fd8d26ebad54befb2dffe6190854083ff65901f02104a9fcd544dc7",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+            "value": "0",
+            "data": "0xecd9ba8200000000000000000000000000000000000000000000000172ea1c9c4dc0baf9000000000000000000000000000000000000000000000000000000006a1fe044000000000000000000000000000000000000000000000000000000000000001c6ecd023c25ed11cffe82c484872bbc06c9bd5ff4eb2a78f1e3b962b61d1344060b90acb42b3db5a53075de57f70053d41fe82e7078c4dafeceace022c580ad6a"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x4da27a545c0c5b758a6ba100e3a049001de870f5"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x172ea1c9c4dc0baf9"
+        }
+      ]
+    },
+    {
+      "intent": "stkAAVE claimRewardsAndStake(to,amount) — claim+restake (→Stake); SCOPE ORACLE 14.7%",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x70f7190057c88ef6eef9f33dcaf028d93af541316c133cfc5302611aa14dcd3f",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+            "value": "0",
+            "data": "0x955e18af0000000000000000000000007099acf74f9aa9a85e54e17b51c4bae742d3c3ec0000000000000000000000000000000000000000000000000e283066dea1e43a"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x4da27a545c0c5b758a6ba100e3a049001de870f5"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xe283066dea1e43a"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x7099acf74f9aa9a85e54e17b51c4bae742d3c3ec"
+        }
+      ]
+    },
+    {
+      "intent": "stkGHO stake(to,amount) — deposit GHO, mint shares",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x9e572c2b1f13b07e797f04da673effad5e875e8e441665721068ec6a867f2803",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d",
+            "value": "0",
+            "data": "0xadc9772e0000000000000000000000001b4c289c4f6e0565f1e432654254485c490679e90000000000000000000000000000000000000000000000000deb6927b4e3012a"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xdeb6927b4e3012a"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1b4c289c4f6e0565f1e432654254485c490679e9"
+        }
+      ]
+    },
+    {
+      "intent": "stkGHO cooldown() — start unstake window",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x1018deb3580169f916f3a8cb65f3e5844f4585e694702ac185209cb7c401462d",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d",
+            "value": "0",
+            "data": "0x787a08a6"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "cooldown"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d"
+        }
+      ]
+    },
+    {
+      "intent": "stkGHO redeem(to,amount) — withdraw GHO post-cooldown",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xb08bafab64da728c60a8d69f83b3e3d93090e8fb747901a63465dd83a272fd45",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d",
+            "value": "0",
+            "data": "0x1e9a69500000000000000000000000008f88ceef7d3db741f68846f7f0b3a51fe7b873310000000000000000000000000000000000000000000000074932d4e831f49129"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "redeem"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_safety_module"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.module",
+          "op": "hex_eq",
+          "value": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x74932d4e831f49129"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x8f88ceef7d3db741f68846f7f0b3a51fe7b87331"
+        }
+      ]
+    },
+    {
+      "intent": "GSM USDC buyAsset — buy USDC with GHO (fixed price)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3a3868898305f04bec7fea77becff04c13444112",
+            "value": "0",
+            "data": "0x40fb07a0000000000000000000000000000000000000000000000000000000000007a120000000000000000000000000f5124d4f1a62dac6c3c839452ae55d866227f053"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "gsm_swap"
+        },
+        {
+          "path": "$.data.actions[0].body.side",
+          "op": "equals",
+          "value": "buy_asset"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_gsm"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.gsm",
+          "op": "hex_eq",
+          "value": "0x3a3868898305f04bec7fea77becff04c13444112"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.gho.key.address",
+          "op": "hex_eq",
+          "value": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x7a120"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xf5124d4f1a62dac6c3c839452ae55d866227f053"
+        }
+      ],
+      "tx_hash": "0x99e8da5da60eed6594277025d596ae7d4a1bbd139cde922c42129571bd583a27"
+    },
+    {
+      "intent": "GSM USDC sellAsset — sell USDC for GHO (fixed price)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3a3868898305f04bec7fea77becff04c13444112",
+            "value": "0",
+            "data": "0xaa443ac000000000000000000000000000000000000000000000000000000000000aae60000000000000000000000000f5124d4f1a62dac6c3c839452ae55d866227f053"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "gsm_swap"
+        },
+        {
+          "path": "$.data.actions[0].body.side",
+          "op": "equals",
+          "value": "sell_asset"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_gsm"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.gsm",
+          "op": "hex_eq",
+          "value": "0x3a3868898305f04bec7fea77becff04c13444112"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.gho.key.address",
+          "op": "hex_eq",
+          "value": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xaae60"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xf5124d4f1a62dac6c3c839452ae55d866227f053"
+        }
+      ],
+      "tx_hash": "0x3b9c96ab6e2a6413308cf5c7b1e5ed6499b93eb9725604e1589cd86e73e7a636"
+    },
+    {
+      "intent": "GSM USDT buyAsset — HAND fixture (GSM_USDT 0 user swaps lifetime; only keeper)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x882285e62656b9623af136ce3078c6bdcc33f5e3",
+            "value": "0",
+            "data": "0x40fb07a000000000000000000000000000000000000000000000000000000000000f42400000000000000000000000001111111111111111111111111111111111111111"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "gsm_swap"
+        },
+        {
+          "path": "$.data.actions[0].body.side",
+          "op": "equals",
+          "value": "buy_asset"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_gsm"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.gsm",
+          "op": "hex_eq",
+          "value": "0x882285e62656b9623af136ce3078c6bdcc33f5e3"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.gho.key.address",
+          "op": "hex_eq",
+          "value": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        }
+      ],
+      "source": "hand fixture — GSM_USDT 0 user buyAsset/sellAsset lifetime (12+2 txs all keeper); calldata synthetic, selector keccak-verified"
     }
   ]
 }

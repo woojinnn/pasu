@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+  "symbol": "aEthAAVE",
+  "decimals": 18,
+  "name": "Aave Ethereum AAVE",
+  "source": "https://github.com/bgd-labs/aave-address-book (AaveV3Ethereum.AAVE_A_TOKEN); symbol/decimals on-chain-verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "aave_v3",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+      }
+    },
+    "rebase_form": "rebasing"
+  }
+}

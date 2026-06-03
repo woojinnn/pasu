@@ -66,6 +66,7 @@ const fn venue_tag(venue: &AmmVenue) -> &'static str {
         AmmVenue::BalancerV3 { .. } => "balancer_v3",
         AmmVenue::TraderJoeLB { .. } => "trader_joe_lb",
         AmmVenue::MaverickV2 { .. } => "maverick_v2",
+        AmmVenue::AaveGsm { .. } => "aave_gsm",
         AmmVenue::AggregatorRoute { .. } => "aggregator_route",
     }
 }

@@ -139,6 +139,7 @@ namespace Amm {
   //   - "balancer_v3":       poolId, poolType
   //   - "trader_joe_lb":     pair, binStep
   //   - "maverick_v2":       pool
+  //   - "aave_gsm":          gsm  (GHO Stability Module; asset lives in GsmSwapContext)
   //   - "aggregator_route":  router, routeHash, executor?
   //
   // `poolType` (Balancer V2/V3) values:
@@ -180,6 +181,8 @@ namespace Amm {
     routeHash?: String,
     // Aggregator executor the router delegates to (1inch v6 router/executor split). Optional; present only when the venue carries a distinct executor.
     executor?: String,
+    // Aave GHO Stability Module contract. Present iff name = "aave_gsm".
+    gsm?: String,
   };
 
   // -------------------------------------------------------------------------
@@ -287,6 +290,7 @@ namespace Staking {
   //   - "curve_gauge_controller" → controller (GaugeController)
   //   - "curve_gauge"            → gauge      (per-pool liquidity gauge)
   //   - "curve_fee_distributor"  → distributor (FeeDistributor, veCRV fee claim)
+  //   - "aave_safety_module"     → module     (StakedAaveV3 / StakedGho)
   // -------------------------------------------------------------------------
   type StakeVenue = {
     name: String,                // discriminated by name
@@ -296,6 +300,7 @@ namespace Staking {
     controller?: String,         // curve_gauge_controller
     gauge?: String,              // curve_gauge
     distributor?: String,        // curve_fee_distributor
+    module?: String,             // aave_safety_module
   };
 }
 

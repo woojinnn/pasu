@@ -10,11 +10,14 @@ use super::common::cedar::addr;
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
 mod claim_rewards;
+mod cooldown;
 mod gauge_deposit;
 mod gauge_withdraw;
 mod increase_lock_amount;
 mod increase_lock_time;
 mod lock;
+mod redeem;
+mod stake;
 mod unlock;
 mod vote_for_gauge;
 
@@ -37,6 +40,9 @@ pub(crate) fn lower(
         StakingAction::VoteForGauge(a) => vote_for_gauge::lower(a, ctx),
         StakingAction::GaugeDeposit(a) => gauge_deposit::lower(a, ctx),
         StakingAction::GaugeWithdraw(a) => gauge_withdraw::lower(a, ctx),
+        StakingAction::Stake(a) => stake::lower(a, ctx),
+        StakingAction::Cooldown(a) => cooldown::lower(a, ctx),
+        StakingAction::Redeem(a) => redeem::lower(a, ctx),
     }
 }
 
@@ -65,6 +71,10 @@ pub(crate) fn lower_stake_venue(venue: &StakeVenue) -> Value {
         StakeVenue::CurveFeeDistributor { chain, distributor } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("distributor".into(), Value::String(addr(distributor)));
+        }
+        StakeVenue::AaveSafetyModule { chain, module } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("module".into(), Value::String(addr(module)));
         }
     }
     Value::Object(m)
@@ -137,6 +147,14 @@ pub(crate) mod test_support {
         StakeVenue::CurveGauge {
             chain: ChainId::ethereum_mainnet(),
             gauge: Address::from_str("0x5010263ac1978297f56048c7d2b02316a3435404").unwrap(),
+        }
+    }
+
+    /// Aave safety-module (stkAAVE) venue on Ethereum mainnet.
+    pub(crate) fn aave_safety_module_venue() -> StakeVenue {
+        StakeVenue::AaveSafetyModule {
+            chain: ChainId::ethereum_mainnet(),
+            module: Address::from_str("0x4da27a545c0c5b758a6ba100e3a049001de870f5").unwrap(),
         }
     }
 

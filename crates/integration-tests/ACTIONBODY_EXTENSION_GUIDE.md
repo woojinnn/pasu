@@ -81,6 +81,8 @@ conformance rule: 새/변경 action 은 leaf lowering test 에서 `lower_action`
 2. **`policy-engine/src/schema/action_name.rs`** — `REGISTERED_ACTIONS` 배열에 snake_case action tag 추가 (+ 그 `len()` assertion 갱신).
 3. **`policy-engine/src/schema/per_policy.rs`** — `RESOLVER_TABLE` 에 `ActionEntry { domain, action_tag, schema_text: <NAME>_SCHEMA, pascal_stub: "<PascalAction>" }` 추가 + import 에 `<NAME>_SCHEMA` 추가 (+ 그 `len()` assertion 갱신). **이게 `compose_per_policy` 의 (domain, action_tag)→schema 권위 테이블** — 누락하면 conformance 가 `MissingAction(<NS>::Action::"<Pascal>")` 으로 잡는다(안전망 작동, 2026-05-31 Morpho `SetAuthorization` 에서 실측).
 
+> ⚠️ **REGISTERED_ACTIONS(2) 와 RESOLVER_TABLE(3) 은 비대칭이다 — action tag 가 domain 간 충돌하면.** `REGISTERED_ACTIONS` 는 **dedup 된 tag 집합**(`registered_actions_unique` 테스트가 중복 거부)이고, `RESOLVER_TABLE` 은 **(domain, action_tag) 키**(같은 tag 라도 domain 마다 별도 행)다. 따라서 새 sub-action 의 tag 가 **다른 domain 에 이미 있으면**(예: `staking::stake` 추가 시 `liquid_staking` 가 이미 `"stake"` 등록): RESOLVER_TABLE 엔 새 행 추가(그 domain 의 schema 로 분기), **REGISTERED_ACTIONS 엔 추가 안 함**(이미 있음 — 추가하면 `duplicate action` 패닉). len assertion 도 RESOLVER 는 +1, REGISTERED 는 +0. (2026-06-03 Aave safety-module `staking::stake` 가 `liquid_staking::stake` 와 충돌 → conformance `registered_actions_unique` 가 잡음. 안전망 작동.)
+
 또한 **compile-forced (위 5곳 외 추가)**: `policy-server/sync/src/actions/walk/<domain>.rs` 의 walk + apply match 두 곳도 exhaustive — live_inputs 없는 action 은 `<DomainAction>::<New>(_) => {}` arm 추가 (DelegateBorrow 선례).
 
 **(b′) live_field 전용 touchpoint (⚠️ silent — catch-all 이 삼킴)**: action 에 `LiveField` 를 **추가**할 때(=§2.5 enrichment)는 세 곳이 더 있는데 **컴파일러가 안 잡는다**:
@@ -318,7 +320,7 @@ ActionBody::OffchainExchange(a) => super::offchain_exchange::lower(a, &ctx),   /
 // lowering_v2/offchain_exchange/mod.rs 신규 + lowering_v2/mod.rs 에 mod
 ```
 
-**Ⓒ′ 디코드 하니스 도메인 등록** (⚠️ compile-forced 아님 — silent gap) · `crates/integration-tests/src/harness/oracle.rs` 의 `VALID_DOMAINS` 배열 + 그 길이 `[&str; N]` 에 새 domain 의 serde tag 문자열을 추가한다. 빠뜨리면 **컴파일은 통과**하나 v3 decode 하니스가 새 domain 을 invalid 로 판정해 L3 domain-validity 에서 fail (`oracle.rs`). reducer/policy-engine 와 **다른 crate** 라 exhaustive-match 안전망이 안 잡는다 — Lido `liquid_staking` 온보딩 실측(2026-05-31).
+**Ⓒ′ (구버전 — 더 이상 불필요, 2026-06-03 정정)**: 과거엔 `oracle.rs` 의 `VALID_DOMAINS` 배열에 새 domain serde tag 를 등록해야 했다(Lido `liquid_staking` 실측). 그러나 **`VALID_DOMAINS` 는 cross-crate drift trap 이라 제거됨** — `oracle.rs` 가 이제 L3 domain-validity 를 hand-list 없이 **L2 typed round-trip**(`#[serde(tag="domain")]` 디시리얼라이즈 성공 여부)으로 검증한다(oracle.rs L137-145: "The former `VALID_DOMAINS` array was a cross-crate drift trap ... dropped"). 따라서 새 domain 은 **하니스 등록 불필요** — `ActionBody` enum 에 variant 추가하면 serde 가 자동 인식. (Aave dogfood 가 이 stale 지시를 확정.)
 
 **Ⓓ 그다음** 각 sub-action 마다 축 2 의 ③~⑦ (effect leaf / lowering leaf / cedarschema + loader 등록 / conformance / manifest). 새 domain 은 `lowering_v2/<domain>/mod.rs` 에 자체 `test_support` 모듈(sample builder + `assert_conforms`)을 신설한다 (token/perp 패턴 복제).
 

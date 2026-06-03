@@ -125,6 +125,14 @@ impl Reducer for SwapAction {
                             protocol: "aggregator_route".into(),
                         });
                     }
+                    // AaveGsm only ever carries `AmmAction::GsmSwap` (its own
+                    // reducer); a GSM venue inside a routed `Swap` hop is invalid.
+                    AmmVenue::AaveGsm { .. } => {
+                        return Err(ReducerError::UnsupportedProtocol {
+                            action: "swap".into(),
+                            protocol: "aave_gsm".into(),
+                        });
+                    }
                 };
             }
             total_out = total_out.saturating_add(hop_in);

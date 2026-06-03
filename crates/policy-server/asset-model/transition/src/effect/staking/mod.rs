@@ -11,8 +11,9 @@
 use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::staking::{
-    ClaimRewardsAction, GaugeDepositAction, GaugeWithdrawAction, IncreaseLockAmountAction,
-    IncreaseLockTimeAction, LockAction, StakingAction, UnlockAction, VoteForGaugeAction,
+    ClaimRewardsAction, CooldownAction, GaugeDepositAction, GaugeWithdrawAction,
+    IncreaseLockAmountAction, IncreaseLockTimeAction, LockAction, RedeemAction, StakeAction,
+    StakingAction, UnlockAction, VoteForGaugeAction,
 };
 use crate::apply::Reducer;
 use crate::error::ReducerResult;
@@ -28,6 +29,9 @@ impl Reducer for StakingAction {
             Self::VoteForGauge(a) => a.apply(state, ctx),
             Self::GaugeDeposit(a) => a.apply(state, ctx),
             Self::GaugeWithdraw(a) => a.apply(state, ctx),
+            Self::Stake(a) => a.apply(state, ctx),
+            Self::Cooldown(a) => a.apply(state, ctx),
+            Self::Redeem(a) => a.apply(state, ctx),
         }
     }
 }
@@ -75,6 +79,24 @@ impl Reducer for GaugeDepositAction {
 }
 
 impl Reducer for GaugeWithdrawAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        Ok(StateDelta::new())
+    }
+}
+
+impl Reducer for StakeAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        Ok(StateDelta::new())
+    }
+}
+
+impl Reducer for CooldownAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        Ok(StateDelta::new())
+    }
+}
+
+impl Reducer for RedeemAction {
     fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
         Ok(StateDelta::new())
     }

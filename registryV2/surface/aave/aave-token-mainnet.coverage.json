@@ -1,0 +1,73 @@
+{
+  "contract": "AaveTokenV3",
+  "chainId": 1,
+  "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+  "snapshot": "aave-token-mainnet.abi.json",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "standard ERC-20/EIP-2612 method; erc20 standard adapter auto-enumerates via tokens:erc20"
+    },
+    "0xa457c2d7": {
+      "name": "decreaseAllowance",
+      "decision": "exclude",
+      "reason": "standard ERC-20/EIP-2612 method; erc20 standard adapter auto-enumerates via tokens:erc20"
+    },
+    "0x5c19a95c": {
+      "name": "delegate",
+      "decision": "cover",
+      "reason": "governance power-delegation primitive (voting/proposition); ScopeBall core permission-delegation red-flag \u2014 delegates BOTH voting+proposition power, on-chain"
+    },
+    "0xdc937e1c": {
+      "name": "delegateByType",
+      "decision": "cover",
+      "reason": "governance power-delegation primitive (voting/proposition); ScopeBall core permission-delegation red-flag \u2014 delegates one power type (0=voting,1=proposition)"
+    },
+    "0x39509351": {
+      "name": "increaseAllowance",
+      "decision": "exclude",
+      "reason": "standard ERC-20/EIP-2612 method; erc20 standard adapter auto-enumerates via tokens:erc20"
+    },
+    "0x8129fc1c": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "one-time proxy initialization, deployment-time only"
+    },
+    "0xa095ac19": {
+      "name": "metaDelegate",
+      "decision": "exclude",
+      "reason": "relayer-submit: on-chain consumer of an off-chain EIP-712 Delegate signature (v,r,s). The delegator (signer) risk is captured at the off-chain typed-data Delegate sign \u2014 see signed_structs.Delegate (cover) \u2014 not at this relayer-submitted tx. Mirrors Morpho setAuthorizationWithSig EXCLUDE."
+    },
+    "0x657f0cde": {
+      "name": "metaDelegateByType",
+      "decision": "exclude",
+      "reason": "relayer-submit: on-chain consumer of an off-chain EIP-712 DelegateByType signature (v,r,s). The delegator (signer) risk is captured at the off-chain typed-data DelegateByType sign \u2014 see signed_structs.DelegateByType (cover) \u2014 not at this relayer-submitted tx. Mirrors Morpho setAuthorizationWithSig EXCLUDE."
+    },
+    "0xd505accf": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "standard ERC-20/EIP-2612 method; erc20 standard adapter auto-enumerates via tokens:erc20 (token-allowance permit, not governance)"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "standard ERC-20/EIP-2612 method; erc20 standard adapter auto-enumerates via tokens:erc20"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "standard ERC-20/EIP-2612 method; erc20 standard adapter auto-enumerates via tokens:erc20"
+    }
+  },
+  "signed_structs": {
+    "Delegate": {
+      "decision": "cover",
+      "reason": "off-chain governance delegation grant (metaDelegate); EIP-712 Delegate typed-data manifest"
+    },
+    "DelegateByType": {
+      "decision": "cover",
+      "reason": "off-chain governance delegation grant of one power type (metaDelegateByType); EIP-712 DelegateByType typed-data manifest"
+    }
+  }
+}

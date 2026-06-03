@@ -1,10 +1,13 @@
-//! `StakingAction` — Curve DAO staking & vote-escrow: veCRV vote-locking, CRV
-//! reward minting, gauge-weight voting, and (reserved) gauge LP staking.
+//! `StakingAction` — vote-escrow + cooldown-gated staking: Curve veCRV
+//! vote-locking, CRV reward minting, gauge-weight voting, gauge LP staking, and
+//! Aave safety-module stake/cooldown/redeem/claim.
 //!
-//! **Distinct from `liquid_staking`** (Lido stETH/wstETH, a *liquid* derivative):
-//! this domain models *non-liquid* staking — veCRV locks CRV for a fixed term
-//! (non-transferable vote-escrow), the `Minter` mints accrued CRV, and the
-//! `GaugeController` allocates vote weight. New domain (extension-guide axis 1).
+//! **Distinct from `liquid_staking`** (Lido stETH/wstETH, native-ETH submit +
+//! withdrawal queue): this domain models staking whose withdrawal is *gated* —
+//! veCRV locks CRV for a fixed term (vote-escrow), and the Aave safety module
+//! gates redemption behind a user-initiated `cooldown()` (and is slashable).
+//! The `Minter` mints accrued CRV and `GaugeController` allocates vote weight.
+//! New domain (extension-guide axis 1).
 //!
 //! Mirrors the `liquid_staking` layout: a venue enum (`StakeVenue`) + per-action
 //! structs + `action_tag()` / `venue_name()`. Actions carry **no** `LiveField`
@@ -17,20 +20,26 @@ use tsify_next::Tsify;
 use policy_state::primitives::{Address, ChainId};
 
 pub mod claim_rewards;
+pub mod cooldown;
 pub mod gauge_deposit;
 pub mod gauge_withdraw;
 pub mod increase_lock_amount;
 pub mod increase_lock_time;
 pub mod lock;
+pub mod redeem;
+pub mod stake;
 pub mod unlock;
 pub mod vote_for_gauge;
 
 pub use self::claim_rewards::*;
+pub use self::cooldown::*;
 pub use self::gauge_deposit::*;
 pub use self::gauge_withdraw::*;
 pub use self::increase_lock_amount::*;
 pub use self::increase_lock_time::*;
 pub use self::lock::*;
+pub use self::redeem::*;
+pub use self::stake::*;
 pub use self::unlock::*;
 pub use self::vote_for_gauge::*;
 
@@ -55,6 +64,12 @@ pub enum StakingAction {
     GaugeDeposit(GaugeDepositAction),
     /// Unstake LP from a Curve liquidity gauge (gauge `withdraw`).
     GaugeWithdraw(GaugeWithdrawAction),
+    /// Stake into an Aave safety module (`stake` / `stakeWithPermit`).
+    Stake(StakeAction),
+    /// Start the safety-module unstake cooldown window (`cooldown`).
+    Cooldown(CooldownAction),
+    /// Redeem a safety-module stake for its underlying (`redeem`).
+    Redeem(RedeemAction),
 }
 
 impl StakingAction {
@@ -73,6 +88,9 @@ impl StakingAction {
             Self::VoteForGauge(_) => "vote_for_gauge",
             Self::GaugeDeposit(_) => "gauge_deposit",
             Self::GaugeWithdraw(_) => "gauge_withdraw",
+            Self::Stake(_) => "stake",
+            Self::Cooldown(_) => "cooldown",
+            Self::Redeem(_) => "redeem",
         }
     }
 
@@ -88,6 +106,9 @@ impl StakingAction {
             Self::VoteForGauge(a) => Some(a.venue.name()),
             Self::GaugeDeposit(a) => Some(a.venue.name()),
             Self::GaugeWithdraw(a) => Some(a.venue.name()),
+            Self::Stake(a) => Some(a.venue.name()),
+            Self::Cooldown(a) => Some(a.venue.name()),
+            Self::Redeem(a) => Some(a.venue.name()),
         }
     }
 }
@@ -143,6 +164,15 @@ pub enum StakeVenue {
         #[tsify(type = "string")]
         distributor: Address,
     },
+    /// Aave safety module (`StakedAaveV3` / `StakedGho`) — cooldown-gated,
+    /// slashable staking that mints a transferable staked derivative.
+    AaveSafetyModule {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// Safety-module (staked-token) contract address.
+        #[tsify(type = "string")]
+        module: Address,
+    },
 }
 
 impl StakeVenue {
@@ -158,6 +188,7 @@ impl StakeVenue {
             Self::CurveGaugeController { .. } => "curve_gauge_controller",
             Self::CurveGauge { .. } => "curve_gauge",
             Self::CurveFeeDistributor { .. } => "curve_fee_distributor",
+            Self::AaveSafetyModule { .. } => "aave_safety_module",
         }
     }
 }

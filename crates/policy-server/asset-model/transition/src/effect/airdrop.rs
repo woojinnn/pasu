@@ -196,7 +196,7 @@ const fn _ensure_time_zero() -> Time {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::action::airdrop::{ClaimAirdropLiveInputs, DelegateLiveInputs};
+    use crate::action::airdrop::{ClaimAirdropLiveInputs, DelegateLiveInputs, GovernancePowerType};
     use policy_state::delta::TokenChange;
     use policy_state::eval_context::RequestKind;
     use policy_state::live_field::DataSource;
@@ -471,6 +471,7 @@ mod tests {
         let action = DelegateGovernanceAction {
             token: op_token_ref(),
             delegatee: distributor(),
+            power_type: GovernancePowerType::VotingAndProposition,
             live_inputs: DelegateLiveInputs {
                 current_delegate: live_addr_opt(),
                 voting_power: live_voting_power(100),
@@ -490,6 +491,7 @@ mod tests {
                 },
             },
             delegatee: distributor(),
+            power_type: GovernancePowerType::Proposition,
             live_inputs: DelegateLiveInputs {
                 current_delegate: live_addr_opt(),
                 voting_power: live_voting_power(0),
@@ -516,6 +518,7 @@ mod tests {
         let outer = AirdropAction::Delegate(DelegateGovernanceAction {
             token: op_token_ref(),
             delegatee: distributor(),
+            power_type: GovernancePowerType::Voting,
             live_inputs: DelegateLiveInputs {
                 current_delegate: live_addr_opt(),
                 voting_power: live_voting_power(0),

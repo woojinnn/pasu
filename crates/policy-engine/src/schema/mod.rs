@@ -41,6 +41,8 @@ const AMM_CANCEL_INTENT_ORDER_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/cancel_intent_order.cedarschema");
 const AMM_COLLECT_FEES_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/collect_fees.cedarschema");
+const AMM_GSM_SWAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/amm/gsm_swap.cedarschema");
 const AMM_REMOVE_LIQUIDITY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/remove_liquidity.cedarschema");
 const AMM_SETTLE_INTENT_ORDER_SCHEMA: &str =
@@ -121,6 +123,8 @@ const YIELD_YT_SWAP_SCHEMA: &str =
 // staking (alphabetical)
 const STAKING_CLAIM_REWARDS_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/staking/claim_rewards.cedarschema");
+const STAKING_COOLDOWN_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/cooldown.cedarschema");
 const STAKING_GAUGE_DEPOSIT_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/staking/gauge_deposit.cedarschema");
 const STAKING_GAUGE_WITHDRAW_SCHEMA: &str =
@@ -132,6 +136,10 @@ const STAKING_INCREASE_LOCK_TIME_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/staking/increase_lock_time.cedarschema");
 const STAKING_LOCK_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/staking/lock.cedarschema");
+const STAKING_REDEEM_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/redeem.cedarschema");
+const STAKING_STAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/stake.cedarschema");
 const STAKING_UNLOCK_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/staking/unlock.cedarschema");
 const STAKING_VOTE_FOR_GAUGE_SCHEMA: &str =
@@ -286,6 +294,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA,
     AMM_COLLECT_FEES_SCHEMA,
+    AMM_GSM_SWAP_SCHEMA,
     AMM_REMOVE_LIQUIDITY_SCHEMA,
     AMM_SETTLE_INTENT_ORDER_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA,
@@ -343,11 +352,14 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     RESTAKING_REGISTER_OPERATOR_SCHEMA,
     RESTAKING_UNDELEGATE_SCHEMA,
     STAKING_CLAIM_REWARDS_SCHEMA,
+    STAKING_COOLDOWN_SCHEMA,
     STAKING_GAUGE_DEPOSIT_SCHEMA,
     STAKING_GAUGE_WITHDRAW_SCHEMA,
     STAKING_INCREASE_LOCK_AMOUNT_SCHEMA,
     STAKING_INCREASE_LOCK_TIME_SCHEMA,
     STAKING_LOCK_SCHEMA,
+    STAKING_REDEEM_SCHEMA,
+    STAKING_STAKE_SCHEMA,
     STAKING_UNLOCK_SCHEMA,
     STAKING_VOTE_FOR_GAUGE_SCHEMA,
     TOKEN_ERC20_APPROVE_SCHEMA,

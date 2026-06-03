@@ -1,0 +1,32 @@
+{
+  "contract": "StakedGho",
+  "chainId": 1,
+  "address": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d",
+  "snapshot": "stkgho-mainnet.abi.json",
+  "functions": {
+    "0xadc9772e": { "name": "stake", "decision": "cover", "reason": "user safety-module stake: deposit GHO, mint stkGHO shares to `to`. Maps to staking::Stake (venue=aave_safety_module)." },
+    "0xecd9ba82": { "name": "stakeWithPermit", "decision": "cover", "reason": "user safety-module stake with bundled EIP-2612 permit; shares to msg.sender. Maps to staking::Stake (recipient omitted ⇒ submitter)." },
+    "0x787a08a6": { "name": "cooldown", "decision": "cover", "reason": "user safety-module action: start the unstake cooldown window. Maps to staking::Cooldown." },
+    "0x1e9a6950": { "name": "redeem", "decision": "cover", "reason": "user safety-module redeem: burn stkGHO, withdraw GHO to `to` (post-cooldown). Maps to staking::Redeem." },
+    "0x9a99b4f0": { "name": "claimRewards", "decision": "cover", "reason": "user safety-module claim: withdraw accrued AAVE rewards to `to`. Maps to staking::ClaimRewards (reused; venue=aave_safety_module, reward_token=AAVE)." },
+    "0xeab52318": { "name": "claimRewardsAndRedeem", "decision": "exclude", "reason": "deferred compounding wrapper: claim rewards + redeem stkGHO in one call. Base claimRewards + redeem covered; share measured P2, follow-up if dominant." },
+    "0x9c9b5154": { "name": "claimRewardsAndRedeemOnBehalf", "decision": "exclude", "reason": "operator-gated: registered claim helper only." },
+    "0x20fb80b5": { "name": "claimRewardsOnBehalf", "decision": "exclude", "reason": "operator-gated: registered claim helper only." },
+    "0x250201db": { "name": "cooldownOnBehalfOf", "decision": "exclude", "reason": "operator-gated: registered cooldown operator only." },
+    "0x112d037c": { "name": "redeemOnBehalf", "decision": "exclude", "reason": "operator-gated: registered claim helper only." },
+    "0xd505accf": { "name": "permit", "decision": "exclude", "reason": "standard EIP-2612 permit; erc20 standard adapter / relayer-submit of off-chain Permit sig." },
+    "0x095ea7b3": { "name": "approve", "decision": "exclude", "reason": "standard ERC-20; erc20 standard adapter auto-enumerates via tokens:erc20." },
+    "0xa9059cbb": { "name": "transfer", "decision": "exclude", "reason": "standard ERC-20; erc20 standard adapter auto-enumerates via tokens:erc20." },
+    "0x23b872dd": { "name": "transferFrom", "decision": "exclude", "reason": "standard ERC-20; erc20 standard adapter auto-enumerates via tokens:erc20." },
+    "0xb2a5dbfa": { "name": "configureAssets", "decision": "exclude", "reason": "admin: reward-distribution configuration (EMISSION_MANAGER)." },
+    "0x02fb4d85": { "name": "slash", "decision": "exclude", "reason": "admin/emergency: slash staked funds (SLASHING_ADMIN)." },
+    "0xaff05aa9": { "name": "settleSlashing", "decision": "exclude", "reason": "admin: settle a slashing event." },
+    "0x45755dd6": { "name": "returnFunds", "decision": "exclude", "reason": "admin: return funds to the module post-slash." },
+    "0x7b5b1157": { "name": "setCooldownSeconds", "decision": "exclude", "reason": "admin: cooldown-window configuration (COOLDOWN_ADMIN)." },
+    "0x39ccbdd3": { "name": "setDistributionEnd", "decision": "exclude", "reason": "admin: reward distribution-end configuration." },
+    "0x74011f56": { "name": "setMaxSlashablePercentage", "decision": "exclude", "reason": "admin: max-slashable configuration." },
+    "0xab406fe6": { "name": "setPendingAdmin", "decision": "exclude", "reason": "admin: role-admin handover." },
+    "0xfde9eb69": { "name": "claimRoleAdmin", "decision": "exclude", "reason": "admin: role-admin handover claim." },
+    "0xcd3fa04b": { "name": "initialize", "decision": "exclude", "reason": "one-time proxy initialization, deployment-time only." }
+  }
+}

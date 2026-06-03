@@ -4,6 +4,13 @@
   "address": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d",
   "symbol": "stkGHO",
   "decimals": 18,
-  "name": "stk GHO",
-  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+  "name": "Staked GHO",
+  "source": "https://github.com/bgd-labs/aave-address-book (AaveSafetyModule.STK_GHO); symbol/decimals on-chain-verified",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "aave_safety_module", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f" }
+    }
+  }
 }

@@ -160,6 +160,7 @@ mod tests {
             airdrop::DelegateGovernanceAction {
                 token,
                 delegatee: Address::from_str("0x00000000000000000000000000000000deadbeef").unwrap(),
+                power_type: airdrop::GovernancePowerType::VotingAndProposition,
                 live_inputs: airdrop::DelegateLiveInputs {
                     current_delegate: LiveField::new(None::<Address>, src.clone(), now()),
                     voting_power: LiveField::new(U256::from(1_000u64), src, now()),

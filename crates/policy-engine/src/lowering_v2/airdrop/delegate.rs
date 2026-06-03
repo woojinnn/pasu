@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use policy_transition::action::airdrop::DelegateGovernanceAction;
+use policy_transition::action::airdrop::{DelegateGovernanceAction, GovernancePowerType};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -23,6 +23,17 @@ pub(crate) fn lower(
     m.insert("meta".into(), ctx.meta());
     m.insert("token".into(), lower_token_ref(&action.token));
     m.insert("delegatee".into(), Value::String(addr(&action.delegatee)));
+    m.insert(
+        "powerType".into(),
+        Value::String(
+            match action.power_type {
+                GovernancePowerType::VotingAndProposition => "voting_and_proposition",
+                GovernancePowerType::Voting => "voting",
+                GovernancePowerType::Proposition => "proposition",
+            }
+            .to_owned(),
+        ),
+    );
 
     // ----- Live inputs (LiveField<T> inlined to T) -----
     // `current_delegate` is LiveField<Option<Address>>; omit when None.
@@ -49,7 +60,7 @@ mod tests {
     use policy_state::primitives::{Address, ChainId, U256};
     use policy_state::LiveField;
     use policy_transition::action::airdrop::{
-        AirdropAction, DelegateGovernanceAction, DelegateLiveInputs,
+        AirdropAction, DelegateGovernanceAction, DelegateLiveInputs, GovernancePowerType,
     };
     use policy_transition::action::ActionBody;
 
@@ -63,6 +74,7 @@ mod tests {
         let delegate = AirdropAction::Delegate(DelegateGovernanceAction {
             token: sample_token_ref(&chain),
             delegatee: Address::from_str("0x000000000000000000000000000000000000b0b0").unwrap(),
+            power_type: GovernancePowerType::VotingAndProposition,
             live_inputs: DelegateLiveInputs {
                 current_delegate: LiveField::new(
                     Some(Address::from_str("0x000000000000000000000000000000000000c0c0").unwrap()),
@@ -94,6 +106,7 @@ mod tests {
         let delegate = AirdropAction::Delegate(DelegateGovernanceAction {
             token: sample_token_ref(&chain),
             delegatee: Address::from_str("0x000000000000000000000000000000000000b0b0").unwrap(),
+            power_type: GovernancePowerType::Voting,
             live_inputs: DelegateLiveInputs {
                 current_delegate: LiveField::new(None, onchain_source(), now()),
                 voting_power: LiveField::new(U256::ZERO, onchain_source(), now()),

@@ -81,10 +81,11 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     // Airdrop (2)
     "claim",
     "delegate",
-    // Amm (7)
+    // Amm (8)
     "add_liquidity",
     "cancel_intent_order",
     "collect_fees",
+    "gsm_swap",
     "remove_liquidity",
     "settle_intent_order",
     "sign_intent_order",
@@ -149,13 +150,17 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "redelegate",
     "register_operator",
     "undelegate",
-    // Staking (8)
+    // Staking (10) — `stake` already listed above under LiquidStaking (the
+    // tag set is deduplicated; per-domain disambiguation lives in
+    // per_policy::RESOLVER_TABLE, which keys on (domain, tag)).
     "claim_rewards",
+    "cooldown",
     "gauge_deposit",
     "gauge_withdraw",
     "increase_lock_amount",
     "increase_lock_time",
     "lock",
+    "redeem",
     "unlock",
     "vote_for_gauge",
     // Token (11) — `delegate` already listed above under Airdrop
@@ -249,7 +254,7 @@ mod tests {
         // vault_transfer / sub_account_transfer) + 2 permission (approve_builder_fee
         // / token_delegate) + 2 trading/margin (twap_order / update_isolated_margin)
         // = 98, plus `settle_intent_order` for on-chain intent settlement = 99.
-        assert_eq!(REGISTERED_ACTIONS.len(), 101);
+        assert_eq!(REGISTERED_ACTIONS.len(), 104);
     }
 
     #[test]

@@ -13,6 +13,7 @@ use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 mod add_liquidity;
 mod cancel_intent_order;
 mod collect_fees;
+mod gsm_swap;
 mod remove_liquidity;
 mod settle_intent_order;
 mod sign_intent_order;
@@ -26,6 +27,7 @@ mod swap;
 pub(crate) fn lower(action: &AmmAction, ctx: &LowerCtx<'_>) -> Result<LoweredAction, LowerError> {
     match action {
         AmmAction::Swap(a) => swap::lower(a, ctx),
+        AmmAction::GsmSwap(a) => gsm_swap::lower(a, ctx),
         AmmAction::AddLiquidity(a) => add_liquidity::lower(a, ctx),
         AmmAction::RemoveLiquidity(a) => remove_liquidity::lower(a, ctx),
         AmmAction::CollectFees(a) => collect_fees::lower(a, ctx),
@@ -126,6 +128,10 @@ pub(crate) fn lower_amm_venue(venue: &AmmVenue) -> Value {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("pair".into(), Value::String(addr(pair)));
             m.insert("binStep".into(), Value::from(i64::from(*bin_step)));
+        }
+        AmmVenue::AaveGsm { chain, gsm } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("gsm".into(), Value::String(addr(gsm)));
         }
         AmmVenue::AggregatorRoute {
             chain,

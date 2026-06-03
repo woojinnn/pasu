@@ -1,0 +1,64 @@
+{
+  "type": "adapter_action",
+  "id": "aave/aave-token/meta-delegate-by-type@1.0.0",
+  "publisher": "aave.eth",
+  "note": "AAVE off-chain EIP-712 DelegateByType (consumed on-chain by metaDelegateByType). DelegateByType(address delegator,address delegatee,uint8 delegationType,uint256 nonce,uint256 deadline). Routes on verifying_contract + primary_type DelegateByType. power_type value-mapped from delegationType (0=voting, 1=proposition).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x00000002",
+    "chain_to_addresses": {
+      "1": ["0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"]
+    },
+    "typed_data": {
+      "domain_name": "Aave Token",
+      "verifying_contract": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+      "primary_type": "DelegateByType",
+      "types": {
+        "DelegateByType": [
+          { "name": "delegator", "type": "address" },
+          { "name": "delegatee", "type": "address" },
+          { "name": "delegationType", "type": "uint8" },
+          { "name": "nonce", "type": "uint256" },
+          { "name": "deadline", "type": "uint256" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "DelegateByType",
+    "abi": {
+      "name": "DelegateByType",
+      "type": "function",
+      "inputs": [
+        { "name": "delegator", "type": "address" },
+        { "name": "delegatee", "type": "address" },
+        { "name": "delegationType", "type": "uint8" },
+        { "name": "nonce", "type": "uint256" },
+        { "name": "deadline", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "delegate",
+        "delegate": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "delegatee": "$args.delegatee",
+          "power_type": {
+            "$match": "$args.delegationType",
+            "$cases": { "0": "voting", "1": "proposition" }
+          }
+        }
+      }
+    },
+    "live_inputs": {
+      "current_delegate": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_token_current_delegate" }, "ttl_s": 60 },
+      "voting_power": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_token_voting_power" }, "ttl_s": 60 }
+    }
+  },
+  "requires": { "imperative": [], "adapter_capabilities": ["token_metadata"], "host_capabilities": [], "extension": ">=0.1.0" }
+}

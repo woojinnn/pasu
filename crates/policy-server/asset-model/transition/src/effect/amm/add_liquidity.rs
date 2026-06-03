@@ -97,6 +97,7 @@ fn pooled_lp_key(venue: &AmmVenue) -> ReducerResult<TokenKey> {
         AmmVenue::UniswapV3 { .. }
         | AmmVenue::UniswapV4 { .. }
         | AmmVenue::TraderJoeLB { .. }
+        | AmmVenue::AaveGsm { .. }
         | AmmVenue::AggregatorRoute { .. } => Err(ReducerError::UnsupportedProtocol {
             action: "add_liquidity".into(),
             protocol: pooled_venue_tag(venue).into(),
@@ -152,6 +153,7 @@ const fn pooled_venue_tag(venue: &AmmVenue) -> &'static str {
         AmmVenue::BalancerV3 { .. } => "balancer_v3",
         AmmVenue::TraderJoeLB { .. } => "trader_joe_lb",
         AmmVenue::MaverickV2 { .. } => "maverick_v2",
+        AmmVenue::AaveGsm { .. } => "aave_gsm",
         AmmVenue::AggregatorRoute { .. } => "aggregator_route",
     }
 }
@@ -269,6 +271,7 @@ const fn venue_chain(venue: &AmmVenue) -> &ChainId {
         | AmmVenue::BalancerV3 { chain, .. }
         | AmmVenue::TraderJoeLB { chain, .. }
         | AmmVenue::MaverickV2 { chain, .. }
+        | AmmVenue::AaveGsm { chain, .. }
         | AmmVenue::AggregatorRoute { chain, .. } => chain,
     }
 }
