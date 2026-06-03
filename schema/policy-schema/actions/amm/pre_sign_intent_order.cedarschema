@@ -1,0 +1,42 @@
+// Amm::PreSignIntentOrder — set/revoke an ON-CHAIN pre-signature for an intent
+// order (CoW Protocol GPv2Settlement.setPreSignature(bytes orderUid, bool signed)).
+//
+// This is the smart-contract-wallet order-placement path: an EOA signs the
+// EIP-712 Order off-chain (-> Amm::SignIntentOrder), while a contract wallet
+// (e.g. a Safe) authorises the SAME order on-chain by marking its orderUid
+// pre-signed. The calldata carries ONLY the opaque orderUid (56 bytes =
+// 32-byte orderDigest + 20-byte owner + 4-byte validTo) and the `signed` flag;
+// the order's economic terms (sell/buy/amounts) live in the off-chain order
+// keyed by the digest and are NOT statically decodable here (CoW orderbook API
+// is the enrichment source).
+//
+// Policies on pre-signature typically:
+//   - confirm/warn on SC-wallet order placement (terms unseen → verify in UI)
+//   - venue allowlist (parallel to SignIntentOrder)
+//   - treat signed=false as a cancellation (parallel to CancelIntentOrder)
+
+namespace Amm {
+  type PreSignIntentOrderContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Intent venue the pre-signed order belongs to (CoW Swap settlement).
+    venue: IntentVenue,
+    // Opaque order identifier being (de)authorised. For CoW Swap the 56-byte
+    // orderUid hex (orderDigest + owner + validTo).
+    orderHash: String,
+    // true = mark the order tradable (pre-sign / commit); false = revoke a
+    // prior pre-signature (cancel).
+    signed: Bool,
+    // Manifest-extensible slot.
+    custom?: PreSignIntentOrderCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type PreSignIntentOrderCustomContext = {};
+
+  action "PreSignIntentOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: PreSignIntentOrderContext,
+  };
+}

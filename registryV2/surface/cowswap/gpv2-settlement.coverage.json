@@ -11,8 +11,8 @@
     },
     "0xec6cb13f": {
       "name": "setPreSignature",
-      "decision": "exclude",
-      "reason": "DEFER (user-facing, P2 usage-share measured): on-chain pre-signature marker for an opaque orderUid (56B digest + 20B owner + 4B validTo). calldata carries NO sellToken/buyToken/amount, so static decode yields no swap intent to scope; the order's economic terms are analyzed at off-chain EIP-712 Order signing time (covered via signed_structs.Order). Predominantly a smart-contract-wallet path vs the dominant off-chain Order signature."
+      "decision": "cover",
+      "reason": "smart-contract-wallet (e.g. Safe) on-chain order placement: signed=true marks the orderUid PRE_SIGNED (tradable/commit), signed=false revokes (cancel) -> amm pre_sign_intent_order (venue=cow_swap). The opaque orderUid (56B: 32B digest + 20B owner + 4B validTo) carries no sell/buy/amount terms in calldata (those live in the off-chain order keyed by the digest; CoW orderbook API is the enrichment source), so the action exposes venue + order_hash + signed and leaves terms unmodelled rather than fabricated. This is the SC-wallet analog of the dominant off-chain EIP-712 Order signature (covered via signed_structs.Order); an EOA never calls setPreSignature."
     },
     "0x13d79a0b": {
       "name": "settle",

@@ -29,6 +29,7 @@ pub(super) fn walk(
         AmmAction::SignIntentOrder(s) => walk_sign_intent(s, ix, now, st, sx),
         AmmAction::SettleIntentOrder(_) => {}
         AmmAction::CancelIntentOrder(_) => {}
+        AmmAction::PreSignIntentOrder(_) => {}
     }
 }
 
@@ -166,6 +167,7 @@ pub(super) fn apply(aa: &mut AmmAction, slot: &ActionSlot, value: Value, now: Ti
         AmmAction::SignIntentOrder(s) => apply_sign_intent(s, slot, value, now),
         AmmAction::SettleIntentOrder(_) => {}
         AmmAction::CancelIntentOrder(_) => {}
+        AmmAction::PreSignIntentOrder(_) => {}
     }
 }
 

@@ -173,3 +173,30 @@ pub struct CancelIntentOrderAction {
     #[tsify(optional, type = "string")]
     pub signature: Option<Bytes>,
 }
+
+/// Set (or revoke) an **on-chain pre-signature** for an intent order — CoW
+/// Protocol's `GPv2Settlement.setPreSignature(bytes orderUid, bool signed)`.
+///
+/// This is the smart-contract-wallet order-placement path: an EOA signs the
+/// EIP-712 `Order` off-chain (→ [`SignIntentOrderAction`]), whereas a contract
+/// wallet (e.g. a Safe) authorises the *same* order on-chain by marking its
+/// `orderUid` pre-signed. The calldata carries only the opaque `orderUid`
+/// (56 bytes = 32-byte orderDigest ‖ 20-byte owner ‖ 4-byte validTo, per
+/// `GPv2Order.packOrderUidParams`) and the `signed` flag — the order's
+/// economic terms (sell / buy / amounts) live in the off-chain order keyed by
+/// the digest and are **not** statically decodable here (the CoW orderbook
+/// API is the enrichment source). We therefore carry the opaque `order_hash`
+/// together with the `signed` direction and leave the terms unmodelled rather
+/// than fabricate them.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct PreSignIntentOrderAction {
+    /// Intent venue the pre-signed order belongs to (CoW Swap settlement).
+    pub venue: IntentVenue,
+    /// Opaque order identifier being (de)authorised. For CoW Swap this is the
+    /// 56-byte `orderUid` hex (orderDigest ‖ owner ‖ validTo).
+    pub order_hash: String,
+    /// `true` marks the order tradable (pre-signed / commit); `false` revokes
+    /// a prior pre-signature (cancel).
+    pub signed: bool,
+}

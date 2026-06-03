@@ -34,6 +34,7 @@ impl Reducer for AmmAction {
             Self::SignIntentOrder(a) => a.apply(state, ctx),
             Self::SettleIntentOrder(a) => a.apply(state, ctx),
             Self::CancelIntentOrder(a) => a.apply(state, ctx),
+            Self::PreSignIntentOrder(a) => a.apply(state, ctx),
         }
     }
 }

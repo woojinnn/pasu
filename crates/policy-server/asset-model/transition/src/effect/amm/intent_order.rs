@@ -36,8 +36,8 @@ use policy_state::primitives::{Address, VenueRef};
 use policy_state::{DataSource, EvalContext, PendingChange, StateDelta, WalletState};
 
 use crate::action::amm::{
-    CancelIntentOrderAction, IntentOrderKind, IntentVenue, SettleIntentOrderAction,
-    SignIntentOrderAction,
+    CancelIntentOrderAction, IntentOrderKind, IntentVenue, PreSignIntentOrderAction,
+    SettleIntentOrderAction, SignIntentOrderAction,
 };
 use crate::apply::Reducer;
 use crate::error::ReducerResult;
@@ -203,6 +203,28 @@ impl Reducer for CancelIntentOrderAction {
             id: self.order_hash.clone(),
             reason: PendingRemoveReason::Cancelled,
         });
+        Ok(delta)
+    }
+}
+
+impl Reducer for PreSignIntentOrderAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        let mut delta = StateDelta::new();
+        // `setPreSignature(orderUid, signed)`:
+        //   * signed=false → revoke a prior pre-signature; release any spend cap
+        //     held under this order id (mirrors `CancelIntentOrder`).
+        //   * signed=true  → mark the order tradable. The economic terms
+        //     (sell/buy/amounts) are NOT in calldata — they live in the
+        //     off-chain order keyed by the digest — so no `PermitCap` can be
+        //     modelled here. Recording the intent is policy-visible (the lowered
+        //     Cedar context carries `signed`); wallet-state balance deltas need
+        //     the enriched order, so emit no state change rather than invent one.
+        if !self.signed {
+            delta.pending_changes.push(PendingChange::Remove {
+                id: self.order_hash.clone(),
+                reason: PendingRemoveReason::Cancelled,
+            });
+        }
         Ok(delta)
     }
 }
@@ -481,5 +503,48 @@ mod tests {
             }
             other => panic!("expected Remove, got {other:?}"),
         }
+    }
+
+    /// `setPreSignature(signed=false)` revokes → `PendingChange::Remove` with
+    /// the `order_hash` + `Cancelled` reason (mirrors `CancelIntentOrder`).
+    #[test]
+    fn presign_signed_false_emits_remove() {
+        let state = empty_state();
+        let action = PreSignIntentOrderAction {
+            venue: IntentVenue::CowSwap {
+                chain: ChainId::ethereum_mainnet(),
+                settlement: cow_settlement(),
+            },
+            order_hash: format!("0x{}", "cd".repeat(28)),
+            signed: false,
+        };
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert!(delta.token_changes.is_empty());
+        assert_eq!(delta.pending_changes.len(), 1);
+        match &delta.pending_changes[0] {
+            PendingChange::Remove { id, reason } => {
+                assert_eq!(*id, format!("0x{}", "cd".repeat(28)));
+                assert_eq!(*reason, PendingRemoveReason::Cancelled);
+            }
+            other => panic!("expected Remove, got {other:?}"),
+        }
+    }
+
+    /// `setPreSignature(signed=true)` commits to an order whose terms are NOT
+    /// in calldata → no state delta (we do not fabricate a spend cap).
+    #[test]
+    fn presign_signed_true_emits_no_state_change() {
+        let state = empty_state();
+        let action = PreSignIntentOrderAction {
+            venue: IntentVenue::CowSwap {
+                chain: ChainId::ethereum_mainnet(),
+                settlement: cow_settlement(),
+            },
+            order_hash: format!("0x{}", "ef".repeat(28)),
+            signed: true,
+        };
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert!(delta.token_changes.is_empty());
+        assert!(delta.pending_changes.is_empty());
     }
 }

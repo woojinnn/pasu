@@ -13,6 +13,7 @@ use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 mod add_liquidity;
 mod cancel_intent_order;
 mod collect_fees;
+mod pre_sign_intent_order;
 mod remove_liquidity;
 mod settle_intent_order;
 mod sign_intent_order;
@@ -32,6 +33,7 @@ pub(crate) fn lower(action: &AmmAction, ctx: &LowerCtx<'_>) -> Result<LoweredAct
         AmmAction::SignIntentOrder(a) => sign_intent_order::lower(a, ctx),
         AmmAction::SettleIntentOrder(a) => settle_intent_order::lower(a, ctx),
         AmmAction::CancelIntentOrder(a) => cancel_intent_order::lower(a, ctx),
+        AmmAction::PreSignIntentOrder(a) => pre_sign_intent_order::lower(a, ctx),
     }
 }
 

@@ -81,10 +81,11 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     // Airdrop (2)
     "claim",
     "delegate",
-    // Amm (7)
+    // Amm (8)
     "add_liquidity",
     "cancel_intent_order",
     "collect_fees",
+    "pre_sign_intent_order",
     "remove_liquidity",
     "settle_intent_order",
     "sign_intent_order",
@@ -251,7 +252,9 @@ mod tests {
         // vault_transfer / sub_account_transfer) + 2 permission (approve_builder_fee
         // / token_delegate) + 2 trading/margin (twap_order / update_isolated_margin)
         // = 98, plus `settle_intent_order` for on-chain intent settlement = 99.
-        assert_eq!(REGISTERED_ACTIONS.len(), 103);
+        // (Prior unaccounted additions bring the base to 103.) Plus
+        // `pre_sign_intent_order` (CoW Swap on-chain SC-wallet pre-signature) = 104.
+        assert_eq!(REGISTERED_ACTIONS.len(), 104);
     }
 
     #[test]

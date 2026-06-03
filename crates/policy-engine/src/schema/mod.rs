@@ -41,6 +41,8 @@ const AMM_CANCEL_INTENT_ORDER_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/cancel_intent_order.cedarschema");
 const AMM_COLLECT_FEES_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/collect_fees.cedarschema");
+const AMM_PRE_SIGN_INTENT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/amm/pre_sign_intent_order.cedarschema");
 const AMM_REMOVE_LIQUIDITY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/remove_liquidity.cedarschema");
 const AMM_SETTLE_INTENT_ORDER_SCHEMA: &str =
@@ -290,6 +292,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA,
     AMM_COLLECT_FEES_SCHEMA,
+    AMM_PRE_SIGN_INTENT_ORDER_SCHEMA,
     AMM_REMOVE_LIQUIDITY_SCHEMA,
     AMM_SETTLE_INTENT_ORDER_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA,
@@ -830,6 +833,7 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("add_liquidity", "AddLiquidityContext"),
     ("cancel_intent_order", "CancelIntentOrderContext"),
     ("collect_fees", "CollectFeesContext"),
+    ("pre_sign_intent_order", "PreSignIntentOrderContext"),
     ("remove_liquidity", "RemoveLiquidityContext"),
     ("settle_intent_order", "SettleIntentOrderContext"),
     ("sign_intent_order", "SignIntentOrderContext"),

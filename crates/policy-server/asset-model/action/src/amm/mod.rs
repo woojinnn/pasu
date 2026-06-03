@@ -44,6 +44,9 @@ pub enum AmmAction {
     SettleIntentOrder(SettleIntentOrderAction),
     /// Cancel a previously signed intent order.
     CancelIntentOrder(CancelIntentOrderAction),
+    /// Set/revoke an on-chain pre-signature for an intent order (CoW Swap
+    /// `setPreSignature` — the smart-contract-wallet order-placement path).
+    PreSignIntentOrder(PreSignIntentOrderAction),
 }
 
 impl AmmAction {
@@ -60,6 +63,7 @@ impl AmmAction {
             Self::SignIntentOrder(_) => "sign_intent_order",
             Self::SettleIntentOrder(_) => "settle_intent_order",
             Self::CancelIntentOrder(_) => "cancel_intent_order",
+            Self::PreSignIntentOrder(_) => "pre_sign_intent_order",
         }
     }
 
@@ -74,6 +78,7 @@ impl AmmAction {
             Self::SignIntentOrder(a) => Some(a.venue.name()),
             Self::SettleIntentOrder(a) => Some(a.venue.name()),
             Self::CancelIntentOrder(a) => Some(a.venue.name()),
+            Self::PreSignIntentOrder(a) => Some(a.venue.name()),
         }
     }
 }
