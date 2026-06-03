@@ -442,7 +442,7 @@ mod tests {
             venue: aggregator_venue(),
             params: SwapParams {
                 token_in: usdc_ref(),
-                token_out: weth_ref(),
+                token_out: Some(weth_ref()),
                 direction: SwapDirection::ExactInput {
                     amount_in,
                     min_amount_out: min_out,

@@ -145,7 +145,7 @@ mod tests {
             },
             params: SwapParams {
                 token_in: usdc_ref(),
-                token_out: weth_ref(),
+                token_out: Some(weth_ref()),
                 direction: SwapDirection::ExactInput {
                     amount_in: U256::from(1u64),
                     min_amount_out: U256::ZERO,

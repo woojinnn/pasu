@@ -3,51 +3,178 @@
   "chainId": 1,
   "address": "0x111111125421ca6dc452d289314280a0f8842a65",
   "snapshot": "aggregation-router-v6.abi.json",
-  "note": "Function-level gate decision is binary (cover|exclude). User-facing surface that is DEFERRED (not dropped) is recorded as exclude with a reason beginning 'DEFER (data-gated)' + the precise decoder blocker; each such surface's 1st-party usage-share is measured in P2 (SCOPE ORACLE) and listed in evidence Scope Classification. Pure infra (admin/callback/view/simulation) is exclude-by-category. Decoded: `swap` (0x07ed2379) + `clipperSwap` (0xd2d374e5) + `clipperSwapTo` (0xc4d652af) — the latter two via the address_from_uint256 $fn (P3 follow-up round).",
+  "note": "Function-level gate decision is binary (cover|exclude). User-facing surface that is DEFERRED (not dropped) is recorded as exclude with a reason beginning 'DEFER (data-gated)' + the precise decoder blocker; each such surface's 1st-party usage-share is measured in P2 (SCOPE ORACLE) and listed in evidence Scope Classification. Pure infra (admin/callback/view/simulation) is exclude-by-category. Decoded: `swap` (0x07ed2379) + `clipperSwap` (0xd2d374e5) + `clipperSwapTo` (0xc4d652af) \u2014 the latter two via the address_from_uint256 $fn (P3 follow-up round).",
   "functions": {
-    "0x07ed2379": { "name": "swap", "decision": "cover", "reason": "user aggregation swap: swap(executor,SwapDescription,data); dstToken/srcToken/amount/minReturnAmount/dstReceiver all in calldata → AmmVenue::AggregatorRoute (OneInchV6), single_emit amm swap" },
-
-    "0x83800a8e": { "name": "unoswap", "decision": "exclude", "reason": "DEFER (data-gated): single-DEX direct swap; token_out is NOT in calldata — derived from the packed `dex` pool config (AddressLib uint256) = known $fn/token_out-from-pool gap, and pool→token enrichment is not wired. No-manifest → warn-closed (safe). Usage-share measured in P2." },
-    "0x8770ba91": { "name": "unoswap2", "decision": "exclude", "reason": "DEFER (data-gated): 2-hop unoswap; token_out from packed pool config, not in calldata ($fn/token_out-from-pool gap)." },
-    "0x19367472": { "name": "unoswap3", "decision": "exclude", "reason": "DEFER (data-gated): 3-hop unoswap; token_out from packed pool config, not in calldata ($fn/token_out-from-pool gap)." },
-    "0xe2c95c82": { "name": "unoswapTo", "decision": "exclude", "reason": "DEFER (data-gated): unoswap with recipient; token_out from packed pool config, not in calldata ($fn/token_out-from-pool gap)." },
-    "0xea76dddf": { "name": "unoswapTo2", "decision": "exclude", "reason": "DEFER (data-gated): 2-hop unoswapTo; token_out from packed pool config ($fn/token_out-from-pool gap)." },
-    "0xf7a70056": { "name": "unoswapTo3", "decision": "exclude", "reason": "DEFER (data-gated): 3-hop unoswapTo; token_out from packed pool config ($fn/token_out-from-pool gap)." },
-    "0xa76dfc3b": { "name": "ethUnoswap", "decision": "exclude", "reason": "DEFER (data-gated): ETH-in unoswap; token_out from packed pool config, not in calldata ($fn/token_out-from-pool gap)." },
-    "0x89af926a": { "name": "ethUnoswap2", "decision": "exclude", "reason": "DEFER (data-gated): 2-hop ETH-in unoswap; token_out from packed pool config ($fn/token_out-from-pool gap)." },
-    "0x188ac35d": { "name": "ethUnoswap3", "decision": "exclude", "reason": "DEFER (data-gated): 3-hop ETH-in unoswap; token_out from packed pool config ($fn/token_out-from-pool gap)." },
-    "0x175accdc": { "name": "ethUnoswapTo", "decision": "exclude", "reason": "DEFER (data-gated): ETH-in unoswap with recipient; token_out from packed pool config ($fn/token_out-from-pool gap)." },
-    "0x0f449d71": { "name": "ethUnoswapTo2", "decision": "exclude", "reason": "DEFER (data-gated): 2-hop ETH-in unoswapTo; token_out from packed pool config ($fn/token_out-from-pool gap)." },
-    "0x493189f0": { "name": "ethUnoswapTo3", "decision": "exclude", "reason": "DEFER (data-gated): 3-hop ETH-in unoswapTo; token_out from packed pool config ($fn/token_out-from-pool gap)." },
-
-    "0xd2d374e5": { "name": "clipperSwap", "decision": "cover", "reason": "Clipper MM swap: dstToken is a plain address, srcToken is a packed AddressLib uint256 unmasked via the address_from_uint256 $fn (low 160 bits) → AmmVenue::AggregatorRoute (OneInchV6), single_emit amm swap. recipient = msg.sender ($tx.from)." },
-    "0xc4d652af": { "name": "clipperSwapTo", "decision": "cover", "reason": "Clipper MM swap with explicit recipient: srcToken packed AddressLib uint256 unmasked via address_from_uint256 $fn → single_emit amm swap. recipient = $args.recipient." },
-
-    "0x9fda64bd": { "name": "fillOrder", "decision": "exclude", "reason": "Taker/resolver-side fill, NOT the wallet maker. The maker-facing LOP surface (the EIP-712 Order signature + cancelOrder/cancelOrders) is now COVERED (P1 follow-up). fillOrder is decodable later as Amm::SettleIntentOrder (the Order tuple is calldata uint256 -> address_from_uint256 $fn); deferred because the typical caller is a resolver/searcher, not the signing user." },
-    "0xf497df75": { "name": "fillOrderArgs", "decision": "exclude", "reason": "Taker/resolver-side fill with args; same taker-side disposition as fillOrder (maker surface covered in P1; decodable later as SettleIntentOrder)." },
-    "0xcc713a04": { "name": "fillContractOrder", "decision": "exclude", "reason": "DEFER (data-gated): LOP v4 ERC-1271 contract-order fill (taker-side); same packed-Order requirement." },
-    "0x56a75868": { "name": "fillContractOrderArgs", "decision": "exclude", "reason": "DEFER (data-gated): LOP v4 contract-order fill with args (taker-side); same packed-Order requirement." },
-    "0xb68fb020": { "name": "cancelOrder", "decision": "cover", "reason": "1inch LOP v4 maker on-chain cancellation: cancelOrder(makerTraits, orderHash) -> Amm::CancelIntentOrder on the OneInchLimitOrder venue (P1 follow-up). order_hash = the bytes32 orderHash arg; single_emit." },
-    "0x89e7c650": { "name": "cancelOrders", "decision": "cover", "reason": "1inch LOP v4 maker batch cancellation: cancelOrders(makerTraits[], orderHashes[]) -> array_emit Amm::CancelIntentOrder per bytes32 orderHash (bare $inputs scalar element) on the OneInchLimitOrder venue (P1 follow-up)." },
-
-    "0x5816d723": { "name": "permitAndCall", "decision": "exclude", "reason": "DEFER (data-gated): permit + self-call wrapper (executes an ERC-2612/Permit2 grant then re-enters the router with inner calldata). NOT a silent drop of a permission primitive — needs multicall-style recursion into the inner selector + embedded permit sub-decode; the value-bearing inner leg (usually swap/unoswap) is what carries policy weight. Usage-share measured in P2." },
-
-    "0x05b1ea03": { "name": "bitsInvalidateForOrder", "decision": "exclude", "reason": "maker order-nonce bookkeeping (bit-invalidator) — low-level order lifecycle, not a value/permission decision a user reasons about pre-sign" },
-    "0x0d2c7c16": { "name": "advanceEpoch", "decision": "exclude", "reason": "maker order-epoch bookkeeping (series invalidation) — low-level order lifecycle, not a pre-sign value/permission surface" },
-    "0xc3cf8043": { "name": "increaseEpoch", "decision": "exclude", "reason": "maker order-epoch bookkeeping — low-level order lifecycle, not a pre-sign value/permission surface" },
-
-    "0xe413f48d": { "name": "curveSwapCallback", "decision": "exclude", "reason": "swap callback invoked by a Curve pool mid-swap — never user-initiated; reverts unless called by the router's own swap flow" },
-    "0xfa461e33": { "name": "uniswapV3SwapCallback", "decision": "exclude", "reason": "Uniswap V3 swap callback invoked by a pool mid-swap — never user-initiated" },
-
-    "0x8456cb59": { "name": "pause", "decision": "exclude", "reason": "admin (owner-only) emergency pause — governance, not user pre-sign" },
-    "0x3f4ba83a": { "name": "unpause", "decision": "exclude", "reason": "admin (owner-only) unpause — governance, not user pre-sign" },
-    "0x78e3214f": { "name": "rescueFunds", "decision": "exclude", "reason": "admin (owner-only) fund rescue — governance, not user pre-sign" },
-    "0xf2fde38b": { "name": "transferOwnership", "decision": "exclude", "reason": "admin (owner-only) ownership transfer — governance, not user pre-sign" },
-    "0x715018a6": { "name": "renounceOwnership", "decision": "exclude", "reason": "admin (owner-only) ownership renounce — governance, not user pre-sign" },
-
-    "0xbd61951d": { "name": "simulate", "decision": "exclude", "reason": "staticcall simulation helper (reverts with the encoded result) — not a real user transaction" }
+    "0x07ed2379": {
+      "name": "swap",
+      "decision": "cover",
+      "reason": "user aggregation swap: swap(executor,SwapDescription,data); dstToken/srcToken/amount/minReturnAmount/dstReceiver all in calldata \u2192 AmmVenue::AggregatorRoute (OneInchV6), single_emit amm swap"
+    },
+    "0x83800a8e": {
+      "name": "unoswap",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). unoswap."
+    },
+    "0x8770ba91": {
+      "name": "unoswap2",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). unoswap2."
+    },
+    "0x19367472": {
+      "name": "unoswap3",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). unoswap3."
+    },
+    "0xe2c95c82": {
+      "name": "unoswapTo",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). unoswapTo."
+    },
+    "0xea76dddf": {
+      "name": "unoswapTo2",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). unoswapTo2."
+    },
+    "0xf7a70056": {
+      "name": "unoswapTo3",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). unoswapTo3."
+    },
+    "0xa76dfc3b": {
+      "name": "ethUnoswap",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). ethUnoswap."
+    },
+    "0x89af926a": {
+      "name": "ethUnoswap2",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). ethUnoswap2."
+    },
+    "0x188ac35d": {
+      "name": "ethUnoswap3",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). ethUnoswap3."
+    },
+    "0x175accdc": {
+      "name": "ethUnoswapTo",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). ethUnoswapTo."
+    },
+    "0x0f449d71": {
+      "name": "ethUnoswapTo2",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). ethUnoswapTo2."
+    },
+    "0x493189f0": {
+      "name": "ethUnoswapTo3",
+      "decision": "cover",
+      "reason": "unoswap direct/multi-hop swap; srcToken/amount/minReturn/pool/direction/recipient decoded -> Amm::Swap AggregatorRoute(OneInchV6); token_out omitted (pool token0/token1 read needed) -- the static fields bound fund safety (amount_in/min_amount_out/recipient). ethUnoswapTo3."
+    },
+    "0xd2d374e5": {
+      "name": "clipperSwap",
+      "decision": "cover",
+      "reason": "Clipper MM swap: dstToken is a plain address, srcToken is a packed AddressLib uint256 unmasked via the address_from_uint256 $fn (low 160 bits) \u2192 AmmVenue::AggregatorRoute (OneInchV6), single_emit amm swap. recipient = msg.sender ($tx.from)."
+    },
+    "0xc4d652af": {
+      "name": "clipperSwapTo",
+      "decision": "cover",
+      "reason": "Clipper MM swap with explicit recipient: srcToken packed AddressLib uint256 unmasked via address_from_uint256 $fn \u2192 single_emit amm swap. recipient = $args.recipient."
+    },
+    "0x9fda64bd": {
+      "name": "fillOrder",
+      "decision": "exclude",
+      "reason": "Taker/resolver-side fill, NOT the wallet maker. The maker-facing LOP surface (the EIP-712 Order signature + cancelOrder/cancelOrders) is now COVERED (P1 follow-up). fillOrder is decodable later as Amm::SettleIntentOrder (the Order tuple is calldata uint256 -> address_from_uint256 $fn); deferred because the typical caller is a resolver/searcher, not the signing user."
+    },
+    "0xf497df75": {
+      "name": "fillOrderArgs",
+      "decision": "exclude",
+      "reason": "Taker/resolver-side fill with args; same taker-side disposition as fillOrder (maker surface covered in P1; decodable later as SettleIntentOrder)."
+    },
+    "0xcc713a04": {
+      "name": "fillContractOrder",
+      "decision": "exclude",
+      "reason": "DEFER (data-gated): LOP v4 ERC-1271 contract-order fill (taker-side); same packed-Order requirement."
+    },
+    "0x56a75868": {
+      "name": "fillContractOrderArgs",
+      "decision": "exclude",
+      "reason": "DEFER (data-gated): LOP v4 contract-order fill with args (taker-side); same packed-Order requirement."
+    },
+    "0xb68fb020": {
+      "name": "cancelOrder",
+      "decision": "cover",
+      "reason": "1inch LOP v4 maker on-chain cancellation: cancelOrder(makerTraits, orderHash) -> Amm::CancelIntentOrder on the OneInchLimitOrder venue (P1 follow-up). order_hash = the bytes32 orderHash arg; single_emit."
+    },
+    "0x89e7c650": {
+      "name": "cancelOrders",
+      "decision": "cover",
+      "reason": "1inch LOP v4 maker batch cancellation: cancelOrders(makerTraits[], orderHashes[]) -> array_emit Amm::CancelIntentOrder per bytes32 orderHash (bare $inputs scalar element) on the OneInchLimitOrder venue (P1 follow-up)."
+    },
+    "0x5816d723": {
+      "name": "permitAndCall",
+      "decision": "exclude",
+      "reason": "DEFER (data-gated): permit + self-call wrapper (executes an ERC-2612/Permit2 grant then re-enters the router with inner calldata). NOT a silent drop of a permission primitive \u2014 needs multicall-style recursion into the inner selector + embedded permit sub-decode; the value-bearing inner leg (usually swap/unoswap) is what carries policy weight. Usage-share measured in P2."
+    },
+    "0x05b1ea03": {
+      "name": "bitsInvalidateForOrder",
+      "decision": "exclude",
+      "reason": "maker order-nonce bookkeeping (bit-invalidator) \u2014 low-level order lifecycle, not a value/permission decision a user reasons about pre-sign"
+    },
+    "0x0d2c7c16": {
+      "name": "advanceEpoch",
+      "decision": "exclude",
+      "reason": "maker order-epoch bookkeeping (series invalidation) \u2014 low-level order lifecycle, not a pre-sign value/permission surface"
+    },
+    "0xc3cf8043": {
+      "name": "increaseEpoch",
+      "decision": "exclude",
+      "reason": "maker order-epoch bookkeeping \u2014 low-level order lifecycle, not a pre-sign value/permission surface"
+    },
+    "0xe413f48d": {
+      "name": "curveSwapCallback",
+      "decision": "exclude",
+      "reason": "swap callback invoked by a Curve pool mid-swap \u2014 never user-initiated; reverts unless called by the router's own swap flow"
+    },
+    "0xfa461e33": {
+      "name": "uniswapV3SwapCallback",
+      "decision": "exclude",
+      "reason": "Uniswap V3 swap callback invoked by a pool mid-swap \u2014 never user-initiated"
+    },
+    "0x8456cb59": {
+      "name": "pause",
+      "decision": "exclude",
+      "reason": "admin (owner-only) emergency pause \u2014 governance, not user pre-sign"
+    },
+    "0x3f4ba83a": {
+      "name": "unpause",
+      "decision": "exclude",
+      "reason": "admin (owner-only) unpause \u2014 governance, not user pre-sign"
+    },
+    "0x78e3214f": {
+      "name": "rescueFunds",
+      "decision": "exclude",
+      "reason": "admin (owner-only) fund rescue \u2014 governance, not user pre-sign"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin (owner-only) ownership transfer \u2014 governance, not user pre-sign"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin (owner-only) ownership renounce \u2014 governance, not user pre-sign"
+    },
+    "0xbd61951d": {
+      "name": "simulate",
+      "decision": "exclude",
+      "reason": "staticcall simulation helper (reverts with the encoded result) \u2014 not a real user transaction"
+    }
   },
   "signed_structs": {
-    "Order": { "decision": "cover", "reason": "EIP-712 LOP v4 `Order` the maker signs off-chain -> typed-data Amm::SignIntentOrder on the OneInchLimitOrder venue (P1 follow-up). domain '1inch Aggregation Router' v6, verifyingContract = the v6 router, primaryType Order; the EIP-712 Order declares maker/asset fields as `address` (resolve directly), valid_until via maker_traits_expiry $fn, recipient via coalesce_address $fn." }
+    "Order": {
+      "decision": "cover",
+      "reason": "EIP-712 LOP v4 `Order` the maker signs off-chain -> typed-data Amm::SignIntentOrder on the OneInchLimitOrder venue (P1 follow-up). domain '1inch Aggregation Router' v6, verifyingContract = the v6 router, primaryType Order; the EIP-712 Order declares maker/asset fields as `address` (resolve directly), valid_until via maker_traits_expiry $fn, recipient via coalesce_address $fn."
+    }
   }
 }

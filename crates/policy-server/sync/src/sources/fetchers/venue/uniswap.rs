@@ -102,9 +102,17 @@ fn swap_quote_request_body(action: &SwapAction, user: &Address) -> Value {
         "type": quote_type,
         "swapper": format!("{user:#x}"),
         "tokenIn": token_address_or_native(&action.params.token_in),
-        "tokenOut": token_address_or_native(&action.params.token_out),
+        "tokenOut": action
+            .params
+            .token_out
+            .as_ref()
+            .map_or(Value::Null, token_address_or_native),
         "tokenInChainId": eip155_chain_id(action.params.token_in.key.chain().as_str()),
-        "tokenOutChainId": eip155_chain_id(action.params.token_out.key.chain().as_str()),
+        "tokenOutChainId": action
+            .params
+            .token_out
+            .as_ref()
+            .and_then(|t| eip155_chain_id(t.key.chain().as_str())),
         "amount": amount.to_string(),
         "slippageTolerance": action.params.slippage_bp,
     })

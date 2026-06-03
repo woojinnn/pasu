@@ -1,6 +1,7 @@
 [
   "curve_route_last_token",
   "route_hash",
+  "unoswap_route_hash",
   "keccak256",
   "address_from_uint256",
   "maker_traits_expiry",

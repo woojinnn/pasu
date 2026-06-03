@@ -234,3 +234,20 @@ Verify:
 ```bash
 cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- 1inch --phase all
 ```
+
+## Follow-up Round 6 — FULL-COVERAGE (NativeOrderFactory + unoswap family + universe re-audit + PowerPod) — 2026-06-03
+
+> Triggered by a dogfood miss: a real `NativeOrderFactory.create` tx route-missed (`bundle_not_installed` → warn-closed).
+> Isolated worktree `scopeball-1inch-full` / branch `feat/1inch-full-coverage` (off `5d6710f7`); commit `454bcf79` (NOT merged/pushed).
+
+| track | status | summary |
+|---|---|---|
+| **A NativeOrderFactory** | done | `0xe12e0f11…ff01` `create((uint256x8)=IOrderMixin.Order)` (`0x8c72b608`) → `Amm::SignIntentOrder` (OneInchLimitOrder venue, order_kind=limit) — on-chain twin of order-sign, `address_from_uint256` on AddressLib-packed fields, NO engine change. surface(abi+coverage) + create@1.0.0 + real-tx golden `0x418c7157`. NativeOrderImpl CREATE2 clone (cancel/withdraw) = child universe → defer. Gotcha: single-tuple param flattens to top-level args; SignIntentOrder/Swap require emit-level `live_inputs`. |
+| **B unoswap family (12)** | done | token_out is the pool's other token (needs token0()/token1() read) → NOT static. Model change `SwapParams.token_out: TokenRef → Option<TokenRef>` (lowering omits when None; effect skips output credit; Cedar `tokenOut?`; ~25 construction sites Some-wrapped + None-lowering test). New `unoswap_route_hash` $fn. 12 single_emit `Amm::Swap` AggregatorRoute(OneInchV6) manifests (all args uint256; token_out omitted). coverage flip exclude→cover. real-tx goldens unoswap `0x0aa9564d` + ethUnoswap `0xda46df75`. Rejected Track-B build-time pool-baking (doesn't fit router+calldata-pool shape) and TokenKey::Unknown (80-file blast). |
+| **C universe re-audit** | done | `_deployments.json` 5→13 rows. Prior version-axis enumeration missed separate product lines. Triaged: NativeOrderFactory (cover), NativeOrderImpl (defer), st1INCH (defer), PowerPod (cover), + explicit exclude rows (1INCH token / Fusion Settlement / EscrowFactory / SpotPriceAggregator). Diagnosed 3 enumeration blind spots. |
+| **PowerPod** | done | `0xaccfac23…` `delegate(delegatee)` (`0x5c19a95c`) → `Permission::ProtocolAuthorization{permission=delegate}` (reuse, no model change). surface + manifest + real-tx golden `0x55f5e34e`. |
+| **st1INCH staking** | defer | deposit/withdraw/earlyWithdraw need a new non-Curve `StakingVenue` = focused round; addPod/removePod delegation deferred with it. ABI snapshotted. |
+
+**Gates (all green):** `check:surface` PASS (AggregationRouterV6 **17 cover** [+12 unoswap] · NativeOrderFactory 1 · PowerPod 1 · no regression); `v3-harness corpus --filter 1inch --require-expect-body` **19/19 matched, 19/19 pinned**; build-index **904 manifests** (12 unoswap callkeys, `unoswap_route_hash` passed the $fn gate); `cargo test` (policy-action/transition/engine/mappers) 0 failed; fmt+clippy clean. Reverted 5 base-fmt-dirty churn files (`cargo fmt --all` incidental; metamorpho_underlying = parallel-session file).
+
+**Deferred (post-merge):** GCS republish + extension rebuild — feature branch; publishing unmerged adapters to the live bucket would be premature.

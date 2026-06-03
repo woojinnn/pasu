@@ -43,6 +43,7 @@ use serde_json::Value as JsonValue;
 pub const WHITELIST: &[&str] = &[
     "curve_route_last_token",
     "route_hash",
+    "unoswap_route_hash",
     "keccak256",
     "address_from_uint256",
     "maker_traits_expiry",
@@ -65,6 +66,7 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
     match name {
         "curve_route_last_token" => curve_route_last_token(args),
         "route_hash" => route_hash(args),
+        "unoswap_route_hash" => unoswap_route_hash(args),
         "keccak256" => keccak256_hex(args),
         "address_from_uint256" => address_from_uint256(args),
         "maker_traits_expiry" => maker_traits_expiry(args),
@@ -167,6 +169,29 @@ fn route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
         let addr = Address::from_str(s)
             .map_err(|e| format!("route_hash: route[{idx}] is not an address ({s}): {e}"))?;
         bytes.extend_from_slice(addr.as_slice());
+    }
+    Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
+}
+
+/// `unoswap_route_hash(dex: uint256, [dex2: uint256], [dex3: uint256]) -> bytes32`
+/// — a deterministic ScopeBall identity for a 1inch unoswap route (NOT an
+/// on-chain value). 1inch unoswap/unoswap2/unoswap3 pack each pool as a
+/// `uint256` `dex` word (low 160 bits = pool address, high bits = direction /
+/// protocol flags). This hashes `keccak256(dex ++ [dex2] ++ [dex3])` over the
+/// raw 32-byte big-endian words, so the same packed pool sequence (addresses
+/// AND flags) hashes identically regardless of amounts. Variadic over 1..=3 dex
+/// words (one per hop). Feeds `AmmVenue::AggregatorRoute.route_hash`.
+fn unoswap_route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.is_empty() || args.len() > 3 {
+        return Err(format!(
+            "unoswap_route_hash expects 1..=3 dex words, got {}",
+            args.len()
+        ));
+    }
+    let mut bytes = Vec::with_capacity(args.len() * 32);
+    for (idx, v) in args.iter().enumerate() {
+        let packed = json_u256(v, &format!("unoswap_route_hash: dex[{idx}]"))?;
+        bytes.extend_from_slice(&packed.to_be_bytes::<32>());
     }
     Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
 }
@@ -1132,6 +1157,35 @@ mod tests {
                                  // different route → different hash
         let other = route_hash(&[route(&[A, POOL1, C])]).unwrap();
         assert_ne!(h1, other);
+    }
+
+    #[test]
+    fn unoswap_route_hash_is_variadic_deterministic_and_32_bytes() {
+        // Accepts decimal-string, hex-string, and numeric dex words.
+        let dex = json!("0xc45a81bc23a64ea556ab4cdf08a86b61cdceea8bfb39cfb5");
+        let h1 = unoswap_route_hash(std::slice::from_ref(&dex)).unwrap();
+        let h2 = unoswap_route_hash(std::slice::from_ref(&dex)).unwrap();
+        assert_eq!(h1, h2);
+        let s = h1.as_str().unwrap();
+        assert!(s.starts_with("0x"));
+        assert_eq!(s.len(), 66); // 0x + 64 hex
+
+        // Multi-hop (2 and 3 dex words) is supported and order-sensitive.
+        let dex2 = json!("0x1111111111111111111111111111111111111111");
+        let dex3 = json!(42u64);
+        let two = unoswap_route_hash(&[dex.clone(), dex2.clone()]).unwrap();
+        let three = unoswap_route_hash(&[dex.clone(), dex2.clone(), dex3.clone()]).unwrap();
+        assert_ne!(h1, two);
+        assert_ne!(two, three);
+        // Reordering the dex words changes the hash.
+        let swapped = unoswap_route_hash(&[dex2, dex]).unwrap();
+        assert_ne!(two, swapped);
+
+        // Arg-count bounds (0 and >3) error out.
+        assert!(unoswap_route_hash(&[]).is_err());
+        assert!(unoswap_route_hash(&[json!(1), json!(2), json!(3), json!(4)]).is_err());
+        // Non-uint arg errors out.
+        assert!(unoswap_route_hash(&[json!("not-a-number")]).is_err());
     }
 
     #[test]

@@ -581,14 +581,46 @@
       "expect": "pass",
       "expect_domain": "amm",
       "expect_body": [
-        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "swap" },
-        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "aggregator_route" },
-        { "path": "$.data.actions[0].body.venue.router", "op": "hex_eq", "value": "0x111111125421ca6dc452d289314280a0f8842a65" },
-        { "path": "$.data.actions[0].body.params.token_in.key.address", "op": "hex_eq", "value": "0x6b175474e89094c44da98b954eedeac495271d0f" },
-        { "path": "$.data.actions[0].body.params.token_out.key.address", "op": "hex_eq", "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
-        { "path": "$.data.actions[0].body.params.direction.amount_in", "op": "u256_hex_eq", "value": "0x2799bdae95aa79d50" },
-        { "path": "$.data.actions[0].body.params.direction.min_amount_out", "op": "u256_hex_eq", "value": "0x2b89ce2" },
-        { "path": "$.data.actions[0].body.params.recipient", "op": "hex_eq", "value": "0x000000000000000000000000000000000000aaaa" }
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aggregator_route"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.router",
+          "op": "hex_eq",
+          "value": "0x111111125421ca6dc452d289314280a0f8842a65"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x6b175474e89094c44da98b954eedeac495271d0f"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x2799bdae95aa79d50"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x2b89ce2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x000000000000000000000000000000000000aaaa"
+        }
       ],
       "tx_hash": "0x62f77df8ea7cc272e8f89736f5093d56858f8784a14d5d4c3edd904baf6dd154",
       "chain_id": 1,
@@ -607,14 +639,46 @@
       "expect": "pass",
       "expect_domain": "amm",
       "expect_body": [
-        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "swap" },
-        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "aggregator_route" },
-        { "path": "$.data.actions[0].body.venue.router", "op": "hex_eq", "value": "0x111111125421ca6dc452d289314280a0f8842a65" },
-        { "path": "$.data.actions[0].body.params.token_in.key.address", "op": "hex_eq", "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },
-        { "path": "$.data.actions[0].body.params.token_out.key.address", "op": "hex_eq", "value": "0x6b175474e89094c44da98b954eedeac495271d0f" },
-        { "path": "$.data.actions[0].body.params.direction.amount_in", "op": "u256_hex_eq", "value": "0x6a94d74f430000" },
-        { "path": "$.data.actions[0].body.params.direction.min_amount_out", "op": "u256_hex_eq", "value": "0x505e7130bdb28c000" },
-        { "path": "$.data.actions[0].body.params.recipient", "op": "hex_eq", "value": "0x1cfbc29014b5628f2054a07dc011a8d6129e8345" }
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aggregator_route"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.router",
+          "op": "hex_eq",
+          "value": "0x111111125421ca6dc452d289314280a0f8842a65"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x6b175474e89094c44da98b954eedeac495271d0f"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x6a94d74f430000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x505e7130bdb28c000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x1cfbc29014b5628f2054a07dc011a8d6129e8345"
+        }
       ],
       "tx_hash": "0xf8a1aa23d64a9a4f69d55cc97864bf42ec9efd57da3b4f71e0af671bd5abd670",
       "chain_id": 1,
@@ -633,10 +697,26 @@
       "expect": "pass",
       "expect_domain": "amm",
       "expect_body": [
-        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "cancel_intent_order" },
-        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "one_inch_limit_order" },
-        { "path": "$.data.actions[0].body.venue.verifying_contract", "op": "hex_eq", "value": "0x111111125421ca6dc452d289314280a0f8842a65" },
-        { "path": "$.data.actions[0].body.order_hash", "op": "hex_eq", "value": "0x29a85ea581b585d5da979edcca89a3a07ea836168d2341766f19cde4e24657be" }
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "cancel_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "one_inch_limit_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.verifying_contract",
+          "op": "hex_eq",
+          "value": "0x111111125421ca6dc452d289314280a0f8842a65"
+        },
+        {
+          "path": "$.data.actions[0].body.order_hash",
+          "op": "hex_eq",
+          "value": "0x29a85ea581b585d5da979edcca89a3a07ea836168d2341766f19cde4e24657be"
+        }
       ],
       "tx_hash": "0x0d225caa058daa5edf7bb8570597a519da6440951006077c3afc1c3749542b49",
       "chain_id": 1,
@@ -655,10 +735,26 @@
       "expect": "pass",
       "expect_domain": "multicall",
       "expect_body": [
-        { "path": "$.data.actions[0].body.actions[0].action", "op": "equals", "value": "cancel_intent_order" },
-        { "path": "$.data.actions[0].body.actions[0].venue.name", "op": "equals", "value": "one_inch_limit_order" },
-        { "path": "$.data.actions[0].body.actions[0].order_hash", "op": "hex_eq", "value": "0x90679acce0f7f3d03aed6042d89ab76718901808bb80258df0fa33a6a8269349" },
-        { "path": "$.data.actions[0].body.actions[1].order_hash", "op": "hex_eq", "value": "0x7b307a1e30673af79b96d032102668f7430da0c07e1af4a7a656d76e4f7fcf25" }
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "cancel_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "one_inch_limit_order"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].order_hash",
+          "op": "hex_eq",
+          "value": "0x90679acce0f7f3d03aed6042d89ab76718901808bb80258df0fa33a6a8269349"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].order_hash",
+          "op": "hex_eq",
+          "value": "0x7b307a1e30673af79b96d032102668f7430da0c07e1af4a7a656d76e4f7fcf25"
+        }
       ],
       "tx_hash": "0x1ebed9bf62b7e726a4da43e150f802a5803b29e1a85d04705b5fd56bb45de19f",
       "chain_id": 1,
@@ -693,29 +789,271 @@
         }
       },
       "expect_body": [
-        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "sign_intent_order" },
-        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "one_inch_limit_order" },
-        { "path": "$.data.actions[0].body.venue.verifying_contract", "op": "hex_eq", "value": "0x111111125421ca6dc452d289314280a0f8842a65" },
-        { "path": "$.data.actions[0].body.sell.key.address", "op": "hex_eq", "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },
-        { "path": "$.data.actions[0].body.buy.key.address", "op": "hex_eq", "value": "0x68749665ff8d2d112fa859aa293f07a622782f38" },
-        { "path": "$.data.actions[0].body.sell_amount", "op": "u256_hex_eq", "value": "0x281d9c1b4a473" },
-        { "path": "$.data.actions[0].body.buy_min", "op": "u256_hex_eq", "value": "0x126" },
-        { "path": "$.data.actions[0].body.order_kind", "op": "equals", "value": "limit" },
-        { "path": "$.data.actions[0].body.recipient", "op": "hex_eq", "value": "0x67336cec42645f55059eff241cb02ea5cc52ff86" },
-        { "path": "$.data.actions[0].body.valid_until", "op": "equals", "value": 1780453531 }
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "sign_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "one_inch_limit_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.verifying_contract",
+          "op": "hex_eq",
+          "value": "0x111111125421ca6dc452d289314280a0f8842a65"
+        },
+        {
+          "path": "$.data.actions[0].body.sell.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.buy.key.address",
+          "op": "hex_eq",
+          "value": "0x68749665ff8d2d112fa859aa293f07a622782f38"
+        },
+        {
+          "path": "$.data.actions[0].body.sell_amount",
+          "op": "u256_hex_eq",
+          "value": "0x281d9c1b4a473"
+        },
+        {
+          "path": "$.data.actions[0].body.buy_min",
+          "op": "u256_hex_eq",
+          "value": "0x126"
+        },
+        {
+          "path": "$.data.actions[0].body.order_kind",
+          "op": "equals",
+          "value": "limit"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x67336cec42645f55059eff241cb02ea5cc52ff86"
+        },
+        {
+          "path": "$.data.actions[0].body.valid_until",
+          "op": "equals",
+          "value": 1780453531
+        }
       ]
     },
     {
-      "intent": "unoswap (0x83800a8e) \u2014 DEFERRED selector: no manifest, must route-miss (token_out from packed pool, $fn gap)",
-      "expect": "error",
-      "tx_hash": "0x53151a4b076ed26c87f663106b7e6ce33c41a89f122230b2880b916c0796069e",
+      "intent": "1inch NativeOrderFactory.create \u2014 on-chain native limit order open (WETH sell -> USDT buy); on-chain twin of order-sign, AddressLib-packed Order fields -> address_from_uint256",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "sign_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "one_inch_limit_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.verifying_contract",
+          "op": "hex_eq",
+          "value": "0x111111125421ca6dc452d289314280a0f8842a65"
+        },
+        {
+          "path": "$.data.actions[0].body.sell.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.buy.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.sell_amount",
+          "op": "u256_hex_eq",
+          "value": "0x122f15bc5160c40"
+        },
+        {
+          "path": "$.data.actions[0].body.buy_min",
+          "op": "u256_hex_eq",
+          "value": "0x91ea3cb"
+        },
+        {
+          "path": "$.data.actions[0].body.order_kind",
+          "op": "equals",
+          "value": "limit"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xceeaa3ee5eaea2e12fac3b5eaf89ed270f46efab"
+        },
+        {
+          "path": "$.data.actions[0].body.valid_until",
+          "op": "equals",
+          "value": 1780477464
+        }
+      ],
+      "tx_hash": "0x418c7157e8fe3a5dcbdc66a926acb22dffb74bf52019b6aaa050d48a8718d2bd",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xe12e0f117d23a5ccc57f8935cd8c4e80cd91ff01",
+            "value": "81893119696964672",
+            "data": "0x8c72b6084a82836d21181af9c06266caad57061c09271af52188835e5223f590df181502000000000000000000000000ceeaa3ee5eaea2e12fac3b5eaf89ed270f46efab000000000000000000000000ceeaa3ee5eaea2e12fac3b5eaf89ed270f46efab000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec70000000000000000000000000000000000000000000000000122f15bc5160c4000000000000000000000000000000000000000000000000000000000091ea3cb8a00000000000000000000001254000000006a1fee1800000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "unoswap WETH->? direct swap (exact_input, 1inch v6 AggregationRouterV6; token_out omitted \u2014 pool token0/token1 read needed)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aggregator_route"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.router",
+          "op": "hex_eq",
+          "value": "0x111111125421ca6dc452d289314280a0f8842a65"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x2386f26fc10000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x15639a26255db12888a7e97"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x000000000000000000000000000000000000aaaa"
+        }
+      ],
+      "tx_hash": "0x0aa9564d8f6a7f1d8f793594ef41234a9f1b39fc2880a5bcbf29ef48de02bccd",
       "chain_id": 1,
       "rpc": {
         "params": [
           {
             "to": "0x111111125421ca6dc452d289314280a0f8842a65",
             "value": "0",
-            "data": "0x83800a8e000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000006f05b59d3b2000000000000000000000000000000000000000000000000006a906f5e77f524fb2708000000000000003b6d03401112956589a2bea1b038732db4ea6b0c416ef130fb39cfb5"
+            "data": "0x83800a8e000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000000000002386f26fc100000000000000000000000000000000000000000000015639a26255db12888a7e97288000000000000000000000c45a81bc23a64ea556ab4cdf08a86b61cdceea8bfb39cfb5"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "ethUnoswap ETH->? native-in direct swap (exact_input, 1inch v6 AggregationRouterV6; amount_in = msg.value; token_out omitted \u2014 pool read needed)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aggregator_route"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.router",
+          "op": "hex_eq",
+          "value": "0x111111125421ca6dc452d289314280a0f8842a65"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.standard",
+          "op": "equals",
+          "value": "native"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x342e34142378000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "u256_hex_eq",
+          "value": "0x31b322a32ab496828fdf71"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x000000000000000000000000000000000000aaaa"
+        }
+      ],
+      "tx_hash": "0xda46df7502a357f85ece1602608c126f076a3141c6a4f4e72c3408c72c1737ef",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x111111125421ca6dc452d289314280a0f8842a65",
+            "value": "235000000000000000",
+            "data": "0xa76dfc3b00000000000000000000000000000000000000000031b322a32ab496828fdf712000000000000000000000008cd6c8c449918d92d2ad4658c32f2e2ff1e7096d4a82836d"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "1inch PowerPod delegate(delegatee) -> Permission::ProtocolAuthorization{permission=delegate}; staker delegates Unicorn Power (C-audit gap)",
+      "expect": "pass",
+      "expect_domain": "permission",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "protocol_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.protocol_name",
+          "op": "equals",
+          "value": "one_inch_power_pod"
+        },
+        {
+          "path": "$.data.actions[0].body.permission",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0xe76706d6cd96cba98c783dfbd0f6de4c0ec32278"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        }
+      ],
+      "tx_hash": "0x55f5e34e314362bababa667ab86beffbfd78ddf100a6967b85df05276229f8df",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xaccfac2339e16dc80c50d2fa81b5c2b049b4f947",
+            "value": "0",
+            "data": "0x5c19a95c000000000000000000000000e76706d6cd96cba98c783dfbd0f6de4c0ec32278"
           }
         ]
       }

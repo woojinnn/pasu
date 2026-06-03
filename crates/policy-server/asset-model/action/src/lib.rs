@@ -474,7 +474,7 @@ mod smoke {
             },
             params: amm::SwapParams {
                 token_in: usdc,
-                token_out: wbtc,
+                token_out: Some(wbtc),
                 direction: amm::SwapDirection::ExactInput {
                     amount_in: U256::from(50_000_000_000u64),
                     min_amount_out: U256::from(74_000_000u64),
@@ -590,7 +590,7 @@ mod smoke {
             venue: v3,
             params: amm::SwapParams {
                 token_in: usdc,
-                token_out: weth,
+                token_out: Some(weth),
                 direction: amm::SwapDirection::ExactInput {
                     amount_in: U256::from(1_000_000_000u64),
                     min_amount_out: U256::from(300_000_000_000_000_000u64),

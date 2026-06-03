@@ -398,7 +398,7 @@ mod tests {
             venue: v3,
             params: SwapParams {
                 token_in: usdc,
-                token_out: weth,
+                token_out: Some(weth),
                 direction: SwapDirection::ExactInput {
                     amount_in: U256::from(1_000_000_000u64),
                     min_amount_out: U256::from(300_000_000_000_000_000u64),
