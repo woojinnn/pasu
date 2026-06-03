@@ -1,0 +1,13 @@
+{
+  "id": "sanctioned-hl-recipient-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "hl_withdraw" } } },
+  "policy_rpc": [{
+    "id": "hl-destination-sanctions",
+    "method": "address.sanctions",
+    "params": { "address": "$.action.destination" },
+    "outputs": [{ "kind": "context", "field": "sanctioned", "type": "Bool", "from": "$.result.sanctioned", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "sanctioned": "Bool" } }
+}

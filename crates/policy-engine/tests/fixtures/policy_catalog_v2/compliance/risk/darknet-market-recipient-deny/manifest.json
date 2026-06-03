@@ -1,0 +1,13 @@
+{
+  "id": "darknet-market-recipient-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [{
+    "id": "recipient-category",
+    "method": "address.category",
+    "params": { "address": "$.action.recipient" },
+    "outputs": [{ "kind": "context", "field": "riskCategory", "type": "String", "from": "$.result.riskCategory", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "riskCategory": "String" } }
+}

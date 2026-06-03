@@ -1,0 +1,13 @@
+{
+  "id": "sanctioned-perp-counterparty-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "open_position" } } },
+  "policy_rpc": [{
+    "id": "perp-collateral-sanctions",
+    "method": "address.sanctions",
+    "params": { "address": "$.action.collateralToken.key.address" },
+    "outputs": [{ "kind": "context", "field": "sanctioned", "type": "Bool", "from": "$.result.sanctioned", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "sanctioned": "Bool" } }
+}

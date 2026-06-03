@@ -1,0 +1,5 @@
+{
+  "id": "curve-gauge-deposit-confirm",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "gauge_deposit" } } }
+}

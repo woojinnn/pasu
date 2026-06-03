@@ -1,0 +1,5 @@
+{
+  "id": "hl-token-delegate-confirm",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "hl_token_delegate" } } }
+}

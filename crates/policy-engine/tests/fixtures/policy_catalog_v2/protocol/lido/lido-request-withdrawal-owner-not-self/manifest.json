@@ -1,0 +1,5 @@
+{
+  "id": "lido-request-withdrawal-owner-not-self",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "request_withdrawal" } } }
+}

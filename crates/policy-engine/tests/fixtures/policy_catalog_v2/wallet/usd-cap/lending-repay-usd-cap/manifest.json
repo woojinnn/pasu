@@ -1,0 +1,17 @@
+{
+  "id": "lending-repay-usd-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "repay" } } },
+  "policy_rpc": [{
+    "id": "repay-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "asset": "$.action.asset",
+      "amount": "$.action.amount"
+    },
+    "outputs": [{ "kind": "context", "field": "repayUsd", "type": "Decimal", "from": "$.result.usd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "repayUsd": "decimal" } }
+}

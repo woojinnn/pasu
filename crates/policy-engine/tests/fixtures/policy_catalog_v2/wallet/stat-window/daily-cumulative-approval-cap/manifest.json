@@ -1,0 +1,15 @@
+{
+  "id": "daily-cumulative-approval-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
+  "policy_rpc": [{
+    "id": "approval-window",
+    "method": "stat_window.snapshot",
+    "params": {
+      "owner": "$.root.from"
+    },
+    "outputs": [{ "kind": "context", "field": "windowOutflowUsd", "type": "Decimal", "from": "$.result.windowOutflowUsd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "windowOutflowUsd": "decimal" } }
+}

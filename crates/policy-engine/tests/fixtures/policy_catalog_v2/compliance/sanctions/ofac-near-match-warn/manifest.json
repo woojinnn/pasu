@@ -1,0 +1,13 @@
+{
+  "id": "ofac-near-match-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.domain": { "eq": "unknown" } } },
+  "policy_rpc": [{
+    "id": "near-match-sanctions",
+    "method": "address.sanctions",
+    "params": { "address": "$.action.target" },
+    "outputs": [{ "kind": "context", "field": "sanctioned", "type": "Bool", "from": "$.result.sanctioned", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "sanctioned": "Bool" } }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "swap-output-token-reputation",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [{
+    "id": "out-token-rep",
+    "method": "address.reputation",
+    "params": { "chain_id": "$.root.chain_id", "address": "$.action.tokenOut.key.address" },
+    "outputs": [{ "kind": "context", "field": "reputationFlagged", "type": "Bool", "from": "$.result.flagged", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "reputationFlagged": "Bool" } }
+}

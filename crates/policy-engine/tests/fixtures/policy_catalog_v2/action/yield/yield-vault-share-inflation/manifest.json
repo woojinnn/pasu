@@ -1,0 +1,13 @@
+{
+  "id": "yield-vault-share-inflation",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "add_market_liquidity" } } },
+  "policy_rpc": [{
+    "id": "vault-state",
+    "method": "vault.share_state",
+    "params": { "chain_id": "$.root.chain_id", "venue": "$.action.venue", "asset": "$.action.externalToken" },
+    "outputs": [{ "kind": "context", "field": "inflationRisk", "type": "Bool", "from": "$.result.inflationRisk", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "inflationRisk": "Bool" } }
+}

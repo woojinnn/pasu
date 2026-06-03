@@ -1,0 +1,13 @@
+{
+  "id": "swap-buy-unverified-token",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [{
+    "id": "out-token-meta",
+    "method": "token.metadata",
+    "params": { "chain_id": "$.root.chain_id", "asset": "$.action.tokenOut" },
+    "outputs": [{ "kind": "context", "field": "isVerified", "type": "Bool", "from": "$.result.isVerified", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "isVerified": "Bool" } }
+}

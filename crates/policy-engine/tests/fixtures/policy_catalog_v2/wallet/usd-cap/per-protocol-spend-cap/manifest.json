@@ -1,0 +1,17 @@
+{
+  "id": "per-protocol-spend-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.domain": { "eq": "unknown" } } },
+  "policy_rpc": [{
+    "id": "per-protocol-spend-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "asset": "$.action.chain",
+      "amount": "$.action.value"
+    },
+    "outputs": [{ "kind": "context", "field": "spendUsd", "type": "Decimal", "from": "$.result.usd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "spendUsd": "decimal" } }
+}

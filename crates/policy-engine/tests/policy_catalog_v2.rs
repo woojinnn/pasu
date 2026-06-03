@@ -66,6 +66,9 @@ fn walk_catalog_sets(root: &Path) -> Vec<PathBuf> {
 fn policy_catalog_v2_bundles_are_internally_consistent() {
     let dir = catalog_dir();
     let mut checked = 0;
+    // Collect EVERY failure rather than panicking on the first — a large catalog is
+    // authored/edited in bulk, so one run must surface the full fix-list at once.
+    let mut failures: Vec<(String, String)> = Vec::new();
 
     for bundle in walk_catalog_sets(&dir) {
         let id = bundle
@@ -73,40 +76,57 @@ fn policy_catalog_v2_bundles_are_internally_consistent() {
             .expect("bundle dir name")
             .to_string_lossy()
             .into_owned();
+        match check_bundle(&bundle, &id) {
+            Ok(()) => checked += 1,
+            Err(e) => failures.push((id, e)),
+        }
+    }
 
-        let manifest_json = fs::read_to_string(bundle.join("manifest.json"))
-            .unwrap_or_else(|e| panic!("read {id}/manifest.json: {e}"));
-        let policy = fs::read_to_string(bundle.join("policy.cedar"))
-            .unwrap_or_else(|e| panic!("read {id}/policy.cedar: {e}"));
-
-        let manifest: ManifestV2 = serde_json::from_str(&manifest_json)
-            .unwrap_or_else(|e| panic!("parse {id}/manifest.json: {e}"));
-
-        // 1. The manifest id is the bundle directory name (stable on-disk layout).
-        assert_eq!(
-            manifest.id, id,
-            "{id}: manifest id must match its directory name"
-        );
-
-        // 2. Structural invariants (schema_version == 2, unique policy_rpc ids,
-        //    every custom_context field fed by some output).
-        manifest
-            .validate()
-            .unwrap_or_else(|e| panic!("{id}: manifest invalid: {e}"));
-
-        // 3. The policy compiles against the schema its own manifest synthesizes —
-        //    the field/type/action-uid correctness gate.
-        let schema = compose_per_policy(&manifest)
-            .unwrap_or_else(|e| panic!("{id}: compose_per_policy failed: {e}"));
-        PolicyEngine::build_from_per_policy(&[(policy, schema)]).unwrap_or_else(|e| {
-            panic!("{id}: policy.cedar does not compile against its schema: {e}")
-        });
-
-        checked += 1;
+    if !failures.is_empty() {
+        let mut msg = format!("{} catalog bundle(s) failed:\n", failures.len());
+        for (id, e) in &failures {
+            msg.push_str(&format!("  ✗ {id}: {e}\n"));
+        }
+        panic!("{msg}");
     }
 
     assert!(
         checked >= 45,
         "expected >= 45 catalog bundles in {dir:?}, found {checked}"
     );
+}
+
+/// All three consistency checks for one bundle, returning the first error as a
+/// string instead of panicking — so the caller can aggregate failures across the
+/// whole catalog and report them together.
+fn check_bundle(bundle: &Path, id: &str) -> Result<(), String> {
+    let manifest_json = fs::read_to_string(bundle.join("manifest.json"))
+        .map_err(|e| format!("read manifest.json: {e}"))?;
+    let policy = fs::read_to_string(bundle.join("policy.cedar"))
+        .map_err(|e| format!("read policy.cedar: {e}"))?;
+
+    let manifest: ManifestV2 =
+        serde_json::from_str(&manifest_json).map_err(|e| format!("parse manifest.json: {e}"))?;
+
+    // 1. The manifest id is the bundle directory name (stable on-disk layout).
+    if manifest.id != id {
+        return Err(format!(
+            "manifest id {:?} must match its directory name",
+            manifest.id
+        ));
+    }
+
+    // 2. Structural invariants (schema_version == 2, unique policy_rpc ids,
+    //    every custom_context field fed by some output).
+    manifest
+        .validate()
+        .map_err(|e| format!("manifest invalid: {e}"))?;
+
+    // 3. The policy compiles against the schema its own manifest synthesizes —
+    //    the field/type/action-uid correctness gate.
+    let schema = compose_per_policy(&manifest).map_err(|e| format!("compose_per_policy: {e}"))?;
+    PolicyEngine::build_from_per_policy(&[(policy, schema)])
+        .map_err(|e| format!("policy.cedar does not compile against its schema: {e}"))?;
+
+    Ok(())
 }
