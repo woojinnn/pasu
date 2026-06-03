@@ -508,18 +508,19 @@ pub(crate) fn assemble_core(
             return (HlAccount::default(), fresh, errors);
         }
     };
-    let (orders_val, orders_ok) = match open_orders {
-        Ok(v) => (v, true),
+    let orders_val = match open_orders {
+        Ok(v) => v,
         Err(e) => {
             errors.push(format!("open_orders: {e}"));
-            (Value::Array(Vec::new()), false)
+            Value::Array(Vec::new())
         }
     };
     let mut account = match parse_account_snapshot(&clearinghouse, &orders_val, &empty_agents, meta)
     {
         Ok(a) => {
-            fresh.clearinghouse = true;
-            fresh.open_orders = orders_ok;
+            // Native dex bundle parsed → native is fresh. (Task 4 generalizes this
+            // to per-builder-dex fan-out via `assemble_core_dex`.)
+            fresh.fresh_dexs.push(None);
             a
         }
         Err(e) => {
@@ -1570,8 +1571,7 @@ mod tests {
         // core present despite spot failure
         assert_eq!(acct.perp_usdc, Some(Decimal::new("600.5")));
         assert!(acct.spot_balances.is_empty()); // failed → left empty
-        assert!(fresh.clearinghouse); // clearinghouse domain fresh
-        assert!(fresh.open_orders); // orders domain fresh
+        assert!(fresh.fresh_dexs.contains(&None)); // native dex bundle fresh
         assert!(!fresh.spot); // spot NOT fresh → caller preserves prior value
         assert_eq!(errors.len(), 1); // one recorded error (spot)
         assert!(errors[0].contains("spot"));
@@ -1622,8 +1622,8 @@ mod tests {
 
         let (core, fresh, errors) = f.fetch_hl_core("", &user, now).await;
         println!(
-            "=== CORE  fresh{{clearinghouse:{} open_orders:{} spot:{}}} ===",
-            fresh.clearinghouse, fresh.open_orders, fresh.spot
+            "=== CORE  fresh{{dexs:{:?} spot:{}}} ===",
+            fresh.fresh_dexs, fresh.spot
         );
         println!("perp_usdc (margin): {:?}", core.perp_usdc);
         println!("positions ({}):", core.positions.len());

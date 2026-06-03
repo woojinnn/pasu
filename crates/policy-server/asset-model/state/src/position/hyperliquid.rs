@@ -94,19 +94,17 @@ pub struct HlPerpDexMargin {
     pub account_value: Decimal,
 }
 
-/// Which **core** domains in a freshly fetched snapshot are authoritative.
+/// Which perp **dexs** in a freshly fetched snapshot refreshed this cycle.
 ///
-/// A domain is authoritative when its fetch + parse both succeeded this cycle.
-/// Domains left `false` are *preserved* from the existing account by
-/// [`HlAccount::merge_core`] — a failed poll must never wipe good state
-/// (resilience: failed fields keep their prior value).
-#[derive(Clone, Copy, Debug, Default)]
+/// A dex is fresh when its full per-dex bundle (clearinghouse + orders +
+/// leverage + margin) fetched + parsed OK. Dexs **not** listed are *preserved*
+/// from the existing account by [`HlAccount::merge_core`] — a failed per-dex
+/// poll must never wipe that dex's good state (resilience). `None` = native dex.
+#[derive(Clone, Debug, Default)]
 pub struct CoreFresh {
-    /// `perp_usdc` + `positions` + `leverage_settings` (one `clearinghouseState`).
-    pub clearinghouse: bool,
-    /// `open_orders` (separate `openOrders` call).
-    pub open_orders: bool,
-    /// `spot_balances` (separate `spotClearinghouseState` call).
+    /// Dexs whose positions / orders / leverage / margin refreshed this cycle.
+    pub fresh_dexs: Vec<Option<String>>,
+    /// `spot_balances` (dex-independent `spotClearinghouseState`) refreshed.
     pub spot: bool,
 }
 
@@ -128,22 +126,50 @@ pub struct LongtailFresh {
 }
 
 impl HlAccount {
-    /// Merge a freshly fetched **core** snapshot, overwriting only the domains
-    /// marked fresh in `which` and **preserving** the rest (a failed/stale domain
-    /// keeps its prior value). Long-tail fields and the reducer-owned
-    /// `pending_outflow` are never touched.
+    /// Merge a freshly fetched **core** snapshot. Per-dex: replace the entries
+    /// (positions / orders / leverage / margin) of the dexs in `which.fresh_dexs`
+    /// and **preserve** every other dex's prior entries (a failed/stale dex keeps
+    /// its last-known state). `spot_balances` is replaced only when `which.spot`.
+    /// `perp_usdc` is re-derived (= Σ per-dex `withdrawable`). Long-tail fields and
+    /// the reducer-owned `pending_outflow` are never touched.
     pub fn merge_core(&mut self, core: Self, which: CoreFresh) {
-        if which.clearinghouse {
-            self.perp_usdc = core.perp_usdc;
-            self.positions = core.positions;
-            self.leverage_settings = core.leverage_settings;
-        }
-        if which.open_orders {
-            self.open_orders = core.open_orders;
-        }
-        if which.spot {
+        let CoreFresh { fresh_dexs, spot } = which;
+        let is_fresh = |dex: &Option<String>| fresh_dexs.contains(dex);
+
+        self.positions.retain(|p| !is_fresh(&p.dex));
+        self.positions
+            .extend(core.positions.into_iter().filter(|p| is_fresh(&p.dex)));
+        self.open_orders.retain(|o| !is_fresh(&o.dex));
+        self.open_orders
+            .extend(core.open_orders.into_iter().filter(|o| is_fresh(&o.dex)));
+        self.leverage_settings.retain(|l| !is_fresh(&l.dex));
+        self.leverage_settings
+            .extend(core.leverage_settings.into_iter().filter(|l| is_fresh(&l.dex)));
+        self.perp_dex_margins.retain(|m| !is_fresh(&m.dex));
+        self.perp_dex_margins
+            .extend(core.perp_dex_margins.into_iter().filter(|m| is_fresh(&m.dex)));
+
+        if spot {
             self.spot_balances = core.spot_balances;
         }
+        self.recompute_perp_usdc();
+    }
+
+    /// Re-derive `perp_usdc` = Σ per-dex `withdrawable`. `None` until any dex has
+    /// synced a margin (no `perp_dex_margins`), so the unsynced-balance contract
+    /// of [`HlAccount::perp_usdc`] is preserved. Restores the pre-Plan-1 fan-out
+    /// behaviour where the on-demand path summed `withdrawable` across dexs.
+    fn recompute_perp_usdc(&mut self) {
+        use rust_decimal::Decimal as RustDecimal;
+        use std::str::FromStr;
+        if self.perp_dex_margins.is_empty() {
+            self.perp_usdc = None;
+            return;
+        }
+        let sum = self.perp_dex_margins.iter().fold(RustDecimal::ZERO, |acc, m| {
+            acc + RustDecimal::from_str(m.withdrawable.as_str()).unwrap_or(RustDecimal::ZERO)
+        });
+        self.perp_usdc = Some(Decimal::new(sum.normalize().to_string()));
     }
 
     /// Merge freshly fetched **long-tail** fields, overwriting only the domains
@@ -408,32 +434,95 @@ mod merge_tests {
         }
     }
 
+    fn pos(dex: Option<&str>, perp_tag: &str) -> HlPosition {
+        HlPosition {
+            asset_index: 0,
+            symbol: Some(perp_tag.into()),
+            is_long: true,
+            size: Decimal::new("1"),
+            entry_price: Decimal::new("100"),
+            dex: dex.map(str::to_string),
+            liquidation_price: None,
+        }
+    }
+
+    fn margin(dex: Option<&str>, withdrawable: &str) -> HlPerpDexMargin {
+        HlPerpDexMargin {
+            dex: dex.map(str::to_string),
+            withdrawable: Decimal::new(withdrawable),
+            account_value: Decimal::new(withdrawable),
+        }
+    }
+
     #[test]
     fn merge_core_updates_fresh_preserves_stale() {
-        let mut persisted = acct("1");
+        let mut persisted = HlAccount {
+            perp_dex_margins: vec![margin(None, "1")],
+            pending_outflow: Decimal::new("42"),
+            ..Default::default()
+        };
         persisted.spot_balances = vec![spot_balance("USDC")];
-        // clearinghouse + open_orders fresh; spot's fetch FAILED → not fresh.
-        let fresh = acct("2"); // perp_usdc = 2, spot_balances empty
+        // native dex fresh; spot's fetch FAILED → not fresh.
+        let fresh = HlAccount {
+            perp_dex_margins: vec![margin(None, "2")],
+            ..Default::default()
+        };
         persisted.merge_core(
             fresh,
             CoreFresh {
-                clearinghouse: true,
-                open_orders: true,
+                fresh_dexs: vec![None],
                 spot: false,
             },
         );
-        assert_eq!(persisted.perp_usdc, Some(Decimal::new("2"))); // fresh → updated
-        assert!(!persisted.spot_balances.is_empty()); // stale → preserved
+        assert_eq!(persisted.perp_usdc, Some(Decimal::new("2"))); // fresh native margin → 2
+        assert!(!persisted.spot_balances.is_empty()); // stale spot → preserved
         assert_eq!(persisted.pending_outflow, Decimal::new("42")); // reducer field kept
     }
 
     #[test]
     fn merge_core_all_stale_preserves_everything() {
-        // Regression: a clearinghouse/meta blip yields an all-false mask, which
-        // must NOT wipe good persisted state to defaults.
-        let mut persisted = acct("100");
+        // Regression: an all-stale (empty fresh_dexs) merge must NOT wipe good
+        // per-dex margins, so the derived perp_usdc survives the cycle.
+        let mut persisted = HlAccount {
+            perp_dex_margins: vec![margin(None, "100")],
+            ..Default::default()
+        };
         persisted.merge_core(HlAccount::default(), CoreFresh::default());
         assert_eq!(persisted.perp_usdc, Some(Decimal::new("100"))); // not wiped to None
+    }
+
+    #[test]
+    fn merge_core_replaces_fresh_dexs_preserves_stale() {
+        // Persisted: native + xyz positions/margins.
+        let mut persisted = HlAccount {
+            positions: vec![pos(None, "BTC"), pos(Some("xyz"), "NVDA")],
+            perp_dex_margins: vec![margin(None, "10"), margin(Some("xyz"), "5")],
+            ..Default::default()
+        };
+        // Fresh fetch refreshed ONLY native (xyz's fetch failed this cycle).
+        let fresh = HlAccount {
+            positions: vec![pos(None, "ETH")], // native now holds ETH, not BTC
+            perp_dex_margins: vec![margin(None, "20")],
+            ..Default::default()
+        };
+        persisted.merge_core(
+            fresh,
+            CoreFresh {
+                fresh_dexs: vec![None],
+                spot: false,
+            },
+        );
+
+        let symbols: Vec<_> = persisted
+            .positions
+            .iter()
+            .map(|p| p.symbol.clone().unwrap())
+            .collect();
+        assert!(symbols.contains(&"ETH".to_string())); // native replaced
+        assert!(symbols.contains(&"NVDA".to_string())); // xyz preserved
+        assert!(!symbols.contains(&"BTC".to_string())); // old native gone
+        // perp_usdc = Σ withdrawable = 20 (native fresh) + 5 (xyz preserved) = 25
+        assert_eq!(persisted.perp_usdc, Some(Decimal::new("25")));
     }
 
     #[test]

@@ -1052,25 +1052,30 @@ priority = 1
 
     #[test]
     fn upsert_hl_merge_creates_updates_and_preserves_across_domains() {
-        use policy_state::{CoreFresh, Decimal, HlAccount, LongtailFresh, WalletId};
+        use policy_state::{CoreFresh, Decimal, HlAccount, HlPerpDexMargin, LongtailFresh, WalletId};
 
         let mut state =
             WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
 
-        // A core snapshot whose clearinghouse domain is fresh (rest stale).
+        // A core snapshot whose native dex refreshed this cycle.
         let fresh = CoreFresh {
-            clearinghouse: true,
-            ..Default::default()
+            fresh_dexs: vec![None],
+            spot: false,
+        };
+        let margin = |w: &str| HlPerpDexMargin {
+            dex: None,
+            withdrawable: Decimal::new(w),
+            account_value: Decimal::new(w),
         };
 
-        // (1) first core sync creates the HL position.
+        // (1) first core sync creates the HL position. perp_usdc = Σ withdrawable.
         let core = HlAccount {
-            perp_usdc: Some(Decimal::new("5")),
+            perp_dex_margins: vec![margin("5")],
             ..Default::default()
         };
         upsert_hyperliquid_merge(
             &mut state,
-            |a| a.merge_core(core, fresh),
+            |a| a.merge_core(core, fresh.clone()),
             Time::from_unix(0),
         );
 
@@ -1083,12 +1088,12 @@ priority = 1
 
         // (3) a second core sync updates the same position in place.
         let core2 = HlAccount {
-            perp_usdc: Some(Decimal::new("9")),
+            perp_dex_margins: vec![margin("9")],
             ..Default::default()
         };
         upsert_hyperliquid_merge(
             &mut state,
-            |a| a.merge_core(core2, fresh),
+            |a| a.merge_core(core2, fresh.clone()),
             Time::from_unix(2),
         );
 
