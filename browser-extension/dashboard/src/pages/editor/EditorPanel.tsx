@@ -170,6 +170,7 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
         key={workspaceKey}
         policyName={name.trim() || "untitled"}
         initialJson={initialJson}
+        initialCedarText={mode === "edit" && policy ? policy.text : null}
         onChange={({ cedarText: c, json }) => {
           setCedarText(c);
           setTreeJson(JSON.stringify({ v: 9, ws: json }));
