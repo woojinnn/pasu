@@ -615,16 +615,15 @@ fn typed_data_uniswapx_exclusive_dutch_sign_intent_order() {
 // the committed manifest). HyperLiquid's REST `HyperliquidTransaction:UsdSend`
 // is an OFF-CHAIN L1 action authorized by an `eth_signTypedData_v4` signature:
 // `amount` is a DECIMAL STRING ("100.0", not U256) and `destination` is an L1
-// identifier string. The 8-domain ActionBody cannot faithfully hold those, so a
-// `token`/`erc20_transfer` mapping (amount→0, token→0x0) would be a MISLABEL
-// with DATA LOSS. The frozen decision routes it to best-effort `ActionBody::
-// Unknown` instead: `target=0x0` sentinel (off-chain sign has NO contract
-// target), `chain=$chain`, `calldata="0x"` (sigs have no calldata), `value="0"`.
-// The WIN is ROUTING (recognized: a HyperLiquid UsdSend signature, NOT
-// no_adapter); the STRUCTURED representation (destination/amount) requires a NEW
-// off-chain-exchange ActionBody variant = DEFERRED schema enhancement (the key
-// b3 limitation, OUT OF SCOPE). This SUPERSEDES the prior erc20_transfer
-// placeholder mapping (and the deleted `hyperliquid/usd-send/sign@1.0.0.json`).
+// identifier string — NEITHER fits the EVM token model losslessly.
+//
+// The `hyperliquid_core` domain now models this faithfully: the manifest decodes
+// the signed UsdSend into a STRUCTURED `HyperliquidCore::HlUsdSend` body that
+// carries `destination` + `amount` verbatim (decimal string preserved). This
+// SUPERSEDES the earlier best-effort `ActionBody::Unknown` mapping (the Unknown
+// bucket dropped both fields) — see the be41ea29 Flow-2 structured-decode work.
+// A policy can now scope on the actual recipient/amount of a fund move instead
+// of seeing an anonymous Unknown call.
 //
 // The colon-bearing primaryType `HyperliquidTransaction:UsdSend` is the exact
 // EIP-712 discriminator (kept verbatim by the bridge — never lowered). vc=0x0
@@ -636,7 +635,7 @@ const HYPERLIQUID_USD_SEND_V3: &str =
     include_str!("../../../registryV2/manifests/hyperliquid/rest/usd-send@1.0.0.json");
 
 #[test]
-fn typed_data_hyperliquid_usd_send_best_effort_unknown() {
+fn typed_data_hyperliquid_usd_send_structured() {
     let install = install_ok(HYPERLIQUID_USD_SEND_V3);
     assert_eq!(
         install["data"]["bundle_id"], "hyperliquid/rest/usd-send@1.0.0",
@@ -682,18 +681,17 @@ fn typed_data_hyperliquid_usd_send_best_effort_unknown() {
     );
     assert_eq!(meta["nature"]["domain"]["chain_id"], 42161, "{parsed}");
 
-    // Best-effort Unknown body — the frozen sentinel shape (recognized, NOT a
-    // token transfer): target 0x0 sentinel, chain $chain, value "0", calldata
-    // "0x". No `recipient`/`amount`/`token` fields exist on an Unknown body.
+    // Structured `HyperliquidCore::HlUsdSend` body — the fund move is modeled,
+    // not anonymized. `destination` + `amount` are carried verbatim (the decimal
+    // amount string is preserved; no U256 coercion / data loss).
     let body = &actions[0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(body["domain"], "hyperliquid_core", "{parsed}");
+    assert_eq!(body["action"], "hl_usd_send", "{parsed}");
     assert_eq!(
-        body["target"], "0x0000000000000000000000000000000000000000",
+        body["destination"], "0x00000000000000000000000000000000deadbeef",
         "{parsed}"
     );
-    assert_eq!(body["chain"], "eip155:42161", "{parsed}");
-    assert_eq!(body["value"], "0x0", "{parsed}");
-    assert_eq!(body["calldata"], "0x", "{parsed}");
+    assert_eq!(body["amount"], "100.0", "{parsed}");
 }
 
 // ---------------------------------------------------------------------------
