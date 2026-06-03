@@ -87,8 +87,24 @@
 - **Files:** `.../liquid_staking/request_withdrawal.rs`, `crates/policy-engine/src/lowering_v2/liquid_staking/request_withdrawal.rs`, `schema/policy-schema/actions/liquid_staking/**`, the 2 `*WithPermit` manifests, corpus expect_body.
 - **Gate:** `cargo test --workspace` (conformance) green; the 2 corpus entries' expect_body pin `embedded_permit.value`; wasm-build + clippy/fmt (ActionBody changed).
 
-### L3 — corpus `expect_body` is partly self-referential  [MEDIUM]
-- **What:** the 9 corpus `expect_body` values were taken from the decoder's own output. 4 intents (submit, requestWithdrawals, wrap×2) have independent hand goldens in `v3_decode_harness.rs` (reasoned from calldata); the other 5 (unwrap, claimWithdrawal, claimWithdrawals, requestWithdrawalsWstETH, requestWithdrawalsWstETHWithPermit) are pinned but **not independently derived** → they verify regression, not current correctness.
+### L3 — corpus `expect_body` independence  ✅ RESOLVED (was MEDIUM)
+> **Resolution (this run):** the 5 not-independently-derived intents were
+> independently `cast calldata-decode`'d (off-agent), 5/5 CONFIRM, zero mismatch
+> (selectors cross-checked via `cast sig`; amounts round-tripped dec↔hex; the
+> selector→token inference for the request* variants validated). Three new
+> reasoned-from-calldata hand goldens added to `tests/v3_decode_harness.rs` —
+> `lido_unwrap_amount_and_live_input_decode`, `lido_claim_withdrawal_decodes_request_id`,
+> `lido_request_withdrawals_wsteth_decodes_wsteth_token_and_owner` — so the
+> independent-golden set is now **7** (submit, requestWithdrawals, wrap×2, unwrap,
+> claimWithdrawal, requestWithdrawalsWstETH). The remaining corpus entries
+> (claimWithdrawals, the two `…WithPermit`, the two native-transfer stakes) are
+> documented as `cast`-cross-checked in the corpus `_comment`. The §9.4
+> self-reference is removed. Gate: 7/7 lido goldens pass; `corpus --require-expect-body`
+> 11/11.
+>
+> ---
+>
+> - **What:** the 9 corpus `expect_body` values were taken from the decoder's own output. 4 intents (submit, requestWithdrawals, wrap×2) have independent hand goldens in `v3_decode_harness.rs` (reasoned from calldata); the other 5 (unwrap, claimWithdrawal, claimWithdrawals, requestWithdrawalsWstETH, requestWithdrawalsWstETHWithPermit) are pinned but **not independently derived** → they verify regression, not current correctness.
 - **Why it matters:** removes residual circularity in the §9.4 semantic pin.
 - **Materiality:** low-medium (test rigor, not a runtime bug).
 - **Approach:** for each of the 5, independently ABI-decode the corpus tx's calldata (`cast --calldata-decode` / `cast abi-decode`) and confirm the pinned values are the true decoded values; record the derivation in a comment. Optionally add hand goldens for unwrap + claim + requestWstETH to `v3_decode_harness.rs`.

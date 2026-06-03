@@ -1,5 +1,5 @@
 {
-  "_comment": "Lido liquid_staking real-tx corpus (Etherscan mainnet, adapter-blind sample). expect=pass+liquid_staking; expect_body pins field-level semantics (action/venue/amount/owner/token/request_ids/enrichment-view) against the production decoder per \u00a79.4 (catches silent mis-decodes verdict+domain cannot). Verified via `v3-harness corpus --filter lido --require-expect-body`.",
+  "_comment": "Lido liquid_staking real-tx corpus (Etherscan mainnet, adapter-blind sample). expect=pass+liquid_staking; expect_body pins field-level semantics (action/venue/amount/owner/token/request_ids/embedded_permit/enrichment-view) against the production decoder per \u00a79.4 (catches silent mis-decodes verdict+domain cannot). Verified via `v3-harness corpus --filter lido --require-expect-body`. L3 independence: every expect_body value is independently derived from the raw calldata (NOT the decoder's own output) \u2014 submit/requestWithdrawals/wrap/unwrap/claimWithdrawal/requestWithdrawalsWstETH carry reasoned-from-calldata hand goldens in `tests/v3_decode_harness.rs`; the remaining entries (claimWithdrawals, requestWithdrawals(WstETH)WithPermit, the 2 native-transfer stakes) were cross-checked via `cast calldata-decode`, removing the \u00a79.4 self-reference.",
   "transactions": [
     {
       "intent": "submit",

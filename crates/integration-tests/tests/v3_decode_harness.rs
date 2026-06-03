@@ -1121,6 +1121,104 @@ fn lido_wrap_expected_wsteth_live_input_is_wired() {
     );
 }
 
+/// Field-level golden (L3 independence): a real wstETH `unwrap` must decode to a
+/// `liquid_staking` `unwrap` whose `amount` is the supplied `_wstETHAmount` (NOT
+/// `msg.value`, which is 0) with the `expected_steth` live-input source wired.
+/// Value reasoned from calldata: 0x226c6a3c70ff3b9a == 2_480_474_302_600_657_818.
+#[test]
+fn lido_unwrap_amount_and_live_input_decode() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet unwrap tx 0x0de246bd…: _wstETHAmount = 2480474302600657818.
+    const TO: &str = "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0";
+    const CALLDATA: &str =
+        "0xde0e9a3e000000000000000000000000000000000000000000000000226c6a3c70ff3b9a";
+
+    let env = harness::route::route_calldata(1, TO, "0xde0e9a3e", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "amount").as_deref(),
+        Some("0x226c6a3c70ff3b9a"),
+        "Unwrap.amount must equal _wstETHAmount (not msg.value): {env}"
+    );
+    let live = find_object_by_key(&env, "expected_steth")
+        .expect("unwrap body carries the expected_steth live field");
+    assert_eq!(
+        find_string_field(live, "function").as_deref(),
+        Some("getStETHByWstETH(uint256)"),
+        "expected_steth onchain_view source fn mis-wired: {env}"
+    );
+}
+
+/// Field-level golden (L3 independence): a real `claimWithdrawal(uint256 _requestId)`
+/// must decode to a `liquid_staking` `claim_withdrawal` carrying the single request
+/// id in `request_ids[0]`. Value reasoned from calldata: 0x1eb2f == 125_743.
+#[test]
+fn lido_claim_withdrawal_decodes_request_id() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet claimWithdrawal tx 0xf2d13664…: _requestId = 125743.
+    const TO: &str = "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1";
+    const CALLDATA: &str =
+        "0xf8444436000000000000000000000000000000000000000000000000000000000001eb2f";
+
+    let env = harness::route::route_calldata(1, TO, "0xf8444436", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    let request_ids =
+        find_object_by_key(&env, "request_ids").expect("claim body carries request_ids");
+    assert_eq!(
+        request_ids
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(serde_json::Value::as_str),
+        Some("0x1eb2f"),
+        "ClaimWithdrawal.request_ids[0] mis-decoded: {env}"
+    );
+}
+
+/// Field-level golden (L3 independence): a real `requestWithdrawalsWstETH` must
+/// decode to a `liquid_staking` `request_withdrawal` whose burned `token` is wstETH
+/// (the `…WstETH` discriminator) and whose `owner` is the NFT beneficiary. Owner +
+/// token reasoned from calldata.
+#[test]
+fn lido_request_withdrawals_wsteth_decodes_wsteth_token_and_owner() {
+    let _surface = adapters::load_and_install().expect("install local surface");
+
+    // Real mainnet requestWithdrawalsWstETH tx 0x6420f0a2…: owner 0x8e01…62bc, wstETH burned.
+    const TO: &str = "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1";
+    const CALLDATA: &str = "0x19aa625700000000000000000000000000000000000000000000000000000000000000400000000000000000000000008e01dc1a08ddf5a47ca992ba389ae290bc6362bc0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000002b39d1477c3aa0";
+
+    let env = harness::route::route_calldata(1, TO, "0x19aa6257", CALLDATA, "0");
+    assert_eq!(
+        env.get("ok").and_then(serde_json::Value::as_bool),
+        Some(true),
+        "route did not succeed: {env}"
+    );
+    assert_eq!(
+        find_string_field(&env, "owner")
+            .map(|s| s.to_lowercase())
+            .as_deref(),
+        Some("0x8e01dc1a08ddf5a47ca992ba389ae290bc6362bc"),
+        "RequestWithdrawalWstETH.owner mis-decoded: {env}"
+    );
+    let token = find_object_by_key(&env, "token").expect("request_withdrawal body carries token");
+    assert_eq!(
+        find_string_field(token, "address")
+            .map(|s| s.to_lowercase())
+            .as_deref(),
+        Some("0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"),
+        "requestWithdrawalsWstETH burns wstETH; token must be wstETH: {token}"
+    );
+}
+
 /// Recursively find the first object containing `"<field>": "<expected>"`.
 fn find_object_with_string_field<'a>(
     v: &'a serde_json::Value,
