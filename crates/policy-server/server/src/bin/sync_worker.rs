@@ -69,6 +69,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         for user_id in storage.list_user_ids().await? {
+            // Per-USER distributed lock. The API `/sync` handler takes the same
+            // `sync:user:{id}` key, so in prod (Redis) a worker tick and an
+            // on-demand sync can't write the same user's wallet rows at once —
+            // this already guards the single-JSONB-row lost-update race at user
+            // granularity (a wallet belongs to one user, so per-user ⊇ per-wallet).
+            //
+            // TODO(per-wallet lock — deferred, see PR #78 discussion): builder-dex
+            // fan-out makes a tick do ~9 dexs/wallet, so a multi-wallet user's
+            // `tick_once` can run long. Holding ONE per-user lock for the whole
+            // tick then (a) risks `sync_lock_ttl` (120s) expiring mid-tick → a
+            // concurrent writer slips in → lost update, and (b) 409s the user's
+            // *other* wallets for the whole tick. Switching to a per-WALLET key
+            // (`sync:wallet:{address}`) acquired around each wallet's
+            // load→merge→save (here AND in write_handlers' /sync) bounds the hold
+            // time to a single wallet and shrinks both windows. Requires the worker
+            // to loop wallets and lock each — Coordinator lives in policy-server,
+            // Scheduler in policy-sync, so `tick_once` would expose per-wallet steps
+            // the worker drives (or inject a coordinator handle into the scheduler).
             let lock_key = format!("sync:user:{user_id}");
             let Some(lock) = coordinator.try_lock(&lock_key, sync_lock_ttl).await? else {
                 continue;

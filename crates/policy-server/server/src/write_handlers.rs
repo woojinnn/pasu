@@ -555,6 +555,12 @@ pub async fn sync_wallet(
         Err(e) => return bad_request(&format!("invalid address `{address}`: {e}")),
     };
 
+    // Per-USER lock, shared with the sync_worker's `sync:user:{id}` key, so the
+    // worker tick and this on-demand sync are mutually exclusive per user (guards
+    // the JSONB lost-update race in prod/Redis).
+    // TODO(per-wallet lock — deferred): a per-wallet key (`sync:wallet:{address}`)
+    // would cut 409 contention + the TTL-expiry window under builder-dex fan-out.
+    // See the rationale in `bin/sync_worker.rs`.
     let lock_key = format!("sync:user:{}", user.user_id);
     let lock = match state
         .coordinator
