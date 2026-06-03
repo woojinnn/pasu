@@ -34,7 +34,7 @@ pub struct SchedulerConfig {
 impl Default for SchedulerConfig {
     fn default() -> Self {
         Self {
-            tick_interval: Duration::from_secs(60),
+            tick_interval: Duration::from_mins(1),
             max_wallets_per_tick: 100,
             sync_primitives: true,
             sync_hyperliquid_accounts: true,
